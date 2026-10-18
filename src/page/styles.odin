@@ -34,6 +34,8 @@ styles_init :: proc(p: ^Page) {
 	p.link_loads = make(map[base.Handle]^Style_Load)
 	p.import_loads = make([dynamic]^Style_Load)
 	p.style_stale = true
+	animations_init(p)
+	fonts_init(p)
 }
 
 @(private)
@@ -49,6 +51,8 @@ styles_destroy :: proc(p: ^Page) {
 	delete(p.link_loads)
 	for l in p.import_loads { free_load(p, l) }
 	delete(p.import_loads)
+	fonts_destroy(p)
+	animations_destroy(p)   // puts the cascaded styles back before they go
 	style.styled_destroy(p.styled)
 	p.styled = nil
 	style.engine_destroy(p.engine)
@@ -199,16 +203,26 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	env := style.media_env_from(&e.settings, f64(viewport_w), f64(viewport_h), dppx, false)
 	style.engine_set_environment(e, env)
 
+	now := document_time_ms(p)
 	full := p.styled == nil || p.style_stale || p.styled.mutations != p.doc.mutations || e.dirty || e.restyle_needed
+	partial := false
 	if !full && !style.state_equal(p.style_state, p.styled.state) {
-		if _, ok := style.restyle_state(e, p.doc, p.styled, p.style_state); !ok { full = true }
+		if _, ok := style.restyle_state(e, p.doc, p.styled, p.style_state); !ok { full = true } else { partial = true }
 	}
 	if full {
 		if p.styled == nil || p.style_stale || p.styled.mutations != p.doc.mutations { sync_styles(p) }
-		style.styled_destroy(p.styled)
+		old := p.styled
 		p.styled = style.compute_styles(e, p.doc, p.style_state, style_threads(p), p.settings.threads.style_min_nodes)
+		// transitions compare against the old styles (animated values included): they go only after this
+		style.timeline_restyled(p.anim.timeline, p.doc, old, p.styled, now)
+		style.styled_recycle(e, old)
 		p.style_stale = false
 		e.restyle_needed = false
+		fonts_sync(p)
+	} else if partial {
+		style.timeline_restyled_partial(p.anim.timeline, p.doc, p.styled, now)
 	}
+	style.timeline_tick(p.anim.timeline, p.doc, p.styled, now)
+	animations_after_tick(p)
 	return p.styled
 }

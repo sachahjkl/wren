@@ -71,6 +71,13 @@ calc_has_percent :: proc(n: ^css.Calc) -> bool {
 	return calc_has_percent(n.a) || calc_has_percent(n.b) || calc_has_percent(n.c)
 }
 
+@(private)
+calc_has_unit :: proc(n: ^css.Calc, u: css.Unit) -> bool {
+	if n == nil { return false }
+	if n.op == .Dimension && n.unit == u { return true }
+	return calc_has_unit(n.a, u) || calc_has_unit(n.b, u) || calc_has_unit(n.c, u)
+}
+
 // Replaces every relative unit by px. Percent leaves stay (they depend on the box the value is used on).
 @(private)
 calc_resolve_units :: proc(n: ^css.Calc, lc: css.Length_Context) {
@@ -111,7 +118,7 @@ parse_length :: proc(cx: ^Cx, input: []css.Value, flags: Len_Flags) -> (Length, 
 		}
 	case .Function:
 		tree := css.parse_calc(v, cx.alloc)
-		if tree == nil { return {}, false }
+		if tree == nil || calc_has_unit(tree, .Ms) || calc_has_unit(tree, .Deg) { return {}, false }
 		calc_resolve_units(tree, cx.lc)
 		if !calc_has_percent(tree) || .Percent not_in flags {
 			if calc_has_percent(tree) { return {}, false }
@@ -175,116 +182,65 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.outline_width = 3
 	c.outline_color = s.text_color
 	c.list_style_type = .Disc
+	c.list_style = List_Marker_Style{style = .Disc}
 	c.border_collapse = false
 	c.content = Content{kind = .Normal}
+	c.font_stretch = 100
+	c.text_decoration_thickness = auto_length
+	c.text_underline_offset = auto_length
+	c.transform_origin = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
+	c.perspective_origin = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
+	c.object_position = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
+	c.caret_color = Auto_Color{auto = true}
+	c.accent_color = Auto_Color{auto = true}
+	c.column_width = auto_length
+	c.transform_box = .View_Box
+	// the list-valued properties keep their initial value as a one-element list, so that a missing list is never an
+	// ambiguous "empty": these are shared, read-only, process-wide constants
+	c.transition_property = INITIAL_TRANSITION_PROPERTY[:]
+	c.transition_duration = ZERO_TIMES[:]
+	c.transition_delay = ZERO_TIMES[:]
+	c.transition_timing = EASE_LIST[:]
+	c.transition_behavior = FALSE_LIST[:]
+	c.animation_name = NONE_NAMES[:]
+	c.animation_duration = ZERO_TIMES[:]
+	c.animation_delay = ZERO_TIMES[:]
+	c.animation_timing = EASE_LIST[:]
+	c.animation_iterations = ONE_LIST[:]
+	c.animation_direction = NORMAL_DIRECTION[:]
+	c.animation_fill_mode = NO_FILL[:]
+	c.animation_play_state = RUNNING[:]
+	c.animation_composition = REPLACE[:]
+	c.background_images = NO_IMAGES[:]
+	c.background_repeats = REPEATS[:]
+	c.background_positions = ORIGIN_POSITIONS[:]
+	c.background_sizes = AUTO_SIZES[:]
+	c.background_origins = PADDING_BOX[:]
+	c.background_clips = BORDER_BOX[:]
+	c.background_attachments = SCROLL[:]
+	c.grid_auto_columns = AUTO_TRACKS[:]
+	c.grid_auto_rows = AUTO_TRACKS[:]
 	return c
 }
 
-// Copies one property from `src` into `dst` (inherit, initial, unset and inheritance itself all use it).
-copy_prop :: proc(dst, src: ^Computed, p: Prop) {
-	switch p {
-	case .Font_Size: dst.font_size = src.font_size
-	case .Color: dst.color = src.color
-	case .Font_Family: dst.font_family = src.font_family
-	case .Font_Weight: dst.font_weight = src.font_weight
-	case .Font_Style: dst.font_style = src.font_style
-	case .Line_Height: dst.line_height = src.line_height
-	case .Letter_Spacing: dst.letter_spacing = src.letter_spacing
-	case .Word_Spacing: dst.word_spacing = src.word_spacing
-	case .Text_Align: dst.text_align = src.text_align
-	case .Text_Decoration_Line: dst.text_decoration = src.text_decoration
-	case .Text_Decoration_Color: dst.text_decoration_color = src.text_decoration_color
-	case .Text_Transform: dst.text_transform = src.text_transform
-	case .Text_Indent: dst.text_indent = src.text_indent
-	case .Text_Overflow: dst.text_ellipsis = src.text_ellipsis
-	case .White_Space: dst.white_space = src.white_space
-	case .Word_Break: dst.word_break = src.word_break
-	case .Overflow_Wrap: dst.overflow_wrap = src.overflow_wrap
-	case .Tab_Size: dst.tab_size = src.tab_size
-	case .Direction: dst.direction = src.direction
-	case .Text_Shadow: dst.text_shadow = src.text_shadow
-	case .Display: dst.display = src.display
-	case .Position: dst.position = src.position
-	case .Float: dst.float = src.float
-	case .Clear: dst.clear = src.clear
-	case .Top: dst.inset[.Top] = src.inset[.Top]
-	case .Right: dst.inset[.Right] = src.inset[.Right]
-	case .Bottom: dst.inset[.Bottom] = src.inset[.Bottom]
-	case .Left: dst.inset[.Left] = src.inset[.Left]
-	case .Z_Index: dst.z_auto, dst.z_index = src.z_auto, src.z_index
-	case .Box_Sizing: dst.box_sizing = src.box_sizing
-	case .Width: dst.width = src.width
-	case .Height: dst.height = src.height
-	case .Min_Width: dst.min_width = src.min_width
-	case .Min_Height: dst.min_height = src.min_height
-	case .Max_Width: dst.max_width = src.max_width
-	case .Max_Height: dst.max_height = src.max_height
-	case .Margin_Top: dst.margin[.Top] = src.margin[.Top]
-	case .Margin_Right: dst.margin[.Right] = src.margin[.Right]
-	case .Margin_Bottom: dst.margin[.Bottom] = src.margin[.Bottom]
-	case .Margin_Left: dst.margin[.Left] = src.margin[.Left]
-	case .Padding_Top: dst.padding[.Top] = src.padding[.Top]
-	case .Padding_Right: dst.padding[.Right] = src.padding[.Right]
-	case .Padding_Bottom: dst.padding[.Bottom] = src.padding[.Bottom]
-	case .Padding_Left: dst.padding[.Left] = src.padding[.Left]
-	case .Border_Top_Style: dst.border_style[.Top] = src.border_style[.Top]
-	case .Border_Right_Style: dst.border_style[.Right] = src.border_style[.Right]
-	case .Border_Bottom_Style: dst.border_style[.Bottom] = src.border_style[.Bottom]
-	case .Border_Left_Style: dst.border_style[.Left] = src.border_style[.Left]
-	case .Border_Top_Width: dst.border_width[.Top] = src.border_width[.Top]
-	case .Border_Right_Width: dst.border_width[.Right] = src.border_width[.Right]
-	case .Border_Bottom_Width: dst.border_width[.Bottom] = src.border_width[.Bottom]
-	case .Border_Left_Width: dst.border_width[.Left] = src.border_width[.Left]
-	case .Border_Top_Color: dst.border_color[.Top] = src.border_color[.Top]
-	case .Border_Right_Color: dst.border_color[.Right] = src.border_color[.Right]
-	case .Border_Bottom_Color: dst.border_color[.Bottom] = src.border_color[.Bottom]
-	case .Border_Left_Color: dst.border_color[.Left] = src.border_color[.Left]
-	case .Border_Top_Left_Radius: dst.radius[.Top_Left] = src.radius[.Top_Left]
-	case .Border_Top_Right_Radius: dst.radius[.Top_Right] = src.radius[.Top_Right]
-	case .Border_Bottom_Right_Radius: dst.radius[.Bottom_Right] = src.radius[.Bottom_Right]
-	case .Border_Bottom_Left_Radius: dst.radius[.Bottom_Left] = src.radius[.Bottom_Left]
-	case .Overflow_X: dst.overflow_x = src.overflow_x
-	case .Overflow_Y: dst.overflow_y = src.overflow_y
-	case .Visibility: dst.visibility = src.visibility
-	case .Opacity: dst.opacity = src.opacity
-	case .Vertical_Align: dst.vertical_align = src.vertical_align
-	case .Aspect_Ratio: dst.aspect_ratio = src.aspect_ratio
-	case .Object_Fit: dst.object_fit = src.object_fit
-	case .Flex_Direction: dst.flex_direction = src.flex_direction
-	case .Flex_Wrap: dst.flex_wrap = src.flex_wrap
-	case .Flex_Grow: dst.flex_grow = src.flex_grow
-	case .Flex_Shrink: dst.flex_shrink = src.flex_shrink
-	case .Flex_Basis: dst.flex_basis = src.flex_basis
-	case .Justify_Content: dst.justify_content = src.justify_content
-	case .Align_Items: dst.align_items = src.align_items
-	case .Align_Self: dst.align_self = src.align_self
-	case .Align_Content: dst.align_content = src.align_content
-	case .Order: dst.order = src.order
-	case .Row_Gap: dst.row_gap = src.row_gap
-	case .Column_Gap: dst.column_gap = src.column_gap
-	case .Background_Color: dst.background_color = src.background_color
-	case .Background_Image: dst.background_image = src.background_image
-	case .Background_Repeat: dst.background_repeat = src.background_repeat
-	case .Background_Position: dst.background_position = src.background_position
-	case .Background_Size: dst.background_size = src.background_size
-	case .Box_Shadow: dst.box_shadow = src.box_shadow
-	case .List_Style_Type: dst.list_style_type = src.list_style_type
-	case .List_Style_Position: dst.list_style_position = src.list_style_position
-	case .Cursor: dst.cursor = src.cursor
-	case .Pointer_Events: dst.pointer_events = src.pointer_events
-	case .User_Select: dst.user_select = src.user_select
-	case .Content: dst.content = src.content
-	case .Outline_Width: dst.outline_width = src.outline_width
-	case .Outline_Style: dst.outline_style = src.outline_style
-	case .Outline_Color: dst.outline_color = src.outline_color
-	case .Outline_Offset: dst.outline_offset = src.outline_offset
-	case .Border_Collapse: dst.border_collapse = src.border_collapse
-	case .Border_Spacing: dst.border_spacing = src.border_spacing
-	}
-}
-
-// Properties whose "color" is `currentcolor` unless the page says otherwise.
-COLOR_PROPS :: Prop_Set{.Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color, .Outline_Color, .Text_Decoration_Color}
+@(private) INITIAL_TRANSITION_PROPERTY := [1]Transition_Prop{{kind = .All}}
+@(private) ZERO_TIMES := [1]f32{0}
+@(private) EASE_LIST := [1]Easing{EASE}
+@(private) FALSE_LIST := [1]bool{false}
+@(private) NONE_NAMES := [1]string{""}
+@(private) ONE_LIST := [1]f32{1}
+@(private) NORMAL_DIRECTION := [1]Anim_Direction{.Normal}
+@(private) NO_FILL := [1]Fill_Mode{.None}
+@(private) RUNNING := [1]Play_State{.Running}
+@(private) REPLACE := [1]Composition{.Replace}
+@(private) NO_IMAGES := [1]Image{{}}
+@(private) REPEATS := [1][2]Repeat{{.Repeat, .Repeat}}
+@(private) ORIGIN_POSITIONS := [1][2]Length{{{kind = .Percent, v = 0}, {kind = .Percent, v = 0}}}
+@(private) AUTO_SIZES := [1]Bg_Size{{}}
+@(private) PADDING_BOX := [1]Box_Area{.Padding_Box}
+@(private) BORDER_BOX := [1]Box_Area{.Border_Box}
+@(private) SCROLL := [1]Bg_Attachment{.Scroll}
+@(private) AUTO_TRACKS := [1]Grid_Track{{kind = .Breadth, min = {kind = .Auto}, max = {kind = .Auto}}}
 
 ////////////////////////////////
 // Applying one longhand
@@ -351,110 +307,6 @@ parse_shadows :: proc(cx: ^Cx, input: []css.Value) -> ([]Shadow, bool) {
 		append(&out, s)
 	}
 	return out[:], true
-}
-
-@(private)
-parse_position_component :: proc(cx: ^Cx, v: css.Value) -> (l: Length, axis: int, ok: bool) {
-	// axis: 0 = x only (left/right), 1 = y only (top/bottom), 2 = either (center, lengths)
-	one := [1]css.Value{v}
-	if v.kind == .Token && v.tok.kind == .Ident {
-		switch strings.to_lower(v.tok.text, context.temp_allocator) {
-		case "left": return Length{kind = .Percent, v = 0}, 0, true
-		case "right": return Length{kind = .Percent, v = 100}, 0, true
-		case "top": return Length{kind = .Percent, v = 0}, 1, true
-		case "bottom": return Length{kind = .Percent, v = 100}, 1, true
-		case "center": return Length{kind = .Percent, v = 50}, 2, true
-		}
-		return {}, 0, false
-	}
-	l, ok = parse_length(cx, one[:], {.Percent, .Negative})
-	return l, 2, ok
-}
-
-@(private)
-apply_background_position :: proc(cx: ^Cx, input: []css.Value) -> bool {
-	items := split_items(input)
-	if len(items) < 1 || len(items) > 2 { return false }
-	x, y := Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}
-	l0, a0, ok0 := parse_position_component(cx, items[0])
-	if !ok0 { return false }
-	if len(items) == 1 {
-		if a0 == 1 { y = l0 } else { x = l0 }
-	} else {
-		l1, a1, ok1 := parse_position_component(cx, items[1])
-		if !ok1 { return false }
-		if a0 == 1 || a1 == 0 {   // "top left", "bottom right": vertical first
-			if a0 == 0 || a1 == 1 { return false }
-			x, y = l1, l0
-		} else {
-			if a1 == 0 && a0 == 0 { return false }
-			x, y = l0, l1
-		}
-	}
-	cx.c.background_position = {x, y}
-	return true
-}
-
-@(private)
-parse_image :: proc(cx: ^Cx, input: []css.Value) -> (Image, bool) {
-	vs := css.trim_values(input)
-	if len(vs) != 1 { return {}, false }
-	v := vs[0]
-	if v.kind == .Token {
-		#partial switch v.tok.kind {
-		case .Ident: if strings.equal_fold(v.tok.text, "none") { return Image{}, true }
-		case .Url: return Image{kind = .Url, url = strings.clone(v.tok.text, cx.alloc)}, true
-		}
-		return {}, false
-	}
-	if v.kind == .Function {
-		name := strings.to_lower(v.tok.text, context.temp_allocator)
-		switch name {
-		case "url", "image":
-			for a in v.children { if a.kind == .Token && a.tok.kind == .String { return Image{kind = .Url, url = strings.clone(a.tok.text, cx.alloc)}, true } }
-		case "linear-gradient", "radial-gradient", "conic-gradient", "repeating-linear-gradient", "repeating-radial-gradient", "repeating-conic-gradient":
-			return Image{kind = .Gradient, gradient = css.serialize_values(vs, cx.alloc)}, true
-		}
-	}
-	return {}, false
-}
-
-@(private)
-parse_content :: proc(cx: ^Cx, input: []css.Value) -> (Content, bool) {
-	vs := css.trim_values(input)
-	if id, ok := ident_raw(vs); ok {
-		switch strings.to_lower(id, context.temp_allocator) {
-		case "normal": return Content{kind = .Normal}, true
-		case "none": return Content{kind = .None}, true
-		}
-	}
-	items := make([dynamic]Content_Item, cx.alloc)
-	for it in split_items(vs) {
-		switch it.kind {
-		case .Token:
-			#partial switch it.tok.kind {
-			case .String: append(&items, Content_Item{kind = .Text, text = strings.clone(it.tok.text, cx.alloc)})
-			case .Url: append(&items, Content_Item{kind = .Url, text = strings.clone(it.tok.text, cx.alloc)})
-			case .Ident:
-				switch strings.to_lower(it.tok.text, context.temp_allocator) {
-				case "open-quote": append(&items, Content_Item{kind = .Open_Quote})
-				case "close-quote": append(&items, Content_Item{kind = .Close_Quote})
-				case "no-open-quote", "no-close-quote":
-				case: return {}, false
-				}
-			case: return {}, false
-			}
-		case .Function:
-			if strings.equal_fold(it.tok.text, "attr") {
-				for a in it.children { if a.kind == .Token && a.tok.kind == .Ident { append(&items, Content_Item{kind = .Attr, text = strings.to_lower(a.tok.text, cx.alloc)}); break } }
-			} else if strings.equal_fold(it.tok.text, "counter") || strings.equal_fold(it.tok.text, "counters") {
-				// counters are not implemented: they produce nothing rather than invalidating the declaration
-			} else { return {}, false }
-		case .Block: return {}, false
-		}
-	}
-	if len(items) == 0 { return Content{kind = .None}, true }
-	return Content{kind = .Items, items = items[:]}, true
 }
 
 @(private)
@@ -584,7 +436,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		col, ok := parse_color(cx, vs)
 		if !ok { return false }
 		c.text_decoration_color = col
-		cx.explicit += {p}
+		ps_add(&cx.explicit, p)
 	case .Text_Transform: return set_enum(vs, &c.text_transform)
 	case .Text_Indent:
 		l, ok := parse_length(cx, vs, {.Percent, .Negative})
@@ -598,9 +450,6 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		case "ellipsis": c.text_ellipsis = true
 		case: return false
 		}
-	case .White_Space:
-		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "nowrap") { c.white_space = .Nowrap; return true }
-		return set_enum(vs, &c.white_space)
 	case .Word_Break: return set_enum(vs, &c.word_break)
 	case .Overflow_Wrap: return set_enum(vs, &c.overflow_wrap)
 	case .Tab_Size:
@@ -697,7 +546,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		col, ok := parse_color(cx, vs)
 		if !ok { return false }
 		c.border_color[Side(int(p) - int(Prop.Border_Top_Color))] = col
-		cx.explicit += {p}
+		ps_add(&cx.explicit, p)
 	case .Border_Top_Left_Radius, .Border_Top_Right_Radius, .Border_Bottom_Right_Radius, .Border_Bottom_Left_Radius:
 		items := split_items(vs)
 		if len(items) < 1 || len(items) > 2 { return false }
@@ -817,65 +666,54 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		if !ok { return false }
 		c.background_color = col
 	case .Background_Image:
-		first := css.split_commas(css.trim_values(vs), context.temp_allocator)
-		img, ok := parse_image(cx, first[0])
-		if !ok { return false }
-		for rest in first[1:] { if _, good := parse_image(cx, rest); !good { return false } }
-		c.background_image = img
-	case .Background_Repeat:
-		items := split_items(css.split_commas(css.trim_values(vs), context.temp_allocator)[0])
-		if len(items) == 1 && items[0].kind == .Token && items[0].tok.kind == .Ident {
-			switch strings.to_lower(items[0].tok.text, context.temp_allocator) {
-			case "repeat-x": c.background_repeat = {.Repeat, .No_Repeat}; return true
-			case "repeat-y": c.background_repeat = {.No_Repeat, .Repeat}; return true
-			}
-		}
-		if len(items) < 1 || len(items) > 2 { return false }
-		r: [2]Repeat
-		for it, i in items {
-			one := [1]css.Value{it}
-			if !set_enum(one[:], &r[i]) { return false }
-			if r[i] == .Repeat_X || r[i] == .Repeat_Y { return false }
-		}
-		if len(items) == 1 { r[1] = r[0] }
-		c.background_repeat = r
-	case .Background_Position:
-		return apply_background_position(cx, css.split_commas(css.trim_values(vs), context.temp_allocator)[0])
-	case .Background_Size:
-		items := split_items(css.split_commas(css.trim_values(vs), context.temp_allocator)[0])
-		if len(items) < 1 || len(items) > 2 { return false }
-		if len(items) == 1 {
-			if id, ok := ident_raw(items); ok {
-				switch strings.to_lower(id, context.temp_allocator) {
-				case "cover": c.background_size = Bg_Size{kind = .Cover}; return true
-				case "contain": c.background_size = Bg_Size{kind = .Contain}; return true
-				}
-			}
-		}
-		w, ok := parse_length(cx, items[:1], {.Auto, .Percent})
-		if !ok { return false }
-		h := auto_length
-		if len(items) == 2 {
-			h, ok = parse_length(cx, items[1:], {.Auto, .Percent})
+		parts := css.split_commas(css.trim_values(vs), context.temp_allocator)
+		list := make([]Image, len(parts), cx.alloc)
+		for part, i in parts {
+			img, ok := parse_image(cx, part)
 			if !ok { return false }
+			list[i] = img
 		}
-		c.background_size = Bg_Size{kind = .Length, w = w, h = h}
+		c.background_images = list
+		c.background_image = list[0]
+	case .Background_Repeat:
+		parts := css.split_commas(css.trim_values(vs), context.temp_allocator)
+		list := make([][2]Repeat, len(parts), cx.alloc)
+		for part, i in parts {
+			r, ok := parse_bg_repeat(part)
+			if !ok { return false }
+			list[i] = r
+		}
+		c.background_repeats = list
+		c.background_repeat = list[0]
+	case .Background_Position:
+		parts := css.split_commas(css.trim_values(vs), context.temp_allocator)
+		list := make([][2]Length, len(parts), cx.alloc)
+		for part, i in parts {
+			pos, ok := parse_position(cx, part)
+			if !ok { return false }
+			list[i] = pos
+		}
+		c.background_positions = list
+		c.background_position = list[0]
+	case .Background_Size:
+		parts := css.split_commas(css.trim_values(vs), context.temp_allocator)
+		list := make([]Bg_Size, len(parts), cx.alloc)
+		for part, i in parts {
+			sz, ok := parse_bg_size(cx, part)
+			if !ok { return false }
+			list[i] = sz
+		}
+		c.background_sizes = list
+		c.background_size = list[0]
 	case .Box_Shadow:
 		sh, ok := parse_shadows(cx, vs)
 		if !ok { return false }
 		c.box_shadow = sh
 	case .List_Style_Type:
-		if id, ok := ident_raw(vs); ok {
-			switch strings.to_lower(id, context.temp_allocator) {
-			case "lower-latin": c.list_style_type = .Lower_Alpha; return true
-			case "upper-latin": c.list_style_type = .Upper_Alpha; return true
-			case "disclosure-open", "disclosure-closed": c.list_style_type = .Disc; return true
-			}
-		} else if items := css.trim_values(vs); len(items) == 1 && items[0].kind == .Token && items[0].tok.kind == .String {
-			c.list_style_type = .Disc   // custom markers are not rendered: a bullet is the nearest honest answer
-			return true
-		}
-		return set_enum(vs, &c.list_style_type)
+		st, ok := parse_list_marker_style(cx, vs)
+		if !ok { return false }
+		c.list_style = st
+		c.list_style_type = legacy_list_style(st.style)
 	case .List_Style_Position: return set_enum(vs, &c.list_style_position)
 	case .Cursor:
 		found := false
@@ -917,7 +755,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		col, ok := parse_color(cx, vs)
 		if !ok { return false }
 		c.outline_color = col
-		cx.explicit += {p}
+		ps_add(&cx.explicit, p)
 	case .Outline_Offset:
 		l, ok := parse_length(cx, vs, {.Negative})
 		if !ok || l.kind != .Px { return false }
@@ -941,6 +779,21 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 			if !ok || b.kind != .Px { return false }
 		}
 		c.border_spacing = {a.v, b.v}
+	case .Font_Stretch, .Font_Variant_Caps, .Text_Decoration_Style, .Text_Decoration_Thickness, .Text_Underline_Offset,
+	     .White_Space_Collapse, .Text_Wrap_Mode, .Text_Wrap_Style, .Hyphens,
+	     .Background_Origin, .Background_Clip, .Background_Attachment,
+	     .Transform, .Transform_Origin, .Transform_Box, .Transform_Style, .Translate, .Rotate, .Scale, .Perspective,
+	     .Perspective_Origin, .Backface_Visibility,
+	     .Transition_Property, .Transition_Duration, .Transition_Timing_Function, .Transition_Delay, .Transition_Behavior,
+	     .Animation_Name, .Animation_Duration, .Animation_Timing_Function, .Animation_Delay, .Animation_Iteration_Count,
+	     .Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition,
+	     .Counter_Reset, .Counter_Increment, .Counter_Set, .Quotes,
+	     .Object_Position, .Filter, .Backdrop_Filter, .Clip_Path, .Isolation, .Mix_Blend_Mode,
+	     .Will_Change, .Contain, .Content_Visibility, .Scroll_Behavior, .Overscroll_Behavior_X, .Overscroll_Behavior_Y,
+	     .Caret_Color, .Accent_Color, .Appearance, .Resize, .Column_Count, .Column_Width,
+	     .Grid_Template_Columns, .Grid_Template_Rows, .Grid_Template_Areas, .Grid_Auto_Columns, .Grid_Auto_Rows,
+	     .Grid_Auto_Flow, .Grid_Row_Start, .Grid_Row_End, .Grid_Column_Start, .Grid_Column_End, .Justify_Items, .Justify_Self:
+		return apply_prop_more(cx, p, vs)
 	}
 	return true
 }

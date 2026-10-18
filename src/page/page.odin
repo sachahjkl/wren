@@ -95,6 +95,8 @@ Page :: struct {
 	worker:       ^Worker_Global,       // non-nil: this Page is the global scope of a dedicated worker, on its thread, without a document
 	workers:      Page_Workers,         // the workers this page started
 	offthread:    Offthread_State,      // background parsing in flight
+	anim:         Page_Animations,      // transitions and animations (animations.odin)
+	fonts:        Page_Fonts,           // @font-face downloads (fonts.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives

@@ -25,6 +25,8 @@ Token :: struct {
 	is_int:  bool,      // the number was written without fraction or exponent
 	is_id:   bool,      // Hash: the text is a valid identifier (an id selector)
 	has_sign: bool,     // Number: written with an explicit + or -
+	pos:     u32,       // code point offset of the token in its (preprocessed) source: lets a grammar that needs the raw
+	                    // representation (unicode-range) read it back
 }
 
 @(private)
@@ -299,12 +301,25 @@ next_token :: proc(l: ^Lexer) -> Token {
 
 // All tokens of `input` (without the trailing EOF).
 tokenize :: proc(input: string, arena: Arena_Alloc) -> []Token {
+	toks, _ := tokenize_with_source(input, arena)
+	return toks
+}
+
+// Tokens, and the preprocessed code points their `pos` fields index.
+tokenize_with_source :: proc(input: string, arena: Arena_Alloc) -> ([]Token, []rune) {
 	l := Lexer{src = preprocess(input, arena), arena = arena}
 	out := make([dynamic]Token, arena)
 	for {
+		for peek(&l) == '/' && peek(&l, 1) == '*' {
+			l.pos += 2
+			for l.pos < len(l.src) && !(peek(&l) == '*' && peek(&l, 1) == '/') { l.pos += 1 }
+			l.pos = min(l.pos + 2, len(l.src))
+		}
+		start := l.pos
 		t := next_token(&l)
 		if t.kind == .EOF { break }
+		t.pos = u32(start)
 		append(&out, t)
 	}
-	return out[:]
+	return out[:], l.src
 }

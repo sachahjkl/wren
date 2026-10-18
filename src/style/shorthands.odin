@@ -3,6 +3,7 @@ package style
 import "base:runtime"
 import "core:reflect"
 import "core:strings"
+import "core:sync"
 import "wb:css"
 
 // Property names and shorthand expansion. Shorthands are split into longhands when a stylesheet is compiled, so the cascade
@@ -33,9 +34,17 @@ dashed :: proc(enum_name: string) -> string {
 	return string(b)
 }
 
-// Builds the name tables. Safe to call repeatedly; they live for the whole process.
+@(private) tables_once: sync.Once
+
+// Builds the name tables. Safe to call repeatedly and from several threads; they live for the whole process.
 tables_init :: proc() {
-	if tables_ready { return }
+	props_init()
+	sync.once_do(&tables_once, tables_build)
+}
+
+@(private)
+tables_build :: proc() {
+	context.allocator = runtime.heap_allocator()
 	tables_ready = true
 	prop_by_name = make(map[string]Prop)
 	short_by_name = make(map[string]Short)
@@ -60,6 +69,18 @@ tables_init :: proc() {
 	alias_by_name["-moz-box-sizing"] = "box-sizing"
 	alias_by_name["-webkit-border-radius"] = "border-radius"
 	alias_by_name["-moz-tab-size"] = "tab-size"
+	for name in ([?]string{
+		"transition", "transition-property", "transition-duration", "transition-timing-function", "transition-delay",
+		"animation", "animation-name", "animation-duration", "animation-timing-function", "animation-delay",
+		"animation-iteration-count", "animation-direction", "animation-fill-mode", "animation-play-state",
+		"transform", "transform-origin", "transform-style", "backface-visibility", "perspective", "perspective-origin",
+		"filter", "backdrop-filter", "appearance", "clip-path", "hyphens", "text-decoration-style", "text-decoration-color",
+		"text-decoration-line", "text-decoration-thickness", "text-underline-offset", "font-variant-caps", "background-clip",
+		"background-origin", "user-select", "column-count", "column-width", "columns", "column-gap",
+	}) {
+		alias_by_name[strings.concatenate({"-webkit-", name})] = name
+		alias_by_name[strings.concatenate({"-moz-", name})] = name
+	}
 	// logical properties, mapped for horizontal left-to-right text (writing modes are not supported)
 	for pair in ([?][2]string{
 		{"margin-block-start", "margin-top"}, {"margin-block-end", "margin-bottom"}, {"margin-inline-start", "margin-left"}, {"margin-inline-end", "margin-right"},
@@ -106,19 +127,31 @@ short_longhands :: proc(s: Short) -> []Prop {
 	@(static) b_bottom := [?]Prop{.Border_Bottom_Width, .Border_Bottom_Style, .Border_Bottom_Color}
 	@(static) b_left := [?]Prop{.Border_Left_Width, .Border_Left_Style, .Border_Left_Color}
 	@(static) radius := [?]Prop{.Border_Top_Left_Radius, .Border_Top_Right_Radius, .Border_Bottom_Right_Radius, .Border_Bottom_Left_Radius}
-	@(static) background := [?]Prop{.Background_Color, .Background_Image, .Background_Repeat, .Background_Position, .Background_Size}
-	@(static) font := [?]Prop{.Font_Style, .Font_Weight, .Font_Size, .Line_Height, .Font_Family}
+	@(static) background := [?]Prop{.Background_Color, .Background_Image, .Background_Repeat, .Background_Position, .Background_Size, .Background_Origin, .Background_Clip, .Background_Attachment}
+	@(static) font := [?]Prop{.Font_Style, .Font_Variant_Caps, .Font_Weight, .Font_Stretch, .Font_Size, .Line_Height, .Font_Family}
+	@(static) white_space := [?]Prop{.White_Space_Collapse, .Text_Wrap_Mode}
+	@(static) text_wrap := [?]Prop{.Text_Wrap_Mode, .Text_Wrap_Style}
+	@(static) font_variant := [?]Prop{.Font_Variant_Caps}
+	@(static) transition := [?]Prop{.Transition_Property, .Transition_Duration, .Transition_Timing_Function, .Transition_Delay, .Transition_Behavior}
+	@(static) animation := [?]Prop{.Animation_Name, .Animation_Duration, .Animation_Timing_Function, .Animation_Delay, .Animation_Iteration_Count, .Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition}
+	@(static) overscroll := [?]Prop{.Overscroll_Behavior_X, .Overscroll_Behavior_Y}
+	@(static) columns := [?]Prop{.Column_Width, .Column_Count}
+	@(static) grid_template := [?]Prop{.Grid_Template_Rows, .Grid_Template_Columns, .Grid_Template_Areas}
+	@(static) grid := [?]Prop{.Grid_Template_Rows, .Grid_Template_Columns, .Grid_Template_Areas, .Grid_Auto_Rows, .Grid_Auto_Columns, .Grid_Auto_Flow}
+	@(static) grid_row := [?]Prop{.Grid_Row_Start, .Grid_Row_End}
+	@(static) grid_column := [?]Prop{.Grid_Column_Start, .Grid_Column_End}
+	@(static) grid_area := [?]Prop{.Grid_Row_Start, .Grid_Column_Start, .Grid_Row_End, .Grid_Column_End}
 	@(static) flex := [?]Prop{.Flex_Grow, .Flex_Shrink, .Flex_Basis}
 	@(static) flex_flow := [?]Prop{.Flex_Direction, .Flex_Wrap}
 	@(static) gap := [?]Prop{.Row_Gap, .Column_Gap}
 	@(static) overflow := [?]Prop{.Overflow_X, .Overflow_Y}
 	@(static) inset := [?]Prop{.Top, .Right, .Bottom, .Left}
 	@(static) list_style := [?]Prop{.List_Style_Type, .List_Style_Position}
-	@(static) text_decoration := [?]Prop{.Text_Decoration_Line, .Text_Decoration_Color}
+	@(static) text_decoration := [?]Prop{.Text_Decoration_Line, .Text_Decoration_Color, .Text_Decoration_Style, .Text_Decoration_Thickness}
 	@(static) outline := [?]Prop{.Outline_Width, .Outline_Style, .Outline_Color}
 	@(static) place_content := [?]Prop{.Align_Content, .Justify_Content}
-	@(static) place_items := [?]Prop{.Align_Items}
-	@(static) place_self := [?]Prop{.Align_Self}
+	@(static) place_items := [?]Prop{.Align_Items, .Justify_Items}
+	@(static) place_self := [?]Prop{.Align_Self, .Justify_Self}
 	@(static) margin_block := [?]Prop{.Margin_Top, .Margin_Bottom}
 	@(static) margin_inline := [?]Prop{.Margin_Left, .Margin_Right}
 	@(static) padding_block := [?]Prop{.Padding_Top, .Padding_Bottom}
@@ -157,6 +190,18 @@ short_longhands :: proc(s: Short) -> []Prop {
 	case .Padding_Inline: return padding_inline[:]
 	case .Inset_Block: return inset_block[:]
 	case .Inset_Inline: return inset_inline[:]
+	case .White_Space: return white_space[:]
+	case .Text_Wrap: return text_wrap[:]
+	case .Font_Variant: return font_variant[:]
+	case .Transition: return transition[:]
+	case .Animation: return animation[:]
+	case .Overscroll_Behavior: return overscroll[:]
+	case .Columns: return columns[:]
+	case .Grid_Template: return grid_template[:]
+	case .Grid: return grid[:]
+	case .Grid_Row: return grid_row[:]
+	case .Grid_Column: return grid_column[:]
+	case .Grid_Area: return grid_area[:]
 	}
 	return nil
 }
@@ -327,9 +372,11 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 	case .Place_Items:
 		if len(items) < 1 || len(items) > 2 { return nil, false }
 		emit(&res, .Align_Items, items[0:1])
+		emit(&res, .Justify_Items, items[len(items) - 1:])
 	case .Place_Self:
 		if len(items) < 1 || len(items) > 2 { return nil, false }
 		emit(&res, .Align_Self, items[0:1])
+		emit(&res, .Justify_Self, items[len(items) - 1:])
 
 	case .Flex_Flow:
 		if len(items) < 1 || len(items) > 2 { return nil, false }
@@ -385,29 +432,52 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 
 	case .Text_Decoration:
 		lines := make([dynamic]css.Value, a)
-		col: []css.Value
+		col, style, thick: []css.Value
 		for it, i in items {
 			if it.kind == .Token && it.tok.kind == .Ident {
 				switch strings.to_lower(it.tok.text, context.temp_allocator) {
 				case "none", "underline", "overline", "line-through", "blink": append(&lines, it); continue
-				case "solid", "double", "dotted", "dashed", "wavy": continue
+				case "solid", "double", "dotted", "dashed", "wavy":
+					if style != nil { return nil, false }
+					style = items[i:i + 1]
+					continue
+				case "from-font", "auto":
+					if thick != nil { return nil, false }
+					thick = items[i:i + 1]
+					continue
 				}
 			}
-			if it.kind == .Token && (it.tok.kind == .Dimension || it.tok.kind == .Percentage || it.tok.kind == .Number) { continue }   // thickness
-			if is_ident(it, "from-font") || is_ident(it, "auto") { continue }
+			if it.kind == .Token && (it.tok.kind == .Dimension || it.tok.kind == .Percentage || it.tok.kind == .Number) || is_calc_function(it) {
+				if thick != nil { return nil, false }
+				thick = items[i:i + 1]
+				continue
+			}
 			if col != nil { return nil, false }
 			col = items[i:i + 1]
 		}
 		emit(&res, .Text_Decoration_Line, len(lines) > 0 ? join_items(lines[:], a) : INITIAL_KW[:])
 		emit(&res, .Text_Decoration_Color, or_initial(col))
+		emit(&res, .Text_Decoration_Style, or_initial(style))
+		emit(&res, .Text_Decoration_Thickness, or_initial(thick))
 
 	case .Font:
 		return expand_font(vs, a)
 
 	case .Background:
 		return expand_background(vs, a)
+
+	case .White_Space, .Text_Wrap, .Font_Variant, .Transition, .Animation, .Overscroll_Behavior, .Columns,
+	     .Grid_Template, .Grid, .Grid_Row, .Grid_Column, .Grid_Area:
+		return expand_shorthand_more(s, vs, a)
 	}
 	return res[:], true
+}
+
+@(private)
+is_calc_function :: proc(v: css.Value) -> bool {
+	if v.kind != .Function { return false }
+	switch strings.to_lower(v.tok.text, context.temp_allocator) { case "calc", "min", "max", "clamp": return true }
+	return false
 }
 
 @(private)
@@ -429,117 +499,3 @@ number_value :: proc(n: f64, a: runtime.Allocator) -> []css.Value {
 	return v
 }
 
-@(private)
-expand_font :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longhand, bool) {
-	vs := css.trim_values(input)
-	res := make([dynamic]Longhand, a)
-	i := 0
-	skip_ws :: proc(vs: []css.Value, i: ^int) { for i^ < len(vs) && css.is_ws_value(vs[i^]) { i^ += 1 } }
-	style, weight: []css.Value
-	skip_ws(vs, &i)
-	for i < len(vs) {
-		v := vs[i]
-		if v.kind == .Token && v.tok.kind == .Ident {
-			switch strings.to_lower(v.tok.text, context.temp_allocator) {
-			case "normal", "small-caps", "ultra-condensed", "extra-condensed", "condensed", "semi-condensed", "semi-expanded", "expanded", "extra-expanded", "ultra-expanded":
-				i += 1; skip_ws(vs, &i); continue
-			case "italic", "oblique": style = vs[i:i + 1]; i += 1; skip_ws(vs, &i); continue
-			case "bold", "bolder", "lighter": weight = vs[i:i + 1]; i += 1; skip_ws(vs, &i); continue
-			}
-		}
-		if v.kind == .Token && v.tok.kind == .Number { weight = vs[i:i + 1]; i += 1; skip_ws(vs, &i); continue }
-		break
-	}
-	if i >= len(vs) { return nil, false }
-	size := vs[i:i + 1]
-	i += 1
-	skip_ws(vs, &i)
-	line: []css.Value
-	if i < len(vs) && is_delim(vs[i], "/") {
-		i += 1
-		skip_ws(vs, &i)
-		if i >= len(vs) { return nil, false }
-		line = vs[i:i + 1]
-		i += 1
-		skip_ws(vs, &i)
-	}
-	if i >= len(vs) { return nil, false }
-	family := vs[i:]
-	append(&res, Longhand{.Font_Style, or_initial(style)})
-	append(&res, Longhand{.Font_Weight, or_initial(weight)})
-	append(&res, Longhand{.Font_Size, size})
-	append(&res, Longhand{.Line_Height, or_initial(line)})
-	append(&res, Longhand{.Font_Family, family})
-	return res[:], true
-}
-
-@(private)
-expand_background :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longhand, bool) {
-	layers := css.split_commas(css.trim_values(input), a)
-	if len(layers) == 0 { return nil, false }
-	Layer :: struct { color, image: []css.Value, repeat, pos, size: [dynamic]css.Value }
-	parse_layer :: proc(vs: []css.Value, a: runtime.Allocator) -> (l: Layer, ok: bool) {
-		items := split_items(vs, a)
-		l.repeat = make([dynamic]css.Value, a)
-		l.pos = make([dynamic]css.Value, a)
-		l.size = make([dynamic]css.Value, a)
-		in_size := false
-		for it, i in items {
-			if is_delim(it, "/") { in_size = true; continue }
-			#partial switch it.kind {
-			case .Function:
-				switch strings.to_lower(it.tok.text, context.temp_allocator) {
-				case "url", "image", "linear-gradient", "radial-gradient", "conic-gradient", "repeating-linear-gradient", "repeating-radial-gradient", "repeating-conic-gradient":
-					if l.image != nil { return }
-					l.image = items[i:i + 1]
-				case "calc", "min", "max", "clamp":
-					append(in_size ? &l.size : &l.pos, it)
-				case:
-					if l.color != nil { return }
-					l.color = items[i:i + 1]
-				}
-			case .Token:
-				#partial switch it.tok.kind {
-				case .Url:
-					if l.image != nil { return }
-					l.image = items[i:i + 1]
-				case .Hash:
-					if l.color != nil { return }
-					l.color = items[i:i + 1]
-				case .Dimension, .Percentage, .Number: append(in_size ? &l.size : &l.pos, it)
-				case .Ident:
-					switch strings.to_lower(it.tok.text, context.temp_allocator) {
-					case "none":
-						if l.image != nil { return }
-						l.image = items[i:i + 1]
-					case "repeat", "no-repeat", "repeat-x", "repeat-y", "space", "round": append(&l.repeat, it)
-					case "scroll", "fixed", "local", "border-box", "padding-box", "content-box", "text":
-					case "left", "right", "top", "bottom", "center": append(&l.pos, it)
-					case "auto", "cover", "contain": append(&l.size, it)
-					case:
-						if l.color != nil { return }
-						l.color = items[i:i + 1]
-					}
-				case: return
-				}
-			case: return
-			}
-		}
-		return l, true
-	}
-	first, ok1 := parse_layer(layers[0], a)
-	last := first
-	if len(layers) > 1 {
-		ok2: bool
-		last, ok2 = parse_layer(layers[len(layers) - 1], a)
-		if !ok2 { return nil, false }
-	}
-	if !ok1 { return nil, false }
-	res := make([dynamic]Longhand, a)
-	append(&res, Longhand{.Background_Color, or_initial(last.color)})
-	append(&res, Longhand{.Background_Image, or_initial(first.image)})
-	append(&res, Longhand{.Background_Repeat, len(first.repeat) > 0 ? join_items(first.repeat[:], a) : INITIAL_KW[:]})
-	append(&res, Longhand{.Background_Position, len(first.pos) > 0 ? join_items(first.pos[:], a) : INITIAL_KW[:]})
-	append(&res, Longhand{.Background_Size, len(first.size) > 0 ? join_items(first.size[:], a) : INITIAL_KW[:]})
-	return res[:], true
-}

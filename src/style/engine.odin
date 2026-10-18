@@ -6,7 +6,6 @@ import "core:mem/virtual"
 import "core:os"
 import "core:slice"
 import "core:strings"
-import "core:sync"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
@@ -94,8 +93,15 @@ Engine :: struct {
 	rule_count: int,
 	media_dependent: bool,             // some active condition depends on the viewport
 	dirty:     bool,
-	font_faces: [dynamic]^css.Rule,
-	keyframes: [dynamic]^css.Rule,
+	font_faces: [dynamic]Font_Face_Ref,   // @font-face rules in force, with the URL their sources resolve against
+	faces:     [dynamic]Font_Face,        // ... parsed (fontface.odin); strings in `alloc`
+	keyframes: [dynamic]Keyframes_Ref,    // @keyframes rules in force
+	keyframe_sets: map[string]^Keyframes_Set,   // the winning rule of each name, compiled (keyframes.odin)
+	rebuilds:  u64,                       // counts rebuilds: compiled keyframes and faces are stale after one
+	cur_base_url: string,                 // while flattening: the URL of the sheet being read
+	kf_order:  u32,
+	spare:     virtual.Arena,             // the memory of a recycled style pass (see styled_recycle)
+	has_spare: bool,
 	ignored_properties: int,           // declarations naming a property this engine does not implement
 	ua:        ^Sheet,
 	user:      ^Sheet,
@@ -112,15 +118,12 @@ Engine :: struct {
 ////////////////////////////////
 // Lifecycle
 
-@(private)
-tables_once: sync.Once
-
 engine_make :: proc(settings: Settings) -> ^Engine {
 	// process-wide tables, built once whichever thread gets here first, kept for good: not the caller's memory
-	sync.once_do(&tables_once, proc() {
+	{
 		context.allocator = runtime.heap_allocator()
-		tables_init()
-	})
+		tables_init()   // once per process (sync.Once inside)
+	}
 	e := new(Engine)
 	e.settings = clone_settings(settings)
 	_ = virtual.arena_init_growing(&e.arena)
@@ -151,8 +154,11 @@ engine_destroy :: proc(e: ^Engine) {
 	virtual.arena_destroy(&e.arena)
 	delete(e.layers)
 	delete(e.font_faces)
+	delete(e.faces)
 	delete(e.keyframes)
+	delete(e.keyframe_sets)
 	delete(e.state_entries)
+	if e.has_spare { virtual.arena_destroy(&e.spare) }
 	settings_destroy(&e.settings)
 	free(e)
 }
@@ -551,8 +557,10 @@ flatten_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCtx) {
 			path := lc.path != "" ? strings.concatenate({lc.path, ".", name}, context.temp_allocator) : name
 			layer_rank(e, path)
 		}
-	case .Font_Face: append(&e.font_faces, r)
-	case .Keyframes: append(&e.keyframes, r)
+	case .Font_Face: append(&e.font_faces, Font_Face_Ref{rule = r, base_url = e.cur_base_url, origin = origin})
+	case .Keyframes:
+		e.kf_order += 1
+		append(&e.keyframes, Keyframes_Ref{rule = r, layer = lc.rank, order = e.kf_order, origin = origin})
 	case .Import, .Namespace, .Page, .Container, .Unknown:
 	}
 }
@@ -568,6 +576,9 @@ flatten_sheet :: proc(e: ^Engine, s: ^Sheet, lc_in: LayerCtx) {
 		e.media_dependent = true
 		if !css.media_matches(s.media, e.env) { return }
 	}
+	saved_base := e.cur_base_url
+	defer e.cur_base_url = saved_base
+	e.cur_base_url = s.base_url
 	lc := lc_in
 	if s.in_layer {
 		path := s.layer
@@ -608,8 +619,10 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	e.state_deps, e.state_uses_has, e.viewport_units = {}, false, false
 	clear(&e.layers)
 	clear(&e.font_faces)
+	clear(&e.faces)
 	clear(&e.keyframes)
-	e.order, e.rule_count, e.media_dependent, e.anon_layers = 0, 0, false, 0
+	clear(&e.keyframe_sets)
+	e.order, e.rule_count, e.media_dependent, e.anon_layers, e.kf_order = 0, 0, false, 0, 0
 
 	if doc != nil {
 		ordinal := make(map[base.Handle]int, context.temp_allocator)
@@ -630,6 +643,9 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 		return a.order < b.order
 	})
 	for s in e.sheets { flatten_sheet(e, s, LayerCtx{rank = UNLAYERED}) }
+	compile_keyframes(e)
+	parse_font_faces(e)
+	e.rebuilds += 1
 	e.dirty = false
 }
 

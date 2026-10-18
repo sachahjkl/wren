@@ -21,6 +21,11 @@ section:has(> i) { outline: 2px solid red }
 b::before { content: "[" ; color: green }
 b::after { content: "]" }
 @media (min-width: 600px) { p { line-height: 1.5 } }
+body { counter-reset: sec }
+section { counter-increment: sec }
+span::before { content: "S" counter(sec) "." counters(list-item, "-") " " open-quote }
+span::after { content: close-quote }
+ol { list-style-type: upper-roman }
 `
 
 // The same document styled on one thread and on four: every computed style must be equal.
@@ -56,6 +61,17 @@ parallel_pass_gives_the_sequential_result :: proc(t: ^testing.T) {
 			dom.append_child(doc, b, dom.create_text(doc, "text"))
 		}
 		dom.append_child(doc, sec, dom.create_element(doc, "span"))
+		if i % 3 == 0 {
+			// lists: the counters of a parallel pass are resolved by the ordered walk afterwards
+			ol := dom.create_element(doc, "ol")
+			if i % 2 == 0 { dom.set_attribute(doc, ol, "start", "4") }
+			dom.append_child(doc, sec, ol)
+			for _ in 0 ..< 3 {
+				li := dom.create_element(doc, "li")
+				dom.append_child(doc, ol, li)
+				dom.append_child(doc, li, dom.create_element(doc, "span"))
+			}
+		}
 		if i % 13 == 0 { dom.append_child(doc, sec, dom.create_element(doc, "i")) }
 	}
 	sync_document_sheets(e, doc, "http://x.test/")

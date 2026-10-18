@@ -214,7 +214,7 @@ anon_style :: proc(c: ^Ctx, parent: ^style.Computed, display: style.Display) -> 
 	s := new(style.Computed, c.sa)
 	s^ = parent^
 	for p in style.Prop {
-		if p not_in style.INHERITED { style.copy_prop(s, c.st.initial, p) }
+		if !style.is_inherited(p) { style.copy_prop(s, c.st.initial, p) }
 	}
 	s.display = display
 	s.node = base.NIL_HANDLE

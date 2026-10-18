@@ -12,7 +12,7 @@ function Step($name, [scriptblock]$body) {
 }
 
 New-Item -ItemType Directory -Force build | Out-Null
-foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'fetch', 'config', 'css', 'style', 'layout', 'forms', 'page', 'browser') {
+foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'fetch', 'config', 'css', 'style', 'webfont', 'layout', 'forms', 'page', 'browser') {
     Step "unit tests: $pkg" { odin test "src/$pkg" -collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -out:"build/${pkg}_test.exe" 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 }
 
@@ -73,6 +73,14 @@ try {
         $p = Start-Process .\build\workerstest.exe -ArgumentList 'build\workerstest.wasm','examples\site\workerstest_worker.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\wkt.txt
         if (-not $p.WaitForExit(180000)) { $p.Kill(); Get-Content build\wkt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\wkt.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
+    }
+    Step 'style run-time test (web fonts, transitions, animations)' {
+        odin build src/tools/styletest -collection:wb=src -vet -out:build/styletest.exe 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { return }
+        $p = Start-Process .\build\styletest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\stt.txt
+        if (-not $p.WaitForExit(60000)) { $p.Kill(); Get-Content build\stt.txt; $global:LASTEXITCODE = 1; return }
+        $o = Get-Content build\stt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
 } finally { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }

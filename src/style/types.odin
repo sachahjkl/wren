@@ -86,7 +86,8 @@ Image_Kind :: enum u8 { None, Url, Gradient }
 Image :: struct {
 	kind: Image_Kind,
 	url:  string,         // Url: as written (resolved against the sheet by the loader)
-	gradient: string,     // Gradient: the function as CSS text; painted by the renderer
+	gradient: string,     // Gradient: the function as CSS text (kept for diagnostics and older painters)
+	grad: ^Gradient,      // Gradient: the parsed gradient (see types_more.odin); this is what a painter should use
 }
 
 Bg_Size_Kind :: enum u8 { Auto, Cover, Contain, Length }
@@ -101,7 +102,9 @@ Shadow :: struct {
 Content_Kind :: enum u8 { Normal, None, Items }
 Content_Item_Kind :: enum u8 { Text, Attr, Open_Quote, Close_Quote, Url }
 Content_Item :: struct { kind: Content_Item_Kind, text: string }
-Content :: struct { kind: Content_Kind, items: []Content_Item }
+// `items` is the resolved value, ready to display: only Text (attr(), counters and quotes already replaced by their text)
+// and Url items. `parts` is the value as specified (see Content_Part), which the style engine resolves in document order.
+Content :: struct { kind: Content_Kind, items: []Content_Item, parts: []Content_Part }
 
 // Custom properties (--name) as resolved text. Shared between a parent and every child that declares none of its own.
 Custom_Props :: struct {
@@ -180,7 +183,85 @@ Computed :: struct {
 	outline_offset: f32,
 	border_collapse: bool,
 	border_spacing: [2]f32,
+	// --- text (CSS Text 4, Fonts 4, Text Decoration 4) ---
+	font_stretch:      f32,                 // percentage, 100 = normal
+	font_variant_caps: Font_Variant_Caps,
+	text_decoration_style: Text_Decoration_Style,
+	text_decoration_thickness: Length,      // Auto, Normal (= from-font) or Px
+	text_underline_offset: Length,          // Auto or Px
+	white_space_collapse: White_Space_Collapse,   // `white_space` above is derived from these two
+	text_wrap_mode:    Text_Wrap_Mode,
+	text_wrap_style:   Text_Wrap_Style,
+	hyphens:           Hyphens,
+	// --- backgrounds: every layer (the singular fields above are the first layer). See `background_layers`. ---
+	background_images:      []Image,
+	background_repeats:     [][2]Repeat,
+	background_positions:   [][2]Length,
+	background_sizes:       []Bg_Size,
+	background_origins:     []Box_Area,
+	background_clips:       []Box_Area,
+	background_attachments: []Bg_Attachment,
+	// --- transforms (CSS Transforms 1 and 2; 3D is parsed and flattened) ---
+	transform:        []Transform_Op,       // nil = none
+	transform_origin: [2]Length,            // percentages of the reference box
+	transform_box:    Transform_Box,
+	transform_style:  Transform_Style,
+	translate:        Translate_Value,
+	rotate:           Rotate_Value,
+	scale:            Scale_Value,
+	perspective:      f32,                  // 0 = none
+	perspective_origin: [2]Length,
+	backface_visibility: Backface_Visibility,
+	// --- transitions and animations: the lists as specified, see `transition_at` / `animation_at` for repetition ---
+	transition_property: []Transition_Prop,
+	transition_duration: []f32,             // ms
+	transition_timing:   []Easing,
+	transition_delay:    []f32,             // ms
+	transition_behavior: []bool,            // allow-discrete
+	animation_name:      []string,          // "" = none
+	animation_duration:  []f32,             // ms
+	animation_timing:    []Easing,
+	animation_delay:     []f32,             // ms
+	animation_iterations: []f32,            // math.INF_F32 = infinite
+	animation_direction: []Anim_Direction,
+	animation_fill_mode: []Fill_Mode,
+	animation_play_state: []Play_State,
+	animation_composition: []Composition,
+	// --- generated content ---
+	counter_reset:     []Counter_Op,
+	counter_increment: []Counter_Op,
+	counter_set:       []Counter_Op,
+	quotes:            Quotes,
+	list_style:        List_Marker_Style,   // every counter style; `list_style_type` above is the nearest legacy value
+	marker_text:       string,              // display: list-item only: the resolved marker, suffix included ("3. ", "• ")
+	// --- effects ---
+	object_position:   [2]Length,
+	filter:            []Filter_Op,
+	backdrop_filter:   []Filter_Op,
+	clip_path:         ^Clip_Path,         // nil = none
+	isolation:         Isolation,
+	mix_blend_mode:    Blend_Mode,
+	// --- misc ---
+	will_change:       []string,
+	contain:           Contain,
+	content_visibility: Content_Visibility,
+	scroll_behavior:   Scroll_Behavior,
+	overscroll_x, overscroll_y: Overscroll,
+	caret_color:       Auto_Color,
+	accent_color:      Auto_Color,
+	appearance:        Appearance,
+	resize:            Resize,
+	column_count:      i32,                 // 0 = auto
+	column_width:      Length,              // Auto or Px
+	// --- grid (stored for the grid layout) ---
+	grid_template_columns, grid_template_rows: Grid_Template,
+	grid_template_areas: Grid_Areas,
+	grid_auto_columns, grid_auto_rows: []Grid_Track,
+	grid_auto_flow:    Grid_Auto_Flow,
+	grid_row_start, grid_row_end, grid_column_start, grid_column_end: Grid_Line,
+	justify_items, justify_self: Content_Align,
 	// --- bookkeeping ---
+	inherits:   Prop_Set,       // inherited properties whose value came from the parent (not set by a declaration)
 	custom:     ^Custom_Props,
 	before, after: ^Computed,   // generated boxes (nil when `content` is none/normal)
 }
@@ -188,9 +269,10 @@ Computed :: struct {
 // Longhand properties. Order matters: values that others depend on (font-size for em, color for currentcolor) come first.
 Prop :: enum u8 {
 	Font_Size, Color,
-	Font_Family, Font_Weight, Font_Style, Line_Height, Letter_Spacing, Word_Spacing, Text_Align,
-	Text_Decoration_Line, Text_Decoration_Color, Text_Transform, Text_Indent, Text_Overflow, White_Space, Word_Break,
-	Overflow_Wrap, Tab_Size, Direction, Text_Shadow,
+	Font_Family, Font_Weight, Font_Style, Font_Stretch, Font_Variant_Caps, Line_Height, Letter_Spacing, Word_Spacing, Text_Align,
+	Text_Decoration_Line, Text_Decoration_Color, Text_Decoration_Style, Text_Decoration_Thickness, Text_Underline_Offset,
+	Text_Transform, Text_Indent, Text_Overflow, White_Space_Collapse, Text_Wrap_Mode, Text_Wrap_Style, Word_Break,
+	Overflow_Wrap, Hyphens, Tab_Size, Direction, Text_Shadow,
 	Display, Position, Float, Clear, Top, Right, Bottom, Left, Z_Index, Box_Sizing,
 	Width, Height, Min_Width, Min_Height, Max_Width, Max_Height,
 	Margin_Top, Margin_Right, Margin_Bottom, Margin_Left,
@@ -202,17 +284,35 @@ Prop :: enum u8 {
 	Overflow_X, Overflow_Y, Visibility, Opacity, Vertical_Align, Aspect_Ratio, Object_Fit,
 	Flex_Direction, Flex_Wrap, Flex_Grow, Flex_Shrink, Flex_Basis, Justify_Content, Align_Items, Align_Self, Align_Content,
 	Order, Row_Gap, Column_Gap,
-	Background_Color, Background_Image, Background_Repeat, Background_Position, Background_Size, Box_Shadow,
+	Background_Color, Background_Image, Background_Repeat, Background_Position, Background_Size,
+	Background_Origin, Background_Clip, Background_Attachment, Box_Shadow,
 	List_Style_Type, List_Style_Position, Cursor, Pointer_Events, User_Select, Content,
 	Outline_Width, Outline_Style, Outline_Color, Outline_Offset, Border_Collapse, Border_Spacing,
+	Transform, Transform_Origin, Transform_Box, Transform_Style, Translate, Rotate, Scale, Perspective, Perspective_Origin,
+	Backface_Visibility,
+	Transition_Property, Transition_Duration, Transition_Timing_Function, Transition_Delay, Transition_Behavior,
+	Animation_Name, Animation_Duration, Animation_Timing_Function, Animation_Delay, Animation_Iteration_Count,
+	Animation_Direction, Animation_Fill_Mode, Animation_Play_State, Animation_Composition,
+	Counter_Reset, Counter_Increment, Counter_Set, Quotes,
+	Object_Position, Filter, Backdrop_Filter, Clip_Path, Isolation, Mix_Blend_Mode,
+	Will_Change, Contain, Content_Visibility, Scroll_Behavior, Overscroll_Behavior_X, Overscroll_Behavior_Y,
+	Caret_Color, Accent_Color, Appearance, Resize, Column_Count, Column_Width,
+	Grid_Template_Columns, Grid_Template_Rows, Grid_Template_Areas, Grid_Auto_Columns, Grid_Auto_Rows, Grid_Auto_Flow,
+	Grid_Row_Start, Grid_Row_End, Grid_Column_Start, Grid_Column_End, Justify_Items, Justify_Self,
 }
 
-Prop_Set :: bit_set[Prop; u128]
+// A set of properties. Wider than a bit_set can be (there are more than 128 longhands), hence the procedures in props.odin:
+// `ps_has`, `ps_add`, `ps_remove`, `ps_union`, `ps_empty`.
+PROP_COUNT :: len(Prop)
+Prop_Set :: struct { bits: [(PROP_COUNT + 63) / 64]u64 }
 
-INHERITED :: Prop_Set{
-	.Font_Size, .Color, .Font_Family, .Font_Weight, .Font_Style, .Line_Height, .Letter_Spacing, .Word_Spacing, .Text_Align,
-	.Text_Transform, .Text_Indent, .White_Space, .Word_Break, .Overflow_Wrap, .Tab_Size, .Direction, .Text_Shadow,
+// Inherited properties (CSS: "Inherited: yes"). See `is_inherited`.
+INHERITED_PROPS :: [?]Prop{
+	.Font_Size, .Color, .Font_Family, .Font_Weight, .Font_Style, .Font_Stretch, .Font_Variant_Caps, .Line_Height,
+	.Letter_Spacing, .Word_Spacing, .Text_Align, .Text_Transform, .Text_Indent, .White_Space_Collapse, .Text_Wrap_Mode,
+	.Text_Wrap_Style, .Word_Break, .Overflow_Wrap, .Hyphens, .Tab_Size, .Direction, .Text_Shadow, .Text_Underline_Offset,
 	.Visibility, .List_Style_Type, .List_Style_Position, .Cursor, .Pointer_Events, .Border_Collapse, .Border_Spacing,
+	.Quotes, .Caret_Color, .Accent_Color,
 }
 
 // Shorthands: expanded to longhands when a stylesheet is compiled.
@@ -222,4 +322,6 @@ Short :: enum u8 {
 	Border_Radius, Background, Font, Flex, Flex_Flow, Gap, Overflow, Inset, List_Style, Text_Decoration, Outline,
 	Place_Content, Place_Items, Place_Self,
 	Margin_Block, Margin_Inline, Padding_Block, Padding_Inline, Inset_Block, Inset_Inline,
+	White_Space, Text_Wrap, Font_Variant, Transition, Animation, Overscroll_Behavior, Columns,
+	Grid_Template, Grid, Grid_Row, Grid_Column, Grid_Area,
 }

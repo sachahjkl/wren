@@ -19,6 +19,7 @@ Declaration :: struct {
 	name:      string,    // lower case, except custom properties (--x), which keep their case
 	value:     []Value,
 	important: bool,
+	raw:       string,    // @font-face descriptors only: the value as written (unicode-range needs the token representation)
 }
 
 Rule_Kind :: enum u8 { Style, Media, Supports, Import, Font_Face, Keyframes, Layer_Block, Layer_Statement, Namespace, Page, Container, Unknown }
@@ -52,6 +53,7 @@ Stylesheet :: struct {
 	arena:  virtual.Arena,
 	alloc:  Arena_Alloc,
 	source: string,
+	runes:  []rune,            // the preprocessed source that token positions index
 	rules:  []^Rule,
 	errors: [dynamic]string,   // parse problems, for the console
 }
@@ -63,6 +65,8 @@ Parse_Options :: struct {
 }
 
 stylesheet_destroy :: proc(s: ^Stylesheet) {
+	for e in s.errors { delete(e) }
+	delete(s.errors)
 	virtual.arena_destroy(&s.arena)
 	s^ = {}
 }
@@ -75,11 +79,12 @@ Parser :: struct {
 	opt:   Parse_Options,
 	rules: int,
 	errors: ^[dynamic]string,
+	runes: []rune,
 }
 
 @(private)
 perr :: proc(p: ^Parser, msg: string) {
-	if len(p.errors^) < 100 { append(p.errors, strings.clone(msg)) }
+	if len(p.errors^) < 100 { append(p.errors, strings.clone(msg, p.errors.allocator)) }
 }
 
 // Parses `source` as a stylesheet (CSS Syntax §5, "parse a stylesheet").
@@ -89,8 +94,9 @@ parse_stylesheet :: proc(source: string, opt: Parse_Options) -> ^Stylesheet {
 	s.alloc = virtual.arena_allocator(&s.arena)
 	s.source = strings.clone(source, s.alloc)
 	s.errors = make([dynamic]string)
-	toks := tokenize(s.source, s.alloc)
-	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors}
+	toks, runes := tokenize_with_source(s.source, s.alloc)
+	s.runes = runes
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, runes = runes}
 	s.rules = parse_rule_list(&p, true)
 	return s
 }
@@ -371,7 +377,7 @@ parse_at_rule :: proc(p: ^Parser, name: string) -> ^Rule {
 
 @(private)
 parse_rules_in_block :: proc(p: ^Parser, blk: Value) -> []^Rule {
-	sub := Parser{toks = flatten(blk.children, p.a), a = p.a, opt = p.opt, errors = p.errors, rules = p.rules}
+	sub := Parser{toks = flatten(blk.children, p.a), a = p.a, opt = p.opt, errors = p.errors, rules = p.rules, runes = p.runes}
 	rules := parse_rule_list(&sub, false)
 	p.rules = sub.rules
 	return rules
@@ -480,6 +486,7 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		if !has_block { return nil }
 		r.kind = .Font_Face
 		r.declarations, _ = parse_block_contents(p, blk.children, r)
+		for &d in r.declarations { d.raw = raw_value(p, d.value) }
 	case "page":
 		if !has_block { return nil }
 		r.kind = .Page
@@ -500,6 +507,35 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		return nil
 	}
 	return r
+}
+
+// The source text of a declaration value: from its first token to the `;` or `}` that ends it (outside strings and
+// brackets), trailing whitespace removed.
+@(private)
+raw_value :: proc(p: ^Parser, vs: []Value) -> string {
+	if len(vs) == 0 || len(p.runes) == 0 { return "" }
+	start := int(vs[0].tok.pos)
+	if start >= len(p.runes) { return "" }
+	end := start
+	depth := 0
+	quote: rune = 0
+	scan: for end < len(p.runes) {
+		r := p.runes[end]
+		switch {
+		case quote != 0:
+			if r == '\\' { end += 1 } else if r == quote { quote = 0 }
+		case r == '"' || r == '\'': quote = r
+		case r == '(' || r == '[': depth += 1
+		case r == ')' || r == ']': depth = max(depth - 1, 0)
+		case (r == ';' || r == '}') && depth == 0: break scan
+		}
+		end += 1
+	}
+	end = min(end, len(p.runes))
+	for end > start && (p.runes[end - 1] == ' ' || p.runes[end - 1] == '\t' || p.runes[end - 1] == '\n') { end -= 1 }
+	sb := strings.builder_make(p.a)
+	for r in p.runes[start:end] { strings.write_rune(&sb, r) }
+	return strings.to_string(sb)
 }
 
 @(private)

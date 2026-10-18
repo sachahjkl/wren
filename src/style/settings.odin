@@ -20,6 +20,7 @@ Settings :: struct {
 	max_var_depth:       int,       // var() substitution chain
 	max_var_bytes:       int,       // size of one substituted value
 	restyle_waste_bytes: int,       // memory that partial restyles may leave behind before a full pass compacts it
+	recycle_bytes:       int,       // largest style memory kept from one full pass for the next
 	ua_stylesheet:       bool,
 	author_stylesheets:  bool,      // false: pages are shown with the browser's styles only
 	author_colors:       bool,      // false: the page's colors are ignored (high-contrast reading)
@@ -41,6 +42,31 @@ Settings :: struct {
 	family_serif, family_sans_serif, family_monospace, family_cursive, family_fantasy, family_system_ui: string,  // owned
 	default_generic:     string,    // owned: the generic family used when a page names none
 	line_height_normal:  f32,       // multiple of font size for `line-height: normal`
+	// transitions and animations (timeline.odin)
+	anim_mode:           Anim_Mode,
+	anim_reduced_max_ms: f32,       // Reduce: longest duration of a transition or of one animation iteration
+	anim_time_scale:     f32,       // document time runs this much faster (debugging aid)
+	anim_max_running:    int,       // transitions + animations alive in one document; more are not started
+	anim_max_events:     int,       // animation events queued per tick; the rest are dropped
+	anim_color_space:    Anim_Color_Space,
+	// web fonts (fontface.odin, page/fonts.odin)
+	webfonts:            bool,
+	webfont_max_bytes:   int,
+	webfont_max_parallel: int,
+	webfont_max_faces:   int,
+	webfont_load_unused: bool,
+}
+
+// Auto: Reduce when prefers-reduced-motion is reported, else Normal. Reduce: transitions and iterations are cut to
+// `anim_reduced_max_ms` and infinite animations run once; Off: no transition or animation runs (end values apply at once,
+// no events).
+Anim_Mode :: enum u8 { Auto, Normal, Reduce, Off }
+Anim_Color_Space :: enum u8 { Srgb, Oklab }
+
+// The mode in force for these settings.
+anim_mode_effective :: proc(s: ^Settings) -> Anim_Mode {
+	if s.anim_mode == .Auto { return s.reduced_motion ? .Reduce : .Normal }
+	return s.anim_mode
 }
 
 PREFS := [?]config.Def{
@@ -62,6 +88,8 @@ PREFS := [?]config.Def{
 		description = "Largest value var() may expand to (stops exponential blow-up from nested custom properties)."},
 	{name = "style.restyle_waste_bytes", kind = .Int, default = {i = 64 << 20}, bounded = true, min = 1 << 20, max = 1 << 36, bytes = true, unit = "bytes",
 		description = "Partial restyles (hover, focus) allocate new computed styles; once this much has piled up the next restyle is a full pass that frees it."},
+	{name = "style.recycle_bytes", kind = .Int, default = {i = 128 << 20}, bounded = true, min = 0, max = 1 << 34, bytes = true, unit = "bytes",
+		description = "Memory of a full style pass kept, already mapped, for the next pass of the same page (faster restyles, at the cost of holding it). 0 = always give it back."},
 	{name = "style.ua_stylesheet.enabled", kind = .Bool, default = {b = true}, description = "Use the browser's default styles (headings, lists, links...). Without them pages are unstyled."},
 	{name = "style.author_stylesheets.enabled", kind = .Bool, default = {b = true}, description = "Apply the styles that pages bring. Off: every page is shown with browser styles only."},
 	{name = "style.author_colors.enabled", kind = .Bool, default = {b = true}, description = "Let pages set colors. Off: color and background properties from pages are ignored."},
@@ -89,6 +117,27 @@ PREFS := [?]config.Def{
 	{name = "page.color.visited", kind = .String, default = {s = "#551a8b"}, description = "Color of visited links."},
 	{name = "page.color.active_link", kind = .String, default = {s = "#ee0000"}, description = "Color of a link being pressed."},
 	{name = "page.body_margin", kind = .Float, default = {f = 8}, bounded = true, min = 0, max = 200, unit = "px", description = "Margin around the body of a page."},
+	{name = "style.animations.mode", kind = .String, default = {s = "auto"}, choices = {"auto", "normal", "reduce", "off"},
+		description = "CSS transitions and animations. auto: like reduce when style.prefers_reduced_motion is on, else normal. reduce: durations are cut to style.animations.reduced_max_duration_ms and infinite animations run once. off: nothing moves, end values apply at once."},
+	{name = "style.animations.reduced_max_duration_ms", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 10_000, unit = "ms",
+		description = "In reduce mode: the longest a transition, a delay or one animation iteration may last. 0 jumps straight to the end values (transitions then do not start; animations still report start and end)."},
+	{name = "style.animations.time_scale", kind = .Float, default = {f = 1}, bounded = true, min = 0.01, max = 100,
+		description = "Speed of the document clock that drives transitions and animations (0.1 = ten times slower). A debugging aid."},
+	{name = "style.animations.max_running", kind = .Int, default = {i = 20_000}, bounded = true, min = 1, max = 10_000_000,
+		description = "Most transitions and animations alive at once in one document; past it new ones do not start (their end values apply)."},
+	{name = "style.animations.max_events_per_tick", kind = .Int, default = {i = 10_000}, bounded = true, min = 10, max = 10_000_000,
+		description = "Most transition and animation events (transitionend, animationiteration...) queued in one step of the clock; the rest are dropped."},
+	{name = "style.animations.color_space", kind = .String, default = {s = "srgb"}, choices = {"srgb", "oklab"},
+		description = "Space colors are interpolated in by transitions and animations (premultiplied by alpha). srgb matches other browsers for ordinary colors; oklab gives perceptually even blends."},
+	{name = "style.webfonts.enabled", kind = .Bool, default = {b = true}, description = "Download the fonts pages declare with @font-face. Off: pages use installed fonts only."},
+	{name = "style.webfonts.max_bytes", kind = .Int, default = {i = 32 << 20}, bounded = true, min = 64 << 10, max = 1 << 30, bytes = true, unit = "bytes",
+		description = "Largest font file (and largest decompressed font) accepted from a page."},
+	{name = "style.webfonts.max_parallel", kind = .Int, default = {i = 6}, bounded = true, min = 1, max = 64,
+		description = "Font downloads one page runs at the same time; the others wait in a queue."},
+	{name = "style.webfonts.max_faces", kind = .Int, default = {i = 256}, bounded = true, min = 1, max = 100_000,
+		description = "Most @font-face rules one page may load fonts for."},
+	{name = "style.webfonts.load_unused", kind = .Bool, default = {b = false},
+		description = "Download every @font-face of a page, even those no element uses (off: only families some element asks for)."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
@@ -115,6 +164,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.max_var_depth = int(config.int_of(p, "style.max_var_depth"))
 	s.max_var_bytes = int(config.int_of(p, "style.max_var_bytes"))
 	s.restyle_waste_bytes = int(config.int_of(p, "style.restyle_waste_bytes"))
+	s.recycle_bytes = int(config.int_of(p, "style.recycle_bytes"))
 	s.ua_stylesheet = config.bool_of(p, "style.ua_stylesheet.enabled")
 	s.author_stylesheets = config.bool_of(p, "style.author_stylesheets.enabled")
 	s.author_colors = config.bool_of(p, "style.author_colors.enabled")
@@ -144,6 +194,22 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.visited_color = color_pref(p, "page.color.visited", {0.33, 0.1, 0.55, 1})
 	s.active_link_color = color_pref(p, "page.color.active_link", {0.93, 0, 0, 1})
 	s.body_margin = f32(config.float_of(p, "page.body_margin"))
+	switch config.string_of(p, "style.animations.mode") {
+	case "normal": s.anim_mode = .Normal
+	case "reduce": s.anim_mode = .Reduce
+	case "off": s.anim_mode = .Off
+	case: s.anim_mode = .Auto
+	}
+	s.anim_reduced_max_ms = f32(config.float_of(p, "style.animations.reduced_max_duration_ms"))
+	s.anim_time_scale = f32(config.float_of(p, "style.animations.time_scale"))
+	s.anim_max_running = int(config.int_of(p, "style.animations.max_running"))
+	s.anim_max_events = int(config.int_of(p, "style.animations.max_events_per_tick"))
+	s.anim_color_space = config.string_of(p, "style.animations.color_space") == "oklab" ? .Oklab : .Srgb
+	s.webfonts = config.bool_of(p, "style.webfonts.enabled")
+	s.webfont_max_bytes = int(config.int_of(p, "style.webfonts.max_bytes"))
+	s.webfont_max_parallel = int(config.int_of(p, "style.webfonts.max_parallel"))
+	s.webfont_max_faces = int(config.int_of(p, "style.webfonts.max_faces"))
+	s.webfont_load_unused = config.bool_of(p, "style.webfonts.load_unused")
 	return s
 }
 

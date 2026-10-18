@@ -386,7 +386,26 @@ parse_color_mix :: proc(args: []Value, env: ^Color_Env) -> (cv: Color_Value, ok:
 ////////////////////////////////
 // Lengths, numbers and calc()
 
-Unit :: enum u8 { Px, Em, Rem, Ex, Ch, Lh, Vw, Vh, Vmin, Vmax, Percent }
+Unit :: enum u8 { Px, Em, Rem, Ex, Ch, Lh, Vw, Vh, Vmin, Vmax, Percent, Ms, Deg }   // Ms, Deg: canonical time and angle
+
+// <time> in milliseconds and <angle> in degrees, from a unit as written.
+time_unit_to_ms :: proc(n: f64, unit: string) -> (f64, bool) {
+	switch strings.to_lower(unit, context.temp_allocator) {
+	case "s": return n * 1000, true
+	case "ms": return n, true
+	}
+	return 0, false
+}
+
+angle_unit_to_deg :: proc(n: f64, unit: string) -> (f64, bool) {
+	switch strings.to_lower(unit, context.temp_allocator) {
+	case "deg": return n, true
+	case "rad": return n * 180 / math.PI, true
+	case "grad": return n * 0.9, true
+	case "turn": return n * 360, true
+	}
+	return 0, false
+}
 
 // Absolute units are converted when parsed; relative ones are resolved by the style system with its context.
 length_unit_to_px :: proc(n: f64, unit: string, _: f64) -> (px: f64, ok: bool) {
@@ -441,6 +460,7 @@ resolve_unit :: proc(n: f64, u: Unit, c: Length_Context) -> f64 {
 	case .Vmin: return n * min(c.vw, c.vh) / 100
 	case .Vmax: return n * max(c.vw, c.vh) / 100
 	case .Percent: return n * c.percent_base / 100
+	case .Ms, .Deg: return n
 	}
 	return n
 }
@@ -568,6 +588,8 @@ calc_leaf :: proc(v: Value, alloc: Arena_Alloc, depth: int) -> ^Calc {
 		case .Percentage: n.op, n.num, n.unit = .Dimension, t.num, .Percent
 		case .Dimension:
 			if px, ok := length_unit_to_px(t.num, t.text, 0); ok { n.op, n.num, n.unit = .Dimension, px, .Px; break }
+			if ms, ok := time_unit_to_ms(t.num, t.text); ok { n.op, n.num, n.unit = .Dimension, ms, .Ms; break }
+			if deg, ok := angle_unit_to_deg(t.num, t.text); ok { n.op, n.num, n.unit = .Dimension, deg, .Deg; break }
 			u, ok := relative_unit(t.text)
 			if !ok { return nil }
 			n.op, n.num, n.unit = .Dimension, t.num, u

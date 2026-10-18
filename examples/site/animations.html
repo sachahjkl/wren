@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Transitions, animations, counters, gradients</title>
+<style>
+  @font-face { font-family: "Demo Roboto"; src: url(fonts/missing.woff2) format("woff2"), url(fonts/roboto.ttf) format("truetype"); font-display: swap; }
+  :root { --accent: #1c7ed6; }
+  body { max-width: 780px; margin: 24px auto; font-family: "Demo Roboto", sans-serif; font-size: 17px; counter-reset: section; }
+  h1 { color: var(--accent); }
+  h2 { counter-increment: section; font-size: 1.15em; }
+  h2::before { content: counter(section, upper-roman) ". "; color: var(--accent); }
+
+  /* transitions on hover: color, background, padding, transform, box-shadow */
+  .btn { display: inline-block; padding: 8px 16px; margin: 4px; border-radius: 6px; color: #fff; background: var(--accent);
+         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+         transition: background-color 300ms ease, padding 300ms ease-out, transform 400ms cubic-bezier(0.3, 1.6, 0.6, 1), box-shadow 300ms; }
+  .btn:hover { background-color: #e8590c; padding: 8px 28px; transform: translateY(-3px) scale(1.05); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35); }
+  .fade { color: #495057; transition: color 1s linear, letter-spacing 1s; }
+  .fade:hover { color: #c92a2a; letter-spacing: 2px; }
+
+  /* keyframe animations that never stop */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+  @keyframes slide { from { margin-left: 0; background-color: #2f9e44; } to { margin-left: 200px; background-color: #f08c00; } }
+  @keyframes tick { to { width: 100%; } }
+  .spinner { width: 32px; height: 32px; border-radius: 50%; border: 4px solid #dee2e6; border-top-color: var(--accent); animation: spin 1s linear infinite; }
+  .pulse { animation: pulse 2s ease-in-out infinite; }
+  .slider { width: 60px; height: 20px; border-radius: 4px; animation: slide 2s ease-in-out infinite alternate; }
+  .slider:hover { animation-play-state: paused; }
+  .bar { height: 8px; background: #e9ecef; }
+  .bar > div { width: 0; height: 8px; background: var(--accent); animation: tick 3s steps(10, end) infinite; }
+
+  /* counters: nested lists numbered 1.2.3 */
+  ol.outline { counter-reset: item; list-style: none; padding-left: 1em; }
+  ol.outline > li { counter-increment: item; }
+  ol.outline > li::before { content: counters(item, ".") " "; color: #868e96; }
+  q { quotes: "\201C" "\201D" "\2018" "\2019"; }
+
+  /* gradients and backgrounds */
+  .swatch { display: inline-block; width: 140px; height: 70px; margin: 4px; border-radius: 6px; color: #fff; padding: 6px; }
+  .g1 { background: linear-gradient(to right, #4263eb, #ae3ec9 60%, #f03e3e); }
+  .g2 { background: radial-gradient(circle at 30% 30%, #ffe066, #f76707 70%); }
+  .g3 { background: repeating-linear-gradient(45deg, #343a40 0 10px, #495057 10px 20px); }
+  .g4 { background: conic-gradient(from 90deg, #12b886, #228be6, #be4bdb, #12b886); }
+  .g5 { background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0)), url(none.png) center / cover, #74c0fc; }
+
+  @media (prefers-reduced-motion: reduce) { .spinner, .pulse, .slider, .bar > div { animation: none; } }
+</style>
+</head>
+<body>
+  <h1>Transitions and animations</h1>
+  <p>Everything here is CSS only: no script. The preference <code>style.animations.mode</code> in about:config turns motion
+  down (<code>reduce</code>) or off.</p>
+
+  <h2>Transitions on hover</h2>
+  <p><span class="btn">Hover me</span> <span class="btn">And me</span></p>
+  <p class="fade">Hover this line: its color and letter spacing change in one second, and go back where they were if the
+  pointer leaves halfway (reversing shortening).</p>
+
+  <h2>Keyframe animations</h2>
+  <div class="spinner"></div>
+  <p class="pulse">This line pulses forever (two keyframes at the same offset).</p>
+  <div class="slider"></div>
+  <p>The green bar slides back and forth (alternate); hover it to pause.</p>
+  <div class="bar"><div></div></div>
+
+  <h2>Counters and quotes</h2>
+  <ol class="outline">
+    <li>Introduction
+      <ol class="outline"><li>Scope</li><li>Terms
+        <ol class="outline"><li>Box</li><li>Line</li></ol></li></ol></li>
+    <li>Design</li>
+  </ol>
+  <ol reversed start="3"><li>three</li><li>two</li><li>one</li></ol>
+  <ul style="list-style-type: lower-greek"><li>alpha</li><li>beta</li></ul>
+  <p><q>Quotes <q>nest</q> by depth</q>, in the order of the document.</p>
+
+  <h2>Gradients</h2>
+  <div class="swatch g1">linear</div><div class="swatch g2">radial</div><div class="swatch g3">repeating</div>
+  <div class="swatch g4">conic</div><div class="swatch g5">layers</div>
+
+  <p><a href="/site/style.html">The style engine demo</a> | <a href="/site/">Back</a></p>
+</body>
+</html>
