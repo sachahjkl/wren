@@ -119,14 +119,17 @@ Effects :: struct {
 	xform:    i32,              // Transform space whose matrix is pushed (lay.NONE: none)
 	clip:     i32,              // innermost clip of `chain` (-2: not set yet)
 	chain:    [dynamic]i32,     // clips pushed, outermost first
-	group:    i32,
-	alpha_pushed: bool,
+	group:    i32,              // innermost opacity group of `open` (-2: not set yet)
+	open:     [dynamic]Open_Group,
+	groups:   []Group_Paint,    // per opacity group, for this frame
 }
 
 @(private = "file")
 effects_make :: proc(l: ^Layout, v: ^lay.View, dc: ^draw.Context, origin: draw.Vec2) -> Effects {
-	return Effects{l = l, v = v, dc = dc, origin = origin, xform = lay.NONE, clip = -2, group = -2,
-		chain = make([dynamic]i32, 0, 8, context.temp_allocator)}
+	e := Effects{l = l, v = v, dc = dc, origin = origin, xform = lay.NONE, clip = -2, group = -2,
+		chain = make([dynamic]i32, 0, 8, context.temp_allocator), open = make([dynamic]Open_Group, 0, 4, context.temp_allocator)}
+	e.groups = plan_groups(&e)
+	return e
 }
 
 // The matrix of a Transform space as draw wants it: page coordinates are drawn offset by the page area's origin.
@@ -163,31 +166,129 @@ set_clip :: proc(e: ^Effects, ci: i32) {
 	e.clip = ci
 }
 
-@(private = "file")
-set_group :: proc(e: ^Effects, g: i32) {
-	if g == e.group { return }
-	if e.alpha_pushed { draw.pop_alpha(e.dc); e.alpha_pushed = false }
-	e.group = g
-	if g >= 0 { draw.push_alpha(e.dc, e.v.alphas[g]); e.alpha_pushed = true }
-}
-
 // Puts the draw context in the state `it` is drawn in. false: nothing of it can show (empty clip, flattened space).
 @(private = "file")
 effects_for :: proc(e: ^Effects, it: ^lay.Display_Item) -> bool {
 	if it.clip >= 0 && lay.rect_empty(e.v.clips[it.clip]) { return false }
 	xf := e.l.spaces[it.space].xform
 	if xf != lay.NONE && e.v.singular[it.space] { return false }
+	if it.group != e.group {
+		// layers are opened with nothing else pushed: their bounds are in screen space and must not be cut by the
+		// clip of whichever item comes first
+		set_clip(e, lay.NONE)
+		set_xform(e, lay.NONE)
+		set_group(e, it.group)
+	}
 	set_clip(e, it.clip)
 	set_xform(e, xf)
-	set_group(e, it.group)
 	return true
 }
 
 @(private = "file")
 effects_end :: proc(e: ^Effects) {
-	set_group(e, -1)
 	for len(e.chain) > 0 { draw.pop_clip(e.dc); pop(&e.chain) }
 	set_xform(e, lay.NONE)
+	set_group(e, lay.NONE)
+}
+
+////////////////////////////////
+// Opacity groups (CSS Color §opacity: the element and its content are painted, then blended as one). A group is
+// painted into an offscreen layer (draw.push_layer) when it holds more than one thing that could overlap; a group
+// whose content is a single primitive (or a single nested group) is simply faded, which is exact and free. The items
+// of a group are contiguous in paint order (a group is a stacking context), so a group is opened at its first item
+// and closed after its last one.
+
+@(private = "file")
+Open_Group :: struct { g: i32, layer: bool }
+
+@(private = "file")
+Group_Paint :: struct {
+	bounds: lay.Rect,   // screen pixels: what its visible items may touch (their clips applied)
+	units:  int,        // things that may overlap inside: primitives, nested groups
+	seen:   bool,
+}
+
+// Screen bounds of what an item may paint: its rect with what spills out of it (shadows, outlines, glyph overhang).
+@(private = "file")
+item_ink :: proc(e: ^Effects, it: ^lay.Display_Item) -> lay.Rect {
+	s := e.l.scale
+	pad: f32 = 1
+	if cs := it.cs; cs != nil {
+		#partial switch it.kind {
+		case .Box, .Inline_Box:
+			for sh in cs.box_shadow { if !sh.inset { pad = max(pad, (max(abs(sh.x), abs(sh.y)) + sh.blur + max(sh.spread, 0)) * s + 1) } }
+		case .Outline:
+			pad = max(pad, (cs.outline_width + max(cs.outline_offset, 0)) * s + 2)
+		case .Text, .Marker:
+			pad = max(pad, 4 * s)
+			for sh in cs.text_shadow { pad = max(pad, (max(abs(sh.x), abs(sh.y)) + sh.blur) * s + 4 * s) }
+		}
+	}
+	r := lay.rect_shift(lay.Rect{it.rect.min - pad, it.rect.max + pad}, e.v.offsets[it.space] + e.origin)
+	if !lay.space_plain(e.l, it.space) { r = lay.mat_bounds(lay.mat_shifted(e.v.mats[it.space], e.origin), r) }
+	if it.clip >= 0 { r = lay.rect_intersect(r, lay.rect_shift(e.v.clips[it.clip], e.origin)) }
+	return r
+}
+
+// How many primitives an item draws that could overlap each other.
+@(private = "file")
+item_units :: proc(it: ^lay.Display_Item) -> int {
+	cs := it.cs
+	if cs == nil { return 1 }
+	#partial switch it.kind {
+	case .Box, .Inline_Box:
+		n := 1
+		if len(cs.box_shadow) > 0 { n += 1 }
+		for s in style.Side { if cs.border_width[s] > 0 { n += 1; break } }
+		return n
+	case .Text: return len(cs.text_shadow) > 0 || it.deco != {} ? 2 : 1
+	case .Control, .Replaced: return 2
+	}
+	return 1
+}
+
+@(private = "file")
+plan_groups :: proc(e: ^Effects) -> []Group_Paint {
+	gp := make([]Group_Paint, len(e.l.groups), context.temp_allocator)
+	if len(gp) == 0 { return gp }
+	for idx in e.v.visible {
+		it := &e.l.items[idx]
+		if it.group < 0 { continue }
+		ink := item_ink(e, it)
+		g := it.group
+		gp[g].units += item_units(it)
+		for cur := g; cur != lay.NONE; cur = e.l.groups[cur].parent {
+			p := &gp[cur]
+			p.bounds = p.seen ? lay.rect_union(p.bounds, ink) : ink
+			first := !p.seen
+			p.seen = true
+			if parent := e.l.groups[cur].parent; parent != lay.NONE && first { gp[parent].units += 1 }
+		}
+	}
+	return gp
+}
+
+@(private = "file")
+set_group :: proc(e: ^Effects, g: i32) {
+	if g == e.group { return }
+	// the chain of groups `g` is in, outermost first
+	want := make([dynamic]i32, 0, 8, context.temp_allocator)
+	for c := g; c != lay.NONE; c = e.l.groups[c].parent { append(&want, c) }
+	for i, j := 0, len(want) - 1; i < j; i, j = i + 1, j - 1 { want[i], want[j] = want[j], want[i] }
+	keep := 0
+	for keep < len(want) && keep < len(e.open) && want[keep] == e.open[keep].g { keep += 1 }
+	for len(e.open) > keep {
+		og := pop(&e.open)
+		if og.layer { draw.pop_layer(e.dc) } else { draw.pop_alpha(e.dc) }
+	}
+	for c in want[keep:] {
+		alpha := e.l.groups[c].alpha
+		gp := &e.groups[c]
+		layer := page_render.settings.opacity_layers && gp.units > 1 && alpha < 1 && !lay.rect_empty(gp.bounds)
+		if layer { draw.push_layer(e.dc, draw.Rect{gp.bounds.min, gp.bounds.max}, alpha) } else { draw.push_alpha(e.dc, alpha) }
+		append(&e.open, Open_Group{c, layer})
+	}
+	e.group = g
 }
 
 paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: draw.Vec2, scroll: f32, clip: draw.Rect) {

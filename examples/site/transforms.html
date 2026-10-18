@@ -26,6 +26,13 @@
   form label { display: block; margin: 6px 0 2px; }
   form input[type=text], form textarea { width: 260px; font-size: 15px; }
 
+  /* group opacity: the overlapping squares fade as one (no red under the blue) */
+  .ghost { opacity: 0.5; position: relative; width: 160px; height: 120px; }
+  .ghost .sq { position: absolute; width: 80px; height: 80px; border: 3px solid #1d2433; border-radius: 10px; }
+  .ghost .a { left: 0; top: 0; background: #e03131; }
+  .ghost .b { left: 50px; top: 35px; background: #1971c2; transform: rotate(12deg); }
+  @keyframes breathe { 0%, 100% { opacity: 0.25 } 50% { opacity: 0.9 } }
+  .ghost.live { animation: breathe 3s ease-in-out infinite; }
   /* a scroll container that is itself transformed */
   .scroller { width: 220px; height: 150px; overflow: auto; border: 2px solid #5f3dc4; border-radius: 12px; transform: scale(0.9) rotate(4deg); background: #f3f0ff; }
   .scroller div { margin: 6px; padding: 6px; background: #d0bfff; border-radius: 6px; }
@@ -63,6 +70,7 @@ of text</textarea></label>
     <select><option>First</option><option selected>Second</option></select>
     <button type="button">Button</button>
   </form>
+<div class="panel"><h2>Group opacity</h2><div style="display:flex;gap:16px"><div class="ghost"><div class="sq a"></div><div class="sq b"></div></div><div class="ghost live"><div class="sq a"></div><div class="sq b"></div></div></div></div>
 </div>
 <div class="cards">
 <div class="card">1</div><div class="card">2</div><div class="card">3</div><div class="card">4</div><div class="card">5</div><div class="card">6</div><div class="card">7</div><div class="card">8</div><div class="card">9</div><div class="card">10</div><div class="card">11</div><div class="card">12</div><div class="card">13</div><div class="card">14</div><div class="card">15</div><div class="card">16</div><div class="card">17</div><div class="card">18</div><div class="card">19</div><div class="card">20</div>
