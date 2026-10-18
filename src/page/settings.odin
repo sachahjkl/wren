@@ -1,6 +1,7 @@
 package page
 
 import "wb:config"
+import "wb:forms"
 import "wb:html"
 import "wb:style"
 import "wb:wasm"
@@ -12,6 +13,7 @@ Settings :: struct {
 	wasm:            wasm.Options,
 	html:            html.Options,
 	style:           style.Settings,
+	forms:           forms.Settings,
 }
 
 PREFS := [?]config.Def{
@@ -26,6 +28,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	wasm.register_prefs(p)
 	html.register_prefs(p)
 	style.register_prefs(p)
+	forms.register_prefs(p)
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -35,6 +38,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		wasm = wasm.options_from_prefs(p),
 		html = html.options_from_prefs(p),
 		style = style.settings_from_prefs(p),
+		forms = forms.settings_from_prefs(p),
 	}
 }
 
@@ -47,4 +51,5 @@ settings_default :: proc() -> Settings {
 settings_destroy :: proc(s: ^Settings) {
 	html.options_destroy(&s.html)
 	style.settings_destroy(&s.style)
+	forms.settings_destroy(&s.forms)
 }

@@ -354,6 +354,7 @@ register_imports :: proc() -> bool {
 	ok &&= wasm.register("document", document_symbols[:])
 	ok &&= wasm.register("console", console_symbols[:])
 	ok &&= wasm.register("async", async_symbols[:])
+	ok &&= wasm.register("forms", build_forms_symbols())
 	return ok
 }
 

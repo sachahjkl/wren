@@ -83,6 +83,7 @@ Page :: struct {
 	style_stale:  bool,
 	link_loads:   map[base.Handle]^Style_Load,
 	import_loads: [dynamic]^Style_Load,
+	formctl:      ^Page_Forms,          // form controls (bindings_forms.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives
@@ -107,6 +108,7 @@ page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings
 	p.dp.invoke = invoke_listener
 	p.dp.user = p
 	styles_init(p)
+	forms_attach(p)
 	blank_document(p)
 	return p
 }
@@ -131,6 +133,7 @@ page_cleanup :: proc(data: rawptr) {
 	it = 0
 	for _, t in base.pool_next(&p.timers, &it) { host.clear_timer(p.loop, t.handle) }
 	base.pool_destroy(&p.timers)
+	forms_detach(p)
 	objects_destroy(p)   // before the dispatcher: an object's destructor may still look at events
 	delete(p.host_reactions)
 	styles_destroy(p)
