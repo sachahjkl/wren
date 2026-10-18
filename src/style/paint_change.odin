@@ -121,4 +121,5 @@ layout_equal :: proc(a, b: ^Computed) -> bool {
 styled_touch_paint :: proc(s: ^Styled) {
 	styled_serial += 1
 	s.serial = styled_serial
+	journal_stamp(s)
 }

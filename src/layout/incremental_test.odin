@@ -1,0 +1,478 @@
+package layout
+
+import "core:fmt"
+import "core:math/rand"
+import "core:strings"
+import "core:testing"
+import "wb:base"
+import "wb:dom"
+import "wb:html"
+import "wb:style"
+
+// Incremental layout against full passes: after each change, the incremental result is compared with a full pass of
+// the same input (compare_layouts: every box, line, fragment, display item, space, clip, group, band). Each case also
+// checks that the change was handled incrementally (the point is to not fall back to full passes).
+
+@(private = "file")
+Ix :: struct {
+	doc:   ^dom.Document,
+	eng:   ^style.Engine,
+	st:    ^style.Styled,
+	tl:    ^style.Timeline,
+	set:   Settings,
+	l:     Layout,
+	vp:    Vec2,
+	now:   f64,
+	sizes: map[base.Handle][2]f32,   // natural sizes of images that "decoded"
+	images_gen, fonts_gen: u64,
+	web_font: bool,                  // the face of family "web" arrived (wider glyphs)
+}
+
+@(private = "file")
+ix_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font {
+	f := (^Ix)(user)
+	if f.web_font && len(families) > 0 && families[0] == "web" { return Font(2) }
+	return Font(1)
+}
+@(private = "file")
+ix_width :: proc(user: rawptr, fo: Font, size: f32, text: string) -> f32 {
+	k: f32 = fo == 2 ? 0.6 : 0.5
+	return k * size * f32(rune_count(text))
+}
+@(private = "file")
+ix_metrics :: proc(user: rawptr, fo: Font, size: f32) -> Font_Metrics {
+	if fo == 2 { return {ascent = 0.9 * size, descent = 0.25 * size, x_height = 0.5 * size} }
+	return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size}
+}
+@(private = "file")
+ix_intrinsic :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool) {
+	f := (^Ix)(user)
+	s, found := f.sizes[node]
+	return s.x, s.y, found
+}
+
+@(private = "file")
+ix_input :: proc(f: ^Ix) -> Input {
+	return Input{doc = f.doc, styled = f.st, settings = &f.set, text = Text_Api{user = f, font = ix_font, width = ix_width, metrics = ix_metrics},
+		replaced = Replaced_Api{user = f, intrinsic = ix_intrinsic}, viewport = f.vp, scale = 1, band_h = 64,
+		images_generation = f.images_gen, fonts_generation = f.fonts_gen}
+}
+
+@(private = "file")
+ix_load :: proc(src: string, vw: f32 = 800, vh: f32 = 600) -> ^Ix {
+	f := new(Ix)
+	f.doc = dom.document_create(nil)
+	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
+	ss := style.settings_default()
+	f.eng = style.engine_make(ss)
+	style.settings_destroy(&ss)
+	style.engine_set_journal(f.eng, 1 << 16)
+	style.sync_document_sheets(f.eng, f.doc, "about:test")
+	f.st = style.compute_styles(f.eng, f.doc, {})
+	f.tl = style.timeline_make(f.eng)
+	style.timeline_restyled(f.tl, f.doc, nil, f.st, 0)
+	style.timeline_tick(f.tl, f.doc, f.st, 0)
+	f.set = settings_default()
+	f.vp = {vw, vh}
+	f.sizes = make(map[base.Handle][2]f32)
+	run(&f.l, ix_input(f))
+	return f
+}
+
+@(private = "file")
+ix_unload :: proc(f: ^Ix) {
+	destroy(&f.l)
+	style.timeline_destroy(f.tl, f.st)
+	style.styled_destroy(f.st)
+	style.engine_destroy(f.eng)
+	dom.document_destroy(f.doc)
+	delete(f.sizes)
+	free(f)
+}
+
+// What the page does each frame: styles for the document as it is (full pass after a mutation, compared with the
+// previous one), the timeline, then layout.
+@(private = "file")
+ix_frame :: proc(f: ^Ix, dt: f64 = 16) {
+	f.now += dt
+	if f.st.mutations != f.doc.mutations {
+		style.sync_document_sheets(f.eng, f.doc, "about:test")
+		old := f.st
+		f.st = style.compute_styles(f.eng, f.doc, {})
+		style.journal_diff(old, f.st)
+		style.timeline_restyled(f.tl, f.doc, old, f.st, f.now)
+		style.styled_destroy(old)
+	}
+	style.timeline_tick(f.tl, f.doc, f.st, f.now)
+	run(&f.l, ix_input(f))
+}
+
+// The layout equals a full pass of the same input; `want`: how the last pass was done.
+@(private = "file")
+ix_check :: proc(t: ^testing.T, f: ^Ix, want := Pass_Kind.Incremental, loc := #caller_location) -> bool {
+	ref: Layout
+	defer destroy(&ref)
+	ref.scroll = make(map[base.Handle]Vec2)
+	for k, v in f.l.scroll { ref.scroll[k] = v }
+	run_full(&ref, ix_input(f))
+	ok, report := compare_layouts(&f.l, &ref)
+	testing.expectf(t, ok, "incremental differs from full: %s", report, loc = loc)
+	if want != .None { testing.expectf(t, f.l.last_pass == want, "pass %v, want %v", f.l.last_pass, want, loc = loc) }
+	return ok
+}
+
+@(private = "file")
+id :: proc(f: ^Ix, s: string) -> base.Handle { return dom.find_by_id(f.doc, s) }
+
+@(private = "file")
+first_text_node :: proc(f: ^Ix, h: base.Handle) -> base.Handle {
+	for ch := dom.get(f.doc, h).first_child; ch != base.NIL_HANDLE; ch = dom.get(f.doc, ch).next {
+		if dom.get(f.doc, ch).kind == .Text { return ch }
+	}
+	return base.NIL_HANDLE
+}
+
+@(private = "file")
+add_el :: proc(f: ^Ix, parent: base.Handle, tag: string, attrs: string = "", text: string = "", before := base.NIL_HANDLE) -> base.Handle {
+	e := dom.create_element(f.doc, tag)
+	if attrs != "" { dom.set_attribute(f.doc, e, "style", attrs) }
+	if text != "" { dom.append_child(f.doc, e, dom.create_text(f.doc, text)) }
+	dom.insert_before(f.doc, parent, e, before)
+	return e
+}
+
+@(private = "file")
+PAGE :: `<style>
+body{margin:0;font-size:10px;line-height:12px}
+.sec{margin:8px 4px;padding:4px;border:1px solid}
+article{padding:2px;margin:3px 0}
+h3{margin:0 0 4px;font-size:14px}
+p{margin:2px 0}
+.row{display:flex;gap:4px}
+.row > div{flex:1;padding:2px}
+table{border-spacing:2px}
+.fl{float:left;width:60px;height:30px}
+.abs{position:absolute;left:10px;top:20px;width:50px}
+.rel{position:relative}
+</style><body>
+<div class=sec id=s1><article><h3>Title one</h3><p id=p1>alpha beta gamma <span id=sp1>delta epsilon</span> zeta eta theta iota kappa lambda mu</p></article>
+<article id=a2><h3>Title two</h3><p id=p2>nu xi omicron pi rho sigma tau upsilon</p></article></div>
+<div class="sec row" id=flex><div id=f1>one</div><div id=f2>two two</div><div id=f3>three three three</div></div>
+<div class=sec id=floats><div class=fl id=fl1></div><p id=pf>text beside the float that wraps around it for a while and then continues below it when it is long enough</p><div id=after>after</div></div>
+<table id=tab><tbody id=tb><tr id=r1><td id=c11>a</td><td>bb</td></tr><tr id=r2><td>ccc</td><td id=c22>dddd</td></tr></tbody></table>
+<ol id=ol><li>first<li id=li2>second<li>third</ol>
+<div class="sec rel" id=pos><p id=pp>positioned container</p><div class=abs id=ab>absolute box</div></div>
+<div class=sec id=imgs><img id=im1 width=40 height=20><span> image text</span></div>
+<div class=sec id=last><p id=pl>the end</p></div>
+</body>`
+
+@(test)
+inc_text_change :: proc(t: ^testing.T) {
+	f := ix_load(PAGE)
+	defer ix_unload(f)
+	ix_frame(f)
+	ix_check(t, f, .None)
+	// same length: nothing moves
+	tn := first_text_node(f, id(f, "p2"))
+	dom.set_text_content(f.doc, tn, "NU XI OMICRON PI RHO SIGMA TAU UPSILON")
+	ix_frame(f)
+	ix_check(t, f)
+	testing.expect(t, f.l.inc.last_rebuilt < 10, "only the paragraph is rebuilt")
+	// longer: more lines, everything below moves
+	dom.set_text_content(f.doc, tn, strings.repeat("word ", 60, context.temp_allocator))
+	ix_frame(f)
+	ix_check(t, f)
+	// text of an inline element
+	dom.set_text_content(f.doc, id(f, "sp1"), "x")
+	ix_frame(f)
+	ix_check(t, f)
+	// text in a paragraph beside a float
+	dom.set_text_content(f.doc, first_text_node(f, id(f, "pf")), "short")
+	ix_frame(f)
+	ix_check(t, f)
+}
+
+@(test)
+inc_insert_remove :: proc(t: ^testing.T) {
+	f := ix_load(PAGE)
+	defer ix_unload(f)
+	// flex: insert, remove
+	x := add_el(f, id(f, "flex"), "div", "", "new item with words", id(f, "f2"))
+	ix_frame(f)
+	ix_check(t, f)
+	dom.remove_child(f.doc, id(f, "flex"), id(f, "f1"))
+	ix_frame(f)
+	ix_check(t, f)
+	dom.remove_child(f.doc, id(f, "flex"), x)
+	dom.release(f.doc, x)
+	ix_frame(f)
+	ix_check(t, f)
+	// table: a row, a cell
+	r := add_el(f, id(f, "tb"), "tr")
+	add_el(f, r, "td", "", "wide cell content here")
+	ix_frame(f)
+	ix_check(t, f)
+	add_el(f, id(f, "r1"), "td", "", "third")
+	ix_frame(f)
+	ix_check(t, f)
+	// block with floats: a float before the paragraph, then removed
+	fl := add_el(f, id(f, "floats"), "div", "float:right;width:80px;height:50px", "", id(f, "pf"))
+	ix_frame(f)
+	ix_check(t, f)
+	dom.remove_child(f.doc, id(f, "floats"), fl)
+	ix_frame(f)
+	ix_check(t, f)
+	// list: an item in the middle renumbers the following ones
+	add_el(f, id(f, "ol"), "li", "", "inserted", id(f, "li2"))
+	ix_frame(f)
+	ix_check(t, f)
+	// a whole section
+	add_el(f, dom.find_first_by_tag(f.doc, "body"), "div", "padding:5px", "new section", id(f, "last"))
+	ix_frame(f)
+	ix_check(t, f)
+}
+
+@(test)
+inc_viewport :: proc(t: ^testing.T) {
+	f := ix_load(PAGE)
+	defer ix_unload(f)
+	for w in ([]f32{700, 520, 300, 801, 800}) {
+		f.vp.x = w
+		ix_frame(f)
+		ix_check(t, f)
+	}
+	f.vp.y = 400
+	ix_frame(f)
+	ix_check(t, f)
+	laid := f.l.inc.last_laid
+	testing.expectf(t, laid < 10, "height only: %d boxes laid out again", laid)
+	// percentage heights, fixed boxes and vh follow the height
+	g := ix_load(`<style>html,body{height:100%;margin:0} .h{height:50%} .fx{position:fixed;bottom:0;height:10%;width:20px} .v{height:10vh}</style><body><div class=h id=h>half</div><div class=fx></div><div class=v>vh</div></body>`)
+	defer ix_unload(g)
+	for h in ([]f32{500, 300, 650}) {
+		g.vp.y = h
+		ix_frame(g)
+		ix_check(t, g)
+	}
+}
+
+@(test)
+inc_styles :: proc(t: ^testing.T) {
+	f := ix_load(PAGE)
+	defer ix_unload(f)
+	steps := [?]struct { id, style: string }{
+		{"a2", "width:300px"},             // keeps its box: laid out again
+		{"s1", "font-size:20px"},          // inherited by everything inside: rebuilt
+		{"f2", "display:none"},
+		{"f2", ""},
+		{"p1", "display:inline-block"},
+		{"ab", "left:100px;top:5px"},
+		{"pos", "position:static"},
+		{"pp", "float:left;width:100px"},
+		{"c11", "padding:10px"},
+		{"imgs", "margin-left:50px"},
+		{"a2", "overflow:hidden;height:20px"},
+		{"last", "position:fixed;top:0"},
+	}
+	for s in steps {
+		dom.set_attribute(f.doc, id(f, s.id), "style", s.style)
+		ix_frame(f)
+		if !ix_check(t, f) { fmt.println("after", s.id, s.style) }
+	}
+}
+
+@(test)
+inc_animation :: proc(t: ^testing.T) {
+	f := ix_load(`<style>
+@keyframes grow { from { width: 100px; margin-left: 0 } to { width: 300px; margin-left: 40px } }
+@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(90deg) } }
+.a { animation: grow 1000ms linear infinite; padding: 2px }
+.b { animation: spin 1000ms linear infinite }
+</style><body><div class=a id=a>growing box with some text in it that wraps</div><p>below</p><div class=b>spinning</div><p>end</p></body>`)
+	defer ix_unload(f)
+	for _ in 0 ..< 10 {
+		ix_frame(f, 37)
+		ix_check(t, f, .None)
+		testing.expect(t, f.l.last_pass == .Incremental || f.l.last_pass == .Refresh, "animation frames are incremental")
+	}
+}
+
+@(test)
+inc_images_fonts :: proc(t: ^testing.T) {
+	f := ix_load(`<style>body{margin:0} .w{font-family:web, sans-serif}</style><body><p>before <img id=im> after</p><img id=im2 style="width:50%"><p class=w id=w>web font text that is long enough to wrap at some point in the viewport width</p><p>plain</p></body>`, 300, 200)
+	defer ix_unload(f)
+	f.sizes[id(f, "im")] = {40, 30}
+	f.images_gen += 1
+	ix_frame(f)
+	ix_check(t, f)
+	f.sizes[id(f, "im2")] = {200, 100}
+	f.images_gen += 1
+	ix_frame(f)
+	ix_check(t, f)
+	f.web_font = true
+	f.fonts_gen += 1
+	ix_frame(f)
+	ix_check(t, f)
+}
+
+@(test)
+inc_attributes :: proc(t: ^testing.T) {
+	f := ix_load(PAGE)
+	defer ix_unload(f)
+	dom.set_attribute(f.doc, id(f, "c11"), "colspan", "2")
+	ix_frame(f)
+	ix_check(t, f)
+	dom.set_attribute(f.doc, id(f, "ol"), "start", "7")
+	ix_frame(f)
+	ix_check(t, f)
+	dom.set_attribute(f.doc, id(f, "im1"), "width", "120")
+	ix_frame(f)
+	ix_check(t, f)
+	dom.set_attribute(f.doc, id(f, "p1"), "data-x", "1")   // nothing for layout
+	ix_frame(f)
+	ix_check(t, f)
+}
+
+@(test)
+inc_disabled_and_garbage :: proc(t: ^testing.T) {
+	f := ix_load(PAGE)
+	defer ix_unload(f)
+	f.set.incremental = false
+	run(&f.l, ix_input(f))   // settings changed: full
+	dom.set_text_content(f.doc, first_text_node(f, id(f, "p2")), "changed")
+	ix_frame(f)
+	ix_check(t, f, .Full)
+	f.set.incremental = true
+	ix_frame(f)
+	ix_check(t, f, .None)
+	// many partial rebuilds: memory left behind is bounded by full passes
+	fulls := f.l.passes[.Full]
+	for i in 0 ..< 200 {
+		dom.set_text_content(f.doc, first_text_node(f, id(f, "p2")), fmt.tprintf("text %d", i))
+		ix_frame(f)
+	}
+	ix_check(t, f, .None)
+	testing.expect(t, f.l.passes[.Full] > fulls, "garbage made some full passes")
+	testing.expect(t, f.l.passes[.Incremental] > 150, "most passes stay incremental")
+	// verification mode agrees
+	f.set.inc_verify = true
+	run(&f.l, ix_input(f))
+	dom.set_text_content(f.doc, first_text_node(f, id(f, "p2")), "verified")
+	ix_frame(f)
+	testing.expect(t, f.l.inc.verify_failures == 0, f.l.inc.verify_report)
+}
+
+// Random mutations on a generated document: after each one the incremental layout equals a full one.
+@(test)
+inc_random :: proc(t: ^testing.T) {
+	r := rand.create(20261019)
+	gen := rand.default_random_generator(&r)
+	context.random_generator = gen
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>body{margin:0;font-size:10px} .f{display:flex;flex-wrap:wrap;gap:3px} .f>*{flex:1 1 40px}
+.fl{float:left;width:30px;height:20px} .ab{position:absolute;right:5px;width:40px} .rl{position:relative} li{margin-left:20px}
+td{border:1px solid} .ib{display:inline-block;width:50px} .hid{display:none}</style><body>`)
+	words := [?]string{"lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do"}
+	for i in 0 ..< 12 {
+		switch i % 6 {
+		case 0: fmt.sbprintf(&sb, `<div class=rl><p>%s %s <b>%s</b> %s</p><div class=ab>abs</div></div>`, words[i % 10], words[(i + 3) % 10], words[(i + 5) % 10], words[(i + 7) % 10])
+		case 1: fmt.sbprintf(&sb, `<div class=f><div>%s</div><div>%s %s</div><span>%s</span></div>`, words[i % 10], words[(i + 1) % 10], words[(i + 2) % 10], words[(i + 4) % 10])
+		case 2: fmt.sbprintf(&sb, `<div><div class=fl></div><p>%s %s %s %s %s %s</p></div>`, words[0], words[1], words[2], words[3], words[4], words[5])
+		case 3: fmt.sbprintf(&sb, `<table><tr><td>%s</td><td>%s</td></tr><tr><td colspan=2>%s</td></tr></table>`, words[i % 10], words[(i + 2) % 10], words[(i + 6) % 10])
+		case 4: fmt.sbprintf(&sb, `<ul><li>%s<li>%s <span class=ib>%s</span></ul>`, words[i % 10], words[(i + 8) % 10], words[(i + 9) % 10])
+		case 5: fmt.sbprintf(&sb, `<section><h4>%s</h4>text <em>%s</em> more<div>block in %s</div>tail</section>`, words[i % 10], words[(i + 2) % 10], words[(i + 3) % 10])
+		}
+	}
+	strings.write_string(&sb, `</body>`)
+	f := ix_load(strings.to_string(sb), 500, 400)
+	defer ix_unload(f)
+
+	all_elements :: proc(f: ^Ix) -> [dynamic]base.Handle {
+		out := make([dynamic]base.Handle, context.temp_allocator)
+		body := dom.find_first_by_tag(f.doc, "body")
+		stack := make([dynamic]base.Handle, context.temp_allocator)
+		append(&stack, body)
+		for len(stack) > 0 {
+			h := pop(&stack)
+			n := dom.get(f.doc, h)
+			if n.kind == .Element && h != body { append(&out, h) }
+			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(f.doc, ch).next { append(&stack, ch) }
+		}
+		return out
+	}
+	text_nodes :: proc(f: ^Ix) -> [dynamic]base.Handle {
+		out := make([dynamic]base.Handle, context.temp_allocator)
+		stack := make([dynamic]base.Handle, context.temp_allocator)
+		append(&stack, f.doc.root)
+		for len(stack) > 0 {
+			h := pop(&stack)
+			n := dom.get(f.doc, h)
+			if n.kind == .Text && dom.get(f.doc, n.parent).name != "style" { append(&out, h) }
+			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(f.doc, ch).next { append(&stack, ch) }
+		}
+		return out
+	}
+	styles := [?]string{"", "width:120px", "font-size:14px", "display:none", "display:inline", "display:block", "float:right;width:40px",
+		"position:absolute;left:3px", "position:relative;top:4px", "margin:6px", "padding:3px 9px", "display:flex", "overflow:hidden",
+		"display:inline-block", "height:30px", "line-height:20px", "text-align:center", "white-space:nowrap", "display:table-cell"}
+	tags := [?]string{"div", "span", "p", "b", "li", "img", "td", "section"}
+	incremental := 0
+	failures := 0
+	for iter in 0 ..< 500 {
+		els := all_elements(f)
+		op := rand.int_max(10)
+		what := ""
+		switch op {
+		case 0, 1:
+			tn := text_nodes(f)
+			if len(tn) == 0 { continue }
+			h := tn[rand.int_max(len(tn))]
+			n := rand.int_max(8)
+			parts := make([dynamic]string, context.temp_allocator)
+			for _ in 0 ..< n { append(&parts, words[rand.int_max(len(words))]) }
+			dom.set_text_content(f.doc, h, strings.join(parts[:], " ", context.temp_allocator))
+			what = "text"
+		case 2, 3:
+			if len(els) == 0 { continue }
+			p := els[rand.int_max(len(els))]
+			if dom.get(f.doc, p).name == "img" { continue }
+			e := add_el(f, p, tags[rand.int_max(len(tags))], styles[rand.int_max(len(styles))], words[rand.int_max(len(words))])
+			if dom.get(f.doc, e).name == "img" { f.sizes[e] = {f32(10 + rand.int_max(40)), f32(10 + rand.int_max(30))} }
+			what = "insert"
+		case 4:
+			if len(els) < 10 { continue }
+			h := els[rand.int_max(len(els))]
+			dom.remove_child(f.doc, dom.get(f.doc, h).parent, h)
+			dom.release(f.doc, h)
+			what = "remove"
+		case 5, 6:
+			if len(els) == 0 { continue }
+			h := els[rand.int_max(len(els))]
+			s := styles[rand.int_max(len(styles))]
+			dom.set_attribute(f.doc, h, "style", s)
+			what = fmt.tprintf("style %s", s)
+		case 7:
+			f.vp.x = f32(200 + rand.int_max(500))
+			if rand.int_max(3) == 0 { f.vp.y = f32(200 + rand.int_max(400)) }
+			what = "viewport"
+		case 8:
+			for h, _ in f.sizes { f.sizes[h] = {f32(5 + rand.int_max(80)), f32(5 + rand.int_max(60))}; break }
+			f.images_gen += 1
+			what = "image"
+		case 9:
+			if len(els) == 0 { continue }
+			h := els[rand.int_max(len(els))]
+			dom.set_attribute(f.doc, h, rand.int_max(2) == 0 ? "class" : "colspan", rand.int_max(2) == 0 ? "f" : "2")
+			what = "attribute"
+		}
+		ix_frame(f)
+		if f.l.last_pass == .Incremental { incremental += 1 }
+		if !ix_check(t, f, .None) {
+			fmt.println("iteration", iter, what)
+			failures += 1
+			if failures > 3 { break }
+		}
+		free_all(context.temp_allocator)
+	}
+	testing.expectf(t, incremental > 250, "%d of 500 passes incremental", incremental)
+}

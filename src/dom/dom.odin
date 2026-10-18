@@ -53,6 +53,7 @@ Document :: struct {
 	root:       base.Handle,       // the Document node
 	next_listener: Listener_Id,
 	mutations:  u64,               // monotonic: renderers compare it to know when to re-layout
+	journal:    Journal,           // what the mutations were, when some reader asked (journal.odin)
 	scope:      ^base.Scope,
 	cleanup:    base.Cleanup_Id,
 }
@@ -101,6 +102,7 @@ free_document :: proc(d: ^Document) {
 	it: u32
 	for _, n in base.pool_next(&d.nodes, &it) { free_node_data(n) }
 	base.pool_destroy(&d.nodes)
+	journal_free(d)
 	free(d)
 }
 
@@ -158,8 +160,10 @@ detach :: proc(d: ^Document, h: base.Handle) {
 	p := get(d, n.parent)
 	if n.prev != base.NIL_HANDLE { get(d, n.prev).next = n.next } else { p.first_child = n.next }
 	if n.next != base.NIL_HANDLE { get(d, n.next).prev = n.prev } else { p.last_child = n.prev }
+	old_parent := n.parent
 	n.parent, n.prev, n.next = base.NIL_HANDLE, base.NIL_HANDLE, base.NIL_HANDLE
 	touch(d)
+	journal_record(d, .Remove, h, old_parent)
 }
 
 // Inserts `child` before `ref` (NIL_HANDLE = at the end), moving it if it is already in a tree.
@@ -191,6 +195,7 @@ insert_before :: proc(d: ^Document, parent, child, ref: base.Handle) -> Error {
 		r.prev = child
 	}
 	touch(d)
+	journal_record(d, .Insert, child, parent)
 	return .None
 }
 
@@ -248,11 +253,13 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 			delete(a.value)
 			a.value = heap_str(value)
 			touch(d)
+			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname)
 			return .None
 		}
 	}
 	append(&n.attrs, Attr{heap_str(lname), heap_str(value)})
 	touch(d)
+	journal_record(d, .Attribute, h, base.NIL_HANDLE, lname)
 	return .None
 }
 
@@ -273,6 +280,7 @@ remove_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> Error {
 			delete(a.name); delete(a.value)
 			ordered_remove(&n.attrs, i)
 			touch(d)
+			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname)
 			return .None
 		}
 	}
@@ -288,6 +296,7 @@ set_text_content :: proc(d: ^Document, h: base.Handle, text: string) -> Error {
 		delete(n.text)
 		n.text = heap_str(text)
 		touch(d)
+		journal_record(d, .Text, h, n.parent)
 	case .Element, .Document:
 		for n.first_child != base.NIL_HANDLE {
 			c := n.first_child

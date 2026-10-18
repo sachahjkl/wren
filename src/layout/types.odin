@@ -60,6 +60,10 @@ Input :: struct {
 	viewport: Vec2,             // device px
 	scale:    f32,              // device px per CSS px
 	band_h:   f32,              // CSS px
+	// change counters of what layout reads besides the document and its styles: a different value since the last
+	// pass makes an incremental pass check what they feed (natural sizes of replaced elements, faces of fonts)
+	images_generation: u64,
+	fonts_generation:  u64,
 }
 
 ////////////////////////////////
@@ -102,6 +106,8 @@ Box_Flag :: enum u8 {
 	Flattened,     // children past the depth limit were flattened into this box
 	Transformed,   // a transform applies (CSS Transforms: transformable boxes only, never a non-replaced inline box)
 	Pseudo_After,  // Pseudo: ::after (else ::before)
+	Bfc_Floats,    // some float inside takes part in the block formatting context this box is in (incremental.odin)
+	Dead,          // left over by a partial rebuild of the box tree: in no tree, read by nothing
 }
 Box_Flags :: bit_set[Box_Flag; u32]
 
@@ -133,9 +139,13 @@ Box :: struct {
 	pre_h:     f32,                 // tables: height of the captions above the border box
 	intr:      [2]f32,              // min-content / max-content border-box width
 	intr_ok:   bool,
-	cache_ok:  bool,                // layout cache of formatting-context roots
+	cache_ok:  bool,                // layout cache: the result of the last layout_contents, valid for the same inputs
+	cache_flow: bool,               // ... laid out in its parent's block formatting context (else on its own)
+	cache_through: bool,
 	cache_in:  [3]f32,
 	cache_h:   f32,
+	cache_end, cache_contrib: Strut,   // flow: trailing strut; margins it added to the strut it was given
+	inc:       Inc_Flags,           // invalidation between passes (incremental.odin)
 	// tables
 	col, row, colspan, rowspan: i32,
 	// list items
@@ -155,8 +165,12 @@ Box :: struct {
 
 Inline_Kind :: enum u8 { Text, Open, Close, Atomic, Float, Abs, Break, Block }
 
+// Where the style of an inline item comes from (to find it again after a restyle).
+Item_Src :: enum u8 { Element, Before, After, Initial }
+
 Inline_Item :: struct {
 	kind:  Inline_Kind,
+	src:   Item_Src,
 	box:   i32,                     // Open/Close: the inline box; Atomic/Float/Abs/Block: the box; Text: enclosing inline box or NONE
 	ifc:   i32,
 	fi:    i32,                     // Text: font
@@ -174,6 +188,10 @@ Font_Info :: struct {
 	ascent, descent, x_height: f32,
 	line_h:   f32,                  // used line-height
 	space:    f32,                  // width of U+0020
+	// what it was made from, to make it again when the faces change (families: in the layout's arena)
+	families: []string,
+	weight:   u16,
+	italic:   bool,
 }
 
 Line :: struct {
@@ -232,6 +250,7 @@ Display_Item :: struct {
 	deco:     style.Decorations,    // Text: underline / overline / line-through to draw
 	deco_color: css.Color,
 	deco_box: i32,                  // Text: the box the decoration color comes from (NONE: none)
+	item:     i32,                  // Text from a fragment: its inline item (whose style it shows), else NONE
 }
 
 Space_Kind :: enum u8 { Document, Fixed, Scroll, Sticky, Transform }
@@ -269,7 +288,7 @@ Matrix :: [6]f32   // 2D affine: x' = a x + c y + e, y' = b x + d y + f  (a b c 
 // An opacity group: a box with opacity below 1 and everything it paints.
 Group :: struct { parent: i32, box: i32, alpha: f32 }
 
-Pass_Kind :: enum u8 { None, Full, Refresh }
+Pass_Kind :: enum u8 { None, Full, Refresh, Incremental }
 
 Layout :: struct {
 	// what this layout was made from
@@ -310,6 +329,7 @@ Layout :: struct {
 	arena:        virtual.Arena,           // strings made up by layout (transformed text, markers, generated content)
 	arena_ready:  bool,
 	scratch:      [dynamic]u32,
+	inc:          Inc_State,               // what incremental passes need between runs (incremental.odin)
 }
 
 DOCUMENT_SPACE :: i32(0)

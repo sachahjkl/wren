@@ -34,7 +34,7 @@ push_item :: proc(c: ^Ctx, it: Display_Item) { append(&c.l.items, it) }
 @(private)
 item_for_box :: proc(c: ^Ctx, kind: Item_Kind, bi: i32, r: Rect) -> Display_Item {
 	b := &c.l.boxes[bi]
-	it := Display_Item{kind = kind, box = bi, node = hit_node(c, bi), cs = b.cs, rect = r, space = b.space, clip = b.clip, group = b.group, fi = b.fi}
+	it := Display_Item{kind = kind, box = bi, node = hit_node(c, bi), cs = b.cs, rect = r, space = b.space, clip = b.clip, group = b.group, fi = b.fi, item = NONE}
 	if .No_Pointer not_in b.flags && .Hidden not_in b.flags { it.flags += {.Hit} }
 	return it
 }
@@ -101,12 +101,13 @@ emit_lines :: proc(p: ^Paint_Ctx, ri: i32, owner: i32) {
 				sb := &c.l.boxes[src]
 				base := sb.abs
 				it := Display_Item{kind = .Text, box = src, rect = Rect{base + {f.x, f.y}, base + {f.x + f.w, f.y + f.h}}, text = f.text, fi = f.fi,
-					baseline = base.y - (f.box != NONE ? 0 : 0) + f.baseline, extra = f.extra, space = sb.space, clip = sb.clip, group = sb.group}
+					baseline = base.y - (f.box != NONE ? 0 : 0) + f.baseline, extra = f.extra, space = sb.space, clip = sb.clip, group = sb.group, item = NONE}
 				if f.box == NONE { it.space, it.clip = r.content_space, r.content_clip }
 				if f.kind == .Text {
 					item := &c.l.inline_items[f.item]
 					if item.cs.visibility != .Visible { continue }
 					it.cs, it.node, it.deco, it.deco_color, it.deco_box = item.cs, item.node, item.deco, item.deco_color, item.deco_box
+					it.item = f.item
 					if item.cs.pointer_events { it.flags += {.Hit} }
 				} else {
 					it.cs, it.node = r.cs, hit_node(c, ri)

@@ -183,14 +183,42 @@ specified_height :: proc(c: ^Ctx, b: ^Box, cb_h: f32) -> (f32, bool) {
 //   forced_h: >= 0 imposes the border-box height (flex, tables)
 //   fc:       for a block container taking part in its parent's block formatting context: where its content box sits in
 //             that context (nil: the box is a formatting context root or is laid out on its own)
+//
+// The result is cached in the box for the same inputs (`w`, `cb_h`, `forced_h`), across passes too: a later pass that
+// left the box and its content untouched (`Box.inc` empty) takes it as is. A box laid out in its parent's flow is cached
+// only when no float of that block formatting context can reach it (none placed yet, none inside it): its content is
+// then independent of where it sits; the margins it adds to a strut it shares with its parent (collapsing through its
+// top) are recorded apart and merged, which is the same as adding them in place (a strut is a max / min).
 @(private)
-layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc: ^Flow_Ctx) -> Result {
+layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_Ctx) -> Result {
 	b := &c.l.boxes[bi]
 	b.size.x = w
+	fc := fc_in
 	independent := fc == nil
-	if independent && b.cache_ok && b.cache_in == {w, cb_h, forced_h} {
-		b.size.y = b.cache_h
-		return Result{h = b.cache_h}
+	key := [3]f32{w, cb_h, forced_h}
+	flow_ok := !independent && fc.bfc != nil && len(fc.bfc.floats) == 0 && .Bfc_Floats not_in b.flags
+	if b.cache_ok && b.inc == {} && b.cache_in == key {
+		if independent && !b.cache_flow {
+			b.size.y = b.cache_h
+			return Result{h = b.cache_h}
+		}
+		if flow_ok && b.cache_flow {
+			b.size.y = b.cache_h
+			if fc.open != nil { strut_merge(fc.open, b.cache_contrib) }
+			return Result{h = b.cache_h, end = b.cache_end, through = b.cache_through}
+		}
+	}
+	if c.inc != nil { inc_note_layout(c, bi) }
+	b.inc = {}
+	b.cache_ok = false
+	outer_open: ^Strut
+	contrib: Strut
+	own_fc: Flow_Ctx
+	if flow_ok && fc.open != nil {
+		outer_open = fc.open
+		own_fc = fc^
+		own_fc.open = &contrib
+		fc = &own_fc
 	}
 	if !stack_ok(c) { b.size = {w, 0}; return Result{h = pb_h(b)} }
 	cs := b.cs
@@ -259,12 +287,21 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc: ^Flow_Ctx)
 	if .Ifc in b.flags { layout_inline_abs(c, bi) }
 	b = &c.l.boxes[bi]
 	res.h = h
-	if independent {
+	if outer_open != nil { strut_merge(outer_open, contrib) }
+	if independent || flow_ok {
 		b.cache_ok = true
-		b.cache_in = {w, cb_h, forced_h}
+		b.cache_flow = !independent
+		b.cache_in = key
 		b.cache_h = h
+		b.cache_end, b.cache_through, b.cache_contrib = res.end, res.through, contrib
 	}
 	return res
+}
+
+@(private)
+strut_merge :: proc(s: ^Strut, o: Strut) {
+	s.pos = max(s.pos, o.pos)
+	s.neg = min(s.neg, o.neg)
 }
 
 // In-flow block-level children of a block container. Returns the content height, the trailing strut when the bottom

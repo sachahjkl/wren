@@ -2,6 +2,7 @@ package layout
 
 import "base:runtime"
 import "core:math"
+import "core:strings"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
@@ -30,6 +31,8 @@ Ctx :: struct {
 	root_el, body_el: base.Handle,
 	lb_bufs:  [dynamic]^LB_Buffers,     // line building buffers per nesting level of inline formatting contexts
 	lb_depth: int,
+	rebuilding: i32,                    // the box whose content a partial rebuild is making again (NONE: none)
+	inc:      ^Inc_Pass,                // an incremental pass: what it tracks while laying out (nil: a full pass)
 }
 
 @(private)
@@ -181,21 +184,30 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	if fi, ok := c.font_cache[key]; ok { c.last_key, c.last_fi = key, fi; return fi }
 	info: Font_Info
 	info.size = cs.font_size * c.scale
-	info.font = c.text.font(c.text.user, cs.font_family, cs.font_weight, key.italic)
-	m := c.text.metrics(c.text.user, info.font, info.size)
-	info.ascent, info.descent, info.x_height = m.ascent, m.descent, m.x_height
-	if info.x_height <= 0 { info.x_height = info.size * 0.5 }
+	info.weight, info.italic = cs.font_weight, key.italic
+	info.families = make([]string, len(cs.font_family), c.sa)
+	for f, i in cs.font_family { info.families[i] = strings.clone(f, c.sa) }
 	switch cs.line_height.kind {
 	case .Normal: info.line_h = info.size * c.st.line_height_normal
 	case .Number: info.line_h = info.size * cs.line_height.v
 	case .Length: info.line_h = cs.line_height.v * c.scale
 	}
-	info.space = c.text.width(c.text.user, info.font, info.size, " ")
+	font_resolve(c, &info)
 	fi := i32(len(c.l.fonts))
 	append(&c.l.fonts, info)
 	c.font_cache[key] = fi
 	c.last_key, c.last_fi = key, fi
 	return fi
+}
+
+// The face, metrics and space width of a font, from what it was made from (again when the faces change).
+@(private)
+font_resolve :: proc(c: ^Ctx, info: ^Font_Info) {
+	info.font = c.text.font(c.text.user, info.families, info.weight, info.italic)
+	m := c.text.metrics(c.text.user, info.font, info.size)
+	info.ascent, info.descent, info.x_height = m.ascent, m.descent, m.x_height
+	if info.x_height <= 0 { info.x_height = info.size * 0.5 }
+	info.space = c.text.width(c.text.user, info.font, info.size, " ")
 }
 
 @(private)

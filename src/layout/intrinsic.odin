@@ -138,9 +138,18 @@ attr_int :: proc(c: ^Ctx, h: base.Handle, name: string, fallback: int) -> int {
 	return n > 0 ? n : fallback
 }
 
-// Natural size in device px (content box). has_w / has_h: the dimension is known.
+// Natural size in device px (content box). has_w / has_h: the dimension is known. Remembered per box: an incremental
+// pass compares it when natural sizes may have changed (an image decoded).
 @(private)
 natural_size :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
+	w, h, has_w, has_h = natural_size_of(c, bi)
+	inf := &c.l.inc.info[bi]
+	inf.natural, inf.natural_has, inf.natural_ok = {w, h}, {has_w, has_h}, true
+	return
+}
+
+@(private)
+natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 	b := &c.l.boxes[bi]
 	h_node := b.node
 	n := dom.get(c.d, h_node)

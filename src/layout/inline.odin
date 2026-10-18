@@ -790,10 +790,16 @@ layout_atomic :: proc(c: ^Ctx, k: i32, cw: f32) -> f32 {
 layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool) {
 	b := &c.l.boxes[bi]
 	// a re-layout replaces the previous result; when it was the last one made, its storage is reused
-	if b.lines[1] > b.lines[0] && int(b.lines[1]) == len(c.l.lines) {
+	if b.lines[1] > b.lines[0] {
 		first_frag := c.l.lines[b.lines[0]].frags[0]
-		if int(c.l.lines[b.lines[1] - 1].frags[1]) == len(c.l.frags) { resize(&c.l.frags, int(first_frag)) }
-		resize(&c.l.lines, int(b.lines[0]))
+		last_frag := c.l.lines[b.lines[1] - 1].frags[1]
+		if int(b.lines[1]) == len(c.l.lines) {
+			if int(last_frag) == len(c.l.frags) { resize(&c.l.frags, int(first_frag)) } else { c.l.inc.dead_frags += int(last_frag - first_frag) }
+			resize(&c.l.lines, int(b.lines[0]))
+		} else {
+			c.l.inc.dead_lines += int(b.lines[1] - b.lines[0])
+			c.l.inc.dead_frags += int(last_frag - first_frag)
+		}
 	}
 	b.lines = {}
 	b.baseline, b.last_baseline = -1, -1

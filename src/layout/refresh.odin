@@ -73,7 +73,7 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 	anon := anon_paint_props()
 	// boxes in index order: a parent comes before its children (anonymous boxes copy from their parent)
 	for &b in l.boxes {
-		if .Root in b.flags { continue }
+		if .Root in b.flags || .Dead in b.flags { continue }
 		if b.node == base.NIL_HANDLE {
 			if b.parent == NONE || b.cs == nil { continue }
 			pc := l.boxes[b.parent].cs
@@ -142,7 +142,7 @@ refresh_overflow :: proc(l: ^Layout, vp: Vec2) -> bool {
 	order := preorder(l)
 	doc := compute_overflow(l, order, fixed_boxes(l, order), vp)
 	for &b in l.boxes {
-		if .Scroll not_in b.flags || .Propagated in b.flags || b.kind == .Inline { continue }
+		if .Scroll not_in b.flags || .Propagated in b.flags || b.kind == .Inline || .Dead in b.flags { continue }
 		port := padding_rect(&b)
 		ms := Vec2{max(b.overflow.max.x - port.max.x, 0), max(b.overflow.max.y - port.max.y, 0)}
 		if b.cs.overflow_x != .Scroll && b.cs.overflow_x != .Auto { ms.x = 0 }
