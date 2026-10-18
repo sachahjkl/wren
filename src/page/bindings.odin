@@ -189,6 +189,11 @@ dom_symbols := [?]wasm.Native_Symbol{
 
 n_EventTarget_addEventListener :: proc "c" (env: wasm.Exec_Env, target: u64, type: [^]u8, tl: i32, callback, user, flags: i32) -> i32 {
 	context = ctx()
+	if is_object(target) {
+		oid, oerr := object_add_listener(page_of(env), target, str(type, tl), u32(callback), u32(user), flags & 2 != 0, inst_of(env).index)
+		if oerr != .None { return i32(oerr) }
+		return i32(oid)
+	}
 	id, err := dom.add_listener(page_of(env).doc, H(target), str(type, tl), u32(callback), u32(user),
 		capture = flags & 1 != 0, once = flags & 2 != 0, passive = flags & 4 != 0, owner = inst_of(env).index)
 	if err != .None { return i32(err) }
@@ -197,12 +202,17 @@ n_EventTarget_addEventListener :: proc "c" (env: wasm.Exec_Env, target: u64, typ
 
 n_EventTarget_removeEventListener :: proc "c" (env: wasm.Exec_Env, target: u64, id: i32) -> i32 {
 	context = ctx()
+	if is_object(target) { return i32(object_remove_listener(page_of(env), target, dom.Listener_Id(id))) }
 	return i32(dom.remove_listener(page_of(env).doc, H(target), dom.Listener_Id(id)))
 }
 
 n_EventTarget_dispatchEvent :: proc "c" (env: wasm.Exec_Env, target: u64, type: [^]u8, tl: i32, flags: i32) -> i32 {
 	context = ctx()
 	p := page_of(env)
+	if is_object(target) {
+		if object_get(p, target) == nil { return i32(dom.Error.Invalid_Handle) }
+		return object_dispatch(p, target, dom.Event{type = str(type, tl), cancelable = flags & 2 != 0}) ? 1 : 0
+	}
 	if dom.get(p.doc, H(target)) == nil { return i32(dom.Error.Invalid_Handle) }
 	ok := dispatch_event(p, H(target), dom.Event{type = str(type, tl), bubbles = flags & 1 != 0, cancelable = flags & 2 != 0})
 	return ok ? 1 : 0
@@ -256,6 +266,35 @@ n_MouseEvent_button :: proc "c" (env: wasm.Exec_Env, ev: u64) -> i32 {
 	if e := with_event(env, ev); e != nil { return e.button }
 	return 0
 }
+// Payload of non-UI events (MessageEvent.data, CloseEvent.reason, ErrorEvent.message...): see dom.Event.
+n_Event_data :: proc "c" (env: wasm.Exec_Env, ev: u64, buf: [^]u8, cap: i32) -> i32 {
+	context = ctx()
+	e := with_event(env, ev)
+	if e == nil { return i32(dom.Error.Invalid_Handle) }
+	return out_string(e.data, buf, cap)
+}
+n_Event_text :: proc "c" (env: wasm.Exec_Env, ev: u64, buf: [^]u8, cap: i32) -> i32 {
+	context = ctx()
+	e := with_event(env, ev)
+	if e == nil { return i32(dom.Error.Invalid_Handle) }
+	return out_string(e.text, buf, cap)
+}
+n_Event_code :: proc "c" (env: wasm.Exec_Env, ev: u64) -> i64 {
+	context = ctx()
+	if e := with_event(env, ev); e != nil { return e.code }
+	return 0
+}
+n_Event_object :: proc "c" (env: wasm.Exec_Env, ev: u64) -> u64 {
+	context = ctx()
+	if e := with_event(env, ev); e != nil { return e.object }
+	return 0
+}
+n_Event_defaultPrevented :: proc "c" (env: wasm.Exec_Env, ev: u64) -> i32 {
+	context = ctx()
+	if e := with_event(env, ev); e != nil { return e.default_prevented ? 1 : 0 }
+	return 0
+}
+
 n_KeyboardEvent_keyCode :: proc "c" (env: wasm.Exec_Env, ev: u64) -> i32 {
 	context = ctx()
 	if e := with_event(env, ev); e != nil { return i32(e.key) }
@@ -276,6 +315,11 @@ events_symbols := [?]wasm.Native_Symbol{
 	{"MouseEvent_clientY", rawptr(n_MouseEvent_clientY), "(I)F", nil},
 	{"MouseEvent_button", rawptr(n_MouseEvent_button), "(I)i", nil},
 	{"KeyboardEvent_keyCode", rawptr(n_KeyboardEvent_keyCode), "(I)i", nil},
+	{"Event_data", rawptr(n_Event_data), "(I*~)i", nil},
+	{"Event_text", rawptr(n_Event_text), "(I*~)i", nil},
+	{"Event_code", rawptr(n_Event_code), "(I)I", nil},
+	{"Event_object", rawptr(n_Event_object), "(I)I", nil},
+	{"Event_defaultPrevented", rawptr(n_Event_defaultPrevented), "(I)i", nil},
 }
 
 ////////////////////////////////
@@ -309,6 +353,7 @@ register_imports :: proc() -> bool {
 	ok &&= wasm.register("net", net_symbols[:])
 	ok &&= wasm.register("document", document_symbols[:])
 	ok &&= wasm.register("console", console_symbols[:])
+	ok &&= wasm.register("async", async_symbols[:])
 	return ok
 }
 

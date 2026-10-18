@@ -8,6 +8,7 @@ import "wb:wasm"
 // Shared by every page of a profile. The shell owns one and keeps it current when preferences change.
 Settings :: struct {
 	max_fetch_bytes: int,
+	max_microtasks:  int,
 	wasm:            wasm.Options,
 	html:            html.Options,
 	style:           style.Settings,
@@ -15,7 +16,9 @@ Settings :: struct {
 
 PREFS := [?]config.Def{
 	{name = "page.max_fetch_bytes", kind = .Int, default = {i = 1 << 30}, bounded = true, min = 1 << 20, max = 1 << 40, bytes = true, unit = "bytes",
-		description = "Most response data one page's scripts may keep alive through fetch records. Past it, further data is refused."},
+		description = "Most bytes one page's scripts may keep alive in browser memory (fetch bodies, buffers, messages). Past it, further data is refused."},
+	{name = "page.max_microtasks_per_checkpoint", kind = .Int, default = {i = 100_000}, bounded = true, min = 100, max = 100_000_000,
+		description = "Microtasks (promise reactions, queueMicrotask) run in one go. A page that keeps queueing more is cut there and resumes on the next turn of the event loop, so it cannot freeze the browser."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) {
@@ -28,6 +31,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	return Settings{
 		max_fetch_bytes = int(config.int_of(p, "page.max_fetch_bytes")),
+		max_microtasks = int(config.int_of(p, "page.max_microtasks_per_checkpoint")),
 		wasm = wasm.options_from_prefs(p),
 		html = html.options_from_prefs(p),
 		style = style.settings_from_prefs(p),

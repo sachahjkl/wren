@@ -125,3 +125,82 @@ stale :: proc "contextless" () -> i32 {
 bad_pointer :: proc "contextless" () {
 	web.raw_log(cast([^]u8)uintptr(0x7fff_0000), 64)
 }
+
+////////////////////////////////
+// Async core: microtasks, promises, buffers
+
+async_log: [256]u8
+async_len: int
+
+note :: proc "contextless" (s: string) {
+	for i in 0 ..< len(s) { if async_len < len(async_log) { async_log[async_len] = s[i]; async_len += 1 } }
+}
+
+on_micro :: proc "contextless" (user: i32) {
+	b: [8]u8
+	note("m"); note(itoa(i64(user), b[:])); note(" ")
+	if user == 1 { web.queueMicrotask(on_micro, 3) }   // queued from a microtask: runs in the same checkpoint
+}
+
+on_settled :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
+	b: [24]u8
+	note(st == .Fulfilled ? "ok" : "ko"); note(itoa(web.Promise_value(p), b[:])); note(" ")
+}
+
+on_all :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
+	note(st == .Fulfilled ? "all-ok " : "all-ko ")
+	web.set_attribute(state.app, "data-async", string(async_log[:async_len]))
+}
+
+pending_a, pending_b: web.Handle
+
+later :: proc "contextless" (user: i32) {
+	web.promise_resolve(pending_a, 10)
+	web.promise_resolve(pending_b, 20)
+}
+
+// Order to observe: synchronous code, then microtasks in FIFO order (including ones queued by microtasks), then the
+// timer; Promise.all settles after its last input.
+@(export)
+async_probe :: proc "contextless" () {
+	async_len = 0
+	web.queueMicrotask(on_micro, 1)
+	web.queueMicrotask(on_micro, 2)
+	done := web.Promise_create()
+	web.promise_resolve(done, 42)
+	web.Promise_then(done, on_settled, 0)
+	bad := web.Promise_create()
+	web.Promise_then(bad, on_settled, 0)
+	web.promise_reject(bad, -7, "nope")
+	pending_a = web.Promise_create()
+	pending_b = web.Promise_create()
+	list := [2]web.Handle{pending_a, pending_b}
+	web.Promise_then(web.promise_all(list[:]), on_all, 0)
+	web.Timers_setTimeout(later, 0, 0)
+	note("sync ")
+}
+
+@(export)
+buffer_probe :: proc "contextless" () -> i32 {
+	src := [6]u8{'h', 'e', 'l', 'l', 'o', '!'}
+	b := web.buffer_create(src[:])
+	if web.Buffer_length(b) != 6 { return -1 }
+	part := web.Buffer_slice(b, 1, -1)     // "ello"
+	dst: [8]u8
+	got := web.buffer_read(part, dst[:])
+	if string(got) != "ello" { return -2 }
+	w := [2]u8{'E', 'L'}
+	web.buffer_write(part, w[:])
+	got = web.buffer_read(part, dst[:])
+	if string(got) != "ELlo" { return -3 }
+	got = web.buffer_read(b, dst[:])
+	if string(got) != "hello!" { return -4 }   // a slice is a copy
+	kind: [32]u8
+	n := web.raw_objectKind(b, raw_data(kind[:]), i32(len(kind)))
+	if string(kind[:n]) != "ArrayBuffer" { return -5 }
+	web.Object_release(part)
+	web.Object_release(b)
+	if web.Buffer_length(b) != -1 { return -6 }   // stale after release
+	if web.Node_appendChild(web.Document_body(), b) == .None { return -7 }   // an object is not a node
+	return 1
+}

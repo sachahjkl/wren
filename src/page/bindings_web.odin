@@ -32,7 +32,7 @@ timer_fire :: proc(data: rawptr) {
 	p, cb, user, repeat, self, idx := t.page, t.callback, t.user, t.interval, t.self, t.instance
 	if inst := instance_by_index(p, idx); inst != nil {
 		argv := [1]u32{user}
-		if res := wasm.call_indirect(inst, cb, argv[:]); res != .Ok { log(p, .Error, inst.last_error) }
+		call_guest(p, inst, cb, argv[:])
 	}
 	// one-shots release their record once fired (the guest may already have cleared it: removal is idempotent)
 	if !repeat && !p.closed { base.pool_remove(&p.timers, self) }
@@ -117,7 +117,7 @@ fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	// the guest learns about it through its callback: (user: i32, fetch: i64, state: i32)
 	h := f.self
 	argv := [4]u32{f.user, u32(u64(h)), u32(u64(h) >> 32), u32(f.state)}
-	if res := wasm.call_indirect(inst, f.callback, argv[:]); res != .Ok { log(p, .Error, inst.last_error) }
+	call_guest(p, inst, f.callback, argv[:])
 }
 
 // "Name: value" lines separated by CR LF or LF.

@@ -74,6 +74,8 @@ Page :: struct {
 	body:      base.Handle,
 	head:      base.Handle,
 	doc_el:    base.Handle,
+	objects:      Objects,              // promises, buffers and every other non-DOM object (objects.odin)
+	host_reactions: [dynamic]Host_Reaction,
 	// styling (styles.odin)
 	engine:       ^style.Engine,
 	styled:       ^style.Styled,
@@ -129,6 +131,8 @@ page_cleanup :: proc(data: rawptr) {
 	it = 0
 	for _, t in base.pool_next(&p.timers, &it) { host.clear_timer(p.loop, t.handle) }
 	base.pool_destroy(&p.timers)
+	objects_destroy(p)   // before the dispatcher: an object's destructor may still look at events
+	delete(p.host_reactions)
 	styles_destroy(p)
 	dom.dispatcher_destroy(&p.dp)
 	delete(p.instances)
@@ -214,9 +218,11 @@ load_module :: proc(p: ^Page, image: []byte, name := "module") -> (inst: ^wasm.I
 	inst.index = u32(len(p.instances))
 	append(&p.instances, inst)
 	if wasm.has_export(inst, "wb_main") {
-		if res := wasm.call_raw(inst, "wb_main"); res != .Ok {
-			return inst, false, strings.clone(inst.last_error)
-		}
+		p.objects.depth += 1
+		res := wasm.call_raw(inst, "wb_main")
+		p.objects.depth -= 1
+		if res != .Ok { return inst, false, strings.clone(inst.last_error) }
+		if p.objects.depth == 0 { microtask_checkpoint(p) }
 	}
 	return inst, true, ""
 }
@@ -240,8 +246,6 @@ invoke_listener :: proc(user: rawptr, l: dom.Listener, event: base.Handle) -> bo
 	inst := instance_by_index(p, l.owner)
 	if inst == nil { return true }   // that module is gone: its listener has nothing to call
 	argv := [3]u32{l.user, u32(u64(event)), u32(u64(event) >> 32)}   // (user: i32, event: i64)
-	if res := wasm.call_indirect(inst, l.callback, argv[:]); res != .Ok {
-		log(p, .Error, inst.last_error)
-	}
+	call_guest(p, inst, l.callback, argv[:])
 	return true   // one failing listener does not stop the others
 }

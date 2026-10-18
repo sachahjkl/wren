@@ -19,6 +19,12 @@ Event :: struct {
 	key:             u32,       // key code for keyboard events
 	button:          i32,
 	mods:            u32,
+	// payload of non-UI events (message, error, close, progress...). `data` is owned by the event; `object` is a handle the
+	// event carries (a buffer, a port...), `code` a numeric detail (close code, error kind, loaded bytes...).
+	data:            string,
+	object:          u64,
+	code:            i64,
+	text:            string,    // owned: a second string (origin of a message, reason of a close, key text...)
 }
 
 // What the embedder does to run a listener (the page calls into the Wasm instance). Returns false to stop dispatching
@@ -33,7 +39,7 @@ Dispatcher :: struct {
 
 dispatcher_destroy :: proc(dp: ^Dispatcher) {
 	it: u32
-	for _, e in base.pool_next(&dp.events, &it) { delete(e.type) }
+	for _, e in base.pool_next(&dp.events, &it) { delete(e.type); delete(e.data); delete(e.text) }
 	base.pool_destroy(&dp.events)
 }
 
@@ -79,10 +85,12 @@ dispatch :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: Even
 	if get(d, target) == nil { return true }
 	ev := proto
 	ev.type = strings.clone(proto.type)
+	ev.data = strings.clone(proto.data)
+	ev.text = strings.clone(proto.text)
 	ev.target = target
 	eh, _ := base.pool_insert(&dp.events, ev)
 	defer {
-		if e := base.pool_get(&dp.events, eh); e != nil { delete(e.type) }
+		if e := base.pool_get(&dp.events, eh); e != nil { delete(e.type); delete(e.data); delete(e.text) }
 		base.pool_remove(&dp.events, eh)
 	}
 

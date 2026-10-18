@@ -113,6 +113,16 @@ main :: proc() {
 	check(res == .Ok, "instance still usable after the trap")
 
 	////////////////////////////////
+	fmt.println("-- microtasks, promises, buffers")
+	page.call_export(p, inst, "async_probe")
+	pump_until("promise all", proc() -> bool { return attr(dom.find_by_id(the_page.doc, "app"), "data-async") != "" })
+	check(attr(app, "data-async") == "sync m1 m2 ok42 ko-7 m3 all-ok ", fmt.tprintf("microtask and promise ordering (got %q)", attr(app, "data-async")))
+	check(len(p.objects.microtasks) == 0, "microtask queue drained")
+	b, bres := wasm.call_i32(inst, "buffer_probe")
+	check(bres == .Ok && b == 1, fmt.tprintf("buffers: create, slice, read, write, release (%d)", b))
+	check(p.held == 0, "buffer memory returned to the page budget")
+
+	////////////////////////////////
 	fmt.println("-- origin, cookies, CORS from the guest")
 	cookies.clear_all(&profile.jar)
 	n, res2 := wasm.call_i32(inst, "cookie_probe")
