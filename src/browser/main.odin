@@ -418,14 +418,20 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	}
 	scale := ui.scale()
 	size := draw.rect_size(b.rect)
+	prof_begin(.Styles)
 	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
+	prof_end(.Styles)
 	draw.rect(dc, b.rect, to_draw(styled.canvas))
 	if !t.layout.valid || t.layout.mutations != t.page.doc.mutations || t.layout.serial != styled.serial || t.layout.width != size.x || t.layout.scale != scale {
+		prof_begin(.Layout)
 		layout_document(&t.layout, t.page.doc, styled, &app.fonts, app.ui_font, size.x, scale)
+		prof_end(.Layout)
 	}
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
 	draw.push_clip(dc, b.rect)
+	prof_begin(.Paint_Items)
 	paint(&t.layout, dc, &app.fonts, app.ui_font, b.rect.min - {0, t.scroll}, b.rect)
+	prof_end(.Paint_Items)
 	draw.pop_clip(dc)
 }
 
@@ -628,14 +634,23 @@ on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) { apply_pre
 // Loop
 
 frame :: proc(app: ^App) {
+	prof_frame_begin()
+	prof_begin(.Wait)
 	render.wait_for_frame(&app.r)
+	prof_end(.Wait)
+	prof_begin(.Events)
 	events := platform.poll_events(app.win, false)
 	render.mark_input(&app.r)
 	if len(events) > 0 { app.frames_requested = max(app.frames_requested, 4) }
+	prof_end(.Events)
 
 	// network completions, timers and posted tasks run here, on the UI thread
+	prof_begin(.Loop)
 	if host.run_ready(&app.loop) > 0 { app.frames_requested = max(app.frames_requested, 2) }
+	prof_end(.Loop)
+	prof_begin(.Input)
 	route_page_input(app, events)
+	prof_end(.Input)
 
 	render.resize(&app.r, app.win.size)
 	size := draw.Vec2{f32(app.win.size.x), f32(app.win.size.y)}
@@ -650,21 +665,36 @@ frame :: proc(app: ^App) {
 		font = app.ui_font, font_size = app.cfg.ui_font_size, text_pad = 7,
 		cursor = .Arrow,
 	}
+	prof_begin(.Build_UI)
 	ui.begin_build(&app.ui_state, {
 		window_size = size, events = events, dt = dt, animations = platform.os_animations_enabled(),
 		dpi_scale = app.win.dpi_scale, base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
 	})
 	build_ui(app)
 	ui.end_build()
+	prof_end(.Build_UI)
 	platform.set_cursor(app.win, ui.cursor(&app.ui_state))
 	if ui.needs_frame(&app.ui_state) { app.frames_requested = max(app.frames_requested, 2) }
 	if t := current_tab(app); t != nil && t.page != nil && t.layout.mutations != t.page.doc.mutations { app.frames_requested = max(app.frames_requested, 2) }
 
+	prof_gpu_begin(app)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
+	prof_begin(.UI_Draw)
 	ui.draw_tree(&app.ui_state, &app.dc)
+	prof_end(.UI_Draw)
+	prof_begin(.Submit)
 	draw.end_frame(&app.dc)
+	prof_end(.Submit)
+	prof_gpu_end(app)
+	prof_begin(.Present)
 	render.frame_end(&app.r)
+	prof_end(.Present)
+	{
+		items, nodes := 0, 0
+		if t := current_tab(app); t != nil && t.page != nil { items, nodes = len(t.layout.items), t.page.doc.nodes.count }
+		prof_frame_end(app, items, nodes)
+	}
 	free_all(context.temp_allocator)
 }
 
@@ -733,6 +763,7 @@ main :: proc() {
 	tab_open(app, address)
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }
 
+	prof_init(app)
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
 	app.win.user = app
@@ -743,12 +774,15 @@ main :: proc() {
 		if app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) {
 			timeout := ui.wake_ms(&app.ui_state)
 			if t := host.next_timeout_ms(&app.loop); t >= 0 && (timeout <= 0 || t < timeout) { timeout = max(t, 1) }
+			prof_begin(.Idle)
 			platform.wait_event(app.win, timeout)
+			prof_end(.Idle)
 		}
 		frame(app)
 		if app.frames_requested > 0 { app.frames_requested -= 1 }
 	}
 
+	prof_report()
 	profile_save(app, force = true)
 	base.scope_close(app.process)   // every tab, page and request
 	fetch.loader_destroy(&app.loader)
