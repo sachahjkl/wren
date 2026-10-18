@@ -920,7 +920,8 @@ parse_align :: proc(vs: []css.Value) -> (Content_Align, bool) {
 	a: Content_Align
 	if id, ok := ident_raw(vs); ok {
 		switch strings.to_lower(id, context.temp_allocator) {
-		case "left", "self-start", "start", "legacy": return .Start, true
+		case "legacy": return .Normal, true   // justify-items: legacy is `normal` outside the legacy block layout
+		case "left", "self-start", "start": return .Start, true
 		case "right", "self-end", "end": return .End, true
 		case "anchor-center": return .Center, true
 		}

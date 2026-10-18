@@ -168,6 +168,7 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.flex_shrink = 1
 	c.flex_basis = auto_length
 	c.align_self = .Auto
+	c.justify_self = .Auto
 	c.row_gap, c.column_gap = Length{kind = .Normal}, Length{kind = .Normal}
 	c.color = s.text_color
 	c.font_size = s.default_font_size
@@ -175,7 +176,7 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.line_height = Line_Height{kind = .Normal}
 	c.text_decoration_color = s.text_color
 	c.text_indent = px(0)
-	c.tab_size = 8
+	c.tab_size, c.tab_spaces = 8, true
 	c.pointer_events = true
 	c.background_color = {0, 0, 0, 0}
 	c.background_position = {Length{kind = .Percent, v = 0}, Length{kind = .Percent, v = 0}}
@@ -453,10 +454,10 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Word_Break: return set_enum(vs, &c.word_break)
 	case .Overflow_Wrap: return set_enum(vs, &c.overflow_wrap)
 	case .Tab_Size:
-		if n, ok := number_in(vs, 0, 1e6); ok { c.tab_size = n * f32(c.font_size) * 0.5; return true }   // a tab stop counts space widths
+		if n, ok := number_in(vs, 0, 1e6); ok { c.tab_size, c.tab_spaces = n, true; return true }   // layout multiplies by the advance of a space
 		l, ok := parse_length(cx, vs, {})
 		if !ok || l.kind != .Px { return false }
-		c.tab_size = l.v
+		c.tab_size, c.tab_spaces = l.v, false
 	case .Direction: return set_enum(vs, &c.direction)
 	case .Text_Shadow:
 		sh, ok := parse_shadows(cx, vs)
@@ -523,8 +524,8 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		#partial switch p {
 		case .Width: c.width = l
 		case .Height: c.height = l
-		case .Min_Width: c.min_width = l.kind == .Auto ? px(0) : l
-		case .Min_Height: c.min_height = l.kind == .Auto ? px(0) : l
+		case .Min_Width: c.min_width = l
+		case .Min_Height: c.min_height = l
 		case .Max_Width: c.max_width = l
 		case .Max_Height: c.max_height = l
 		}

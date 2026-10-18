@@ -147,7 +147,7 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Word_Break: return fa(&c.word_break), NO_FIELD
 	case .Overflow_Wrap: return fa(&c.overflow_wrap), NO_FIELD
 	case .Hyphens: return fa(&c.hyphens), NO_FIELD
-	case .Tab_Size: return fa(&c.tab_size), NO_FIELD
+	case .Tab_Size: return fa(&c.tab_size), fa(&c.tab_spaces)
 	case .Direction: return fa(&c.direction), NO_FIELD
 	case .Text_Shadow: return fa(&c.text_shadow), NO_FIELD
 	case .Display: return fa(&c.display), NO_FIELD

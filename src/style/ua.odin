@@ -15,8 +15,10 @@ css_color :: proc(c: css.Color) -> string {
 
 ua_stylesheet_text :: proc(s: ^Settings, allocator := context.allocator) -> string {
 	// fmt would read the braces of CSS as format directives: the template holds `%v` placeholders filled in order
+	// the background preference is the canvas color (Styled.canvas), not a background of the root element: a root
+	// background would stop the body's from propagating to the canvas (CSS Backgrounds 3 §2.11.2)
 	values := [?]string{
-		css_color(s.text_color), css_color(s.background_color), fmt.tprintf("%g", s.body_margin),
+		css_color(s.text_color), fmt.tprintf("%g", s.body_margin),
 		css_color(s.link_color), css_color(s.visited_color), css_color(s.active_link_color), fmt.tprintf("%g", s.monospace_font_size),
 	}
 	sb := strings.builder_make(allocator)
@@ -34,7 +36,7 @@ ua_stylesheet_text :: proc(s: ^Settings, allocator := context.allocator) -> stri
 	return strings.to_string(sb)
 }
 
-UA_TEMPLATE :: `html { display: block; color: %v; background-color: %v; }
+UA_TEMPLATE :: `html { display: block; color: %v; }
 head, link, meta, script, style, title, base, template, noscript, area, datalist, param, source, track, rp { display: none; }
 [hidden] { display: none; }
 address, blockquote, center, dialog, div, figure, figcaption, footer, form, header, hr, legend, listing, main, p, plaintext, pre, search, xmp,

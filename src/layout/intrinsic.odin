@@ -100,6 +100,8 @@ intrinsic_compute :: proc(c: ^Ctx, bi: i32, ignore_width: bool) -> [2]f32 {
 			}
 		case .Flex:
 			res = flex_intrinsic(c, bi) + pb
+		case .Grid:
+			res = grid_intrinsic(c, bi) + pb
 		case .Table:
 			res = table_intrinsic(c, bi)
 		case .Inline, .Row_Group, .Row:

@@ -239,6 +239,8 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc: ^Flow_Ctx)
 		if .Ifc not_in b.flags { block_baselines(c, bi) }
 	case .Flex:
 		content_h = layout_flex(c, bi, cw, ch_def, cb_h)
+	case .Grid:
+		content_h = layout_grid(c, bi, cw, ch_def, cb_h)
 	case .Table:
 		content_h = layout_table(c, bi, w, cb_h, forced_h)
 	case .Replaced:
@@ -255,7 +257,7 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc: ^Flow_Ctx)
 	if .Root in b.flags { h = max(h, c.vp.y) }
 	b.size = {w, h}
 	if .List_Item in b.flags && b.marker_w != 0 { place_marker(c, bi) }
-	if b.abs_first != NONE { layout_abs_list(c, bi) }
+	if b.abs_first != NONE { if b.kind == .Grid { grid_abs(c, bi) } else { layout_abs_list(c, bi) } }
 	if .Ifc in b.flags { layout_inline_abs(c, bi) }
 	b = &c.l.boxes[bi]
 	res.h = h
