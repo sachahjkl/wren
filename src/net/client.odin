@@ -120,6 +120,7 @@ Client :: struct {
 	scratch:       [dynamic]Event,
 	drain_pending: bool,
 	live_jobs:     int,   // atomic
+	ws:            ^Ws_Manager,   // WebSockets of this client (websocket.odin), created on first use
 }
 
 // `settings` zero value = the defaults (what about:config shows).
@@ -172,6 +173,7 @@ client_apply :: proc(c: ^Client, s: Settings) {
 }
 // Cancels everything, waits for WinHTTP to let go of every job, frees the rest.
 client_destroy :: proc(c: ^Client) {
+	websockets_destroy(c)
 	c.shutting_down = true
 	it: u32
 	handles: [dynamic]base.Handle
