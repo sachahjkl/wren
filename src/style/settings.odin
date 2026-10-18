@@ -117,7 +117,7 @@ PREFS := [?]config.Def{
 	{name = "style.animations.mode", kind = .String, default = {s = "auto"}, choices = {"auto", "normal", "reduce", "off"},
 		description = "CSS transitions and animations. auto: like reduce when style.prefers_reduced_motion is on, else normal. reduce: durations are cut to style.animations.reduced_max_duration_ms and infinite animations run once. off: nothing moves, end values apply at once."},
 	{name = "style.animations.reduced_max_duration_ms", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 10_000, unit = "ms",
-		description = "In reduce mode: the longest a transition or one animation iteration may last. 0 jumps straight to the end values (events still fire)."},
+		description = "In reduce mode: the longest a transition, a delay or one animation iteration may last. 0 jumps straight to the end values (transitions then do not start; animations still report start and end)."},
 	{name = "style.animations.time_scale", kind = .Float, default = {f = 1}, bounded = true, min = 0.01, max = 100,
 		description = "Speed of the document clock that drives transitions and animations (0.1 = ten times slower). A debugging aid."},
 	{name = "style.animations.max_running", kind = .Int, default = {i = 20_000}, bounded = true, min = 1, max = 10_000_000,
