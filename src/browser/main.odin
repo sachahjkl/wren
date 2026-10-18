@@ -522,15 +522,15 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
 	prof_end(.Styles)
 	draw.rect(dc, b.rect, to_draw(styled.canvas))
-	if !t.layout.valid || t.layout.mutations != t.page.doc.mutations || t.layout.serial != styled.serial || t.layout.width != size.x || t.layout.scale != scale {
+	if layout_stale(&t.layout, t.page.doc, styled, size, scale) {
 		prof_begin(.Layout)
-		layout_document(&t.layout, t.page.doc, styled, &app.measure, &app.fonts, app.ui_font, size.x, scale, app.cfg.layout_band_px)
+		layout_document(&t.layout, t.page.doc, styled, &app.measure, &app.page_settings.style, size, scale, app.cfg.layout_band_px)
 		prof_end(.Layout)
 	}
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
 	draw.push_clip(dc, b.rect)
 	prof_begin(.Paint_Items)
-	paint(&t.layout, dc, &app.fonts, app.ui_font, b.rect.min - {0, t.scroll}, b.rect)
+	paint(&t.layout, dc, t.page.doc, b.rect.min, size, t.scroll, b.rect)
 	forms_paint_overlays(app, dc, b.rect)
 	prof_end(.Paint_Items)
 	draw.pop_clip(dc)
@@ -623,7 +623,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	have_move := false
 	defer if have_move && t.page != nil {
 		hovered := base.NIL_HANDLE
-		if draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min + {0, t.scroll}) }
+		if draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
 		st := t.page.style_state
 		st.hover = hovered
 		page.set_style_state(t.page, st)
@@ -638,15 +638,18 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		case .Mouse_Move:
 			last_move, have_move = ev, true   // only the last position of the frame matters: hit test once, after the loop
 		case .Scroll:
-			if inside { t.scroll -= ev.delta.y * app.cfg.scroll_step * scale }
+			if inside {
+				d := draw.Vec2{-ev.delta.x, -ev.delta.y} * app.cfg.scroll_step * scale
+				if !page_wheel(&t.layout, ev.pos - app.page_rect.min, d, draw.rect_size(app.page_rect), t.scroll) { t.scroll += d.y }
+			}
 		case .Mouse_Press:
 			if !inside || !t.layout.valid { continue }
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
-			forms_pointer_down(app, t, ev, hit_test(&t.layout, local), local)
+			forms_pointer_down(app, t, ev, hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll), local)
 		case .Mouse_Release:
 			if !t.layout.valid { continue }
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
-			released := inside ? hit_test(&t.layout, local) : base.NIL_HANDLE
+			released := inside ? hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) : base.NIL_HANDLE
 			target, clicked := forms_pointer_up(app, t, ev, released, local)
 			if !clicked || t.page == nil { continue }
 			not_prevented := forms_click(app, t, target, ev, local)
@@ -842,6 +845,9 @@ main :: proc() {
 	draw.init(&app.dc, &app.r, &app.fonts)
 	ui.init(&app.ui_state, &app.fonts, &app.theme)
 	app.ui_state.icon_font = app.icons
+	page_render_init(app)
+	set_content_painter(forms_content_painter, app)
+	page_render.bare = forms_bare_control
 
 	host.loop_init(&app.loop, wake_window, app.win)
 	ns := net.settings_from_prefs(&app.prefs)
@@ -898,6 +904,7 @@ main :: proc() {
 	wasm.runtime_destroy()
 	measure_destroy(&app.measure)
 	forms_shell_destroy()
+	page_render_destroy()
 	config_view_destroy(&app.config_view)
 	config.prefs_destroy(&app.prefs)
 }

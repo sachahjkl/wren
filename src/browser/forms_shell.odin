@@ -13,6 +13,7 @@ package browser
 import "base:runtime"
 import "core:math"
 import "core:os"
+import "core:strconv"
 import "core:strings"
 import "core:time"
 import "core:unicode/utf8"
@@ -27,6 +28,7 @@ import "wb:fetch"
 import "wb:forms"
 import "wb:host"
 import "wb:page"
+import lay "wb:layout"
 import "wb:style"
 
 foreign import user32 "system:User32.lib"
@@ -203,11 +205,23 @@ is_rendered :: proc(p: ^page.Page, h: base.Handle) -> bool {
 	return true
 }
 
-// Layout rect (page coordinates) of the first item of `h`, from the current layout.
+// Border box of `h` in document coordinates (physical pixels, scroll offsets of containers applied), from the layout.
 @(private = "file")
 layout_rect :: proc(t: ^Tab, h: base.Handle) -> (draw.Rect, bool) {
-	for &it in t.layout.items { if it.node == h { return it.rect, true } }
-	return {}, false
+	r, ok := lay.box_of(&t.layout, h, draw.rect_size(the_app.page_rect), t.scroll)
+	if !ok { return {}, false }
+	return draw.Rect{r.border.min, r.border.max}, true
+}
+
+// The painter of package layout asks us for the content of form controls (render.odin, set_content_painter).
+forms_content_painter :: proc(user: rawptr, dc: ^draw.Context, doc: ^dom.Document, node: base.Handle, kind: lay.Item_Kind,
+	content, border: draw.Rect, cs: ^style.Computed, font_id: font.Font_Id, font_size: f32) -> bool {
+	if kind != .Control { return false }
+	app := (^App)(user)
+	t := current_tab(app)
+	if t == nil || t.page == nil || t.page.doc != doc || t.page.formctl == nil { return false }
+	paint_control(dc, &app.fonts, font_id != 0 ? font_id : app.ui_font, node, content, cs, t.page, time.tick_now())
+	return true
 }
 
 scroll_into_view :: proc(app: ^App, t: ^Tab, h: base.Handle) {
@@ -1560,3 +1574,13 @@ picker_done :: proc(data: rawptr) {
 }
 
 _ :: runtime
+
+@(private = "file")
+itoa :: proc(n: int) -> string { buf: [24]u8; return strings.clone(strconv.write_int(buf[:], i64(n), 10), context.temp_allocator) }
+// Controls whose whole look is drawn by paint_control: the layout painter draws no background or border for them.
+forms_bare_control :: proc(user: rawptr, doc: ^dom.Document, node: base.Handle) -> bool {
+	n := dom.get(doc, node)
+	if n == nil || n.kind != .Element || n.name != "input" { return false }
+	t, _ := dom.get_attribute(doc, node, "type")
+	return strings.equal_fold(t, "checkbox") || strings.equal_fold(t, "radio") || strings.equal_fold(t, "range")
+}

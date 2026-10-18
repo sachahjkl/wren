@@ -47,6 +47,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	fetch.register_prefs(p)
 	cookies.register_prefs(p)
 	page.register_prefs(p)
+	register_layout_prefs(p)
 	_ = wasm.PREFS
 	_ = html.PREFS
 }

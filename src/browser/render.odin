@@ -1,608 +1,744 @@
-// Interim document painter. Styles come from the real style engine (package style: selectors, cascade, computed values);
-// the layout itself is still simple: block boxes with margins, padding, borders and widths, and inline text flowing across
-// elements. Flex, floats, positioning, tables and real inline formatting replace it next. Every change re-runs it from
-// scratch, which is fine for now, not the final design.
+// Document painter: draws the display list of package layout with toolkit:draw. Layout decides what goes where and in
+// which order (CSS 2.1 Appendix E), under which clip, scroll offset, sticky shift and opacity; this file turns each item
+// into rectangles and glyphs: backgrounds (colors, linear gradients), borders of every style with rounded corners,
+// box shadows, outlines, text with decorations, spacing and shadows, list markers, scroll bars, and the content of form
+// controls and replaced elements (through a hook other parts of the browser install).
 package browser
 
-import "core:slice"
+import "core:math"
 import "core:strings"
-import "core:time"
+import "core:unicode/utf8"
 import "toolkit:draw"
 import "toolkit:font"
 import "wb:base"
+import "wb:config"
 import "wb:css"
 import "wb:dom"
-import "wb:forms"
+import lay "wb:layout"
 import "wb:style"
 
-Item_Kind :: enum u8 { Box, Text, Control }
+Layout :: lay.Layout
 
-Item :: struct {
-	kind:      Item_Kind,
-	rect:      draw.Rect,
-	node:      base.Handle,   // element that owns the item (hit testing, default actions)
-	color:     draw.Color,    // Box: background (alpha 0 = none), Text: foreground
-	radius:    f32,
-	text:      string,        // Text: a slice of the node's own text (valid until the next mutation)
-	size:      f32,
-	underline: bool,
-	bg:        draw.Color,    // Text: background chip, alpha 0 = none
-	pad_x:     f32,           // horizontal padding inside the chip
-	radius_bg: f32,
-	border:    [4]f32,        // Box: top, right, bottom, left widths
-	border_color: [4]draw.Color,
-	inset:     [4]f32,        // Control: border + padding (the content box is the rect minus this)
-	bare:      bool,          // Control: drawn entirely by paint_control (checkbox, radio, slider...)
+// Paints the content area of a form control or a replaced element (image, canvas...). Returns false to let the default
+// painter draw it. `content` and `border` are in physical pixels of the window.
+Content_Painter :: proc(user: rawptr, dc: ^draw.Context, doc: ^dom.Document, node: base.Handle, kind: lay.Item_Kind,
+	content, border: draw.Rect, cs: ^style.Computed, font_id: font.Font_Id, font_size: f32) -> bool
+
+Page_Render :: struct {
+	fonts:      Page_Fonts,
+	settings:   lay.Settings,
+	content:    Content_Painter,
+	content_user: rawptr,
+	bare:       proc(user: rawptr, doc: ^dom.Document, node: base.Handle) -> bool,   // controls drawn entirely by `content` (no box)
+	replaced:   lay.Replaced_Api,   // natural sizes of images / videos, from whoever decodes them
+	gradients:  map[string]^Gradient,
+	watch_layout, watch_font: int,
 }
 
-Layout :: struct {
-	items:     [dynamic]Item,
-	height:    f32,
-	mutations: u64,
-	serial:    u64,           // the style pass this layout was made from
-	width:     f32,
-	scale:     f32,
-	valid:     bool,
-	owned:     [dynamic]string,   // strings made up by layout (list markers, generated content); items point into them
-	// Spatial index: items grouped by horizontal band of the page, so painting and hit testing visit only what is near.
-	band_h:       f32,
-	band_start:   [dynamic]u32,       // CSR layout: band b owns band_items[band_start[b] : band_start[b + 1]]
-	band_items:   [dynamic]u32,       // item indices, ascending within a band (= paint order)
+page_render: Page_Render
+
+// Shell start-up: the fonts of pages and the layout preferences.
+page_render_init :: proc(app: ^App) {
+	page_fonts_init(&page_render.fonts, &app.fonts, app.ui_font)
+	page_render.settings = lay.settings_from_prefs(&app.prefs)
+	page_render.gradients = make(map[string]^Gradient)
+	page_render.watch_layout = config.watch(&app.prefs, "layout.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		page_render.settings = lay.settings_from_prefs(p)
+		for t in (^App)(user).tabs { t.layout.valid = false }
+	}, app)
+	page_render.watch_font = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		page_fonts_forget(&page_render.fonts)
+	}, app)
 }
 
-layout_reset :: proc(l: ^Layout) {
-	clear(&l.items)
-	clear(&l.band_start); clear(&l.band_items)
-	free_owned(l)
-	l.valid = false
+page_render_destroy :: proc() {
+	page_fonts_destroy(&page_render.fonts)
+	for k, g in page_render.gradients { delete(k); delete(g.stops); free(g) }
+	delete(page_render.gradients)
 }
 
-@(private)
-free_owned :: proc(l: ^Layout) {
-	for s in l.owned { delete(s) }
-	clear(&l.owned)
+// Installs the painter of form controls / replaced content (forms, images).
+set_content_painter :: proc(fn: Content_Painter, user: rawptr) {
+	page_render.content, page_render.content_user = fn, user
 }
 
-layout_destroy :: proc(l: ^Layout) {
-	delete(l.items)
-	delete(l.band_start); delete(l.band_items)
-	free_owned(l)
-	delete(l.owned)
+// Installs the source of natural sizes of replaced content (decoded images...). A change of size needs a new layout:
+// set `layout.valid = false` on the tabs concerned.
+set_replaced_sizes :: proc(api: lay.Replaced_Api) { page_render.replaced = api }
+
+register_layout_prefs :: proc(p: ^config.Prefs) { lay.register_prefs(p) }
+
+layout_reset :: proc(l: ^Layout) { lay.reset(l) }
+layout_destroy :: proc(l: ^Layout) { lay.destroy(l) }
+
+// `viewport`: size of the page area in physical pixels; `scale`: physical pixels per CSS px.
+layout_document :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, measure: ^Measure, style_settings: ^style.Settings, viewport: draw.Vec2, scale, band_h: f32) {
+	lay.run(l, lay.Input{
+		doc = d, styled = styled, settings = &page_render.settings,
+		text = page_text_api(&page_render.fonts, measure, style_settings),
+		replaced = page_render.replaced,
+		viewport = viewport, scale = scale, band_h = band_h,
+	})
 }
 
-// A string that lives as long as the layout.
-@(private)
-persist :: proc(c: ^Layout_Ctx, s: string) -> string {
-	p := strings.clone(s)
-	append(&c.l.owned, p)
-	return p
+layout_stale :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, viewport: draw.Vec2, scale: f32) -> bool {
+	return !l.valid || l.mutations != d.mutations || l.serial != styled.serial || l.viewport != viewport || l.scale != scale
 }
 
-// The parts of a computed style this painter uses, in physical pixels.
-@(private)
-Look :: struct {
-	size:       f32,
-	line_h:     f32,
-	fg, bg:     draw.Color,
-	radius:     f32,
-	pre, hidden, inline, underline, contents: bool,
-	align:      style.Text_Align,
-	margin:     [4]f32,     // top, right, bottom, left
-	padding:    [4]f32,
-	border:     [4]f32,
-	border_color: [4]draw.Color,
-	auto_x:     [2]bool,    // margin-left / margin-right are auto
-	width:      f32,        // < 0: auto (border-box width when box_sizing is border-box)
-	min_w, max_w: f32,      // max_w < 0: none
-	height:     f32,
-	border_box: bool,
-	display:    style.Display,
-	list_type:  style.List_Style_Type,
-	inside_marker: bool,
+// Element under a point of the page area (`p` relative to its top-left corner).
+hit_test :: proc(l: ^Layout, p, viewport: draw.Vec2, scroll: f32) -> base.Handle {
+	return lay.hit_test(l, p, viewport, scroll).node
 }
 
-@(private)
-Layout_Ctx :: struct {
-	l:       ^Layout,
-	d:       ^dom.Document,
-	styled:  ^style.Styled,
-	measure: ^Measure,
-	fonts:   ^font.State,
-	font_id: font.Font_Id,
-	scale:   f32,
+// Wheel over the page: scroll containers under the pointer first. false: the page itself should scroll.
+page_wheel :: proc(l: ^Layout, p, delta, viewport: draw.Vec2, scroll: f32) -> bool {
+	if !l.valid { return false }
+	return lay.scroll_wheel(l, p, delta, viewport, scroll)
 }
 
 // CSS colors are sRGB; the renderer blends in linear space.
 to_draw :: proc(c: css.Color) -> draw.Color { return draw.srgb(c.r, c.g, c.b, c.a) }
 
-@(private)
-side4 :: proc(s: [style.Side]style.Length, base_w, scale: f32) -> [4]f32 {
-	return {style.resolve(s[.Top], base_w) * scale, style.resolve(s[.Right], base_w) * scale, style.resolve(s[.Bottom], base_w) * scale, style.resolve(s[.Left], base_w) * scale}
-}
+@(private = "file")
+dr :: #force_inline proc(r: lay.Rect) -> draw.Rect { return draw.Rect{r.min, r.max} }
 
-// `cw` is the width percentages refer to (the containing block's content width).
-@(private)
-look_of :: proc(c: ^Layout_Ctx, h: base.Handle, parent: Look, cw: f32) -> Look {
-	cs := style.style_of(c.styled, h)
-	if cs == nil { return Look{hidden = true} }
-	return look_from(c, cs, parent, cw)
-}
+////////////////////////////////
+// Painting
 
-@(private)
-look_from :: proc(c: ^Layout_Ctx, cs: ^style.Computed, parent: Look, cw: f32) -> Look {
-	lk: Look
-	lk.size = cs.font_size * c.scale
-	switch cs.line_height.kind {
-	case .Normal: lk.line_h = lk.size * c.styled.line_height_normal
-	case .Number: lk.line_h = lk.size * cs.line_height.v
-	case .Length: lk.line_h = cs.line_height.v * c.scale
-	}
-	lk.fg, lk.bg = to_draw(cs.color), to_draw(cs.background_color)
-	lk.pre = cs.white_space == .Pre || cs.white_space == .Pre_Wrap
-	lk.hidden = cs.display == .None || cs.visibility == .Collapse
-	lk.contents = cs.display == .Contents
-	lk.inline = cs.display == .Inline || cs.display == .Inline_Block || cs.display == .Inline_Flex
-	lk.underline = parent.underline || .Underline in cs.text_decoration
-	lk.align = cs.text_align
-	lk.margin = side4(cs.margin, cw / c.scale, c.scale)
-	lk.padding = side4(cs.padding, cw / c.scale, c.scale)
-	for s in style.Side { lk.border[s] = cs.border_width[s] * c.scale; lk.border_color[s] = to_draw(cs.border_color[s]) }
-	lk.auto_x = {cs.margin[.Left].kind == .Auto, cs.margin[.Right].kind == .Auto}
-	lk.width, lk.height = -1, -1
-	if cs.width.kind == .Px || cs.width.kind == .Percent || cs.width.kind == .Calc { lk.width = style.resolve(cs.width, cw / c.scale) * c.scale }
-	if cs.height.kind == .Px { lk.height = cs.height.v * c.scale }
-	lk.max_w = -1
-	if cs.max_width.kind == .Px || cs.max_width.kind == .Percent || cs.max_width.kind == .Calc { lk.max_w = style.resolve(cs.max_width, cw / c.scale) * c.scale }
-	if cs.min_width.kind == .Px || cs.min_width.kind == .Percent || cs.min_width.kind == .Calc { lk.min_w = style.resolve(cs.min_width, cw / c.scale) * c.scale }
-	lk.border_box = cs.box_sizing == .Border_Box
-	lk.radius = cs.radius[.Top_Left].h.v * c.scale
-	lk.display = cs.display
-	lk.list_type = cs.list_style_type
-	// an inline box's vertical margins and borders do not take part in block layout
-	if lk.inline { lk.margin = {0, lk.margin[1], 0, lk.margin[3]} }
-	return lk
-}
-
-layout_document :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, measure: ^Measure, fonts: ^font.State, font_id: font.Font_Id, width, scale, band_h: f32) {
-	clear(&l.items)
-	free_owned(l)
-	l.mutations = d.mutations
-	l.serial = styled.serial
-	l.width = width
-	l.scale = scale
-	l.valid = true
-	c := Layout_Ctx{l, d, styled, measure, fonts, font_id, scale}
-	y: f32 = 0
-	root := Look{size = 16 * scale, line_h = 16 * scale * styled.line_height_normal, fg = {0, 0, 0, 1}}
-	block(&c, d.root, 0, width, &y, root)
-	l.height = y
-	build_bands(l, band_h * scale)
-}
-
-// Groups items by band. Two passes (count, then fill) into flat arrays: no per-band allocations.
-@(private)
-build_bands :: proc(l: ^Layout, band_h: f32) {
-	l.band_h = max(band_h, 16)
-	nb := int(l.height / l.band_h) + 2
-	clear(&l.band_start)
-	resize(&l.band_start, nb + 1)
-	for i in 0 ..< len(l.band_start) { l.band_start[i] = 0 }
-	span :: proc(l: ^Layout, it: ^Item, nb: int) -> (b0, b1: int) {
-		b0 = clamp(int(it.rect.min.y / l.band_h), 0, nb - 1)
-		b1 = clamp(int(it.rect.max.y / l.band_h), b0, nb - 1)
-		return
-	}
-	for &it in l.items {
-		b0, b1 := span(l, &it, nb)
-		for b in b0 ..= b1 { l.band_start[b + 1] += 1 }
-	}
-	for b in 1 ..= nb { l.band_start[b] += l.band_start[b - 1] }
-	clear(&l.band_items)
-	resize(&l.band_items, int(l.band_start[nb]))
-	fill := make([]u32, nb, context.temp_allocator)
-	for &it, i in l.items {
-		b0, b1 := span(l, &it, nb)
-		for b in b0 ..= b1 {
-			l.band_items[int(l.band_start[b] + fill[b])] = u32(i)
-			fill[b] += 1
-		}
-	}
-}
-
-@(private)
-marker_text :: proc(c: ^Layout_Ctx, h: base.Handle, t: style.List_Style_Type) -> string {
-	switch t {
-	case .None: return ""
-	case .Disc: return "\u2022"
-	case .Circle: return "\u25e6"
-	case .Square: return "\u25aa"
-	case .Decimal, .Decimal_Leading_Zero, .Lower_Alpha, .Upper_Alpha, .Lower_Roman, .Upper_Roman, .Lower_Greek:
-		n := 1
-		for p := dom.get(c.d, h).prev; p != base.NIL_HANDLE; p = dom.get(c.d, p).prev {
-			if cs := style.style_of(c.styled, p); cs != nil && cs.display == .List_Item { n += 1 }
-		}
-		#partial switch t {
-		case .Lower_Alpha: return strings.clone(string([]u8{u8('a' + (n - 1) % 26), '.'}), context.temp_allocator)
-		case .Upper_Alpha: return strings.clone(string([]u8{u8('A' + (n - 1) % 26), '.'}), context.temp_allocator)
-		case .Decimal_Leading_Zero: return strings.concatenate({n < 10 ? "0" : "", itoa(n), "."}, context.temp_allocator)
-		}
-		return strings.concatenate({itoa(n), "."}, context.temp_allocator)
-	}
-	return ""
-}
-
-@(private)
-itoa :: proc(n: int) -> string {
-	buf: [20]u8
-	i := len(buf)
-	v := n
-	if v == 0 { i -= 1; buf[i] = '0' }
-	for v > 0 { i -= 1; buf[i] = u8('0' + v % 10); v /= 10 }
-	return strings.clone(string(buf[i:]), context.temp_allocator)
-}
-
-@(private)
-Run :: struct {
-	text:      string,
-	size:      f32,
-	line_h:    f32,
-	fg:        draw.Color,
-	underline: bool,
-	node:      base.Handle,
-	br:        bool,
-	bg:        draw.Color,
-	pad_x:     f32,
-	radius:    f32,
-	control:   bool,          // an atomic form control box (temporary hook, see control_run)
-	box_w, box_h: f32,
-	margin_l:  f32,
-	look:      Look,
-	bare:      bool,
-	inset:     [4]f32,
-}
-
-// Lays out one block-level node (or the Document): its box, then its children, grouping inline children into flows.
-@(private)
-block :: proc(c: ^Layout_Ctx, h: base.Handle, x, w: f32, y: ^f32, parent: Look) {
-	n := dom.get(c.d, h)
-	if n == nil { return }
-	lk := parent
-	if n.kind == .Element {
-		lk = look_of(c, h, parent, w)
-		if lk.hidden { return }
-	}
-	is_box := n.kind == .Element && !lk.contents
-	if !is_box {
-		// the document itself, or display: contents: children flow in the parent's box
-		flow_children(c, h, n, x, w, y, lk)
-		return
-	}
-	y^ += lk.margin[0]
-	bx, bw := x + lk.margin[3], w - lk.margin[1] - lk.margin[3]
-	extra := lk.padding[1] + lk.padding[3] + lk.border[1] + lk.border[3]
-	if lk.width >= 0 { bw = lk.border_box ? lk.width : lk.width + extra }
-	{
-		inner := bw - extra
-		pad := lk.border_box ? extra : 0   // min/max-width follow box-sizing
-		if lk.max_w >= 0 { inner = min(inner, lk.max_w - pad) }
-		inner = max(inner, lk.min_w - pad, 0)
-		bw = inner + extra
-	}
-	if avail := w - lk.margin[1] - lk.margin[3]; bw < avail {
-		if lk.auto_x[0] && lk.auto_x[1] { bx = x + (w - bw) * 0.5 } else if lk.auto_x[0] { bx = x + w - lk.margin[1] - bw }
-	}
-	top := y^
-	box_index := len(c.l.items)
-	append(&c.l.items, Item{kind = .Box, node = h, color = lk.bg, radius = lk.radius, border = lk.border, border_color = lk.border_color})
-	y^ += lk.border[0] + lk.padding[0]
-	content_top := y^
-	cx, cw := bx + lk.border[3] + lk.padding[3], bw - extra
-
-	if lk.display == .List_Item && lk.list_type != .None {
-		if m := marker_text(c, h, lk.list_type); m != "" {
-			m = persist(c, m)
-			mw := measure_width(c.measure, c.fonts, c.font_id, lk.size, m)
-			saved := y^
-			flow(c, {Run{text = m, size = lk.size, line_h = lk.line_h, fg = lk.fg, node = h}}, cx - mw - lk.size * 0.45, 1000, y, lk, true)
-			y^ = saved
-		}
-	}
-	flow_children(c, h, n, cx, cw, y, lk)
-
-	if lk.height >= 0 {
-		inner := lk.border_box ? lk.height - lk.border[0] - lk.border[2] - lk.padding[0] - lk.padding[2] : lk.height
-		y^ = content_top + max(inner, 0)
-	}
-	y^ += lk.padding[2] + lk.border[2]
-	c.l.items[box_index].rect = {{bx, top}, {bx + bw, y^}}
-	y^ += lk.margin[2]
-}
-
-// Text of generated content (::before / ::after). Counters and images are not drawn.
-@(private)
-pseudo_run :: proc(c: ^Layout_Ctx, owner: base.Handle, pc: ^style.Computed, parent: Look, cw: f32) -> (Run, bool) {
-	if pc == nil || pc.content.kind != .Items { return {}, false }
-	sb := strings.builder_make(context.temp_allocator)
-	for it in pc.content.items {
-		switch it.kind {
-		case .Text: strings.write_string(&sb, it.text)
-		case .Attr:
-			if v, ok := dom.get_attribute(c.d, owner, it.text); ok { strings.write_string(&sb, v) }
-		case .Open_Quote: strings.write_string(&sb, "\u201c")
-		case .Close_Quote: strings.write_string(&sb, "\u201d")
-		case .Url:
-		}
-	}
-	text := strings.to_string(sb)
-	if text == "" { return {}, false }
-	lk := look_from(c, pc, parent, cw)
-	r := Run{text = persist(c, text), size = lk.size, line_h = lk.line_h, fg = lk.fg, underline = lk.underline, node = owner}
-	return r, true
-}
-
-@(private)
-flow_children :: proc(c: ^Layout_Ctx, h: base.Handle, n: ^dom.Node, cx, cw: f32, y: ^f32, lk: Look) {
-	runs: [dynamic]Run
-	defer delete(runs)
-	flush :: proc(c: ^Layout_Ctx, runs: ^[dynamic]Run, cx, cw: f32, y: ^f32, lk: Look) {
-		if len(runs) > 0 { flow(c, runs[:], cx, cw, y, lk, false); clear(runs) }
-	}
-	cs := n.kind == .Element ? style.style_of(c.styled, h) : nil
-	if cs != nil { if r, ok := pseudo_run(c, h, cs.before, lk, cw); ok { append(&runs, r) } }
-	ch := n.first_child
-	for ch != base.NIL_HANDLE {
-		cn := dom.get(c.d, ch)
-		if cn == nil { break }
-		if is_inline_node(c, ch, cn, lk) {
-			ch = collect_runs(c, ch, lk, cw, &runs)
-			continue
-		}
-		flush(c, &runs, cx, cw, y, lk)
-		block(c, ch, cx, cw, y, lk)
-		ch = cn.next
-	}
-	if cs != nil { if r, ok := pseudo_run(c, h, cs.after, lk, cw); ok { append(&runs, r) } }
-	flush(c, &runs, cx, cw, y, lk)
-}
-@(private)
-is_inline_node :: proc(c: ^Layout_Ctx, h: base.Handle, n: ^dom.Node, parent: Look) -> bool {
-	#partial switch n.kind {
-	case .Text: return true
-	case .Element:
-		cs := style.style_of(c.styled, h)
-		return cs != nil && (cs.display == .Inline || cs.display == .Inline_Block || cs.display == .Inline_Flex) && cs.float == .None && cs.position != .Absolute && cs.position != .Fixed
-	}
-	return false
-}
-
-// Gathers consecutive inline siblings starting at `first` (descending into inline elements, iteratively).
-// Returns the first sibling that is not part of the run.
-@(private)
-collect_runs :: proc(c: ^Layout_Ctx, first: base.Handle, parent: Look, cw: f32, out: ^[dynamic]Run) -> base.Handle {
-	Frame :: struct { h: base.Handle, lk: Look, owner: base.Handle, after: ^style.Computed }
-	cur := first
-	for cur != base.NIL_HANDLE {
-		cn := dom.get(c.d, cur)
-		if cn == nil { return base.NIL_HANDLE }
-		if !is_inline_node(c, cur, cn, parent) { return cur }
-		stack: [dynamic]Frame
-		defer delete(stack)
-		append(&stack, Frame{cur, parent, cn.parent, nil})
-		for len(stack) > 0 {
-			f := pop(&stack)
-			if f.after != nil {
-				if r, ok := pseudo_run(c, f.h, f.after, f.lk, cw); ok { append(out, r) }
-				continue
-			}
-			n := dom.get(c.d, f.h)
-			if n == nil { continue }
-			#partial switch n.kind {
-			case .Text:
-				// only inline boxes draw a chip behind their text; a block's own background and padding are not repeated per word
-				r := Run{text = n.text, size = f.lk.size, line_h = f.lk.line_h, fg = f.lk.fg, underline = f.lk.underline, node = f.owner}
-				if f.lk.inline { r.bg, r.pad_x, r.radius = f.lk.bg, f.lk.padding[3], f.lk.radius }
-				append(out, r)
-			case .Element:
-				lk := look_of(c, f.h, f.lk, cw)
-				if lk.hidden { continue }
-				if n.name == "br" { append(out, Run{br = true, size = f.lk.size, line_h = lk.line_h, node = f.h}); continue }
-				if forms.kind_of(n) == .Input || forms.kind_of(n) == .Select || forms.kind_of(n) == .Textarea || forms.kind_of(n) == .Button {
-					if r, ok := control_run(c, f.h, n, lk); ok { append(out, r) }
-					continue
-				}
-				cs := style.style_of(c.styled, f.h)
-				if cs != nil && cs.after != nil { append(&stack, Frame{h = f.h, lk = lk, after = cs.after}) }
-				for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(c.d, ch).prev {
-					append(&stack, Frame{ch, lk, f.h, nil})
-				}
-				if cs != nil { if r, ok := pseudo_run(c, f.h, cs.before, lk, cw); ok { append(out, r) } }
-			}
-		}
-		cur = cn.next
-	}
-	return base.NIL_HANDLE
-}
-
-@(private)
-is_space :: proc(b: u8) -> bool { return b == ' ' || b == '\n' || b == '\t' || b == '\r' }
-
-// Greedy line filling across runs; words keep the style of the run they come from.
-@(private)
-flow :: proc(c: ^Layout_Ctx, runs: []Run, x, w: f32, y: ^f32, lk: Look, single_line: bool) {
-	if len(runs) == 0 { return }
-	if lk.pre {
-		for r in runs {
-			rest := r.text
-			for line in strings.split_lines_iterator(&rest) {
-				tw := measure_width(c.measure, c.fonts, c.font_id, r.size, line)
-				append(&c.l.items, Item{kind = .Text, rect = {{x, y^}, {x + tw, y^ + r.line_h}}, node = r.node, color = r.fg, text = line, size = r.size, underline = r.underline})
-				y^ += r.line_h
-			}
-		}
-		return
-	}
-	line_start := len(c.l.items)
-	line_x: f32 = 0
-	line_h: f32 = 0
-	pending_space := false
-	line_empty := true
-
-	finish_line :: proc(c: ^Layout_Ctx, from: int, y: ^f32, line_h: f32, line_w, avail: f32, align: style.Text_Align) {
-		shift: f32
-		#partial switch align {
-		case .Center: shift = max((avail - line_w) * 0.5, 0)
-		case .Right, .End: shift = max(avail - line_w, 0)
-		}
-		for i in from ..< len(c.l.items) {
-			it := &c.l.items[i]
-			it.rect.min.y = y^
-			it.rect.max.y = y^ + line_h
-			if it.kind == .Control { it.rect.min.y = y^ + (line_h - it.size) * 0.5; it.rect.max.y = it.rect.min.y + it.size }
-			it.rect.min.x += shift
-			it.rect.max.x += shift
-		}
-		y^ += line_h
-	}
-
-	for r in runs {
-		if r.control {
-			space := (pending_space && !line_empty) ? measure_width(c.measure, c.fonts, c.font_id, r.size, " ") : 0
-			if !line_empty && !single_line && line_x + space + r.box_w > w {
-				finish_line(c, line_start, y, line_h, line_x, w, lk.align)
-				line_start = len(c.l.items)
-				line_x, line_h, line_empty, space = 0, 0, true, 0
-			}
-			line_h = max(line_h, r.box_h)
-			bx := x + line_x + space + r.margin_l
-			bw := r.box_w - r.margin_l - r.look.margin[1]
-			append(&c.l.items, Item{kind = .Control, rect = {{bx, 0}, {bx + bw, 0}}, node = r.node, color = r.look.bg, radius = r.look.radius,
-				border = r.look.border, border_color = r.look.border_color, size = r.box_h, inset = r.inset, bare = r.bare})
-			line_x += space + r.box_w
-			line_empty, pending_space = false, false
-			continue
-		}
-		if r.br {
-			finish_line(c, line_start, y, max(line_h, r.line_h), line_x, w, lk.align)   // an empty line still takes height
-			line_start = len(c.l.items)
-			line_x, line_h, line_empty, pending_space = 0, 0, true, false
-			continue
-		}
-		text := r.text
-		i := 0
-		if len(text) > 0 && is_space(text[0]) { pending_space = true }
-		for i < len(text) {
-			for i < len(text) && is_space(text[i]) { pending_space = true; i += 1 }
-			if i >= len(text) { break }
-			j := i
-			for j < len(text) && !is_space(text[j]) { j += 1 }
-			ww := measure_width(c.measure, c.fonts, c.font_id, r.size, text[i:j]) + 2 * r.pad_x
-			space := (pending_space && !line_empty) ? measure_width(c.measure, c.fonts, c.font_id, r.size, " ") : 0
-			if !line_empty && !single_line && line_x + space + ww > w {
-				finish_line(c, line_start, y, line_h, line_x, w, lk.align)
-				line_start = len(c.l.items)
-				line_x, line_h, line_empty, space = 0, 0, true, 0
-			}
-			line_h = max(line_h, r.line_h)
-			append(&c.l.items, Item{
-				kind = .Text, rect = {{x + line_x + space, 0}, {x + line_x + space + ww, 0}}, node = r.node,
-				color = r.fg, text = text[i:j], size = r.size, underline = r.underline,
-				bg = r.bg, pad_x = r.pad_x, radius_bg = r.radius,
-			})
-			line_x += space + ww
-			line_empty = false
-			pending_space = false
-			i = j
-		}
-		if len(text) > 0 && is_space(text[len(text) - 1]) { pending_space = true }
-	}
-	if !line_empty { finish_line(c, line_start, y, line_h, line_x, w, lk.align) }
-}
-
-// Deepest element under a point (layout coordinates); text fragments report the element that owns them.
-hit_test :: proc(l: ^Layout, p: draw.Vec2) -> base.Handle {
-	if len(l.band_start) < 2 { return base.NIL_HANDLE }
-	nb := len(l.band_start) - 1
-	b := clamp(int(p.y / l.band_h), 0, nb - 1)
-	list := l.band_items[l.band_start[b]:l.band_start[b + 1]]
-	for k := len(list) - 1; k >= 0; k -= 1 {   // later items are painted on top
-		it := &l.items[list[k]]
-		if draw.rect_contains(it.rect, p) { return it.node }
-	}
-	return base.NIL_HANDLE
-}
-
-paint :: proc(l: ^Layout, dc: ^draw.Context, fonts: ^font.State, font_id: font.Font_Id, origin: draw.Vec2, clip: draw.Rect) {
-	if len(l.band_start) < 2 { return }
-	nb := len(l.band_start) - 1
-	// visible range in layout coordinates, then the bands it touches
-	y0, y1 := clip.min.y - origin.y, clip.max.y - origin.y
-	b0 := clamp(int(y0 / l.band_h), 0, nb - 1)
-	b1 := clamp(int(y1 / l.band_h), b0, nb - 1)
-	visible := make([dynamic]u32, 0, 1024, context.temp_allocator)
-	for b in b0 ..= b1 { append(&visible, ..l.band_items[l.band_start[b]:l.band_start[b + 1]]) }
-	slice.sort(visible[:])   // paint order = item order; an item spanning several bands is listed once per band
-	last := u32(max(u32))
-	for idx in visible {
-		if idx == last { continue }
-		last = idx
+paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: draw.Vec2, scroll: f32, clip: draw.Rect) {
+	if !l.valid { return }
+	v := lay.view_make(l, size, scroll)
+	cur_clip := i32(-2)
+	cur_group := i32(-2)
+	clip_pushed, alpha_pushed := false, false
+	for idx in v.visible {
 		it := &l.items[idx]
-		r := draw.rect_shift(it.rect, origin)
-		if r.max.y < clip.min.y || r.min.y > clip.max.y { continue }
+		if it.clip != cur_clip {
+			if clip_pushed { draw.pop_clip(dc); clip_pushed = false }
+			cur_clip = it.clip
+			if it.clip >= 0 {
+				draw.push_clip(dc, draw.rect_shift(dr(v.clips[it.clip]), origin))
+				clip_pushed = true
+			}
+		}
+		if it.clip >= 0 && lay.rect_empty(v.clips[it.clip]) { continue }
+		if it.group != cur_group {
+			if alpha_pushed { draw.pop_alpha(dc); alpha_pushed = false }
+			cur_group = it.group
+			if it.group >= 0 { draw.push_alpha(dc, v.alphas[it.group]); alpha_pushed = true }
+		}
+		off := v.offsets[it.space] + origin
+		r := draw.rect_shift(dr(it.rect), off)
 		switch it.kind {
 		case .Box:
-			if it.color.a > 0 { draw.rect(dc, r, it.color, it.radius) }
-			bt, br, bb, bl := it.border[0], it.border[1], it.border[2], it.border[3]
-			if bt > 0 { draw.rect(dc, {r.min, {r.max.x, r.min.y + bt}}, it.border_color[0]) }
-			if bb > 0 { draw.rect(dc, {{r.min.x, r.max.y - bb}, r.max}, it.border_color[2]) }
-			if bl > 0 { draw.rect(dc, {{r.min.x, r.min.y + bt}, {r.min.x + bl, r.max.y - bb}}, it.border_color[3]) }
-			if br > 0 { draw.rect(dc, {{r.max.x - br, r.min.y + bt}, {r.max.x, r.max.y - bb}}, it.border_color[1]) }
-		case .Text:
-			// draw.text takes (left, baseline); the item rect is the line box
-			m := font.metrics(fonts, font_id, it.size)
-			baseline := r.min.y + (draw.rect_size(r).y - (m.ascent + m.descent)) * 0.5 + m.ascent
-			if it.bg.a > 0 { draw.rect(dc, draw.rect_pad(r, 0), it.bg, it.radius_bg) }
-			draw.text(dc, font_id, it.size, {r.min.x + it.pad_x, baseline}, it.color, it.text)
-			if it.underline { draw.rect(dc, {{r.min.x, baseline + 2}, {r.max.x, baseline + 3}}, it.color) }
-		case .Control:
-			if !it.bare {
-				if it.color.a > 0 { draw.rect(dc, r, it.color, it.radius) }
-				bt, br, bb, bl := it.border[0], it.border[1], it.border[2], it.border[3]
-				if bt > 0 { draw.rect(dc, {r.min, {r.max.x, r.min.y + bt}}, it.border_color[0]) }
-				if bb > 0 { draw.rect(dc, {{r.min.x, r.max.y - bb}, r.max}, it.border_color[2]) }
-				if bl > 0 { draw.rect(dc, {{r.min.x, r.min.y + bt}, {r.min.x + bl, r.max.y - bb}}, it.border_color[3]) }
-				if br > 0 { draw.rect(dc, {{r.max.x - br, r.min.y + bt}, {r.max.x, r.max.y - bb}}, it.border_color[1]) }
+			if page_render.bare != nil && page_render.bare(page_render.content_user, d, it.node) { continue }
+			paint_box(l, dc, it, r)
+		case .Inline_Box: paint_inline_box(l, dc, it, r)
+		case .Text: paint_text(l, dc, it, r, off)
+		case .Marker: paint_marker(l, dc, it, r, off)
+		case .Replaced, .Control: paint_content(l, dc, d, it, r, off)
+		case .Outline: paint_outline(l, dc, it, r)
+		case .Scrollbar:
+			track := r
+			if page_render.settings.scrollbar_track.a > 0 { draw.rect(dc, track, to_draw(page_render.settings.scrollbar_track), min(track.max.x - track.min.x, track.max.y - track.min.y) * 0.5) }
+			th := draw.rect_shift(dr(lay.scrollbar_thumb(l, &v, it)), origin)
+			draw.rect(dc, th, to_draw(page_render.settings.scrollbar_thumb), min(th.max.x - th.min.x, th.max.y - th.min.y) * 0.5)
+		}
+	}
+	if alpha_pushed { draw.pop_alpha(dc) }
+	if clip_pushed { draw.pop_clip(dc) }
+	if track, thumb, ok := lay.doc_scrollbar(l, size, scroll); ok {
+		if page_render.settings.scrollbar_track.a > 0 { draw.rect(dc, draw.rect_shift(dr(track), origin), to_draw(page_render.settings.scrollbar_track), (track.max.x - track.min.x) * 0.5) }
+		draw.rect(dc, draw.rect_shift(dr(thumb), origin), to_draw(page_render.settings.scrollbar_thumb), (thumb.max.x - thumb.min.x) * 0.5)
+	}
+}
+
+// Corner radii (draw order: top-left, bottom-left, top-right, bottom-right), reduced so adjacent ones fit (CSS
+// Backgrounds §5.5).
+@(private = "file")
+corner_radii :: proc(cs: ^style.Computed, r: draw.Rect, scale: f32) -> [4]f32 {
+	w, h := r.max.x - r.min.x, r.max.y - r.min.y
+	rad :: proc(cr: style.Corner_Radius, w, h, scale: f32) -> f32 {
+		hv := style.resolve(cr.h, w / scale) * scale
+		vv := style.resolve(cr.v, h / scale) * scale
+		if cr.v.kind == .Auto { vv = hv }
+		return max(min(hv, vv), 0)
+	}
+	tl := rad(cs.radius[.Top_Left], w, h, scale)
+	tr := rad(cs.radius[.Top_Right], w, h, scale)
+	br := rad(cs.radius[.Bottom_Right], w, h, scale)
+	bl := rad(cs.radius[.Bottom_Left], w, h, scale)
+	f: f32 = 1
+	if tl + tr > w && w > 0 { f = min(f, w / (tl + tr)) }
+	if bl + br > w && w > 0 { f = min(f, w / (bl + br)) }
+	if tl + bl > h && h > 0 { f = min(f, h / (tl + bl)) }
+	if tr + br > h && h > 0 { f = min(f, h / (tr + br)) }
+	return {tl * f, bl * f, tr * f, br * f}
+}
+
+@(private = "file")
+no_radius :: proc(r: [4]f32) -> bool { return r == {0, 0, 0, 0} }
+
+@(private = "file")
+paint_shadows :: proc(dc: ^draw.Context, cs: ^style.Computed, r: draw.Rect, radii: [4]f32, scale: f32, inset: bool) {
+	for i := len(cs.box_shadow) - 1; i >= 0; i -= 1 {
+		s := cs.box_shadow[i]
+		if s.inset != inset || s.color.a <= 0 { continue }
+		col := to_draw(s.color)
+		blur := s.blur * scale
+		spread := s.spread * scale
+		off := draw.Vec2{s.x, s.y} * scale
+		rad := max(radii[0], radii[1], radii[2], radii[3])
+		if !inset {
+			sr := draw.rect_shift(draw.rect_pad(r, spread), off)
+			if blur > 2 {
+				draw.rect(dc, draw.rect_pad(sr, blur * 0.5), col, rad + spread + blur * 0.5, 0, blur * 0.5)
+			} else {
+				draw.rect_corners(dc, sr, {col, col, col, col}, radii + spread, 0)
 			}
-			content := draw.Rect{{r.min.x + it.inset[3], r.min.y + it.inset[0]}, {r.max.x - it.inset[1], r.max.y - it.inset[2]}}
-			control_paint_hook(dc, fonts, font_id, it.node, content)
+		} else {
+			// inside the padding edge: a soft ring (approximation of the inner shadow's falloff)
+			w := max(spread + blur * 0.5, 1)
+			ir := draw.rect_shift(r, off)
+			draw.rect(dc, ir, col, rad, w)
 		}
 	}
 }
-////////////////////////////////
-// TEMPORARY HOOK (forms): form controls as atomic inline boxes painted by paint_control (forms_shell.odin), until the
-// new painter has its own "control" display item. Uses the current tab's page.
 
-@(private)
-control_run :: proc(c: ^Layout_Ctx, h: base.Handle, n: ^dom.Node, lk: Look) -> (Run, bool) {
-	t := current_tab(the_app)
-	if t == nil || t.page == nil { return {}, false }
-	if forms.kind_of(n) == .Input && forms.input_type_of(n) == .Hidden { return {}, false }
-	cs := style.style_of(c.styled, h)
-	if cs == nil { return {}, false }
-	bare := false
-	if forms.kind_of(n) == .Input {
-		#partial switch forms.input_type_of(n) { case .Checkbox, .Radio, .Range: bare = true }
+@(private = "file")
+paint_box :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
+	cs := it.cs
+	if cs == nil { return }
+	b := &l.boxes[it.box]
+	radii := corner_radii(cs, r, l.scale)
+	if len(cs.box_shadow) > 0 { paint_shadows(dc, cs, r, radii, l.scale, false) }
+	if .No_Background not_in it.flags {
+		if cs.background_color.a > 0 {
+			col := to_draw(cs.background_color)
+			draw.rect_corners(dc, r, {col, col, col, col}, radii)
+		}
+		if cs.background_image.kind == .Gradient { paint_gradient(dc, cs.background_image.gradient, r, radii, l.scale) }
 	}
-	intr := control_intrinsic_size(the_app, t.page, h, cs) * c.scale
-	ins: [4]f32
-	if !bare { for i in 0 ..< 4 { ins[i] = lk.border[i] + lk.padding[i] } }
-	w := lk.width >= 0 ? (lk.border_box ? lk.width : lk.width + ins[1] + ins[3]) : intr.x + ins[1] + ins[3]
-	hh := lk.height >= 0 ? (lk.border_box ? lk.height : lk.height + ins[0] + ins[2]) : intr.y + ins[0] + ins[2]
-	return Run{control = true, node = h, size = lk.size, line_h = hh, box_w = w + lk.margin[1] + lk.margin[3], box_h = hh, margin_l = lk.margin[3], look = lk, bare = bare, inset = ins}, true
+	if len(cs.box_shadow) > 0 {
+		pr := draw.Rect{r.min + {b.border[3], b.border[0]}, r.max - {b.border[1], b.border[2]}}
+		paint_shadows(dc, cs, pr, radii, l.scale, true)
+	}
+	widths := [4]f32{b.border[0], b.border[1], b.border[2], b.border[3]}
+	if widths != {} { paint_borders(dc, r, widths, cs.border_style, cs.border_color, radii) }
 }
 
-@(private)
-control_paint_hook :: proc(dc: ^draw.Context, fonts: ^font.State, font_id: font.Font_Id, node: base.Handle, content: draw.Rect) {
-	t := current_tab(the_app)
-	if t == nil || t.page == nil || t.page.styled == nil { return }
-	paint_control(dc, fonts, font_id, node, content, style.style_of(t.page.styled, node), t.page, time.tick_now())
+@(private = "file")
+paint_inline_box :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
+	cs := it.cs
+	if cs == nil { return }
+	b := &l.boxes[it.box]
+	radii := corner_radii(cs, r, l.scale)
+	// a box split over lines keeps its rounded corners only where it starts and ends
+	if .Left_Edge not_in it.flags { radii[0], radii[1] = 0, 0 }
+	if .Right_Edge not_in it.flags { radii[2], radii[3] = 0, 0 }
+	if len(cs.box_shadow) > 0 { paint_shadows(dc, cs, r, radii, l.scale, false) }
+	if cs.background_color.a > 0 {
+		col := to_draw(cs.background_color)
+		draw.rect_corners(dc, r, {col, col, col, col}, radii)
+	}
+	if cs.background_image.kind == .Gradient { paint_gradient(dc, cs.background_image.gradient, r, radii, l.scale) }
+	widths := [4]f32{b.border[0], .Right_Edge in it.flags ? b.border[1] : 0, b.border[2], .Left_Edge in it.flags ? b.border[3] : 0}
+	if widths != {} { paint_borders(dc, r, widths, cs.border_style, cs.border_color, radii) }
+}
+
+@(private = "file")
+shade :: proc(c: css.Color, f: f32) -> draw.Color {
+	if f < 1 { return to_draw(css.Color{c.r * f, c.g * f, c.b * f, c.a}) }
+	t := f - 1
+	return to_draw(css.Color{c.r + (1 - c.r) * t, c.g + (1 - c.g) * t, c.b + (1 - c.b) * t, c.a})
+}
+
+// Borders (CSS Backgrounds §4): one rounded ring when all sides agree, otherwise side by side, each in its style.
+// Rounded corners with sides that differ are drawn square.
+@(private = "file")
+paint_borders :: proc(dc: ^draw.Context, r: draw.Rect, w: [4]f32, styles: [style.Side]style.Border_Style, colors: [style.Side]css.Color, radii: [4]f32) {
+	sides := [4]style.Side{.Top, .Right, .Bottom, .Left}
+	uniform := true
+	for s, i in sides {
+		if w[i] != w[0] || styles[s] != styles[.Top] || colors[s] != colors[.Top] { uniform = false }
+	}
+	if uniform && styles[.Top] == .Solid && w[0] > 0 {
+		col := to_draw(colors[.Top])
+		draw.rect_corners(dc, r, {col, col, col, col}, radii, w[0])
+		return
+	}
+	if uniform && styles[.Top] == .Double && w[0] >= 3 {
+		col := to_draw(colors[.Top])
+		t := w[0] / 3
+		draw.rect_corners(dc, r, {col, col, col, col}, radii, t)
+		inner := draw.rect_pad(r, -2 * t)
+		draw.rect_corners(dc, inner, {col, col, col, col}, {max(radii[0] - 2 * t, 0), max(radii[1] - 2 * t, 0), max(radii[2] - 2 * t, 0), max(radii[3] - 2 * t, 0)}, t)
+		return
+	}
+	for s, i in sides {
+		bw := w[i]
+		if bw <= 0 { continue }
+		st := styles[s]
+		if st == .None || st == .Hidden { continue }
+		c := colors[s]
+		if c.a <= 0 { continue }
+		// the strip of this side; top and bottom own the corners
+		strip: draw.Rect
+		switch s {
+		case .Top: strip = {r.min, {r.max.x, r.min.y + bw}}
+		case .Bottom: strip = {{r.min.x, r.max.y - bw}, r.max}
+		case .Left: strip = {{r.min.x, r.min.y + w[0]}, {r.min.x + bw, r.max.y - w[2]}}
+		case .Right: strip = {{r.max.x - bw, r.min.y + w[0]}, {r.max.x, r.max.y - w[2]}}
+		}
+		horizontal := s == .Top || s == .Bottom
+		outer_first := s == .Top || s == .Left   // the outer half of the strip comes first along its thickness
+		switch st {
+		case .None, .Hidden:
+		case .Solid: draw.rect(dc, strip, to_draw(c))
+		case .Dashed, .Dotted:
+			dot := st == .Dotted
+			seg := dot ? bw : max(bw * 3, 2)
+			gap := dot ? bw : max(bw * 2, 2)
+			length := horizontal ? strip.max.x - strip.min.x : strip.max.y - strip.min.y
+			n := max(int((length + gap) / (seg + gap)), 1)
+			// stretch the gaps so the pattern ends on a dash
+			g := n > 1 ? (length - f32(n) * seg) / f32(n - 1) : 0
+			col := to_draw(c)
+			for k in 0 ..< n {
+				p := f32(k) * (seg + g)
+				piece := horizontal ? draw.Rect{{strip.min.x + p, strip.min.y}, {min(strip.min.x + p + seg, strip.max.x), strip.max.y}} : draw.Rect{{strip.min.x, strip.min.y + p}, {strip.max.x, min(strip.min.y + p + seg, strip.max.y)}}
+				draw.rect(dc, piece, col, dot ? bw * 0.5 : 0)
+			}
+		case .Double:
+			t := max(bw / 3, 1)
+			col := to_draw(c)
+			if horizontal {
+				draw.rect(dc, {strip.min, {strip.max.x, strip.min.y + t}}, col)
+				draw.rect(dc, {{strip.min.x, strip.max.y - t}, strip.max}, col)
+			} else {
+				draw.rect(dc, {strip.min, {strip.min.x + t, strip.max.y}}, col)
+				draw.rect(dc, {{strip.max.x - t, strip.min.y}, strip.max}, col)
+			}
+		case .Groove, .Ridge:
+			dark, light := shade(c, 0.55), shade(c, 1.35)
+			a, b := dark, light
+			if st == .Ridge { a, b = light, dark }
+			if !outer_first { a, b = b, a }
+			if horizontal {
+				mid := (strip.min.y + strip.max.y) * 0.5
+				draw.rect(dc, {strip.min, {strip.max.x, mid}}, a)
+				draw.rect(dc, {{strip.min.x, mid}, strip.max}, b)
+			} else {
+				mid := (strip.min.x + strip.max.x) * 0.5
+				draw.rect(dc, {strip.min, {mid, strip.max.y}}, a)
+				draw.rect(dc, {{mid, strip.min.y}, strip.max}, b)
+			}
+		case .Inset, .Outset:
+			dark := (st == .Inset) == outer_first
+			draw.rect(dc, strip, dark ? shade(c, 0.55) : shade(c, 1.2))
+		}
+	}
+}
+
+@(private = "file")
+paint_outline :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
+	cs := it.cs
+	if cs == nil || cs.outline_width <= 0 { return }
+	w := max(1, math.floor(cs.outline_width * l.scale + 0.001))
+	o := draw.rect_pad(r, cs.outline_offset * l.scale + w)
+	st := cs.outline_style
+	if st == .None || st == .Hidden { return }
+	styles := [style.Side]style.Border_Style{.Top = st, .Right = st, .Bottom = st, .Left = st}
+	colors := [style.Side]css.Color{.Top = cs.outline_color, .Right = cs.outline_color, .Bottom = cs.outline_color, .Left = cs.outline_color}
+	radii := corner_radii(cs, r, l.scale)
+	if !no_radius(radii) { radii += w + cs.outline_offset * l.scale }
+	paint_borders(dc, o, {w, w, w, w}, styles, colors, radii)
+}
+
+////////////////////////////////
+// Text
+
+@(private = "file")
+draw_run :: proc(l: ^Layout, dc: ^draw.Context, fid: font.Font_Id, size: f32, pos: draw.Vec2, col: draw.Color, text: string, ls, ws, extra: f32) {
+	if ls == 0 && ws == 0 && extra == 0 {
+		draw.text(dc, fid, size, pos, col, text)
+		return
+	}
+	// spacing: glyph by glyph (letter-spacing), space by space (word-spacing, justification)
+	pen := pos.x
+	if ls == 0 {
+		rest := text
+		for len(rest) > 0 {
+			i := strings.index_byte(rest, ' ')
+			piece := i < 0 ? rest : rest[:i + 1]
+			pen += draw.text(dc, fid, size, {pen, pos.y}, col, piece)
+			if i < 0 { break }
+			pen += ws + extra
+			rest = rest[i + 1:]
+		}
+		return
+	}
+	for i := 0; i < len(text); {
+		_, n := utf8.decode_rune_in_string(text[i:])
+		piece := text[i:i + n]
+		pen += draw.text(dc, fid, size, {pen, pos.y}, col, piece) + ls
+		if piece == " " { pen += ws + extra }
+		i += n
+	}
+}
+
+@(private = "file")
+paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect, off: draw.Vec2) {
+	cs := it.cs
+	fi := lay.item_font(l, it)
+	if cs == nil || fi == nil || it.text == "" { return }
+	fid := font.Font_Id(fi.font)
+	baseline := it.baseline + off.y
+	ls := cs.letter_spacing * l.scale
+	ws := cs.word_spacing * l.scale
+	for i := len(cs.text_shadow) - 1; i >= 0; i -= 1 {
+		s := cs.text_shadow[i]
+		if s.color.a <= 0 { continue }
+		col := to_draw(s.color)
+		if s.blur > 0 { col.a *= 0.6 }
+		draw_run(l, dc, fid, fi.size, {r.min.x + s.x * l.scale, baseline + s.y * l.scale}, col, it.text, ls, ws, it.extra)
+	}
+	col := to_draw(cs.color)
+	draw_run(l, dc, fid, fi.size, {r.min.x, baseline}, col, it.text, ls, ws, it.extra)
+	if it.deco != {} {
+		dcol := to_draw(it.deco_color)
+		if it.deco_color.a == 0 { dcol = col }
+		t := max(1, math.round(fi.size / 15))
+		if .Underline in it.deco {
+			y := math.round(baseline + max(fi.descent * 0.35, 1))
+			draw.rect(dc, {{r.min.x, y}, {r.max.x, y + t}}, dcol)
+		}
+		if .Overline in it.deco {
+			y := math.round(baseline - fi.ascent)
+			draw.rect(dc, {{r.min.x, y}, {r.max.x, y + t}}, dcol)
+		}
+		if .Line_Through in it.deco {
+			y := math.round(baseline - fi.x_height * 0.5 - t * 0.5)
+			draw.rect(dc, {{r.min.x, y}, {r.max.x, y + t}}, dcol)
+		}
+	}
+}
+
+@(private = "file")
+paint_marker :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect, off: draw.Vec2) {
+	cs := it.cs
+	fi := lay.item_font(l, it)
+	if cs == nil || fi == nil { return }
+	col := to_draw(cs.color)
+	baseline := it.baseline + off.y
+	if it.text != "" {
+		draw.text(dc, font.Font_Id(fi.font), fi.size, {r.min.x, baseline}, col, it.text)
+		return
+	}
+	s := r.max.x - r.min.x
+	cy := baseline - fi.x_height * 0.5
+	sq := draw.Rect{{r.min.x, cy - s * 0.5}, {r.min.x + s, cy + s * 0.5}}
+	#partial switch cs.list_style_type {
+	case .Disc: draw.rect(dc, sq, col, s * 0.5)
+	case .Circle: draw.rect(dc, sq, col, s * 0.5, max(1, s * 0.18))
+	case .Square: draw.rect(dc, sq, col)
+	}
+}
+
+////////////////////////////////
+// Replaced content and form controls
+
+@(private = "file")
+paint_content :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^lay.Display_Item, r: draw.Rect, off: draw.Vec2) {
+	b := &l.boxes[it.box]
+	border := draw.rect_shift(draw.Rect{b.abs, b.abs + b.size}, off)
+	fi := lay.item_font(l, it)
+	fid := fi != nil ? font.Font_Id(fi.font) : font.Font_Id(0)
+	size := fi != nil ? fi.size : 13
+	if page_render.content != nil {
+		if page_render.content(page_render.content_user, dc, d, it.node, it.kind, r, border, it.cs, fid, size) { return }
+	}
+	if it.kind != .Control || fi == nil || d == nil { return }
+	default_control(l, dc, d, it, r, fi)
+}
+
+// What a control shows until the forms code paints it: its value, placeholder, checked state, selected option.
+@(private = "file")
+default_control :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^lay.Display_Item, r: draw.Rect, fi: ^lay.Font_Info) {
+	n := dom.get(d, it.node)
+	if n == nil { return }
+	cs := it.cs
+	col := to_draw(cs.color)
+	fid := font.Font_Id(fi.font)
+	mid_base := (r.min.y + r.max.y) * 0.5 + (fi.ascent - fi.descent) * 0.5
+	text_in :: proc(dc: ^draw.Context, fid: font.Font_Id, size: f32, r: draw.Rect, base: f32, col: draw.Color, s: string, center: bool, fonts: ^font.State) {
+		if s == "" { return }
+		x := r.min.x
+		if center { x = (r.min.x + r.max.x - font.text_width(fonts, fid, size, s)) * 0.5 }
+		draw.push_clip(dc, r)
+		draw.text(dc, fid, size, {x, base}, col, s)
+		draw.pop_clip(dc)
+	}
+	fonts := page_render.fonts.state
+	switch n.name {
+	case "input":
+		t, _ := dom.get_attribute(d, it.node, "type")
+		t = strings.to_lower(t, context.temp_allocator)
+		_, checked := dom.get_attribute(d, it.node, "checked")
+		switch t {
+		case "checkbox":
+			if checked { draw.rect(dc, draw.rect_pad(r, -max((r.max.x - r.min.x) * 0.22, 1)), col, 1) }
+		case "radio":
+			if checked { draw.rect(dc, draw.rect_pad(r, -max((r.max.x - r.min.x) * 0.28, 1)), col, (r.max.x - r.min.x) * 0.5) }
+		case "button", "submit", "reset":
+			label, ok := dom.get_attribute(d, it.node, "value")
+			if !ok { label = t == "submit" ? "Submit" : (t == "reset" ? "Reset" : "") }
+			text_in(dc, fid, fi.size, r, mid_base, col, label, true, fonts)
+		case "range":
+			track := draw.Rect{{r.min.x, (r.min.y + r.max.y) * 0.5 - 2}, {r.max.x, (r.min.y + r.max.y) * 0.5 + 2}}
+			draw.rect(dc, track, draw.mix(col, {1, 1, 1, col.a}, 0.6), 2)
+		case "color":
+			v, _ := dom.get_attribute(d, it.node, "value")
+			c := css.Color{0, 0, 0, 1}
+			toks := css.tokenize(v, context.temp_allocator)
+			vals := make([dynamic]css.Value, context.temp_allocator)
+			for tk in toks { append(&vals, css.Value{kind = .Token, tok = tk}) }
+			if cv, ok := css.parse_color(vals[:], nil); ok && cv.kind == .Rgba { c = cv.rgba }
+			draw.rect(dc, draw.rect_pad(r, -2), to_draw(c))
+		case:
+			v, has := dom.get_attribute(d, it.node, "value")
+			if t == "password" && has { v = strings.repeat("\u2022", strings.rune_count(v), context.temp_allocator) }
+			if !has || v == "" {
+				p, _ := dom.get_attribute(d, it.node, "placeholder")
+				text_in(dc, fid, fi.size, r, mid_base, draw.mix(col, {0.5, 0.5, 0.5, col.a}, 0.6), p, false, fonts)
+			} else {
+				text_in(dc, fid, fi.size, r, mid_base, col, v, false, fonts)
+			}
+		}
+	case "textarea":
+		v := dom.text_content(d, it.node)
+		y := r.min.y + (fi.line_h - (fi.ascent + fi.descent)) * 0.5 + fi.ascent
+		draw.push_clip(dc, r)
+		rest := v
+		for line in strings.split_lines_iterator(&rest) {
+			draw.text(dc, fid, fi.size, {r.min.x, y}, col, line)
+			y += fi.line_h
+			if y - fi.ascent > r.max.y { break }
+		}
+		draw.pop_clip(dc)
+	case "select":
+		label := ""
+		first := ""
+		stack := make([dynamic]base.Handle, 0, 8, context.temp_allocator)
+		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(&stack, ch) }
+		for len(stack) > 0 {
+			x := pop(&stack)
+			xn := dom.get(d, x)
+			if xn == nil || xn.kind != .Element { continue }
+			if xn.name == "optgroup" { for ch := xn.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(&stack, ch) }; continue }
+			if xn.name != "option" { continue }
+			s := strings.trim_space(dom.text_content(d, x))
+			if first == "" { first = s }
+			if _, sel := dom.get_attribute(d, x, "selected"); sel && label == "" { label = s }
+		}
+		if label == "" { label = first }
+		arrow := page_render.settings.select_arrow * l.scale
+		text_in(dc, fid, fi.size, {r.min, {r.max.x - arrow, r.max.y}}, mid_base, col, label, false, fonts)
+		// the arrow: a small chevron drawn with two strokes
+		cx, cy := r.max.x - arrow * 0.5, (r.min.y + r.max.y) * 0.5
+		a := max(arrow * 0.18, 2)
+		draw.rect(dc, {{cx - a, cy - a * 0.35}, {cx + a, cy + a * 0.35}}, col, a * 0.35)
+	case "meter", "progress":
+		draw.rect(dc, r, draw.mix(col, {1, 1, 1, col.a}, 0.8), (r.max.y - r.min.y) * 0.5)
+	}
+}
+
+////////////////////////////////
+// Gradients (CSS Images §3): linear gradients are drawn as quads with per-corner colors (exact along an axis or with two
+// stops); radial and conic gradients, which draw cannot express, show the average of their stops.
+
+Gradient_Kind :: enum u8 { Linear, Radial, Conic }
+
+Gradient_Stop :: struct { color: css.Color, pos: f32, px: bool, auto: bool }
+
+Gradient :: struct {
+	kind:   Gradient_Kind,
+	dir:    draw.Vec2,     // unit direction, when not a corner
+	corner: draw.Vec2,     // "to top right": signs of the corner (0 = by angle)
+	stops:  [dynamic]Gradient_Stop,
+	ok:     bool,
+}
+
+@(private = "file")
+gradient_of :: proc(text: string) -> ^Gradient {
+	if g, ok := page_render.gradients[text]; ok { return g }
+	if len(page_render.gradients) > 4096 {
+		for k, g in page_render.gradients { delete(k); delete(g.stops); free(g) }
+		clear(&page_render.gradients)
+	}
+	g := new(Gradient)
+	g.dir = {0, 1}
+	page_render.gradients[strings.clone(text)] = g
+	decls := css.parse_declarations(strings.concatenate({"x:", text}, context.temp_allocator), css.Parse_Options{max_nesting_depth = 64, max_rules = 4}, context.temp_allocator)
+	if len(decls) != 1 { return g }
+	vs := css.trim_values(decls[0].value)
+	if len(vs) != 1 || vs[0].kind != .Function { return g }
+	name := strings.to_lower(vs[0].tok.text, context.temp_allocator)
+	switch {
+	case strings.contains(name, "radial"): g.kind = .Radial
+	case strings.contains(name, "conic"): g.kind = .Conic
+	}
+	args := css.split_commas(vs[0].children, context.temp_allocator)
+	first := 0
+	if len(args) > 0 && g.kind == .Linear {
+		a := css.trim_values(args[0])
+		if len(a) > 0 && a[0].kind == .Token && a[0].tok.kind == .Ident && strings.equal_fold(a[0].tok.text, "to") {
+			first = 1
+			v: draw.Vec2
+			for x in a[1:] {
+				if x.kind != .Token || x.tok.kind != .Ident { continue }
+				switch strings.to_lower(x.tok.text, context.temp_allocator) {
+				case "top": v.y = -1
+				case "bottom": v.y = 1
+				case "left": v.x = -1
+				case "right": v.x = 1
+				}
+			}
+			if v.x != 0 && v.y != 0 { g.corner = v } else if v != {} { g.dir = v }
+		} else if len(a) == 1 && a[0].kind == .Token && a[0].tok.kind == .Dimension {
+			deg: f64
+			switch strings.to_lower(a[0].tok.text, context.temp_allocator) {
+			case "deg": deg = a[0].tok.num
+			case "turn": deg = a[0].tok.num * 360
+			case "rad": deg = a[0].tok.num * 180 / math.PI
+			case "grad": deg = a[0].tok.num * 0.9
+			}
+			rad := f32(deg * math.PI / 180)
+			g.dir = {math.sin(rad), -math.cos(rad)}
+			first = 1
+		}
+	} else if g.kind != .Linear && len(args) > 0 {
+		// the shape / position / angle prelude: skipped when it is not a color
+		a := css.trim_values(args[0])
+		if len(a) == 0 {
+			first = 1
+		} else if _, ok := css.parse_color(a[:1], nil); !ok {
+			first = 1
+		}
+	}
+	for arg in args[first:] {
+		items := make([dynamic]css.Value, context.temp_allocator)
+		for x in arg { if !css.is_ws_value(x) { append(&items, x) } }
+		if len(items) == 0 { continue }
+		cv, ok := css.parse_color(items[:1], nil)
+		if !ok || cv.kind != .Rgba { continue }
+		st := Gradient_Stop{color = cv.rgba, auto = true}
+		if len(items) > 1 && items[1].kind == .Token {
+			#partial switch items[1].tok.kind {
+			case .Percentage: st.pos, st.auto = f32(items[1].tok.num / 100), false
+			case .Dimension:
+				if p, pok := css.length_unit_to_px(items[1].tok.num, items[1].tok.text, 0); pok { st.pos, st.px, st.auto = f32(p), true, false }
+			case .Number: if items[1].tok.num == 0 { st.pos, st.auto = 0, false }
+			}
+		}
+		append(&g.stops, st)
+	}
+	g.ok = len(g.stops) > 0
+	return g
+}
+
+@(private = "file")
+paint_gradient :: proc(dc: ^draw.Context, text: string, r: draw.Rect, radii: [4]f32, scale: f32) {
+	g := gradient_of(text)
+	if !g.ok { return }
+	w, h := r.max.x - r.min.x, r.max.y - r.min.y
+	if w <= 0 || h <= 0 { return }
+	if g.kind != .Linear || len(g.stops) == 1 {
+		avg: css.Color
+		for s in g.stops { avg += s.color }
+		avg /= f32(len(g.stops))
+		col := to_draw(avg)
+		draw.rect_corners(dc, r, {col, col, col, col}, radii)
+		return
+	}
+	dir := g.dir
+	if g.corner != {} {
+		// "to top right": perpendicular to the diagonal through the two other corners
+		dir = {g.corner.x * h, g.corner.y * w}
+		n := math.sqrt(dir.x * dir.x + dir.y * dir.y)
+		dir /= n
+	}
+	length := abs(w * dir.x) + abs(h * dir.y)
+	if length <= 0 { return }
+	// stop positions along the gradient line, 0..1, with auto positions spread and positions never going back
+	n := len(g.stops)
+	pos := make([]f32, n, context.temp_allocator)
+	for s, i in g.stops {
+		switch {
+		case !s.auto: pos[i] = s.px ? s.pos * scale / length : s.pos
+		case i == 0: pos[i] = 0
+		case i == n - 1: pos[i] = 1
+		case: pos[i] = -1
+		}
+	}
+	for i := 1; i < n; i += 1 {
+		if pos[i] >= 0 { continue }
+		j := i
+		for j < n && pos[j] < 0 { j += 1 }
+		for k in i ..< j { pos[k] = pos[i - 1] + (pos[j] - pos[i - 1]) * f32(k - i + 1) / f32(j - i + 1) }
+	}
+	for i in 1 ..< n { pos[i] = max(pos[i], pos[i - 1]) }
+	color_at :: proc(g: ^Gradient, pos: []f32, t: f32) -> draw.Color {
+		n := len(g.stops)
+		if t <= pos[0] { return to_draw(g.stops[0].color) }
+		if t >= pos[n - 1] { return to_draw(g.stops[n - 1].color) }
+		for i in 1 ..< n {
+			if t <= pos[i] {
+				span := pos[i] - pos[i - 1]
+				f := span > 0 ? (t - pos[i - 1]) / span : 1
+				return draw.mix(to_draw(g.stops[i - 1].color), to_draw(g.stops[i].color), f)
+			}
+		}
+		return to_draw(g.stops[n - 1].color)
+	}
+	axis := abs(dir.x) < 0.001 || abs(dir.y) < 0.001
+	if !axis {
+		c := (r.min + r.max) * 0.5
+		t_of :: proc(p, c, dir: draw.Vec2, length: f32) -> f32 { return ((p.x - c.x) * dir.x + (p.y - c.y) * dir.y) / length + 0.5 }
+		cols := [4]draw.Color{
+			color_at(g, pos, t_of(r.min, c, dir, length)), color_at(g, pos, t_of({r.min.x, r.max.y}, c, dir, length)),
+			color_at(g, pos, t_of({r.max.x, r.min.y}, c, dir, length)), color_at(g, pos, t_of(r.max, c, dir, length)),
+		}
+		draw.rect_corners(dc, r, cols, radii)
+		return
+	}
+	// along an axis: one strip per stop interval (plus the flat ends)
+	vertical := abs(dir.y) > abs(dir.x)
+	reverse := vertical ? dir.y < 0 : dir.x < 0
+	edges := make([dynamic]f32, 0, n + 2, context.temp_allocator)
+	append(&edges, 0)
+	for p in pos { if p > 0 && p < 1 { append(&edges, p) } }
+	append(&edges, 1)
+	for i in 0 ..< len(edges) - 1 {
+		t0, t1 := edges[i], edges[i + 1]
+		if t1 <= t0 { continue }
+		c0, c1 := color_at(g, pos, t0 + 0.0001), color_at(g, pos, t1 - 0.0001)
+		a0, a1 := t0, t1
+		if reverse { a0, a1 = 1 - t1, 1 - t0; c0, c1 = c1, c0 }
+		piece: draw.Rect
+		cols: [4]draw.Color
+		rad: [4]f32
+		if vertical {
+			piece = {{r.min.x, r.min.y + h * a0}, {r.max.x, r.min.y + h * a1}}
+			cols = {c0, c1, c0, c1}
+			if a0 <= 0 { rad[0], rad[2] = radii[0], radii[2] }
+			if a1 >= 1 { rad[1], rad[3] = radii[1], radii[3] }
+		} else {
+			piece = {{r.min.x + w * a0, r.min.y}, {r.min.x + w * a1, r.max.y}}
+			cols = {c0, c0, c1, c1}
+			if a0 <= 0 { rad[0], rad[1] = radii[0], radii[1] }
+			if a1 >= 1 { rad[2], rad[3] = radii[2], radii[3] }
+		}
+		draw.rect_corners(dc, piece, cols, rad)
+	}
 }

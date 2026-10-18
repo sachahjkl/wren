@@ -1,0 +1,107 @@
+package layout
+
+import "wb:config"
+import "wb:css"
+
+// What a user or an administrator may want to tune about page layout (about:config, `layout.*`). The engine reads a plain
+// copy, so a layout pass never touches the registry.
+
+Settings :: struct {
+	max_depth:          int,       // boxes nested deeper are flattened into their ancestor at this depth
+	max_stack_bytes:    int,       // native stack a layout pass may use before it stops descending
+	band_height:        f32,       // CSS px: height of the bands of the spatial index
+	scrollbar_width:    f32,       // CSS px
+	scrollbar_min_thumb: f32,      // CSS px
+	scrollbar_margin:   f32,       // CSS px between the bar and the padding edge
+	scrollbar_thumb:    css.Color,
+	scrollbar_track:    css.Color,
+	document_scrollbar: bool,
+	placeholder_w, placeholder_h: f32,   // CSS px: a replaced element with no known size (an image not decoded yet)
+	embed_w, embed_h:   f32,       // CSS px: iframe, canvas, video, embed, object
+	input_size:         int,       // characters of a text field without a size attribute
+	textarea_cols, textarea_rows: int,
+	select_arrow:       f32,       // CSS px kept on the right of a <select> for its arrow
+	marker_gap:         f32,       // em: between an outside list marker and the content
+	sub_shift, super_shift: f32,   // em of the parent: vertical-align sub / super
+}
+
+PREFS := [?]config.Def{
+	{name = "layout.max_depth", kind = .Int, default = {i = 256}, bounded = true, min = 16, max = 4096,
+		description = "Deepest nesting of boxes laid out as boxes. Deeper elements are flattened: their text joins the box at this depth (protects the native stack against hostile pages)."},
+	{name = "layout.max_stack_bytes", kind = .Int, default = {i = 512 << 10}, bounded = true, min = 64 << 10, max = 64 << 20, bytes = true, unit = "bytes",
+		description = "Native stack one layout pass may use. Past it, deeper boxes get no size instead of crashing the browser. Must stay below the UI thread's stack size."},
+	{name = "layout.scrollbar.width_px", kind = .Float, default = {f = 6}, bounded = true, min = 1, max = 64, unit = "px",
+		description = "Thickness of the scroll bars drawn over scrollable boxes and the page."},
+	{name = "layout.scrollbar.min_thumb_px", kind = .Float, default = {f = 24}, bounded = true, min = 4, max = 400, unit = "px",
+		description = "Shortest scroll bar thumb."},
+	{name = "layout.scrollbar.margin_px", kind = .Float, default = {f = 2}, bounded = true, min = 0, max = 32, unit = "px",
+		description = "Space between a scroll bar and the edge of its box."},
+	{name = "layout.scrollbar.thumb_color", kind = .String, default = {s = "rgba(110, 110, 120, 0.65)"}, description = "Color of scroll bar thumbs (CSS color)."},
+	{name = "layout.scrollbar.track_color", kind = .String, default = {s = "rgba(0, 0, 0, 0.06)"}, description = "Color of scroll bar tracks (CSS color, transparent = none)."},
+	{name = "layout.scrollbar.document", kind = .Bool, default = {b = true}, description = "Draw a scroll bar for the page itself when it is taller than the window."},
+	{name = "layout.replaced.placeholder_width_px", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 4096, unit = "px",
+		description = "Width of an image whose size is not known yet and not given by width/height attributes."},
+	{name = "layout.replaced.placeholder_height_px", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 4096, unit = "px",
+		description = "Height of an image whose size is not known yet and not given by width/height attributes."},
+	{name = "layout.replaced.embed_width_px", kind = .Float, default = {f = 300}, bounded = true, min = 0, max = 8192, unit = "px",
+		description = "Default width of iframe, canvas, video, embed and object elements."},
+	{name = "layout.replaced.embed_height_px", kind = .Float, default = {f = 150}, bounded = true, min = 0, max = 8192, unit = "px",
+		description = "Default height of iframe, canvas, video, embed and object elements."},
+	{name = "layout.form.input_size_chars", kind = .Int, default = {i = 20}, bounded = true, min = 1, max = 1000,
+		description = "Width, in characters, of a text field without a size attribute."},
+	{name = "layout.form.textarea_cols", kind = .Int, default = {i = 20}, bounded = true, min = 1, max = 1000,
+		description = "Columns of a <textarea> without a cols attribute."},
+	{name = "layout.form.textarea_rows", kind = .Int, default = {i = 2}, bounded = true, min = 1, max = 1000,
+		description = "Rows of a <textarea> without a rows attribute."},
+	{name = "layout.form.select_arrow_px", kind = .Float, default = {f = 20}, bounded = true, min = 0, max = 200, unit = "px",
+		description = "Room kept on the right of a drop-down list for its arrow."},
+	{name = "layout.list.marker_gap_em", kind = .Float, default = {f = 0.5}, bounded = true, min = 0, max = 10, unit = "em",
+		description = "Space between an outside list marker and the item's text."},
+	{name = "layout.text.sub_shift_em", kind = .Float, default = {f = 0.2}, bounded = true, min = 0, max = 2, unit = "em",
+		description = "How far vertical-align: sub lowers text, in em of the parent."},
+	{name = "layout.text.super_shift_em", kind = .Float, default = {f = 0.34}, bounded = true, min = 0, max = 2, unit = "em",
+		description = "How far vertical-align: super raises text, in em of the parent."},
+}
+
+register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
+
+@(private)
+color_pref :: proc(p: ^config.Prefs, name: string, fallback: css.Color) -> css.Color {
+	text := config.string_of(p, name)
+	toks := css.tokenize(text, context.temp_allocator)
+	vals := make([dynamic]css.Value, context.temp_allocator)
+	for t in toks { append(&vals, css.Value{kind = .Token, tok = t}) }
+	if cv, ok := css.parse_color(vals[:], nil); ok && cv.kind == .Rgba { return cv.rgba }
+	return fallback
+}
+
+settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
+	return Settings{
+		max_depth = int(config.int_of(p, "layout.max_depth")),
+		max_stack_bytes = int(config.int_of(p, "layout.max_stack_bytes")),
+		band_height = 256,   // the shell passes `browser.layout.band_height_px`
+		scrollbar_width = f32(config.float_of(p, "layout.scrollbar.width_px")),
+		scrollbar_min_thumb = f32(config.float_of(p, "layout.scrollbar.min_thumb_px")),
+		scrollbar_margin = f32(config.float_of(p, "layout.scrollbar.margin_px")),
+		scrollbar_thumb = color_pref(p, "layout.scrollbar.thumb_color", {0.43, 0.43, 0.47, 0.65}),
+		scrollbar_track = color_pref(p, "layout.scrollbar.track_color", {0, 0, 0, 0.06}),
+		document_scrollbar = config.bool_of(p, "layout.scrollbar.document"),
+		placeholder_w = f32(config.float_of(p, "layout.replaced.placeholder_width_px")),
+		placeholder_h = f32(config.float_of(p, "layout.replaced.placeholder_height_px")),
+		embed_w = f32(config.float_of(p, "layout.replaced.embed_width_px")),
+		embed_h = f32(config.float_of(p, "layout.replaced.embed_height_px")),
+		input_size = int(config.int_of(p, "layout.form.input_size_chars")),
+		textarea_cols = int(config.int_of(p, "layout.form.textarea_cols")),
+		textarea_rows = int(config.int_of(p, "layout.form.textarea_rows")),
+		select_arrow = f32(config.float_of(p, "layout.form.select_arrow_px")),
+		marker_gap = f32(config.float_of(p, "layout.list.marker_gap_em")),
+		sub_shift = f32(config.float_of(p, "layout.text.sub_shift_em")),
+		super_shift = f32(config.float_of(p, "layout.text.super_shift_em")),
+	}
+}
+
+settings_default :: proc() -> Settings {
+	p := config.prefs_make(context.temp_allocator)
+	register_prefs(&p)
+	return settings_from_prefs(&p)
+}
