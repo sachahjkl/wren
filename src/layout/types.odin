@@ -70,6 +70,7 @@ Box_Kind :: enum u8 {
 	Inline,       // inline box: its content lives in the items of its inline formatting context
 	Replaced,     // img, input, select, textarea, canvas...: content painted by the shell
 	Flex,
+	Grid,         // grid container (grid.odin); its children are laid out as grid items
 	Table,
 	Row_Group,
 	Row,

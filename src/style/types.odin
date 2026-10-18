@@ -124,7 +124,7 @@ Computed :: struct {
 	inset:      [Side]Length,
 	z_auto:     bool,
 	z_index:    i32,
-	width, height, min_width, min_height, max_width, max_height: Length,
+	width, height, min_width, min_height, max_width, max_height: Length,   // min-*: Auto = the automatic minimum size (0 outside flex and grid items)
 	margin:     [Side]Length,
 	padding:    [Side]Length,
 	border_width: [Side]f32,
@@ -160,7 +160,8 @@ Computed :: struct {
 	white_space: White_Space,
 	word_break: Word_Break,
 	overflow_wrap: Overflow_Wrap,
-	tab_size:   f32,
+	tab_size:   f32,            // tab_spaces: a number of spaces (initial 8), else px
+	tab_spaces: bool,
 	direction:  Direction,
 	text_shadow: []Shadow,
 	// --- background ---

@@ -45,7 +45,7 @@ self_align :: proc(container, item: ^style.Computed) -> style.Content_Align {
 @(private)
 depends_on_height :: proc(c: ^Ctx, ki: i32) -> bool {
 	k := &c.l.boxes[ki]
-	if k.kind == .Flex || k.kind == .Table { return true }
+	if k.kind == .Flex || k.kind == .Grid || k.kind == .Table { return true }
 	if k.abs_first != NONE { return true }
 	for ch := k.first; ch != NONE; ch = c.l.boxes[ch].next {
 		cs := c.l.boxes[ch].cs
@@ -206,13 +206,9 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 		if mxl.kind != .None {
 			if v, ok := to_border_main(c, k, mxl, main_avail, row); ok { it.max_main = v }
 		}
-		// the style engine computes `min-width: auto` to 0, so a zero minimum is taken as auto (see the report on Computed)
 		mnl := row ? ks.min_width : ks.min_height
-		explicit_min := false
-		if v, ok := to_border_main(c, k, mnl, main_avail, row); ok {
-			it.min_main = v
-			explicit_min = mnl.kind != .Px || mnl.v != 0
-		}
+		explicit_min := mnl.kind != .Auto
+		if v, ok := to_border_main(c, k, mnl, main_avail, row); ok { it.min_main = v }
 		scroll := ks.overflow_x != .Visible || ks.overflow_y != .Visible
 		if !explicit_min && !scroll {
 			// content-based minimum: the min-content size, never more than a specified size

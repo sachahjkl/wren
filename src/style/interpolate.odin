@@ -40,6 +40,11 @@ interpolate_prop :: proc(dst, a, b: ^Computed, p: Prop, t: f64, ctx: ^Interp_Ctx
 		if a.z_auto || b.z_auto { return a.z_auto && b.z_auto }
 		dst.z_auto, dst.z_index = false, i32(math.round(lerp64(f64(a.z_index), f64(b.z_index), t)))
 		return true
+	case .Tab_Size:
+		// spaces and lengths do not interpolate with each other (CSS Text 3 §4.2: by computed value type)
+		if a.tab_spaces != b.tab_spaces { return false }
+		dst.tab_spaces, dst.tab_size = a.tab_spaces, max(lerp32(a.tab_size, b.tab_size, t), 0)
+		return true
 	case .Font_Weight:
 		dst.font_weight = u16(clamp(math.round(lerp64(f64(a.font_weight), f64(b.font_weight), t)), 1, 1000))
 		return true

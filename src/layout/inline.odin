@@ -268,13 +268,13 @@ emit_text :: proc(lb: ^Line_Builder, item: i32, start, end: i32, w: f32, nsp: i3
 	lb.pen += w
 }
 
-// Tab stop interval. The style engine's initial tab-size is 8 *pixels* (it should be 8 spaces): that exact value is
-// taken as the initial 8 spaces; any other value is the computed length.
+// Tab stop interval (CSS Text 3 §4.2): a number of advances of a space (letter-spacing included), or a length.
 @(private)
 tab_interval :: proc(c: ^Ctx, it: ^Inline_Item) -> f32 {
 	f := &c.l.fonts[it.fi]
 	t := it.cs.tab_size
-	if t == 8 || t <= 0 { return (f.space + it.cs.letter_spacing * c.scale) * 8 }
+	space := f.space + it.cs.letter_spacing * c.scale
+	if it.cs.tab_spaces || t <= 0 { return space * (t > 0 ? t : 8) }
 	return t * c.scale
 }
 
@@ -459,7 +459,7 @@ atomic_baseline :: proc(c: ^Ctx, k: ^Box) -> f32 {
 	#partial switch k.kind {
 	case .Block:
 		if k.cs.overflow_x == .Visible && k.cs.overflow_y == .Visible && k.last_baseline >= 0 { return k.margin[0] + k.last_baseline }
-	case .Flex, .Table:
+	case .Flex, .Grid, .Table:
 		if k.baseline >= 0 { return k.margin[0] + k.pre_h + k.baseline }
 	}
 	return mh

@@ -1,7 +1,7 @@
 # Starts the browser, optionally clicks at window-relative pixel positions, saves a capture of the window frame.
 #   powershell -File tools\screenshot.ps1 -Url file:///S:/wasm_browser/build/e2e.wasm -Out shot.png [-Click 120,230] [-WaitMs 1500]
 # The cursor is parked outside the window for the first capture. Aborts if another window covers the target.
-param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300)
+param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300, [int]$Width = 0, [int]$Height = 0)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Add-Type @"
@@ -46,6 +46,7 @@ try {
     $r0 = New-Object SH+RECT; [SH]::GetWindowRect($h, [ref]$r0) | Out-Null
     [SH]::SetCursorPos($r0.R + 15, $r0.T + 200) | Out-Null
     [SH]::SetWindowPos($h, [IntPtr](-1), 0, 0, 0, 0, 0x13) | Out-Null   # topmost, so nothing covers it while we capture
+    if ($Width -gt 0 -and $Height -gt 0) { [SH]::SetWindowPos($h, [IntPtr](-1), 0, 0, $Width, $Height, 0x12) | Out-Null }   # -Width / -Height: outer size
     [SH]::SetForegroundWindow($h) | Out-Null
     Start-Sleep -Milliseconds $WaitMs
     Grab $h $Out

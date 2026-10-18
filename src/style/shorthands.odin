@@ -407,6 +407,8 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 			switch {
 			case is_num && grow == nil: grow = items[i:i + 1]
 			case is_num && shrink == nil && grow != nil: shrink = items[i:i + 1]
+			// a unitless zero after the two factors is the basis (CSS Flexbox §7.2: `flex: 1 1 0`)
+			case is_num && basis == nil && it.tok.num == 0: basis = items[i:i + 1]
 			case !is_num && basis == nil: basis = items[i:i + 1]
 			case: return nil, false
 			}

@@ -69,6 +69,7 @@ Styled :: struct {
 	layout_serial:  u64,     // the serial of the last change that was not paint-only (paint_change.odin)
 	line_height_normal: f32, // what `line-height: normal` means (a multiple of the font size), from the preferences
 	canvas:         css.Color,   // the color painted behind the whole page (root or body background, else the preference)
+	canvas_default: css.Color,   // the preference
 	state:          State,       // the dynamic state these styles were computed for (target_id owned by `alloc`)
 	base_used:      uint,        // arena use right after the full pass: what partial restyles add on top is waste
 	thread_arenas:  [dynamic]^virtual.Arena,   // a parallel pass: the computed styles of each thread (parallel.odin)
@@ -500,8 +501,6 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	if (c.overflow_x == .Visible) != (c.overflow_y == .Visible) {
 		if c.overflow_x == .Visible { c.overflow_x = .Auto } else { c.overflow_y = .Auto }
 	}
-	if c.min_width.kind == .Auto { c.min_width = px(0) }
-	if c.min_height.kind == .Auto { c.min_height = px(0) }
 }
 
 @(private)
@@ -687,11 +686,14 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	s.layout_serial = s.serial
 	s.line_height_normal = e.settings.line_height_normal
 	s.canvas = e.settings.background_color
+	s.canvas_default = s.canvas
 	return s
 }
 
+// The canvas takes the root element's background, else the body's (CSS Backgrounds 3 §2.11.2), else the preference.
 @(private)
 update_canvas :: proc(s: ^Styled, doc: ^dom.Document) {
+	s.canvas = s.canvas_default
 	if root_el := dom.find_first_by_tag(doc, "html"); root_el != base.NIL_HANDLE {
 		if rc := style_of(s, root_el); rc != nil && rc.background_color.a > 0 {
 			s.canvas = rc.background_color

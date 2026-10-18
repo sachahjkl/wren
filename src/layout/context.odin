@@ -30,6 +30,7 @@ Ctx :: struct {
 	root_el, body_el: base.Handle,
 	lb_bufs:  [dynamic]^LB_Buffers,     // line building buffers per nesting level of inline formatting contexts
 	lb_depth: int,
+	grid:     ^Grid_Pass,               // grid layout state of the pass (grid.odin), made on first use
 }
 
 @(private)

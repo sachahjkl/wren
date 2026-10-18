@@ -208,7 +208,7 @@ child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool) -> Frame {
 	g.depth = b.depth
 	if .Positioned in b.flags { g.cb = bi }
 	if b.kind != .Inline && contains_fixed(b.cs) { g.cb, g.fcb = bi, bi }
-	if .Atomic in b.flags || .Float in b.flags || .Abs in b.flags || b.kind == .Flex || b.kind == .Table {
+	if .Atomic in b.flags || .Float in b.flags || .Abs in b.flags || b.kind == .Flex || b.kind == .Grid || b.kind == .Table {
 		g.deco = {}   // decorations do not propagate into atomic inlines, floats and absolutely positioned boxes
 	}
 	g.deco += b.cs.text_decoration
@@ -217,7 +217,7 @@ child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool) -> Frame {
 	case .Inline: g.mode = .Inline
 	case .Block, .Cell, .Caption:
 		if has_block { g.mode = .Block } else { g.mode = .Inline; g.ifc = bi; b.flags += {.Ifc} }
-	case .Flex: g.mode = .Flex
+	case .Flex, .Grid: g.mode = .Flex   // grid items are built like flex items (CSS Grid §6.1)
 	case .Table: g.mode = .Table
 	case .Row_Group: g.mode = .Row_Group
 	case .Row: g.mode = .Row
@@ -230,6 +230,7 @@ child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool) -> Frame {
 kind_for :: proc(d: style.Display) -> Box_Kind {
 	#partial switch d {
 	case .Flex, .Inline_Flex: return .Flex
+	case .Grid, .Inline_Grid: return .Grid
 	case .Table, .Inline_Table: return .Table
 	case .Table_Row_Group, .Table_Header_Group, .Table_Footer_Group: return .Row_Group
 	case .Table_Row: return .Row
@@ -570,7 +571,7 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 		b.flags += {.Bfc}
 		if !cs.z_auto { b.flags += {.Stacking} }
 	}
-	if kind == .Cell || kind == .Caption || kind == .Flex || kind == .Table { b.flags += {.Bfc} }
+	if kind == .Cell || kind == .Caption || kind == .Flex || kind == .Grid || kind == .Table { b.flags += {.Bfc} }
 	if kind == .Replaced { b.flags += {.Bfc} }
 	if kind == .Cell {
 		if v, ok := dom.get_attribute(c.d, h, "colspan"); ok { b.colspan = i32(clamp(parse_int(v, 1), 1, 1000)) }

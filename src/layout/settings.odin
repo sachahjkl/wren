@@ -25,6 +25,8 @@ Settings :: struct {
 	sub_shift, super_shift: f32,   // em of the parent: vertical-align sub / super
 	paint_refresh:      bool,      // paint-only style changes refresh the existing layout instead of redoing it
 	opacity_layers:     bool,      // opacity groups are composited from an offscreen layer (else per primitive)
+	grid_max_tracks:    int,       // grid lines are clamped to ± this (explicit and implicit tracks per axis)
+	grid_max_items:     int,       // grid items placed per container; the rest get no box
 }
 
 PREFS := [?]config.Def{
@@ -67,6 +69,10 @@ PREFS := [?]config.Def{
 		description = "When only paint-only values change (transform, opacity, colors, backgrounds, shadows: the usual animations and hover effects), keep the boxes and update matrices, opacities and colors instead of laying the page out again. Off: every style change lays the page out (diagnostics)."},
 	{name = "layout.paint.opacity_layers", kind = .Bool, default = {b = true},
 		description = "Paint an element with opacity below 1 into an offscreen layer and blend it once, as CSS requires (what overlaps inside it does not show through). Off: each shape is faded on its own (cheaper, inexact where children overlap)."},
+	{name = "layout.grid.max_tracks", kind = .Int, default = {i = 10000}, bounded = true, min = 100, max = 1_000_000,
+		description = "Largest grid line number honored, and most tracks a repeat() expands to. Placements further out are clamped, as CSS Grid allows (a hostile `grid-row: 10000000` or `repeat(10000000, 1px)` stays cheap)."},
+	{name = "layout.grid.max_items", kind = .Int, default = {i = 200_000}, bounded = true, min = 1000, max = 10_000_000,
+		description = "Most children of one grid container that are placed and laid out. The rest get no box."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
@@ -105,6 +111,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		super_shift = f32(config.float_of(p, "layout.text.super_shift_em")),
 		paint_refresh = config.bool_of(p, "layout.paint_refresh"),
 		opacity_layers = config.bool_of(p, "layout.paint.opacity_layers"),
+		grid_max_tracks = int(config.int_of(p, "layout.grid.max_tracks")),
+		grid_max_items = int(config.int_of(p, "layout.grid.max_items")),
 	}
 }
 
