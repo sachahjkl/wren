@@ -14,7 +14,7 @@ echo building the Wasm runtime...
 call tools\build_wamr.bat || exit /b 1
 :have_wamr
 if not exist build mkdir build
-set "COLL=-collection:toolkit=ext/gui_toolkit -collection:wb=src"
+set "COLL=-collection:toolkit=ext/gui_toolkit -collection:wb=src -resource:src/browser/wren.rc"
 if "%1"=="debug" goto debug
 if "%1"=="profile" goto profile
 odin build src/browser -out:build/browser.exe %COLL% -o:speed -vet -subsystem:windows
