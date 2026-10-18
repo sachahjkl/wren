@@ -97,6 +97,7 @@ Page :: struct {
 	offthread:    Offthread_State,      // background parsing in flight
 	anim:         Page_Animations,      // transitions and animations (animations.odin)
 	fonts:        Page_Fonts,           // @font-face downloads (fonts.odin)
+	images:       Page_Images,          // <img>, CSS images, Image_decode (images.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives
@@ -149,6 +150,7 @@ page_cleanup :: proc(data: rawptr) {
 	for _, t in base.pool_next(&p.timers, &it) { host.clear_timer(p.loop, t.handle) }
 	base.pool_destroy(&p.timers)
 	forms_detach(p)
+	images_destroy(p)   // before the objects: decode() promises are objects
 	objects_destroy(p)   // before the dispatcher: an object's destructor may still look at events
 	web_destroy(p)
 	workers_destroy(p)   // after the Worker objects: stops and joins every thread this page started

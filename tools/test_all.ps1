@@ -12,7 +12,7 @@ function Step($name, [scriptblock]$body) {
 }
 
 New-Item -ItemType Directory -Force build | Out-Null
-foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'fetch', 'config', 'css', 'style', 'webfont', 'layout', 'forms', 'page', 'browser') {
+foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'layout', 'forms', 'page', 'browser') {
     Step "unit tests: $pkg" { odin test "src/$pkg" -collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -out:"build/${pkg}_test.exe" 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 }
 
@@ -81,6 +81,16 @@ try {
         $p = Start-Process .\build\styletest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\stt.txt
         if (-not $p.WaitForExit(60000)) { $p.Kill(); Get-Content build\stt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\stt.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
+    }
+    Step 'images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)' {
+        odin build examples/imagestest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/imagestest.wasm -o:size
+        if ($LASTEXITCODE -ne 0) { return }
+        odin build src/tools/imagestest -collection:wb=src -vet -out:build/imagestest.exe
+        if ($LASTEXITCODE -ne 0) { return }
+        $p = Start-Process .\build\imagestest.exe -ArgumentList 'build\imagestest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\imt.txt
+        if (-not $p.WaitForExit(180000)) { $p.Kill(); Get-Content build\imt.txt; $global:LASTEXITCODE = 1; return }
+        $o = Get-Content build\imt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
 } finally { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }

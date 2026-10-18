@@ -406,9 +406,10 @@ register_imports :: proc() -> bool {
 	ok &&= wasm.register("history", history_symbols[:])
 	ok &&= wasm.register("forms", build_forms_symbols())
 	ok &&= wasm.register("workers", workers_symbols[:])
+	ok &&= wasm.register("images", images_symbols[:])
 	// modules whose host functions only touch the realm itself (no document, loader, blocking pool or other page): usable
 	// from a worker's thread. Network-backed modules (fetch promises, abort, sockets, storage, crypto digests) are not yet.
-	for m in ([]string{"encoding", "url", "performance"}) { worker_allow_module(m) }
+	for m in ([]string{"encoding", "url", "performance", "images"}) { worker_allow_module(m) }
 	return ok
 }
 

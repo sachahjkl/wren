@@ -218,6 +218,7 @@ paint_box :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.
 			draw.rect_corners(dc, r, {col, col, col, col}, radii)
 		}
 		if cs.background_image.kind == .Gradient { paint_gradient(dc, cs.background_image.gradient, r, radii, l.scale) }
+		images_paint_backgrounds(dc, cs, r, b.border, b.padding, radii, l.scale)
 	}
 	if len(cs.box_shadow) > 0 {
 		pr := draw.Rect{r.min + {b.border[3], b.border[0]}, r.max - {b.border[1], b.border[2]}}
@@ -455,6 +456,7 @@ paint_content :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^lay.
 	fi := lay.item_font(l, it)
 	fid := fi != nil ? font.Font_Id(fi.font) : font.Font_Id(0)
 	size := fi != nil ? fi.size : 13
+	if it.kind == .Replaced && images_paint_content(dc, d, it.node, r, border, it.cs, fid, size, l.scale) { return }
 	if page_render.content != nil {
 		if page_render.content(page_render.content_user, dc, d, it.node, it.kind, r, border, it.cs, fid, size) { return }
 	}
