@@ -72,18 +72,21 @@ register_layout_prefs :: proc(p: ^config.Prefs) { lay.register_prefs(p) }
 layout_reset :: proc(l: ^Layout) { lay.reset(l) }
 layout_destroy :: proc(l: ^Layout) { lay.destroy(l) }
 
-// `viewport`: size of the page area in physical pixels; `scale`: physical pixels per CSS px.
-layout_document :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, measure: ^Measure, style_settings: ^style.Settings, viewport: draw.Vec2, scale, band_h: f32) {
+// `viewport`: size of the page area in physical pixels; `scale`: physical pixels per CSS px. `images_gen` /
+// `fonts_gen`: change counters of the natural sizes of images and of the page's web fonts (lay.Input).
+layout_document :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, measure: ^Measure, style_settings: ^style.Settings, viewport: draw.Vec2, scale, band_h: f32, images_gen: u64 = 0, fonts_gen: u64 = 0) {
 	lay.run(l, lay.Input{
 		doc = d, styled = styled, settings = &page_render.settings,
 		text = page_text_api(&page_render.fonts, measure, style_settings),
 		replaced = page_render.replaced,
 		viewport = viewport, scale = scale, band_h = band_h,
+		images_generation = images_gen, fonts_generation = fonts_gen,
 	})
 }
 
-layout_stale :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, viewport: draw.Vec2, scale: f32) -> bool {
-	return !l.valid || l.mutations != d.mutations || l.serial != styled.serial || l.viewport != viewport || l.scale != scale
+layout_stale :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, viewport: draw.Vec2, scale: f32, images_gen: u64 = 0, fonts_gen: u64 = 0) -> bool {
+	return !l.valid || l.mutations != d.mutations || l.serial != styled.serial || l.viewport != viewport || l.scale != scale ||
+		l.inc.images_gen != images_gen || l.inc.fonts_gen != fonts_gen
 }
 
 // Element under a point of the page area (`p` relative to its top-left corner).

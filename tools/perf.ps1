@@ -1,5 +1,6 @@
 # Measures the browser on real pages with real input. Needs build\browser_prof.exe (build.bat profile).
 #   powershell -File tools\perf.ps1 [-Only name,name] [-NoSample] [-Exe browser_prof.exe] [-Tag suffix]
+# Scenarios ending in _full run with layout.incremental.enabled=false (the reference for incremental layout).
 # Writes build\perf\<run>.txt (per-phase statistics, CPU time, sampling profile) and <run>.csv (one row per frame).
 param([string[]]$Only = @(), [switch]$NoSample, [string]$Exe = 'browser_prof.exe', [string]$Tag = '')
 $ErrorActionPreference = 'Stop'
@@ -69,12 +70,13 @@ $p50k = Make-Page 'p50k' 50000 5000
 function FileUrl($p) { 'file:///' + ($p -replace '\\', '/') }
 
 # ---------- driver ----------
-function Run($name, $url, [scriptblock]$actions, [bool]$sample = $true) {
+function Run($name, $url, [scriptblock]$actions, [bool]$sample = $true, [string]$extra = '') {
     if ($Only.Count -gt 0 -and $Only -notcontains $name) { return }
     $prefix = Join-Path $out "$name$Tag"
     $env:WREN_PROF = $prefix
     $env:WREN_SAMPLE = if ($sample -and -not $NoSample) { '1' } else { '0' }
-    $p = if ($url) { Start-Process (Join-Path $root "build\$Exe") -ArgumentList $url -PassThru } else { Start-Process (Join-Path $root "build\$Exe") -PassThru }
+    $argv = (@($extra, $url) | Where-Object { $_ }) -join ' '
+    $p = if ($argv) { Start-Process (Join-Path $root "build\$Exe") -ArgumentList $argv -PassThru } else { Start-Process (Join-Path $root "build\$Exe") -PassThru }
     try {
         $sw = [Diagnostics.Stopwatch]::StartNew()
         while (-not $p.HasExited -and $p.MainWindowHandle -eq 0 -and $sw.ElapsedMilliseconds -lt 10000) { Start-Sleep -Milliseconds 20; $p.Refresh() }
@@ -134,3 +136,15 @@ $site = Join-Path $root 'examples\site'
 Run 'anim'       (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-Sleep 10 } $false
 Run 'transforms' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 10 } $false
 Run 'transforms_sample' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 10 }
+# a module changes one text of a ~17 000-node page every 16 ms (examples/mutation): incremental layout
+if ($Only.Count -eq 0 -or $Only -contains 'mutation' -or $Only -contains 'mutation_full') {
+    $wasm = Join-Path $site 'mutation.wasm'
+    if (-not (Test-Path $wasm)) {
+        & odin build (Join-Path $root 'examples\mutation') -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator "-collection:web=$(Join-Path $root 'sdk\odin')" "-out:$wasm" -o:size
+    }
+}
+Run 'mutation'   (FileUrl (Join-Path $site 'mutation.html')) { param($h) Start-Sleep 12 } $false
+# the same with incremental layout off (every mutation lays the whole page out): the reference
+$env:WREN_EXTRA_ARGS = ''
+Run 'mutation_full' (FileUrl (Join-Path $site 'mutation.html')) { param($h) Start-Sleep 12 } $false '--pref layout.incremental.enabled=false'
+Run 'p10k_resize_full' (FileUrl $p10k) { param($h) Start-Sleep 5; Resize $h 6000 } $true '--pref layout.incremental.enabled=false'

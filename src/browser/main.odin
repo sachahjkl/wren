@@ -120,6 +120,8 @@ App :: struct {
 
 	page_rect: draw.Rect,   // where the page was painted last frame (physical pixels)
 	frames_requested: int,
+	in_poll:       bool,             // the frame is pumping OS messages: a frame run from there (WM_PAINT) is nested
+	frames_drawn:  u64,
 	last_tick:        time.Tick,
 }
 
@@ -522,16 +524,24 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	}
 	scale := ui.scale()
 	size := draw.rect_size(b.rect)
+	// an incremental layout reads what the style passes changed (layout.incremental.*)
+	ls := &page_render.settings
+	page.set_layout_journal(t.page, ls.incremental ? ls.inc_journal : 0)
 	prof_begin(.Styles)
 	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
 	prof_end(.Styles)
 	draw.rect(dc, b.rect, to_draw(styled.canvas))
 	adopt_web_fonts(t)
 	images_before_layout(t)
-	if layout_stale(&t.layout, t.page.doc, styled, size, scale) {
+	fonts_gen := u64(t.web_fonts)
+	if layout_stale(&t.layout, t.page.doc, styled, size, scale, t.image_sizes, fonts_gen) {
 		prof_begin(.Layout)
-		layout_document(&t.layout, t.page.doc, styled, &app.measure, &app.page_settings.style, size, scale, app.cfg.layout_band_px)
+		failures := t.layout.inc.verify_failures
+		layout_document(&t.layout, t.page.doc, styled, &app.measure, &app.page_settings.style, size, scale, app.cfg.layout_band_px, t.image_sizes, fonts_gen)
 		prof_end(.Layout)
+		if t.layout.inc.verify_failures != failures {
+			tab_log(t, .Warn, fmt.tprintf("layout.incremental.verify: incremental layout differs from a full one: %s", t.layout.inc.verify_report))
+		}
 	}
 	images_after_layout(t, size, scale)
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
@@ -556,8 +566,7 @@ adopt_web_fonts :: proc(t: ^Tab) {
 		id, ok := font.load_from_memory(page_render.fonts.state, slice.clone(f.data))   // the font state owns its copy
 		if !ok { tab_log(t, .Warn, fmt.tprintf("font %q could not be read", f.family)); continue }
 		weight := f.weight[0] == f.weight[1] ? f.weight[0] : (f.weight[0] + f.weight[1]) / 2
-		register_face(&page_render.fonts, f.family, weight, f.italic, id)
-		t.layout.valid = false
+		register_face(&page_render.fonts, f.family, weight, f.italic, id)   // the layout sees t.web_fonts change
 	}
 }
 
@@ -758,10 +767,20 @@ frame :: proc(app: ^App) {
 	render.wait_for_frame(&app.r)
 	prof_end(.Wait)
 	prof_begin(.Events)
+	// a resize step dispatches WM_PAINT from inside this poll, which runs a whole frame (nested): when nothing else
+	// came in meanwhile, that frame is this one's, not one more
+	nested := app.in_poll
+	drawn := app.frames_drawn
+	app.in_poll = true
 	events := platform.poll_events(app.win, false)
+	app.in_poll = nested
 	render.mark_input(&app.r)
 	if len(events) > 0 { app.frames_requested = max(app.frames_requested, 4) }
 	prof_end(.Events)
+	if !nested && app.frames_drawn != drawn && len(events) == 0 {
+		free_all(context.temp_allocator)   // not recorded by the profiler: the nested frame was
+		return
+	}
 
 	// network completions, timers and posted tasks run here, on the UI thread
 	prof_begin(.Loop)
@@ -826,7 +845,8 @@ frame :: proc(app: ^App) {
 		if t := current_tab(app); t != nil && t.page != nil { items, nodes = len(t.layout.items), t.page.doc.nodes.count }
 		prof_frame_end(app, items, nodes)
 	}
-	free_all(context.temp_allocator)
+	app.frames_drawn += 1
+	if !app.in_poll { free_all(context.temp_allocator) }   // a nested frame must not free what the outer one holds
 }
 
 wake_window :: proc(user: rawptr) { platform.wake((^platform.Window)(user)) }

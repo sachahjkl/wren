@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mutation every frame</title>
+<script type="application/wasm" src="mutation.wasm"></script>
+<style>
+  body { margin: 0; font-size: 15px; color: #223; background: #fafbff }
+  .sec { margin: 8px 16px; padding: 8px; border: 1px solid #ccd }
+  article { padding: 6px; margin: 4px 0; background: #fff }
+  h3 { margin: 0 0 4px; font-size: 16px }
+  p { margin: 2px 0 }
+  #target { background: #fff3bf }
+  header { padding: 8px 16px; background: #1c7ed6; color: #fff }
+</style>
+</head>
+<body>
+<header>A module builds about 17 000 nodes below, then changes the text of the highlighted span in the middle of the
+page every 16 ms (examples/mutation). Only that paragraph is laid out again (layout.incremental.*).</header>
+<main id="root"></main>
+</body>
+</html>
