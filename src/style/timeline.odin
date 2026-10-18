@@ -80,7 +80,7 @@ Anim_Run :: struct {
 	frames_arena: virtual.Arena,
 	frames:      []Frame_Value,
 	props:       Prop_Set,
-	frames_base: ^Computed,
+	frames_gen:  u64,          // the Element_Anim.base_gen the frames were computed for
 	frames_rebuilds: u64,
 	frames_ready: bool,
 	local:       f64,          // time since the animation started, advancing only while it runs
@@ -97,6 +97,7 @@ Element_Anim :: struct {
 	transitions: [dynamic]^Transition,
 	runs:        [dynamic]^Anim_Run,
 	base:        ^Computed,    // its cascaded style as of the last restyle
+	base_gen:    u64,          // changes with `base` (pointers into recycled style memory may repeat)
 }
 
 @(private)
@@ -122,6 +123,7 @@ Timeline :: struct {
 	running:     int,          // transitions + animations alive
 	next_ms:     f64,          // document ms until a value changes next: 0 = every frame, -1 = never
 	dropped_events: int,
+	base_gens:   u64,
 }
 
 timeline_make :: proc(e: ^Engine) -> ^Timeline {
@@ -243,6 +245,7 @@ reduced :: proc(tl: ^Timeline, duration, delay: f64) -> (f64, f64) {
 timeline_restyled :: proc(tl: ^Timeline, doc: ^dom.Document, old, s: ^Styled, wall_ms: f64) {
 	advance(tl, wall_ms)
 	s.track_changes = true
+	if !s.motion && len(tl.elements) == 0 && len(tl.overlays) == 0 { return }   // nothing moves: no walk
 	tl.dirty, tl.order_dirty = true, true
 	seen := make(map[base.Handle]bool, context.temp_allocator)
 	Frame :: struct { h: base.Handle, hidden: bool }
@@ -347,6 +350,8 @@ update_element :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, h: base.Ha
 		tl.order_dirty = true
 	}
 	ea.base = c
+	tl.base_gens += 1
+	ea.base_gen = tl.base_gens
 	sync_runs(tl, ea, c)
 	if old_eff != nil { update_transitions(tl, ea, old_eff, c) }
 	if len(ea.runs) == 0 && len(ea.transitions) == 0 {
@@ -607,11 +612,11 @@ run_state :: proc(r: ^Anim_Run) -> (st: Run_State) {
 
 @(private)
 ensure_frames :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, ea: ^Element_Anim, r: ^Anim_Run) {
-	if r.frames_ready && r.frames_base == ea.base && r.frames_rebuilds == tl.engine.rebuilds { return }
+	if r.frames_ready && r.frames_gen == ea.base_gen && r.frames_rebuilds == tl.engine.rebuilds { return }
 	virtual.arena_free_all(&r.frames_arena)
 	a := virtual.arena_allocator(&r.frames_arena)
 	r.frames, r.props = nil, {}
-	r.frames_base, r.frames_rebuilds, r.frames_ready = ea.base, tl.engine.rebuilds, true
+	r.frames_gen, r.frames_rebuilds, r.frames_ready = ea.base_gen, tl.engine.rebuilds, true
 	set := keyframes_lookup(tl.engine, r.name)
 	if set == nil || ea.base == nil { return }
 	parent: ^Computed

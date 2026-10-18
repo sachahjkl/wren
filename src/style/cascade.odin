@@ -73,6 +73,7 @@ Styled :: struct {
 	track_changes:  bool,                  // record in `changes` what partial restyles change
 	changes:        [dynamic]Style_Change,
 	counters_used:  bool,                  // counters or quotes appear: partial restyles must keep their values right
+	motion:         bool,                  // some element has a transition or an animation
 }
 
 // A computed style replaced by a partial restyle: `old` is what was in effect (animated values included), `new` the
@@ -581,6 +582,7 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 			if p.counters != nil { counters_enter(p.counters, doc, f.h, n, c, hidden, s.alloc) } else { resolve_static(doc, f.h, c, s.alloc) }
 		}
 		if f.parent == nil && s.root_font_size == 0 { s.root_font_size = c.font_size }
+		if !s.motion && (has_transitions(c) || has_animations(c)) { s.motion = true }
 		if !descend && f.h == root { break }
 		if p.counters != nil { append(&stack, Frame{h = f.h, hidden = hidden, exit = true, c = c}) }
 		child_bloom := f.bloom
