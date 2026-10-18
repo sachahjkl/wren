@@ -56,7 +56,8 @@ Embedder :: struct {
 }
 
 Web_State :: struct {
-	id:              u64,
+	id:              u64,       // 0 for a worker's realm (not in the live-page registry)
+	live:            bool,
 	visible:         bool,
 	origin_ns:       i64,       // loop clock at creation: performance.now() == 0
 	origin_unix_ms:  f64,       // performance.timeOrigin
@@ -95,18 +96,23 @@ live_pages: map[u64]^Page
 next_page_id: u64
 
 @(private)
-web_init :: proc(p: ^Page) {
-	if live_pages == nil { live_pages = make(map[u64]^Page, runtime.heap_allocator()) }
-	next_page_id += 1
+// `live`: register the page in the registry of live pages (storage events, page_by_id). That registry belongs to the
+// UI thread: a worker's realm, which runs on its own thread, gets the web state without being registered.
+web_init :: proc(p: ^Page, live := true) {
 	w := new(Web_State)
 	p.web = w
-	w.id = next_page_id
+	w.live = live
+	if live {
+		if live_pages == nil { live_pages = make(map[u64]^Page, runtime.heap_allocator()) }
+		next_page_id += 1
+		w.id = next_page_id
+	}
 	w.visible = true
 	w.origin_ns = host.now_ns(p.loop)
 	w.origin_unix_ms = f64(time.time_to_unix_nano(time.now())) / 1e6
 	w.session = &w.own_session
 	session_push(w.session, p.env.location.href, w.id, max_entries = p.settings.web.history_max_entries)
-	live_pages[w.id] = p
+	if live { live_pages[w.id] = p }
 }
 
 // Runs before the objects and the DOM are freed: every web API releases what it holds outside the object registry.
@@ -114,7 +120,7 @@ web_init :: proc(p: ^Page) {
 web_destroy :: proc(p: ^Page) {
 	w := p.web
 	if w == nil { return }
-	delete_key(&live_pages, w.id)
+	if w.live { delete_key(&live_pages, w.id) }
 	if w.idle_timer != base.NIL_HANDLE { host.clear_timer(p.loop, w.idle_timer) }
 	storage_page_closed(p)
 	delete(w.frames)

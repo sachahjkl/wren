@@ -168,24 +168,31 @@ object_dispatch :: proc(p: ^Page, h: u64, proto: dom.Event) -> bool {
 
 // Every host -> guest call of the page goes through here. Returns false when the call trapped (already logged).
 call_guest :: proc(p: ^Page, inst: ^wasm.Instance, table_index: u32, argv: []u32) -> bool {
-	if inst == nil || inst.dead || p.closed { return false }
+	if inst == nil || inst.dead || p.closed || realm_halted(p) { return false }
 	p.objects.depth += 1
 	res := wasm.call_indirect(inst, table_index, argv)
 	p.objects.depth -= 1
-	if res != .Ok { log(p, .Error, inst.last_error) }
+	if res != .Ok { guest_failed(p, inst) }
 	if p.objects.depth == 0 { microtask_checkpoint(p) }
 	return res == .Ok
 }
 
 // Calls an export of a module as a task of the page (embedders and tests): the microtask checkpoint runs afterwards.
 call_export :: proc(p: ^Page, inst: ^wasm.Instance, name: cstring, argv: []u32 = nil) -> wasm.Call_Result {
-	if inst == nil || inst.dead || p.closed { return .Trapped }
+	if inst == nil || inst.dead || p.closed || realm_halted(p) { return .Trapped }
 	p.objects.depth += 1
 	res := wasm.call_raw(inst, name, argv)
 	p.objects.depth -= 1
-	if res != .Ok { log(p, .Error, inst.last_error) }
+	if res != .Ok { guest_failed(p, inst) }
 	if p.objects.depth == 0 { microtask_checkpoint(p) }
 	return res
+}
+
+// A guest call trapped (exception or instruction budget): the console of a page, the `error` event of a worker.
+@(private)
+guest_failed :: proc(p: ^Page, inst: ^wasm.Instance) {
+	if p.worker != nil { worker_report_error(p, inst.last_error); return }
+	log(p, .Error, inst.last_error)
 }
 
 queue_microtask :: proc(p: ^Page, m: Microtask) { append(&p.objects.microtasks, m) }
@@ -200,6 +207,7 @@ microtask_checkpoint :: proc(p: ^Page) {
 	ran := 0
 	limit := p.settings.max_microtasks
 	for len(p.objects.microtasks) > 0 {
+		if realm_halted(p) { return }   // a terminated worker runs nothing more
 		if ran >= limit {
 			log(p, .Warn, fmt.tprintf("more than %d microtasks in one checkpoint: the rest runs later", limit))
 			host_post_checkpoint(p)
@@ -220,7 +228,7 @@ microtask_checkpoint :: proc(p: ^Page) {
 			res = wasm.call_indirect(inst, m.callback, argv[:])
 		}
 		p.objects.depth -= 1
-		if res != .Ok { log(p, .Error, inst.last_error) }
+		if res != .Ok { guest_failed(p, inst) }
 		if p.closed { return }
 	}
 	report_unhandled_rejections(p)

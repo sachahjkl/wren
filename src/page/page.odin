@@ -91,6 +91,10 @@ Page :: struct {
 	import_loads: [dynamic]^Style_Load,
 	web:          ^Web_State,           // platform web APIs (web.odin)
 	formctl:      ^Page_Forms,          // form controls (bindings_forms.odin)
+	// threads (worker.odin, offthread.odin)
+	worker:       ^Worker_Global,       // non-nil: this Page is the global scope of a dedicated worker, on its thread, without a document
+	workers:      Page_Workers,         // the workers this page started
+	offthread:    Offthread_State,      // background parsing in flight
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives
@@ -134,7 +138,8 @@ page_cleanup :: proc(data: rawptr) {
 	// requests first: their callbacks reference the page
 	it: u32
 	for _, f in base.pool_next(&p.fetches, &it) {
-		if f.task != base.NIL_HANDLE { fetch.cancel(p.loader, f.task) }
+		// a worker's requests run on the UI thread and are cancelled there when the worker stops
+		if f.task != base.NIL_HANDLE && p.worker == nil { fetch.cancel(p.loader, f.task) }
 		free_fetch(f)
 	}
 	base.pool_destroy(&p.fetches)
@@ -144,8 +149,10 @@ page_cleanup :: proc(data: rawptr) {
 	forms_detach(p)
 	objects_destroy(p)   // before the dispatcher: an object's destructor may still look at events
 	web_destroy(p)
+	workers_destroy(p)   // after the Worker objects: stops and joins every thread this page started
+	offthread_destroy(p)
 	delete(p.host_reactions)
-	styles_destroy(p)
+	if p.engine != nil { styles_destroy(p) }
 	dom.dispatcher_destroy(&p.dp)
 	delete(p.instances)
 	fetch.environment_destroy(&p.env)
@@ -190,15 +197,13 @@ apply_response_headers :: proc(p: ^Page, csp_values, csp_report_only_values: []s
 
 // Replaces the blank skeleton by the parsed document, then applies <meta http-equiv="Content-Security-Policy"> and
 // <meta name="referrer">. `utf8` is already decoded (see html.decode_document).
+// Synchronous, on the calling thread; `parse_document` + `adopt_document` is the same with decoding, off the UI thread.
 load_html :: proc(p: ^Page, utf8: []byte) -> html.Parse_Result {
-	dom.set_text_content(p.doc, p.doc.root, "")
-	r := html.parse_into(p.doc, p.doc.root, utf8, p.settings.html.max_nodes)
-	p.doc_el = dom.find_first_by_tag(p.doc, "html")
-	p.head = dom.find_first_by_tag(p.doc, "head")
-	p.body = dom.find_first_by_tag(p.doc, "body")
-	if p.body == base.NIL_HANDLE { blank_document(p) }   // parse failure: keep the page usable
-	apply_meta(p)
-	return r
+	j := html_job_make(p, utf8, false, "")
+	defer html_job_free(j)
+	j.page = nil
+	html_work(j)
+	return adopt_document(p, &j.out)
 }
 
 @(private)
@@ -226,7 +231,12 @@ apply_meta :: proc(p: ^Page) {
 
 // Instantiates a module in the page scope and calls its `wb_main` export. Any number of modules may be loaded.
 load_module :: proc(p: ^Page, image: []byte, name := "module") -> (inst: ^wasm.Instance, ok: bool, err: string) {
-	inst, err = wasm.instance_create(image, p, p.scope, p.settings.wasm, name)
+	return instantiate(p, image, name, p.settings.wasm, nil)
+}
+
+@(private)
+instantiate :: proc(p: ^Page, image: []byte, name: string, opt: wasm.Options, filter: wasm.Import_Filter) -> (inst: ^wasm.Instance, ok: bool, err: string) {
+	inst, err = wasm.instance_create(image, p, p.scope, opt, name, filter)
 	if inst == nil { return nil, false, err }
 	inst.index = u32(len(p.instances))
 	append(&p.instances, inst)

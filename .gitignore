@@ -5,3 +5,4 @@ build/
 *.ilk
 examples/site/counter.wasm
 examples/site/formstest.wasm
+examples/site/workerstest_worker.wasm

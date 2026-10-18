@@ -80,6 +80,14 @@ document_create :: proc(scope: ^base.Scope = nil) -> ^Document {
 	return d
 }
 
+// Gives a document made without a scope (e.g. parsed on another thread: a document is plain heap memory, owned by
+// whichever thread holds it) to `scope`, which frees it when it closes.
+document_attach :: proc(d: ^Document, scope: ^base.Scope) {
+	assert(d.scope == nil, "document already has a scope")
+	d.scope = scope
+	d.cleanup = base.on_close(scope, scope_closed, d)
+}
+
 document_destroy :: proc(d: ^Document) {
 	if d.scope != nil { base.forget_cleanup(d.scope, d.cleanup) }
 	free_document(d)

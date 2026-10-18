@@ -45,6 +45,7 @@ Destination :: enum u8 {
 	Video,
 	Manifest,
 	Report,
+	Worker,        // a dedicated worker's Wasm module: application/wasm, CSP worker-src
 }
 
 Referrer_Policy :: enum u8 {

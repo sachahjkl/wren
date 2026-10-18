@@ -74,7 +74,7 @@ stream_get :: proc(p: ^Page, h: u64) -> ^Body_Stream { return (^Body_Stream)(obj
 
 // A buffer object taking ownership of bytes already counted in p.held.
 @(private)
-buffer_adopt :: proc(p: ^Page, bytes: [dynamic]byte, owner: u32) -> u64 {
+buffer_adopt_counted :: proc(p: ^Page, bytes: [dynamic]byte, owner: u32) -> u64 {
 	b := new(Buffer)
 	b.bytes = bytes
 	return object_create(p, &buffer_vt, b, owner)
@@ -253,7 +253,7 @@ fetch_settle_body :: proc(p: ^Page, f: ^Fetch) {
 	case .Buffer:
 		body := f.body
 		f.body = {}
-		promise_resolve(p, bp, i64(buffer_adopt(p, body, e.body_owner)))
+		promise_resolve(p, bp, i64(buffer_adopt_counted(p, body, e.body_owner)))
 	}
 }
 
@@ -288,7 +288,7 @@ stream_pump :: proc(p: ^Page, s: ^Body_Stream) {
 			ordered_remove(&s.reads, 0)
 			chunk := s.pending
 			s.pending = {}
-			promise_resolve(p, r, i64(buffer_adopt(p, chunk, s.owner)))
+			promise_resolve(p, r, i64(buffer_adopt_counted(p, chunk, s.owner)))
 			continue
 		}
 		if s.failed {

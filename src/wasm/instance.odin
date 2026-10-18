@@ -58,8 +58,22 @@ register :: proc(module: cstring, symbols: []Native_Symbol) -> bool {
 	return wasm_runtime_register_natives(module, raw_data(symbols), u32(len(symbols)))
 }
 
+// Threads other than the one that called `runtime_init` must call this before creating or calling an instance, and
+// `thread_env_destroy` after the last one is gone. The runtime is built without its thread manager, so it keeps no
+// per-thread state of its own beyond what these set up: the thread's record (Windows) and the stack guarantee used by the
+// hardware bound checks (linear memory accesses and native stack overflow are caught by an exception handler that
+// needs it). An instance and its execution environment belong to the thread that created them: the environment records
+// that thread's stack bounds.
+thread_env_init :: proc() -> bool { return wasm_runtime_init_thread_env() }
+thread_env_destroy :: proc() { wasm_runtime_destroy_thread_env() }
+
+// Decides whether a module may import `module_name`.`field`. Used to restrict what a module run outside a document
+// (a worker) may link against: the host functions are registered once for the whole process.
+Import_Filter :: #type proc(module_name, field: string) -> bool
+
 // Loads and instantiates `image` (copied). The instance dies with `scope` (may be nil: then call `destroy`).
-instance_create :: proc(image: []byte, user: rawptr, scope: ^base.Scope, opt: Options, name := "module") -> (inst: ^Instance, err: string) {
+// With `filter`, a module importing anything the filter refuses is not instantiated.
+instance_create :: proc(image: []byte, user: rawptr, scope: ^base.Scope, opt: Options, name := "module", filter: Import_Filter = nil) -> (inst: ^Instance, err: string) {
 	if !runtime_init() { return nil, "wasm runtime init failed" }
 	inst = new(Instance)
 	inst.name = strings.clone(name)
@@ -75,6 +89,18 @@ instance_create :: proc(image: []byte, user: rawptr, scope: ^base.Scope, opt: Op
 		err = fmt.aprintf("%s: load failed: %s", name, cstring(raw_data(errbuf[:])))
 		instance_free(inst)
 		return nil, err
+	}
+	if filter != nil {
+		for i in 0 ..< wasm_runtime_get_import_count(inst.module) {
+			it: Import_Type
+			wasm_runtime_get_import_type(inst.module, i, &it)
+			if it.module_name == nil || it.name == nil { continue }
+			if !filter(string(it.module_name), string(it.name)) {
+				err = fmt.aprintf("%s: imports %s.%s, which is not available here", name, it.module_name, it.name)
+				instance_free(inst)
+				return nil, err
+			}
+		}
 	}
 	args := Instantiation_Args{
 		default_stack_size = opt.stack_size,

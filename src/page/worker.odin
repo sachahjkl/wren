@@ -1,0 +1,794 @@
+package page
+
+// Dedicated workers (HTML Living Standard §10): a page starts a Wasm module on a thread of its own and talks to it with
+// messages. No memory is shared: text is copied, transferred buffers change owner (the sender's buffer is detached).
+//
+// The two halves:
+//   * UI thread: a Worker object in the page (an EventTarget: message, messageerror, error) backed by a Worker_Host. The
+//     host fetches the module (same origin or data:, application/wasm, CSP worker-src), starts the thread, makes the
+//     worker's requests (the loader lives on this thread) with the worker's own Environment, and relays its console.
+//   * Worker thread: a Page without a document (the realm: objects, promises, microtasks, timers, buffers, console,
+//     fetch records), its own host.Loop and its own WAMR instance. `page_of(env)` gives that Page to every import, so
+//     the asynchronous core works unchanged; imports that need a document answer with an error. A worker module may
+//     only import modules known to be safe off the UI thread (`worker_allow_module`), since host functions are
+//     registered once for the whole process.
+//
+// Between them, a Worker_Link (heap, reference counted: the host and the thread each hold one, and so does every drain
+// task posted on the UI loop) with two queues guarded by a mutex. The page side is woken with host.post, the worker side
+// with host.signal on its loop. Nothing on one thread ever points into the other's memory.
+//
+// Termination: a stop flag checked before every task, callback and microtask of the worker, plus the instruction budget
+// (preference workers.instruction_budget) that ends a task already running. The interpreter cannot be interrupted
+// from outside (WAMR is built without its thread manager), so a busy worker stops at most one budget later. Closing a
+// page stops every worker and joins its thread; `Worker_terminate` and releasing the Worker object do not block the UI:
+// the thread is joined when it reports its exit.
+
+import "core:fmt"
+import "core:strings"
+import "core:sync"
+import "wb:base"
+import "wb:csp"
+import "wb:dom"
+import "wb:fetch"
+import "wb:host"
+import "wb:http"
+import "wb:url"
+import "wb:wasm"
+
+////////////////////////////////
+// Messages between the two threads
+
+Worker_Msg_Kind :: enum u8 {
+	Message,        // both ways: text + transferred buffers
+	Error,          // worker -> page: an uncaught error (text = message, text2 = script URL)
+	Console,        // worker -> page: a console line (code = Log_Level)
+	Closed,         // worker -> page: the worker called close()
+	Exited,         // worker -> page: the thread is returning
+	Fetch_Start,    // worker -> page: id, text = URL, text2 = method, text3 = headers, bytes = body, code = options
+	Fetch_Cancel,   // worker -> page: id
+	Fetch_Event,    // page -> worker: id, code = fetch.Event_Kind (see `relay_event`)
+}
+
+Worker_Msg :: struct {
+	kind:    Worker_Msg_Kind,
+	id:      u64,
+	code:    i64,
+	code2:   i64,
+	text:    string,
+	text2:   string,
+	text3:   string,
+	bytes:   []byte,
+	buffers: [dynamic][dynamic]byte,
+	size:    int,    // counted against workers.max_pending_bytes while queued
+}
+
+@(private)
+msg_free :: proc(m: ^Worker_Msg) {
+	delete(m.text); delete(m.text2); delete(m.text3); delete(m.bytes)
+	for b in m.buffers { delete(b) }
+	delete(m.buffers)
+	free(m)
+}
+
+Worker_Link :: struct {
+	refs:        i32,                    // atomic
+	mu:          sync.Mutex,
+	to_worker:   [dynamic]^Worker_Msg,
+	to_page:     [dynamic]^Worker_Msg,
+	worker_bytes: int,                   // queued sizes, per direction
+	page_bytes:  int,
+	page_wake:   bool,                   // a drain task is posted on the UI loop
+	stop:        b32,                    // atomic: run nothing more (terminate, close(), page closed)
+	loop:        host.Loop,              // the worker's event loop
+	ui_loop:     ^host.Loop,
+	host:        ^Worker_Host,           // UI thread only; nil once the page side is gone
+	max_pending: int,
+}
+
+@(private)
+link_make :: proc(ui_loop: ^host.Loop, max_pending: int) -> ^Worker_Link {
+	l := new(Worker_Link)
+	l.refs = 1
+	l.ui_loop = ui_loop
+	l.max_pending = max_pending
+	host.loop_init(&l.loop)
+	return l
+}
+
+@(private)
+link_retain :: proc(l: ^Worker_Link) { sync.atomic_add(&l.refs, 1) }
+
+@(private)
+link_release :: proc(l: ^Worker_Link) {
+	if sync.atomic_sub(&l.refs, 1) != 1 { return }
+	for m in l.to_worker { msg_free(m) }
+	for m in l.to_page { msg_free(m) }
+	delete(l.to_worker)
+	delete(l.to_page)
+	host.loop_destroy(&l.loop)
+	free(l)
+}
+
+@(private)
+link_stopping :: #force_inline proc "contextless" (l: ^Worker_Link) -> bool { return bool(sync.atomic_load(&l.stop)) }
+
+@(private)
+link_halt :: proc(l: ^Worker_Link) {
+	sync.atomic_store(&l.stop, true)
+	host.signal(&l.loop)
+}
+
+// Queues `m`. Guest messages (`limited`) are refused, and `m` is left to the caller, when the receiver already has
+// workers.max_pending_bytes waiting.
+@(private)
+link_send :: proc(l: ^Worker_Link, to_worker: bool, m: ^Worker_Msg, limited := false) -> bool {
+	post := false
+	sync.mutex_lock(&l.mu)
+	pending := to_worker ? &l.worker_bytes : &l.page_bytes
+	if limited && pending^ + m.size > l.max_pending { sync.mutex_unlock(&l.mu); return false }
+	pending^ += m.size
+	if to_worker {
+		append(&l.to_worker, m)
+	} else {
+		append(&l.to_page, m)
+		if !l.page_wake { l.page_wake, post = true, true; link_retain(l) }
+	}
+	sync.mutex_unlock(&l.mu)
+	if to_worker { host.signal(&l.loop) } else if post { host.post(l.ui_loop, link_page_drain, l) }
+	return true
+}
+
+// Takes everything queued for one side.
+@(private)
+link_take :: proc(l: ^Worker_Link, to_worker: bool, into: ^[dynamic]^Worker_Msg) {
+	sync.mutex_lock(&l.mu)
+	if to_worker {
+		l.to_worker, into^ = into^, l.to_worker
+		l.worker_bytes = 0
+	} else {
+		l.to_page, into^ = into^, l.to_page
+		l.page_bytes = 0
+		l.page_wake = false
+	}
+	sync.mutex_unlock(&l.mu)
+}
+
+////////////////////////////////
+// Page side
+
+Worker_State :: enum u8 { Loading, Running, Closed, Exited }
+
+Worker_Host :: struct {
+	page:       ^Page,
+	self:       u64,                    // the Worker object; 0 once the guest released it
+	owner:      u32,                    // instance that created it
+	link:       ^Worker_Link,
+	thread:     ^host.Thread,
+	url:        string,                 // the module's URL (the response URL once fetched)
+	name:       string,
+	env:        fetch.Environment,      // the worker's environment: its requests are made with it
+	script:     base.Handle,            // the module's fetch, NIL when finished
+	status:     int,                    // HTTP status of the module's response
+	state:      Worker_State,
+	terminated: bool,                   // no event reaches the page any more
+	relays:     map[u64]^Relay,         // the worker's requests in flight, by the worker's fetch handle
+	counted:    bool,                   // holds a slot of the process-wide count
+}
+
+Relay :: struct {
+	host: ^Worker_Host,
+	id:   u64,
+	task: base.Handle,
+}
+
+// What a page keeps of its workers. Hosts stay listed until their thread is joined and their object released.
+Page_Workers :: struct {
+	hosts:      [dynamic]^Worker_Host,
+	deliveries: [dynamic]Delivery,      // messages being dispatched (MessageEvent_transfer)
+}
+
+Delivery :: struct {
+	first:   u64,     // Event_object of the message event
+	buffers: []u64,
+}
+
+// Workers running in the whole process (workers.max_total).
+@(private)
+worker_total: i32
+
+worker_vt := Object_VTable{
+	name = "Worker",
+	destroy = proc(p: ^Page, data: rawptr) {
+		h := (^Worker_Host)(data)
+		h.self = 0
+		if p.closed { return }   // workers_destroy stops and joins everything next
+		worker_terminate(h)
+		worker_maybe_free(h)
+	},
+}
+
+// Workers holding a slot in the whole process (started or starting, not yet joined).
+workers_running :: proc() -> int { return int(sync.atomic_load(&worker_total)) }
+
+// Workers this page runs (not yet stopped).
+@(private)
+page_worker_count :: proc(p: ^Page) -> int {
+	n := 0
+	for h in p.workers.hosts { if !h.terminated && h.state != .Exited { n += 1 } }
+	return n
+}
+
+// Starts a dedicated worker running the module at `src` (resolved against the document). Returns the Worker object,
+// or 0 when the browser refuses (workers disabled, too many, invalid or cross-origin URL); the reason is logged.
+worker_create :: proc(p: ^Page, src: string, name: string, owner: u32) -> u64 {
+	ws := &p.settings.workers
+	if p.worker != nil { log(p, .Error, "Worker: nested workers are not supported"); return 0 }
+	if p.loader == nil { log(p, .Error, "Worker: this page cannot load anything"); return 0 }
+	if !ws.enabled { log(p, .Error, "Worker: workers are disabled (workers.enabled)"); return 0 }
+	if page_worker_count(p) >= ws.max_per_page {
+		log(p, .Error, fmt.tprintf("Worker: this page already runs %d workers (workers.max_per_page)", ws.max_per_page)); return 0
+	}
+	u, ok := url.parse(src, &p.env.location, context.temp_allocator)
+	if !ok { log(p, .Error, fmt.tprintf("Worker: invalid URL %q", src)); return 0 }
+	if u.scheme != "data" {
+		o := url.origin_of(u, context.temp_allocator)
+		if !url.same_origin(o, p.env.origin) {
+			log(p, .Error, fmt.tprintf("Worker: %s is not same-origin with the document (SecurityError)", u.href)); return 0
+		}
+	}
+	if int(sync.atomic_add(&worker_total, 1)) >= ws.max_total {
+		sync.atomic_sub(&worker_total, 1)
+		log(p, .Error, fmt.tprintf("Worker: the browser already runs %d workers (workers.max_total)", ws.max_total)); return 0
+	}
+
+	h := new(Worker_Host)
+	h.page, h.owner, h.counted = p, owner, true
+	h.url, h.name = strings.clone(u.href), strings.clone(name)
+	h.link = link_make(p.loop, ws.max_pending_bytes)
+	h.link.host = h
+	h.env = fetch.environment_make(u, p.env.referrer_policy)
+	h.env.on_violation = worker_csp_violation
+	h.env.violation_user = h
+	if u.scheme == "data" {
+		// a data: worker has an opaque origin and inherits the policies of its creator
+		for pol in p.env.policies.policies { append(&h.env.policies.policies, csp.parse_policy(pol.raw, pol.disposition)) }
+	}
+	h.relays = make(map[u64]^Relay)
+	append(&p.workers.hosts, h)
+	h.self = object_create(p, &worker_vt, h, owner)
+	h.script = fetch.start(p.loader, {
+		request = {url = h.url, mode = .Same_Origin, credentials = .Same_Origin, destination = .Worker, initiator = &p.env},
+		on_event = worker_script_event, user = h, scope = nil, collect = true,
+	})
+	return h.self
+}
+
+@(private)
+worker_csp_violation :: proc(user: rawptr, v: csp.Violation) {
+	h := (^Worker_Host)(user)
+	if h.page != nil { csp_violation(h.page, v) }
+}
+
+@(private)
+worker_script_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
+	h := (^Worker_Host)(user)
+	p := h.page
+	#partial switch ev.kind {
+	case .Response:
+		r := ev.response
+		h.status = r.status
+		if r.url != "" && r.url != h.url { delete(h.url); h.url = strings.clone(r.url) }
+		if !h.env.origin.opaque {
+			// the worker's own policy comes from its script's response (HTML: "initialize worker policy container")
+			for v in http.get_all(r.headers, "content-security-policy") { csp.parse_header(&h.env.policies, v, .Enforce) }
+			for v in http.get_all(r.headers, "content-security-policy-report-only") { csp.parse_header(&h.env.policies, v, .Report_Only) }
+		}
+	case .Failed:
+		h.script = base.NIL_HANDLE
+		worker_failed(h, fmt.tprintf("Worker: %s: %s", h.url, ev.detail))
+	case .Done:
+		h.script = base.NIL_HANDLE
+		if h.status < 200 || h.status >= 300 { worker_failed(h, fmt.tprintf("Worker: %s: HTTP %d", h.url, h.status)); return }
+		worker_spawn(h, ev.data)
+	}
+	_ = p
+}
+
+// The worker could not start: an `error` event at the Worker object, and the slot is given back.
+@(private)
+worker_failed :: proc(h: ^Worker_Host, message: string) {
+	h.state = .Exited
+	worker_uncount(h)
+	worker_fire_error(h, message, h.url)
+}
+
+@(private)
+worker_uncount :: proc(h: ^Worker_Host) {
+	if h.counted { h.counted = false; sync.atomic_sub(&worker_total, 1) }
+}
+
+@(private)
+worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
+	p := h.page
+	g := new(Worker_Global)
+	g.link = h.link
+	g.settings = p.settings^
+	g.settings.html, g.settings.style = {}, {}   // owned by the shell and changed under its feet: a worker needs neither
+	g.settings.wasm = p.settings.workers.wasm
+	g.url, g.name = strings.clone(h.url), strings.clone(h.name)
+	g.image = make([]byte, len(image))
+	copy(g.image, image)
+	link_retain(h.link)
+	h.state = .Running
+	h.thread = host.thread_start(worker_main, g, p.settings.workers.thread_stack_bytes, p.settings.workers.priority)
+	if h.thread == nil {
+		worker_global_free(g)
+		link_release(h.link)
+		worker_failed(h, "Worker: could not start a thread")
+	}
+}
+
+// Stops the worker without waiting for it: nothing it does reaches the page any more.
+@(private)
+worker_terminate :: proc(h: ^Worker_Host) {
+	if h.terminated { return }
+	h.terminated = true
+	link_halt(h.link)
+	if h.script != base.NIL_HANDLE { fetch.cancel(h.page.loader, h.script); h.script = base.NIL_HANDLE }
+	relays_cancel(h)
+	if h.thread == nil && h.state != .Running { h.state = .Exited; worker_uncount(h) }
+}
+
+@(private)
+relays_cancel :: proc(h: ^Worker_Host) {
+	for _, r in h.relays {
+		if r.task != base.NIL_HANDLE { fetch.cancel(h.page.loader, r.task) }
+		free(r)
+	}
+	clear(&h.relays)
+}
+
+// Frees the host once nothing refers to it: the guest released the object and the thread (if any) was joined.
+@(private)
+worker_maybe_free :: proc(h: ^Worker_Host) {
+	if h.self != 0 || h.thread != nil || h.state == .Running { return }
+	worker_free(h)
+}
+
+@(private)
+worker_free :: proc(h: ^Worker_Host) {
+	p := h.page
+	for x, i in p.workers.hosts { if x == h { ordered_remove(&p.workers.hosts, i); break } }
+	if h.script != base.NIL_HANDLE { fetch.cancel(p.loader, h.script) }
+	relays_cancel(h)
+	delete(h.relays)
+	worker_uncount(h)
+	fetch.environment_destroy(&h.env)
+	delete(h.url)
+	delete(h.name)
+	h.link.host = nil
+	link_release(h.link)
+	free(h)
+}
+
+// Page closing: every worker stops, every thread is joined, nothing is left behind.
+@(private)
+workers_destroy :: proc(p: ^Page) {
+	for h in p.workers.hosts { worker_terminate(h) }
+	for len(p.workers.hosts) > 0 {
+		h := p.workers.hosts[len(p.workers.hosts) - 1]
+		if h.thread != nil { host.thread_join(h.thread); h.thread = nil }
+		h.state = .Exited
+		worker_free(h)
+	}
+	delete(p.workers.hosts)
+	delete(p.workers.deliveries)
+}
+
+// UI loop: what the worker sent.
+@(private)
+link_page_drain :: proc(data: rawptr) {
+	l := (^Worker_Link)(data)
+	batch: [dynamic]^Worker_Msg   // swapped with the queue: its storage becomes the link's, so not temporary memory
+	defer delete(batch)
+	link_take(l, false, &batch)
+	for m in batch {
+		if h := l.host; h != nil { page_receive(h, m) }
+		msg_free(m)
+	}
+	link_release(l)
+}
+
+@(private)
+page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
+	p := h.page
+	switch m.kind {
+	case .Message:
+		if h.terminated || h.self == 0 { return }
+		deliver_message(p, h.self, m, h.owner)
+	case .Error:
+		if h.terminated { return }
+		worker_fire_error(h, m.text, m.text2)
+	case .Console:
+		log(p, Log_Level(m.code), fmt.tprintf("[worker %s] %s", worker_label(h), m.text))
+	case .Closed:
+		h.state = .Closed
+	case .Exited:
+		if h.thread != nil { host.thread_join(h.thread); h.thread = nil }
+		h.state = .Exited
+		relays_cancel(h)
+		worker_uncount(h)
+		worker_maybe_free(h)
+	case .Fetch_Start:
+		if h.terminated || h.state != .Running { return }
+		relay_start(h, m)
+	case .Fetch_Cancel:
+		if r, ok := h.relays[m.id]; ok {
+			if r.task != base.NIL_HANDLE { fetch.cancel(p.loader, r.task) }
+			delete_key(&h.relays, m.id)
+			free(r)
+		}
+	case .Fetch_Event:
+	}
+}
+
+// How the console names a worker: its name, else its URL (shortened: a data: URL holds the whole module).
+@(private)
+worker_label :: proc(h: ^Worker_Host) -> string {
+	if h.name != "" { return h.name }
+	return len(h.url) <= 80 ? h.url : fmt.tprintf("%s...", h.url[:77])
+}
+
+@(private)
+worker_fire_error :: proc(h: ^Worker_Host, message, file: string) {
+	p := h.page
+	allowed := true
+	if h.self != 0 { allowed = object_dispatch(p, h.self, dom.Event{type = "error", cancelable = true, data = message, text = file}) }
+	if allowed { log(p, .Error, fmt.tprintf("[worker %s] uncaught error: %s", worker_label(h), message)) }
+}
+
+// A request of the worker, made here with the worker's environment; every event goes back to the worker.
+@(private)
+relay_start :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
+	r := new(Relay)
+	r.host, r.id = h, m.id
+	h.relays[m.id] = r
+	r.task = fetch.start(h.page.loader, {
+		request = guest_request(m.text, m.text2, m.text3, m.bytes, u32(m.code), &h.env),
+		on_event = relay_event, user = r, scope = nil, collect = false,
+	})
+}
+
+@(private)
+relay_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
+	r := (^Relay)(user)
+	h := r.host
+	m := new(Worker_Msg)
+	m.kind, m.id, m.code = .Fetch_Event, r.id, i64(ev.kind)
+	switch ev.kind {
+	case .Response:
+		res := ev.response
+		m.code2 = i64(res.status) | i64(res.type) << 32 | (res.redirected ? 1 << 40 : 0) | (res.body_usable ? 1 << 41 : 0)
+		m.text = strings.clone(res.url)
+		m.text2 = serialize_headers(res.headers.list[:], context.allocator)
+	case .Data, .Done:
+		if len(ev.data) > 0 { m.bytes = make([]byte, len(ev.data)); copy(m.bytes, ev.data) }
+	case .Failed:
+		m.code2 = i64(ev.error)
+		m.text = strings.clone(ev.detail)
+	}
+	m.size = len(m.bytes)
+	finished := ev.kind == .Done || ev.kind == .Failed
+	if !link_send(h.link, true, m, limited = ev.kind == .Data) {
+		// the worker does not keep up: stop the request rather than queue without bound
+		msg_free(m)
+		fetch.cancel(h.page.loader, r.task)
+		fail := new(Worker_Msg)
+		fail.kind, fail.id, fail.code, fail.code2 = .Fetch_Event, r.id, i64(fetch.Event_Kind.Failed), i64(fetch.Error_Kind.Body_Too_Large)
+		fail.text = strings.clone("the worker is not reading its responses fast enough (workers.max_pending_bytes)")
+		link_send(h.link, true, fail)
+		finished = true
+	}
+	if finished {
+		delete_key(&h.relays, r.id)
+		free(r)
+	}
+}
+
+////////////////////////////////
+// Messages: both sides
+
+// postMessage(text, transfer): the buffers in `transfer` move to the other side and are detached here. Fails without
+// side effects when a handle is not a transferable buffer (or appears twice), the message is larger than
+// workers.max_message_bytes, or the receiver has too much waiting already.
+@(private)
+post_message :: proc(p: ^Page, l: ^Worker_Link, to_worker: bool, text: string, transfer: []u64) -> dom.Error {
+	size := len(text)
+	for h, i in transfer {
+		b := buffer_get(p, h)
+		if b == nil || b.detached { return .Invalid_Argument }
+		for k in transfer[:i] { if k == h { return .Invalid_Argument } }
+		size += len(b.bytes)
+	}
+	if size > p.settings.workers.max_message_bytes {
+		log(p, .Error, fmt.tprintf("postMessage: %d bytes exceed workers.max_message_bytes", size))
+		return .Invalid_Argument
+	}
+	m := new(Worker_Msg)
+	m.kind, m.size = .Message, size
+	m.text = strings.clone(text)
+	sync.mutex_lock(&l.mu)
+	pending := to_worker ? l.worker_bytes : l.page_bytes
+	sync.mutex_unlock(&l.mu)
+	if pending + size > l.max_pending {
+		msg_free(m)
+		log(p, .Error, "postMessage: the receiver has too many messages waiting (workers.max_pending_bytes)")
+		return .Invalid_Argument
+	}
+	for h in transfer {
+		bytes, _ := buffer_detach(p, h)
+		append(&m.buffers, bytes)
+	}
+	link_send(l, to_worker, m)   // the check above stands in for the limit: the transfer cannot be undone any more
+	return .None
+}
+
+// Fires `message` (or `messageerror` when the buffers do not fit in this side's memory ceiling) at `target`. The
+// buffers become objects of this side, owned by `owner`; nobody listening means nobody can ever release them, so they
+// are released at once.
+@(private)
+deliver_message :: proc(p: ^Page, target: u64, m: ^Worker_Msg, owner: u32) {
+	total := 0
+	for b in m.buffers { total += len(b) }
+	if p.held + total > p.settings.max_fetch_bytes {
+		object_dispatch(p, target, dom.Event{type = "messageerror", data = m.text})
+		return
+	}
+	handles := make([]u64, len(m.buffers), context.temp_allocator)
+	for b, i in m.buffers { handles[i] = buffer_adopt(p, b, owner) }
+	clear(&m.buffers)   // moved
+	first := len(handles) > 0 ? handles[0] : 0
+	listened := object_has_listener(p, target, "message")
+	append(&p.workers.deliveries, Delivery{first, handles})
+	object_dispatch(p, target, dom.Event{type = "message", data = m.text, object = first, code = i64(len(handles))})
+	for d, i in p.workers.deliveries { if d.first == first && raw_data(d.buffers) == raw_data(handles) { ordered_remove(&p.workers.deliveries, i); break } }
+	if !listened { for h in handles { object_release(p, h) } }
+}
+
+// The i-th buffer transferred with the message event being dispatched (Event_object is the first, Event_code the count).
+message_transfer :: proc(p: ^Page, ev: u64, index: int) -> u64 {
+	e := base.pool_get(&p.dp.events, base.Handle(ev))
+	if e == nil || e.object == 0 { return 0 }
+	for i := len(p.workers.deliveries) - 1; i >= 0; i -= 1 {
+		d := p.workers.deliveries[i]
+		if d.first == e.object { return index >= 0 && index < len(d.buffers) ? d.buffers[index] : 0 }
+	}
+	return 0
+}
+
+// From the page: Worker.postMessage. Silently ignored once the worker is terminated or closed, as in browsers.
+worker_post :: proc(p: ^Page, w: u64, text: string, transfer: []u64) -> dom.Error {
+	h := (^Worker_Host)(object_data(p, w, &worker_vt))
+	if h == nil { return .Invalid_Handle }
+	if h.terminated || h.state == .Closed || h.state == .Exited { return .None }
+	return post_message(p, h.link, true, text, transfer)
+}
+
+// From the page: Worker.terminate.
+worker_terminate_object :: proc(p: ^Page, w: u64) -> dom.Error {
+	h := (^Worker_Host)(object_data(p, w, &worker_vt))
+	if h == nil { return .Invalid_Handle }
+	worker_terminate(h)
+	return .None
+}
+
+////////////////////////////////
+// Worker side
+
+Worker_Global :: struct {
+	link:     ^Worker_Link,
+	settings: Settings,           // the worker's own copy (no html/style)
+	url:      string,
+	name:     string,
+	image:    []byte,
+	page:     ^Page,              // the worker's realm (this thread)
+	self:     u64,                // the DedicatedWorkerGlobalScope object
+	closing:  bool,
+	inbox:    [dynamic]^Worker_Msg,
+}
+
+@(private)
+worker_global_vt := Object_VTable{name = "DedicatedWorkerGlobalScope"}
+
+@(private)
+worker_global_free :: proc(g: ^Worker_Global) {
+	delete(g.url); delete(g.name); delete(g.image)
+	for m in g.inbox { msg_free(m) }
+	delete(g.inbox)
+	free(g)
+}
+
+// True when the realm is a worker that must run nothing more.
+@(private)
+realm_halted :: #force_inline proc "contextless" (p: ^Page) -> bool {
+	return p.worker != nil && link_stopping(p.worker.link)
+}
+
+@(private)
+worker_main :: proc(data: rawptr) {
+	g := (^Worker_Global)(data)
+	l := g.link
+	defer {
+		m := new(Worker_Msg)
+		m.kind = .Exited
+		link_send(l, false, m)
+		worker_global_free(g)
+		link_release(l)
+	}
+	if !wasm.thread_env_init() {
+		worker_send_error(g, "Worker: the Wasm runtime could not set up this thread")
+		return
+	}
+	defer wasm.thread_env_destroy()
+
+	p := worker_realm_create(g)
+	g.page = p
+	_, ok, err := instantiate(p, g.image, g.url, g.settings.wasm, worker_import_filter)
+	delete(g.image)
+	g.image = nil
+	if err != "" {
+		if !realm_halted(p) { worker_send_error(g, err) }
+		delete(err)
+	}
+	if ok || len(p.instances) > 0 {
+		// a module whose wb_main trapped keeps running: what it registered before the error still works
+		for !link_stopping(l) {
+			worker_run_inbox(g)
+			if link_stopping(l) { break }
+			host.loop_wait(&l.loop)
+			free_all(context.temp_allocator)
+		}
+	}
+	page_close(p)
+}
+
+@(private)
+worker_realm_create :: proc(g: ^Worker_Global) -> ^Page {
+	p := new(Page)
+	p.scope = base.scope_make("worker")
+	p.loop = &g.link.loop
+	p.settings = &g.settings
+	p.console = worker_console
+	p.console_user = g
+	p.worker = g
+	base.on_close(p.scope, page_cleanup, p)
+	u, ok := url.parse_absolute(g.url, context.temp_allocator)
+	if !ok { u, _ = url.parse_absolute("about:blank", context.temp_allocator) }
+	p.env = fetch.environment_make(u)
+	p.doc = dom.document_create(p.scope)   // never exposed: holds the listener id counter of the realm's objects
+	p.dp.invoke = invoke_listener
+	p.dp.user = p
+	web_init(p, live = false)   // timers (nesting clamp), performance, encoding work the same in a worker
+	g.self = object_create(p, &worker_global_vt, g, 0)
+	return p
+}
+
+// Runs the messages and request events the page sent, one task each, until the queue is empty or the worker stops.
+@(private)
+worker_run_inbox :: proc(g: ^Worker_Global) {
+	l := g.link
+	p := g.page
+	link_take(l, true, &g.inbox)
+	for m, i in g.inbox {
+		if !link_stopping(l) {
+			switch m.kind {
+			case .Message:     deliver_message(p, g.self, m, 0)
+			case .Fetch_Event: worker_fetch_event(p, m)
+			case .Error, .Console, .Closed, .Exited, .Fetch_Start, .Fetch_Cancel:
+			}
+		}
+		msg_free(m)
+		g.inbox[i] = nil
+		free_all(context.temp_allocator)
+	}
+	clear(&g.inbox)
+}
+
+@(private)
+worker_console :: proc(user: rawptr, level: Log_Level, message: string) {
+	g := (^Worker_Global)(user)
+	m := new(Worker_Msg)
+	m.kind, m.code, m.text = .Console, i64(level), strings.clone(message)
+	link_send(g.link, false, m)
+}
+
+@(private)
+worker_send_error :: proc(g: ^Worker_Global, message: string) {
+	m := new(Worker_Msg)
+	m.kind, m.text, m.text2 = .Error, strings.clone(message), strings.clone(g.url)
+	link_send(g.link, false, m)
+}
+
+// A task of the worker trapped: an `error` event at the Worker object (and the page's console unless prevented).
+@(private)
+worker_report_error :: proc(p: ^Page, message: string) {
+	if realm_halted(p) { return }   // stopped by terminate: not an error of the script
+	worker_send_error(p.worker, message)
+}
+
+// DedicatedWorkerGlobalScope.close(): the worker finishes the current task and stops; the page is told.
+worker_close :: proc(p: ^Page) {
+	g := p.worker
+	if g == nil || g.closing { return }
+	g.closing = true
+	m := new(Worker_Msg)
+	m.kind = .Closed
+	link_send(g.link, false, m)
+	sync.atomic_store(&g.link.stop, true)
+}
+
+worker_post_to_page :: proc(p: ^Page, text: string, transfer: []u64) -> dom.Error {
+	g := p.worker
+	if g == nil { return .Invalid_Argument }
+	return post_message(p, g.link, false, text, transfer)   // still delivered after close(), until the task ends
+}
+
+@(private)
+worker_fetch_start :: proc(p: ^Page, f: ^Fetch, abs, method, headers: string, body: []byte, options: u32) {
+	m := new(Worker_Msg)
+	m.kind, m.id, m.code = .Fetch_Start, u64(f.self), i64(options)
+	m.text, m.text2, m.text3 = strings.clone(abs), strings.clone(method), strings.clone(headers)
+	if len(body) > 0 { m.bytes = make([]byte, len(body)); copy(m.bytes, body) }
+	f.task = f.self   // in flight; the record's own handle names the request on both sides
+	link_send(p.worker.link, false, m)
+}
+
+@(private)
+worker_fetch_cancel :: proc(p: ^Page, f: ^Fetch) {
+	m := new(Worker_Msg)
+	m.kind, m.id = .Fetch_Cancel, u64(f.self)
+	link_send(p.worker.link, false, m)
+}
+
+@(private)
+worker_fetch_event :: proc(p: ^Page, m: ^Worker_Msg) {
+	f := base.pool_get(&p.fetches, base.Handle(m.id))
+	if f == nil || f.task == base.NIL_HANDLE { return }   // released or aborted meanwhile
+	u := Fetch_Update{kind = fetch.Event_Kind(m.code), data = m.bytes}
+	switch u.kind {
+	case .Response:
+		u.status = int(m.code2 & 0xFFFF_FFFF)
+		u.type = fetch.Response_Type((m.code2 >> 32) & 0xFF)
+		u.redirected = m.code2 & (1 << 40) != 0
+		u.usable = m.code2 & (1 << 41) != 0
+		u.url, u.headers = m.text, m.text2
+	case .Failed:
+		u.error, u.detail = fetch.Error_Kind(m.code2), m.text
+	case .Data, .Done:
+	}
+	fetch_update(f, u)
+}
+
+////////////////////////////////
+// What a worker's module may import
+
+@(private)
+worker_modules := [dynamic]string{}
+
+@(private)
+WORKER_BUILTIN_MODULES :: [?]string{"console", "timers", "async", "events", "net", "workers", "dom", "document"}
+
+// Declares an import module safe to use from a worker thread (its functions only touch the calling realm, reached
+// through `page_of(env)`, and never the document, the loader or other UI-thread state). Call at start-up, after
+// `register_imports` and before any worker starts.
+worker_allow_module :: proc(name: string) {
+	for m in worker_modules { if m == name { return } }
+	append(&worker_modules, name)
+}
+
+@(private)
+worker_import_filter :: proc(module_name, field: string) -> bool {
+	for m in WORKER_BUILTIN_MODULES { if m == module_name { return true } }
+	for m in worker_modules { if m == module_name { return true } }
+	return false
+}

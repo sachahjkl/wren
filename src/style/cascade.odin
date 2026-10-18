@@ -8,6 +8,7 @@ import "core:strings"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
+import "wb:host"
 
 // The cascade (CSS Cascading Level 5, without transitions and animations): origins, !important, layers, specificity, source
 // order, inheritance, var() substitution, and the final computed values.
@@ -68,6 +69,7 @@ Styled :: struct {
 	canvas:         css.Color,   // the color painted behind the whole page (root or body background, else the preference)
 	state:          State,       // the dynamic state these styles were computed for (target_id owned by `alloc`)
 	base_used:      uint,        // arena use right after the full pass: what partial restyles add on top is waste
+	thread_arenas:  [dynamic]^virtual.Arena,   // a parallel pass: the computed styles of each thread (parallel.odin)
 }
 
 @(private) styled_serial: u64
@@ -75,6 +77,8 @@ Styled :: struct {
 styled_destroy :: proc(s: ^Styled) {
 	if s == nil { return }
 	delete(s.by_node)
+	for a in s.thread_arenas { virtual.arena_destroy(a); free(a) }
+	delete(s.thread_arenas)
 	virtual.arena_destroy(&s.arena)
 	free(s)
 }
@@ -221,6 +225,8 @@ Pass :: struct {
 	lists:    [3][dynamic]Entry,   // matched entries: the element, ::before, ::after
 	compare:  bool,            // partial restyle: keep the old computed style when nothing changed
 	changed:  bool,            // ... and report whether some element really changed
+	alloc:    runtime.Allocator,   // where computed styles go: the Styled's arena, or this thread's in a parallel pass
+	stats:    Compile_Stats,   // merged into the engine by pass_destroy (on the thread that owns the engine)
 }
 
 @(private)
@@ -303,7 +309,7 @@ is_color_prop :: proc(pr: Prop) -> bool {
 build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entry, inline_rule: ^Rule) -> ^Computed {
 	s := p.s
 	e := p.e
-	a := s.alloc
+	a := p.alloc
 	cust: map[string]Custom_Cand
 	for ent in entries { consider(p, &cust, ent.rule, ent.complex.specificity) }
 	if inline_rule != nil { consider(p, &cust, inline_rule, css.Specificity{max(u32), 0, 0}) }
@@ -430,7 +436,7 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 	inline_rule: ^Rule
 	if text, ok := attr(n, "style"); ok && p.e.settings.author_stylesheets && text != "" {
 		decls := css.parse_declarations(text, p.opt, context.temp_allocator)
-		pre, customs := compile_declarations(p.e, decls, p.s.alloc)
+		pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats)
 		if len(pre) > 0 || len(customs) > 0 {
 			inline_rule = new(Rule, context.temp_allocator)
 			inline_rule^ = Rule{decls = pre, customs = customs, origin = .Author, layer = UNLAYERED, order = max(u32)}
@@ -456,6 +462,7 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^Pass {
 	p := new(Pass)
 	p.e, p.s, p.opt = e, s, parse_options(&e.settings)
+	p.alloc = s.alloc
 	match_ctx_init(&p.mc, doc, state)
 	p.touched = make([dynamic]Prop)
 	for i in 0 ..< 3 { p.lists[i] = make([dynamic]Entry) }
@@ -464,6 +471,7 @@ pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^
 
 @(private)
 pass_destroy :: proc(p: ^Pass) {
+	stats_merge(p.e, p.stats)
 	match_ctx_destroy(&p.mc)
 	delete(p.touched)
 	for i in 0 ..< 3 { delete(p.lists[i]) }
@@ -485,7 +493,7 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 		if n == nil || n.kind != .Element { continue }
 		c := compute_element(p, f.h, n, f.parent, &f.bloom)
 		idx := int(base.handle_index(f.h))
-		for len(s.by_node) <= idx { append(&s.by_node, nil) }
+		for len(s.by_node) <= idx { append(&s.by_node, nil) }   // never in a parallel pass: sized beforehand
 		if p.compare {
 			if old := s.by_node[idx]; old != nil && old.node == f.h && computed_equal(old, c) { c = old } else { p.changed = true }
 		}
@@ -498,9 +506,28 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 	}
 }
 
-// Computes the style of every element of the document.
-compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
+// Computes the style of every element of the document. With a thread pool and at least `min_nodes` nodes, the
+// work is shared between threads (parallel.odin); the result is the same.
+compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host.Thread_Pool = nil, min_nodes := 0) -> ^Styled {
 	if e.dirty { engine_rebuild(e, doc) }
+	s := styled_make(e, doc, state)
+	if pool != nil && host.thread_pool_size(pool) > 1 && doc.nodes.count >= min_nodes {
+		style_document_parallel(e, s, doc, state, pool)
+	} else {
+		p := pass_make(e, s, doc, state)
+		defer pass_destroy(p)
+		root := dom.get(doc, doc.root)
+		for c := root.first_child; c != base.NIL_HANDLE; c = dom.get(doc, c).next {
+			style_subtree(p, c, nil, Bloom{})
+		}
+	}
+	s.base_used = s.arena.total_used
+	update_canvas(s, doc)
+	return s
+}
+
+@(private)
+styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	s := new(Styled)
 	_ = virtual.arena_init_growing(&s.arena)
 	s.alloc = virtual.arena_allocator(&s.arena)
@@ -516,15 +543,6 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled 
 	s.serial = styled_serial
 	s.line_height_normal = e.settings.line_height_normal
 	s.canvas = e.settings.background_color
-
-	p := pass_make(e, s, doc, state)
-	defer pass_destroy(p)
-	root := dom.get(doc, doc.root)
-	for c := root.first_child; c != base.NIL_HANDLE; c = dom.get(doc, c).next {
-		style_subtree(p, c, nil, Bloom{})
-	}
-	s.base_used = s.arena.total_used
-	update_canvas(s, doc)
 	return s
 }
 

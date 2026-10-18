@@ -58,4 +58,17 @@ foreign wamr {
 	wasm_runtime_validate_app_addr :: proc(inst: Module_Inst, app_offset, size: u64) -> bool ---
 	wasm_runtime_addr_app_to_native :: proc(inst: Module_Inst, app_offset: u64) -> rawptr ---
 	wasm_runtime_addr_native_to_app :: proc(inst: Module_Inst, native: rawptr) -> u64 ---
+	wasm_runtime_init_thread_env :: proc() -> bool ---
+	wasm_runtime_destroy_thread_env :: proc() ---
+	wasm_runtime_get_import_count :: proc(m: Module) -> i32 ---
+	wasm_runtime_get_import_type :: proc(m: Module, index: i32, out: ^Import_Type) ---
+}
+
+// wasm_import_t (wasm_export.h); `kind` 0 = function.
+Import_Type :: struct {
+	module_name: cstring,
+	name:        cstring,
+	kind:        i32,
+	linked:      bool,
+	type:        rawptr,
 }

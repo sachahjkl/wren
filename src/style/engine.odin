@@ -6,6 +6,7 @@ import "core:mem/virtual"
 import "core:os"
 import "core:slice"
 import "core:strings"
+import "core:sync"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
@@ -111,8 +112,15 @@ Engine :: struct {
 ////////////////////////////////
 // Lifecycle
 
+@(private)
+tables_once: sync.Once
+
 engine_make :: proc(settings: Settings) -> ^Engine {
-	tables_init()
+	// process-wide tables, built once whichever thread gets here first, kept for good: not the caller's memory
+	sync.once_do(&tables_once, proc() {
+		context.allocator = runtime.heap_allocator()
+		tables_init()
+	})
 	e := new(Engine)
 	e.settings = clone_settings(settings)
 	_ = virtual.arena_init_growing(&e.arena)
@@ -211,12 +219,37 @@ engine_add_sheet :: proc(e: ^Engine, text: string, owner: base.Handle, media: st
 	return s
 }
 
+// Registers a stylesheet parsed elsewhere: `css.parse_stylesheet` with `parse_options(&e.settings)`, typically on another
+// thread (parsing is a pure function with its own arena). The result is the same as `engine_add_sheet` on the same text.
+// The engine takes ownership of `sheet`; nil, and `sheet` freed, when author sheets are disabled or it is too large.
+engine_add_parsed_sheet :: proc(e: ^Engine, sheet: ^css.Stylesheet, owner: base.Handle, media: string = "", base_url: string = "", from_link := false) -> ^Sheet {
+	if !e.settings.author_stylesheets || len(sheet.source) > e.settings.max_sheet_bytes {
+		css.stylesheet_destroy(sheet); free(sheet)
+		return nil
+	}
+	s := register_sheet(e, sheet, .Author, owner, media, false, "", base_url)
+	s.from_link = from_link
+	return s
+}
+
+// `engine_resolve_import_by_id` for a sheet parsed elsewhere (see engine_add_parsed_sheet). Takes ownership of `sheet`.
+engine_resolve_import_parsed :: proc(e: ^Engine, sheet_id: u64, slot: int, sheet: ^css.Stylesheet, url: string) -> bool {
+	parent := engine_find_sheet(e, sheet_id)
+	if parent == nil || slot < 0 || slot >= len(parent.imports) { css.stylesheet_destroy(sheet); free(sheet); return false }
+	return resolve_import(e, parent, &parent.imports[slot], sheet, url)
+}
+
 @(private)
 add_sheet :: proc(e: ^Engine, text: string, origin: Origin, owner: base.Handle, media: string, in_layer: bool, layer: string, base_url := "", depth := 0) -> ^Sheet {
 	if len(text) > e.settings.max_sheet_bytes { return nil }
+	return register_sheet(e, css.parse_stylesheet(text, parse_options(&e.settings)), origin, owner, media, in_layer, layer, base_url, depth)
+}
+
+@(private)
+register_sheet :: proc(e: ^Engine, sheet: ^css.Stylesheet, origin: Origin, owner: base.Handle, media: string, in_layer: bool, layer: string, base_url := "", depth := 0) -> ^Sheet {
 	s := new(Sheet)
 	opt := parse_options(&e.settings)
-	s.sheet = css.parse_stylesheet(text, opt)
+	s.sheet = sheet
 	e.next_sheet_id += 1
 	s.id = e.next_sheet_id
 	s.origin, s.owner, s.depth = origin, owner, depth
@@ -305,11 +338,21 @@ pending_imports :: proc(e: ^Engine, s: ^Sheet, allocator := context.temp_allocat
 engine_resolve_import :: proc(e: ^Engine, parent: ^Sheet, slot: ^Import_Slot, text: string, base_url: string) -> bool {
 	slot.requested = true
 	if parent.depth + 1 > e.settings.max_import_depth { slot.failed = true; return false }
-	// imported sheets are owned by the slot, not by the engine's list
 	if len(text) > e.settings.max_sheet_bytes { slot.failed = true; return false }
-	opt := parse_options(&e.settings)
+	return resolve_import(e, parent, slot, css.parse_stylesheet(text, parse_options(&e.settings)), base_url)
+}
+
+@(private)
+resolve_import :: proc(e: ^Engine, parent: ^Sheet, slot: ^Import_Slot, sheet: ^css.Stylesheet, base_url: string) -> bool {
+	slot.requested = true
+	if parent.depth + 1 > e.settings.max_import_depth || len(sheet.source) > e.settings.max_sheet_bytes {
+		slot.failed = true
+		css.stylesheet_destroy(sheet); free(sheet)
+		return false
+	}
+	// imported sheets are owned by the slot, not by the engine's list
 	s := new(Sheet)
-	s.sheet = css.parse_stylesheet(text, opt)
+	s.sheet = sheet
 	e.next_sheet_id += 1
 	s.id = e.next_sheet_id
 	s.origin, s.depth = parent.origin, parent.depth + 1
@@ -374,7 +417,22 @@ css_wide_keyword :: proc(vs: []css.Value) -> string {
 
 // Turns parsed declarations into longhand declarations. A declaration whose value is not valid for its property is dropped
 // here, as the CSS parsing rules say, so that an earlier valid declaration (a fallback) stays in force.
-compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Allocator) -> (out: []Pre_Decl, customs: []Custom_Decl) {
+// What compiling declarations finds out about the engine's rules. A style pass running on several threads collects it
+// per thread and merges it afterwards (`stats_merge`), so the engine is only read meanwhile.
+Compile_Stats :: struct {
+	viewport_units: bool,
+	ignored:        int,
+}
+
+stats_merge :: proc(e: ^Engine, s: Compile_Stats) {
+	if s.viewport_units { e.viewport_units = true }
+	e.ignored_properties += s.ignored
+}
+
+compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Allocator, stats: ^Compile_Stats = nil) -> (out: []Pre_Decl, customs: []Custom_Decl) {
+	local: Compile_Stats
+	st := stats != nil ? stats : &local
+	defer if stats == nil { stats_merge(e, local) }
 	res := make([dynamic]Pre_Decl, a)
 	cus := make([dynamic]Custom_Decl, a)
 	probe := probe_context(e, a)
@@ -383,13 +441,13 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 		return apply_prop(cx, p, vs)
 	}
 	for d in decls {
-		if !e.viewport_units && uses_viewport_units(d.value) { e.viewport_units = true }
+		if !st.viewport_units && !e.viewport_units && uses_viewport_units(d.value) { st.viewport_units = true }
 		if strings.has_prefix(d.name, "--") {
 			append(&cus, Custom_Decl{name = d.name, value = d.value, important = d.important})
 			continue
 		}
 		p, sh, known := lookup_property(d.name)
-		if !known { e.ignored_properties += 1; continue }
+		if !known { st.ignored += 1; continue }
 		hv := contains_var(d.value)
 		if sh == .None {
 			if !hv && !valid(&probe, p, d.value) { continue }

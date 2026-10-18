@@ -63,6 +63,18 @@ try {
         $o = Get-Content build\ft.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
+    Step 'workers end-to-end test (messages, transfer, fetch, terminate, 16 in parallel)' {
+        odin build examples/workerstest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/workerstest.wasm -o:size
+        if ($LASTEXITCODE -ne 0) { return }
+        odin build examples/workerstest_worker -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/workerstest_worker.wasm -o:size
+        if ($LASTEXITCODE -ne 0) { return }
+        odin build src/tools/workerstest -collection:wb=src -vet -out:build/workerstest.exe
+        if ($LASTEXITCODE -ne 0) { return }
+        $p = Start-Process .\build\workerstest.exe -ArgumentList 'build\workerstest.wasm','examples\site\workerstest_worker.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\wkt.txt
+        if (-not $p.WaitForExit(180000)) { $p.Kill(); Get-Content build\wkt.txt; $global:LASTEXITCODE = 1; return }
+        $o = Get-Content build\wkt.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
+    }
 } finally { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }
 
 if (-not $Quick) {
