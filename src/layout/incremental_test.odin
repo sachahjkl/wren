@@ -117,7 +117,10 @@ ix_check :: proc(t: ^testing.T, f: ^Ix, want := Pass_Kind.Incremental, loc := #c
 	run_full(&ref, ix_input(f))
 	ok, report := compare_layouts(&f.l, &ref)
 	testing.expectf(t, ok, "incremental differs from full: %s", report, loc = loc)
-	if want != .None { testing.expectf(t, f.l.last_pass == want, "pass %v, want %v", f.l.last_pass, want, loc = loc) }
+	if want != .None {
+		testing.expectf(t, f.l.last_pass == want, "pass %v, want %v (%s)", f.l.last_pass, want, f.l.inc.fallback, loc = loc)
+		ok = ok && f.l.last_pass == want
+	}
 	return ok
 }
 
@@ -164,11 +167,21 @@ table{border-spacing:2px}
 <div class="sec rel" id=pos><p id=pp>positioned container</p><div class=abs id=ab>absolute box</div></div>
 <div class=sec id=imgs><img id=im1 width=40 height=20><span> image text</span></div>
 <div class=sec id=last><p id=pl>the end</p></div>
-</body>`
+`
+
+// The page above with enough filler after it that a local change is a small part of it.
+@(private = "file")
+page :: proc() -> string {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, PAGE)
+	for i in 0 ..< 60 { fmt.sbprintf(&sb, "<div class=sec><p>filler %d with <b>some</b> words to wrap in lines</p></div>\n", i) }
+	strings.write_string(&sb, "</body>")
+	return strings.to_string(sb)
+}
 
 @(test)
 inc_text_change :: proc(t: ^testing.T) {
-	f := ix_load(PAGE)
+	f := ix_load(page())
 	defer ix_unload(f)
 	ix_frame(f)
 	ix_check(t, f, .None)
@@ -194,7 +207,7 @@ inc_text_change :: proc(t: ^testing.T) {
 
 @(test)
 inc_insert_remove :: proc(t: ^testing.T) {
-	f := ix_load(PAGE)
+	f := ix_load(page())
 	defer ix_unload(f)
 	// flex: insert, remove
 	x := add_el(f, id(f, "flex"), "div", "", "new item with words", id(f, "f2"))
@@ -234,7 +247,7 @@ inc_insert_remove :: proc(t: ^testing.T) {
 
 @(test)
 inc_viewport :: proc(t: ^testing.T) {
-	f := ix_load(PAGE)
+	f := ix_load(page())
 	defer ix_unload(f)
 	for w in ([]f32{700, 520, 300, 801, 800}) {
 		f.vp.x = w
@@ -245,7 +258,7 @@ inc_viewport :: proc(t: ^testing.T) {
 	ix_frame(f)
 	ix_check(t, f)
 	laid := f.l.inc.last_laid
-	testing.expectf(t, laid < 10, "height only: %d boxes laid out again", laid)
+	testing.expectf(t, laid * 4 < len(f.l.boxes), "height only: %d boxes of %d laid out again", laid, len(f.l.boxes))
 	// percentage heights, fixed boxes and vh follow the height
 	g := ix_load(`<style>html,body{height:100%;margin:0} .h{height:50%} .fx{position:fixed;bottom:0;height:10%;width:20px} .v{height:10vh}</style><body><div class=h id=h>half</div><div class=fx></div><div class=v>vh</div></body>`)
 	defer ix_unload(g)
@@ -258,26 +271,27 @@ inc_viewport :: proc(t: ^testing.T) {
 
 @(test)
 inc_styles :: proc(t: ^testing.T) {
-	f := ix_load(PAGE)
+	f := ix_load(page())
 	defer ix_unload(f)
-	steps := [?]struct { id, style: string }{
-		{"a2", "width:300px"},             // keeps its box: laid out again
-		{"s1", "font-size:20px"},          // inherited by everything inside: rebuilt
-		{"f2", "display:none"},
-		{"f2", ""},
-		{"p1", "display:inline-block"},
-		{"ab", "left:100px;top:5px"},
-		{"pos", "position:static"},
-		{"pp", "float:left;width:100px"},
-		{"c11", "padding:10px"},
-		{"imgs", "margin-left:50px"},
-		{"a2", "overflow:hidden;height:20px"},
-		{"last", "position:fixed;top:0"},
+	steps := [?]struct { id, style: string, want: Pass_Kind }{
+		{"a2", "width:300px", .Incremental},             // keeps its box: laid out again
+		{"s1", "font-size:20px", .Incremental},          // inherited by everything inside: that section rebuilt
+		{"f2", "display:none", .Incremental},
+		{"f2", "", .Incremental},
+		{"p1", "display:inline-block", .Incremental},
+		{"ab", "left:100px;top:5px", .Incremental},
+		{"pos", "position:static", .Incremental},
+		{"pp", "float:left;width:100px", .Incremental},
+		{"c11", "padding:10px", .Incremental},
+		{"imgs", "margin-left:50px", .Incremental},
+		{"a2", "overflow:hidden;height:20px", .Incremental},
+		{"pl", "margin-top:-30px", .Incremental},
+		{"last", "position:fixed;top:0", .None},          // out of flow in the body: the body's content is rebuilt
 	}
 	for s in steps {
 		dom.set_attribute(f.doc, id(f, s.id), "style", s.style)
 		ix_frame(f)
-		if !ix_check(t, f) { fmt.println("after", s.id, s.style) }
+		if !ix_check(t, f, s.want) { fmt.println("after", s.id, s.style) }
 	}
 }
 
@@ -317,7 +331,7 @@ inc_images_fonts :: proc(t: ^testing.T) {
 
 @(test)
 inc_attributes :: proc(t: ^testing.T) {
-	f := ix_load(PAGE)
+	f := ix_load(page())
 	defer ix_unload(f)
 	dom.set_attribute(f.doc, id(f, "c11"), "colspan", "2")
 	ix_frame(f)
@@ -335,7 +349,7 @@ inc_attributes :: proc(t: ^testing.T) {
 
 @(test)
 inc_disabled_and_garbage :: proc(t: ^testing.T) {
-	f := ix_load(PAGE)
+	f := ix_load(page())
 	defer ix_unload(f)
 	f.set.incremental = false
 	run(&f.l, ix_input(f))   // settings changed: full

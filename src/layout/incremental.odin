@@ -69,6 +69,7 @@ Inc_State :: struct {
 	last_rebuilt:    int,           // boxes rebuilt by the last incremental pass
 	last_laid:       int,           // boxes laid out again (not taken from their cache)
 	last_spliced:    bool,          // the display list was patched rather than built
+	fallback:        string,        // why the last pass could not be incremental ("" when it was, or was not tried)
 }
 
 // What one incremental pass tracks while it lays out.
@@ -217,21 +218,28 @@ attr_kind :: proc(name: string) -> enum u8 { None, Build, Natural } {
 // The pass
 
 @(private)
+bail :: proc(l: ^Layout, why: string) -> bool {
+	l.inc.fallback = why
+	return false
+}
+
+@(private)
 run_incremental :: proc(l: ^Layout, input: Input) -> bool {
+	l.inc.fallback = ""
 	set := input.settings
 	st := input.styled
 	if !set.incremental || !l.valid || l.last_pass == .None || l.settings != set^ || l.scale != input.scale ||
 	   l.inc.doc != rawptr(input.doc) || l.inc.lh_normal != st.line_height_normal || len(l.boxes) == 0 {
-		return false
+		return bail(l, "settings, scale or document changed")
 	}
-	if too_much_garbage(l) { return false }
+	if too_much_garbage(l) { return bail(l, "memory left by partial passes") }
 	dom_changes, dom_ok := dom.journal_since(input.doc, l.mutations)
-	if !dom_ok { return false }
+	if !dom_ok { return bail(l, "mutation journal incomplete") }
 	style_changes: []style.Journal_Entry
 	if st.serial != l.serial {
 		ok: bool
 		style_changes, ok = style.journal_since(st, l.serial)
-		if !ok { return false }
+		if !ok { return bail(l, "style journal incomplete") }
 	}
 	t0 := time.tick_now()
 	marker: u8
@@ -239,27 +247,41 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	pass := Inc_Pass{laid = make([dynamic]i32, 0, 64, context.temp_allocator)}
 	c.inc = &pass
 	root_el, body_el := canvas_elements(input.doc)
-	if root_el != l.canvas_els[0] || body_el != l.canvas_els[1] { return false }
+	if root_el != l.canvas_els[0] || body_el != l.canvas_els[1] { return bail(l, "root element or body replaced") }
 	c.root_el, c.body_el = root_el, body_el
 
 	// what to rebuild, what to lay out again
 	roots := make([dynamic]i32, 0, 16, context.temp_allocator)
 	dirty := make([dynamic]i32, 0, 16, context.temp_allocator)
 	styled_dirty := make([dynamic]i32, 0, 16, context.temp_allocator)
+	// elements whose own box may come, go or change: done one by one when possible (rebuild.odin), else their
+	// containers are rebuilt whole (`parents`)
+	touched := make(map[base.Handle]bool, 16, context.temp_allocator)
+	parents := make([dynamic]base.Handle, 0, 16, context.temp_allocator)
+	containers := make([dynamic]base.Handle, 0, 16, context.temp_allocator)   // elements whose content changed
 	for &e in dom_changes {
 		switch e.kind {
 		case .Insert, .Remove:
-			if !add_target(&c, e.parent, &roots, &dirty) { return false }
+			n := dom.get(input.doc, e.node)
+			if (n != nil && n.kind != .Element) || (n == nil && live_box(l, e.node) == NONE) {
+				// text (or a node gone that had no box): their container's content
+				append(&containers, e.parent)
+				continue
+			}
+			touched[e.node] = true
+			append(&parents, e.parent)
 		case .Text:
-			if e.parent != base.NIL_HANDLE && !add_target(&c, e.parent, &roots, &dirty) { return false }
+			if e.parent != base.NIL_HANDLE { append(&containers, e.parent) }
 		case .Attribute:
 			switch attr_kind(e.name) {
 			case .None:
 			case .Build:
-				if p := parent_of(&c, e.node); p != base.NIL_HANDLE && !add_target(&c, p, &roots, &dirty) { return false }
+				// the numbering of a list follows its own attributes: its content; the others: the element's box
+				target := e.name == "start" || e.name == "reversed" ? e.node : parent_of(&c, e.node)
+				if target != base.NIL_HANDLE && !add_target(&c, target, &roots, &dirty) { return bail(l, "document changed at its root") }
 			case .Natural:
 				// the element's own replaced box, or the replaced element it is inside (an option of a <select>)
-				if !add_target(&c, e.node, &roots, &dirty) { return false }
+				if !add_target(&c, e.node, &roots, &dirty) { return bail(l, "document changed at its root") }
 			}
 		}
 	}
@@ -272,33 +294,77 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 		}
 		p := parent_of(&c, e.node)
 		if p == base.NIL_HANDLE { continue }
-		if !add_target(&c, p, &roots, &dirty) { return false }
+		touched[e.node] = true
+		append(&parents, p)
+	}
+	// content changes inside an element whose box is made again anyway are part of that
+	for h in containers {
+		if len(touched) > 0 && touched_ancestor(&c, h, touched) != base.NIL_HANDLE { continue }
+		if !add_target(&c, h, &roots, &dirty) { return bail(l, "document changed at its root") }
+	}
+	plans := make([dynamic]Child_Plan, 0, len(touched), context.temp_allocator)
+	if len(touched) > 0 {
+		list := make([dynamic]base.Handle, 0, len(touched), context.temp_allocator)
+		for h in touched {
+			// inside another element made again, and its box (if any) inside that one's: part of it (an inherited change
+			// reaches every descendant)
+			if p := parent_of(&c, h); p != base.NIL_HANDLE {
+				if a := touched_ancestor(&c, p, touched); a != base.NIL_HANDLE {
+					old, ab := live_box(l, h), live_box(l, a)
+					if old == NONE || (ab != NONE && box_inside(l, old, ab)) { continue }
+				}
+			}
+			append(&list, h)
+		}
+		if !plan_children(&c, list[:], &plans) {
+			// whole containers: where the boxes were, where they go
+			for h in list {
+				if old := live_box(l, h); old != NONE {
+					p := l.boxes[old].parent
+					for p != NONE && l.boxes[p].node == base.NIL_HANDLE { p = l.boxes[p].parent }
+					if p != NONE && !add_target(&c, l.boxes[p].node, &roots, &dirty) { return bail(l, "document changed at its root") }
+				}
+			}
+			for p in parents {
+				if !add_target(&c, p, &roots, &dirty) { return bail(l, "document changed at its root") }
+			}
+			clear(&plans)
+		}
 	}
 	roots = prune_roots(l, roots)
-	if len(roots) > 0 && l.inc.quotes { return false }
+	if (len(roots) > 0 || len(plans) > 0) && l.inc.quotes { return bail(l, "generated quotes") }
 	rebuilt := 0
 	for r in roots { rebuilt += subtree_size(l, r) }
-	if f32(rebuilt + len(dirty) + len(styled_dirty)) > set.inc_max_ratio * f32(len(l.boxes) - l.inc.dead_boxes) { return false }
+	for &pl in plans { rebuilt += pl.old != NONE ? subtree_size(l, pl.old) : 1 }
+	if f32(rebuilt + len(dirty) + len(styled_dirty)) > set.inc_max_ratio * f32(len(l.boxes) - l.inc.dead_boxes) { return bail(l, "too much changed") }
 
 	// from here on the layout changes: a failure falls back to a full pass, which starts from nothing
 	l.last_pass = .Incremental
 	start_items := len(l.inline_items)
 	start_boxes := len(l.boxes)
 	for r in roots { kill_contents(&c, r) }
+	drop_planned(&c, plans[:])
 	// before the styles are re-read: anonymous children follow them
 	for bi in styled_dirty { if .Dead not_in l.boxes[bi].flags { mark_dirty(l, bi) } }
-	if !remap_styles(&c) { return false }
+	if !remap_styles(&c) { return bail(l, "an element lost its style") }
+	is_root := make(map[i32]bool, len(roots), context.temp_allocator)
 	for r in roots {
+		is_root[r] = true
 		rebuild_contents(&c, r)
 		mark_dirty(l, r)
 	}
-	if len(roots) > 0 {
+	place_children(&c, plans[:], is_root)
+	if len(roots) > 0 || len(plans) > 0 {
 		group_items(&c, start_items)
 		l.doc_scroll_y = true
 		propagate_overflow(&c)
 		mark_bfc_floats(&c, i32(start_boxes))   // a rebuilt root's ancestors keep theirs: at worst they cache less
 	}
-	for bi in styled_dirty { if .Dead not_in l.boxes[bi].flags { mark_anon_dirty(l, bi) } }
+	for bi in styled_dirty {
+		if .Dead in l.boxes[bi].flags { continue }
+		mark_anon_dirty(l, bi)
+		mark_box_flow_flags(l, bi)   // a margin may have become negative
+	}
 	for bi in dirty { if .Dead not_in l.boxes[bi].flags { mark_dirty(l, bi) } }
 	if l.viewport != input.viewport { mark_dirty(l, 0) }
 	if input.images_generation != l.inc.images_gen { check_natural_sizes(&c) }
@@ -336,6 +402,24 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	l.stats = {ms(t0, t1), ms(t1, t2), ms(t2, t3), ms(t3, t4), ms(t4, t5)}
 	if set.inc_verify { verify_against_full(l, input) }
 	return true
+}
+
+// The nearest ancestor-or-self of `h` in `touched` (NIL: none).
+@(private)
+touched_ancestor :: proc(c: ^Ctx, h: base.Handle, touched: map[base.Handle]bool) -> base.Handle {
+	for cur := h; cur != base.NIL_HANDLE; {
+		if cur in touched { return cur }
+		n := dom.get(c.d, cur)
+		if n == nil { return base.NIL_HANDLE }
+		cur = n.parent
+	}
+	return base.NIL_HANDLE
+}
+
+@(private)
+box_inside :: proc(l: ^Layout, x, ancestor: i32) -> bool {
+	for p := x; p != NONE; p = l.boxes[p].parent { if p == ancestor { return true } }
+	return false
 }
 
 // Rebuild roots, without those inside another one (its rebuild makes them again).
@@ -485,18 +569,31 @@ compact_lines :: proc(l: ^Layout) {
 }
 
 // Floats that take part in the block formatting context of their ancestors: those ancestors (up to the formatting
-// context root, excluded) cannot cache their layout in flow (block.odin).
+// context root, excluded) cannot cache their layout in flow (block.odin). Likewise boxes with a negative vertical
+// margin: content inside their ancestors may rise above where those start, next to floats placed before.
 @(private)
 mark_bfc_floats :: proc(c: ^Ctx, from: i32) {
-	l := c.l
-	for i in from ..< i32(len(l.boxes)) {
-		b := &l.boxes[i]
-		if .Float not_in b.flags || .Dead in b.flags { continue }
-		for p := b.parent; p != NONE; p = l.boxes[p].parent {
-			pb := &l.boxes[p]
-			if .Bfc in pb.flags { break }
-			if .Bfc_Floats in pb.flags { break }   // the rest of the chain is marked already
-			pb.flags += {.Bfc_Floats}
+	for i in from ..< i32(len(c.l.boxes)) { mark_box_flow_flags(c.l, i) }
+}
+
+@(private)
+mark_box_flow_flags :: proc(l: ^Layout, i: i32) {
+	negative :: proc(m: style.Length) -> bool {
+		#partial switch m.kind {
+		case .Px, .Percent: return m.v < 0
+		case .Calc: return true
 		}
+		return false
+	}
+	b := &l.boxes[i]
+	if .Dead in b.flags { return }
+	flags: Box_Flags
+	if .Float in b.flags { flags += {.Bfc_Floats} }
+	if b.cs != nil && (negative(b.cs.margin[.Top]) || negative(b.cs.margin[.Bottom])) { flags += {.Neg_Margins} }
+	if flags == {} { return }
+	for p := b.parent; p != NONE; p = l.boxes[p].parent {
+		pb := &l.boxes[p]
+		if .Bfc in pb.flags || flags <= pb.flags { break }   // the rest of the chain is marked already
+		pb.flags += flags
 	}
 }

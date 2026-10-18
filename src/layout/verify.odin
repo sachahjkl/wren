@@ -72,7 +72,7 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 	if len(oa) != len(ob) {
 		fail(&m, "box count %d / %d", len(oa), len(ob))
 	}
-	IGNORED :: Box_Flags{.Dead, .Bfc_Floats}
+	IGNORED :: Box_Flags{.Dead, .Bfc_Floats, .Neg_Margins}   // the last two may stay set after what made them went
 	for k in 0 ..< min(len(oa), len(ob)) {
 		if m.bad { break }
 		x, y := &a.boxes[oa[k]], &b.boxes[ob[k]]

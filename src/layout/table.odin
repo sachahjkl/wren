@@ -206,7 +206,7 @@ shift_contents :: proc(c: ^Ctx, cell: i32, dy: f32) {
 	}
 	if k.baseline >= 0 { k.baseline += dy }
 	if k.last_baseline >= 0 { k.last_baseline += dy }
-	k.marker_pos.y += dy
+	if k.marker_w != 0 { k.marker_pos.y += dy }   // set by each layout of a list item only: do not accumulate otherwise
 }
 
 // Lays out a table at border-box width `w`; returns the border-box height of the table grid. Captions go above it

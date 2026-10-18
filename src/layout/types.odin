@@ -107,6 +107,7 @@ Box_Flag :: enum u8 {
 	Transformed,   // a transform applies (CSS Transforms: transformable boxes only, never a non-replaced inline box)
 	Pseudo_After,  // Pseudo: ::after (else ::before)
 	Bfc_Floats,    // some float inside takes part in the block formatting context this box is in (incremental.odin)
+	Neg_Margins,   // some box inside, in the same block formatting context, may have a negative vertical margin
 	Dead,          // left over by a partial rebuild of the box tree: in no tree, read by nothing
 }
 Box_Flags :: bit_set[Box_Flag; u32]

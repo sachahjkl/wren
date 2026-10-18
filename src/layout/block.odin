@@ -28,6 +28,7 @@ Float_Box :: struct { r: Rect, left: bool }
 Bfc :: struct {
 	floats:   [dynamic]Float_Box,
 	last_top: f32,   // a float may not be placed above an earlier one (§9.5.1 rule 5)
+	bottom:   f32,   // lowest float bottom so far
 }
 
 @(private)
@@ -41,7 +42,19 @@ Flow_Ctx :: struct {
 content_top :: proc(fc: ^Flow_Ctx) -> f32 { return fc.y + (fc.open != nil ? strut_value(fc.open^) : 0) }
 
 @(private)
-bfc_make :: proc() -> Bfc { return Bfc{floats = make([dynamic]Float_Box, context.temp_allocator), last_top = -math.F32_MAX} }
+bfc_make :: proc() -> Bfc { return Bfc{floats = make([dynamic]Float_Box, context.temp_allocator), last_top = -math.F32_MAX, bottom = -math.F32_MAX} }
+
+// No float of the formatting context can reach the content of `b` laid out in flow at `fc`: none inside it, and those
+// placed so far end above where its content can start (its content cannot rise above that: no negative margin inside).
+// Its layout is then the same as with no float at all.
+@(private)
+floats_clear_of :: proc(fc: ^Flow_Ctx, b: ^Box) -> bool {
+	if fc.bfc == nil || .Bfc_Floats in b.flags { return false }
+	if len(fc.bfc.floats) == 0 { return true }
+	if .Neg_Margins in b.flags { return false }
+	top := fc.y + (fc.open != nil ? min(strut_value(fc.open^), 0) : 0)
+	return fc.bfc.bottom <= top
+}
 
 // The space left between the floats intersecting [y0, y1) within [left, right].
 @(private)
@@ -196,7 +209,7 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_C
 	fc := fc_in
 	independent := fc == nil
 	key := [3]f32{w, cb_h, forced_h}
-	flow_ok := !independent && fc.bfc != nil && len(fc.bfc.floats) == 0 && .Bfc_Floats not_in b.flags
+	flow_ok := !independent && floats_clear_of(fc, b)
 	if b.cache_ok && b.inc == {} && b.cache_in == key {
 		if independent && !b.cache_flow {
 			b.size.y = b.cache_h
@@ -479,6 +492,7 @@ place_float :: proc(c: ^Ctx, fi, ci: i32, cw: f32, fc: ^Flow_Ctx, min_y: f32) {
 	}
 	append(&fc.bfc.floats, Float_Box{Rect{{x, y}, {x + mw, y + mh}}, left})
 	fc.bfc.last_top = y
+	fc.bfc.bottom = max(fc.bfc.bottom, y + mh)
 	cb := &c.l.boxes[ci]
 	ctop := content_top(fc)
 	k.pos = {x - fc.x + content_x(cb) + k.margin[3], y - ctop + content_y(cb) + k.margin[0] + k.pre_h}

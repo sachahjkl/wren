@@ -21,7 +21,7 @@ can_refresh :: proc(l: ^Layout, input: Input) -> bool {
 	st := input.styled
 	return l.styled == rawptr(st) && l.layout_serial == st.layout_serial && l.canvas == st.canvas &&
 		l.mutations == input.doc.mutations && l.viewport == input.viewport && l.scale == input.scale &&
-		l.settings == input.settings^
+		l.settings == input.settings^ && l.inc.images_gen == input.images_generation && l.inc.fonts_gen == input.fonts_generation
 }
 
 // Inherited paint-only properties: what an anonymous box takes from its parent that can change without a layout.
