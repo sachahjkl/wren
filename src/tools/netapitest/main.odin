@@ -272,8 +272,12 @@ main :: proc() {
 	}
 
 	////////////////////////////////
-	fmt.println("-- stress: 50 WebSockets echo 1 MiB each at the same time")
-	{
+	// first with the default handshake queue (one at a time per host), then with all 50 handshakes in parallel
+	for parallel in ([]int{0, 50}) {
+		fmt.printf("-- stress: 50 WebSockets echo 1 MiB each at the same time (handshakes in parallel: %d)\n", parallel)
+		saved := settings.websocket.limits
+		defer settings.websocket.limits = saved
+		if parallel > 0 { settings.websocket.limits.max_connecting_per_host = parallel }
 		sp := new_page(ORIGIN + "/stress.html")
 		mem_before := private_bytes()
 		start := time.tick_now()
