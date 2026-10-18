@@ -28,6 +28,8 @@ Ctx :: struct {
 	stack_base: uintptr,
 	stack_limit: int,
 	root_el, body_el: base.Handle,
+	lb_bufs:  [dynamic]^LB_Buffers,     // line building buffers per nesting level of inline formatting contexts
+	lb_depth: int,
 }
 
 @(private)

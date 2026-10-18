@@ -55,16 +55,21 @@ level_of :: proc(d: style.Display) -> Level {
 
 @(private)
 is_replaced_element :: proc(n: ^dom.Node) -> bool {
-	switch n.name {
-	case "img", "input", "textarea", "select", "iframe", "canvas", "video", "embed", "object", "audio", "meter", "progress": return true
+	switch len(n.name) {
+	case 3: return n.name == "img"
+	case 5: return n.name == "input" || n.name == "embed" || n.name == "video" || n.name == "audio" || n.name == "meter"
+	case 6: return n.name == "select" || n.name == "iframe" || n.name == "canvas" || n.name == "object"
+	case 8: return n.name == "textarea" || n.name == "progress"
 	}
 	return false
 }
 
 @(private)
 is_control_element :: proc(n: ^dom.Node) -> bool {
-	switch n.name {
-	case "input", "textarea", "select", "button": return true
+	switch len(n.name) {
+	case 5: return n.name == "input"
+	case 6: return n.name == "select" || n.name == "button"
+	case 8: return n.name == "textarea"
 	}
 	return false
 }
@@ -139,24 +144,32 @@ has_block_child :: proc(c: ^Ctx, h: base.Handle, cs: ^style.Computed, depth: i32
 	if int(depth) + 1 >= c.set.max_depth { return false }
 	if cs.before != nil && level_of(cs.before.display) == .Block { return true }
 	if cs.after != nil && level_of(cs.after.display) == .Block { return true }
-	stack := make([dynamic]base.Handle, 0, 8, context.temp_allocator)
+	// direct children without allocating; display: contents children are expanded with a stack
+	stack: [dynamic]base.Handle
 	n := dom.get(c.d, h)
-	for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(c.d, ch).prev { append(&stack, ch) }
-	for len(stack) > 0 {
-		x := pop(&stack)
-		xn := dom.get(c.d, x)
-		if xn == nil || xn.kind != .Element { continue }
-		xs := style.style_of(c.st, x)
-		if xs == nil || xs.display == .None { continue }
-		if xs.display == .Contents {
-			for ch := xn.last_child; ch != base.NIL_HANDLE; ch = dom.get(c.d, ch).prev { append(&stack, ch) }
-			continue
+	ch := n.first_child
+	for {
+		if ch == base.NIL_HANDLE {
+			if len(stack) == 0 { return false }
+			ch = pop(&stack)
 		}
-		if xs.position == .Absolute || xs.position == .Fixed || xs.float != .None { continue }
-		lv := level_of(xs.display)
-		if lv == .Block || lv == .Table_Internal { return true }
+		xn := dom.get(c.d, ch)
+		if xn == nil { ch = base.NIL_HANDLE; continue }
+		next := xn.next
+		if xn.kind == .Element {
+			if xs := style.style_of(c.st, ch); xs != nil && xs.display != .None {
+				if xs.display == .Contents {
+					if stack == nil { stack = make([dynamic]base.Handle, 0, 8, context.temp_allocator) }
+					if next != base.NIL_HANDLE { append(&stack, next) }
+					next = xn.first_child
+				} else if xs.position != .Absolute && xs.position != .Fixed && xs.float == .None {
+					lv := level_of(xs.display)
+					if lv == .Block || lv == .Table_Internal { return true }
+				}
+			}
+		}
+		ch = next
 	}
-	return false
 }
 
 // Pushes the children of `h` (and its generated ::before / ::after) to be visited with the given context.

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Layout engine demo</title>
+<style>
+  body { margin: 0; font-family: "Segoe UI", sans-serif; font-size: 15px; color: #1d2433; background: #f4f6fb; }
+  header { position: sticky; top: 0; z-index: 10; background: linear-gradient(to right, #24324f, #3d5a99); color: white; padding: 10px 24px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); }
+  header h1 { margin: 0; font-size: 22px; font-weight: 600; }
+  header small { opacity: 0.8; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px 24px 80px; }
+  h2 { font-family: Georgia, serif; font-weight: normal; font-size: 20px; border-bottom: 2px solid #c9d3e8; padding-bottom: 4px; margin: 26px 0 10px; }
+  .row { display: flex; gap: 12px; align-items: stretch; }
+  .card { flex: 1; background: white; border: 1px solid #d5dcea; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(20, 30, 60, 0.12); }
+  .card.wide { flex-grow: 2; }
+  .card h3 { margin: 0 0 6px; font-size: 16px; }
+  .wrap { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+  .chip { background: #e4ebfb; border-radius: 14px; padding: 4px 12px; }
+  .center { display: flex; height: 80px; align-items: center; justify-content: center; background: repeating-linear-gradient(45deg, #fff, #eef 10px); border: 2px dashed #8aa0d6; border-radius: 8px; }
+  .float-left { float: left; width: 120px; height: 80px; margin: 0 12px 6px 0; background: #ffd8a8; border: 1px solid #f59f00; border-radius: 6px; text-align: center; line-height: 80px; }
+  .float-right { float: right; width: 90px; height: 60px; margin: 0 0 6px 12px; background: #b2f2bb; border: 1px solid #2f9e44; text-align: center; line-height: 60px; }
+  .clear { clear: both; }
+  .stage { position: relative; height: 140px; background: #fff; border: 1px solid #ccd; border-radius: 8px; }
+  .abs { position: absolute; width: 110px; height: 50px; border-radius: 6px; color: white; padding: 6px; box-sizing: border-box; }
+  .a1 { left: 10px; top: 10px; background: #e03131; z-index: 1; }
+  .a2 { left: 60px; top: 35px; background: #1971c2; z-index: 3; opacity: 0.85; }
+  .a3 { right: 10px; bottom: 10px; background: #2f9e44; }
+  .rel { position: relative; left: 20px; top: 6px; background: #ffe066; padding: 0 4px; }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; background: white; border: 1px solid #ccd; border-radius: 8px; }
+  th, td { padding: 6px 10px; border-bottom: 1px solid #e3e7ef; text-align: left; }
+  th { background: #edf1fa; }
+  td.num { text-align: right; font-family: Consolas, monospace; }
+  .scroll { height: 110px; overflow: auto; background: white; border: 1px solid #ccd; border-radius: 8px; padding: 6px 10px; }
+  .clip { width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: white; border: 1px solid #ccd; padding: 4px; }
+  ol.roman { list-style-type: upper-roman; }
+  .borders span { display: inline-block; width: 70px; height: 34px; margin: 4px; border: 4px #5c7cfa; text-align: center; line-height: 34px; background: white; }
+  .justify { text-align: justify; }
+  .vs { font-size: 26px; border-bottom: 1px dotted #999; }
+  .vs span { font-size: 13px; background: #fff3bf; }
+  .stick { position: sticky; top: 0; background: #d0ebff; padding: 2px 6px; }
+  pre { background: #222838; color: #e7ecf5; padding: 8px 12px; border-radius: 6px; tab-size: 4; }
+</style>
+</head>
+<body>
+<header><h1>Layout engine <small>flex, floats, positioning, tables, lists, overflow</small></h1></header>
+<main>
+  <h2>Flexbox</h2>
+  <div class="row">
+    <div class="card"><h3>flex: 1</h3>Equal share of the free space; the cards stretch to the tallest one.</div>
+    <div class="card wide"><h3>flex-grow: 2</h3>Twice the share. Text wraps inside: <em>emphasis</em>, <strong>strong</strong>, <code>code</code>, <a href="#">a link</a>.</div>
+    <div class="card"><h3>Third</h3><div class="wrap"><span class="chip">wrap</span><span class="chip">gap</span><span class="chip">space-between</span><span class="chip">chips</span><span class="chip">order</span></div></div>
+  </div>
+  <p></p>
+  <div class="center"><span class="chip">align-items: center + justify-content: center</span></div>
+
+  <h2>Floats and clear</h2>
+  <div class="float-left">float: left</div>
+  <div class="float-right">right</div>
+  <p class="justify">Line boxes shorten beside floats. This paragraph is justified, so every line but the last one fills its band exactly; the text flows around the orange box on the left and the green one on the right, then takes the whole width below them. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+  <div class="clear"></div>
+
+  <h2>Positioning and stacking</h2>
+  <div class="stage">
+    <div class="abs a1">z-index 1</div>
+    <div class="abs a2">z-index 3, opacity</div>
+    <div class="abs a3">right / bottom</div>
+    <p style="margin: 90px 0 0 140px">Inline text with a <span class="rel">relatively positioned</span> span.</p>
+  </div>
+
+  <h2>Table</h2>
+  <table>
+    <thead><tr><th>Engine part</th><th>Spec</th><th style="text-align:right">Lines</th></tr></thead>
+    <tbody>
+      <tr><td>Block and inline formatting</td><td>CSS 2.1 §9, §10</td><td class="num">1 400</td></tr>
+      <tr><td>Flexible boxes</td><td>Flexbox 1 §9</td><td class="num">420</td></tr>
+      <tr><td colspan="2">Tables (this one spans two columns)</td><td class="num">330</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Lists</h2>
+  <div class="row">
+    <div class="card"><ul><li>disc</li><li>bullets<ul><li>circle</li><li>nested<ul><li>square</li></ul></li></ul></li></ul></div>
+    <div class="card"><ol start="4"><li>starts at 4</li><li value="10">value=10</li><li>then 11</li></ol></div>
+    <div class="card"><ol class="roman"><li>roman</li><li>numerals</li><li>three</li><li>four</li></ol></div>
+  </div>
+
+  <h2>Overflow</h2>
+  <div class="row">
+    <div class="scroll" style="flex:1">
+      <div class="stick">sticky inside the scroller</div>
+      <p>This box scrolls with the mouse wheel: overflow: auto makes it a scroll container with its own scroll bar.</p>
+      <p>The page scrolls only when the box cannot go any further.</p>
+      <p>More text.</p><p>Even more text.</p><p>The end.</p>
+    </div>
+    <div style="flex:1">
+      <div class="clip">text-overflow: ellipsis on a line that is far too long to fit</div>
+      <p class="vs">Big <span style="vertical-align:super">super</span> <span style="vertical-align:sub">sub</span> <span style="vertical-align:middle">middle</span> <span style="vertical-align:top">top</span> text</p>
+    </div>
+  </div>
+
+  <h2>Borders</h2>
+  <div class="borders">
+    <span style="border-style:solid">solid</span><span style="border-style:dashed">dashed</span><span style="border-style:dotted">dotted</span><span style="border-style:double">double</span><span style="border-style:groove">groove</span><span style="border-style:ridge">ridge</span><span style="border-style:inset">inset</span><span style="border-style:outset">outset</span><span style="border-style:solid;border-radius:17px">round</span>
+  </div>
+
+  <h2>Preformatted</h2>
+<pre>func main() {
+	print("tabs are 4 wide here")
+	for i in 0..&lt;3 {	tab	stop	}
+}</pre>
+</main>
+</body>
+</html>

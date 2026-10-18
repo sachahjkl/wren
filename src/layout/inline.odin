@@ -51,7 +51,12 @@ wraps :: #force_inline proc(ws: style.White_Space) -> bool { return ws != .Nowra
 word_end :: proc(text: string, pos: int, cs: ^style.Computed, wrap: bool) -> (int, bool) {
 	i := pos
 	for i < len(text) {
-		if is_ws(text[i]) { return i, false }
+		b := text[i]
+		if is_ws(b) { return i, false }
+		if b < 0x80 && b != '-' && cs.word_break != .Break_All {
+			i += 1
+			continue
+		}
 		r, n := utf8.decode_rune_in_string(text[i:])
 		if wrap {
 			if cs.word_break == .Break_All { return i + n, true }
@@ -173,6 +178,17 @@ Pending_Abs :: struct { box: i32, x: f32 }
 
 @(private)
 Align_Group :: struct { min, max: f32, top: bool }
+
+@(private)
+LB_Buffers :: struct {
+	frags, out:     [dynamic]Frag,
+	lines:          [dynamic]Line,
+	open:           [dynamic]Open_Box,
+	unit:           [dynamic]Seg,
+	pending_floats: [dynamic]i32,
+	pending_abs:    [dynamic]Pending_Abs,
+	groups:         [dynamic]Align_Group,
+}
 
 @(private)
 Line_Builder :: struct {
@@ -783,16 +799,31 @@ layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool) {
 	b.baseline, b.last_baseline = -1, -1
 	if b.items[1] <= b.items[0] { return 0, true }
 
+	// working buffers, one set per nesting level of inline formatting contexts, reused for the whole pass
+	if c.lb_depth >= len(c.lb_bufs) {
+		nb := new(LB_Buffers, context.temp_allocator)
+		nb^ = LB_Buffers{
+			frags = make([dynamic]Frag, 0, 32, context.temp_allocator), lines = make([dynamic]Line, 0, 8, context.temp_allocator),
+			out = make([dynamic]Frag, 0, 64, context.temp_allocator), open = make([dynamic]Open_Box, 0, 4, context.temp_allocator),
+			unit = make([dynamic]Seg, 0, 8, context.temp_allocator), pending_floats = make([dynamic]i32, 0, 2, context.temp_allocator),
+			pending_abs = make([dynamic]Pending_Abs, 0, 2, context.temp_allocator), groups = make([dynamic]Align_Group, 0, 2, context.temp_allocator),
+		}
+		append(&c.lb_bufs, nb)
+	}
+	bufs := c.lb_bufs[c.lb_depth]
+	c.lb_depth += 1
+	defer c.lb_depth -= 1
+	clear(&bufs.frags); clear(&bufs.lines); clear(&bufs.out); clear(&bufs.open); clear(&bufs.unit)
+	clear(&bufs.pending_floats); clear(&bufs.pending_abs); clear(&bufs.groups)
 	lb := Line_Builder{
 		c = c, bi = bi, cs = b.cs, cw = cw, fc = fc, cx = content_x(b), cy = content_y(b), root_fi = b.fi, first = true,
-		frags = make([dynamic]Frag, 0, 32, context.temp_allocator),
-		lines = make([dynamic]Line, 0, 8, context.temp_allocator),
-		out = make([dynamic]Frag, 0, 32, context.temp_allocator),
-		open = make([dynamic]Open_Box, 0, 4, context.temp_allocator),
-		unit = make([dynamic]Seg, 0, 8, context.temp_allocator),
-		pending_floats = make([dynamic]i32, 0, 0, context.temp_allocator),
-		pending_abs = make([dynamic]Pending_Abs, 0, 0, context.temp_allocator),
-		groups = make([dynamic]Align_Group, 0, 0, context.temp_allocator),
+		frags = bufs.frags, lines = bufs.lines, out = bufs.out, open = bufs.open, unit = bufs.unit,
+		pending_floats = bufs.pending_floats, pending_abs = bufs.pending_abs, groups = bufs.groups,
+	}
+	// the buffers may have grown: keep them for the next context at this level
+	defer {
+		bufs.frags, bufs.lines, bufs.out, bufs.open, bufs.unit = lb.frags, lb.lines, lb.out, lb.open, lb.unit
+		bufs.pending_floats, bufs.pending_abs, bufs.groups = lb.pending_floats, lb.pending_abs, lb.groups
 	}
 	if lb.root_fi < 0 { lb.root_fi = font_info(c, b.cs); c.l.boxes[bi].fi = lb.root_fi }
 	lb.strut_h = c.l.fonts[lb.root_fi].line_h

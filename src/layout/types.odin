@@ -278,6 +278,7 @@ Layout :: struct {
 	doc_width:    f32,
 	doc_scroll_y: bool,                    // false: the root element's overflow forbids scrolling the page
 	settings:     Settings,
+	stats:        [5]f32,                  // ms of the last run: box tree, layout, finishing, display list, spatial index
 	// persistent across layouts
 	scroll:       map[base.Handle]Vec2,    // scroll offset of each scroll container
 	arena:        virtual.Arena,           // strings made up by layout (transformed text, markers, generated content)

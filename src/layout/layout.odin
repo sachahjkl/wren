@@ -1,6 +1,7 @@
 package layout
 
 import "core:mem/virtual"
+import "core:time"
 import "wb:base"
 import "wb:style"
 
@@ -35,16 +36,25 @@ run :: proc(l: ^Layout, input: Input) {
 	c.font_cache = make(map[Font_Key]i32, 64, context.temp_allocator)
 	c.anon_cs = make(map[Anon_Key]^style.Computed, 16, context.temp_allocator)
 	c.counters = make(map[base.Handle]List_Counter, 16, context.temp_allocator)
+	c.lb_bufs = make([dynamic]^LB_Buffers, 0, 8, context.temp_allocator)
 
+	t0 := time.tick_now()
 	build_tree(&c)
+	t1 := time.tick_now()
 	root := &l.boxes[0]
 	root.pos = {0, 0}
 	root.size = input.viewport
 	layout_contents(&c, 0, input.viewport.x, input.viewport.y, -1, nil)
 	l.boxes[0].size = input.viewport
+	t2 := time.tick_now()
 	finish(&c)
+	t3 := time.tick_now()
 	build_display_list(&c)
+	t4 := time.tick_now()
 	build_bands(l, max(input.band_h, 16) * input.scale)
+	t5 := time.tick_now()
+	ms :: proc(a, b: time.Tick) -> f32 { return f32(time.duration_milliseconds(time.tick_diff(a, b))) }
+	l.stats = {ms(t0, t1), ms(t1, t2), ms(t2, t3), ms(t3, t4), ms(t4, t5)}
 }
 
 // Forgets the result (and, unless kept, the scroll offsets): a new document is coming.
