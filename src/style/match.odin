@@ -22,6 +22,7 @@ Match_Ctx :: struct {
 	sibs:   map[base.Handle]Sib_Info,    // filled one parent at a time, cleared with the style pass
 	filled: map[base.Handle]bool,
 	max_depth: int,
+	ignore_state: bool,                  // state pseudo-classes count as matching: "could this element match?"
 }
 
 match_ctx_init :: proc(m: ^Match_Ctx, d: ^dom.Document, state: State, allocator := context.allocator) {
@@ -323,6 +324,7 @@ matches_simple :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 	case .Attribute: return attr_matches(n, s)
 	case .Nesting:
 		if s.list == nil { return is_scope(m, el) }
+		if m.ignore_state { if k, h := list_state(s.list^); k != {} || h { return true } }
 		return matches_list(m, el, s.list^)
 	case .Pseudo_Class: return matches_pseudo(m, el, n, s)
 	}
@@ -338,6 +340,13 @@ is_scope :: proc(m: ^Match_Ctx, el: base.Handle) -> bool {
 
 @(private)
 matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simple) -> bool {
+	if m.ignore_state {
+		#partial switch s.pseudo {
+		case .Hover, .Active, .Focus, .Focus_Visible, .Focus_Within, .Target: return true
+		case .Not, .Is, .Where, .Has:
+			if s.list != nil { if k, h := list_state(s.list^); k != {} || h { return true } }
+		}
+	}
 	switch s.pseudo {
 	case .None: return false
 	case .Root:
@@ -469,4 +478,13 @@ has_in_subtree :: proc(m: ^Match_Ctx, anchor, root: base.Handle, c: ^css.Complex
 		}
 	}
 	return false
+}
+
+// Could `el` match this compound if the dynamic state were different? (Used to scope a restyle after a state change.)
+compound_could_match :: proc(m: ^Match_Ctx, el: base.Handle, comp: css.Compound) -> bool {
+	saved := m.ignore_state
+	m.ignore_state = true
+	ok := matches_compound(m, el, comp)
+	m.ignore_state = saved
+	return ok
 }

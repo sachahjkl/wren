@@ -19,6 +19,7 @@ Settings :: struct {
 	homepage:          string,   // owned
 	ui_font_size:      f32,
 	persist_profile:   bool,
+	layout_band_px:    f32,
 }
 
 PREFS := [?]config.Def{
@@ -29,6 +30,8 @@ PREFS := [?]config.Def{
 		description = "How often changed cookies, HSTS entries and preferences are written to the profile. 0 = only when the browser closes."},
 	{name = "browser.profile.persist", kind = .Bool, default = {b = true},
 		description = "Keep cookies and HSTS entries between runs. Off: they live in memory only."},
+	{name = "browser.layout.band_height_px", kind = .Float, default = {f = 256}, bounded = true, min = 16, max = 8192, unit = "px",
+		description = "Height of the bands that index the page for painting and hit testing. Taller bands mean fewer lists, shorter bands fewer items scanned."},
 	{name = "browser.scroll.step_px", kind = .Float, default = {f = 48}, bounded = true, min = 1, max = 2000, unit = "px",
 		description = "Distance of one mouse-wheel notch, in CSS pixels."},
 	{name = "browser.ui.font_size", kind = .Float, default = {f = 15}, bounded = true, min = 8, max = 48, unit = "px", restart = false,
@@ -53,5 +56,6 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		homepage = strings.clone(config.string_of(p, "browser.homepage")),
 		ui_font_size = f32(config.float_of(p, "browser.ui.font_size")),
 		persist_profile = config.bool_of(p, "browser.profile.persist"),
+		layout_band_px = f32(config.float_of(p, "browser.layout.band_height_px")),
 	}
 }

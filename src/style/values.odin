@@ -2,6 +2,7 @@ package style
 
 import "base:runtime"
 import "core:math"
+import "core:mem"
 import "core:reflect"
 import "core:strings"
 import "wb:css"
@@ -11,6 +12,7 @@ Cx :: struct {
 	settings: ^Settings,
 	lc:       css.Length_Context,   // em / rem / viewport bases; font_size follows the element's own font-size once it is known
 	parent:   ^Computed,            // nil for the root
+	initial:  ^Computed,            // initial values (for `unset` / `initial`)
 	c:        ^Computed,
 	alloc:    runtime.Allocator,    // owns everything the computed style points to
 	cenv:     css.Color_Env,
@@ -142,6 +144,7 @@ parse_color :: proc(cx: ^Cx, vs: []css.Value) -> (css.Color, bool) {
 
 initial_computed :: proc(s: ^Settings) -> Computed {
 	c: Computed
+	mem.zero_item(&c)   // padding bytes included: computed styles are compared as raw memory
 	c.display = .Inline
 	c.z_auto = true
 	c.max_width = Length{kind = .None}

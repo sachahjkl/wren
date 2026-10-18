@@ -105,6 +105,7 @@ App :: struct {
 	tabs:     [dynamic]^Tab,
 	current:  int,
 	address:  ui.Text_Field,
+	measure:  Measure,        // text measurement cache of the layout
 	focus_address: bool,      // Ctrl+L: focus the address field in the next build
 	show_console:  bool,
 
@@ -452,7 +453,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.rect(dc, b.rect, to_draw(styled.canvas))
 	if !t.layout.valid || t.layout.mutations != t.page.doc.mutations || t.layout.serial != styled.serial || t.layout.width != size.x || t.layout.scale != scale {
 		prof_begin(.Layout)
-		layout_document(&t.layout, t.page.doc, styled, &app.fonts, app.ui_font, size.x, scale)
+		layout_document(&t.layout, t.page.doc, styled, &app.measure, &app.fonts, app.ui_font, size.x, scale, app.cfg.layout_band_px)
 		prof_end(.Layout)
 	}
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
@@ -546,16 +547,21 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	t := current_tab(app)
 	if t == nil || t.page == nil || t.kind != .Web { return }
 	scale := ui.scale()
+	last_move: platform.Event
+	have_move := false
+	defer if have_move && t.page != nil {
+		hovered := base.NIL_HANDLE
+		if draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min + {0, t.scroll}) }
+		st := t.page.style_state
+		st.hover = hovered
+		page.set_style_state(t.page, st)
+	}
 	for ev in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
 		#partial switch ev.kind {
 		case .Mouse_Move:
-			hovered := base.NIL_HANDLE
-			if inside && t.layout.valid { hovered = hit_test(&t.layout, ev.pos - app.page_rect.min + {0, t.scroll}) }
-			st := t.page.style_state
-			st.hover = hovered
-			page.set_style_state(t.page, st)
+			last_move, have_move = ev, true   // only the last position of the frame matters: hit test once, after the loop
 		case .Scroll:
 			if inside { t.scroll -= ev.delta.y * app.cfg.scroll_step * scale }
 		case .Mouse_Press:
@@ -573,6 +579,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 					resolved, rok := url.parse(href, &t.page.env.location, context.temp_allocator)
 					if !rok { tab_log(t, .Error, fmt.tprintf("invalid link %q", href)); continue }
 					navigate(app, t, resolved.href, t.page, user_activation = true)
+					have_move = false
 					return   // the page is gone: the rest of this frame's events belong to the old one
 				}
 			}
@@ -798,6 +805,7 @@ main :: proc() {
 	fetch.profile_destroy(&app.profile)
 	host.loop_destroy(&app.loop)
 	wasm.runtime_destroy()
+	measure_destroy(&app.measure)
 	config_view_destroy(&app.config_view)
 	config.prefs_destroy(&app.prefs)
 }

@@ -4,6 +4,7 @@
 // scratch, which is fine for now, not the final design.
 package browser
 
+import "core:slice"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:font"
@@ -39,10 +40,15 @@ Layout :: struct {
 	scale:     f32,
 	valid:     bool,
 	owned:     [dynamic]string,   // strings made up by layout (list markers, generated content); items point into them
+	// Spatial index: items grouped by horizontal band of the page, so painting and hit testing visit only what is near.
+	band_h:       f32,
+	band_start:   [dynamic]u32,       // CSR layout: band b owns band_items[band_start[b] : band_start[b + 1]]
+	band_items:   [dynamic]u32,       // item indices, ascending within a band (= paint order)
 }
 
 layout_reset :: proc(l: ^Layout) {
 	clear(&l.items)
+	clear(&l.band_start); clear(&l.band_items)
 	free_owned(l)
 	l.valid = false
 }
@@ -55,6 +61,7 @@ free_owned :: proc(l: ^Layout) {
 
 layout_destroy :: proc(l: ^Layout) {
 	delete(l.items)
+	delete(l.band_start); delete(l.band_items)
 	free_owned(l)
 	delete(l.owned)
 }
@@ -95,6 +102,7 @@ Layout_Ctx :: struct {
 	l:       ^Layout,
 	d:       ^dom.Document,
 	styled:  ^style.Styled,
+	measure: ^Measure,
 	fonts:   ^font.State,
 	font_id: font.Font_Id,
 	scale:   f32,
@@ -151,18 +159,50 @@ look_from :: proc(c: ^Layout_Ctx, cs: ^style.Computed, parent: Look, cw: f32) ->
 	return lk
 }
 
-layout_document :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, fonts: ^font.State, font_id: font.Font_Id, width, scale: f32) {
+layout_document :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, measure: ^Measure, fonts: ^font.State, font_id: font.Font_Id, width, scale, band_h: f32) {
 	clear(&l.items)
+	free_owned(l)
 	l.mutations = d.mutations
 	l.serial = styled.serial
 	l.width = width
 	l.scale = scale
 	l.valid = true
-	c := Layout_Ctx{l, d, styled, fonts, font_id, scale}
+	c := Layout_Ctx{l, d, styled, measure, fonts, font_id, scale}
 	y: f32 = 0
 	root := Look{size = 16 * scale, line_h = 16 * scale * styled.line_height_normal, fg = {0, 0, 0, 1}}
 	block(&c, d.root, 0, width, &y, root)
 	l.height = y
+	build_bands(l, band_h * scale)
+}
+
+// Groups items by band. Two passes (count, then fill) into flat arrays: no per-band allocations.
+@(private)
+build_bands :: proc(l: ^Layout, band_h: f32) {
+	l.band_h = max(band_h, 16)
+	nb := int(l.height / l.band_h) + 2
+	clear(&l.band_start)
+	resize(&l.band_start, nb + 1)
+	for i in 0 ..< len(l.band_start) { l.band_start[i] = 0 }
+	span :: proc(l: ^Layout, it: ^Item, nb: int) -> (b0, b1: int) {
+		b0 = clamp(int(it.rect.min.y / l.band_h), 0, nb - 1)
+		b1 = clamp(int(it.rect.max.y / l.band_h), b0, nb - 1)
+		return
+	}
+	for &it in l.items {
+		b0, b1 := span(l, &it, nb)
+		for b in b0 ..= b1 { l.band_start[b + 1] += 1 }
+	}
+	for b in 1 ..= nb { l.band_start[b] += l.band_start[b - 1] }
+	clear(&l.band_items)
+	resize(&l.band_items, int(l.band_start[nb]))
+	fill := make([]u32, nb, context.temp_allocator)
+	for &it, i in l.items {
+		b0, b1 := span(l, &it, nb)
+		for b in b0 ..= b1 {
+			l.band_items[int(l.band_start[b] + fill[b])] = u32(i)
+			fill[b] += 1
+		}
+	}
 }
 
 @(private)
@@ -251,7 +291,7 @@ block :: proc(c: ^Layout_Ctx, h: base.Handle, x, w: f32, y: ^f32, parent: Look) 
 	if lk.display == .List_Item && lk.list_type != .None {
 		if m := marker_text(c, h, lk.list_type); m != "" {
 			m = persist(c, m)
-			mw := font.text_width(c.fonts, c.font_id, lk.size, m)
+			mw := measure_width(c.measure, c.fonts, c.font_id, lk.size, m)
 			saved := y^
 			flow(c, {Run{text = m, size = lk.size, line_h = lk.line_h, fg = lk.fg, node = h}}, cx - mw - lk.size * 0.45, 1000, y, lk, true)
 			y^ = saved
@@ -380,7 +420,7 @@ flow :: proc(c: ^Layout_Ctx, runs: []Run, x, w: f32, y: ^f32, lk: Look, single_l
 		for r in runs {
 			rest := r.text
 			for line in strings.split_lines_iterator(&rest) {
-				tw := font.text_width(c.fonts, c.font_id, r.size, line)
+				tw := measure_width(c.measure, c.fonts, c.font_id, r.size, line)
 				append(&c.l.items, Item{kind = .Text, rect = {{x, y^}, {x + tw, y^ + r.line_h}}, node = r.node, color = r.fg, text = line, size = r.size, underline = r.underline})
 				y^ += r.line_h
 			}
@@ -424,8 +464,8 @@ flow :: proc(c: ^Layout_Ctx, runs: []Run, x, w: f32, y: ^f32, lk: Look, single_l
 			if i >= len(text) { break }
 			j := i
 			for j < len(text) && !is_space(text[j]) { j += 1 }
-			ww := font.text_width(c.fonts, c.font_id, r.size, text[i:j]) + 2 * r.pad_x
-			space := (pending_space && !line_empty) ? font.text_width(c.fonts, c.font_id, r.size, " ") : 0
+			ww := measure_width(c.measure, c.fonts, c.font_id, r.size, text[i:j]) + 2 * r.pad_x
+			space := (pending_space && !line_empty) ? measure_width(c.measure, c.fonts, c.font_id, r.size, " ") : 0
 			if !line_empty && !single_line && line_x + space + ww > w {
 				finish_line(c, line_start, y, line_h, line_x, w, lk.align)
 				line_start = len(c.l.items)
@@ -449,15 +489,32 @@ flow :: proc(c: ^Layout_Ctx, runs: []Run, x, w: f32, y: ^f32, lk: Look, single_l
 
 // Deepest element under a point (layout coordinates); text fragments report the element that owns them.
 hit_test :: proc(l: ^Layout, p: draw.Vec2) -> base.Handle {
-	for i := len(l.items) - 1; i >= 0; i -= 1 {
-		it := l.items[i]
+	if len(l.band_start) < 2 { return base.NIL_HANDLE }
+	nb := len(l.band_start) - 1
+	b := clamp(int(p.y / l.band_h), 0, nb - 1)
+	list := l.band_items[l.band_start[b]:l.band_start[b + 1]]
+	for k := len(list) - 1; k >= 0; k -= 1 {   // later items are painted on top
+		it := &l.items[list[k]]
 		if draw.rect_contains(it.rect, p) { return it.node }
 	}
 	return base.NIL_HANDLE
 }
 
 paint :: proc(l: ^Layout, dc: ^draw.Context, fonts: ^font.State, font_id: font.Font_Id, origin: draw.Vec2, clip: draw.Rect) {
-	for it in l.items {
+	if len(l.band_start) < 2 { return }
+	nb := len(l.band_start) - 1
+	// visible range in layout coordinates, then the bands it touches
+	y0, y1 := clip.min.y - origin.y, clip.max.y - origin.y
+	b0 := clamp(int(y0 / l.band_h), 0, nb - 1)
+	b1 := clamp(int(y1 / l.band_h), b0, nb - 1)
+	visible := make([dynamic]u32, 0, 1024, context.temp_allocator)
+	for b in b0 ..= b1 { append(&visible, ..l.band_items[l.band_start[b]:l.band_start[b + 1]]) }
+	slice.sort(visible[:])   // paint order = item order; an item spanning several bands is listed once per band
+	last := u32(max(u32))
+	for idx in visible {
+		if idx == last { continue }
+		last = idx
+		it := &l.items[idx]
 		r := draw.rect_shift(it.rect, origin)
 		if r.max.y < clip.min.y || r.min.y > clip.max.y { continue }
 		switch it.kind {

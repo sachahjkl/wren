@@ -1,7 +1,9 @@
 package style
 
 import "base:runtime"
+import "core:mem"
 import "core:mem/virtual"
+import "core:slice"
 import "core:strings"
 import "wb:base"
 import "wb:css"
@@ -64,6 +66,8 @@ Styled :: struct {
 	serial:         u64,     // unique per pass: lets layout notice that styles changed even if nothing else did
 	line_height_normal: f32, // what `line-height: normal` means (a multiple of the font size), from the preferences
 	canvas:         css.Color,   // the color painted behind the whole page (root or body background, else the preference)
+	state:          State,       // the dynamic state these styles were computed for (target_id owned by `alloc`)
+	base_used:      uint,        // arena use right after the full pass: what partial restyles add on top is waste
 }
 
 @(private) styled_serial: u64
@@ -208,30 +212,43 @@ substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, 
 
 @(private)
 Pass :: struct {
-	e:      ^Engine,
-	s:      ^Styled,
-	mc:     Match_Ctx,
-	opt:    css.Parse_Options,
+	e:        ^Engine,
+	s:        ^Styled,
+	mc:       Match_Ctx,
+	opt:      css.Parse_Options,
+	ws:       [Prop]Cand,      // winners of the element being styled; only `touched` entries are reset between elements
+	touched:  [dynamic]Prop,
+	lists:    [3][dynamic]Entry,   // matched entries: the element, ::before, ::after
+	compare:  bool,            // partial restyle: keep the old computed style when nothing changed
+	changed:  bool,            // ... and report whether some element really changed
 }
 
 @(private)
-consider :: proc(ws: ^[Prop]Cand, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css.Specificity) {
+consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css.Specificity) {
 	for &d in rule.decls {
 		k := make_key(rule, d.important, spec)
-		cand := &ws[d.prop]
-		if !cand.valid || key_ge(k, cand.key) { cand^ = Cand{&d, k, rule.origin, true} }
+		cand := &p.ws[d.prop]
+		if !cand.valid {
+			append(&p.touched, d.prop)
+			cand^ = Cand{&d, k, rule.origin, true}
+		} else if key_ge(k, cand.key) {
+			cand^ = Cand{&d, k, rule.origin, true}
+		}
 	}
-	for &cd in rule.customs {
-		k := make_key(rule, cd.important, spec)
-		old, has := cust[cd.name]
-		if !has || !old.valid || key_ge(k, old.key) { cust[cd.name] = Custom_Cand{&cd, k, true} }
+	if len(rule.customs) > 0 {
+		if cust^ == nil { cust^ = make(map[string]Custom_Cand, context.temp_allocator) }
+		for &cd in rule.customs {
+			k := make_key(rule, cd.important, spec)
+			old, has := cust[cd.name]
+			if !has || !old.valid || key_ge(k, old.key) { cust[cd.name] = Custom_Cand{&cd, k, true} }
+		}
 	}
 }
 
 @(private)
-collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, out: ^[3][dynamic]Entry) {
-	check :: proc(p: ^Pass, el: base.Handle, list: []Entry, out: ^[3][dynamic]Entry) {
-		for ent in list {
+collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Bloom) {
+	check :: proc(p: ^Pass, el: base.Handle, list: []Entry, ancestors: ^Bloom) {
+		for &ent in list {
 			slot: int
 			#partial switch ent.complex.pseudo_element {
 			case .None: slot = 0
@@ -239,12 +256,16 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, out: ^[3][dynam
 			case .After: slot = 2
 			case: continue
 			}
-			if matches_complex(&p.mc, el, ent.complex) { append(&out[slot], ent) }
+			rejected := false
+			for k in 0 ..< int(ent.n_anc) { if !bloom_has(ancestors, ent.anc[k]) { rejected = true; break } }
+			if rejected { continue }
+			if matches_complex(&p.mc, el, ent.complex) { append(&p.lists[slot], ent) }
 		}
 	}
+	for i in 0 ..< 3 { clear(&p.lists[i]) }
 	ix := &p.e.index
 	if id, ok := attr(n, "id"); ok && id != "" {
-		if l, found := ix.by_id[id]; found { check(p, el, l[:], out) }
+		if l, found := ix.by_id[id]; found { check(p, el, l[:], ancestors) }
 	}
 	if cls, ok := attr(n, "class"); ok {
 		rest := cls
@@ -253,13 +274,20 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, out: ^[3][dynam
 			end := 0
 			for end < len(rest) && !is_space(rest[end]) { end += 1 }
 			if end > 0 {
-				if l, found := ix.by_class[rest[:end]]; found { check(p, el, l[:], out) }
+				if l, found := ix.by_class[rest[:end]]; found { check(p, el, l[:], ancestors) }
 			}
 			rest = rest[end:]
 		}
 	}
-	if l, found := ix.by_tag[n.name]; found { check(p, el, l[:], out) }
-	check(p, el, ix.universal[:], out)
+	if len(ix.by_attr) > 0 {
+		for a in n.attrs {
+			if a.name not_in ix.attr_names { continue }
+			key := strings.concatenate({a.name, "\x00", a.value}, context.temp_allocator)
+			if l, found := ix.by_attr[key]; found { check(p, el, l[:], ancestors) }
+		}
+	}
+	if l, found := ix.by_tag[n.name]; found { check(p, el, l[:], ancestors) }
+	check(p, el, ix.universal[:], ancestors)
 }
 
 @(private)
@@ -272,14 +300,14 @@ is_color_prop :: proc(pr: Prop) -> bool {
 }
 
 @(private)
-build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entry, inline_rule: ^Rule, pseudo: bool) -> ^Computed {
+build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entry, inline_rule: ^Rule) -> ^Computed {
 	s := p.s
 	e := p.e
 	a := s.alloc
-	ws: [Prop]Cand
-	cust := make(map[string]Custom_Cand, context.temp_allocator)
-	for ent in entries { consider(&ws, &cust, ent.rule, ent.complex.specificity) }
-	if inline_rule != nil { consider(&ws, &cust, inline_rule, css.Specificity{max(u32), 0, 0}) }
+	cust: map[string]Custom_Cand
+	for ent in entries { consider(p, &cust, ent.rule, ent.complex.specificity) }
+	if inline_rule != nil { consider(p, &cust, inline_rule, css.Specificity{max(u32), 0, 0}) }
+	slice.sort(p.touched[:])   // enum order = dependency order (font-size and color first)
 
 	c := new(Computed, a)
 	c^ = s.initial^
@@ -288,20 +316,20 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		for pr in INHERITED { copy_prop(c, parent, pr) }
 		c.custom = parent.custom
 	}
-	cx := Cx{settings = &e.settings, parent = parent, c = c, alloc = a}
+	cx := Cx{settings = &e.settings, parent = parent, initial = s.initial, c = c, alloc = a}
 	cx.cenv = css.Color_Env{dark = e.env.prefers_dark, system = system_color, user = &e.settings}
 	cx.lc = css.Length_Context{
 		font_size = f64(c.font_size), root_font_size = f64(s.root_font_size > 0 ? s.root_font_size : e.settings.default_font_size),
 		x_height = f64(c.font_size) * 0.5, ch = f64(c.font_size) * 0.5, vw = e.env.width, vh = e.env.height,
 	}
 
-	// custom properties
+	// custom properties (the maps exist only for elements that declare some)
 	env := Var_Env{engine = e, alloc = a, budget = e.settings.max_var_bytes}
-	env.pending = make(map[string]Custom_Cand, context.temp_allocator)
-	env.resolved = make(map[string]string, context.temp_allocator)
-	env.state = make(map[string]u8, context.temp_allocator)
 	env.parent = c.custom
 	if len(cust) > 0 {
+		env.pending = make(map[string]Custom_Cand, context.temp_allocator)
+		env.resolved = make(map[string]string, context.temp_allocator)
+		env.state = make(map[string]u8, context.temp_allocator)
 		for k, v in cust { env.pending[k] = v }
 		props := new(Custom_Props, a)
 		props.values = make(map[string]string, a)
@@ -312,13 +340,12 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		}
 		c.custom = props
 	}
-	env.final = c.custom != nil ? c.custom : &Custom_Props{}
+	empty_props := Custom_Props{}
+	env.final = c.custom != nil ? c.custom : &empty_props
 	env.pending = nil
 
-	// longhands, in dependency order (font-size and color first)
-	for pr in Prop {
-		cand := ws[pr]
-		if !cand.valid { continue }
+	for pr in p.touched {
+		cand := p.ws[pr]
 		if cand.origin == .Author {
 			if !e.settings.author_colors && is_color_prop(pr) { continue }
 			if !e.settings.author_fonts && (pr == .Font_Family || pr == .Font_Size) { continue }
@@ -343,27 +370,23 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		case:
 			if !apply_prop(&cx, pr, vals) { apply_unset(&cx, pr) }
 		}
-		// the element's own font-size is now known: later em units use it
 		if pr == .Font_Size {
 			cx.lc.font_size = f64(c.font_size)
 			cx.lc.x_height = f64(c.font_size) * 0.5
 			cx.lc.ch = f64(c.font_size) * 0.5
 		}
 	}
-	finish_style(&cx, h, pseudo)
+	for pr in p.touched { p.ws[pr] = {} }
+	clear(&p.touched)
+	finish_style(&cx, h)
 	return c
 }
 
 // `unset`: inherit when the property is inherited, otherwise its initial value.
 @(private)
 apply_unset :: proc(cx: ^Cx, pr: Prop) {
-	if pr in INHERITED && cx.parent != nil { copy_prop(cx.c, cx.parent, pr) } else if pr in INHERITED {
-		init := initial_computed(cx.settings)
-		copy_prop(cx.c, &init, pr)
-	} else {
-		init := initial_computed(cx.settings)
-		copy_prop(cx.c, &init, pr)
-	}
+	if pr in INHERITED && cx.parent != nil { copy_prop(cx.c, cx.parent, pr); return }
+	copy_prop(cx.c, cx.initial, pr)
 }
 
 @(private)
@@ -380,7 +403,7 @@ blockify :: proc(d: Display) -> Display {
 }
 
 @(private)
-finish_style :: proc(cx: ^Cx, h: base.Handle, pseudo: bool) {
+finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	c := cx.c
 	for side in Side {
 		if c.border_style[side] == .None || c.border_style[side] == .Hidden { c.border_width[side] = 0 }
@@ -393,7 +416,6 @@ finish_style :: proc(cx: ^Cx, h: base.Handle, pseudo: bool) {
 	if .Outline_Color not_in cx.explicit { c.outline_color = c.color }
 	if .Text_Decoration_Color not_in cx.explicit { c.text_decoration_color = c.color }
 	if c.position == .Absolute || c.position == .Fixed || c.float != .None { c.display = blockify(c.display) }
-	// overflow: a visible axis next to a scrolling one computes to auto
 	if (c.overflow_x == .Visible) != (c.overflow_y == .Visible) {
 		if c.overflow_x == .Visible { c.overflow_x = .Auto } else { c.overflow_y = .Auto }
 	}
@@ -402,10 +424,8 @@ finish_style :: proc(cx: ^Cx, h: base.Handle, pseudo: bool) {
 }
 
 @(private)
-compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed) -> ^Computed {
-	lists: [3][dynamic]Entry
-	for i in 0 ..< 3 { lists[i] = make([dynamic]Entry, context.temp_allocator) }
-	collect_entries(p, h, n, &lists)
+compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom) -> ^Computed {
+	collect_entries(p, h, n, ancestors)
 
 	inline_rule: ^Rule
 	if text, ok := attr(n, "style"); ok && p.e.settings.author_stylesheets && text != "" {
@@ -416,15 +436,66 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 			inline_rule^ = Rule{decls = pre, customs = customs, origin = .Author, layer = UNLAYERED, order = max(u32)}
 		}
 	}
-	c := build_style(p, h, parent, lists[0][:], inline_rule, false)
+	// the element's own lists are consumed before ::before / ::after reuse the buffers
+	before_entries, after_entries: [dynamic]Entry
+	if len(p.lists[1]) > 0 { before_entries = make([dynamic]Entry, context.temp_allocator); append(&before_entries, ..p.lists[1][:]) }
+	if len(p.lists[2]) > 0 { after_entries = make([dynamic]Entry, context.temp_allocator); append(&after_entries, ..p.lists[2][:]) }
+	c := build_style(p, h, parent, p.lists[0][:], inline_rule)
 
 	for i in 1 ..< 3 {
-		if len(lists[i]) == 0 { continue }
-		pc := build_style(p, h, c, lists[i][:], nil, true)
+		entries := i == 1 ? before_entries : after_entries
+		if len(entries) == 0 { continue }
+		pc := build_style(p, h, c, entries[:], nil)
 		if pc.display == .None || pc.content.kind != .Items { continue }
 		if i == 1 { c.before = pc } else { c.after = pc }
 	}
 	return c
+}
+
+@(private)
+pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^Pass {
+	p := new(Pass)
+	p.e, p.s, p.opt = e, s, parse_options(&e.settings)
+	match_ctx_init(&p.mc, doc, state)
+	p.touched = make([dynamic]Prop)
+	for i in 0 ..< 3 { p.lists[i] = make([dynamic]Entry) }
+	return p
+}
+
+@(private)
+pass_destroy :: proc(p: ^Pass) {
+	match_ctx_destroy(&p.mc)
+	delete(p.touched)
+	for i in 0 ..< 3 { delete(p.lists[i]) }
+	free(p)
+}
+
+// Styles `root` and everything below it. `parent` is the computed style of root's parent (nil for the document element);
+// `ancestors` the filter of root's ancestors.
+@(private)
+style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors: Bloom, descend := true) {
+	doc := p.mc.doc
+	s := p.s
+	Frame :: struct { h: base.Handle, parent: ^Computed, bloom: Bloom }
+	stack := make([dynamic]Frame, context.temp_allocator)
+	append(&stack, Frame{root, parent, ancestors})
+	for len(stack) > 0 {
+		f := pop(&stack)
+		n := dom.get(doc, f.h)
+		if n == nil || n.kind != .Element { continue }
+		c := compute_element(p, f.h, n, f.parent, &f.bloom)
+		idx := int(base.handle_index(f.h))
+		for len(s.by_node) <= idx { append(&s.by_node, nil) }
+		if p.compare {
+			if old := s.by_node[idx]; old != nil && old.node == f.h && computed_equal(old, c) { c = old } else { p.changed = true }
+		}
+		s.by_node[idx] = c
+		if f.parent == nil && s.root_font_size == 0 { s.root_font_size = c.font_size }
+		if !descend && f.h == root { break }
+		child_bloom := f.bloom
+		bloom_add_element(&child_bloom, n)
+		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, Frame{ch, c, child_bloom}) }
+	}
 }
 
 // Computes the style of every element of the document.
@@ -439,31 +510,26 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled 
 	s.initial.font_family = make([]string, 1, s.alloc)
 	s.initial.font_family[0] = strings.clone(generic, s.alloc)
 	s.mutations = doc.mutations
+	s.state = state
+	s.state.target_id = strings.clone(state.target_id, s.alloc)
 	styled_serial += 1
 	s.serial = styled_serial
 	s.line_height_normal = e.settings.line_height_normal
 	s.canvas = e.settings.background_color
 
-	p := Pass{e = e, s = s, opt = parse_options(&e.settings)}
-	match_ctx_init(&p.mc, doc, state)
-	defer match_ctx_destroy(&p.mc)
-
-	Frame :: struct { h: base.Handle, parent: ^Computed }
-	stack := make([dynamic]Frame, context.temp_allocator)
+	p := pass_make(e, s, doc, state)
+	defer pass_destroy(p)
 	root := dom.get(doc, doc.root)
-	for c := root.last_child; c != base.NIL_HANDLE; c = dom.get(doc, c).prev { append(&stack, Frame{c, nil}) }
-	for len(stack) > 0 {
-		f := pop(&stack)
-		n := dom.get(doc, f.h)
-		if n == nil || n.kind != .Element { continue }
-		c := compute_element(&p, f.h, n, f.parent)
-		idx := int(base.handle_index(f.h))
-		for len(s.by_node) <= idx { append(&s.by_node, nil) }
-		s.by_node[idx] = c
-		if f.parent == nil && s.root_font_size == 0 { s.root_font_size = c.font_size }
-		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, Frame{ch, c}) }
+	for c := root.first_child; c != base.NIL_HANDLE; c = dom.get(doc, c).next {
+		style_subtree(p, c, nil, Bloom{})
 	}
-	// the canvas takes the root element's background, or the body's when the root has none
+	s.base_used = s.arena.total_used
+	update_canvas(s, doc)
+	return s
+}
+
+@(private)
+update_canvas :: proc(s: ^Styled, doc: ^dom.Document) {
 	if root_el := dom.find_first_by_tag(doc, "html"); root_el != base.NIL_HANDLE {
 		if rc := style_of(s, root_el); rc != nil && rc.background_color.a > 0 {
 			s.canvas = rc.background_color
@@ -471,5 +537,205 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled 
 			if bc := style_of(s, body); bc != nil && bc.background_color.a > 0 { s.canvas = bc.background_color }
 		}
 	}
-	return s
+}
+
+////////////////////////////////
+// Partial restyle after a change of dynamic state
+
+state_equal :: proc(a, b: State) -> bool {
+	return a.hover == b.hover && a.active == b.active && a.focus == b.focus && a.target_id == b.target_id
+}
+
+@(private)
+changed_kinds :: proc(old, new: State) -> (k: State_Kinds) {
+	if old.hover != new.hover { k += {.Hover} }
+	if old.active != new.active { k += {.Active} }
+	if old.focus != new.focus { k += {.Focus} }
+	if old.target_id != new.target_id { k += {.Target} }
+	return
+}
+
+// Elements whose :hover (or :active, :focus-within) status differs: those on exactly one of the two ancestor chains.
+@(private)
+chain_delta :: proc(doc: ^dom.Document, a, b: base.Handle, out: ^map[base.Handle]bool) {
+	chain :: proc(doc: ^dom.Document, h: base.Handle) -> map[base.Handle]bool {
+		m := make(map[base.Handle]bool, context.temp_allocator)
+		for cur := h; cur != base.NIL_HANDLE; {
+			n := dom.get(doc, cur)
+			if n == nil || n.kind != .Element { break }
+			m[cur] = true
+			cur = n.parent
+		}
+		return m
+	}
+	ca, cb := chain(doc, a), chain(doc, b)
+	for k in ca { if k not_in cb { out[k] = true } }
+	for k in cb { if k not_in ca { out[k] = true } }
+}
+
+// Restyles only what a change from `s.state` to `new_state` can affect. Returns ok = false when the change cannot be
+// scoped (a state-dependent :has(), or too much memory left behind by earlier partial restyles): the caller then does a
+// full pass. `changed` tells whether any computed style really differs (layout is needed only then).
+restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: State) -> (changed: bool, ok: bool) {
+	old := s.state
+	kinds := changed_kinds(old, new_state)
+	set_state :: proc(s: ^Styled, st: State) {
+		s.state = st
+		s.state.target_id = strings.clone(st.target_id, s.alloc)
+	}
+	if kinds == {} { return false, true }
+	if kinds & e.state_deps == {} { set_state(s, new_state); return false, true }
+	if e.state_uses_has { return false, false }
+	if int(s.arena.total_used) > int(s.base_used) + e.settings.restyle_waste_bytes { return false, false }
+
+	p := pass_make(e, s, doc, new_state)
+	defer pass_destroy(p)
+	p.compare = true
+
+	changed_els := make(map[base.Handle]bool, context.temp_allocator)
+	if .Hover in kinds { chain_delta(doc, old.hover, new_state.hover, &changed_els) }
+	if .Active in kinds { chain_delta(doc, old.active, new_state.active, &changed_els) }
+	if .Focus in kinds {
+		chain_delta(doc, old.focus, new_state.focus, &changed_els)   // :focus-within
+		if old.focus != base.NIL_HANDLE { changed_els[old.focus] = true }   // :focus and :focus-visible are exact
+		if new_state.focus != base.NIL_HANDLE { changed_els[new_state.focus] = true }
+	}
+	if .Target in kinds {
+		if old.target_id != "" { if h := dom.find_by_id(doc, old.target_id); h != base.NIL_HANDLE { changed_els[h] = true } }
+		if new_state.target_id != "" { if h := dom.find_by_id(doc, new_state.target_id); h != base.NIL_HANDLE { changed_els[h] = true } }
+	}
+
+	// roots to restyle: the element itself, plus whole subtrees where a rule reaches beyond the element
+	roots := make(map[base.Handle]bool, context.temp_allocator)   // value: restyle the entire subtree
+	for x in changed_els {
+		if x not_in roots { roots[x] = false }
+		for &ent in e.state_entries {
+			if ent.state & kinds == {} { continue }
+			c := ent.complex
+			last := len(c.compounds) - 1
+			for k in 0 ..< last {
+				ck, _ := compound_state(c.compounds[k])
+				if ck & kinds == {} { continue }
+				if !compound_could_match(&p.mc, x, c.compounds[k]) { continue }
+				sibling := false
+				for j in k ..< last { if c.combinators[j] != .Child && c.combinators[j] != .Descendant { sibling = true } }
+				target := x
+				if sibling { if par := parent_element(&p.mc, x); par != base.NIL_HANDLE { target = par } }
+				roots[target] = true
+			}
+		}
+	}
+
+	for r, deep in roots {
+		// a root inside a subtree that is restyled anyway adds nothing
+		covered := false
+		for anc := parent_element(&p.mc, r); anc != base.NIL_HANDLE; anc = parent_element(&p.mc, anc) {
+			if roots[anc] { covered = true; break }
+		}
+		if covered { continue }
+
+		par := parent_element(&p.mc, r)
+		parent_style: ^Computed
+		bloom: Bloom
+		if par != base.NIL_HANDLE {
+			parent_style = style_of(s, par)
+			for anc := par; anc != base.NIL_HANDLE; anc = parent_element(&p.mc, anc) { bloom_add_element(&bloom, dom.get(doc, anc)) }
+		}
+		old_style := style_of(s, r)
+		if deep {
+			style_subtree(p, r, parent_style, bloom)
+			continue
+		}
+		style_subtree(p, r, parent_style, bloom, descend = false)
+		// the element's own change may reach its descendants through inheritance
+		new_style := style_of(s, r)
+		if old_style != nil && new_style != nil && !inherited_equal(old_style, new_style) {
+			n := dom.get(doc, r)
+			child_bloom := bloom
+			bloom_add_element(&child_bloom, n)
+			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next {
+				style_subtree(p, ch, new_style, child_bloom)
+			}
+		}
+	}
+	set_state(s, new_state)
+	if p.changed {
+		styled_serial += 1
+		s.serial = styled_serial
+		update_canvas(s, doc)
+	}
+	return p.changed, true
+}
+
+////////////////////////////////
+// Comparing computed styles
+
+@(private)
+shadows_equal :: proc(a, b: []Shadow) -> bool {
+	if len(a) != len(b) { return false }
+	for i in 0 ..< len(a) { if a[i] != b[i] { return false } }
+	return true
+}
+
+@(private)
+strings_equal :: proc(a, b: []string) -> bool {
+	if len(a) != len(b) { return false }
+	for i in 0 ..< len(a) { if a[i] != b[i] { return false } }
+	return true
+}
+
+@(private)
+custom_equal :: proc(a, b: ^Custom_Props) -> bool {
+	if a == b { return true }
+	if a == nil || b == nil { return false }
+	if len(a.values) != len(b.values) { return false }
+	for k, v in a.values { if w, ok := b.values[k]; !ok || w != v { return false } }
+	return true
+}
+
+@(private)
+inherited_equal :: proc(a, b: ^Computed) -> bool {
+	return a.color == b.color && strings_equal(a.font_family, b.font_family) && a.font_size == b.font_size &&
+		a.font_weight == b.font_weight && a.font_style == b.font_style && a.line_height == b.line_height &&
+		a.letter_spacing == b.letter_spacing && a.word_spacing == b.word_spacing && a.text_align == b.text_align &&
+		a.text_transform == b.text_transform && a.text_indent == b.text_indent && a.white_space == b.white_space &&
+		a.word_break == b.word_break && a.overflow_wrap == b.overflow_wrap && a.tab_size == b.tab_size &&
+		a.direction == b.direction && shadows_equal(a.text_shadow, b.text_shadow) && a.visibility == b.visibility &&
+		a.list_style_type == b.list_style_type && a.list_style_position == b.list_style_position && a.cursor == b.cursor &&
+		a.pointer_events == b.pointer_events && a.border_collapse == b.border_collapse && a.border_spacing == b.border_spacing &&
+		custom_equal(a.custom, b.custom)
+}
+
+// Value equality. Conservative: a `false` may be spurious (calc trees are compared by pointer), never a `true`.
+// The pointer-carrying fields are compared by value; the rest of the struct as raw memory (padding is zeroed everywhere
+// a Computed is made), so the two structs are masked in place for the memory compare and restored right after.
+computed_equal :: proc(a, b: ^Computed) -> bool {
+	if a == b { return true }
+	if a == nil || b == nil { return false }
+	Masked :: struct {
+		font_family: []string, text_shadow, box_shadow: []Shadow, content: Content, background_image: Image,
+		custom: ^Custom_Props, before, after: ^Computed,
+	}
+	take :: proc(c: ^Computed) -> Masked {
+		m := Masked{c.font_family, c.text_shadow, c.box_shadow, c.content, c.background_image, c.custom, c.before, c.after}
+		c.font_family, c.text_shadow, c.box_shadow, c.content, c.background_image, c.custom, c.before, c.after = nil, nil, nil, {}, {}, nil, nil, nil
+		return m
+	}
+	put :: proc(c: ^Computed, m: Masked) {
+		c.font_family, c.text_shadow, c.box_shadow, c.content, c.background_image, c.custom, c.before, c.after = m.font_family, m.text_shadow, m.box_shadow, m.content, m.background_image, m.custom, m.before, m.after
+	}
+	ma, mb := take(a), take(b)
+	same := mem.compare_ptrs(a, b, size_of(Computed)) == 0
+	put(a, ma); put(b, mb)
+	if !same { return false }
+	if !strings_equal(ma.font_family, mb.font_family) { return false }
+	if !shadows_equal(ma.text_shadow, mb.text_shadow) || !shadows_equal(ma.box_shadow, mb.box_shadow) { return false }
+	if ma.content.kind != mb.content.kind || len(ma.content.items) != len(mb.content.items) { return false }
+	for i in 0 ..< len(ma.content.items) { if ma.content.items[i] != mb.content.items[i] { return false } }
+	if ma.background_image != mb.background_image { return false }
+	if !custom_equal(ma.custom, mb.custom) { return false }
+	if (ma.before == nil) != (mb.before == nil) || (ma.after == nil) != (mb.after == nil) { return false }
+	if ma.before != nil && !computed_equal(ma.before, mb.before) { return false }
+	if ma.after != nil && !computed_equal(ma.after, mb.after) { return false }
+	return true
 }

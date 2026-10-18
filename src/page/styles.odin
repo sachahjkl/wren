@@ -60,13 +60,13 @@ configure_styles :: proc(p: ^Page) {
 	p.style_stale = true
 }
 
-// The inputs of :hover / :active / :focus / :target. A change restyles on the next `styles` call.
+// The inputs of :hover / :active / :focus / :target. Setting them is cheap and may happen many times per frame; the work
+// (a partial restyle, or nothing when no rule depends on what changed) happens once, in the next `styles` call.
 set_style_state :: proc(p: ^Page, state: style.State) {
-	if state.hover != p.style_state.hover || state.active != p.style_state.active || state.focus != p.style_state.focus || state.target_id != p.style_state.target_id {
+	if !style.state_equal(state, p.style_state) {
 		delete(p.style_state.target_id)
 		p.style_state = state
 		p.style_state.target_id = strings.clone(state.target_id)
-		p.style_stale = true
 	}
 }
 
@@ -184,16 +184,26 @@ decode_css :: proc(data: []byte, max_bytes: int) -> []byte {
 	return d.text
 }
 
-// The computed styles for the document as it is now. Cached until the DOM, the style inputs, the sheets or the
-// environment change.
+// The computed styles for the document as it is now, doing as little as the changes since the last call allow:
+//   * sheets or DOM changed            -> read the stylesheets again, full restyle
+//   * viewport / color scheme changed  -> full restyle only if some rule can depend on it (media query, vw units...)
+//   * hover / focus / active / target  -> partial restyle of the elements those states can reach, or nothing
+// The result is cached; its `serial` changes exactly when some computed style changed, which is what layout watches.
 styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Styled {
-	env := style.media_env_from(&p.engine.settings, f64(viewport_w), f64(viewport_h), dppx, false)
-	if style.engine_set_environment(p.engine, env) { p.style_stale = true }
-	if p.styled == nil || p.styled.mutations != p.doc.mutations || p.style_stale || p.engine.dirty {
-		sync_styles(p)
+	e := p.engine
+	env := style.media_env_from(&e.settings, f64(viewport_w), f64(viewport_h), dppx, false)
+	style.engine_set_environment(e, env)
+
+	full := p.styled == nil || p.style_stale || p.styled.mutations != p.doc.mutations || e.dirty || e.restyle_needed
+	if !full && !style.state_equal(p.style_state, p.styled.state) {
+		if _, ok := style.restyle_state(e, p.doc, p.styled, p.style_state); !ok { full = true }
+	}
+	if full {
+		if p.styled == nil || p.style_stale || p.styled.mutations != p.doc.mutations { sync_styles(p) }
 		style.styled_destroy(p.styled)
-		p.styled = style.compute_styles(p.engine, p.doc, p.style_state)
+		p.styled = style.compute_styles(e, p.doc, p.style_state)
 		p.style_stale = false
+		e.restyle_needed = false
 	}
 	return p.styled
 }

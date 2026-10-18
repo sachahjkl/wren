@@ -458,3 +458,61 @@ hostile_stylesheets :: proc(t: ^testing.T) {
 	testing.expect(t, f.eng.rule_count <= 1000, "the total rule limit is enforced")
 	testing.expect(t, at(&f, "a") != nil)
 }
+
+@(test)
+partial_restyle_matches_a_full_pass :: proc(t: ^testing.T) {
+	f := load(`<style>
+		a:hover { color: red }
+		.card:hover .title { color: blue }
+		.card:hover + .next { margin-top: 5px }
+		li:hover ~ li { padding-top: 3px }
+		div:focus-within { border-top: 2px solid green }
+		.x:not(:hover) { opacity: 0.5 }
+		.box:hover > p { font-size: 30px }
+		.tint:hover { color: green }
+		.tint:hover::before { content: "*" }
+		:target { margin-left: 9px }
+		button:active { margin-top: 7px }
+	</style>
+	<div class=card id=c1><span class=title id=t1>t</span><p id=p1>p <b id=b1>b</b></p></div><div class=next id=n1>n</div>
+	<ul id=u1><li id=l1>1</li><li id=l2>2</li><li id=l3>3</li></ul>
+	<div id=d1><input id=i1><a id=a1 href=x>l</a></div>
+	<div class=x id=x1>x</div>
+	<div class=box id=bx1><p id=p2>p2 <i id=i2>i</i></p></div>
+	<div class=tint id=ti1>tint <u id=u2>u</u></div>
+	<button id=bt1>b</button><span id=frag>f</span>`)
+	defer unload(&f)
+	ids := []string{"c1", "t1", "p1", "b1", "n1", "u1", "l1", "l2", "l3", "d1", "i1", "a1", "x1", "bx1", "p2", "i2", "ti1", "u2", "bt1", "frag"}
+	states := make([dynamic]State, context.temp_allocator)
+	append(&states, State{})
+	for id in ids { append(&states, State{hover = dom.find_by_id(f.doc, id)}) }
+	for id in ids { append(&states, State{focus = dom.find_by_id(f.doc, id)}) }
+	append(&states, State{active = dom.find_by_id(f.doc, "bt1")}, State{target_id = "frag"}, State{hover = dom.find_by_id(f.doc, "l2"), target_id = "frag"}, State{})
+	reference_failures := 0
+	for st in states {
+		changed, ok := restyle_state(f.eng, f.doc, f.st, st)
+		testing.expect(t, ok)
+		_ = changed
+		fresh := compute_styles(f.eng, f.doc, st)
+		for id in ids {
+			h := dom.find_by_id(f.doc, id)
+			if !computed_equal(style_of(f.st, h), style_of(fresh, h)) { reference_failures += 1; testing.expectf(t, false, "state %v: element %s differs from a full pass", st, id) }
+		}
+		styled_destroy(fresh)
+	}
+	testing.expect_value(t, reference_failures, 0)
+
+	// a state nobody's rules depend on costs nothing
+	g := load(`<style>p { color: red }</style><p id=a>a</p>`)
+	defer unload(&g)
+	changed, ok := restyle_state(g.eng, g.doc, g.st, State{hover = dom.find_by_id(g.doc, "a")})
+	testing.expect(t, ok && !changed)
+
+	// a hover that only toggles a rule on one element restyles that element alone
+	h := load(`<style>.k:hover { color: red }</style><p id=a class=k>a</p><p id=b>b</p>`)
+	defer unload(&h)
+	before_b := style_of(h.st, dom.find_by_id(h.doc, "b"))
+	changed, ok = restyle_state(h.eng, h.doc, h.st, State{hover = dom.find_by_id(h.doc, "a")})
+	testing.expect(t, ok && changed)
+	testing.expect(t, style_of(h.st, dom.find_by_id(h.doc, "b")) == before_b, "unrelated elements keep their computed style")
+}

@@ -39,13 +39,22 @@ Rule :: struct {
 	order:   u32,
 }
 
+// Dynamic state that a rule can depend on. Which of them appear in the active rules decides what a change of state costs.
+State_Kind :: enum u8 { Hover, Active, Focus, Target }
+State_Kinds :: bit_set[State_Kind; u8]
+
 Entry :: struct {
 	rule:    ^Rule,
 	complex: ^css.Complex,
+	anc:     [4]u32,   // hashes (see bloom.odin) of simple selectors an ancestor must have: rejects most entries without matching
+	n_anc:   u8,
+	state:   State_Kinds,   // state the complex depends on, anywhere in it
 }
 
 Index :: struct {
 	by_id, by_class, by_tag: map[string][dynamic]Entry,
+	by_attr:                 map[string][dynamic]Entry,   // [name=value]: key is name, NUL, value
+	attr_names:              map[string]bool,             // names used by by_attr, so elements skip the other attributes
 	universal:               [dynamic]Entry,
 }
 
@@ -91,6 +100,12 @@ Engine :: struct {
 	user:      ^Sheet,
 	anon_layers: int,
 	next_sheet_id: u64,
+	// what the active rules depend on (recomputed by every rebuild)
+	state_deps:      State_Kinds,
+	state_entries:   [dynamic]Entry,   // entries that depend on some state
+	state_uses_has:  bool,             // a state-dependent :has() exists: its effect cannot be scoped
+	viewport_units:  bool,             // some value uses vw/vh/vmin/vmax: a viewport change restyles
+	restyle_needed:  bool,             // set by `engine_set_environment`; the page clears it after restyling
 }
 
 ////////////////////////////////
@@ -129,6 +144,7 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.layers)
 	delete(e.font_faces)
 	delete(e.keyframes)
+	delete(e.state_entries)
 	settings_destroy(&e.settings)
 	free(e)
 }
@@ -149,7 +165,8 @@ index_free :: proc(ix: ^Index) {
 	for _, v in ix.by_id { delete(v) }
 	for _, v in ix.by_class { delete(v) }
 	for _, v in ix.by_tag { delete(v) }
-	delete(ix.by_id); delete(ix.by_class); delete(ix.by_tag); delete(ix.universal)
+	for k, v in ix.by_attr { delete(k); delete(v) }
+	delete(ix.by_id); delete(ix.by_class); delete(ix.by_tag); delete(ix.by_attr); delete(ix.attr_names); delete(ix.universal)
 	ix^ = {}
 }
 
@@ -332,6 +349,21 @@ contains_var :: proc(vs: []css.Value) -> bool {
 }
 
 @(private)
+uses_viewport_units :: proc(vs: []css.Value) -> bool {
+	for v in vs {
+		switch v.kind {
+		case .Token:
+			if v.tok.kind == .Dimension {
+				if u, ok := css.relative_unit(v.tok.text); ok && (u == .Vw || u == .Vh || u == .Vmin || u == .Vmax) { return true }
+			}
+		case .Function, .Block:
+			if uses_viewport_units(v.children) { return true }
+		}
+	}
+	return false
+}
+
+@(private)
 css_wide_keyword :: proc(vs: []css.Value) -> string {
 	id := css.ident_of(vs)
 	switch id {
@@ -351,6 +383,7 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 		return apply_prop(cx, p, vs)
 	}
 	for d in decls {
+		if !e.viewport_units && uses_viewport_units(d.value) { e.viewport_units = true }
 		if strings.has_prefix(d.name, "--") {
 			append(&cus, Custom_Decl{name = d.name, value = d.value, important = d.important})
 			continue
@@ -382,19 +415,31 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 }
 
 @(private)
-bucket_add :: proc(e: ^Engine, ent: Entry) {
+bucket_add :: proc(e: ^Engine, ent_in: Entry) {
+	ent := ent_in
+	compute_ancestor_hashes(&ent)
+	kinds, uses_has := complex_state(ent.complex)
+	ent.state = kinds
+	if ent.state != {} {
+		e.state_deps += ent.state
+		append(&e.state_entries, ent)
+		if uses_has { e.state_uses_has = true }
+	}
 	c := ent.complex
 	last := c.compounds[len(c.compounds) - 1]
 	var_id, var_class, var_tag: string
-	for s in last.simples {
+	var_attr: ^css.Simple
+	for &s in last.simples {
 		#partial switch s.kind {
 		case .Id: if var_id == "" { var_id = s.name }
 		case .Class: if var_class == "" { var_class = s.name }
 		case .Type: if var_tag == "" { var_tag = s.name }
+		case .Attribute: if var_attr == nil && s.op == .Equals && !s.ci { var_attr = &s }
 		}
 	}
-	add :: proc(m: ^map[string][dynamic]Entry, key: string, ent: Entry) {
+	add :: proc(m: ^map[string][dynamic]Entry, key: string, ent: Entry, own_key := false) {
 		list, ok := m[key]
+		if !ok && own_key { m[strings.clone(key)] = {} }   // the key is a temporary: the map keeps its own copy
 		if !ok { list = make([dynamic]Entry) }
 		append(&list, ent)
 		m[key] = list
@@ -402,6 +447,9 @@ bucket_add :: proc(e: ^Engine, ent: Entry) {
 	switch {
 	case var_id != "": add(&e.index.by_id, var_id, ent)
 	case var_class != "": add(&e.index.by_class, var_class, ent)
+	case var_attr != nil:
+		add(&e.index.by_attr, strings.concatenate({var_attr.name, "\x00", var_attr.value}, context.temp_allocator), ent, own_key = true)
+		e.index.attr_names[var_attr.name] = true
 	case var_tag != "": add(&e.index.by_tag, var_tag, ent)
 	case: append(&e.index.universal, ent)
 	}
@@ -419,7 +467,7 @@ compile_style_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCt
 		for i in 0 ..< len(r.selectors) {
 			c := &r.selectors[i]
 			if len(c.compounds) > e.settings.max_selector_compounds { continue }
-			bucket_add(e, Entry{rule, c})
+			bucket_add(e, Entry{rule = rule, complex = c})
 		}
 	}
 	for n in r.nested { flatten_rule(e, n, origin, lc) }
@@ -498,6 +546,8 @@ flatten_sheet :: proc(e: ^Engine, s: ^Sheet, lc_in: LayerCtx) {
 engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	free_all(e.alloc)
 	index_free(&e.index)
+	clear(&e.state_entries)
+	e.state_deps, e.state_uses_has, e.viewport_units = {}, false, false
 	clear(&e.layers)
 	clear(&e.font_faces)
 	clear(&e.keyframes)
@@ -529,8 +579,16 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 // conditional rules apply.
 engine_set_environment :: proc(e: ^Engine, env: css.Media_Env) -> bool {
 	changed := env != e.env
+	old := e.env
 	e.env = env
 	if changed && e.media_dependent { e.dirty = true }
+	// styles depend on the viewport only through conditional rules and viewport units, and on the color scheme through
+	// light-dark() and media queries; anything else (a plain width change) needs layout only
+	size_changed := old.width != env.width || old.height != env.height
+	if changed && ((size_changed && (e.media_dependent || e.viewport_units)) || old.prefers_dark != env.prefers_dark ||
+	   old.dppx != env.dppx || old.prefers_reduced_motion != env.prefers_reduced_motion || old.prefers_more_contrast != env.prefers_more_contrast) {
+		e.restyle_needed = true
+	}
 	return changed
 }
 
