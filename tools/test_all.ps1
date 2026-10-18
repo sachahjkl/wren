@@ -38,6 +38,16 @@ try {
         $o = Get-Content build\pt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
+    Step 'EventSource / WebSocket end-to-end test (netapitest)' {
+        odin build examples/netapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/netapitest.wasm -o:size
+        if ($LASTEXITCODE -ne 0) { return }
+        odin build src/tools/netapitest -collection:wb=src -vet -out:build/netapitest.exe
+        if ($LASTEXITCODE -ne 0) { return }
+        $p = Start-Process .\build\netapitest.exe -ArgumentList 'build\netapitest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\nat.txt
+        if (-not $p.WaitForExit(180000)) { $p.Kill(); Get-Content build\nat.txt; $global:LASTEXITCODE = 1; return }
+        $o = Get-Content build\nat.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
+    }
 } finally { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }
 
 if (-not $Quick) {

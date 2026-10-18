@@ -12,6 +12,8 @@ Settings :: struct {
 	wasm:            wasm.Options,
 	html:            html.Options,
 	style:           style.Settings,
+	eventsource:     Eventsource_Settings,
+	websocket:       Websocket_Settings,
 }
 
 PREFS := [?]config.Def{
@@ -26,6 +28,8 @@ register_prefs :: proc(p: ^config.Prefs) {
 	wasm.register_prefs(p)
 	html.register_prefs(p)
 	style.register_prefs(p)
+	config.register(p, EVENTSOURCE_PREFS[:])
+	config.register(p, WEBSOCKET_PREFS[:])
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -35,6 +39,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		wasm = wasm.options_from_prefs(p),
 		html = html.options_from_prefs(p),
 		style = style.settings_from_prefs(p),
+		eventsource = eventsource_settings_from_prefs(p),
+		websocket = websocket_settings_from_prefs(p),
 	}
 }
 
