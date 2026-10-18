@@ -32,9 +32,11 @@ Frame :: struct {
 	ifc:    i32,               // Inline mode: the inline formatting context root
 	mode:   Mode,
 	cb:     i32,               // containing block of absolutely positioned descendants
+	fcb:    i32,               // containing block of fixed descendants: the root, or the nearest transformed ancestor
 	depth:  i32,
 	deco:   style.Decorations, // text decorations propagated from ancestors
 	deco_color: css.Color,
+	deco_box: i32,             // the box whose text-decoration-color that is (NONE: none)
 }
 
 @(private)
@@ -108,7 +110,7 @@ add_item :: proc(c: ^Ctx, it: Inline_Item) { append(&c.l.inline_items, it) }
 
 // Applies the per-element flags that do not depend on where the box sits.
 @(private)
-box_flags_from_style :: proc(c: ^Ctx, bi: i32, cb: i32) {
+box_flags_from_style :: proc(c: ^Ctx, bi: i32, cb, fcb: i32) {
 	b := &c.l.boxes[bi]
 	cs := b.cs
 	switch cs.position {
@@ -116,10 +118,14 @@ box_flags_from_style :: proc(c: ^Ctx, bi: i32, cb: i32) {
 	case .Relative: b.flags += {.Positioned, .Relative}
 	case .Sticky: b.flags += {.Positioned, .Sticky, .Stacking}
 	case .Absolute: b.flags += {.Positioned, .Abs, .Bfc}
-	case .Fixed: b.flags += {.Positioned, .Abs, .Fixed, .Bfc, .Stacking}
+	case .Fixed:
+		b.flags += {.Positioned, .Abs, .Bfc, .Stacking}
+		// under a transformed ancestor a fixed box is positioned in it and moves with it (CSS Transforms 1 §3)
+		if fcb == 0 { b.flags += {.Fixed} }
 	}
 	if .Positioned in b.flags && !cs.z_auto { b.flags += {.Stacking} }
-	if cs.opacity < 1 { b.flags += {.Stacking} }
+	if cs.opacity < 1 || stacking_effect(cs) { b.flags += {.Stacking} }
+	if b.kind != .Inline && style.has_transform(cs) { b.flags += {.Transformed, .Stacking} }
 	if cs.float != .None && .Abs not_in b.flags { b.flags += {.Float, .Bfc} }
 	if cs.visibility != .Visible { b.flags += {.Hidden} }
 	if !cs.pointer_events { b.flags += {.No_Pointer} }
@@ -129,7 +135,7 @@ box_flags_from_style :: proc(c: ^Ctx, bi: i32, cb: i32) {
 	}
 	if cs.display == .Flow_Root || cs.display == .Inline_Block { b.flags += {.Bfc} }
 	if .Abs in b.flags {
-		cbi := .Fixed in b.flags ? i32(0) : cb
+		cbi := cs.position == .Fixed ? fcb : cb
 		b.cb = cbi
 		b.pos_ref = cbi
 		cbb := &c.l.boxes[cbi]
@@ -201,11 +207,12 @@ child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool) -> Frame {
 	g.parent = bi
 	g.depth = b.depth
 	if .Positioned in b.flags { g.cb = bi }
+	if b.kind != .Inline && contains_fixed(b.cs) { g.cb, g.fcb = bi, bi }
 	if .Atomic in b.flags || .Float in b.flags || .Abs in b.flags || b.kind == .Flex || b.kind == .Table {
 		g.deco = {}   // decorations do not propagate into atomic inlines, floats and absolutely positioned boxes
 	}
 	g.deco += b.cs.text_decoration
-	if b.cs.text_decoration != {} { g.deco_color = b.cs.text_decoration_color }
+	if b.cs.text_decoration != {} { g.deco_color, g.deco_box = b.cs.text_decoration_color, bi }
 	switch b.kind {
 	case .Inline: g.mode = .Inline
 	case .Block, .Cell, .Caption:
@@ -254,7 +261,7 @@ build_tree :: proc(c: ^Ctx) {
 	}
 
 	stack := make([dynamic]Frame, 0, 256, context.temp_allocator)
-	top := Frame{kind = .Visit, parent = root, mode = .Block, cb = root, depth = 0, ifc = NONE}
+	top := Frame{kind = .Visit, parent = root, mode = .Block, cb = root, fcb = root, depth = 0, ifc = NONE, deco_box = NONE}
 	{
 		g := top
 		rn := dom.get(d, d.root)
@@ -533,9 +540,12 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 
 	bi := new_box(c, kind, cs, h, g.parent, g.depth + (kind == .Inline ? 0 : 1))
 	b := &c.l.boxes[bi]
-	if pseudo { b.flags += {.Pseudo} }
+	if pseudo {
+		b.flags += {.Pseudo}
+		if ecs := style.style_of(c.st, h); ecs != nil && ecs.after == cs { b.flags += {.Pseudo_After} }
+	}
 	if !pseudo && is_control_element(n) { b.flags += {.Control} }
-	box_flags_from_style(c, bi, g.cb)
+	box_flags_from_style(c, bi, g.cb, g.fcb)
 	b = &c.l.boxes[bi]
 	if g.mode == .Flex || g.mode == .Table || g.mode == .Row_Group || g.mode == .Row { b.flags -= {.Float} }
 	if !pseudo { register_node(c, h, bi) }
@@ -652,7 +662,7 @@ visit_text :: proc(c: ^Ctx, f: Frame, n: ^dom.Node) {
 	prev := false
 	text := text_transform(c, n.text, cs.text_transform, &prev)
 	ib := c.l.boxes[g.parent].kind == .Inline ? g.parent : NONE
-	add_item(c, Inline_Item{kind = .Text, box = ib, ifc = g.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = g.deco, deco_color = g.deco_color})
+	add_item(c, Inline_Item{kind = .Text, box = ib, ifc = g.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = g.deco, deco_color = g.deco_color, deco_box = g.deco_box})
 }
 
 @(private)
@@ -678,7 +688,7 @@ emit_generated :: proc(c: ^Ctx, owner: base.Handle, cs: ^style.Computed, f: Fram
 	prev := false
 	text = text_transform(c, text, cs.text_transform, &prev)
 	ib := c.l.boxes[f.parent].kind == .Inline ? f.parent : NONE
-	add_item(c, Inline_Item{kind = .Text, box = ib, ifc = f.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = f.deco, deco_color = f.deco_color})
+	add_item(c, Inline_Item{kind = .Text, box = ib, ifc = f.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = f.deco, deco_color = f.deco_color, deco_box = f.deco_box})
 }
 
 ////////////////////////////////

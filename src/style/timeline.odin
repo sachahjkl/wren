@@ -105,6 +105,7 @@ Overlay :: struct {
 	c:     Computed,
 	arena: virtual.Arena,
 	tick:  u64,
+	sig:   u8,     // structure_sig of `c` as last applied (what layout saw)
 }
 
 Timeline :: struct {
@@ -124,6 +125,7 @@ Timeline :: struct {
 	next_ms:     f64,          // document ms until a value changes next: 0 = every frame, -1 = never
 	dropped_events: int,
 	base_gens:   u64,
+	last_props:  Prop_Set,     // properties the overlays wrote at the last application
 }
 
 timeline_make :: proc(e: ^Engine) -> ^Timeline {
@@ -162,6 +164,7 @@ timeline_reset :: proc(tl: ^Timeline, s: ^Styled) {
 	clear(&tl.order)
 	tl.running = 0
 	tl.next_ms = -1
+	tl.last_props = {}
 	if s != nil { styled_touch(s) }
 }
 
@@ -738,8 +741,9 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 	if !changed { return false }
 	tl.dirty = false
 	if len(tl.elements) == 0 && len(tl.overlays) == 0 { return false }
-	apply_overlays(tl, doc, s)
-	styled_touch(s)
+	// only paint-only values moved (the usual transform / opacity / color animation): layout may refresh instead of
+	// laying out again
+	if apply_overlays(tl, doc, s) { styled_touch(s) } else { styled_touch_paint(s) }
 	update_canvas(s, doc)
 	return true
 }
@@ -804,6 +808,7 @@ overlay_for :: proc(tl: ^Timeline, s: ^Styled, h: base.Handle) -> ^Overlay {
 	if ov == nil {
 		ov = new(Overlay)
 		_ = virtual.arena_init_growing(&ov.arena, 16 * 1024)
+		ov.sig = structure_sig(base_style_of(s, h))
 		tl.overlays[h] = ov
 	}
 	if ov.tick != tl.tick {
@@ -818,9 +823,11 @@ overlay_for :: proc(tl: ^Timeline, s: ^Styled, h: base.Handle) -> ^Overlay {
 	return ov
 }
 
-// Rebuilds every overlay from the cascaded styles and the effects in force.
+// Rebuilds every overlay from the cascaded styles and the effects in force. Returns true when what changed may affect
+// layout: a property that is not paint-only was (or stops being) animated, or a structural threshold was crossed.
 @(private)
-apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) {
+apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout: bool) {
+	props: Prop_Set
 	restore_overlays(tl, s)
 	if s.overlaid == nil { s.overlaid = make(map[base.Handle]^Computed) }
 	tl.tick += 1
@@ -845,6 +852,7 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) {
 			ps_add(&animated, tr.prop)
 		}
 		derive_fields(&ov.c)
+		props = ps_union(props, animated)
 		push := ps_intersect(animated, inherited_set)
 		if !ps_empty(push) {
 			pseudo_inherit(&ov.c, push, ctx.alloc)
@@ -853,11 +861,22 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) {
 	}
 	// overlays nobody needed this time
 	stale := make([dynamic]base.Handle, context.temp_allocator)
-	for h, ov in tl.overlays { if ov.tick != tl.tick { append(&stale, h) } }
+	for h, ov in tl.overlays {
+		if ov.tick != tl.tick {
+			append(&stale, h)
+			if ov.sig != structure_sig(style_of(s, h)) { layout = true }
+			continue
+		}
+		sig := structure_sig(&ov.c)
+		if sig != ov.sig { layout = true; ov.sig = sig }
+	}
 	for h in stale {
 		overlay_free(tl.overlays[h])
 		delete_key(&tl.overlays, h)
 	}
+	if !paint_only(ps_union(props, tl.last_props)) { layout = true }
+	tl.last_props = props
+	return
 }
 
 // ::before / ::after take the animated inherited values of their element.

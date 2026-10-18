@@ -1,5 +1,6 @@
 // Document painter: draws the display list of package layout with toolkit:draw. Layout decides what goes where and in
-// which order (CSS 2.1 Appendix E), under which clip, scroll offset, sticky shift and opacity; this file turns each item
+// which order (CSS 2.1 Appendix E), under which clip, scroll offset, sticky shift, transform and opacity group; the
+// effects section below maps those onto draw's transform / clip / layer stacks; the rest of this file turns each item
 // into rectangles and glyphs: backgrounds (colors, linear gradients), borders of every style with rounded corners,
 // box shadows, outlines, text with decorations, spacing and shadows, list markers, scroll bars, and the content of form
 // controls and replaced elements (through a hook other parts of the browser install).
@@ -105,28 +106,202 @@ dr :: #force_inline proc(r: lay.Rect) -> draw.Rect { return draw.Rect{r.min, r.m
 ////////////////////////////////
 // Painting
 
+////////////////////////////////
+// Effects an item is drawn under: the transform of its space, the clips around it (each one pushed under the transform
+// of its own space, so a clip inside a rotated box rotates with it and keeps its rounded corners), its opacity group.
+// Consecutive items mostly share them; only what differs from the previous item is popped and pushed.
+
+@(private = "file")
+Effects :: struct {
+	l:        ^Layout,
+	v:        ^lay.View,
+	dc:       ^draw.Context,
+	origin:   draw.Vec2,
+	xform:    i32,              // Transform space whose matrix is pushed (lay.NONE: none)
+	clip:     i32,              // innermost clip of `chain` (-2: not set yet)
+	chain:    [dynamic]i32,     // clips pushed, outermost first
+	group:    i32,              // innermost opacity group of `open` (-2: not set yet)
+	open:     [dynamic]Open_Group,
+	groups:   []Group_Paint,    // per opacity group, for this frame
+}
+
+@(private = "file")
+effects_make :: proc(l: ^Layout, v: ^lay.View, dc: ^draw.Context, origin: draw.Vec2) -> Effects {
+	e := Effects{l = l, v = v, dc = dc, origin = origin, xform = lay.NONE, clip = -2, group = -2,
+		chain = make([dynamic]i32, 0, 8, context.temp_allocator), open = make([dynamic]Open_Group, 0, 4, context.temp_allocator)}
+	e.groups = plan_groups(&e)
+	return e
+}
+
+// The matrix of a Transform space as draw wants it: page coordinates are drawn offset by the page area's origin.
+@(private = "file")
+space_affine :: proc(e: ^Effects, s: i32) -> draw.Affine {
+	m := lay.mat_shifted(e.v.mats[s], e.origin)
+	return draw.Affine{m[0], m[1], m[2], m[3], m[4], m[5]}
+}
+
+@(private = "file")
+set_xform :: proc(e: ^Effects, xf: i32) {
+	if xf == e.xform { return }
+	if e.xform != lay.NONE { draw.pop_transform(e.dc) }
+	e.xform = xf
+	if xf != lay.NONE { draw.push_transform(e.dc, space_affine(e, xf)) }
+}
+
+@(private = "file")
+set_clip :: proc(e: ^Effects, ci: i32) {
+	if ci == e.clip { return }
+	want := make([dynamic]i32, 0, 8, context.temp_allocator)
+	for c := ci; c != lay.NONE; c = e.l.clips[c].parent { append(&want, c) }
+	for i, j := 0, len(want) - 1; i < j; i, j = i + 1, j - 1 { want[i], want[j] = want[j], want[i] }
+	keep := 0
+	for keep < len(want) && keep < len(e.chain) && want[keep] == e.chain[keep] { keep += 1 }
+	for len(e.chain) > keep { draw.pop_clip(e.dc); pop(&e.chain) }
+	for c in want[keep:] {
+		cl := &e.l.clips[c]
+		set_xform(e, e.l.spaces[cl.space].xform)
+		r := draw.rect_shift(dr(cl.rect), e.v.offsets[cl.space] + e.origin)
+		if cl.radii == {} { draw.push_clip(e.dc, r) } else { draw.push_clip_rounded(e.dc, r, cl.radii) }
+		append(&e.chain, c)
+	}
+	e.clip = ci
+}
+
+// Puts the draw context in the state `it` is drawn in. false: nothing of it can show (empty clip, flattened space).
+@(private = "file")
+effects_for :: proc(e: ^Effects, it: ^lay.Display_Item) -> bool {
+	if it.clip >= 0 && lay.rect_empty(e.v.clips[it.clip]) { return false }
+	xf := e.l.spaces[it.space].xform
+	if xf != lay.NONE && e.v.singular[it.space] { return false }
+	if it.group != e.group {
+		// layers are opened with nothing else pushed: their bounds are in screen space and must not be cut by the
+		// clip of whichever item comes first
+		set_clip(e, lay.NONE)
+		set_xform(e, lay.NONE)
+		set_group(e, it.group)
+	}
+	set_clip(e, it.clip)
+	set_xform(e, xf)
+	return true
+}
+
+@(private = "file")
+effects_end :: proc(e: ^Effects) {
+	for len(e.chain) > 0 { draw.pop_clip(e.dc); pop(&e.chain) }
+	set_xform(e, lay.NONE)
+	set_group(e, lay.NONE)
+}
+
+////////////////////////////////
+// Opacity groups (CSS Color §opacity: the element and its content are painted, then blended as one). A group is
+// painted into an offscreen layer (draw.push_layer) when it holds more than one thing that could overlap; a group
+// whose content is a single primitive (or a single nested group) is simply faded, which is exact and free. The items
+// of a group are contiguous in paint order (a group is a stacking context), so a group is opened at its first item
+// and closed after its last one.
+
+@(private = "file")
+Open_Group :: struct { g: i32, layer: bool }
+
+@(private = "file")
+Group_Paint :: struct {
+	bounds: lay.Rect,   // screen pixels: what its visible items may touch (their clips applied)
+	units:  int,        // things that may overlap inside: primitives, nested groups
+	seen:   bool,
+}
+
+// Screen bounds of what an item may paint: its rect with what spills out of it (shadows, outlines, glyph overhang).
+@(private = "file")
+item_ink :: proc(e: ^Effects, it: ^lay.Display_Item) -> lay.Rect {
+	s := e.l.scale
+	pad: f32 = 1
+	if cs := it.cs; cs != nil {
+		#partial switch it.kind {
+		case .Box, .Inline_Box:
+			for sh in cs.box_shadow { if !sh.inset { pad = max(pad, (max(abs(sh.x), abs(sh.y)) + sh.blur + max(sh.spread, 0)) * s + 1) } }
+		case .Outline:
+			pad = max(pad, (cs.outline_width + max(cs.outline_offset, 0)) * s + 2)
+		case .Text, .Marker:
+			pad = max(pad, 4 * s)
+			for sh in cs.text_shadow { pad = max(pad, (max(abs(sh.x), abs(sh.y)) + sh.blur) * s + 4 * s) }
+		}
+	}
+	r := lay.rect_shift(lay.Rect{it.rect.min - pad, it.rect.max + pad}, e.v.offsets[it.space] + e.origin)
+	if !lay.space_plain(e.l, it.space) { r = lay.mat_bounds(lay.mat_shifted(e.v.mats[it.space], e.origin), r) }
+	if it.clip >= 0 { r = lay.rect_intersect(r, lay.rect_shift(e.v.clips[it.clip], e.origin)) }
+	return r
+}
+
+// How many primitives an item draws that could overlap each other.
+@(private = "file")
+item_units :: proc(it: ^lay.Display_Item) -> int {
+	cs := it.cs
+	if cs == nil { return 1 }
+	#partial switch it.kind {
+	case .Box, .Inline_Box:
+		n := 1
+		if len(cs.box_shadow) > 0 { n += 1 }
+		for s in style.Side { if cs.border_width[s] > 0 { n += 1; break } }
+		return n
+	case .Text: return len(cs.text_shadow) > 0 || it.deco != {} ? 2 : 1
+	case .Control, .Replaced: return 2
+	}
+	return 1
+}
+
+@(private = "file")
+plan_groups :: proc(e: ^Effects) -> []Group_Paint {
+	gp := make([]Group_Paint, len(e.l.groups), context.temp_allocator)
+	if len(gp) == 0 { return gp }
+	for idx in e.v.visible {
+		it := &e.l.items[idx]
+		if it.group < 0 { continue }
+		ink := item_ink(e, it)
+		g := it.group
+		gp[g].units += item_units(it)
+		for cur := g; cur != lay.NONE; cur = e.l.groups[cur].parent {
+			p := &gp[cur]
+			p.bounds = p.seen ? lay.rect_union(p.bounds, ink) : ink
+			first := !p.seen
+			p.seen = true
+			if parent := e.l.groups[cur].parent; parent != lay.NONE && first { gp[parent].units += 1 }
+		}
+	}
+	return gp
+}
+
+@(private = "file")
+set_group :: proc(e: ^Effects, g: i32) {
+	if g == e.group { return }
+	// the chain of groups `g` is in, outermost first
+	want := make([dynamic]i32, 0, 8, context.temp_allocator)
+	for c := g; c != lay.NONE; c = e.l.groups[c].parent { append(&want, c) }
+	for i, j := 0, len(want) - 1; i < j; i, j = i + 1, j - 1 { want[i], want[j] = want[j], want[i] }
+	keep := 0
+	for keep < len(want) && keep < len(e.open) && want[keep] == e.open[keep].g { keep += 1 }
+	for len(e.open) > keep {
+		og := pop(&e.open)
+		if og.layer { draw.pop_layer(e.dc) } else { draw.pop_alpha(e.dc) }
+	}
+	for c in want[keep:] {
+		alpha := e.l.groups[c].alpha
+		gp := &e.groups[c]
+		layer := page_render.settings.opacity_layers && gp.units > 1 && alpha < 1 && !lay.rect_empty(gp.bounds)
+		if layer { draw.push_layer(e.dc, draw.Rect{gp.bounds.min, gp.bounds.max}, alpha) } else { draw.push_alpha(e.dc, alpha) }
+		append(&e.open, Open_Group{c, layer})
+	}
+	e.group = g
+}
+
 paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: draw.Vec2, scroll: f32, clip: draw.Rect) {
 	if !l.valid { return }
 	v := lay.view_make(l, size, scroll)
-	cur_clip := i32(-2)
-	cur_group := i32(-2)
-	clip_pushed, alpha_pushed := false, false
+	// CSS border-radius draws circular arcs, not the squircle of the browser's own UI
+	circular := draw.set_circular_corners(dc, true)
+	defer draw.set_circular_corners(dc, circular)
+	fx := effects_make(l, &v, dc, origin)
 	for idx in v.visible {
 		it := &l.items[idx]
-		if it.clip != cur_clip {
-			if clip_pushed { draw.pop_clip(dc); clip_pushed = false }
-			cur_clip = it.clip
-			if it.clip >= 0 {
-				draw.push_clip(dc, draw.rect_shift(dr(v.clips[it.clip]), origin))
-				clip_pushed = true
-			}
-		}
-		if it.clip >= 0 && lay.rect_empty(v.clips[it.clip]) { continue }
-		if it.group != cur_group {
-			if alpha_pushed { draw.pop_alpha(dc); alpha_pushed = false }
-			cur_group = it.group
-			if it.group >= 0 { draw.push_alpha(dc, v.alphas[it.group]); alpha_pushed = true }
-		}
+		if !effects_for(&fx, it) { continue }
 		off := v.offsets[it.space] + origin
 		r := draw.rect_shift(dr(it.rect), off)
 		switch it.kind {
@@ -145,8 +320,7 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: dra
 			draw.rect(dc, th, to_draw(page_render.settings.scrollbar_thumb), min(th.max.x - th.min.x, th.max.y - th.min.y) * 0.5)
 		}
 	}
-	if alpha_pushed { draw.pop_alpha(dc) }
-	if clip_pushed { draw.pop_clip(dc) }
+	effects_end(&fx)
 	if track, thumb, ok := lay.doc_scrollbar(l, size, scroll); ok {
 		if page_render.settings.scrollbar_track.a > 0 { draw.rect(dc, draw.rect_shift(dr(track), origin), to_draw(page_render.settings.scrollbar_track), (track.max.x - track.min.x) * 0.5) }
 		draw.rect(dc, draw.rect_shift(dr(thumb), origin), to_draw(page_render.settings.scrollbar_thumb), (thumb.max.x - thumb.min.x) * 0.5)
@@ -157,23 +331,7 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: dra
 // Backgrounds §5.5).
 @(private = "file")
 corner_radii :: proc(cs: ^style.Computed, r: draw.Rect, scale: f32) -> [4]f32 {
-	w, h := r.max.x - r.min.x, r.max.y - r.min.y
-	rad :: proc(cr: style.Corner_Radius, w, h, scale: f32) -> f32 {
-		hv := style.resolve(cr.h, w / scale) * scale
-		vv := style.resolve(cr.v, h / scale) * scale
-		if cr.v.kind == .Auto { vv = hv }
-		return max(min(hv, vv), 0)
-	}
-	tl := rad(cs.radius[.Top_Left], w, h, scale)
-	tr := rad(cs.radius[.Top_Right], w, h, scale)
-	br := rad(cs.radius[.Bottom_Right], w, h, scale)
-	bl := rad(cs.radius[.Bottom_Left], w, h, scale)
-	f: f32 = 1
-	if tl + tr > w && w > 0 { f = min(f, w / (tl + tr)) }
-	if bl + br > w && w > 0 { f = min(f, w / (bl + br)) }
-	if tl + bl > h && h > 0 { f = min(f, h / (tl + bl)) }
-	if tr + br > h && h > 0 { f = min(f, h / (tr + br)) }
-	return {tl * f, bl * f, tr * f, br * f}
+	return lay.border_radii(cs, r.max.x - r.min.x, r.max.y - r.min.y, scale)
 }
 
 @(private = "file")
@@ -276,6 +434,10 @@ paint_borders :: proc(dc: ^draw.Context, r: draw.Rect, w: [4]f32, styles: [style
 		draw.rect_corners(dc, inner, {col, col, col, col}, {max(radii[0] - 2 * t, 0), max(radii[1] - 2 * t, 0), max(radii[2] - 2 * t, 0), max(radii[3] - 2 * t, 0)}, t)
 		return
 	}
+	if !no_radius(radii) && solid_sides(w, styles) {
+		paint_rounded_sides(dc, r, w, styles, colors, radii)
+		return
+	}
 	for s, i in sides {
 		bw := w[i]
 		if bw <= 0 { continue }
@@ -338,6 +500,50 @@ paint_borders :: proc(dc: ^draw.Context, r: draw.Rect, w: [4]f32, styles: [style
 			dark := (st == .Inset) == outer_first
 			draw.rect(dc, strip, dark ? shade(c, 0.55) : shade(c, 1.2))
 		}
+	}
+}
+
+@(private = "file")
+solid_sides :: proc(w: [4]f32, styles: [style.Side]style.Border_Style) -> bool {
+	sides := [4]style.Side{.Top, .Right, .Bottom, .Left}
+	for s, i in sides {
+		if w[i] > 0 && styles[s] != .Solid && styles[s] != .None && styles[s] != .Hidden { return false }
+	}
+	return true
+}
+
+// Rounded solid borders whose sides differ (a spinner: one colored side): each side is the rounded ring in its own
+// color and width, cut to its wedge. Sides meet on the line from each outer corner to the inner one (CSS Backgrounds
+// §4.4), made of two half-plane clips per side (rotated rect clips, exact and antialiased in draw).
+@(private = "file")
+paint_rounded_sides :: proc(dc: ^draw.Context, r: draw.Rect, w: [4]f32, styles: [style.Side]style.Border_Style, colors: [style.Side]css.Color, radii: [4]f32) {
+	sides := [4]style.Side{.Top, .Right, .Bottom, .Left}
+	big := max(r.max.x - r.min.x, r.max.y - r.min.y) * 2 + 16
+	// the four corner lines: outer corner -> inner corner (top-left, top-right, bottom-right, bottom-left)
+	outer := [4]draw.Vec2{r.min, {r.max.x, r.min.y}, r.max, {r.min.x, r.max.y}}
+	inner := [4]draw.Vec2{r.min + {w[3], w[0]}, {r.max.x - w[1], r.min.y + w[0]}, r.max - {w[1], w[2]}, {r.min.x + w[3], r.max.y - w[2]}}
+	// keeps the side of the line from outer[k] to inner[k] where cross(d, p - a) has sign `sign`
+	half_plane :: proc(dc: ^draw.Context, a, b: draw.Vec2, sign: f32, big: f32) {
+		d := b - a
+		n := math.sqrt(d.x * d.x + d.y * d.y)
+		d = n > 1e-6 ? d / n : draw.Vec2{1, 0}
+		// frame: x along d, y along (-d.y, d.x): local y = cross(d, p - a)
+		draw.push_transform(dc, draw.Affine{d.x, d.y, -d.y, d.x, a.x, a.y})
+		// each wedge reaches 0.75 px past its line: two antialiased edges meeting exactly would let the background
+		// show through the seam
+		draw.push_clip(dc, sign < 0 ? draw.Rect{{-big, -big}, {big, 0.75}} : draw.Rect{{-big, -0.75}, {big, big}})
+		draw.pop_transform(dc)
+	}
+	for s, i in sides {
+		if w[i] <= 0 || styles[s] != .Solid || colors[s].a <= 0 { continue }
+		// side i lies between corner lines i and i + 1 (top: top-left and top-right, right: top-right and bottom-right...)
+		k0, k1 := i, (i + 1) % 4
+		half_plane(dc, outer[k0], inner[k0], -1, big)
+		half_plane(dc, outer[k1], inner[k1], 1, big)
+		col := to_draw(colors[s])
+		draw.rect_corners(dc, r, {col, col, col, col}, radii, w[i])
+		draw.pop_clip(dc)
+		draw.pop_clip(dc)
 	}
 }
 

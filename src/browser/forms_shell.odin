@@ -40,11 +40,21 @@ foreign user32 {
 }
 
 Painted :: struct {
-	content: draw.Rect,     // screen space, physical pixels
+	content: draw.Rect,     // physical pixels, in the space it was drawn in (screen space unless a CSS transform applies)
+	xform:   draw.Affine,   // that space -> screen (draw.current_transform when painted)
+	inv:     draw.Affine,   // screen -> that space: pointer positions go through it before meeting `content`
 	size:    f32,           // font size, physical pixels
 	font:    font.Font_Id,
 	frame:   u64,
 }
+
+// A screen position in the space a control was painted in (a field inside a rotated box takes the click where it shows).
+@(private = "file")
+painted_local :: #force_inline proc(pt: Painted, pos: [2]f32) -> [2]f32 { return draw.affine_apply(pt.inv, pos) }
+
+// Where the control shows on screen: the bounds of its (possibly transformed) content rect.
+@(private = "file")
+painted_bounds :: #force_inline proc(pt: Painted) -> draw.Rect { return draw.affine_bounds(pt.xform, pt.content) }
 
 Drag_Kind :: enum u8 { None, Text, Range }
 
@@ -205,12 +215,21 @@ is_rendered :: proc(p: ^page.Page, h: base.Handle) -> bool {
 	return true
 }
 
-// Border box of `h` in document coordinates (physical pixels, scroll offsets of containers applied), from the layout.
+// Where the border box of `h` shows, in document coordinates (physical pixels, scroll offsets of containers applied):
+// the bounds of the transformed box when a CSS transform applies.
 @(private = "file")
 layout_rect :: proc(t: ^Tab, h: base.Handle) -> (draw.Rect, bool) {
 	r, ok := lay.box_of(&t.layout, h, draw.rect_size(the_app.page_rect), t.scroll)
 	if !ok { return {}, false }
-	return draw.Rect{r.border.min, r.border.max}, true
+	return draw.Rect{r.bounds.min, r.bounds.max}, true
+}
+
+// A document point relative to the border box of `h`, in the box's own (untransformed) coordinates: offsetX / offsetY.
+@(private = "file")
+layout_offset :: proc(t: ^Tab, h: base.Handle, doc_pos: [2]f32) -> ([2]f32, bool) {
+	r, ok := lay.box_of(&t.layout, h, draw.rect_size(the_app.page_rect), t.scroll)
+	if !ok { return {}, false }
+	return lay.box_point_to_local(r, doc_pos) - r.border.min, true
 }
 
 // The painter of package layout asks us for the content of form controls (render.odin, set_content_painter).
@@ -487,7 +506,9 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 	scale := ui.scale()
 	size := max(cs.font_size * scale, 1)
 	fg := to_draw(cs.color)
-	pt := Painted{content = content, size = size, font = fid, frame = fview.frame}
+	xf := draw.current_transform(dc)
+	inv, _ := draw.affine_inverse(xf)
+	pt := Painted{content = content, xform = xf, inv = inv, size = size, font = fid, frame = fview.frame}
 	if fview.page_id != f.id { clear(&fview.painted); clear(&fview.scroll); fview.page_id = f.id }
 	fview.painted[node] = pt
 	focused := f.focus == node && fview.page_focus
@@ -778,8 +799,8 @@ forms_paint_overlays :: proc(app: ^App, dc: ^draw.Context, page_rect: draw.Rect)
 			icon := size * 1.3
 			w := tw + icon + pad * 3
 			h := m.ascent + m.descent + pad * 2
-			x := clamp(pt.content.min.x - 4 * scale, page_rect.min.x, max(page_rect.max.x - w, page_rect.min.x))
-			y := pt.content.max.y + 8 * scale
+			x := clamp(painted_bounds(pt).min.x - 4 * scale, page_rect.min.x, max(page_rect.max.x - w, page_rect.min.x))
+			y := painted_bounds(pt).max.y + 8 * scale
 			r := draw.Rect{{x, y}, {x + w, y + h}}
 			draw.rect(dc, draw.rect_shift(r, {0, 2 * scale}), draw.hex(0x00000030), 5 * scale, 0, 8 * scale)
 			draw.rect(dc, {{x + 14 * scale, y - 5 * scale}, {x + 24 * scale, y + 5 * scale}}, draw.hex(0xffffffff), 2 * scale)
@@ -1070,7 +1091,7 @@ open_popup :: proc(app: ^App, f: ^forms.Forms, sel: base.Handle) {
 	rows := select_rows(f, sel)
 	hover := -1
 	for r, i in rows { if r.option != base.NIL_HANDLE && forms.option_selected(f, r.option) { hover = i } }
-	fview.popup = Popup{open = true, sel = sel, page_id = f.id, hover = hover, anchor = draw.rect_pad(pt.content, 3 * ui.scale())}
+	fview.popup = Popup{open = true, sel = sel, page_id = f.id, hover = hover, anchor = draw.rect_pad(painted_bounds(pt), 3 * ui.scale())}
 	fview.popup.first = max(hover - app.page_settings.forms.select_rows / 2, 0)
 	request_frames(app)
 }
@@ -1162,7 +1183,7 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 	switch {
 	case forms.is_text_field(f, ft):
 		ftext, origin := layout_field(app, f, ft, pt)
-		pos := hit_text(ftext, ev.pos - origin, pt.size, pt.font, &app.fonts)
+		pos := hit_text(ftext, painted_local(pt, ev.pos) - origin, pt.size, pt.font, &app.fonts)
 		src := forms.edit_text(f, ft)
 		switch {
 		case fview.click_count == 2:
@@ -1178,7 +1199,7 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 		fview.drag, fview.drag_node = .Text, ft
 	case forms.kind(f, ft) == .Input && forms.input_type(f, ft) == .Range && forms.is_mutable(f, ft):
 		fview.drag, fview.drag_node = .Range, ft
-		set_range_from_x(p, f, ft, pt, ev.pos.x)
+		set_range_from_x(p, f, ft, pt, painted_local(pt, ev.pos).x)
 	case forms.kind(f, ft) == .Select && !forms.is_disabled(f, ft):
 		if forms.is_dropdown(f, ft) {
 			if fview.popup.open && fview.popup.sel == ft { fview.popup.open = false } else { open_popup(app, f, ft) }
@@ -1186,7 +1207,7 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 			rows := select_rows(f, ft)
 			m := font.metrics(&app.fonts, pt.font, pt.size)
 			row_h := math.ceil((m.ascent + m.descent) * 1.25)
-			idx := int(fview.scroll[ft].y) + int((ev.pos.y - pt.content.min.y) / row_h)
+			idx := int(fview.scroll[ft].y) + int((painted_local(pt, ev.pos).y - pt.content.min.y) / row_h)
 			if idx >= 0 && idx < len(rows) && rows[idx].option != base.NIL_HANDLE {
 				forms.choose_option(f, ft, rows[idx].option, extend = .Shift in ev.mods, toggle = .Ctrl in ev.mods)
 			}
@@ -1219,11 +1240,11 @@ pointer_drag :: proc(app: ^App, t: ^Tab, f: ^forms.Forms, pos: [2]f32) {
 	case .Text:
 		if f.focus != h { fview.drag = .None; return }
 		ftext, origin := layout_field(app, f, h, pt)
-		local := pos - origin
+		local := painted_local(pt, pos) - origin
 		pos2 := hit_text(ftext, local, pt.size, pt.font, &app.fonts)
 		move_to(f, h, pos2, true)
 	case .Range:
-		set_range_from_x(t.page, f, h, pt, pos.x)
+		set_range_from_x(t.page, f, h, pt, painted_local(pt, pos).x)
 	case .None:
 	}
 }
@@ -1266,7 +1287,7 @@ forms_click :: proc(app: ^App, t: ^Tab, target: base.Handle, ev: platform.Event,
 		return page.dispatch_event(p, target, dom.Event{type = "click", bubbles = true, cancelable = true, x = info.x, y = info.y, button = info.button})
 	}
 	f := page.page_forms(p)
-	if r, ok := layout_rect(t, target); ok { info.offset = {i32((local.x - r.min.x) / scale), i32((local.y - r.min.y) / scale)} }
+	if o, ok := layout_offset(t, target, local); ok { info.offset = {i32(o.x / scale), i32(o.y / scale)} }
 	ok := forms.click(f, target, info)
 	request_frames(app)
 	return ok

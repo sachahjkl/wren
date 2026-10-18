@@ -58,15 +58,52 @@ build_bands :: proc(l: ^Layout, band_h: f32) {
 	}
 }
 
-// What one frame needs: where each space is (layout -> viewport coordinates), the effective clip rects (viewport
-// coordinates), the effective opacity of each group, and the items that can be visible, in paint order.
+// What one frame needs: where each space is, the effective clip bounds (viewport coordinates), the effective opacity of
+// each group, and the items that can be visible, in paint order.
+//
+// A layout point p of an item in space s is drawn at mats[s](p + offsets[s]): offsets are the scroll and sticky
+// translations; mats[s] is the identity unless a transformed box encloses the space (Space.xform != NONE), then the
+// product of the transforms, outermost first, each taken around where its box is drawn.
 View :: struct {
-	offsets: []Vec2,
-	clips:   []Rect,
-	alphas:  []f32,
-	visible: []u32,
+	offsets:  []Vec2,
+	mats:     []Matrix,   // per space
+	invs:     []Matrix,   // per space: inverse of mats (viewport -> untransformed)
+	singular: []bool,     // per space: a transform above flattens it to nothing (not drawn, not hit)
+	clips:    []Rect,     // per clip: bounds in viewport coordinates, intersected with the enclosing clips' bounds
+	alphas:   []f32,
+	visible:  []u32,
 	viewport: Vec2,
 	doc_scroll: f32,
+	transformed: bool,    // some space is under a transform
+}
+
+// The space draws untransformed (only its offset applies).
+space_plain :: #force_inline proc(l: ^Layout, s: i32) -> bool { return l.spaces[s].xform == NONE }
+
+// Viewport point -> untransformed layout point of space `s` (offset removed). ok = false: the space is flattened.
+view_to_local :: proc(l: ^Layout, v: ^View, s: i32, p: Vec2) -> (Vec2, bool) {
+	if space_plain(l, s) { return p - v.offsets[s], true }
+	if v.singular[s] { return {}, false }
+	return mat_apply(v.invs[s], p) - v.offsets[s], true
+}
+
+// Untransformed layout point of space `s` -> viewport point.
+view_from_local :: proc(l: ^Layout, v: ^View, s: i32, p: Vec2) -> Vec2 {
+	q := p + v.offsets[s]
+	if space_plain(l, s) { return q }
+	return mat_apply(v.mats[s], q)
+}
+
+// Is the viewport point `p` inside clip `ci` and all the clips around it (rounded corners and transforms respected)?
+clip_contains :: proc(l: ^Layout, v: ^View, ci: i32, p: Vec2) -> bool {
+	for c := ci; c != NONE; c = l.clips[c].parent {
+		if !rect_contains(v.clips[c], p) { return false }
+		cl := &l.clips[c]
+		if space_plain(l, cl.space) && cl.radii == {} { continue }
+		q, ok := view_to_local(l, v, cl.space, p)
+		if !ok || !rounded_contains(cl.rect, cl.radii, q) { return false }
+	}
+	return true
 }
 
 scroll_offset_of :: proc(l: ^Layout, sp: ^Space) -> Vec2 {
@@ -113,20 +150,38 @@ sticky_offset :: proc(l: ^Layout, sp: ^Space, viewport: Vec2, doc_scroll: f32) -
 // items intersecting the viewport.
 view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, allocator := context.temp_allocator) -> View {
 	v := View{viewport = viewport, doc_scroll = doc_scroll}
-	v.offsets = make([]Vec2, len(l.spaces), allocator)
-	for i in 0 ..< len(l.spaces) {
+	ns := len(l.spaces)
+	v.offsets = make([]Vec2, ns, allocator)
+	v.mats = make([]Matrix, ns, allocator)
+	v.invs = make([]Matrix, ns, allocator)
+	v.singular = make([]bool, ns, allocator)
+	for i in 0 ..< ns {
 		sp := &l.spaces[i]
 		switch sp.kind {
 		case .Document: v.offsets[i] = {0, -doc_scroll}
 		case .Fixed: v.offsets[i] = {0, 0}
 		case .Scroll: v.offsets[i] = v.offsets[sp.parent] - scroll_offset_of(l, sp)
 		case .Sticky: v.offsets[i] = v.offsets[sp.parent] + sticky_offset(l, sp, viewport, doc_scroll)
+		case .Transform: v.offsets[i] = v.offsets[sp.parent]
+		}
+		v.mats[i], v.invs[i] = IDENTITY, IDENTITY
+		if sp.kind == .Transform {
+			// the box's transform, around where the box is drawn, then whatever encloses it
+			outer := sp.parent != NONE ? v.mats[sp.parent] : IDENTITY
+			m := mat_mul(outer, mat_shifted(sp.mat, v.offsets[i]))
+			inv, ok := mat_inverse(m)
+			v.mats[i], v.invs[i] = m, inv
+			v.singular[i] = !ok || (sp.parent != NONE && v.singular[sp.parent])
+			v.transformed = true
+		} else if sp.parent != NONE {
+			v.mats[i], v.invs[i], v.singular[i] = v.mats[sp.parent], v.invs[sp.parent], v.singular[sp.parent]
 		}
 	}
 	v.clips = make([]Rect, len(l.clips), allocator)
 	for i in 0 ..< len(l.clips) {
 		cl := &l.clips[i]
 		r := rect_shift(cl.rect, v.offsets[cl.space])
+		if !space_plain(l, cl.space) { r = v.singular[cl.space] ? Rect{} : mat_bounds(v.mats[cl.space], r) }
 		if cl.parent != NONE { r = rect_intersect(r, v.clips[cl.parent]) }
 		v.clips[i] = r
 	}
@@ -144,7 +199,13 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 		region := screen
 		if sp.clip != NONE { region = rect_intersect(region, v.clips[sp.clip]) }
 		if rect_empty(region) { continue }
-		local := rect_shift(region, -v.offsets[i])
+		local: Rect
+		if space_plain(l, i32(i)) {
+			local = rect_shift(region, -v.offsets[i])
+		} else {
+			if v.singular[i] { continue }
+			local = rect_shift(mat_bounds(v.invs[i], region), -v.offsets[i])
+		}
 		b0 := clamp(int((local.min.y - sp.band0) / sp.band_h), 0, int(sp.band_count) - 1)
 		b1 := clamp(int((local.max.y - sp.band0) / sp.band_h), b0, int(sp.band_count) - 1)
 		if local.max.y < sp.band0 || local.min.y > sp.band0 + f32(sp.band_count) * sp.band_h { continue }
@@ -184,7 +245,8 @@ Hit :: struct {
 	item: i32,
 }
 
-// Topmost hittable item under `p` (viewport coordinates): stacking order, clips, pointer-events and visibility respected.
+// Topmost hittable item under `p` (viewport coordinates): stacking order, clips (rounded corners included),
+// transforms (the point goes through the inverse of each transformed space), pointer-events and visibility respected.
 hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
 	if !l.valid || len(l.items) == 0 { return Hit{box = NONE, item = NONE} }
 	v := view_make(l, viewport, doc_scroll, cull = false)
@@ -193,7 +255,8 @@ hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
 		sp := &l.spaces[i]
 		if sp.band_count == 0 { continue }
 		if sp.clip != NONE && !rect_contains(v.clips[sp.clip], p) { continue }
-		local := p - v.offsets[i]
+		local, ok := view_to_local(l, &v, i32(i), p)
+		if !ok { continue }
 		b := int((local.y - sp.band0) / sp.band_h)
 		if local.y < sp.band0 || b >= int(sp.band_count) { continue }
 		g := int(sp.band_first) + b
@@ -203,7 +266,7 @@ hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
 			if idx <= best { break }
 			it := &l.items[idx]
 			if .Hit not_in it.flags || !rect_contains(it.rect, local) { continue }
-			if it.clip != NONE && !rect_contains(v.clips[it.clip], p) { continue }
+			if it.clip != NONE && !clip_contains(l, &v, it.clip, p) { continue }
 			best = idx
 			break
 		}
@@ -267,12 +330,26 @@ box_index :: proc(l: ^Layout, node: base.Handle) -> i32 {
 }
 
 Box_Rects :: struct {
-	border, padding, content: Rect,   // document coordinates (scroll offsets of containers and sticky shifts applied)
+	border, padding, content: Rect,   // document coordinates (scroll offsets of containers and sticky shifts applied),
+	                                  // before the transforms that apply to the box (its own and its ancestors')
+	transformed: bool,                // some transform applies: the box is drawn at `transform` of these rects
+	transform:   Matrix,              // document coordinates -> where they are drawn (document coordinates)
+	inverse:     Matrix,              // the other way (identity when the transform is singular)
+	quad:        [4]Vec2,             // corners of the drawn border box: top-left, top-right, bottom-right, bottom-left
+	bounds:      Rect,                // bounds of the drawn border box (= border without a transform)
 	fixed:   bool,                    // inside a position: fixed box: moves with the viewport
 	visible: bool,                    // visibility: visible
 }
 
+// A point where the box is drawn (document coordinates) in the coordinates of its untransformed rects: what a click on
+// a rotated text field means for its caret.
+box_point_to_local :: proc(r: Box_Rects, p: Vec2) -> Vec2 {
+	if !r.transformed { return p }
+	return mat_apply(r.inverse, p)
+}
+
 // Where an element's box is, for focus rings, carets and scroll-into-view. Inline boxes: the union of their fragments.
+// Under a transform the rects are the box's own (local) geometry; `transform`, `quad` and `bounds` say where it shows.
 box_of :: proc(l: ^Layout, node: base.Handle, viewport: Vec2, doc_scroll: f32) -> (Box_Rects, bool) {
 	bi := box_index(l, node)
 	if bi == NONE || !l.valid { return {}, false }
@@ -292,6 +369,20 @@ box_of :: proc(l: ^Layout, node: base.Handle, viewport: Vec2, doc_scroll: f32) -
 	for sp > FIXED_SPACE { sp = l.spaces[sp].parent }
 	r.fixed = sp == FIXED_SPACE
 	r.visible = .Hidden not_in b.flags
+	r.transform, r.inverse = IDENTITY, IDENTITY
+	q := r.border
+	r.quad = {q.min, {q.max.x, q.min.y}, q.max, {q.min.x, q.max.y}}
+	r.bounds = q
+	if !space_plain(l, b.space) {
+		// the view's matrix works on viewport coordinates; these rects are in document coordinates
+		ds := Vec2{0, doc_scroll}
+		m := v.singular[b.space] ? Matrix{} : mat_shifted(v.mats[b.space], ds)
+		r.transformed = true
+		r.transform = m
+		if inv, ok := mat_inverse(m); ok { r.inverse = inv }
+		for &c in r.quad { c = mat_apply(m, c) }
+		r.bounds = mat_bounds(m, q)
+	}
 	return r, true
 }
 

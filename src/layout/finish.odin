@@ -8,17 +8,17 @@ import "wb:style"
 // and the spaces / clips / opacity groups items are drawn under.
 
 @(private)
-preorder :: proc(c: ^Ctx) -> []i32 {
-	out := make([dynamic]i32, 0, len(c.l.boxes), context.temp_allocator)
+preorder :: proc(l: ^Layout) -> []i32 {
+	out := make([dynamic]i32, 0, len(l.boxes), context.temp_allocator)
 	stack := make([dynamic]i32, 0, 256, context.temp_allocator)
 	append(&stack, 0)
 	for len(stack) > 0 {
 		x := pop(&stack)
 		append(&out, x)
-		b := &c.l.boxes[x]
+		b := &l.boxes[x]
 		// children in reverse so the first is visited first
 		n := len(stack)
-		for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next { append(&stack, ch) }
+		for ch := b.first; ch != NONE; ch = l.boxes[ch].next { append(&stack, ch) }
 		for i, j := n, len(stack) - 1; i < j; i, j = i + 1, j - 1 { stack[i], stack[j] = stack[j], stack[i] }
 	}
 	return out[:]
@@ -26,9 +26,76 @@ preorder :: proc(c: ^Ctx) -> []i32 {
 
 // The box a box is contained in for clipping and scrolling: its containing block for absolutely positioned boxes.
 @(private)
-containing_parent :: proc(c: ^Ctx, b: ^Box) -> i32 {
+containing_parent :: proc(b: ^Box) -> i32 {
 	if .Abs in b.flags { return b.cb }
 	return b.parent
+}
+
+// Boxes inside a position: fixed box (they move with the viewport and do not extend the document).
+@(private)
+fixed_boxes :: proc(l: ^Layout, order: []i32) -> []bool {
+	in_fixed := make([]bool, len(l.boxes), context.temp_allocator)
+	for x in order {
+		b := &l.boxes[x]
+		if .Root in b.flags { continue }
+		in_fixed[x] = .Fixed in b.flags || in_fixed[containing_parent(b)]
+	}
+	return in_fixed
+}
+
+// Scrollable overflow (CSS Overflow 3 §2.2) of every scroll container, and the extent of the document: the border boxes
+// and text of what they contain, through the transforms between each box and its scroll container (bounding boxes of
+// the transformed rects). Returns the document extent.
+@(private)
+compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -> Rect {
+	n := len(l.boxes)
+	// inner[x]: maps x's content (and, when x is transformed, its own border box) to its clip owner's coordinates
+	inner := make([]Matrix, n, context.temp_allocator)
+	has := make([]bool, n, context.temp_allocator)
+	for x in order {
+		b := &l.boxes[x]
+		if .Scroll in b.flags { b.overflow = padding_rect(b) }
+	}
+	doc := Rect{{0, 0}, vp}
+	add :: proc(l: ^Layout, owner: i32, r: Rect, fixed: bool, doc: ^Rect) {
+		if rect_empty(r) { return }
+		if owner == NONE {
+			if !fixed { doc^ = rect_union(doc^, r) }
+			return
+		}
+		o := &l.boxes[owner]
+		if .Scroll in o.flags { o.overflow = rect_union(o.overflow, r) }
+	}
+	for x in order {
+		b := &l.boxes[x]
+		if .Root in b.flags { continue }
+		cp := containing_parent(b)
+		m, hm := IDENTITY, false
+		if b.clip_owner != cp && has[cp] { m, hm = inner[cp], true }
+		if .Transformed in b.flags {
+			t := box_matrix(l, b)
+			m = hm ? mat_mul(m, t) : t
+			hm = true
+		}
+		inner[x], has[x] = m, hm
+		add(l, b.clip_owner, hm ? mat_bounds(m, border_rect(b)) : border_rect(b), in_fixed[x], &doc)
+		if .Ifc in b.flags && b.lines[1] > b.lines[0] {
+			clips := .Clips in b.flags && .Propagated not_in b.flags
+			owner := clips ? x : b.clip_owner
+			lm, lhm := m, hm && !clips
+			for li in b.lines[0] ..< b.lines[1] {
+				ln := &l.lines[li]
+				for fi in ln.frags[0] ..< ln.frags[1] {
+					f := &l.frags[fi]
+					if f.kind != .Text && f.kind != .Ellipsis { continue }
+					base := f.box != NONE ? l.boxes[f.box].abs : b.abs
+					r := Rect{base + {f.x, f.y}, base + {f.x + f.w, f.y + f.h}}
+					add(l, owner, lhm ? mat_bounds(lm, r) : r, in_fixed[x], &doc)
+				}
+			}
+		}
+	}
+	return doc
 }
 
 @(private)
@@ -71,8 +138,7 @@ relative_offset :: proc(c: ^Ctx, b: ^Box) -> Vec2 {
 @(private)
 finish :: proc(c: ^Ctx) {
 	l := c.l
-	order := preorder(c)
-	in_fixed := make([]bool, len(l.boxes), context.temp_allocator)
+	order := preorder(l)
 
 	// coordinates
 	for x in order {
@@ -93,49 +159,22 @@ finish :: proc(c: ^Ctx) {
 	}
 
 	// clip owners, scrollable overflow, document extent
-	doc := Rect{{0, 0}, c.vp}
 	for x in order {
 		b := &l.boxes[x]
 		if .Root in b.flags { b.clip_owner = NONE; continue }
-		cp := containing_parent(c, b)
+		cp := containing_parent(b)
 		pb := &l.boxes[cp]
-		in_fixed[x] = .Fixed in b.flags || in_fixed[cp]
 		b.clip_owner = (.Clips in pb.flags && .Propagated not_in pb.flags && pb.kind != .Inline) ? cp : pb.clip_owner
-		if .Scroll in b.flags { b.overflow = padding_rect(b) }
 	}
-	add :: proc(l: ^Layout, owner: i32, r: Rect, fixed: bool, doc: ^Rect) {
-		if rect_empty(r) { return }
-		if owner == NONE {
-			if !fixed { doc^ = rect_union(doc^, r) }
-			return
-		}
-		o := &l.boxes[owner]
-		if .Scroll in o.flags { o.overflow = rect_union(o.overflow, r) }
-	}
-	for x in order {
-		b := &l.boxes[x]
-		if .Root in b.flags { continue }
-		add(l, b.clip_owner, border_rect(b), in_fixed[x], &doc)
-		if .Ifc in b.flags && b.lines[1] > b.lines[0] {
-			owner := (.Clips in b.flags && .Propagated not_in b.flags) ? x : b.clip_owner
-			for li in b.lines[0] ..< b.lines[1] {
-				ln := &l.lines[li]
-				for fi in ln.frags[0] ..< ln.frags[1] {
-					f := &l.frags[fi]
-					if f.kind != .Text && f.kind != .Ellipsis { continue }
-					base := f.box != NONE ? l.boxes[f.box].abs : b.abs
-					add(l, owner, Rect{base + {f.x, f.y}, base + {f.x + f.w, f.y + f.h}}, in_fixed[x], &doc)
-				}
-			}
-		}
-	}
+	in_fixed := fixed_boxes(l, order)
+	doc := compute_overflow(l, order, in_fixed, c.vp)
 	l.height = c.l.doc_scroll_y ? max(doc.max.y, c.vp.y) : c.vp.y
 	l.doc_width = max(doc.max.x, c.vp.x)
 
 	// spaces, clips, groups
 	clear(&l.spaces); clear(&l.clips); clear(&l.groups)
-	append(&l.spaces, Space{kind = .Document, parent = NONE, box = 0, frame = NONE, clip = NONE})
-	append(&l.spaces, Space{kind = .Fixed, parent = NONE, box = 0, frame = NONE, clip = NONE})
+	append(&l.spaces, Space{kind = .Document, parent = NONE, box = 0, frame = NONE, clip = NONE, xform = NONE})
+	append(&l.spaces, Space{kind = .Fixed, parent = NONE, box = 0, frame = NONE, clip = NONE, xform = NONE})
 	nan := math.nan_f32()
 	for x in order {
 		b := &l.boxes[x]
@@ -143,7 +182,7 @@ finish :: proc(c: ^Ctx) {
 			b.space, b.clip, b.content_space, b.content_clip, b.group = DOCUMENT_SPACE, NONE, DOCUMENT_SPACE, NONE, NONE
 			continue
 		}
-		cp := containing_parent(c, b)
+		cp := containing_parent(b)
 		pb := &l.boxes[cp]
 		if .Fixed in b.flags {
 			b.space, b.clip = FIXED_SPACE, NONE
@@ -153,7 +192,7 @@ finish :: proc(c: ^Ctx) {
 		tp := &l.boxes[b.parent]
 		b.group = tp.group
 		if b.cs.opacity < 1 {
-			append(&l.groups, Group{parent = b.group, alpha = max(b.cs.opacity, 0)})
+			append(&l.groups, Group{parent = b.group, box = x, alpha = max(b.cs.opacity, 0)})
 			b.group = i32(len(l.groups) - 1)
 		}
 		if .Sticky in b.flags && b.kind != .Inline {
@@ -174,13 +213,19 @@ finish :: proc(c: ^Ctx) {
 				v, ok := definite(c, b.cs.inset[s], base)
 				ins[i] = ok ? v : nan
 			}
-			append(&l.spaces, Space{kind = .Sticky, parent = b.space, box = x, frame = frame, clip = b.clip, port = border_rect(b), limit = lim, inset = ins})
+			append(&l.spaces, Space{kind = .Sticky, parent = b.space, box = x, frame = frame, clip = b.clip, xform = l.spaces[b.space].xform, port = border_rect(b), limit = lim, inset = ins})
 			b = &l.boxes[x]
 			b.space = i32(len(l.spaces) - 1)
 		}
+		if .Transformed in b.flags {
+			si := i32(len(l.spaces))
+			append(&l.spaces, Space{kind = .Transform, parent = b.space, box = x, frame = NONE, clip = b.clip, xform = si, mat = box_matrix(l, b)})
+			b = &l.boxes[x]
+			b.space = si
+		}
 		b.content_space, b.content_clip = b.space, b.clip
 		if .Clips in b.flags && .Propagated not_in b.flags && b.kind != .Inline {
-			append(&l.clips, Clip{parent = b.clip, space = b.space, rect = padding_rect(b)})
+			append(&l.clips, Clip{parent = b.clip, space = b.space, box = x, rect = padding_rect(b), radii = clip_radii(l, b)})
 			b.content_clip = i32(len(l.clips) - 1)
 		}
 		b.scroll_space = NONE
@@ -190,7 +235,7 @@ finish :: proc(c: ^Ctx) {
 			if b.cs.overflow_x != .Scroll && b.cs.overflow_x != .Auto { ms.x = 0 }
 			if b.cs.overflow_y != .Scroll && b.cs.overflow_y != .Auto { ms.y = 0 }
 			if ms.x > 0.5 || ms.y > 0.5 {
-				append(&l.spaces, Space{kind = .Scroll, parent = b.space, box = x, frame = NONE, clip = b.content_clip, port = port, max_scroll = ms})
+				append(&l.spaces, Space{kind = .Scroll, parent = b.space, box = x, frame = NONE, clip = b.content_clip, xform = l.spaces[b.space].xform, port = port, max_scroll = ms})
 				b.content_space = i32(len(l.spaces) - 1)
 				b.scroll_space = b.content_space
 				if off, ok := l.scroll[b.node]; ok { l.scroll[b.node] = {clamp(off.x, 0, ms.x), clamp(off.y, 0, ms.y)} }
