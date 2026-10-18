@@ -2,11 +2,13 @@
 # gui_toolkit logo), carrying a white wren: round body, round head, thin beak, the wren's cocked-up tail, standing on a
 # white perch. The eye and the wing line are holes that show the body gradient through. A semicircular notch in the
 # top edge of the square nods to WebAssembly (the only execution engine of the browser).
-# Small sizes use a simpler drawing (-Detail): 2 = full, 1 = no legs/perch/wing, 0 = also no eye, larger bird, thin margin.
+# Small sizes use a simpler drawing (detail level picked from the size by DetailFor): 2 = full (64+), 1 = no legs, perch
+# or wing, bigger eye (32-48), 0 = also no eye and no notch, larger bird, thicker tail, thin margin (16-24).
 #   powershell -File tools/make_logo.ps1 [-Out assets] [-Variant amber|violet|amber-plain]
 # Writes logo.png (512), logo_256/64/32/16.png and wren.ico (16/24/32/48/64/128/256) into -Out.
 #   powershell -File tools/make_logo.ps1 -Out build/logo_variants -Variant violet -Single
-# With -Single, only writes logo_<variant>.png (512) and a strip of every size: logo_<variant>_sizes.png.
+# With -Single, only writes logo_<variant>.png (512) and a check sheet logo_<variant>_sizes.png: every size, plus
+# 48/32/24/16 magnified (nearest neighbour).
 param(
   [string]$Out = (Join-Path (Split-Path $PSScriptRoot -Parent) 'assets'),
   [ValidateSet('amber', 'violet', 'amber-plain')][string]$Variant = 'amber',
@@ -39,6 +41,11 @@ function RotEllipse($cx, $cy, $w, $h, $deg) {
   $p.AddEllipse([single]($cx - $w / 2), [single]($cy - $h / 2), [single]$w, [single]$h)
   $m = New-Object Drawing.Drawing2D.Matrix; $m.RotateAt([single]$deg, (Pt $cx $cy)); $p.Transform($m); return $p
 }
+# rounded rectangle centred on (cx, cy), rotated by $deg degrees
+function RotRoundRect($cx, $cy, $w, $h, $r, $deg) {
+  $p = RoundRect ($cx - $w / 2) ($cy - $h / 2) $w $h $r
+  $m = New-Object Drawing.Drawing2D.Matrix; $m.RotateAt([single]$deg, (Pt $cx $cy)); $p.Transform($m); return $p
+}
 
 $palettes = @{
   # body top, body bottom, border top, border bottom
@@ -59,7 +66,8 @@ function Render($size, $detail) {
   # the square: 400 units with a 56 margin (like the toolkit), almost full-bleed at the smallest detail level
   if ($detail -eq 0) { $m = 20; $r = 110 } else { $m = 56; $r = 100 }
   $w = 512 - 2 * $m
-  $nr = 0; if ($notched) { $nr = 34 * $w / 400 }
+  # the notch is dropped at the smallest detail level, where it would read as a dent
+  $nr = 0; if ($notched -and $detail -gt 0) { $nr = 34 * $w / 400 }
   $bw = 10; if ($detail -eq 0) { $bw = 18 }
 
   $fill = New-Object Drawing.Drawing2D.LinearGradientBrush (Pt 0 $m), (Pt 0 (512 - $m)), (Hex $c[0]), (Hex $c[1])
@@ -76,42 +84,47 @@ function Render($size, $detail) {
     $g.DrawPath($hl, (NotchRect ($m + $bw + 1) ($m + $bw + 1) ($w - 2 * $bw - 2) ($w - 2 * $bw - 2) ($r - $bw) $nh))
   }
 
-  # the wren, facing right, nudged left so the bird (not its bounding box) sits in the middle;
-  # at the lower detail levels it is drawn larger. Holes use a copy of the body brush that cancels this transform.
-  $state = $g.Save()
-  if ($detail -eq 0) { $k = 1.2 } elseif ($detail -eq 1) { $k = 1.08 } else { $k = 1.0 }
+  # the wren, facing right, nudged left so the bird (not its bounding box) sits in the middle; drawn larger at the
+  # lower detail levels. Every shape is a path moved by $bm, so the holes can be filled with the untouched body brush.
+  if ($detail -eq 0) { $k = 1.22 } elseif ($detail -eq 1) { $k = 1.1 } else { $k = 1.0 }
   $bm = New-Object Drawing.Drawing2D.Matrix
-  $bm.Translate(256, 268); $bm.Scale([single]$k, [single]$k); $bm.Translate(-256 - 16, -268)
-  $g.MultiplyTransform($bm)
-  $inv = $bm.Clone(); $inv.Invert(); $hole = $fill.Clone(); $hole.Transform = $inv
+  $bm.Translate(256, 268); $bm.Scale([single]$k, [single]$k); $bm.Translate(-256 - 14, -268)
   $white = New-Object Drawing.SolidBrush ([Drawing.Color]::White)
+  function Put($brush, $path) { $path.Transform($bm); $g.FillPath($brush, $path) }
+  function Stroke($path, $width) {
+    $pen = New-Object Drawing.Pen ([Drawing.Color]::Black), ([single]$width)
+    $pen.StartCap = 'Round'; $pen.EndCap = 'Round'; $path.Widen($pen); return $path
+  }
   if ($detail -eq 2) {
     # perch and legs
-    $g.FillPath($white, (RoundRect 140 382 232 26 13))
-    $leg = New-Object Drawing.Pen ([Drawing.Color]::White), ([single]11)
-    $leg.StartCap = 'Round'; $leg.EndCap = 'Round'
-    $g.DrawLine($leg, 246, 340, 238, 388); $g.DrawLine($leg, 276, 340, 276, 388)
+    Put $white (RoundRect 150 384 220 26 13)
+    $legs = New-Object Drawing.Drawing2D.GraphicsPath
+    $legs.AddLine([single]248, [single]340, [single]242, [single]392); $legs.StartFigure()
+    $legs.AddLine([single]278, [single]340, [single]280, [single]392)
+    Put $white (Stroke $legs 12)
   }
-  # cocked tail, body, head
-  $g.FillPath($white, (RotEllipse 170 196 58 176 -24))
-  $g.FillPath($white, (RotEllipse 258 290 214 160 -14))
-  $g.FillEllipse($white, [single](328 - 62), [single](222 - 62), [single]124, [single]124)
+  # cocked tail (a narrow rounded bar standing almost upright), body, head
+  $tw = 52; if ($detail -eq 0) { $tw = 62 }
+  Put $white (RotRoundRect 176 200 $tw 184 ($tw / 2) -20)
+  Put $white (RotEllipse 262 292 214 160 -14)
+  Put $white (RotEllipse 330 224 124 124 0)
   # thin beak, slightly drooping
   $beak = New-Object Drawing.Drawing2D.GraphicsPath
-  $beak.AddPolygon([Drawing.PointF[]]@((Pt 376 196), (Pt 436 228), (Pt 380 240)))
-  $g.FillPath($white, $beak)
+  if ($detail -eq 0) { $beak.AddPolygon([Drawing.PointF[]]@((Pt 376 192), (Pt 440 232), (Pt 380 250))) }
+  else { $beak.AddPolygon([Drawing.PointF[]]@((Pt 378 198), (Pt 434 230), (Pt 382 242))) }
+  Put $white $beak
   if ($detail -ge 1) {
     # eye hole
-    $er = 13; if ($detail -eq 1) { $er = 17 }
-    $g.FillEllipse($fill, [single](344 - $er), [single](212 - $er), [single](2 * $er), [single](2 * $er))
+    $er = 13; if ($detail -eq 1) { $er = 16 }
+    Put $fill (RotEllipse 346 214 (2 * $er) (2 * $er) 0)
   }
   if ($detail -eq 2) {
-    # wing line: an arc cut through the body
-    $wing = New-Object Drawing.Pen $fill, ([single]12)
-    $wing.StartCap = 'Round'; $wing.EndCap = 'Round'
-    $g.DrawArc($wing, [single]196, [single]236, [single]132, [single]96, 200, 110)
+    # wing line: a curve cut through the body, sweeping from the shoulder back toward the tail
+    $wing = New-Object Drawing.Drawing2D.GraphicsPath
+    $wing.AddBezier((Pt 306 264), (Pt 286 302), (Pt 248 320), (Pt 208 312))
+    Put $fill (Stroke $wing 12)
   }
-  $g.Restore($state); $g.Dispose()
+  $g.Dispose()
 
   # downscale in steps of at most /4 so bicubic stays clean down to 16 px
   $cur = $b; $cs = $N
@@ -172,12 +185,17 @@ $Out = (Resolve-Path $Out).Path
 
 if ($Single) {
   (Render 512 2).Save((Join-Path $Out "logo_$Variant.png"), [Drawing.Imaging.ImageFormat]::Png)
-  # strip: 256, 128, 64, 48, 32, 24, 16 side by side on a mid-grey background
+  # strip: 256, 128, 64, 48, 32, 24, 16 side by side on a mid-grey background, then 48/32/24/16 magnified
+  # (nearest neighbour) on a second row to check the small sizes pixel by pixel
   $sizes = @(256, 128, 64, 48, 32, 24, 16)
   $sw = 0; foreach ($s in $sizes) { $sw += $s + 16 }
-  $strip = New-Object Drawing.Bitmap ($sw + 16), 288
+  $strip = New-Object Drawing.Bitmap ([Math]::Max($sw + 16, 4 * 208 + 16)), (288 + 208)
   $gs = [Drawing.Graphics]::FromImage($strip); $gs.Clear((Hex 0x3a3f4a)); $x = 16
-  foreach ($s in $sizes) { $gs.DrawImageUnscaled((Render $s (DetailFor $s)), $x, 16); $x += $s + 16 }
+  $gs.InterpolationMode = 'NearestNeighbor'; $gs.PixelOffsetMode = 'Half'
+  foreach ($s in $sizes) {
+    $img = Render $s (DetailFor $s); $gs.DrawImage($img, $x, 16, $s, $s); $x += $s + 16
+    if ($s -le 48) { $zx = 16 + 208 * [Array]::IndexOf(@(48, 32, 24, 16), $s); $gs.DrawImage($img, $zx, 304, 192, 192) }
+  }
   $strip.Save((Join-Path $Out "logo_${Variant}_sizes.png"), [Drawing.Imaging.ImageFormat]::Png)
   "wrote $Out\logo_$Variant.png and logo_${Variant}_sizes.png"
   return

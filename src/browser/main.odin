@@ -7,6 +7,7 @@ package browser
 
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:time"
 import "toolkit:draw"
@@ -76,6 +77,8 @@ Tab :: struct {
 	console:  [dynamic]string,
 	layout:   Layout,
 	scroll:   f32,
+	web_fonts: int,              // faces of the page's @font-face already handed to the font registry
+	web_font_page: rawptr,       // the page those faces came from (a new page starts over)
 	history:  [dynamic]string,   // addresses visited in this tab (mirror of `session`, for the chrome)
 	hist:     int,               // index of the current one
 	session:  Session_History,   // the joint session history: entries, history.state, same-document entries
@@ -522,6 +525,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
 	prof_end(.Styles)
 	draw.rect(dc, b.rect, to_draw(styled.canvas))
+	adopt_web_fonts(t)
 	if layout_stale(&t.layout, t.page.doc, styled, size, scale) {
 		prof_begin(.Layout)
 		layout_document(&t.layout, t.page.doc, styled, &app.measure, &app.page_settings.style, size, scale, app.cfg.layout_band_px)
@@ -534,6 +538,22 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	forms_paint_overlays(app, dc, b.rect)
 	prof_end(.Paint_Items)
 	draw.pop_clip(dc)
+}
+
+// Faces the page downloaded (@font-face) join the font registry of the painter; the layout is redone with them.
+adopt_web_fonts :: proc(t: ^Tab) {
+	if t.web_font_page != rawptr(t.page) { t.web_font_page, t.web_fonts = t.page, 0 }
+	ready := page.fonts_ready(t.page)
+	for t.web_fonts < len(ready) {
+		f := ready[t.web_fonts]
+		t.web_fonts += 1
+		if len(f.data) == 0 { continue }
+		id, ok := font.load_from_memory(page_render.fonts.state, slice.clone(f.data))   // the font state owns its copy
+		if !ok { tab_log(t, .Warn, fmt.tprintf("font %q could not be read", f.family)); continue }
+		weight := f.weight[0] == f.weight[1] ? f.weight[0] : (f.weight[0] + f.weight[1]) / 2
+		register_face(&page_render.fonts, f.family, weight, f.italic, id)
+		t.layout.valid = false
+	}
 }
 
 build_ui :: proc(app: ^App) {
