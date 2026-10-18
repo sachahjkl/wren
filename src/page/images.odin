@@ -219,7 +219,6 @@ cache_job_done :: proc(user: rawptr, j: ^images.Job) {
 	e.image = j.image
 	j.image = nil
 	e.generation += 1
-	if e.image.info.animated && e.anim_start < 0 { e.anim_start = loop_ms() }
 	entry_account(e)
 	entry_notify(e, false)
 	cache_enforce()

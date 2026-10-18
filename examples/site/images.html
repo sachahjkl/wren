@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Images</title>
+<!-- served by tools/testserver at /site/images.html; images come from /images/f/ (counted by the server) -->
+<link rel="stylesheet" href="/images/f/sheet.css">
+<style>
+body { font-family: sans-serif; margin: 16px; color: #222; }
+h2 { font-size: 15px; margin: 14px 0 6px; }
+.row { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.row > * { outline: 1px dashed #bbb; }
+#bg { width: 96px; height: 48px; background-color: #eef; background-image: url(/images/f/still.gif); background-size: 16px 16px; }
+#bg2 { width: 96px; height: 48px; background-color: #efe; background-repeat: no-repeat; background-position: center; }
+#fit { width: 60px; height: 30px; object-fit: contain; background: #ddd; }
+.spacer { height: 4000px; }
+</style>
+</head>
+<body>
+<h1>Images</h1>
+
+<h2>Formats, sizes, deduplication</h2>
+<div class="row">
+  <img id="simple" src="/images/f/red.png" alt="red">
+  <img id="sized" src="/images/f/red.png" width="80" height="60" alt="sized">
+  <img id="dup1" src="/images/f/blue.bmp" alt="bmp 1">
+  <img id="dup2" src="/images/f/blue.bmp" alt="bmp 2">
+  <img id="jpeg" src="/images/f/orient6.jpg" alt="EXIF orientation 6">
+  <img id="ico" src="/images/f/icon.ico" alt="icon">
+  <img id="tiff" src="/images/f/magenta.tif" alt="tiff">
+  <img id="anim" src="/images/f/anim.gif" width="40" height="40" alt="animated GIF">
+  <img id="fit" src="/images/f/orient6.jpg" alt="object-fit contain">
+</div>
+
+<h2>srcset, sizes, picture</h2>
+<div class="row">
+  <img id="srcset" src="/images/f/red.png" srcset="/images/f/red.png 1x, /images/f/blue-2x.png 2x" alt="1x / 2x">
+  <img id="wdesc" srcset="/images/f/green.jpg 16w, /images/f/blue-2x.png 40w" sizes="(max-width: 10px) 5px, 20px" alt="w descriptors">
+  <picture>
+    <source srcset="/images/f/pixel.webp" type="image/x-unknown">
+    <source media="(min-width: 10000px)" srcset="/images/f/still.gif">
+    <source srcset="/images/f/icon.ico" type="image/x-icon">
+    <img id="pic" src="/images/f/red.png" alt="picture">
+  </picture>
+</div>
+
+<h2>Broken</h2>
+<div class="row">
+  <img id="broken" src="/images/f/text.png" alt="not an image">
+  <img id="missing" src="/images/f/nope.png" alt="404">
+  <img id="empty" src="" alt="empty src">
+  <img id="bomb" src="/images/f/bomb.png" alt="decompression bomb">
+  <img id="svg" src="/images/f/drawing.svg" alt="SVG">
+  <img id="trunc" src="/images/f/truncated.png" alt="truncated">
+</div>
+
+<h2>Cross-origin</h2>
+<div class="row">
+  <img id="nocors" src="http://127.0.0.1:8767/images/f/green.jpg" alt="no-cors">
+  <img id="cors" crossorigin="anonymous" src="http://127.0.0.1:8767/images/cors/alpha.png" width="16" height="16" alt="cors">
+  <img id="corsfail" crossorigin="anonymous" src="http://127.0.0.1:8767/images/f/still.gif" alt="cors refused">
+</div>
+
+<h2>CSS backgrounds</h2>
+<div class="row">
+  <div id="bg"></div>
+  <div id="bg2"></div>
+</div>
+
+<div class="spacer"></div>
+<img id="lazy" loading="lazy" src="/images/f/noise.png" alt="lazy">
+</body>
+</html>

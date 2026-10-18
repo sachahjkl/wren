@@ -74,6 +74,8 @@ func imageType(name string) string {
 		return "image/webp"
 	case ".svg":
 		return "image/svg+xml"
+	case ".css":
+		return "text/css"
 	}
 	return "application/octet-stream"
 }
