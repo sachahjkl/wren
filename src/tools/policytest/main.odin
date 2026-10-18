@@ -10,6 +10,7 @@ import "core:strings"
 import "core:time"
 import "wb:base"
 import "wb:cookies"
+import "wb:csp"
 import "wb:fetch"
 import "wb:host"
 import "wb:http"
@@ -304,6 +305,50 @@ main :: proc() {
 		check(r.failed && r.error == .Bad_Port, "every hop is re-checked (bad port)")
 	}
 
+	////////////////////////////////
+	fmt.println("-- Content Security Policy")
+	{
+		violations := 0
+		cenv := env(A + "/page.html")
+		cenv.on_violation = proc(user: rawptr, v: csp.Violation) { (^int)(user)^ += 1 }
+		cenv.violation_user = &violations
+		csp.parse_header(&cenv.policies, "default-src 'self'; connect-src 'self' http://localhost:8765; script-src 'self'", .Enforce)
+
+		r := get(A + "/echo-headers", cenv)
+		check(!r.failed, "'self' is allowed")
+		r = get(B + "/cors/open", cenv)
+		check(!r.failed, "a host listed in connect-src is allowed")
+		r = get(C + "/cors/open", cenv)
+		check(r.failed && r.error == .Blocked_Csp, "a host that is not listed is blocked")
+		check(violations == 1, "the violation was reported")
+		r = get("data:text/plain,x", cenv)
+		check(r.failed && r.error == .Blocked_Csp, "data: needs to be listed")
+		r = run({url = C + "/cors/open", mode = .No_Cors, destination = .Image, initiator = cenv})
+		check(r.failed && r.error == .Blocked_Csp, "img-src falls back to default-src")
+		r = run({url = A + "/wasm", mode = .Cors, destination = .Script, initiator = cenv})
+		check(!r.failed, "script-src 'self' allows a same-origin module")
+		r = run({url = B + "/wasm", mode = .Cors, destination = .Script, initiator = cenv})
+		check(r.failed && r.error == .Blocked_Csp, "script-src blocks other origins before CORS is even consulted")
+		r = get(A + "/redirect-to?to=" + C + "/cors/open", cenv)
+		check(r.failed && r.error == .Blocked_Csp, "redirect targets are checked too")
+
+		report := env(A + "/page.html")
+		report.on_violation = cenv.on_violation
+		report.violation_user = &violations
+		csp.parse_header(&report.policies, "connect-src 'none'", .Report_Only)
+		before := violations
+		r = get(A + "/echo-headers", report)
+		check(!r.failed && violations == before + 1, "report-only policies report but never block")
+
+		up := env("https://127.0.0.1:8766/page.html")
+		csp.parse_header(&up.policies, "upgrade-insecure-requests", .Enforce)
+		r = run({url = "http://insecure.invalid/x", mode = .Cors, initiator = up})
+		check(r.failed && r.error == .Transport, "upgrade-insecure-requests upgrades instead of blocking")
+		blockall := env("https://127.0.0.1:8766/page.html")
+		csp.parse_header(&blockall.policies, "block-all-mixed-content", .Enforce)
+		r = run({url = "http://insecure.invalid/x.png", mode = .No_Cors, destination = .Image, initiator = blockall})
+		check(r.failed && r.error == .Blocked_Mixed_Content, "block-all-mixed-content blocks even images")
+	}
 	////////////////////////////////
 	fmt.println("-- mixed content, HSTS, schemes, MIME")
 	{

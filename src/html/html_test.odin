@@ -75,6 +75,34 @@ script_and_wasm_script_discovery :: proc(t: ^testing.T) {
 }
 
 @(test)
+charset_sniffing_and_decoding :: proc(t: ^testing.T) {
+	check :: proc(t: ^testing.T, data: []byte, header: string, want_text: string, want_enc: string, want_src: Encoding_Source, loc := #caller_location) {
+		d, ok := decode_document(data, header, context.temp_allocator)
+		testing.expect(t, ok, "decode", loc = loc)
+		testing.expect_value(t, string(d.text), want_text, loc = loc)
+		testing.expect_value(t, d.encoding, want_enc, loc = loc)
+		testing.expect_value(t, d.source, want_src, loc = loc)
+	}
+	check(t, {0xEF, 0xBB, 0xBF, 'h', 0xC3, 0xA9}, "iso-8859-1", "hé", "UTF-8", .Bom)              // the BOM beats the header
+	check(t, {0xFF, 0xFE, 'h', 0, 0xE9, 0}, "", "hé", "UTF-16LE", .Bom)
+	check(t, {0xFE, 0xFF, 0, 'h', 0, 0xE9}, "", "hé", "UTF-16BE", .Bom)
+	check(t, {'c', 'a', 'f', 0xE9}, "latin1", "café", "windows-1252", .Header)                      // label alias, Latin-1 decoded
+	check(t, {'c', 'a', 'f', 0xE9}, "ISO-8859-2", "café", "ISO-8859-2", .Header)
+	check(t, {0x82, 0xA0}, "shift_jis", "あ", "Shift_JIS", .Header)
+	check(t, transmute([]byte)string(`<meta charset="windows-1251"><p>`), "", "<meta charset=\"windows-1251\"><p>", "windows-1251", .Meta)
+	check(t, {'a', 0xE9}, "not-an-encoding", "aé", "windows-1252", .Default)                          // unknown label: sniff, then default
+	check(t, {'a', 0xFF, 'b'}, "utf-8", "a\uFFFDb", "UTF-8", .Header)                                 // invalid UTF-8 becomes U+FFFD
+	check(t, {}, "", "", "windows-1252", .Default)
+
+	// a transcoded document parses like any other
+	d, _ := decode_document({'<', 'p', '>', 'c', 'a', 'f', 0xE9}, "windows-1252", context.temp_allocator)
+	doc := dom.document_create()
+	defer dom.document_destroy(doc)
+	parse_into(doc, doc.root, d.text)
+	testing.expect_value(t, dom.text_content(doc, dom.find_first_by_tag(doc, "p")), "café")
+}
+
+@(test)
 very_deep_nesting_is_safe :: proc(t: ^testing.T) {
 	d := dom.document_create()
 	defer dom.document_destroy(d)

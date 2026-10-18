@@ -12,8 +12,10 @@
 // here, on the UI thread, with the document's Environment in hand.
 package fetch
 
+import "core:strings"
 import "wb:base"
 import "wb:cookies"
+import "wb:csp"
 import "wb:http"
 import "wb:url"
 
@@ -80,6 +82,7 @@ Request_Desc :: struct {
 	user_activation: bool,              // navigation started by a user gesture (Sec-Fetch-User)
 	guard:           Header_Guard,
 	max_body:        int,               // 0 = net.DEFAULT_MAX_BODY
+	nonce:           string,            // the nonce attribute of the element that caused the request (CSP)
 }
 
 // The "environment settings object" of a document: who is asking.
@@ -90,7 +93,10 @@ Environment :: struct {
 	top_level_site:  url.Site,          // for a top-level document: its own site
 	secure_context:  bool,
 	referrer_policy: Referrer_Policy,   // from the document's Referrer-Policy header / meta
-	file_root:       string,            // for file: documents: the directory tree they may read (see file_scheme.odin)
+	file_root:       string,            // for file: documents: the directory tree they may read (see local_schemes.odin)
+	policies:        csp.Policy_List,   // the document's CSP (headers + <meta>)
+	on_violation:    proc(user: rawptr, v: csp.Violation),
+	violation_user:  rawptr,
 }
 
 environment_make :: proc(document_url: url.URL, referrer_policy := Referrer_Policy.Default) -> Environment {
@@ -105,12 +111,27 @@ environment_make :: proc(document_url: url.URL, referrer_policy := Referrer_Poli
 	return e
 }
 
+// A copy that can outlive the document it describes (a navigation keeps its initiator after the old page is gone).
+// The policies are not copied: an initiator only supplies who is asking, not what it may load.
+environment_clone :: proc(e: Environment) -> Environment {
+	c: Environment
+	c.location = url.clone(e.location)
+	c.origin = url.origin_clone(e.origin)
+	c.site = url.site_of(c.origin)
+	c.top_level_site = url.site_of(c.origin)
+	c.secure_context = e.secure_context
+	c.referrer_policy = e.referrer_policy
+	c.file_root = strings.clone(e.file_root)
+	return c
+}
+
 environment_destroy :: proc(e: ^Environment) {
 	url.destroy(&e.location)
 	url.origin_destroy(&e.origin)
 	url.site_destroy(&e.site)
 	url.site_destroy(&e.top_level_site)
 	delete(e.file_root)
+	csp.list_destroy(&e.policies)
 	e^ = {}
 }
 
@@ -178,6 +199,7 @@ Error_Kind :: enum u8 {
 	Bad_Header,
 	Credentials_In_URL,
 	Blocked_Mixed_Content,
+	Blocked_Csp,
 	Blocked_Same_Origin,    // mode same-origin and the URL is cross-origin
 	Blocked_Cors,
 	Blocked_Preflight,
@@ -211,8 +233,4 @@ Start_Desc :: struct {
 	user:     rawptr,
 	scope:    ^base.Scope,   // closing it cancels the task silently
 	collect:  bool,          // one Done event carrying the whole body instead of Data chunks
-}
-
-error_text :: proc(kind: Error_Kind, detail: string, code: u32 = 0, flags: u32 = 0) -> string {
-	return detail
 }

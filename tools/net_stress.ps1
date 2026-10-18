@@ -33,8 +33,8 @@ try {
     Run '404 is a response, not an error' @("$h/status/404") '404'
     Run 'POST with body and header' @("$h/echo", '--method', 'POST', '--body', 'abcdef', '--header', '"X-Test: yes"', '--print') 'POST 6 bytes, X-Test="yes"'
     Run 'self-signed https is rejected' @('https://127.0.0.1:8766/') 'FAILED: secure connection failed'
-    Run 'bad URL fails cleanly' @('http://') 'invalid or unsupported URL'
-    Run 'unreachable port fails cleanly' @('http://127.0.0.1:1/') 'FAILED: could not connect'
+    Run 'bad URL fails cleanly' @('http://') 'invalid URL'
+    Run 'unreachable port fails cleanly' @('http://127.0.0.1:12345/') 'FAILED: could not connect'
     Run 'real https (example.com)' @('https://example.com/') 'done:'
     Run "stream $SizeMB MB with a slow consumer: memory stays flat" @('--slow-ms', '2', "$h/big?mb=$SizeMB") "done: $($SizeMB * 1048576) bytes" 60
     Run "collect $SizeMB MB" @('--collect', "$h/big?mb=$SizeMB") "done: $($SizeMB * 1048576) bytes"

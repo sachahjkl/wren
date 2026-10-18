@@ -27,6 +27,7 @@ Listener :: struct {
 	type:     string,
 	callback: u32,    // function-table index in the owning instance
 	user:     u32,    // opaque value handed back to the callback
+	owner:    u32,    // which instance of the page registered it (a page can run several modules)
 	capture:  bool,
 	once:     bool,
 	passive:  bool,

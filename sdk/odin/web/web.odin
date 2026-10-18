@@ -21,13 +21,29 @@ Event_Callback :: #type proc "contextless" (user: i32, event: Handle)
 Timer_Callback :: #type proc "contextless" (user: i32)
 Fetch_Callback :: #type proc "contextless" (user: i32, request: Handle, state: Fetch_State)
 
-Fetch_State :: enum i32 { Pending, Headers, Done, Failed }
+Fetch_State :: enum i32 { Pending, Response, Done, Failed }
+
+Response_Type :: enum i32 { Basic, Cors, Opaque, Opaque_Redirect }
+
+Fetch_Mode :: enum u32 { Cors, Same_Origin, No_Cors }
+Credentials :: enum u32 { Same_Origin, Omit, Include }
+Redirect_Mode :: enum u32 { Follow, Error, Manual }
+
+// Fetch API options; the zero value is the specification default (cors, same-origin credentials, follow).
+Fetch_Options :: struct {
+	mode:        Fetch_Mode,
+	credentials: Credentials,
+	redirect:    Redirect_Mode,
+	referrer_policy: u32,   // 0 default, then fetch.Referrer_Policy order
+	no_referrer: bool,
+}
 
 foreign import dom "dom"
 foreign import events "events"
 foreign import timers "timers"
 foreign import net "net"
 foreign import console "console"
+foreign import document "document"
 
 @(default_calling_convention = "contextless")
 foreign dom {
@@ -82,16 +98,28 @@ foreign timers {
 
 @(default_calling_convention = "contextless")
 foreign net {
-	@(link_name = "Fetch_start") raw_fetch :: proc(url: [^]u8, ul: i32, method: [^]u8, ml: i32, headers: [^]u8, hl: i32, body: [^]u8, bl: i32, callback: Fetch_Callback, user: i32) -> Handle ---
+	@(link_name = "Fetch_start") raw_fetch :: proc(url: [^]u8, ul: i32, method: [^]u8, ml: i32, headers: [^]u8, hl: i32, body: [^]u8, bl: i32, options: i32, callback: Fetch_Callback, user: i32) -> Handle ---
 	Fetch_state :: proc(f: Handle) -> Fetch_State ---
 	Fetch_status :: proc(f: Handle) -> i32 ---
+	Fetch_type :: proc(f: Handle) -> Response_Type ---
+	Fetch_redirected :: proc(f: Handle) -> i32 ---
 	@(link_name = "Fetch_headers") raw_fetchHeaders :: proc(f: Handle, buf: [^]u8, cap: i32) -> i32 ---
+	@(link_name = "Fetch_url") raw_fetchUrl :: proc(f: Handle, buf: [^]u8, cap: i32) -> i32 ---
 	@(link_name = "Fetch_error") raw_fetchError :: proc(f: Handle, buf: [^]u8, cap: i32) -> i32 ---
+	Fetch_errorKind :: proc(f: Handle) -> i32 ---
 	Fetch_bodyLength :: proc(f: Handle) -> i64 ---
 	@(link_name = "Fetch_readBody") raw_readBody :: proc(f: Handle, offset: i64, buf: [^]u8, cap: i32) -> i32 ---
 	Fetch_release :: proc(f: Handle) -> Error ---
 }
 
+@(default_calling_convention = "contextless")
+foreign document {
+	@(link_name = "Document_URL") raw_documentURL :: proc(buf: [^]u8, cap: i32) -> i32 ---
+	@(link_name = "Window_origin") raw_origin :: proc(buf: [^]u8, cap: i32) -> i32 ---
+	Window_isSecureContext :: proc() -> i32 ---
+	@(link_name = "Document_cookie_get") raw_cookieGet :: proc(buf: [^]u8, cap: i32) -> i32 ---
+	@(link_name = "Document_cookie_set") raw_cookieSet :: proc(s: [^]u8, n: i32) -> i32 ---
+}
 @(default_calling_convention = "contextless")
 foreign console {
 	@(link_name = "log") raw_log :: proc(p: [^]u8, n: i32) ---
@@ -141,11 +169,27 @@ dispatch :: proc "contextless" (target: Handle, type: string, bubbles := true, c
 	return raw_dispatchEvent(target, raw_data(type), i32(len(type)), flags) != 0
 }
 
-fetch :: proc "contextless" (url: string, cb: Fetch_Callback, user: i32 = 0, method := "GET", headers := "", body: []u8 = nil) -> Handle {
+fetch :: proc "contextless" (url: string, cb: Fetch_Callback, user: i32 = 0, method := "GET", headers := "", body: []u8 = nil, opt := Fetch_Options{}) -> Handle {
+	o := u32(opt.mode) | u32(opt.credentials) << 2 | u32(opt.redirect) << 4 | (opt.referrer_policy & 0xF) << 6
+	if opt.no_referrer { o |= 1 << 10 }
 	return raw_fetch(raw_data(url), i32(len(url)), raw_data(method), i32(len(method)), raw_data(headers), i32(len(headers)),
-		raw_data(body), i32(len(body)), cb, user)
+		raw_data(body), i32(len(body)), i32(o), cb, user)
 }
 
+// document.cookie: the non-HttpOnly cookies, or ok = false when the document may not use cookies (opaque origin).
+cookie :: proc "contextless" (buf: []u8) -> (s: string, ok: bool) {
+	n := raw_cookieGet(raw_data(buf), i32(len(buf)))
+	if n < 0 { return "", false }
+	return string(buf[:min(int(n), len(buf))]), true
+}
+
+// Returns 0 when the cookie was applied, a negative value for a SecurityError, a positive value when refused.
+set_cookie :: proc "contextless" (s: string) -> i32 { return raw_cookieSet(raw_data(s), i32(len(s))) }
+
+origin :: proc "contextless" (buf: []u8) -> string {
+	n := raw_origin(raw_data(buf), i32(len(buf)))
+	return string(buf[:min(int(max(n, 0)), len(buf))])
+}
 // Copies the body (as received so far) into `buf`.
 read_body :: proc "contextless" (f: Handle, buf: []u8, offset: i64 = 0) -> []u8 {
 	n := raw_readBody(f, offset, raw_data(buf), i32(len(buf)))

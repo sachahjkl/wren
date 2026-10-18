@@ -1,5 +1,8 @@
 // Wasm-first browser shell. The chrome (tabs, address bar, console strip) is built with gui_toolkit's `ui`; the page is a
 // custom-draw box painted from the DOM. Everything a tab starts lives in the tab's scope: closing a tab is one call.
+//
+// Every load goes through the policy layer (package fetch): the main document, its Wasm modules (in document order), and
+// whatever the modules fetch afterwards. The profile (cookies, HSTS) is loaded at start-up and saved as it changes.
 package browser
 
 import "core:fmt"
@@ -12,15 +15,20 @@ import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:base"
+import "wb:cookies"
 import "wb:dom"
+import "wb:fetch"
 import "wb:host"
 import "wb:html"
+import "wb:http"
 import "wb:net"
 import "wb:page"
+import "wb:url"
 import "wb:wasm"
 
 MAX_CONSOLE_LINES :: 500
 DEBUG_INPUT :: #config(DEBUG_INPUT, false)
+PROFILE_SAVE_INTERVAL_MS :: 30_000
 
 debug_log :: proc(s: string) {
 	f, err := os.open("build/debug.log", {.Write, .Create, .Append}, os.Permissions_Default_File)
@@ -30,17 +38,41 @@ debug_log :: proc(s: string) {
 	os.write_string(f, "\n")
 }
 
+Script_State :: enum u8 { Pending, Ready, Failed, Done }
+
+// One <script type="application/wasm">: fetched concurrently, run in document order.
+Script_Slot :: struct {
+	load:  ^Doc_Load,
+	url:   string,
+	state: Script_State,
+	bytes: [dynamic]byte,
+}
+
+// The state of one navigation, from request to the last module. It lives in the navigation scope.
+Doc_Load :: struct {
+	tab:        ^Tab,
+	initiator:  fetch.Environment,      // who asked (a clone: the old page may already be gone)
+	has_initiator: bool,
+	page:       ^page.Page,
+	status:     int,
+	mime:       string,                  // essence
+	charset:    string,
+	final_url:  string,
+	slots:      [dynamic]^Script_Slot,
+	next_run:   int,
+}
+
 Tab :: struct {
 	scope:    ^base.Scope,   // lives as long as the tab
-	nav:      ^base.Scope,   // lives as long as the current navigation: the page and its main request
+	nav:      ^base.Scope,   // lives as long as the current navigation: the page and everything it started
 	page:     ^page.Page,
+	load:     ^Doc_Load,
 	url:      string,
 	title:    string,
 	status:   string,
 	console:  [dynamic]string,
 	layout:   Layout,
 	scroll:   f32,
-	load:     base.Handle,
 }
 
 App :: struct {
@@ -55,6 +87,10 @@ App :: struct {
 
 	loop:     host.Loop,
 	client:   net.Client,
+	blocking: host.Blocking_Pool,
+	profile:  fetch.Profile,
+	loader:   fetch.Loader,
+	profile_dir: string,
 	process:  ^base.Scope,
 
 	tabs:     [dynamic]^Tab,
@@ -74,23 +110,23 @@ clip_set :: proc(text: string) { platform.set_clipboard(the_app.win, text) }
 current_tab :: proc(app: ^App) -> ^Tab { return len(app.tabs) > 0 ? app.tabs[app.current] : nil }
 
 ////////////////////////////////
-// Tabs and navigation
+// Tabs
 
-tab_open :: proc(app: ^App, url := "") -> ^Tab {
+tab_open :: proc(app: ^App, address := "") -> ^Tab {
 	t := new(Tab)
 	t.scope = base.scope_make("tab", app.process)
 	t.title = strings.clone("New tab")
 	append(&app.tabs, t)
 	app.current = len(app.tabs) - 1
-	ui.field_set(&app.address, url)
-	if url != "" { navigate(app, t, url) }
+	ui.field_set(&app.address, address)
+	if address != "" { navigate(app, t, address) }
 	return t
 }
 
 tab_close :: proc(app: ^App, index: int) {
 	t := app.tabs[index]
 	ordered_remove(&app.tabs, index)
-	base.scope_close(t.scope)   // page, instance, DOM, requests, timers: all gone
+	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone
 	delete(t.url); delete(t.title); delete(t.status)
 	for l in t.console { delete(l) }
 	delete(t.console)
@@ -118,126 +154,232 @@ set_status :: proc(t: ^Tab, s: string) {
 	t.status = strings.clone(s)
 }
 
-// A path or file:// URL is read synchronously (local files are fast and this keeps the first version simple).
-local_path :: proc(url: string) -> (path: string, ok: bool) {
-	if strings.has_prefix(url, "file:///") { return url[8:], true }
-	if len(url) > 2 && url[1] == ':' && (url[2] == '\\' || url[2] == '/') { return url, true }
-	return "", false
+// Last path segment, or the host: a stand-in until the page has a <title>.
+title_from_url :: proc(u: string) -> string {
+	s := u
+	if i := strings.index(s, "://"); i >= 0 { s = s[i + 3:] }
+	s = strings.trim_right(s, "/\\")
+	if i := strings.last_index_any(s, "/\\"); i >= 0 && i + 1 < len(s) { s = s[i + 1:] }
+	return s == "" ? "New tab" : s
 }
 
-// Last path segment, or the host: a stand-in until pages have a <title>.
-title_from_url :: proc(url: string) -> string {
-	u := url
-	if i := strings.index(u, "://"); i >= 0 { u = u[i + 3:] }
-	u = strings.trim_right(u, "/\\")
-	if i := strings.last_index_any(u, "/\\"); i >= 0 && i + 1 < len(u) { u = u[i + 1:] }
-	return u == "" ? "New tab" : u
+////////////////////////////////
+// Navigation
+
+// What the user typed: a URL, a file path, or a bare host.
+normalize_address :: proc(input: string) -> string {
+	s := strings.trim_space(input)
+	if len(s) > 2 && s[1] == ':' && (s[2] == '\\' || s[2] == '/') {   // C:\dir\page.html
+		fixed, _ := strings.replace_all(s, "\\", "/", context.temp_allocator)
+		return strings.concatenate({"file:///", fixed}, context.temp_allocator)
+	}
+	if !strings.contains(s, "://") && !strings.has_prefix(s, "about:") && !strings.has_prefix(s, "data:") {
+		return strings.concatenate({"https://", s}, context.temp_allocator)
+	}
+	return s
 }
 
-navigate :: proc(app: ^App, t: ^Tab, url: string) {
-	new_url := strings.clone(url)     // `url` may alias t.url
-	base.scope_close(t.nav)           // cancels the previous page and its requests
+// Starts loading `address` in `t`. `from` is the page the navigation comes from (a link click), nil for the address bar.
+navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false) {
+	target := strings.clone(normalize_address(address), context.temp_allocator)
+	load := new(Doc_Load)
+	load.tab = t
+	if from != nil { load.initiator, load.has_initiator = fetch.environment_clone(from.env), true }
+
+	base.scope_close(t.nav)           // closes the previous page, its modules and every request it still had
 	t.nav = base.scope_make("navigation", t.scope)
+	base.on_close(t.nav, load_closed, load)
 	t.page = nil
-	t.load = base.NIL_HANDLE
+	t.load = load
 	layout_reset(&t.layout)
 	t.scroll = 0
-	delete(t.url)
-	t.url = new_url
-	ui.field_set(&app.address, new_url)
-	delete(t.title)
-	t.title = strings.clone(title_from_url(url))
 	for l in t.console { delete(l) }
 	clear(&t.console)
-	t.page = page.page_create(&app.loop, &app.client, t.nav, console_sink, t)
-
-	if path, ok := local_path(url); ok {
-		data, err := os.read_entire_file(path, context.temp_allocator)
-		if err != nil { set_status(t, fmt.tprintf("cannot read %s", path)); return }
-		loaded(app, t, data, url, 200)
-		return
-	}
+	delete(t.url)
+	t.url = strings.clone(target)
+	delete(t.title)
+	t.title = strings.clone(title_from_url(target))
+	ui.field_set(&app.address, target)
 	set_status(t, "loading...")
-	t.load = net.fetch(&app.client, {
-		url = url, on_event = main_resource_event, user = t, collect = true, scope = t.nav, priority = .High,
-		headers = "Accept: application/wasm, text/html;q=0.8, */*;q=0.5",
+
+	fetch.start(&app.loader, {
+		request = {
+			url = target, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = .Document,
+			initiator = load.has_initiator ? &load.initiator : nil, user_activation = user_activation,
+		},
+		on_event = document_event, user = load, scope = t.nav, collect = true,
 	})
 }
 
-main_resource_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
-	t := (^Tab)(user)
+load_closed :: proc(data: rawptr) {
+	load := (^Doc_Load)(data)
+	if load.tab != nil && load.tab.load == load { load.tab.load = nil }
+	if load.has_initiator { fetch.environment_destroy(&load.initiator) }
+	for s in load.slots { delete(s.url); delete(s.bytes); free(s) }
+	delete(load.slots)
+	delete(load.mime); delete(load.charset); delete(load.final_url)
+	free(load)
+}
+
+// An HTML page the browser makes up when a load fails, so the tab always shows something readable.
+show_error_page :: proc(app: ^App, load: ^Doc_Load, headline, detail: string) {
+	t := load.tab
+	if load.page == nil { load.page = page.page_create(&app.loop, &app.loader, t.nav, "about:blank", console_sink, t); t.page = load.page }
+	body := fmt.tprintf("<!doctype html><title>Error</title><h1>%s</h1><p>%s</p><p>%s</p>", escape_html(headline), escape_html(detail), escape_html(t.url))
+	page.load_html(load.page, transmute([]byte)body)
+	delete(t.title)
+	t.title = strings.clone("Error")
+	set_status(t, headline)
+	tab_log(t, .Error, fmt.tprintf("%s: %s", headline, detail))
+}
+
+escape_html :: proc(s: string) -> string {
+	r, _ := strings.replace_all(s, "&", "&amp;", context.temp_allocator)
+	r, _ = strings.replace_all(r, "<", "&lt;", context.temp_allocator)
+	r, _ = strings.replace_all(r, ">", "&gt;", context.temp_allocator)
+	return r
+}
+
+document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
+	load := (^Doc_Load)(user)
+	t := load.tab
 	app := the_app
-	#partial switch ev.kind {
-	case .Headers:
-		set_status(t, fmt.tprintf("HTTP %d", ev.status))
+	defer { app.frames_requested = max(app.frames_requested, 3) }
+	switch ev.kind {
+	case .Response:
+		r := ev.response
+		load.status = r.status
+		load.final_url = strings.clone(r.url)
+		if r.has_mime {
+			load.mime = strings.clone(http.mime_essence(r.mime))
+			if cs, ok := http.mime_param(r.mime, "charset"); ok { load.charset = strings.clone(cs) }
+		}
+		// the document exists from here on, with the origin of its *final* URL
+		load.page = page.page_create(&app.loop, &app.loader, t.nav, r.url, console_sink, t)
+		t.page = load.page
+		csp_h := http.get_all(r.headers, "content-security-policy")
+		ro_h := http.get_all(r.headers, "content-security-policy-report-only")
+		rp, _ := http.get_header(r.headers, "referrer-policy")
+		page.apply_response_headers(load.page, csp_h, ro_h, rp)
+		set_status(t, fmt.tprintf("HTTP %d", r.status))
+		delete(t.url)
+		t.url = strings.clone(r.url)
+		ui.field_set(&app.address, r.url)
+	case .Data:
 	case .Done:
-		t.load = base.NIL_HANDLE
-		loaded(app, t, ev.data, t.url, ev.status)
+		document_loaded(app, load, ev.data)
 	case .Failed:
-		t.load = base.NIL_HANDLE
-		set_status(t, net.error_text(ev.error, ev.secure_flags))
-		tab_log(t, .Error, net.error_text(ev.error, ev.secure_flags))
+		show_error_page(app, load, "This page could not be loaded", ev.detail)
 	}
-	app.frames_requested = max(app.frames_requested, 3)
 }
 
 looks_like_wasm :: proc(data: []byte) -> bool {
 	return len(data) >= 4 && data[0] == 0 && data[1] == 'a' && data[2] == 's' && data[3] == 'm'
 }
 
-// A Wasm module runs directly; anything else is parsed as HTML. The page's Wasm script (see html.wasm_scripts) is
-// fetched next, with the same scope as the page, so navigating away cancels it.
-loaded :: proc(app: ^App, t: ^Tab, data: []byte, url: string, status: int) {
-	if looks_like_wasm(data) {
-		start_module(t, data, url)
+document_loaded :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
+	t := load.tab
+	p := load.page
+	if looks_like_wasm(data) || load.mime == "application/wasm" {
+		// the document is a module
+		_, ok, err := page.load_module(p, data, t.url)
+		if ok { set_status(t, fmt.tprintf("%s: running", t.url)) } else { set_status(t, err); tab_log(t, .Error, err) }
 		return
 	}
-	r := page.load_html(t.page, data)
+	if load.mime != "" && load.mime != "text/html" && load.mime != "application/xhtml+xml" {
+		if strings.has_prefix(load.mime, "text/") {
+			show_text(app, load, data)
+		} else {
+			show_error_page(app, load, "Cannot display this content", fmt.tprintf("type %s", load.mime))
+		}
+		return
+	}
+
+	d, ok := html.decode_document(data, load.charset)
+	if !ok { show_error_page(app, load, "Cannot decode the document", load.charset); return }
+	defer delete(d.text)
+	r := page.load_html(p, d.text)
 	if !r.ok { tab_log(t, .Error, fmt.tprintf("HTML parse failed (%d)", r.status)) }
 	if r.truncated { tab_log(t, .Warn, "document truncated: too many nodes") }
-	if title := html.title(t.page.doc); title != "" {
+	if title := html.title(p.doc); title != "" {
 		delete(t.title)
 		t.title = strings.clone(title)
 	}
-	set_status(t, fmt.tprintf("HTTP %d, %d bytes, %d nodes", status, len(data), r.nodes))
+	set_status(t, fmt.tprintf("HTTP %d, %d bytes (%s), %d nodes", load.status, len(data), d.encoding, r.nodes))
+	start_scripts(app, load)
+}
 
-	scripts := html.wasm_scripts(t.page.doc)
-	if len(scripts) > 1 { tab_log(t, .Warn, "only the first Wasm script of a document is run") }
-	if len(scripts) == 0 { return }
-	src, has := dom.get_attribute(t.page.doc, scripts[0], "src")
-	if !has || src == "" { tab_log(t, .Error, "wasm script without src"); return }
-	module_url := net.url_resolve(url, src, context.temp_allocator)
+show_text :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
+	d, ok := html.decode_document(data, load.charset)
+	if !ok { return }
+	defer delete(d.text)
+	p := load.page
+	pre := dom.create_element(p.doc, "pre")
+	dom.set_text_content(p.doc, pre, string(d.text[:min(len(d.text), 1 << 20)]))
+	dom.append_child(p.doc, p.body, pre)
+	set_status(load.tab, fmt.tprintf("HTTP %d, %d bytes of text", load.status, len(data)))
+}
 
-	if path, ok := local_path(module_url); ok {
-		bytes, err := os.read_entire_file(path, context.temp_allocator)
-		if err != nil { tab_log(t, .Error, fmt.tprintf("cannot read %s", path)); return }
-		start_module(t, bytes, module_url)
-		return
+////////////////////////////////
+// Wasm modules: fetched concurrently, run in document order
+
+start_scripts :: proc(app: ^App, load: ^Doc_Load) {
+	p := load.page
+	t := load.tab
+	for sh in html.wasm_scripts(p.doc) {
+		src, has := dom.get_attribute(p.doc, sh, "src")
+		if !has || src == "" { tab_log(t, .Error, "an inline Wasm script needs a src (use a data: URL)"); continue }
+		resolved, ok := url.parse(src, &p.env.location, context.temp_allocator)
+		if !ok { tab_log(t, .Error, fmt.tprintf("invalid script URL %q", src)); continue }
+		nonce, _ := dom.get_attribute(p.doc, sh, "nonce")
+		slot := new(Script_Slot)
+		slot.load = load
+		slot.url = strings.clone(resolved.href)
+		append(&load.slots, slot)
+		fetch.start(&app.loader, {
+			request = {url = resolved.href, mode = .Cors, credentials = .Same_Origin, destination = .Script, initiator = &p.env, nonce = nonce},
+			on_event = script_event, user = slot, scope = t.nav, collect = true,
+		})
 	}
-	t.load = net.fetch(&app.client, {
-		url = module_url, on_event = module_event, user = t, collect = true, scope = t.nav, priority = .High,
-		headers = "Accept: application/wasm",
-	})
+	run_ready_scripts(load)
 }
 
-start_module :: proc(t: ^Tab, data: []byte, url: string) {
-	ok, err := page.load_module(t.page, data, url)
-	if ok { set_status(t, fmt.tprintf("%s: running", url)) } else { set_status(t, err); tab_log(t, .Error, err) }
-}
-
-module_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
-	t := (^Tab)(user)
+script_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
+	slot := (^Script_Slot)(user)
+	load := slot.load
 	#partial switch ev.kind {
 	case .Done:
-		t.load = base.NIL_HANDLE
-		if ev.status != 200 { tab_log(t, .Error, fmt.tprintf("wasm module: HTTP %d", ev.status)); break }
-		start_module(t, ev.data, t.url)
+		append(&slot.bytes, ..ev.data)
+		slot.state = .Ready
 	case .Failed:
-		t.load = base.NIL_HANDLE
-		tab_log(t, .Error, fmt.tprintf("wasm module: %s", net.error_text(ev.error, ev.secure_flags)))
+		tab_log(load.tab, .Error, fmt.tprintf("module %s: %s", slot.url, ev.detail))
+		slot.state = .Failed
+	case .Response:
+		if ev.response.status != 200 && ev.response.type != .Opaque {
+			tab_log(load.tab, .Error, fmt.tprintf("module %s: HTTP %d", slot.url, ev.response.status))
+		}
 	}
+	run_ready_scripts(load)
 	the_app.frames_requested = max(the_app.frames_requested, 3)
 }
+
+// Runs modules in order: a later module waits for an earlier one that is still loading.
+run_ready_scripts :: proc(load: ^Doc_Load) {
+	for load.next_run < len(load.slots) {
+		s := load.slots[load.next_run]
+		switch s.state {
+		case .Pending: return
+		case .Failed, .Done: load.next_run += 1
+		case .Ready:
+			s.state = .Done
+			load.next_run += 1
+			_, ok, err := page.load_module(load.page, s.bytes[:], s.url)
+			if !ok { tab_log(load.tab, .Error, fmt.tprintf("module %s: %s", s.url, err)) }
+			if load.next_run >= len(load.slots) { set_status(load.tab, fmt.tprintf("%d module(s) running", len(load.slots))) }
+		}
+	}
+}
+
 ////////////////////////////////
 // UI
 
@@ -256,6 +398,18 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.push_clip(dc, b.rect)
 	paint(&t.layout, dc, &app.fonts, app.ui_font, b.rect.min - {0, t.scroll}, b.rect)
 	draw.pop_clip(dc)
+}
+
+security_label :: proc(t: ^Tab) -> string {
+	if t == nil || t.page == nil { return "" }
+	e := &t.page.env
+	switch {
+	case e.location.scheme == "file":  return "File"
+	case e.location.scheme == "https": return "Secure"
+	case e.secure_context && (e.location.scheme == "http"): return "Local"
+	case e.location.scheme == "http":  return "Not secure"
+	}
+	return "Page"
 }
 
 build_ui :: proc(app: ^App) {
@@ -281,15 +435,20 @@ build_ui :: proc(app: ^App) {
 				ui.next({width = ui.px(em * 2.4), height = ui.px(em * 2.2)})
 				if ui.button("x###closetab").clicked { tab_close(app, app.current); return }
 			}
-			// address bar
+			// address bar with the security state of the page
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.6))})
 			if ui.row(.Center) {
 				ui.spacer(ui.px(em * 0.5))
+				if label := security_label(t); label != "" {
+					ui.next({width = ui.text_size(em * 0.5), height = ui.px(ui.dense(em * 2))})
+					if ui.tags("weak") { ui.label(fmt.aprintf("%s###sec", label, allocator = ui.frame_allocator())) }
+					ui.spacer(ui.px(em * 0.4))
+				}
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-				res := ui.line_edit("###address", &app.address, "Enter a URL (https://..., file:///..., C:\\...\\page.wasm) and press Enter")
+				res := ui.line_edit("###address", &app.address, "Enter a URL (https://..., file:///..., C:\\...\\page.html) and press Enter")
 				if res.committed && t != nil {
-					url := strings.clone(strings.trim_space(ui.field_string(&app.address)), context.temp_allocator)
-					if url != "" { navigate(app, t, url) }
+					address := strings.clone(strings.trim_space(ui.field_string(&app.address)), context.temp_allocator)
+					if address != "" { navigate(app, t, address) }
 				}
 				ui.spacer(ui.px(em * 0.5))
 			}
@@ -312,8 +471,10 @@ build_ui :: proc(app: ^App) {
 				if ui.row(.Center) {
 					ui.spacer(ui.px(em * 0.5))
 					if ui.tags("weak") {
+						origin := ""
+						if t.page != nil { origin = url.origin_serialize(t.page.env.origin, context.temp_allocator) }
 						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.6))})
-						ui.label(fmt.aprintf("%s   |   %d request(s) in flight   |   %d DOM node(s)###status", t.status, net.in_flight(&app.client), t.page != nil ? t.page.doc.nodes.count : 0, allocator = ui.frame_allocator()))
+						ui.label(fmt.aprintf("%s   |   origin %s   |   %d request(s)   |   %d cookie(s)   |   %d DOM node(s)###status", t.status, origin, fetch.in_flight(&app.loader), cookies.count(&app.profile.jar), t.page != nil ? t.page.doc.nodes.count : 0, allocator = ui.frame_allocator()))
 					}
 				}
 			}
@@ -349,7 +510,6 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			if !inside || !t.layout.valid { continue }
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
 			target := hit_test(&t.layout, local)
-			if DEBUG_INPUT { debug_log(fmt.tprintf("press at %v (page %v, local %v) -> node %v", ev.pos, app.page_rect.min, local, target)) }
 			if target == base.NIL_HANDLE { continue }
 			not_prevented := page.dispatch_event(t.page, target, dom.Event{
 				type = "click", bubbles = true, cancelable = true,
@@ -358,13 +518,37 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			// default action: following a link, unless a listener called preventDefault
 			if not_prevented && ev.button == .Left {
 				if href, ok := anchor_href(t.page.doc, target); ok {
-					navigate(app, t, net.url_resolve(t.url, href, context.temp_allocator))
+					resolved, rok := url.parse(href, &t.page.env.location, context.temp_allocator)
+					if !rok { tab_log(t, .Error, fmt.tprintf("invalid link %q", href)); continue }
+					navigate(app, t, resolved.href, t.page, user_activation = true)
 					return   // the page is gone: the rest of this frame's events belong to the old one
 				}
 			}
 		}
 	}
 }
+
+////////////////////////////////
+// Profile persistence
+
+profile_paths :: proc(app: ^App) -> (cookie_file, hsts_file: string) {
+	return strings.concatenate({app.profile_dir, "/cookies.tsv"}, context.temp_allocator),
+	       strings.concatenate({app.profile_dir, "/hsts.txt"}, context.temp_allocator)
+}
+
+profile_load :: proc(app: ^App) {
+	c, h := profile_paths(app)
+	cookies.load(&app.profile.jar, c)
+	fetch.hsts_load(&app.profile.hsts, h, fetch.now_ms())
+}
+
+profile_save :: proc(app: ^App, force := false) {
+	c, h := profile_paths(app)
+	if force || app.profile.jar.dirty { cookies.save(&app.profile.jar, c) }
+	if force || app.profile.hsts.dirty { fetch.hsts_save(&app.profile.hsts, h, fetch.now_ms()) }
+}
+
+autosave :: proc(data: rawptr) { profile_save((^App)(data)) }
 
 ////////////////////////////////
 // Loop
@@ -429,11 +613,20 @@ main :: proc() {
 
 	host.loop_init(&app.loop, wake_window, app.win)
 	if !net.client_init(&app.client, &app.loop) { fmt.eprintln("network init failed"); return }
+	host.blocking_init(&app.blocking, &app.loop, 4)
+	app.profile = fetch.profile_make()
+	fetch.loader_init(&app.loader, &app.loop, &app.client, &app.blocking, &app.profile)
 	if !page.register_imports() { fmt.eprintln("wasm runtime init failed"); return }
 	app.process = base.scope_make("process")
 
-	url := len(os.args) > 1 ? os.args[1] : ""
-	tab_open(app, url)
+	cfg := platform.config_dir(context.temp_allocator)
+	app.profile_dir = strings.clone(cfg == "" ? "build/profile" : strings.concatenate({cfg, "/wasm_browser"}, context.temp_allocator))
+	_ = os.make_directory_all(app.profile_dir)
+	profile_load(app)
+	host.set_timer(&app.loop, PROFILE_SAVE_INTERVAL_MS, PROFILE_SAVE_INTERVAL_MS, autosave, app)
+
+	address := len(os.args) > 1 ? os.args[1] : ""
+	tab_open(app, address)
 
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
@@ -451,8 +644,12 @@ main :: proc() {
 		if app.frames_requested > 0 { app.frames_requested -= 1 }
 	}
 
+	profile_save(app, force = true)
 	base.scope_close(app.process)   // every tab, page and request
+	fetch.loader_destroy(&app.loader)
+	host.blocking_destroy(&app.blocking)
 	net.client_destroy(&app.client)
+	fetch.profile_destroy(&app.profile)
 	host.loop_destroy(&app.loop)
 	wasm.runtime_destroy()
 }

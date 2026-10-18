@@ -37,17 +37,17 @@ dispatcher_destroy :: proc(dp: ^Dispatcher) {
 	base.pool_destroy(&dp.events)
 }
 
-add_listener :: proc(d: ^Document, target: base.Handle, type: string, callback, user: u32, capture, once, passive: bool) -> (Listener_Id, Error) {
+add_listener :: proc(d: ^Document, target: base.Handle, type: string, callback, user: u32, capture, once, passive: bool, owner: u32 = 0) -> (Listener_Id, Error) {
 	n := get(d, target)
 	if n == nil { return 0, .Invalid_Handle }
 	if type == "" { return 0, .Invalid_Argument }
 	// same (type, callback, user, capture) is a no-op, as in the DOM
 	for l in n.listeners {
-		if !l.removed && l.type == type && l.callback == callback && l.user == user && l.capture == capture { return l.id, .None }
+		if !l.removed && l.type == type && l.callback == callback && l.user == user && l.capture == capture && l.owner == owner { return l.id, .None }
 	}
 	id := d.next_listener
 	d.next_listener += 1
-	append(&n.listeners, Listener{id = id, type = strings.clone(type), callback = callback, user = user, capture = capture, once = once, passive = passive})
+	append(&n.listeners, Listener{id = id, type = strings.clone(type), callback = callback, user = user, owner = owner, capture = capture, once = once, passive = passive})
 	return id, .None
 }
 

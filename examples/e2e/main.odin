@@ -41,6 +41,7 @@ on_fetch :: proc "contextless" (user: i32, req: web.Handle, st: web.Fetch_State)
 		b: [20]u8
 		web.set_attribute(state.app, "data-fetched", itoa(web.Fetch_bodyLength(req), b[:]))
 		web.log(string(body))
+		web.set_attribute(state.app, "data-type", web.Fetch_type(req) == .Basic ? "basic" : "other")
 		web.Fetch_release(req)
 	case .Failed:
 		buf: [128]u8
@@ -48,6 +49,41 @@ on_fetch :: proc "contextless" (user: i32, req: web.Handle, st: web.Fetch_State)
 		web.set_attribute(state.app, "data-error", string(buf[:min(int(n), len(buf))]))
 		web.Fetch_release(req)
 	}
+}
+
+// Cross-origin without CORS headers: the browser must refuse, and tell us why.
+on_cors :: proc "contextless" (user: i32, req: web.Handle, st: web.Fetch_State) {
+	#partial switch st {
+	case .Done:
+		web.set_attribute(state.app, "data-cors", "allowed")
+		web.Fetch_release(req)
+	case .Failed:
+		b: [20]u8
+		web.set_attribute(state.app, "data-cors", itoa(i64(web.Fetch_errorKind(req)), b[:]))
+		web.Fetch_release(req)
+	}
+}
+
+@(export)
+start_cors_probe :: proc "contextless" (open: i32) {
+	if open != 0 { web.fetch("http://localhost:8765/cors/open", on_cors) } else { web.fetch("http://localhost:8765/cors/none", on_cors) }
+}
+
+@(export)
+cookie_probe :: proc "contextless" () -> i32 {
+	rc := web.set_cookie("probe=1; Path=/")
+	if rc < 0 { return -1 }   // SecurityError: the document has an opaque origin
+	if rc != 0 { return -2 }  // refused by the cookie rules
+	buf: [256]u8
+	s, ok := web.cookie(buf[:])
+	if !ok { return -1 }
+	return i32(len(s))
+}
+
+@(export)
+origin_probe :: proc "contextless" () -> i32 {
+	buf: [128]u8
+	return i32(len(web.origin(buf[:])))
 }
 
 @(export)

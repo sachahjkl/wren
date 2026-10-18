@@ -12,13 +12,8 @@ package page
 // "Interface_member" from Web IDL, so a generator can produce guest-side bindings for any language.
 
 import "base:runtime"
-import "core:fmt"
-import "core:math"
-import "core:strings"
 import "wb:base"
 import "wb:dom"
-import "wb:host"
-import "wb:net"
 import "wb:wasm"
 
 @(private)
@@ -28,6 +23,9 @@ ctx :: proc "contextless" () -> runtime.Context { return runtime.default_context
 page_of :: #force_inline proc "c" (env: wasm.Exec_Env) -> ^Page {
 	return (^Page)(wasm.owner(env).user)
 }
+
+@(private)
+inst_of :: #force_inline proc "c" (env: wasm.Exec_Env) -> ^wasm.Instance { return wasm.owner(env) }
 
 @(private)
 H :: #force_inline proc "contextless" (v: u64) -> base.Handle { return base.Handle(v) }
@@ -192,7 +190,7 @@ dom_symbols := [?]wasm.Native_Symbol{
 n_EventTarget_addEventListener :: proc "c" (env: wasm.Exec_Env, target: u64, type: [^]u8, tl: i32, callback, user, flags: i32) -> i32 {
 	context = ctx()
 	id, err := dom.add_listener(page_of(env).doc, H(target), str(type, tl), u32(callback), u32(user),
-		capture = flags & 1 != 0, once = flags & 2 != 0, passive = flags & 4 != 0)
+		capture = flags & 1 != 0, once = flags & 2 != 0, passive = flags & 4 != 0, owner = inst_of(env).index)
 	if err != .None { return i32(err) }
 	return i32(id)
 }
@@ -281,159 +279,6 @@ events_symbols := [?]wasm.Native_Symbol{
 }
 
 ////////////////////////////////
-// timers
-
-@(private)
-timer_fire :: proc(data: rawptr) {
-	t := (^Timer)(data)
-	p, cb, user, repeat, self := t.page, t.callback, t.user, t.interval, t.self
-	if p.inst != nil && !p.inst.dead {
-		argv := [1]u32{user}
-		if res := wasm.call_indirect(p.inst, cb, argv[:]); res != .Ok { log(p, .Error, p.inst.last_error) }
-	}
-	// one-shots release their record once fired (the guest may already have cleared it: removal is idempotent)
-	if !repeat && !p.closed { base.pool_remove(&p.timers, self) }
-}
-
-@(private)
-timer_start :: proc(p: ^Page, cb, user: i32, delay_ms: f64, repeat: bool) -> u64 {
-	h, t := base.pool_insert(&p.timers, Timer{page = p, callback = u32(cb), user = u32(user), interval = repeat})
-	t.self = h
-	d := math.is_nan(delay_ms) ? 0 : max(delay_ms, repeat ? 1 : 0)
-	t.handle = host.set_timer(p.loop, d, repeat ? d : 0, timer_fire, t, p.scope)
-	return u64(h)
-}
-n_Timers_setTimeout :: proc "c" (env: wasm.Exec_Env, cb, user: i32, delay_ms: f64) -> u64 {
-	context = ctx()
-	return timer_start(page_of(env), cb, user, delay_ms, false)
-}
-n_Timers_setInterval :: proc "c" (env: wasm.Exec_Env, cb, user: i32, delay_ms: f64) -> u64 {
-	context = ctx()
-	return timer_start(page_of(env), cb, user, delay_ms, true)
-}
-n_Timers_clear :: proc "c" (env: wasm.Exec_Env, timer: u64) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	t, ok := base.pool_remove(&p.timers, H(timer))
-	if !ok { return i32(dom.Error.Invalid_Handle) }
-	host.clear_timer(p.loop, t.handle)
-	return 0
-}
-n_Timers_now :: proc "c" (env: wasm.Exec_Env) -> f64 {
-	context = ctx()
-	return f64(host.now_ns(page_of(env).loop)) / 1e6
-}
-
-timers_symbols := [?]wasm.Native_Symbol{
-	{"Timers_setTimeout", rawptr(n_Timers_setTimeout), "(iiF)I", nil},
-	{"Timers_setInterval", rawptr(n_Timers_setInterval), "(iiF)I", nil},
-	{"Timers_clear", rawptr(n_Timers_clear), "(I)i", nil},
-	{"Timers_now", rawptr(n_Timers_now), "()F", nil},
-}
-
-////////////////////////////////
-// net
-
-@(private)
-fetch_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
-	f := (^Fetch)(user)
-	p := f.page
-	switch ev.kind {
-	case .Headers:
-		f.state = 1
-		f.status = ev.status
-		f.headers = strings.clone(ev.headers)
-		f.final_url = strings.clone(ev.final_url)
-	case .Data:
-		append(&f.body, ..ev.data)
-	case .Done:
-		f.state = 2
-		f.request = base.NIL_HANDLE
-		if len(ev.data) > 0 && len(f.body) == 0 { append(&f.body, ..ev.data) }
-	case .Failed:
-		f.state = 3
-		f.request = base.NIL_HANDLE
-		f.error = strings.clone(net.error_text(ev.error, ev.secure_flags))
-	}
-	if p.inst == nil || p.inst.dead { return }
-	// the guest learns about it through its callback: (user: i32, fetch: i64, state: i32)
-	h := f.self
-	argv := [4]u32{f.user, u32(u64(h)), u32(u64(h) >> 32), u32(f.state)}
-	if res := wasm.call_indirect(p.inst, f.callback, argv[:]); res != .Ok { log(p, .Error, p.inst.last_error) }
-}
-
-n_Fetch_start :: proc "c" (env: wasm.Exec_Env, url: [^]u8, ul: i32, method: [^]u8, ml: i32, headers: [^]u8, hl: i32, body: [^]u8, bl: i32, callback, user: i32) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	h, f := base.pool_insert(&p.fetches, Fetch{page = p, callback = u32(callback), user = u32(user)})
-	f.self = h
-	f.request = net.fetch(p.client, {
-		url = str(url, ul), method = str(method, ml), headers = str(headers, hl), body = body[:max(bl, 0)],
-		on_event = fetch_event, user = f, collect = false, scope = p.scope,
-	})
-	return u64(h)
-}
-
-@(private)
-get_fetch :: proc "contextless" (env: wasm.Exec_Env, h: u64) -> ^Fetch {
-	context = ctx()
-	return base.pool_get(&page_of(env).fetches, H(h))
-}
-
-n_Fetch_state :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	if f := get_fetch(env, h); f != nil { return f.state }
-	return -1
-}
-n_Fetch_status :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	if f := get_fetch(env, h); f != nil { return i32(f.status) }
-	return -1
-}
-n_Fetch_headers :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	if f := get_fetch(env, h); f != nil { return out_string(f.headers, buf, cap) }
-	return -1
-}
-n_Fetch_url :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	if f := get_fetch(env, h); f != nil { return out_string(f.final_url, buf, cap) }
-	return -1
-}
-n_Fetch_error :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	if f := get_fetch(env, h); f != nil { return out_string(f.error, buf, cap) }
-	return -1
-}
-n_Fetch_bodyLength :: proc "c" (env: wasm.Exec_Env, h: u64) -> u64 {
-	if f := get_fetch(env, h); f != nil { return u64(len(f.body)) }
-	return 0
-}
-// Copies up to `cap` bytes starting at `offset`; returns the number copied.
-n_Fetch_readBody :: proc "c" (env: wasm.Exec_Env, h: u64, offset: u64, buf: [^]u8, cap: i32) -> i32 {
-	f := get_fetch(env, h)
-	if f == nil || offset >= u64(len(f.body)) { return 0 }
-	n := min(int(max(cap, 0)), len(f.body) - int(offset))
-	copy(buf[:n], f.body[offset:][:n])
-	return i32(n)
-}
-n_Fetch_release :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	f, ok := base.pool_remove(&p.fetches, H(h))
-	if !ok { return i32(dom.Error.Invalid_Handle) }
-	if f.request != base.NIL_HANDLE { net.cancel(p.client, f.request) }
-	delete(f.headers); delete(f.final_url); delete(f.error); delete(f.body)
-	return 0
-}
-
-net_symbols := [?]wasm.Native_Symbol{
-	{"Fetch_start", rawptr(n_Fetch_start), "(*~*~*~*~ii)I", nil},
-	{"Fetch_state", rawptr(n_Fetch_state), "(I)i", nil},
-	{"Fetch_status", rawptr(n_Fetch_status), "(I)i", nil},
-	{"Fetch_headers", rawptr(n_Fetch_headers), "(I*~)i", nil},
-	{"Fetch_url", rawptr(n_Fetch_url), "(I*~)i", nil},
-	{"Fetch_error", rawptr(n_Fetch_error), "(I*~)i", nil},
-	{"Fetch_bodyLength", rawptr(n_Fetch_bodyLength), "(I)I", nil},
-	{"Fetch_readBody", rawptr(n_Fetch_readBody), "(II*~)i", nil},
-	{"Fetch_release", rawptr(n_Fetch_release), "(I)i", nil},
-}
-
 ////////////////////////////////
 // console
 
@@ -462,8 +307,8 @@ register_imports :: proc() -> bool {
 	ok &&= wasm.register("events", events_symbols[:])
 	ok &&= wasm.register("timers", timers_symbols[:])
 	ok &&= wasm.register("net", net_symbols[:])
+	ok &&= wasm.register("document", document_symbols[:])
 	ok &&= wasm.register("console", console_symbols[:])
 	return ok
 }
 
-_ :: fmt

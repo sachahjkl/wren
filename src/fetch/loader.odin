@@ -6,6 +6,7 @@ import "core:os"
 import "core:strings"
 import "wb:base"
 import "wb:cookies"
+import "wb:csp"
 import "wb:host"
 import "wb:http"
 import "wb:net"
@@ -54,6 +55,7 @@ Task :: struct {
 	no_referrer:     bool,
 	user_activation: bool,
 	initiator:       ^Environment,
+	nonce:           string,
 	origin:          url.Origin,    // the request origin; becomes opaque once a cross-origin redirect tainted it
 	max_body:        int,
 	early_error:     Error_Kind,    // a validation failure found at start, reported from the loop
@@ -96,6 +98,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 	}
 	t.headers = http.headers_make()
 	t.raw_headers = http.headers_make()
+	t.nonce = strings.clone(r.nonce)
 	t.method = http.normalize_method(r.method == "" ? "GET" : r.method)
 
 	u, ok := url.parse_absolute(r.url)
@@ -166,6 +169,7 @@ release :: proc(l: ^Loader, h: base.Handle) -> bool {
 	http.headers_destroy(&t.headers)
 	http.headers_destroy(&t.raw_headers)
 	delete(t.method)
+	delete(t.nonce)
 	delete(t.body)
 	delete(t.collected)
 	if t.scope != nil { base.run_cleanup(t.scope, t.cleanup) }
@@ -199,6 +203,7 @@ run_hop :: proc(t: ^Task) {
 		s := url.site_of(o, context.temp_allocator)
 		if !url.same_site(s, t.initiator.top_level_site) { t.cross_site_seen = true }
 	}
+	if !content_security_check(t) { return }
 	switch t.target.scheme {
 	case "http", "https": http_hop(t)
 	case "data":          data_hop(t)
@@ -795,4 +800,46 @@ file_done :: proc(data: rawptr) {
 	}
 	path, _ := file_path_from_url(t.target, context.temp_allocator)
 	synthetic(t, 200, mime_for_extension(path), j.data)
+}
+
+////////////////////////////////
+// Content Security Policy
+
+@(private)
+csp_kind :: proc(d: Destination) -> (csp.Directive_Kind, bool) {
+	switch d {
+	case .Empty, .Report: return .Connect_Src, true
+	case .Script:         return .Script_Src_Elem, true
+	case .Style:          return .Style_Src_Elem, true
+	case .Image:          return .Img_Src, true
+	case .Font:           return .Font_Src, true
+	case .Audio, .Video:  return .Media_Src, true
+	case .Manifest:       return .Manifest_Src, true
+	case .Document:       return {}, false   // navigations are not governed by the initiator's policy here
+	}
+	return {}, false
+}
+
+// upgrade-insecure-requests, then the policy check. False when the task was failed.
+@(private)
+content_security_check :: proc(t: ^Task) -> bool {
+	env := t.initiator
+	if env == nil || len(env.policies.policies) == 0 || t.target.href == "about:blank" { return true }
+
+	if t.target.scheme == "http" && !url.is_potentially_trustworthy(t.target) && csp.has_directive(&env.policies, "upgrade-insecure-requests") {
+		if up, ok := upgrade_to_https(t.target); ok { url.destroy(&t.target); t.target = up }
+	}
+	if csp.has_directive(&env.policies, "block-all-mixed-content") && t.target.scheme == "http" && !url.is_potentially_trustworthy(t.target) && t.destination != .Document {
+		fail(t, .Blocked_Mixed_Content, "blocked by block-all-mixed-content"); return false
+	}
+	kind, applies := csp_kind(t.destination)
+	if !applies { return true }
+	v := csp.check_request(&env.policies, kind, t.target, env.origin, t.redirected, t.nonce)
+	for viol in v.violations { if env.on_violation != nil { env.on_violation(env.violation_user, viol) } }
+	if !v.allowed {
+		name := len(v.violations) > 0 ? v.violations[0].directive : "?"
+		fail(t, .Blocked_Csp, fmt.tprintf("blocked by Content-Security-Policy (%s)", name))
+		return false
+	}
+	return true
 }

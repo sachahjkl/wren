@@ -34,6 +34,7 @@ Instance :: struct {
 	scope:     ^base.Scope,
 	cleanup:   base.Cleanup_Id,
 	user:      rawptr,   // owner context (the document), see `owner`
+	index:     u32,      // position among the instances of that owner (a document may run several modules)
 	budget:    i32,
 	over_budget: int,    // calls stopped by the budget or an exception
 	last_error: string,
