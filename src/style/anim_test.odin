@@ -436,6 +436,20 @@ counters_survive_partial_restyles :: proc(t: ^testing.T) {
 	testing.expect_value(t, node(&f, "b").before.content.items[0].text, "2: ")
 	_, ok = restyle_state(f.eng, f.doc, f.st, State{hover = dom.find_by_id(f.doc, "x")})
 	testing.expect(t, ok, "hiding something that uses no counter stays partial")
+
+	g := open(`<style>
+		nav > ul > li > ul { display: none } nav > ul > li:hover > ul { display: block }
+		nav > ol > li > ol { display: none } nav > ol > li:hover > ol { display: block }
+	</style><nav><ul><li id=m>menu<ul><li>a</li><li>b</li></ul></li></ul>
+	<ol><li id=n>numbered<ol><li id=n1>x</li><li id=n2>y</li></ol></li></ol></nav>`)
+	defer close(&g)
+	_, ok = restyle_state(g.eng, g.doc, g.st, State{hover = dom.find_by_id(g.doc, "m")})
+	testing.expect(t, ok, "a bulleted drop-down menu opens with a partial restyle")
+	_, ok = restyle_state(g.eng, g.doc, g.st, State{hover = dom.find_by_id(g.doc, "n")})
+	testing.expect(t, !ok, "a numbered one needs its numbers: full pass")
+	restyled := compute_styles(g.eng, g.doc, State{hover = dom.find_by_id(g.doc, "n")})
+	defer styled_destroy(restyled)
+	testing.expect_value(t, style_of(restyled, dom.find_by_id(g.doc, "n2")).marker_text, "2. ")
 }
 
 @(test)

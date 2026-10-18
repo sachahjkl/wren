@@ -557,17 +557,60 @@ box_feeds_counters :: proc(c: ^Computed) -> bool {
 }
 
 // Something at or under `h` changes or reads counters (the descendants as styled by the previous pass).
+// Whether showing or hiding the subtree of `h` changes counter values or quote depths seen elsewhere, or shows values
+// that the partial restyle cannot compute. Counters the root resets are contained (their scope is the root's subtree,
+// plus its following siblings, which are checked directly); a list whose items only show bullets is the common case
+// that stays partial (a drop-down menu).
 @(private)
 subtree_feeds_counters :: proc(s: ^Styled, doc: ^dom.Document, h: base.Handle, old, c: ^Computed) -> bool {
-	if box_feeds_counters(old) || box_feeds_counters(c) { return true }
+	contained := make(map[string]bool, context.temp_allocator)
+	for op in c.counter_reset { contained[op.name] = true }
+	for op in old.counter_reset { contained[op.name] = true }
+	escapes :: proc(x: ^Computed, contained: map[string]bool, root: bool) -> bool {
+		if displays_counters(x) { return true }
+		for op in x.counter_increment { if op.name not_in contained { return true } }
+		for op in x.counter_set { if op.name not_in contained { return true } }
+		if !root { for op in x.counter_reset { if op.name not_in contained { return true } } }
+		if x.display == .List_Item && "list-item" not_in contained { return true }
+		for pc in ([2]^Computed{x.before, x.after}) {
+			if pc == nil { continue }
+			if len(pc.counter_reset) + len(pc.counter_increment) + len(pc.counter_set) > 0 { return true }
+		}
+		return false
+	}
+	if escapes(old, contained, true) || escapes(c, contained, true) { return true }
 	stack := make([dynamic]base.Handle, context.temp_allocator)
 	for ch := dom.get(doc, h).first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
 	for len(stack) > 0 {
 		x := pop(&stack)
 		n := dom.get(doc, x)
 		if n == nil || n.kind != .Element { continue }
-		if cs := base_style_of(s, x); cs != nil && box_feeds_counters(cs) { return true }
+		if cs := base_style_of(s, x); cs != nil && escapes(cs, contained, false) { return true }
 		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
 	}
+	// the root's resets reach its following siblings: one that uses such a counter without its own reset sees the change
+	if len(contained) > 0 {
+		for sib := dom.get(doc, h).next; sib != base.NIL_HANDLE; sib = dom.get(doc, sib).next {
+			sn := dom.get(doc, sib)
+			if sn == nil || sn.kind != .Element { continue }
+			cs := base_style_of(s, sib)
+			if cs == nil { continue }
+			resets := make(map[string]bool, context.temp_allocator)
+			for op in cs.counter_reset { resets[op.name] = true }
+			for name in contained {
+				if name in resets { continue }
+				if mentions(cs.counter_increment, name) || mentions(cs.counter_set, name) || (name == "list-item" && cs.display == .List_Item) { return true }
+			}
+		}
+	}
+	return false
+}
+
+// The box shows a counter value or a quote (a numbered marker, counter() / quotes in its content or pseudo-elements).
+@(private)
+displays_counters :: proc(c: ^Computed) -> bool {
+	if c.display == .List_Item && marker_needs_counter(c.list_style) { return true }
+	if content_needs_state(c.content.parts) { return true }
+	for pc in ([2]^Computed{c.before, c.after}) { if pc != nil && content_needs_state(pc.content.parts) { return true } }
 	return false
 }

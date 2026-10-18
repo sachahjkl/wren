@@ -65,6 +65,8 @@ Parse_Options :: struct {
 }
 
 stylesheet_destroy :: proc(s: ^Stylesheet) {
+	for e in s.errors { delete(e) }
+	delete(s.errors)
 	virtual.arena_destroy(&s.arena)
 	s^ = {}
 }
@@ -82,7 +84,7 @@ Parser :: struct {
 
 @(private)
 perr :: proc(p: ^Parser, msg: string) {
-	if len(p.errors^) < 100 { append(p.errors, strings.clone(msg)) }
+	if len(p.errors^) < 100 { append(p.errors, strings.clone(msg, p.errors.allocator)) }
 }
 
 // Parses `source` as a stylesheet (CSS Syntax §5, "parse a stylesheet").
