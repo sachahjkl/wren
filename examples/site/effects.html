@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CSS effects</title>
+<style>
+  body { margin: 16px; font-family: sans-serif; font-size: 14px; color: #1d2433; background: #f4f6fb; }
+  h1 { font-size: 22px; margin: 0 0 10px; }
+  h2 { font-size: 16px; margin: 18px 0 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+  .cap { font-size: 12px; color: #4c566a; margin-top: 4px; text-align: center; }
+
+  /* filters: the same card, one function each */
+  .card { width: 150px; height: 96px; border-radius: 12px; background: url(images/effects-photo.png) center / cover;
+          border: 3px solid #1d2433; color: #fff; font-weight: bold; padding: 6px; box-sizing: border-box; }
+  .f-blur { filter: blur(4px); }
+  .f-bright { filter: brightness(1.5); }
+  .f-contrast { filter: contrast(2); }
+  .f-gray { filter: grayscale(1); }
+  .f-hue { filter: hue-rotate(120deg); }
+  .f-invert { filter: invert(1); }
+  .f-opacity { filter: opacity(0.4); }
+  .f-sat { filter: saturate(3); }
+  .f-sepia { filter: sepia(1); }
+  .f-chain { filter: sepia(0.8) hue-rotate(180deg) contrast(1.3) drop-shadow(4px 6px 4px rgba(0, 0, 0, 0.6)); }
+  /* drop-shadow follows the alpha shape (a rounded badge and its text), unlike box-shadow */
+  .badge { width: 150px; height: 96px; display: flex; align-items: center; justify-content: center; }
+  .badge span { background: #ff6b6b; color: #fff; font-size: 22px; font-weight: bold; padding: 8px 16px; border-radius: 30px; }
+  .badge .ring { width: 40px; height: 40px; border: 8px solid #339af0; border-radius: 50%; margin-left: 10px; }
+  .f-drop { filter: drop-shadow(6px 8px 5px rgba(20, 20, 60, 0.55)); }
+  @keyframes focus { 0%, 100% { filter: blur(0px) saturate(1); } 50% { filter: blur(6px) saturate(2.5); } }
+  .f-anim { animation: focus 2.4s ease-in-out infinite; }
+
+  /* glassmorphism: backdrop-filter over a busy background */
+  .stage { position: relative; width: 760px; height: 230px; border-radius: 16px; overflow: hidden;
+           background: linear-gradient(120deg, #ff8787, #ffd43b 40%, #69db7c 70%, #4dabf7); }
+  .blob { position: absolute; border-radius: 50%; }
+  .b1 { left: 40px; top: 30px; width: 140px; height: 140px; background: #7048e8; }
+  .b2 { left: 300px; top: 110px; width: 180px; height: 180px; background: #e64980; }
+  .b3 { left: 560px; top: -30px; width: 160px; height: 160px; background: #1098ad; }
+  .stage img { position: absolute; left: 470px; top: 120px; width: 160px; }
+  .stripes { position: absolute; left: 0; top: 0; width: 760px; }
+  .stripes div { height: 6px; margin-bottom: 14px; background: rgba(0, 0, 0, 0.35); }
+  .glass { position: absolute; top: 30px; width: 200px; height: 160px; border-radius: 18px; padding: 12px; box-sizing: border-box;
+           background: rgba(255, 255, 255, 0.22); border: 1px solid rgba(255, 255, 255, 0.6); color: #102; font-weight: bold;
+           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); }
+  .g1 { left: 30px; backdrop-filter: blur(10px); }
+  .g2 { left: 270px; backdrop-filter: blur(14px) saturate(1.8); transform: rotate(-6deg); }
+  .g3 { left: 520px; backdrop-filter: grayscale(1) brightness(1.1); border-radius: 50px 8px; }
+
+  /* blend modes: a colored layer over the same picture */
+  .blend { position: relative; width: 110px; height: 80px; background: url(images/effects-photo.png) center / cover; border-radius: 8px; }
+  .blend div { position: absolute; left: 10px; top: 10px; width: 90px; height: 60px; border-radius: 8px;
+               background: linear-gradient(to right, #ff922b, #5c7cfa); }
+  .m-multiply div { mix-blend-mode: multiply; }
+  .m-screen div { mix-blend-mode: screen; }
+  .m-overlay div { mix-blend-mode: overlay; }
+  .m-darken div { mix-blend-mode: darken; }
+  .m-lighten div { mix-blend-mode: lighten; }
+  .m-dodge div { mix-blend-mode: color-dodge; }
+  .m-burn div { mix-blend-mode: color-burn; }
+  .m-hard div { mix-blend-mode: hard-light; }
+  .m-soft div { mix-blend-mode: soft-light; }
+  .m-diff div { mix-blend-mode: difference; }
+  .m-excl div { mix-blend-mode: exclusion; }
+  .m-hue div { mix-blend-mode: hue; }
+  .m-sat div { mix-blend-mode: saturation; }
+  .m-color div { mix-blend-mode: color; }
+  .m-lum div { mix-blend-mode: luminosity; }
+  .m-plus div { mix-blend-mode: plus-lighter; }
+  /* knockout title: difference over stripes; in an isolated group only the group's own content shows through */
+  .title { position: relative; width: 360px; height: 70px; background: linear-gradient(90deg, #212529 50%, #f8f9fa 50%); }
+  .title .grp { position: absolute; left: 0; top: 0; width: 360px; height: 70px; }
+  .title b { position: absolute; left: 20px; top: 12px; font-size: 36px; color: #fff; mix-blend-mode: difference; }
+  .iso { isolation: isolate; }
+
+  /* clip-path: shapes, reference boxes, an iris animation and a hover transition */
+  .shape { width: 130px; height: 100px; background: url(images/effects-photo.png) center / cover; border: 6px solid #f59f00; padding: 8px; }
+  .c-inset { clip-path: inset(10px 20px 15px 10px round 18px 4px); }
+  .c-circle { clip-path: circle(45px at 50% 50%); }
+  .c-ellipse { clip-path: ellipse(closest-side farthest-side at 40% 50%); }
+  .c-poly { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+  .c-star-nz { clip-path: polygon(nonzero, 50% 2%, 79% 95%, 2% 37%, 98% 37%, 21% 95%); }
+  .c-star-eo { clip-path: polygon(evenodd, 50% 2%, 79% 95%, 2% 37%, 98% 37%, 21% 95%); }
+  .c-padding { clip-path: padding-box; border-radius: 30px; }
+  .c-content { clip-path: content-box; }
+  @keyframes iris { 0%, 100% { clip-path: circle(12% at 50% 50%); } 50% { clip-path: circle(72% at 50% 50%); } }
+  .c-iris { animation: iris 3s ease-in-out infinite; }
+  .c-hover { clip-path: inset(30% 30% round 12px); transition: clip-path 0.6s ease; }
+  .c-hover:hover { clip-path: inset(0% 0% round 0px); }
+  .c-rot { clip-path: circle(48px); transform: rotate(20deg); }
+  .hit { display: block; width: 130px; height: 100px; background: #2f9e44; color: #fff; clip-path: circle(40px); text-align: center; line-height: 100px; }
+  .hit:hover { background: #e03131; }
+  .both { filter: drop-shadow(0 0 6px #000) blur(1px); clip-path: circle(46px); }
+
+  /* shadows blurred with a true gaussian */
+  .glow { font-size: 34px; font-weight: bold; color: #fff; background: #1d2433; padding: 14px 22px; border-radius: 12px;
+          text-shadow: 0 0 12px #4dabf7, 0 0 3px #a5d8ff; }
+  .lift { font-size: 34px; font-weight: bold; color: #e8590c; padding: 14px 10px; text-shadow: 3px 6px 8px rgba(0, 0, 0, 0.45); }
+  .well { width: 150px; height: 80px; background: #e9ecef; border: 2px solid #adb5bd; padding: 8px; font-size: 12px;
+          box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.5); }
+  .well.ring { box-shadow: inset 0 0 0 6px #7950f2, inset 0 0 18px 6px rgba(121, 80, 242, 0.5); }
+  .well.round { border-radius: 30px; box-shadow: inset 8px 8px 16px rgba(0, 0, 0, 0.4), inset -8px -8px 16px rgba(255, 255, 255, 0.9); }
+</style>
+</head>
+<body>
+<h1>CSS effects</h1>
+
+<h2>filter</h2>
+<div class="row">
+  <div><div class="card">none</div><div class="cap">none</div></div>
+  <div><div class="card f-blur">blur(4px)</div><div class="cap">blur(4px)</div></div>
+  <div><div class="card f-bright">bright</div><div class="cap">brightness(1.5)</div></div>
+  <div><div class="card f-contrast">contrast</div><div class="cap">contrast(2)</div></div>
+  <div><div class="card f-gray">gray</div><div class="cap">grayscale(1)</div></div>
+  <div><div class="card f-hue">hue</div><div class="cap">hue-rotate(120deg)</div></div>
+  <div><div class="card f-invert">invert</div><div class="cap">invert(1)</div></div>
+  <div><div class="card f-opacity">opacity</div><div class="cap">opacity(0.4)</div></div>
+  <div><div class="card f-sat">saturate</div><div class="cap">saturate(3)</div></div>
+  <div><div class="card f-sepia">sepia</div><div class="cap">sepia(1)</div></div>
+  <div><div class="card f-chain">chain</div><div class="cap">sepia hue contrast drop-shadow</div></div>
+  <div><div class="badge f-drop"><span>Wren</span><div class="ring"></div></div><div class="cap">drop-shadow (alpha shape)</div></div>
+  <div><div class="card f-anim">animated</div><div class="cap">blur 0..6px animated</div></div>
+</div>
+
+<h2>backdrop-filter</h2>
+<div class="stage">
+  <div class="stripes"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <img src="images/effects-photo.png" alt="">
+  <div class="glass g1">blur(10px)<br>frosted glass</div>
+  <div class="glass g2">blur(14px) saturate(1.8)<br>rotated -6deg</div>
+  <div class="glass g3">grayscale(1)</div>
+</div>
+
+<h2>mix-blend-mode</h2>
+<div class="row">
+  <div><div class="blend"></div><div class="cap">normal</div></div>
+  <div><div class="blend m-multiply"><div></div></div><div class="cap">multiply</div></div>
+  <div><div class="blend m-screen"><div></div></div><div class="cap">screen</div></div>
+  <div><div class="blend m-overlay"><div></div></div><div class="cap">overlay</div></div>
+  <div><div class="blend m-darken"><div></div></div><div class="cap">darken</div></div>
+  <div><div class="blend m-lighten"><div></div></div><div class="cap">lighten</div></div>
+  <div><div class="blend m-dodge"><div></div></div><div class="cap">color-dodge</div></div>
+  <div><div class="blend m-burn"><div></div></div><div class="cap">color-burn</div></div>
+  <div><div class="blend m-hard"><div></div></div><div class="cap">hard-light</div></div>
+  <div><div class="blend m-soft"><div></div></div><div class="cap">soft-light</div></div>
+  <div><div class="blend m-diff"><div></div></div><div class="cap">difference</div></div>
+  <div><div class="blend m-excl"><div></div></div><div class="cap">exclusion</div></div>
+  <div><div class="blend m-hue"><div></div></div><div class="cap">hue</div></div>
+  <div><div class="blend m-sat"><div></div></div><div class="cap">saturation</div></div>
+  <div><div class="blend m-color"><div></div></div><div class="cap">color</div></div>
+  <div><div class="blend m-lum"><div></div></div><div class="cap">luminosity</div></div>
+  <div><div class="blend m-plus"><div></div></div><div class="cap">plus-lighter</div></div>
+</div>
+<div class="row" style="margin-top: 10px">
+  <div><div class="title"><div class="grp"><b>DIFFERENCE</b></div></div><div class="cap">difference with the two-tone background</div></div>
+  <div><div class="title"><div class="grp iso"><b>DIFFERENCE</b></div></div><div class="cap">inside isolation: isolate (nothing to blend with)</div></div>
+</div>
+
+<h2>clip-path</h2>
+<div class="row">
+  <div><div class="shape c-inset"></div><div class="cap">inset(... round)</div></div>
+  <div><div class="shape c-circle"></div><div class="cap">circle(45px)</div></div>
+  <div><div class="shape c-ellipse"></div><div class="cap">ellipse(closest/farthest)</div></div>
+  <div><div class="shape c-poly"></div><div class="cap">polygon (star)</div></div>
+  <div><div class="shape c-star-nz"></div><div class="cap">nonzero</div></div>
+  <div><div class="shape c-star-eo"></div><div class="cap">evenodd</div></div>
+  <div><div class="shape c-padding"></div><div class="cap">padding-box</div></div>
+  <div><div class="shape c-content"></div><div class="cap">content-box</div></div>
+  <div><div class="shape c-iris"></div><div class="cap">animated circle()</div></div>
+  <div><div class="shape c-hover"></div><div class="cap">hover: transition</div></div>
+  <div><div class="shape c-rot"></div><div class="cap">circle + rotate(20deg)</div></div>
+  <div><a class="hit" href="#clicked">click</a><div class="cap">hit test follows the circle</div></div>
+  <div><div class="shape both"></div><div class="cap">filter then clip-path</div></div>
+</div>
+
+<h2>shadows</h2>
+<div class="row">
+  <div class="glow">Glowing text</div>
+  <div class="lift">Soft drop</div>
+  <div class="well">inset 0 4px 12px</div>
+  <div class="well ring">inset 0 0 0 6px + spread</div>
+  <div class="well round">inset, rounded</div>
+</div>
+</body>
+</html>

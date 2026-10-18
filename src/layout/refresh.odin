@@ -120,6 +120,7 @@ refresh_rest :: proc(l: ^Layout, input: Input, t0: time.Tick) -> bool {
 		it.deco_color = l.boxes[it.deco_box].cs.text_decoration_color
 	}
 	for &g in l.groups { g.alpha = max(l.boxes[g.box].cs.opacity, 0) }
+	groups_reach(l)
 	transforms := false   // some transform moved: the scrollable overflow follows
 	for &sp in l.spaces {
 		if sp.kind != .Transform { continue }

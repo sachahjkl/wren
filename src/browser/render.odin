@@ -43,6 +43,7 @@ page_render_init :: proc(app: ^App) {
 	page_fonts_init(&page_render.fonts, &app.fonts, app.ui_font)
 	page_render.settings = lay.settings_from_prefs(&app.prefs)
 	page_render.gradients = make(map[string]^Gradient)
+	effects_init(app)
 	page_render.watch_layout = config.watch(&app.prefs, "layout.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		page_render.settings = lay.settings_from_prefs(p)
 		for t in (^App)(user).tabs { t.layout.valid = false }
@@ -106,192 +107,6 @@ dr :: #force_inline proc(r: lay.Rect) -> draw.Rect { return draw.Rect{r.min, r.m
 ////////////////////////////////
 // Painting
 
-////////////////////////////////
-// Effects an item is drawn under: the transform of its space, the clips around it (each one pushed under the transform
-// of its own space, so a clip inside a rotated box rotates with it and keeps its rounded corners), its opacity group.
-// Consecutive items mostly share them; only what differs from the previous item is popped and pushed.
-
-@(private = "file")
-Effects :: struct {
-	l:        ^Layout,
-	v:        ^lay.View,
-	dc:       ^draw.Context,
-	origin:   draw.Vec2,
-	xform:    i32,              // Transform space whose matrix is pushed (lay.NONE: none)
-	clip:     i32,              // innermost clip of `chain` (-2: not set yet)
-	chain:    [dynamic]i32,     // clips pushed, outermost first
-	group:    i32,              // innermost opacity group of `open` (-2: not set yet)
-	open:     [dynamic]Open_Group,
-	groups:   []Group_Paint,    // per opacity group, for this frame
-}
-
-@(private = "file")
-effects_make :: proc(l: ^Layout, v: ^lay.View, dc: ^draw.Context, origin: draw.Vec2) -> Effects {
-	e := Effects{l = l, v = v, dc = dc, origin = origin, xform = lay.NONE, clip = -2, group = -2,
-		chain = make([dynamic]i32, 0, 8, context.temp_allocator), open = make([dynamic]Open_Group, 0, 4, context.temp_allocator)}
-	e.groups = plan_groups(&e)
-	return e
-}
-
-// The matrix of a Transform space as draw wants it: page coordinates are drawn offset by the page area's origin.
-@(private = "file")
-space_affine :: proc(e: ^Effects, s: i32) -> draw.Affine {
-	m := lay.mat_shifted(e.v.mats[s], e.origin)
-	return draw.Affine{m[0], m[1], m[2], m[3], m[4], m[5]}
-}
-
-@(private = "file")
-set_xform :: proc(e: ^Effects, xf: i32) {
-	if xf == e.xform { return }
-	if e.xform != lay.NONE { draw.pop_transform(e.dc) }
-	e.xform = xf
-	if xf != lay.NONE { draw.push_transform(e.dc, space_affine(e, xf)) }
-}
-
-@(private = "file")
-set_clip :: proc(e: ^Effects, ci: i32) {
-	if ci == e.clip { return }
-	want := make([dynamic]i32, 0, 8, context.temp_allocator)
-	for c := ci; c != lay.NONE; c = e.l.clips[c].parent { append(&want, c) }
-	for i, j := 0, len(want) - 1; i < j; i, j = i + 1, j - 1 { want[i], want[j] = want[j], want[i] }
-	keep := 0
-	for keep < len(want) && keep < len(e.chain) && want[keep] == e.chain[keep] { keep += 1 }
-	for len(e.chain) > keep { draw.pop_clip(e.dc); pop(&e.chain) }
-	for c in want[keep:] {
-		cl := &e.l.clips[c]
-		set_xform(e, e.l.spaces[cl.space].xform)
-		r := draw.rect_shift(dr(cl.rect), e.v.offsets[cl.space] + e.origin)
-		if cl.radii == {} { draw.push_clip(e.dc, r) } else { draw.push_clip_rounded(e.dc, r, cl.radii) }
-		append(&e.chain, c)
-	}
-	e.clip = ci
-}
-
-// Puts the draw context in the state `it` is drawn in. false: nothing of it can show (empty clip, flattened space).
-@(private = "file")
-effects_for :: proc(e: ^Effects, it: ^lay.Display_Item) -> bool {
-	if it.clip >= 0 && lay.rect_empty(e.v.clips[it.clip]) { return false }
-	xf := e.l.spaces[it.space].xform
-	if xf != lay.NONE && e.v.singular[it.space] { return false }
-	if it.group != e.group {
-		// layers are opened with nothing else pushed: their bounds are in screen space and must not be cut by the
-		// clip of whichever item comes first
-		set_clip(e, lay.NONE)
-		set_xform(e, lay.NONE)
-		set_group(e, it.group)
-	}
-	set_clip(e, it.clip)
-	set_xform(e, xf)
-	return true
-}
-
-@(private = "file")
-effects_end :: proc(e: ^Effects) {
-	for len(e.chain) > 0 { draw.pop_clip(e.dc); pop(&e.chain) }
-	set_xform(e, lay.NONE)
-	set_group(e, lay.NONE)
-}
-
-////////////////////////////////
-// Opacity groups (CSS Color §opacity: the element and its content are painted, then blended as one). A group is
-// painted into an offscreen layer (draw.push_layer) when it holds more than one thing that could overlap; a group
-// whose content is a single primitive (or a single nested group) is simply faded, which is exact and free. The items
-// of a group are contiguous in paint order (a group is a stacking context), so a group is opened at its first item
-// and closed after its last one.
-
-@(private = "file")
-Open_Group :: struct { g: i32, layer: bool }
-
-@(private = "file")
-Group_Paint :: struct {
-	bounds: lay.Rect,   // screen pixels: what its visible items may touch (their clips applied)
-	units:  int,        // things that may overlap inside: primitives, nested groups
-	seen:   bool,
-}
-
-// Screen bounds of what an item may paint: its rect with what spills out of it (shadows, outlines, glyph overhang).
-@(private = "file")
-item_ink :: proc(e: ^Effects, it: ^lay.Display_Item) -> lay.Rect {
-	s := e.l.scale
-	pad: f32 = 1
-	if cs := it.cs; cs != nil {
-		#partial switch it.kind {
-		case .Box, .Inline_Box:
-			for sh in cs.box_shadow { if !sh.inset { pad = max(pad, (max(abs(sh.x), abs(sh.y)) + sh.blur + max(sh.spread, 0)) * s + 1) } }
-		case .Outline:
-			pad = max(pad, (cs.outline_width + max(cs.outline_offset, 0)) * s + 2)
-		case .Text, .Marker:
-			pad = max(pad, 4 * s)
-			for sh in cs.text_shadow { pad = max(pad, (max(abs(sh.x), abs(sh.y)) + sh.blur) * s + 4 * s) }
-		}
-	}
-	r := lay.rect_shift(lay.Rect{it.rect.min - pad, it.rect.max + pad}, e.v.offsets[it.space] + e.origin)
-	if !lay.space_plain(e.l, it.space) { r = lay.mat_bounds(lay.mat_shifted(e.v.mats[it.space], e.origin), r) }
-	if it.clip >= 0 { r = lay.rect_intersect(r, lay.rect_shift(e.v.clips[it.clip], e.origin)) }
-	return r
-}
-
-// How many primitives an item draws that could overlap each other.
-@(private = "file")
-item_units :: proc(it: ^lay.Display_Item) -> int {
-	cs := it.cs
-	if cs == nil { return 1 }
-	#partial switch it.kind {
-	case .Box, .Inline_Box:
-		n := 1
-		if len(cs.box_shadow) > 0 { n += 1 }
-		for s in style.Side { if cs.border_width[s] > 0 { n += 1; break } }
-		return n
-	case .Text: return len(cs.text_shadow) > 0 || it.deco != {} ? 2 : 1
-	case .Control, .Replaced: return 2
-	}
-	return 1
-}
-
-@(private = "file")
-plan_groups :: proc(e: ^Effects) -> []Group_Paint {
-	gp := make([]Group_Paint, len(e.l.groups), context.temp_allocator)
-	if len(gp) == 0 { return gp }
-	for idx in e.v.visible {
-		it := &e.l.items[idx]
-		if it.group < 0 { continue }
-		ink := item_ink(e, it)
-		g := it.group
-		gp[g].units += item_units(it)
-		for cur := g; cur != lay.NONE; cur = e.l.groups[cur].parent {
-			p := &gp[cur]
-			p.bounds = p.seen ? lay.rect_union(p.bounds, ink) : ink
-			first := !p.seen
-			p.seen = true
-			if parent := e.l.groups[cur].parent; parent != lay.NONE && first { gp[parent].units += 1 }
-		}
-	}
-	return gp
-}
-
-@(private = "file")
-set_group :: proc(e: ^Effects, g: i32) {
-	if g == e.group { return }
-	// the chain of groups `g` is in, outermost first
-	want := make([dynamic]i32, 0, 8, context.temp_allocator)
-	for c := g; c != lay.NONE; c = e.l.groups[c].parent { append(&want, c) }
-	for i, j := 0, len(want) - 1; i < j; i, j = i + 1, j - 1 { want[i], want[j] = want[j], want[i] }
-	keep := 0
-	for keep < len(want) && keep < len(e.open) && want[keep] == e.open[keep].g { keep += 1 }
-	for len(e.open) > keep {
-		og := pop(&e.open)
-		if og.layer { draw.pop_layer(e.dc) } else { draw.pop_alpha(e.dc) }
-	}
-	for c in want[keep:] {
-		alpha := e.l.groups[c].alpha
-		gp := &e.groups[c]
-		layer := page_render.settings.opacity_layers && gp.units > 1 && alpha < 1 && !lay.rect_empty(gp.bounds)
-		if layer { draw.push_layer(e.dc, draw.Rect{gp.bounds.min, gp.bounds.max}, alpha) } else { draw.push_alpha(e.dc, alpha) }
-		append(&e.open, Open_Group{c, layer})
-	}
-	e.group = g
-}
-
 paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: draw.Vec2, scroll: f32, clip: draw.Rect) {
 	if !l.valid { return }
 	v := lay.view_make(l, size, scroll)
@@ -354,6 +169,8 @@ paint_shadows :: proc(dc: ^draw.Context, cs: ^style.Computed, r: draw.Rect, radi
 			} else {
 				draw.rect_corners(dc, sr, {col, col, col, col}, radii + spread, 0)
 			}
+		} else if effects_settings.exact_shadows {
+			paint_inset_shadow(dc, col, r, radii, off, spread, blur)
 		} else {
 			// inside the padding edge: a soft ring (approximation of the inner shadow's falloff)
 			w := max(spread + blur * 0.5, 1)
@@ -380,7 +197,7 @@ paint_box :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.
 	}
 	if len(cs.box_shadow) > 0 {
 		pr := draw.Rect{r.min + {b.border[3], b.border[0]}, r.max - {b.border[1], b.border[2]}}
-		paint_shadows(dc, cs, pr, radii, l.scale, true)
+		paint_shadows(dc, cs, pr, padding_radii(radii, b.border), l.scale, true)
 	}
 	widths := [4]f32{b.border[0], b.border[1], b.border[2], b.border[3]}
 	if widths != {} { paint_borders(dc, r, widths, cs.border_style, cs.border_color, radii) }
@@ -607,8 +424,17 @@ paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw
 		s := cs.text_shadow[i]
 		if s.color.a <= 0 { continue }
 		col := to_draw(s.color)
+		pos := draw.Vec2{r.min.x + s.x * l.scale, baseline + s.y * l.scale}
+		if s.blur > 0 && effects_settings.exact_shadows {
+			// a gaussian of half the blur radius (CSS Backgrounds §7.2), through a layer
+			ink := draw.rect_pad(draw.rect_shift(r, {s.x, s.y} * l.scale), fi.size * 0.5)
+			draw.push_effects(dc, ink, draw.Layer_Effects{alpha = 1, filters = {draw.filter_blur(s.blur * 0.5 * l.scale)}})
+			draw_run(l, dc, fid, fi.size, pos, col, it.text, ls, ws, it.extra)
+			draw.pop_layer(dc)
+			continue
+		}
 		if s.blur > 0 { col.a *= 0.6 }
-		draw_run(l, dc, fid, fi.size, {r.min.x + s.x * l.scale, baseline + s.y * l.scale}, col, it.text, ls, ws, it.extra)
+		draw_run(l, dc, fid, fi.size, pos, col, it.text, ls, ws, it.extra)
 	}
 	col := to_draw(cs.color)
 	draw_run(l, dc, fid, fi.size, {r.min.x, baseline}, col, it.text, ls, ws, it.extra)

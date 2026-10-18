@@ -12,8 +12,8 @@ import "core:sync"
 //
 // A paint-only property can still change the structure of the box tree at a threshold: transform none <-> some value
 // (stacking context, containing block of fixed descendants), opacity 1 <-> below 1 (stacking context), filter none <->
-// some (stacking context, containing block). `structure_sig` summarizes those thresholds; a change of it is a layout
-// change.
+// some (stacking context, containing block), backdrop-filter and clip-path none <-> some (stacking context, effect
+// group). `structure_sig` summarizes those thresholds; a change of it is a layout change.
 
 Prop_Tier :: enum u8 {
 	Layout,   // box tree, sizes or positions may change
@@ -92,6 +92,8 @@ structure_sig :: proc(c: ^Computed) -> u8 {
 	if has_transform(c) { sig |= 1 }
 	if c.opacity < 1 { sig |= 2 }
 	if len(c.filter) > 0 { sig |= 4 }
+	if len(c.backdrop_filter) > 0 { sig |= 8 }
+	if c.clip_path != nil { sig |= 16 }
 	return sig
 }
 
