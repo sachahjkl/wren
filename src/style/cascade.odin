@@ -68,6 +68,18 @@ Styled :: struct {
 	canvas:         css.Color,   // the color painted behind the whole page (root or body background, else the preference)
 	state:          State,       // the dynamic state these styles were computed for (target_id owned by `alloc`)
 	base_used:      uint,        // arena use right after the full pass: what partial restyles add on top is waste
+	// animations (timeline.odin): a node whose `by_node` entry is an animated copy maps here to its cascaded style
+	overlaid:       map[base.Handle]^Computed,
+	track_changes:  bool,                  // record in `changes` what partial restyles change
+	changes:        [dynamic]Style_Change,
+	counters_used:  bool,                  // counters or quotes appear: partial restyles must keep their values right
+}
+
+// A computed style replaced by a partial restyle: `old` is what was in effect (animated values included), `new` the
+// newly cascaded style.
+Style_Change :: struct {
+	node:     base.Handle,
+	old, new: ^Computed,
 }
 
 @(private) styled_serial: u64
@@ -75,8 +87,23 @@ Styled :: struct {
 styled_destroy :: proc(s: ^Styled) {
 	if s == nil { return }
 	delete(s.by_node)
+	delete(s.overlaid)
+	delete(s.changes)
 	virtual.arena_destroy(&s.arena)
 	free(s)
+}
+
+// The cascaded style of `h`, without the effect of running animations and transitions.
+base_style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
+	if s == nil { return nil }
+	if len(s.overlaid) > 0 { if b, ok := s.overlaid[h]; ok { return b } }
+	return style_of(s, h)
+}
+
+// Gives every style a new serial: layout notices that something changed.
+styled_touch :: proc(s: ^Styled) {
+	styled_serial += 1
+	s.serial = styled_serial
 }
 
 style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
@@ -221,6 +248,8 @@ Pass :: struct {
 	lists:    [3][dynamic]Entry,   // matched entries: the element, ::before, ::after
 	compare:  bool,            // partial restyle: keep the old computed style when nothing changed
 	changed:  bool,            // ... and report whether some element really changed
+	counters: ^Counter_State,  // full pass: counters and quotes, resolved in tree order
+	unscoped: bool,            // partial restyle: a change reaches counters, the caller must do a full pass
 }
 
 @(private)
@@ -293,7 +322,7 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 @(private)
 is_color_prop :: proc(pr: Prop) -> bool {
 	#partial switch pr {
-	case .Color, .Background_Color, .Background_Image, .Text_Decoration_Color, .Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color, .Outline_Color, .Box_Shadow, .Text_Shadow:
+	case .Color, .Background_Color, .Background_Image, .Text_Decoration_Color, .Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color, .Outline_Color, .Box_Shadow, .Text_Shadow, .Caret_Color, .Accent_Color:
 		return true
 	}
 	return false
@@ -312,9 +341,11 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	c := new(Computed, a)
 	c^ = s.initial^
 	c.node = h
+	c.inherits = {}
 	if parent != nil {
-		for pr in INHERITED { copy_prop(c, parent, pr) }
+		for pr in inherited_list { copy_prop(c, parent, pr) }
 		c.custom = parent.custom
+		c.inherits = inherited_set
 	}
 	cx := Cx{settings = &e.settings, parent = parent, initial = s.initial, c = c, alloc = a}
 	cx.cenv = css.Color_Env{dark = e.env.prefers_dark, system = system_color, user = &e.settings}
@@ -364,11 +395,14 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 			if !found { apply_unset(&cx, pr); continue }
 		}
 		switch css_wide_keyword(vals) {
-		case "inherit": copy_prop(c, parent != nil ? parent : s.initial, pr); cx.explicit += {pr}
-		case "initial": copy_prop(c, s.initial, pr)
+		case "inherit":
+			copy_prop(c, parent != nil ? parent : s.initial, pr)
+			ps_add(&cx.explicit, pr)
+			if parent != nil { ps_add(&c.inherits, pr) }
+		case "initial": copy_prop(c, s.initial, pr); ps_remove(&c.inherits, pr)
 		case "unset", "revert", "revert-layer": apply_unset(&cx, pr)
 		case:
-			if !apply_prop(&cx, pr, vals) { apply_unset(&cx, pr) }
+			if apply_prop(&cx, pr, vals) { ps_remove(&c.inherits, pr) } else { apply_unset(&cx, pr) }
 		}
 		if pr == .Font_Size {
 			cx.lc.font_size = f64(c.font_size)
@@ -385,8 +419,9 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 // `unset`: inherit when the property is inherited, otherwise its initial value.
 @(private)
 apply_unset :: proc(cx: ^Cx, pr: Prop) {
-	if pr in INHERITED && cx.parent != nil { copy_prop(cx.c, cx.parent, pr); return }
+	if is_inherited(pr) && cx.parent != nil { copy_prop(cx.c, cx.parent, pr); ps_add(&cx.c.inherits, pr); return }
 	copy_prop(cx.c, cx.initial, pr)
+	ps_remove(&cx.c.inherits, pr)
 }
 
 @(private)
@@ -402,6 +437,18 @@ blockify :: proc(d: Display) -> Display {
 	return d
 }
 
+// Fields computed from others: the legacy `white_space` from white-space-collapse and text-wrap-mode. (Preserved
+// breaks without wrapping has no legacy value: Pre_Line, and text_wrap_mode says nowrap.)
+derive_fields :: proc(c: ^Computed) {
+	wrap := c.text_wrap_mode == .Wrap
+	switch c.white_space_collapse {
+	case .Collapse, .Discard: c.white_space = wrap ? .Normal : .Nowrap
+	case .Preserve, .Preserve_Spaces: c.white_space = wrap ? .Pre_Wrap : .Pre
+	case .Preserve_Breaks: c.white_space = .Pre_Line
+	case .Break_Spaces: c.white_space = .Break_Spaces
+	}
+}
+
 @(private)
 finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	c := cx.c
@@ -411,10 +458,11 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	if c.outline_style == .None || c.outline_style == .Hidden { c.outline_width = 0 }
 	for side in Side {
 		pr := Prop(int(Prop.Border_Top_Color) + int(side))
-		if pr not_in cx.explicit { c.border_color[side] = c.color }
+		if !ps_has(cx.explicit, pr) { c.border_color[side] = c.color }
 	}
-	if .Outline_Color not_in cx.explicit { c.outline_color = c.color }
-	if .Text_Decoration_Color not_in cx.explicit { c.text_decoration_color = c.color }
+	if !ps_has(cx.explicit, .Outline_Color) { c.outline_color = c.color }
+	if !ps_has(cx.explicit, .Text_Decoration_Color) { c.text_decoration_color = c.color }
+	derive_fields(c)
 	if c.position == .Absolute || c.position == .Fixed || c.float != .None { c.display = blockify(c.display) }
 	if (c.overflow_x == .Visible) != (c.overflow_y == .Visible) {
 		if c.overflow_x == .Visible { c.overflow_x = .Auto } else { c.overflow_y = .Auto }
@@ -476,26 +524,58 @@ pass_destroy :: proc(p: ^Pass) {
 style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors: Bloom, descend := true) {
 	doc := p.mc.doc
 	s := p.s
-	Frame :: struct { h: base.Handle, parent: ^Computed, bloom: Bloom }
+	// `exit` frames close an element after its subtree (counter scopes and ::after are resolved there)
+	Frame :: struct { h: base.Handle, parent: ^Computed, bloom: Bloom, hidden: bool, exit: bool, c: ^Computed }
 	stack := make([dynamic]Frame, context.temp_allocator)
-	append(&stack, Frame{root, parent, ancestors})
+	append(&stack, Frame{h = root, parent = parent, bloom = ancestors, hidden = parent != nil && hidden_above(p, root)})
 	for len(stack) > 0 {
 		f := pop(&stack)
+		if f.exit {
+			if p.counters != nil { counters_exit(p.counters, doc, f.h, f.c, f.hidden, s.alloc) }
+			continue
+		}
 		n := dom.get(doc, f.h)
 		if n == nil || n.kind != .Element { continue }
 		c := compute_element(p, f.h, n, f.parent, &f.bloom)
+		hidden := f.hidden || c.display == .None
 		idx := int(base.handle_index(f.h))
 		for len(s.by_node) <= idx { append(&s.by_node, nil) }
 		if p.compare {
-			if old := s.by_node[idx]; old != nil && old.node == f.h && computed_equal(old, c) { c = old } else { p.changed = true }
+			old := s.by_node[idx]
+			if old != nil && old.node != f.h { old = nil }
+			old_base := old
+			if old != nil && len(s.overlaid) > 0 { if b, ok := s.overlaid[f.h]; ok { old_base = b } }
+			if !counters_carry_over(s, doc, f.h, old_base, c, s.alloc) { p.unscoped = true }
+			if old_base != nil && computed_equal(old_base, c) {
+				c = old_base
+			} else {
+				p.changed = true
+				if s.track_changes { append(&s.changes, Style_Change{node = f.h, old = old, new = c}) }
+				delete_key(&s.overlaid, f.h)   // the animation layer is rebuilt on top of the new style
+				s.by_node[idx] = c
+			}
+		} else {
+			s.by_node[idx] = c
+			if p.counters != nil { counters_enter(p.counters, doc, f.h, n, c, hidden, s.alloc) } else { resolve_static(doc, f.h, c, s.alloc) }
 		}
-		s.by_node[idx] = c
 		if f.parent == nil && s.root_font_size == 0 { s.root_font_size = c.font_size }
 		if !descend && f.h == root { break }
+		if p.counters != nil { append(&stack, Frame{h = f.h, hidden = hidden, exit = true, c = c}) }
 		child_bloom := f.bloom
 		bloom_add_element(&child_bloom, n)
-		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, Frame{ch, c, child_bloom}) }
+		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev {
+			append(&stack, Frame{h = ch, parent = c, bloom = child_bloom, hidden = hidden})
+		}
 	}
+}
+
+// Some ancestor of `h` has display: none (its subtree generates no boxes).
+@(private)
+hidden_above :: proc(p: ^Pass, h: base.Handle) -> bool {
+	for anc := parent_element(&p.mc, h); anc != base.NIL_HANDLE; anc = parent_element(&p.mc, anc) {
+		if cs := base_style_of(p.s, anc); cs != nil && cs.display == .None { return true }
+	}
+	return false
 }
 
 // Computes the style of every element of the document.
@@ -519,10 +599,13 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled 
 
 	p := pass_make(e, s, doc, state)
 	defer pass_destroy(p)
+	counters := counter_state_make()
+	p.counters = &counters
 	root := dom.get(doc, doc.root)
 	for c := root.first_child; c != base.NIL_HANDLE; c = dom.get(doc, c).next {
 		style_subtree(p, c, nil, Bloom{})
 	}
+	s.counters_used = counters.used
 	s.base_used = s.arena.total_used
 	update_canvas(s, doc)
 	return s
@@ -638,23 +721,26 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 		parent_style: ^Computed
 		bloom: Bloom
 		if par != base.NIL_HANDLE {
-			parent_style = style_of(s, par)
+			parent_style = base_style_of(s, par)
 			for anc := par; anc != base.NIL_HANDLE; anc = parent_element(&p.mc, anc) { bloom_add_element(&bloom, dom.get(doc, anc)) }
 		}
-		old_style := style_of(s, r)
+		old_style := base_style_of(s, r)
 		if deep {
 			style_subtree(p, r, parent_style, bloom)
+			if p.unscoped { return false, false }
 			continue
 		}
 		style_subtree(p, r, parent_style, bloom, descend = false)
+		if p.unscoped { return false, false }
 		// the element's own change may reach its descendants through inheritance
-		new_style := style_of(s, r)
+		new_style := base_style_of(s, r)
 		if old_style != nil && new_style != nil && !inherited_equal(old_style, new_style) {
 			n := dom.get(doc, r)
 			child_bloom := bloom
 			bloom_add_element(&child_bloom, n)
 			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next {
 				style_subtree(p, ch, new_style, child_bloom)
+				if p.unscoped { return false, false }
 			}
 		}
 	}
@@ -669,13 +755,6 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 
 ////////////////////////////////
 // Comparing computed styles
-
-@(private)
-shadows_equal :: proc(a, b: []Shadow) -> bool {
-	if len(a) != len(b) { return false }
-	for i in 0 ..< len(a) { if a[i] != b[i] { return false } }
-	return true
-}
 
 @(private)
 strings_equal :: proc(a, b: []string) -> bool {
@@ -695,47 +774,23 @@ custom_equal :: proc(a, b: ^Custom_Props) -> bool {
 
 @(private)
 inherited_equal :: proc(a, b: ^Computed) -> bool {
-	return a.color == b.color && strings_equal(a.font_family, b.font_family) && a.font_size == b.font_size &&
-		a.font_weight == b.font_weight && a.font_style == b.font_style && a.line_height == b.line_height &&
-		a.letter_spacing == b.letter_spacing && a.word_spacing == b.word_spacing && a.text_align == b.text_align &&
-		a.text_transform == b.text_transform && a.text_indent == b.text_indent && a.white_space == b.white_space &&
-		a.word_break == b.word_break && a.overflow_wrap == b.overflow_wrap && a.tab_size == b.tab_size &&
-		a.direction == b.direction && shadows_equal(a.text_shadow, b.text_shadow) && a.visibility == b.visibility &&
-		a.list_style_type == b.list_style_type && a.list_style_position == b.list_style_position && a.cursor == b.cursor &&
-		a.pointer_events == b.pointer_events && a.border_collapse == b.border_collapse && a.border_spacing == b.border_spacing &&
-		custom_equal(a.custom, b.custom)
+	for pr in inherited_list { if !prop_equal(a, b, pr) { return false } }
+	return custom_equal(a.custom, b.custom)
 }
 
-// Value equality. Conservative: a `false` may be spurious (calc trees are compared by pointer), never a `true`.
-// The pointer-carrying fields are compared by value; the rest of the struct as raw memory (padding is zeroed everywhere
-// a Computed is made), so the two structs are masked in place for the memory compare and restored right after.
+// Value equality: every field of the two styles, pointers followed (see deep_equal). Fields without pointers or
+// padding are compared as bytes. Calc trees are compared by structure.
 computed_equal :: proc(a, b: ^Computed) -> bool {
 	if a == b { return true }
 	if a == nil || b == nil { return false }
-	Masked :: struct {
-		font_family: []string, text_shadow, box_shadow: []Shadow, content: Content, background_image: Image,
-		custom: ^Custom_Props, before, after: ^Computed,
+	props_init()
+	for f in computed_fields {
+		pa, pb := rawptr(uintptr(a) + f.offset), rawptr(uintptr(b) + f.offset)
+		if f.plain {
+			if mem.compare_ptrs(pa, pb, f.size) != 0 { return false }
+		} else if !deep_equal(pa, pb, f.ti) {
+			return false
+		}
 	}
-	take :: proc(c: ^Computed) -> Masked {
-		m := Masked{c.font_family, c.text_shadow, c.box_shadow, c.content, c.background_image, c.custom, c.before, c.after}
-		c.font_family, c.text_shadow, c.box_shadow, c.content, c.background_image, c.custom, c.before, c.after = nil, nil, nil, {}, {}, nil, nil, nil
-		return m
-	}
-	put :: proc(c: ^Computed, m: Masked) {
-		c.font_family, c.text_shadow, c.box_shadow, c.content, c.background_image, c.custom, c.before, c.after = m.font_family, m.text_shadow, m.box_shadow, m.content, m.background_image, m.custom, m.before, m.after
-	}
-	ma, mb := take(a), take(b)
-	same := mem.compare_ptrs(a, b, size_of(Computed)) == 0
-	put(a, ma); put(b, mb)
-	if !same { return false }
-	if !strings_equal(ma.font_family, mb.font_family) { return false }
-	if !shadows_equal(ma.text_shadow, mb.text_shadow) || !shadows_equal(ma.box_shadow, mb.box_shadow) { return false }
-	if ma.content.kind != mb.content.kind || len(ma.content.items) != len(mb.content.items) { return false }
-	for i in 0 ..< len(ma.content.items) { if ma.content.items[i] != mb.content.items[i] { return false } }
-	if ma.background_image != mb.background_image { return false }
-	if !custom_equal(ma.custom, mb.custom) { return false }
-	if (ma.before == nil) != (mb.before == nil) || (ma.after == nil) != (mb.after == nil) { return false }
-	if ma.before != nil && !computed_equal(ma.before, mb.before) { return false }
-	if ma.after != nil && !computed_equal(ma.after, mb.after) { return false }
 	return true
 }

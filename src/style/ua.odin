@@ -51,6 +51,7 @@ h5 { font-size: 0.83em; margin-block: 1.67em; font-weight: bold; }
 h6 { font-size: 0.67em; margin-block: 2.33em; font-weight: bold; }
 dd { margin-left: 40px; }
 ul, ol, menu, dir { margin-block: 1em; padding-left: 40px; }
+ol, ul, menu, dir { counter-reset: list-item; }
 ul { list-style-type: disc; }
 ol { list-style-type: decimal; }
 ul ul, ol ul { list-style-type: circle; }
@@ -101,7 +102,8 @@ tr { display: table-row; vertical-align: inherit; }
 td, th { display: table-cell; padding: 1px; vertical-align: inherit; }
 th { font-weight: bold; text-align: center; }
 details > summary { display: block; cursor: default; }
-summary { display: list-item; list-style-type: disclosure-closed; }
+summary { display: list-item; list-style-type: disclosure-closed; counter-increment: list-item 0; }
+details[open] > summary { list-style-type: disclosure-open; }
 :focus-visible { outline: 2px solid #4d90fe; }
 ::marker { color: inherit; }
 `
