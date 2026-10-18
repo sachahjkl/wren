@@ -6,14 +6,16 @@ package browser
 
 import "core:slice"
 import "core:strings"
+import "core:time"
 import "toolkit:draw"
 import "toolkit:font"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
+import "wb:forms"
 import "wb:style"
 
-Item_Kind :: enum u8 { Box, Text }
+Item_Kind :: enum u8 { Box, Text, Control }
 
 Item :: struct {
 	kind:      Item_Kind,
@@ -29,6 +31,8 @@ Item :: struct {
 	radius_bg: f32,
 	border:    [4]f32,        // Box: top, right, bottom, left widths
 	border_color: [4]draw.Color,
+	inset:     [4]f32,        // Control: border + padding (the content box is the rect minus this)
+	bare:      bool,          // Control: drawn entirely by paint_control (checkbox, radio, slider...)
 }
 
 Layout :: struct {
@@ -249,6 +253,12 @@ Run :: struct {
 	bg:        draw.Color,
 	pad_x:     f32,
 	radius:    f32,
+	control:   bool,          // an atomic form control box (temporary hook, see control_run)
+	box_w, box_h: f32,
+	margin_l:  f32,
+	look:      Look,
+	bare:      bool,
+	inset:     [4]f32,
 }
 
 // Lays out one block-level node (or the Document): its box, then its children, grouping inline children into flows.
@@ -396,6 +406,10 @@ collect_runs :: proc(c: ^Layout_Ctx, first: base.Handle, parent: Look, cw: f32, 
 				lk := look_of(c, f.h, f.lk, cw)
 				if lk.hidden { continue }
 				if n.name == "br" { append(out, Run{br = true, size = f.lk.size, line_h = lk.line_h, node = f.h}); continue }
+				if forms.kind_of(n) == .Input || forms.kind_of(n) == .Select || forms.kind_of(n) == .Textarea || forms.kind_of(n) == .Button {
+					if r, ok := control_run(c, f.h, n, lk); ok { append(out, r) }
+					continue
+				}
 				cs := style.style_of(c.styled, f.h)
 				if cs != nil && cs.after != nil { append(&stack, Frame{h = f.h, lk = lk, after = cs.after}) }
 				for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(c.d, ch).prev {
@@ -443,6 +457,7 @@ flow :: proc(c: ^Layout_Ctx, runs: []Run, x, w: f32, y: ^f32, lk: Look, single_l
 			it := &c.l.items[i]
 			it.rect.min.y = y^
 			it.rect.max.y = y^ + line_h
+			if it.kind == .Control { it.rect.min.y = y^ + (line_h - it.size) * 0.5; it.rect.max.y = it.rect.min.y + it.size }
 			it.rect.min.x += shift
 			it.rect.max.x += shift
 		}
@@ -450,6 +465,22 @@ flow :: proc(c: ^Layout_Ctx, runs: []Run, x, w: f32, y: ^f32, lk: Look, single_l
 	}
 
 	for r in runs {
+		if r.control {
+			space := (pending_space && !line_empty) ? measure_width(c.measure, c.fonts, c.font_id, r.size, " ") : 0
+			if !line_empty && !single_line && line_x + space + r.box_w > w {
+				finish_line(c, line_start, y, line_h, line_x, w, lk.align)
+				line_start = len(c.l.items)
+				line_x, line_h, line_empty, space = 0, 0, true, 0
+			}
+			line_h = max(line_h, r.box_h)
+			bx := x + line_x + space + r.margin_l
+			bw := r.box_w - r.margin_l - r.look.margin[1]
+			append(&c.l.items, Item{kind = .Control, rect = {{bx, 0}, {bx + bw, 0}}, node = r.node, color = r.look.bg, radius = r.look.radius,
+				border = r.look.border, border_color = r.look.border_color, size = r.box_h, inset = r.inset, bare = r.bare})
+			line_x += space + r.box_w
+			line_empty, pending_space = false, false
+			continue
+		}
 		if r.br {
 			finish_line(c, line_start, y, max(line_h, r.line_h), line_x, w, lk.align)   // an empty line still takes height
 			line_start = len(c.l.items)
@@ -532,6 +563,46 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, fonts: ^font.State, font_id: font.F
 			if it.bg.a > 0 { draw.rect(dc, draw.rect_pad(r, 0), it.bg, it.radius_bg) }
 			draw.text(dc, font_id, it.size, {r.min.x + it.pad_x, baseline}, it.color, it.text)
 			if it.underline { draw.rect(dc, {{r.min.x, baseline + 2}, {r.max.x, baseline + 3}}, it.color) }
+		case .Control:
+			if !it.bare {
+				if it.color.a > 0 { draw.rect(dc, r, it.color, it.radius) }
+				bt, br, bb, bl := it.border[0], it.border[1], it.border[2], it.border[3]
+				if bt > 0 { draw.rect(dc, {r.min, {r.max.x, r.min.y + bt}}, it.border_color[0]) }
+				if bb > 0 { draw.rect(dc, {{r.min.x, r.max.y - bb}, r.max}, it.border_color[2]) }
+				if bl > 0 { draw.rect(dc, {{r.min.x, r.min.y + bt}, {r.min.x + bl, r.max.y - bb}}, it.border_color[3]) }
+				if br > 0 { draw.rect(dc, {{r.max.x - br, r.min.y + bt}, {r.max.x, r.max.y - bb}}, it.border_color[1]) }
+			}
+			content := draw.Rect{{r.min.x + it.inset[3], r.min.y + it.inset[0]}, {r.max.x - it.inset[1], r.max.y - it.inset[2]}}
+			control_paint_hook(dc, fonts, font_id, it.node, content)
 		}
 	}
+}
+////////////////////////////////
+// TEMPORARY HOOK (forms): form controls as atomic inline boxes painted by paint_control (forms_shell.odin), until the
+// new painter has its own "control" display item. Uses the current tab's page.
+
+@(private)
+control_run :: proc(c: ^Layout_Ctx, h: base.Handle, n: ^dom.Node, lk: Look) -> (Run, bool) {
+	t := current_tab(the_app)
+	if t == nil || t.page == nil { return {}, false }
+	if forms.kind_of(n) == .Input && forms.input_type_of(n) == .Hidden { return {}, false }
+	cs := style.style_of(c.styled, h)
+	if cs == nil { return {}, false }
+	bare := false
+	if forms.kind_of(n) == .Input {
+		#partial switch forms.input_type_of(n) { case .Checkbox, .Radio, .Range: bare = true }
+	}
+	intr := control_intrinsic_size(the_app, t.page, h, cs) * c.scale
+	ins: [4]f32
+	if !bare { for i in 0 ..< 4 { ins[i] = lk.border[i] + lk.padding[i] } }
+	w := lk.width >= 0 ? (lk.border_box ? lk.width : lk.width + ins[1] + ins[3]) : intr.x + ins[1] + ins[3]
+	hh := lk.height >= 0 ? (lk.border_box ? lk.height : lk.height + ins[0] + ins[2]) : intr.y + ins[0] + ins[2]
+	return Run{control = true, node = h, size = lk.size, line_h = hh, box_w = w + lk.margin[1] + lk.margin[3], box_h = hh, margin_l = lk.margin[3], look = lk, bare = bare, inset = ins}, true
+}
+
+@(private)
+control_paint_hook :: proc(dc: ^draw.Context, fonts: ^font.State, font_id: font.Font_Id, node: base.Handle, content: draw.Rect) {
+	t := current_tab(the_app)
+	if t == nil || t.page == nil || t.page.styled == nil { return }
+	paint_control(dc, fonts, font_id, node, content, style.style_of(t.page.styled, node), t.page, time.tick_now())
 }
