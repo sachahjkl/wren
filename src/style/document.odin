@@ -1,0 +1,90 @@
+package style
+
+import "core:strings"
+import "wb:base"
+import "wb:dom"
+
+Linked_Sheet :: struct {
+	owner: base.Handle,   // the <link> element
+	href:  string,        // as written; the caller resolves it against the document URL and fetches it
+	media: string,
+}
+
+@(private)
+is_css_type :: proc(n: ^dom.Node) -> bool {
+	t, ok := attr(n, "type")
+	if !ok { return true }
+	t = strings.trim_space(t)
+	return t == "" || strings.equal_fold(t, "text/css")
+}
+
+@(private)
+has_token :: proc(list, token: string) -> bool {
+	rest := list
+	for len(rest) > 0 {
+		for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
+		end := 0
+		for end < len(rest) && !is_space(rest[end]) { end += 1 }
+		if end > 0 && strings.equal_fold(rest[:end], token) { return true }
+		rest = rest[end:]
+	}
+	return false
+}
+
+// Brings the engine's document sheets in line with the document, cheaply enough to call after every mutation:
+//   * a <style> element keeps its sheet while its text and media stay the same, gets a new one when they change, and loses
+//     it when the element goes away or stops being a stylesheet;
+//   * a <link rel="stylesheet"> keeps its (separately loaded) sheet while the element exists; the sheet is dropped with it.
+// Returns every <link rel="stylesheet"> currently in the document, for the caller to load and register with
+// `engine_add_sheet(..., from_link = true)`.
+sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, allocator := context.temp_allocator) -> []Linked_Sheet {
+	links := make([dynamic]Linked_Sheet, allocator)
+	Style_El :: struct { owner: base.Handle, text, media: string }
+	styles := make([dynamic]Style_El, context.temp_allocator)
+	stack := make([dynamic]base.Handle, context.temp_allocator)
+	append(&stack, doc.root)
+	for len(stack) > 0 {
+		h := pop(&stack)
+		n := dom.get(doc, h)
+		if n.kind == .Element {
+			switch n.name {
+			case "style":
+				if _, off := attr(n, "disabled"); !off && is_css_type(n) {
+					media, _ := attr(n, "media")
+					append(&styles, Style_El{h, dom.text_content(doc, h), media})
+				}
+			case "link":
+				rel, _ := attr(n, "rel")
+				href, has_href := attr(n, "href")
+				if has_href && href != "" && has_token(rel, "stylesheet") && !has_token(rel, "alternate") && is_css_type(n) {
+					if _, off := attr(n, "disabled"); !off {
+						media, _ := attr(n, "media")
+						append(&links, Linked_Sheet{h, href, media})
+					}
+				}
+			}
+		}
+		c := n.last_child
+		for c != base.NIL_HANDLE { append(&stack, c); c = dom.get(doc, c).prev }
+	}
+
+	// drop what no longer matches
+	for i := len(e.sheets) - 1; i >= 0; i -= 1 {
+		s := e.sheets[i]
+		if s.origin != .Author { continue }
+		keep := false
+		if s.from_link {
+			for l in links { if l.owner == s.owner { keep = true; break } }
+		} else {
+			for st in styles { if st.owner == s.owner && st.text == s.sheet.source && st.media == s.media_text { keep = true; break } }
+		}
+		if !keep { sheet_free(s); ordered_remove(&e.sheets, i); e.dirty = true }
+	}
+	// add the new <style> sheets
+	for st in styles {
+		have := false
+		for s in e.sheets { if s.origin == .Author && !s.from_link && s.owner == st.owner { have = true; break } }
+		if !have { engine_add_sheet(e, st.text, st.owner, st.media, base_url) }
+	}
+	return links[:]
+}

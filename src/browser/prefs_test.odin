@@ -60,5 +60,5 @@ settings_round_trip_through_the_registry :: proc(t: ^testing.T) {
 
 	bs := settings_from_prefs(&p)
 	defer delete(bs.homepage)
-	testing.expect_value(t, bs.homepage, "about:blank")
+	testing.expect_value(t, bs.homepage, "about:home")
 }

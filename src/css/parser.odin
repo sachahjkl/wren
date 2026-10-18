@@ -160,10 +160,8 @@ skip_block :: proc(p: ^Parser, close: Token_Kind) {
 ////////////////////////////////
 // Rules
 
-@(private)
 is_ws_value :: proc(v: Value) -> bool { return v.kind == .Token && v.tok.kind == .Whitespace }
 
-@(private)
 trim_values :: proc(v: []Value) -> []Value {
 	s, e := 0, len(v)
 	for s < e && is_ws_value(v[s]) { s += 1 }
@@ -329,6 +327,14 @@ parse_declaration :: proc(p: ^Parser, item: []Value) -> (d: Declaration, ok: boo
 	return d, true
 }
 
+// Component values of a piece of text (a substituted var(), a <style> attribute fragment).
+parse_component_values :: proc(source: string, opt: Parse_Options, allocator: Arena_Alloc) -> []Value {
+	errs := make([dynamic]string, context.temp_allocator)
+	toks := tokenize(source, allocator)
+	p := Parser{toks = toks, a = allocator, opt = opt, errors = &errs}
+	return parse_values(&p, .EOF, 0)
+}
+
 // Declarations from a style attribute or any bare declaration list.
 parse_declarations :: proc(source: string, opt: Parse_Options, allocator: Arena_Alloc) -> []Declaration {
 	var_errors := make([dynamic]string, context.temp_allocator)
@@ -459,15 +465,15 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 			r.kind = .Layer_Statement
 			names := make([dynamic]string, p.a)
 			cur := strings.builder_make(p.a)
-			flush :: proc(names: ^[dynamic]string, cur: ^strings.Builder) {
-				if strings.builder_len(cur^) > 0 { append(names, strings.to_string(cur^)); strings.builder_reset(cur) }
+			flush :: proc(names: ^[dynamic]string, cur: ^strings.Builder, a: Arena_Alloc) {
+				if strings.builder_len(cur^) > 0 { append(names, strings.clone(strings.to_string(cur^), a)); strings.builder_reset(cur) }
 			}
 			for v in prelude {
-				if v.kind == .Token && v.tok.kind == .Comma { flush(&names, &cur); continue }
+				if v.kind == .Token && v.tok.kind == .Comma { flush(&names, &cur, p.a); continue }
 				if v.kind == .Token && v.tok.kind == .Ident { strings.write_string(&cur, v.tok.text) }
 				if v.kind == .Token && v.tok.kind == .Delim && v.tok.text == "." { strings.write_byte(&cur, '.') }
 			}
-			flush(&names, &cur)
+			flush(&names, &cur, p.a)
 			r.layer_names = names[:]
 		}
 	case "font-face":

@@ -19,6 +19,7 @@ import "wb:dom"
 import "wb:fetch"
 import "wb:host"
 import "wb:html"
+import "wb:style"
 import "wb:url"
 import "wb:wasm"
 
@@ -73,6 +74,13 @@ Page :: struct {
 	body:      base.Handle,
 	head:      base.Handle,
 	doc_el:    base.Handle,
+	// styling (styles.odin)
+	engine:       ^style.Engine,
+	styled:       ^style.Styled,
+	style_state:  style.State,
+	style_stale:  bool,
+	link_loads:   map[base.Handle]^Style_Load,
+	import_loads: [dynamic]^Style_Load,
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives
@@ -96,6 +104,7 @@ page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings
 	p.doc = dom.document_create(p.scope)
 	p.dp.invoke = invoke_listener
 	p.dp.user = p
+	styles_init(p)
 	blank_document(p)
 	return p
 }
@@ -120,6 +129,7 @@ page_cleanup :: proc(data: rawptr) {
 	it = 0
 	for _, t in base.pool_next(&p.timers, &it) { host.clear_timer(p.loop, t.handle) }
 	base.pool_destroy(&p.timers)
+	styles_destroy(p)
 	dom.dispatcher_destroy(&p.dp)
 	delete(p.instances)
 	fetch.environment_destroy(&p.env)

@@ -191,6 +191,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	target := strings.clone(normalize_address(address), context.temp_allocator)
 	if target == "" { target = strings.clone(app.cfg.homepage, context.temp_allocator) }
 	if target == "about:config" { show_config(app, t); return }
+	if target == HOME_URL { show_home(app, t); return }
 	t.kind = .Web
 	load := new(Doc_Load)
 	load.tab = t
@@ -410,13 +411,17 @@ run_ready_scripts :: proc(load: ^Doc_Load) {
 page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	app := the_app
 	app.page_rect = b.rect
-	draw.rect(dc, b.rect, draw.hex(0xffffffff))
 	t := current_tab(app)
-	if t == nil || t.page == nil || t.kind != .Web { return }
+	if t == nil || t.page == nil || t.kind != .Web {
+		draw.rect(dc, b.rect, draw.hex(0xffffffff))
+		return
+	}
 	scale := ui.scale()
 	size := draw.rect_size(b.rect)
-	if !t.layout.valid || t.layout.mutations != t.page.doc.mutations || t.layout.width != size.x || t.layout.scale != scale {
-		layout_document(&t.layout, t.page.doc, &app.fonts, app.ui_font, size.x, scale)
+	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
+	draw.rect(dc, b.rect, to_draw(styled.canvas))
+	if !t.layout.valid || t.layout.mutations != t.page.doc.mutations || t.layout.serial != styled.serial || t.layout.width != size.x || t.layout.scale != scale {
+		layout_document(&t.layout, t.page.doc, styled, &app.fonts, app.ui_font, size.x, scale)
 	}
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
 	draw.push_clip(dc, b.rect)
@@ -428,6 +433,7 @@ security_label :: proc(t: ^Tab) -> string {
 	if t == nil || t.page == nil { return "" }
 	e := &t.page.env
 	switch {
+	case e.location.scheme == "about": return APP_NAME
 	case e.location.scheme == "file":  return "File"
 	case e.location.scheme == "https": return "Secure"
 	case e.secure_context && (e.location.scheme == "http"): return "Local"
@@ -532,6 +538,12 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
 		#partial switch ev.kind {
+		case .Mouse_Move:
+			hovered := base.NIL_HANDLE
+			if inside && t.layout.valid { hovered = hit_test(&t.layout, ev.pos - app.page_rect.min + {0, t.scroll}) }
+			st := t.page.style_state
+			st.hover = hovered
+			page.set_style_state(t.page, st)
 		case .Scroll:
 			if inside { t.scroll -= ev.delta.y * app.cfg.scroll_step * scale }
 		case .Mouse_Press:
@@ -603,6 +615,7 @@ apply_prefs :: proc(app: ^App) {
 
 	page.settings_destroy(&app.page_settings)
 	app.page_settings = page.settings_from_prefs(&app.prefs)
+	for tab in app.tabs { if tab.page != nil { page.configure_styles(tab.page) } }
 
 	delete(app.cfg.homepage)
 	app.cfg = settings_from_prefs(&app.prefs)
@@ -678,7 +691,7 @@ main :: proc() {
 	app.prefs = config.prefs_make()
 	rest, arg_errors := config.apply_args(&app.prefs, a2[:])
 	cfg_dir := platform.config_dir(context.temp_allocator)
-	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/wasm_browser"}, context.temp_allocator)))
+	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator)))
 	_ = os.make_directory_all(app.profile_dir)
 	_, _, prefs_file := profile_paths(app)
 	config.load_file(&app.prefs, prefs_file, .User)
@@ -688,7 +701,7 @@ main :: proc() {
 	app.cfg = settings_from_prefs(&app.prefs)
 
 	font.init(&app.fonts)
-	app.win = platform.open_window("wasm browser", {1280, 800})
+	app.win = platform.open_window(APP_NAME, {1280, 800})
 	if !render.init(&app.r, app.win.hwnd, app.win.size) { fmt.eprintln("renderer init failed"); return }
 	ok: bool
 	app.ui_font, ok, _ = font.load_system_or_embedded(&app.fonts, platform.system_font_path("segoeui.ttf"), font.FALLBACK_UI_DATA)

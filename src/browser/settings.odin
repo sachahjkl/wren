@@ -22,7 +22,7 @@ Settings :: struct {
 }
 
 PREFS := [?]config.Def{
-	{name = "browser.homepage", kind = .String, default = {s = "about:blank"}, description = "Opened by a new tab and at start-up when no address is given. about:config opens this page."},
+	{name = "browser.homepage", kind = .String, default = {s = "about:home"}, description = "Opened by a new tab and at start-up when no address is given. about:home is the start page, about:config the settings."},
 	{name = "browser.console.max_lines", kind = .Int, default = {i = 500}, bounded = true, min = 10, max = 100_000,
 		description = "Console lines kept per tab."},
 	{name = "browser.profile.autosave_interval_ms", kind = .Int, default = {i = 30_000}, bounded = true, min = 0, max = 3_600_000, unit = "ms",
@@ -41,7 +41,6 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	fetch.register_prefs(p)
 	cookies.register_prefs(p)
 	page.register_prefs(p)
-	style_register_prefs(p)
 	_ = wasm.PREFS
 	_ = html.PREFS
 }

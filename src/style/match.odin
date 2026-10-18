@@ -1,0 +1,472 @@
+package style
+
+import "core:strings"
+import "wb:base"
+import "wb:css"
+import "wb:dom"
+
+// Selector matching (Selectors Level 4) against the DOM, right to left. The input state (hover, focus...) comes from the
+// shell; everything else is read from the tree.
+
+State :: struct {
+	hover, active, focus: base.Handle,
+	target_id:            string,       // the fragment of the document URL, for :target
+}
+
+Sib_Info :: struct { index, index_last, type_index, type_index_last: int }   // 1-based
+
+Match_Ctx :: struct {
+	doc:    ^dom.Document,
+	state:  State,
+	scope:  base.Handle,                 // :scope and a top-level `&` (the root element when nil)
+	sibs:   map[base.Handle]Sib_Info,    // filled one parent at a time, cleared with the style pass
+	filled: map[base.Handle]bool,
+	max_depth: int,
+}
+
+match_ctx_init :: proc(m: ^Match_Ctx, d: ^dom.Document, state: State, allocator := context.allocator) {
+	m.doc, m.state = d, state
+	m.sibs = make(map[base.Handle]Sib_Info, allocator)
+	m.filled = make(map[base.Handle]bool, allocator)
+}
+
+match_ctx_destroy :: proc(m: ^Match_Ctx) {
+	delete(m.sibs)
+	delete(m.filled)
+}
+
+@(private)
+node_of :: #force_inline proc(m: ^Match_Ctx, h: base.Handle) -> ^dom.Node { return dom.get(m.doc, h) }
+
+@(private)
+is_element :: proc(m: ^Match_Ctx, h: base.Handle) -> bool {
+	n := node_of(m, h)
+	return n != nil && n.kind == .Element
+}
+
+@(private)
+parent_element :: proc(m: ^Match_Ctx, h: base.Handle) -> base.Handle {
+	n := node_of(m, h)
+	if n == nil { return base.NIL_HANDLE }
+	p := node_of(m, n.parent)
+	if p == nil || p.kind != .Element { return base.NIL_HANDLE }
+	return n.parent
+}
+
+@(private)
+prev_element :: proc(m: ^Match_Ctx, h: base.Handle) -> base.Handle {
+	n := node_of(m, h)
+	if n == nil { return base.NIL_HANDLE }
+	cur := n.prev
+	for cur != base.NIL_HANDLE {
+		if is_element(m, cur) { return cur }
+		cur = node_of(m, cur).prev
+	}
+	return base.NIL_HANDLE
+}
+
+attr :: proc(n: ^dom.Node, name: string) -> (string, bool) {
+	for a in n.attrs { if a.name == name { return a.value, true } }
+	return "", false
+}
+
+@(private)
+has_class :: proc(n: ^dom.Node, name: string) -> bool {
+	v, ok := attr(n, "class")
+	if !ok { return false }
+	rest := v
+	for len(rest) > 0 {
+		for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
+		end := 0
+		for end < len(rest) && !is_space(rest[end]) { end += 1 }
+		if end > 0 && rest[:end] == name { return true }
+		rest = rest[end:]
+	}
+	return false
+}
+
+@(private)
+is_space :: #force_inline proc(c: u8) -> bool { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' }
+
+@(private)
+value_equals :: proc(a, b: string, ci: bool) -> bool { return ci ? strings.equal_fold(a, b) : a == b }
+
+@(private)
+attr_matches :: proc(n: ^dom.Node, s: css.Simple) -> bool {
+	v, ok := attr(n, s.name)
+	if !ok { return false }
+	if s.op == .Exists { return true }
+	want := s.value
+	switch s.op {
+	case .Exists: return true
+	case .Equals: return value_equals(v, want, s.ci)
+	case .Includes:
+		if want == "" || strings.contains_any(want, " \t\n\r\f") { return false }
+		rest := v
+		for len(rest) > 0 {
+			for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
+			end := 0
+			for end < len(rest) && !is_space(rest[end]) { end += 1 }
+			if end > 0 && value_equals(rest[:end], want, s.ci) { return true }
+			rest = rest[end:]
+		}
+		return false
+	case .Dash_Match: return value_equals(v, want, s.ci) || (len(v) > len(want) && v[len(want)] == '-' && value_equals(v[:len(want)], want, s.ci))
+	case .Prefix: return want != "" && len(v) >= len(want) && value_equals(v[:len(want)], want, s.ci)
+	case .Suffix: return want != "" && len(v) >= len(want) && value_equals(v[len(v) - len(want):], want, s.ci)
+	case .Substring:
+		if want == "" { return false }
+		if s.ci { return strings.contains(strings.to_lower(v, context.temp_allocator), strings.to_lower(want, context.temp_allocator)) }
+		return strings.contains(v, want)
+	}
+	return false
+}
+
+@(private)
+fill_siblings :: proc(m: ^Match_Ctx, parent: base.Handle) {
+	if m.filled[parent] { return }
+	m.filled[parent] = true
+	pn := node_of(m, parent)
+	if pn == nil { return }
+	total := 0
+	types := make(map[string]int, context.temp_allocator)
+	cur := pn.first_child
+	// first pass: indexes from the start
+	for cur != base.NIL_HANDLE {
+		n := node_of(m, cur)
+		if n.kind == .Element {
+			total += 1
+			types[n.name] += 1
+			m.sibs[cur] = Sib_Info{index = total, type_index = types[n.name]}
+		}
+		cur = n.next
+	}
+	// second pass: indexes from the end
+	type_totals := types
+	seen := make(map[string]int, context.temp_allocator)
+	cur = pn.first_child
+	for cur != base.NIL_HANDLE {
+		n := node_of(m, cur)
+		if n.kind == .Element {
+			info := m.sibs[cur]
+			seen[n.name] += 1
+			info.index_last = total - info.index + 1
+			info.type_index_last = type_totals[n.name] - info.type_index + 1
+			m.sibs[cur] = info
+		}
+		cur = n.next
+	}
+}
+
+@(private)
+sibling_info :: proc(m: ^Match_Ctx, h: base.Handle) -> Sib_Info {
+	n := node_of(m, h)
+	fill_siblings(m, n.parent)
+	return m.sibs[h]
+}
+
+@(private)
+nth_hit :: proc(a, b, idx: int) -> bool {
+	if a == 0 { return idx == b }
+	d := idx - b
+	return d % a == 0 && d / a >= 0
+}
+
+@(private)
+FORM_CONTROLS :: [?]string{"input", "button", "select", "textarea", "optgroup", "option", "fieldset"}
+
+@(private)
+is_form_control :: proc(n: ^dom.Node) -> bool {
+	for f in FORM_CONTROLS { if n.name == f { return true } }
+	return false
+}
+
+@(private)
+is_disabled :: proc(m: ^Match_Ctx, h: base.Handle) -> bool {
+	n := node_of(m, h)
+	if !is_form_control(n) { return false }
+	if _, ok := attr(n, "disabled"); ok { return true }
+	if n.name == "option" || n.name == "optgroup" || n.name == "input" || n.name == "button" || n.name == "select" || n.name == "textarea" {
+		for anc := parent_element(m, h); anc != base.NIL_HANDLE; anc = parent_element(m, anc) {
+			an := node_of(m, anc)
+			if an.name == "fieldset" { if _, ok := attr(an, "disabled"); ok { return true } }
+		}
+	}
+	return false
+}
+
+@(private)
+text_input_type :: proc(n: ^dom.Node) -> bool {
+	t, _ := attr(n, "type")
+	switch strings.to_lower(t, context.temp_allocator) {
+	case "", "text", "search", "url", "tel", "email", "password", "number", "date", "datetime-local", "month", "week", "time": return true
+	}
+	return false
+}
+
+@(private)
+is_read_write :: proc(m: ^Match_Ctx, h: base.Handle) -> bool {
+	n := node_of(m, h)
+	if _, ro := attr(n, "readonly"); ro { return false }
+	if is_disabled(m, h) { return false }
+	if n.name == "textarea" { return true }
+	if n.name == "input" { return text_input_type(n) }
+	if ce, ok := attr(n, "contenteditable"); ok { return ce == "" || strings.equal_fold(ce, "true") || strings.equal_fold(ce, "plaintext-only") }
+	return false
+}
+
+@(private)
+lang_of :: proc(m: ^Match_Ctx, h: base.Handle) -> string {
+	for cur := h; cur != base.NIL_HANDLE; cur = parent_element(m, cur) {
+		n := node_of(m, cur)
+		if v, ok := attr(n, "lang"); ok { return v }
+		if v, ok := attr(n, "xml:lang"); ok { return v }
+	}
+	return ""
+}
+
+@(private)
+dir_of :: proc(m: ^Match_Ctx, h: base.Handle) -> string {
+	for cur := h; cur != base.NIL_HANDLE; cur = parent_element(m, cur) {
+		n := node_of(m, cur)
+		if v, ok := attr(n, "dir"); ok {
+			l := strings.to_lower(v, context.temp_allocator)
+			if l == "ltr" || l == "rtl" { return l }
+		}
+	}
+	return "ltr"
+}
+
+@(private)
+is_empty_element :: proc(m: ^Match_Ctx, h: base.Handle) -> bool {
+	cur := node_of(m, h).first_child
+	for cur != base.NIL_HANDLE {
+		n := node_of(m, cur)
+		if n.kind == .Element { return false }
+		if n.kind == .Text && len(n.text) > 0 { return false }
+		cur = n.next
+	}
+	return true
+}
+
+matches_list :: proc(m: ^Match_Ctx, el: base.Handle, list: css.Selector_List) -> bool {
+	for &c in list { if matches_complex(m, el, &c) { return true } }
+	return false
+}
+
+matches_complex :: proc(m: ^Match_Ctx, el: base.Handle, c: ^css.Complex) -> bool {
+	return match_chain(m, el, c, len(c.compounds) - 1, base.NIL_HANDLE, 0)
+}
+
+@(private)
+match_chain :: proc(m: ^Match_Ctx, el: base.Handle, c: ^css.Complex, idx: int, anchor: base.Handle, depth: int) -> bool {
+	if depth > 4096 { return false }   // a hard stop independent of any configured limit
+	if !matches_compound(m, el, c.compounds[idx]) { return false }
+	if idx == 0 {
+		if !c.relative { return true }
+		return relates_to_anchor(m, el, c.leading, anchor)
+	}
+	switch c.combinators[idx - 1] {
+	case .Child:
+		p := parent_element(m, el)
+		return p != base.NIL_HANDLE && match_chain(m, p, c, idx - 1, anchor, depth + 1)
+	case .Descendant:
+		for p := parent_element(m, el); p != base.NIL_HANDLE; p = parent_element(m, p) {
+			if match_chain(m, p, c, idx - 1, anchor, depth + 1) { return true }
+		}
+		return false
+	case .Next_Sibling:
+		p := prev_element(m, el)
+		return p != base.NIL_HANDLE && match_chain(m, p, c, idx - 1, anchor, depth + 1)
+	case .Subsequent_Sibling:
+		for p := prev_element(m, el); p != base.NIL_HANDLE; p = prev_element(m, p) {
+			if match_chain(m, p, c, idx - 1, anchor, depth + 1) { return true }
+		}
+		return false
+	}
+	return false
+}
+
+// How the leftmost compound of a relative selector must stand to the :has() anchor.
+@(private)
+relates_to_anchor :: proc(m: ^Match_Ctx, el: base.Handle, comb: css.Combinator, anchor: base.Handle) -> bool {
+	switch comb {
+	case .Child: return parent_element(m, el) == anchor
+	case .Descendant:
+		for p := parent_element(m, el); p != base.NIL_HANDLE; p = parent_element(m, p) { if p == anchor { return true } }
+		return false
+	case .Next_Sibling: return prev_element(m, el) == anchor
+	case .Subsequent_Sibling:
+		for p := prev_element(m, el); p != base.NIL_HANDLE; p = prev_element(m, p) { if p == anchor { return true } }
+		return false
+	}
+	return false
+}
+
+@(private)
+matches_compound :: proc(m: ^Match_Ctx, el: base.Handle, comp: css.Compound) -> bool {
+	n := node_of(m, el)
+	if n == nil || n.kind != .Element { return false }
+	for s in comp.simples { if !matches_simple(m, el, n, s) { return false } }
+	return true
+}
+
+@(private)
+matches_simple :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simple) -> bool {
+	switch s.kind {
+	case .Type: return n.name == s.name
+	case .Universal: return true
+	case .Id:
+		v, ok := attr(n, "id")
+		return ok && v == s.name
+	case .Class: return has_class(n, s.name)
+	case .Attribute: return attr_matches(n, s)
+	case .Nesting:
+		if s.list == nil { return is_scope(m, el) }
+		return matches_list(m, el, s.list^)
+	case .Pseudo_Class: return matches_pseudo(m, el, n, s)
+	}
+	return false
+}
+
+@(private)
+is_scope :: proc(m: ^Match_Ctx, el: base.Handle) -> bool {
+	if m.scope != base.NIL_HANDLE { return el == m.scope }
+	p := node_of(m, node_of(m, el).parent)
+	return p != nil && p.kind == .Document
+}
+
+@(private)
+matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simple) -> bool {
+	switch s.pseudo {
+	case .None: return false
+	case .Root:
+		p := node_of(m, n.parent)
+		return p != nil && p.kind == .Document
+	case .Scope: return is_scope(m, el)
+	case .Empty: return is_empty_element(m, el)
+	case .First_Child: return sibling_info(m, el).index == 1
+	case .Last_Child: return sibling_info(m, el).index_last == 1
+	case .Only_Child: i := sibling_info(m, el); return i.index == 1 && i.index_last == 1
+	case .First_Of_Type: return sibling_info(m, el).type_index == 1
+	case .Last_Of_Type: return sibling_info(m, el).type_index_last == 1
+	case .Only_Of_Type: i := sibling_info(m, el); return i.type_index == 1 && i.type_index_last == 1
+	case .Nth_Child, .Nth_Last_Child:
+		if s.list != nil { return nth_of_selector(m, el, s) }
+		i := sibling_info(m, el)
+		return nth_hit(s.nth_a, s.nth_b, s.pseudo == .Nth_Child ? i.index : i.index_last)
+	case .Nth_Of_Type: return nth_hit(s.nth_a, s.nth_b, sibling_info(m, el).type_index)
+	case .Nth_Last_Of_Type: return nth_hit(s.nth_a, s.nth_b, sibling_info(m, el).type_index_last)
+	case .Not: return !matches_list(m, el, s.list^)
+	case .Is, .Where: return matches_list(m, el, s.list^)
+	case .Has: return matches_has(m, el, s.list^)
+	case .Hover: return m.state.hover != base.NIL_HANDLE && dom.is_ancestor_or_self(m.doc, el, m.state.hover)
+	case .Active: return m.state.active != base.NIL_HANDLE && dom.is_ancestor_or_self(m.doc, el, m.state.active)
+	case .Focus, .Focus_Visible: return m.state.focus == el
+	case .Focus_Within: return m.state.focus != base.NIL_HANDLE && dom.is_ancestor_or_self(m.doc, el, m.state.focus)
+	case .Link, .Any_Link:
+		if n.name != "a" && n.name != "area" { return false }
+		_, ok := attr(n, "href")
+		return ok
+	case .Visited: return false
+	case .Target:
+		v, ok := attr(n, "id")
+		return ok && m.state.target_id != "" && v == m.state.target_id
+	case .Checked:
+		if n.name == "option" { _, ok := attr(n, "selected"); return ok }
+		if n.name == "input" {
+			t, _ := attr(n, "type")
+			if strings.equal_fold(t, "checkbox") || strings.equal_fold(t, "radio") { _, ok := attr(n, "checked"); return ok }
+		}
+		return false
+	case .Disabled: return is_disabled(m, el)
+	case .Enabled: return is_form_control(n) && !is_disabled(m, el)
+	case .Required:
+		if n.name != "input" && n.name != "select" && n.name != "textarea" { return false }
+		_, ok := attr(n, "required")
+		return ok
+	case .Optional:
+		if n.name != "input" && n.name != "select" && n.name != "textarea" { return false }
+		_, ok := attr(n, "required")
+		return !ok
+	case .Read_Write: return is_read_write(m, el)
+	case .Read_Only: return !is_read_write(m, el)
+	case .Placeholder_Shown:
+		if n.name != "input" && n.name != "textarea" { return false }
+		ph, ok := attr(n, "placeholder")
+		if !ok || ph == "" { return false }
+		if n.name == "input" {
+			if !text_input_type(n) { return false }
+			v, _ := attr(n, "value")
+			return v == ""
+		}
+		return is_empty_element(m, el)
+	case .Lang:
+		l := lang_of(m, el)
+		if l == "" { return false }
+		return strings.equal_fold(l, s.name) || (len(l) > len(s.name) && l[len(s.name)] == '-' && strings.equal_fold(l[:len(s.name)], s.name))
+	case .Dir: return dir_of(m, el) == s.name
+	case .Defined: return true
+	case .Before, .After, .First_Line, .First_Letter, .Selection, .Placeholder, .Marker, .Backdrop: return false
+	}
+	return false
+}
+
+@(private)
+nth_of_selector :: proc(m: ^Match_Ctx, el: base.Handle, s: css.Simple) -> bool {
+	if !matches_list(m, el, s.list^) { return false }
+	pn := node_of(m, node_of(m, el).parent)
+	if pn == nil { return false }
+	// count matching siblings before (or after) el, el included
+	idx := 0
+	forward := s.pseudo == .Nth_Child
+	cur := forward ? pn.first_child : pn.last_child
+	for cur != base.NIL_HANDLE {
+		cn := node_of(m, cur)
+		if cn.kind == .Element && matches_list(m, cur, s.list^) { idx += 1 }
+		if cur == el { break }
+		cur = forward ? cn.next : cn.prev
+	}
+	return nth_hit(s.nth_a, s.nth_b, idx)
+}
+
+@(private)
+matches_has :: proc(m: ^Match_Ctx, anchor: base.Handle, list: css.Selector_List) -> bool {
+	for &c in list {
+		switch c.leading {
+		case .Descendant, .Child:
+			if has_in_subtree(m, anchor, anchor, &c) { return true }
+		case .Next_Sibling, .Subsequent_Sibling:
+			sib := node_of(m, anchor).next
+			for sib != base.NIL_HANDLE {
+				if is_element(m, sib) {
+					if match_chain(m, sib, &c, len(c.compounds) - 1, anchor, 0) { return true }
+					if has_in_subtree(m, anchor, sib, &c) { return true }
+				}
+				sib = node_of(m, sib).next
+			}
+		}
+	}
+	return false
+}
+
+// Tries every descendant of `root` (not root itself) as the subject of the relative selector.
+@(private)
+has_in_subtree :: proc(m: ^Match_Ctx, anchor, root: base.Handle, c: ^css.Complex) -> bool {
+	stack := make([dynamic]base.Handle, context.temp_allocator)
+	append(&stack, root)
+	for len(stack) > 0 {
+		cur := pop(&stack)
+		cn := node_of(m, cur)
+		child := cn.last_child
+		for child != base.NIL_HANDLE {
+			ch := node_of(m, child)
+			if ch.kind == .Element {
+				if match_chain(m, child, c, len(c.compounds) - 1, anchor, 0) { return true }
+				append(&stack, child)
+			}
+			child = ch.prev
+		}
+	}
+	return false
+}

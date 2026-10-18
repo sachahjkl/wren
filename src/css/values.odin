@@ -463,7 +463,7 @@ parse_calc :: proc(f: Value, alloc: Arena_Alloc) -> ^Calc {
 	case "calc", "-webkit-calc", "-moz-calc": return calc_sum(trim_values(f.children), alloc, 0)
 	case "min", "max":
 		args := split_commas(f.children, context.temp_allocator)
-		if len(args) == 0 { return nil }
+		if len(args) == 0 || len(args) > 64 { return nil }
 		acc := calc_sum(trim_values(args[0]), alloc, 0)
 		if acc == nil { return nil }
 		for i in 1 ..< len(args) {

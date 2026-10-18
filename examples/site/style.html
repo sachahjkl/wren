@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Style engine demo</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  :root { --accent: #d9480f; --gap: 12px; }
+  body { max-width: 760px; margin: 24px auto; font-size: 17px; }
+  h1 { color: var(--accent); border-bottom: 3px solid var(--accent); padding-bottom: 6px; }
+  .card { background: #fff4e6; border: 1px solid #ffa94d; border-radius: 8px; padding: var(--gap); margin: var(--gap) 0; }
+  .card > h2 { margin-top: 0; font-size: 1.2em; }
+  .card:hover { background: #ffe8cc; border-color: var(--accent); }
+  .card p:first-of-type { font-weight: bold; }
+  a:hover { color: var(--accent); }
+  li:nth-child(odd) { color: #1864ab; }
+  li:nth-child(even) { color: #2b8a3e; }
+  code { background: #f1f3f5; padding: 0 4px; }
+  .note::before { content: "Note: "; font-weight: bold; color: var(--accent); }
+  @media (max-width: 600px) { body { margin: 8px; font-size: 15px; } }
+  @layer base, overrides;
+  @layer overrides { .layered { color: #862e9c } }
+  @layer base { #strong-id.layered { color: red } }
+  .center { text-align: center; color: #495057; }
+</style>
+</head>
+<body>
+  <h1>Style engine</h1>
+  <p>Hover the cards: <code>:hover</code> is driven by the pointer. Resize the window below 600 px to see <code>@media</code> kick in.</p>
+  <div class="card">
+    <h2>Selectors and the cascade</h2>
+    <p>This first paragraph is bold through <code>p:first-of-type</code>.</p>
+    <p class="note">Generated content comes from <code>::before</code>.</p>
+  </div>
+  <div class="card">
+    <h2>Lists</h2>
+    <ul><li>one (odd)</li><li>two (even)</li><li>three (odd)</li></ul>
+    <ol><li>decimal markers</li><li>count siblings</li></ol>
+  </div>
+  <p id="strong-id" class="layered">Layers: this text is purple because <code>overrides</code> wins over <code>base</code>, id selector or not.</p>
+  <p class="center themed">Centered text from the linked theme.css (rule from an @import below it).</p>
+  <p><a href="/site/">Back to the other demo</a></p>
+</body>
+</html>

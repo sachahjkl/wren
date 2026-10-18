@@ -70,12 +70,35 @@ parse_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List)
 	items := split_commas(vs, a)
 	out := make([dynamic]Complex, a)
 	for item in items {
-		c, good := parse_complex(trim_values(item), a, parent, false)
+		// inside a style rule a selector may start with a combinator, and means `& <selector>` unless it uses & itself
+		c, good := parse_complex(trim_values(item), a, parent, parent != nil)
 		if !good { return nil, false }
+		if parent != nil { c = with_implicit_nesting(c, a, parent) }
 		append(&out, c)
 	}
 	if len(out) == 0 { return nil, false }
 	return out[:], true
+}
+
+@(private)
+with_implicit_nesting :: proc(c: Complex, a: Arena_Alloc, parent: ^Selector_List) -> Complex {
+	for comp in c.compounds {
+		for s in comp.simples { if s.kind == .Nesting { out := c; out.relative = false; return out } }
+	}
+	lst := new(Selector_List, a)
+	lst^ = parent^
+	first := make([]Simple, 1, a)
+	first[0] = Simple{kind = .Nesting, list = lst}
+	compounds := make([]Compound, len(c.compounds) + 1, a)
+	combs := make([]Combinator, len(c.combinators) + 1, a)
+	compounds[0] = Compound{first}
+	combs[0] = c.leading
+	for comp, i in c.compounds { compounds[i + 1] = comp }
+	for cb, i in c.combinators { combs[i + 1] = cb }
+	out := c
+	out.compounds, out.combinators, out.relative, out.leading = compounds, combs, false, .Descendant
+	out.specificity = complex_specificity(out)
+	return out
 }
 
 // Forgiving list (:is, :where): invalid items are dropped, an empty list is valid and matches nothing.
@@ -89,7 +112,6 @@ parse_forgiving_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List
 	return out[:]
 }
 
-@(private)
 split_commas :: proc(vs: []Value, a: Arena_Alloc) -> [][]Value {
 	out := make([dynamic][]Value, a)
 	start := 0

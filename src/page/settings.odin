@@ -2,6 +2,7 @@ package page
 
 import "wb:config"
 import "wb:html"
+import "wb:style"
 import "wb:wasm"
 
 // Shared by every page of a profile. The shell owns one and keeps it current when preferences change.
@@ -9,6 +10,7 @@ Settings :: struct {
 	max_fetch_bytes: int,
 	wasm:            wasm.Options,
 	html:            html.Options,
+	style:           style.Settings,
 }
 
 PREFS := [?]config.Def{
@@ -20,6 +22,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, PREFS[:])
 	wasm.register_prefs(p)
 	html.register_prefs(p)
+	style.register_prefs(p)
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -27,6 +30,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		max_fetch_bytes = int(config.int_of(p, "page.max_fetch_bytes")),
 		wasm = wasm.options_from_prefs(p),
 		html = html.options_from_prefs(p),
+		style = style.settings_from_prefs(p),
 	}
 }
 
@@ -36,4 +40,7 @@ settings_default :: proc() -> Settings {
 	return settings_from_prefs(&p)
 }
 
-settings_destroy :: proc(s: ^Settings) { html.options_destroy(&s.html) }
+settings_destroy :: proc(s: ^Settings) {
+	html.options_destroy(&s.html)
+	style.settings_destroy(&s.style)
+}
