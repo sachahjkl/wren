@@ -168,6 +168,7 @@ finish :: proc(c: ^Ctx) {
 	}
 	in_fixed := fixed_boxes(l, order)
 	doc := compute_overflow(l, order, in_fixed, c.vp)
+	l.inc.doc_extent = doc
 	l.height = c.l.doc_scroll_y ? max(doc.max.y, c.vp.y) : c.vp.y
 	l.doc_width = max(doc.max.x, c.vp.x)
 

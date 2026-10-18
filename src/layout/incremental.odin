@@ -49,7 +49,8 @@ Box_Info :: struct {
 	natural:     [2]f32,           // replaced: natural size used (device px)
 	natural_has: [2]bool,
 	natural_ok:  bool,
-	items:       [2]i32,           // display items of its lines ([marker,] emit_lines), for splicing
+	items:       [2]i32,           // display items of its lines ([marker,] emit_lines), for splicing...
+	items_gen:   u32,              // ... valid when this is Inc_State.dl_gen
 }
 
 Inc_State :: struct {
@@ -58,6 +59,8 @@ Inc_State :: struct {
 	images_gen, fonts_gen: u64,
 	lh_normal:   f32,
 	quotes:      bool,              // generated quotes: their depth runs through the whole document
+	dl_gen:      u32,               // display lists built (Box_Info.items_gen)
+	doc_extent:  Rect,              // what the document's content covers (before the viewport is added), from finish
 	// memory left behind by partial passes, and what was alive after the last full one
 	live_boxes, live_items: int,
 	dead_boxes, dead_items, dead_lines, dead_frags: int,
@@ -76,6 +79,9 @@ Inc_State :: struct {
 @(private)
 Inc_Pass :: struct {
 	laid:     [dynamic]i32,          // boxes laid out again
+	snapping: bool,                  // the display list may be spliced: record what boxes laid out again move
+	snapped:  []bool,
+	snap:     [dynamic]Snap,
 }
 
 @(private)
@@ -111,6 +117,7 @@ inc_after_full :: proc(l: ^Layout, input: Input) {
 @(private)
 inc_note_layout :: proc(c: ^Ctx, bi: i32) {
 	append(&c.inc.laid, bi)
+	if c.inc.snapping { snap_children(c, bi) }
 }
 
 @(private)
@@ -338,6 +345,17 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	for &pl in plans { rebuilt += pl.old != NONE ? subtree_size(l, pl.old) : 1 }
 	if f32(rebuilt + len(dirty) + len(styled_dirty)) > set.inc_max_ratio * f32(len(l.boxes) - l.inc.dead_boxes) { return bail(l, "too much changed") }
 
+	// the display list can be spliced only when nothing but the content of some inline contexts changed
+	vp_changed := l.viewport != input.viewport
+	images_changed := input.images_generation != l.inc.images_gen
+	fonts_changed := input.fonts_generation != l.inc.fonts_gen
+	cand: map[i32]Splice_Root
+	if set.inc_splice && len(plans) == 0 && len(style_changes) == 0 && len(dirty) == 0 && !vp_changed &&
+	   !images_changed && !fonts_changed {
+		cand = splice_candidates(l, st, roots[:])
+		pass.snapping = len(cand) == len(roots)
+	}
+
 	// from here on the layout changes: a failure falls back to a full pass, which starts from nothing
 	l.last_pass = .Incremental
 	start_items := len(l.inline_items)
@@ -366,9 +384,13 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 		mark_box_flow_flags(l, bi)   // a margin may have become negative
 	}
 	for bi in dirty { if .Dead not_in l.boxes[bi].flags { mark_dirty(l, bi) } }
-	if l.viewport != input.viewport { mark_dirty(l, 0) }
-	if input.images_generation != l.inc.images_gen { check_natural_sizes(&c) }
-	if input.fonts_generation != l.inc.fonts_gen { check_fonts(&c) }
+	if vp_changed { mark_dirty(l, 0) }
+	if images_changed { check_natural_sizes(&c) }
+	if fonts_changed { check_fonts(&c) }
+	if pass.snapping {
+		pass.snapped = make([]bool, len(l.boxes), context.temp_allocator)
+		pass.snap = make([dynamic]Snap, 0, 256, context.temp_allocator)
+	}
 	l.inc.live_boxes += len(l.boxes) - start_boxes
 	l.inc.live_items += len(l.inline_items) - start_items
 	l.inc.last_rebuilt = len(l.boxes) - start_boxes
@@ -385,7 +407,7 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	t2 := time.tick_now()
 	t3, t4: time.Tick
 	l.inc.last_spliced = false
-	if set.inc_splice && try_splice(&c, roots[:], input) {
+	if pass.snapping && try_splice(&c, roots[:], cand, input) {
 		l.inc.last_spliced = true
 		t3 = time.tick_now()
 		t4 = t3

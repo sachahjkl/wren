@@ -191,6 +191,16 @@ inc_text_change :: proc(t: ^testing.T) {
 	ix_frame(f)
 	ix_check(t, f)
 	testing.expect(t, f.l.inc.last_rebuilt < 10, "only the paragraph is rebuilt")
+	testing.expect(t, f.l.inc.last_spliced, "nothing moved: the display list is spliced")
+	// shorter, still one line: spliced too (fewer items)
+	dom.set_text_content(f.doc, tn, "NU XI")
+	ix_frame(f)
+	ix_check(t, f)
+	testing.expect(t, f.l.inc.last_spliced, "spliced with fewer items")
+	// an inline element added inside the paragraph
+	add_el(f, id(f, "p2"), "em", "", " added")
+	ix_frame(f)
+	ix_check(t, f)
 	// longer: more lines, everything below moves
 	dom.set_text_content(f.doc, tn, strings.repeat("word ", 60, context.temp_allocator))
 	ix_frame(f)

@@ -172,17 +172,30 @@ paint_content :: proc(p: ^Paint_Ctx, root: i32) {
 	if rb.kind == .Inline {
 		emit_lines(p, rb.ifc_root, root)
 	} else {
-		if .List_Item in rb.flags { emit_marker(p, root) }
-		emit_lines(p, root, NONE)
+		emit_own_lines(p, root)
 	}
 	push_children(c, &stack, root)
 	for len(stack) > 0 {
 		x := pop(&stack)
 		b := &c.l.boxes[x]
 		if hoisted(b) || .Float in b.flags || .Atomic in b.flags { continue }
-		if .List_Item in b.flags { emit_marker(p, x) }
-		if .Ifc in b.flags { emit_lines(p, x, NONE) }
+		emit_own_lines(p, x)
 		push_children(c, &stack, x)
+	}
+}
+
+// A block container's list marker and the lines of its inline formatting context (those not painted by a positioned
+// inline box): contiguous, their range remembered for splicing (splice.odin).
+@(private)
+emit_own_lines :: proc(p: ^Paint_Ctx, x: i32) {
+	c := p.c
+	b := &c.l.boxes[x]
+	start := i32(len(c.l.items))
+	if .List_Item in b.flags { emit_marker(p, x) }
+	if .Ifc in c.l.boxes[x].flags {
+		emit_lines(p, x, NONE)
+		inf := &c.l.inc.info[x]
+		inf.items, inf.items_gen = {start, i32(len(c.l.items))}, c.l.inc.dl_gen
 	}
 }
 
@@ -269,6 +282,7 @@ emit_scrollbars :: proc(c: ^Ctx, bi: i32) {
 @(private)
 build_display_list :: proc(c: ^Ctx) {
 	clear(&c.l.items)
+	c.l.inc.dl_gen += 1
 	p := Paint_Ctx{c = c}
 	paint_stacking(&p, 0)
 }
