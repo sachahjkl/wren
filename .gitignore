@@ -6,3 +6,4 @@ build/
 examples/site/counter.wasm
 examples/site/formstest.wasm
 examples/site/workerstest_worker.wasm
+src/browser/wren.res
