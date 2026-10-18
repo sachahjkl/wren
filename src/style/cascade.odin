@@ -66,6 +66,7 @@ Styled :: struct {
 	root_font_size: f32,
 	mutations:      u64,     // the document's mutation counter when this was computed
 	serial:         u64,     // unique per pass: lets layout notice that styles changed even if nothing else did
+	layout_serial:  u64,     // the serial of the last change that was not paint-only (paint_change.odin)
 	line_height_normal: f32, // what `line-height: normal` means (a multiple of the font size), from the preferences
 	canvas:         css.Color,   // the color painted behind the whole page (root or body background, else the preference)
 	state:          State,       // the dynamic state these styles were computed for (target_id owned by `alloc`)
@@ -128,10 +129,11 @@ base_style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
 	return style_of(s, h)
 }
 
-// Gives every style a new serial: layout notices that something changed.
+// Gives every style a new serial: layout notices that something changed (and lays out again).
 styled_touch :: proc(s: ^Styled) {
 	styled_serial += 1
 	s.serial = styled_serial
+	s.layout_serial = s.serial
 }
 
 style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
@@ -276,6 +278,7 @@ Pass :: struct {
 	lists:    [3][dynamic]Entry,   // matched entries: the element, ::before, ::after
 	compare:  bool,            // partial restyle: keep the old computed style when nothing changed
 	changed:  bool,            // ... and report whether some element really changed
+	layout_changed: bool,      // ... in a way that is not paint-only (paint_change.odin)
 	alloc:    runtime.Allocator,   // where computed styles go: the Styled's arena, or this thread's in a parallel pass
 	stats:    Compile_Stats,   // merged into the engine by pass_destroy (on the thread that owns the engine)
 	counters: ^Counter_State,  // full pass: counters and quotes, resolved in tree order
@@ -582,6 +585,7 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 				c = old_base
 			} else {
 				p.changed = true
+				if !p.layout_changed && !layout_equal(old_base, c) { p.layout_changed = true }
 				if s.track_changes { append(&s.changes, Style_Change{node = f.h, old = old, new = c}) }
 				delete_key(&s.overlaid, f.h)   // the animation layer is rebuilt on top of the new style
 				s.by_node[idx] = c
@@ -680,6 +684,7 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	s.state.target_id = strings.clone(state.target_id, s.alloc)
 	styled_serial += 1
 	s.serial = styled_serial
+	s.layout_serial = s.serial
 	s.line_height_normal = e.settings.line_height_normal
 	s.canvas = e.settings.background_color
 	return s
@@ -822,6 +827,7 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 	if p.changed {
 		styled_serial += 1
 		s.serial = styled_serial
+		if p.layout_changed { s.layout_serial = s.serial }
 		update_canvas(s, doc)
 	}
 	return p.changed, true

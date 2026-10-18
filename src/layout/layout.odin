@@ -11,6 +11,7 @@ import "wb:style"
 
 // Lays out the document. The result stays valid until the next call (strings of the document are referenced, not copied).
 run :: proc(l: ^Layout, input: Input) {
+	if can_refresh(l, input) && refresh(l, input) { return }
 	if !l.arena_ready {
 		_ = virtual.arena_init_growing(&l.arena)
 		l.arena_ready = true
@@ -22,6 +23,11 @@ run :: proc(l: ^Layout, input: Input) {
 	clear(&l.node_box)
 	l.mutations = input.doc.mutations
 	l.serial = input.styled.serial
+	l.layout_serial = input.styled.layout_serial
+	l.canvas = input.styled.canvas
+	l.styled = input.styled
+	l.last_pass = .Full
+	l.passes[.Full] += 1
 	l.viewport = input.viewport
 	l.scale = input.scale
 	l.settings = input.settings^
@@ -40,6 +46,7 @@ run :: proc(l: ^Layout, input: Input) {
 
 	t0 := time.tick_now()
 	build_tree(&c)
+	l.canvas_els = {c.root_el, c.body_el}
 	t1 := time.tick_now()
 	root := &l.boxes[0]
 	root.pos = {0, 0}
@@ -64,6 +71,8 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	if !keep_scroll { clear(&l.scroll) }
 	if l.arena_ready { virtual.arena_free_all(&l.arena) }
 	l.valid = false
+	l.last_pass = .None
+	l.styled = nil
 	l.height = 0
 }
 

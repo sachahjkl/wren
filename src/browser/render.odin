@@ -105,28 +105,98 @@ dr :: #force_inline proc(r: lay.Rect) -> draw.Rect { return draw.Rect{r.min, r.m
 ////////////////////////////////
 // Painting
 
+////////////////////////////////
+// Effects an item is drawn under: the transform of its space, the clips around it (each one pushed under the transform
+// of its own space, so a clip inside a rotated box rotates with it and keeps its rounded corners), its opacity group.
+// Consecutive items mostly share them; only what differs from the previous item is popped and pushed.
+
+@(private = "file")
+Effects :: struct {
+	l:        ^Layout,
+	v:        ^lay.View,
+	dc:       ^draw.Context,
+	origin:   draw.Vec2,
+	xform:    i32,              // Transform space whose matrix is pushed (lay.NONE: none)
+	clip:     i32,              // innermost clip of `chain` (-2: not set yet)
+	chain:    [dynamic]i32,     // clips pushed, outermost first
+	group:    i32,
+	alpha_pushed: bool,
+}
+
+@(private = "file")
+effects_make :: proc(l: ^Layout, v: ^lay.View, dc: ^draw.Context, origin: draw.Vec2) -> Effects {
+	return Effects{l = l, v = v, dc = dc, origin = origin, xform = lay.NONE, clip = -2, group = -2,
+		chain = make([dynamic]i32, 0, 8, context.temp_allocator)}
+}
+
+// The matrix of a Transform space as draw wants it: page coordinates are drawn offset by the page area's origin.
+@(private = "file")
+space_affine :: proc(e: ^Effects, s: i32) -> draw.Affine {
+	m := lay.mat_shifted(e.v.mats[s], e.origin)
+	return draw.Affine{m[0], m[1], m[2], m[3], m[4], m[5]}
+}
+
+@(private = "file")
+set_xform :: proc(e: ^Effects, xf: i32) {
+	if xf == e.xform { return }
+	if e.xform != lay.NONE { draw.pop_transform(e.dc) }
+	e.xform = xf
+	if xf != lay.NONE { draw.push_transform(e.dc, space_affine(e, xf)) }
+}
+
+@(private = "file")
+set_clip :: proc(e: ^Effects, ci: i32) {
+	if ci == e.clip { return }
+	want := make([dynamic]i32, 0, 8, context.temp_allocator)
+	for c := ci; c != lay.NONE; c = e.l.clips[c].parent { append(&want, c) }
+	for i, j := 0, len(want) - 1; i < j; i, j = i + 1, j - 1 { want[i], want[j] = want[j], want[i] }
+	keep := 0
+	for keep < len(want) && keep < len(e.chain) && want[keep] == e.chain[keep] { keep += 1 }
+	for len(e.chain) > keep { draw.pop_clip(e.dc); pop(&e.chain) }
+	for c in want[keep:] {
+		cl := &e.l.clips[c]
+		set_xform(e, e.l.spaces[cl.space].xform)
+		r := draw.rect_shift(dr(cl.rect), e.v.offsets[cl.space] + e.origin)
+		if cl.radii == {} { draw.push_clip(e.dc, r) } else { draw.push_clip_rounded(e.dc, r, cl.radii) }
+		append(&e.chain, c)
+	}
+	e.clip = ci
+}
+
+@(private = "file")
+set_group :: proc(e: ^Effects, g: i32) {
+	if g == e.group { return }
+	if e.alpha_pushed { draw.pop_alpha(e.dc); e.alpha_pushed = false }
+	e.group = g
+	if g >= 0 { draw.push_alpha(e.dc, e.v.alphas[g]); e.alpha_pushed = true }
+}
+
+// Puts the draw context in the state `it` is drawn in. false: nothing of it can show (empty clip, flattened space).
+@(private = "file")
+effects_for :: proc(e: ^Effects, it: ^lay.Display_Item) -> bool {
+	if it.clip >= 0 && lay.rect_empty(e.v.clips[it.clip]) { return false }
+	xf := e.l.spaces[it.space].xform
+	if xf != lay.NONE && e.v.singular[it.space] { return false }
+	set_clip(e, it.clip)
+	set_xform(e, xf)
+	set_group(e, it.group)
+	return true
+}
+
+@(private = "file")
+effects_end :: proc(e: ^Effects) {
+	set_group(e, -1)
+	for len(e.chain) > 0 { draw.pop_clip(e.dc); pop(&e.chain) }
+	set_xform(e, lay.NONE)
+}
+
 paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: draw.Vec2, scroll: f32, clip: draw.Rect) {
 	if !l.valid { return }
 	v := lay.view_make(l, size, scroll)
-	cur_clip := i32(-2)
-	cur_group := i32(-2)
-	clip_pushed, alpha_pushed := false, false
+	fx := effects_make(l, &v, dc, origin)
 	for idx in v.visible {
 		it := &l.items[idx]
-		if it.clip != cur_clip {
-			if clip_pushed { draw.pop_clip(dc); clip_pushed = false }
-			cur_clip = it.clip
-			if it.clip >= 0 {
-				draw.push_clip(dc, draw.rect_shift(dr(v.clips[it.clip]), origin))
-				clip_pushed = true
-			}
-		}
-		if it.clip >= 0 && lay.rect_empty(v.clips[it.clip]) { continue }
-		if it.group != cur_group {
-			if alpha_pushed { draw.pop_alpha(dc); alpha_pushed = false }
-			cur_group = it.group
-			if it.group >= 0 { draw.push_alpha(dc, v.alphas[it.group]); alpha_pushed = true }
-		}
+		if !effects_for(&fx, it) { continue }
 		off := v.offsets[it.space] + origin
 		r := draw.rect_shift(dr(it.rect), off)
 		switch it.kind {
@@ -145,8 +215,7 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: dra
 			draw.rect(dc, th, to_draw(page_render.settings.scrollbar_thumb), min(th.max.x - th.min.x, th.max.y - th.min.y) * 0.5)
 		}
 	}
-	if alpha_pushed { draw.pop_alpha(dc) }
-	if clip_pushed { draw.pop_clip(dc) }
+	effects_end(&fx)
 	if track, thumb, ok := lay.doc_scrollbar(l, size, scroll); ok {
 		if page_render.settings.scrollbar_track.a > 0 { draw.rect(dc, draw.rect_shift(dr(track), origin), to_draw(page_render.settings.scrollbar_track), (track.max.x - track.min.x) * 0.5) }
 		draw.rect(dc, draw.rect_shift(dr(thumb), origin), to_draw(page_render.settings.scrollbar_thumb), (thumb.max.x - thumb.min.x) * 0.5)
@@ -157,23 +226,7 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: dra
 // Backgrounds §5.5).
 @(private = "file")
 corner_radii :: proc(cs: ^style.Computed, r: draw.Rect, scale: f32) -> [4]f32 {
-	w, h := r.max.x - r.min.x, r.max.y - r.min.y
-	rad :: proc(cr: style.Corner_Radius, w, h, scale: f32) -> f32 {
-		hv := style.resolve(cr.h, w / scale) * scale
-		vv := style.resolve(cr.v, h / scale) * scale
-		if cr.v.kind == .Auto { vv = hv }
-		return max(min(hv, vv), 0)
-	}
-	tl := rad(cs.radius[.Top_Left], w, h, scale)
-	tr := rad(cs.radius[.Top_Right], w, h, scale)
-	br := rad(cs.radius[.Bottom_Right], w, h, scale)
-	bl := rad(cs.radius[.Bottom_Left], w, h, scale)
-	f: f32 = 1
-	if tl + tr > w && w > 0 { f = min(f, w / (tl + tr)) }
-	if bl + br > w && w > 0 { f = min(f, w / (bl + br)) }
-	if tl + bl > h && h > 0 { f = min(f, h / (tl + bl)) }
-	if tr + br > h && h > 0 { f = min(f, h / (tr + br)) }
-	return {tl * f, bl * f, tr * f, br * f}
+	return lay.border_radii(cs, r.max.x - r.min.x, r.max.y - r.min.y, scale)
 }
 
 @(private = "file")

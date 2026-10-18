@@ -98,6 +98,8 @@ Box_Flag :: enum u8 {
 	Ifc,           // the box is the root of an inline formatting context (items/lines are valid)
 	Propagated,    // the root element / body whose overflow went to the viewport
 	Flattened,     // children past the depth limit were flattened into this box
+	Transformed,   // a transform applies (CSS Transforms: transformable boxes only, never a non-replaced inline box)
+	Pseudo_After,  // Pseudo: ::after (else ::before)
 }
 Box_Flags :: bit_set[Box_Flag; u32]
 
@@ -228,39 +230,56 @@ Display_Item :: struct {
 	deco_color: css.Color,
 }
 
-Space_Kind :: enum u8 { Document, Fixed, Scroll, Sticky }
+Space_Kind :: enum u8 { Document, Fixed, Scroll, Sticky, Transform }
 
 // A coordinate space items are drawn in: the document (shifted by the page scroll), the viewport (fixed boxes), the
-// content of a scroll container (shifted by its scroll offset), a sticky box (shifted by its constraint).
+// content of a scroll container (shifted by its scroll offset), a sticky box (shifted by its constraint), a transformed
+// box and its content (mapped by its transformation; the box's own background and borders are in it too).
+//
+// Offsets (scroll, sticky) are translations; a view composes them first, then the matrices of the Transform spaces
+// above, innermost first: viewport point = W(layout point + offset), W = product of the transforms (see View).
 Space :: struct {
 	kind:     Space_Kind,
 	parent:   i32,
 	box:      i32,
 	frame:    i32,                  // Sticky: the scroll space (or document) it sticks in
 	clip:     i32,                  // clip bounding everything in this space (NONE: unbounded)
+	xform:    i32,                  // the innermost Transform space at or above this one (NONE: untransformed)
 	port:     Rect,                 // Scroll: the container's padding box; Sticky: the box's normal border box
 	limit:    Rect,                 // Sticky: the containing block's content box
 	max_scroll: Vec2,               // Scroll
 	inset:    [4]f32,               // Sticky: top right bottom left, NaN = auto
+	mat:      Matrix,               // Transform: the box's transformation in layout coordinates (origin folded in)
 	band0:    f32,                  // spatial index: layout y of the first band
 	band_h:   f32,
 	band_first, band_count: i32,    // its bands: [band_first, band_first + band_count) of Layout.band_start
 }
 
-Clip :: struct { parent: i32, space: i32, rect: Rect }
+// A clip: the padding box of `box` in the coordinates of `space` (so it follows the transforms of that space), with
+// the inner corner radii of the box (CSS Backgrounds §5.3; draw corner order: top-left, bottom-left, top-right,
+// bottom-right). Clips nest through `parent`; each one may live in a different space.
+Clip :: struct { parent: i32, space: i32, box: i32, rect: Rect, radii: [4]f32 }
 
-Matrix :: [6]f32   // 2D affine: x' = a x + c y + e, y' = b x + d y + f  (a b c d e f)
+Matrix :: [6]f32   // 2D affine: x' = a x + c y + e, y' = b x + d y + f  (a b c d e f), as style.Matrix and CSS matrix()
 
-// A stacking context with an effect: opacity, a transform (when the style engine provides one).
-Group :: struct { parent: i32, alpha: f32, has_transform: bool, transform: Matrix }
+// An opacity group: a box with opacity below 1 and everything it paints.
+Group :: struct { parent: i32, box: i32, alpha: f32 }
+
+Pass_Kind :: enum u8 { None, Full, Refresh }
 
 Layout :: struct {
 	// what this layout was made from
 	mutations:  u64,
 	serial:     u64,
+	layout_serial: u64,         // styled.layout_serial at the last full layout: equal = only paint-only values changed since
+	canvas:     css.Color,
+	styled:     rawptr,         // the style pass this was laid out from (identity only)
+	canvas_els: [2]base.Handle, // the root element and body: their backgrounds may be the canvas
 	viewport:   Vec2,
 	scale:      f32,
 	valid:      bool,
+	last_pass:  Pass_Kind,      // what the last `run` did
+	passes:     [Pass_Kind]u64, // how many of each `run` did (diagnostics, tests)
 	// results
 	boxes:        [dynamic]Box,
 	inline_items: [dynamic]Inline_Item,
