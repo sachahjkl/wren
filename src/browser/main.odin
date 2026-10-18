@@ -75,9 +75,12 @@ Tab :: struct {
 	console:  [dynamic]string,
 	layout:   Layout,
 	scroll:   f32,
-	history:  [dynamic]string,   // addresses visited in this tab
+	history:  [dynamic]string,   // addresses visited in this tab (mirror of `session`, for the chrome)
 	hist:     int,               // index of the current one
+	session:  Session_History,   // the joint session history: entries, history.state, same-document entries
 }
+
+Session_History :: page.Session_History   // (a field named `page` hides the package in the struct above)
 
 App :: struct {
 	win:      ^platform.Window,
@@ -99,6 +102,7 @@ App :: struct {
 	autosave_timer: base.Handle,
 	profile:  fetch.Profile,
 	loader:   fetch.Loader,
+	storage:  page.Storage_Manager,   // localStorage / sessionStorage of the profile
 	profile_dir: string,
 	process:  ^base.Scope,
 
@@ -140,6 +144,8 @@ tab_close :: proc(app: ^App, index: int) {
 	t := app.tabs[index]
 	ordered_remove(&app.tabs, index)
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone
+	page.storage_drop_session(&app.storage, tab_key(t))
+	page.session_destroy(&t.session)
 	delete(t.url); delete(t.title); delete(t.status)
 	for h in t.history { delete(h) }
 	delete(t.history)
@@ -233,18 +239,67 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 }
 
 history_push :: proc(t: ^Tab, target: string) {
-	if t.hist >= 0 && t.hist < len(t.history) && t.history[t.hist] == target { return }
-	for len(t.history) > t.hist + 1 { delete(pop(&t.history)) }   // a new visit drops the forward entries
-	append(&t.history, strings.clone(target))
-	t.hist = len(t.history) - 1
+	page.session_push(&t.session, target, 0, max_entries = the_app.page_settings.web.history_max_entries)
+	sync_history(t)
+}
+
+// The chrome's view of the session history (back / forward buttons).
+sync_history :: proc(t: ^Tab) {
+	for h in t.history { delete(h) }
+	clear(&t.history)
+	for e in t.session.entries { append(&t.history, strings.clone(e.url)) }
+	t.hist = t.session.index
 }
 
 go_history :: proc(app: ^App, t: ^Tab, delta: int) {
 	if t == nil { return }
-	i := t.hist + delta
-	if i < 0 || i >= len(t.history) { return }
-	t.hist = i
-	navigate(app, t, strings.clone(t.history[i], context.temp_allocator), record = false)
+	// an entry of the current document: popstate, no load
+	if t.page != nil && t.kind == .Web && page.history_traverse(t.page, delta) == .Same_Document {
+		sync_history(t)
+		same_document_url(app, t, t.page.env.location.href)
+		return
+	}
+	e, ok := page.session_go(&t.session, delta)
+	if !ok { return }
+	sync_history(t)
+	navigate(app, t, strings.clone(e.url, context.temp_allocator), record = false)
+}
+
+same_document_url :: proc(app: ^App, t: ^Tab, address: string) {
+	delete(t.url)
+	t.url = strings.clone(address)
+	if current_tab(app) == t { ui.field_set(&app.address, address) }
+}
+
+// sessionStorage partition of a tab (dropped when the tab closes).
+tab_key :: proc(t: ^Tab) -> string { return fmt.tprintf("tab-%p", t) }
+
+// What a page's script asks of its tab (location, history): always from a task of the page, never from inside a guest call.
+page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
+	app := the_app
+	t := (^Tab)(user)
+	if t.page != p { return }
+	switch req.kind {
+	case .Assign:
+		navigate(app, t, strings.clone(req.url, context.temp_allocator), p)
+	case .Replace:
+		page.session_replace(&t.session, req.url)
+		sync_history(t)
+		navigate(app, t, strings.clone(req.url, context.temp_allocator), p, record = false)
+	case .Reload:
+		reload(app, t)
+	case .Traverse:
+		go_history(app, t, req.delta)
+	case .Url_Changed:
+		sync_history(t)
+		same_document_url(app, t, req.url)
+	}
+	app.frames_requested = max(app.frames_requested, 2)
+}
+
+// Connects a document to its tab: navigation hook, session history, storage.
+attach_page :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
+	page.set_embedder(p, {navigate = page_navigate, user = t, session = &t.session, tab_key = tab_key(t), storage = &app.storage})
 }
 
 reload :: proc(app: ^App, t: ^Tab) {
@@ -310,6 +365,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		}
 		// the document exists from here on, with the origin of its *final* URL
 		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, r.url, console_sink, t)
+		attach_page(app, t, load.page)
 		t.page = load.page
 		csp_h := http.get_all(r.headers, "content-security-policy")
 		ro_h := http.get_all(r.headers, "content-security-policy-report-only")
@@ -665,6 +721,14 @@ frame :: proc(app: ^App) {
 	route_page_input(app, events)
 	prof_end(.Input)
 
+	// page visibility, then the animation frame callbacks of the page about to be painted
+	shown := app.win.size.x > 0 && app.win.size.y > 0
+	for tab, i in app.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == app.current && tab.kind == .Web) } }
+	if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
+		page.run_animation_frames(t.page, f64(host.now_ns(&app.loop)) / 1e6)
+		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 1) }
+	}
+
 	render.resize(&app.r, app.win.size)
 	size := draw.Vec2{f32(app.win.size.x), f32(app.win.size.y)}
 	now := time.tick_now()
@@ -762,6 +826,7 @@ main :: proc() {
 	host.blocking_init(&app.blocking, &app.loop, 4)
 	app.profile = fetch.profile_make(fetch.settings_from_prefs(&app.prefs), cookies.settings_from_prefs(&app.prefs))
 	fetch.loader_init(&app.loader, &app.loop, &app.client, &app.blocking, &app.profile)
+	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "")
 	app.page_settings = page.settings_from_prefs(&app.prefs)
 	if !page.register_imports() { fmt.eprintln("wasm runtime init failed"); return }
 	app.process = base.scope_make("process")
@@ -799,6 +864,7 @@ main :: proc() {
 	prof_report()
 	profile_save(app, force = true)
 	base.scope_close(app.process)   // every tab, page and request
+	page.storage_manager_destroy(&app.storage)   // writes what is not saved yet
 	fetch.loader_destroy(&app.loader)
 	host.blocking_destroy(&app.blocking)
 	net.client_destroy(&app.client)

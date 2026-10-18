@@ -208,9 +208,11 @@ storage_quota_order_events_persistence :: proc(t: ^testing.T) {
 	testing.expect_value(t, n, 0)
 	testing.expect_value(t, storage_clear(a2, .Local), 0)
 	page_close(a2)
+	message_transfer(t)
 }
 
-@(test)
+// Called by the storage test: tests creating pages share the page registry and must not run in parallel.
+@(private = "file")
 message_transfer :: proc(t: ^testing.T) {
 	f: Fixture
 	fixture_init(&f)
