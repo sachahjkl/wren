@@ -63,6 +63,23 @@ function Make-Page($name, [int]$elements, [int]$rules) {
     [IO.File]::WriteAllText($path, $sb.ToString())
     return $path
 }
+# The same items in a grid and in a wrapping flex container (grid vs flex at an equal number of boxes)
+function Make-ItemsPage($name, [string]$container, [string]$item, [int]$count) {
+    $path = Join-Path $out "$name.html"
+    if (Test-Path $path) { return $path }
+    $words = 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor'.Split(' ')
+    $sb = New-Object Text.StringBuilder
+    [void]$sb.AppendLine("<!doctype html><html><head><meta charset=utf-8><title>$name</title><style>body{margin:0;font-size:14px;background:#f4f6fb} .c{$container;padding:8px} .it{$item;background:#fff;border:1px solid #ccd;border-radius:6px;padding:6px} .it b{display:block}</style></head><body><div class=c>")
+    for ($i = 0; $i -lt $count; $i++) {
+        [void]$sb.Append("<div class=it><b>Item $i</b>$($words[$i % $words.Length]) $($words[($i * 7) % $words.Length]) $($words[($i * 3) % $words.Length])</div>")
+    }
+    [void]$sb.AppendLine("</div></body></html>")
+    [IO.File]::WriteAllText($path, $sb.ToString())
+    return $path
+}
+$g10k = Make-ItemsPage 'grid10k' 'display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px' '' 10000
+$f10k = Make-ItemsPage 'flex10k' 'display:flex;flex-wrap:wrap;gap:6px' 'flex:1 1 140px' 10000
+
 $p1k  = Make-Page 'p1k'  1000 300
 $p10k = Make-Page 'p10k' 10000 2000
 $p50k = Make-Page 'p50k' 50000 5000
@@ -130,6 +147,10 @@ Run 'p10k_scroll' (FileUrl $p10k) { param($h) Start-Sleep 5; Scroll $h 8000 }
 Run 'p10k_resize' (FileUrl $p10k) { param($h) Start-Sleep 5; Resize $h 6000 }
 Run 'p50k_load'  (FileUrl $p50k) { param($h) Start-Sleep 20 }
 Run 'p50k_scroll' (FileUrl $p50k) { param($h) Start-Sleep 20; Scroll $h 8000 }
+Run 'grid10k_load'   (FileUrl $g10k) { param($h) Start-Sleep 8 }
+Run 'grid10k_resize' (FileUrl $g10k) { param($h) Start-Sleep 5; Resize $h 6000 }
+Run 'flex10k_load'   (FileUrl $f10k) { param($h) Start-Sleep 8 }
+Run 'flex10k_resize' (FileUrl $f10k) { param($h) Start-Sleep 5; Resize $h 6000 }
 $site = Join-Path $root 'examples\site'
 Run 'anim'       (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-Sleep 10 } $false
 Run 'transforms' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 10 } $false
