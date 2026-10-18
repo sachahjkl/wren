@@ -161,7 +161,9 @@ grid_minimum_h :: proc(c: ^Ctx, g: ^Grid, it: ^Grid_Item, margins: f32) -> f32 {
 grid_contrib :: proc(c: ^Ctx, g: ^Grid, it: ^Grid_Item, axis, kind: int) -> f32 {
 	if it.contrib[axis][kind] >= 0 { return it.contrib[axis][kind] }
 	v: f32
-	if axis == 0 {
+	if it.proxy {
+		v = grid_contrib(c, it.src, &it.src.items[it.src_i], axis, kind) + it.extra[axis]
+	} else if axis == 0 {
 		m := intrinsic_margins(c, it.box)
 		if kind < 2 { v = intrinsic(c, it.box)[kind] + m } else { v = grid_minimum_w(c, g, it, m) + m }
 	} else {
@@ -393,6 +395,7 @@ grid_size_axis :: proc(c: ^Ctx, g: ^Grid, axis: int, avail: f32, cons: Grid_Cons
 	grid_init_tracks(c, ax, cons == .None ? avail : -1)
 	if ax.n == 0 { return }
 	tr := ax.tracks
+	grid_sync_subs(g, axis)
 
 	// §11.5 step 2: items of span 1 not in a flexible track; collect the others
 	Spanning :: struct { span: i32, item: i32 }
@@ -400,6 +403,8 @@ grid_size_axis :: proc(c: ^Ctx, g: ^Grid, axis: int, avail: f32, cons: Grid_Cons
 	flexy := make([dynamic]i32, 0, 8, context.temp_allocator)
 	for &it, i in g.items {
 		if !it.placed { continue }
+		// a subgrid is sized through its items' proxies in its subgridded axes
+		if it.proxy ? !it.axes[axis] : (it.sub != nil && it.axes[axis]) { continue }
 		a, e := it.area[axis][0], it.area[axis][1]
 		flex := false
 		for t in a ..< e { if tr[t].max_k == .Flex { flex = true; break } }

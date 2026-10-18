@@ -417,6 +417,33 @@ grid_hostile :: proc(t: ^testing.T) {
 	}
 }
 
+@(test)
+grid_subgrid :: proc(t: ^testing.T) {
+	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+<div style="display:grid;grid-template-columns:auto 1fr auto;width:300px">
+<div id=s1 style="display:grid;grid-column:1/4;grid-template-columns:subgrid;padding-left:5px"><div id=a>xxxx</div><div id=b></div><div id=c>xx</div></div>
+<div id=s2 style="display:grid;grid-column:1/4;grid-template-columns:subgrid [x] [y] [z]"><div id=d>xxxxxx</div><div id=e style="grid-column:y"></div><div id=f>xxxx</div></div>
+</div>
+<div style="display:grid;grid-template-rows:auto auto;grid-template-columns:100px 100px">
+<div id=r1 style="display:grid;grid-row:1/3;grid-template-rows:subgrid"><div id=g1>x</div><div id=g2>x<br>x<br>x</div></div>
+<div id=h1>x<br>x</div>
+</div></body>`)
+	defer g_unload(f)
+	// the first column fits a (20 + the subgrid's 5px padding) and d (30): 30; the last fits c and f: 20; 1fr the rest
+	expect_box(t, f, "s1", 0, 0, 300, 10)
+	expect_box(t, f, "a", 5, 0, 30, 10)
+	expect_box(t, f, "b", 30, 0, 280, 10)
+	expect_box(t, f, "c", 280, 0, 300, 10)
+	expect_box(t, f, "d", 0, 10, 30, 20)
+	expect_box(t, f, "e", 30, 10, 280, 20)           // the subgrid's own line name y
+	expect_box(t, f, "f", 280, 10, 300, 20)
+	// subgridded rows: row 1 fits g1 (10) and h1 (20), row 2 fits g2 (30)
+	expect_box(t, f, "r1", 0, 20, 100, 70)
+	expect_box(t, f, "g1", 0, 20, 100, 40)
+	expect_box(t, f, "g2", 0, 40, 100, 70)
+	expect_box(t, f, "h1", 100, 20, 200, 40)
+}
+
 // Layout time of a 10000-item grid against a flex container with the same items (the same order of magnitude).
 @(test)
 grid_vs_flex_timing :: proc(t: ^testing.T) {

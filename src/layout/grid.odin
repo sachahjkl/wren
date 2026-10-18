@@ -28,6 +28,13 @@ Grid_Item :: struct {
 	shim:     f32,            // baseline alignment: space added above the item
 	ratio_dep: bool,          // its min-content width follows its row size (aspect-ratio with a percentage height)
 	placed:   bool,           // false: past layout.grid.max_items, not laid out
+	// subgrids (CSS Grid 2 §9)
+	sub:      ^Grid,          // the item is a subgrid: its grid; `axes` are its subgridded axes
+	proxy:    bool,           // the item stands, in `axes`, for an item of a subgrid (it is sized, never laid out)
+	axes:     [2]bool,
+	src:      ^Grid,          // proxy: the subgrid and its item
+	src_i:    i32,
+	extra:    [2]f32,         // proxy: margin, border and padding of the subgrids whose edges it touches, per axis
 }
 
 @(private)
@@ -67,7 +74,11 @@ Grid_Axis :: struct {
 @(private)
 Grid :: struct {
 	bi:       i32,
-	items:    []Grid_Item,
+	items:    []Grid_Item,    // the container's items, then the proxies of its subgrids' items
+	n_real:   int,            // items[:n_real] are the container's own
+	parent:   ^Grid,          // a subgrid: the grid it is an item of, and that item's index there
+	pitem:    i32,
+	subgrid:  [2]bool,        // a subgrid: the axes whose tracks are the parent's
 	ax:       [2]Grid_Axis,
 	flow_col: bool,
 	dense:    bool,
@@ -84,6 +95,7 @@ Grid_Key :: struct { box: i32, reps: [2]i32, intrinsic: bool }
 Grid_Pass :: struct {
 	placed: map[Grid_Key]^Grid,
 	last:   map[i32]^Grid,
+	subs:   map[i32]^Grid,    // subgrids, as placed by their parent's current grid
 }
 
 @(private)
@@ -92,6 +104,7 @@ grid_pass :: proc(c: ^Ctx) -> ^Grid_Pass {
 		c.grid = new(Grid_Pass, context.temp_allocator)
 		c.grid.placed = make(map[Grid_Key]^Grid, 16, context.temp_allocator)
 		c.grid.last = make(map[i32]^Grid, 16, context.temp_allocator)
+		c.grid.subs = make(map[i32]^Grid, 4, context.temp_allocator)
 	}
 	return c.grid
 }
@@ -223,13 +236,43 @@ grid_axis_setup :: proc(c: ^Ctx, ax: ^Grid_Axis, cs: ^style.Computed, axis: int,
 			grid_add_names(ax, start[:], s - 1)
 			grid_add_names(ax, end[:], e - 1)
 		}
-		for _, &list in ax.names {
-			slice.sort(list[:])
-			n := 0
-			for v, i in list { if i == 0 || v != list[n - 1] { list[n] = v; n += 1 } }
-			resize(&list, n)
+		grid_sort_names(ax)
+	}
+}
+
+@(private)
+grid_sort_names :: proc(ax: ^Grid_Axis) {
+	for _, &list in ax.names {
+		slice.sort(list[:])
+		n := 0
+		for v, i in list { if i == 0 || v != list[n - 1] { list[n] = v; n += 1 } }
+		resize(&list, n)
+	}
+}
+
+// A subgridded axis (CSS Grid 2 §9): as many tracks as the subgrid spans in its parent, with the line names of
+// `subgrid [a] [b] ...` and those of the parent's lines it spans.
+@(private)
+grid_axis_setup_sub :: proc(ax: ^Grid_Axis, cs: ^style.Computed, axis: int, parent: ^Grid, pit: ^Grid_Item) {
+	tmpl := grid_template(cs, axis)
+	ax.names = make(map[string][dynamic]i32, 8, context.temp_allocator)
+	ax.fns = make([dynamic]^style.Grid_Track, 0, 0, context.temp_allocator)
+	span := pit.area[axis][1] - pit.area[axis][0]
+	ax.count = span
+	for t, i in tmpl.tracks {
+		if i32(i) > span { break }
+		grid_add_names(ax, t.names_before, i32(i))
+	}
+	pa := &parent.ax[axis]
+	for name, lines in pa.names {
+		for l in lines {
+			tl := l + pa.off - pit.area[axis][0]
+			if tl < 0 || tl > span { continue }
+			one := [1]string{name}
+			grid_add_names(ax, one[:], tl)
 		}
 	}
+	grid_sort_names(ax)
 }
 
 // The sizing function of track `t` of the implicit grid (nil: auto).
@@ -456,19 +499,31 @@ grid_children :: proc(c: ^Ctx, bi: i32) -> []i32 {
 // Builds the explicit grid and places the items. Auto-repeat counts come from `size` (definite content size per axis,
 // < 0: indefinite) and the container's min / max sizes.
 @(private)
-grid_build :: proc(c: ^Ctx, bi: i32, reps: [2]i32) -> ^Grid {
+grid_build :: proc(c: ^Ctx, bi: i32, reps: [2]i32, parent: ^Grid = nil, pitem: i32 = -1) -> ^Grid {
 	b := &c.l.boxes[bi]
 	cs := b.cs
 	lim := i32(max(c.set.grid_max_tracks, 1))
 	g := new(Grid, context.temp_allocator)
 	g.bi = bi
+	g.parent, g.pitem = parent, pitem
 	g.flow_col = cs.grid_auto_flow.column
 	g.dense = cs.grid_auto_flow.dense
-	for axis in 0 ..< 2 { grid_axis_setup(c, &g.ax[axis], cs, axis, reps[axis], lim) }
+	// a subgridded axis has exactly the tracks it spans in its parent: placements are clamped to them
+	lims := [2]i32{lim, lim}
+	for axis in 0 ..< 2 {
+		if parent != nil && grid_template(cs, axis).kind == .Subgrid {
+			g.subgrid[axis] = true
+			grid_axis_setup_sub(&g.ax[axis], cs, axis, parent, &parent.items[pitem])
+			lims[axis] = max(g.ax[axis].count, 1)
+		} else {
+			grid_axis_setup(c, &g.ax[axis], cs, axis, reps[axis], lim)
+		}
+	}
 
 	ids := grid_children(c, bi)
 	n := min(len(ids), max(c.set.grid_max_items, 0))
 	g.items = make([]Grid_Item, len(ids), context.temp_allocator)
+	g.n_real = len(ids)
 	for id, i in ids { g.items[i] = Grid_Item{box = id, placed = i < n} }
 
 	lines := make([][2][2]i32, n, context.temp_allocator)
@@ -479,10 +534,22 @@ grid_build :: proc(c: ^Ctx, bi: i32, reps: [2]i32) -> ^Grid {
 		lines[i][0], def[i][0] = {a, e}, d
 		a, e, d = grid_resolve(&g.ax[1], ks.grid_row_start, ks.grid_row_end, lim)
 		lines[i][1], def[i][1] = {a, e}, d
+		for axis in 0 ..< 2 {
+			if !g.subgrid[axis] { continue }
+			cnt := lims[axis]
+			if def[i][axis] {
+				l := &lines[i][axis]
+				l[0] = clamp(l[0], 0, cnt - 1)
+				l[1] = clamp(l[1], l[0] + 1, cnt)
+			} else {
+				lines[i][axis][1] = min(lines[i][axis][1], cnt)
+			}
+		}
 	}
 
 	P := g.flow_col ? 1 : 0   // the axis the cursor moves along first (columns for row flow)
 	S := 1 - P
+	lim_p, lim_s := lims[P], lims[S]
 	p_lo, s_lo: i32 = 0, 0
 	p_hi := g.ax[P].count
 	auto_span: i32 = 1
@@ -507,11 +574,11 @@ grid_build :: proc(c: ^Ctx, bi: i32, reps: [2]i32) -> ^Grid {
 		p := p_lo
 		if !g.dense { if v, ok := cursors[s0]; ok { p = v } }
 		for !occ_free(&occ, p, p + span, s0, s1) {
-			if p + span > lim { break }
+			if p + span > lim_p { break }
 			nf := occ_next_free(&occ, s0, p)
 			p = nf > p ? nf : p + 1
 		}
-		p = min(p, lim - span)
+		p = min(p, lim_p - span)
 		lines[i][P], def[i][P] = {p, p + span}, true
 		mark(&occ, lines[i], P, S)
 		cursors[s0] = p + span
@@ -530,8 +597,8 @@ grid_build :: proc(c: ^Ctx, bi: i32, reps: [2]i32) -> ^Grid {
 		if def[i][P] {
 			p0, p1 := lines[i][P][0], lines[i][P][1]
 			if g.dense { cs_ = occ_dense_row(&occ, width) } else if p0 < cp { cs_ += 1 }
-			for cs_ + ss < lim && !occ_free(&occ, p0, p1, cs_, cs_ + ss) { cs_ += 1 }
-			cs_ = min(cs_, lim - ss)
+			for cs_ + ss < lim_s && !occ_free(&occ, p0, p1, cs_, cs_ + ss) { cs_ += 1 }
+			cs_ = min(cs_, lim_s - ss)
 			lines[i][S] = {cs_, cs_ + ss}
 			cp = p1
 		} else {
@@ -541,7 +608,7 @@ grid_build :: proc(c: ^Ctx, bi: i32, reps: [2]i32) -> ^Grid {
 				cp = p_lo
 			}
 			for {
-				if cs_ + ss > lim { cs_ = lim - ss; cp = p_lo; break }
+				if cs_ + ss > lim_s { cs_ = lim_s - ss; cp = p_lo; break }
 				if cp + ps > p_hi { cs_ += 1; cp = p_lo; continue }
 				if occ_free(&occ, cp, cp + ps, cs_, cs_ + ss) { break }
 				nf := occ_next_free(&occ, cs_, cp)
@@ -580,7 +647,163 @@ grid_build :: proc(c: ^Ctx, bi: i32, reps: [2]i32) -> ^Grid {
 			}
 		}
 	}
+	grid_build_subs(c, g)
 	return g
+}
+
+// Margin, border and padding of a box on one side (percentages as 0): what a subgrid adds at its edges.
+@(private)
+grid_edge :: proc(c: ^Ctx, k: ^Box, s: style.Side) -> f32 {
+	cs := k.cs
+	m := cs.margin[s].kind == .Px ? cs.margin[s].v * c.scale : 0
+	return m + px_of(c, cs.padding[s], 0) + border_px(c, cs.border_width[s])
+}
+
+// Places the subgrids among the items, and adds for each of their items a proxy that takes part in this grid's track
+// sizing in the subgridded axes, the subgrid's margin, border and padding added at the edges it touches (CSS Grid 2
+// §9). Subgrids of subgrids reach the outermost grid through their parent's proxies.
+@(private)
+grid_build_subs :: proc(c: ^Ctx, g: ^Grid) {
+	gp := grid_pass(c)
+	proxies := make([dynamic]Grid_Item, 0, 0, context.temp_allocator)
+	for i in 0 ..< g.n_real {
+		if !g.items[i].placed { continue }
+		k := &c.l.boxes[g.items[i].box]
+		if k.kind != .Grid || (k.cs.grid_template_columns.kind != .Subgrid && k.cs.grid_template_rows.kind != .Subgrid) { continue }
+		if !stack_ok(c) { continue }
+		sub := grid_build(c, g.items[i].box, grid_reps(c, g.items[i].box, {-1, -1}, true), g, i32(i))
+		it := &g.items[i]
+		it.sub, it.axes = sub, sub.subgrid
+		gp.subs[it.box] = sub
+		k = &c.l.boxes[it.box]
+		edge := [2][2]f32{{grid_edge(c, k, .Left), grid_edge(c, k, .Right)}, {grid_edge(c, k, .Top), grid_edge(c, k, .Bottom)}}
+		for j in 0 ..< len(sub.items) {
+			sj := &sub.items[j]
+			if !sj.placed { continue }
+			px := Grid_Item{box = sj.box, placed = true, proxy = true, src = sub, src_i = i32(j)}
+			used := false
+			for axis in 0 ..< 2 {
+				ok := sub.subgrid[axis] && (sj.proxy ? sj.axes[axis] : !(sj.sub != nil && sj.axes[axis]))
+				px.axes[axis] = ok
+				px.area[axis] = it.area[axis]
+				if !ok { continue }
+				used = true
+				px.area[axis] = sj.area[axis] + it.area[axis][0]
+				if sj.proxy { px.extra[axis] = sj.extra[axis] }
+				if sj.area[axis][0] == 0 { px.extra[axis] += edge[axis][0] }
+				if sj.area[axis][1] == sub.ax[axis].n { px.extra[axis] += edge[axis][1] }
+			}
+			if used { append(&proxies, px) }
+		}
+	}
+	if len(proxies) == 0 { return }
+	all := make([]Grid_Item, g.n_real + len(proxies), context.temp_allocator)
+	copy(all, g.items[:g.n_real])
+	copy(all[g.n_real:], proxies[:])
+	g.items = all
+}
+
+// Copies the kinds of the parent's tracks into the subgridded axis of every subgrid (the automatic minimum of their
+// items depends on them), down the nested subgrids.
+@(private)
+grid_sync_subs :: proc(g: ^Grid, axis: int) {
+	for &it in g.items[:g.n_real] {
+		if it.sub == nil || !it.axes[axis] { continue }
+		sa := &it.sub.ax[axis]
+		for t in 0 ..< min(sa.n, it.area[axis][1] - it.area[axis][0]) {
+			src := &g.ax[axis].tracks[it.area[axis][0] + t]
+			d := &sa.tracks[t]
+			d.min_k, d.max_k, d.max_v, d.collapsed = src.min_k, src.max_k, src.max_v, src.collapsed
+		}
+		grid_sync_subs(it.sub, axis)
+	}
+}
+
+// A subgridded axis takes the sizes and positions of the parent's tracks, its first and last tracks shortened by the
+// subgrid's own margin, border and padding (its content box starts inside the parent's area).
+@(private)
+grid_sub_copy :: proc(c: ^Ctx, g: ^Grid, axis: int) {
+	p := g.parent
+	pit := &p.items[g.pitem]
+	pa, sa := &p.ax[axis], &g.ax[axis]
+	k := &c.l.boxes[g.bi]
+	s := pit.area[axis][0]
+	span := min(sa.n, pit.area[axis][1] - s)
+	inset_s, inset_e: f32
+	if axis == 0 {
+		inset_s, inset_e = pit.m[3] + k.border[3] + k.padding[3], pit.m[1] + k.border[1] + k.padding[1]
+		if p.rtl { inset_s, inset_e = inset_e, inset_s }
+	} else {
+		inset_s, inset_e = pit.m[0] + k.pre_h + k.border[0] + k.padding[0], pit.m[2] + k.border[2] + k.padding[2]
+	}
+	sa.gap = pa.gap
+	if span <= 0 { return }
+	origin := pa.tracks[s].pos + inset_s
+	for t in 0 ..< span {
+		src := &pa.tracks[s + t]
+		d := &sa.tracks[t]
+		d.min_k, d.max_k, d.max_v, d.collapsed = src.min_k, src.max_k, src.max_v, src.collapsed
+		d.pos, d.base = src.pos - origin, src.base
+	}
+	f := &sa.tracks[0]
+	f.base, f.pos = max(f.base - inset_s, 0), 0
+	l := &sa.tracks[span - 1]
+	l.base = max(l.base - inset_e, 0)
+}
+
+// Before the parent sizes its rows: the columns of each subgrid (the parent's, or its own sized in its width) and the
+// widths of its items, whose heights the parent's row sizing then asks for.
+@(private)
+grid_prepare_subs :: proc(c: ^Ctx, g: ^Grid) {
+	for &it in g.items[:g.n_real] {
+		if it.sub == nil || !it.placed { continue }
+		sub := it.sub
+		k := &c.l.boxes[it.box]
+		w := max(it.size.x - pb_w(k), 0)
+		grid_item_margins(c, sub, w)
+		for &si in sub.items { si.contrib = {{-1, -1, -1}, {-1, -1, -1}} }
+		if sub.subgrid[0] {
+			grid_sub_copy(c, sub, 0)
+		} else {
+			sub.ax[0].gap = gap_px(c, k.cs.column_gap, w)
+			grid_size_axis(c, sub, 0, w, .None, -1, -1)
+			grid_align_tracks(sub, 0, w, k.cs.justify_content)
+		}
+		grid_item_widths(c, sub)
+		grid_prepare_subs(c, sub)
+	}
+}
+
+// Resolves the margins (and padding, border) of the items against the container's content width.
+@(private)
+grid_item_margins :: proc(c: ^Ctx, g: ^Grid, cw: f32) {
+	for &it in g.items[:g.n_real] {
+		if !it.placed { continue }
+		resolve_box_model(c, &c.l.boxes[it.box], cw)
+		k := &c.l.boxes[it.box]
+		it.m = k.margin
+		if k.auto_t { it.m[0] = 0 }
+		if k.auto_r { it.m[1] = 0 }
+		if k.auto_b { it.m[2] = 0 }
+		if k.auto_l { it.m[3] = 0 }
+		it.ratio_dep = k.cs.aspect_ratio > 0 && k.cs.width.kind == .Auto && style.has_percent(k.cs.height)
+	}
+}
+
+// Auto-repeat counts of a container for the given definite content sizes (< 0: indefinite).
+@(private)
+grid_reps :: proc(c: ^Ctx, bi: i32, size: Vec2, intrinsic_mode: bool) -> (reps: [2]i32) {
+	b := &c.l.boxes[bi]
+	cs := b.cs
+	lim := i32(max(c.set.grid_max_tracks, 1))
+	for axis in 0 ..< 2 {
+		pb: f32
+		if axis == 0 { pb = intrinsic_mode ? intrinsic_pb(c, b) : pb_w(b) } else if !intrinsic_mode { pb = pb_h(b) }
+		mn, mx := grid_bounds(c, cs, axis, pb, -1)
+		gap := gap_px(c, axis == 0 ? cs.column_gap : cs.row_gap, size[axis])
+		reps[axis] = grid_auto_repeat(c, grid_template(cs, axis), size[axis], mn, mx, gap, lim)
+	}
+	return
 }
 
 ////////////////////////////////
@@ -590,30 +813,35 @@ grid_build :: proc(c: ^Ctx, bi: i32, reps: [2]i32) -> ^Grid {
 @(private)
 grid_prepare :: proc(c: ^Ctx, bi: i32, size: Vec2, intrinsic_mode: bool) -> ^Grid {
 	gp := grid_pass(c)
-	b := &c.l.boxes[bi]
-	cs := b.cs
-	pbw := intrinsic_mode ? intrinsic_pb(c, b) : pb_w(b)
-	lim := i32(max(c.set.grid_max_tracks, 1))
-	reps: [2]i32
-	for axis in 0 ..< 2 {
-		avail := size[axis]
-		pb := axis == 0 ? pbw : (intrinsic_mode ? 0 : pb_h(b))
-		mn, mx := grid_bounds(c, cs, axis, pb, -1)
-		gap := gap_px(c, axis == 0 ? cs.column_gap : cs.row_gap, avail)
-		reps[axis] = grid_auto_repeat(c, grid_template(cs, axis), avail, mn, mx, gap, lim)
-	}
-	key := Grid_Key{bi, reps, intrinsic_mode}
-	g, ok := gp.placed[key]
+	// a subgrid is placed by its parent
+	g, ok := gp.subs[bi]
 	if !ok {
-		g = grid_build(c, bi, reps)
-		gp.placed[key] = g
+		reps := grid_reps(c, bi, size, intrinsic_mode)
+		key := Grid_Key{bi, reps, intrinsic_mode}
+		g, ok = gp.placed[key]
+		if !ok {
+			g = grid_build(c, bi, reps)
+			gp.placed[key] = g
+		}
 	}
+	grid_reset(gp, g)
+	g.rtl = is_rtl(c.l.boxes[bi].cs)
+	return g
+}
+
+// Forgets the contributions computed for another sizing, down the subgrids (whose items size this grid's tracks), and
+// makes this grid's subgrids the current ones.
+@(private)
+grid_reset :: proc(gp: ^Grid_Pass, g: ^Grid) {
 	for &it in g.items {
 		it.contrib = {{-1, -1, -1}, {-1, -1, -1}}
 		it.shim, it.baseline = 0, -1
 	}
-	g.rtl = is_rtl(cs)
-	return g
+	for &it in g.items[:g.n_real] {
+		if it.sub == nil { continue }
+		gp.subs[it.box] = it.sub
+		grid_reset(gp, it.sub)
+	}
 }
 
 // Min-content and max-content widths of a grid container's content box (§12.2 via the track sizing algorithm under a
@@ -648,34 +876,34 @@ layout_grid :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 	g.ax[0].gap = gap_px(c, cs.column_gap, cw)
 	g.ax[1].gap = gap_px(c, cs.row_gap, ch_def)
 	min_h, max_h := grid_bounds(c, cs, 1, pb_h(b), cb_h)
+	grid_item_margins(c, g, cw)
 
-	for &it in g.items {
-		if !it.placed { continue }
-		resolve_box_model(c, &c.l.boxes[it.box], cw)
-		k := &c.l.boxes[it.box]
-		it.m = k.margin
-		if k.auto_t { it.m[0] = 0 }
-		if k.auto_r { it.m[1] = 0 }
-		if k.auto_b { it.m[2] = 0 }
-		if k.auto_l { it.m[3] = 0 }
-		it.ratio_dep = k.cs.aspect_ratio > 0 && k.cs.width.kind == .Auto && style.has_percent(k.cs.height)
-	}
-
-	// columns, then rows from the items' heights at their widths; again when a min-content width followed the rows
+	// columns, then rows from the items' heights at their widths; again when a min-content width followed the rows.
+	// A subgridded axis takes its parent's tracks instead.
 	content_h: f32
 	for pass in 0 ..< 2 {
-		grid_size_axis(c, g, 0, cw, .None, -1, -1)
-		grid_align_tracks(g, 0, cw, cs.justify_content)
-		grid_item_widths(c, g)
-		grid_baseline_shims(c, g)
-		grid_size_axis(c, g, 1, ch_def, .None, min_h, max_h)
-		content_h = ch_def
-		if content_h < 0 {
-			content_h = grid_tracks_total(&g.ax[1])
-			if max_h >= 0 { content_h = min(content_h, max_h) }
-			if min_h >= 0 { content_h = max(content_h, min_h) }
+		if g.subgrid[0] {
+			grid_sub_copy(c, g, 0)
+		} else {
+			grid_size_axis(c, g, 0, cw, .None, -1, -1)
+			grid_align_tracks(g, 0, cw, cs.justify_content)
 		}
-		grid_align_tracks(g, 1, content_h, cs.align_content)
+		grid_item_widths(c, g)
+		grid_prepare_subs(c, g)
+		grid_baseline_shims(c, g)
+		if g.subgrid[1] {
+			grid_sub_copy(c, g, 1)
+			content_h = ch_def >= 0 ? ch_def : grid_tracks_total(&g.ax[1])
+		} else {
+			grid_size_axis(c, g, 1, ch_def, .None, min_h, max_h)
+			content_h = ch_def
+			if content_h < 0 {
+				content_h = grid_tracks_total(&g.ax[1])
+				if max_h >= 0 { content_h = min(content_h, max_h) }
+				if min_h >= 0 { content_h = max(content_h, min_h) }
+			}
+			grid_align_tracks(g, 1, content_h, cs.align_content)
+		}
 		if pass == 1 || !grid_rows_changed_widths(c, g) { break }
 	}
 	g.size = {cw, content_h}
@@ -746,12 +974,13 @@ grid_self :: proc(c: ^Ctx, container: ^style.Computed, k: ^Box, axis: int) -> st
 @(private)
 grid_item_widths :: proc(c: ^Ctx, g: ^Grid) {
 	cs := c.l.boxes[g.bi].cs
-	for &it in g.items {
+	for &it in g.items[:g.n_real] {
 		if !it.placed { continue }
 		_, aw := grid_area(g, &it, 0)
 		k := &c.l.boxes[it.box]
 		kcs := k.cs
 		avail := aw - it.m[1] - it.m[3]
+		sub_axis := it.sub != nil && it.axes[0]
 		w: f32
 		switch {
 		case k.kind == .Replaced:
@@ -775,12 +1004,13 @@ grid_item_widths :: proc(c: ^Ctx, g: ^Grid) {
 						break
 					}
 				}
-				if grid_self(c, cs, k, 0) == .Stretch && !k.auto_l && !k.auto_r { w = avail } else { w = shrink_to_fit(c, it.box, avail) }
+				// a subgrid always fills its area in a subgridded axis
+				if sub_axis || (grid_self(c, cs, k, 0) == .Stretch && !k.auto_l && !k.auto_r) { w = avail } else { w = shrink_to_fit(c, it.box, avail) }
 			}
 			k = &c.l.boxes[it.box]
 			w = clamp_w(c, k, w, aw)
 			// the automatic minimum size (§6.6)
-			if kcs.min_width.kind == .Auto && grid_auto_min_applies(c, g, &it, 0) {
+			if !sub_axis && kcs.min_width.kind == .Auto && grid_auto_min_applies(c, g, &it, 0) {
 				w = max(w, grid_contrib(c, g, &it, 0, 2) - it.m[1] - it.m[3])
 			}
 		}
@@ -802,7 +1032,7 @@ grid_area_size :: proc(g: ^Grid, it: ^Grid_Item, axis: int) -> f32 {
 @(private)
 grid_rows_changed_widths :: proc(c: ^Ctx, g: ^Grid) -> bool {
 	changed := false
-	for &it in g.items {
+	for &it in g.items[:g.n_real] {
 		if !it.placed || !it.ratio_dep { continue }
 		k := &c.l.boxes[it.box]
 		if h, ok := definite(c, k.cs.height, grid_area_size(g, &it, 1)); ok {
@@ -822,7 +1052,7 @@ grid_baseline_shims :: proc(c: ^Ctx, g: ^Grid) {
 	nrows := g.ax[1].n
 	if nrows == 0 { return }
 	best: []f32
-	for &it in g.items {
+	for &it in g.items[:g.n_real] {
 		if !it.placed { continue }
 		k := &c.l.boxes[it.box]
 		if grid_self(c, cs, k, 1) != .Baseline || k.auto_t || k.auto_b { continue }
@@ -834,7 +1064,7 @@ grid_baseline_shims :: proc(c: ^Ctx, g: ^Grid) {
 		best[r] = max(best[r], it.baseline)
 	}
 	if best == nil { return }
-	for &it in g.items {
+	for &it in g.items[:g.n_real] {
 		if it.placed && it.baseline >= 0 { it.shim = best[it.area[1][0]] - it.baseline }
 	}
 }
@@ -865,7 +1095,7 @@ grid_place_items :: proc(c: ^Ctx, g: ^Grid, cw: f32) {
 	b := &c.l.boxes[g.bi]
 	cs := b.cs
 	cx, cy := content_x(b), content_y(b)
-	for &it in g.items {
+	for &it in g.items[:g.n_real] {
 		k := &c.l.boxes[it.box]
 		if !it.placed {
 			k.size, k.pos = {}, {cx, cy}
@@ -878,16 +1108,18 @@ grid_place_items :: proc(c: ^Ctx, g: ^Grid, cw: f32) {
 		h: f32
 		forced := false
 		al := grid_self(c, cs, k, 1)
+		sub_axis := it.sub != nil && it.axes[1]
+		if sub_axis { al = .Stretch }
 		if k.kind == .Replaced {
 			h = replaced_size(c, it.box, aw, ah).y
 			forced = true
-		} else if spec, ok := to_border_h(c, k, k.cs.height, ah); ok {
+		} else if spec, ok := to_border_h(c, k, k.cs.height, ah); ok && !sub_axis {
 			h = clamp_h(c, k, spec, ah)
 			forced = true
-		} else if al == .Stretch && !k.auto_t && !k.auto_b {
+		} else if sub_axis || (al == .Stretch && !k.auto_t && !k.auto_b) {
 			h = clamp_h(c, k, max(ah - it.m[0] - it.m[2] - k.pre_h, 0), ah)
 			// never below the automatic minimum (the content, for a visible-overflow item)
-			if k.cs.min_height.kind == .Auto && grid_auto_min_applies(c, g, &it, 1) { h = max(h, grid_item_height(c, g, &it) - k.pre_h) }
+			if !sub_axis && k.cs.min_height.kind == .Auto && grid_auto_min_applies(c, g, &it, 1) { h = max(h, grid_item_height(c, g, &it) - k.pre_h) }
 			forced = true
 		} else {
 			h = grid_item_height(c, g, &it) - k.pre_h
@@ -967,7 +1199,7 @@ grid_container_baselines :: proc(c: ^Ctx, g: ^Grid) {
 		if (x.baseline >= 0) != (y.baseline >= 0) { return x.baseline >= 0 }
 		return last ? x.area[0][0] > y.area[0][0] : x.area[0][0] < y.area[0][0]
 	}
-	for &it, i in g.items {
+	for &it, i in g.items[:g.n_real] {
 		if !it.placed { continue }
 		if better(g, i, first, false) { first = i }
 		if better(g, i, last, true) { last = i }
