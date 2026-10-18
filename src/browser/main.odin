@@ -24,6 +24,7 @@ import "wb:host"
 import "wb:html"
 import "wb:http"
 import "wb:net"
+import lay "wb:layout"
 import "wb:page"
 import "wb:url"
 import "wb:wasm"
@@ -77,6 +78,7 @@ Tab :: struct {
 	console:  [dynamic]string,
 	layout:   Layout,
 	scroll:   f32,
+	fragment_seen: string,       // the document URL whose fragment the view last scrolled to (owned)
 	web_fonts: int,              // faces of the page's @font-face already handed to the font registry
 	web_font_page: rawptr,       // the page those faces came from (a new page starts over)
 	image_sizes: u64,            // the page's image sizes generation the layout was made with (images_shell.odin)
@@ -152,6 +154,7 @@ tab_close :: proc(app: ^App, index: int) {
 	page.storage_drop_session(&app.storage, tab_key(t))
 	page.session_destroy(&t.session)
 	delete(t.url); delete(t.title); delete(t.status)
+	delete(t.fragment_seen)
 	for h in t.history { delete(h) }
 	delete(t.history)
 	for l in t.console { delete(l) }
@@ -252,6 +255,7 @@ history_push :: proc(t: ^Tab, target: string) {
 
 // The chrome's view of the session history (back / forward buttons).
 sync_history :: proc(t: ^Tab) {
+	delete(t.fragment_seen)
 	for h in t.history { delete(h) }
 	clear(&t.history)
 	for e in t.session.entries { append(&t.history, strings.clone(e.url)) }
@@ -534,6 +538,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		prof_end(.Layout)
 	}
 	images_after_layout(t, size, scale)
+	scroll_to_fragment(t, size)
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
 	draw.push_clip(dc, b.rect)
 	prof_begin(.Paint_Items)
@@ -559,6 +564,61 @@ adopt_web_fonts :: proc(t: ^Tab) {
 		register_face(&page_render.fonts, f.family, weight, f.italic, id)
 		t.layout.valid = false
 	}
+}
+
+// HTML "scroll to the fragment": when the document URL changes (load, link to #id, location.hash, history), the view
+// goes to the element whose id (or <a name>) is the fragment; "top" or an empty fragment goes to the top.
+scroll_to_fragment :: proc(t: ^Tab, viewport: draw.Vec2) {
+	href := t.page.env.location.href
+	if href == t.fragment_seen || !t.layout.valid { return }
+	delete(t.fragment_seen)
+	t.fragment_seen = strings.clone(href)
+	loc := t.page.env.location
+	if !loc.has_fragment { return }
+	frag := loc.fragment
+	frag = percent_decode_bytes(frag)   // HTML: the decoded fragment is tried as an id
+	if frag == "" || strings.equal_fold(frag, "top") { t.scroll = 0; return }
+	target := dom.find_by_id(t.page.doc, frag)
+	if target == base.NIL_HANDLE { target = find_named_anchor(t.page.doc, frag) }
+	if target == base.NIL_HANDLE { return }
+	if r, ok := lay.box_of(&t.layout, target, viewport, t.scroll); ok && !r.fixed { t.scroll = max(r.border.min.y, 0) }
+}
+
+@(private = "file")
+percent_decode_bytes :: proc(s: string) -> string {
+	if strings.index_byte(s, '%') < 0 { return s }
+	hex :: proc(c: u8) -> int {
+		switch c {
+		case '0' ..= '9': return int(c - '0')
+		case 'a' ..= 'f': return int(c - 'a') + 10
+		case 'A' ..= 'F': return int(c - 'A') + 10
+		}
+		return -1
+	}
+	out := make([dynamic]u8, 0, len(s), context.temp_allocator)
+	for i := 0; i < len(s); i += 1 {
+		if s[i] == '%' && i + 2 < len(s) && hex(s[i + 1]) >= 0 && hex(s[i + 2]) >= 0 {
+			append(&out, u8(hex(s[i + 1]) * 16 + hex(s[i + 2])))
+			i += 2
+		} else { append(&out, s[i]) }
+	}
+	return string(out[:])
+}
+
+@(private = "file")
+find_named_anchor :: proc(d: ^dom.Document, name: string) -> base.Handle {
+	stack := make([dynamic]base.Handle, context.temp_allocator)
+	append(&stack, d.root)
+	for len(stack) > 0 {
+		h := pop(&stack)
+		n := dom.get(d, h)
+		if n == nil { continue }
+		if n.kind == .Element && n.name == "a" {
+			if v, ok := dom.get_attribute(d, h, "name"); ok && v == name { return h }
+		}
+		for c := n.last_child; c != base.NIL_HANDLE; c = dom.get(d, c).prev { append(&stack, c) }
+	}
+	return base.NIL_HANDLE
 }
 
 build_ui :: proc(app: ^App) {
@@ -684,6 +744,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 				if href, ok := anchor_href(t.page.doc, target); ok {
 					resolved, rok := url.parse(href, &t.page.env.location, context.temp_allocator)
 					if !rok { tab_log(t, .Error, fmt.tprintf("invalid link %q", href)); continue }
+					if page.follow_fragment_link(t.page, resolved) { continue }   // same document: page_draw scrolls to the target
 					navigate(app, t, resolved.href, t.page, user_activation = true)
 					have_move = false
 					return   // the page is gone: the rest of this frame's events belong to the old one

@@ -119,6 +119,15 @@ queue_hashchange :: proc(p: ^Page, old_url, new_url: string) {
 	}, t)
 }
 
+// A link followed by the user (the shell's default action of <a>): a fragment of this document stays in it (new history
+// entry, hashchange); true when handled here, false when the shell has to load another document.
+follow_fragment_link :: proc(p: ^Page, target: url.URL) -> bool {
+	if p == nil || p.web == nil || !target.has_fragment { return false }
+	if url.without_fragment(target) != url.without_fragment(p.env.location) { return false }
+	navigate_fragment(p, target, false)
+	return true
+}
+
 // location.assign / replace / href setter: a fragment navigation stays in the document, anything else goes to the embedder.
 @(private)
 location_navigate :: proc(p: ^Page, target: url.URL, replace: bool) {
