@@ -104,6 +104,11 @@ func main() {
 		fmt.Fprintf(w, "%s %d bytes, X-Test=%q", r.Method, n, r.Header.Get("X-Test"))
 	})
 
+	registerPolicyHandlers(mux)
+
+	go func() {
+		log.Fatal(http.ListenAndServe("127.0.0.1:8767", mux))
+	}()
 	go func() {
 		srv := &http.Server{Addr: "127.0.0.1:8766", Handler: mux, TLSConfig: &tls.Config{Certificates: []tls.Certificate{selfSigned()}}}
 		log.Fatal(srv.ListenAndServeTLS("", ""))

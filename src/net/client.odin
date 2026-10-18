@@ -23,6 +23,7 @@ import "core:time"
 import win "core:sys/windows"
 import "wb:base"
 import "wb:host"
+import "wb:url"
 
 DEFAULT_MAX_BODY :: 256 << 20
 CHUNK_SIZE       :: 64 << 10
@@ -145,6 +146,12 @@ client_init :: proc(c: ^Client, loop: ^host.Loop, user_agent := "wasm_browser/0.
 		protocols = WINHTTP_PROTOCOL_FLAG_HTTP2   // HTTP/3 needs a recent Windows
 		WinHttpSetOption(c.session, WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL, &protocols, size_of(protocols))
 	}
+	// Policy belongs to the fetch layer: redirects are returned to it (each hop is re-checked), and the OS never sends
+	// ambient credentials on its own.
+	never: win.DWORD = WINHTTP_OPTION_REDIRECT_POLICY_NEVER
+	WinHttpSetOption(c.session, WINHTTP_OPTION_REDIRECT_POLICY, &never, size_of(never))
+	autologon: win.DWORD = WINHTTP_AUTOLOGON_SECURITY_LEVEL_HIGH
+	WinHttpSetOption(c.session, WINHTTP_OPTION_AUTOLOGON_POLICY, &autologon, size_of(autologon))
 	return true
 }
 
@@ -258,27 +265,27 @@ to_wide :: proc(s: string) -> []u16 {
 // Builds the job (pure memory work, no OS handle yet). `key` identifies the origin server for the per-host limit.
 @(private)
 prepare :: proc(c: ^Client, h: base.Handle, d: Request_Desc) -> (job: ^Job, key: string, code: u32) {
-	url, uerr := url_parse(d.url)
-	if uerr != .None { return nil, "", ERROR_BAD_URL }
+	u, ok := url.parse_absolute(d.url, context.temp_allocator)
+	if !ok || !(u.scheme == "http" || u.scheme == "https") { return nil, "", ERROR_BAD_URL }
 
 	job = new(Job, heap())
 	job.client = c
 	job.req = h
-	job.port = url.port
-	job.secure = url.secure
+	job.port = u16(url.effective_port(u))
+	job.secure = u.scheme == "https"
 	job.max_body = d.max_body > 0 ? d.max_body : DEFAULT_MAX_BODY
 	method := d.method == "" ? "GET" : d.method
 	job.verb_w = to_wide(method)
-	job.host_w = to_wide(url.host)
-	target := request_target(url, context.temp_allocator)
+	host := u.host   // WinHTTP takes IPv6 literals without brackets
+	if strings.has_prefix(host, "[") { host = host[1:len(host) - 1] }
+	job.host_w = to_wide(host)
+	target := url.request_target(u, context.temp_allocator)
 	job.target_w = to_wide(target)
 	if d.headers != "" { job.headers_w = to_wide(d.headers) }
 	if len(d.body) > 0 { job.body = make([]byte, len(d.body), heap()); copy(job.body, d.body) }
 	sync.atomic_add(&c.live_jobs, 1)
 
-	lower := make([]byte, len(url.host), context.temp_allocator)
-	for i in 0 ..< len(url.host) { ch := url.host[i]; lower[i] = ch >= 'A' && ch <= 'Z' ? ch + 32 : ch }
-	key = fmt.aprintf("%s:%d", string(lower), url.port, allocator = heap())
+	key = fmt.aprintf("%s:%d", u.host, url.effective_port(u), allocator = heap())
 	return job, key, 0
 }
 

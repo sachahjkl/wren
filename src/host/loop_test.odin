@@ -1,5 +1,6 @@
 package host
 
+import "core:sync"
 import "core:testing"
 import "core:thread"
 import "core:time"
@@ -87,6 +88,43 @@ timer_scheduling_timer_with_zero_delay_does_not_spin :: proc(t: ^testing.T) {
 	run_ready(&l)
 	testing.expect_value(t, s.n, 2)
 }
+
+@(test)
+blocking_jobs_run_off_thread_and_complete_on_loop :: proc(t: ^testing.T) {
+	l: Loop
+	loop_init(&l)
+	defer loop_destroy(&l)
+	pool: Blocking_Pool
+	blocking_init(&pool, &l, 3)
+	defer blocking_destroy(&pool)
+
+	Job :: struct { worker_thread, done_thread: int, value: int, finished: ^int }
+	finished := 0
+	jobs: [50]Job
+	main_id := sync_current_thread_id()
+	for &j, i in jobs {
+		j.value = i
+		j.finished = &finished
+		run_blocking(&pool, proc(data: rawptr) {
+			j := (^Job)(data)
+			j.worker_thread = sync_current_thread_id()
+			j.value *= 2
+		}, proc(data: rawptr) {
+			j := (^Job)(data)
+			j.done_thread = sync_current_thread_id()
+			j.finished^ += 1
+		}, &j)
+	}
+	for finished < len(jobs) { loop_wait(&l, 50) }
+	for j, i in jobs {
+		testing.expect_value(t, j.value, i * 2)
+		testing.expect(t, j.worker_thread != main_id, "work ran on a worker")
+		testing.expect_value(t, j.done_thread, main_id)   // completion on the loop thread
+	}
+}
+
+@(private = "file")
+sync_current_thread_id :: proc() -> int { return int(sync.current_thread_id()) }
 
 @(test)
 posts_from_many_threads_are_all_delivered_and_wakes_coalesce :: proc(t: ^testing.T) {

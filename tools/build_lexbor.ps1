@@ -1,4 +1,4 @@
-# Builds Lexbor (ext\lexbor, a pinned release) + our shim (src\html\shim\wb_html.c) into build\lexbor\lexbor.lib with MSVC.
+# Builds Lexbor (ext\lexbor, a pinned release) + our shims (src\shim\*.c) into build\lexbor\lexbor.lib with MSVC.
 # HTML5 tokenizer/tree builder, CSS parser, selectors. No CMake.
 #   powershell -File tools\build_lexbor.ps1
 $ErrorActionPreference = 'Stop'
@@ -31,7 +31,7 @@ foreach ($g in $groups) {
     & cl @flags "/Fo$dir\" ($g.Group | ForEach-Object { $_.FullName }) *>> $log
 }
 New-Item -ItemType Directory -Force "$out\obj\shim" | Out-Null
-& cl @flags "/Fo$out\obj\shim\" (Join-Path $root 'src\html\shim\wb_html.c') *>> $log
+& cl @flags "/Fo$out\obj\shim\" (Get-ChildItem (Join-Path $root 'src\shim') -Filter *.c | ForEach-Object { $_.FullName }) *>> $log
 
 $errors = Select-String -Path $log -Pattern ' error ' -SimpleMatch
 if ($errors) { $errors | Select-Object -First 10; throw "build failed, see $log" }
