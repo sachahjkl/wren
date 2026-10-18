@@ -79,6 +79,7 @@ Tab :: struct {
 	scroll:   f32,
 	web_fonts: int,              // faces of the page's @font-face already handed to the font registry
 	web_font_page: rawptr,       // the page those faces came from (a new page starts over)
+	image_sizes: u64,            // the page's image sizes generation the layout was made with (images_shell.odin)
 	history:  [dynamic]string,   // addresses visited in this tab (mirror of `session`, for the chrome)
 	hist:     int,               // index of the current one
 	session:  Session_History,   // the joint session history: entries, history.state, same-document entries
@@ -526,16 +527,20 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	prof_end(.Styles)
 	draw.rect(dc, b.rect, to_draw(styled.canvas))
 	adopt_web_fonts(t)
+	images_before_layout(t)
 	if layout_stale(&t.layout, t.page.doc, styled, size, scale) {
 		prof_begin(.Layout)
 		layout_document(&t.layout, t.page.doc, styled, &app.measure, &app.page_settings.style, size, scale, app.cfg.layout_band_px)
 		prof_end(.Layout)
 	}
+	images_after_layout(t, size, scale)
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
 	draw.push_clip(dc, b.rect)
 	prof_begin(.Paint_Items)
+	images_paint_begin_frame(app)
 	paint(&t.layout, dc, t.page.doc, b.rect.min, size, t.scroll, b.rect)
 	forms_paint_overlays(app, dc, b.rect)
+	images_after_paint(app)
 	prof_end(.Paint_Items)
 	draw.pop_clip(dc)
 }
@@ -761,6 +766,7 @@ frame :: proc(app: ^App) {
 	// network completions, timers and posted tasks run here, on the UI thread
 	prof_begin(.Loop)
 	if host.run_ready(&app.loop) > 0 { app.frames_requested = max(app.frames_requested, 2) }
+	images_shell_frame(app)
 	prof_end(.Loop)
 	prof_begin(.Input)
 	route_page_input(app, events)
@@ -867,6 +873,7 @@ main :: proc() {
 	ui.init(&app.ui_state, &app.fonts, &app.theme)
 	app.ui_state.icon_font = app.icons
 	page_render_init(app)
+	images_shell_init(app)
 	set_content_painter(forms_content_painter, app)
 	page_render.bare = forms_bare_control
 
@@ -915,8 +922,10 @@ main :: proc() {
 	prof_report()
 	profile_save(app, force = true)
 	base.scope_close(app.process)   // every tab, page and request
+	images_shell_destroy(app)
 	page.storage_manager_destroy(&app.storage)   // writes what is not saved yet
 	page.shutdown_threads()
+	page.images_shutdown()   // the image cache and its decoding threads
 	fetch.loader_destroy(&app.loader)
 	host.blocking_destroy(&app.blocking)
 	net.client_destroy(&app.client)

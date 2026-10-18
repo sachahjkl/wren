@@ -3,6 +3,7 @@ package page
 import "wb:config"
 import "wb:forms"
 import "wb:html"
+import img "wb:images"
 import "wb:style"
 import "wb:wasm"
 
@@ -19,6 +20,7 @@ Settings :: struct {
 	forms:           forms.Settings,
 	workers:         Worker_Settings,     // worker_settings.odin
 	threads:         Thread_Settings,     // offthread.odin
+	images:          img.Settings,        // images.odin
 }
 
 PREFS := [?]config.Def{
@@ -39,6 +41,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, EVENTSOURCE_PREFS[:])
 	config.register(p, WEBSOCKET_PREFS[:])
 	forms.register_prefs(p)
+	img.register_prefs(p)
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -54,6 +57,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		forms = forms.settings_from_prefs(p),
 		workers = worker_settings_from_prefs(p),
 		threads = thread_settings_from_prefs(p),
+		images = img.settings_from_prefs(p),
 	}
 }
 

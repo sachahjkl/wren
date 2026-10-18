@@ -14,6 +14,7 @@ package images
 
 import "base:runtime"
 import "core:sync"
+import win "core:sys/windows"
 import "core:time"
 import "wb:base"
 import "wb:host"
@@ -111,6 +112,60 @@ dec: ^Decoder
 @(private)
 dec_mu: sync.Mutex   // start / stop
 
+// Optional codecs found on this system (the built-in ones are always there). Probed once, by the first decoding thread.
+@(private)
+codecs: struct { webp, heif, probed: bool }
+@(private)
+codecs_ready: sync.Sema
+
+CLSID_WICWebpDecoder := GUID{0x7693e886, 0x51c9, 0x4070, {0x84, 0x19, 0x9f, 0x70, 0x73, 0x8e, 0xc8, 0xfa}}
+CLSID_WICHeifDecoder := GUID{0xe9a4a80a, 0x44fe, 0x4de4, {0x89, 0x71, 0x71, 0x50, 0xb1, 0x0a, 0x51, 0x99}}
+
+// Can this browser decode `f` here? WebP needs the "WebP Image Extensions", AVIF and HEIF the "HEIF Image Extensions"
+// (AVIF also the "AV1 Video Extension", which cannot be detected without decoding: an AVIF file may still fail with
+// Codec_Missing). Known only once the decoder runs; false before.
+codec_supported :: proc(f: Format) -> bool {
+	switch f {
+	case .Png, .Jpeg, .Gif, .Bmp, .Ico, .Tiff: return true
+	case .Webp: return codecs.webp
+	case .Avif, .Heif: return codecs.heif
+	case .Unknown, .Svg: return false
+	}
+	return false
+}
+
+// The format a MIME type names (for <source type>), Unknown when it is not an image type this browser knows.
+format_of_mime :: proc(mime: string) -> Format {
+	switch mime {
+	case "image/png", "image/apng": return .Png
+	case "image/jpeg", "image/jpg", "image/pjpeg": return .Jpeg
+	case "image/gif": return .Gif
+	case "image/bmp", "image/x-bmp", "image/x-ms-bmp": return .Bmp
+	case "image/x-icon", "image/vnd.microsoft.icon": return .Ico
+	case "image/tiff", "image/tiff-fx": return .Tiff
+	case "image/webp": return .Webp
+	case "image/avif": return .Avif
+	case "image/heif", "image/heic", "image/heif-sequence", "image/heic-sequence": return .Heif
+	case "image/svg+xml": return .Svg
+	}
+	return .Unknown
+}
+
+@(private)
+probe_codecs :: proc() {
+	unk: rawptr
+	if succeeded(win.CoCreateInstance(&CLSID_WICWebpDecoder, nil, win.CLSCTX_INPROC_SERVER, win.IUnknown_UUID, &unk)) && unk != nil {
+		codecs.webp = true
+		com_release(unk)
+	}
+	unk = nil
+	if succeeded(win.CoCreateInstance(&CLSID_WICHeifDecoder, nil, win.CLSCTX_INPROC_SERVER, win.IUnknown_UUID, &unk)) && unk != nil {
+		codecs.heif = true
+		com_release(unk)
+	}
+	codecs.probed = true
+}
+
 // Starts the decoding threads (`threads` <= 0: one). Idempotent; the threads use the process heap.
 decoder_start :: proc(threads: int, stack_bytes := 0) {
 	sync.mutex_lock(&dec_mu)
@@ -126,6 +181,8 @@ decoder_start :: proc(threads: int, stack_bytes := 0) {
 	for _ in 0 ..< max(threads, 1) {
 		if t := host.thread_start(decoder_thread, d, stack_bytes, .Below_Normal); t != nil { append(&d.threads, t) }
 	}
+	// <source type> selection needs to know the optional codecs: the first thread looks (a few CoCreateInstance calls)
+	if len(d.threads) > 0 && !codecs.probed { _ = sync.sema_wait_with_timeout(&codecs_ready, 2 * time.Second) }
 }
 
 decoder_running :: proc() -> bool { return dec != nil }
@@ -274,6 +331,12 @@ decoder_thread :: proc(data: rawptr) {
 	codec: Codec_Context
 	have_codec := codec_init(&codec)
 	defer if have_codec { codec_destroy(&codec) }
+	sync.mutex_lock(&d.mu)
+	first := !codecs.probed
+	if first && have_codec { probe_codecs() }
+	codecs.probed = true
+	sync.mutex_unlock(&d.mu)
+	if first { sync.sema_post(&codecs_ready) }
 	for {
 		sync.mutex_lock(&d.mu)
 		for len(d.queue) == 0 && !d.stopping { sync.cond_wait(&d.cond, &d.mu) }
