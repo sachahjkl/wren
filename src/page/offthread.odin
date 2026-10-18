@@ -29,6 +29,8 @@ Thread_Settings :: struct {
 	parse_css:              bool,
 	parse_css_min_bytes:    int,
 	inline_style_min_bytes: int,
+	style_threads:          int,   // -1 = automatic
+	style_min_nodes:        int,
 }
 
 THREAD_PREFS := [?]config.Def{
@@ -42,6 +44,35 @@ THREAD_PREFS := [?]config.Def{
 		description = "Loaded stylesheets smaller than this are parsed on the interface thread."},
 	{name = "page.threads.inline_style_min_bytes", kind = .Int, default = {i = 4 << 10}, bounded = true, min = 0, max = 1 << 40, bytes = true, unit = "bytes",
 		description = "<style> elements at least this large are parsed together with their document on the background thread (when page.threads.parse_html applies). Style elements added later by scripts are always parsed at once, as the specification requires."},
+	{name = "page.threads.style", kind = .Int, default = {i = -1}, bounded = true, min = -1, max = 256,
+		description = "Threads that compute the styles of a large document together with the interface thread (the result is the same as on one thread). -1 = one less than the logical processors, at most 7; 0 = only the interface thread."},
+	{name = "page.threads.style_min_nodes", kind = .Int, default = {i = 4000}, bounded = true, min = 0, max = 1 << 40, unit = "nodes",
+		description = "Documents with fewer nodes are styled on the interface thread alone: sharing the work out would cost more than it saves."},
+}
+
+// Helpers of the full style pass, shared by every page (the UI thread runs one pass at a time). Made on first use with
+// page.threads.style threads, remade when that changes; `shutdown_threads` releases them.
+@(private)
+style_pool: ^host.Thread_Pool
+@(private)
+style_pool_size: int
+
+@(private)
+style_threads :: proc(p: ^Page) -> ^host.Thread_Pool {
+	n := p.settings.threads.style_threads
+	if n < 0 { n = min(host.processor_count() - 1, 7) }
+	if n != style_pool_size || (n > 0 && style_pool == nil) {
+		host.thread_pool_destroy(style_pool)
+		style_pool = n > 0 ? host.thread_pool_make(n) : nil
+		style_pool_size = n
+	}
+	return style_pool
+}
+
+// Joins the threads the page package keeps for all pages. Call once every page is closed, before exiting.
+shutdown_threads :: proc() {
+	host.thread_pool_destroy(style_pool)
+	style_pool, style_pool_size = nil, 0
 }
 
 thread_settings_from_prefs :: proc(p: ^config.Prefs) -> Thread_Settings {
@@ -51,6 +82,8 @@ thread_settings_from_prefs :: proc(p: ^config.Prefs) -> Thread_Settings {
 		parse_css = config.bool_of(p, "page.threads.parse_css"),
 		parse_css_min_bytes = int(config.int_of(p, "page.threads.parse_css_min_bytes")),
 		inline_style_min_bytes = int(config.int_of(p, "page.threads.inline_style_min_bytes")),
+		style_threads = int(config.int_of(p, "page.threads.style")),
+		style_min_nodes = int(config.int_of(p, "page.threads.style_min_nodes")),
 	}
 }
 

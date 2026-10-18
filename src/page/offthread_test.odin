@@ -84,6 +84,7 @@ document_parsed_in_the_background_is_identical_to_the_synchronous_parse :: proc(
 	settings := settings_default()
 	defer settings_destroy(&settings)
 	settings.threads.parse_html_min_bytes = 0
+	settings.threads.style_threads = 0   // the shared style pool belongs to one UI thread; tests run on several (see style/parallel_test.odin)
 	scope := base.scope_make("test")
 	defer base.scope_close(scope)
 	src := big_html()

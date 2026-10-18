@@ -206,7 +206,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	if full {
 		if p.styled == nil || p.style_stale || p.styled.mutations != p.doc.mutations { sync_styles(p) }
 		style.styled_destroy(p.styled)
-		p.styled = style.compute_styles(e, p.doc, p.style_state)
+		p.styled = style.compute_styles(e, p.doc, p.style_state, style_threads(p), p.settings.threads.style_min_nodes)
 		p.style_stale = false
 		e.restyle_needed = false
 	}

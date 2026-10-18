@@ -808,6 +808,7 @@ main :: proc() {
 	prof_report()
 	profile_save(app, force = true)
 	base.scope_close(app.process)   // every tab, page and request
+	page.shutdown_threads()
 	fetch.loader_destroy(&app.loader)
 	host.blocking_destroy(&app.blocking)
 	net.client_destroy(&app.client)

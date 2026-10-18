@@ -55,6 +55,13 @@ thread_entry :: proc "system" (arg: rawptr) -> win.DWORD {
 	return 0
 }
 
+// Logical processors available to the process.
+processor_count :: proc() -> int {
+	info: win.SYSTEM_INFO
+	win.GetSystemInfo(&info)
+	return max(int(info.dwNumberOfProcessors), 1)
+}
+
 // True once the thread's procedure has returned (joining it will not block for long).
 thread_finished :: proc(t: ^Thread) -> bool { return t == nil || bool(sync.atomic_load(&t.done)) }
 

@@ -417,7 +417,22 @@ css_wide_keyword :: proc(vs: []css.Value) -> string {
 
 // Turns parsed declarations into longhand declarations. A declaration whose value is not valid for its property is dropped
 // here, as the CSS parsing rules say, so that an earlier valid declaration (a fallback) stays in force.
-compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Allocator) -> (out: []Pre_Decl, customs: []Custom_Decl) {
+// What compiling declarations finds out about the engine's rules. A style pass running on several threads collects it
+// per thread and merges it afterwards (`stats_merge`), so the engine is only read meanwhile.
+Compile_Stats :: struct {
+	viewport_units: bool,
+	ignored:        int,
+}
+
+stats_merge :: proc(e: ^Engine, s: Compile_Stats) {
+	if s.viewport_units { e.viewport_units = true }
+	e.ignored_properties += s.ignored
+}
+
+compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Allocator, stats: ^Compile_Stats = nil) -> (out: []Pre_Decl, customs: []Custom_Decl) {
+	local: Compile_Stats
+	st := stats != nil ? stats : &local
+	defer if stats == nil { stats_merge(e, local) }
 	res := make([dynamic]Pre_Decl, a)
 	cus := make([dynamic]Custom_Decl, a)
 	probe := probe_context(e, a)
@@ -426,13 +441,13 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 		return apply_prop(cx, p, vs)
 	}
 	for d in decls {
-		if !e.viewport_units && uses_viewport_units(d.value) { e.viewport_units = true }
+		if !st.viewport_units && !e.viewport_units && uses_viewport_units(d.value) { st.viewport_units = true }
 		if strings.has_prefix(d.name, "--") {
 			append(&cus, Custom_Decl{name = d.name, value = d.value, important = d.important})
 			continue
 		}
 		p, sh, known := lookup_property(d.name)
-		if !known { e.ignored_properties += 1; continue }
+		if !known { st.ignored += 1; continue }
 		hv := contains_var(d.value)
 		if sh == .None {
 			if !hv && !valid(&probe, p, d.value) { continue }

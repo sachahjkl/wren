@@ -396,6 +396,7 @@ main :: proc() {
 	pump_until(proc() -> bool { return page.workers_running() == 0 })
 	check(page.workers_running() == 0, "no worker left")
 	base.scope_close(process)
+	page.shutdown_threads()
 	for _ in 0 ..< 10 { host.loop_wait(&loop, 10) }
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)
