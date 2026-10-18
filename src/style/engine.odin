@@ -211,12 +211,37 @@ engine_add_sheet :: proc(e: ^Engine, text: string, owner: base.Handle, media: st
 	return s
 }
 
+// Registers a stylesheet parsed elsewhere: `css.parse_stylesheet` with `parse_options(&e.settings)`, typically on another
+// thread (parsing is a pure function with its own arena). The result is the same as `engine_add_sheet` on the same text.
+// The engine takes ownership of `sheet`; nil, and `sheet` freed, when author sheets are disabled or it is too large.
+engine_add_parsed_sheet :: proc(e: ^Engine, sheet: ^css.Stylesheet, owner: base.Handle, media: string = "", base_url: string = "", from_link := false) -> ^Sheet {
+	if !e.settings.author_stylesheets || len(sheet.source) > e.settings.max_sheet_bytes {
+		css.stylesheet_destroy(sheet); free(sheet)
+		return nil
+	}
+	s := register_sheet(e, sheet, .Author, owner, media, false, "", base_url)
+	s.from_link = from_link
+	return s
+}
+
+// `engine_resolve_import_by_id` for a sheet parsed elsewhere (see engine_add_parsed_sheet). Takes ownership of `sheet`.
+engine_resolve_import_parsed :: proc(e: ^Engine, sheet_id: u64, slot: int, sheet: ^css.Stylesheet, url: string) -> bool {
+	parent := engine_find_sheet(e, sheet_id)
+	if parent == nil || slot < 0 || slot >= len(parent.imports) { css.stylesheet_destroy(sheet); free(sheet); return false }
+	return resolve_import(e, parent, &parent.imports[slot], sheet, url)
+}
+
 @(private)
 add_sheet :: proc(e: ^Engine, text: string, origin: Origin, owner: base.Handle, media: string, in_layer: bool, layer: string, base_url := "", depth := 0) -> ^Sheet {
 	if len(text) > e.settings.max_sheet_bytes { return nil }
+	return register_sheet(e, css.parse_stylesheet(text, parse_options(&e.settings)), origin, owner, media, in_layer, layer, base_url, depth)
+}
+
+@(private)
+register_sheet :: proc(e: ^Engine, sheet: ^css.Stylesheet, origin: Origin, owner: base.Handle, media: string, in_layer: bool, layer: string, base_url := "", depth := 0) -> ^Sheet {
 	s := new(Sheet)
 	opt := parse_options(&e.settings)
-	s.sheet = css.parse_stylesheet(text, opt)
+	s.sheet = sheet
 	e.next_sheet_id += 1
 	s.id = e.next_sheet_id
 	s.origin, s.owner, s.depth = origin, owner, depth
@@ -305,11 +330,21 @@ pending_imports :: proc(e: ^Engine, s: ^Sheet, allocator := context.temp_allocat
 engine_resolve_import :: proc(e: ^Engine, parent: ^Sheet, slot: ^Import_Slot, text: string, base_url: string) -> bool {
 	slot.requested = true
 	if parent.depth + 1 > e.settings.max_import_depth { slot.failed = true; return false }
-	// imported sheets are owned by the slot, not by the engine's list
 	if len(text) > e.settings.max_sheet_bytes { slot.failed = true; return false }
-	opt := parse_options(&e.settings)
+	return resolve_import(e, parent, slot, css.parse_stylesheet(text, parse_options(&e.settings)), base_url)
+}
+
+@(private)
+resolve_import :: proc(e: ^Engine, parent: ^Sheet, slot: ^Import_Slot, sheet: ^css.Stylesheet, base_url: string) -> bool {
+	slot.requested = true
+	if parent.depth + 1 > e.settings.max_import_depth || len(sheet.source) > e.settings.max_sheet_bytes {
+		slot.failed = true
+		css.stylesheet_destroy(sheet); free(sheet)
+		return false
+	}
+	// imported sheets are owned by the slot, not by the engine's list
 	s := new(Sheet)
-	s.sheet = css.parse_stylesheet(text, opt)
+	s.sheet = sheet
 	e.next_sheet_id += 1
 	s.id = e.next_sheet_id
 	s.origin, s.depth = parent.origin, parent.depth + 1

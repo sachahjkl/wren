@@ -20,6 +20,7 @@ Settings :: struct {
 	ui_font_size:      f32,
 	persist_profile:   bool,
 	layout_band_px:    f32,
+	blocking_threads:  int,
 }
 
 PREFS := [?]config.Def{
@@ -36,6 +37,8 @@ PREFS := [?]config.Def{
 		description = "Distance of one mouse-wheel notch, in CSS pixels."},
 	{name = "browser.ui.font_size", kind = .Float, default = {f = 15}, bounded = true, min = 8, max = 48, unit = "px", restart = false,
 		description = "Font size of the browser's own interface (tabs, address bar, console)."},
+	{name = "browser.threads.blocking", kind = .Int, default = {i = 4}, bounded = true, min = 1, max = 256, restart = true,
+		description = "Background threads for work that must not run on the interface thread: reading files, parsing documents and stylesheets (page.threads.*)."},
 }
 
 register_all_prefs :: proc(p: ^config.Prefs) {
@@ -57,5 +60,6 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		ui_font_size = f32(config.float_of(p, "browser.ui.font_size")),
 		persist_profile = config.bool_of(p, "browser.profile.persist"),
 		layout_band_px = f32(config.float_of(p, "browser.layout.band_height_px")),
+		blocking_threads = int(config.int_of(p, "browser.threads.blocking")),
 	}
 }

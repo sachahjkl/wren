@@ -89,7 +89,10 @@ host_post_checkpoint :: proc(p: ^Page) {
 ////////////////////////////////
 // Buffers
 
-Buffer :: struct { bytes: [dynamic]byte }
+Buffer :: struct {
+	bytes:    [dynamic]byte,
+	detached: bool,          // its bytes were transferred away: length 0 for good, cannot be transferred again
+}
 
 buffer_vt := Object_VTable{
 	name = "ArrayBuffer",
@@ -112,6 +115,27 @@ buffer_create :: proc(p: ^Page, bytes: []byte, owner: u32) -> u64 {
 }
 
 buffer_get :: proc(p: ^Page, h: u64) -> ^Buffer { return (^Buffer)(object_data(p, h, &buffer_vt)) }
+
+// A buffer taking ownership of `bytes` (no copy): what a transfer delivers. 0 (and `bytes` freed) past the page's ceiling.
+buffer_adopt :: proc(p: ^Page, bytes: [dynamic]byte, owner: u32) -> u64 {
+	bytes := bytes
+	if p.held + len(bytes) > p.settings.max_fetch_bytes { delete(bytes); return 0 }
+	b := new(Buffer)
+	b.bytes = bytes
+	p.held += len(bytes)
+	return object_create(p, &buffer_vt, b, owner)
+}
+
+// Takes the bytes out of a buffer, which stays valid and empty ("detached", as after a transfer in JavaScript).
+buffer_detach :: proc(p: ^Page, h: u64) -> (bytes: [dynamic]byte, ok: bool) {
+	b := buffer_get(p, h)
+	if b == nil || b.detached { return nil, false }
+	bytes = b.bytes
+	b.bytes = nil
+	b.detached = true
+	p.held -= len(bytes)
+	return bytes, true
+}
 
 // Contents of a buffer (valid until the buffer changes or is released).
 buffer_bytes :: proc(p: ^Page, h: u64) -> []byte {

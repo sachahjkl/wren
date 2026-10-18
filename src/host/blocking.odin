@@ -67,6 +67,7 @@ blocking_worker :: proc(t: ^thread.Thread) {
 		ordered_remove(&p.queue, 0)
 		sync.mutex_unlock(&p.mu)
 		job.work(job.data)
+		free_all(context.temp_allocator)   // this thread's own (see core:thread): nothing outlives a job
 		post(p.loop, job.done, job.data)
 	}
 }

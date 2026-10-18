@@ -25,6 +25,7 @@ Style_Load :: struct {
 	task:         base.Handle,
 	bad_status:   bool,
 	is_import:    bool,
+	serial:       u64,           // tells a background parse whether this load is still the one it parses for
 }
 
 @(private)
@@ -87,6 +88,8 @@ start_style_fetch :: proc(p: ^Page, l: ^Style_Load, crossorigin: string, has_cro
 		mode = .Cors
 		cred = strings.equal_fold(crossorigin, "use-credentials") ? .Include : .Same_Origin
 	}
+	p.offthread.next_serial += 1
+	l.serial = p.offthread.next_serial
 	l.task = fetch.start(p.loader, {
 		request = {url = l.url, mode = mode, credentials = cred, destination = .Style, initiator = &p.env, nonce = nonce},
 		on_event = style_event, user = l, scope = p.scope, collect = true,
@@ -155,6 +158,8 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	case .Done:
 		l.task = base.NIL_HANDLE
 		if l.bad_status { return }
+		if !l.is_import { if _, still := p.link_loads[l.owner]; !still { return } }
+		if parse_sheet_offthread(p, l, ev.data) { return }   // registered when parsed (offthread.odin)
 		text := decode_css(ev.data, p.settings.style.max_sheet_bytes)
 		defer delete(text)
 		if l.is_import {

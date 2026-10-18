@@ -27,6 +27,17 @@ page_of :: #force_inline proc "c" (env: wasm.Exec_Env) -> ^Page {
 @(private)
 inst_of :: #force_inline proc "c" (env: wasm.Exec_Env) -> ^wasm.Instance { return wasm.owner(env) }
 
+// The document the calling module may touch; nil in a worker, which has none (the dom imports then fail with
+// NO_DOCUMENT, or return 0 for those returning a handle).
+@(private)
+doc_of :: #force_inline proc "contextless" (env: wasm.Exec_Env) -> ^dom.Document {
+	p := page_of(env)
+	return p.worker == nil ? p.doc : nil
+}
+
+@(private)
+NO_DOCUMENT :: i32(dom.Error.Invalid_Handle)
+
 @(private)
 H :: #force_inline proc "contextless" (v: u64) -> base.Handle { return base.Handle(v) }
 
@@ -50,45 +61,60 @@ n_Document_body :: proc "c" (env: wasm.Exec_Env) -> u64 { return u64(page_of(env
 
 n_Document_createElement :: proc "c" (env: wasm.Exec_Env, tag: [^]u8, n: i32) -> u64 {
 	context = ctx()
+	d := doc_of(env)
+	if d == nil { return 0 }
 	t := str(tag, n)
 	if t == "" { return 0 }
-	return u64(dom.create_element(page_of(env).doc, t))
+	return u64(dom.create_element(d, t))
 }
 
 n_Document_createTextNode :: proc "c" (env: wasm.Exec_Env, text: [^]u8, n: i32) -> u64 {
 	context = ctx()
-	return u64(dom.create_text(page_of(env).doc, str(text, n)))
+	d := doc_of(env)
+	if d == nil { return 0 }
+	return u64(dom.create_text(d, str(text, n)))
 }
 
 n_Document_getElementById :: proc "c" (env: wasm.Exec_Env, id: [^]u8, n: i32) -> u64 {
 	context = ctx()
-	return u64(dom.find_by_id(page_of(env).doc, str(id, n)))
+	d := doc_of(env)
+	if d == nil { return 0 }
+	return u64(dom.find_by_id(d, str(id, n)))
 }
 
 n_Node_appendChild :: proc "c" (env: wasm.Exec_Env, parent, child: u64) -> i32 {
 	context = ctx()
-	return i32(dom.append_child(page_of(env).doc, H(parent), H(child)))
+	d := doc_of(env)
+	if d == nil { return NO_DOCUMENT }
+	return i32(dom.append_child(d, H(parent), H(child)))
 }
 
 n_Node_insertBefore :: proc "c" (env: wasm.Exec_Env, parent, child, ref: u64) -> i32 {
 	context = ctx()
-	return i32(dom.insert_before(page_of(env).doc, H(parent), H(child), H(ref)))
+	d := doc_of(env)
+	if d == nil { return NO_DOCUMENT }
+	return i32(dom.insert_before(d, H(parent), H(child), H(ref)))
 }
 
 n_Node_removeChild :: proc "c" (env: wasm.Exec_Env, parent, child: u64) -> i32 {
 	context = ctx()
-	return i32(dom.remove_child(page_of(env).doc, H(parent), H(child)))
+	d := doc_of(env)
+	if d == nil { return NO_DOCUMENT }
+	return i32(dom.remove_child(d, H(parent), H(child)))
 }
 
 n_Node_release :: proc "c" (env: wasm.Exec_Env, node: u64) -> i32 {
 	context = ctx()
-	return i32(dom.release(page_of(env).doc, H(node)))
+	d := doc_of(env)
+	if d == nil { return NO_DOCUMENT }
+	return i32(dom.release(d, H(node)))
 }
 
 @(private)
 relation :: proc "contextless" (env: wasm.Exec_Env, node: u64, which: int) -> u64 {
 	context = ctx()
-	d := page_of(env).doc
+	d := doc_of(env)
+	if d == nil { return 0 }
 	n := dom.get(d, H(node))
 	if n == nil { return 0 }
 	switch which {
@@ -109,7 +135,9 @@ n_Node_nextSibling :: proc "c" (env: wasm.Exec_Env, node: u64) -> u64 { return r
 
 n_Node_nodeType :: proc "c" (env: wasm.Exec_Env, node: u64) -> i32 {
 	context = ctx()
-	n := dom.get(page_of(env).doc, H(node))
+	d := doc_of(env)
+	if d == nil { return 0 }
+	n := dom.get(d, H(node))
 	if n == nil { return 0 }
 	switch n.kind {
 	case .Element: return 1
@@ -122,32 +150,40 @@ n_Node_nodeType :: proc "c" (env: wasm.Exec_Env, node: u64) -> i32 {
 
 n_Node_setTextContent :: proc "c" (env: wasm.Exec_Env, node: u64, text: [^]u8, n: i32) -> i32 {
 	context = ctx()
-	return i32(dom.set_text_content(page_of(env).doc, H(node), str(text, n)))
+	d := doc_of(env)
+	if d == nil { return NO_DOCUMENT }
+	return i32(dom.set_text_content(d, H(node), str(text, n)))
 }
 
 n_Node_getTextContent :: proc "c" (env: wasm.Exec_Env, node: u64, buf: [^]u8, cap: i32) -> i32 {
 	context = ctx()
-	d := page_of(env).doc
+	d := doc_of(env)
+	if d == nil { return NO_DOCUMENT }
 	if dom.get(d, H(node)) == nil { return i32(dom.Error.Invalid_Handle) }
 	return out_string(dom.text_content(d, H(node)), buf, cap)
 }
 
 n_Element_tagName :: proc "c" (env: wasm.Exec_Env, node: u64, buf: [^]u8, cap: i32) -> i32 {
 	context = ctx()
-	n := dom.get(page_of(env).doc, H(node))
+	d := doc_of(env)
+	if d == nil { return NO_DOCUMENT }
+	n := dom.get(d, H(node))
 	if n == nil || n.kind != .Element { return i32(dom.Error.Invalid_Handle) }
 	return out_string(n.name, buf, cap)
 }
 
 n_Element_setAttribute :: proc "c" (env: wasm.Exec_Env, node: u64, name: [^]u8, nl: i32, value: [^]u8, vl: i32) -> i32 {
 	context = ctx()
-	return i32(dom.set_attribute(page_of(env).doc, H(node), str(name, nl), str(value, vl)))
+	d := doc_of(env)
+	if d == nil { return NO_DOCUMENT }
+	return i32(dom.set_attribute(d, H(node), str(name, nl), str(value, vl)))
 }
 
 // Returns the value length, or a negative error (Not_Found = attribute absent).
 n_Element_getAttribute :: proc "c" (env: wasm.Exec_Env, node: u64, name: [^]u8, nl: i32, buf: [^]u8, cap: i32) -> i32 {
 	context = ctx()
-	d := page_of(env).doc
+	d := doc_of(env)
+	if d == nil { return NO_DOCUMENT }
 	if dom.get(d, H(node)) == nil { return i32(dom.Error.Invalid_Handle) }
 	v, ok := dom.get_attribute(d, H(node), str(name, nl))
 	if !ok { return i32(dom.Error.Not_Found) }
@@ -156,7 +192,9 @@ n_Element_getAttribute :: proc "c" (env: wasm.Exec_Env, node: u64, name: [^]u8, 
 
 n_Element_removeAttribute :: proc "c" (env: wasm.Exec_Env, node: u64, name: [^]u8, nl: i32) -> i32 {
 	context = ctx()
-	return i32(dom.remove_attribute(page_of(env).doc, H(node), str(name, nl)))
+	d := doc_of(env)
+	if d == nil { return NO_DOCUMENT }
+	return i32(dom.remove_attribute(d, H(node), str(name, nl)))
 }
 
 dom_symbols := [?]wasm.Native_Symbol{
@@ -194,6 +232,7 @@ n_EventTarget_addEventListener :: proc "c" (env: wasm.Exec_Env, target: u64, typ
 		if oerr != .None { return i32(oerr) }
 		return i32(oid)
 	}
+	if doc_of(env) == nil { return NO_DOCUMENT }
 	id, err := dom.add_listener(page_of(env).doc, H(target), str(type, tl), u32(callback), u32(user),
 		capture = flags & 1 != 0, once = flags & 2 != 0, passive = flags & 4 != 0, owner = inst_of(env).index)
 	if err != .None { return i32(err) }
@@ -203,6 +242,7 @@ n_EventTarget_addEventListener :: proc "c" (env: wasm.Exec_Env, target: u64, typ
 n_EventTarget_removeEventListener :: proc "c" (env: wasm.Exec_Env, target: u64, id: i32) -> i32 {
 	context = ctx()
 	if is_object(target) { return i32(object_remove_listener(page_of(env), target, dom.Listener_Id(id))) }
+	if doc_of(env) == nil { return NO_DOCUMENT }
 	return i32(dom.remove_listener(page_of(env).doc, H(target), dom.Listener_Id(id)))
 }
 
@@ -213,7 +253,7 @@ n_EventTarget_dispatchEvent :: proc "c" (env: wasm.Exec_Env, target: u64, type: 
 		if object_get(p, target) == nil { return i32(dom.Error.Invalid_Handle) }
 		return object_dispatch(p, target, dom.Event{type = str(type, tl), cancelable = flags & 2 != 0}) ? 1 : 0
 	}
-	if dom.get(p.doc, H(target)) == nil { return i32(dom.Error.Invalid_Handle) }
+	if p.worker != nil || dom.get(p.doc, H(target)) == nil { return i32(dom.Error.Invalid_Handle) }
 	ok := dispatch_event(p, H(target), dom.Event{type = str(type, tl), bubbles = flags & 1 != 0, cancelable = flags & 2 != 0})
 	return ok ? 1 : 0
 }
@@ -354,6 +394,7 @@ register_imports :: proc() -> bool {
 	ok &&= wasm.register("document", document_symbols[:])
 	ok &&= wasm.register("console", console_symbols[:])
 	ok &&= wasm.register("async", async_symbols[:])
+	ok &&= wasm.register("workers", workers_symbols[:])
 	return ok
 }
 

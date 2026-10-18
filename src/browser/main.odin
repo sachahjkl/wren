@@ -59,6 +59,7 @@ Doc_Load :: struct {
 	final_url:  string,
 	slots:      [dynamic]^Script_Slot,
 	next_run:   int,
+	bytes:      int,                     // size of the document's body
 }
 
 Tab_Kind :: enum u8 { Web, Config }
@@ -349,17 +350,25 @@ document_loaded :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 		return
 	}
 
-	d, ok := html.decode_document(data, load.charset, app.page_settings.html.default_encoding)
-	if !ok { show_error_page(app, load, "Cannot decode the document", load.charset); return }
-	defer delete(d.text)
-	r := page.load_html(p, d.text)
+	// decoded and parsed off the UI thread (page.threads.*); the page closing first cancels the callback
+	load.bytes = len(data)
+	page.parse_document(p, data, load.charset, document_parsed, load)
+}
+
+document_parsed :: proc(p: ^page.Page, user: rawptr, d: ^page.Parsed_Document) {
+	load := (^Doc_Load)(user)
+	t := load.tab
+	app := the_app
+	app.frames_requested = max(app.frames_requested, 3)
+	if !d.decoded { show_error_page(app, load, "Cannot decode the document", load.charset); return }
+	r := page.adopt_document(p, d)
 	if !r.ok { tab_log(t, .Error, fmt.tprintf("HTML parse failed (%d)", r.status)) }
 	if r.truncated { tab_log(t, .Warn, "document truncated: too many nodes") }
 	if title := html.title(p.doc); title != "" {
 		delete(t.title)
 		t.title = strings.clone(title)
 	}
-	set_status(t, fmt.tprintf("HTTP %d, %d bytes (%s), %d nodes", load.status, len(data), d.encoding, r.nodes))
+	set_status(t, fmt.tprintf("HTTP %d, %d bytes (%s), %d nodes", load.status, load.bytes, d.encoding, r.nodes))
 	start_scripts(app, load)
 }
 
@@ -759,7 +768,7 @@ main :: proc() {
 	ns := net.settings_from_prefs(&app.prefs)
 	if !net.client_init(&app.client, &app.loop, ns) { fmt.eprintln("network init failed"); return }
 	net.settings_destroy(&ns)
-	host.blocking_init(&app.blocking, &app.loop, 4)
+	host.blocking_init(&app.blocking, &app.loop, app.cfg.blocking_threads)
 	app.profile = fetch.profile_make(fetch.settings_from_prefs(&app.prefs), cookies.settings_from_prefs(&app.prefs))
 	fetch.loader_init(&app.loader, &app.loop, &app.client, &app.blocking, &app.profile)
 	app.page_settings = page.settings_from_prefs(&app.prefs)

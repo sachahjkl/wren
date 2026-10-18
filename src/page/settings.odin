@@ -12,6 +12,8 @@ Settings :: struct {
 	wasm:            wasm.Options,
 	html:            html.Options,
 	style:           style.Settings,
+	workers:         Worker_Settings,     // worker_settings.odin
+	threads:         Thread_Settings,     // offthread.odin
 }
 
 PREFS := [?]config.Def{
@@ -23,6 +25,8 @@ PREFS := [?]config.Def{
 
 register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, PREFS[:])
+	config.register(p, WORKER_PREFS[:])
+	config.register(p, THREAD_PREFS[:])
 	wasm.register_prefs(p)
 	html.register_prefs(p)
 	style.register_prefs(p)
@@ -35,6 +39,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		wasm = wasm.options_from_prefs(p),
 		html = html.options_from_prefs(p),
 		style = style.settings_from_prefs(p),
+		workers = worker_settings_from_prefs(p),
+		threads = thread_settings_from_prefs(p),
 	}
 }
 

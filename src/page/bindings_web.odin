@@ -20,6 +20,7 @@ import "wb:cookies"
 import "wb:dom"
 import "wb:fetch"
 import "wb:host"
+import "wb:http"
 import "wb:url"
 import "wb:wasm"
 
@@ -78,23 +79,61 @@ timers_symbols := [?]wasm.Native_Symbol{
 ////////////////////////////////
 // net
 
+// What a request record learns about its response. Pages get it from the loader; workers get it relayed from the UI
+// thread, where their requests run (worker.odin).
+Fetch_Update :: struct {
+	kind:       fetch.Event_Kind,
+	status:     int,
+	type:       fetch.Response_Type,
+	redirected: bool,
+	usable:     bool,
+	url:        string,
+	headers:    string,     // "Name: value" lines, CR LF terminated
+	data:       []byte,
+	error:      fetch.Error_Kind,
+	detail:     string,
+}
+
+// "Name: value\r\n" for each header, the form the guest reads (Fetch_headers).
+@(private)
+serialize_headers :: proc(list: []http.Header, allocator := context.temp_allocator) -> string {
+	sb := strings.builder_make(allocator)
+	for h in list { strings.write_string(&sb, h.name); strings.write_string(&sb, ": "); strings.write_string(&sb, h.value); strings.write_string(&sb, "\r\n") }
+	return strings.to_string(sb)
+}
+
 @(private)
 fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
-	f := (^Fetch)(user)
+	u := Fetch_Update{kind = ev.kind, data = ev.data, error = ev.error, detail = ev.detail}
+	if ev.kind == .Response {
+		r := ev.response
+		u.status, u.type, u.redirected, u.usable, u.url = r.status, r.type, r.redirected, r.body_usable, r.url
+		u.headers = serialize_headers(r.headers.list[:])
+	}
+	fetch_update((^Fetch)(user), u)
+}
+
+// Stops a request still in flight (silently: no further update).
+@(private)
+fetch_abort :: proc(p: ^Page, f: ^Fetch) {
+	if f.task == base.NIL_HANDLE { return }
+	if p.worker != nil { worker_fetch_cancel(p, f) } else { fetch.cancel(p.loader, f.task) }
+	f.task = base.NIL_HANDLE
+}
+
+@(private)
+fetch_update :: proc(f: ^Fetch, ev: Fetch_Update) {
 	p := f.page
 	switch ev.kind {
 	case .Response:
-		r := ev.response
-		f.state, f.status, f.type, f.redirected, f.usable = 1, r.status, r.type, r.redirected, r.body_usable
-		f.final_url = strings.clone(r.url)
-		sb := strings.builder_make(context.temp_allocator)
-		for h in r.headers.list { strings.write_string(&sb, h.name); strings.write_string(&sb, ": "); strings.write_string(&sb, h.value); strings.write_string(&sb, "\r\n") }
-		f.headers = strings.clone(strings.to_string(sb))
+		f.state, f.status, f.type, f.redirected, f.usable = 1, ev.status, ev.type, ev.redirected, ev.usable
+		f.final_url = strings.clone(ev.url)
+		f.headers = strings.clone(ev.headers)
 	case .Data:
 		if !f.usable { return }   // opaque: scripts never see the bytes
 		if p.held + len(ev.data) > p.settings.max_fetch_bytes {
 			f.state, f.error, f.error_kind = 3, strings.clone("page fetch memory limit reached"), .Body_Too_Large
-			if f.task != base.NIL_HANDLE { fetch.cancel(p.loader, f.task); f.task = base.NIL_HANDLE }
+			fetch_abort(p, f)
 			break
 		}
 		p.held += len(ev.data)
@@ -144,10 +183,23 @@ n_Fetch_start :: proc "c" (env: wasm.Exec_Env, target: [^]u8, tl: i32, method: [
 	abs := str(target, tl)
 	if u, ok := url.parse(abs, &p.env.location, context.temp_allocator); ok { abs = u.href }
 
-	pairs := make([dynamic]fetch.Header_Pair, context.temp_allocator)
-	parse_header_lines(str(headers, hl), &pairs)
+	if p.worker != nil {
+		// the loader lives on the UI thread: the request is made there, with the worker's environment
+		worker_fetch_start(p, f, abs, str(method, ml), str(headers, hl), body[:max(bl, 0)], u32(options))
+		return u64(h)
+	}
+	f.task = fetch.start(p.loader, {
+		request = guest_request(abs, str(method, ml), str(headers, hl), body[:max(bl, 0)], u32(options), &p.env),
+		on_event = fetch_event, user = f, scope = p.scope, collect = false,
+	})
+	return u64(h)
+}
 
-	o := u32(options)
+// The request a guest asks for with Fetch_start (strings are borrowed; fetch.start copies them).
+@(private)
+guest_request :: proc(abs, method, headers: string, body: []byte, o: u32, initiator: ^fetch.Environment) -> fetch.Request_Desc {
+	pairs := make([dynamic]fetch.Header_Pair, context.temp_allocator)
+	parse_header_lines(headers, &pairs)
 	mode := fetch.Mode.Cors
 	switch o & 3 { case 1: mode = .Same_Origin; case 2: mode = .No_Cors }
 	creds := fetch.Credentials.Same_Origin
@@ -156,17 +208,12 @@ n_Fetch_start :: proc "c" (env: wasm.Exec_Env, target: [^]u8, tl: i32, method: [
 	switch (o >> 4) & 3 { case 1: redirect = .Error; case 2: redirect = .Manual }
 	policy := fetch.Referrer_Policy((o >> 6) & 0xF)
 	if policy > .Unsafe_Url { policy = .Default }
-
-	f.task = fetch.start(p.loader, {
-		request = {
-			url = abs, method = str(method, ml), headers = pairs[:], body = body[:max(bl, 0)],
-			mode = mode, credentials = creds, redirect = redirect, destination = .Empty,
-			referrer_policy = policy, no_referrer = o & (1 << 10) != 0,
-			initiator = &p.env, guard = .Request,
-		},
-		on_event = fetch_event, user = f, scope = p.scope, collect = false,
-	})
-	return u64(h)
+	return fetch.Request_Desc{
+		url = abs, method = method, headers = pairs[:], body = body,
+		mode = mode, credentials = creds, redirect = redirect, destination = .Empty,
+		referrer_policy = policy, no_referrer = o & (1 << 10) != 0,
+		initiator = initiator, guard = .Request,
+	}
 }
 
 @(private)
@@ -223,9 +270,10 @@ n_Fetch_readBody :: proc "c" (env: wasm.Exec_Env, h: u64, offset: u64, buf: [^]u
 n_Fetch_release :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
 	context = ctx()
 	p := page_of(env)
-	f, ok := base.pool_remove(&p.fetches, H(h))
-	if !ok { return i32(dom.Error.Invalid_Handle) }
-	if f.task != base.NIL_HANDLE { fetch.cancel(p.loader, f.task) }
+	fp := base.pool_get(&p.fetches, H(h))
+	if fp == nil { return i32(dom.Error.Invalid_Handle) }
+	fetch_abort(p, fp)
+	f, _ := base.pool_remove(&p.fetches, H(h))
 	p.held -= len(f.body)
 	free_fetch(&f)
 	return 0
@@ -251,8 +299,12 @@ net_symbols := [?]wasm.Native_Symbol{
 
 n_Document_URL :: proc "c" (env: wasm.Exec_Env, buf: [^]u8, cap: i32) -> i32 {
 	context = ctx()
-	return out_string(page_of(env).env.location.href, buf, cap)
+	p := page_of(env)
+	if p.worker != nil { return i32(dom.Error.Invalid_Handle) }   // no document in a worker (see WorkerGlobalScope_location)
+	return out_string(p.env.location.href, buf, cap)
 }
+
+// Window_origin and Window_isSecureContext belong to WindowOrWorkerGlobalScope: in a worker they describe the worker.
 
 n_Window_origin :: proc "c" (env: wasm.Exec_Env, buf: [^]u8, cap: i32) -> i32 {
 	context = ctx()
@@ -267,7 +319,7 @@ n_Window_isSecureContext :: proc "c" (env: wasm.Exec_Env) -> i32 {
 // Cookies are only for documents with a tuple origin on http(s): opaque origins (file:, data:) get -1 (SecurityError).
 @(private)
 cookie_context :: proc(p: ^Page) -> (c: cookies.Context, ok: bool) {
-	if p.env.origin.opaque || (p.env.location.scheme != "http" && p.env.location.scheme != "https") { return {}, false }
+	if p.worker != nil || p.env.origin.opaque || (p.env.location.scheme != "http" && p.env.location.scheme != "https") { return {}, false }
 	return cookies.Context{url = p.env.location, site_context = .Same_Site, http_api = false, now_ms = fetch.now_ms()}, true
 }
 

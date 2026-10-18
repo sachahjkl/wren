@@ -348,6 +348,7 @@ dest_name :: proc(d: Destination) -> string {
 	case .Video: return "video"
 	case .Manifest: return "manifest"
 	case .Report: return "report"
+	case .Worker: return "worker"
 	}
 	return "empty"
 }
@@ -367,7 +368,7 @@ mode_name :: proc(m: Mode) -> string {
 default_accept :: proc(d: Destination) -> string {
 	switch d {
 	case .Document: return "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-	case .Script:   return "application/wasm,*/*;q=0.8"
+	case .Script, .Worker: return "application/wasm,*/*;q=0.8"
 	case .Style:    return "text/css,*/*;q=0.1"
 	case .Image:    return "image/avif,image/webp,image/png,image/svg+xml,image/*;q=0.8,*/*;q=0.5"
 	case .Empty, .Font, .Audio, .Video, .Manifest, .Report: return "*/*"
@@ -643,7 +644,7 @@ send_response :: proc(t: ^Task, status: int, raw: http.Headers, m: http.Mime, ha
 @(private)
 check_destination_mime :: proc(d: Destination, m: http.Mime, has: bool, nosniff: bool) -> (why: string, ok: bool) {
 	#partial switch d {
-	case .Script:
+	case .Script, .Worker:
 		if !has || !http.is_wasm_mime(m) { return "a Wasm module must be served as application/wasm", false }
 	case .Style:
 		if nosniff && !(has && m.type == "text" && m.subtype == "css") { return "stylesheet blocked: nosniff and not text/css", false }
@@ -817,6 +818,7 @@ csp_kind :: proc(d: Destination) -> (csp.Directive_Kind, bool) {
 	switch d {
 	case .Empty, .Report: return .Connect_Src, true
 	case .Script:         return .Script_Src_Elem, true
+	case .Worker:         return .Worker_Src, true   // worker-src, then child-src, script-src, default-src (CSP 3)
 	case .Style:          return .Style_Src_Elem, true
 	case .Image:          return .Img_Src, true
 	case .Font:           return .Font_Src, true
