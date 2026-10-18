@@ -40,6 +40,22 @@ anon_paint_props :: proc() -> []style.Prop {
 	return anon_list[:anon_count]
 }
 
+// After a full layout: what the refresh path needs to find quickly.
+@(private)
+note_refresh_inputs :: proc(l: ^Layout) {
+	l.canvas_items = {NONE, NONE}
+	root_el := l.boxes[0].first
+	for &it, i in l.items {
+		if it.kind != .Box || it.box < 0 { continue }
+		if it.box == root_el { l.canvas_items[0] = i32(i) }
+		if b := &l.boxes[it.box]; b.node == l.canvas_els[1] && b.node != base.NIL_HANDLE && .Pseudo not_in b.flags { l.canvas_items[1] = i32(i) }
+	}
+	l.loose_styles = false
+	for &it in l.inline_items {
+		if it.node != base.NIL_HANDLE && box_index(l, it.node) == NONE { l.loose_styles = true; break }
+	}
+}
+
 @(private)
 refresh :: proc(l: ^Layout, input: Input) -> bool {
 	t0 := time.tick_now()
@@ -65,9 +81,12 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 		nc := el
 		if .Pseudo in b.flags { nc = .Pseudo_After in b.flags ? el.after : el.before }
 		if nc == nil { return false }
+		if nc == b.cs { continue }   // an animation overlay is rewritten in place: same record, new values
 		if !put(&remap, b.cs, nc) { return false }
 		b.cs = nc
 	}
+	// nothing was replaced and every text belongs to an element with a box: inline and display items are up to date
+	if len(remap) == 0 && !l.loose_styles { return refresh_rest(l, input, t0) }
 	for &it in l.inline_items {
 		if it.cs == nil { continue }
 		if nc, ok := remap[it.cs]; ok { it.cs = nc; continue }
@@ -77,23 +96,27 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 		if el == nil || !put(&remap, it.cs, el) { return false }
 		it.cs = el
 	}
-	root_el := l.boxes[0].first
 	for &it in l.items {
 		if it.cs != nil { if nc, ok := remap[it.cs]; ok { it.cs = nc } }
-		if it.kind == .Box && it.box >= 0 {
-			b := &l.boxes[it.box]
-			// the root's or body's background is the canvas: painted by the shell, not by the item
-			if (it.box == root_el || (b.node == l.canvas_els[1] && b.node != base.NIL_HANDLE)) {
-				if b.cs.background_color == st.canvas { it.flags += {.No_Background} } else { it.flags -= {.No_Background} }
-			}
-		}
+	}
+	return refresh_rest(l, input, t0)
+}
+
+@(private = "file")
+refresh_rest :: proc(l: ^Layout, input: Input, t0: time.Tick) -> bool {
+	st := input.styled
+	// the root's or body's background is the canvas: painted by the shell, not by their item
+	for ii in l.canvas_items {
+		if ii < 0 { continue }
+		it := &l.items[ii]
+		if l.boxes[it.box].cs.background_color == st.canvas { it.flags += {.No_Background} } else { it.flags -= {.No_Background} }
 	}
 	for &g in l.groups { g.alpha = max(l.boxes[g.box].cs.opacity, 0) }
-	transforms := false
+	transforms := false   // some transform moved: the scrollable overflow follows
 	for &sp in l.spaces {
 		if sp.kind != .Transform { continue }
-		sp.mat = box_matrix(l, &l.boxes[sp.box])
-		transforms = true
+		m := box_matrix(l, &l.boxes[sp.box])
+		if m != sp.mat { sp.mat = m; transforms = true }
 	}
 	for &cl in l.clips { cl.radii = clip_radii(l, &l.boxes[cl.box]) }
 	if transforms && !refresh_overflow(l, input.viewport) { return false }

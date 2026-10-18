@@ -57,6 +57,7 @@ run :: proc(l: ^Layout, input: Input) {
 	finish(&c)
 	t3 := time.tick_now()
 	build_display_list(&c)
+	note_refresh_inputs(l)
 	t4 := time.tick_now()
 	build_bands(l, max(input.band_h, 16) * input.scale)
 	t5 := time.tick_now()

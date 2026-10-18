@@ -1,7 +1,7 @@
 # Measures the browser on real pages with real input. Needs build\browser_prof.exe (build.bat profile).
-#   powershell -File tools\perf.ps1 [-Only name,name] [-NoSample]
+#   powershell -File tools\perf.ps1 [-Only name,name] [-NoSample] [-Exe browser_prof.exe] [-Tag suffix]
 # Writes build\perf\<run>.txt (per-phase statistics, CPU time, sampling profile) and <run>.csv (one row per frame).
-param([string[]]$Only = @(), [switch]$NoSample)
+param([string[]]$Only = @(), [switch]$NoSample, [string]$Exe = 'browser_prof.exe', [string]$Tag = '')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root 'build\perf'
@@ -71,10 +71,10 @@ function FileUrl($p) { 'file:///' + ($p -replace '\\', '/') }
 # ---------- driver ----------
 function Run($name, $url, [scriptblock]$actions, [bool]$sample = $true) {
     if ($Only.Count -gt 0 -and $Only -notcontains $name) { return }
-    $prefix = Join-Path $out $name
+    $prefix = Join-Path $out "$name$Tag"
     $env:WREN_PROF = $prefix
     $env:WREN_SAMPLE = if ($sample -and -not $NoSample) { '1' } else { '0' }
-    $p = if ($url) { Start-Process (Join-Path $root 'build\browser_prof.exe') -ArgumentList $url -PassThru } else { Start-Process (Join-Path $root 'build\browser_prof.exe') -PassThru }
+    $p = if ($url) { Start-Process (Join-Path $root "build\$Exe") -ArgumentList $url -PassThru } else { Start-Process (Join-Path $root "build\$Exe") -PassThru }
     try {
         $sw = [Diagnostics.Stopwatch]::StartNew()
         while (-not $p.HasExited -and $p.MainWindowHandle -eq 0 -and $sw.ElapsedMilliseconds -lt 10000) { Start-Sleep -Milliseconds 20; $p.Refresh() }
@@ -130,3 +130,7 @@ Run 'p10k_scroll' (FileUrl $p10k) { param($h) Start-Sleep 5; Scroll $h 8000 }
 Run 'p10k_resize' (FileUrl $p10k) { param($h) Start-Sleep 5; Resize $h 6000 }
 Run 'p50k_load'  (FileUrl $p50k) { param($h) Start-Sleep 20 }
 Run 'p50k_scroll' (FileUrl $p50k) { param($h) Start-Sleep 20; Scroll $h 8000 }
+$site = Join-Path $root 'examples\site'
+Run 'anim'       (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-Sleep 10 } $false
+Run 'transforms' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 10 } $false
+Run 'transforms_sample' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 10 }

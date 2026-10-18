@@ -275,6 +275,8 @@ Layout :: struct {
 	canvas:     css.Color,
 	styled:     rawptr,         // the style pass this was laid out from (identity only)
 	canvas_els: [2]base.Handle, // the root element and body: their backgrounds may be the canvas
+	canvas_items: [2]i32,       // their Box display items (NONE: none)
+	loose_styles: bool,         // some text's style is not the style of a box (its element has none: display: contents...)
 	viewport:   Vec2,
 	scale:      f32,
 	valid:      bool,
