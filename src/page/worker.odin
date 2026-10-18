@@ -223,6 +223,7 @@ page_worker_count :: proc(p: ^Page) -> int {
 worker_create :: proc(p: ^Page, src: string, name: string, owner: u32) -> u64 {
 	ws := &p.settings.workers
 	if p.worker != nil { log(p, .Error, "Worker: nested workers are not supported"); return 0 }
+	if p.loader == nil { log(p, .Error, "Worker: this page cannot load anything"); return 0 }
 	if !ws.enabled { log(p, .Error, "Worker: workers are disabled (workers.enabled)"); return 0 }
 	if page_worker_count(p) >= ws.max_per_page {
 		log(p, .Error, fmt.tprintf("Worker: this page already runs %d workers (workers.max_per_page)", ws.max_per_page)); return 0
@@ -409,7 +410,7 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 		if h.terminated { return }
 		worker_fire_error(h, m.text, m.text2)
 	case .Console:
-		log(p, Log_Level(m.code), fmt.tprintf("[worker %s] %s", h.name != "" ? h.name : h.url, m.text))
+		log(p, Log_Level(m.code), fmt.tprintf("[worker %s] %s", worker_label(h), m.text))
 	case .Closed:
 		h.state = .Closed
 	case .Exited:
@@ -431,12 +432,19 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 	}
 }
 
+// How the console names a worker: its name, else its URL (shortened: a data: URL holds the whole module).
+@(private)
+worker_label :: proc(h: ^Worker_Host) -> string {
+	if h.name != "" { return h.name }
+	return len(h.url) <= 80 ? h.url : fmt.tprintf("%s...", h.url[:77])
+}
+
 @(private)
 worker_fire_error :: proc(h: ^Worker_Host, message, file: string) {
 	p := h.page
 	allowed := true
 	if h.self != 0 { allowed = object_dispatch(p, h.self, dom.Event{type = "error", cancelable = true, data = message, text = file}) }
-	if allowed { log(p, .Error, fmt.tprintf("[worker %s] uncaught error: %s", h.name != "" ? h.name : h.url, message)) }
+	if allowed { log(p, .Error, fmt.tprintf("[worker %s] uncaught error: %s", worker_label(h), message)) }
 }
 
 // A request of the worker, made here with the worker's environment; every event goes back to the worker.
