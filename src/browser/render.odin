@@ -1,5 +1,6 @@
 // Document painter: draws the display list of package layout with toolkit:draw. Layout decides what goes where and in
-// which order (CSS 2.1 Appendix E), under which clip, scroll offset, sticky shift and opacity; this file turns each item
+// which order (CSS 2.1 Appendix E), under which clip, scroll offset, sticky shift, transform and opacity group; the
+// effects section below maps those onto draw's transform / clip / layer stacks; the rest of this file turns each item
 // into rectangles and glyphs: backgrounds (colors, linear gradients), borders of every style with rounded corners,
 // box shadows, outlines, text with decorations, spacing and shadows, list markers, scroll bars, and the content of form
 // controls and replaced elements (through a hook other parts of the browser install).
@@ -294,6 +295,9 @@ set_group :: proc(e: ^Effects, g: i32) {
 paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: draw.Vec2, scroll: f32, clip: draw.Rect) {
 	if !l.valid { return }
 	v := lay.view_make(l, size, scroll)
+	// CSS border-radius draws circular arcs, not the squircle of the browser's own UI
+	circular := draw.set_circular_corners(dc, true)
+	defer draw.set_circular_corners(dc, circular)
 	fx := effects_make(l, &v, dc, origin)
 	for idx in v.visible {
 		it := &l.items[idx]
@@ -429,6 +433,10 @@ paint_borders :: proc(dc: ^draw.Context, r: draw.Rect, w: [4]f32, styles: [style
 		draw.rect_corners(dc, inner, {col, col, col, col}, {max(radii[0] - 2 * t, 0), max(radii[1] - 2 * t, 0), max(radii[2] - 2 * t, 0), max(radii[3] - 2 * t, 0)}, t)
 		return
 	}
+	if !no_radius(radii) && solid_sides(w, styles) {
+		paint_rounded_sides(dc, r, w, styles, colors, radii)
+		return
+	}
 	for s, i in sides {
 		bw := w[i]
 		if bw <= 0 { continue }
@@ -491,6 +499,50 @@ paint_borders :: proc(dc: ^draw.Context, r: draw.Rect, w: [4]f32, styles: [style
 			dark := (st == .Inset) == outer_first
 			draw.rect(dc, strip, dark ? shade(c, 0.55) : shade(c, 1.2))
 		}
+	}
+}
+
+@(private = "file")
+solid_sides :: proc(w: [4]f32, styles: [style.Side]style.Border_Style) -> bool {
+	sides := [4]style.Side{.Top, .Right, .Bottom, .Left}
+	for s, i in sides {
+		if w[i] > 0 && styles[s] != .Solid && styles[s] != .None && styles[s] != .Hidden { return false }
+	}
+	return true
+}
+
+// Rounded solid borders whose sides differ (a spinner: one colored side): each side is the rounded ring in its own
+// color and width, cut to its wedge. Sides meet on the line from each outer corner to the inner one (CSS Backgrounds
+// §4.4), made of two half-plane clips per side (rotated rect clips, exact and antialiased in draw).
+@(private = "file")
+paint_rounded_sides :: proc(dc: ^draw.Context, r: draw.Rect, w: [4]f32, styles: [style.Side]style.Border_Style, colors: [style.Side]css.Color, radii: [4]f32) {
+	sides := [4]style.Side{.Top, .Right, .Bottom, .Left}
+	big := max(r.max.x - r.min.x, r.max.y - r.min.y) * 2 + 16
+	// the four corner lines: outer corner -> inner corner (top-left, top-right, bottom-right, bottom-left)
+	outer := [4]draw.Vec2{r.min, {r.max.x, r.min.y}, r.max, {r.min.x, r.max.y}}
+	inner := [4]draw.Vec2{r.min + {w[3], w[0]}, {r.max.x - w[1], r.min.y + w[0]}, r.max - {w[1], w[2]}, {r.min.x + w[3], r.max.y - w[2]}}
+	// keeps the side of the line from outer[k] to inner[k] where cross(d, p - a) has sign `sign`
+	half_plane :: proc(dc: ^draw.Context, a, b: draw.Vec2, sign: f32, big: f32) {
+		d := b - a
+		n := math.sqrt(d.x * d.x + d.y * d.y)
+		d = n > 1e-6 ? d / n : draw.Vec2{1, 0}
+		// frame: x along d, y along (-d.y, d.x): local y = cross(d, p - a)
+		draw.push_transform(dc, draw.Affine{d.x, d.y, -d.y, d.x, a.x, a.y})
+		// each wedge reaches 0.75 px past its line: two antialiased edges meeting exactly would let the background
+		// show through the seam
+		draw.push_clip(dc, sign < 0 ? draw.Rect{{-big, -big}, {big, 0.75}} : draw.Rect{{-big, -0.75}, {big, big}})
+		draw.pop_transform(dc)
+	}
+	for s, i in sides {
+		if w[i] <= 0 || styles[s] != .Solid || colors[s].a <= 0 { continue }
+		// side i lies between corner lines i and i + 1 (top: top-left and top-right, right: top-right and bottom-right...)
+		k0, k1 := i, (i + 1) % 4
+		half_plane(dc, outer[k0], inner[k0], -1, big)
+		half_plane(dc, outer[k1], inner[k1], 1, big)
+		col := to_draw(colors[s])
+		draw.rect_corners(dc, r, {col, col, col, col}, radii, w[i])
+		draw.pop_clip(dc)
+		draw.pop_clip(dc)
 	}
 }
 
