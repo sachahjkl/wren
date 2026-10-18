@@ -50,6 +50,10 @@ note_refresh_inputs :: proc(l: ^Layout) {
 		if it.box == root_el { l.canvas_items[0] = i32(i) }
 		if b := &l.boxes[it.box]; b.node == l.canvas_els[1] && b.node != base.NIL_HANDLE && .Pseudo not_in b.flags { l.canvas_items[1] = i32(i) }
 	}
+	clear(&l.deco_items)
+	for &it, i in l.items {
+		if it.kind == .Text && it.deco != {} && it.deco_box > 0 { append(&l.deco_items, i32(i)) }
+	}
 	l.loose_styles = false
 	for &it in l.inline_items {
 		if it.node != base.NIL_HANDLE && box_index(l, it.node) == NONE { l.loose_styles = true; break }
@@ -110,6 +114,10 @@ refresh_rest :: proc(l: ^Layout, input: Input, t0: time.Tick) -> bool {
 		if ii < 0 { continue }
 		it := &l.items[ii]
 		if l.boxes[it.box].cs.background_color == st.canvas { it.flags += {.No_Background} } else { it.flags -= {.No_Background} }
+	}
+	for ii in l.deco_items {
+		it := &l.items[ii]
+		it.deco_color = l.boxes[it.deco_box].cs.text_decoration_color
 	}
 	for &g in l.groups { g.alpha = max(l.boxes[g.box].cs.opacity, 0) }
 	transforms := false   // some transform moved: the scrollable overflow follows

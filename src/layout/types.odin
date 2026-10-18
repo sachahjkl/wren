@@ -165,6 +165,7 @@ Inline_Item :: struct {
 	node:  base.Handle,             // Text: the element that owns it
 	deco:  style.Decorations,       // Text: decorations of its ancestors up to the formatting context (CSS Text Decoration §2)
 	deco_color: css.Color,
+	deco_box: i32,                  // Text: the box the decoration color comes from (NONE: none)
 }
 
 Font_Info :: struct {
@@ -230,6 +231,7 @@ Display_Item :: struct {
 	thumb:    Rect,
 	deco:     style.Decorations,    // Text: underline / overline / line-through to draw
 	deco_color: css.Color,
+	deco_box: i32,                  // Text: the box the decoration color comes from (NONE: none)
 }
 
 Space_Kind :: enum u8 { Document, Fixed, Scroll, Sticky, Transform }
@@ -279,6 +281,7 @@ Layout :: struct {
 	canvas_els: [2]base.Handle, // the root element and body: their backgrounds may be the canvas
 	canvas_items: [2]i32,       // their Box display items (NONE: none)
 	loose_styles: bool,         // some text's style is not the style of a box (its element has none: display: contents...)
+	deco_items:   [dynamic]i32, // decorated Text items (their color follows text-decoration-color)
 	viewport:   Vec2,
 	scale:      f32,
 	valid:      bool,

@@ -182,6 +182,18 @@ transform_overflow_and_rounded_clip :: proc(t: ^testing.T) {
 }
 
 @(test)
+transform_wheel_on_rotated_scroller :: proc(t: ^testing.T) {
+	f := tx_load(`<body style="margin:0"><div id=rs style="position:absolute;left:200px;top:0;width:100px;height:100px;overflow:auto;transform:rotate(90deg)">
+<div style="height:400px"></div><div id=end style="height:10px"></div></div></body>`)
+	defer tx_unload(f)
+	// rotated around its center (250, 50): the box still covers 200..300 x 0..100
+	testing.expect(t, scroll_wheel(&f.l, {250, 50}, {0, 40}, f.vp, 0), "the wheel over the rotated scroller scrolls it")
+	off, _ := scroll_of(&f.l, el(f, "rs"))
+	testing.expectf(t, math.abs(off.y - 40) < 0.01, "scrolled by 40: %v", off)
+	testing.expect(t, !scroll_wheel(&f.l, {150, 50}, {0, 40}, f.vp, 0), "nothing scrollable elsewhere")
+}
+
+@(test)
 transform_refresh_path :: proc(t: ^testing.T) {
 	f := tx_load(`<style>
 @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
@@ -189,7 +201,8 @@ transform_refresh_path :: proc(t: ^testing.T) {
 #s { animation: spin 1s linear infinite; width: 50px; height: 50px }
 #h:hover { background-color: red; outline-color: blue }
 #w:hover { width: 300px }
-</style><body style="margin:0"><div id=s></div><div id=h style="height:10px">h</div><div id=w style="height:10px"></div><div id=g></div></body>`)
+#u { text-decoration: underline; color: red } #u:hover { color: blue }
+</style><body style="margin:0"><div id=s></div><div id=h style="height:10px">h</div><div id=w style="height:10px"></div><div id=g></div><p><span id=u>link</span></p></body>`)
 	defer tx_unload(f)
 	full := f.l.passes[.Full]
 	tx_tick(f, 250)
@@ -210,6 +223,11 @@ transform_refresh_path :: proc(t: ^testing.T) {
 	found := false
 	for &it in f.l.items { if it.node == el(f, "h") && it.kind == .Box { found = it.cs.background_color.r > 0.9 } }
 	testing.expect(t, found, "display items see it too")
+	tx_state(f, style.State{hover = el(f, "u")}, 650)
+	testing.expectf(t, f.l.last_pass == .Refresh, "a color change of underlined text refreshes: %v", f.l.last_pass)
+	blue := false
+	for &it in f.l.items { if it.kind == .Text && it.node == el(f, "u") { blue = it.deco_color.b > 0.9 && it.cs.color.b > 0.9 } }
+	testing.expect(t, blue, "text and underline take the new color")
 	full = f.l.passes[.Full]
 	tx_state(f, style.State{hover = el(f, "w")}, 700)
 	testing.expect(t, f.l.last_pass == .Full && f.l.passes[.Full] == full + 1, "a hover that changes a size lays out")

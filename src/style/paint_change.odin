@@ -21,7 +21,7 @@ Prop_Tier :: enum u8 {
 }
 
 PAINT_PROPS :: [?]Prop{
-	.Color, .Text_Shadow,
+	.Color, .Text_Shadow, .Text_Decoration_Color,
 	.Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color,
 	.Border_Top_Left_Radius, .Border_Top_Right_Radius, .Border_Bottom_Right_Radius, .Border_Bottom_Left_Radius,
 	.Opacity,
@@ -41,7 +41,8 @@ PAINT_PROPS :: [?]Prop{
 @(private) tier_table: [Prop]Prop_Tier
 @(private) paint_set: Prop_Set
 // Fields of Computed compared by layout_equal: every field except those of paint-only properties and bookkeeping
-// that layout never reads (the inherited-from-parent set, custom properties: their effect is in the other values).
+// that layout never reads (the inherited-from-parent set, custom properties: their effect is in the other values; the
+// node the style belongs to).
 @(private) layout_fields: [dynamic]Field_Info
 
 @(private)
@@ -60,6 +61,7 @@ tiers_init :: proc() {
 		probe: Computed
 		skip[uintptr(&probe.inherits) - uintptr(&probe)] = true
 		skip[uintptr(&probe.custom) - uintptr(&probe)] = true
+		skip[uintptr(&probe.node) - uintptr(&probe)] = true
 		layout_fields = make([dynamic]Field_Info, 0, len(computed_fields), runtime.heap_allocator())
 		for f in computed_fields { if !skip[f.offset] { append(&layout_fields, f) } }
 	})

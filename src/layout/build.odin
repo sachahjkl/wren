@@ -36,6 +36,7 @@ Frame :: struct {
 	depth:  i32,
 	deco:   style.Decorations, // text decorations propagated from ancestors
 	deco_color: css.Color,
+	deco_box: i32,             // the box whose text-decoration-color that is (NONE: none)
 }
 
 @(private)
@@ -211,7 +212,7 @@ child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool) -> Frame {
 		g.deco = {}   // decorations do not propagate into atomic inlines, floats and absolutely positioned boxes
 	}
 	g.deco += b.cs.text_decoration
-	if b.cs.text_decoration != {} { g.deco_color = b.cs.text_decoration_color }
+	if b.cs.text_decoration != {} { g.deco_color, g.deco_box = b.cs.text_decoration_color, bi }
 	switch b.kind {
 	case .Inline: g.mode = .Inline
 	case .Block, .Cell, .Caption:
@@ -260,7 +261,7 @@ build_tree :: proc(c: ^Ctx) {
 	}
 
 	stack := make([dynamic]Frame, 0, 256, context.temp_allocator)
-	top := Frame{kind = .Visit, parent = root, mode = .Block, cb = root, fcb = root, depth = 0, ifc = NONE}
+	top := Frame{kind = .Visit, parent = root, mode = .Block, cb = root, fcb = root, depth = 0, ifc = NONE, deco_box = NONE}
 	{
 		g := top
 		rn := dom.get(d, d.root)
@@ -661,7 +662,7 @@ visit_text :: proc(c: ^Ctx, f: Frame, n: ^dom.Node) {
 	prev := false
 	text := text_transform(c, n.text, cs.text_transform, &prev)
 	ib := c.l.boxes[g.parent].kind == .Inline ? g.parent : NONE
-	add_item(c, Inline_Item{kind = .Text, box = ib, ifc = g.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = g.deco, deco_color = g.deco_color})
+	add_item(c, Inline_Item{kind = .Text, box = ib, ifc = g.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = g.deco, deco_color = g.deco_color, deco_box = g.deco_box})
 }
 
 @(private)
@@ -687,7 +688,7 @@ emit_generated :: proc(c: ^Ctx, owner: base.Handle, cs: ^style.Computed, f: Fram
 	prev := false
 	text = text_transform(c, text, cs.text_transform, &prev)
 	ib := c.l.boxes[f.parent].kind == .Inline ? f.parent : NONE
-	add_item(c, Inline_Item{kind = .Text, box = ib, ifc = f.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = f.deco, deco_color = f.deco_color})
+	add_item(c, Inline_Item{kind = .Text, box = ib, ifc = f.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = f.deco, deco_color = f.deco_color, deco_box = f.deco_box})
 }
 
 ////////////////////////////////

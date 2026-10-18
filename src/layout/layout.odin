@@ -70,6 +70,7 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	clear(&l.boxes); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items)
 	clear(&l.spaces); clear(&l.clips); clear(&l.groups); clear(&l.band_start); clear(&l.band_items); clear(&l.node_box)
 	if !keep_scroll { clear(&l.scroll) }
+	clear(&l.deco_items)
 	if l.arena_ready { virtual.arena_free_all(&l.arena) }
 	l.valid = false
 	l.last_pass = .None
@@ -82,6 +83,7 @@ destroy :: proc(l: ^Layout) {
 	delete(l.spaces); delete(l.clips); delete(l.groups); delete(l.band_start); delete(l.band_items); delete(l.node_box)
 	delete(l.scroll)
 	delete(l.scratch)
+	delete(l.deco_items)
 	if l.arena_ready { virtual.arena_destroy(&l.arena) }
 	l^ = {}
 }

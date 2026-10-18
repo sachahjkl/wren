@@ -106,7 +106,7 @@ emit_lines :: proc(p: ^Paint_Ctx, ri: i32, owner: i32) {
 				if f.kind == .Text {
 					item := &c.l.inline_items[f.item]
 					if item.cs.visibility != .Visible { continue }
-					it.cs, it.node, it.deco, it.deco_color = item.cs, item.node, item.deco, item.deco_color
+					it.cs, it.node, it.deco, it.deco_color, it.deco_box = item.cs, item.node, item.deco, item.deco_color, item.deco_box
 					if item.cs.pointer_events { it.flags += {.Hit} }
 				} else {
 					it.cs, it.node = r.cs, hit_node(c, ri)
