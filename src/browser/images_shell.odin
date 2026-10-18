@@ -21,6 +21,7 @@ package browser
 // Pixels handed to `update` are RGBA8, straight alpha, sRGB, `stride` bytes per row (package images).
 
 import "core:math"
+import "core:strconv"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:font"
@@ -88,10 +89,52 @@ images_shell_init :: proc(app: ^App) {
 	shell.textures = make(map[u64]^Shell_Texture)
 	shell.evicted = make([dynamic]u64)
 	shell.next_ms = -1
-	set_replaced_sizes(lay.Replaced_Api{intrinsic = proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool) {
-		if shell.page == nil { return 0, 0, false }
-		return page.image_intrinsic(shell.page, node)
-	}})
+	set_replaced_sizes(lay.Replaced_Api{user = app, intrinsic = shell_intrinsic})
+}
+
+// The size layout gives an image element (CSS px): its natural size, with the width / height attributes applied as
+// HTML's presentational hints would (CSS width / height still win: layout looks at them first); a broken image is as
+// large as its icon and alt text. ok = false: nothing known (layout uses the attributes or its placeholder size).
+@(private = "file")
+shell_intrinsic :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool) {
+	p := shell.page
+	if p == nil { return 0, 0, false }
+	d := p.doc
+	attr :: proc(d: ^dom.Document, h: base.Handle, name: string) -> (f32, bool) {
+		v, ok := dom.get_attribute(d, h, name)
+		if !ok { return 0, false }
+		t := strings.trim_space(v)
+		end := 0
+		for end < len(t) && ((t[end] >= '0' && t[end] <= '9') || t[end] == '.') { end += 1 }
+		if end == 0 || (end < len(t) && t[end] == '%') { return 0, false }
+		n, nok := strconv.parse_f32(t[:end])
+		return n, nok && n >= 0
+	}
+	aw, has_w := attr(d, node, "width")
+	ah, has_h := attr(d, node, "height")
+	v := page.image_view(p, node)
+	if v.state == .Ready {
+		nw, nh := v.natural[0], v.natural[1]
+		switch {
+		case has_w && has_h: return aw, ah, true
+		case has_w: return aw, nw > 0 ? aw * nh / nw : nh, true
+		case has_h: return nh > 0 ? ah * nw / nh : nw, ah, true
+		}
+		return nw, nh, true
+	}
+	if v.state != .Broken || has_w || has_h { return 0, 0, false }
+	// broken, no dimensions: the icon, then the alt text (alt="" means the image is decoration: nothing at all)
+	alt, has_alt := dom.get_attribute(d, node, "alt")
+	if has_alt && alt == "" { return 0, 0, true }
+	icon := f32(the_app != nil ? the_app.page_settings.images.broken_icon_px : 16)
+	if !has_alt { return icon + 4, icon + 4, true }
+	cs: ^style.Computed
+	if i := int(base.handle_index(node)); p.styled != nil && i < len(p.styled.by_node) { cs = p.styled.by_node[i] }
+	if cs == nil || the_app == nil { return icon + 4, icon + 4, true }
+	text := page_text_api(&page_render.fonts, &the_app.measure, &the_app.page_settings.style)
+	f := text.font(text.user, cs.font_family, cs.font_weight, cs.font_style != .Normal)
+	tw := text.width(text.user, f, cs.font_size, alt)
+	return icon + 8 + tw, max(icon + 4, cs.font_size * 1.25), true
 }
 
 // Connects the renderer's textures (see the top of this file). Textures made by the previous API are released.
@@ -258,14 +301,12 @@ draw_placeholder :: proc(dc: ^draw.Context, r: draw.Rect, kind: Placeholder_Kind
 		draw.rect(dc, r, draw.srgb(0.78, 0.78, 0.78, 1))
 		draw.rect(dc, r, draw.srgb(0.62, 0.62, 0.62, 1), 0, 1)
 	case .Broken:
-		draw.rect(dc, r, draw.srgb(0.96, 0.96, 0.96, 1))
-		draw.rect(dc, r, draw.srgb(0.6, 0.6, 0.6, 1), 0, 1)
 	}
-	s := min(w, h, 64) * 0.6
-	if s < 8 { return }
+	s := kind == .Broken ? min(w, h) : min(w, h, 64) * 0.6
+	if s < 6 { return }
 	c := draw.rect_center(r)
 	icon := draw.Rect{c - s * 0.5, c + s * 0.5}
-	if kind == .Broken { icon = draw.Rect{r.min + 4, r.min + 4 + s * 0.5}; s *= 0.5 }
+
 	col := kind == .Broken ? draw.srgb(0.55, 0.55, 0.55, 1) : draw.srgb(0.45, 0.45, 0.45, 1)
 	draw.rect(dc, icon, col, s * 0.08, max(1, s * 0.06))
 	sun := s * 0.16
@@ -327,8 +368,7 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 	case .Loading:
 		draw_placeholder(dc, content, .Loading)
 	case .Broken:
-		draw_placeholder(dc, content, .Broken)
-		paint_alt(dc, d, node, content, cs, fid, font_size)
+		paint_broken(dc, d, node, content, cs, fid, font_size, scale)
 	case .Ready:
 		dst := fit_rect(content, v.natural, cs, scale)
 		ww, wh := want_size(dst)
@@ -343,6 +383,26 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 		if clip { draw.pop_clip(dc) }
 	}
 	return true
+}
+
+// A broken image: a thin frame when the box is larger than the icon, the icon at the top left, the alt text after it.
+@(private = "file")
+paint_broken :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Handle, content: draw.Rect, cs: ^style.Computed, fid: font.Font_Id, font_size, scale: f32) {
+	icon := f32(the_app != nil ? the_app.page_settings.images.broken_icon_px : 16) * scale
+	w, h := content.max.x - content.min.x, content.max.y - content.min.y
+	if w <= 0 || h <= 0 { return }
+	if w > icon + 8 * scale || h > icon + 8 * scale { draw.rect(dc, content, draw.srgb(0.6, 0.6, 0.6, 1), 0, max(1, scale * 0.75)) }
+	pad := 2 * scale
+	box := draw.Rect{content.min + pad, content.min + pad + icon}
+	draw.push_clip(dc, content)
+	draw_placeholder(dc, box, .Broken)
+	alt, ok := dom.get_attribute(d, node, "alt")
+	if ok && alt != "" && cs != nil && fid != 0 {
+		m := font.metrics(page_render.fonts.state, fid, font_size)
+		y := box.min.y + (icon + m.ascent - m.descent) * 0.5
+		draw.text(dc, fid, font_size, {box.max.x + 4 * scale, y}, to_draw(cs.color), alt)
+	}
+	draw.pop_clip(dc)
 }
 
 @(private = "file")

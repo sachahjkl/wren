@@ -21,6 +21,7 @@ Settings :: struct {
 	guest_max_bytes:   int,
 	gpu_max_bytes:     int,
 	background_tiles:  int,
+	broken_icon_px:    int,
 }
 
 PREFS := [?]config.Def{
@@ -64,6 +65,8 @@ PREFS := [?]config.Def{
 		description = "Largest RGBA buffer a page's script may obtain from Image_decode (it also counts against page.max_fetch_bytes)."},
 	{name = "images.gpu.max_bytes", kind = .Int, default = {i = 512 << 20}, bounded = true, min = 1 << 20, max = 1 << 36, bytes = true, unit = "bytes",
 		description = "Video memory the painter keeps for image textures. Past it, the textures not drawn for the longest time are released."},
+	{name = "images.broken.icon_px", kind = .Int, default = {i = 16}, bounded = true, min = 0, max = 256, unit = "px",
+		description = "Size of the icon a broken image shows (CSS pixels), followed by its alt text. A broken image without width / height attributes is as large as both."},
 	{name = "images.background.max_tiles", kind = .Int, default = {i = 4096}, bounded = true, min = 1, max = 1 << 24,
 		description = "Most tiles one repeated background image draws in a box; a tiny image repeated over a huge box stops there."},
 }
@@ -95,6 +98,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		guest_max_bytes = int(config.int_of(p, "images.guest_decode_max_bytes")),
 		gpu_max_bytes = int(config.int_of(p, "images.gpu.max_bytes")),
 		background_tiles = int(config.int_of(p, "images.background.max_tiles")),
+		broken_icon_px = int(config.int_of(p, "images.broken.icon_px")),
 	}
 }
 
