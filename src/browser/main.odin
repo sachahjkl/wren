@@ -689,6 +689,7 @@ frame :: proc(app: ^App) {
 	platform.set_cursor(app.win, ui.cursor(&app.ui_state))
 	if ui.needs_frame(&app.ui_state) { app.frames_requested = max(app.frames_requested, 2) }
 	if t := current_tab(app); t != nil && t.page != nil && t.layout.mutations != t.page.doc.mutations { app.frames_requested = max(app.frames_requested, 2) }
+	if t := current_tab(app); t != nil && t.page != nil && page.animations_active(t.page) { app.frames_requested = max(app.frames_requested, 2) }   // CSS animations: later changes wake the loop by timer
 
 	prof_gpu_begin(app)
 	draw.begin_frame(&app.dc, size)

@@ -83,6 +83,8 @@ Page :: struct {
 	style_stale:  bool,
 	link_loads:   map[base.Handle]^Style_Load,
 	import_loads: [dynamic]^Style_Load,
+	anim:         Page_Animations,      // transitions and animations (animations.odin)
+	fonts:        Page_Fonts,           // @font-face downloads (fonts.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives

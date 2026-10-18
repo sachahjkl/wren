@@ -377,3 +377,16 @@ calc_expressions :: proc(t: ^testing.T) {
 	_, ok := calc_px(deep)
 	testing.expect(t, !ok)
 }
+
+@(test)
+raw_descriptor_values_and_units :: proc(t: ^testing.T) {
+	s := parse_stylesheet("@media screen { @font-face { font-family: X; unicode-range: U+0E00-0E7F, U+4??; src: url(a.woff) } }", OPT)
+	defer { stylesheet_destroy(s); free(s) }
+	ff := s.rules[0].rules[0]
+	testing.expect(t, ff.kind == .Font_Face)
+	testing.expect_value(t, ff.declarations[1].raw, "U+0E00-0E7F, U+4??")
+	ms, ok := time_unit_to_ms(1.5, "s")
+	testing.expect(t, ok && ms == 1500)
+	deg, ok2 := angle_unit_to_deg(0.25, "turn")
+	testing.expect(t, ok2 && deg == 90)
+}
