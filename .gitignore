@@ -4,3 +4,4 @@ build/
 *.obj
 *.ilk
 examples/site/counter.wasm
+examples/site/formstest.wasm

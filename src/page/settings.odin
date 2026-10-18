@@ -1,6 +1,7 @@
 package page
 
 import "wb:config"
+import "wb:forms"
 import "wb:html"
 import "wb:style"
 import "wb:wasm"
@@ -15,6 +16,7 @@ Settings :: struct {
 	eventsource:     Eventsource_Settings,
 	websocket:       Websocket_Settings,
 	web:             Web_Settings,     // web_settings.odin
+	forms:           forms.Settings,
 }
 
 PREFS := [?]config.Def{
@@ -32,6 +34,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	style.register_prefs(p)
 	config.register(p, EVENTSOURCE_PREFS[:])
 	config.register(p, WEBSOCKET_PREFS[:])
+	forms.register_prefs(p)
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -44,6 +47,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		eventsource = eventsource_settings_from_prefs(p),
 		websocket = websocket_settings_from_prefs(p),
 		web = web_settings_from_prefs(p),
+		forms = forms.settings_from_prefs(p),
 	}
 }
 
@@ -56,4 +60,5 @@ settings_default :: proc() -> Settings {
 settings_destroy :: proc(s: ^Settings) {
 	html.options_destroy(&s.html)
 	style.settings_destroy(&s.style)
+	forms.settings_destroy(&s.forms)
 }

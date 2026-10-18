@@ -202,7 +202,8 @@ normalize_address :: proc(input: string) -> string {
 
 // Starts loading `address` in `t`. `from` is the page the navigation comes from (a link click), nil for the address bar.
 // `record`: false when the navigation walks the history (back, forward, reload) instead of extending it.
-navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false, record := true) {
+// `method` / `body` / `headers`: a form submission (POST); the history keeps the address only.
+navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false, record := true, method := "", body: []byte = nil, headers: []fetch.Header_Pair = nil) {
 	target := strings.clone(normalize_address(address), context.temp_allocator)
 	if target == "" { target = strings.clone(app.cfg.homepage, context.temp_allocator) }
 	if record { history_push(t, target) }
@@ -233,6 +234,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 		request = {
 			url = target, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = .Document,
 			initiator = load.has_initiator ? &load.initiator : nil, user_activation = user_activation,
+			method = method, body = body, headers = headers,
 		},
 		on_event = document_event, user = load, scope = t.nav, collect = true,
 	})
@@ -520,6 +522,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.push_clip(dc, b.rect)
 	prof_begin(.Paint_Items)
 	paint(&t.layout, dc, &app.fonts, app.ui_font, b.rect.min - {0, t.scroll}, b.rect)
+	forms_paint_overlays(app, dc, b.rect)
 	prof_end(.Paint_Items)
 	draw.pop_clip(dc)
 }
@@ -616,9 +619,12 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		st.hover = hovered
 		page.set_style_state(t.page, st)
 	}
-	for ev in events {
+	for ev, index in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
+		// form controls first: keyboard for the focused field, the open drop-down list (forms_shell.odin)
+		if forms_route_event(app, t, ev, index) { continue }
+		if t.page == nil { return }
 		#partial switch ev.kind {
 		case .Mouse_Move:
 			last_move, have_move = ev, true   // only the last position of the frame matters: hit test once, after the loop
@@ -627,12 +633,15 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		case .Mouse_Press:
 			if !inside || !t.layout.valid { continue }
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
-			target := hit_test(&t.layout, local)
-			if target == base.NIL_HANDLE { continue }
-			not_prevented := page.dispatch_event(t.page, target, dom.Event{
-				type = "click", bubbles = true, cancelable = true,
-				x = f64(local.x / scale), y = f64(local.y / scale), button = i32(ev.button),
-			})
+			forms_pointer_down(app, t, ev, hit_test(&t.layout, local), local)
+		case .Mouse_Release:
+			if !t.layout.valid { continue }
+			local := ev.pos - app.page_rect.min + {0, t.scroll}
+			released := inside ? hit_test(&t.layout, local) : base.NIL_HANDLE
+			target, clicked := forms_pointer_up(app, t, ev, released, local)
+			if !clicked || t.page == nil { continue }
+			not_prevented := forms_click(app, t, target, ev, local)
+			if t.page == nil { return }
 			// default action: following a link, unless a listener called preventDefault
 			if not_prevented && ev.button == .Left {
 				if href, ok := anchor_href(t.page.doc, target); ok {
@@ -723,6 +732,8 @@ frame :: proc(app: ^App) {
 	prof_end(.Loop)
 	prof_begin(.Input)
 	route_page_input(app, events)
+	events = forms_unconsumed_events(events)   // keys the page used do not reach the chrome
+	forms_shell_frame(app)
 	prof_end(.Input)
 
 	// page visibility, then the animation frame callbacks of the page about to be painted
@@ -876,6 +887,7 @@ main :: proc() {
 	host.loop_destroy(&app.loop)
 	wasm.runtime_destroy()
 	measure_destroy(&app.measure)
+	forms_shell_destroy()
 	config_view_destroy(&app.config_view)
 	config.prefs_destroy(&app.prefs)
 }

@@ -22,6 +22,7 @@ Pseudo :: enum u8 {
 	// user action / state
 	Hover, Active, Focus, Focus_Visible, Focus_Within, Link, Any_Link, Visited, Target,
 	Checked, Disabled, Enabled, Required, Optional, Read_Only, Read_Write, Placeholder_Shown,
+	Valid, Invalid, User_Valid, User_Invalid, In_Range, Out_Of_Range, Indeterminate, Default, Autofill,
 	// other
 	Lang, Dir, Scope, Defined,
 	// pseudo-elements
@@ -303,6 +304,15 @@ simple_pseudo_class :: proc(name: string) -> (Pseudo, bool) {
 	case "read-only": return .Read_Only, true
 	case "read-write": return .Read_Write, true
 	case "placeholder-shown": return .Placeholder_Shown, true
+	case "valid": return .Valid, true
+	case "invalid": return .Invalid, true
+	case "user-valid": return .User_Valid, true
+	case "user-invalid": return .User_Invalid, true
+	case "in-range": return .In_Range, true
+	case "out-of-range": return .Out_Of_Range, true
+	case "indeterminate": return .Indeterminate, true
+	case "default": return .Default, true
+	case "autofill", "-webkit-autofill": return .Autofill, true
 	case "scope": return .Scope, true
 	case "defined": return .Defined, true
 	}

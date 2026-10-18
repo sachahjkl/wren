@@ -11,6 +11,25 @@ import "wb:dom"
 State :: struct {
 	hover, active, focus: base.Handle,
 	target_id:            string,       // the fragment of the document URL, for :target
+	controls:             Control_Provider,
+}
+
+// Form control state (checkedness, validity, what is typed...) lives outside the DOM attributes; the page plugs in the
+// forms model here. `known = false` (or no provider) falls back to the attributes.
+Control_Query :: enum u8 {
+	Checked, Indeterminate, Default, Disabled, Read_Write, Placeholder_Shown,
+	Valid, Invalid, User_Valid, User_Invalid, In_Range, Out_Of_Range,
+}
+
+Control_Provider :: struct {
+	query: proc(user: rawptr, el: base.Handle, q: Control_Query) -> (answer: bool, known: bool),
+	user:  rawptr,
+}
+
+@(private)
+control_query :: proc(m: ^Match_Ctx, el: base.Handle, q: Control_Query) -> (answer: bool, known: bool) {
+	if m.state.controls.query == nil { return false, false }
+	return m.state.controls.query(m.state.controls.user, el, q)
 }
 
 Sib_Info :: struct { index, index_last, type_index, type_index_last: int }   // 1-based
@@ -382,14 +401,20 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		v, ok := attr(n, "id")
 		return ok && m.state.target_id != "" && v == m.state.target_id
 	case .Checked:
+		if a, known := control_query(m, el, .Checked); known { return a }
 		if n.name == "option" { _, ok := attr(n, "selected"); return ok }
 		if n.name == "input" {
 			t, _ := attr(n, "type")
 			if strings.equal_fold(t, "checkbox") || strings.equal_fold(t, "radio") { _, ok := attr(n, "checked"); return ok }
 		}
 		return false
-	case .Disabled: return is_disabled(m, el)
-	case .Enabled: return is_form_control(n) && !is_disabled(m, el)
+	case .Disabled:
+		if a, known := control_query(m, el, .Disabled); known { return a }
+		return is_disabled(m, el)
+	case .Enabled:
+		if !is_form_control(n) { return false }
+		if a, known := control_query(m, el, .Disabled); known { return !a }
+		return !is_disabled(m, el)
 	case .Required:
 		if n.name != "input" && n.name != "select" && n.name != "textarea" { return false }
 		_, ok := attr(n, "required")
@@ -398,9 +423,29 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		if n.name != "input" && n.name != "select" && n.name != "textarea" { return false }
 		_, ok := attr(n, "required")
 		return !ok
-	case .Read_Write: return is_read_write(m, el)
-	case .Read_Only: return !is_read_write(m, el)
+	case .Read_Write:
+		if a, known := control_query(m, el, .Read_Write); known { return a }
+		return is_read_write(m, el)
+	case .Read_Only:
+		if a, known := control_query(m, el, .Read_Write); known { return !a }
+		return !is_read_write(m, el)
+	case .Valid, .Invalid, .User_Valid, .User_Invalid, .In_Range, .Out_Of_Range, .Indeterminate, .Default:
+		q: Control_Query
+		#partial switch s.pseudo {
+		case .Valid: q = .Valid
+		case .Invalid: q = .Invalid
+		case .User_Valid: q = .User_Valid
+		case .User_Invalid: q = .User_Invalid
+		case .In_Range: q = .In_Range
+		case .Out_Of_Range: q = .Out_Of_Range
+		case .Indeterminate: q = .Indeterminate
+		case .Default: q = .Default
+		}
+		a, _ := control_query(m, el, q)
+		return a
+	case .Autofill: return false
 	case .Placeholder_Shown:
+		if a, known := control_query(m, el, .Placeholder_Shown); known { return a }
 		if n.name != "input" && n.name != "textarea" { return false }
 		ph, ok := attr(n, "placeholder")
 		if !ok || ph == "" { return false }

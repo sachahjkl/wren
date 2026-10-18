@@ -364,6 +364,7 @@ register_imports :: proc() -> bool {
 	ok &&= wasm.register("url", url_symbols[:])
 	ok &&= wasm.register("performance", performance_symbols[:])
 	ok &&= wasm.register("history", history_symbols[:])
+	ok &&= wasm.register("forms", build_forms_symbols())
 	return ok
 }
 

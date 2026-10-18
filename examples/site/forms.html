@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Forms</title>
+<style>
+body { font-family: sans-serif; margin: 16px; background: #f6f7fb; color: #222; }
+h1 { font-size: 22px; margin: 0 0 12px; }
+form { background: white; border: 1px solid #d8dbe5; border-radius: 6px; padding: 12px 16px; max-width: 560px; }
+fieldset { margin: 8px 0; border: 1px solid #cfd3de; }
+legend { font-weight: bold; }
+label { display: block; margin: 6px 0 2px; font-size: 13px; color: #445; }
+input, select, textarea { width: 260px; }
+input[type=checkbox], input[type=radio] { width: auto; }
+input:focus, textarea:focus, select:focus { border-color: #4d90fe; }
+input:user-invalid, textarea:user-invalid { border-color: #d33; background-color: #fff3f3; }
+input:valid:not(:placeholder-shown) { border-color: #3a3; }
+input:out-of-range { background-color: #fff3d6; }
+.row { margin: 4px 0; }
+.buttons { margin-top: 10px; }
+#status { margin-top: 10px; font-size: 13px; color: #555; }
+</style>
+</head>
+<body>
+<h1>Form controls</h1>
+<form id="f" action="/forms/echo" method="post" enctype="multipart/form-data">
+  <fieldset>
+    <legend>Identity</legend>
+    <label for="name">Name</label>
+    <input id="name" name="name" placeholder="Your name" required minlength="2" autofocus>
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" placeholder="you@example.com" required>
+    <label for="code">Code (3 letters, 2 digits)</label>
+    <input id="code" name="code" pattern="[A-Z]{3}\d{2}" title="three capitals then two digits" value="ABC12">
+  </fieldset>
+  <fieldset>
+    <legend>Details</legend>
+    <label for="age">Age</label>
+    <input id="age" name="age" type="number" min="1" max="130" step="1" value="30">
+    <label for="when">Date</label>
+    <input id="when" name="when" type="date" value="2026-10-18">
+    <label for="level">Level</label>
+    <input id="level" name="level" type="range" min="0" max="10" value="4">
+    <label for="color">Color</label>
+    <input id="color" name="color" type="color" value="#3366cc">
+    <label for="lang">Language</label>
+    <select id="lang" name="lang">
+      <option value="">Choose…</option>
+      <option value="en">English</option>
+      <option value="fr" selected>Français</option>
+      <optgroup label="Others"><option value="de">Deutsch</option><option value="it" disabled>Italiano</option></optgroup>
+    </select>
+    <div class="row"><input type="checkbox" id="news" name="news" value="yes" checked><label for="news" style="display:inline">Newsletter</label></div>
+    <div class="row">
+      <input type="radio" id="p1" name="plan" value="free" checked><label for="p1" style="display:inline">Free</label>
+      <input type="radio" id="p2" name="plan" value="pro"><label for="p2" style="display:inline">Pro</label>
+    </div>
+    <label for="bio">Bio</label>
+    <textarea id="bio" name="bio" rows="3" maxlength="200">Hello
+world</textarea>
+    <label for="up">Attachment</label>
+    <input id="up" name="up" type="file" multiple>
+    <input type="hidden" name="_charset_">
+  </fieldset>
+  <div class="buttons">
+    <button id="send" type="submit" name="action" value="send">Send</button>
+    <button id="reset" type="reset">Reset</button>
+    <input id="get" type="submit" value="Search (GET)" formmethod="get" formaction="/forms/echo">
+  </div>
+</form>
+<div id="status">ready</div>
+<script type="application/wasm" src="formstest.wasm"></script>
+</body>
+</html>
