@@ -15,14 +15,11 @@ import "core:fmt"
 import "core:strings"
 import "wb:base"
 
-DEFAULT_STACK    :: 256 << 10
-DEFAULT_BUDGET   :: 50_000_000    // instructions per host->guest call (~70 ms of interpretation)
-MAX_MEMORY_PAGES :: 16384         // 1 GiB; a module's own declared maximum still applies
-
+// Limits for one instance (preferences `wasm.*`; see settings.odin). `options_default()` gives the shipped defaults.
 Options :: struct {
 	stack_size:  u32,   // native value stack for the interpreter
-	max_pages:   u32,   // linear memory limit in 64 KiB pages, 0 = MAX_MEMORY_PAGES
-	budget:      i32,   // instructions per call, 0 = DEFAULT_BUDGET, -1 = unlimited
+	max_pages:   u32,   // linear memory limit in 64 KiB pages
+	budget:      i32,   // instructions per call from the host, -1 = unlimited
 }
 
 Instance :: struct {
@@ -62,13 +59,13 @@ register :: proc(module: cstring, symbols: []Native_Symbol) -> bool {
 }
 
 // Loads and instantiates `image` (copied). The instance dies with `scope` (may be nil: then call `destroy`).
-instance_create :: proc(image: []byte, user: rawptr, scope: ^base.Scope = nil, opt := Options{}, name := "module") -> (inst: ^Instance, err: string) {
+instance_create :: proc(image: []byte, user: rawptr, scope: ^base.Scope, opt: Options, name := "module") -> (inst: ^Instance, err: string) {
 	if !runtime_init() { return nil, "wasm runtime init failed" }
 	inst = new(Instance)
 	inst.name = strings.clone(name)
 	inst.user = user
 	inst.scope = scope
-	inst.budget = opt.budget == 0 ? DEFAULT_BUDGET : opt.budget
+	inst.budget = opt.budget
 	inst.bytes = make([]byte, len(image))
 	copy(inst.bytes, image)
 
@@ -80,9 +77,9 @@ instance_create :: proc(image: []byte, user: rawptr, scope: ^base.Scope = nil, o
 		return nil, err
 	}
 	args := Instantiation_Args{
-		default_stack_size = opt.stack_size == 0 ? DEFAULT_STACK : opt.stack_size,
+		default_stack_size = opt.stack_size,
 		host_managed_heap_size = 0,
-		max_memory_pages = opt.max_pages == 0 ? MAX_MEMORY_PAGES : opt.max_pages,
+		max_memory_pages = opt.max_pages,
 	}
 	errbuf = {}
 	inst.inst = wasm_runtime_instantiate_ex(inst.module, &args, raw_data(errbuf[:]), len(errbuf))

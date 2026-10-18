@@ -18,8 +18,6 @@ foreign lexbor_enc {
 	wb_free :: proc(p: rawptr) ---
 }
 
-DEFAULT_ENCODING :: "windows-1252"   // the specification's default for locales without a better guess
-
 Decoded :: struct {
 	text:     []byte,   // UTF-8, owned
 	encoding: string,   // canonical name that was used
@@ -41,7 +39,8 @@ canonical_encoding :: proc(label: string) -> string {
 // The "encoding sniffing algorithm": byte-order mark, then the transport's charset (`header_charset`, from
 // Content-Type), then the <meta> prescan, then the default. The result is always UTF-8; undecodable bytes become
 // U+FFFD, as the specification requires.
-decode_document :: proc(data: []byte, header_charset: string, allocator := context.allocator) -> (d: Decoded, ok: bool) {
+// `default_encoding` is the last resort (preference `html.default_encoding`).
+decode_document :: proc(data: []byte, header_charset: string, default_encoding: string, allocator := context.allocator) -> (d: Decoded, ok: bool) {
 	input := data
 	switch {
 	case len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF:
@@ -57,10 +56,11 @@ decode_document :: proc(data: []byte, header_charset: string, allocator := conte
 		} else {
 			buf: [64]u8
 			n := wb_html_prescan_charset(raw_data(data), uint(len(data)), raw_data(buf[:]), len(buf))
-			if n > 0 { d.encoding, d.source = strings.clone(string(buf[:n]), context.temp_allocator), .Meta } else { d.encoding, d.source = DEFAULT_ENCODING, .Default }
+			if n > 0 { d.encoding, d.source = strings.clone(string(buf[:n]), context.temp_allocator), .Meta } else { d.encoding, d.source = default_encoding, .Default }
 		}
 	}
 
+	if d.source == .Default && canonical_encoding(d.encoding) == "" { d.encoding = "windows-1252" }   // a broken preference must not break loading
 	out: [^]u8
 	out_len: uint
 	empty: u8

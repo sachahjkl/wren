@@ -92,7 +92,7 @@ fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		f.headers = strings.clone(strings.to_string(sb))
 	case .Data:
 		if !f.usable { return }   // opaque: scripts never see the bytes
-		if p.held + len(ev.data) > MAX_FETCH_BYTES_HELD {
+		if p.held + len(ev.data) > p.settings.max_fetch_bytes {
 			f.state, f.error, f.error_kind = 3, strings.clone("page fetch memory limit reached"), .Body_Too_Large
 			if f.task != base.NIL_HANDLE { fetch.cancel(p.loader, f.task); f.task = base.NIL_HANDLE }
 			break

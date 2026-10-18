@@ -9,19 +9,17 @@ import "core:strings"
 import "core:time"
 import "wb:url"
 
-DEFAULT_MAX_TOTAL    :: 3000
-DEFAULT_MAX_PER_SITE :: 180   // per registrable domain
-
 Jar :: struct {
 	cookies:      [dynamic]Cookie,   // every string is owned by the jar
-	max_total:    int,
-	max_per_site: int,
+	settings:     Settings,
 	dirty:        bool,              // changed since the last save
 	allocator:    runtime.Allocator,
 }
 
-jar_make :: proc(allocator := context.allocator) -> Jar {
-	return Jar{cookies = make([dynamic]Cookie, allocator), max_total = DEFAULT_MAX_TOTAL, max_per_site = DEFAULT_MAX_PER_SITE, allocator = allocator}
+// `settings` zero value = the defaults.
+jar_make :: proc(settings: Settings = {}, allocator := context.allocator) -> Jar {
+	s := settings.max_total == 0 ? settings_default() : settings
+	return Jar{cookies = make([dynamic]Cookie, allocator), settings = s, allocator = allocator}
 }
 
 jar_destroy :: proc(j: ^Jar) {
@@ -53,11 +51,13 @@ Store_Result :: enum u8 {
 	Rejected_Http_Only,        // script tried to create or overwrite an HttpOnly cookie
 	Rejected_Secure_Overwrite, // would shadow a Secure cookie from an insecure origin
 	Rejected_Expired,          // already expired and nothing to delete
+	Rejected_Disabled,         // cookies are switched off in the configuration
 }
 
 // Applies one `Set-Cookie` header value (or a `document.cookie = ...` string) per the storage model.
 store :: proc(j: ^Jar, header: string, ctx: Context) -> Store_Result {
-	p, ok := parse_set_cookie(header)
+	if !j.settings.enabled { return .Rejected_Disabled }
+	p, ok := parse_set_cookie(header, j.settings)
 	if !ok { return .Rejected_Syntax }
 	c := p.cookie
 	u := ctx.url
@@ -93,14 +93,15 @@ store :: proc(j: ^Jar, header: string, ctx: Context) -> Store_Result {
 		c.expires_ms = now + p.max_age_ms
 		expired = p.max_age_ms <= 0
 	case p.expires_set:
-		c.expires_ms = min(p.expires_ms, now + MAX_AGE_MS)
+		c.expires_ms = min(p.expires_ms, now + j.settings.max_age_ms)
 		expired = p.expires_ms <= now
 	}
 
 	if c.secure && !secure_origin { return .Rejected_Secure_Origin }
 	if !prefix_ok_ci(c, secure_origin) { return .Rejected_Prefix }
 	if c.same_site == .None && !c.secure { return .Rejected_Same_Site }
-	if c.same_site != .None && ctx.site_context == .Cross_Site { return .Rejected_Same_Site }
+	eff := c.same_site == .Unspecified ? j.settings.same_site_default : c.same_site
+	if eff != .None && ctx.site_context == .Cross_Site { return .Rejected_Same_Site }
 
 	idx := find(j, c.name, c.domain, c.path)
 	if idx >= 0 && j.cookies[idx].http_only && !ctx.http_api { return .Rejected_Http_Only }
@@ -178,10 +179,10 @@ evict :: proc(j: ^Jar, now: i64, domain: string) {
 			n += 1
 			if oldest < 0 || c.accessed_ms < j.cookies[oldest].accessed_ms { oldest = i }
 		}
-		if n <= j.max_per_site || oldest < 0 { break }
+		if n <= j.settings.max_per_site || oldest < 0 { break }
 		remove_at(j, oldest)
 	}
-	for len(j.cookies) > j.max_total {
+	for len(j.cookies) > j.settings.max_total {
 		oldest := 0
 		for c, i in j.cookies { if c.accessed_ms < j.cookies[oldest].accessed_ms { oldest = i } }
 		remove_at(j, oldest)
@@ -196,6 +197,7 @@ registrable_or_host :: proc(host: string) -> string {
 
 // The value of the `Cookie` request header for `ctx.url`, "" when no cookie applies.
 header_for :: proc(j: ^Jar, ctx: Context, allocator := context.allocator) -> string {
+	if !j.settings.enabled { return "" }
 	u := ctx.url
 	secure_origin := url.is_potentially_trustworthy(u)
 	Match :: struct { i: int, path_len: int, created: i64 }
@@ -207,7 +209,7 @@ header_for :: proc(j: ^Jar, ctx: Context, allocator := context.allocator) -> str
 		if !path_match(u.path, c.path) { continue }
 		if c.secure && !secure_origin { continue }
 		if c.http_only && !ctx.http_api { continue }
-		eff := c.same_site == .Unspecified ? Same_Site.Lax : c.same_site
+		eff := c.same_site == .Unspecified ? j.settings.same_site_default : c.same_site
 		switch eff {
 		case .Strict: if ctx.site_context != .Same_Site { continue }
 		case .Lax:    if ctx.site_context == .Cross_Site { continue }

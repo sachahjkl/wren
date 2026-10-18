@@ -8,10 +8,6 @@ import "core:strconv"
 import "core:strings"
 import "wb:url"
 
-MAX_NAME_VALUE_BYTES :: 4096
-MAX_ATTRIBUTE_BYTES  :: 1024
-MAX_AGE_MS           :: i64(400) * 24 * 3600 * 1000   // the 400-day cap on cookie lifetime
-
 Same_Site :: enum u8 { Unspecified, None, Lax, Strict }
 
 Cookie :: struct {
@@ -201,7 +197,7 @@ Parsed :: struct {
 	expires_ms:   i64,
 }
 
-parse_set_cookie :: proc(header: string) -> (p: Parsed, ok: bool) {
+parse_set_cookie :: proc(header: string, lim: Settings) -> (p: Parsed, ok: bool) {
 	s := header
 	// the name-value pair is everything before the first ';'
 	first, rest := s, ""
@@ -213,7 +209,7 @@ parse_set_cookie :: proc(header: string) -> (p: Parsed, ok: bool) {
 		name = strings.trim_space(nv[:eq])
 		value = strings.trim_space(nv[eq + 1:])
 	}
-	if len(name) + len(value) > MAX_NAME_VALUE_BYTES { return {}, false }
+	if len(name) + len(value) > lim.max_name_value_bytes { return {}, false }
 	if name == "" && value == "" { return {}, false }
 	if contains_ctl(name) || contains_ctl(value) { return {}, false }
 	p.cookie.name, p.cookie.value = name, value
@@ -228,12 +224,12 @@ parse_set_cookie :: proc(header: string) -> (p: Parsed, ok: bool) {
 			aname = strings.trim_space(attr[:eq])
 			avalue = strings.trim_space(attr[eq + 1:])
 		}
-		if len(avalue) > MAX_ATTRIBUTE_BYTES { continue }
+		if len(avalue) > lim.max_attribute_bytes { continue }
 		switch {
 		case strings.equal_fold(aname, "expires"):
 			if ms, good := parse_cookie_date(avalue); good { p.expires_set, p.expires_ms = true, ms }
 		case strings.equal_fold(aname, "max-age"):
-			if ms, good := parse_max_age(avalue); good { p.max_age_set, p.max_age_ms = true, ms }
+			if ms, good := parse_max_age(avalue, lim.max_age_ms); good { p.max_age_set, p.max_age_ms = true, ms }
 		case strings.equal_fold(aname, "domain"):
 			d := avalue
 			if strings.has_prefix(d, ".") { d = d[1:] }
@@ -263,7 +259,7 @@ contains_ctl :: proc(s: string) -> bool {
 }
 
 @(private)
-parse_max_age :: proc(s: string) -> (ms: i64, ok: bool) {
+parse_max_age :: proc(s: string, cap_ms: i64) -> (ms: i64, ok: bool) {
 	if s == "" { return 0, false }
 	i := 0
 	neg := false
@@ -273,7 +269,7 @@ parse_max_age :: proc(s: string) -> (ms: i64, ok: bool) {
 	v, good := strconv.parse_i64(s[i:], 10)
 	if !good { v = max(i64) / 2000 }   // absurdly large: saturates below
 	if neg { return 0, true }          // <= 0: expire immediately
-	return min(v, MAX_AGE_MS / 1000) * 1000, true
+	return min(v, cap_ms / 1000) * 1000, true
 }
 
 // Does the host (or the Cookie-Name prefix) forbid this cookie? Cookie name prefixes: RFC 6265bis §4.1.3.

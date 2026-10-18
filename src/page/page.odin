@@ -26,10 +26,6 @@ Log_Level :: enum i32 { Log, Warn, Error }
 
 Console_Proc :: #type proc(user: rawptr, level: Log_Level, message: string)
 
-// Per-page ceiling on what scripts may keep alive through fetch records. A page that exceeds it has its fetch refused
-// rather than letting one tab exhaust the process.
-MAX_FETCH_BYTES_HELD :: 1 << 30
-
 Fetch :: struct {
 	page:       ^Page,
 	self:       base.Handle,
@@ -63,6 +59,7 @@ Page :: struct {
 	scope:     ^base.Scope,
 	loop:      ^host.Loop,
 	loader:    ^fetch.Loader,
+	settings:  ^Settings,     // shared, owned by the shell; follows preference changes
 	env:       fetch.Environment,
 	doc:       ^dom.Document,
 	dp:        dom.Dispatcher,
@@ -80,11 +77,12 @@ Page :: struct {
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives
 // about:blank. The page makes its own child scope.
-page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, parent: ^base.Scope, document_url: string, console: Console_Proc = nil, console_user: rawptr = nil) -> ^Page {
+page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings, parent: ^base.Scope, document_url: string, console: Console_Proc = nil, console_user: rawptr = nil) -> ^Page {
 	p := new(Page)
 	p.scope = base.scope_make("page", parent)
 	p.loop = loop
 	p.loader = loader
+	p.settings = settings
 	p.console = console
 	p.console_user = console_user
 	base.on_close(p.scope, page_cleanup, p)   // registered first, so it runs last
@@ -167,7 +165,7 @@ apply_response_headers :: proc(p: ^Page, csp_values, csp_report_only_values: []s
 // <meta name="referrer">. `utf8` is already decoded (see html.decode_document).
 load_html :: proc(p: ^Page, utf8: []byte) -> html.Parse_Result {
 	dom.set_text_content(p.doc, p.doc.root, "")
-	r := html.parse_into(p.doc, p.doc.root, utf8)
+	r := html.parse_into(p.doc, p.doc.root, utf8, p.settings.html.max_nodes)
 	p.doc_el = dom.find_first_by_tag(p.doc, "html")
 	p.head = dom.find_first_by_tag(p.doc, "head")
 	p.body = dom.find_first_by_tag(p.doc, "body")
@@ -201,7 +199,7 @@ apply_meta :: proc(p: ^Page) {
 
 // Instantiates a module in the page scope and calls its `wb_main` export. Any number of modules may be loaded.
 load_module :: proc(p: ^Page, image: []byte, name := "module") -> (inst: ^wasm.Instance, ok: bool, err: string) {
-	inst, err = wasm.instance_create(image, p, p.scope, {}, name)
+	inst, err = wasm.instance_create(image, p, p.scope, p.settings.wasm, name)
 	if inst == nil { return nil, false, err }
 	inst.index = u32(len(p.instances))
 	append(&p.instances, inst)

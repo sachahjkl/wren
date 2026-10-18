@@ -34,6 +34,7 @@ client:   net.Client
 blocking: host.Blocking_Pool
 profile:  fetch.Profile
 loader:   fetch.Loader
+settings: page.Settings
 
 pump_until :: proc(what: string, cond: proc() -> bool, seconds := 10.0) -> bool {
 	start := time.tick_now()
@@ -63,13 +64,14 @@ main :: proc() {
 	host.blocking_init(&blocking, &loop, 2)
 	profile = fetch.profile_make()
 	fetch.loader_init(&loader, &loop, &client, &blocking, &profile)
+	settings = page.settings_default()
 	if !page.register_imports() { fmt.eprintln("register failed"); os.exit(2) }
 
 	process := base.scope_make("process")
 
 	////////////////////////////////
 	fmt.println("-- one module: DOM, events, timers, fetch")
-	p := page.page_create(&loop, &loader, process, "http://127.0.0.1:8765/page.html", console)
+	p := page.page_create(&loop, &loader, &settings, process, "http://127.0.0.1:8765/page.html", console)
 	the_page = p
 	check(!p.env.origin.opaque && p.env.secure_context, "http://127.0.0.1 is a secure context with a tuple origin")
 
@@ -127,7 +129,7 @@ main :: proc() {
 	pump_until("cors probe 2", proc() -> bool { return attr(dom.find_by_id(the_page.doc, "app"), "data-cors") != "" })
 	check(attr(app, "data-cors") == "allowed", "a CORS-enabled cross-origin fetch succeeds")
 
-	fpage := page.page_create(&loop, &loader, process, "file:///S:/wasm_browser/build/x.html", console)
+	fpage := page.page_create(&loop, &loader, &settings, process, "file:///S:/wasm_browser/build/x.html", console)
 	finst, fok, _ := page.load_module(fpage, e2e, "e2e-file")
 	_ = fok
 	fn, _ := wasm.call_i32(finst, "cookie_probe")
@@ -149,13 +151,13 @@ main :: proc() {
 	////////////////////////////////
 	fmt.println("-- an HTML document with two modules")
 	// the second module is e2e itself: both instances share the DOM; table indices collide on purpose
-	decoded, _ := html.decode_document(html_bytes, "utf-8")
-	hp := page.page_create(&loop, &loader, process, "http://127.0.0.1:8765/site/index.html", console)
+	decoded, _ := html.decode_document(html_bytes, "utf-8", settings.html.default_encoding)
+	hp := page.page_create(&loop, &loader, &settings, process, "http://127.0.0.1:8765/site/index.html", console)
 	the_page = hp
 	rr := page.load_html(hp, decoded.text)
 	check(rr.ok && rr.nodes > 20, "HTML document parsed by Lexbor into the DOM")
 	check(html.title(hp.doc) == "Wasm-first demo", "document title extracted")
-	scripts := html.wasm_scripts(hp.doc)
+	scripts := html.wasm_scripts(hp.doc, settings.html.module_script_type)
 	src, _ := dom.get_attribute(hp.doc, scripts[0] if len(scripts) > 0 else base.NIL_HANDLE, "src")
 	check(len(scripts) == 1 && src == "counter.wasm", "the document names its Wasm module")
 
@@ -180,7 +182,7 @@ main :: proc() {
 
 	////////////////////////////////
 	fmt.println("-- security headers and meta")
-	sp := page.page_create(&loop, &loader, process, "https://example.test/", console)
+	sp := page.page_create(&loop, &loader, &settings, process, "https://example.test/", console)
 	page.apply_response_headers(sp, {"default-src 'self'"}, {"img-src 'none'"}, "no-referrer")
 	check(len(sp.env.policies.policies) == 2 && sp.env.referrer_policy == .No_Referrer, "response headers feed the environment")
 	meta := "<!doctype html><meta http-equiv=\"Content-Security-Policy\" content=\"connect-src 'self'\"><meta name=\"referrer\" content=\"origin\"><p>x"

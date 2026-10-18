@@ -15,6 +15,7 @@ import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:base"
+import "wb:config"
 import "wb:cookies"
 import "wb:dom"
 import "wb:fetch"
@@ -26,9 +27,7 @@ import "wb:page"
 import "wb:url"
 import "wb:wasm"
 
-MAX_CONSOLE_LINES :: 500
 DEBUG_INPUT :: #config(DEBUG_INPUT, false)
-PROFILE_SAVE_INTERVAL_MS :: 30_000
 
 debug_log :: proc(s: string) {
 	f, err := os.open("build/debug.log", {.Write, .Create, .Append}, os.Permissions_Default_File)
@@ -62,7 +61,10 @@ Doc_Load :: struct {
 	next_run:   int,
 }
 
+Tab_Kind :: enum u8 { Web, Config }
+
 Tab :: struct {
+	kind:     Tab_Kind,      // a web page, or the about:config view
 	scope:    ^base.Scope,   // lives as long as the tab
 	nav:      ^base.Scope,   // lives as long as the current navigation: the page and everything it started
 	page:     ^page.Page,
@@ -88,6 +90,11 @@ App :: struct {
 	loop:     host.Loop,
 	client:   net.Client,
 	blocking: host.Blocking_Pool,
+	prefs:    config.Prefs,   // every tunable of the browser (about:config)
+	cfg:      Settings,       // the shell's own, derived from prefs
+	page_settings: page.Settings,
+	config_view:   Config_View,
+	autosave_timer: base.Handle,
 	profile:  fetch.Profile,
 	loader:   fetch.Loader,
 	profile_dir: string,
@@ -119,7 +126,7 @@ tab_open :: proc(app: ^App, address := "") -> ^Tab {
 	append(&app.tabs, t)
 	app.current = len(app.tabs) - 1
 	ui.field_set(&app.address, address)
-	if address != "" { navigate(app, t, address) }
+	navigate(app, t, address)   // an empty address opens the homepage
 	return t
 }
 
@@ -139,7 +146,7 @@ tab_close :: proc(app: ^App, index: int) {
 tab_log :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 	prefix := level == .Error ? "error: " : level == .Warn ? "warn: " : ""
 	append(&t.console, fmt.aprintf("%s%s", prefix, message))
-	if len(t.console) > MAX_CONSOLE_LINES {
+	for len(t.console) > the_app.cfg.console_max_lines {
 		delete(t.console[0])
 		ordered_remove(&t.console, 0)
 	}
@@ -173,7 +180,7 @@ normalize_address :: proc(input: string) -> string {
 		fixed, _ := strings.replace_all(s, "\\", "/", context.temp_allocator)
 		return strings.concatenate({"file:///", fixed}, context.temp_allocator)
 	}
-	if !strings.contains(s, "://") && !strings.has_prefix(s, "about:") && !strings.has_prefix(s, "data:") {
+	if !strings.contains(s, "://") && !strings.has_prefix(s, "about:") && !strings.has_prefix(s, "data:") && s != "" {
 		return strings.concatenate({"https://", s}, context.temp_allocator)
 	}
 	return s
@@ -182,6 +189,9 @@ normalize_address :: proc(input: string) -> string {
 // Starts loading `address` in `t`. `from` is the page the navigation comes from (a link click), nil for the address bar.
 navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false) {
 	target := strings.clone(normalize_address(address), context.temp_allocator)
+	if target == "" { target = strings.clone(app.cfg.homepage, context.temp_allocator) }
+	if target == "about:config" { show_config(app, t); return }
+	t.kind = .Web
 	load := new(Doc_Load)
 	load.tab = t
 	if from != nil { load.initiator, load.has_initiator = fetch.environment_clone(from.env), true }
@@ -221,10 +231,24 @@ load_closed :: proc(data: rawptr) {
 	free(load)
 }
 
+// about:config is a view of the browser itself, not a document: it has no page, no origin, no scripts.
+show_config :: proc(app: ^App, t: ^Tab) {
+	base.scope_close(t.nav)
+	t.nav = base.scope_make("navigation", t.scope)
+	t.page, t.load, t.kind = nil, nil, .Config
+	layout_reset(&t.layout)
+	for l in t.console { delete(l) }
+	clear(&t.console)
+	delete(t.url); t.url = strings.clone("about:config")
+	delete(t.title); t.title = strings.clone("Configuration")
+	set_status(t, "about:config")
+	ui.field_set(&app.address, "about:config")
+}
+
 // An HTML page the browser makes up when a load fails, so the tab always shows something readable.
 show_error_page :: proc(app: ^App, load: ^Doc_Load, headline, detail: string) {
 	t := load.tab
-	if load.page == nil { load.page = page.page_create(&app.loop, &app.loader, t.nav, "about:blank", console_sink, t); t.page = load.page }
+	if load.page == nil { load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, "about:blank", console_sink, t); t.page = load.page }
 	body := fmt.tprintf("<!doctype html><title>Error</title><h1>%s</h1><p>%s</p><p>%s</p>", escape_html(headline), escape_html(detail), escape_html(t.url))
 	page.load_html(load.page, transmute([]byte)body)
 	delete(t.title)
@@ -255,7 +279,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			if cs, ok := http.mime_param(r.mime, "charset"); ok { load.charset = strings.clone(cs) }
 		}
 		// the document exists from here on, with the origin of its *final* URL
-		load.page = page.page_create(&app.loop, &app.loader, t.nav, r.url, console_sink, t)
+		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, r.url, console_sink, t)
 		t.page = load.page
 		csp_h := http.get_all(r.headers, "content-security-policy")
 		ro_h := http.get_all(r.headers, "content-security-policy-report-only")
@@ -295,7 +319,7 @@ document_loaded :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 		return
 	}
 
-	d, ok := html.decode_document(data, load.charset)
+	d, ok := html.decode_document(data, load.charset, app.page_settings.html.default_encoding)
 	if !ok { show_error_page(app, load, "Cannot decode the document", load.charset); return }
 	defer delete(d.text)
 	r := page.load_html(p, d.text)
@@ -310,7 +334,7 @@ document_loaded :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 }
 
 show_text :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
-	d, ok := html.decode_document(data, load.charset)
+	d, ok := html.decode_document(data, load.charset, app.page_settings.html.default_encoding)
 	if !ok { return }
 	defer delete(d.text)
 	p := load.page
@@ -326,7 +350,7 @@ show_text :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 start_scripts :: proc(app: ^App, load: ^Doc_Load) {
 	p := load.page
 	t := load.tab
-	for sh in html.wasm_scripts(p.doc) {
+	for sh in html.wasm_scripts(p.doc, app.page_settings.html.module_script_type) {
 		src, has := dom.get_attribute(p.doc, sh, "src")
 		if !has || src == "" { tab_log(t, .Error, "an inline Wasm script needs a src (use a data: URL)"); continue }
 		resolved, ok := url.parse(src, &p.env.location, context.temp_allocator)
@@ -388,7 +412,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	app.page_rect = b.rect
 	draw.rect(dc, b.rect, draw.hex(0xffffffff))
 	t := current_tab(app)
-	if t == nil || t.page == nil { return }
+	if t == nil || t.page == nil || t.kind != .Web { return }
 	scale := ui.scale()
 	size := draw.rect_size(b.rect)
 	if !t.layout.valid || t.layout.mutations != t.page.doc.mutations || t.layout.width != size.x || t.layout.scale != scale {
@@ -454,7 +478,11 @@ build_ui :: proc(app: ^App) {
 			}
 			// page
 			ui.next({width = ui.fill(), height = ui.fill()})
-			ui.custom("###page_area", page_draw, nil)
+			if t != nil && t.kind == .Config {
+				config_page(&app.config_view, &app.prefs)
+			} else {
+				ui.custom("###page_area", page_draw, nil)
+			}
 			// console strip + status
 			if t != nil {
 				lines := min(len(t.console), 3)
@@ -498,14 +526,14 @@ anchor_href :: proc(d: ^dom.Document, h: base.Handle) -> (string, bool) {
 // Mouse and wheel events that land on the page become DOM events / scrolling.
 route_page_input :: proc(app: ^App, events: []platform.Event) {
 	t := current_tab(app)
-	if t == nil || t.page == nil { return }
+	if t == nil || t.page == nil || t.kind != .Web { return }
 	scale := ui.scale()
 	for ev in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
 		#partial switch ev.kind {
 		case .Scroll:
-			if inside { t.scroll -= ev.delta.y * 48 * scale }
+			if inside { t.scroll -= ev.delta.y * app.cfg.scroll_step * scale }
 		case .Mouse_Press:
 			if !inside || !t.layout.valid { continue }
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
@@ -529,27 +557,60 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 }
 
 ////////////////////////////////
-// Profile persistence
+// Preferences and profile
 
-profile_paths :: proc(app: ^App) -> (cookie_file, hsts_file: string) {
+profile_paths :: proc(app: ^App) -> (cookie_file, hsts_file, prefs_file: string) {
 	return strings.concatenate({app.profile_dir, "/cookies.tsv"}, context.temp_allocator),
-	       strings.concatenate({app.profile_dir, "/hsts.txt"}, context.temp_allocator)
+	       strings.concatenate({app.profile_dir, "/hsts.txt"}, context.temp_allocator),
+	       strings.concatenate({app.profile_dir, "/prefs.txt"}, context.temp_allocator)
 }
 
 profile_load :: proc(app: ^App) {
-	c, h := profile_paths(app)
+	c, h, _ := profile_paths(app)
+	if !app.cfg.persist_profile { return }
 	cookies.load(&app.profile.jar, c)
 	fetch.hsts_load(&app.profile.hsts, h, fetch.now_ms())
 }
 
 profile_save :: proc(app: ^App, force := false) {
-	c, h := profile_paths(app)
+	c, h, pf := profile_paths(app)
+	if app.prefs.dirty || force { config.save_user(&app.prefs, pf) }
+	if !app.cfg.persist_profile { return }
 	if force || app.profile.jar.dirty { cookies.save(&app.profile.jar, c) }
 	if force || app.profile.hsts.dirty { fetch.hsts_save(&app.profile.hsts, h, fetch.now_ms()) }
 }
 
 autosave :: proc(data: rawptr) { profile_save((^App)(data)) }
 
+// (Re)arms the autosave timer from the current preference.
+arm_autosave :: proc(app: ^App) {
+	if app.autosave_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.autosave_timer); app.autosave_timer = base.NIL_HANDLE }
+	if app.cfg.autosave_ms > 0 {
+		app.autosave_timer = host.set_timer(&app.loop, f64(app.cfg.autosave_ms), f64(app.cfg.autosave_ms), autosave, app)
+	}
+}
+
+// Every setting struct is derived from the registry; when any preference changes they are all refreshed and handed to
+// their subsystems. Preferences marked "restart" are read again at the next start (the subsystem keeps what it opened with).
+apply_prefs :: proc(app: ^App) {
+	ns := net.settings_from_prefs(&app.prefs)
+	net.client_apply(&app.client, ns)
+	net.settings_destroy(&ns)
+
+	fetch.settings_destroy(&app.profile.settings)
+	app.profile.settings = fetch.settings_from_prefs(&app.prefs)
+	app.profile.jar.settings = cookies.settings_from_prefs(&app.prefs)
+
+	page.settings_destroy(&app.page_settings)
+	app.page_settings = page.settings_from_prefs(&app.prefs)
+
+	delete(app.cfg.homepage)
+	app.cfg = settings_from_prefs(&app.prefs)
+	arm_autosave(app)
+	app.frames_requested = max(app.frames_requested, 3)
+}
+
+on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) { apply_prefs((^App)(user)) }
 ////////////////////////////////
 // Loop
 
@@ -573,7 +634,7 @@ frame :: proc(app: ^App) {
 	platform.set_dark_title(app.win, true)
 	base_style := ui.Style{
 		pref = {.X = ui.text_size(), .Y = ui.px(36)},
-		font = app.ui_font, font_size = 15, text_pad = 7,
+		font = app.ui_font, font_size = app.cfg.ui_font_size, text_pad = 7,
 		cursor = .Arrow,
 	}
 	ui.begin_build(&app.ui_state, {
@@ -596,9 +657,36 @@ frame :: proc(app: ^App) {
 
 wake_window :: proc(user: rawptr) { platform.wake((^platform.Window)(user)) }
 
+// `--profile DIR` and `--policy FILE` are the shell's own flags; every other `--pref name=value` is a preference.
+extract_flag :: proc(args: []string, flag: string) -> (value: string, rest: [dynamic]string) {
+	rest = make([dynamic]string, context.temp_allocator)
+	for i := 0; i < len(args); i += 1 {
+		if args[i] == flag && i + 1 < len(args) { value = args[i + 1]; i += 1; continue }
+		append(&rest, args[i])
+	}
+	return
+}
+
 main :: proc() {
 	app := new(App)
 	the_app = app
+
+	// --- configuration: defaults < profile file < command line < policy file ---
+	args := os.args[1:]
+	profile_override, a1 := extract_flag(args, "--profile")
+	policy_file, a2 := extract_flag(a1[:], "--policy")
+	app.prefs = config.prefs_make()
+	rest, arg_errors := config.apply_args(&app.prefs, a2[:])
+	cfg_dir := platform.config_dir(context.temp_allocator)
+	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/wasm_browser"}, context.temp_allocator)))
+	_ = os.make_directory_all(app.profile_dir)
+	_, _, prefs_file := profile_paths(app)
+	config.load_file(&app.prefs, prefs_file, .User)
+	if policy_file == "" { policy_file = "policies.txt" }
+	config.load_file(&app.prefs, policy_file, .Policy)
+	register_all_prefs(&app.prefs)
+	app.cfg = settings_from_prefs(&app.prefs)
+
 	font.init(&app.fonts)
 	app.win = platform.open_window("wasm browser", {1280, 800})
 	if !render.init(&app.r, app.win.hwnd, app.win.size) { fmt.eprintln("renderer init failed"); return }
@@ -612,21 +700,25 @@ main :: proc() {
 	app.ui_state.icon_font = app.icons
 
 	host.loop_init(&app.loop, wake_window, app.win)
-	if !net.client_init(&app.client, &app.loop) { fmt.eprintln("network init failed"); return }
+	ns := net.settings_from_prefs(&app.prefs)
+	if !net.client_init(&app.client, &app.loop, ns) { fmt.eprintln("network init failed"); return }
+	net.settings_destroy(&ns)
 	host.blocking_init(&app.blocking, &app.loop, 4)
-	app.profile = fetch.profile_make()
+	app.profile = fetch.profile_make(fetch.settings_from_prefs(&app.prefs), cookies.settings_from_prefs(&app.prefs))
 	fetch.loader_init(&app.loader, &app.loop, &app.client, &app.blocking, &app.profile)
+	app.page_settings = page.settings_from_prefs(&app.prefs)
 	if !page.register_imports() { fmt.eprintln("wasm runtime init failed"); return }
 	app.process = base.scope_make("process")
+	app.config_view.rows = make(map[string]^Row_State)
 
-	cfg := platform.config_dir(context.temp_allocator)
-	app.profile_dir = strings.clone(cfg == "" ? "build/profile" : strings.concatenate({cfg, "/wasm_browser"}, context.temp_allocator))
-	_ = os.make_directory_all(app.profile_dir)
 	profile_load(app)
-	host.set_timer(&app.loop, PROFILE_SAVE_INTERVAL_MS, PROFILE_SAVE_INTERVAL_MS, autosave, app)
+	config.watch(&app.prefs, "", on_pref_change, app)
+	arm_autosave(app)
 
-	address := len(os.args) > 1 ? os.args[1] : ""
+	// the first tab: the address given on the command line, else the homepage
+	address := len(rest) > 0 ? rest[0] : ""
 	tab_open(app, address)
+	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }
 
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
@@ -652,4 +744,6 @@ main :: proc() {
 	fetch.profile_destroy(&app.profile)
 	host.loop_destroy(&app.loop)
 	wasm.runtime_destroy()
+	config_view_destroy(&app.config_view)
+	config.prefs_destroy(&app.prefs)
 }

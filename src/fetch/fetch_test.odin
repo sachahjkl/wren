@@ -73,7 +73,7 @@ hsts_persistence :: proc(t: ^testing.T) {
 @(test)
 referrer_policies :: proc(t: ^testing.T) {
 	ref :: proc(src, dst: string, p: Referrer_Policy) -> string {
-		v, ok := determine_referrer(U(src), U(dst), p, context.temp_allocator)
+		v, ok := determine_referrer(U(src), U(dst), p, 4096, context.temp_allocator)
 		return ok ? v : "<none>"
 	}
 	same_src := "https://a.example/page/x?q=1#frag"
@@ -128,25 +128,25 @@ cors_checks :: proc(t: ^testing.T) {
 preflight_validation :: proc(t: ^testing.T) {
 	origin := O("https://app.example/")
 	good := H("Access-Control-Allow-Origin: https://app.example\r\nAccess-Control-Allow-Methods: PUT, DELETE\r\nAccess-Control-Allow-Headers: X-Token, Content-Type\r\nAccess-Control-Max-Age: 600\r\n")
-	v := check_preflight_response(origin, false, 204, good, "PUT", {"x-token"})
+	v := check_preflight_response(origin, false, 204, good, "PUT", {"x-token"}, 5)
 	testing.expect(t, v.ok, v.reason)
 	testing.expect_value(t, v.max_age_s, 600)
-	v = check_preflight_response(origin, false, 204, good, "PATCH", {})
+	v = check_preflight_response(origin, false, 204, good, "PATCH", {}, 5)
 	testing.expect(t, !v.ok, "method not listed")
-	v = check_preflight_response(origin, false, 204, good, "PUT", {"x-other"})
+	v = check_preflight_response(origin, false, 204, good, "PUT", {"x-other"}, 5)
 	testing.expect(t, !v.ok, "header not listed")
-	v = check_preflight_response(origin, false, 500, good, "PUT", {"x-token"})
+	v = check_preflight_response(origin, false, 500, good, "PUT", {"x-token"}, 5)
 	testing.expect(t, !v.ok, "status must be ok")
-	v = check_preflight_response(origin, false, 200, good, "GET", {})
+	v = check_preflight_response(origin, false, 200, good, "GET", {}, 5)
 	testing.expect(t, v.ok, "safelisted methods never need listing")
 
 	star := H("Access-Control-Allow-Origin: https://app.example\r\nAccess-Control-Allow-Methods: *\r\nAccess-Control-Allow-Headers: *\r\n")
-	v = check_preflight_response(origin, false, 200, star, "DELETE", {"x-a", "x-b"})
+	v = check_preflight_response(origin, false, 200, star, "DELETE", {"x-a", "x-b"}, 5)
 	testing.expect(t, v.ok, "* covers everything without credentials")
-	v = check_preflight_response(origin, false, 200, star, "DELETE", {"authorization"})
+	v = check_preflight_response(origin, false, 200, star, "DELETE", {"authorization"}, 5)
 	testing.expect(t, !v.ok, "* never covers Authorization")
 	star_cred := H("Access-Control-Allow-Origin: https://app.example\r\nAccess-Control-Allow-Credentials: true\r\nAccess-Control-Allow-Methods: *\r\nAccess-Control-Allow-Headers: *\r\n")
-	v = check_preflight_response(origin, true, 200, star_cred, "DELETE", {"x-a"})
+	v = check_preflight_response(origin, true, 200, star_cred, "DELETE", {"x-a"}, 5)
 	testing.expect(t, !v.ok, "* is a literal with credentials")
 }
 
@@ -155,7 +155,7 @@ preflight_cache_behaviour :: proc(t: ^testing.T) {
 	c := preflight_cache_make()
 	defer preflight_cache_destroy(&c)
 	NOW :: i64(10_000)
-	preflight_cache_store(&c, "https://a", "https://b/x", false, {"PUT"}, {"X-Token"}, 60, NOW)
+	preflight_cache_store(&c, "https://a", "https://b/x", false, {"PUT"}, {"X-Token"}, 60, NOW, 7200, 1000)
 	testing.expect(t, preflight_cache_allows(&c, "https://a", "https://b/x", false, "PUT", {"x-token"}, NOW + 1000))
 	testing.expect(t, preflight_cache_allows(&c, "https://a", "https://b/x", false, "GET", {}, NOW + 1000))
 	testing.expect(t, !preflight_cache_allows(&c, "https://a", "https://b/x", false, "DELETE", {}, NOW + 1000))
@@ -163,7 +163,7 @@ preflight_cache_behaviour :: proc(t: ^testing.T) {
 	testing.expect(t, !preflight_cache_allows(&c, "https://a", "https://b/x", true, "PUT", {"x-token"}, NOW + 1000), "credentials mode is part of the key")
 	testing.expect(t, !preflight_cache_allows(&c, "https://other", "https://b/x", false, "PUT", {"x-token"}, NOW + 1000))
 	testing.expect(t, !preflight_cache_allows(&c, "https://a", "https://b/x", false, "PUT", {"x-token"}, NOW + 61_000), "expired")
-	preflight_cache_store(&c, "https://a", "https://b/y", false, {"PUT"}, {}, 0, NOW)   // max-age 0: not cached
+	preflight_cache_store(&c, "https://a", "https://b/y", false, {"PUT"}, {}, 0, NOW, 7200, 1000)   // max-age 0: not cached
 	testing.expect_value(t, len(c.entries), 0)
 }
 
@@ -223,15 +223,15 @@ file_urls_and_access :: proc(t: ^testing.T) {
 	defer environment_destroy(&env)
 	testing.expect_value(t, env.file_root, `C:\site\pages`)
 	testing.expect(t, env.origin.opaque)
-	testing.expect(t, file_access_allowed(&env, `C:\site\pages\app.wasm`))
-	testing.expect(t, file_access_allowed(&env, `c:\SITE\pages\sub\deep\x.png`), "case-insensitive, subdirectories")
-	testing.expect(t, !file_access_allowed(&env, `C:\site\other.txt`))
-	testing.expect(t, !file_access_allowed(&env, `C:\site\pages2\x`), "sibling with a common prefix")
-	testing.expect(t, file_access_allowed(nil, `C:\anything`), "the browser UI may open any file")
+	testing.expect(t, file_access_allowed(&env, `C:\site\pages\app.wasm`, .Own_Tree))
+	testing.expect(t, file_access_allowed(&env, `c:\SITE\pages\sub\deep\x.png`, .Own_Tree), "case-insensitive, subdirectories")
+	testing.expect(t, !file_access_allowed(&env, `C:\site\other.txt`, .Own_Tree))
+	testing.expect(t, !file_access_allowed(&env, `C:\site\pages2\x`, .Own_Tree), "sibling with a common prefix")
+	testing.expect(t, file_access_allowed(nil, `C:\anything`, .Own_Tree), "the browser UI may open any file")
 
 	web := environment_make(U("https://example.com/"))
 	defer environment_destroy(&web)
-	testing.expect(t, !file_access_allowed(&web, `C:\site\pages\app.wasm`), "web pages never read local files")
+	testing.expect(t, !file_access_allowed(&web, `C:\site\pages\app.wasm`, .Own_Tree), "web pages never read local files")
 }
 
 @(test)
@@ -255,10 +255,17 @@ destination_checks :: proc(t: ^testing.T) {
 
 @(test)
 bad_ports :: proc(t: ^testing.T) {
-	testing.expect(t, is_bad_port(22))
-	testing.expect(t, is_bad_port(6667))
-	testing.expect(t, is_bad_port(10080))
-	testing.expect(t, !is_bad_port(80))
-	testing.expect(t, !is_bad_port(443))
-	testing.expect(t, !is_bad_port(8080))
+	S := settings_default()
+	defer settings_destroy(&S)
+	testing.expect(t, is_bad_port(22, &S))
+	testing.expect(t, is_bad_port(6667, &S))
+	testing.expect(t, is_bad_port(10080, &S))
+	testing.expect(t, !is_bad_port(80, &S))
+	testing.expect(t, !is_bad_port(443, &S))
+	testing.expect(t, !is_bad_port(8080, &S))
+	S.bad_ports_allowed = {22}
+	S.bad_ports_blocked = {8080}
+	testing.expect(t, !is_bad_port(22, &S), "an allowed port is taken off the list")
+	testing.expect(t, is_bad_port(8080, &S), "a port can be added to the list")
+	S.bad_ports_allowed, S.bad_ports_blocked = nil, nil
 }

@@ -142,27 +142,21 @@ Third_Party_Cookies :: enum u8 {
 
 // State shared by every document of a profile.
 Profile :: struct {
-	jar:                 cookies.Jar,
-	hsts:                Hsts,
-	preflights:          Preflight_Cache,
-	third_party_cookies: Third_Party_Cookies,
-	accept_language:     string,
-	referrer_policy:     Referrer_Policy,   // when neither the request nor the document says
-	user_agent:          string,
+	settings:   Settings,    // see settings.odin: every tunable of this layer
+	jar:        cookies.Jar,
+	hsts:       Hsts,
+	preflights: Preflight_Cache,
 }
 
-profile_make :: proc() -> Profile {
-	return Profile{
-		jar = cookies.jar_make(),
-		hsts = hsts_make(),
-		preflights = preflight_cache_make(),
-		third_party_cookies = .Block,
-		accept_language = "en-US,en;q=0.9",
-		referrer_policy = .Strict_Origin_When_Cross_Origin,
-	}
+// Zero settings = the defaults (what about:config shows).
+profile_make :: proc(fetch_settings: Settings = {}, cookie_settings: cookies.Settings = {}) -> Profile {
+	fs := fetch_settings
+	if fs.max_redirects == 0 && fs.accept_language == "" { fs = settings_default() }
+	return Profile{settings = fs, jar = cookies.jar_make(cookie_settings), hsts = hsts_make(), preflights = preflight_cache_make()}
 }
 
 profile_destroy :: proc(p: ^Profile) {
+	settings_destroy(&p.settings)
 	cookies.jar_destroy(&p.jar)
 	hsts_destroy(&p.hsts)
 	preflight_cache_destroy(&p.preflights)

@@ -7,6 +7,9 @@ import "core:testing"
 import "wb:url"
 
 @(private = "file")
+parse_default :: proc(h: string) -> (Parsed, bool) { return parse_set_cookie(h, settings_default()) }
+
+@(private = "file")
 NOW :: i64(1_760_000_000_000)   // a fixed "now" so expiry tests are deterministic
 
 @(private = "file")
@@ -56,7 +59,7 @@ matching_rules :: proc(t: ^testing.T) {
 
 @(test)
 parse_attributes :: proc(t: ^testing.T) {
-	p, ok := parse_set_cookie("sid=abc123; Path=/app; Domain=.Example.com; Secure; HttpOnly; SameSite=Strict; Max-Age=60")
+	p, ok := parse_default("sid=abc123; Path=/app; Domain=.Example.com; Secure; HttpOnly; SameSite=Strict; Max-Age=60")
 	testing.expect(t, ok)
 	testing.expect_value(t, p.cookie.name, "sid")
 	testing.expect_value(t, p.cookie.value, "abc123")
@@ -66,18 +69,18 @@ parse_attributes :: proc(t: ^testing.T) {
 	testing.expect_value(t, p.cookie.same_site, Same_Site.Strict)
 	testing.expect_value(t, p.max_age_ms, i64(60_000))
 
-	p, ok = parse_set_cookie("novalue")
+	p, ok = parse_default("novalue")
 	testing.expect(t, ok)
 	testing.expect_value(t, p.cookie.name, "")
 	testing.expect_value(t, p.cookie.value, "novalue")
 
-	_, ok = parse_set_cookie("=")
+	_, ok = parse_default("=")
 	testing.expect(t, !ok)
-	_, ok = parse_set_cookie(strings.concatenate({strings.repeat("a", 5000, context.temp_allocator), "=b"}, context.temp_allocator))
+	_, ok = parse_default(strings.concatenate({strings.repeat("a", 5000, context.temp_allocator), "=b"}, context.temp_allocator))
 	testing.expect(t, !ok, "name+value over 4096 bytes")
-	p, _ = parse_set_cookie("a=b; Path=relative; Domain=")
+	p, _ = parse_default("a=b; Path=relative; Domain=")
 	testing.expect(t, !p.has_path && !p.has_domain, "invalid Path and empty Domain are ignored")
-	p, _ = parse_set_cookie("a=b; Max-Age=-5")
+	p, _ = parse_default("a=b; Max-Age=-5")
 	testing.expect(t, p.max_age_set && p.max_age_ms == 0)
 }
 
@@ -200,15 +203,15 @@ expiry :: proc(t: ^testing.T) {
 	testing.expect_value(t, store(&j, "k=1; Max-Age=60; Expires=Wed, 09 Jun 2001 10:18:14 GMT", st), Store_Result.Stored)
 	// the 400-day cap
 	store(&j, "long=1; Max-Age=999999999", st)
-	for c in all(&j) { if c.name == "long" { testing.expect(t, c.expires_ms <= NOW + MAX_AGE_MS) } }
+	for c in all(&j) { if c.name == "long" { testing.expect(t, c.expires_ms <= NOW + settings_default().max_age_ms) } }
 }
 
 @(test)
 eviction :: proc(t: ^testing.T) {
 	j := jar_make()
 	defer jar_destroy(&j)
-	j.max_per_site = 5
-	j.max_total = 8
+	j.settings.max_per_site = 5
+	j.settings.max_total = 8
 	for i in 0 ..< 20 {
 		c := ctx_for("https://a.example.com/")
 		c.now_ms = NOW + i64(i)

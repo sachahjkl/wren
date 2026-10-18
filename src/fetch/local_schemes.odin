@@ -164,8 +164,9 @@ mime_for_extension :: proc(path: string) -> string {
 
 // May `env` read this file? The browser UI may read anything; a file: document may read files in its own directory tree
 // (the rule Firefox's strict file origin policy uses); nobody else may.
-file_access_allowed :: proc(env: ^Environment, path: string) -> bool {
-	if env == nil { return true }
+file_access_allowed :: proc(env: ^Environment, path: string, policy: File_Access) -> bool {
+	if env == nil || policy == .All { return true }
+	if policy == .None { return false }
 	return path_within(env.file_root, path)
 }
 

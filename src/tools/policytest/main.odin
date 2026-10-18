@@ -114,7 +114,7 @@ reset_state :: proc() {
 	cookies.clear_all(&profile.jar)
 	fetch.preflight_cache_destroy(&profile.preflights)
 	profile.preflights = fetch.preflight_cache_make()
-	profile.third_party_cookies = .Block
+	profile.settings.third_party_cookies = .Block
 }
 
 main :: proc() {
@@ -255,10 +255,10 @@ main :: proc() {
 		check(cookies.count(&profile.jar) == 2, "first-party cookies for B (localhost is a secure context)")
 		r = get(B + "/cookie/show", doc, .Cors, .Include)
 		check(!r.failed && r.body == "", "third-party cookies are blocked by policy")
-		profile.third_party_cookies = .Allow
+		profile.settings.third_party_cookies = .Allow
 		r = get(B + "/cookie/show", doc, .Cors, .Include)
 		check(r.body == "none=1", "with the policy relaxed only SameSite=None cookies travel cross-site")
-		profile.third_party_cookies = .Block
+		profile.settings.third_party_cookies = .Block
 		r = run({url = B + "/cookie/show", mode = .Navigate, credentials = .Include, initiator = doc, user_activation = true})
 		check(r.body == "lax=1; none=1" || r.body == "none=1; lax=1", "a top-level cross-site GET navigation sends Lax cookies")
 		r = run({url = B + "/cookie/show", method = "POST", body = transmute([]byte)string("x"), mode = .Navigate, credentials = .Include, initiator = doc})

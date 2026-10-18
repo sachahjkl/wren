@@ -34,7 +34,7 @@ dump :: proc(d: ^dom.Document, h: base.Handle, sb: ^strings.Builder) {
 
 @(private = "file")
 parse :: proc(d: ^dom.Document, s: string) -> (string, Parse_Result) {
-	r := parse_into(d, d.root, transmute([]byte)s)
+	r := parse_into(d, d.root, transmute([]byte)s, 2_000_000)
 	sb := strings.builder_make(context.temp_allocator)
 	dump(d, d.root, &sb)
 	return strings.to_string(sb), r
@@ -66,7 +66,7 @@ script_and_wasm_script_discovery :: proc(t: ^testing.T) {
 	defer dom.document_destroy(d)
 	_, r := parse(d, `<head><script type="application/wasm" src="app.wasm"></script><script>x<y</script></head><body><script type="Application/WASM" src="b.wasm">`)
 	testing.expect(t, r.ok)
-	found := wasm_scripts(d)
+	found := wasm_scripts(d, "application/wasm")
 	testing.expect_value(t, len(found), 2)
 	src, _ := dom.get_attribute(d, found[0], "src")
 	testing.expect_value(t, src, "app.wasm")
@@ -77,7 +77,7 @@ script_and_wasm_script_discovery :: proc(t: ^testing.T) {
 @(test)
 charset_sniffing_and_decoding :: proc(t: ^testing.T) {
 	check :: proc(t: ^testing.T, data: []byte, header: string, want_text: string, want_enc: string, want_src: Encoding_Source, loc := #caller_location) {
-		d, ok := decode_document(data, header, context.temp_allocator)
+		d, ok := decode_document(data, header, "windows-1252", context.temp_allocator)
 		testing.expect(t, ok, "decode", loc = loc)
 		testing.expect_value(t, string(d.text), want_text, loc = loc)
 		testing.expect_value(t, d.encoding, want_enc, loc = loc)
@@ -95,10 +95,10 @@ charset_sniffing_and_decoding :: proc(t: ^testing.T) {
 	check(t, {}, "", "", "windows-1252", .Default)
 
 	// a transcoded document parses like any other
-	d, _ := decode_document({'<', 'p', '>', 'c', 'a', 'f', 0xE9}, "windows-1252", context.temp_allocator)
+	d, _ := decode_document({'<', 'p', '>', 'c', 'a', 'f', 0xE9}, "windows-1252", "windows-1252", context.temp_allocator)
 	doc := dom.document_create()
 	defer dom.document_destroy(doc)
-	parse_into(doc, doc.root, d.text)
+	parse_into(doc, doc.root, d.text, 2_000_000)
 	testing.expect_value(t, dom.text_content(doc, dom.find_first_by_tag(doc, "p")), "café")
 }
 

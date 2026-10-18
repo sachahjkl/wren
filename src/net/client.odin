@@ -25,11 +25,6 @@ import "wb:base"
 import "wb:host"
 import "wb:url"
 
-DEFAULT_MAX_BODY :: 256 << 20
-CHUNK_SIZE       :: 64 << 10
-HIGH_WATER       :: 1 << 20
-LOW_WATER        :: 256 << 10
-
 // Errors that are not WinHTTP's own live below 12000.
 ERROR_BAD_URL        :: 1
 ERROR_BODY_TOO_LARGE :: 2
@@ -66,7 +61,7 @@ Request_Desc :: struct {
 	user:     rawptr,
 	scope:    ^base.Scope,  // closing it cancels the request silently
 	collect:  bool,         // deliver one Done event with the entire body instead of Data chunks
-	max_body: int,          // 0 = DEFAULT_MAX_BODY
+	max_body: int,          // 0 = the network.max_response_bytes setting
 	priority: Priority,
 }
 
@@ -117,8 +112,7 @@ Client :: struct {
 	queues:        [Priority][dynamic]base.Handle,
 	active:        map[string]int,
 	active_total:  int,
-	max_per_host:  int,
-	max_total:     int,
+	settings:      Settings,
 	shutting_down: bool,
 
 	mu:            sync.Mutex,
@@ -128,22 +122,26 @@ Client :: struct {
 	live_jobs:     int,   // atomic
 }
 
-client_init :: proc(c: ^Client, loop: ^host.Loop, user_agent := "wasm_browser/0.1") -> bool {
+// `settings` zero value = the defaults (what about:config shows).
+client_init :: proc(c: ^Client, loop: ^host.Loop, settings: Settings = {}) -> bool {
 	c.loop = loop
-	c.max_per_host = 6
-	c.max_total = 64
+	c.settings = settings.max_total == 0 ? settings_default() : settings
+	c.settings.user_agent = strings.clone(c.settings.user_agent)   // the client owns its copy
 	c.events = make([dynamic]Event, heap())    // appended to from WinHTTP threads
 	c.scratch = make([dynamic]Event, heap())
-	ua := win.utf8_to_wstring(user_agent, context.temp_allocator)
-	c.session = WinHttpOpen(ua, WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, nil, nil, WINHTTP_FLAG_ASYNC)
+	ua := win.utf8_to_wstring(c.settings.user_agent, context.temp_allocator)
+	access: win.DWORD = c.settings.proxy == .System ? WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY : WINHTTP_ACCESS_TYPE_NO_PROXY
+	c.session = WinHttpOpen(ua, access, nil, nil, WINHTTP_FLAG_ASYNC)
 	if c.session == nil { return false }
 	WinHttpSetStatusCallback(c.session, status_callback, WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS, 0)
-	WinHttpSetTimeouts(c.session, 15_000, 15_000, 30_000, 60_000)
+	apply_timeouts(c)
 	decompress: win.DWORD = WINHTTP_DECOMPRESSION_FLAG_ALL
 	WinHttpSetOption(c.session, WINHTTP_OPTION_DECOMPRESSION, &decompress, size_of(decompress))
-	protocols: win.DWORD = WINHTTP_PROTOCOL_FLAG_HTTP2 | WINHTTP_PROTOCOL_FLAG_HTTP3
-	if !WinHttpSetOption(c.session, WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL, &protocols, size_of(protocols)) {
-		protocols = WINHTTP_PROTOCOL_FLAG_HTTP2   // HTTP/3 needs a recent Windows
+	protocols: win.DWORD
+	if c.settings.http2 { protocols |= WINHTTP_PROTOCOL_FLAG_HTTP2 }
+	if c.settings.http3 { protocols |= WINHTTP_PROTOCOL_FLAG_HTTP3 }
+	if protocols != 0 && !WinHttpSetOption(c.session, WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL, &protocols, size_of(protocols)) {
+		protocols &= ~win.DWORD(WINHTTP_PROTOCOL_FLAG_HTTP3)   // HTTP/3 needs a recent Windows
 		WinHttpSetOption(c.session, WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL, &protocols, size_of(protocols))
 	}
 	// Policy belongs to the fetch layer: redirects are returned to it (each hop is re-checked), and the OS never sends
@@ -155,6 +153,23 @@ client_init :: proc(c: ^Client, loop: ^host.Loop, user_agent := "wasm_browser/0.
 	return true
 }
 
+@(private)
+apply_timeouts :: proc(c: ^Client) {
+	s := c.settings
+	// WinHTTP: 0 means "use the default"; -1 is infinite
+	t :: proc(v: i32) -> i32 { return v == 0 ? -1 : v }
+	WinHttpSetTimeouts(c.session, t(s.timeout_resolve_ms), t(s.timeout_connect_ms), t(s.timeout_send_ms), t(s.timeout_receive_ms))
+}
+
+// Applies a changed configuration to the running client. Limits and timeouts take effect immediately (queued requests
+// are re-examined); the user agent, protocols and proxy mode need a new session, so they apply at the next start.
+client_apply :: proc(c: ^Client, s: Settings) {
+	agent := c.settings.user_agent   // the session was opened with it; a new value shows after a restart
+	c.settings = s
+	c.settings.user_agent = agent
+	if c.session != nil { apply_timeouts(c) }
+	pump(c)
+}
 // Cancels everything, waits for WinHTTP to let go of every job, frees the rest.
 client_destroy :: proc(c: ^Client) {
 	c.shutting_down = true
@@ -172,6 +187,7 @@ client_destroy :: proc(c: ^Client) {
 	for &q in c.queues { delete(q) }
 	for k in c.active { delete(k, heap()) }
 	delete(c.active)
+	delete(c.settings.user_agent)
 	base.pool_destroy(&c.requests)
 }
 
@@ -205,7 +221,7 @@ pump :: proc(c: ^Client) {
 			h := q[i]
 			r := base.pool_get(&c.requests, h)
 			if r == nil || r.state != .Queued { continue }   // cancelled while waiting
-			if c.active_total < c.max_total && c.active[r.host_key] < c.max_per_host {
+			if c.active_total < c.settings.max_total && c.active[r.host_key] < c.settings.max_per_host {
 				activate(c, h, r)
 			} else {
 				q[w] = h
@@ -273,7 +289,7 @@ prepare :: proc(c: ^Client, h: base.Handle, d: Request_Desc) -> (job: ^Job, key:
 	job.req = h
 	job.port = u16(url.effective_port(u))
 	job.secure = u.scheme == "https"
-	job.max_body = d.max_body > 0 ? d.max_body : DEFAULT_MAX_BODY
+	job.max_body = d.max_body > 0 ? d.max_body : c.settings.max_body
 	method := d.method == "" ? "GET" : d.method
 	job.verb_w = to_wide(method)
 	host := u.host   // WinHTTP takes IPv6 literals without brackets
@@ -407,7 +423,7 @@ handle_event :: proc(c: ^Client, ev: ^Event) {
 		n := len(ev.data)
 		job := r.job
 		q := sync.atomic_sub(&job.queued, n) - n
-		if q < LOW_WATER {
+		if q < c.settings.low_water {
 			if _, resumed := sync.atomic_compare_exchange_strong(&job.paused, true, false); resumed {
 				if !WinHttpQueryDataAvailable(r.hrequest, nil) {
 					push_event(c, Event{kind = .Failed, req = ev.req, error = u32(win.GetLastError())})
@@ -504,7 +520,7 @@ status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.
 	case WINHTTP_CALLBACK_STATUS_DATA_AVAILABLE:
 		n := int((^win.DWORD)(info)^)
 		if n == 0 { finish(job); return }
-		n = min(n, CHUNK_SIZE)
+		n = min(n, job.client.settings.read_chunk)
 		job.cur = make([]byte, n, heap())
 		if !WinHttpReadData(h, raw_data(job.cur), win.DWORD(n), nil) { fail(job, u32(win.GetLastError())) }
 
@@ -516,11 +532,11 @@ status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.
 		job.total += n
 		if job.total > job.max_body { delete(buf, heap()); fail(job, ERROR_BODY_TOO_LARGE); return }
 		push_from_job(job, Event{kind = .Data, data = buf[:n]})
-		if sync.atomic_add(&job.queued, n) + n >= HIGH_WATER {
+		if sync.atomic_add(&job.queued, n) + n >= job.client.settings.high_water {
 			sync.atomic_store(&job.paused, true)
 			// The consumer may have drained everything between the add and the store: recheck, then exactly one
 			// side (this one or the consumer) wins the b32 and continues.
-			if sync.atomic_load(&job.queued) < LOW_WATER {
+			if sync.atomic_load(&job.queued) < job.client.settings.low_water {
 				if _, mine := sync.atomic_compare_exchange_strong(&job.paused, true, false); !mine { return }
 			} else {
 				return

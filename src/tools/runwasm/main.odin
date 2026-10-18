@@ -26,8 +26,10 @@ main :: proc() {
 	if !wasm.runtime_init() { fmt.eprintln("runtime init failed"); os.exit(1) }
 	if !wasm.register("console", console_symbols[:]) { fmt.eprintln("register failed"); os.exit(1) }
 
+	opts := wasm.options_default()
+	opts.budget = 5_000_000
 	doc := base.scope_make("document")
-	inst, e := wasm.instance_create(image, nil, doc, {budget = 5_000_000})
+	inst, e := wasm.instance_create(image, nil, doc, opts)
 	if inst == nil { fmt.eprintln(e); os.exit(1) }
 
 	fmt.println("wb_main  ->", wasm.call_raw(inst, "wb_main"))

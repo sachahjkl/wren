@@ -6,10 +6,6 @@ import "wb:http"
 // CORS-preflight cache (Fetch Standard §4.9): remembers what a server allowed, so a repeated cross-origin request does
 // not pay an OPTIONS round trip each time.
 
-MAX_PREFLIGHT_AGE_S      :: 7200
-DEFAULT_PREFLIGHT_AGE_S  :: 5
-MAX_PREFLIGHT_ENTRIES    :: 1000
-
 Preflight_Entry :: struct {
 	origin:      string,   // serialized request origin
 	url:         string,   // request URL without fragment
@@ -63,14 +59,15 @@ preflight_cache_allows :: proc(c: ^Preflight_Cache, origin, request_url: string,
 	return false
 }
 
-preflight_cache_store :: proc(c: ^Preflight_Cache, origin, request_url: string, credentials: bool, methods, headers: []string, max_age_s: int, now: i64) {
-	if max_age_s <= 0 { return }
+// `age_cap_s` and `max_entries` come from the settings (network.preflight.*).
+preflight_cache_store :: proc(c: ^Preflight_Cache, origin, request_url: string, credentials: bool, methods, headers: []string, max_age_s: int, now: i64, age_cap_s, max_entries: int) {
+	if max_age_s <= 0 || max_entries <= 0 { return }
 	// replace an entry for the same key
 	for i := len(c.entries) - 1; i >= 0; i -= 1 {
 		e := &c.entries[i]
 		if e.origin == origin && e.url == request_url && e.credentials == credentials { free_entry(e); ordered_remove(&c.entries, i) }
 	}
-	for len(c.entries) >= MAX_PREFLIGHT_ENTRIES {
+	for len(c.entries) >= max_entries {
 		oldest := 0
 		for e, i in c.entries { if e.used_ms < c.entries[oldest].used_ms { oldest = i } }
 		free_entry(&c.entries[oldest])
@@ -78,7 +75,7 @@ preflight_cache_store :: proc(c: ^Preflight_Cache, origin, request_url: string, 
 	}
 	e := Preflight_Entry{
 		origin = strings.clone(origin), url = strings.clone(request_url), credentials = credentials,
-		expires_ms = now + i64(min(max_age_s, MAX_PREFLIGHT_AGE_S)) * 1000, used_ms = now,
+		expires_ms = now + i64(min(max_age_s, age_cap_s)) * 1000, used_ms = now,
 	}
 	for m in methods { append(&e.methods, strings.clone(m)) }
 	for h in headers { append(&e.headers, strings.clone(strings.to_lower(h, context.temp_allocator))) }

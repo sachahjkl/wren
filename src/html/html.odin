@@ -38,9 +38,8 @@ foreign lexbor {
 	wb_html_parse :: proc(data: [^]u8, len: uint, sink: ^Shim_Sink, user: rawptr) -> i32 ---
 }
 
-MAX_NODES :: 2_000_000
-
 Builder :: struct {
+	max_nodes: int,
 	doc:       ^dom.Document,
 	stack:     [dynamic]base.Handle,
 	count:     int,
@@ -58,7 +57,7 @@ b_open :: proc "c" (user: rawptr, tag: [^]u8, tag_len: uint, attrs: [^]Shim_Attr
 	context = runtime.default_context()
 	b := (^Builder)(user)
 	// keep the stack balanced even when truncated: close callbacks always pop
-	if b.truncated || b.count >= MAX_NODES {
+	if b.truncated || b.count >= b.max_nodes {
 		b.truncated = true
 		append(&b.stack, base.NIL_HANDLE)
 		return
@@ -86,7 +85,7 @@ b_text :: proc "c" (user: rawptr, s: [^]u8, n: uint) {
 	context = runtime.default_context()
 	b := (^Builder)(user)
 	parent := b.stack[len(b.stack) - 1]
-	if b.truncated || parent == base.NIL_HANDLE || b.count >= MAX_NODES { return }
+	if b.truncated || parent == base.NIL_HANDLE || b.count >= b.max_nodes { return }
 	dom.append_child(b.doc, parent, dom.create_text(b.doc, view(s, n)))
 	b.count += 1
 }
@@ -96,7 +95,7 @@ b_comment :: proc "c" (user: rawptr, s: [^]u8, n: uint) {
 	context = runtime.default_context()
 	b := (^Builder)(user)
 	parent := b.stack[len(b.stack) - 1]
-	if b.truncated || parent == base.NIL_HANDLE || b.count >= MAX_NODES { return }
+	if b.truncated || parent == base.NIL_HANDLE || b.count >= b.max_nodes { return }
 	dom.append_child(b.doc, parent, dom.create_comment(b.doc, view(s, n)))
 	b.count += 1
 }
@@ -109,8 +108,8 @@ Parse_Result :: struct {
 }
 
 // Parses `data` and appends the resulting tree under `parent` (normally the Document node).
-parse_into :: proc(d: ^dom.Document, parent: base.Handle, data: []byte) -> Parse_Result {
-	b := Builder{doc = d}
+parse_into :: proc(d: ^dom.Document, parent: base.Handle, data: []byte, max_nodes: int) -> Parse_Result {
+	b := Builder{doc = d, max_nodes = max_nodes}
 	defer delete(b.stack)
 	append(&b.stack, parent)
 	sink := Shim_Sink{open = b_open, close = b_close, text = b_text, comment = b_comment}
@@ -125,12 +124,10 @@ title :: proc(d: ^dom.Document, allocator := context.temp_allocator) -> string {
 	return strings.trim_space(dom.text_content(d, t, allocator))
 }
 
-// Provisional rule for naming the Wasm module of a document: <script type="application/wasm" src="...">.
-// Kept in one place on purpose: the syntax is an open design question (a dedicated element or attribute may replace it).
-WASM_SCRIPT_TYPE :: "application/wasm"
-
-// Handles of the document's Wasm script elements, in document order (iterative walk).
-wasm_scripts :: proc(d: ^dom.Document, allocator := context.temp_allocator) -> []base.Handle {
+// Handles of the document's <script> elements whose `type` is `script_type` (preference `html.module_script_type`,
+// "application/wasm" by default), in document order (iterative walk). Which markup names a module is configuration, not
+// code: one preference to change if the syntax ever does.
+wasm_scripts :: proc(d: ^dom.Document, script_type: string, allocator := context.temp_allocator) -> []base.Handle {
 	out := make([dynamic]base.Handle, allocator)
 	stack: [dynamic]base.Handle
 	defer delete(stack)
@@ -141,7 +138,7 @@ wasm_scripts :: proc(d: ^dom.Document, allocator := context.temp_allocator) -> [
 		if n == nil { continue }
 		if n.kind == .Element && n.name == "script" {
 			ty, _ := dom.get_attribute(d, cur, "type")
-			if strings.equal_fold(strings.trim_space(ty), WASM_SCRIPT_TYPE) { append(&out, cur) }
+			if strings.equal_fold(strings.trim_space(ty), script_type) { append(&out, cur) }
 		}
 		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(&stack, ch) }
 	}

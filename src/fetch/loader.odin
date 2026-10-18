@@ -12,8 +12,6 @@ import "wb:http"
 import "wb:net"
 import "wb:url"
 
-MAX_REDIRECTS :: 20
-
 Loader :: struct {
 	loop:     ^host.Loop,
 	net:      ^net.Client,
@@ -219,7 +217,9 @@ run_hop :: proc(t: ^Task) {
 
 // Ports that must never be contacted (Fetch Standard "bad port"): other protocols live there.
 @(private)
-is_bad_port :: proc(p: int) -> bool {
+is_bad_port :: proc(p: int, s: ^Settings) -> bool {
+	for a in s.bad_ports_allowed { if a == p { return false } }
+	for b in s.bad_ports_blocked { if b == p { return true } }
 	switch p {
 	case 1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79, 87, 95, 101, 102, 103, 104, 109, 110, 111,
 	     113, 115, 117, 119, 123, 135, 137, 139, 143, 161, 179, 389, 427, 465, 512, 513, 514, 515, 526, 530, 531, 532, 540, 548,
@@ -236,23 +236,29 @@ http_hop :: proc(t: ^Task) {
 	p := l.profile
 	now := now_ms()
 
-	if is_bad_port(url.effective_port(t.target)) { fail(t, .Bad_Port, fmt.tprintf("port %d is blocked", url.effective_port(t.target))); return }
+	if is_bad_port(url.effective_port(t.target), &p.settings) { fail(t, .Bad_Port, fmt.tprintf("port %d is blocked", url.effective_port(t.target))); return }
 	if (t.target.username != "" || t.target.password != "") && (t.mode == .Cors || t.mode == .Same_Origin) {
 		fail(t, .Credentials_In_URL, "URLs with credentials are not allowed for this request"); return
 	}
 
 	// HSTS: upgrade before anything is sent
-	if t.target.scheme == "http" && hsts_should_upgrade(&l.profile.hsts, t.target.host, now) {
+	if t.target.scheme == "http" && p.settings.hsts && hsts_should_upgrade(&l.profile.hsts, t.target.host, now) {
 		if up, ok := upgrade_to_https(t.target); ok { url.destroy(&t.target); t.target = up }
 	}
 
 	// mixed content: a secure document must not load insecure subresources
 	if t.initiator != nil && t.initiator.location.scheme == "https" && t.destination != .Document && !url.is_potentially_trustworthy(t.target) {
 		#partial switch t.destination {
-		case .Image, .Audio, .Video:   // optionally-blockable: upgrade like current browsers do
-			if up, ok := upgrade_to_https(t.target); ok { url.destroy(&t.target); t.target = up } else { fail(t, .Blocked_Mixed_Content, "mixed content"); return }
+		case .Image, .Audio, .Video:   // optionally blockable: upgraded, unless the configuration says otherwise
+			if p.settings.upgrade_passive_mixed {
+				if up, ok := upgrade_to_https(t.target); ok { url.destroy(&t.target); t.target = up } else { fail(t, .Blocked_Mixed_Content, "mixed content"); return }
+			} else {
+				fail(t, .Blocked_Mixed_Content, fmt.tprintf("blocked insecure request to %s from a secure document", t.target.href)); return
+			}
 		case:
-			fail(t, .Blocked_Mixed_Content, fmt.tprintf("blocked insecure request to %s from a secure document", t.target.href)); return
+			if p.settings.block_active_mixed {
+				fail(t, .Blocked_Mixed_Content, fmt.tprintf("blocked insecure request to %s from a secure document", t.target.href)); return
+			}
 		}
 	}
 
@@ -311,7 +317,7 @@ credentials_include :: proc(t: ^Task) -> bool { return t.credentials == .Include
 cookies_allowed :: proc(t: ^Task) -> bool {
 	include := t.credentials == .Include || (t.credentials == .Same_Origin && t.taint == .Basic)
 	if !include { return false }
-	if t.mode != .Navigate && t.initiator != nil && t.loader.profile.third_party_cookies == .Block {
+	if t.mode != .Navigate && t.initiator != nil && t.loader.profile.settings.third_party_cookies == .Block {
 		o := url.origin_of(t.target, context.temp_allocator)
 		if !url.same_site(url.site_of(o, context.temp_allocator), t.initiator.top_level_site) { return false }
 	}
@@ -384,7 +390,7 @@ build_request_headers :: proc(t: ^Task) -> string {
 	l := t.loader
 	h := http.headers_clone(t.headers, context.temp_allocator)
 	if !http.has_header(h, "accept") { http.append_header(&h, "Accept", default_accept(t.destination)) }
-	if !http.has_header(h, "accept-language") && l.profile.accept_language != "" { http.append_header(&h, "Accept-Language", l.profile.accept_language) }
+	if !http.has_header(h, "accept-language") && l.profile.settings.accept_language != "" { http.append_header(&h, "Accept-Language", l.profile.settings.accept_language) }
 
 	// Origin
 	if t.initiator != nil {
@@ -398,12 +404,12 @@ build_request_headers :: proc(t: ^Task) -> string {
 	}
 	// Referer
 	if !t.no_referrer && t.initiator != nil {
-		if ref, ok := determine_referrer(t.initiator.location, t.target, effective_referrer_policy(t), context.temp_allocator); ok {
+		if ref, ok := determine_referrer(t.initiator.location, t.target, effective_referrer_policy(t), l.profile.settings.referrer_max_length, context.temp_allocator); ok {
 			http.set_header(&h, "Referer", ref)
 		}
 	}
 	// Fetch Metadata, only towards trustworthy destinations
-	if url.is_potentially_trustworthy(t.target) {
+	if l.profile.settings.fetch_metadata && url.is_potentially_trustworthy(t.target) {
 		http.set_header(&h, "Sec-Fetch-Dest", dest_name(t.destination))
 		http.set_header(&h, "Sec-Fetch-Mode", mode_name(t.mode))
 		http.set_header(&h, "Sec-Fetch-Site", sec_fetch_site(t))
@@ -421,7 +427,7 @@ build_request_headers :: proc(t: ^Task) -> string {
 effective_referrer_policy :: proc(t: ^Task) -> Referrer_Policy {
 	if t.referrer_policy != .Default { return t.referrer_policy }
 	if t.initiator != nil && t.initiator.referrer_policy != .Default { return t.initiator.referrer_policy }
-	return t.loader.profile.referrer_policy
+	return t.loader.profile.settings.referrer_policy
 }
 
 @(private)
@@ -452,14 +458,14 @@ send_preflight :: proc(t: ^Task, unsafe: []string) {
 	if len(unsafe) > 0 { http.append_header(&h, "Access-Control-Request-Headers", strings.join(unsafe, ",", context.temp_allocator)) }
 	http.append_header(&h, "Origin", url.origin_serialize(t.origin, context.temp_allocator))
 	if !t.no_referrer && t.initiator != nil {
-		if ref, ok := determine_referrer(t.initiator.location, t.target, effective_referrer_policy(t), context.temp_allocator); ok { http.append_header(&h, "Referer", ref) }
+		if ref, ok := determine_referrer(t.initiator.location, t.target, effective_referrer_policy(t), l.profile.settings.referrer_max_length, context.temp_allocator); ok { http.append_header(&h, "Referer", ref) }
 	}
-	if url.is_potentially_trustworthy(t.target) {
+	if l.profile.settings.fetch_metadata && url.is_potentially_trustworthy(t.target) {
 		http.append_header(&h, "Sec-Fetch-Dest", "empty")
 		http.append_header(&h, "Sec-Fetch-Mode", "cors")
 		http.append_header(&h, "Sec-Fetch-Site", sec_fetch_site(t))
 	}
-	if l.profile.accept_language != "" { http.append_header(&h, "Accept-Language", l.profile.accept_language) }
+	if l.profile.settings.accept_language != "" { http.append_header(&h, "Accept-Language", l.profile.settings.accept_language) }
 
 	// the unsafe names are copied: the task may be released before the answer arrives
 	pf := new(Preflight)
@@ -510,13 +516,14 @@ free_preflight :: proc(pf: ^Preflight) {
 @(private)
 handle_preflight_result :: proc(t: ^Task, pf: ^Preflight) {
 	l := t.loader
-	v := check_preflight_response(t.origin, credentials_include(t), t.status, t.raw_headers, t.method, pf.unsafe)
+	v := check_preflight_response(t.origin, credentials_include(t), t.status, t.raw_headers, t.method, pf.unsafe, l.profile.settings.preflight_default_age_s)
 	if !v.ok {
 		fail(t, .Blocked_Preflight, fmt.tprintf("CORS preflight failed: %s", v.reason))
 		return
 	}
 	preflight_cache_store(&l.profile.preflights, url.origin_serialize(t.origin, context.temp_allocator), url_no_fragment(t.target),
-		credentials_include(t), v.methods, v.headers, v.max_age_s, now_ms())
+		credentials_include(t), v.methods, v.headers, v.max_age_s, now_ms(),
+		l.profile.settings.preflight_max_age_s, l.profile.settings.preflight_max_entries)
 	send_main(t)
 }
 
@@ -583,7 +590,7 @@ on_response_headers :: proc(t: ^Task, ev: ^net.Event) {
 		ctx := cookies.Context{url = t.target, site_context = site_context(t), http_api = true, now_ms = now}
 		for v in http.get_all(raw, "set-cookie") { cookies.store(&l.profile.jar, v, ctx) }
 	}
-	if t.target.scheme == "https" {
+	if t.target.scheme == "https" && l.profile.settings.hsts {
 		if v, ok := http.get_header(raw, "strict-transport-security"); ok { hsts_note(&l.profile.hsts, t.target.host, v, now) }
 	}
 
@@ -664,7 +671,7 @@ handle_redirect :: proc(t: ^Task, location: string) {
 		return
 	case .Follow:
 	}
-	if t.redirect_count >= MAX_REDIRECTS { fail(t, .Redirect_Loop, "too many redirects"); return }
+	if t.redirect_count >= l.profile.settings.max_redirects { fail(t, .Redirect_Loop, "too many redirects"); return }
 
 	next, ok := url.parse(location, &t.target)
 	if !ok { fail(t, .Bad_Redirect, fmt.tprintf("invalid redirect location %q", location)); return }
@@ -760,7 +767,7 @@ file_hop :: proc(t: ^Task) {
 	path, ok := file_path_from_url(t.target)
 	if !ok { fail(t, .Bad_URL, "invalid file URL"); return }
 	defer delete(path)
-	if !file_access_allowed(t.initiator, path) {
+	if !file_access_allowed(t.initiator, path, l.profile.settings.file_access) {
 		fail(t, .Blocked_File, fmt.tprintf("a document may only read files in its own directory tree (%s)", path)); return
 	}
 	t.taint = .Basic
@@ -769,7 +776,7 @@ file_hop :: proc(t: ^Task) {
 	job.loader = l
 	job.task = t.self
 	job.path = strings.clone(path, runtime.heap_allocator())
-	job.max = t.max_body > 0 ? t.max_body : net.DEFAULT_MAX_BODY
+	job.max = t.max_body > 0 ? t.max_body : l.net.settings.max_body
 	host.run_blocking(l.blocking, file_work, file_done, job)
 }
 
@@ -824,7 +831,7 @@ csp_kind :: proc(d: Destination) -> (csp.Directive_Kind, bool) {
 @(private)
 content_security_check :: proc(t: ^Task) -> bool {
 	env := t.initiator
-	if env == nil || len(env.policies.policies) == 0 || t.target.href == "about:blank" { return true }
+	if env == nil || !t.loader.profile.settings.csp || len(env.policies.policies) == 0 || t.target.href == "about:blank" { return true }
 
 	if t.target.scheme == "http" && !url.is_potentially_trustworthy(t.target) && csp.has_directive(&env.policies, "upgrade-insecure-requests") {
 		if up, ok := upgrade_to_https(t.target); ok { url.destroy(&t.target); t.target = up }

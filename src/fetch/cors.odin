@@ -46,7 +46,7 @@ Preflight_Verdict :: struct {
 }
 
 // Validates the answer to an OPTIONS preflight for (method, unsafe header names).
-check_preflight_response :: proc(origin: url.Origin, credentials_include: bool, status: int, h: http.Headers, method: string, unsafe_headers: []string) -> Preflight_Verdict {
+check_preflight_response :: proc(origin: url.Origin, credentials_include: bool, status: int, h: http.Headers, method: string, unsafe_headers: []string, default_age_s: int) -> Preflight_Verdict {
 	v: Preflight_Verdict
 	if ok, why := cors_check(origin, credentials_include, h); !ok { v.reason = why; return v }
 	if status < 200 || status > 299 { v.reason = "preflight response is not ok"; return v }
@@ -76,7 +76,7 @@ check_preflight_response :: proc(origin: url.Origin, credentials_include: bool, 
 		if !found { v.reason = "header is not allowed by Access-Control-Allow-Headers"; return v }
 	}
 
-	v.max_age_s = DEFAULT_PREFLIGHT_AGE_S
+	v.max_age_s = default_age_s
 	if raw, found := http.get_header(h, "access-control-max-age"); found {
 		if n, ok := strconv.parse_int(strings.trim_space(raw), 10); ok { v.max_age_s = max(n, 0) }
 	}

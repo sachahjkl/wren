@@ -3,8 +3,6 @@ package fetch
 import "core:strings"
 import "wb:url"
 
-MAX_REFERRER_LENGTH :: 4096
-
 // Parses a Referrer-Policy header / meta value: a comma separated list; the last recognised token wins.
 parse_referrer_policy :: proc(value: string) -> Referrer_Policy {
 	result := Referrer_Policy.Default
@@ -26,7 +24,7 @@ parse_referrer_policy :: proc(value: string) -> Referrer_Policy {
 
 // The value of the Referer header for a request from `source` (the document URL) to `target`, or ok = false for none.
 // Referrer Policy §8.3, "determine request's referrer".
-determine_referrer :: proc(source, target: url.URL, policy: Referrer_Policy, allocator := context.allocator) -> (value: string, ok: bool) {
+determine_referrer :: proc(source, target: url.URL, policy: Referrer_Policy, max_length: int, allocator := context.allocator) -> (value: string, ok: bool) {
 	if source.scheme != "http" && source.scheme != "https" { return "", false }   // file:, about:, data:, opaque origins
 	if source.host_kind == .None { return "", false }
 
@@ -42,7 +40,7 @@ determine_referrer :: proc(source, target: url.URL, policy: Referrer_Policy, all
 
 	origin_only := strings.concatenate({source.scheme, "://", source.host, source.port >= 0 ? ":" : "",
 		source.port >= 0 ? port_to_string(source.port) : "", "/"}, context.temp_allocator)
-	if len(full) > MAX_REFERRER_LENGTH { full = origin_only }
+	if len(full) > max_length { full = origin_only }
 
 	src_origin := url.origin_of(source, context.temp_allocator)
 	dst_origin := url.origin_of(target, context.temp_allocator)
