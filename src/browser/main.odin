@@ -874,6 +874,7 @@ main :: proc() {
 	app.ui_state.icon_font = app.icons
 	page_render_init(app)
 	images_shell_init(app)
+	images_set_texture_api(renderer_texture_api(app))
 	set_content_painter(forms_content_painter, app)
 	page_render.bare = forms_bare_control
 

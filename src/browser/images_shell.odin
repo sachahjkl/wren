@@ -25,6 +25,7 @@ import "core:strconv"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:font"
+import "toolkit:render"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
@@ -501,5 +502,18 @@ images_paint_backgrounds :: proc(dc: ^draw.Context, cs: ^style.Computed, border:
 			}
 		}
 		draw.pop_clip(dc)
+	}
+}
+
+// The renderer's RGBA textures (toolkit render / draw), connected at start-up.
+renderer_texture_api :: proc(app: ^App) -> Texture_Api {
+	return Texture_Api{
+		user     = app,
+		create   = proc(u: rawptr, w, h: int) -> Image_Texture { return Image_Texture(render.create_texture_rgba(&(^App)(u).r, w, h)) },
+		update   = proc(u: rawptr, t: Image_Texture, x, y, w, h: int, px: []u8, stride: int) { render.update_texture_rgba(&(^App)(u).r, render.Texture(t), x, y, w, h, px, stride) },
+		destroy  = proc(u: rawptr, t: Image_Texture) { render.destroy_texture(&(^App)(u).r, render.Texture(t)) },
+		draw     = proc(u: rawptr, dc: ^draw.Context, t: Image_Texture, dst, src: draw.Rect, tint: draw.Color, radii: [4]f32) { draw.image_corners(dc, render.Texture(t), dst, src, tint, radii) },
+		draw_tiled = proc(u: rawptr, dc: ^draw.Context, t: Image_Texture, dst, tile: draw.Rect, tint: draw.Color, radii: [4]f32) { draw.image_tiled(dc, render.Texture(t), dst, tile, tint, radii) },
+		max_size = proc(u: rawptr) -> int { return render.max_texture_size(&(^App)(u).r) },
 	}
 }
