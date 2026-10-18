@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Wasm-first demo</title>
+  <script type="application/wasm" src="counter.wasm"></script>
+</head>
+<body>
+  <h1>A page with no JavaScript</h1>
+  <p>This document is real HTML, parsed by <b>Lexbor</b>. Its behaviour comes from a
+     <a href="https://webassembly.org">WebAssembly</a> module written in <i>Odin</i>,
+     named by the <code>&lt;script type="application/wasm"&gt;</code> element above.</p>
+
+  <h2>Counter</h2>
+  <p>Value: <b id="count">?</b> &nbsp; ticks: <span id="clock">0</span></p>
+  <p><button id="inc">+1</button> <button id="dec">-1</button> <button id="reset">reset</button></p>
+
+  <h2>Links</h2>
+  <ul>
+    <li><a href="about.html">About this demo</a> (a relative link, followed by the shell)</li>
+    <li>Lists, nested <b>bold <i>and italic</i></b> text and wrapping across elements all go through the placeholder painter.</li>
+  </ul>
+  <pre>pre-formatted
+  text keeps
+    its lines</pre>
+  <hr>
+  <p>The tab title above comes from the document's <code>&lt;title&gt;</code>.</p>
+</body>
+</html>

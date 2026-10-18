@@ -3,3 +3,4 @@ build/
 *.pdb
 *.obj
 *.ilk
+examples/site/counter.wasm

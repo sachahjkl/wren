@@ -4,12 +4,12 @@ A browser where WebAssembly is the only execution engine. No JavaScript, no glue
 resolved by the browser itself. Written in Odin on top of [gui_toolkit](https://github.com/sachahjkl/gui_toolkit);
 Windows first, platform services used wherever they exist (WinHTTP for HTTP/TLS, DirectWrite-class text later, D3D11).
 
-    build.bat                      # build\browser.exe  (builds the Wasm runtime on first use)
-    build\browser.exe file:///S:/wasm_browser/build/e2e.wasm
+    build.bat                      # build\browser.exe  (builds the Wasm runtime and Lexbor on first use)
+    build\browser.exe file:///S:/wasm_browser/examples/site/index.html
     powershell -File tools\test_all.ps1 [-Quick]
 
 Needs: Odin (`dev-2026-10`), Visual Studio 2022 (MSVC, for WAMR), Go (only for the test server). Dependencies are
-pinned submodules: `ext/gui_toolkit` (tag v0.3.2) and `ext/wamr` (WAMR, a commit after 2.4.5 that has the instruction
+pinned submodules: `ext/gui_toolkit` (tag v0.3.2), `ext/lexbor` (v3.0.1) and `ext/wamr` (WAMR, a commit after 2.4.5 that has the instruction
 limit fix for the MSVC build).
 
 ## Layout
@@ -20,6 +20,7 @@ limit fix for the MSVC build).
 | `src/host` | the event loop: thread-safe posts with coalesced wakes, timers (min-heap), `run_ready`, `loop_wait` |
 | `src/net` | HTTP(S) on WinHTTP async: per-host/global queues with priorities, back-pressure, caps, cancellation |
 | `src/wasm` | WAMR bindings + `Instance` (instruction budget per call, memory cap, validated pointers) |
+| `src/html` | HTML5 parsing: Lexbor (tokenizer + tree builder) through a C shim that replays the tree as events; `<title>`, Wasm script discovery |
 | `src/dom` | document tree, attributes, listeners, capture/target/bubble dispatch |
 | `src/page` | one document = DOM + Wasm instance + its requests and timers; the import tables (`bindings.odin`) |
 | `src/browser` | the shell: tabs, address bar, console strip, placeholder painter (`render.odin`) |
@@ -53,8 +54,7 @@ functions return 0. See `src/page/bindings.odin` (host side) and `sdk/odin/web/w
 
 ## Not done yet (in order of importance)
 
-- HTML parsing (Lexbor planned, wrapped by a small C shim that emits tree-construction events) and how a document
-  names its Wasm module (`<script>` syntax is undecided).
+- The <script type="application/wasm" src="..."> rule for naming a document's module is provisional (one module per\n  page, first wins; it lives in html.wasm_scripts so it is easy to change). Charset sniffing (UTF-8 assumed).
 - Style and layout: the painter in `src/browser/render.odin` is a placeholder (blocks + wrapped text; no inline flow).
 - Security: origin model, permissions, CORS-like rules for `Fetch_start`, cookies (WinHTTP's are disabled), cache.
 - Redirects are followed by WinHTTP (10 max); the browser should own that policy.

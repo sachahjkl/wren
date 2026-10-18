@@ -10,6 +10,7 @@ import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
+import "wb:html"
 import "wb:net"
 import "wb:wasm"
 
@@ -126,6 +127,19 @@ load_module :: proc(p: ^Page, image: []byte, name := "page") -> (ok: bool, err: 
 		}
 	}
 	return true, ""
+}
+
+// Replaces the blank skeleton by the parsed document. Lexbor always yields <html><head></head><body>.
+load_html :: proc(p: ^Page, data: []byte) -> html.Parse_Result {
+	dom.set_text_content(p.doc, p.doc.root, "")
+	r := html.parse_into(p.doc, p.doc.root, data)
+	p.doc_el = dom.find_first_by_tag(p.doc, "html")
+	p.head = dom.find_first_by_tag(p.doc, "head")
+	p.body = dom.find_first_by_tag(p.doc, "body")
+	if p.body == base.NIL_HANDLE {   // parse failure: keep the page usable
+		blank_document(p)
+	}
+	return r
 }
 
 // Delivers an event to the DOM (from the shell: input, or a synthetic one). False if default was prevented.

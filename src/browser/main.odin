@@ -14,12 +14,21 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
+import "wb:html"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
 
 MAX_CONSOLE_LINES :: 500
 DEBUG_INPUT :: #config(DEBUG_INPUT, false)
+
+debug_log :: proc(s: string) {
+	f, err := os.open("build/debug.log", {.Write, .Create, .Append}, os.Permissions_Default_File)
+	if err != nil { return }
+	defer os.close(f)
+	os.write_string(f, s)
+	os.write_string(f, "\n")
+}
 
 Tab :: struct {
 	scope:    ^base.Scope,   // lives as long as the tab
@@ -126,14 +135,16 @@ title_from_url :: proc(url: string) -> string {
 }
 
 navigate :: proc(app: ^App, t: ^Tab, url: string) {
-	base.scope_close(t.nav)           // cancels the previous page and its request
+	new_url := strings.clone(url)     // `url` may alias t.url
+	base.scope_close(t.nav)           // cancels the previous page and its requests
 	t.nav = base.scope_make("navigation", t.scope)
 	t.page = nil
 	t.load = base.NIL_HANDLE
 	layout_reset(&t.layout)
 	t.scroll = 0
 	delete(t.url)
-	t.url = strings.clone(url)
+	t.url = new_url
+	ui.field_set(&app.address, new_url)
 	delete(t.title)
 	t.title = strings.clone(title_from_url(url))
 	for l in t.console { delete(l) }
@@ -170,19 +181,63 @@ main_resource_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 	app.frames_requested = max(app.frames_requested, 3)
 }
 
-// Wasm modules run; anything else is shown as text until the HTML pipeline lands.
-loaded :: proc(app: ^App, t: ^Tab, data: []byte, url: string, status: int) {
-	if len(data) >= 4 && data[0] == 0 && data[1] == 'a' && data[2] == 's' && data[3] == 'm' {
-		ok, err := page.load_module(t.page, data, url)
-		if ok { set_status(t, fmt.tprintf("%s: running", url)) } else { set_status(t, err); tab_log(t, .Error, err) }
-		return
-	}
-	pre := dom.create_element(t.page.doc, "pre")
-	dom.set_text_content(t.page.doc, pre, string(data[:min(len(data), 1 << 20)]))
-	dom.append_child(t.page.doc, t.page.body, pre)
-	set_status(t, fmt.tprintf("HTTP %d, %d bytes (shown as text: HTML is not supported yet)", status, len(data)))
+looks_like_wasm :: proc(data: []byte) -> bool {
+	return len(data) >= 4 && data[0] == 0 && data[1] == 'a' && data[2] == 's' && data[3] == 'm'
 }
 
+// A Wasm module runs directly; anything else is parsed as HTML. The page's Wasm script (see html.wasm_scripts) is
+// fetched next, with the same scope as the page, so navigating away cancels it.
+loaded :: proc(app: ^App, t: ^Tab, data: []byte, url: string, status: int) {
+	if looks_like_wasm(data) {
+		start_module(t, data, url)
+		return
+	}
+	r := page.load_html(t.page, data)
+	if !r.ok { tab_log(t, .Error, fmt.tprintf("HTML parse failed (%d)", r.status)) }
+	if r.truncated { tab_log(t, .Warn, "document truncated: too many nodes") }
+	if title := html.title(t.page.doc); title != "" {
+		delete(t.title)
+		t.title = strings.clone(title)
+	}
+	set_status(t, fmt.tprintf("HTTP %d, %d bytes, %d nodes", status, len(data), r.nodes))
+
+	scripts := html.wasm_scripts(t.page.doc)
+	if len(scripts) > 1 { tab_log(t, .Warn, "only the first Wasm script of a document is run") }
+	if len(scripts) == 0 { return }
+	src, has := dom.get_attribute(t.page.doc, scripts[0], "src")
+	if !has || src == "" { tab_log(t, .Error, "wasm script without src"); return }
+	module_url := net.url_resolve(url, src, context.temp_allocator)
+
+	if path, ok := local_path(module_url); ok {
+		bytes, err := os.read_entire_file(path, context.temp_allocator)
+		if err != nil { tab_log(t, .Error, fmt.tprintf("cannot read %s", path)); return }
+		start_module(t, bytes, module_url)
+		return
+	}
+	t.load = net.fetch(&app.client, {
+		url = module_url, on_event = module_event, user = t, collect = true, scope = t.nav, priority = .High,
+		headers = "Accept: application/wasm",
+	})
+}
+
+start_module :: proc(t: ^Tab, data: []byte, url: string) {
+	ok, err := page.load_module(t.page, data, url)
+	if ok { set_status(t, fmt.tprintf("%s: running", url)) } else { set_status(t, err); tab_log(t, .Error, err) }
+}
+
+module_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
+	t := (^Tab)(user)
+	#partial switch ev.kind {
+	case .Done:
+		t.load = base.NIL_HANDLE
+		if ev.status != 200 { tab_log(t, .Error, fmt.tprintf("wasm module: HTTP %d", ev.status)); break }
+		start_module(t, ev.data, t.url)
+	case .Failed:
+		t.load = base.NIL_HANDLE
+		tab_log(t, .Error, fmt.tprintf("wasm module: %s", net.error_text(ev.error, ev.secure_flags)))
+	}
+	the_app.frames_requested = max(the_app.frames_requested, 3)
+}
 ////////////////////////////////
 // UI
 
@@ -266,6 +321,19 @@ build_ui :: proc(app: ^App) {
 	}
 }
 
+// href of the nearest <a> at or above `h`.
+anchor_href :: proc(d: ^dom.Document, h: base.Handle) -> (string, bool) {
+	for cur := h; cur != base.NIL_HANDLE; {
+		n := dom.get(d, cur)
+		if n == nil { break }
+		if n.kind == .Element && n.name == "a" {
+			if v, ok := dom.get_attribute(d, cur, "href"); ok { return v, true }
+		}
+		cur = n.parent
+	}
+	return "", false
+}
+
 // Mouse and wheel events that land on the page become DOM events / scrolling.
 route_page_input :: proc(app: ^App, events: []platform.Event) {
 	t := current_tab(app)
@@ -273,6 +341,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	scale := ui.scale()
 	for ev in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
+		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
 		#partial switch ev.kind {
 		case .Scroll:
 			if inside { t.scroll -= ev.delta.y * 48 * scale }
@@ -280,12 +349,19 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			if !inside || !t.layout.valid { continue }
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
 			target := hit_test(&t.layout, local)
-			if DEBUG_INPUT { tab_log(t, .Log, fmt.tprintf("press at %v (page %v, local %v) -> node %v", ev.pos, app.page_rect.min, local, target)) }
+			if DEBUG_INPUT { debug_log(fmt.tprintf("press at %v (page %v, local %v) -> node %v", ev.pos, app.page_rect.min, local, target)) }
 			if target == base.NIL_HANDLE { continue }
-			page.dispatch_event(t.page, target, dom.Event{
+			not_prevented := page.dispatch_event(t.page, target, dom.Event{
 				type = "click", bubbles = true, cancelable = true,
 				x = f64(local.x / scale), y = f64(local.y / scale), button = i32(ev.button),
 			})
+			// default action: following a link, unless a listener called preventDefault
+			if not_prevented && ev.button == .Left {
+				if href, ok := anchor_href(t.page.doc, target); ok {
+					navigate(app, t, net.url_resolve(t.url, href, context.temp_allocator))
+					return   // the page is gone: the rest of this frame's events belong to the old one
+				}
+			}
 		}
 	}
 }

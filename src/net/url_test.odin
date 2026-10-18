@@ -40,6 +40,30 @@ url_ipv6_and_userinfo :: proc(t: ^testing.T) {
 }
 
 @(test)
+url_resolution :: proc(t: ^testing.T) {
+	cases := [][3]string{
+		{"https://a.com/x/y.html", "z.wasm", "https://a.com/x/z.wasm"},
+		{"https://a.com/x/y.html?q=1#f", "z.wasm", "https://a.com/x/z.wasm"},
+		{"https://a.com/x/y.html", "../z.wasm", "https://a.com/z.wasm"},
+		{"https://a.com/x/y.html", "../../../z", "https://a.com/z"},
+		{"https://a.com/x/y.html", "/abs/p", "https://a.com/abs/p"},
+		{"https://a.com/x/y.html", "//b.com/p", "https://b.com/p"},
+		{"https://a.com/x/y.html", "http://c.org/q", "http://c.org/q"},
+		{"https://a.com/x/y.html", "?s=2", "https://a.com/x/y.html?s=2"},
+		{"https://a.com/x/y.html?q=1", "#top", "https://a.com/x/y.html?q=1#top"},
+		{"https://a.com", "p", "https://a.com/p"},
+		{"https://a.com/x/", "./p/./q", "https://a.com/x/p/q"},
+		{"file:///S:/site/index.html", "app.wasm", "file:///S:/site/app.wasm"},
+		{"file:///S:/site/index.html", "C:\\other\\a.wasm", "C:\\other\\a.wasm"},
+	}
+	for c in cases {
+		got := url_resolve(c[0], c[1])
+		defer delete(got)
+		testing.expect_value(t, got, c[2])
+	}
+}
+
+@(test)
 url_errors :: proc(t: ^testing.T) {
 	_, e := url_parse("")
 	testing.expect_value(t, e, URL_Error.Empty)

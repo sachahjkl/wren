@@ -9,6 +9,7 @@ import "core:time"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
+import "wb:html"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
@@ -106,6 +107,39 @@ main :: proc() {
 	// late events must be harmless
 	for _ in 0 ..< 10 { host.loop_wait(&loop, 20) }
 	check(len(process.children) == 0, "page scope detached from its parent")
+
+	// HTML document + the Wasm module it names (args: e2e.wasm index.html counter.wasm)
+	if len(os.args) >= 4 {
+		html_bytes, herr := os.read_entire_file(os.args[2], context.allocator)
+		counter, cerr := os.read_entire_file(os.args[3], context.allocator)
+		if herr != nil || cerr != nil { fmt.eprintln("cannot read html/counter"); os.exit(2) }
+		hp := page.page_create(&loop, &client, process, console)
+		the_page = hp
+		r := page.load_html(hp, html_bytes)
+		check(r.ok && r.nodes > 20, "HTML document parsed by Lexbor into the DOM")
+		check(html.title(hp.doc) == "Wasm-first demo", "document title extracted")
+		scripts := html.wasm_scripts(hp.doc)
+		src, _ := dom.get_attribute(hp.doc, scripts[0] if len(scripts) > 0 else base.NIL_HANDLE, "src")
+		check(len(scripts) == 1 && src == "counter.wasm", "the document names its Wasm module")
+		ok2, e2 := page.load_module(hp, counter, "counter")
+		check(ok2, fmt.tprintf("module named by the document runs %s", e2))
+		count := dom.find_by_id(hp.doc, "count")
+		check(dom.text_content(hp.doc, count) == "0", "module initialised #count from the parsed HTML")
+		inc := dom.find_by_id(hp.doc, "inc")
+		press := dom.Event{type = "click", bubbles = true, cancelable = true}
+		for _ in 0 ..< 5 { page.dispatch_event(hp, inc, press) }
+		check(dom.text_content(hp.doc, count) == "5", "5 clicks on a parsed <button> reach the module")
+		dec := dom.find_by_id(hp.doc, "dec")
+		page.dispatch_event(hp, dec, press)
+		check(dom.text_content(hp.doc, count) == "4", "-1 button")
+		// the interval timer is alive, then dies with the page
+		check(loop.timers.count == 1, "the module's interval timer is registered")
+		for _ in 0 ..< 30 { host.loop_wait(&loop, 50) }
+		clock := dom.find_by_id(hp.doc, "clock")
+		check(dom.text_content(hp.doc, clock) != "0", "interval timer ticked and updated the DOM")
+		page.page_close(hp)
+		check(loop.timers.count == 0, "interval timer removed with the page")
+	}
 
 	base.scope_close(process)
 	net.client_destroy(&client)

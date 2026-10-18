@@ -1,7 +1,7 @@
 # Starts the browser, optionally clicks at window-relative pixel positions, saves a capture of the window frame.
 #   powershell -File tools\screenshot.ps1 -Url file:///S:/wasm_browser/build/e2e.wasm -Out shot.png [-Click 120,230] [-WaitMs 1500]
 # The cursor is parked outside the window for the first capture. Aborts if another window covers the target.
-param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "")
+param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Add-Type @"
@@ -13,6 +13,8 @@ public class SH {
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int w, int hh, uint f);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);
+  [DllImport("user32.dll")] public static extern bool ScreenToClient(IntPtr h, ref POINT p);
+  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
   [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h, uint f);
   [DllImport("user32.dll")] public static extern void mouse_event(uint f, int dx, int dy, int d, IntPtr e);
   [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
@@ -47,18 +49,24 @@ try {
     [SH]::SetForegroundWindow($h) | Out-Null
     Start-Sleep -Milliseconds $WaitMs
     Grab $h $Out
-    foreach ($c in $Click) {
+    foreach ($c in (($Click -join ';') -split ';' | Where-Object { $_ })) {
         $xy = $c -split ','
         $r = New-Object SH+RECT
         if ([SH]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [SH]::GetWindowRect($h, [ref]$r) | Out-Null }
-        [SH]::SetCursorPos($r.L + [int]$xy[0], $r.T + [int]$xy[1]) | Out-Null
-        Start-Sleep -Milliseconds 150
-        [SH]::mouse_event(2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 60; [SH]::mouse_event(4, 0, 0, 0, [IntPtr]::Zero)
-        Start-Sleep -Milliseconds 400
+        # window messages with client coordinates: independent of focus, cursor position and other windows
+        $pt = New-Object SH+POINT; $pt.X = $r.L + [int]$xy[0]; $pt.Y = $r.T + [int]$xy[1]
+        [SH]::ScreenToClient($h, [ref]$pt) | Out-Null
+        $lp = [IntPtr](($pt.Y -shl 16) -bor ($pt.X -band 0xFFFF))
+        [SH]::PostMessage($h, 0x0200, [IntPtr]::Zero, $lp) | Out-Null   # WM_MOUSEMOVE
+        Start-Sleep -Milliseconds 80
+        [SH]::PostMessage($h, 0x0201, [IntPtr]1, $lp) | Out-Null        # WM_LBUTTONDOWN
+        Start-Sleep -Milliseconds 60
+        [SH]::PostMessage($h, 0x0202, [IntPtr]::Zero, $lp) | Out-Null   # WM_LBUTTONUP
+        Start-Sleep -Milliseconds $ClickPauseMs
     }
     if ($Click.Count -gt 0) {
         [SH]::SetCursorPos($r0.R + 15, $r0.T + 200) | Out-Null
-        Start-Sleep -Milliseconds 300
+        Start-Sleep -Milliseconds $SettleMs
         Grab $h $(if ($Out2) { $Out2 } else { $Out -replace '\.png$', '_after.png' })
     }
 } finally { if (-not $p.HasExited) { $p.Kill() } }
