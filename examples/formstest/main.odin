@@ -69,6 +69,25 @@ wb_main :: proc "contextless" () {
 	}
 	web.add_listener(form, "formdata", on_formdata)
 	web.set_text(status, "guest ready")
+	// forms.html?demo=fill / ?demo=invalid: a filled form for screenshots, with or without a reported problem
+	u: [512]u8
+	n := web.raw_documentURL(raw_data(u[:]), i32(len(u)))
+	url := string(u[:min(max(int(n), 0), len(u))])
+	if contains(url, "demo=") {
+		web.set_value(name_el, "Ada Lovelace")
+		web.set_value(email, contains(url, "demo=invalid") ? "ada.example.com" : "ada@example.com")
+		web.set_value(age, "36")
+		web.set_checked(plan_pro, true)
+		web.set_value(bio, "Analyst, metaphysician\nand founder of scientific computing.")
+		web.set_value(level, "7")
+		if contains(url, "demo=invalid") { web.report_validity(form) } else { web.HTMLElement_focus(code) }
+	}
+}
+
+contains :: proc "contextless" (s, sub: string) -> bool {
+	if len(sub) > len(s) { return false }
+	for i in 0 ..= len(s) - len(sub) { if s[i:i + len(sub)] == sub { return true } }
+	return false
 }
 
 // What the page starts with, as the guest reads it.
