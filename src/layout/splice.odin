@@ -12,8 +12,8 @@ import "wb:style"
 // refresh path does.
 //
 // Conditions, all checked (else the pass finishes and builds the display list as usual):
-//   * the pass had no other cause than those content changes (no viewport change, style change of a box, natural size,
-//     font, single child rebuilt);
+//   * the pass had no other cause than those content changes (no viewport change, no style change for layout in the
+//     style journal, no natural size or font change, no single child rebuilt);
 //   * every rebuilt context root is a block container whose content, before and after, is only text and inline boxes
 //     that are neither positioned nor stacking contexts nor outlined (their items are all in that one range), and which
 //     is not a scroll container;

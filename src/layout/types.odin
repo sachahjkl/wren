@@ -3,7 +3,8 @@
 // elements), and produces a display list in CSS 2.1 Appendix E paint order with the clips (rounded), scroll frames,
 // sticky offsets, transforms and opacity groups each item is drawn under. Hit testing, scrolling and box queries work on
 // that result, through the transforms (transform.odin). When only paint-only style values change, `run` refreshes the
-// result instead of laying out again (refresh.odin).
+// result instead of laying out again (refresh.odin); after other changes it lays out again only what they affect
+// (incremental.odin).
 //
 // The package knows nothing about the graphics toolkit: text is measured through `Text_Api`, natural sizes of images
 // come through `Replaced_Api`, and the shell paints the display list. Every length here is in device pixels (CSS px

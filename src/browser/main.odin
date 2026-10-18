@@ -120,8 +120,6 @@ App :: struct {
 
 	page_rect: draw.Rect,   // where the page was painted last frame (physical pixels)
 	frames_requested: int,
-	in_poll:       bool,             // the frame is pumping OS messages: a frame run from there (WM_PAINT) is nested
-	frames_drawn:  u64,
 	last_tick:        time.Tick,
 }
 
@@ -767,20 +765,10 @@ frame :: proc(app: ^App) {
 	render.wait_for_frame(&app.r)
 	prof_end(.Wait)
 	prof_begin(.Events)
-	// a resize step dispatches WM_PAINT from inside this poll, which runs a whole frame (nested): when nothing else
-	// came in meanwhile, that frame is this one's, not one more
-	nested := app.in_poll
-	drawn := app.frames_drawn
-	app.in_poll = true
 	events := platform.poll_events(app.win, false)
-	app.in_poll = nested
 	render.mark_input(&app.r)
 	if len(events) > 0 { app.frames_requested = max(app.frames_requested, 4) }
 	prof_end(.Events)
-	if !nested && app.frames_drawn != drawn && len(events) == 0 {
-		free_all(context.temp_allocator)   // not recorded by the profiler: the nested frame was
-		return
-	}
 
 	// network completions, timers and posted tasks run here, on the UI thread
 	prof_begin(.Loop)
@@ -845,8 +833,7 @@ frame :: proc(app: ^App) {
 		if t := current_tab(app); t != nil && t.page != nil { items, nodes = len(t.layout.items), t.page.doc.nodes.count }
 		prof_frame_end(app, items, nodes)
 	}
-	app.frames_drawn += 1
-	if !app.in_poll { free_all(context.temp_allocator) }   // a nested frame must not free what the outer one holds
+	free_all(context.temp_allocator)
 }
 
 wake_window :: proc(user: rawptr) { platform.wake((^platform.Window)(user)) }

@@ -148,3 +148,4 @@ Run 'mutation'   (FileUrl (Join-Path $site 'mutation.html')) { param($h) Start-S
 $env:WREN_EXTRA_ARGS = ''
 Run 'mutation_full' (FileUrl (Join-Path $site 'mutation.html')) { param($h) Start-Sleep 12 } $false '--pref layout.incremental.enabled=false'
 Run 'p10k_resize_full' (FileUrl $p10k) { param($h) Start-Sleep 5; Resize $h 6000 } $true '--pref layout.incremental.enabled=false'
+Run 'anim_full' (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-Sleep 10 } $false '--pref layout.incremental.enabled=false'
