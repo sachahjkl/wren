@@ -29,6 +29,7 @@ Page_Render :: struct {
 	settings:   lay.Settings,
 	content:    Content_Painter,
 	content_user: rawptr,
+	replaced:   lay.Replaced_Api,   // natural sizes of images / videos, from whoever decodes them
 	gradients:  map[string]^Gradient,
 	watch_layout, watch_font: int,
 }
@@ -60,6 +61,10 @@ set_content_painter :: proc(fn: Content_Painter, user: rawptr) {
 	page_render.content, page_render.content_user = fn, user
 }
 
+// Installs the source of natural sizes of replaced content (decoded images...). A change of size needs a new layout:
+// set `layout.valid = false` on the tabs concerned.
+set_replaced_sizes :: proc(api: lay.Replaced_Api) { page_render.replaced = api }
+
 register_layout_prefs :: proc(p: ^config.Prefs) { lay.register_prefs(p) }
 
 layout_reset :: proc(l: ^Layout) { lay.reset(l) }
@@ -70,6 +75,7 @@ layout_document :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, mea
 	lay.run(l, lay.Input{
 		doc = d, styled = styled, settings = &page_render.settings,
 		text = page_text_api(&page_render.fonts, measure, style_settings),
+		replaced = page_render.replaced,
 		viewport = viewport, scale = scale, band_h = band_h,
 	})
 }
