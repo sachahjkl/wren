@@ -134,3 +134,5 @@ $site = Join-Path $root 'examples\site'
 Run 'anim'       (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-Sleep 10 } $false
 Run 'transforms' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 10 } $false
 Run 'transforms_sample' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 10 }
+Run 'effects'    (FileUrl (Join-Path $site 'effects.html')) { param($h) Start-Sleep 10 } $false
+Run 'effects_hover' (FileUrl (Join-Path $site 'effects.html')) { param($h) Start-Sleep 3; Hover $h 8000 }

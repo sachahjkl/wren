@@ -808,9 +808,9 @@ frame :: proc(app: ^App) {
 	if t := current_tab(app); t != nil && t.page != nil && t.layout.mutations != t.page.doc.mutations { app.frames_requested = max(app.frames_requested, 2) }
 	if t := current_tab(app); t != nil && t.page != nil && page.animations_active(t.page) { app.frames_requested = max(app.frames_requested, 2) }   // CSS animations: later changes wake the loop by timer
 
-	prof_gpu_begin(app)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
+	prof_gpu_begin(app)   // after the clear: it waits for the back buffer (vsync), which is not drawing time
 	prof_begin(.UI_Draw)
 	ui.draw_tree(&app.ui_state, &app.dc)
 	prof_end(.UI_Draw)

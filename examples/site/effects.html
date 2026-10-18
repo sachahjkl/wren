@@ -92,6 +92,15 @@
   .hit { display: block; width: 130px; height: 100px; background: #2f9e44; color: #fff; clip-path: circle(40px); text-align: center; line-height: 100px; }
   .hit:hover { background: #e03131; }
   .both { filter: drop-shadow(0 0 6px #000) blur(1px); clip-path: circle(46px); }
+
+  /* shadows blurred with a true gaussian */
+  .glow { font-size: 34px; font-weight: bold; color: #fff; background: #1d2433; padding: 14px 22px; border-radius: 12px;
+          text-shadow: 0 0 12px #4dabf7, 0 0 3px #a5d8ff; }
+  .lift { font-size: 34px; font-weight: bold; color: #e8590c; padding: 14px 10px; text-shadow: 3px 6px 8px rgba(0, 0, 0, 0.45); }
+  .well { width: 150px; height: 80px; background: #e9ecef; border: 2px solid #adb5bd; padding: 8px; font-size: 12px;
+          box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.5); }
+  .well.ring { box-shadow: inset 0 0 0 6px #7950f2, inset 0 0 18px 6px rgba(121, 80, 242, 0.5); }
+  .well.round { border-radius: 30px; box-shadow: inset 8px 8px 16px rgba(0, 0, 0, 0.4), inset -8px -8px 16px rgba(255, 255, 255, 0.9); }
 </style>
 </head>
 <body>
@@ -164,6 +173,15 @@
   <div><div class="shape c-rot"></div><div class="cap">circle + rotate(20deg)</div></div>
   <div><a class="hit" href="#clicked">click</a><div class="cap">hit test follows the circle</div></div>
   <div><div class="shape both"></div><div class="cap">filter then clip-path</div></div>
+</div>
+
+<h2>shadows</h2>
+<div class="row">
+  <div class="glow">Glowing text</div>
+  <div class="lift">Soft drop</div>
+  <div class="well">inset 0 4px 12px</div>
+  <div class="well ring">inset 0 0 0 6px + spread</div>
+  <div class="well round">inset, rounded</div>
 </div>
 </body>
 </html>

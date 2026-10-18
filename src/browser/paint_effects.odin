@@ -26,6 +26,7 @@ Effects_Settings :: struct {
 	backdrop_filters: bool,
 	blend_modes:      bool,
 	clip_paths:       bool,
+	exact_shadows:    bool,
 	blur_sigma_limit: f32,
 }
 
@@ -38,6 +39,8 @@ EFFECTS_PREFS := [?]config.Def{
 		description = "Composite elements with their CSS mix-blend-mode (multiply, screen, overlay, difference, hue...). Off: every element is drawn normally over what is behind it."},
 	{name = "paint.effects.clip_paths", kind = .Bool, default = {b = true},
 		description = "Clip elements to their CSS clip-path shape (inset, circle, ellipse, polygon, reference box). Off: clip-path is ignored when painting (hit testing still follows it)."},
+	{name = "paint.effects.exact_shadows", kind = .Bool, default = {b = true},
+		description = "Blur text shadows and inset box shadows with a true gaussian (one offscreen layer each). Off: cheaper approximations (a faded copy of the text, a soft ring)."},
 	{name = "paint.effects.blur_full_resolution_px", kind = .Float, default = {f = 8}, bounded = true, min = 2, max = 40, unit = "px",
 		description = "Standard deviation of a blur (filter, backdrop-filter, drop-shadow) above which it is computed on an image reduced by 2, 4, 8...: the cost per pixel stays bounded whatever the radius. Lower is faster and slightly softer."},
 }
@@ -54,6 +57,7 @@ effects_settings_from_prefs :: proc(p: ^config.Prefs) -> Effects_Settings {
 		backdrop_filters = config.bool_of(p, "paint.effects.backdrop_filters"),
 		blend_modes = config.bool_of(p, "paint.effects.blend_modes"),
 		clip_paths = config.bool_of(p, "paint.effects.clip_paths"),
+		exact_shadows = config.bool_of(p, "paint.effects.exact_shadows"),
 		blur_sigma_limit = f32(config.float_of(p, "paint.effects.blur_full_resolution_px")),
 	}
 }
@@ -383,4 +387,35 @@ set_group :: proc(e: ^Effects, g: i32) {
 	for len(e.open) > keep { close_group(e) }
 	for c in want[keep:] { open_group(e, c) }
 	e.group = g
+}
+
+////////////////////////////////
+// Shadows drawn through layers (paint.effects.exact_shadows)
+
+// Radii of the padding edge from those of the border edge (CSS Backgrounds §5.3), draw corner order.
+@(private)
+padding_radii :: proc(outer: [4]f32, border: [4]f32) -> [4]f32 {
+	// border: top right bottom left
+	bt, br, bb, bl := border[0], border[1], border[2], border[3]
+	return {max(outer[0] - min(bl, bt), 0), max(outer[1] - min(bl, bb), 0), max(outer[2] - min(br, bt), 0), max(outer[3] - min(br, bb), 0)}
+}
+
+// An inset box-shadow (CSS Backgrounds §7.1): everything inside the padding box outside the padding box moved by the
+// offset and shrunk by the spread, blurred by a gaussian of half the blur radius. Drawn as a thick ring around that
+// hole, blurred in a layer, clipped to the padding box.
+@(private)
+paint_inset_shadow :: proc(dc: ^draw.Context, col: draw.Color, pad: draw.Rect, pad_radii: [4]f32, off: draw.Vec2, spread, blur: f32) {
+	if pad.max.x <= pad.min.x || pad.max.y <= pad.min.y { return }
+	sigma := blur * 0.5
+	hole := draw.rect_shift(draw.rect_pad(pad, -spread), off)
+	hole.max = {max(hole.max.x, hole.min.x), max(hole.max.y, hole.min.y)}
+	hole_radii := [4]f32{max(pad_radii[0] - spread, 0), max(pad_radii[1] - spread, 0), max(pad_radii[2] - spread, 0), max(pad_radii[3] - spread, 0)}
+	// thick enough to cover the padding box and what the blur pulls in
+	g := 3 * sigma + abs(off.x) + abs(off.y) + abs(spread) + (pad.max.x - pad.min.x) + (pad.max.y - pad.min.y)
+	draw.push_clip_rounded(dc, pad, pad_radii)
+	layer := sigma > 0.25
+	if layer { draw.push_effects(dc, pad, draw.Layer_Effects{alpha = 1, filters = {draw.filter_blur(sigma)}}) }
+	draw.rect_corners(dc, draw.rect_pad(hole, g), {col, col, col, col}, hole_radii + g, g)
+	if layer { draw.pop_layer(dc) }
+	draw.pop_clip(dc)
 }

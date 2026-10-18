@@ -1,4 +1,4 @@
-# Captures examples/site/effects.html section by section (filter, backdrop-filter, mix-blend-mode, clip-path) with the
+# Captures examples/site/effects.html section by section (filter, backdrop-filter, mix-blend-mode, clip-path, shadows) with the
 # real browser, for a visual check. Each section is cut into its own page next to effects.html (same relative URLs),
 # captured, then deleted. Takes the shared lock of the agents (ports, windows) while the browser runs.
 #   powershell -File tools\effects_shots.ps1 [-OutDir build\effects_shots] [-WaitMs 3000] [-Exe browser.exe]
@@ -12,7 +12,7 @@ $src = [IO.File]::ReadAllText((Join-Path $site 'effects.html'))
 $head = $src.Substring(0, $src.IndexOf('<h2>'))
 $tail = '</body></html>'
 $parts = [regex]::Split($src.Substring($src.IndexOf('<h2>')).Replace('</body>', '').Replace('</html>', ''), '(?=<h2>)') | Where-Object { $_.Trim() }
-$names = @('filter', 'backdrop', 'blend', 'clip')
+$names = @('filter', 'backdrop', 'blend', 'clip', 'shadows')
 $lock = $null
 while ($true) { try { $lock = [IO.File]::Open('S:\wb_wt\shared.lock', 'OpenOrCreate', 'ReadWrite', 'None'); break } catch { Start-Sleep -Milliseconds 500 } }
 try {

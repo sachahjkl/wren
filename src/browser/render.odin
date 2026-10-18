@@ -169,6 +169,8 @@ paint_shadows :: proc(dc: ^draw.Context, cs: ^style.Computed, r: draw.Rect, radi
 			} else {
 				draw.rect_corners(dc, sr, {col, col, col, col}, radii + spread, 0)
 			}
+		} else if effects_settings.exact_shadows {
+			paint_inset_shadow(dc, col, r, radii, off, spread, blur)
 		} else {
 			// inside the padding edge: a soft ring (approximation of the inner shadow's falloff)
 			w := max(spread + blur * 0.5, 1)
@@ -195,7 +197,7 @@ paint_box :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.
 	}
 	if len(cs.box_shadow) > 0 {
 		pr := draw.Rect{r.min + {b.border[3], b.border[0]}, r.max - {b.border[1], b.border[2]}}
-		paint_shadows(dc, cs, pr, radii, l.scale, true)
+		paint_shadows(dc, cs, pr, padding_radii(radii, b.border), l.scale, true)
 	}
 	widths := [4]f32{b.border[0], b.border[1], b.border[2], b.border[3]}
 	if widths != {} { paint_borders(dc, r, widths, cs.border_style, cs.border_color, radii) }
@@ -422,8 +424,17 @@ paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw
 		s := cs.text_shadow[i]
 		if s.color.a <= 0 { continue }
 		col := to_draw(s.color)
+		pos := draw.Vec2{r.min.x + s.x * l.scale, baseline + s.y * l.scale}
+		if s.blur > 0 && effects_settings.exact_shadows {
+			// a gaussian of half the blur radius (CSS Backgrounds §7.2), through a layer
+			ink := draw.rect_pad(draw.rect_shift(r, {s.x, s.y} * l.scale), fi.size * 0.5)
+			draw.push_effects(dc, ink, draw.Layer_Effects{alpha = 1, filters = {draw.filter_blur(s.blur * 0.5 * l.scale)}})
+			draw_run(l, dc, fid, fi.size, pos, col, it.text, ls, ws, it.extra)
+			draw.pop_layer(dc)
+			continue
+		}
 		if s.blur > 0 { col.a *= 0.6 }
-		draw_run(l, dc, fid, fi.size, {r.min.x + s.x * l.scale, baseline + s.y * l.scale}, col, it.text, ls, ws, it.extra)
+		draw_run(l, dc, fid, fi.size, pos, col, it.text, ls, ws, it.extra)
 	}
 	col := to_draw(cs.color)
 	draw_run(l, dc, fid, fi.size, {r.min.x, baseline}, col, it.text, ls, ws, it.extra)
