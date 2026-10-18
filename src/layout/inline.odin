@@ -842,12 +842,13 @@ layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool) {
 	// new width: its words keep their widths); else measured now and kept
 	cached := cached_segs(c, bi)   // a range of Inc_State.segs: read by index (nested contexts may append to it)
 	ci := cached[0]
-	recording := cached[1] <= cached[0]
+	measuring := cached[1] <= cached[0]
+	recording := measuring && c.inc != nil   // incremental passes only: a full pass (a page load) does not pay for it
 	clear(&bufs.segs)
 	for {
 		s: Seg
 		ok: bool
-		if !recording {
+		if !measuring {
 			if ci >= cached[1] { break }
 			s, ok = c.l.inc.segs[ci], true
 			ci += 1
