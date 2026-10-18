@@ -54,7 +54,8 @@ functions return 0. See `src/page/bindings.odin` (host side) and `sdk/odin/web/w
 
 ## Not done yet (in order of importance)
 
-- The <script type="application/wasm" src="..."> rule for naming a document's module is provisional (one module per\n  page, first wins; it lives in html.wasm_scripts so it is easy to change). Charset sniffing (UTF-8 assumed).
+- The `<script type="application/wasm" src="...">` rule for naming a document's module is provisional (one module per
+  page, first wins; it lives in `html.wasm_scripts` so it is easy to change). Charset sniffing is missing (UTF-8 assumed).
 - Style and layout: the painter in `src/browser/render.odin` is a placeholder (blocks + wrapped text; no inline flow).
 - Security: origin model, permissions, CORS-like rules for `Fetch_start`, cookies (WinHTTP's are disabled), cache.
 - Redirects are followed by WinHTTP (10 max); the browser should own that policy.
