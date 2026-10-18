@@ -36,7 +36,7 @@ engine_set_journal :: proc(e: ^Engine, max_entries: int) {
 journal_init :: proc(e: ^Engine, s: ^Styled) {
 	s.journal.on = e.journal_max > 0
 	s.journal.max = e.journal_max
-	s.journal.from = JOURNAL_PENDING   // a new pass knows nothing of what came before, unless journal_diff says
+	s.journal.from = s.serial   // complete from this pass on; what came before only if journal_diff says
 }
 
 @(private)
