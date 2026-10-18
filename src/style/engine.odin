@@ -6,6 +6,7 @@ import "core:mem/virtual"
 import "core:os"
 import "core:slice"
 import "core:strings"
+import "core:sync"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
@@ -111,8 +112,15 @@ Engine :: struct {
 ////////////////////////////////
 // Lifecycle
 
+@(private)
+tables_once: sync.Once
+
 engine_make :: proc(settings: Settings) -> ^Engine {
-	tables_init()
+	// process-wide tables, built once whichever thread gets here first, kept for good: not the caller's memory
+	sync.once_do(&tables_once, proc() {
+		context.allocator = runtime.heap_allocator()
+		tables_init()
+	})
 	e := new(Engine)
 	e.settings = clone_settings(settings)
 	_ = virtual.arena_init_growing(&e.arena)

@@ -388,7 +388,8 @@ workers_destroy :: proc(p: ^Page) {
 @(private)
 link_page_drain :: proc(data: rawptr) {
 	l := (^Worker_Link)(data)
-	batch := make([dynamic]^Worker_Msg, context.temp_allocator)
+	batch: [dynamic]^Worker_Msg   // swapped with the queue: its storage becomes the link's, so not temporary memory
+	defer delete(batch)
 	link_take(l, false, &batch)
 	for m in batch {
 		if h := l.host; h != nil { page_receive(h, m) }
