@@ -107,6 +107,7 @@ func main() {
 	registerPolicyHandlers(mux)
 	registerSSEHandlers(mux)
 	registerWebSocketHandlers(mux)
+	registerWebAPIHandlers(mux)
 
 	go func() {
 		log.Fatal(http.ListenAndServe("127.0.0.1:8767", mux))

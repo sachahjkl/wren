@@ -44,6 +44,7 @@ Fetch :: struct {
 	body:       [dynamic]byte,
 	error:      string,
 	error_kind: fetch.Error_Kind,
+	ext:        ^Fetch_Ext,     // promise / stream / abort signal state (bindings_fetch.odin), nil for plain callback fetches
 }
 
 Timer :: struct {
@@ -54,6 +55,11 @@ Timer :: struct {
 	callback: u32,
 	user:     u32,
 	interval: bool,
+	user64:   u64,             // wide: the callback takes (user: i64)
+	wide:     bool,
+	delay:    f64,             // requested delay (ms), re-applied to each repetition of an interval
+	nesting:  int,             // HTML timer nesting level
+	throttled: bool,           // re-armed to the background wake-up grid: run on the next fire
 }
 
 Page :: struct {
@@ -83,6 +89,7 @@ Page :: struct {
 	style_stale:  bool,
 	link_loads:   map[base.Handle]^Style_Load,
 	import_loads: [dynamic]^Style_Load,
+	web:          ^Web_State,           // platform web APIs (web.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives
@@ -102,6 +109,7 @@ page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings
 	p.env = fetch.environment_make(u)
 	p.env.on_violation = csp_violation
 	p.env.violation_user = p
+	web_init(p)
 
 	p.doc = dom.document_create(p.scope)
 	p.dp.invoke = invoke_listener
@@ -132,6 +140,7 @@ page_cleanup :: proc(data: rawptr) {
 	for _, t in base.pool_next(&p.timers, &it) { host.clear_timer(p.loop, t.handle) }
 	base.pool_destroy(&p.timers)
 	objects_destroy(p)   // before the dispatcher: an object's destructor may still look at events
+	web_destroy(p)
 	delete(p.host_reactions)
 	styles_destroy(p)
 	dom.dispatcher_destroy(&p.dp)
@@ -143,6 +152,7 @@ page_cleanup :: proc(data: rawptr) {
 @(private)
 free_fetch :: proc(f: ^Fetch) {
 	delete(f.headers); delete(f.final_url); delete(f.error); delete(f.body)
+	fetch_ext_free(f)
 }
 
 @(private)

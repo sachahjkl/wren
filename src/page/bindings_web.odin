@@ -13,67 +13,16 @@ package page
 //   bit  10   no referrer
 
 import "base:runtime"
-import "core:math"
 import "core:strings"
 import "wb:base"
 import "wb:cookies"
 import "wb:dom"
 import "wb:fetch"
-import "wb:host"
 import "wb:url"
 import "wb:wasm"
 
 ////////////////////////////////
-// timers
-
-@(private)
-timer_fire :: proc(data: rawptr) {
-	t := (^Timer)(data)
-	p, cb, user, repeat, self, idx := t.page, t.callback, t.user, t.interval, t.self, t.instance
-	if inst := instance_by_index(p, idx); inst != nil {
-		argv := [1]u32{user}
-		call_guest(p, inst, cb, argv[:])
-	}
-	// one-shots release their record once fired (the guest may already have cleared it: removal is idempotent)
-	if !repeat && !p.closed { base.pool_remove(&p.timers, self) }
-}
-
-@(private)
-timer_start :: proc(p: ^Page, inst: u32, cb, user: i32, delay_ms: f64, repeat: bool) -> u64 {
-	h, t := base.pool_insert(&p.timers, Timer{page = p, instance = inst, callback = u32(cb), user = u32(user), interval = repeat})
-	t.self = h
-	d := math.is_nan(delay_ms) ? 0 : max(delay_ms, repeat ? 1 : 0)
-	t.handle = host.set_timer(p.loop, d, repeat ? d : 0, timer_fire, t, p.scope)
-	return u64(h)
-}
-
-n_Timers_setTimeout :: proc "c" (env: wasm.Exec_Env, cb, user: i32, delay_ms: f64) -> u64 {
-	context = ctx()
-	return timer_start(page_of(env), inst_of(env).index, cb, user, delay_ms, false)
-}
-n_Timers_setInterval :: proc "c" (env: wasm.Exec_Env, cb, user: i32, delay_ms: f64) -> u64 {
-	context = ctx()
-	return timer_start(page_of(env), inst_of(env).index, cb, user, delay_ms, true)
-}
-n_Timers_clear :: proc "c" (env: wasm.Exec_Env, timer: u64) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	t, ok := base.pool_remove(&p.timers, H(timer))
-	if !ok { return i32(dom.Error.Invalid_Handle) }
-	host.clear_timer(p.loop, t.handle)
-	return 0
-}
-n_Timers_now :: proc "c" (env: wasm.Exec_Env) -> f64 {
-	context = ctx()
-	return f64(host.now_ns(page_of(env).loop)) / 1e6
-}
-
-timers_symbols := [?]wasm.Native_Symbol{
-	{"Timers_setTimeout", rawptr(n_Timers_setTimeout), "(iiF)I", nil},
-	{"Timers_setInterval", rawptr(n_Timers_setInterval), "(iiF)I", nil},
-	{"Timers_clear", rawptr(n_Timers_clear), "(I)i", nil},
-	{"Timers_now", rawptr(n_Timers_now), "()F", nil},
-}
+// timers: see bindings_timers.odin
 
 ////////////////////////////////
 // net
@@ -82,14 +31,10 @@ timers_symbols := [?]wasm.Native_Symbol{
 fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	f := (^Fetch)(user)
 	p := f.page
+	if f.ext != nil { fetch_ext_event(f, ev); return }   // promise / stream / abort signal (bindings_fetch.odin)
 	switch ev.kind {
 	case .Response:
-		r := ev.response
-		f.state, f.status, f.type, f.redirected, f.usable = 1, r.status, r.type, r.redirected, r.body_usable
-		f.final_url = strings.clone(r.url)
-		sb := strings.builder_make(context.temp_allocator)
-		for h in r.headers.list { strings.write_string(&sb, h.name); strings.write_string(&sb, ": "); strings.write_string(&sb, h.value); strings.write_string(&sb, "\r\n") }
-		f.headers = strings.clone(strings.to_string(sb))
+		fetch_note_response(f, ev.response)
 	case .Data:
 		if !f.usable { return }   // opaque: scripts never see the bytes
 		if p.held + len(ev.data) > p.settings.max_fetch_bytes {
@@ -120,6 +65,15 @@ fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	call_guest(p, inst, f.callback, argv[:])
 }
 
+@(private)
+fetch_note_response :: proc(f: ^Fetch, r: ^fetch.Response) {
+	f.state, f.status, f.type, f.redirected, f.usable = 1, r.status, r.type, r.redirected, r.body_usable
+	f.final_url = strings.clone(r.url)
+	sb := strings.builder_make(context.temp_allocator)
+	for h in r.headers.list { strings.write_string(&sb, h.name); strings.write_string(&sb, ": "); strings.write_string(&sb, h.value); strings.write_string(&sb, "\r\n") }
+	f.headers = strings.clone(strings.to_string(sb))
+}
+
 // "Name: value" lines separated by CR LF or LF.
 @(private)
 parse_header_lines :: proc(s: string, out: ^[dynamic]fetch.Header_Pair) {
@@ -135,17 +89,22 @@ parse_header_lines :: proc(s: string, out: ^[dynamic]fetch.Header_Pair) {
 
 n_Fetch_start :: proc "c" (env: wasm.Exec_Env, target: [^]u8, tl: i32, method: [^]u8, ml: i32, headers: [^]u8, hl: i32, body: [^]u8, bl: i32, options, callback, user: i32) -> u64 {
 	context = ctx()
-	p := page_of(env)
-	inst := inst_of(env)
-	h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = inst.index, callback = u32(callback), user = u32(user)})
+	return fetch_begin(page_of(env), inst_of(env).index, str(target, tl), str(method, ml), str(headers, hl), body[:max(bl, 0)], options, u32(callback), u32(user), nil)
+}
+
+// Starts a fetch for a guest. `ext` (promise, stream, abort signal) is owned by the record from here on.
+@(private)
+fetch_begin :: proc(p: ^Page, owner: u32, target, method, headers: string, body: []byte, options: i32, callback, user: u32, ext: ^Fetch_Ext) -> u64 {
+	h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = owner, callback = callback, user = user, ext = ext})
 	f.self = h
+	if ext != nil && !fetch_ext_attach(p, f) { return u64(h) }   // its signal is already aborted: the failure is on its way
 
 	// relative URLs resolve against the document
-	abs := str(target, tl)
+	abs := target
 	if u, ok := url.parse(abs, &p.env.location, context.temp_allocator); ok { abs = u.href }
 
 	pairs := make([dynamic]fetch.Header_Pair, context.temp_allocator)
-	parse_header_lines(str(headers, hl), &pairs)
+	parse_header_lines(headers, &pairs)
 
 	o := u32(options)
 	mode := fetch.Mode.Cors
@@ -159,7 +118,7 @@ n_Fetch_start :: proc "c" (env: wasm.Exec_Env, target: [^]u8, tl: i32, method: [
 
 	f.task = fetch.start(p.loader, {
 		request = {
-			url = abs, method = str(method, ml), headers = pairs[:], body = body[:max(bl, 0)],
+			url = abs, method = method, headers = pairs[:], body = body,
 			mode = mode, credentials = creds, redirect = redirect, destination = .Empty,
 			referrer_policy = policy, no_referrer = o & (1 << 10) != 0,
 			initiator = &p.env, guard = .Request,

@@ -356,6 +356,14 @@ register_imports :: proc() -> bool {
 	ok &&= wasm.register("async", async_symbols[:])
 	ok &&= wasm.register("eventsource", eventsource_symbols[:])
 	ok &&= wasm.register("websocket", websocket_symbols[:])
+	ok &&= wasm.register("abort", abort_symbols[:])
+	ok &&= wasm.register("fetch", fetch_symbols[:])
+	ok &&= wasm.register("encoding", encoding_symbols[:])
+	ok &&= wasm.register("crypto", crypto_symbols[:])
+	ok &&= wasm.register("storage", storage_symbols[:])
+	ok &&= wasm.register("url", url_symbols[:])
+	ok &&= wasm.register("performance", performance_symbols[:])
+	ok &&= wasm.register("history", history_symbols[:])
 	return ok
 }
 
