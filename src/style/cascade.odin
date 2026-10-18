@@ -93,6 +93,28 @@ styled_destroy :: proc(s: ^Styled) {
 	free(s)
 }
 
+// Address space reserved for the computed styles of one pass: one block, committed as it fills, so a recycled arena
+// keeps its pages (a growing arena only keeps its first block).
+@(private)
+STYLED_RESERVE :: uint(1) << 33
+
+// Like styled_destroy, but the memory is kept for the next full pass of `e` when it is not too large
+// (style.recycle_bytes): a new pass then writes into pages already mapped instead of faulting fresh ones in.
+styled_recycle :: proc(e: ^Engine, s: ^Styled) {
+	if s == nil { return }
+	if e == nil || e.has_spare || int(s.arena.total_used) > e.settings.recycle_bytes || s.arena.curr_block == nil || s.arena.curr_block.prev != nil {
+		styled_destroy(s)
+		return
+	}
+	delete(s.by_node)
+	delete(s.overlaid)
+	delete(s.changes)
+	virtual.arena_free_all(&s.arena)
+	e.spare = s.arena
+	e.has_spare = true
+	free(s)
+}
+
 // The cascaded style of `h`, without the effect of running animations and transitions.
 base_style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
 	if s == nil { return nil }
@@ -582,7 +604,12 @@ hidden_above :: proc(p: ^Pass, h: base.Handle) -> bool {
 compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	if e.dirty { engine_rebuild(e, doc) }
 	s := new(Styled)
-	_ = virtual.arena_init_growing(&s.arena)
+	if e.has_spare {
+		s.arena = e.spare
+		e.spare, e.has_spare = {}, false
+	} else {
+		_ = virtual.arena_init_growing(&s.arena, STYLED_RESERVE)
+	}
 	s.alloc = virtual.arena_allocator(&s.arena)
 	s.initial = new(Computed, s.alloc)
 	s.initial^ = initial_computed(&e.settings)

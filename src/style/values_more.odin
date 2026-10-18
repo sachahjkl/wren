@@ -1055,7 +1055,8 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Clip_Path:
 		cp, ok := parse_clip_path(cx, vs)
 		if !ok { return false }
-		c.clip_path = cp
+		if cp.kind == .None { c.clip_path = nil; return true }
+		c.clip_path = new_clone(cp, cx.alloc)
 	case .Isolation: return set_enum(vs, &c.isolation)
 	case .Mix_Blend_Mode: return set_enum(vs, &c.mix_blend_mode)
 	case .Will_Change:

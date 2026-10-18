@@ -99,8 +99,9 @@ Engine :: struct {
 	keyframe_sets: map[string]^Keyframes_Set,   // the winning rule of each name, compiled (keyframes.odin)
 	rebuilds:  u64,                       // counts rebuilds: compiled keyframes and faces are stale after one
 	cur_base_url: string,                 // while flattening: the URL of the sheet being read
-	cur_origin: Origin,
 	kf_order:  u32,
+	spare:     virtual.Arena,             // the memory of a recycled style pass (see styled_recycle)
+	has_spare: bool,
 	ignored_properties: int,           // declarations naming a property this engine does not implement
 	ua:        ^Sheet,
 	user:      ^Sheet,
@@ -153,6 +154,7 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.keyframes)
 	delete(e.keyframe_sets)
 	delete(e.state_entries)
+	if e.has_spare { virtual.arena_destroy(&e.spare) }
 	settings_destroy(&e.settings)
 	free(e)
 }

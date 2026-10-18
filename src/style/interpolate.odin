@@ -139,6 +139,13 @@ interp :: proc(dst, a, b: rawptr, ti: ^runtime.Type_Info, t: f64, ctx: ^Interp_C
 		for k in 0 ..< 3 { r.s[k] = lerp32(x.s[k], y.s[k], t) }
 		(^Scale_Value)(dst)^ = r
 		return true
+	case ^Clip_Path:
+		x, y := (^^Clip_Path)(a)^, (^^Clip_Path)(b)^
+		if x == nil || y == nil { (^^Clip_Path)(dst)^ = x; return x == y }
+		r := new(Clip_Path, ctx.alloc)
+		if !interp(r, x, y, type_info_of(Clip_Path), t, ctx) { return false }
+		(^^Clip_Path)(dst)^ = r
+		return true
 	case Easing, Image, ^Gradient, Content, Transition_Prop:
 		if deep_equal(a, b, ti) { mem.copy(dst, a, ti.size); return true }
 		return false

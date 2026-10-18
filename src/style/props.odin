@@ -54,9 +54,21 @@ Field_Info :: struct {
 
 @(private) computed_fields: [dynamic]Field_Info
 
+// Where each property lives in a Computed: one or two (offset, size) pairs, so copying needs no dispatch.
+@(private)
+Prop_Slot :: struct { off: [2]uintptr, size: [2]int, ti: [2]^runtime.Type_Info }
+@(private) prop_slots: [Prop]Prop_Slot
+
 @(private)
 props_init :: proc() {
 	sync.once_do(&props_once, proc() {
+		probe: Computed
+		for p in Prop {
+			a, b := prop_fields(&probe, p)
+			sl := &prop_slots[p]
+			sl.off[0], sl.size[0], sl.ti[0] = uintptr(a.data) - uintptr(&probe), type_info_of(a.id).size, type_info_of(a.id)
+			if b.data != nil { sl.off[1], sl.size[1], sl.ti[1] = uintptr(b.data) - uintptr(&probe), type_info_of(b.id).size, type_info_of(b.id) }
+		}
 		for p, i in INHERITED_PROPS {
 			inherited_table[p] = true
 			ps_add(&inherited_set, p)
@@ -286,18 +298,18 @@ field_size :: #force_inline proc(a: any) -> int { return type_info_of(a.id).size
 // Copies one property from `src` into `dst` (inherit, initial, unset and inheritance itself all use it). Shallow: pointers
 // are shared, which is right inside one `Styled` arena.
 copy_prop :: proc(dst, src: ^Computed, p: Prop) {
-	da, db := prop_fields(dst, p)
-	sa, sb := prop_fields(src, p)
-	mem.copy(da.data, sa.data, field_size(da))
-	if db.data != nil { mem.copy(db.data, sb.data, field_size(db)) }
+	sl := &prop_slots[p]
+	mem.copy(rawptr(uintptr(dst) + sl.off[0]), rawptr(uintptr(src) + sl.off[0]), sl.size[0])
+	if sl.size[1] > 0 { mem.copy(rawptr(uintptr(dst) + sl.off[1]), rawptr(uintptr(src) + sl.off[1]), sl.size[1]) }
 }
 
 // Value equality of one property.
 prop_equal :: proc(a, b: ^Computed, p: Prop) -> bool {
-	aa, ab := prop_fields(a, p)
-	ba, bb := prop_fields(b, p)
-	if !deep_equal(aa.data, ba.data, type_info_of(aa.id)) { return false }
-	if ab.data != nil && !deep_equal(ab.data, bb.data, type_info_of(ab.id)) { return false }
+	sl := &prop_slots[p]
+	for k in 0 ..< 2 {
+		if sl.size[k] == 0 { continue }
+		if !deep_equal(rawptr(uintptr(a) + sl.off[k]), rawptr(uintptr(b) + sl.off[k]), sl.ti[k]) { return false }
+	}
 	return true
 }
 

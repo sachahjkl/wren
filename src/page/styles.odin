@@ -210,7 +210,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 		p.styled = style.compute_styles(e, p.doc, p.style_state)
 		// transitions compare against the old styles (animated values included): they go only after this
 		style.timeline_restyled(p.anim.timeline, p.doc, old, p.styled, now)
-		style.styled_destroy(old)
+		style.styled_recycle(e, old)
 		p.style_stale = false
 		e.restyle_needed = false
 		fonts_sync(p)

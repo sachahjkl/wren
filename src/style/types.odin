@@ -238,7 +238,7 @@ Computed :: struct {
 	object_position:   [2]Length,
 	filter:            []Filter_Op,
 	backdrop_filter:   []Filter_Op,
-	clip_path:         Clip_Path,
+	clip_path:         ^Clip_Path,         // nil = none
 	isolation:         Isolation,
 	mix_blend_mode:    Blend_Mode,
 	// --- misc ---

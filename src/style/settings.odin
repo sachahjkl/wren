@@ -20,6 +20,7 @@ Settings :: struct {
 	max_var_depth:       int,       // var() substitution chain
 	max_var_bytes:       int,       // size of one substituted value
 	restyle_waste_bytes: int,       // memory that partial restyles may leave behind before a full pass compacts it
+	recycle_bytes:       int,       // largest style memory kept from one full pass for the next
 	ua_stylesheet:       bool,
 	author_stylesheets:  bool,      // false: pages are shown with the browser's styles only
 	author_colors:       bool,      // false: the page's colors are ignored (high-contrast reading)
@@ -87,6 +88,8 @@ PREFS := [?]config.Def{
 		description = "Largest value var() may expand to (stops exponential blow-up from nested custom properties)."},
 	{name = "style.restyle_waste_bytes", kind = .Int, default = {i = 64 << 20}, bounded = true, min = 1 << 20, max = 1 << 36, bytes = true, unit = "bytes",
 		description = "Partial restyles (hover, focus) allocate new computed styles; once this much has piled up the next restyle is a full pass that frees it."},
+	{name = "style.recycle_bytes", kind = .Int, default = {i = 128 << 20}, bounded = true, min = 0, max = 1 << 34, bytes = true, unit = "bytes",
+		description = "Memory of a full style pass kept, already mapped, for the next pass of the same page (faster restyles, at the cost of holding it). 0 = always give it back."},
 	{name = "style.ua_stylesheet.enabled", kind = .Bool, default = {b = true}, description = "Use the browser's default styles (headings, lists, links...). Without them pages are unstyled."},
 	{name = "style.author_stylesheets.enabled", kind = .Bool, default = {b = true}, description = "Apply the styles that pages bring. Off: every page is shown with browser styles only."},
 	{name = "style.author_colors.enabled", kind = .Bool, default = {b = true}, description = "Let pages set colors. Off: color and background properties from pages are ignored."},
@@ -161,6 +164,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.max_var_depth = int(config.int_of(p, "style.max_var_depth"))
 	s.max_var_bytes = int(config.int_of(p, "style.max_var_bytes"))
 	s.restyle_waste_bytes = int(config.int_of(p, "style.restyle_waste_bytes"))
+	s.recycle_bytes = int(config.int_of(p, "style.recycle_bytes"))
 	s.ua_stylesheet = config.bool_of(p, "style.ua_stylesheet.enabled")
 	s.author_stylesheets = config.bool_of(p, "style.author_stylesheets.enabled")
 	s.author_colors = config.bool_of(p, "style.author_colors.enabled")

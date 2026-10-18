@@ -534,6 +534,7 @@ more_properties :: proc(t: ^testing.T) {
 	fi := node(&f, "fi")
 	testing.expect(t, len(fi.filter) == 3 && fi.filter[0].v == 3 && fi.filter[1].v == 1.5 && fi.filter[2].shadow.blur == 3)
 	cp := node(&f, "cp").clip_path
+	testing.expect(t, cp != nil && node(&f, "fi").clip_path == nil)
 	testing.expect(t, cp.kind == .Inset && cp.inset[.Right].v == 20 && cp.round[.Top_Left].h.v == 5 && cp.box == .Padding_Box)
 	testing.expect(t, node(&f, "ws").white_space == .Pre_Wrap && node(&f, "nw").white_space == .Nowrap && node(&f, "tw").text_wrap_style == .Balance)
 	tx := node(&f, "tx")
