@@ -51,6 +51,7 @@ Box_Info :: struct {
 	natural_ok:  bool,
 	items:       [2]i32,           // display items of its lines ([marker,] emit_lines), for splicing...
 	items_gen:   u32,              // ... valid when this is Inc_State.dl_gen
+	segs:        [2]i32,           // inline formatting contexts: their measured segments in Inc_State.segs
 }
 
 Inc_State :: struct {
@@ -63,7 +64,8 @@ Inc_State :: struct {
 	doc_extent:  Rect,              // what the document's content covers (before the viewport is added), from finish
 	// memory left behind by partial passes, and what was alive after the last full one
 	live_boxes, live_items: int,
-	dead_boxes, dead_items, dead_lines, dead_frags: int,
+	dead_boxes, dead_items, dead_lines, dead_frags, dead_segs: int,
+	segs:        [dynamic]Seg,     // measured segments of inline formatting contexts (inline.odin, Box_Info.segs)
 	arena_base:  uint,
 	fonts_base:  int,
 	// diagnostics
@@ -79,6 +81,7 @@ Inc_State :: struct {
 @(private)
 Inc_Pass :: struct {
 	laid:     [dynamic]i32,          // boxes laid out again
+	segs_ok:  bool,                  // measured segments of earlier passes hold (inline.odin)
 	snapping: bool,                  // the display list may be spliced: record what boxes laid out again move
 	snapped:  []bool,
 	snap:     [dynamic]Snap,
@@ -87,13 +90,15 @@ Inc_Pass :: struct {
 @(private)
 inc_reset :: proc(l: ^Layout) {
 	clear(&l.inc.info)
+	clear(&l.inc.segs)
 	l.inc.quotes = false
-	l.inc.dead_boxes, l.inc.dead_items, l.inc.dead_lines, l.inc.dead_frags = 0, 0, 0, 0
+	l.inc.dead_boxes, l.inc.dead_items, l.inc.dead_lines, l.inc.dead_frags, l.inc.dead_segs = 0, 0, 0, 0, 0
 }
 
 @(private)
 inc_destroy :: proc(l: ^Layout) {
 	delete(l.inc.info)
+	delete(l.inc.segs)
 	delete(l.inc.verify_report)
 }
 
@@ -349,6 +354,7 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	vp_changed := l.viewport != input.viewport
 	images_changed := input.images_generation != l.inc.images_gen
 	fonts_changed := input.fonts_generation != l.inc.fonts_gen
+	pass.segs_ok = len(style_changes) == 0 && !fonts_changed
 	cand: map[i32]Splice_Root
 	if set.inc_splice && len(plans) == 0 && len(style_changes) == 0 && len(dirty) == 0 && !vp_changed &&
 	   !images_changed && !fonts_changed {
@@ -566,10 +572,41 @@ check_fonts :: proc(c: ^Ctx) {
 	}
 }
 
+// The segments (words, spaces, inline box edges, with their widths) of inline formatting context `bi` measured by an
+// earlier pass, when they still hold: the context was not rebuilt, and nothing that measures changed in this pass (no
+// style change for layout, no new font face). Empty range: measure.
+@(private)
+cached_segs :: proc(c: ^Ctx, bi: i32) -> [2]i32 {
+	if c.inc == nil || !c.inc.segs_ok { return {} }
+	return c.l.inc.info[bi].segs
+}
+
+@(private)
+keep_segs :: proc(c: ^Ctx, bi: i32, segs: []Seg) {
+	s := &c.l.inc
+	inf := &s.info[bi]
+	s.dead_segs += int(inf.segs[1] - inf.segs[0])
+	n := i32(len(s.segs))
+	append(&s.segs, ..segs)
+	inf.segs = {n, n + i32(len(segs))}
+}
+
 // Lines and fragments of contexts laid out again stay behind in the arrays: packed when they are the larger part.
+// Likewise the kept segments.
 @(private)
 compact_lines :: proc(l: ^Layout) {
 	s := &l.inc
+	if s.dead_segs * 2 > len(s.segs) && s.dead_segs > 1024 {
+		segs := make([dynamic]Seg, 0, len(s.segs) - s.dead_segs, context.temp_allocator)
+		for &inf, i in s.info {
+			if .Dead in l.boxes[i].flags || inf.segs[1] <= inf.segs[0] { inf.segs = {}; continue }
+			n := i32(len(segs))
+			append(&segs, ..s.segs[inf.segs[0]:inf.segs[1]])
+			inf.segs = {n, i32(len(segs))}
+		}
+		clear(&s.segs); append(&s.segs, ..segs[:])
+		s.dead_segs = 0
+	}
 	if s.dead_frags * 2 < len(l.frags) && s.dead_lines * 2 < len(l.lines) { return }
 	lines := make([dynamic]Line, 0, len(l.lines) - s.dead_lines, context.temp_allocator)
 	frags := make([dynamic]Frag, 0, len(l.frags) - s.dead_frags, context.temp_allocator)

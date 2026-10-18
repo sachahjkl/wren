@@ -21,14 +21,18 @@ note_frame :: proc(c: ^Ctx, bi: i32, g: Frame) {
 }
 
 @(private)
-kill_items :: proc(c: ^Ctx, b: ^Box) {
+kill_items :: proc(c: ^Ctx, x: i32) {
 	l := c.l
+	b := &l.boxes[x]
 	for i in b.items[0] ..< b.items[1] {
 		it := &l.inline_items[i]
 		it.cs, it.node = nil, base.NIL_HANDLE
 	}
 	l.inc.dead_items += int(b.items[1] - b.items[0])
 	l.inc.live_items -= int(b.items[1] - b.items[0])
+	inf := &l.inc.info[x]
+	l.inc.dead_segs += int(inf.segs[1] - inf.segs[0])
+	inf.segs = {}
 	b.items = {}
 	if b.lines[1] > b.lines[0] {
 		l.inc.dead_lines += int(b.lines[1] - b.lines[0])
@@ -58,10 +62,10 @@ kill_contents :: proc(c: ^Ctx, bi: i32) {
 			if i < len(l.node_box) && l.node_box[i] == x { l.node_box[i] = NONE }
 		}
 		if .Abs in b.flags && b.cb != NONE { abs_cbs[b.cb] = true }
-		kill_items(c, b)
+		kill_items(c, x)
 	}
+	kill_items(c, bi)
 	b := &l.boxes[bi]
-	kill_items(c, b)
 	b.first, b.last, b.cur_anon = NONE, NONE, NONE
 	b.abs_first, b.abs_last = NONE, NONE
 	b.flags -= {.Ifc, .Flattened, .Bfc_Floats, .Neg_Margins}

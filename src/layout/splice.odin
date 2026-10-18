@@ -215,6 +215,24 @@ replace_items :: proc(l: ^Layout, p: i32, fresh: []Display_Item) -> (bands_kept:
 	return false
 }
 
+// The decorated text items of a replaced range (deco_items is in item order): those of the old range go, later ones
+// move with the items, those of the new range come.
+@(private)
+splice_deco_items :: proc(l: ^Layout, r_old: [2]i32, r_new: [2]i32) {
+	delta := (r_new[1] - r_new[0]) - (r_old[1] - r_old[0])
+	lo := 0
+	for lo < len(l.deco_items) && l.deco_items[lo] < r_old[0] { lo += 1 }
+	hi := lo
+	for hi < len(l.deco_items) && l.deco_items[hi] < r_old[1] { hi += 1 }
+	for &di in l.deco_items[hi:] { di += delta }
+	remove_range(&l.deco_items, lo, hi)
+	at := lo
+	for i in r_new[0] ..< r_new[1] {
+		it := &l.items[i]
+		if it.kind == .Text && it.deco != {} && it.deco_box > 0 { inject_at(&l.deco_items, at, i); at += 1 }
+	}
+}
+
 @(private)
 band_span :: proc(l: ^Layout, s: i32, r: Rect) -> [2]int {
 	sp := &l.spaces[s]
@@ -270,14 +288,12 @@ try_splice :: proc(c: ^Ctx, roots: []i32, cand: map[i32]Splice_Root, input: Inpu
 		clear(&fresh)
 		append(&fresh, ..l.items[start:])
 		resize(&l.items, start)
+		r_old := l.inc.info[r].items
 		if !replace_items(l, r, fresh[:]) { bands_kept = false }
+		splice_deco_items(l, r_old, l.inc.info[r].items)
 	}
 	remap_display_items(l)
-	// decorated texts and the loose-style flag of the refresh path
-	clear(&l.deco_items)
-	for &it, i in l.items {
-		if it.kind == .Text && it.deco != {} && it.deco_box > 0 { append(&l.deco_items, i32(i)) }
-	}
+	// the loose-style flag of the refresh path
 	for r in roots {
 		b := &l.boxes[r]
 		for i in b.items[0] ..< b.items[1] {

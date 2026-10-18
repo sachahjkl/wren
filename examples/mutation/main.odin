@@ -1,12 +1,12 @@
 // Page script of examples/site/mutation.html (and of the `mutation` scenario of tools\perf.ps1): builds a large
-// document (2 000 sections of articles, about 17 000 nodes, like the generated p10k page), then changes the text of
+// document (323 sections of articles: 10 000 elements, about 17 000 nodes, like the generated p10k page), then changes the text of
 // one element in the middle of it every 16 ms. What the browser should do each time is local: one paragraph laid out
 // again, a few display items replaced.
 package mutation
 
 import "web:web"
 
-SECTIONS :: 2000
+SECTIONS :: 323
 WORDS :: [?]string{"lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor"}
 
 target: web.Handle

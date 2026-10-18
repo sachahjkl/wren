@@ -6,6 +6,7 @@ import "core:testing"
 import "core:time"
 import "wb:base"
 import "wb:dom"
+import "wb:host"
 import "wb:html"
 import "wb:style"
 
@@ -93,8 +94,33 @@ bench_passes :: proc(t: ^testing.T) {
 		t3 := time.tick_now()
 		run(&l, input(doc, st, &set, api, vp))
 		fmt.printfln("  restyle %.2f ms, journal diff %.2f ms", time.duration_milliseconds(time.tick_diff(t0, t1)), time.duration_milliseconds(time.tick_diff(t1, t2)))
+		if k == 0 {
+			// the same comparison shared by 7 threads, as the page does it
+			pool := host.thread_pool_make(7)
+			defer host.thread_pool_destroy(pool)
+			again := style.compute_styles(eng, doc, {})
+			for _ in 0 ..< 3 {
+				t4 := time.tick_now()
+				style.journal_diff(st, again, pool)
+				fmt.printfln("  journal diff on 8 threads %.2f ms", time.duration_milliseconds(time.tick_since(t4)))
+				clear(&again.journal.entries)
+			}
+			style.styled_destroy(again)
+		}
 		report("text mutation", &l, t3)
 	}
+	// the same changes again, each one checked against a full pass
+	set.inc_verify = true
+	vp.x -= 50
+	run(&l, input(doc, st, &set, api, vp))
+	dom.set_text_content(doc, target, "verified text that is a good deal longer than before, so that it wraps on more lines")
+	old := st
+	st = style.compute_styles(eng, doc, {})
+	style.journal_diff(old, st)
+	style.styled_destroy(old)
+	run(&l, input(doc, st, &set, api, vp))
+	fmt.printfln("verification: %d failures %s", l.inc.verify_failures, l.inc.verify_report)
+	testing.expect(t, l.inc.verify_failures == 0)
 	fmt.printfln("size_of(Box) = %d, Inline_Item = %d, Frag = %d, Display_Item = %d", size_of(Box), size_of(Inline_Item), size_of(Frag), size_of(Display_Item))
 	free_all(context.temp_allocator)
 }
