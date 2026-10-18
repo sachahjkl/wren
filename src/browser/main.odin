@@ -75,6 +75,8 @@ Tab :: struct {
 	console:  [dynamic]string,
 	layout:   Layout,
 	scroll:   f32,
+	history:  [dynamic]string,   // addresses visited in this tab
+	hist:     int,               // index of the current one
 }
 
 App :: struct {
@@ -103,6 +105,8 @@ App :: struct {
 	tabs:     [dynamic]^Tab,
 	current:  int,
 	address:  ui.Text_Field,
+	focus_address: bool,      // Ctrl+L: focus the address field in the next build
+	show_console:  bool,
 
 	page_rect: draw.Rect,   // where the page was painted last frame (physical pixels)
 	frames_requested: int,
@@ -121,6 +125,7 @@ current_tab :: proc(app: ^App) -> ^Tab { return len(app.tabs) > 0 ? app.tabs[app
 
 tab_open :: proc(app: ^App, address := "") -> ^Tab {
 	t := new(Tab)
+	t.hist = -1
 	t.scope = base.scope_make("tab", app.process)
 	t.title = strings.clone("New tab")
 	append(&app.tabs, t)
@@ -135,6 +140,8 @@ tab_close :: proc(app: ^App, index: int) {
 	ordered_remove(&app.tabs, index)
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone
 	delete(t.url); delete(t.title); delete(t.status)
+	for h in t.history { delete(h) }
+	delete(t.history)
 	for l in t.console { delete(l) }
 	delete(t.console)
 	layout_destroy(&t.layout)
@@ -187,9 +194,11 @@ normalize_address :: proc(input: string) -> string {
 }
 
 // Starts loading `address` in `t`. `from` is the page the navigation comes from (a link click), nil for the address bar.
-navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false) {
+// `record`: false when the navigation walks the history (back, forward, reload) instead of extending it.
+navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false, record := true) {
 	target := strings.clone(normalize_address(address), context.temp_allocator)
 	if target == "" { target = strings.clone(app.cfg.homepage, context.temp_allocator) }
+	if record { history_push(t, target) }
 	if target == "about:config" { show_config(app, t); return }
 	if target == HOME_URL { show_home(app, t); return }
 	t.kind = .Web
@@ -220,6 +229,25 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 		},
 		on_event = document_event, user = load, scope = t.nav, collect = true,
 	})
+}
+
+history_push :: proc(t: ^Tab, target: string) {
+	if t.hist >= 0 && t.hist < len(t.history) && t.history[t.hist] == target { return }
+	for len(t.history) > t.hist + 1 { delete(pop(&t.history)) }   // a new visit drops the forward entries
+	append(&t.history, strings.clone(target))
+	t.hist = len(t.history) - 1
+}
+
+go_history :: proc(app: ^App, t: ^Tab, delta: int) {
+	if t == nil { return }
+	i := t.hist + delta
+	if i < 0 || i >= len(t.history) { return }
+	t.hist = i
+	navigate(app, t, strings.clone(t.history[i], context.temp_allocator), record = false)
+}
+
+reload :: proc(app: ^App, t: ^Tab) {
+	navigate(app, t, strings.clone(t.url, context.temp_allocator), record = false)
 }
 
 load_closed :: proc(data: rawptr) {
@@ -435,20 +463,8 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.pop_clip(dc)
 }
 
-security_label :: proc(t: ^Tab) -> string {
-	if t == nil || t.page == nil { return "" }
-	e := &t.page.env
-	switch {
-	case e.location.scheme == "about": return APP_NAME
-	case e.location.scheme == "file":  return "File"
-	case e.location.scheme == "https": return "Secure"
-	case e.secure_context && (e.location.scheme == "http"): return "Local"
-	case e.location.scheme == "http":  return "Not secure"
-	}
-	return "Page"
-}
-
 build_ui :: proc(app: ^App) {
+	chrome_shortcuts(app)
 	em := ui.font_size()
 	t := current_tab(app)
 	if ui.style({width = ui.fill(), height = ui.fill()}) {
@@ -466,28 +482,18 @@ build_ui :: proc(app: ^App) {
 					app.current = sel
 					ui.field_set(&app.address, app.tabs[sel].url)
 				}
-				ui.next({width = ui.px(em * 2.4), height = ui.px(em * 2.2)})
-				if ui.button("+###newtab").clicked { tab_open(app) }
-				ui.next({width = ui.px(em * 2.4), height = ui.px(em * 2.2)})
-				if ui.button("x###closetab").clicked { tab_close(app, app.current); return }
+				ui.next({width = ui.px(em * 2.4), height = ui.px(ui.dense(em * 2.2))})
+				add := ui.icon_button("###newtab", GLYPH_ADD)
+				tip(add, "New tab (Ctrl+T)")
+				if add.clicked { tab_open(app) }
+				ui.next({width = ui.px(em * 2.4), height = ui.px(ui.dense(em * 2.2))})
+				close := ui.icon_button("###closetab", GLYPH_CLOSE)
+				tip(close, "Close tab (Ctrl+W)")
+				if close.clicked { tab_close(app, app.current); return }
 			}
-			// address bar with the security state of the page
-			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.6))})
-			if ui.row(.Center) {
-				ui.spacer(ui.px(em * 0.5))
-				if label := security_label(t); label != "" {
-					ui.next({width = ui.text_size(em * 0.5), height = ui.px(ui.dense(em * 2))})
-					if ui.tags("weak") { ui.label(fmt.aprintf("%s###sec", label, allocator = ui.frame_allocator())) }
-					ui.spacer(ui.px(em * 0.4))
-				}
-				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-				res := ui.line_edit("###address", &app.address, "Enter a URL (https://..., file:///..., C:\\...\\page.html) and press Enter")
-				if res.committed && t != nil {
-					address := strings.clone(strings.trim_space(ui.field_string(&app.address)), context.temp_allocator)
-					if address != "" { navigate(app, t, address) }
-				}
-				ui.spacer(ui.px(em * 0.5))
-			}
+			// navigation, security chip, address, menu
+			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
+			if ui.row(.Center) { address_row(app, t) }
 			// page
 			ui.next({width = ui.fill(), height = ui.fill()})
 			if t != nil && t.kind == .Config {
@@ -497,7 +503,7 @@ build_ui :: proc(app: ^App) {
 			}
 			// console strip + status
 			if t != nil {
-				lines := min(len(t.console), 3)
+				lines := app.show_console ? min(len(t.console), 3) : 0
 				if lines > 0 {
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5 * f32(lines) + em * 0.4))})
 					if ui.column() {
@@ -512,7 +518,7 @@ build_ui :: proc(app: ^App) {
 					ui.spacer(ui.px(em * 0.5))
 					if ui.tags("weak") {
 						origin := ""
-						if t.page != nil { origin = url.origin_serialize(t.page.env.origin, context.temp_allocator) }
+						if t.page != nil { origin = t.page.env.location.scheme == "about" ? "built-in page" : url.origin_serialize(t.page.env.origin, context.temp_allocator) }
 						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.6))})
 						ui.label(fmt.aprintf("%s   |   origin %s   |   %d request(s)   |   %d cookie(s)   |   %d DOM node(s)###status", t.status, origin, fetch.in_flight(&app.loader), cookies.count(&app.profile.jar), t.page != nil ? t.page.doc.nodes.count : 0, allocator = ui.frame_allocator()))
 					}
@@ -753,6 +759,7 @@ main :: proc() {
 	if !page.register_imports() { fmt.eprintln("wasm runtime init failed"); return }
 	app.process = base.scope_make("process")
 	app.config_view.rows = make(map[string]^Row_State)
+	app.show_console = true
 
 	profile_load(app)
 	config.watch(&app.prefs, "", on_pref_change, app)

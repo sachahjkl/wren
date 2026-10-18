@@ -244,6 +244,27 @@ delete_matching :: proc(j: ^Jar, domain: string) -> int {
 	return n
 }
 
+// Live cookies that apply to `host` (path, Secure and SameSite aside): what "this site has N cookies" means to a user.
+count_for_host :: proc(j: ^Jar, host: string) -> int {
+	n := 0
+	now := now_ms()
+	for c in j.cookies {
+		if c.expires_ms != 0 && c.expires_ms <= now { continue }
+		if c.host_only ? host == c.domain : domain_match(host, c.domain) { n += 1 }
+	}
+	return n
+}
+
+// Removes every cookie that applies to `host`.
+delete_for_host :: proc(j: ^Jar, host: string) -> int {
+	n := 0
+	for i := len(j.cookies) - 1; i >= 0; i -= 1 {
+		c := j.cookies[i]
+		if c.host_only ? host == c.domain : domain_match(host, c.domain) { remove_at(j, i); n += 1 }
+	}
+	return n
+}
+
 clear_all :: proc(j: ^Jar) {
 	for len(j.cookies) > 0 { remove_at(j, len(j.cookies) - 1) }
 }

@@ -1,3 +1,4 @@
+#+vet !unused-imports
 package browser
 
 // Measurement tools, compiled in only with -define:PROFILE=true (build.bat profile -> build\browser_prof.exe). A normal build
@@ -359,9 +360,6 @@ report_samples :: proc(sb: ^strings.Builder) {
 }
 
 } else {
-
-// keeps the imports above "used" when the measurement code is compiled out
-@(private) prof_imports :: proc() { _ = fmt.tprintf; _ = os.get_env; _ = slice.sort; _ = strings.concatenate; _ = sync.atomic_load; _ = thread.create; _ = win.Sleep; _ = d3d11.IDevice{} }
 
 prof_init :: proc(app: ^App) {}
 prof_begin :: proc(p: Phase) {}

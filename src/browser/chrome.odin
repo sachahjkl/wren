@@ -1,0 +1,371 @@
+package browser
+
+// The window chrome around the page: navigation buttons, the security chip with its page-information popup, and the
+// main menu at the end of the address bar. Built with the toolkit like the rest of the interface.
+
+import "core:fmt"
+import "core:strings"
+import "toolkit:draw"
+import "toolkit:ui"
+import "wb:cookies"
+import "wb:url"
+
+// Icon-font glyphs used by the chrome (the toolkit's icon font maps them to ASCII letters).
+GLYPH_BACK     :: "<"
+GLYPH_FORWARD  :: ">"
+GLYPH_RELOAD   :: "u"
+GLYPH_LOCK     :: "K"
+GLYPH_UNLOCK   :: "k"
+GLYPH_INFO     :: "i"
+GLYPH_FILE     :: "F"
+GLYPH_GEAR     :: "G"
+GLYPH_COOKIE   :: "E"
+GLYPH_COPY     :: "a"
+GLYPH_CLOSE    :: "x"
+GLYPH_ADD      :: "+"
+GLYPH_HOME     :: ""
+
+Tone :: enum u8 { Weak, Good, Warn, Bad }
+
+tone_tag :: proc(t: Tone) -> string {
+	switch t {
+	case .Weak: return "weak"
+	case .Good: return "good"
+	case .Warn: return "warn"
+	case .Bad:  return "bad"
+	}
+	return "weak"
+}
+
+Security :: struct {
+	glyph:    string,
+	label:    string,   // shown in the chip
+	tone:     Tone,
+	headline: string,   // first line of the popup
+	detail:   string,
+}
+
+security_of :: proc(t: ^Tab) -> Security {
+	if t == nil { return {GLYPH_INFO, "", .Weak, "", ""} }
+	if t.kind == .Config { return {GLYPH_GEAR, "Settings", .Weak, "Browser settings", "This page edits the preferences of the browser itself. It has no network connection."} }
+	if t.page == nil {
+		// no response yet: nothing is known about the connection, so claim nothing
+		if t.load != nil { return {GLYPH_INFO, "Loading", .Weak, "Loading", "The connection is being established."} }
+		return {GLYPH_INFO, "", .Weak, "", ""}
+	}
+	e := &t.page.env
+	switch {
+	case e.location.scheme == "about":
+		return {GLYPH_INFO, APP_NAME, .Weak, "Built-in page", fmt.tprintf("This page is part of %s. It has no network connection.", APP_NAME)}
+	case e.location.scheme == "file":
+		return {GLYPH_FILE, "File", .Weak, "Local file", "Loaded from this computer. Scripts of the page can only read files in its own folder."}
+	case e.location.scheme == "https":
+		return {GLYPH_LOCK, "Secure", .Good, "Connection is secure", "Data exchanged with this site is encrypted with TLS and the certificate was accepted by Windows."}
+	case e.secure_context && e.location.scheme == "http":
+		return {GLYPH_INFO, "Local", .Weak, "Local connection", "Not encrypted, but the data never leaves this computer."}
+	case e.location.scheme == "http":
+		return {GLYPH_UNLOCK, "Not secure", .Warn, "Connection is not secure", "Data exchanged with this site is not encrypted. Do not enter passwords or payment details."}
+	}
+	return {GLYPH_INFO, "Page", .Weak, "Page", ""}
+}
+
+////////////////////////////////
+// Small helpers
+
+// Tooltip after the pointer rested on `sig` for a moment.
+tip :: proc(sig: ui.Signal, text: string) {
+	if ui.hovered_for(sig, 0.45) {
+		if ui.tooltip() {
+			em := ui.font_size()
+			ui.next({width = ui.text_size(em * 0.7), height = ui.px(ui.dense(em * 2))})
+			ui.label(fmt.aprintf("%s###tip", text, allocator = ui.frame_allocator()))
+		}
+	}
+}
+
+@(private)
+Burger_Draw :: struct { color: draw.Color }
+
+@(private)
+burger_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	d := (^Burger_Draw)(user)
+	r := b.rect
+	c := draw.rect_center(r)
+	w := (r.max.y - r.min.y) * 0.46
+	bar := max(2, (r.max.y - r.min.y) * 0.075)
+	gap := w * 0.3
+	for i in -1 ..= 1 {
+		y := c.y + f32(i) * gap
+		draw.rect(dc, {{c.x - w * 0.5, y - bar * 0.5}, {c.x + w * 0.5, y + bar * 0.5}}, d.color, bar * 0.5)
+	}
+}
+
+nav_button :: proc(id, glyph, tooltip: string, enabled: bool) -> bool {
+	em := ui.font_size()
+	clicked := false
+	ui.next({width = ui.px(em * 2.1), height = ui.px(ui.dense(em * 2))})
+	if ui.disabled(!enabled) {
+		sig := ui.icon_button(id, glyph)
+		clicked = sig.clicked
+		tip(sig, tooltip)
+	}
+	return clicked
+}
+
+////////////////////////////////
+// The address row
+
+address_row :: proc(app: ^App, t: ^Tab) {
+	em := ui.font_size()
+	can_back := t != nil && t.hist > 0
+	can_forward := t != nil && t.hist + 1 < len(t.history)
+
+	ui.spacer(ui.px(em * 0.5))
+	if nav_button("###nav_back", GLYPH_BACK, "Back (Alt+Left)", can_back) { go_history(app, t, -1) }
+	if nav_button("###nav_forward", GLYPH_FORWARD, "Forward (Alt+Right)", can_forward) { go_history(app, t, +1) }
+	if nav_button("###nav_reload", GLYPH_RELOAD, "Reload (F5)", t != nil && t.url != "") { reload(app, t) }
+	ui.spacer(ui.px(em * 0.4))
+
+	security_chip(app, t)
+	ui.spacer(ui.px(em * 0.4))
+
+	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+	res := ui.line_edit("###address", &app.address, "Search or enter an address")
+	if app.focus_address {
+		app.focus_address = false
+		if b := ui.prev_box("###address"); b != nil { ui.set_focus(b.key) }
+	}
+	if res.committed && t != nil {
+		address := strings.clone(strings.trim_space(ui.field_string(&app.address)), context.temp_allocator)
+		if address != "" { navigate(app, t, address) }
+	}
+
+	ui.spacer(ui.px(em * 0.4))
+	main_menu_button(app, t)
+	ui.spacer(ui.px(em * 0.5))
+}
+
+////////////////////////////////
+// Security chip and page information
+
+security_chip :: proc(app: ^App, t: ^Tab) {
+	em := ui.font_size()
+	sec := security_of(t)
+	if sec.label == "" { return }
+
+	var_tone: draw.Color
+	if ui.tags(tone_tag(sec.tone)) { var_tone = ui.color("text") }
+
+	next := ui.Style_Mod{width = ui.children_sum(), height = ui.px(ui.dense(em * 2)), radius = em * 0.5}
+	if sec.tone != .Weak {
+		next.bg = draw.Color{var_tone.r, var_tone.g, var_tone.b, 0.14}
+		next.border = draw.Color{var_tone.r, var_tone.g, var_tone.b, 0.45}
+	}
+	ui.next(next)
+	b: ^ui.Box
+	if ui.row(.Center, {.Clickable, .Draw_Background, .Draw_Border, .Draw_Hot_Effects}, "###sec_chip") {
+		b = ui.parent_box()
+		sig := ui.signal(b)
+		ui.spacer(ui.px(em * 0.6))
+		if ui.tags(tone_tag(sec.tone)) {
+			fg: Maybe(draw.Color)
+			if sec.tone != .Weak { fg = var_tone }
+			ui.icon(sec.glyph, em * 1.3, fg)
+			ui.next({width = ui.text_size(em * 0.5), height = ui.pct(1)})
+			ui.label(fmt.aprintf("%s###sec_label", sec.label, allocator = ui.frame_allocator()))
+		}
+		ui.spacer(ui.px(em * 0.3))
+		if sig.clicked {
+			key := ui.key_from_string(ui.parent_box().parent.key, "###page_info")
+			if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else {
+				ui.ctx_menu_open(key, {b.rect.min.x, b.rect.max.y + 6}, b.key)
+			}
+		}
+		tip(sig, "Page information")
+	}
+	if b != nil { page_info_popup(app, t, sec, b) }
+}
+
+// Greedy word wrap on character count (the popup uses a proportional font, so this is an estimate that errs short).
+wrap_text :: proc(text: string, max_chars: int) -> []string {
+	lines := make([dynamic]string, context.temp_allocator)
+	cur := strings.builder_make(context.temp_allocator)
+	for word in strings.split(text, " ", context.temp_allocator) {
+		if strings.builder_len(cur) > 0 && strings.builder_len(cur) + 1 + len(word) > max_chars {
+			append(&lines, strings.clone(strings.to_string(cur), context.temp_allocator))
+			strings.builder_reset(&cur)
+		}
+		if strings.builder_len(cur) > 0 { strings.write_byte(&cur, ' ') }
+		strings.write_string(&cur, word)
+	}
+	if strings.builder_len(cur) > 0 { append(&lines, strings.clone(strings.to_string(cur), context.temp_allocator)) }
+	return lines[:]
+}
+
+@(private)
+info_row :: proc(label, value, id: string, width: f32) {
+	em := ui.font_size()
+	ui.next({width = ui.px(width), height = ui.px(ui.dense(em * 1.7))})
+	if ui.row(.Center) {
+		ui.spacer(ui.px(em * 0.9))
+		if ui.tags("weak") {
+			ui.next({width = ui.px(em * 8.5), height = ui.pct(1)})
+			ui.label(fmt.aprintf("%s###il_%s", label, id, allocator = ui.frame_allocator()))
+		}
+		ui.next({width = ui.fill(), height = ui.pct(1)})
+		ui.label(fmt.aprintf("%s###iv_%s", value, id, allocator = ui.frame_allocator()))
+		ui.spacer(ui.px(em * 0.9))
+	}
+}
+
+@(private)
+action_button :: proc(text, id: string, width: f32) -> bool {
+	em := ui.font_size()
+	ui.next({width = ui.px(width), height = ui.px(ui.dense(em * 2.1))})
+	return ui.button(fmt.aprintf("%s###%s", text, id, allocator = ui.frame_allocator())).clicked
+}
+
+enum_label :: proc(v: any) -> string {
+	s := fmt.tprintf("%v", v)
+	out, _ := strings.replace_all(strings.to_lower(s, context.temp_allocator), "_", "-", context.temp_allocator)
+	return out
+}
+
+page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
+	em := ui.font_size()
+	key := ui.key_from_string(chip.parent.key, "###page_info")
+	w := em * 25
+	if ui.ctx_menu(key, w) {
+		// header: what the connection is, in the tone of the chip
+		ui.spacer(ui.px(em * 0.5))
+		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.4))})
+		if ui.row(.Center) {
+			ui.spacer(ui.px(em * 0.9))
+			if ui.tags(tone_tag(sec.tone)) {
+				fg: Maybe(draw.Color)
+				if sec.tone != .Weak { fg = ui.color("text") }
+				ui.icon(sec.glyph, em * 1.6, fg)
+				ui.next({width = ui.fill(), height = ui.pct(1)})
+				ui.label(fmt.aprintf("%s###pi_head", sec.headline, allocator = ui.frame_allocator()))
+			}
+		}
+		if sec.detail != "" {
+			lines := wrap_text(sec.detail, 44)
+			ui.next({width = ui.px(w), height = ui.px(ui.dense(em * (1.55 * f32(len(lines)) + 0.3)))})
+			if ui.row(.Start) {
+				ui.spacer(ui.px(em * 0.9))
+				ui.next({width = ui.px(w - em * 1.8), height = ui.pct(1)})
+				if ui.column() {
+					if ui.tags("weak") {
+						for line, i in lines {
+							ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.55))})
+							ui.label(fmt.aprintf("%s###pi_detail%d", line, i, allocator = ui.frame_allocator()))
+						}
+					}
+				}
+			}
+		}
+		ui.hline(ui.px(w))
+		ui.spacer(ui.px(em * 0.3))
+
+		if t != nil && t.page != nil {
+			p := t.page
+			e := &p.env
+			shown := t.url
+			if len(shown) > 38 { shown = strings.concatenate({shown[:35], "..."}, context.temp_allocator) }
+			info_row("Address", shown, "addr", w)
+			if e.location.scheme != "about" {
+				info_row("Origin", url.origin_serialize(e.origin, context.temp_allocator), "origin", w)
+				info_row("Secure context", e.secure_context ? "yes" : "no", "ctx", w)
+				host := e.location.host
+				if host != "" {
+					n := cookies.count_for_host(&app.profile.jar, host)
+					third := app.profile.settings.third_party_cookies == .Block ? "third-party blocked" : "third-party allowed"
+					info_row("Cookies", fmt.tprintf("%d (%s)", n, third), "cookies", w)
+				}
+				info_row("Content policy", len(e.policies.policies) > 0 ? fmt.tprintf("%d polic%s", len(e.policies.policies), len(e.policies.policies) == 1 ? "y" : "ies") : "none", "csp", w)
+				info_row("Referrer", e.referrer_policy == .Default ? enum_label(app.profile.settings.referrer_policy) : enum_label(e.referrer_policy), "ref", w)
+			}
+			info_row("WebAssembly", fmt.tprintf("%d module%s running", len(p.instances), len(p.instances) == 1 ? "" : "s"), "wasm", w)
+			info_row("Page size", fmt.tprintf("%d DOM nodes", p.doc.nodes.count), "dom", w)
+		}
+
+		ui.spacer(ui.px(em * 0.4))
+		ui.hline(ui.px(w))
+		ui.spacer(ui.px(em * 0.5))
+		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.2))})
+		if ui.row(.Center) {
+			ui.spacer(ui.px(em * 0.9))
+			if action_button("Copy address", "pi_copy", em * 10) && t != nil { clip_set(t.url); ui.ctx_menu_close() }
+			ui.spacer(ui.px(em * 0.5))
+			host := t != nil && t.page != nil ? t.page.env.location.host : ""
+			if ui.disabled(host == "") {
+				if action_button("Clear cookies", "pi_clear", em * 10) {
+					n := cookies.delete_for_host(&app.profile.jar, host)
+					tab_log(t, .Log, fmt.tprintf("cleared %d cookie(s) for %s", n, host))
+					ui.ctx_menu_close()
+				}
+			}
+		}
+		ui.spacer(ui.px(em * 0.6))
+	}
+}
+
+////////////////////////////////
+// Main menu
+
+main_menu_button :: proc(app: ^App, t: ^Tab) {
+	em := ui.font_size()
+	ui.next({width = ui.px(em * 2.3), height = ui.px(ui.dense(em * 2)), radius = em * 0.4})
+	tone := ui.color("text")
+	d := ui.frame_new(Burger_Draw)
+	d.color = tone
+	b := ui.custom("###burger", burger_draw, d, {.Clickable, .Draw_Background, .Draw_Hot_Effects})
+	sig := ui.signal(b)
+	key := ui.key_from_string(b.parent.key, "###main_menu")
+	if sig.clicked {
+		if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else {
+			ui.ctx_menu_open(key, {b.rect.max.x - em * 17, b.rect.max.y + 6}, b.key)
+		}
+	}
+	tip(sig, "Menu")
+
+	w := em * 17
+	if ui.ctx_menu(key, w) {
+		can_back := t != nil && t.hist > 0
+		can_forward := t != nil && t.hist + 1 < len(t.history)
+		ui.spacer(ui.px(em * 0.3))
+		if ui.menu_item("New tab", "Ctrl+T", icon = GLYPH_ADD).clicked { tab_open(app) ; return }
+		if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close(app, app.current); return }
+		ui.hline(ui.px(w))
+		if ui.disabled(!can_back) { if ui.menu_item("Back", "Alt+Left", icon = GLYPH_BACK).clicked { go_history(app, t, -1) } }
+		if ui.disabled(!can_forward) { if ui.menu_item("Forward", "Alt+Right", icon = GLYPH_FORWARD).clicked { go_history(app, t, +1) } }
+		if ui.menu_item("Reload", "F5", icon = GLYPH_RELOAD).clicked && t != nil { reload(app, t) }
+		if ui.menu_item("Home", icon = GLYPH_HOME).clicked && t != nil { navigate(app, t, HOME_URL) }
+		ui.hline(ui.px(w))
+		if ui.menu_item("Show console", checked = app.show_console).clicked { app.show_console = !app.show_console }
+		if ui.menu_item("Settings", icon = GLYPH_GEAR).clicked && t != nil { navigate(app, t, "about:config") }
+		ui.hline(ui.px(w))
+		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.8))})
+		if ui.row(.Center) {
+			ui.spacer(ui.px(em * 0.9))
+			if ui.tags("weak") { ui.label(fmt.aprintf("%s %s###about", APP_NAME, APP_VERSION, allocator = ui.frame_allocator())) }
+		}
+		ui.spacer(ui.px(em * 0.2))
+	}
+}
+
+////////////////////////////////
+// Keyboard shortcuts of the chrome
+
+chrome_shortcuts :: proc(app: ^App) {
+	t := current_tab(app)
+	switch {
+	case ui.key_press(.T, {.Ctrl}): tab_open(app)
+	case ui.key_press(.W, {.Ctrl}): tab_close(app, app.current)
+	case ui.key_press(.L, {.Ctrl}): app.focus_address = true
+	case ui.key_press(.F5), ui.key_press(.R, {.Ctrl}): if t != nil { reload(app, t) }
+	case ui.key_press(.Left, {.Alt}): if t != nil { go_history(app, t, -1) }
+	case ui.key_press(.Right, {.Alt}): if t != nil { go_history(app, t, +1) }
+	}
+}

@@ -256,3 +256,18 @@ persistence_roundtrip :: proc(t: ^testing.T) {
 	n, ok = load(&j2, path, NOW + 4_000_000)
 	testing.expect_value(t, n, 0)            // expired by then
 }
+
+@(test)
+cookies_of_a_host_can_be_counted_and_cleared :: proc(t: ^testing.T) {
+	j := jar_make()
+	defer jar_destroy(&j)
+	st := ctx_for("https://shop.example.com/")
+	store(&j, "a=1", st)                              // host-only for shop.example.com
+	store(&j, "b=2; Domain=example.com", st)          // applies to every subdomain
+	store(&j, "c=3", ctx_for("https://other.org/"))
+	testing.expect_value(t, count_for_host(&j, "shop.example.com"), 2)
+	testing.expect_value(t, count_for_host(&j, "www.example.com"), 1)   // only the domain cookie
+	testing.expect_value(t, count_for_host(&j, "other.org"), 1)
+	testing.expect_value(t, delete_for_host(&j, "shop.example.com"), 2)
+	testing.expect_value(t, count(&j), 1)
+}
