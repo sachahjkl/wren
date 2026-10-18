@@ -38,19 +38,19 @@ mat_shifted :: proc(m: Matrix, d: Vec2) -> Matrix {
 // applies, when it promises one (will-change: transform), or when a filter applies (CSS Filter Effects §5).
 @(private)
 contains_fixed :: proc(cs: ^style.Computed) -> bool {
-	if style.has_transform(cs) || len(cs.filter) > 0 { return true }
+	if style.has_transform(cs) || len(cs.filter) > 0 || len(cs.backdrop_filter) > 0 { return true }
 	for w in cs.will_change { if w == "transform" || w == "translate" || w == "rotate" || w == "scale" || w == "filter" { return true } }
 	return false
 }
 
 // Effects that make a stacking context besides positioning, opacity and transforms (CSS 2.1 Appendix E as extended by
-// CSS Transforms, Compositing and Will Change).
+// CSS Transforms, Compositing, Masking, Filter Effects 2 and Will Change).
 @(private)
 stacking_effect :: proc(cs: ^style.Computed) -> bool {
-	if len(cs.filter) > 0 || cs.isolation == .Isolate || cs.mix_blend_mode != .Normal { return true }
+	if len(cs.filter) > 0 || len(cs.backdrop_filter) > 0 || cs.clip_path != nil || cs.isolation == .Isolate || cs.mix_blend_mode != .Normal { return true }
 	for w in cs.will_change {
 		switch w {
-		case "transform", "translate", "rotate", "scale", "opacity", "filter", "isolation", "mix-blend-mode": return true
+		case "transform", "translate", "rotate", "scale", "opacity", "filter", "backdrop-filter", "clip-path", "isolation", "mix-blend-mode": return true
 		}
 	}
 	return false

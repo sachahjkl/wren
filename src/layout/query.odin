@@ -193,6 +193,9 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 	if !cull { return v }
 	vis := make([dynamic]u32, 0, 1024, allocator)
 	screen := Rect{{0, 0}, viewport}
+	// filters spread what items paint: bands are searched that much further (each item then by its own groups' reach)
+	reach: f32
+	for &g in l.groups { reach = max(reach, g.reach) }
 	for i in 0 ..< len(l.spaces) {
 		sp := &l.spaces[i]
 		if sp.band_count == 0 { continue }
@@ -206,14 +209,17 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 			if v.singular[i] { continue }
 			local = rect_shift(mat_bounds(v.invs[i], region), -v.offsets[i])
 		}
-		b0 := clamp(int((local.min.y - sp.band0) / sp.band_h), 0, int(sp.band_count) - 1)
-		b1 := clamp(int((local.max.y - sp.band0) / sp.band_h), b0, int(sp.band_count) - 1)
-		if local.max.y < sp.band0 || local.min.y > sp.band0 + f32(sp.band_count) * sp.band_h { continue }
+		search := Rect{local.min - reach, local.max + reach}
+		b0 := clamp(int((search.min.y - sp.band0) / sp.band_h), 0, int(sp.band_count) - 1)
+		b1 := clamp(int((search.max.y - sp.band0) / sp.band_h), b0, int(sp.band_count) - 1)
+		if search.max.y < sp.band0 || search.min.y > sp.band0 + f32(sp.band_count) * sp.band_h { continue }
 		for b in b0 ..= b1 {
 			g := int(sp.band_first) + b
 			for idx in l.band_items[l.band_start[g]:l.band_start[g + 1]] {
 				r := l.items[idx].rect
 				if l.items[idx].kind == .Box && len(l.items[idx].cs.box_shadow) > 0 { append(&vis, idx); continue }
+				// filters (blur, drop shadows) of the groups around it spread what it paints
+				if g := l.items[idx].group; g != NONE && l.groups[g].reach > 0 { r = Rect{r.min - l.groups[g].reach, r.max + l.groups[g].reach} }
 				if r.max.y < local.min.y || r.min.y > local.max.y || r.max.x < local.min.x || r.min.x > local.max.x {
 					if l.items[idx].kind != .Text { continue }
 					// text shadows and italic overhang reach a little outside the item
@@ -267,6 +273,7 @@ hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
 			it := &l.items[idx]
 			if .Hit not_in it.flags || !rect_contains(it.rect, local) { continue }
 			if it.clip != NONE && !clip_contains(l, &v, it.clip, p) { continue }
+			if it.group != NONE && !group_clips_contain(l, &v, it.group, p) { continue }
 			best = idx
 			break
 		}

@@ -266,8 +266,10 @@ Clip :: struct { parent: i32, space: i32, box: i32, rect: Rect, radii: [4]f32 }
 
 Matrix :: [6]f32   // 2D affine: x' = a x + c y + e, y' = b x + d y + f  (a b c d e f), as style.Matrix and CSS matrix()
 
-// An opacity group: a box with opacity below 1 and everything it paints.
-Group :: struct { parent: i32, box: i32, alpha: f32 }
+// An effect group: a box with opacity below 1, a filter, a backdrop filter, a blend mode or a clip-path, or the
+// stacking context a blending descendant must be isolated in (CSS Compositing 1 §3.2), and everything it paints.
+// `reach`: how far (device px, the largest side) its filters and those of the groups around it spread what it paints.
+Group :: struct { parent: i32, box: i32, alpha: f32, effects: Group_Effects, reach: f32 }
 
 Pass_Kind :: enum u8 { None, Full, Refresh }
 

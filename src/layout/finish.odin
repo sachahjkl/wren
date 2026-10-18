@@ -176,6 +176,7 @@ finish :: proc(c: ^Ctx) {
 	append(&l.spaces, Space{kind = .Document, parent = NONE, box = 0, frame = NONE, clip = NONE, xform = NONE})
 	append(&l.spaces, Space{kind = .Fixed, parent = NONE, box = 0, frame = NONE, clip = NONE, xform = NONE})
 	nan := math.nan_f32()
+	isolate := isolated_contexts(l)
 	for x in order {
 		b := &l.boxes[x]
 		if .Root in b.flags {
@@ -191,8 +192,8 @@ finish :: proc(c: ^Ctx) {
 		}
 		tp := &l.boxes[b.parent]
 		b.group = tp.group
-		if b.cs.opacity < 1 {
-			append(&l.groups, Group{parent = b.group, box = x, alpha = max(b.cs.opacity, 0)})
+		if fx := box_effects(b.cs) + (isolate[x] ? Group_Effects{.Isolate} : {}); fx != {} {
+			append(&l.groups, Group{parent = b.group, box = x, alpha = max(b.cs.opacity, 0), effects = fx})
 			b.group = i32(len(l.groups) - 1)
 		}
 		if .Sticky in b.flags && b.kind != .Inline {
@@ -246,6 +247,7 @@ finish :: proc(c: ^Ctx) {
 			if .Positioned in b.flags || .Stacking in b.flags { b.layer = x } else if tp.kind == .Inline { b.layer = tp.layer } else { b.layer = NONE }
 		}
 	}
+	groups_reach(l)
 	// offsets of containers that no longer scroll are forgotten
 	gone := make([dynamic]base.Handle, 0, 4, context.temp_allocator)
 	for node in l.scroll {
