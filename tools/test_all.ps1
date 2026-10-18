@@ -38,6 +38,14 @@ try {
         $o = Get-Content build\pt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
+    Step 'style run-time test (web fonts, transitions, animations)' {
+        odin build src/tools/styletest -collection:wb=src -vet -out:build/styletest.exe 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { return }
+        $p = Start-Process .\build\styletest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\stt.txt
+        if (-not $p.WaitForExit(60000)) { $p.Kill(); Get-Content build\stt.txt; $global:LASTEXITCODE = 1; return }
+        $o = Get-Content build\stt.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
+    }
 } finally { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }
 
 if (-not $Quick) {
