@@ -302,6 +302,7 @@ Layout :: struct {
 	layout_serial: u64,         // styled.layout_serial at the last full layout: equal = only paint-only values changed since
 	canvas:     css.Color,
 	styled:     rawptr,         // the style pass this was laid out from (identity only)
+	styled_pass: u64,           // its pass_id: the same records, changed since only as its journal says (incremental.odin)
 	canvas_els: [2]base.Handle, // the root element and body: their backgrounds may be the canvas
 	canvas_items: [2]i32,       // their Box display items (NONE: none)
 	loose_styles: bool,         // some text's style is not the style of a box (its element has none: display: contents...)

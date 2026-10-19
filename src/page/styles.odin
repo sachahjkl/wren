@@ -200,7 +200,8 @@ decode_css :: proc(data: []byte, max_bytes: int) -> []byte {
 }
 
 // The computed styles for the document as it is now, doing as little as the changes since the last call allow:
-//   * sheets or DOM changed            -> read the stylesheets again, full restyle
+//   * sheets changed                   -> read the stylesheets again, full restyle
+//   * DOM changed                      -> partial restyle of what the mutations can reach (style.restyle_dom), else full
 //   * viewport / color scheme changed  -> full restyle only if some rule can depend on it (media query, vw units...)
 //   * hover / focus / active / target  -> partial restyle of the elements those states can reach, or nothing
 // The result is cached; its `serial` changes exactly when some computed style changed, which is what layout watches.
@@ -210,8 +211,19 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	style.engine_set_environment(e, env)
 
 	now := document_time_ms(p)
-	full := p.styled == nil || p.style_stale || p.styled.mutations != p.doc.mutations || e.dirty || e.restyle_needed
-	partial := false
+	full := p.styled == nil || p.style_stale || e.dirty || e.restyle_needed
+	partial, dom_partial := false, false
+	if !full && p.styled.mutations != p.doc.mutations {
+		full = true
+		if e.settings.inc_enabled {
+			owners := make([dynamic]base.Handle, 0, len(p.link_loads), context.temp_allocator)
+			for o in p.link_loads { append(&owners, o) }
+			if style.dom_touches_sheets(e, p.doc, p.styled, owners[:]) { sync_styles(p) }
+			if !e.dirty {
+				if _, ok := style.restyle_dom(e, p.doc, p.styled, style_threads(p)); ok { full, dom_partial = false, true }
+			}
+		}
+	}
 	if !full && !style.state_equal(p.style_state, p.styled.state) {
 		if _, ok := style.restyle_state(e, p.doc, p.styled, p.style_state); !ok { full = true } else { partial = true }
 	}
@@ -231,8 +243,21 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 		p.style_stale = false
 		e.restyle_needed = false
 		fonts_sync(p)
-	} else if partial {
-		style.timeline_restyled_partial(p.anim.timeline, p.doc, p.styled, now)
+		// later mutations restyle partially: they need the document's mutation journal from now on
+		if e.settings.inc_enabled {
+			if !p.doc.journal.on { dom.journal_enable(p.doc, e.settings.inc_journal) }
+			p.doc.journal.max = max(p.doc.journal.max, e.settings.inc_journal)
+		}
+	} else if partial || dom_partial {
+		style.timeline_restyled_dom(p.anim.timeline, p.doc, p.styled, now)
+		if dom_partial {
+			fonts_sync(p)
+			if e.settings.inc_verify {
+				if diff := style.verify_styles(e, p.doc, p.styled, context.temp_allocator); diff != "" {
+					log(p, .Warn, fmt.tprintf("style.incremental.verify: partial restyle differs from a full one: %s", diff))
+				}
+			}
+		}
 	}
 	style.timeline_tick(p.anim.timeline, p.doc, p.styled, now)
 	animations_after_tick(p)

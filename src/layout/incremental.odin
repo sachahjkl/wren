@@ -247,6 +247,8 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	if too_much_garbage(l) { return bail(l, "memory left by partial passes") }
 	dom_changes, dom_ok := dom.journal_since(input.doc, l.mutations)
 	if !dom_ok { return bail(l, "mutation journal incomplete") }
+	// the same style records as last time, changed since only as the style journal says: only those are re-pointed
+	same_pass := l.styled == rawptr(st) && l.styled_pass == st.pass_id
 	style_changes: []style.Journal_Entry
 	if st.serial != l.serial {
 		ok: bool
@@ -297,7 +299,10 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 			}
 		}
 	}
+	layout_changes := 0   // style entries that are not paint-only
 	for &e in style_changes {
+		if e.level < .Layout { continue }   // a new record with the same layout values: re-pointed below
+		layout_changes += 1
 		bi := live_box(l, e.node)
 		if bi == NONE && hidden_now(&c, e.node) { continue }   // had no box, has none
 		if e.level == .Layout && bi != NONE {
@@ -354,9 +359,9 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	vp_changed := l.viewport != input.viewport
 	images_changed := input.images_generation != l.inc.images_gen
 	fonts_changed := input.fonts_generation != l.inc.fonts_gen
-	pass.segs_ok = len(style_changes) == 0 && !fonts_changed
+	pass.segs_ok = layout_changes == 0 && !fonts_changed
 	cand: map[i32]Splice_Root
-	if set.inc_splice && len(plans) == 0 && len(style_changes) == 0 && len(dirty) == 0 && !vp_changed &&
+	if set.inc_splice && len(plans) == 0 && layout_changes == 0 && len(dirty) == 0 && !vp_changed &&
 	   !images_changed && !fonts_changed {
 		cand = splice_candidates(l, st, roots[:])
 		pass.snapping = len(cand) == len(roots)
@@ -370,7 +375,9 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	drop_planned(&c, plans[:])
 	// before the styles are re-read: anonymous children follow them
 	for bi in styled_dirty { if .Dead not_in l.boxes[bi].flags { mark_dirty(l, bi) } }
-	if !remap_styles(&c) { return bail(l, "an element lost its style") }
+	if !same_pass || !remap_journaled(&c, style_changes) {
+		if !remap_styles(&c) { return bail(l, "an element lost its style") }
+	}
 	is_root := make(map[i32]bool, len(roots), context.temp_allocator)
 	for r in roots {
 		is_root[r] = true
@@ -527,6 +534,75 @@ remap_styles :: proc(c: ^Ctx) -> bool {
 			if it.src == .Before { nc = el.before } else if it.src == .After { nc = el.after }
 			if nc == nil { return false }
 			it.cs = nc
+		}
+	}
+	return true
+}
+
+// remap_styles for partial restyles of the same style pass: only the elements of the style journal got new records.
+// Their boxes, generated boxes, the anonymous boxes inside those and their inline items are re-pointed. false: an
+// element with a new record has items but no box of its own (display: contents...): the caller re-points everything.
+@(private)
+remap_journaled :: proc(c: ^Ctx, changes: []style.Journal_Entry) -> bool {
+	l := c.l
+	st := c.st
+	if len(changes) == 0 { return true }
+	done := make(map[base.Handle]bool, len(changes), context.temp_allocator)
+	ifcs := make([dynamic]i32, 0, 4, context.temp_allocator)
+	// the anonymous boxes inside `x` copy its inherited values: made again from its new style
+	anon_below :: proc(c: ^Ctx, x: i32, ifcs: ^[dynamic]i32) {
+		l := c.l
+		for ch := l.boxes[x].first; ch != NONE; ch = l.boxes[ch].next {
+			k := &l.boxes[ch]
+			if .Dead in k.flags || .Anonymous not_in k.flags || k.cs == nil { continue }
+			p := &l.boxes[x]
+			ncs := anon_style(c, p.cs, k.cs.display)
+			if k.kind == .Table { ncs.border_spacing = p.cs.border_spacing }
+			l.boxes[ch].cs = ncs
+			if .Ifc in l.boxes[ch].flags { append(ifcs, ch) }
+			anon_below(c, ch, ifcs)
+		}
+	}
+	for &e in changes {
+		h := e.node
+		if h in done { continue }
+		done[h] = true
+		bi := live_box(l, h)
+		el := style.style_of(st, h)
+		if bi == NONE {
+			if el == nil || hidden_now(c, h) { continue }   // no box: nothing points at its record
+			return false
+		}
+		if el == nil { return false }
+		clear(&ifcs)
+		b := &l.boxes[bi]
+		b.cs = el
+		if b.ifc_root != NONE { append(&ifcs, b.ifc_root) }
+		if .Ifc in b.flags { append(&ifcs, bi) }
+		anon_below(c, bi, &ifcs)
+		for ch := l.boxes[bi].first; ch != NONE; ch = l.boxes[ch].next {
+			k := &l.boxes[ch]
+			if .Dead in k.flags || .Pseudo not_in k.flags || k.node != h { continue }
+			nc := .Pseudo_After in k.flags ? el.after : el.before
+			if nc == nil { return false }
+			k.cs = nc
+			if .Ifc in k.flags { append(&ifcs, ch) }
+			anon_below(c, ch, &ifcs)
+		}
+		for r in ifcs {
+			rb := &l.boxes[r]
+			for i in rb.items[0] ..< rb.items[1] {
+				it := &l.inline_items[i]
+				if it.cs == nil || it.node != h { continue }
+				switch it.src {
+				case .Initial: it.cs = st.initial
+				case .Element: it.cs = el
+				case .Before, .After:
+					nc := it.src == .Before ? el.before : el.after
+					if nc == nil { return false }
+					it.cs = nc
+				}
+			}
 		}
 	}
 	return true

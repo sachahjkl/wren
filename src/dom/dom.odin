@@ -250,16 +250,17 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 	lname := strings.to_lower(name, context.temp_allocator)
 	for &a in n.attrs {
 		if a.name == lname {
-			delete(a.value)
+			old := a.value
 			a.value = heap_str(value)
 			touch(d)
-			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname)
+			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, old, true)
+			delete(old)
 			return .None
 		}
 	}
 	append(&n.attrs, Attr{heap_str(lname), heap_str(value)})
 	touch(d)
-	journal_record(d, .Attribute, h, base.NIL_HANDLE, lname)
+	journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, "", false)
 	return .None
 }
 
@@ -277,10 +278,11 @@ remove_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> Error {
 	lname := strings.to_lower(name, context.temp_allocator)
 	for a, i in n.attrs {
 		if a.name == lname {
-			delete(a.name); delete(a.value)
+			old_name, old := a.name, a.value
 			ordered_remove(&n.attrs, i)
 			touch(d)
-			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname)
+			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, old, true)
+			delete(old_name); delete(old)
 			return .None
 		}
 	}

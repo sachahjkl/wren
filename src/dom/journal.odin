@@ -24,6 +24,8 @@ Journal_Entry :: struct {
 	node:     base.Handle,
 	parent:   base.Handle,   // Insert / Remove
 	name:     string,        // Attribute: the name, lower case (owned by the journal)
+	old:      string,        // Attribute: the value before the change (owned by the journal), when `had_old`
+	had_old:  bool,          // Attribute: the attribute existed before the change
 	mutation: u64,
 }
 
@@ -73,7 +75,7 @@ journal_since :: proc(d: ^Document, since: u64) -> ([]Journal_Entry, bool) {
 }
 
 @(private)
-journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Handle, name := "") {
+journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Handle, name := "", old := "", had_old := false) {
 	j := &d.journal
 	if !j.on { return }
 	if len(j.entries) >= j.max {
@@ -93,11 +95,16 @@ journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Hand
 			// names of forgotten entries add up: keep only those still referenced
 			fresh: virtual.Arena
 			_ = virtual.arena_init_growing(&fresh, 4096)
-			for &e in j.entries { if e.name != "" { e.name = strings.clone(e.name, virtual.arena_allocator(&fresh)) } }
+			for &e in j.entries {
+				if e.name != "" { e.name = strings.clone(e.name, virtual.arena_allocator(&fresh)) }
+				if e.old != "" { e.old = strings.clone(e.old, virtual.arena_allocator(&fresh)) }
+			}
 			virtual.arena_destroy(&j.names)
 			j.names = fresh
 		}
 		nm = strings.clone(name, virtual.arena_allocator(&j.names))
 	}
-	append(&j.entries, Journal_Entry{kind = kind, node = node, parent = parent, name = nm, mutation = d.mutations})
+	ov := ""
+	if old != "" { ov = strings.clone(old, virtual.arena_allocator(&j.names)) }
+	append(&j.entries, Journal_Entry{kind = kind, node = node, parent = parent, name = nm, old = ov, had_old = had_old, mutation = d.mutations})
 }

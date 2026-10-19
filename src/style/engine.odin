@@ -114,6 +114,8 @@ Engine :: struct {
 	viewport_units:  bool,             // some value uses vw/vh/vmin/vmax: a viewport change restyles
 	restyle_needed:  bool,             // set by `engine_set_environment`; the page clears it after restyling
 	journal_max:     int,              // > 0: passes keep a layout journal of at most this many entries (journal.odin)
+	inv:             Inv_Index,        // what DOM mutations reach (invalidation.odin), built on demand per rebuild
+	last_restyle:    Restyle_Stats,    // diagnostics of the last restyle_dom
 }
 
 ////////////////////////////////
@@ -159,6 +161,7 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.keyframes)
 	delete(e.keyframe_sets)
 	delete(e.state_entries)
+	inv_free(&e.inv)
 	if e.has_spare { virtual.arena_destroy(&e.spare) }
 	settings_destroy(&e.settings)
 	free(e)
