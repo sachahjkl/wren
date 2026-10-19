@@ -248,6 +248,9 @@ Line_Builder :: struct {
 	strut_h:  f32,
 	bidi:     ^Bidi_Para,    // nil: a left-to-right paragraph without right-to-left text
 	bidi_line: bool,         // something on the current line is at a level other than 0
+	// the last block-in-inline: its bottom margin and where it ended (nothing after: the margin collapses out of the
+	// context, as an anonymous block's would)
+	block_margin, block_end: f32,
 }
 
 @(private)
@@ -822,10 +825,11 @@ layout_atomic :: proc(c: ^Ctx, k: i32, cw: f32) -> f32 {
 	return w + mg_w(kb)
 }
 
-// Lays out the inline formatting context rooted at `bi` (content width `cw`). Returns the content height and whether
-// it is empty (no line boxes: margins collapse through it).
+// Lays out the inline formatting context rooted at `bi` (content width `cw`). Returns the content height, whether
+// it is empty (no line boxes: margins collapse through it) and the bottom margin of a block-in-inline that ends it (not
+// in the height).
 @(private)
-layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool) {
+layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool, f32) {
 	b := &c.l.boxes[bi]
 	// a re-layout replaces the previous result; when it was the last one made, its storage is reused
 	if b.lines[1] > b.lines[0] {
@@ -841,19 +845,21 @@ layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool) {
 	}
 	b.lines = {}
 	b.baseline, b.last_baseline = -1, -1
-	if b.items[1] <= b.items[0] { return 0, true }
+	if b.items[1] <= b.items[0] { return 0, true, 0 }
 	if c.pre != nil {
-		if h, empty, ok := pre_adopt(c, bi, cw, fc); ok { return h, empty }
+		if h, empty, ok := pre_adopt(c, bi, cw, fc); ok { return h, empty, 0 }   // (simple contexts: no block inside)
 	}
-	out, lines, h, empty := ifc_build(c, bi, cw, fc)
+	out, lines, h, empty, trail := ifc_build(c, bi, cw, fc)
 	ifc_publish(c, bi, out, lines)
-	return h, empty
+	return h, empty, trail
 }
 
 // Line building of the inline formatting context `bi` at content width `cw`: its fragments (lines refer to them from 0)
 // and lines, in buffers of the pass that stay valid until the next context of the same nesting level is built.
 @(private)
-ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (out: []Frag, lines: []Line, h: f32, empty: bool) {
+// `trail`: the bottom margin of a block-in-inline that ends the context, left out of `h` (it collapses with what
+// follows: layout_contents).
+ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (out: []Frag, lines: []Line, h: f32, empty: bool, trail: f32) {
 	b := &c.l.boxes[bi]
 	// working buffers, one set per nesting level of inline formatting contexts, reused for the whole pass
 	if c.lb_depth >= len(c.lb_bufs) {
@@ -950,7 +956,12 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (out: []Frag, lin
 		// a layout thread hands them back: kept by the UI thread if the result is taken (pre_adopt)
 		if c.segs_out != nil { append(c.segs_out, ..bufs.segs[:]) } else { keep_segs(c, bi, bufs.segs[:]) }
 	}
-	return lb.out[:], lb.lines[:], lb.y, !lb.any_line && !blocks
+	h = lb.y
+	if blocks && lb.block_margin != 0 && lb.block_end == lb.y {
+		h -= lb.block_margin
+		trail = lb.block_margin
+	}
+	return lb.out[:], lb.lines[:], h, !lb.any_line && !blocks, trail
 }
 
 // The lines and fragments of context `bi` join the layout's (contiguous); its inline boxes take the union of their
@@ -1012,6 +1023,12 @@ block_in_inline :: proc(lb: ^Line_Builder, k: i32) {
 	kb = &c.l.boxes[k]
 	w := kb.size.x
 	top := lb.y + kb.margin[0]
+	// first in its context: it sits in an anonymous block whose top collapses with the context's, so its top margin
+	// joins the margins still open above (CSS 2.1 §9.2.1.1, §8.3.1)
+	if lb.y == 0 && !lb.any_line && len(lb.lines) == 0 && lb.fc != nil && lb.fc.open != nil {
+		strut_add(lb.fc.open, kb.margin[0])
+		top = 0
+	}
 	res: Result
 	if .Bfc in kb.flags {
 		res = layout_contents(c, k, w, -1, -1, nil)
@@ -1022,6 +1039,7 @@ block_in_inline :: proc(lb: ^Line_Builder, k: i32) {
 	kb = &c.l.boxes[k]
 	kb.pos = {lb.cx + kb.margin[3], lb.cy + top + kb.pre_h}
 	lb.y = top + kb.pre_h + res.h + kb.margin[2]
+	lb.block_margin, lb.block_end = kb.margin[2], lb.y
 	lb.first = false
 	lb.any_line = true
 	start_line(lb)

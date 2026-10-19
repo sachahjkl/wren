@@ -326,9 +326,11 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 		if !ct { cfc.open = nil }
 		through := false
 		if .Ifc in b.flags {
-			h, empty := layout_ifc(c, bi, cw, &cfc)
+			h, empty, trail := layout_ifc(c, bi, cw, &cfc)
 			content_h = h
 			through = empty
+			// a block-in-inline ends the context: its bottom margin collapses with this box's, or counts here
+			if trail != 0 { if cbm { strut_add(&res.end, trail) } else { content_h += trail } }
 		} else {
 			h, end, thr := flow_blocks(c, bi, cw, ch_def, &cfc, ct, cbm)
 			content_h = h

@@ -477,7 +477,7 @@ pre_chunk :: proc(pre: ^Pre_Pass, k: int) {
 			}
 		}
 		s0 := len(ch.segs)
-		out, lines, h, empty := ifc_build(&wc, bi, r.cw, &fc)
+		out, lines, h, empty, _ := ifc_build(&wc, bi, r.cw, &fc)   // (simple contexts: no trailing block)
 		r.frags = {i32(len(ch.frags)), i32(len(ch.frags) + len(out))}
 		r.lines = {i32(len(ch.lines)), i32(len(ch.lines) + len(lines))}
 		r.segs = {i32(s0), i32(len(ch.segs))}

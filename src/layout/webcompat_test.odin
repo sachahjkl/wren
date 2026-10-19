@@ -152,6 +152,22 @@ quirks_mode_layout :: proc(t: ^testing.T) {
 	})
 }
 
+// A block inside an inline (block-in-inline, CSS 2.1 §9.2.1.1) sits in an anonymous block: its margins still collapse
+// with the blocks around (Google's footer under its language links).
+@(test)
+block_in_inline_margins_collapse :: proc(t: ^testing.T) {
+	with_layout(t, `<!doctype html><body style="margin:0;font-size:10px;line-height:10px">
+		<div id=a style="margin-bottom:24px">a</div><span><div id=b style="margin-top:19px;margin-bottom:30px">b</div></span><div id=c style="margin-top:5px">c</div>
+	</body>`, proc(t: ^testing.T, l: ^Layout, doc: ^dom.Document) {
+		y_of :: proc(l: ^Layout, doc: ^dom.Document, id: string) -> f32 {
+			r, _ := box_of(l, dom.find_by_id(doc, id), {800, 600}, 0)
+			return r.border.min.y
+		}
+		testing.expectf(t, math.abs(y_of(l, doc, "b") - 34) < 0.6, "24px and 19px collapse: b at 10 + 24 (%v)", y_of(l, doc, "b"))
+		testing.expectf(t, math.abs(y_of(l, doc, "c") - 74) < 0.6, "30px and 5px collapse: c at 44 + 30 (%v)", y_of(l, doc, "c"))
+	})
+}
+
 // An image's width / height attributes are CSS width / height of the lowest priority plus aspect-ratio: auto w / h
 // (HTML §15.4.1): the page's `height: auto` gives the decoded image its own ratio (a portrait photo given square
 // attributes stays a portrait), and the attributes' ratio holds the place until it is decoded. Values as Blink lays out.
