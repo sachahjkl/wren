@@ -22,7 +22,7 @@ WebSocket_create :: proc(c: ^Call, target: string, protocols: string) -> (u64, A
 	return h, .None
 }
 
-WebSocket_readyState :: proc(c: ^Call, socket: Api_WebSocket) -> i32 { return socket.data.state }
+WebSocket_readyState :: proc(c: ^Call, socket: Api_WebSocket) -> Api_WebSocketState { return Api_WebSocketState(socket.data.state) }
 WebSocket_url :: proc(c: ^Call, socket: Api_WebSocket) -> string { return socket.data.href }
 WebSocket_protocol :: proc(c: ^Call, socket: Api_WebSocket) -> string { return socket.data.protocol }
 WebSocket_extensions :: proc(c: ^Call, socket: Api_WebSocket) -> string { return socket.data.extensions }

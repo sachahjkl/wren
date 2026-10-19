@@ -6,11 +6,11 @@ foreign import console "console"
 
 @(default_calling_convention = "contextless")
 foreign console {
-	@(link_name = "log")
-	log :: proc(ptr: [^]u8, len: i32) ---
+	@(link_name = "console_log")
+	log :: proc(ptr: [^]u8, len: u32) ---
 }
 
-say :: proc "contextless" (s: string) { log(raw_data(s), i32(len(s))) }
+say :: proc "contextless" (s: string) { log(raw_data(s), u32(len(s))) }
 
 counter: int
 

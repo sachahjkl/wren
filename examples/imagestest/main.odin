@@ -5,7 +5,7 @@ package imagestest
 
 import "web:web"
 
-r: web.Handle
+r: web.Element
 
 IDS := [?]string{
 	"simple", "sized", "dup1", "dup2", "jpeg", "ico", "tiff", "anim", "fit", "srcset", "wdesc", "pic",
@@ -32,50 +32,51 @@ note :: proc "contextless" (l: ^Log, s: string) {
 note_int :: proc "contextless" (l: ^Log, v: i64) { b: [24]u8; note(l, itoa(v, b[:])) }
 text :: proc "contextless" (l: ^Log) -> string { return string(l.buf[:l.n]) }
 
-set :: proc "contextless" (name, value: string) { web.set_attribute(r, name, value) }
+set :: proc "contextless" (name, value: string) { web.Element_setAttribute(r, name, value) }
 
 events: Log
 
-on_image_event :: proc "contextless" (user: i32, ev: web.Handle) {
+on_image_event :: proc "contextless" (user: i32, ev: web.Event) {
 	tb: [16]u8
-	n := web.raw_eventType(ev, raw_data(tb[:]), i32(len(tb)))
+	ty, _ := web.Event_type(ev, tb[:])
 	note(&events, IDS[user])
 	note(&events, ":")
-	note(&events, string(tb[:min(int(max(n, 0)), len(tb))]))
+	note(&events, ty)
 	note(&events, " ")
 	set("data-events", text(&events))
 }
 
 listen :: proc "contextless" (i: int) {
-	img := web.get_element_by_id(IDS[i])
-	if img == web.NIL { return }
-	web.add_listener(img, "load", on_image_event, i32(i))
-	web.add_listener(img, "error", on_image_event, i32(i))
+	img := web.Document_getElementById(IDS[i])
+	if img == 0 { return }
+	web.EventTarget_addEventListener(img, "load", on_image_event, i32(i))
+	web.EventTarget_addEventListener(img, "error", on_image_event, i32(i))
 }
 
 @(export)
 wb_main :: proc "contextless" () {
-	r = web.create_element("div")
-	web.set_attribute(r, "id", "r")
+	r, _ = web.Document_createElement("div")
+	web.Element_setAttribute(r, "id", "r")
 	web.Node_appendChild(web.Document_body(), r)
 	for _, i in IDS { listen(i) }
 }
 
-el :: proc "contextless" (i: i32) -> web.Handle { return web.get_element_by_id(IDS[i]) }
+el :: proc "contextless" (i: i32) -> web.HTMLImageElement { return web.HTMLImageElement(web.Document_getElementById(IDS[i])) }
 
 @(export)
 natural_width :: proc "contextless" (i: i32) -> i32 { return web.HTMLImageElement_naturalWidth(el(i)) }
 @(export)
 natural_height :: proc "contextless" (i: i32) -> i32 { return web.HTMLImageElement_naturalHeight(el(i)) }
 @(export)
-complete :: proc "contextless" (i: i32) -> i32 { return web.HTMLImageElement_complete(el(i)) }
+complete :: proc "contextless" (i: i32) -> i32 { return web.HTMLImageElement_complete(el(i)) ? 1 : 0 }
 
 // currentSrc into data-src of #r.
 @(export)
 current_src :: proc "contextless" (i: i32) -> i32 {
 	buf: [512]u8
-	s, n := web.image_current_src(el(i), buf[:])
+	s, _ := web.HTMLImageElement_currentSrc(el(i), buf[:])
 	set("data-src", s)
+	n, _ := web.HTMLImageElement_currentSrc_len(el(i))
 	return i32(n)
 }
 
@@ -84,24 +85,24 @@ current_src :: proc "contextless" (i: i32) -> i32 {
 change_src :: proc "contextless" (which: i32) -> i32 {
 	img := el(0)
 	switch which {
-	case 0: web.set_attribute(img, "src", "/images/f/blue.bmp?again")
-	case 1: web.set_attribute(img, "src", "/images/f/fake.png")
+	case 0: web.Element_setAttribute(img, "src", "/images/f/blue.bmp?again")
+	case 1: web.Element_setAttribute(img, "src", "/images/f/fake.png")
 	}
-	return web.HTMLImageElement_complete(img)
+	return web.HTMLImageElement_complete(img) ? 1 : 0
 }
 
 // An <img> made by script and appended later (its events are recorded as "late").
 @(export)
 add_late :: proc "contextless" () {
-	img := web.create_element("img")
-	web.set_attribute(img, "id", "late")
-	web.add_listener(img, "load", on_image_event, i32(len(IDS) - 1))
-	web.add_listener(img, "error", on_image_event, i32(len(IDS) - 1))
-	web.set_attribute(img, "src", "/images/f/still.gif?late")
+	img, _ := web.Document_createElement("img")
+	web.Element_setAttribute(img, "id", "late")
+	web.EventTarget_addEventListener(img, "load", on_image_event, i32(len(IDS) - 1))
+	web.EventTarget_addEventListener(img, "error", on_image_event, i32(len(IDS) - 1))
+	web.Element_setAttribute(img, "src", "/images/f/still.gif?late")
 	web.Node_appendChild(web.Document_body(), img)
 }
 
-on_decoded :: proc "contextless" (user: i32, p: web.Handle, state: web.Promise_State) {
+on_decoded :: proc "contextless" (user: i32, p: web.Promise, state: web.PromiseState) {
 	name := user == 0 ? "data-decode-ok" : "data-decode-broken"
 	set(name, state == .Fulfilled ? "fulfilled" : "rejected")
 }
@@ -112,16 +113,16 @@ decode_probe :: proc "contextless" () {
 	web.Promise_then(web.HTMLImageElement_decode(el(12)), on_decoded, 1)   // #broken
 }
 
-on_image_decoded :: proc "contextless" (user: i32, p: web.Handle, state: web.Promise_State) {
+on_image_decoded :: proc "contextless" (user: i32, p: web.Promise, state: web.PromiseState) {
 	if user == 1 {
 		set("data-idecode-bad", state == .Rejected ? "rejected" : "fulfilled")
 		return
 	}
 	if state != .Fulfilled { set("data-idecode", "rejected"); return }
-	buf := web.Handle(web.Promise_value(p))
-	w, h, _ := web.image_decode_size(p)
+	buf := web.Buffer(web.Promise_value(p))
+	w, h := decode_size(p)
 	px: [4]u8
-	web.buffer_read(buf, px[:])
+	web.Buffer_read(buf, 0, px[:])
 	l: Log
 	note_int(&l, i64(w)); note(&l, "x"); note_int(&l, i64(h)); note(&l, " ")
 	note_int(&l, web.Buffer_length(buf)); note(&l, " ")
@@ -132,9 +133,21 @@ on_image_decoded :: proc "contextless" (user: i32, p: web.Handle, state: web.Pro
 
 @(export)
 image_decode_probe :: proc "contextless" () {
-	good := web.buffer_create(RED_PNG)
+	good, _ := web.Buffer_create(RED_PNG)
 	web.Promise_then(web.Image_decode(good), on_image_decoded, 0)
 	junk := [?]u8{1, 2, 3, 4, 5, 6, 7, 8}
-	bad := web.buffer_create(junk[:])
+	bad, _ := web.Buffer_create(junk[:])
 	web.Promise_then(web.Image_decode(bad), on_image_decoded, 1)
+}
+
+// The "<width>x<height>" text of an Image_decode promise.
+decode_size :: proc "contextless" (p: web.Promise) -> (w, h: int) {
+	tb: [32]u8
+	s, _ := web.Promise_text(p, tb[:])
+	cur := &w
+	for c in transmute([]u8)s {
+		if c == 'x' { cur = &h; continue }
+		if c >= '0' && c <= '9' { cur^ = cur^ * 10 + int(c - '0') }
+	}
+	return
 }

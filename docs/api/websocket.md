@@ -12,6 +12,17 @@ Exposed to: Window. Source: `api/websocket.widl`.
 
 Checked by the browser on every call (`lookup_WebSocket`).
 
+### enum `WebSocketState` : i32
+
+WebSocket.readyState
+
+| member | value | |
+|---|---:|---|
+| `Connecting` | 0 |  |%!(EXTRA false)
+| `Open` | 1 |  |%!(EXTRA false)
+| `Closing` | 2 |  |%!(EXTRA false)
+| `Closed` | 3 |  |%!(EXTRA false)
+
 ## Functions
 
 ### `WebSocket_create`
@@ -30,12 +41,10 @@ Host: `WebSocket_create :: proc(c: ^Call, url: string, protocols: string) -> (u6
 ### `WebSocket_readyState`
 
 ```
-i32 WebSocket_readyState(WebSocket socket)
+WebSocketState WebSocket_readyState(WebSocket socket)
 ```
 
-readyState: 0 connecting, 1 open, 2 closing, 3 closed.
-
-Host: `WebSocket_readyState :: proc(c: ^Call, socket: Api_WebSocket) -> i32`
+Host: `WebSocket_readyState :: proc(c: ^Call, socket: Api_WebSocket) -> Api_WebSocketState`
 
 ### `WebSocket_url`
 

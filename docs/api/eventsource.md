@@ -13,6 +13,16 @@ Exposed to: Window. Source: `api/eventsource.widl`.
 
 Checked by the browser on every call (`lookup_EventSource`).
 
+### enum `EventSourceState` : i32
+
+EventSource.readyState
+
+| member | value | |
+|---|---:|---|
+| `Connecting` | 0 |  |%!(EXTRA false)
+| `Open` | 1 |  |%!(EXTRA false)
+| `Closed` | 2 |  |%!(EXTRA false)
+
 ## Functions
 
 ### `EventSource_create`
@@ -30,12 +40,10 @@ Host: `EventSource_create :: proc(c: ^Call, url: string, with_credentials: bool)
 ### `EventSource_readyState`
 
 ```
-i32 EventSource_readyState(EventSource source)
+EventSourceState EventSource_readyState(EventSource source)
 ```
 
-readyState: 0 connecting, 1 open, 2 closed.
-
-Host: `EventSource_readyState :: proc(c: ^Call, source: Api_EventSource) -> i32`
+Host: `EventSource_readyState :: proc(c: ^Call, source: Api_EventSource) -> Api_EventSourceState`
 
 ### `EventSource_url`
 

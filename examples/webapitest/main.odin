@@ -5,7 +5,7 @@ package webapitest
 
 import "web:web"
 
-r: web.Handle   // the result element
+r: web.Element   // the result element
 
 itoa :: proc "contextless" (v: i64, buf: []u8) -> string {
 	if v == 0 { buf[len(buf) - 1] = '0'; return string(buf[len(buf) - 1:]) }
@@ -25,13 +25,16 @@ note :: proc "contextless" (l: ^Log, s: string) {
 note_int :: proc "contextless" (l: ^Log, v: i64) { b: [24]u8; note(l, itoa(v, b[:])) }
 text :: proc "contextless" (l: ^Log) -> string { return string(l.buf[:l.n]) }
 
-set :: proc "contextless" (name, value: string) { web.set_attribute(r, name, value) }
+set :: proc "contextless" (name, value: string) { web.Element_setAttribute(r, name, value) }
 set_int :: proc "contextless" (name: string, v: i64) { b: [24]u8; set(name, itoa(v, b[:])) }
+
+// The string of a (string, Error) result, "" on error.
+str :: proc "contextless" (s: string, err: web.Error) -> string { return s if err == .None else "" }
 
 @(export)
 wb_main :: proc "contextless" () {
-	r = web.create_element("div")
-	web.set_attribute(r, "id", "r")
+	r, _ = web.Document_createElement("div")
+	web.Element_setAttribute(r, "id", "r")
 	web.Node_appendChild(web.Document_body(), r)
 }
 
@@ -56,7 +59,7 @@ on_raf_a :: proc "contextless" (user: i32, ts: f64) {
 	first_ts = ts
 	note(&order, "rafA ")
 	web.queueMicrotask(on_order_micro, 2)                  // runs before rafB would
-	web.requestAnimationFrame(on_raf_c, 0)                  // next frame, not this one
+	web.requestAnimationFrame(on_raf_c)                     // next frame, not this one
 	web.cancelAnimationFrame(raf_b)                         // cancelled from inside the frame: must not run
 	if ts < 0 { note(&order, "NEGTS ") }
 }
@@ -66,9 +69,9 @@ on_raf_d :: proc "contextless" (user: i32, ts: f64) { note(&order, "rafD ") }
 order_probe :: proc "contextless" () {
 	order.n = 0
 	web.Timers_setTimeout(on_order_timer, 0, 30)
-	web.requestAnimationFrame(on_raf_a, 0)
-	raf_b = web.requestAnimationFrame(on_raf_b, 0)
-	web.requestAnimationFrame(on_raf_d, 0)
+	web.requestAnimationFrame(on_raf_a)
+	raf_b = web.requestAnimationFrame(on_raf_b)
+	web.requestAnimationFrame(on_raf_d)
 	web.queueMicrotask(on_order_micro, 1)
 	note(&order, "sync ")
 }
@@ -105,9 +108,10 @@ nesting_probe :: proc "contextless" () {
 
 idle: Log
 
-on_idle :: proc "contextless" (user: i32, deadline: f64, did_timeout: i32) {
+on_idle :: proc "contextless" (user: i32, deadline: f64, did_timeout: bool) {
 	note(&idle, "i"); note_int(&idle, i64(user))
-	note(&idle, did_timeout != 0 ? "T " : (web.idle_time_remaining(deadline) > 0 && web.idle_time_remaining(deadline) <= 50 ? "+ " : "? "))
+	left := deadline - web.Performance_now()
+	note(&idle, did_timeout ? "T " : (left > 0 && left <= 50 ? "+ " : "? "))
 	if user == 2 { set("data-idle", text(&idle)) }
 }
 
@@ -123,7 +127,7 @@ idle_probe :: proc "contextless" () {
 ////////////////////////////////
 // Visibility and background throttling
 
-on_visibility :: proc "contextless" (user: i32, ev: web.Handle) {
+on_visibility :: proc "contextless" (user: i32, ev: web.Event) {
 	set("data-visibility", web.Document_visibilityState() == .Hidden ? "hidden" : "visible")
 }
 
@@ -136,7 +140,7 @@ on_hidden_timer :: proc "contextless" (user: i32) {
 
 @(export)
 visibility_listen :: proc "contextless" () {
-	web.add_listener(web.Document_self(), "visibilitychange", on_visibility)
+	web.EventTarget_addEventListener(web.Document_self(), "visibilitychange", on_visibility)
 }
 
 @(export)
@@ -149,17 +153,17 @@ hidden_timer_probe :: proc "contextless" () {
 // AbortController / AbortSignal and fetch
 
 abort_log: Log
-controller: web.Handle
+controller: web.AbortController
 
-on_abort_event :: proc "contextless" (user: i32, ev: web.Handle) {
+on_abort_event :: proc "contextless" (user: i32, ev: web.Event) {
 	note(&abort_log, "ev"); note_int(&abort_log, web.Event_code(ev)); note(&abort_log, " ")
 }
 
-on_slow :: proc "contextless" (user: i32, f: web.Handle, st: web.Fetch_State) {
+on_slow :: proc "contextless" (user: i32, f: web.Fetch, st: web.FetchState) {
 	#partial switch st {
 	case .Response:
 		note(&abort_log, "resp ")
-		web.abort_controller_abort(controller)        // abort while the body is still coming
+		web.AbortController_abort(controller)        // abort while the body is still coming
 	case .Failed:
 		note(&abort_log, "fail"); note_int(&abort_log, i64(web.Fetch_errorKind(f))); note(&abort_log, " ")
 		web.Fetch_release(f)
@@ -171,31 +175,31 @@ on_slow :: proc "contextless" (user: i32, f: web.Handle, st: web.Fetch_State) {
 	}
 }
 
-on_promise_text :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
-	set("data-abort-promise", st == .Rejected && web.Promise_value(p) == i64(web.Web_Error.Abort) ? "rejected-abort" : "other")
+on_promise_text :: proc "contextless" (user: i32, p: web.Promise, st: web.PromiseState) {
+	set("data-abort-promise", st == .Rejected && web.Promise_value(p) == i64(web.Error.Abort) ? "rejected-abort" : "other")
 }
 
-on_promise_response :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
+on_promise_response :: proc "contextless" (user: i32, p: web.Promise, st: web.PromiseState) {
 	if st == .Rejected {
-		set("data-abort-promise", web.Promise_value(p) == i64(web.Web_Error.Abort) ? "rejected-abort" : "other")
+		set("data-abort-promise", web.Promise_value(p) == i64(web.Error.Abort) ? "rejected-abort" : "other")
 		return
 	}
-	resp := web.Handle(web.Promise_value(p))
-	web.Promise_then(web.Response_text(resp), on_promise_text, 0)
+	resp := web.Response(web.Promise_value(p))
+	web.Promise_then(web.Response_text(resp), on_promise_text)
 }
 
-on_pre_aborted :: proc "contextless" (user: i32, f: web.Handle, st: web.Fetch_State) {
+on_pre_aborted :: proc "contextless" (user: i32, f: web.Fetch, st: web.FetchState) {
 	set_int("data-pre-aborted", i64(web.Fetch_errorKind(f)))
 	web.Fetch_release(f)
 }
 
-on_timeout_signal :: proc "contextless" (user: i32, ev: web.Handle) {
+on_timeout_signal :: proc "contextless" (user: i32, ev: web.Event) {
 	set_int("data-timeout", web.Event_code(ev))
 }
 
-on_any_signal :: proc "contextless" (user: i32, ev: web.Handle) {
+on_any_signal :: proc "contextless" (user: i32, ev: web.Event) {
 	buf: [64]u8
-	set("data-any", web.event_text(ev, buf[:]))
+	set("data-any", str(web.Event_text(ev, buf[:])))
 }
 
 @(export)
@@ -203,26 +207,27 @@ abort_probe :: proc "contextless" () {
 	abort_log.n = 0
 	controller = web.AbortController_create()
 	sig := web.AbortController_signal(controller)
-	web.add_listener(sig, "abort", on_abort_event)
-	web.fetch_with_signal("http://127.0.0.1:8765/webapi/slow?ms=8000", on_slow, 0, {signal = sig})
-	web.Promise_then(web.fetch_promise("http://127.0.0.1:8765/webapi/slow?ms=8000", {signal = sig}), on_promise_response, 0)
+	web.EventTarget_addEventListener(sig, "abort", on_abort_event)
+	web.Fetch_startWithSignal("http://127.0.0.1:8765/webapi/slow?ms=8000", on_slow, 0, signal = sig)
+	pr, _ := web.Fetch_promise("http://127.0.0.1:8765/webapi/slow?ms=8000", signal = sig)
+	web.Promise_then(pr, on_promise_response)
 
 	// already aborted: fails at once with Aborted, nothing is sent
-	pre := web.abort_signal_aborted_with()
-	web.fetch_with_signal("http://127.0.0.1:8765/webapi/slow?ms=8000", on_pre_aborted, 0, {signal = pre})
+	pre := web.AbortSignal_abort()
+	web.Fetch_startWithSignal("http://127.0.0.1:8765/webapi/slow?ms=8000", on_pre_aborted, 0, signal = pre)
 
 	// AbortSignal.timeout(): TimeoutError
-	ts := web.AbortSignal_timeout(30)
-	web.add_listener(ts, "abort", on_timeout_signal)
+	ts, _ := web.AbortSignal_timeout(30)
+	web.EventTarget_addEventListener(ts, "abort", on_timeout_signal)
 
 	// AbortSignal.any(): follows its sources, with their reason
 	c2 := web.AbortController_create()
-	never := web.AbortSignal_timeout(1e7)
-	list := [2]web.Handle{web.AbortController_signal(c2), never}
-	any_sig := web.abort_signal_any(list[:])
-	web.add_listener(any_sig, "abort", on_any_signal)
-	web.abort_controller_abort(c2, -77, "custom reason")
-	if web.AbortSignal_aborted(any_sig) != 1 { set("data-any", "not aborted") }
+	never, _ := web.AbortSignal_timeout(1e7)
+	list := [2]web.AbortSignal{web.AbortController_signal(c2), never}
+	any_sig, _ := web.AbortSignal_any(list[:])
+	web.EventTarget_addEventListener(any_sig, "abort", on_any_signal)
+	web.AbortController_abort(c2, -77, "custom reason")
+	if !web.AbortSignal_aborted(any_sig) { set("data-any", "not aborted") }
 	if web.AbortSignal_reasonCode(any_sig) != -77 { set("data-any", "bad code") }
 }
 
@@ -230,86 +235,90 @@ abort_probe :: proc "contextless" () {
 // Promise fetch: streaming body, buffer request body, text decoding across chunks
 
 stream_log: Log
-stream: web.Handle
-split_dec: web.Handle
+stream: web.ReadableStream
+split_dec: web.TextDecoder
 split_out: Log
-split_stream: web.Handle
+split_stream: web.ReadableStream
 
-on_chunk :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
+on_chunk :: proc "contextless" (user: i32, p: web.Promise, st: web.PromiseState) {
 	if st != .Fulfilled { set("data-stream", "error"); return }
-	b := web.Handle(web.Promise_value(p))
+	b := web.Buffer(web.Promise_value(p))
 	if b == 0 {
 		set("data-stream", text(&stream_log))
 		return
 	}
 	buf: [256]u8
-	note(&stream_log, string(web.buffer_read(b, buf[:])))
+	note(&stream_log, string(buf[:web.Buffer_read(b, 0, buf[:])]))
 	note(&stream_log, "|")
 	web.Object_release(b)
-	web.Promise_then(web.Stream_read(stream), on_chunk, 0)
+	web.Promise_then(web.Stream_read(stream), on_chunk)
 }
 
-on_chunks_response :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
+on_chunks_response :: proc "contextless" (user: i32, p: web.Promise, st: web.PromiseState) {
 	if st != .Fulfilled { set("data-stream", "rejected"); return }
-	resp := web.Handle(web.Promise_value(p))
-	stream = web.Response_body(resp)
-	if web.Response_body(resp) != 0 { set("data-stream", "body used twice"); return }
-	web.Promise_then(web.Stream_read(stream), on_chunk, 0)
+	resp := web.Response(web.Promise_value(p))
+	stream, _ = web.Response_body(resp)
+	if _, again := web.Response_body(resp); again == .None { set("data-stream", "body used twice"); return }
+	web.Promise_then(web.Stream_read(stream), on_chunk)
 }
 
-on_echo_buffer :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
+on_echo_buffer :: proc "contextless" (user: i32, p: web.Promise, st: web.PromiseState) {
 	if st != .Fulfilled { set("data-echo", "rejected"); return }
-	b := web.Handle(web.Promise_value(p))
+	b := web.Buffer(web.Promise_value(p))
 	buf: [64]u8
-	set("data-echo", string(web.buffer_read(b, buf[:])))
+	set("data-echo", string(buf[:web.Buffer_read(b, 0, buf[:])]))
 	web.Object_release(b)
 }
 
-on_echo_response :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
+on_echo_response :: proc "contextless" (user: i32, p: web.Promise, st: web.PromiseState) {
 	if st != .Fulfilled { set("data-echo", "rejected"); return }
-	resp := web.Handle(web.Promise_value(p))
-	web.Promise_then(web.Response_arrayBuffer(resp), on_echo_buffer, 0)
-	if web.Response_bodyUsed(resp) != 1 { set("data-echo", "bodyUsed") }
+	resp := web.Response(web.Promise_value(p))
+	web.Promise_then(web.Response_arrayBuffer(resp), on_echo_buffer)
+	if !web.Response_bodyUsed(resp) { set("data-echo", "bodyUsed") }
 }
 
-on_split_chunk :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
+on_split_chunk :: proc "contextless" (user: i32, p: web.Promise, st: web.PromiseState) {
 	if st != .Fulfilled { set("data-split", "error"); return }
-	b := web.Handle(web.Promise_value(p))
+	b := web.Buffer(web.Promise_value(p))
 	out: [64]u8
 	if b == 0 {
-		s, _ := web.text_decode(split_dec, nil, out[:])      // flush
+		s, _ := web.TextDecoder_decode(split_dec, nil, false, out[:])      // flush
 		note(&split_out, s)
 		set("data-split", text(&split_out))
 		return
 	}
-	s, _ := web.text_decode_buffer(split_dec, b, out[:], stream = true)
+	s, _ := web.TextDecoder_decodeBuffer(split_dec, b, true, out[:])
 	note(&split_out, s); note(&split_out, "|")
 	web.Object_release(b)
-	web.Promise_then(web.Stream_read(split_stream), on_split_chunk, 0)
+	web.Promise_then(web.Stream_read(split_stream), on_split_chunk)
 }
 
-on_split_response :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
+on_split_response :: proc "contextless" (user: i32, p: web.Promise, st: web.PromiseState) {
 	if st != .Fulfilled { set("data-split", "rejected"); return }
-	split_stream = web.Response_body(web.Handle(web.Promise_value(p)))
-	web.Promise_then(web.Stream_read(split_stream), on_split_chunk, 0)
+	split_stream, _ = web.Response_body(web.Response(web.Promise_value(p)))
+	web.Promise_then(web.Stream_read(split_stream), on_split_chunk)
 }
 
-on_network_error :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
-	set("data-neterr", st == .Rejected && web.Promise_value(p) == i64(web.Web_Error.Network) ? "rejected" : "other")
+on_network_error :: proc "contextless" (user: i32, p: web.Promise, st: web.PromiseState) {
+	set("data-neterr", st == .Rejected && web.Promise_value(p) == i64(web.Error.Network) ? "rejected" : "other")
+}
+
+fetch_then :: proc "contextless" (pr: web.Promise, err: web.Error, reaction: web.PromiseReaction) {
+	if err == .None { web.Promise_then(pr, reaction) }
 }
 
 @(export)
 fetch_probe :: proc "contextless" () {
 	stream_log.n = 0
 	split_out.n = 0
-	web.Promise_then(web.fetch_promise("/webapi/chunks?n=3&ms=60"), on_chunks_response, 0)
+	fetch_then(web.Fetch_promise("/webapi/chunks?n=3&ms=60"), on_chunks_response)
 	body := [5]u8{'b', 'y', 't', 'e', 's'}
-	buf := web.buffer_create(body[:])
-	web.Promise_then(web.fetch_promise("/webapi/echo", {method = "POST", body_buffer = buf}), on_echo_response, 0)
+	buf, _ := web.Buffer_create(body[:])
+	fetch_then(web.Fetch_promise("/webapi/echo", "POST", body_buffer = buf), on_echo_response)
 	web.Object_release(buf)   // the request copied it
-	split_dec = web.text_decoder("utf-8")
-	web.Promise_then(web.fetch_promise("/webapi/split"), on_split_response, 0)
-	web.Promise_then(web.fetch_promise("https://127.0.0.1:8766/"), on_network_error, 0)
+	split_dec, _ = web.TextDecoder_create("utf-8")
+	fetch_then(web.Fetch_promise("/webapi/split"), on_split_response)
+	fetch_then(web.Fetch_promise("https://127.0.0.1:8766/"), on_network_error)
 }
 
 ////////////////////////////////
@@ -317,40 +326,39 @@ fetch_probe :: proc "contextless" () {
 
 @(export)
 encoding_probe :: proc "contextless" () -> i32 {
-	b := web.text_encode("héllo")
+	b, _ := web.TextEncoder_encode("héllo")
 	if web.Buffer_length(b) != 6 { return -1 }
 	web.Object_release(b)
 	dst: [4]u8
-	read, written := web.text_encode_into("aé€", dst[:])    // 1 + 2 bytes fit, the euro (3) does not
-	if read != 3 || written != 3 { return -2 }
+	res := web.TextEncoder_encodeInto(transmute([]u8)string("aé€"), dst[:])    // 1 + 2 bytes fit, the euro (3) does not
+	if res.read != 3 || res.written != 3 { return -2 }
 
-	d := web.text_decoder("utf-8")
+	d, _ := web.TextDecoder_create("utf-8")
 	out: [64]u8
-	s, _ := web.text_decode(d, {0x61, 0xE2, 0x82}, out[:], stream = true)
+	s, _ := web.TextDecoder_decode(d, {0x61, 0xE2, 0x82}, true, out[:])
 	if s != "a" { return -3 }
-	s, _ = web.text_decode(d, {0xAC, 0x62}, out[:])
+	s, _ = web.TextDecoder_decode(d, {0xAC, 0x62}, false, out[:])
 	if s != "€b" { return -4 }
 	enc: [32]u8
-	if web.text_decoder_encoding(d, enc[:]) != "utf-8" { return -5 }
+	if str(web.TextDecoder_encoding(d, enc[:])) != "utf-8" { return -5 }
 	web.Object_release(d)
 
-	w := web.text_decoder("latin1")
-	if web.text_decoder_encoding(w, enc[:]) != "windows-1252" { return -6 }
-	s, _ = web.text_decode(w, {0x80, 0x20, 0xE9}, out[:])
+	w, _ := web.TextDecoder_create("latin1")
+	if str(web.TextDecoder_encoding(w, enc[:])) != "windows-1252" { return -6 }
+	s, _ = web.TextDecoder_decode(w, {0x80, 0x20, 0xE9}, false, out[:])
 	if s != "€ é" { return -7 }
 	web.Object_release(w)
 
-	f := web.text_decoder("utf-8", {.Fatal})
-	_, n := web.text_decode(f, {0xFF}, out[:])
-	if n != int(web.Web_Error.Type) { return -8 }
-	s, _ = web.text_decode(f, {0x6F, 0x6B}, out[:])          // usable again after the error
+	f, _ := web.TextDecoder_create("utf-8", {.Fatal})
+	if _, e := web.TextDecoder_decode(f, {0xFF}, false, out[:]); e != .Type { return -8 }
+	s, _ = web.TextDecoder_decode(f, {0x6F, 0x6B}, false, out[:])          // usable again after the error
 	if s != "ok" { return -9 }
 	web.Object_release(f)
 
-	if web.text_decoder("no-such-label") != 0 { return -10 }
+	if _, e := web.TextDecoder_create("no-such-label"); e != .Range { return -10 }
 
-	bom := web.text_decoder("utf-8")
-	s, _ = web.text_decode(bom, {0xEF, 0xBB, 0xBF, 0x68}, out[:])
+	bom, _ := web.TextDecoder_create("utf-8")
+	s, _ = web.TextDecoder_decode(bom, {0xEF, 0xBB, 0xBF, 0x68}, false, out[:])
 	if s != "h" { return -11 }
 	web.Object_release(bom)
 	return 1
@@ -359,11 +367,11 @@ encoding_probe :: proc "contextless" () -> i32 {
 ////////////////////////////////
 // Crypto
 
-on_digest :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
+on_digest :: proc "contextless" (user: i32, p: web.Promise, st: web.PromiseState) {
 	if st != .Fulfilled { set(user == 0 ? "data-sha256" : "data-sha256-big", "rejected"); return }
-	b := web.Handle(web.Promise_value(p))
+	b := web.Buffer(web.Promise_value(p))
 	raw: [64]u8
-	got := web.buffer_read(b, raw[:])
+	got := raw[:web.Buffer_read(b, 0, raw[:])]
 	HEX := "0123456789abcdef"
 	hex: [128]u8
 	for v, i in got { hex[2 * i] = HEX[v >> 4]; hex[2 * i + 1] = HEX[v & 15] }
@@ -371,8 +379,8 @@ on_digest :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State
 	web.Object_release(b)
 }
 
-on_bad_alg :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
-	set("data-badalg", st == .Rejected && web.Promise_value(p) == i64(web.Web_Error.Not_Supported) ? "rejected" : "other")
+on_bad_alg :: proc "contextless" (user: i32, p: web.Promise, st: web.PromiseState) {
+	set("data-badalg", st == .Rejected && web.Promise_value(p) == i64(web.Error.Not_Supported) ? "rejected" : "other")
 }
 
 big_random: [70000]u8
@@ -380,40 +388,41 @@ big_random: [70000]u8
 @(export)
 crypto_probe :: proc "contextless" () -> i32 {
 	rnd: [32]u8
-	if web.get_random_values(rnd[:]) != .None { return -1 }
+	if web.Crypto_getRandomValues(rnd[:]) != .None { return -1 }
 	nonzero := 0
 	for v in rnd { if v != 0 { nonzero += 1 } }
 	if nonzero < 16 { return -2 }
-	if web.get_random_values(big_random[:]) != .Quota { return -3 }
+	if web.Crypto_getRandomValues(big_random[:]) != .Quota { return -3 }
 	ub: [36]u8
-	u := web.random_uuid(&ub)
+	u, _ := web.Crypto_randomUUID(ub[:])
 	if len(u) != 36 || u[14] != '4' || u[8] != '-' || !(u[19] == '8' || u[19] == '9' || u[19] == 'a' || u[19] == 'b') { return -4 }
 	abc := [3]u8{'a', 'b', 'c'}
-	web.Promise_then(web.digest("SHA-256", abc[:]), on_digest, 0)
-	zeros := web.Buffer_alloc(1 << 20)                       // above crypto.digest_offload_bytes: hashed on a worker
-	web.Promise_then(web.digest_buffer("sha-256", zeros), on_digest, 1)
+	web.Promise_then(web.SubtleCrypto_digest("SHA-256", abc[:]), on_digest, 0)
+	zeros, _ := web.Buffer_alloc(1 << 20)                       // above crypto.digest_offload_bytes: hashed on a worker
+	web.Promise_then(web.SubtleCrypto_digestBuffer("sha-256", zeros), on_digest, 1)
 	web.Object_release(zeros)
-	web.Promise_then(web.digest("MD5", abc[:]), on_bad_alg, 0)
+	web.Promise_then(web.SubtleCrypto_digest("MD5", abc[:]), on_bad_alg)
 	return 1
 }
 
 ////////////////////////////////
 // Web Storage
 
-on_storage :: proc "contextless" (user: i32, ev: web.Handle) {
+on_storage :: proc "contextless" (user: i32, ev: web.Event) {
 	l: Log
 	buf: [128]u8
-	k, kf := web.storage_event_field(ev, .Key, buf[:]); note(&l, kf ? k : "<null>"); note(&l, ",")
-	o, of := web.storage_event_field(ev, .Old_Value, buf[:]); note(&l, of ? o : "<null>"); note(&l, ",")
-	n, nf := web.storage_event_field(ev, .New_Value, buf[:]); note(&l, nf ? n : "<null>"); note(&l, ",")
-	u, _ := web.storage_event_field(ev, .Url, buf[:]); note(&l, u); note(&l, ",")
-	note_int(&l, i64(web.StorageEvent_storageArea(ev)))
+	k, ke := web.StorageEvent_get(ev, .Key, buf[:]); note(&l, ke == .None ? k : "<null>"); note(&l, ",")
+	o, oe := web.StorageEvent_get(ev, .Old_Value, buf[:]); note(&l, oe == .None ? o : "<null>"); note(&l, ",")
+	n, ne := web.StorageEvent_get(ev, .New_Value, buf[:]); note(&l, ne == .None ? n : "<null>"); note(&l, ",")
+	note(&l, str(web.StorageEvent_get(ev, .Url, buf[:]))); note(&l, ",")
+	area, _ := web.StorageEvent_storageArea(ev)
+	note_int(&l, i64(area))
 	set("data-storage-event", text(&l))
 }
 
 @(export)
 storage_listen :: proc "contextless" () {
-	web.add_listener(web.Window_self(), "storage", on_storage)
+	web.EventTarget_addEventListener(web.Window_self(), "storage", on_storage)
 }
 
 // mode 0: write; 1: read k (returns its length, -1 missing); 2: quota check; 3: security check (opaque origin)
@@ -422,26 +431,25 @@ storage_probe :: proc "contextless" (mode: i32) -> i32 {
 	buf: [256]u8
 	switch mode {
 	case 0:
-		if web.storage_set(.Local, "k", "persisted value") != 0 { return -1 }
-		if web.storage_set(.Local, "k", "persisted value") != 0 { return -2 }   // same value: no change, no event
-		if web.storage_set(.Session, "s", "tab only") != 0 { return -3 }
-		key, ok := web.storage_key(.Local, 0, buf[:])
-		if !ok || key != "k" { return -4 }
+		if web.Storage_setItem(.Local, "k", "persisted value") != .None { return -1 }
+		if web.Storage_setItem(.Local, "k", "persisted value") != .None { return -2 }   // same value: no change, no event
+		if web.Storage_setItem(.Session, "s", "tab only") != .None { return -3 }
+		key, err := web.Storage_key(.Local, 0, buf[:])
+		if err != .None || key != "k" { return -4 }
 		return 1
 	case 1:
-		v, found, err := web.storage_get(.Local, "k", buf[:])
-		if err != 0 { return err }
-		if !found { return -1 }
+		v, err := web.Storage_getItem(.Local, "k", buf[:])
+		if err == .Not_Found { return -1 }
+		if err != .None { return i32(err) }
 		return i32(len(v))
 	case 2:
 		big: [3000]u8
 		for i in 0 ..< len(big) { big[i] = 'x' }
-		rc := web.storage_set(.Local, "big", string(big[:]))
-		_, found, _ := web.storage_get(.Local, "big", buf[:])
-		if found { return -100 }
-		return rc
+		rc := web.Storage_setItem(.Local, "big", string(big[:]))
+		if _, err := web.Storage_getItem(.Local, "big", buf[:]); err == .None { return -100 }
+		return i32(rc)
 	case 3:
-		return web.storage_set(.Local, "k", "v")
+		return i32(web.Storage_setItem(.Local, "k", "v"))
 	}
 	return 0
 }
@@ -449,46 +457,50 @@ storage_probe :: proc "contextless" (mode: i32) -> i32 {
 ////////////////////////////////
 // URL / URLSearchParams (synchronous)
 
+url_buf: [256]u8
+
+g :: proc "contextless" (u: web.URL, c: web.URLComponent) -> string { return str(web.URL_get(u, c, url_buf[:])) }
+
 @(export)
 url_probe :: proc "contextless" () -> i32 {
 	buf: [256]u8
-	u := web.url_parse("../b/c?x=1#f", "https://user@example.com/a/d/e", true)
-	if u == 0 { return -1 }
-	if web.url_get(u, .Href, buf[:]) != "https://user@example.com/a/b/c?x=1#f" { return -2 }
-	if web.url_get(u, .Origin, buf[:]) != "https://example.com" { return -3 }
-	web.url_set(u, .Port, "8443")
-	web.url_set(u, .Hostname, "other.example")
-	web.url_set(u, .Hash, "")
-	web.url_set(u, .Protocol, "http")
-	if web.url_get(u, .Href, buf[:]) != "http://user@other.example:8443/a/b/c?x=1" { return -4 }
-	if web.url_get(u, .Host, buf[:]) != "other.example:8443" { return -5 }
-	web.url_set(u, .Port, "abc")                                    // ignored
-	if web.url_get(u, .Port, buf[:]) != "8443" { return -6 }
-	if web.url_set(u, .Href, "::nope") != i32(web.Web_Error.Type) { return -7 }
+	u, err := web.URL_parse("../b/c?x=1#f", "https://user@example.com/a/d/e")
+	if err != .None { return -1 }
+	if g(u, .Href) != "https://user@example.com/a/b/c?x=1#f" { return -2 }
+	if g(u, .Origin) != "https://example.com" { return -3 }
+	web.URL_set(u, .Port, "8443")
+	web.URL_set(u, .Hostname, "other.example")
+	web.URL_set(u, .Hash, "")
+	web.URL_set(u, .Protocol, "http")
+	if g(u, .Href) != "http://user@other.example:8443/a/b/c?x=1" { return -4 }
+	if g(u, .Host) != "other.example:8443" { return -5 }
+	web.URL_set(u, .Port, "abc")                                    // ignored
+	if g(u, .Port) != "8443" { return -6 }
+	if web.URL_set(u, .Href, "::nope") != .Type { return -7 }
 
 	sp := web.URL_searchParams(u)
 	if web.URL_searchParams(u) != sp { return -8 }
-	web.params_append(sp, "a b", "c&d")
-	if web.url_get(u, .Search, buf[:]) != "?x=1&a+b=c%26d" { return -9 }
-	web.url_set(u, .Search, "?z=9&y=8")
-	v, ok := web.params_get(sp, "z", buf[:])
-	if !ok || v != "9" { return -10 }
+	web.URLSearchParams_append(sp, "a b", "c&d")
+	if g(u, .Search) != "?x=1&a+b=c%26d" { return -9 }
+	web.URL_set(u, .Search, "?z=9&y=8")
+	v, verr := web.URLSearchParams_get(sp, "z", buf[:])
+	if verr != .None || v != "9" { return -10 }
 	web.URLSearchParams_sort(sp)
-	if web.url_get(u, .Search, buf[:]) != "?y=8&z=9" { return -11 }
-	web.params_delete(sp, "y")
-	web.params_delete(sp, "z")
-	if web.url_get(u, .Href, buf[:]) != "http://user@other.example:8443/a/b/c" { return -12 }   // empty list: no query
+	if g(u, .Search) != "?y=8&z=9" { return -11 }
+	web.URLSearchParams_delete(sp, "y")
+	web.URLSearchParams_delete(sp, "z")
+	if g(u, .Href) != "http://user@other.example:8443/a/b/c" { return -12 }   // empty list: no query
 
-	q := web.search_params("?a=1&b=2&a=3")
-	if web.params_get_all_count(q, "a") != 2 { return -13 }
-	v, _ = web.params_get_nth(q, "a", 1, buf[:])
+	q, _ := web.URLSearchParams_create("?a=1&b=2&a=3")
+	if web.URLSearchParams_count(q, "a") != 2 { return -13 }
+	v, _ = web.URLSearchParams_getNth(q, "a", 1, buf[:])
 	if v != "3" { return -14 }
-	web.params_set(q, "a", "x")
-	if web.params_to_string(q, buf[:]) != "a=x&b=2" { return -15 }
-	if !web.params_has(q, "b", "2", true) || web.params_has(q, "b", "3", true) { return -16 }
-	if web.params_name_at(q, 1, buf[:]) != "b" || web.URLSearchParams_size(q) != 2 { return -17 }
+	web.URLSearchParams_set(q, "a", "x")
+	if str(web.URLSearchParams_toString(q, buf[:])) != "a=x&b=2" { return -15 }
+	if !web.URLSearchParams_has(q, "b", "2") || web.URLSearchParams_has(q, "b", "3") { return -16 }
+	if str(web.URLSearchParams_nameAt(q, 1, buf[:])) != "b" || web.URLSearchParams_size(q) != 2 { return -17 }
 
-	if !web.url_can_parse("https://x/") || web.url_can_parse("nope") || web.url_parse("/rel") != 0 { return -18 }
+	if _, rel := web.URL_parse("/rel"); !web.URL_canParse("https://x/") || web.URL_canParse("nope") || rel == .None { return -18 }
 	web.Object_release(sp)
 	web.Object_release(u)
 	web.Object_release(q)
@@ -503,65 +515,81 @@ performance_probe :: proc "contextless" () -> i32 {
 	if web.Performance_timeOrigin() < 1.6e12 { return -1 }
 	t0 := web.Performance_now()
 	if t0 < 0 { return -2 }
-	web.performance_mark("a")
+	web.Performance_mark("a")
 	for _ in 0 ..< 100000 { _ = web.Performance_now() }
-	web.performance_mark("b")
-	if web.performance_measure("m", "a", "b") != 0 { return -3 }
-	if web.performance_measure("bad", "nope") != i32(web.Web_Error.Syntax) { return -4 }
-	if web.performance_entry_count("", .Mark) != 2 || web.performance_entry_count("m") != 1 { return -5 }
-	start, dur := web.performance_entry("m", .Measure, 0)
-	a_start, _ := web.performance_entry("a", .Mark, 0)
+	web.Performance_mark("b")
+	if web.Performance_measure("m", "a", "b") != .None { return -3 }
+	if web.Performance_measure("bad", "nope") != .Syntax { return -4 }
+	if web.Performance_entryCount("", .Mark) != 2 || web.Performance_entryCount("m", .Any) != 1 { return -5 }
+	start := web.Performance_entryStartTime("m", .Measure, 0)
+	dur := web.Performance_entryDuration("m", .Measure, 0)
+	a_start := web.Performance_entryStartTime("a", .Mark, 0)
 	if start != a_start || dur < 0 { return -6 }
-	web.performance_clear_marks("a")
-	if web.performance_entry_count("", .Mark) != 1 { return -7 }
-	web.performance_clear_marks()
-	web.performance_clear_measures()
-	if web.performance_entry_count("") != 0 { return -8 }
+	web.Performance_clearMarks("a")
+	if web.Performance_entryCount("", .Mark) != 1 { return -7 }
+	web.Performance_clearMarks()
+	web.Performance_clearMeasures()
+	if web.Performance_entryCount("", .Any) != 0 { return -8 }
 	return 1
 }
 
 ////////////////////////////////
-// Robustness: stale handles, handles of the wrong kind, out-of-range arguments
-
-stale_settled: int
-
-on_stale :: proc "contextless" (user: i32, p: web.Handle, st: web.Promise_State) {
-	if st == .Rejected { stale_settled += 1 }
-}
+// Robustness: stale handles, handles of the wrong kind, out-of-range arguments. A function that raises reports them
+// as an Error; one that does not traps (see stale_getter_probe and wrong_kind_probe).
 
 @(export)
 stale_probe :: proc "contextless" () -> i32 {
 	buf: [64]u8
-	u := web.url_parse("https://a.example/")
+	u, _ := web.URL_parse("https://a.example/")
 	web.Object_release(u)
-	if web.raw_urlGet(u, .Href, raw_data(buf[:]), i32(len(buf))) != i32(web.Error.Invalid_Handle) { return -1 }
-	if web.url_set(u, .Hash, "x") != i32(web.Error.Invalid_Handle) { return -2 }
-	if web.URL_searchParams(u) != 0 { return -3 }
+	if web.URL_set(u, .Hash, "x") != .Invalid_Handle { return -2 }
+	if web.Object_release(u) != .Invalid_Handle { return -3 }
 	c := web.AbortController_create()
-	if web.AbortSignal_aborted(c) != i32(web.Error.Invalid_Handle) { return -4 }   // a controller is not a signal
-	d := web.text_decoder()
+	not_signals := [1]web.AbortSignal{web.AbortSignal(c)}
+	if _, e := web.AbortSignal_any(not_signals[:]); e != .Invalid_Handle { return -4 }   // a controller is not a signal
+	d, _ := web.TextDecoder_create()
 	web.Object_release(d)
-	if _, n := web.text_decode(d, {1}, buf[:]); n != int(web.Error.Invalid_Handle) { return -5 }
-	web.Promise_then(web.Response_text(12345), on_stale, 0)
-	web.Promise_then(web.Stream_read(c), on_stale, 0)
-	if web.Response_body(0) != 0 { return -6 }
-	if web.raw_locationGet(Url_Component_bad, raw_data(buf[:]), i32(len(buf))) != i32(web.Error.Invalid_Argument) { return -7 }
-	if web.Storage_length(web.Storage_Kind(7)) != i32(web.Error.Invalid_Argument) { return -8 }
+	if _, e := web.TextDecoder_decode(d, {1}, false, buf[:]); e != .Invalid_Handle { return -5 }
+	if _, e := web.Response_body(web.Response(12345)); e != .Invalid_Handle { return -6 }
+	if web.Location_set(Url_Component_bad, "x") != .Invalid_Argument { return -7 }
+	if _, e := web.Storage_length(web.StorageArea(7)); e != .Invalid_Argument { return -8 }
 	if web.cancelAnimationFrame(987654) != .Not_Found { return -9 }
-	if web.get_random_values(nil) != .None { return -10 }
-	if web.AbortSignal_timeout(-1) != 0 { return -11 }
-	if web.URLSearchParams_size(d) != i32(web.Error.Invalid_Handle) { return -12 }
-	if web.digest_buffer("SHA-256", u) == 0 { return -13 }   // a promise, rejected
+	if web.Crypto_getRandomValues(nil) != .None { return -10 }
+	if _, e := web.AbortSignal_timeout(-1); e != .Range { return -11 }
+	if web.Exception_code() != .Range { return -12 }   // the exception record of the last error...
+	if m, _ := web.Exception_message(buf[:]); len(m) == 0 { return -13 }   // ...with its message
 	web.Object_release(c)
 	return 1
 }
 
-Url_Component_bad :: web.Url_Component(99)
+Url_Component_bad :: web.URLComponent(99)
 
-// A negative length: the runtime must refuse the call before the host sees it.
+// A getter on a released object: a trap (use after free).
+@(export)
+stale_getter_probe :: proc "contextless" () -> i32 {
+	u, _ := web.URL_parse("https://a.example/")
+	web.Object_release(u)
+	return web.URLSearchParams_size(web.URL_searchParams(u))
+}
+
+// A handle of another kind where a TextDecoder is expected: a trap.
+@(export)
+wrong_kind_probe :: proc "contextless" () -> i32 {
+	q, _ := web.URLSearchParams_create("a=1")
+	flags := web.TextDecoder_flags(web.TextDecoder(q))
+	return i32(transmute(u32)flags)
+}
+
+foreign import storage_raw "storage"
+@(default_calling_convention = "contextless")
+foreign storage_raw {
+	@(link_name = "Storage_setItem") raw_storage_set :: proc(area: i32, key: [^]u8, key_len: u32, value: [^]u8, value_len: u32) -> i32 ---
+}
+
+// A length past the memory: the binding traps before the implementation sees it.
 @(export)
 bad_length_probe :: proc "contextless" () -> i32 {
-	return web.raw_storageSet(.Local, raw_data(string("k")), -5, raw_data(string("v")), 1)
+	return raw_storage_set(0, raw_data(string("k")), 0xFFFF_FFFB, raw_data(string("v")), 1)
 }
 
 ////////////////////////////////
@@ -569,48 +597,50 @@ bad_length_probe :: proc "contextless" () -> i32 {
 
 hist: Log
 
-on_popstate :: proc "contextless" (user: i32, ev: web.Handle) {
+on_popstate :: proc "contextless" (user: i32, ev: web.Event) {
 	buf: [64]u8
-	s, _ := web.event_data(ev, buf[:])
+	s, _ := web.Event_data(ev, buf[:])
 	note(&hist, "pop:"); note(&hist, web.Event_code(ev) == 1 ? s : "<null>"); note(&hist, " ")
 	set("data-history", text(&hist))
 }
 
-on_hashchange :: proc "contextless" (user: i32, ev: web.Handle) {
+on_hashchange :: proc "contextless" (user: i32, ev: web.Event) {
 	buf: [128]u8
-	n, _ := web.event_data(ev, buf[:])
+	n, _ := web.Event_data(ev, buf[:])
 	note(&hist, "hash:"); note(&hist, n); note(&hist, " ")
 	set("data-history", text(&hist))
 }
+
+loc :: proc "contextless" (c: web.URLComponent, buf: []u8) -> string { s, _ := web.Location_get(c, buf); return s }
 
 @(export)
 history_probe :: proc "contextless" () -> i32 {
 	hist.n = 0
 	w := web.Window_self()
-	web.add_listener(w, "popstate", on_popstate)
-	web.add_listener(w, "hashchange", on_hashchange)
+	web.EventTarget_addEventListener(w, "popstate", on_popstate)
+	web.EventTarget_addEventListener(w, "hashchange", on_hashchange)
 	start := web.History_length()
-	if web.history_push_state("s1", "?p=1", true) != 0 { return -1 }
-	if web.history_push_state("s2", "#h", true) != 0 { return -2 }
+	if web.History_pushState("s1", "?p=1") != .None { return -1 }
+	if web.History_pushState("s2", "#h") != .None { return -2 }
 	if web.History_length() != start + 2 { return -3 }
 	buf: [128]u8
-	st, found := web.history_state(buf[:])
-	if !found || st != "s2" { return -4 }
-	if web.location_get(.Search, buf[:]) != "?p=1" || web.location_get(.Hash, buf[:]) != "#h" { return -5 }
-	if web.history_push_state("x", "https://evil.example/", true) != i32(web.Web_Error.Security) { return -6 }
-	if web.history_replace_state("", "", false, has_state = false) != 0 { return -7 }
-	if _, f := web.history_state(buf[:]); f { return -8 }
-	web.history_back()                                   // to "s1": popstate, then hashchange (only the fragment differs)
+	st, serr := web.History_state(buf[:])
+	if serr != .None || st != "s2" { return -4 }
+	if loc(.Search, buf[:]) != "?p=1" || loc(.Hash, buf[:]) != "#h" { return -5 }
+	if web.History_pushState("x", "https://evil.example/") != .Security { return -6 }
+	if web.History_replaceState(nil, nil) != .None { return -7 }
+	if _, e := web.History_state(buf[:]); e != .Not_Found { return -8 }
+	web.History_go(-1)                                   // to "s1": popstate, then hashchange (only the fragment differs)
 	return 1
 }
 
 // location.assign to another document goes to the embedder; to a fragment it stays here.
 @(export)
 location_probe :: proc "contextless" () -> i32 {
-	if web.location_assign("#frag2") != 0 { return -1 }
+	if web.Location_assign("#frag2") != .None { return -1 }
 	buf: [128]u8
-	if web.location_get(.Hash, buf[:]) != "#frag2" { return -2 }
-	if web.location_assign("/elsewhere.html") != 0 { return -3 }
-	if web.location_get(.Pathname, buf[:]) == "/elsewhere.html" { return -4 }   // not before the embedder navigates
+	if loc(.Hash, buf[:]) != "#frag2" { return -2 }
+	if web.Location_assign("/elsewhere.html") != .None { return -3 }
+	if loc(.Pathname, buf[:]) == "/elsewhere.html" { return -4 }   // not before the embedder navigates
 	return 1
 }

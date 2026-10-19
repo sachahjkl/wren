@@ -7,12 +7,19 @@ import "base:runtime"
 
 EventSource :: distinct Object
 
+// EventSource.readyState
+EventSourceState :: enum i32 {
+	Connecting = 0,
+	Open = 1,
+	Closed = 2,
+}
+
 foreign import _m_eventsource "eventsource"
 
 @(private = "file", default_calling_convention = "contextless")
 foreign _m_eventsource {
 	@(link_name = "EventSource_create") _EventSource_create :: proc(url: [^]u8, url_len: u32, with_credentials: i32, _ret: ^EventSource) -> Error ---
-	@(link_name = "EventSource_readyState") _EventSource_readyState :: proc(source: EventSource) -> i32 ---
+	@(link_name = "EventSource_readyState") _EventSource_readyState :: proc(source: EventSource) -> EventSourceState ---
 	@(link_name = "EventSource_url") _EventSource_url :: proc(source: EventSource, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "EventSource_withCredentials") _EventSource_withCredentials :: proc(source: EventSource) -> i32 ---
 	@(link_name = "EventSource_close") _EventSource_close :: proc(source: EventSource) ---
@@ -26,8 +33,7 @@ EventSource_create :: proc "contextless" (url: string, with_credentials: bool = 
 	return
 }
 
-// readyState: 0 connecting, 1 open, 2 closed.
-EventSource_readyState :: proc "contextless" (source: EventSource) -> i32 {
+EventSource_readyState :: proc "contextless" (source: EventSource) -> EventSourceState {
 	return _EventSource_readyState(source)
 }
 

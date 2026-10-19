@@ -201,8 +201,10 @@ main :: proc() {
 
 	rc_stale := call(p, inst, "stale_probe")
 	check(rc_stale == 1, fmt.tprintf("stale handles and bad arguments are refused cleanly (%d)", rc_stale))
+	check(call(p, inst, "stale_getter_probe") == min(i32) && strings.contains(inst.last_error, "not a live URL"), fmt.tprintf("a getter on a released object traps (%q)", inst.last_error))
+	check(call(p, inst, "wrong_kind_probe") == min(i32) && strings.contains(inst.last_error, "not a live TextDecoder"), fmt.tprintf("a handle of another kind traps (%q)", inst.last_error))
 	held := p.held
-	check(call(p, inst, "bad_length_probe") == min(i32), "a negative length traps in the runtime instead of reaching the host")
+	check(call(p, inst, "bad_length_probe") == min(i32) && strings.contains(inst.last_error, "out of bounds"), "a length past the memory traps in the binding layer instead of reaching the implementation")
 	check(p.held == held && call(p, inst, "url_probe") == 1, "the instance stays usable after the trap")
 
 	////////////////////////////////

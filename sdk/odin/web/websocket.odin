@@ -6,12 +6,20 @@ import "base:runtime"
 
 WebSocket :: distinct Object
 
+// WebSocket.readyState
+WebSocketState :: enum i32 {
+	Connecting = 0,
+	Open = 1,
+	Closing = 2,
+	Closed = 3,
+}
+
 foreign import _m_websocket "websocket"
 
 @(private = "file", default_calling_convention = "contextless")
 foreign _m_websocket {
 	@(link_name = "WebSocket_create") _WebSocket_create :: proc(url: [^]u8, url_len: u32, protocols: [^]u8, protocols_len: u32, _ret: ^WebSocket) -> Error ---
-	@(link_name = "WebSocket_readyState") _WebSocket_readyState :: proc(socket: WebSocket) -> i32 ---
+	@(link_name = "WebSocket_readyState") _WebSocket_readyState :: proc(socket: WebSocket) -> WebSocketState ---
 	@(link_name = "WebSocket_url") _WebSocket_url :: proc(socket: WebSocket, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "WebSocket_protocol") _WebSocket_protocol :: proc(socket: WebSocket, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "WebSocket_extensions") _WebSocket_extensions :: proc(socket: WebSocket, _buf: [^]u8, _cap: u32) -> i32 ---
@@ -31,8 +39,7 @@ WebSocket_create :: proc "contextless" (url: string, protocols: string = "") -> 
 	return
 }
 
-// readyState: 0 connecting, 1 open, 2 closing, 3 closed.
-WebSocket_readyState :: proc "contextless" (socket: WebSocket) -> i32 {
+WebSocket_readyState :: proc "contextless" (socket: WebSocket) -> WebSocketState {
 	return _WebSocket_readyState(socket)
 }
 

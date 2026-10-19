@@ -9,7 +9,7 @@ EventSource_create :: proc(c: ^Call, target: string, with_credentials: bool) -> 
 	return h, .None
 }
 
-EventSource_readyState :: proc(c: ^Call, source: Api_EventSource) -> i32 { return source.data.state }
+EventSource_readyState :: proc(c: ^Call, source: Api_EventSource) -> Api_EventSourceState { return Api_EventSourceState(source.data.state) }
 EventSource_url :: proc(c: ^Call, source: Api_EventSource) -> string { return source.data.href }
 EventSource_withCredentials :: proc(c: ^Call, source: Api_EventSource) -> bool { return source.data.with_credentials }
 EventSource_close :: proc(c: ^Call, source: Api_EventSource) { eventsource_close(source.data) }

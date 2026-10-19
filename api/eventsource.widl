@@ -4,10 +4,12 @@
 module eventsource {
   handle EventSource : Object = Event_Source via lookup_EventSource;
 
+  /// EventSource.readyState
+  enum EventSourceState : i32 { Connecting, Open, Closed }
+
   /// new EventSource(url, {withCredentials}). Syntax for an invalid URL.
   EventSource EventSource_create(string url, bool with_credentials = false) raises;
-  /// readyState: 0 connecting, 1 open, 2 closed.
-  i32 EventSource_readyState(EventSource source);
+  EventSourceState EventSource_readyState(EventSource source);
   string EventSource_url(EventSource source);
   bool EventSource_withCredentials(EventSource source);
   /// source.close()

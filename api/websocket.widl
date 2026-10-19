@@ -3,11 +3,13 @@
 module websocket {
   handle WebSocket : Object = Web_Socket via lookup_WebSocket;
 
+  /// WebSocket.readyState
+  enum WebSocketState : i32 { Connecting, Open, Closing, Closed }
+
   /// new WebSocket(url, protocols): `protocols` is a comma-separated list ("" = none). Syntax for an invalid URL or
   /// protocol list.
   WebSocket WebSocket_create(string url, string protocols = "") raises;
-  /// readyState: 0 connecting, 1 open, 2 closing, 3 closed.
-  i32 WebSocket_readyState(WebSocket socket);
+  WebSocketState WebSocket_readyState(WebSocket socket);
   string WebSocket_url(WebSocket socket);
   string WebSocket_protocol(WebSocket socket);
   string WebSocket_extensions(WebSocket socket);

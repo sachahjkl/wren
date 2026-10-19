@@ -117,6 +117,13 @@ Api_EventSource :: struct {
 	data:   ^Event_Source,
 }
 
+// EventSource.readyState
+Api_EventSourceState :: enum i32 {
+	Connecting = 0,
+	Open = 1,
+	Closed = 2,
+}
+
 // The body of a response being read in chunks.
 // A live ReadableStream: its handle and what lookup_ReadableStream found.
 Api_ReadableStream :: struct {
@@ -329,6 +336,14 @@ Api_WebSocket :: struct {
 	data:   ^Web_Socket,
 }
 
+// WebSocket.readyState
+Api_WebSocketState :: enum i32 {
+	Connecting = 0,
+	Open = 1,
+	Closing = 2,
+	Closed = 3,
+}
+
 @(private = "file")
 _valid_PromiseState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
 
@@ -340,6 +355,9 @@ _valid_ListenerOptions :: #force_inline proc "contextless" (v: u32) -> bool { re
 
 @(private = "file")
 _valid_EventInit :: #force_inline proc "contextless" (v: u32) -> bool { return u64(u32(v)) & ~u64(0x3) == 0 }
+
+@(private = "file")
+_valid_EventSourceState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
 
 @(private = "file")
 _valid_ValidityState :: #force_inline proc "contextless" (v: u32) -> bool { return u64(u32(v)) & ~u64(0x3ff) == 0 }
@@ -388,6 +406,9 @@ _valid_URLComponent :: #force_inline proc "contextless" (v: i32) -> bool { switc
 
 @(private = "file")
 _valid_Error :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, -1, -2, -3, -4, -5, -10, -11, -12, -13, -14, -15, -16, -17, -18, -19, -20, -21, -22, -23, -24: return true }; return false }
+
+@(private = "file")
+_valid_WebSocketState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3: return true }; return false }
 
 @(private = "file")
 _fail_status :: proc(c: ^Call, a: [^]wasm.Raw, code: Api_Error, message: string) -> wasm.Trap {
@@ -505,16 +526,16 @@ _t_abort_AbortController_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "abort.AbortController_abort", "reason") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return wasm.trap_new("abort.AbortController_abort: argument reason is not valid UTF-8")
+	}
 	_p0 := Api_AbortController{handle = u64(a[0].i64)}
 	_p0.data = lookup_AbortController(&c, _p0.handle)
 	if _p0.data == nil {
 		return wasm.trap_new("abort.AbortController_abort: argument controller is not a live AbortController")
 	}
 	_p1 := a[1].i64
-	_p2 := string(_s2[:_n2])
-	if !wasm.valid_utf8(_p2) {
-		return wasm.trap_new("abort.AbortController_abort: argument reason is not valid UTF-8")
-	}
 	AbortController_abort(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
@@ -604,11 +625,11 @@ _t_abort_AbortSignal_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "abort.AbortSignal_abort", "reason") }
-	_p0 := a[0].i64
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		return wasm.trap_new("abort.AbortSignal_abort: argument reason is not valid UTF-8")
 	}
+	_p0 := a[0].i64
 	_r := AbortSignal_abort(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
@@ -694,16 +715,16 @@ _t_async_Promise_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "async.Promise_resolve", "text") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "async.Promise_resolve: argument text is not valid UTF-8")
+	}
 	_p0 := Api_Promise{handle = u64(a[0].i64)}
 	_p0.data = lookup_Promise(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "async.Promise_resolve: argument promise is not a live Promise")
 	}
 	_p1 := a[1].i64
-	_p2 := string(_s2[:_n2])
-	if !wasm.valid_utf8(_p2) {
-		return _fail_status(&c, a, .Type, "async.Promise_resolve: argument text is not valid UTF-8")
-	}
 	_err := Promise_resolve(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -723,16 +744,16 @@ _t_async_Promise_reject :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "async.Promise_reject", "message") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "async.Promise_reject: argument message is not valid UTF-8")
+	}
 	_p0 := Api_Promise{handle = u64(a[0].i64)}
 	_p0.data = lookup_Promise(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "async.Promise_reject: argument promise is not a live Promise")
 	}
 	_p1 := a[1].i64
-	_p2 := string(_s2[:_n2])
-	if !wasm.valid_utf8(_p2) {
-		return _fail_status(&c, a, .Type, "async.Promise_reject: argument message is not valid UTF-8")
-	}
 	_err := Promise_reject(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -947,13 +968,13 @@ _t_async_Buffer_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "async.Buffer_read", "destination") }
+	_p2 := _s2[:_n2]
 	_p0 := Api_Buffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_Buffer(&c, _p0.handle)
 	if _p0.data == nil {
 		return wasm.trap_new("async.Buffer_read: argument buffer is not a live Buffer")
 	}
 	_p1 := a[1].i64
-	_p2 := _s2[:_n2]
 	_r := Buffer_read(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
@@ -970,13 +991,13 @@ _t_async_Buffer_write :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "async.Buffer_write", "source") }
+	_p2 := _s2[:_n2]
 	_p0 := Api_Buffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_Buffer(&c, _p0.handle)
 	if _p0.data == nil {
 		return wasm.trap_new("async.Buffer_write: argument buffer is not a live Buffer")
 	}
 	_p1 := a[1].i64
-	_p2 := _s2[:_n2]
 	_r := Buffer_write(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
@@ -1568,14 +1589,14 @@ _t_dom_Node_setTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_setTextContent", "text") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Node_setTextContent: argument text is not valid UTF-8")
+	}
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_setTextContent: argument node is not a live Node")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_status(&c, a, .Type, "dom.Node_setTextContent: argument text is not valid UTF-8")
 	}
 	_err := Node_setTextContent(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -1641,11 +1662,6 @@ _t_dom_Element_setAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_n2 := wasm.addr(&f, a[4])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "dom.Element_setAttribute", "value") }
-	_p0 := Api_Element{handle = u64(a[0].i64)}
-	_p0.data = lookup_Element(&c, _p0.handle)
-	if _p0.data == nil {
-		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_setAttribute: argument element is not a live Element")
-	}
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Element_setAttribute: argument name is not valid UTF-8")
@@ -1653,6 +1669,11 @@ _t_dom_Element_setAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_p2 := string(_s2[:_n2])
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.Element_setAttribute: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_setAttribute: argument element is not a live Element")
 	}
 	_err := Element_setAttribute(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -1676,14 +1697,14 @@ _t_dom_Element_getAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_getAttribute", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "dom.Element_getAttribute: argument name is not valid UTF-8")
+	}
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Element_getAttribute: argument element is not a live Element")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_size(&c, &f, a, .Type, "dom.Element_getAttribute: argument name is not valid UTF-8")
 	}
 	_r, _err := Element_getAttribute(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -1704,14 +1725,14 @@ _t_dom_Element_removeAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_removeAttribute", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Element_removeAttribute: argument name is not valid UTF-8")
+	}
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_removeAttribute: argument element is not a live Element")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_status(&c, a, .Type, "dom.Element_removeAttribute: argument name is not valid UTF-8")
 	}
 	_err := Element_removeAttribute(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -1851,12 +1872,12 @@ _t_encoding_TextDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "encoding.TextDecoder_decode", "result buffer") }
+	_p1 := _s1[:_n1]
 	_p0 := Api_TextDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextDecoder(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_size(&c, &f, a, .Invalid_Handle, "encoding.TextDecoder_decode: argument decoder is not a live TextDecoder")
 	}
-	_p1 := _s1[:_n1]
 	_p2 := a[3].i32 != 0
 	_r, _err := TextDecoder_decode(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -1930,11 +1951,11 @@ _t_events_EventTarget_addEventListener :: proc "c" (env: rawptr, caller: wasm.Ca
 	if !_k1 { return wasm.trap_bounds(&f, "events.EventTarget_addEventListener", "type") }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 4)
 	if !_rk { return wasm.trap_bounds(&f, "events.EventTarget_addEventListener", "result pointer") }
-	_p0 := u64(a[0].i64)
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "events.EventTarget_addEventListener: argument type is not valid UTF-8")
 	}
+	_p0 := u64(a[0].i64)
 	_p2 := u32(a[3].i32)
 	_p3 := a[4].i32
 	_e4 := u32(a[5].i32)
@@ -1982,11 +2003,11 @@ _t_events_EventTarget_dispatchEvent :: proc "c" (env: rawptr, caller: wasm.Calle
 	if !_k1 { return wasm.trap_bounds(&f, "events.EventTarget_dispatchEvent", "type") }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 1)
 	if !_rk { return wasm.trap_bounds(&f, "events.EventTarget_dispatchEvent", "result pointer") }
-	_p0 := u64(a[0].i64)
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "events.EventTarget_dispatchEvent: argument type is not valid UTF-8")
 	}
+	_p0 := u64(a[0].i64)
 	_e2 := u32(a[3].i32)
 	if !_valid_EventInit(u32(_e2)) {
 		return _fail_status(&c, a, .Invalid_Argument, "events.EventTarget_dispatchEvent: argument init has flags EventInit does not define")
@@ -2303,7 +2324,7 @@ _t_eventsource_EventSource_create :: proc "c" (env: rawptr, caller: wasm.Caller,
 	return nil
 }
 
-// EventSource_readyState :: proc(c: ^Call, source: Api_EventSource) -> i32
+// EventSource_readyState :: proc(c: ^Call, source: Api_EventSource) -> Api_EventSourceState
 @(private = "file")
 _t_eventsource_EventSource_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -2317,7 +2338,7 @@ _t_eventsource_EventSource_readyState :: proc "c" (env: rawptr, caller: wasm.Cal
 	_r := EventSource_readyState(&c, _p0)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
-	a[0].i32 = _r
+	a[0].i32 = i32(_r)
 	return nil
 }
 
@@ -2515,8 +2536,6 @@ _t_fetch_Fetch_startWithSignal :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if !wasm.valid_utf8(_p0) {
 		return _fail_status(&c, a, .Type, "fetch.Fetch_startWithSignal: argument url is not valid UTF-8")
 	}
-	_p1 := u32(a[2].i32)
-	_p2 := a[3].i32
 	_p3 := string(_s3[:_n3])
 	if !wasm.valid_utf8(_p3) {
 		return _fail_status(&c, a, .Type, "fetch.Fetch_startWithSignal: argument method is not valid UTF-8")
@@ -2527,6 +2546,8 @@ _t_fetch_Fetch_startWithSignal :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	_p5: Maybe([]u8)
 	if !_absent5 { _p5 = _s5[:wasm.addr(&f, a[9])] }
+	_p1 := u32(a[2].i32)
+	_p2 := a[3].i32
 	_p6 := Api_Buffer{handle = u64(a[10].i64)}
 	if _p6.handle != 0 { _p6.data = lookup_Buffer(&c, _p6.handle) }
 	if _p6.handle != 0 && _p6.data == nil {
@@ -2726,14 +2747,14 @@ _t_forms_forms_setValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.HTMLInputElement_setValue", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "forms.HTMLInputElement_setValue: argument value is not valid UTF-8")
+	}
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "forms.HTMLInputElement_setValue: argument control is not a live Element")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_status(&c, a, .Type, "forms.HTMLInputElement_setValue: argument value is not valid UTF-8")
 	}
 	_err := forms_setValue(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -2775,14 +2796,14 @@ _t_forms_forms_setDefaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.HTMLInputElement_setDefaultValue", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "forms.HTMLInputElement_setDefaultValue: argument value is not valid UTF-8")
+	}
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "forms.HTMLInputElement_setDefaultValue: argument control is not a live Element")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_status(&c, a, .Type, "forms.HTMLInputElement_setDefaultValue: argument value is not valid UTF-8")
 	}
 	_err := forms_setDefaultValue(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -3135,14 +3156,14 @@ _t_forms_forms_setCustomValidity :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.HTMLInputElement_setCustomValidity", "message") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return wasm.trap_new("forms.HTMLInputElement_setCustomValidity: argument message is not valid UTF-8")
+	}
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return wasm.trap_new("forms.HTMLInputElement_setCustomValidity: argument control is not a live Element")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return wasm.trap_new("forms.HTMLInputElement_setCustomValidity: argument message is not valid UTF-8")
 	}
 	forms_setCustomValidity(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -3303,14 +3324,14 @@ _t_forms_forms_setRangeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.HTMLInputElement_setRangeText", "text") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "forms.HTMLInputElement_setRangeText: argument text is not valid UTF-8")
+	}
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "forms.HTMLInputElement_setRangeText: argument control is not a live Element")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_status(&c, a, .Type, "forms.HTMLInputElement_setRangeText: argument text is not valid UTF-8")
 	}
 	_p2 := a[3].i32
 	_p3 := a[4].i32
@@ -3944,14 +3965,14 @@ _t_forms_HTMLFormElement_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.HTMLFormElement_namedItem", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return wasm.trap_new("forms.HTMLFormElement_namedItem: argument name is not valid UTF-8")
+	}
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return wasm.trap_new("forms.HTMLFormElement_namedItem: argument form is not a live Element")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return wasm.trap_new("forms.HTMLFormElement_namedItem: argument name is not valid UTF-8")
 	}
 	_r := HTMLFormElement_namedItem(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -4105,13 +4126,13 @@ _t_forms_FormData_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_n2 := wasm.addr(&f, a[4])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "forms.FormData_append", "value") }
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_append: argument data is not a live FormData")
 	}
-	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
-	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
 	_err := FormData_append(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -4137,21 +4158,21 @@ _t_forms_FormData_appendBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_n4 := wasm.addr(&f, a[7])
 	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[6]), _n4)
 	if !_k4 { return wasm.trap_bounds(&f, "forms.FormData_appendBlob", "mime") }
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p3 := utf8_scrub(string(_s3[:_n3]), context.temp_allocator)
+	_p4 := string(_s4[:_n4])
+	if !wasm.valid_utf8(_p4) {
+		return _fail_status(&c, a, .Type, "forms.FormData_appendBlob: argument mime is not valid UTF-8")
+	}
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_appendBlob: argument data is not a live FormData")
 	}
-	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
 	_p2 := Api_Buffer{handle = u64(a[3].i64)}
 	_p2.data = lookup_Buffer(&c, _p2.handle)
 	if _p2.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_appendBlob: argument blob is not a live Buffer")
-	}
-	_p3 := utf8_scrub(string(_s3[:_n3]), context.temp_allocator)
-	_p4 := string(_s4[:_n4])
-	if !wasm.valid_utf8(_p4) {
-		return _fail_status(&c, a, .Type, "forms.FormData_appendBlob: argument mime is not valid UTF-8")
 	}
 	_err := FormData_appendBlob(&c, _p0, _p1, _p2, _p3, _p4)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -4175,13 +4196,13 @@ _t_forms_FormData_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_n2 := wasm.addr(&f, a[4])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "forms.FormData_set", "value") }
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_set: argument data is not a live FormData")
 	}
-	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
-	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
 	_err := FormData_set(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -4201,14 +4222,14 @@ _t_forms_FormData_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_delete", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return wasm.trap_new("forms.FormData_delete: argument name is not valid UTF-8")
+	}
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
 		return wasm.trap_new("forms.FormData_delete: argument data is not a live FormData")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return wasm.trap_new("forms.FormData_delete: argument name is not valid UTF-8")
 	}
 	FormData_delete(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -4224,14 +4245,14 @@ _t_forms_FormData_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_has", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return wasm.trap_new("forms.FormData_has: argument name is not valid UTF-8")
+	}
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
 		return wasm.trap_new("forms.FormData_has: argument data is not a live FormData")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return wasm.trap_new("forms.FormData_has: argument name is not valid UTF-8")
 	}
 	_r := FormData_has(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -4249,14 +4270,14 @@ _t_forms_FormData_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_count", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return wasm.trap_new("forms.FormData_count: argument name is not valid UTF-8")
+	}
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
 		return wasm.trap_new("forms.FormData_count: argument data is not a live FormData")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return wasm.trap_new("forms.FormData_count: argument name is not valid UTF-8")
 	}
 	_r := FormData_count(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -4277,14 +4298,14 @@ _t_forms_FormData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.FormData_get", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "forms.FormData_get: argument name is not valid UTF-8")
+	}
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_size(&c, &f, a, .Invalid_Handle, "forms.FormData_get: argument data is not a live FormData")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_size(&c, &f, a, .Type, "forms.FormData_get: argument name is not valid UTF-8")
 	}
 	_r, _err := FormData_get(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -4308,14 +4329,14 @@ _t_forms_FormData_getAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.FormData_getAt", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "forms.FormData_getAt: argument name is not valid UTF-8")
+	}
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_size(&c, &f, a, .Invalid_Handle, "forms.FormData_getAt: argument data is not a live FormData")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_size(&c, &f, a, .Type, "forms.FormData_getAt: argument name is not valid UTF-8")
 	}
 	_p2 := a[3].i32
 	_r, _err := FormData_getAt(&c, _p0, _p1, _p2)
@@ -4484,13 +4505,6 @@ _t_fetch_Fetch_startFormData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if !wasm.valid_utf8(_p0) {
 		return wasm.trap_new("fetch.Fetch_startFormData: argument url is not valid UTF-8")
 	}
-	_p1 := Api_FormData{handle = u64(a[2].i64)}
-	_p1.data = lookup_FormData(&c, _p1.handle)
-	if _p1.data == nil {
-		return wasm.trap_new("fetch.Fetch_startFormData: argument data is not a live FormData")
-	}
-	_p2 := u32(a[3].i32)
-	_p3 := a[4].i32
 	_p4 := string(_s4[:_n4])
 	if !wasm.valid_utf8(_p4) {
 		return wasm.trap_new("fetch.Fetch_startFormData: argument method is not valid UTF-8")
@@ -4499,6 +4513,13 @@ _t_fetch_Fetch_startFormData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if !wasm.valid_utf8(_p5) {
 		return wasm.trap_new("fetch.Fetch_startFormData: argument headers is not valid UTF-8")
 	}
+	_p1 := Api_FormData{handle = u64(a[2].i64)}
+	_p1.data = lookup_FormData(&c, _p1.handle)
+	if _p1.data == nil {
+		return wasm.trap_new("fetch.Fetch_startFormData: argument data is not a live FormData")
+	}
+	_p2 := u32(a[3].i32)
+	_p3 := a[4].i32
 	_e6 := i32(a[9].i32)
 	if !_valid_FormEnctype(_e6) {
 		return wasm.trap_new("fetch.Fetch_startFormData: argument enctype is not a FormEnctype")
@@ -4585,15 +4606,15 @@ _t_history_Location_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "history.Location_set", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "history.Location_set: argument value is not valid UTF-8")
+	}
 	_e0 := i32(a[0].i32)
 	if !_valid_URLComponent(_e0) {
 		return _fail_status(&c, a, .Invalid_Argument, "history.Location_set: argument component is not a URLComponent")
 	}
 	_p0 := Api_URLComponent(_e0)
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_status(&c, a, .Type, "history.Location_set: argument value is not valid UTF-8")
-	}
 	_err := Location_set(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -4914,8 +4935,6 @@ _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	if !wasm.valid_utf8(_p0) {
 		return wasm.trap_new("net.Fetch_start: argument url is not valid UTF-8")
 	}
-	_p1 := u32(a[2].i32)
-	_p2 := a[3].i32
 	_p3 := string(_s3[:_n3])
 	if !wasm.valid_utf8(_p3) {
 		return wasm.trap_new("net.Fetch_start: argument method is not valid UTF-8")
@@ -4926,6 +4945,8 @@ _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	}
 	_p5: Maybe([]u8)
 	if !_absent5 { _p5 = _s5[:wasm.addr(&f, a[9])] }
+	_p1 := u32(a[2].i32)
+	_p2 := a[3].i32
 	_p6: Api_FetchOptions
 	if !_valid_FetchMode(u32(a[10].i32)) {
 		return wasm.trap_new("net.Fetch_start: field options.mode is not a FetchMode")
@@ -5131,13 +5152,13 @@ _t_net_Fetch_readBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "net.Fetch_readBody", "buffer") }
+	_p2 := _s2[:_n2]
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
 		return wasm.trap_new("net.Fetch_readBody: argument request is not a live Fetch")
 	}
 	_p1 := u64(a[1].i64)
-	_p2 := _s2[:_n2]
 	_r := Fetch_readBody(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
@@ -5516,15 +5537,15 @@ _t_storage_Storage_getItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "storage.Storage_getItem", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "storage.Storage_getItem: argument key is not valid UTF-8")
+	}
 	_e0 := i32(a[0].i32)
 	if !_valid_StorageArea(_e0) {
 		return _fail_size(&c, &f, a, .Invalid_Argument, "storage.Storage_getItem: argument area is not a StorageArea")
 	}
 	_p0 := Api_StorageArea(_e0)
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_size(&c, &f, a, .Type, "storage.Storage_getItem: argument key is not valid UTF-8")
-	}
 	_r, _err := Storage_getItem(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -5547,13 +5568,13 @@ _t_storage_Storage_setItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_n2 := wasm.addr(&f, a[4])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "storage.Storage_setItem", "value") }
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
 	_e0 := i32(a[0].i32)
 	if !_valid_StorageArea(_e0) {
 		return _fail_status(&c, a, .Invalid_Argument, "storage.Storage_setItem: argument area is not a StorageArea")
 	}
 	_p0 := Api_StorageArea(_e0)
-	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
-	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
 	_err := Storage_setItem(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -5573,15 +5594,15 @@ _t_storage_Storage_removeItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "storage.Storage_removeItem", "key") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "storage.Storage_removeItem: argument key is not valid UTF-8")
+	}
 	_e0 := i32(a[0].i32)
 	if !_valid_StorageArea(_e0) {
 		return _fail_status(&c, a, .Invalid_Argument, "storage.Storage_removeItem: argument area is not a StorageArea")
 	}
 	_p0 := Api_StorageArea(_e0)
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_status(&c, a, .Type, "storage.Storage_removeItem: argument key is not valid UTF-8")
-	}
 	_err := Storage_removeItem(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -5945,6 +5966,10 @@ _t_url_URL_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "url.URL_set", "value") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "url.URL_set: argument value is not valid UTF-8")
+	}
 	_p0 := Api_URL{handle = u64(a[0].i64)}
 	_p0.data = lookup_URL(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5955,10 +5980,6 @@ _t_url_URL_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 		return _fail_status(&c, a, .Invalid_Argument, "url.URL_set: argument component is not a URLComponent")
 	}
 	_p1 := Api_URLComponent(_e1)
-	_p2 := string(_s2[:_n2])
-	if !wasm.valid_utf8(_p2) {
-		return _fail_status(&c, a, .Type, "url.URL_set: argument value is not valid UTF-8")
-	}
 	_err := URL_set(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -6043,13 +6064,13 @@ _t_url_URLSearchParams_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_n2 := wasm.addr(&f, a[4])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "url.URLSearchParams_append", "value") }
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
 		return wasm.trap_new("url.URLSearchParams_append: argument params is not a live URLSearchParams")
 	}
-	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
-	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
 	URLSearchParams_append(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
@@ -6067,11 +6088,6 @@ _t_url_URLSearchParams_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_absent2 := wasm.is_absent(&f, a[4])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), 0 if _absent2 else wasm.addr(&f, a[4]))
 	if !_k2 { return wasm.trap_bounds(&f, "url.URLSearchParams_delete", "value") }
-	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
-	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
-	if _p0.data == nil {
-		return wasm.trap_new("url.URLSearchParams_delete: argument params is not a live URLSearchParams")
-	}
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		return wasm.trap_new("url.URLSearchParams_delete: argument name is not valid UTF-8")
@@ -6083,6 +6099,11 @@ _t_url_URLSearchParams_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 			return wasm.trap_new("url.URLSearchParams_delete: argument value is not valid UTF-8")
 		}
 		_p2 = _v2
+	}
+	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
+	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
+	if _p0.data == nil {
+		return wasm.trap_new("url.URLSearchParams_delete: argument params is not a live URLSearchParams")
 	}
 	URLSearchParams_delete(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -6101,14 +6122,14 @@ _t_url_URLSearchParams_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLSearchParams_get", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "url.URLSearchParams_get: argument name is not valid UTF-8")
+	}
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_size(&c, &f, a, .Invalid_Handle, "url.URLSearchParams_get: argument params is not a live URLSearchParams")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_size(&c, &f, a, .Type, "url.URLSearchParams_get: argument name is not valid UTF-8")
 	}
 	_r, _err := URLSearchParams_get(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -6129,14 +6150,14 @@ _t_url_URLSearchParams_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "url.URLSearchParams_count", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return wasm.trap_new("url.URLSearchParams_count: argument name is not valid UTF-8")
+	}
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
 		return wasm.trap_new("url.URLSearchParams_count: argument params is not a live URLSearchParams")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return wasm.trap_new("url.URLSearchParams_count: argument name is not valid UTF-8")
 	}
 	_r := URLSearchParams_count(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -6157,14 +6178,14 @@ _t_url_URLSearchParams_getNth :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLSearchParams_getNth", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "url.URLSearchParams_getNth: argument name is not valid UTF-8")
+	}
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_size(&c, &f, a, .Invalid_Handle, "url.URLSearchParams_getNth: argument params is not a live URLSearchParams")
-	}
-	_p1 := string(_s1[:_n1])
-	if !wasm.valid_utf8(_p1) {
-		return _fail_size(&c, &f, a, .Type, "url.URLSearchParams_getNth: argument name is not valid UTF-8")
 	}
 	_p2 := a[3].i32
 	_r, _err := URLSearchParams_getNth(&c, _p0, _p1, _p2)
@@ -6189,11 +6210,6 @@ _t_url_URLSearchParams_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_absent2 := wasm.is_absent(&f, a[4])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), 0 if _absent2 else wasm.addr(&f, a[4]))
 	if !_k2 { return wasm.trap_bounds(&f, "url.URLSearchParams_has", "value") }
-	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
-	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
-	if _p0.data == nil {
-		return wasm.trap_new("url.URLSearchParams_has: argument params is not a live URLSearchParams")
-	}
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		return wasm.trap_new("url.URLSearchParams_has: argument name is not valid UTF-8")
@@ -6205,6 +6221,11 @@ _t_url_URLSearchParams_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 			return wasm.trap_new("url.URLSearchParams_has: argument value is not valid UTF-8")
 		}
 		_p2 = _v2
+	}
+	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
+	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
+	if _p0.data == nil {
+		return wasm.trap_new("url.URLSearchParams_has: argument params is not a live URLSearchParams")
 	}
 	_r := URLSearchParams_has(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -6225,13 +6246,13 @@ _t_url_URLSearchParams_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_n2 := wasm.addr(&f, a[4])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "url.URLSearchParams_set", "value") }
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
 		return wasm.trap_new("url.URLSearchParams_set: argument params is not a live URLSearchParams")
 	}
-	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
-	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
 	URLSearchParams_set(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
@@ -6386,7 +6407,7 @@ _t_websocket_WebSocket_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	return nil
 }
 
-// WebSocket_readyState :: proc(c: ^Call, socket: Api_WebSocket) -> i32
+// WebSocket_readyState :: proc(c: ^Call, socket: Api_WebSocket) -> Api_WebSocketState
 @(private = "file")
 _t_websocket_WebSocket_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -6400,7 +6421,7 @@ _t_websocket_WebSocket_readyState :: proc "c" (env: rawptr, caller: wasm.Caller,
 	_r := WebSocket_readyState(&c, _p0)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
-	a[0].i32 = _r
+	a[0].i32 = i32(_r)
 	return nil
 }
 
@@ -6534,12 +6555,12 @@ _t_websocket_WebSocket_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "websocket.WebSocket_send", "text") }
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "websocket.WebSocket_send: argument socket is not a live WebSocket")
 	}
-	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
 	_err := WebSocket_send(&c, _p0, _p1)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -6585,16 +6606,16 @@ _t_websocket_WebSocket_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "websocket.WebSocket_close", "reason") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "websocket.WebSocket_close: argument reason is not valid UTF-8")
+	}
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "websocket.WebSocket_close: argument socket is not a live WebSocket")
 	}
 	_p1 := a[1].i32
-	_p2 := string(_s2[:_n2])
-	if !wasm.valid_utf8(_p2) {
-		return _fail_status(&c, a, .Type, "websocket.WebSocket_close: argument reason is not valid UTF-8")
-	}
 	_err := WebSocket_close(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -6668,16 +6689,16 @@ _t_workers_Worker_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_n2 := wasm.addr(&f, a[4])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2, 8)
 	if !_k2 { return wasm.trap_bounds(&f, "workers.Worker_postMessage", "transfer") }
-	_p0 := Api_Object{handle = u64(a[0].i64)}
-	_p0.data = lookup_Object(&c, _p0.handle)
-	if _p0.data == nil {
-		return _fail_status(&c, a, .Invalid_Handle, "workers.Worker_postMessage: argument worker is not a live Worker")
-	}
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "workers.Worker_postMessage: argument message is not valid UTF-8")
 	}
 	_p2 := ([^]u64)(_s2)[:_n2]
+	_p0 := Api_Object{handle = u64(a[0].i64)}
+	_p0.data = lookup_Object(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "workers.Worker_postMessage: argument worker is not a live Worker")
+	}
 	_err := Worker_postMessage(&c, _p0, _p1, _p2)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {

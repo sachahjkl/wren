@@ -452,11 +452,13 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 		wl(o, "\tif !_rk {{ return wasm.trap_bounds(&f, %s, \"result pointer\") }}", quote(q))
 	}
 
-	// 2. strings, 3. handles, enums, structs
-	for &p, i in d.params {
+	// 2. strings and memory, 3. handles, enums, structs: an invalid string is reported whatever the handles are
+	for pass in 0 ..< 2 do for &p, i in d.params {
 		t := p.type
 		s := slots[i]
 		name := fmt.tprintf("_p%d", i)
+		in_memory := t.seq || t.kind == .String || t.kind == .Usv_String || t.kind == .Bytes
+		if in_memory != (pass == 0) { continue }
 		switch {
 		case t.seq:
 			wl(o, "\t%s := ([^]%s)(_s%d)[:_n%d]", name, host_type_single(Type{kind = t.kind, decl = t.decl, seq = true}), i, i)
