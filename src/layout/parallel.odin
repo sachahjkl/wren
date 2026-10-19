@@ -48,7 +48,9 @@ Pre_Result :: struct {
 	chunk:        i32,
 	frags, lines: [2]i32,      // in the chunk's arrays; lines refer to fragments from frags[0]
 	segs:         [2]i32,      // in the chunk's segs: measured there, to keep (empty: none)
-	models:       [2]i32,      // in the chunk's models: the edges of its inline boxes
+	models:       [2]i32,      // in the chunk's models: the edges of its inline boxes (and their fragments' union)
+	settled:      bool,        // models have the unions: pre_adopt needs not read the fragments (ifc_settle)
+	baseline, last_baseline: f32,
 	glines:       [2]i32,      // in Layout.lines (pre_place)
 	taken:        bool,
 }
@@ -389,26 +391,48 @@ pre_chunk :: proc(data: rawptr, k: int) {
 		append(&ch.lines, ..lines)
 		r.h, r.empty, r.chunk = h, empty, i32(k)
 		model_restore(&l.boxes[bi], saved)
-		// the edges the inline boxes were laid out with go to the result (pre_adopt), what they had goes back
+		if len(lines) > 0 {
+			fl, ll := lines[0], lines[len(lines) - 1]
+			r.baseline, r.last_baseline = fl.y + fl.baseline, ll.y + ll.baseline
+		}
+		// the edges the inline boxes were laid out with go to the result (pre_adopt), what they had goes back; and what
+		// ifc_settle would do on the UI thread: the union of each inline box's fragments
 		r.models[0] = i32(len(ch.models))
-		for &s in inl {
+		for &s, j in inl {
 			ib := &l.boxes[s.box]
 			used: Box_Model_Save
 			model_save(&used, ib, s.box)
 			append(&ch.models, used)
 			model_restore(ib, s)
+			ib.tmp_al = -3 - i32(j)   // scratch: its entry
 		}
+		r.settled = true
+		for &f in out {
+			if f.kind != .Box { continue }
+			j := -3 - l.boxes[f.box].tmp_al
+			if j < 0 || int(j) >= len(inl) { r.settled = false; continue }   // not an inline box of the context
+			m := &ch.models[r.models[0] + j]
+			fr := Rect{{f.x, f.y}, {f.x + f.w, f.y + f.h}}
+			if !m.has_rect {
+				m.rect, m.has_rect = fr, true
+			} else {
+				m.rect = rect_union(m.rect, fr)
+			}
+		}
+		for &s in inl { l.boxes[s.box].tmp_al = -1 }
 		r.models[1] = i32(len(ch.models))
 		clear(&inl)
 	}
 }
 
-// What resolve_box_model sets, for box `box`.
+// What resolve_box_model sets, for box `box`; for an inline box laid out ahead, also the union of its fragments.
 @(private)
 Box_Model_Save :: struct {
 	margin, border, padding: [4]f32,
 	auto: [4]bool,
 	box:  i32,
+	has_rect: bool,
+	rect: Rect,
 }
 
 @(private)
@@ -437,9 +461,20 @@ pre_adopt :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (h: f32, empty: b
 	b := &c.l.boxes[bi]
 	if content_x(b) != r.cx || content_y(b) != r.cy { return }
 	ch := &c.l.pre_chunks[r.chunk]
-	for &s in ch.models[r.models[0]:r.models[1]] { model_restore(&c.l.boxes[s.box], s) }
 	if r.segs[1] > r.segs[0] { keep_segs(c, bi, ch.segs[r.segs[0]:r.segs[1]]) }
-	ifc_settle(c, bi, r.glines)
+	if r.settled {
+		// ifc_settle, from what the thread found
+		b.lines = r.glines
+		if r.glines[1] > r.glines[0] { b.baseline, b.last_baseline = r.baseline, r.last_baseline }
+		for &s in ch.models[r.models[0]:r.models[1]] {
+			ib := &c.l.boxes[s.box]
+			model_restore(ib, s)
+			if s.has_rect { ib.pos, ib.size = s.rect.min, s.rect.max - s.rect.min }
+		}
+	} else {
+		for &s in ch.models[r.models[0]:r.models[1]] { model_restore(&c.l.boxes[s.box], s) }
+		ifc_settle(c, bi, r.glines)
+	}
 	if !r.taken { c.l.pre_counts[1] += 1 }
 	r.taken = true
 	return r.h, r.empty, true

@@ -93,7 +93,10 @@ bench_load :: proc(t: ^testing.T) {
 			st5 := make([][5]f32, resize_steps)
 			defer { delete(tot); delete(st5) }
 			ahead, taken := 0, 0
+			// WREN_LOADBENCH_RESIZE_GAP_MS: a pause between passes, as between the frames of a window (threads go idle)
+			gap := parse_int(os.get_env("WREN_LOADBENCH_RESIZE_GAP_MS", context.temp_allocator))
 			for k in 0 ..< resize_steps {
+				if gap > 0 { time.sleep(time.Duration(gap) * time.Millisecond) }
 				ri := in_
 				ri.viewport.x = resize_width(k)
 				t0 := time.tick_now()

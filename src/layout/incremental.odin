@@ -701,8 +701,10 @@ compact_lines :: proc(l: ^Layout) {
 	lines := &s.spare_lines
 	frags := &s.spare_frags
 	clear(lines); clear(frags)
-	reserve(lines, len(l.lines) - s.dead_lines)
-	reserve(frags, len(l.frags) - s.dead_frags)
+	// room for the passes until the next packing: no growth (a copy of everything) in between
+	room :: proc(live: int, r: f32) -> int { return int(f32(live) * (1 + r)) + live / 8 + 64 }
+	reserve(lines, room(len(l.lines) - s.dead_lines, r))
+	reserve(frags, room(len(l.frags) - s.dead_frags, r))
 	for &b in l.boxes {
 		if .Dead in b.flags || b.lines[1] <= b.lines[0] { continue }
 		l0 := i32(len(lines))
