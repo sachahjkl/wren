@@ -103,6 +103,7 @@ prof_frame_end :: proc(app: ^App, items, elements: int) {
 
 Frame_Rec :: struct {
 	t_ms:   f32,
+	budget: f32,       // the frame budget when it was made (pacing.odin)
 	dur:    [Phase]f32,
 	gpu_ms: f32,
 	gpu_index: int,   // the renderer's index of the timed submit of this frame (-1: none)
@@ -158,6 +159,15 @@ Prof :: struct {
 	cpu0_user, cpu0_kernel: u64,
 	wall0:     i64,
 	cur_lay:   Frame_Rec,         // the layout pass of the frame being measured (lay_* fields)
+	shown:     [dynamic]Shown_Rec,   // frames the swap chain reported on screen
+}
+
+Shown_Rec :: struct { t_ms, latency_ms: f32, missed: u32 }
+
+// A frame on screen (hud_displayed): input latency (< 0: none) and missed refreshes, for the report.
+prof_displayed :: proc(d: render.Displayed_Frame, latency_ms: f32) {
+	if !prof.on { return }
+	append(&prof.shown, Shown_Rec{t_ms = f32(f64(qpc() - prof.t0) * 1000 / prof.freq), latency_ms = latency_ms, missed = d.missed})
 }
 
 prof: Prof
@@ -230,7 +240,7 @@ sampler_proc :: proc(_: ^thread.Thread) {
 // timed submit it measured.
 prof_record :: proc(app: ^App, items, elements: int) {
 	if !prof.on { return }
-	rec := Frame_Rec{t_ms = f32(f64(qpc() - prof.t0) * 1000 / prof.freq), gpu_index = -1}
+	rec := Frame_Rec{t_ms = f32(f64(qpc() - prof.t0) * 1000 / prof.freq), gpu_index = -1, budget = frame_budget_ms()}
 	rec.lay_pass, rec.lay_steps, rec.lay_pre = prof.cur_lay.lay_pass, prof.cur_lay.lay_steps, prof.cur_lay.lay_pre
 	prof.cur_lay = {}
 	for p in Phase { rec.dur[p] = f32(phase_clock.acc[p]) }
@@ -283,6 +293,7 @@ prof_report :: proc() {
 	sb := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&sb, "wall %.2f s | cpu user %.2f s + kernel %.2f s = %.1f %% of one core | frames %d (%.1f/s)\n\n", wall, cpu_user, cpu_kernel, (cpu_user + cpu_kernel) / wall * 100, len(prof.frames), f64(len(prof.frames)) / wall)
 
+	report_pacing(&sb)
 	fmt.sbprintf(&sb, "%-12s %7s %8s %8s %8s %8s %9s\n", "phase (ms)", "n", "mean", "p50", "p95", "p99", "max")
 	for p in Phase {
 		if p == .None || p == .Idle { continue }
@@ -306,12 +317,12 @@ prof_report :: proc() {
 	_ = os.write_entire_file(strings.concatenate({prof.out, ".txt"}, context.temp_allocator), transmute([]byte)strings.to_string(sb))
 
 	csv := strings.builder_make(context.temp_allocator)
-	strings.write_string(&csv, "t_ms,gpu_ms,items,insts,batches,elements")
+	strings.write_string(&csv, "t_ms,budget_ms,gpu_ms,items,insts,batches,elements")
 	for p in Phase { fmt.sbprintf(&csv, ",%v", p) }
 	strings.write_string(&csv, ",lay_pass,lay_tree,lay_layout,lay_finish,lay_display,lay_bands,lay_ahead,lay_taken")
 	strings.write_byte(&csv, '\n')
 	for f in prof.frames {
-		fmt.sbprintf(&csv, "%.3f,%.3f,%d,%d,%d,%d", f.t_ms, f.gpu_ms, f.items, f.insts, f.batches, f.elements)
+		fmt.sbprintf(&csv, "%.3f,%.3f,%.3f,%d,%d,%d,%d", f.t_ms, f.budget, f.gpu_ms, f.items, f.insts, f.batches, f.elements)
 		for p in Phase { fmt.sbprintf(&csv, ",%.3f", f.dur[p]) }
 		fmt.sbprintf(&csv, ",%v", f.lay_pass)
 		for s in f.lay_steps { fmt.sbprintf(&csv, ",%.3f", s) }
@@ -319,6 +330,45 @@ prof_report :: proc() {
 		strings.write_byte(&csv, '\n')
 	}
 	_ = os.write_entire_file(strings.concatenate({prof.out, ".csv"}, context.temp_allocator), transmute([]byte)strings.to_string(csv))
+	// frames on screen (swap chain statistics): <prefix>.shown.csv
+	sc := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sc, "t_ms,latency_ms,missed\n")
+	for s in prof.shown { fmt.sbprintf(&sc, "%.3f,%.3f,%d\n", s.t_ms, s.latency_ms, s.missed) }
+	_ = os.write_entire_file(strings.concatenate({prof.out, ".shown.csv"}, context.temp_allocator), transmute([]byte)strings.to_string(sc))
+}
+
+// Frame pacing: the display, the budget, the frames against it, what reached the screen. CPU work = the frame without its
+// wait for the screen and without Present: Present returns at once, except when the compositor has not taken the
+// previous frame yet (a frame right after idle time, started between two vblanks): then it blocks until the next vblank,
+// which is waiting, not work (the frame shows at the same vblank either way). Present is reported on its own.
+report_pacing :: proc(sb: ^strings.Builder) {
+	d := pacer.display
+	budget := f64(frame_budget_ms())
+	how := pacer.timed ? "timed" : fmt.tprintf("sync interval %d", pacer.interval)
+	fmt.sbprintf(sb, "pacing: display %.3f Hz (%v), target %.3f Hz (%s, %s), budget %.3f ms\n", d.hz, d.source, pacer.hz, how, pacer.tearing ? "tearing" : "vsync", budget)
+	cpu := make([dynamic]f64, 0, len(prof.frames), context.temp_allocator)
+	gpu := make([dynamic]f64, 0, len(prof.frames), context.temp_allocator)
+	pres := make([dynamic]f64, 0, len(prof.frames), context.temp_allocator)
+	over, gover := 0, 0
+	for f in prof.frames {
+		w := f64(f.dur[.Frame] - f.dur[.Wait] - f.dur[.Present])
+		append(&cpu, w)
+		append(&pres, f64(f.dur[.Present]))
+		if w > f64(f.budget) { over += 1 }
+		if f.gpu_ms > 0 { append(&gpu, f64(f.gpu_ms)); if f.gpu_ms > f.budget { gover += 1 } }
+	}
+	cs, gs, ps := stat_of(cpu[:]), stat_of(gpu[:]), stat_of(pres[:])
+	fmt.sbprintf(sb, "  CPU work  n %d  mean %.3f  p50 %.3f  p95 %.3f  p99 %.3f  max %.3f ms | over budget %d (%.2f %%)\n", cs.n, cs.mean, cs.p50, cs.p95, cs.p99, cs.max, over, f64(over) * 100 / f64(max(cs.n, 1)))
+	fmt.sbprintf(sb, "  Present   p50 %.3f  p95 %.3f  p99 %.3f  max %.3f ms\n", ps.p50, ps.p95, ps.p99, ps.max)
+	fmt.sbprintf(sb, "  GPU draw  n %d  mean %.3f  p50 %.3f  p95 %.3f  p99 %.3f  max %.3f ms | over budget %d (%.2f %%)\n", gs.n, gs.mean, gs.p50, gs.p95, gs.p99, gs.max, gover, f64(gover) * 100 / f64(max(gs.n, 1)))
+	lat := make([dynamic]f64, 0, len(prof.shown), context.temp_allocator)
+	missed := 0
+	for s in prof.shown {
+		missed += int(s.missed)
+		if s.latency_ms >= 0 { append(&lat, f64(s.latency_ms)) }
+	}
+	ls := stat_of(lat[:])
+	fmt.sbprintf(sb, "  on screen %d, missed refreshes %d | input -> screen n %d  mean %.2f  p50 %.2f  p95 %.2f  max %.2f ms | measured %.3f Hz\n\n", len(prof.shown), missed, ls.n, ls.mean, ls.p50, ls.p95, ls.max, render.measured_refresh_hz(&the_app.r))
 }
 
 // Start-up moments since the process was created (its creation time, brought into the QPC time line).
@@ -453,6 +503,7 @@ report_samples :: proc(sb: ^strings.Builder) {
 } else {
 
 prof_init :: proc(app: ^App) {}
+prof_displayed :: proc(d: render.Displayed_Frame, latency_ms: f32) {}
 prof_mark :: proc(m: Startup_Mark) {}
 prof_layout :: proc(l: ^lay.Layout) { hud_layout(l) }
 prof_record :: proc(app: ^App, items, elements: int) {}

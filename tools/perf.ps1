@@ -82,6 +82,19 @@ function Make-ItemsPage($name, [string]$container, [string]$item, [int]$count) {
 $g10k = Make-ItemsPage 'grid10k' 'display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px' '' 10000
 $f10k = Make-ItemsPage 'flex10k' 'display:flex;flex-wrap:wrap;gap:6px' 'flex:1 1 140px' 10000
 
+# A text field (focused on load) above a long page: typing restyles and lays out one line
+function Make-TypingPage($name) {
+    $path = Join-Path $out "$name.html"
+    if (Test-Path $path) { return $path }
+    $sb = New-Object Text.StringBuilder
+    [void]$sb.AppendLine("<!doctype html><html><head><meta charset=utf-8><title>$name</title><style>body{margin:0;font:15px sans-serif} input,textarea{display:block;margin:12px;width:600px;font-size:16px} p{margin:4px 12px}</style></head><body>")
+    [void]$sb.AppendLine("<input autofocus value='start '><textarea rows=4>notes</textarea>")
+    for ($i = 0; $i -lt 2000; $i++) { [void]$sb.AppendLine("<p>Paragraph $i lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.</p>") }
+    [void]$sb.AppendLine("</body></html>")
+    [IO.File]::WriteAllText($path, $sb.ToString())
+    return $path
+}
+$typing = Make-TypingPage 'typing'
 $p1k  = Make-Page 'p1k'  1000 300
 $p10k = Make-Page 'p10k' 10000 2000
 $p50k = Make-Page 'p50k' 50000 5000
@@ -97,14 +110,19 @@ function Run($name, $url, [scriptblock]$actions, [bool]$sample = $true, [string]
     $p = if ($argv) { Start-Process (Join-Path $root "build\$Exe") -ArgumentList $argv -PassThru } else { Start-Process (Join-Path $root "build\$Exe") -PassThru }
     try {
         $sw = [Diagnostics.Stopwatch]::StartNew()
+        $script:runSw = $sw; $script:actMs = -1
         while (-not $p.HasExited -and $p.MainWindowHandle -eq 0 -and $sw.ElapsedMilliseconds -lt 10000) { Start-Sleep -Milliseconds 20; $p.Refresh() }
         $h = $p.MainWindowHandle
         & $actions $h
+        # when the input began (Mark), on the profile's clock (ms since the process started, about): perf_summary -Budget
+        # counts the frames from there on
+        if ($script:actMs -ge 0) { [IO.File]::WriteAllText("$prefix.act", "$script:actMs") } elseif (Test-Path "$prefix.act") { Remove-Item "$prefix.act" }
         [PF]::PostMessage($h, 0x10, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null   # WM_CLOSE: the report is written on a clean exit
         if (-not $p.WaitForExit(30000)) { Write-Host "$name did not exit, killed"; $p.Kill() }
     } finally { if (-not $p.HasExited) { $p.Kill() } }
     Write-Host ("done {0}" -f $name)
 }
+function Mark { $script:actMs = $script:runSw.ElapsedMilliseconds }   # the measured part starts (after the load)
 function Client($h) { $r = New-Object PF+RECT; [PF]::GetClientRect($h, [ref]$r) | Out-Null; $r }
 function MouseTo($h, $x, $y) { [PF]::PostMessage($h, 0x0200, [IntPtr]::Zero, [IntPtr](($y -shl 16) -bor ($x -band 0xFFFF))) | Out-Null }
 function Wheel($h, $x, $y, $notches) {
@@ -126,6 +144,49 @@ function Hover($h, [int]$ms) {
 function Scroll($h, [int]$ms) {
     $c = Client $h; $sw = [Diagnostics.Stopwatch]::StartNew()
     while ($sw.ElapsedMilliseconds -lt $ms) { Wheel $h ($c.R / 2) ($c.B / 2) (-3); Start-Sleep -Milliseconds 16 }
+}
+# A fast wheel: one notch (or `units` / 120 of one: a high-resolution wheel, a touchpad) every `every` ms
+function WheelStream($h, [int]$ms, [int]$every = 4, [int]$units = -120) {
+    $c = Client $h; $sw = [Diagnostics.Stopwatch]::StartNew(); $next = 0
+    while ($sw.ElapsedMilliseconds -lt $ms) {
+        if ($sw.ElapsedMilliseconds -ge $next) { Wheel $h ($c.R / 2) ($c.B / 2) ($units / 120.0); $next += $every }
+        # back and forth so a long run never sits at an end of the page
+        if ([int]($sw.ElapsedMilliseconds / 2000) % 2 -eq 1) { $units = [Math]::Abs($units) } else { $units = -[Math]::Abs($units) }
+        [Threading.Thread]::Yield() | Out-Null
+    }
+}
+function Key($h, [int]$vk) {
+    [PF]::PostMessage($h, 0x0100, [IntPtr]$vk, [IntPtr]1) | Out-Null
+    [PF]::PostMessage($h, 0x0101, [IntPtr]$vk, [IntPtr](0xC0000001 -band 0xFFFFFFFF)) | Out-Null
+}
+# Keyboard scrolling: Page Down x4, Page Up x4, arrows held (auto-repeat rate), Space, Home, End
+function Keys($h, [int]$ms) {
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while ($sw.ElapsedMilliseconds -lt $ms) {
+        foreach ($vk in 0x22, 0x22, 0x22, 0x22, 0x21, 0x21, 0x21, 0x21) { Key $h $vk; Start-Sleep -Milliseconds 220 }
+        for ($i = 0; $i -lt 30; $i++) { [PF]::PostMessage($h, 0x0100, [IntPtr]0x28, [IntPtr](0x40000001)) | Out-Null; Start-Sleep -Milliseconds 33 }
+        [PF]::PostMessage($h, 0x0101, [IntPtr]0x28, [IntPtr](0xC0000001 -band 0xFFFFFFFF)) | Out-Null
+        Key $h 0x20; Start-Sleep -Milliseconds 300; Key $h 0x23; Start-Sleep -Milliseconds 400; Key $h 0x24; Start-Sleep -Milliseconds 400
+    }
+}
+# Typing in the focused field: a character every 30 ms, a Backspace now and then
+function Typing($h, [int]$ms) {
+    $sw = [Diagnostics.Stopwatch]::StartNew(); $text = 'the quick brown fox jumps over the lazy dog '; $i = 0
+    while ($sw.ElapsedMilliseconds -lt $ms) {
+        $ch = [int][char]$text[$i % $text.Length]; $i++
+        [PF]::PostMessage($h, 0x0102, [IntPtr]$ch, [IntPtr]1) | Out-Null
+        if ($i % 17 -eq 0) { Key $h 0x08 }
+        Start-Sleep -Milliseconds 30
+    }
+}
+# Fast pointer: a move every 2 ms (a 1000 Hz mouse sends more; the window coalesces them anyway)
+function HoverFast($h, [int]$ms) {
+    $c = Client $h; $sw = [Diagnostics.Stopwatch]::StartNew()
+    while ($sw.ElapsedMilliseconds -lt $ms) {
+        $t = $sw.ElapsedMilliseconds / 1000.0
+        MouseTo $h ([int]($c.R * (0.5 + 0.4 * [Math]::Sin($t * 7)))) ([int]($c.B * (0.55 + 0.35 * [Math]::Sin($t * 4.3))))
+        $sw2 = [Diagnostics.Stopwatch]::StartNew(); while ($sw2.ElapsedTicks -lt [Diagnostics.Stopwatch]::Frequency / 500) { }
+    }
 }
 function Resize($h, [int]$ms) {
     $r = New-Object PF+RECT; [PF]::GetWindowRect($h, [ref]$r) | Out-Null
@@ -189,3 +250,16 @@ Run 'anim_full' (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-
 Run 'transforms_nocomp' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 10 } $false '--pref render.compositor.enabled=false'
 Run 'p10k_scroll_nocomp' (FileUrl $p10k) { param($h) Start-Sleep 5; Scroll $h 8000 } $true '--pref render.compositor.enabled=false'
 Run 'gradients' (FileUrl (Join-Path $site 'gradients.html')) { param($h) Start-Sleep 8 } $false
+# frame pacing at the monitor's rate (pacing.odin, smooth_scroll.odin): the report's first lines compare every frame to
+# the budget (1000 / rate), count missed refreshes and the input -> screen latency. Add -Prefs '--pref
+# browser.frame.target_hz=60' -Tag _60 (or 120, 144, 240) to simulate another rate.
+Run 'p10k_wheel'     (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; WheelStream $h 8000 4 -120 } $false
+Run 'p50k_wheel'     (FileUrl $p50k) { param($h) Start-Sleep 20; Mark; WheelStream $h 8000 4 -120 } $false
+Run 'p10k_touchpad'  (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; WheelStream $h 8000 4 -30 } $false
+Run 'p10k_keys'      (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; Keys $h 8000 } $false
+Run 'p10k_hover_fast' (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; HoverFast $h 8000 } $false
+Run 'typing'         (FileUrl $typing) { param($h) Start-Sleep 4; Mark; Typing $h 8000 } $false
+Run 'p10k_resize_pacing' (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; Resize $h 6000 } $false
+Run 'anim_pacing'       (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
+Run 'transforms_pacing' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
+Run 'effects_pacing'    (FileUrl (Join-Path $site 'effects.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false

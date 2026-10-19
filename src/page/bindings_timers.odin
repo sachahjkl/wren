@@ -206,6 +206,13 @@ cancelIdleCallback :: proc(c: ^Call, id: u64) -> Api_Error {
 	return .Not_Found
 }
 
+// Time between two rendered frames: timers.frame_budget_ms, else the shell's frame period, else 60 Hz.
+frame_interval_ms :: proc(s: Web_Settings) -> f64 {
+	if s.frame_budget_ms > 0 { return s.frame_budget_ms }
+	if s.frame_period_ms > 0 { return s.frame_period_ms }
+	return 1000.0 / 60
+}
+
 // Arms the idle scan: soon (timers.idle_poll_ms), or at the earliest timeout when that comes first.
 @(private)
 idle_schedule :: proc(p: ^Page) {
@@ -245,7 +252,7 @@ idle_scan :: proc(data: rawptr) {
 	if !busy && len(w.idle) > 0 {
 		budget := s.idle_max_deadline_ms
 		if next > 0 { budget = min(budget, f64(next)) }
-		if wants_animation_frame(p) { budget = min(budget, s.frame_budget_ms) }
+		if wants_animation_frame(p) { budget = min(budget, frame_interval_ms(s^)) }
 		deadline := page_now_ms(p) + budget
 		// only the callbacks present when the period starts run in it
 		count := len(w.idle)

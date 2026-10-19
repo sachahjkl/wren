@@ -90,6 +90,7 @@ Tab :: struct {
 	session:  Session_History,   // the joint session history: entries, history.state, same-document entries
 	hold:     Paint_Hold,        // the previous page, shown until the new one paints (first_paint.odin)
 	zoom:     f32,               // page zoom (zoom.odin); 1 = 100 %
+	smooth:   Smooth_Scroll,     // scroll animations and scroll bar drags (smooth_scroll.odin)
 }
 
 Session_History :: page.Session_History   // (a field named `page` hides the package in the struct above)
@@ -169,6 +170,7 @@ tab_close :: proc(app: ^App, index: int) {
 	for l in t.console { delete(l) }
 	delete(t.console)
 	layout_destroy(&t.layout)
+	smooth_destroy(&t.smooth)
 	free(t)
 	if len(app.tabs) == 0 { tab_open(app) } else { app.current = clamp(app.current, 0, len(app.tabs) - 1) }
 	if cur := current_tab(app); cur != nil { ui.field_set(&app.address, cur.url) }
@@ -562,6 +564,10 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	// an incremental layout reads what the style passes changed (layout.incremental.*)
 	ls := &page_render.settings
 	page.set_layout_journal(t.page, ls.incremental ? ls.inc_journal : 0)
+	// CSS animations and transitions sample the frame's time (pacing.odin), the live clock again between frames
+	page.set_frame_time(t.page, pacer.frame_ms)
+	pinned := t.page
+	defer page.set_frame_time(pinned, 0, unpin = true)
 	prof_begin(.Styles)
 	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
 	prof_end(.Styles)
@@ -634,17 +640,19 @@ adopt_web_fonts :: proc(t: ^Tab) {
 scroll_to_fragment :: proc(t: ^Tab, viewport: draw.Vec2) {
 	href := t.page.env.location.href
 	if href == t.fragment_seen || !t.layout.valid { return }
+	// within the same document the page's scroll-behavior: smooth animates it (smooth_scroll.odin); a new one jumps
+	smooth := t.fragment_seen != "" && css_smooth(the_app, t)
 	delete(t.fragment_seen)
 	t.fragment_seen = strings.clone(href)
 	loc := t.page.env.location
 	if !loc.has_fragment { return }
 	frag := loc.fragment
 	frag = percent_decode_bytes(frag)   // HTML: the decoded fragment is tried as an id
-	if frag == "" || strings.equal_fold(frag, "top") { t.scroll = 0; return }
+	if frag == "" || strings.equal_fold(frag, "top") { scroll_document_to(the_app, t, 0, smooth); return }
 	target := dom.find_by_id(t.page.doc, frag)
 	if target == base.NIL_HANDLE { target = find_named_anchor(t.page.doc, frag) }
 	if target == base.NIL_HANDLE { return }
-	if r, ok := lay.box_of(&t.layout, target, viewport, t.scroll); ok && !r.fixed { t.scroll = max(r.border.min.y, 0) }
+	if r, ok := lay.box_of(&t.layout, target, viewport, t.scroll); ok && !r.fixed { scroll_document_to(the_app, t, max(r.border.min.y, 0), smooth) }
 }
 
 @(private = "file")
@@ -775,6 +783,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	for ev, index in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
+		if !hud_captures(ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
 		// form controls first: keyboard for the focused field, the open drop-down list (forms_shell.odin)
 		if forms_route_event(app, t, ev, index) { continue }
 		if t.page == nil { return }
@@ -789,7 +798,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 				if ev.delta.y != 0 { zoom_step(app, t, ev.delta.y < 0 ? 1 : -1) }
 			} else if inside {
 				d := ev.delta * app.cfg.scroll_step * scale   // platform convention: +y = towards the end of the content
-				if !page_wheel(&t.layout, ev.pos - app.page_rect.min, d, draw.rect_size(app.page_rect), t.scroll) { t.scroll += d.y }
+				smooth_wheel(app, t, ev.pos - app.page_rect.min, d, wheel_is_precise(ev.delta))   // smooth_scroll.odin
 			}
 		case .Mouse_Press:
 			if !inside || !t.layout.valid { continue }
@@ -887,16 +896,15 @@ on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) { apply_pre
 ////////////////////////////////
 // Loop
 
-frame :: proc(app: ^App) {
+frame :: proc(app: ^App, idled := false) {
 	prof_frame_begin()
 	prof_begin(.Wait)
-	// nothing is queued before the first present: the latency object of a swap chain not yet shown is not signaled,
-	// waiting would only run into the timeout (100 ms off the first paint)
-	if app.presented { render.wait_for_frame(&app.r) }
+	pacer_update(app)
+	pacer_wait(app, idled)   // pacing.odin: the frame's time slot, then the swap chain (input is taken meanwhile)
 	prof_end(.Wait)
 	prof_begin(.Events)
 	events := platform.poll_events(app.win, false)
-	render.mark_input(&app.r)
+	pacer_begin_frame(app, events)
 	if len(events) > 0 { app.frames_requested = max(app.frames_requested, 4) }
 	prof_end(.Events)
 
@@ -915,18 +923,18 @@ frame :: proc(app: ^App) {
 	// page visibility, then the animation frame callbacks of the page about to be painted
 	shown := app.win.size.x > 0 && app.win.size.y > 0
 	for tab, i in app.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == app.current && tab.kind == .Web) } }
+	// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
 	if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
 		prof_begin(.Animation)
-		page.run_animation_frames(t.page, f64(host.now_ns(&app.loop)) / 1e6)
+		page.run_animation_frames(t.page, pacer.frame_ms)
 		prof_end(.Animation)
 		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 1) }
 	}
+	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 1) }   // smooth_scroll.odin
 
 	render.resize(&app.r, app.win.size)
 	size := draw.Vec2{f32(app.win.size.x), f32(app.win.size.y)}
-	now := time.tick_now()
-	dt := clamp(f32(time.duration_seconds(time.tick_diff(app.last_tick, now))), 0.0005, 0.1)
-	app.last_tick = now
+	dt := pacer.dt
 
 	pal, pal_ok := ui.palette_named(app.cfg.ui_theme)   // browser.ui.theme
 	if !pal_ok { pal = ui.PALETTE_GRAPHITE }
@@ -963,6 +971,7 @@ frame :: proc(app: ^App) {
 	render.frame_end(&app.r)
 	app.presented = true
 	prof_end(.Present)
+	pacer_end_frame(app)
 	{
 		items, nodes := 0, 0
 		if t := current_tab(app); t != nil && t.page != nil { items, nodes = len(t.layout.items), t.page.doc.nodes.count }
@@ -1044,6 +1053,7 @@ main :: proc() {
 	tab_open(app, address)
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }
 
+	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
 	if !render.init(&app.r, app.win.hwnd, app.win.size) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
 	prof_mark(.Renderer)
 	if !fonts_preload_finish(app, preload) { fmt.eprintln("cannot load the UI or icon font"); return }
@@ -1061,6 +1071,8 @@ main :: proc() {
 	page_render.bare = forms_bare_control
 
 	prof_init(app)
+	pacer_init(app)
+	smooth_init(app)
 	hud_init(app)
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
@@ -1070,14 +1082,16 @@ main :: proc() {
 	prof_mark(.Loop)
 
 	for !platform.is_closed(app.win) {
-		if app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) {
+		idled := false
+		if app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && !platform.take_paint_request(app.win) {
 			timeout := ui.wake_ms(&app.ui_state)
 			if t := host.next_timeout_ms(&app.loop); t >= 0 && (timeout <= 0 || t < timeout) { timeout = max(t, 1) }
 			prof_begin(.Idle)
 			platform.wait_event(app.win, timeout)
 			prof_end(.Idle)
+			idled = true
 		}
-		frame(app)
+		frame(app, idled)
 		if app.frames_requested > 0 { app.frames_requested -= 1 }
 	}
 
@@ -1095,6 +1109,8 @@ main :: proc() {
 	fetch.profile_destroy(&app.profile)
 	appearance_destroy()
 	hud_destroy(app)
+	smooth_shutdown(app)
+	pacer_destroy(app)
 	host.loop_destroy(&app.loop)
 	wasm.runtime_destroy()
 	measure_destroy(&app.measure)

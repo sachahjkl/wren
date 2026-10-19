@@ -61,7 +61,7 @@ cx_open :: proc(f: ^Cx, src: string) -> bool {
 	effects_settings = effects_settings_from_prefs(&f.prefs)
 	compositor_settings = compositor_settings_from_prefs(&f.prefs)
 	compositor_settings.chunk_items = 8   // several chunks even on a small page
-	compositor_settings.settle_frames = 0   // record right after each layout pass
+	compositor_settings.settle_ms = 0   // record right after each layout pass
 	f.doc = dom.document_create(nil)
 	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
 	ss := style.settings_default()
@@ -83,7 +83,7 @@ cx_close :: proc(f: ^Cx) {
 	render.destroy(&f.r)
 	font.destroy(&f.fonts)
 	config.prefs_destroy(&f.prefs)
-	compositor_settings = {enabled = true, chunk_items = 512, max_chunks = 4096, settle_frames = 3, memory = 256 << 20}
+	compositor_settings = {enabled = true, chunk_items = 512, max_chunks = 4096, settle_ms = 50, memory = 256 << 20}
 }
 
 @(private = "file")

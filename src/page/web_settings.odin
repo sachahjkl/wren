@@ -12,7 +12,8 @@ Web_Settings :: struct {
 	background_align_ms:     f64,
 	idle_poll_ms:            f64,
 	idle_max_deadline_ms:    f64,
-	frame_budget_ms:         f64,
+	frame_budget_ms:         f64,   // 0: frame_period_ms
+	frame_period_ms:         f64,   // set by the shell: the period of its frames (not a preference; 0: unknown)
 	max_frame_callbacks:     int,
 	max_idle_callbacks:      int,
 	max_random_bytes:        int,
@@ -42,8 +43,8 @@ WEB_PREFS := [?]config.Def{
 		description = "How often the page looks for an idle period while requestIdleCallback callbacks wait and the event loop is busy."},
 	{name = "timers.idle_max_deadline_ms", kind = .Float, default = {f = 50}, bounded = true, min = 1, max = 10_000, unit = "ms",
 		description = "Longest idle period given to requestIdleCallback callbacks (the specification's 50 ms)."},
-	{name = "timers.frame_budget_ms", kind = .Float, default = {f = 16}, bounded = true, min = 1, max = 1000, unit = "ms",
-		description = "Expected time between two rendered frames: an idle period never runs into the next animation frame of a page that requested one."},
+	{name = "timers.frame_budget_ms", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 1000, unit = "ms",
+		description = "Expected time between two rendered frames: an idle period never runs into the next animation frame of a page that requested one. 0 = the frame period of the browser (browser.frame.target_hz: 5.6 ms on a 180 Hz monitor)."},
 	{name = "timers.max_animation_callbacks", kind = .Int, default = {i = 100_000}, bounded = true, min = 1, max = 100_000_000,
 		description = "Most requestAnimationFrame callbacks one page may have waiting. Past it, requests fail."},
 	{name = "timers.max_idle_callbacks", kind = .Int, default = {i = 100_000}, bounded = true, min = 1, max = 100_000_000,
