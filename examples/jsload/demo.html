@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><meta charset=utf-8><title>JavaScript loading demo</title>
+<style>body { font-family: sans-serif; margin: 24px } li { margin: 4px 0 } .ok { color: #070 } noscript { color: #a00 }</style>
+<script>
+  window.steps = [];
+  function step(s) { steps.push(s); console.log(s); }
+  step("head script: document.body is " + document.body + ", readyState " + document.readyState);
+</script>
+<script type=importmap>{ "imports": { "mapped": "/jsload/files/mod/mapped.js" } }</script>
+<script type=module>
+  import { m } from "mapped";
+  step("module ran after parsing: " + m + " (import map), readyState " + document.readyState);
+</script>
+<script defer src="/jsload/gen?ms=50&code=step(%22defer%20script%20ran%22)"></script>
+</head><body onload="step('body onload: ' + document.readyState); render()">
+<h1>Scripts in Wren</h1>
+<noscript>This line is only shown without JavaScript.</noscript>
+<p>Written by <code>document.write</code>: <script>document.write("<b id=w class=ok>written inline</b>")</script></p>
+<p id=clock>timer: waiting</p>
+<ol id=log></ol>
+<button onclick="this.textContent = 'clicked ' + (++window.clicks || (window.clicks = 1)) + ' time(s)'">click me (onclick attribute)</button>
+<script>
+  let n = 0;
+  setInterval(() => { document.getElementById("clock").textContent = "timer: " + (++n) + " tick(s) of setInterval"; }, 250);
+  document.addEventListener("DOMContentLoaded", () => step("DOMContentLoaded"));
+  function render() {
+    const ol = document.getElementById("log");
+    for (const s of steps) { const li = document.createElement("li"); li.textContent = s; ol.appendChild(li); }
+  }
+</script>
+</body></html>
