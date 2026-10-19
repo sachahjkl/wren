@@ -211,6 +211,7 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	case .Length: info.line_h = cs.line_height.v * c.scale
 	}
 	font_resolve(c, &info)
+	if c.pre != nil { pre_drain(c) }   // the layout threads read the fonts: no growth while they run
 	fi := i32(len(c.l.fonts))
 	append(&c.l.fonts, info)
 	c.font_cache[key] = fi

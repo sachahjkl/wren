@@ -204,6 +204,7 @@ specified_height :: proc(c: ^Ctx, b: ^Box, cb_h: f32) -> (f32, bool) {
 // top) are recorded apart and merged, which is the same as adding them in place (a strut is a max / min).
 @(private)
 layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_Ctx) -> Result {
+	if c.pre != nil { pre_wait_box(c, bi) }
 	b := &c.l.boxes[bi]
 	b.size.x = w
 	fc := fc_in
@@ -339,6 +340,7 @@ flow_blocks :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse_t
 			continue
 		}
 		if k.kind == .Inline { continue }
+		if c.pre != nil { pre_wait_box(c, ch) }   // its context may still be in the making on a layout thread
 		ctop := content_top(fc)
 		if .Float in k.flags {
 			place_float(c, ch, bi, cw, fc, ctop + y + (open ? 0 : strut_value(local)))

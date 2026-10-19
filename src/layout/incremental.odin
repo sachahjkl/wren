@@ -1,5 +1,6 @@
 package layout
 
+import "core:slice"
 import "core:time"
 import "wb:base"
 import "wb:css"
@@ -420,13 +421,8 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	note_inputs(l, input)
 	l.passes[.Incremental] += 1
 	t1 := time.tick_now()
-	pre_layout(&c)
-	root := &l.boxes[0]
-	root.pos = {0, 0}
-	root.size = input.viewport
-	layout_contents(&c, 0, input.viewport.x, input.viewport.y, -1, nil)
-	l.boxes[0].size = input.viewport
-	pre_garbage(&c)
+	pre_run(&c, layout_root)
+	c.pre_boxes = nil
 	l.inc.last_laid = len(pass.laid)
 	t2 := time.tick_now()
 	t3, t4: time.Tick
@@ -670,6 +666,11 @@ cached_segs :: proc(c: ^Ctx, bi: i32) -> [2]i32 {
 
 @(private)
 keep_segs :: proc(c: ^Ctx, bi: i32, segs: []Seg) {
+	if c.pre != nil && c.pre.streaming {
+		// the layout threads read the kept segments meanwhile: Inc_State.segs grows once they are done
+		append(&c.pre.pending_segs, Pending_Segs{bi, slice.clone(segs, context.temp_allocator)})
+		return
+	}
 	s := &c.l.inc
 	inf := &s.info[bi]
 	s.dead_segs += int(inf.segs[1] - inf.segs[0])

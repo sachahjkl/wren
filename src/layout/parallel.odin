@@ -1,7 +1,9 @@
 package layout
 
+import "base:intrinsics"
 import "base:runtime"
 import "core:sync"
+import "core:thread"
 import "wb:host"
 import "wb:style"
 
@@ -52,7 +54,7 @@ Pre_Result :: struct {
 	settled:      bool,        // models have the unions: pre_adopt needs not read the fragments (ifc_settle)
 	inline_abs:   bool,        // some inline box of the context is the containing block of positioned boxes
 	baseline, last_baseline: f32,
-	glines:       [2]i32,      // in Layout.lines (pre_place)
+	part:         i32,         // the share that lays it out (Pre_Pass.done)
 	taken:        bool,
 }
 
@@ -63,8 +65,19 @@ Pre_Pass :: struct {
 	results: []Pre_Result,
 	slot:    []i32,            // box -> index in roots (NONE: not laid out ahead)
 	chunks:  int,
-	off_f, off_l: []int,       // where each chunk's fragments and lines went in the layout's arrays
+	// the shares are taken in order by whoever comes (the threads, the UI thread when the block layout needs one that
+	// nobody started), and marked done
+	next:    int,              // atomic
+	done:    []bool,           // atomic
+	streaming: bool,           // shares may still be in the making: the UI thread grows nothing the threads read
+	ui:      int,              // thread id of the caller (the block layout runs there)
+	walk:    proc(c: ^Ctx),
+	walked:  bool,
+	pending_segs: [dynamic]Pending_Segs,   // keep_segs on the UI thread while streaming: applied afterwards
 }
+
+@(private)
+Pending_Segs :: struct { box: i32, segs: []Seg }
 
 // One parallel step at a time in the process: a layout that finds the threads busy (another layout on another thread)
 // does its work alone.
@@ -241,24 +254,95 @@ pre_simple :: proc(l: ^Layout, b: ^Box) -> bool {
 	return true
 }
 
-// Lays out ahead of time, on the layout threads, the contexts that qualify. Sets c.pre.
+// The block layout of the pass (`walk`), with the contexts that qualify laid out on the layout threads meanwhile: the
+// threads build the shares in document order while the UI thread runs the block layout, which takes each context when
+// it reaches it (waiting for its share, or building it itself when nobody started it). Sets c.pre while it runs.
 @(private)
-pre_layout :: proc(c: ^Ctx) {
+pre_run :: proc(c: ^Ctx, walk: proc(c: ^Ctx)) {
 	l := c.l
 	l.pre_counts = {}
-	if !c.text.concurrent || par_threads(l.settings.threads) <= 0 { return }
+	pool, pre := pre_layout(c)
+	if pre == nil { walk(c); return }
+	defer par_release()
+	pre.walk = walk
+	pre.ui = sync.current_thread_id()
+	pre.done = make([]bool, pre.chunks, context.temp_allocator)
+	pre.pending_segs = make([dynamic]Pending_Segs, 0, 16, context.temp_allocator)
+	pre.streaming = true
+	c.pre = pre
+	// one item per thread: each takes shares until none is left; the caller's first item is the block layout
+	host.parallel_for(pool, host.thread_pool_size(pool), pre_stream, pre)
+	pre.streaming = false
+	if !pre.walked { walk(c) }   // the threads took every item first: the shares are all done
+	for &p in pre.pending_segs { keep_segs(c, p.box, p.segs) }
+	clear(&pre.pending_segs)
+}
+
+@(private)
+pre_stream :: proc(data: rawptr, _: int) {
+	pre := (^Pre_Pass)(data)
+	if !pre.walked && sync.current_thread_id() == pre.ui {
+		pre.walked = true
+		pre.walk(pre.c)
+		return
+	}
+	for {
+		k := sync.atomic_add(&pre.next, 1)
+		if k >= pre.chunks { return }
+		pre_chunk(pre, k)
+		sync.atomic_store(&pre.done[k], true)
+	}
+}
+
+// Before the UI thread touches box `bi` while the threads may be building its context: its share is done.
+@(private)
+pre_wait_box :: #force_inline proc(c: ^Ctx, bi: i32) {
+	pre := c.pre
+	if pre == nil || !pre.streaming || int(bi) >= len(pre.slot) { return }
+	if ri := pre.slot[bi]; ri != NONE { pre_wait(pre, int(pre.results[ri].part)) }
+}
+
+@(private)
+pre_wait :: proc(pre: ^Pre_Pass, k: int) {
+	for spins := 0; !sync.atomic_load(&pre.done[k]); spins += 1 {
+		// nobody started it (or a later one): build the next one here rather than wait
+		if j := sync.atomic_add(&pre.next, 1); j < pre.chunks {
+			pre_chunk(pre, j)
+			sync.atomic_store(&pre.done[j], true)
+			continue
+		}
+		if spins < 4096 { intrinsics.cpu_relax() } else { thread.yield() }
+	}
+}
+
+// Every share done: the UI thread may grow what the threads read (fonts).
+@(private)
+pre_drain :: proc(c: ^Ctx) {
+	pre := c.pre
+	if pre == nil || !pre.streaming { return }
+	for k in 0 ..< pre.chunks { pre_wait(pre, k) }
+	pre.streaming = false
+}
+
+// The contexts that qualify and their shares (nil: none, the threads are not used). The threads are held when the
+// pass is returned (par_release).
+@(private)
+pre_layout :: proc(c: ^Ctx) -> (^host.Thread_Pool, ^Pre_Pass) {
+	l := c.l
+	if !c.text.concurrent || par_threads(l.settings.threads) <= 0 { return nil, nil }
 	// an incremental pass: worth a look only when much may be laid out again (run_incremental sets `wide`)
-	if c.inc != nil && (!l.settings.threads_incremental || !c.inc.wide) { return }
+	if c.inc != nil && (!l.settings.threads_incremental || !c.inc.wide) { return nil, nil }
 	n_ifc := 0
 	if c.inc == nil {
 		for &b in l.boxes { if .Ifc in b.flags { n_ifc += 1 } }
 	} else {
 		n_ifc = len(l.boxes)   // at most (the boxes are read on the threads; the contexts are counted below)
 	}
-	if n_ifc == 0 || n_ifc < l.settings.threads_min_contexts { return }
+	if n_ifc == 0 || n_ifc < l.settings.threads_min_contexts { return nil, nil }
 	pool := par_acquire(l.settings.threads)
-	if pool == nil { return }
-	defer par_release()
+	if pool == nil { return nil, nil }
+	ok := false
+	defer if !ok { par_release() }
 
 	pred := make([]f32, len(l.boxes), context.temp_allocator)
 	info := pre_predict(c, pred, pool)
@@ -276,29 +360,20 @@ pre_layout :: proc(c: ^Ctx) {
 		append(&roots, i32(i))
 		append(&results, Pre_Result{pcw = pred[x.parent], cw = pred[i], chunk = NONE})
 	}
-	if len(roots) == 0 || len(roots) < l.settings.threads_min_contexts { return }
+	if len(roots) == 0 || len(roots) < l.settings.threads_min_contexts { return nil, nil }
 
 	pre := new(Pre_Pass, context.temp_allocator)
 	pre^ = Pre_Pass{c = c, roots = roots[:], results = results[:], slot = slot}
-	pre.chunks = clamp(len(roots) / 32, 1, host.thread_pool_size(pool) * 8)
-	for len(l.pre_chunks) < pre.chunks { append(&l.pre_chunks, Pre_Chunk{}) }
-	host.parallel_for(pool, pre.chunks, pre_chunk, pre)
-
-	// the lines go to their place in the layout's arrays at once (on the threads): a context taken refers to them, an
-	// unused one (the block layout asked for another width) is left there as garbage of the pass
-	pre.off_f = make([]int, pre.chunks, context.temp_allocator)
-	pre.off_l = make([]int, pre.chunks, context.temp_allocator)
-	at_f, at_l := len(l.frags), len(l.lines)
+	// small shares: the block layout waits for the first one only
+	pre.chunks = clamp(len(roots) / 16, 1, host.thread_pool_size(pool) * 16)
+	n := len(roots)
 	for k in 0 ..< pre.chunks {
-		pre.off_f[k], pre.off_l[k] = at_f, at_l
-		at_f += len(l.pre_chunks[k].frags)
-		at_l += len(l.pre_chunks[k].lines)
+		for ri in k * n / pre.chunks ..< (k + 1) * n / pre.chunks { results[ri].part = i32(k) }
 	}
-	non_zero_resize(&l.frags, at_f)
-	non_zero_resize(&l.lines, at_l)
-	host.parallel_for(pool, pre.chunks, pre_place, pre)
-	c.pre = pre
+	for len(l.pre_chunks) < pre.chunks { append(&l.pre_chunks, Pre_Chunk{}) }
 	l.pre_counts[0] = len(roots)
+	ok = true
+	return pool, pre
 }
 
 // Incremental passes: context `b` misses its layout cache whatever its width (else: when the width differs from the
@@ -308,40 +383,7 @@ pre_layout :: proc(c: ^Ctx) {
 pre_stale :: proc(b: ^Box) -> bool { return !b.cache_ok || b.inc != {} }
 
 @(private)
-pre_place :: proc(data: rawptr, k: int) {
-	pre := (^Pre_Pass)(data)
-	l := pre.c.l
-	ch := &l.pre_chunks[k]
-	copy(l.frags[pre.off_f[k]:], ch.frags[:])
-	n := len(pre.roots)
-	for ri in k * n / pre.chunks ..< (k + 1) * n / pre.chunks {
-		r := &pre.results[ri]
-		if r.chunk == NONE { continue }
-		fb := i32(pre.off_f[k]) + r.frags[0]
-		for li in r.lines[0] ..< r.lines[1] {
-			ln := ch.lines[li]
-			ln.frags += fb
-			l.lines[i32(pre.off_l[k]) + li] = ln
-		}
-		r.glines = r.lines + i32(pre.off_l[k])
-	}
-}
-
-// After a full pass's layout: the lines laid out ahead that no context took are garbage (incremental.odin compacts it).
-@(private)
-pre_garbage :: proc(c: ^Ctx) {
-	pre := c.pre
-	if pre == nil { return }
-	for &r in pre.results {
-		if r.chunk == NONE || r.taken { continue }
-		c.l.inc.dead_lines += int(r.lines[1] - r.lines[0])
-		c.l.inc.dead_frags += int(r.frags[1] - r.frags[0])
-	}
-}
-
-@(private)
-pre_chunk :: proc(data: rawptr, k: int) {
-	pre := (^Pre_Pass)(data)
+pre_chunk :: proc(pre: ^Pre_Pass, k: int) {
 	marker: u8
 	wc := pre.c^
 	wc.stack_base = uintptr(&marker)
@@ -460,16 +502,28 @@ pre_adopt :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (h: f32, empty: b
 	ri := pre.slot[bi]
 	if ri == NONE { return }
 	r := &pre.results[ri]
+	if pre.streaming { pre_wait(pre, int(r.part)) }
 	if r.chunk == NONE || r.cw != cw { return }
 	if fc != nil && fc.bfc != nil && len(fc.bfc.floats) > 0 { return }
 	b := &c.l.boxes[bi]
 	if content_x(b) != r.cx || content_y(b) != r.cy { return }
 	ch := &c.l.pre_chunks[r.chunk]
 	if r.segs[1] > r.segs[0] { keep_segs(c, bi, ch.segs[r.segs[0]:r.segs[1]]) }
+	// its lines and fragments join the layout's (the threads never read those)
+	l := c.l
+	fb := i32(len(l.frags))   // the lines' fragments count from the context's first
+	append(&l.frags, ..ch.frags[r.frags[0]:r.frags[1]])
+	l0 := i32(len(l.lines))
+	for ln in ch.lines[r.lines[0]:r.lines[1]] {
+		ln2 := ln
+		ln2.frags += fb
+		append(&l.lines, ln2)
+	}
+	glines := [2]i32{l0, i32(len(l.lines))}
 	if r.settled {
 		// ifc_settle, from what the thread found
-		b.lines = r.glines
-		if r.glines[1] > r.glines[0] { b.baseline, b.last_baseline = r.baseline, r.last_baseline }
+		b.lines = glines
+		if glines[1] > glines[0] { b.baseline, b.last_baseline = r.baseline, r.last_baseline }
 		for &s in ch.models[r.models[0]:r.models[1]] {
 			ib := &c.l.boxes[s.box]
 			model_restore(ib, s)
@@ -477,7 +531,7 @@ pre_adopt :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (h: f32, empty: b
 		}
 	} else {
 		for &s in ch.models[r.models[0]:r.models[1]] { model_restore(&c.l.boxes[s.box], s) }
-		ifc_settle(c, bi, r.glines)
+		ifc_settle(c, bi, glines)
 	}
 	if !r.taken { c.l.pre_counts[1] += 1 }
 	r.taken = true
