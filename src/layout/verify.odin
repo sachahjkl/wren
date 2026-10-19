@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:math"
 import "core:strings"
 import "wb:base"
+import "wb:style"
 
 // Comparison of two layouts of the same document and styles: what an incremental pass made against what a full pass
 // makes (layout.incremental.verify, and the tests). Box indices may differ (a partial rebuild appends its boxes), so
@@ -96,6 +97,8 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 		case .Scroll in x.flags && !req(x.overflow, y.overflow): fail(&m, "%s: overflow %v / %v", at, x.overflow, y.overflow)
 		case x.col != y.col || x.row != y.row || x.colspan != y.colspan || x.rowspan != y.rowspan: fail(&m, "%s: table slot", at)
 		case !font_eq(&m, x.fi, y.fi): fail(&m, "%s: font", at)
+		// an element's box points at its element's record; anonymous boxes at equal copies
+		case (x.node == base.NIL_HANDLE || .Root in x.flags) ? !style.computed_equal(x.cs, y.cs) : x.cs != y.cs: fail(&m, "%s: style record", at)
 		case x.lines[1] - x.lines[0] != y.lines[1] - y.lines[0]: fail(&m, "%s: %d / %d lines", at, x.lines[1] - x.lines[0], y.lines[1] - y.lines[0])
 		case x.items[1] - x.items[0] != y.items[1] - y.items[0]: fail(&m, "%s: %d / %d inline items", at, x.items[1] - x.items[0], y.items[1] - y.items[0])
 		}

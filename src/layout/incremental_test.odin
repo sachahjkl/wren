@@ -26,6 +26,8 @@ Ix :: struct {
 	sizes: map[base.Handle][2]f32,   // natural sizes of images that "decoded"
 	images_gen, fonts_gen: u64,
 	web_font: bool,                  // the face of family "web" arrived (wider glyphs)
+	full_styles: bool,               // every mutation restyles the whole document (no style.restyle_dom)
+	partial_styles: int,             // restyles done by style.restyle_dom
 }
 
 @(private = "file")
@@ -90,18 +92,28 @@ ix_unload :: proc(f: ^Ix) {
 	free(f)
 }
 
-// What the page does each frame: styles for the document as it is (full pass after a mutation, compared with the
-// previous one), the timeline, then layout.
+// What the page does each frame (page.styles): styles for the document as it is (a partial restyle after a mutation
+// when it can be scoped, else a full pass compared with the previous one), the timeline, then layout.
 @(private = "file")
 ix_frame :: proc(f: ^Ix, dt: f64 = 16) {
 	f.now += dt
 	if f.st.mutations != f.doc.mutations {
-		style.sync_document_sheets(f.eng, f.doc, "about:test")
-		old := f.st
-		f.st = style.compute_styles(f.eng, f.doc, {})
-		style.journal_diff(old, f.st)
-		style.timeline_restyled(f.tl, f.doc, old, f.st, f.now)
-		style.styled_destroy(old)
+		partial := false
+		if !f.full_styles {
+			if style.dom_touches_sheets(f.eng, f.doc, f.st, nil) { style.sync_document_sheets(f.eng, f.doc, "about:test") }
+			if !f.eng.dirty { _, partial = style.restyle_dom(f.eng, f.doc, f.st) }
+		}
+		if partial {
+			f.partial_styles += 1
+			style.timeline_restyled_dom(f.tl, f.doc, f.st, f.now)
+		} else {
+			style.sync_document_sheets(f.eng, f.doc, "about:test")
+			old := f.st
+			f.st = style.compute_styles(f.eng, f.doc, {})
+			style.journal_diff(old, f.st)
+			style.timeline_restyled(f.tl, f.doc, old, f.st, f.now)
+			style.styled_destroy(old)
+		}
 	}
 	style.timeline_tick(f.tl, f.doc, f.st, f.now)
 	run(&f.l, ix_input(f))
@@ -561,4 +573,48 @@ td{border:1px solid} .ib{display:inline-block;width:50px} .hid{display:none}</st
 		free_all(context.temp_allocator)
 	}
 	testing.expectf(t, incremental > 250, "%d of 500 passes incremental", incremental)
+	testing.expectf(t, f.partial_styles > 150, "%d partial restyles", f.partial_styles)
+}
+
+// Style and layout both incremental: classes toggled on elements of a page whose rules reach descendants and
+// siblings. Every pass is compared with full ones (styles: style.verify_styles; layout: compare_layouts); the style
+// records of the layout are re-pointed from the style journal only.
+@(test)
+inc_restyle_classes :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>body{margin:0;font-size:10px;line-height:12px} .sec{margin:4px;padding:2px}
+.hl{background:#ff0} .hl p{color:red} .wide p{padding-left:20px} .big{font-size:16px} .gone .x{display:none}
+.on + .sec{border-top:3px solid} .row{display:flex} .row > .on{flex:2} li:first-child{font-weight:bold}</style><body>`)
+	for i in 0 ..< 80 {
+		fmt.sbprintf(&sb, `<div class=sec id=s%d><p>para %d with words</p><p class=x>hidden %d</p><div class=row><span>a</span><span id=r%d>b</span></div><ul><li>one<li>two</ul></div>`, i, i, i, i)
+	}
+	strings.write_string(&sb, `</body>`)
+	f := ix_load(strings.to_string(sb))
+	defer ix_unload(f)
+	ix_frame(f)
+	ix_check(t, f, .None)
+	r := rand.create(7)
+	context.random_generator = rand.default_random_generator(&r)
+	classes := [?]string{"hl", "wide", "big", "gone", "on", ""}
+	before := f.partial_styles
+	for step in 0 ..< 60 {
+		k := rand.int_max(80)
+		target := dom.find_by_id(f.doc, fmt.tprintf(rand.int_max(3) == 0 ? "r%d" : "s%d", k))
+		cls := classes[rand.int_max(len(classes))]
+		dom.set_attribute(f.doc, target, "class", strings.concatenate({"sec ", cls}, context.temp_allocator))
+		if step % 7 == 0 {
+			// a list item inserted first: :first-child moves
+			ul := dom.get(f.doc, dom.get(f.doc, target).parent)
+			_ = ul
+			if lst := dom.find_first_by_tag(f.doc, "ul"); lst != base.NIL_HANDLE {
+				add_el(f, lst, "li", "", "new", dom.get(f.doc, lst).first_child)
+			}
+		}
+		ix_frame(f)
+		testing.expect_value(t, style.verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
+		if !ix_check(t, f, .None) { fmt.println("step", step, cls); break }
+		free_all(context.temp_allocator)
+	}
+	testing.expectf(t, f.partial_styles - before >= 55, "%d of 60 restyles partial", f.partial_styles - before)
+	testing.expect(t, f.l.passes[.Incremental] > 40)
 }
