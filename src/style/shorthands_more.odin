@@ -61,6 +61,7 @@ expand_font :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longhand, bo
 			append(&res, Longhand{.Font_Style, INITIAL_KW[:]}, Longhand{.Font_Variant_Caps, INITIAL_KW[:]}, Longhand{.Font_Weight, INITIAL_KW[:]},
 				Longhand{.Font_Stretch, INITIAL_KW[:]}, Longhand{.Font_Size, idents(a, "medium")}, Longhand{.Line_Height, INITIAL_KW[:]},
 				Longhand{.Font_Family, idents(a, "system-ui")})
+			for p in FONT_RESETS { append(&res, Longhand{p, INITIAL_KW[:]}) }
 			return res[:], true
 		}
 	}
@@ -111,6 +112,7 @@ expand_font :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longhand, bo
 	append(&res, Longhand{.Font_Size, size})
 	append(&res, Longhand{.Line_Height, or_initial(line)})
 	append(&res, Longhand{.Font_Family, family})
+	for p in FONT_RESETS { append(&res, Longhand{p, INITIAL_KW[:]}) }
 	return res[:], true
 }
 
@@ -293,22 +295,7 @@ expand_shorthand_more :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -
 		emit(&res, .Text_Wrap_Mode, or_initial(mode))
 		emit(&res, .Text_Wrap_Style, or_initial(style))
 	case .Font_Variant:
-		// only the caps sub-property is computed; the other keywords are valid and have no effect here
-		caps: []css.Value
-		for it, i in items {
-			id := ident_lower(it)
-			switch {
-			case id == "normal" && len(items) == 1:
-			case in_list(id, FONT_VARIANT_CAPS[:]): if caps != nil { return nil, false }; caps = items[i:i + 1]
-			case in_list(id, FONT_VARIANT_OTHER[:]):
-			case it.kind == .Function: switch strings.to_lower(it.tok.text, context.temp_allocator) {
-				case "stylistic", "historical-forms", "styleset", "character-variant", "swash", "ornaments", "annotation":
-				case: return nil, false
-				}
-			case: return nil, false
-			}
-		}
-		emit(&res, .Font_Variant_Caps, or_initial(caps))
+		return expand_font_variant(items, a)
 	case .Overscroll_Behavior:
 		if len(items) < 1 || len(items) > 2 { return nil, false }
 		emit(&res, .Overscroll_Behavior_X, items[0:1])

@@ -780,6 +780,9 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 			if !ok || b.kind != .Px { return false }
 		}
 		c.border_spacing = {a.v, b.v}
+	case .Font_Feature_Settings, .Font_Variation_Settings, .Font_Kerning, .Font_Variant_Ligatures, .Font_Variant_Numeric,
+	     .Font_Variant_East_Asian, .Font_Variant_Position, .Unicode_Bidi:
+		return apply_font_feature_prop(cx, p, vs)
 	case .Font_Stretch, .Font_Variant_Caps, .Text_Decoration_Style, .Text_Decoration_Thickness, .Text_Underline_Offset,
 	     .White_Space_Collapse, .Text_Wrap_Mode, .Text_Wrap_Style, .Hyphens,
 	     .Background_Origin, .Background_Clip, .Background_Attachment,

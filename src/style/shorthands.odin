@@ -128,10 +128,12 @@ short_longhands :: proc(s: Short) -> []Prop {
 	@(static) b_left := [?]Prop{.Border_Left_Width, .Border_Left_Style, .Border_Left_Color}
 	@(static) radius := [?]Prop{.Border_Top_Left_Radius, .Border_Top_Right_Radius, .Border_Bottom_Right_Radius, .Border_Bottom_Left_Radius}
 	@(static) background := [?]Prop{.Background_Color, .Background_Image, .Background_Repeat, .Background_Position, .Background_Size, .Background_Origin, .Background_Clip, .Background_Attachment}
-	@(static) font := [?]Prop{.Font_Style, .Font_Variant_Caps, .Font_Weight, .Font_Stretch, .Font_Size, .Line_Height, .Font_Family}
+	@(static) font := [?]Prop{.Font_Style, .Font_Variant_Caps, .Font_Weight, .Font_Stretch, .Font_Size, .Line_Height, .Font_Family,
+		.Font_Variant_Ligatures, .Font_Variant_Numeric, .Font_Variant_East_Asian, .Font_Variant_Position, .Font_Kerning,
+		.Font_Feature_Settings, .Font_Variation_Settings}
 	@(static) white_space := [?]Prop{.White_Space_Collapse, .Text_Wrap_Mode}
 	@(static) text_wrap := [?]Prop{.Text_Wrap_Mode, .Text_Wrap_Style}
-	@(static) font_variant := [?]Prop{.Font_Variant_Caps}
+	@(static) font_variant := [?]Prop{.Font_Variant_Ligatures, .Font_Variant_Caps, .Font_Variant_Numeric, .Font_Variant_East_Asian, .Font_Variant_Position}
 	@(static) transition := [?]Prop{.Transition_Property, .Transition_Duration, .Transition_Timing_Function, .Transition_Delay, .Transition_Behavior}
 	@(static) animation := [?]Prop{.Animation_Name, .Animation_Duration, .Animation_Timing_Function, .Animation_Delay, .Animation_Iteration_Count, .Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition}
 	@(static) overscroll := [?]Prop{.Overscroll_Behavior_X, .Overscroll_Behavior_Y}

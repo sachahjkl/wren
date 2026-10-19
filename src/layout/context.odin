@@ -53,6 +53,9 @@ Font_Key :: struct {
 	size:     f32,
 	lh_kind:  style.Line_Height_Kind,
 	lh:       f32,
+	style:    style.Font_Style,
+	stretch:  f32,
+	feat:     Font_Sig,
 }
 
 @(private)
@@ -188,14 +191,17 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	key := Font_Key{
 		families = raw_data(cs.font_family), n = len(cs.font_family), weight = cs.font_weight,
 		italic = cs.font_style != .Normal, size = cs.font_size, lh_kind = cs.line_height.kind, lh = cs.line_height.v,
+		style = cs.font_style, stretch = cs.font_stretch, feat = font_sig(cs),
 	}
 	if c.last_fi >= 0 && key == c.last_key { return c.last_fi }
 	if fi, ok := c.font_cache[key]; ok { c.last_key, c.last_fi = key, fi; return fi }
 	info: Font_Info
 	info.size = cs.font_size * c.scale
 	info.weight, info.italic = cs.font_weight, key.italic
+	info.style, info.stretch = cs.font_style, cs.font_stretch > 0 ? cs.font_stretch : 100
 	info.families = make([]string, len(cs.font_family), c.sa)
 	for f, i in cs.font_family { info.families[i] = strings.clone(f, c.sa) }
+	info.features, info.variations = font_features(cs, c.sa)
 	switch cs.line_height.kind {
 	case .Normal: info.line_h = info.size * c.st.line_height_normal
 	case .Number: info.line_h = info.size * cs.line_height.v
@@ -212,7 +218,15 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 // The face, metrics and space width of a font, from what it was made from (again when the faces change).
 @(private)
 font_resolve :: proc(c: ^Ctx, info: ^Font_Info) {
-	info.font = c.text.font(c.text.user, info.families, info.weight, info.italic)
+	if c.text.font_request != nil {
+		req := Font_Request{
+			families = info.families, weight = info.weight, italic = info.italic, style = info.style, stretch = info.stretch,
+			features = info.features, variations = info.variations,
+		}
+		info.font = c.text.font_request(c.text.user, &req)
+	} else {
+		info.font = c.text.font(c.text.user, info.families, info.weight, info.italic)
+	}
 	m := c.text.metrics(c.text.user, info.font, info.size)
 	info.ascent, info.descent, info.x_height = m.ascent, m.descent, m.x_height
 	if info.x_height <= 0 { info.x_height = info.size * 0.5 }

@@ -7,7 +7,6 @@ package browser
 
 import "core:fmt"
 import "core:os"
-import "core:slice"
 import "core:strings"
 import "core:time"
 import "toolkit:draw"
@@ -153,6 +152,7 @@ tab_close :: proc(app: ^App, index: int) {
 	t := app.tabs[index]
 	ordered_remove(&app.tabs, index)
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone
+	page_fonts_drop(&page_render.fonts, t)   // its web fonts (fonts.odin)
 	page.storage_drop_session(&app.storage, tab_key(t))
 	page.session_destroy(&t.session)
 	delete(t.url); delete(t.title); delete(t.status)
@@ -564,21 +564,6 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.pop_clip(dc)
 }
 
-// Faces the page downloaded (@font-face) join the font registry of the painter; the layout is redone with them.
-adopt_web_fonts :: proc(t: ^Tab) {
-	if t.web_font_page != rawptr(t.page) { t.web_font_page, t.web_fonts = t.page, 0 }
-	ready := page.fonts_ready(t.page)
-	for t.web_fonts < len(ready) {
-		f := ready[t.web_fonts]
-		t.web_fonts += 1
-		if len(f.data) == 0 { continue }
-		id, ok := font.load_from_memory(page_render.fonts.state, slice.clone(f.data))   // the font state owns its copy
-		if !ok { tab_log(t, .Warn, fmt.tprintf("font %q could not be read", f.family)); continue }
-		weight := f.weight[0] == f.weight[1] ? f.weight[0] : (f.weight[0] + f.weight[1]) / 2
-		register_face(&page_render.fonts, f.family, weight, f.italic, id)   // the layout sees t.web_fonts change
-	}
-}
-
 // HTML "scroll to the fragment": when the document URL changes (load, link to #id, location.hash, history), the view
 // goes to the element whose id (or <a name>) is the fragment; "top" or an empty fragment goes to the top.
 scroll_to_fragment :: proc(t: ^Tab, viewport: draw.Vec2) {
@@ -945,7 +930,7 @@ main :: proc() {
 	// Start-up order: the renderer's start-up (device, shader compilation) is by far the longest step and needs only the
 	// window. Before it: fonts on a thread of their own (fonts_preload_start), then the network, the page machinery and
 	// the first navigation, whose loads run on their own threads while the renderer starts.
-	font.init(&app.fonts)
+	font.init(&app.fonts, font_settings_from_prefs(&app.prefs))
 	preload := fonts_preload_start(app)   // the font state is the preload thread's until fonts_preload_finish
 	app.win = platform.open_window(APP_NAME, {1280, 800})
 	prof_mark(.Window)

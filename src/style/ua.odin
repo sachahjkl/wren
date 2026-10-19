@@ -108,4 +108,9 @@ summary { display: list-item; list-style-type: disclosure-closed; counter-increm
 details[open] > summary { list-style-type: disclosure-open; }
 :focus-visible { outline: 2px solid #4d90fe; }
 ::marker { color: inherit; }
+[dir=ltr i] { direction: ltr; }
+[dir=rtl i] { direction: rtl; }
+[dir], bdi, output { unicode-bidi: isolate; }
+[dir=auto i] { unicode-bidi: plaintext; }
+bdo, bdo[dir] { unicode-bidi: isolate-override; }
 `

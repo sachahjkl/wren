@@ -23,6 +23,7 @@ Seg :: struct {
 	collapsible: bool,   // Space: removed at the start of a line
 	hang:        bool,   // Space: hangs past the end of a line
 	breakable:   bool,   // Text: may be broken anywhere when it cannot fit (overflow-wrap, word-break)
+	level:       u8,     // Text, Space: bidi embedding level (a segment never spans two levels)
 }
 
 @(private)
@@ -32,6 +33,7 @@ Seg_Iter :: struct {
 	pos:        int,
 	prev_space: bool,
 	cw:         f32,      // percentage base of inline box edges
+	bidi:       ^Bidi_Para,   // nil: every level is 0
 }
 
 @(private)
@@ -79,10 +81,22 @@ rune_count :: proc(s: string) -> int {
 	return n
 }
 
+// Width of a piece of text with its letter spacing, and the word spacing of its no-break spaces (word-separator
+// characters, CSS Text 3 §8.1; the spaces between words are segments of their own).
 @(private)
 text_width :: proc(c: ^Ctx, fi: i32, cs: ^style.Computed, s: string) -> f32 {
-	w := measure(c, fi, s)
-	if cs.letter_spacing != 0 { w += cs.letter_spacing * c.scale * f32(rune_count(s)) }
+	w: f32
+	if cs.letter_spacing != 0 && c.text.width_spaced != nil {
+		// letter-spacing turns optional ligatures off: measured as it is drawn
+		f := &c.l.fonts[fi]
+		w = c.text.width_spaced(c.text.user, f.font, f.size, s, cs.letter_spacing * c.scale)
+	} else {
+		w = measure(c, fi, s)
+		if cs.letter_spacing != 0 { w += cs.letter_spacing * c.scale * f32(rune_count(s)) }
+	}
+	if cs.word_spacing != 0 {
+		for i := 0; i + 1 < len(s); i += 1 { if s[i] == 0xC2 && s[i + 1] == 0xA0 { w += cs.word_spacing * c.scale } }
+	}
 	return w
 }
 
@@ -109,6 +123,7 @@ next_seg :: proc(it: ^Seg_Iter) -> (Seg, bool) {
 				it.prev_space = false
 				return Seg{kind = .Break, item = idx}, true
 			}
+			lv := it.bidi != nil ? bidi_level(it.bidi, idx, it.pos) : 0
 			if is_ws(b) {
 				if collapse {
 					j := it.pos
@@ -117,22 +132,33 @@ next_seg :: proc(it: ^Seg_Iter) -> (Seg, bool) {
 					it.pos = j
 					if it.prev_space { continue }
 					it.prev_space = true
-					return Seg{kind = .Space, item = idx, start = i32(s), end = i32(j), w = f.space + wsp, brk = wrap, collapsible = true, hang = true}, true
+					return Seg{kind = .Space, item = idx, start = i32(s), end = i32(j), w = f.space + wsp, brk = wrap, collapsible = true, hang = true, level = lv}, true
 				}
 				s := it.pos
 				it.pos += 1
 				it.prev_space = false
 				if b == '\r' { continue }
-				if b == '\t' { return Seg{kind = .Tab, item = idx, start = i32(s), end = i32(s + 1), brk = wrap}, true }
-				return Seg{kind = .Space, item = idx, start = i32(s), end = i32(s + 1), w = f.space + wsp, brk = wrap, hang = ws != .Break_Spaces}, true
+				if b == '\t' { return Seg{kind = .Tab, item = idx, start = i32(s), end = i32(s + 1), brk = wrap, level = lv}, true }
+				return Seg{kind = .Space, item = idx, start = i32(s), end = i32(s + 1), w = f.space + wsp, brk = wrap, hang = ws != .Break_Spaces, level = lv}, true
 			}
 			it.prev_space = false
 			j, brk := word_end(text, it.pos, cs, wrap)
 			s := it.pos
+			if it.bidi != nil {
+				// a segment is one directional run: it ends where the level changes
+				for k := s + 1; k < j; k += 1 {
+					if text[k] & 0xC0 == 0x80 { continue }
+					if bidi_level(it.bidi, idx, k) != lv { j, brk = k, false; break }
+				}
+			}
+			if wrap && c.text.line_break != nil && needs_dictionary(text[s:j]) {
+				// scripts without spaces between words: the first opportunity the dictionary finds
+				if bk := c.text.line_break(c.text.user, text[s:j]); bk > 0 && bk < j - s { j, brk = s + bk, true }
+			}
 			it.pos = j
 			w := text_width(c, item.fi, cs, text[s:j])
 			breakable := wrap && (cs.overflow_wrap != .Normal || cs.word_break == .Break_Word || cs.word_break == .Break_All)
-			return Seg{kind = .Text, item = idx, start = i32(s), end = i32(j), w = w, brk = brk, breakable = breakable}, true
+			return Seg{kind = .Text, item = idx, start = i32(s), end = i32(j), w = w, brk = brk, breakable = breakable, level = lv}, true
 		case .Open:
 			it.idx += 1
 			ib := &c.l.boxes[item.box]
@@ -220,6 +246,8 @@ Line_Builder :: struct {
 	pending_abs:    [dynamic]Pending_Abs,
 	groups:   [dynamic]Align_Group,
 	strut_h:  f32,
+	bidi:     ^Bidi_Para,    // nil: a left-to-right paragraph without right-to-left text
+	bidi_line: bool,         // something on the current line is at a level other than 0
 }
 
 @(private)
@@ -237,6 +265,7 @@ start_line :: proc(lb: ^Line_Builder) {
 	lb.pen = 0
 	lb.empty, lb.content, lb.can_break = true, false, false
 	lb.spaces, lb.trail_w, lb.trail_n = 0, 0, 0
+	lb.bidi_line = false
 	clear(&lb.frags)
 	if lb.first {
 		indent := px_of(lb.c, lb.cs.text_indent, lb.cw)
@@ -250,13 +279,14 @@ start_line :: proc(lb: ^Line_Builder) {
 }
 
 @(private)
-emit_text :: proc(lb: ^Line_Builder, item: i32, start, end: i32, w: f32, nsp: i32) {
+emit_text :: proc(lb: ^Line_Builder, item: i32, start, end: i32, w: f32, nsp: i32, level: u8 = 0) {
 	c := lb.c
 	it := &c.l.inline_items[item]
 	piece := it.text[start:end]
+	if level != 0 { lb.bidi_line = true }
 	if n := len(lb.frags); n > 0 {
 		last := &lb.frags[n - 1]
-		if last.kind == .Text && last.item == item && rawptr(uintptr(raw_data(last.text)) + uintptr(len(last.text))) == rawptr(raw_data(piece)) {
+		if last.kind == .Text && last.item == item && last.level == level && rawptr(uintptr(raw_data(last.text)) + uintptr(len(last.text))) == rawptr(raw_data(piece)) {
 			off := int(uintptr(raw_data(last.text)) - uintptr(raw_data(it.text)))
 			last.text = it.text[off:end]
 			last.w += w
@@ -265,7 +295,7 @@ emit_text :: proc(lb: ^Line_Builder, item: i32, start, end: i32, w: f32, nsp: i3
 			return
 		}
 	}
-	append(&lb.frags, Frag{kind = .Text, item = item, box = it.box, fi = it.fi, x = lb.pen, w = w, text = piece, spaces = lb.spaces, nsp = nsp})
+	append(&lb.frags, Frag{kind = .Text, item = item, box = it.box, fi = it.fi, x = lb.pen, w = w, text = piece, spaces = lb.spaces, nsp = nsp, level = level})
 	lb.pen += w
 }
 
@@ -295,13 +325,13 @@ place_seg :: proc(lb: ^Line_Builder, s: Seg) {
 	c := lb.c
 	switch s.kind {
 	case .Text:
-		emit_text(lb, s.item, s.start, s.end, s.w, 0)
+		emit_text(lb, s.item, s.start, s.end, s.w, 0, s.level)
 		lb.empty, lb.content = false, true
 		lb.trail_w, lb.trail_n = 0, 0
 	case .Space:
 		if lb.empty && s.collapsible { return }
 		it := &c.l.inline_items[s.item]
-		if s.end - s.start == 1 && it.text[s.start] == ' ' { emit_text(lb, s.item, s.start, s.end, s.w, 1) } else { lb.pen += s.w }
+		if s.end - s.start == 1 && it.text[s.start] == ' ' { emit_text(lb, s.item, s.start, s.end, s.w, 1, s.level) } else { lb.pen += s.w }
 		lb.spaces += 1
 		if s.hang { lb.trail_w += s.w; lb.trail_n += 1 } else { lb.trail_w, lb.trail_n = 0, 0 }
 		if !s.collapsible { lb.content = true }
@@ -415,7 +445,7 @@ split_unit :: proc(lb: ^Line_Builder) {
 			_, n := utf8.decode_rune_in_string(text[i:])
 			rw := text_width(c, it.fi, it.cs, text[i:i + n])
 			if !lb.empty && lb.pen + rw > lb.right - lb.left + 0.01 { finish_line(lb, false, false) }
-			emit_text(lb, s.item, i32(i), i32(i + n), rw, 0)
+			emit_text(lb, s.item, i32(i), i32(i + n), rw, 0, s.level)
 			lb.empty, lb.content = false, true
 			lb.trail_w, lb.trail_n = 0, 0
 			i += n
@@ -647,6 +677,9 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 		}
 	}
 
+	// bidi: fragments to visual order (UAX #9 L2)
+	if lb.bidi_line || (lb.bidi != nil && lb.bidi.base_rtl) { bidi_reorder_line(lb) }
+
 	// text-overflow: ellipsis on a line that overflows a clipping box
 	if lb.cs.text_ellipsis && .Clips in c.l.boxes[lb.bi].flags && used > avail + 0.5 {
 		apply_ellipsis(lb, lb.cx + lb.left + avail, baseline)
@@ -847,9 +880,10 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (out: []Frag, lin
 	}
 	if lb.root_fi < 0 { lb.root_fi = font_info(c, b.cs); c.l.boxes[bi].fi = lb.root_fi }
 	lb.strut_h = c.l.fonts[lb.root_fi].line_h
+	lb.bidi = bidi_paragraph(c, bi)
 	start_line(&lb)
 	blocks := false
-	it := Seg_Iter{c = c, idx = b.items[0], end = b.items[1], cw = cw}
+	it := Seg_Iter{c = c, idx = b.items[0], end = b.items[1], cw = cw, bidi = lb.bidi}
 	// the segments of an unchanged context measured by an earlier pass (a resize lays every paragraph out again at a
 	// new width: its words keep their widths); else measured now and kept
 	cached := cached_segs(c, bi)   // a range of Inc_State.segs: read by index (nested contexts may append to it)

@@ -194,6 +194,15 @@ Computed :: struct {
 	text_wrap_mode:    Text_Wrap_Mode,
 	text_wrap_style:   Text_Wrap_Style,
 	hyphens:           Hyphens,
+	// --- fonts: OpenType features and variations (font_features.odin), bidi ---
+	font_feature_settings:   []Font_Feature_Setting,     // nil = normal
+	font_variation_settings: []Font_Variation_Setting,   // nil = normal
+	font_kerning:            Font_Kerning,
+	font_variant_ligatures:  Font_Variant_Ligatures,
+	font_variant_numeric:    Font_Variant_Numeric,
+	font_variant_east_asian: Font_Variant_East_Asian,
+	font_variant_position:   Font_Variant_Position,
+	unicode_bidi:            Unicode_Bidi,
 	// --- backgrounds: every layer (the singular fields above are the first layer). See `background_layers`. ---
 	background_images:      []Image,
 	background_repeats:     [][2]Repeat,
@@ -274,6 +283,8 @@ Prop :: enum u8 {
 	Text_Decoration_Line, Text_Decoration_Color, Text_Decoration_Style, Text_Decoration_Thickness, Text_Underline_Offset,
 	Text_Transform, Text_Indent, Text_Overflow, White_Space_Collapse, Text_Wrap_Mode, Text_Wrap_Style, Word_Break,
 	Overflow_Wrap, Hyphens, Tab_Size, Direction, Text_Shadow,
+	Font_Feature_Settings, Font_Variation_Settings, Font_Kerning, Font_Variant_Ligatures, Font_Variant_Numeric,
+	Font_Variant_East_Asian, Font_Variant_Position, Unicode_Bidi,
 	Display, Position, Float, Clear, Top, Right, Bottom, Left, Z_Index, Box_Sizing,
 	Width, Height, Min_Width, Min_Height, Max_Width, Max_Height,
 	Margin_Top, Margin_Right, Margin_Bottom, Margin_Left,
@@ -314,6 +325,8 @@ INHERITED_PROPS :: [?]Prop{
 	.Text_Wrap_Style, .Word_Break, .Overflow_Wrap, .Hyphens, .Tab_Size, .Direction, .Text_Shadow, .Text_Underline_Offset,
 	.Visibility, .List_Style_Type, .List_Style_Position, .Cursor, .Pointer_Events, .Border_Collapse, .Border_Spacing,
 	.Quotes, .Caret_Color, .Accent_Color,
+	.Font_Feature_Settings, .Font_Variation_Settings, .Font_Kerning, .Font_Variant_Ligatures, .Font_Variant_Numeric,
+	.Font_Variant_East_Asian, .Font_Variant_Position,
 }
 
 // Shorthands: expanded to longhands when a stylesheet is compiled.

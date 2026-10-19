@@ -30,6 +30,17 @@ animatable :: proc(p: Prop) -> bool {
 // is unspecified in that case.
 interpolate_prop :: proc(dst, a, b: ^Computed, p: Prop, t: f64, ctx: ^Interp_Ctx) -> bool {
 	#partial switch p {
+	case .Font_Feature_Settings:
+		return false   // discrete (CSS Fonts 4 §6.12)
+	case .Font_Variation_Settings:
+		// the same axes in the same order: each value interpolates (CSS Fonts 4 §7.2); else discrete
+		va, vb := a.font_variation_settings, b.font_variation_settings
+		if len(va) != len(vb) { return false }
+		for x, i in va { if x.tag != vb[i].tag { return false } }
+		out := make([]Font_Variation_Setting, len(va), ctx.alloc)
+		for x, i in va { out[i] = {x.tag, x.value + (vb[i].value - x.value) * f32(t)} }
+		dst.font_variation_settings = out
+		return true
 	case .Visibility:
 		// visible wins between the endpoints when one of them is visible
 		if a.visibility == b.visibility { dst.visibility = a.visibility; return true }

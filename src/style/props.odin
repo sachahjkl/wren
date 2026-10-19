@@ -150,6 +150,14 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Tab_Size: return fa(&c.tab_size), fa(&c.tab_spaces)
 	case .Direction: return fa(&c.direction), NO_FIELD
 	case .Text_Shadow: return fa(&c.text_shadow), NO_FIELD
+	case .Font_Feature_Settings: return fa(&c.font_feature_settings), NO_FIELD
+	case .Font_Variation_Settings: return fa(&c.font_variation_settings), NO_FIELD
+	case .Font_Kerning: return fa(&c.font_kerning), NO_FIELD
+	case .Font_Variant_Ligatures: return fa(&c.font_variant_ligatures), NO_FIELD
+	case .Font_Variant_Numeric: return fa(&c.font_variant_numeric), NO_FIELD
+	case .Font_Variant_East_Asian: return fa(&c.font_variant_east_asian), NO_FIELD
+	case .Font_Variant_Position: return fa(&c.font_variant_position), NO_FIELD
+	case .Unicode_Bidi: return fa(&c.unicode_bidi), NO_FIELD
 	case .Display: return fa(&c.display), NO_FIELD
 	case .Position: return fa(&c.position), NO_FIELD
 	case .Float: return fa(&c.float), NO_FIELD
