@@ -731,7 +731,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			last_move, have_move = ev, true   // only the last position of the frame matters: hit test once, after the loop
 		case .Scroll:
 			if inside {
-				d := draw.Vec2{-ev.delta.x, -ev.delta.y} * app.cfg.scroll_step * scale
+				d := ev.delta * app.cfg.scroll_step * scale   // platform convention: +y = towards the end of the content
 				if !page_wheel(&t.layout, ev.pos - app.page_rect.min, d, draw.rect_size(app.page_rect), t.scroll) { t.scroll += d.y }
 			}
 		case .Mouse_Press:

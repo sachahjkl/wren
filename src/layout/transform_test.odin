@@ -1,5 +1,6 @@
 package layout
 
+import "core:fmt"
 import "core:math"
 import "core:testing"
 import "wb:base"
@@ -191,6 +192,22 @@ transform_wheel_on_rotated_scroller :: proc(t: ^testing.T) {
 	off, _ := scroll_of(&f.l, el(f, "rs"))
 	testing.expectf(t, math.abs(off.y - 40) < 0.01, "scrolled by 40: %v", off)
 	testing.expect(t, !scroll_wheel(&f.l, {150, 50}, {0, 40}, f.vp, 0), "nothing scrollable elsewhere")
+}
+
+// The wheel towards the end moves the content of a slightly rotated scroller up on screen, as without a transform.
+@(test)
+transform_wheel_direction :: proc(t: ^testing.T) {
+	for xf in ([]string{"none", "scale(0.9) rotate(4deg)"}) {
+		src := fmt.tprintf(`<body style="margin:0"><div id=sc style="margin:40px;width:220px;height:150px;overflow:auto;transform:%s">
+<div style="height:60px"></div><div id=a style="height:60px"></div><div style="height:400px"></div></div></body>`, xf)
+		f := tx_load(src)
+		defer tx_unload(f)
+		before, _ := box_of(&f.l, el(f, "a"), f.vp, 0)
+		testing.expect(t, scroll_wheel(&f.l, {150, 120}, {0, 40}, f.vp, 0), "the wheel scrolls it")
+		f.l.valid = true
+		after, _ := box_of(&f.l, el(f, "a"), f.vp, 0)
+		testing.expectf(t, after.bounds.min.y < before.bounds.min.y - 30, "%s: content moves up (%v -> %v)", xf, before.bounds.min.y, after.bounds.min.y)
+	}
 }
 
 @(test)
