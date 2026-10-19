@@ -344,7 +344,7 @@ flow_blocks :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse_t
 			place_float(c, ch, bi, cw, fc, ctop + y + (open ? 0 : strut_value(local)))
 			continue
 		}
-		resolve_box_model(c, k, cw)
+		if !pre_model(c, ch, k) { resolve_box_model(c, k, cw) }
 		k = &c.l.boxes[ch]
 		mt := k.margin[0]
 		if k.auto_t { mt = 0; k.margin[0] = 0 }

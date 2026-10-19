@@ -59,7 +59,7 @@ pt_input :: proc(f: ^Pt, set: ^Settings, vp: Vec2) -> Input {
 @(private = "file")
 pt_check :: proc(t: ^testing.T, f: ^Pt, l: ^Layout, vp: Vec2, what: string, want_taken := true, loc := #caller_location) {
 	par := settings_default()
-	par.threads, par.threads_min_contexts, par.threads_min_display_boxes = 3, 0, 0
+	par.threads, par.threads_min_contexts, par.threads_min_boxes = 3, 0, 0
 	for tries in 0 ..< 200 {
 		l.valid = false
 		run(l, pt_input(f, &par, vp))
@@ -145,7 +145,7 @@ parallel_full_passes :: proc(t: ^testing.T) {
 
 	// incremental passes on top of a threaded full pass
 	par := settings_default()
-	par.threads, par.threads_min_contexts, par.threads_min_display_boxes = 3, 0, 0
+	par.threads, par.threads_min_contexts, par.threads_min_boxes = 3, 0, 0
 	pt_check(t, &f, &l, {800, 600}, "before changes")
 	inc_ok :: proc(t: ^testing.T, f: ^Pt, l: ^Layout, set: ^Settings, vp: Vec2, what: string) {
 		run(l, pt_input(f, set, vp))

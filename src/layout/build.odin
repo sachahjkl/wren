@@ -98,6 +98,13 @@ new_box :: proc(c: ^Ctx, kind: Box_Kind, cs: ^style.Computed, node: base.Handle,
 		colspan = 1, rowspan = 1, layer = NONE,
 	})
 	append(&c.l.inc.info, Box_Info{cb = NONE, fcb = NONE, deco_box = NONE})
+	// tree order holds while each new box's parent is the previous box or one of its ancestors (each box is passed at
+	// most once on the way up)
+	if c.l.tree_order && idx > 0 {
+		a := idx - 1
+		for a != NONE && a != parent { a = c.l.boxes[a].parent }
+		if a == NONE { c.l.tree_order = false }
+	}
 	if parent != NONE {
 		p := &c.l.boxes[parent]
 		if p.last == NONE { p.first = idx } else { c.l.boxes[p.last].next = idx }
@@ -109,36 +116,20 @@ new_box :: proc(c: ^Ctx, kind: Box_Kind, cs: ^style.Computed, node: base.Handle,
 @(private)
 add_item :: proc(c: ^Ctx, it: Inline_Item) { append(&c.l.inline_items, it) }
 
-// Applies the per-element flags that do not depend on where the box sits.
+// Applies the per-element flags that do not depend on where the box sits. `sum`: the summary of the box's style
+// (style_sum.odin), nil: made from the style here.
 @(private)
-box_flags_from_style :: proc(c: ^Ctx, bi: i32, cb, fcb: i32) {
+box_flags_from_style :: proc(c: ^Ctx, bi: i32, cb, fcb: i32, sum: ^Style_Sum = nil) {
 	b := &c.l.boxes[bi]
-	cs := b.cs
-	switch cs.position {
-	case .Static:
-	case .Relative: b.flags += {.Positioned, .Relative}
-	case .Sticky: b.flags += {.Positioned, .Sticky, .Stacking}
-	case .Absolute: b.flags += {.Positioned, .Abs, .Bfc}
-	case .Fixed:
-		b.flags += {.Positioned, .Abs, .Bfc, .Stacking}
-		// under a transformed ancestor a fixed box is positioned in it and moves with it (CSS Transforms 1 §3)
-		if fcb == 0 { b.flags += {.Fixed} }
-	}
-	if .Positioned in b.flags && !cs.z_auto { b.flags += {.Stacking} }
-	if cs.opacity < 1 || stacking_effect(cs) { b.flags += {.Stacking} }
-	if box_effects(cs) != {} { b.flags += {.Effects} }
-	if cs.mix_blend_mode != .Normal { b.flags += {.Blends} }
-	if b.kind != .Inline && style.has_transform(cs) { b.flags += {.Transformed, .Stacking} }
-	if cs.float != .None && .Abs not_in b.flags { b.flags += {.Float, .Bfc} }
-	if cs.visibility != .Visible { b.flags += {.Hidden} }
-	if !cs.pointer_events { b.flags += {.No_Pointer} }
-	if cs.overflow_x != .Visible || cs.overflow_y != .Visible {
-		b.flags += {.Clips, .Bfc}
-		if cs.overflow_x == .Scroll || cs.overflow_x == .Auto || cs.overflow_y == .Scroll || cs.overflow_y == .Auto { b.flags += {.Scroll} }
-	}
-	if cs.display == .Flow_Root || cs.display == .Inline_Block { b.flags += {.Bfc} }
+	s: Style_Sum
+	sm := sum
+	if sm == nil { s = style_sum_of(b.cs); sm = &s }
+	b.flags += sm.flags
+	// under a transformed ancestor a fixed box is positioned in it and moves with it (CSS Transforms 1 §3)
+	if sm.position == .Fixed && fcb == 0 { b.flags += {.Fixed} }
+	if b.kind != .Inline && .Transform in sm.bits { b.flags += {.Transformed, .Stacking} }
 	if .Abs in b.flags {
-		cbi := cs.position == .Fixed ? fcb : cb
+		cbi := sm.position == .Fixed ? fcb : cb
 		b.cb = cbi
 		b.pos_ref = cbi
 		cbb := &c.l.boxes[cbi]
@@ -151,8 +142,11 @@ box_flags_from_style :: proc(c: ^Ctx, bi: i32, cb, fcb: i32) {
 @(private)
 has_block_child :: proc(c: ^Ctx, h: base.Handle, cs: ^style.Computed, depth: i32) -> bool {
 	if int(depth) + 1 >= c.set.max_depth { return false }
-	if cs.before != nil && level_of(cs.before.display) == .Block { return true }
-	if cs.after != nil && level_of(cs.after.display) == .Block { return true }
+	sm := c.sums != nil ? sum_of(c, h) : nil
+	if sm == nil || sm.bits & {.Before, .After} != {} {
+		if cs.before != nil && level_of(cs.before.display) == .Block { return true }
+		if cs.after != nil && level_of(cs.after.display) == .Block { return true }
+	}
 	// direct children without allocating; display: contents children are expanded with a stack
 	stack: [dynamic]base.Handle
 	n := dom.get(c.d, h)
@@ -166,14 +160,23 @@ has_block_child :: proc(c: ^Ctx, h: base.Handle, cs: ^style.Computed, depth: i32
 		if xn == nil { ch = base.NIL_HANDLE; continue }
 		next := xn.next
 		if xn.kind == .Element {
-			prefetch_fields(style_addr(c.st, ch), BUILD_FIELDS)
-			if xs := style.style_of(c.st, ch); xs != nil && xs.display != .None {
-				if xs.display == .Contents {
+			display: style.Display
+			position: style.Position
+			float: style.Float
+			has := false
+			if c.sums != nil {
+				if xs := sum_of(c, ch); xs != nil { display, position, float, has = xs.display, xs.position, xs.float, true }
+			} else {
+				prefetch_fields(style_addr(c.st, ch), BUILD_FIELDS)
+				if xs := style.style_of(c.st, ch); xs != nil { display, position, float, has = xs.display, xs.position, xs.float, true }
+			}
+			if has && display != .None {
+				if display == .Contents {
 					if stack == nil { stack = make([dynamic]base.Handle, 0, 8, context.temp_allocator) }
 					if next != base.NIL_HANDLE { append(&stack, next) }
 					next = xn.first_child
-				} else if xs.position != .Absolute && xs.position != .Fixed && xs.float == .None {
-					lv := level_of(xs.display)
+				} else if position != .Absolute && position != .Fixed && float == .None {
+					lv := level_of(display)
 					if lv == .Block || lv == .Table_Internal { return true }
 				}
 			}
@@ -186,7 +189,12 @@ has_block_child :: proc(c: ^Ctx, h: base.Handle, cs: ^style.Computed, depth: i32
 @(private)
 push_children :: proc(c: ^Ctx, stack: ^[dynamic]Frame, h: base.Handle, cs: ^style.Computed, f: Frame) {
 	n := dom.get(c.d, h)
-	if cs != nil && cs.after != nil {
+	// generated content: the summary tells whether to look
+	pseudos := true
+	if c.sums != nil {
+		if sm := sum_of(c, h); sm != nil && sm.bits & {.Before, .After} == {} { pseudos = false }
+	}
+	if pseudos && cs != nil && cs.after != nil {
 		g := f
 		g.kind, g.node, g.pcs = .Pseudo, h, cs.after
 		append(stack, g)
@@ -195,9 +203,9 @@ push_children :: proc(c: ^Ctx, stack: ^[dynamic]Frame, h: base.Handle, cs: ^styl
 		g := f
 		g.kind, g.node = .Visit, ch
 		append(stack, g)
-		prefetch_fields(style_addr(c.st, ch), BUILD_FIELDS)
+		if c.sums == nil { prefetch_fields(style_addr(c.st, ch), BUILD_FIELDS) } else { prefetch_fields(style_addr(c.st, ch), FONT_FIELDS) }
 	}
-	if cs != nil && cs.before != nil {
+	if pseudos && cs != nil && cs.before != nil {
 		g := f
 		g.kind, g.node, g.pcs = .Pseudo, h, cs.before
 		append(stack, g)
@@ -206,13 +214,13 @@ push_children :: proc(c: ^Ctx, stack: ^[dynamic]Frame, h: base.Handle, cs: ^styl
 
 // The frame for the content of a new container box.
 @(private)
-child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool) -> Frame {
+child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool, sum: ^Style_Sum = nil) -> Frame {
 	b := &c.l.boxes[bi]
 	g := f
 	g.parent = bi
 	g.depth = b.depth
 	if .Positioned in b.flags { g.cb = bi }
-	if b.kind != .Inline && contains_fixed(b.cs) { g.cb, g.fcb = bi, bi }
+	if b.kind != .Inline && (sum != nil ? .Contains_Fixed in sum.bits : contains_fixed(b.cs)) { g.cb, g.fcb = bi, bi }
 	if .Atomic in b.flags || .Float in b.flags || .Abs in b.flags || b.kind == .Flex || b.kind == .Grid || b.kind == .Table {
 		g.deco = {}   // decorations do not propagate into atomic inlines, floats and absolutely positioned boxes
 	}
@@ -360,6 +368,10 @@ group_items :: proc(c: ^Ctx, start := 0) {
 text_owner_cs :: proc(c: ^Ctx, h: base.Handle) -> (^style.Computed, base.Handle) {
 	n := dom.get(c.d, h)
 	for p := n.parent; p != base.NIL_HANDLE; p = dom.get(c.d, p).parent {
+		if c.sums != nil {
+			if sum_of(c, p) != nil { return c.st.by_node[base.handle_index(p)], p }
+			continue
+		}
 		if cs := style.style_of(c.st, p); cs != nil { return cs, p }
 	}
 	return c.st.initial, base.NIL_HANDLE
@@ -463,11 +475,24 @@ visit :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame) {
 	case .Text: visit_text(c, f, n); return
 	case .Element:
 	}
-	cs := style.style_of(c.st, f.node)
-	if cs == nil || cs.display == .None { return }
-	if cs.visibility == .Collapse && (cs.display == .Table_Row || cs.display == .Table_Row_Group || cs.display == .Table_Column) { return }
-	if cs.display == .Contents || int(f.depth) + 1 >= c.set.max_depth {
-		if cs.display != .Contents { c.l.boxes[f.parent].flags += {.Flattened} }
+	cs: ^style.Computed
+	sm: ^Style_Sum
+	display: style.Display
+	visibility: style.Visibility
+	if c.sums != nil {
+		sm = sum_of(c, f.node)
+		if sm == nil { return }
+		cs = c.st.by_node[base.handle_index(f.node)]
+		display, visibility = sm.display, sm.visibility
+	} else {
+		cs = style.style_of(c.st, f.node)
+		if cs == nil { return }
+		display, visibility = cs.display, cs.visibility
+	}
+	if display == .None { return }
+	if visibility == .Collapse && (display == .Table_Row || display == .Table_Row_Group || display == .Table_Column) { return }
+	if display == .Contents || int(f.depth) + 1 >= c.set.max_depth {
+		if display != .Contents { c.l.boxes[f.parent].flags += {.Flattened} }
 		if n.name == "br" && f.mode == .Inline { add_item(c, Inline_Item{kind = .Break, box = NONE, ifc = f.ifc, cs = cs, node = f.node}); return }
 		push_children(c, stack, f.node, cs, f)
 		return
@@ -482,7 +507,7 @@ visit :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame) {
 	if n.name == "input" {
 		if t, ok := dom.get_attribute(c.d, f.node, "type"); ok && strings.equal_fold(t, "hidden") { return }
 	}
-	place_element(c, stack, f, f.node, n, cs, replaced, false)
+	place_element(c, stack, f, f.node, n, cs, replaced, false, sm)
 }
 
 @(private)
@@ -495,11 +520,16 @@ visit_pseudo :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame) {
 
 // Creates the box of an element (or pseudo-element) according to where it appears, then schedules its content.
 @(private)
-place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle, n: ^dom.Node, cs: ^style.Computed, replaced, pseudo: bool) {
-	out_of_flow := cs.position == .Absolute || cs.position == .Fixed
-	floating := cs.float != .None && !out_of_flow
-	lv := level_of(cs.display)
-	if cs.display == .Contents { lv = .Inline }
+// `sum`: the summary of the element's style (style_sum.odin), nil: read the style.
+place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle, n: ^dom.Node, cs: ^style.Computed, replaced, pseudo: bool, sum: ^Style_Sum = nil) {
+	display: style.Display
+	position: style.Position
+	float: style.Float
+	if sum != nil { display, position, float = sum.display, sum.position, sum.float } else { display, position, float = cs.display, cs.position, cs.float }
+	out_of_flow := position == .Absolute || position == .Fixed
+	floating := float != .None && !out_of_flow
+	lv := level_of(display)
+	if display == .Contents { lv = .Inline }
 	if lv == .Column { return }
 	g := f
 
@@ -510,19 +540,19 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 		if !out_of_flow {
 			end_anon_run(c, f.parent)
 			if lv == .Table_Internal {
-				g = anon_table_chain(c, f, cs.display)
+				g = anon_table_chain(c, f, display)
 			}
 			floating = false
 		}
 	case .Table, .Row_Group, .Row:
 		if lv == .Table_Internal {
-			if (f.mode == .Table && cs.display == .Table_Row) || (f.mode == .Table && cs.display == .Table_Cell) ||
-			   (f.mode == .Row_Group && cs.display == .Table_Cell) {
-				g = anon_table_chain(c, f, cs.display)
-			} else if f.mode == .Row_Group && cs.display != .Table_Row {
+			if (f.mode == .Table && display == .Table_Row) || (f.mode == .Table && display == .Table_Cell) ||
+			   (f.mode == .Row_Group && display == .Table_Cell) {
+				g = anon_table_chain(c, f, display)
+			} else if f.mode == .Row_Group && display != .Table_Row {
 				// a row group or caption inside a row group: content of an anonymous cell (which then wraps it in a table)
 				g = anon_table_chain(c, f, .Block)
-			} else if f.mode == .Row && cs.display != .Table_Cell {
+			} else if f.mode == .Row && display != .Table_Cell {
 				g = anon_table_chain(c, f, .Block)
 			} else {
 				end_anon_run(c, f.parent)
@@ -532,7 +562,7 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 		}
 	case .Block:
 		if lv == .Table_Internal && !out_of_flow && !floating {
-			g = anon_table_chain(c, f, cs.display)
+			g = anon_table_chain(c, f, display)
 		} else if lv == .Block && !out_of_flow && !floating {
 			end_anon_run(c, f.parent)
 		} else if lv == .Inline || lv == .Atomic {
@@ -543,12 +573,12 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 			if p.cur_anon != NONE && c.l.boxes[p.cur_anon].kind == .Block { g = inline_frame(f, p.cur_anon) }
 		}
 	case .Inline:
-		if lv == .Table_Internal && !out_of_flow && !floating { g = anon_table_chain(c, f, cs.display) }
+		if lv == .Table_Internal && !out_of_flow && !floating { g = anon_table_chain(c, f, display) }
 	}
 	// landed in an anonymous cell: the cell's content follows block container rules
 	if g.parent != f.parent && g.mode == .Block {
 		if lv == .Table_Internal && !out_of_flow && !floating {
-			g = anon_table_chain(c, g, cs.display)
+			g = anon_table_chain(c, g, display)
 		} else if lv == .Inline || lv == .Atomic {
 			g = inline_frame(g, anon_block(c, g))
 		}
@@ -559,13 +589,13 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 	if replaced {
 		kind = .Replaced
 	} else if g.mode == .Flex && !out_of_flow {
-		kind = kind_for(cs.display)
+		kind = kind_for(display)
 		if kind == .Inline { kind = .Block }
 	} else if out_of_flow || floating {
-		kind = kind_for(cs.display)
+		kind = kind_for(display)
 		if kind == .Inline { kind = .Block }
 	} else {
-		kind = kind_for(cs.display)
+		kind = kind_for(display)
 	}
 	if kind == .Inline && g.mode != .Inline { kind = .Block }
 
@@ -576,7 +606,7 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 		if ecs := style.style_of(c.st, h); ecs != nil && ecs.after == cs { b.flags += {.Pseudo_After} }
 	}
 	if !pseudo && is_control_element(n) { b.flags += {.Control} }
-	box_flags_from_style(c, bi, g.cb, g.fcb)
+	box_flags_from_style(c, bi, g.cb, g.fcb, sum)
 	b = &c.l.boxes[bi]
 	if g.mode == .Flex || g.mode == .Table || g.mode == .Row_Group || g.mode == .Row { b.flags -= {.Float} }
 	if !pseudo { register_node(c, h, bi) }
@@ -607,7 +637,7 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 		if v, ok := dom.get_attribute(c.d, h, "colspan"); ok { b.colspan = i32(clamp(parse_int(v, 1), 1, 1000)) }
 		if v, ok := dom.get_attribute(c.d, h, "rowspan"); ok { b.rowspan = i32(clamp(parse_int(v, 1), 0, 65534)) }
 	}
-	if cs.display == .List_Item && !pseudo { b.flags += {.List_Item} }
+	if display == .List_Item && !pseudo { b.flags += {.List_Item} }
 
 	// content
 	if kind == .Replaced { return }
@@ -617,7 +647,7 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 		if pseudo && cs.content.kind == .Items { has_block = false }
 	}
 	note_frame(c, bi, g)
-	cf := child_frame(c, bi, g, has_block)
+	cf := child_frame(c, bi, g, has_block, sum)
 	if .List_Item in c.l.boxes[bi].flags { make_marker(c, bi, h, cf) }
 	if kind == .Inline { append(stack, Frame{kind = .Close, parent = bi, ifc = g.ifc}) }
 	if pseudo {

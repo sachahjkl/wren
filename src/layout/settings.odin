@@ -37,7 +37,7 @@ Settings :: struct {
 	// threads (parallel.odin)
 	threads:            int,       // helper threads of a full pass; -1: one less than the logical processors, at most 7
 	threads_min_contexts: int,     // inline formatting contexts a document needs before they are laid out on threads
-	threads_min_display_boxes: int,   // boxes a stacking context paints before its display list is made on threads
+	threads_min_boxes:  int,       // elements (box tree) / boxes of a stacking context (display list) before threads help
 }
 
 PREFS := [?]config.Def{
@@ -100,8 +100,8 @@ PREFS := [?]config.Def{
 		description = "Threads that help the interface thread lay out a large page from scratch (a page load): the lines of independent paragraphs are built on them and parts of the display list are made on them. The result is the same as on one thread. -1 = one less than the logical processors, at most 7; 0 = only the interface thread."},
 	{name = "layout.threads.min_inline_contexts", kind = .Int, default = {i = 256}, bounded = true, min = 0, max = 1 << 30, unit = "paragraphs",
 		description = "Pages with fewer inline formatting contexts (paragraphs, headings, list items...) are laid out on the interface thread alone: sharing the work out would cost more than it saves."},
-	{name = "layout.threads.min_display_boxes", kind = .Int, default = {i = 4096}, bounded = true, min = 0, max = 1 << 30, unit = "boxes",
-		description = "A stacking context (the page itself, usually) whose content has fewer boxes makes its display list on the interface thread alone."},
+	{name = "layout.threads.min_boxes", kind = .Int, default = {i = 4096}, bounded = true, min = 0, max = 1 << 30, unit = "boxes",
+		description = "A document with fewer elements builds its boxes without the help of the layout threads (they otherwise read the elements' styles ahead), and a stacking context (the page itself, usually) whose content has fewer boxes makes its display list on the interface thread alone."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
@@ -150,7 +150,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		inc_verify = config.bool_of(p, "layout.incremental.verify"),
 		threads = int(config.int_of(p, "layout.threads")),
 		threads_min_contexts = int(config.int_of(p, "layout.threads.min_inline_contexts")),
-		threads_min_display_boxes = int(config.int_of(p, "layout.threads.min_display_boxes")),
+		threads_min_boxes = int(config.int_of(p, "layout.threads.min_boxes")),
 	}
 }
 

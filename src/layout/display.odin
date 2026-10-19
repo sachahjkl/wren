@@ -288,7 +288,7 @@ emit_scrollbars :: proc(c: ^Ctx, bi: i32) {
 build_display_list :: proc(c: ^Ctx) {
 	clear(&c.l.items)
 	c.l.inc.dl_gen += 1
-	c.dl_par = par_threads(c.l.settings.threads) > 0 && len(c.l.boxes) >= max(c.l.settings.threads_min_display_boxes, 1)
+	c.dl_par = par_threads(c.l.settings.threads) > 0 && len(c.l.boxes) >= max(c.l.settings.threads_min_boxes, 1)
 	defer c.dl_par = false
 	p := Paint_Ctx{c = c}
 	paint_stacking(&p, 0)

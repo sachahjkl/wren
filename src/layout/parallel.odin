@@ -103,6 +103,23 @@ Pre_Box :: struct {
 	relative:    bool,   // some margin or padding is a percentage or calc(): resolved against the parent's width
 	simple:      bool,   // an inline formatting context pre_simple accepts
 	ml, mr, pbw: f32,
+	// a child flow_blocks lays out whose margins and padding do not depend on the width: its box model, resolved here,
+	// copied by flow_blocks instead of resolve_box_model (pre_model)
+	has_model:   bool,
+	auto:        [4]bool,          // top right bottom left
+	margin, border, padding: [4]f32,
+}
+
+// The box model of child `ch` of a flow_blocks, resolved on the layout threads: what resolve_box_model gives at any
+// width (no percentage, no calc()).
+@(private)
+pre_model :: #force_inline proc(c: ^Ctx, ch: i32, k: ^Box) -> bool {
+	if c.pre_boxes == nil || int(ch) >= len(c.pre_boxes) { return false }
+	pm := &c.pre_boxes[ch]
+	if !pm.has_model { return false }
+	k.margin, k.border, k.padding = pm.margin, pm.border, pm.padding
+	k.auto_t, k.auto_r, k.auto_b, k.auto_l = pm.auto[0], pm.auto[1], pm.auto[2], pm.auto[3]
+	return true
 }
 
 @(private)
@@ -132,14 +149,25 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 			p := b.parent
 			if p == NONE { continue }
 			pb := &l.boxes[p]
-			if pb.kind != .Block || .Ifc in pb.flags { continue }
-			if b.kind != .Block || b.flags & {.Abs, .Float, .Block_In_Inline, .Atomic, .Dead} != {} { continue }
+			if pb.kind != .Block || .Ifc in pb.flags || b.cs == nil { continue }
 			cs := b.cs
-			if cs == nil || cs.width.kind != .Auto || cs.max_width.kind != .None { continue }
+			fixed :: proc(l: style.Length) -> bool { return l.kind != .Percent && l.kind != .Calc }
+			model_fixed := true
+			for s in style.Side { if !fixed(cs.margin[s]) || !fixed(cs.padding[s]) { model_fixed = false } }
+			if model_fixed && b.kind != .Inline && b.flags & {.Abs, .Float, .Dead} == {} {
+				// what flow_blocks resolves for this child: independent of the width here
+				tmp: Box
+				tmp.cs, tmp.kind = cs, b.kind
+				resolve_box_model(c, &tmp, 0)
+				x.has_model = true
+				x.margin, x.border, x.padding = tmp.margin, tmp.border, tmp.padding
+				x.auto = {tmp.auto_t, tmp.auto_r, tmp.auto_b, tmp.auto_l}
+			}
+			if b.kind != .Block || b.flags & {.Abs, .Float, .Block_In_Inline, .Atomic, .Dead} != {} { continue }
+			if cs.width.kind != .Auto || cs.max_width.kind != .None { continue }
 			if cs.min_width.kind != .Auto && !(cs.min_width.kind == .Px && cs.min_width.v <= 0) { continue }
 			x.follows = true
-			fixed :: proc(l: style.Length) -> bool { return l.kind != .Percent && l.kind != .Calc }
-			if !fixed(cs.margin[.Left]) || !fixed(cs.margin[.Right]) || !fixed(cs.padding[.Left]) || !fixed(cs.padding[.Right]) {
+			if !model_fixed {
 				x.relative = true
 				continue
 			}
@@ -201,6 +229,7 @@ pre_layout :: proc(c: ^Ctx) {
 
 	pred := make([]f32, len(l.boxes), context.temp_allocator)
 	info := pre_predict(c, pred, pool)
+	c.pre_boxes = info
 	roots := make([dynamic]i32, 0, n_ifc, context.temp_allocator)
 	results := make([dynamic]Pre_Result, 0, n_ifc, context.temp_allocator)
 	slot := make([]i32, len(l.boxes), context.temp_allocator)
@@ -307,7 +336,7 @@ paint_content_shared :: proc(p: ^Paint_Ctx, root: i32) -> bool {
 	for x := root; x != NONE; x = l.boxes[x].parent {
 		if nx := l.boxes[x].next; nx != NONE { end = nx; break }
 	}
-	if int(end - root) < l.settings.threads_min_display_boxes { return false }
+	if int(end - root) < l.settings.threads_min_boxes { return false }
 
 	walk := make([dynamic]i32, 0, int(end - root), context.temp_allocator)
 	stack := make([dynamic]i32, 0, 64, context.temp_allocator)
@@ -324,7 +353,7 @@ paint_content_shared :: proc(p: ^Paint_Ctx, root: i32) -> bool {
 		append(&walk, x)
 		push(l, &stack, x)
 	}
-	if len(walk) < l.settings.threads_min_display_boxes { return false }
+	if len(walk) < l.settings.threads_min_boxes { return false }
 	pool := par_acquire(l.settings.threads)
 	if pool == nil { return false }
 

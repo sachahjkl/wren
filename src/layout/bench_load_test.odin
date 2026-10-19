@@ -54,6 +54,7 @@ bench_load :: proc(t: ^testing.T) {
 		defer style.styled_destroy(st)
 		set := settings_default()
 		if th := os.get_env("WREN_LOADBENCH_THREADS", context.temp_allocator); th != "" { set.threads = parse_int(th) }
+		if mb := os.get_env("WREN_LOADBENCH_MIN_BOXES", context.temp_allocator); mb != "" { set.threads_min_boxes = parse_int(mb) }
 		in_ := Input{doc = doc, styled = st, settings = &set, text = bench_text_api(), viewport = {1500, 900}, scale = 1.5, band_h = 256}
 
 		cold := make([]f64, rounds, context.temp_allocator)

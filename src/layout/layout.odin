@@ -73,7 +73,10 @@ run_full :: proc(l: ^Layout, input: Input) {
 
 	t0 := time.tick_now()
 	reserve_tree(l, input.doc)
+	style_sums(&c)
+	l.tree_order = true
 	build_tree(&c)
+	c.sums = nil
 	l.canvas_els = {c.root_el, c.body_el}
 	mark_bfc_floats(&c, 0)
 	reserve_lines(l)

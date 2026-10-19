@@ -19,6 +19,11 @@ BUILD_FIELDS :: [?]uintptr{
 	offset_of(style.Computed, filter), offset_of(style.Computed, will_change), offset_of(style.Computed, before),
 }
 
+// What box tree construction still reads when the styles are summed up (style_sum.odin): fonts, decorations, white
+// space and text-transform of text.
+@(private)
+FONT_FIELDS :: [?]uintptr{offset_of(style.Computed, font_family), offset_of(style.Computed, white_space)}
+
 // What the block layout reads (resolve_box_model, block_width, specified heights).
 @(private)
 LAYOUT_FIELDS :: [?]uintptr{

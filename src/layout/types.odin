@@ -344,6 +344,7 @@ Layout :: struct {
 	inc:          Inc_State,               // what incremental passes need between runs (incremental.odin)
 	pre_chunks:   [dynamic]Pre_Chunk,      // storage of the lines laid out ahead on the layout threads (parallel.odin)
 	pre_counts:   [2]int,                  // last full pass: contexts laid out ahead, and taken (diagnostics, tests)
+	tree_order:   bool,                    // last full pass: the boxes are in tree order (finishing walks them as they are)
 }
 
 DOCUMENT_SPACE :: i32(0)
