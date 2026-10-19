@@ -158,7 +158,9 @@ function Run-Octane {
         Get-Pinned "https://github.com/quickjs-ng/quickjs/releases/download/v$qv/qjs-windows-x86_64.exe" $qjs $QjsExeSha256
         foreach ($n in $names) {
             $file = Join-Path $OutDir "native_$n.js"
-            $text = [IO.File]::ReadAllText((Join-Path $dir 'base.js'))
+            # (zlib's Emscripten code takes a shell without a window for d8 and assigns its read(): qjs has none)
+            $text = "if (typeof read === 'undefined') { var read = function (f) { throw new Error('read() is not available: ' + f); }; }`n"
+            $text += [IO.File]::ReadAllText((Join-Path $dir 'base.js'))
             foreach ($f in $Suite[$n]) { $text += "`n" + [IO.File]::ReadAllText((Join-Path $dir $f)) }
             [IO.File]::WriteAllText($file, $text + "`n" + $runner + "`n")
             for ($i = 0; $i -lt $Runs; $i++) {
@@ -279,7 +281,7 @@ function Run-Dom {
         if ($raw -and $raw -match '\| ([0-9.]+) \|') { $md += "| raw call Wasm -> browser, no argument (src\tools\wasmbench) | $($Matches[1]) ns | | |" }
     } finally { Pop-Location }
     $md += ''
-    $md += "Time per operation (median of $Runs runs; ns). Wren: build\jspage.exe (a page without a window: parse, scripts, layout on demand); Edge $(Edge-Version) headless. A case whose API Wren lacks shows the error it threw."
+    $md += "Time per operation (median of $Runs runs; ns). Wren: build\jspage.exe (the page loaded as in the browser, without a window); Edge $(Edge-Version) headless. A case whose API Wren lacks shows the error it threw."
     $text = $md -join "`n"
     [IO.File]::WriteAllText((Join-Path $OutDir 'dom.md'), $text + "`n")
     $text

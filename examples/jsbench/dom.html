@@ -8,7 +8,7 @@
   until it lasts CALIBRATE_MS), then MEASURE_RUNS times; the best run counts (the least disturbed one). The clock is
   performance.now() when the page has it, Date.now() otherwise (the run lengths keep the error below 1 %).
   Output: one line per case, "CASE<TAB>name<TAB>ns per operation<TAB>note" (or "error: ..." when the case threw: an API
-  the browser lacks), then "DONE"; on the console and in <pre id="results"> (what Edge's --dump-dom shows). Everything
+  the browser lacks), then "DONE"; on the console and in the element pre#results (what Edge's --dump-dom shows). Everything
   runs synchronously, in this one script, before the load event.
 -->
 <body>
