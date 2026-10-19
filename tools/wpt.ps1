@@ -22,7 +22,8 @@ $WptCommit = '4ad507b28db0a636f528def9161d109fe11b93a3'
 # what the tests of the measured folders load from elsewhere in WPT
 $Shared = @('/resources/', '/common/', '/interfaces/', '/images/', '/fonts/', '/dom/common.js', '/dom/events/resources/',
             '/html/resources/', '/fetch/api/resources/', '/fetch/resources/', '/xhr/resources/', '/encoding/resources/',
-            '/service-workers/service-worker/resources/', '/workers/support/', '/webidl/resources/')
+            '/service-workers/service-worker/resources/', '/workers/support/', '/webidl/resources/', '/dom/constants.js',
+            '/trusted-types/support/', '/loading/resources/', '/webrtc/RTCPeerConnection-helper.js')
 
 $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root 'build\wpt'

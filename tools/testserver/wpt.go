@@ -9,6 +9,7 @@
 //     {{location[..]}}, {{GET[..]}}, {{uuid()}}, {{header_or_default(..)}}.
 //   - pipes: ?pipe=header(name,value[,True])|status(code)|sub (others are ignored).
 //   - x.headers and __dir__.headers files: extra response headers.
+//   - /resources/WebIDLParser.js is resources/webidl2/lib/webidl2.js, as wptserve routes it.
 //   - /resources/testharnessreport.js is Wren's (wpt/testharnessreport.js of the repository): it hands the results to
 //     the runner.
 //   - Python handlers (*.py) do not run: 501. The tests that need them fail, and are counted as failing.
@@ -387,6 +388,10 @@ func serveWPT(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rel := path.Clean("/" + r.URL.Path)
+	// wptserve's alias: the IDL parser idlharness.js loads
+	if rel == "/resources/WebIDLParser.js" {
+		rel = "/resources/webidl2/lib/webidl2.js"
+	}
 	if rel == "/resources/testharnessreport.js" {
 		data, err := os.ReadFile(wptReport)
 		if err != nil {
