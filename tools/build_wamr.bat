@@ -33,7 +33,10 @@ set "DEFS=%DEFS% /DWASM_ENABLE_INSTRUCTION_METERING=1 /DWASM_API_EXTERN= /DWASM_
 
 set "INC=/I%W%\core\iwasm\include /I%W%\core\iwasm\common /I%W%\core\iwasm\interpreter /I%W%\core\shared\platform\include /I%W%\core\shared\platform\windows /I%W%\core\shared\utils /I%W%\core\shared\mem-alloc /I%W%\core\shared\mem-alloc\ems /I%W%\core"
 
-set "SRC="%W%\core\iwasm\common\*.c" "%W%\core\iwasm\interpreter\wasm_loader.c" "%W%\core\iwasm\interpreter\wasm_runtime.c" "%W%\core\iwasm\interpreter\wasm_interp_fast.c""
+:: no wasm_c_api.c: the standard wasm-c-api symbols (wasm_engine_new...) come from Wasmtime, linked in the same binary
+set "C=%W%\core\iwasm\common"
+set "SRC="%C%\wasm_application.c" "%C%\wasm_blocking_op.c" "%C%\wasm_exec_env.c" "%C%\wasm_loader_common.c" "%C%\wasm_memory.c" "%C%\wasm_native.c" "%C%\wasm_runtime_common.c" "%C%\wasm_shared_memory.c""
+set "SRC=%SRC% "%W%\core\iwasm\interpreter\wasm_loader.c" "%W%\core\iwasm\interpreter\wasm_runtime.c" "%W%\core\iwasm\interpreter\wasm_interp_fast.c""
 set "SRC=%SRC% "%W%\core\shared\mem-alloc\mem_alloc.c" "%W%\core\shared\mem-alloc\ems\*.c" "%W%\core\shared\utils\*.c""
 set "SRC=%SRC% "%W%\core\shared\platform\windows\platform_init.c" "%W%\core\shared\platform\windows\win_clock.c" "%W%\core\shared\platform\windows\win_malloc.c""
 set "SRC=%SRC% "%W%\core\shared\platform\windows\win_memmap.c" "%W%\core\shared\platform\windows\win_socket.c" "%W%\core\shared\platform\windows\win_thread.c""
@@ -44,4 +47,6 @@ cl /nologo /c /MP /W1 %OPT% %DEFS% %INC% /Fo"%OUT%\obj\\" %SRC% > "%OUT%\build.l
 findstr /c:" error " "%OUT%\build.log" && ( echo build failed, see %OUT%\build.log & exit /b 1 )
 ml64 /nologo /c /Fo"%OUT%\obj\invokeNative_em64.obj" "%W%\core\iwasm\common\arch\invokeNative_em64.asm" || exit /b 1
 lib /nologo /OUT:"%OUT%\wamr.lib" "%OUT%\obj\*.obj" || exit /b 1
+:: build.bat rebuilds the library when this stamp differs (the set of sources changed)
+>"%OUT%\STAMP" echo no-c-api-1
 echo built %OUT%\wamr.lib

@@ -1,71 +1,139 @@
 // Package wasm: the only execution engine of the browser. A page script is a Wasm module; its imports are native
 // procedures of the browser (no JavaScript, no glue); its exports are called by the event loop.
 //
+// One API, two engines (preference wasm.engine, read at start-up):
+//   * Wasmtime (default): modules compiled to machine code by Cranelift (or Winch), compiled once per process and kept
+//     in a memory cache and an authenticated disk cache of the profile (module_cache.odin). A call from the host gets a
+//     wall-clock deadline enforced by epoch interruption (a ticking thread that only runs while some module runs), and
+//     a worker being terminated interrupts its module within one tick. Each instance has its own Store with limits
+//     (memory, tables, instances).
+//   * WAMR: the fast interpreter, with a per-call instruction budget (it cannot be interrupted from outside).
+//
 //   * An Instance lives in a base.Scope (the document's): closing the scope terminates and frees it.
-//   * Every call from the host gets an instruction budget (deterministic, ~700 M instructions/s in the interpreter).
-//     A script that spins is stopped by the runtime itself, the UI never freezes, and the instance stays usable for
-//     the next event. (`wasm_runtime_terminate` is not used: without the thread manager the interpreter never polls
-//     it, so a wall-clock watchdog would not work. The budget is the mechanism.)
-//   * Pointers crossing the boundary are validated by the runtime from the native signature ("*~" = pointer and
-//     length), so a hostile module cannot make a host function read or write outside its own linear memory.
+//   * Host functions are registered once in a neutral format (registry.odin) and see the same thing with both engines:
+//     Exec_Env = the Instance, pointers validated against the instance's memory ("*~" = pointer and length), traps
+//     raised with `trap`. Calls may nest (host -> guest -> host -> guest); the deadline or budget covers the outermost.
+//   * A trap (or a stopped call) is reported in `last_error`, and the instance stays usable for the next event.
 package wasm
 
 import "base:runtime"
 import "core:fmt"
 import "core:strings"
+import "core:sync"
 import "wb:base"
+
+Engine_Kind :: enum u8 { Wasmtime, Wamr }
+
+Engine_Choice :: enum u8 { Default, Wasmtime, Wamr }   // Default = the engine configured for the process
 
 // Limits for one instance (preferences `wasm.*`; see settings.odin). `options_default()` gives the shipped defaults.
 Options :: struct {
-	stack_size:  u32,   // native value stack for the interpreter
-	max_pages:   u32,   // linear memory limit in 64 KiB pages
-	budget:      i32,   // instructions per call from the host, -1 = unlimited
+	engine:             Engine_Choice,
+	stack_size:         u32,   // value stack of the interpreter (wamr)
+	max_pages:          u32,   // linear memory limit in 64 KiB pages
+	budget:             i32,   // instructions per call from the host, -1 = unlimited (wamr; wasmtime with fuel)
+	max_call_ms:        i64,   // wall-clock limit of a call from the host, -1 = unlimited (wasmtime)
+	max_table_elements: i64,   // -1 = unlimited (wasmtime)
+	max_tables:         i64,
+	max_memories:       i64,
+	stop:               ^b32,  // optional atomic flag: once true, running code is interrupted and new calls refused
+}
+
+// What a host function receives: the calling instance (see `owner`).
+Exec_Env :: distinct rawptr
+
+Native_Symbol :: struct {
+	symbol:     cstring,
+	func_ptr:   rawptr,
+	signature:  cstring,   // "(i*~)i": i = i32, I = i64, f = f32, F = f64, * = pointer (checked), ~ = its length, $ = string (checked)
+	attachment: rawptr,    // unused (kept for the layout of the tables)
 }
 
 Instance :: struct {
-	name:      string,
-	module:    Module,
-	inst:      Module_Inst,
-	env:       Exec_Env,
-	bytes:     []byte,   // the runtime keeps reading the module image: it must outlive the module
-	scope:     ^base.Scope,
-	cleanup:   base.Cleanup_Id,
-	user:      rawptr,   // owner context (the document), see `owner`
-	index:     u32,      // position among the instances of that owner (a document may run several modules)
-	budget:    i32,
-	over_budget: int,    // calls stopped by the budget or an exception
-	last_error: string,
-	dead:      bool,
+	name:        string,
+	engine:      Engine_Kind,
+	bytes:       []byte,   // the module image (WAMR keeps reading it: it must outlive the module)
+	scope:       ^base.Scope,
+	cleanup:     base.Cleanup_Id,
+	user:        rawptr,   // owner context (the document), see `owner`
+	index:       u32,      // position among the instances of that owner (a document may run several modules)
+	opt:         Options,
+	budget:      i32,
+	over_budget: int,      // calls stopped by the budget, the deadline or a trap
+	last_error:  string,
+	dead:        bool,
+	depth:       int,      // calls in progress on this instance (nesting through host functions)
+	wamr:        Wamr_State,
+	wt:          Wt_State,
 }
 
 @(private)
 runtime_ready: bool
+@(private)
+runtime_lock: sync.Mutex
+@(private)
+settings: Runtime_Settings
+@(private)
+settings_set: bool
+@(private)
+live_instances: int   // atomic
 
+// Engine-level settings (which engine, compiler, proposals, caches). Call before `runtime_init`; later calls only
+// change what is not fixed yet (an engine already created keeps its configuration until `runtime_destroy`).
+configure :: proc(rs: Runtime_Settings) {
+	sync.mutex_lock(&runtime_lock)
+	defer sync.mutex_unlock(&runtime_lock)
+	context.allocator = runtime.default_allocator()
+	runtime_settings_destroy(&settings)
+	settings = clone_settings(rs)
+	settings_set = true
+}
+
+configured_engine :: proc() -> Engine_Kind {
+	sync.mutex_lock(&runtime_lock)
+	defer sync.mutex_unlock(&runtime_lock)
+	if !settings_set { settings = runtime_settings_default(); settings_set = true }
+	return settings.engine
+}
+
+// Starts the configured engine (the other one starts on first use, if ever). Safe to call more than once.
 runtime_init :: proc() -> bool {
-	if runtime_ready { return true }
-	runtime_ready = wasm_runtime_init()
-	// errors only: "max memory override ignored" warnings are expected (the smaller of our cap and the module's wins)
-	if runtime_ready { wasm_runtime_set_log_level(1) }
-	return runtime_ready
+	engine := configured_engine()
+	sync.mutex_lock(&runtime_lock)
+	runtime_ready = true
+	sync.mutex_unlock(&runtime_lock)
+	return engine_start(engine)
 }
 
+@(private)
+engine_start :: proc(e: Engine_Kind) -> bool {
+	sync.mutex_lock(&runtime_lock)
+	defer sync.mutex_unlock(&runtime_lock)
+	if !settings_set { settings = runtime_settings_default(); settings_set = true }
+	switch e {
+	case .Wamr:     return wamr_start()
+	case .Wasmtime: return wt_start(settings)
+	}
+	return false
+}
+
+// Stops both engines and frees everything they hold (caches, host function records). Every instance must be gone.
 runtime_destroy :: proc() {
-	if runtime_ready { wasm_runtime_destroy(); runtime_ready = false }
-}
-
-// Registers a set of host functions under an import module name. `symbols` must stay alive forever (use a global).
-register :: proc(module: cstring, symbols: []Native_Symbol) -> bool {
-	return wasm_runtime_register_natives(module, raw_data(symbols), u32(len(symbols)))
+	sync.mutex_lock(&runtime_lock)
+	defer sync.mutex_unlock(&runtime_lock)
+	context.allocator = runtime.default_allocator()
+	wt_stop()
+	wamr_stop()
+	registry_destroy()
+	runtime_settings_destroy(&settings)
+	settings_set = false
+	runtime_ready = false
 }
 
 // Threads other than the one that called `runtime_init` must call this before creating or calling an instance, and
-// `thread_env_destroy` after the last one is gone. The runtime is built without its thread manager, so it keeps no
-// per-thread state of its own beyond what these set up: the thread's record (Windows) and the stack guarantee used by the
-// hardware bound checks (linear memory accesses and native stack overflow are caught by an exception handler that
-// needs it). An instance and its execution environment belong to the thread that created them: the environment records
-// that thread's stack bounds.
-thread_env_init :: proc() -> bool { return wasm_runtime_init_thread_env() }
-thread_env_destroy :: proc() { wasm_runtime_destroy_thread_env() }
+// `thread_env_destroy` after the last one is gone. An instance belongs to the thread that created it.
+thread_env_init :: proc() -> bool { return wamr_thread_init() }
+thread_env_destroy :: proc() { wamr_thread_destroy() }
 
 // Decides whether a module may import `module_name`.`field`. Used to restrict what a module run outside a document
 // (a worker) may link against: the host functions are registered once for the whole process.
@@ -74,51 +142,33 @@ Import_Filter :: #type proc(module_name, field: string) -> bool
 // Loads and instantiates `image` (copied). The instance dies with `scope` (may be nil: then call `destroy`).
 // With `filter`, a module importing anything the filter refuses is not instantiated.
 instance_create :: proc(image: []byte, user: rawptr, scope: ^base.Scope, opt: Options, name := "module", filter: Import_Filter = nil) -> (inst: ^Instance, err: string) {
-	if !runtime_init() { return nil, "wasm runtime init failed" }
+	engine: Engine_Kind
+	switch opt.engine {
+	case .Default:  engine = configured_engine()
+	case .Wasmtime: engine = .Wasmtime
+	case .Wamr:     engine = .Wamr
+	}
+	if !engine_start(engine) { return nil, fmt.aprintf("%s: the %v engine could not start", name, engine) }
+	limit := settings.max_instances
+	if n := sync.atomic_add(&live_instances, 1); limit > 0 && n >= limit {
+		sync.atomic_sub(&live_instances, 1)
+		return nil, fmt.aprintf("%s: too many module instances alive (wasm.max_instances = %d)", name, limit)
+	}
 	inst = new(Instance)
 	inst.name = strings.clone(name)
+	inst.engine = engine
 	inst.user = user
 	inst.scope = scope
+	inst.opt = opt
 	inst.budget = opt.budget
-	inst.bytes = make([]byte, len(image))
-	copy(inst.bytes, image)
-
-	errbuf: [256]byte
-	inst.module = wasm_runtime_load(raw_data(inst.bytes), u32(len(inst.bytes)), raw_data(errbuf[:]), len(errbuf))
-	if inst.module == nil {
-		err = fmt.aprintf("%s: load failed: %s", name, cstring(raw_data(errbuf[:])))
+	ok: bool
+	switch engine {
+	case .Wamr:     ok, err = wamr_instantiate(inst, image, filter)
+	case .Wasmtime: ok, err = wt_instantiate(inst, image, filter)
+	}
+	if !ok {
 		instance_free(inst)
 		return nil, err
-	}
-	if filter != nil {
-		for i in 0 ..< wasm_runtime_get_import_count(inst.module) {
-			it: Import_Type
-			wasm_runtime_get_import_type(inst.module, i, &it)
-			if it.module_name == nil || it.name == nil { continue }
-			if !filter(string(it.module_name), string(it.name)) {
-				err = fmt.aprintf("%s: imports %s.%s, which is not available here", name, it.module_name, it.name)
-				instance_free(inst)
-				return nil, err
-			}
-		}
-	}
-	args := Instantiation_Args{
-		default_stack_size = opt.stack_size,
-		host_managed_heap_size = 0,
-		max_memory_pages = opt.max_pages,
-	}
-	errbuf = {}
-	inst.inst = wasm_runtime_instantiate_ex(inst.module, &args, raw_data(errbuf[:]), len(errbuf))
-	if inst.inst == nil {
-		err = fmt.aprintf("%s: instantiate failed: %s", name, cstring(raw_data(errbuf[:])))
-		instance_free(inst)
-		return nil, err
-	}
-	wasm_runtime_set_custom_data(inst.inst, inst)
-	inst.env = wasm_runtime_create_exec_env(inst.inst, args.default_stack_size)
-	if inst.env == nil {
-		instance_free(inst)
-		return nil, fmt.aprintf("%s: could not create an execution environment", name)
 	}
 	if scope != nil { inst.cleanup = base.on_close(scope, scope_closed, inst) }
 	return inst, ""
@@ -136,9 +186,11 @@ scope_closed :: proc(data: rawptr) { instance_free((^Instance)(data)) }
 @(private)
 instance_free :: proc(inst: ^Instance) {
 	inst.dead = true
-	if inst.env != nil { wasm_runtime_destroy_exec_env(inst.env) }
-	if inst.inst != nil { wasm_runtime_deinstantiate(inst.inst) }
-	if inst.module != nil { wasm_runtime_unload(inst.module) }
+	switch inst.engine {
+	case .Wamr:     wamr_free(inst)
+	case .Wasmtime: wt_free(inst)
+	}
+	sync.atomic_sub(&live_instances, 1)
 	delete(inst.bytes)
 	delete(inst.name)
 	delete(inst.last_error)
@@ -146,72 +198,82 @@ instance_free :: proc(inst: ^Instance) {
 }
 
 // From inside a host function: the instance that called us.
-owner :: proc "contextless" (env: Exec_Env) -> ^Instance {
-	return (^Instance)(wasm_runtime_get_custom_data(wasm_runtime_get_module_inst(env)))
-}
+owner :: #force_inline proc "contextless" (env: Exec_Env) -> ^Instance { return (^Instance)(env) }
 
 has_export :: proc(inst: ^Instance, name: cstring) -> bool {
-	return wasm_runtime_lookup_function(inst.inst, name) != nil
+	if inst == nil || inst.dead { return false }
+	switch inst.engine {
+	case .Wamr:     return wamr_has_export(inst, name)
+	case .Wasmtime: return wt_has_export(inst, name)
+	}
+	return false
 }
 
 Call_Result :: enum { Ok, No_Such_Export, Trapped, Instance_Dead }
 
-// Calls an export with i32 arguments. `argv` is the raw cell array: it carries the arguments in and the results out
-// (an i64 takes two cells). The call runs under the instruction budget.
+// Calls an export. `argv` is the raw cell array: it carries the arguments in and the results out (an i64 or f64 takes
+// two cells, low half first). The call runs under the instance's deadline or budget.
 call_raw :: proc(inst: ^Instance, name: cstring, argv: []u32 = nil, results := 0) -> Call_Result {
 	if inst == nil || inst.dead { return .Instance_Dead }
-	f := wasm_runtime_lookup_function(inst.inst, name)
-	if f == nil { return .No_Such_Export }
 	cells := max(len(argv), results)
-	buf: [16]u32
+	buf: [MAX_CELLS]u32
 	if cells > len(buf) { return .Trapped }
 	copy(buf[:], argv)
-	wasm_runtime_set_instruction_count_limit(inst.env, inst.budget)
-	ok := wasm_runtime_call_wasm(inst.env, f, u32(len(argv)), raw_data(buf[:]))
-	if !ok { record_trap(inst); return .Trapped }
-	copy(argv, buf[:len(argv)])
-	return .Ok
+	res: Call_Result
+	switch inst.engine {
+	case .Wamr:     res = wamr_call_export(inst, name, buf[:], len(argv))
+	case .Wasmtime: res = wt_call_export(inst, name, buf[:], len(argv))
+	}
+	if res == .Ok { copy(argv, buf[:len(argv)]) }
+	return res
 }
 
 // i32 -> i32 convenience.
 call_i32 :: proc(inst: ^Instance, name: cstring, args: ..i32) -> (result: i32, res: Call_Result) {
-	cells: [8]u32
-	for a, i in args { cells[i] = u32(a) }
-	buf: [16]u32
-	copy(buf[:], cells[:len(args)])
 	if inst == nil || inst.dead { return 0, .Instance_Dead }
-	f := wasm_runtime_lookup_function(inst.inst, name)
-	if f == nil { return 0, .No_Such_Export }
-	wasm_runtime_set_instruction_count_limit(inst.env, inst.budget)
-	if !wasm_runtime_call_wasm(inst.env, f, u32(len(args)), raw_data(buf[:])) { record_trap(inst); return 0, .Trapped }
+	buf: [MAX_CELLS]u32
+	if len(args) > len(buf) { return 0, .Trapped }
+	for a, i in args { buf[i] = u32(a) }
+	switch inst.engine {
+	case .Wamr:     res = wamr_call_export(inst, name, buf[:], len(args))
+	case .Wasmtime: res = wt_call_export(inst, name, buf[:], len(args))
+	}
+	if res != .Ok { return 0, res }
 	return i32(buf[0]), .Ok
 }
 
 // Calls a function through the module's table (a function pointer handed to the host, e.g. an event listener).
 call_indirect :: proc(inst: ^Instance, table_index: u32, argv: []u32) -> Call_Result {
 	if inst == nil || inst.dead { return .Instance_Dead }
-	buf: [16]u32
+	buf: [MAX_CELLS]u32
 	if len(argv) > len(buf) { return .Trapped }
 	copy(buf[:], argv)
-	wasm_runtime_set_instruction_count_limit(inst.env, inst.budget)
-	if !wasm_runtime_call_indirect(inst.env, table_index, u32(len(argv)), raw_data(buf[:])) { record_trap(inst); return .Trapped }
-	return .Ok
+	res: Call_Result
+	switch inst.engine {
+	case .Wamr:     res = wamr_call_indirect(inst, table_index, buf[:], len(argv))
+	case .Wasmtime: res = wt_call_indirect(inst, table_index, buf[:], len(argv))
+	}
+	if res == .Ok { copy(argv, buf[:len(argv)]) }
+	return res
 }
 
+MAX_CELLS :: 64
+
 @(private)
-record_trap :: proc(inst: ^Instance) {
+set_error :: proc(inst: ^Instance, msg: string) {
 	inst.over_budget += 1
 	delete(inst.last_error)
-	msg := wasm_runtime_get_exception(inst.inst)
-	inst.last_error = msg == nil ? strings.clone("unknown trap") : strings.clone(string(msg))
-	wasm_runtime_clear_exception(inst.inst)   // the instance stays usable for the next event
+	inst.last_error = strings.clone(msg)
 }
 
 // Validated slice of the guest's linear memory (for host code that got an offset from a plain i32 parameter).
 guest_bytes :: proc(inst: ^Instance, offset: u32, length: u32) -> []byte {
-	if length == 0 { return nil }
-	if !wasm_runtime_validate_app_addr(inst.inst, u64(offset), u64(length)) { return nil }
-	return ([^]byte)(wasm_runtime_addr_app_to_native(inst.inst, u64(offset)))[:length]
+	if inst == nil || inst.dead || length == 0 { return nil }
+	switch inst.engine {
+	case .Wamr:     return wamr_guest_bytes(inst, offset, length)
+	case .Wasmtime: return wt_guest_bytes(inst, offset, length)
+	}
+	return nil
 }
 
 default_context :: proc "contextless" () -> runtime.Context { return runtime.default_context() }
