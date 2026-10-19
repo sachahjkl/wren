@@ -668,13 +668,43 @@ JSValue wjr_ReadableStream_tee(JSContext *ctx, JSValueConst this_val, int argc, 
 
 /* -- async iteration: for await (const chunk of stream) -- */
 
+JSValue wjr_ReadableStreamDefaultReader_releaseLock(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+
+/* the end of the iteration releases the reader (Streams "ReadableStream async iterator": next steps) */
+static JSValue iter_step(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic, JSValueConst *data)
+{
+    WJ_UNUSED(this_val); WJ_UNUSED(magic);
+    JSValueConst res = wj_arg(argc, (JSValue *)argv, 0);
+    JSValue done = JS_GetPropertyStr(ctx, res, "done");
+    if (JS_ToBool(ctx, done)) {
+        JSValue x = wjr_ReadableStreamDefaultReader_releaseLock(ctx, data[0], 0, NULL);
+        if (JS_IsException(x)) { JS_FreeValue(ctx, JS_GetException(ctx)); }
+        JS_FreeValue(ctx, x);
+    }
+    JS_FreeValue(ctx, done);
+    return JS_DupValue(ctx, res);
+}
+
+static JSValue iter_error(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic, JSValueConst *data)
+{
+    WJ_UNUSED(this_val); WJ_UNUSED(magic);
+    JSValue x = wjr_ReadableStreamDefaultReader_releaseLock(ctx, data[0], 0, NULL);
+    if (JS_IsException(x)) { JS_FreeValue(ctx, JS_GetException(ctx)); }
+    JS_FreeValue(ctx, x);
+    return JS_Throw(ctx, JS_DupValue(ctx, wj_arg(argc, (JSValue *)argv, 0)));
+}
+
 static JSValue iter_next(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic, JSValueConst *data)
 {
     WJ_UNUSED(this_val); WJ_UNUSED(argc); WJ_UNUSED(argv); WJ_UNUSED(magic);
-    return wjr_ReadableStreamDefaultReader_read(ctx, data[0], 0, NULL);
+    web_reader *r = reader_of(data[0]);
+    if (!r || JS_IsUndefined(r->stream)) { return web_promise_take(ctx, web_iter_result(ctx, JS_UNDEFINED, true)); }
+    JSValue p = wjr_ReadableStreamDefaultReader_read(ctx, data[0], 0, NULL);
+    if (JS_IsException(p)) { return p; }
+    JSValue d = web_then(ctx, p, iter_step, iter_error, 1, data);
+    JS_FreeValue(ctx, p);
+    return d;
 }
-
-JSValue wjr_ReadableStreamDefaultReader_releaseLock(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 
 static JSValue iter_return(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic, JSValueConst *data)
 {
@@ -690,7 +720,7 @@ static JSValue iter_return(JSContext *ctx, JSValueConst this_val, int argc, JSVa
     if (JS_IsException(x)) { JS_FreeValue(ctx, JS_GetException(ctx)); }
     JS_FreeValue(ctx, x);
     JS_FreeValue(ctx, p);
-    return web_promise_resolved(ctx, web_iter_result(ctx, JS_DupValue(ctx, value), true));
+    return web_promise_take(ctx, web_iter_result(ctx, JS_DupValue(ctx, value), true));
 }
 
 JSValue wjr_ReadableStream_values(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -730,7 +760,7 @@ JSValue wjr_ReadableStreamDefaultReader_read(JSContext *ctx, JSValueConst this_v
     web_stream *s = stream_of(r->stream);
     if (!s) { return web_promise_rejected(ctx, web_type_error(ctx, "This readable stream reader has been released and cannot be used to read from its previous owner stream")); }
     s->disturbed = true;
-    if (s->state == RS_CLOSED) { return web_promise_resolved(ctx, web_iter_result(ctx, JS_UNDEFINED, true)); }
+    if (s->state == RS_CLOSED) { return web_promise_take(ctx, web_iter_result(ctx, JS_UNDEFINED, true)); }
     if (s->state == RS_ERRORED) { return web_promise_rejected(ctx, JS_DupValue(ctx, s->error)); }
     if (queue_size(s) > 0) {
         JSValue chunk = s->q[s->qhead++];

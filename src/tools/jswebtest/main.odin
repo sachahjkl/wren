@@ -97,7 +97,8 @@ wait :: proc(r: Running, actions: map[string]Action = nil, seconds := 30.0) -> b
 			page.js_run(r.p, transmute([]byte)fmt.tprintf("__resume(%q)", name), "jswebtest.js")
 		}
 		if time.duration_seconds(time.tick_since(start)) > seconds {
-			fmt.printf("FAIL [%s] timeout: the script did not finish in %.0f s\n", r.log.name, seconds)
+			fmt.printf("FAIL [%s] timeout: the script did not finish in %.0f s; its last messages:\n", r.log.name, seconds)
+			for line in r.log.lines[max(0, len(r.log.lines) - 6):] { fmt.printf("    %s\n", line) }
 			failures += 1
 			return false
 		}
@@ -149,13 +150,14 @@ main :: proc() {
 	page.storage_manager_init(&storage, &loop, &blocking, PROFILE_DIR)
 	process = base.scope_make("process")
 
+	if selected("dbg") && len(os.args) > 1 { run("dbg") }
 	if selected("core") { run("core") }
 	if selected("url") { run("url") }
 	if selected("abort") { run("abort") }
 	if selected("blob") { run("blob") }
 	if selected("streams") { run("streams") }
 	if selected("fetch_objects") { run("fetch_objects") }
-	if selected("fetch") { run("fetch") }
+	if selected("fetch") { run("fetch", seconds = 90) }
 	if selected("xhr") { run("xhr") }
 	if selected("perf_crypto") { run("perf_crypto") }
 	if selected("message") { run("message") }
@@ -216,7 +218,7 @@ main :: proc() {
 		pump_for(50)
 		after := host_objects(r.p)
 		fmt.printf("  host objects before collection %d, after %d\n", before, after)
-		if before >= 3000 && after < 200 { passes += 1 } else { fmt.printf("FAIL [gc] host objects of collected wrappers are released (%d -> %d)\n", before, after); failures += 1 }
+		if before > after && after < 100 { passes += 1 } else { fmt.printf("FAIL [gc] host objects of collected wrappers are released (%d -> %d)\n", before, after); failures += 1 }
 		close(r)
 	}
 

@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 556 |
 | exposed by default | 174 |
 | members | 4991 |
-| members implemented | 1838 (36.8 %) |
+| members implemented | 1839 (36.8 %) |
 
 ## By specification
 
@@ -47,7 +47,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (0) | 0 / 126 |
 | `hr-time.idl` | 1 (1) | 11 / 17 |
-| `html.idl` | 160 (87) | 856 / 1819 |
+| `html.idl` | 160 (87) | 857 / 1819 |
 | `intersection-observer.idl` | 2 (0) | 0 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -1499,7 +1499,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLImageElement : HTMLElement
 
-15 / 29 members.
+16 / 29 members.
 
 - `readonly x`: not supported
 - `readonly y`: not supported
@@ -1522,7 +1522,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `decoding`: not supported
 - `loading`: not supported
 - `fetchPriority`: not supported
-- `decode()`: not supported
+- `decode()`: import `images.HTMLImageElement_decode`
 - `name`: generic (reflects a content attribute)
 - `lowsrc`: not supported
 - `align`: generic (reflects a content attribute)
@@ -3576,7 +3576,6 @@ TaskController, AbstractRange, Range, StaticRange, AnimationEffect, KeyframeEffe
 - HTMLButtonElement.validity: forms.HTMLButtonElement_validity exists but its result type does not match
 - HTMLFieldSetElement.validity: forms.HTMLFieldSetElement_validity exists but its result type does not match
 - HTMLFormElement.elements: forms.HTMLFormElement_elements exists but it takes 2 parameters for 0 arguments
-- HTMLImageElement.decode: images.HTMLImageElement_decode exists but the result type Promise<undefined> has no conversion
 - HTMLInputElement.valueAsDate: forms.HTMLInputElement_valueAsDate exists but the result type object? has no conversion
 - HTMLInputElement.valueAsDate (setter): forms.HTMLInputElement_setValueAsDate exists but an argument of type object? has no conversion
 - HTMLInputElement.validity: forms.HTMLInputElement_validity exists but its result type does not match

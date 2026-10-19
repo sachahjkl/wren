@@ -115,18 +115,38 @@ media_queries_update :: proc(p: ^Page, env: css.Media_Env) {
 	}, nil)
 }
 
-// What mql.media shows: the query trimmed, its white space collapsed, in lower case outside of nothing else (an
-// approximation of CSSOM's media query serialization); "not all" when it does not parse.
+// What mql.media shows: each query of the list trimmed, its white space collapsed (none after "(" or before ")" and
+// ":"), in lower case, and "not all" for a query that does not parse (an approximation of CSSOM's media query
+// serialization, which would need the parsed form written back).
 @(private)
-media_text :: proc(query: string, invalid: bool) -> string {
-	if invalid { return strings.clone("not all") }
+media_text :: proc(query: string, list: css.Media_Query_List) -> string {
+	parts := make([dynamic]string, context.temp_allocator)
+	depth, start := 0, 0
+	for i in 0 ..< len(query) {
+		switch query[i] {
+		case '(': depth += 1
+		case ')': depth = max(depth - 1, 0)
+		case ',': if depth == 0 { append(&parts, query[start:i]); start = i + 1 }
+		}
+	}
+	append(&parts, query[start:])
 	b := strings.builder_make()
-	space := false
-	for r in strings.trim_space(query) {
-		if strings.is_space(r) { space = true; continue }
-		if space && strings.builder_len(b) > 0 { strings.write_byte(&b, ' ') }
-		space = false
-		strings.write_rune(&b, r >= 'A' && r <= 'Z' ? r + 32 : r)
+	for part, k in parts {
+		if k > 0 { strings.write_string(&b, ", ") }
+		// the parser's mark of an invalid query: "not all" with no condition
+		if k < len(list) && list[k].negated && list[k].type == .All && list[k].condition == nil {
+			strings.write_string(&b, "not all")
+			continue
+		}
+		space := false
+		for r in strings.trim_space(part) {
+			if strings.is_space(r) { space = true; continue }
+			last := strings.builder_len(b) > 0 ? b.buf[len(b.buf) - 1] : ' '
+			if space && last != '(' && last != ' ' && r != ')' && r != ':' { strings.write_byte(&b, ' ') }
+			space = false
+			strings.write_rune(&b, r >= 'A' && r <= 'Z' ? r + 32 : r)
+			if r == ':' { space = true }
+		}
 	}
 	return strings.to_string(b)
 }
@@ -144,7 +164,7 @@ MediaQueryList_create :: proc(c: ^Call, query: string) -> u64 {
 		m.list = css.parse_media_query_list(vals, alloc)
 		m.invalid = len(m.list) == 0
 	}
-	m.media = media_text(query, m.invalid)
+	m.media = m.invalid ? strings.clone("not all") : media_text(query, m.list)
 	m.matches = mql_eval(m, media_env(p))
 	m.self = object_create(p, &mql_vt, m, c.owner)
 	mp := media_page(p)

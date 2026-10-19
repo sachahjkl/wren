@@ -29,7 +29,10 @@ JSValue wjr_Crypto_getRandomValues(JSContext *ctx, JSValueConst this_val, int ar
                    t == JS_TYPED_ARRAY_UINT16 || t == JS_TYPED_ARRAY_INT32 || t == JS_TYPED_ARRAY_UINT32 ||
                    t == JS_TYPED_ARRAY_BIG_INT64 || t == JS_TYPED_ARRAY_BIG_UINT64;
     if (!integer) {
-        if (t >= 0 || wj_is_buffer_source(argv[0])) { return wj_throw_dom(ctx, "TypeMismatchError", "Failed to execute 'getRandomValues' on 'Crypto': The provided ArrayBufferView is not an integer array type."); }
+        /* a view that is not of integers (floats, DataView): TypeMismatchError; anything else is not an ArrayBufferView */
+        if (wj_is_array_buffer_view(argv[0])) {
+            return wj_throw_dom(ctx, "TypeMismatchError", "Failed to execute 'getRandomValues' on 'Crypto': The provided ArrayBufferView is not an integer array type.");
+        }
         return JS_ThrowTypeError(ctx, "Failed to execute 'getRandomValues' on 'Crypto': parameter 1 is not of type 'ArrayBufferView'.");
     }
     uint8_t *p;

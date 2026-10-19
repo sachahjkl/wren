@@ -342,6 +342,14 @@ JSValue web_promise_resolved(JSContext *ctx, JSValueConst v)
     return JS_NewSettledPromise(ctx, false, v);
 }
 
+JSValue web_promise_take(JSContext *ctx, JSValue v)
+{
+    if (JS_IsException(v)) { return web_promise_reject_pending(ctx); }
+    JSValue p = JS_NewSettledPromise(ctx, false, v);
+    JS_FreeValue(ctx, v);
+    return p;
+}
+
 JSValue web_promise_rejected(JSContext *ctx, JSValue reason)
 {
     JSValue p = JS_NewSettledPromise(ctx, true, reason);
@@ -353,6 +361,8 @@ JSValue web_promise_reject_pending(JSContext *ctx)
 {
     return web_promise_rejected(ctx, JS_GetException(ctx));
 }
+
+wj_val wj_promise_reject_pending(wj_ctx *ctx) { return web_promise_reject_pending(ctx); }
 
 void web_settle(JSContext *ctx, JSValueConst func, JSValue v)
 {
@@ -744,6 +754,20 @@ void web_unpin(JSContext *ctx, uint32_t token)
     }
     if (pins_free_n < pins_free_cap) { pins_free[pins_free_n++] = i; }
     JS_FreeValue(ctx, v);
+}
+
+static void unpin_task(JSContext *ctx, JSValueConst data)
+{
+    int32_t token = 0;
+    JS_ToInt32(ctx, &token, data);
+    web_unpin(ctx, (uint32_t)token);
+}
+
+void web_unpin_later(JSContext *ctx, uint32_t token)
+{
+    if (!token) { return; }
+    JSValue t = JS_NewInt32(ctx, (int32_t)token);
+    if (!web_queue_task(ctx, unpin_task, t)) { JS_FreeValue(ctx, JS_GetException(ctx)); web_unpin(ctx, token); }
 }
 
 /* ---- life cycle ---- */

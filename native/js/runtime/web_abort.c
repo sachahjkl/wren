@@ -184,7 +184,8 @@ WJ_EXPORT("wj_cb_signal_abort") void wj_cb_signal_abort(int32_t user, uint64_t e
         }
         JS_FreeValue(ctx, followers);
     }
-    if (s->pin) { uint32_t pin = s->pin; s->pin = 0; web_unpin(ctx, pin); }
+    /* the listeners of this very event still run: the object goes after it */
+    if (s->pin) { uint32_t pin = s->pin; s->pin = 0; web_unpin_later(ctx, pin); }
     JS_FreeValue(ctx, self);
 }
 

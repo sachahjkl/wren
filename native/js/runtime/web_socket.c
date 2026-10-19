@@ -115,11 +115,11 @@ WJ_EXPORT("wj_cb_socket") void wj_cb_socket(int32_t user, uint64_t event)
         return;
     }
     if (n == 5 && memcmp(wj_scratch.data, "close", 5) == 0 && !s->is_source) {
-        if (s->pin) { uint32_t p = s->pin; s->pin = 0; web_unpin(ctx, p); }
+        if (s->pin) { uint32_t p = s->pin; s->pin = 0; web_unpin_later(ctx, p); }
         return;
     }
     if (n == 5 && memcmp(wj_scratch.data, "error", 5) == 0 && s->is_source) {
-        if (s->pin && wr_EventSource_readyState(o->handle) == wr_EventSourceState_Closed) { uint32_t p = s->pin; s->pin = 0; web_unpin(ctx, p); }
+        if (s->pin && wr_EventSource_readyState(o->handle) == wr_EventSourceState_Closed) { uint32_t p = s->pin; s->pin = 0; web_unpin_later(ctx, p); }
     }
 }
 

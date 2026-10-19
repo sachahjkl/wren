@@ -135,6 +135,16 @@ try {
         $o = Get-Content build\wkt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
+    Step 'JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; jswebtest)' {
+        powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_js.ps1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { return }
+        odin build src/tools/jswebtest -collection:wb=src -vet -out:build/jswebtest.exe "-extra-linker-flags:/STACK:33554432"
+        if ($LASTEXITCODE -ne 0) { return }
+        $p = Start-Process .\build\jswebtest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\jswt.txt
+        if (-not $p.WaitForExit(300000 * $slow)) { $p.Kill(); Get-Content build\jswt.txt; $global:LASTEXITCODE = 1; return }
+        $o = Get-Content build\jswt.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
+    }
     Step 'style run-time test (web fonts, transitions, animations)' {
         odin build src/tools/styletest -collection:wb=src -vet -out:build/styletest.exe 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) { return }

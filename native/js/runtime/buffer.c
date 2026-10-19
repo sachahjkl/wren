@@ -61,6 +61,11 @@ bool wj_is_buffer_source(JSValueConst v)
     return id == ab_class || id == sab_class || id == dataview_class || JS_GetTypedArrayType(v) >= 0;
 }
 
+bool wj_is_array_buffer_view(JSValueConst v)
+{
+    return JS_IsObject(v) && (JS_GetClassID(v) == dataview_class || JS_GetTypedArrayType(v) >= 0);
+}
+
 int wj_typed_array_type(JSValueConst v)
 {
     return JS_IsObject(v) ? JS_GetTypedArrayType(v) : -1;

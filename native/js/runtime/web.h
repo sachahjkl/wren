@@ -97,6 +97,8 @@ JSValue web_type_error(JSContext *ctx, const char *message);
 /* A pending promise and its resolving functions (both counted: release them). */
 JSValue web_promise_new(JSContext *ctx, JSValue funcs[2]);
 JSValue web_promise_resolved(JSContext *ctx, JSValueConst v);
+/* the same, taking `v` */
+JSValue web_promise_take(JSContext *ctx, JSValue v);
 /* takes `reason` */
 JSValue web_promise_rejected(JSContext *ctx, JSValue reason);
 /* the pending exception as a rejected promise (operations returning promises never throw: Web IDL) */
@@ -104,20 +106,8 @@ JSValue web_promise_reject_pending(JSContext *ctx);
 /* settles with funcs[0] / funcs[1] (takes `v`; reports an exception thrown by the call) */
 void web_settle(JSContext *ctx, JSValueConst func, JSValue v);
 
-/* Host promise -> JavaScript promise (promise.c). The host promise is the realm's: released once it settled. */
-enum {
-    WJ_HOST_UNDEFINED = 0,   /* fulfilled with undefined */
-    WJ_HOST_NUMBER,          /* the promise's value */
-    WJ_HOST_BOOL,
-    WJ_HOST_TEXT,            /* the promise's text */
-    WJ_HOST_ARRAYBUFFER,     /* the value is a buffer handle: an ArrayBuffer of its bytes (the buffer is released) */
-    WJ_HOST_UINT8ARRAY,      /* the same, as a Uint8Array */
-};
-/* `settle`, when given, makes the value (fulfilled) or the reason (rejected) instead of the kind's conversion; it
- * returns JS_EXCEPTION to reject with the pending exception. `data` is kept until then and given back. */
-typedef JSValue (*wj_host_settle)(JSContext *ctx, int state, uint64_t host, int64_t value, JSValueConst data, bool *reject);
-JSValue wj_promise_from_host(JSContext *ctx, uint64_t host, int kind, wj_host_settle settle, JSValueConst data);
-/* the text of a settled host promise (its result or its rejection message), as a string */
+/* Host promise -> JavaScript promise: wj_promise_from_host and the WJ_HOST_* kinds are in wj.h (generated glue uses
+ * them too). The text of a settled host promise (its result or its rejection message), as a string: */
 JSValue wj_host_promise_text(JSContext *ctx, uint64_t host);
 
 /* ---- buffers (buffer.c) ---- */
@@ -129,6 +119,8 @@ enum {
 /* Whether `v` is an ArrayBuffer, a SharedArrayBuffer or a view. */
 bool wj_is_buffer_source(JSValueConst v);
 bool wj_is_array_buffer(JSValueConst v);
+/* a typed array or a DataView */
+bool wj_is_array_buffer_view(JSValueConst v);
 /* The bytes of a BufferSource where they are (no copy; valid until JavaScript runs again). A detached buffer has no
  * bytes. False with a TypeError pending when `v` is not one. */
 bool wj_to_buffer_source(JSContext *ctx, JSValueConst v, uint8_t **ptr, size_t *len, int flags, const char *what);
@@ -296,5 +288,7 @@ JSValue web_singleton(JSContext *ctx, int which, JSValue (*make)(JSContext *ctx)
  * request in flight, an open socket): web_pin returns a token, web_unpin(token) lets it go. */
 uint32_t web_pin(JSContext *ctx, JSValueConst v);
 void web_unpin(JSContext *ctx, uint32_t token);
+/* the same from a task of its own: when the last event of an object is being dispatched, its listeners still run */
+void web_unpin_later(JSContext *ctx, uint32_t token);
 
 #endif
