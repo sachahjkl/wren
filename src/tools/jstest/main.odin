@@ -188,6 +188,31 @@ document.body.lastChild.addEventListener("x", () => console.log("listener kept")
 		settings = saved
 	}
 
+	fmt.println("-- cost of a call across the boundary (ns per call, informational)")
+	{
+		p := load(process, `<!doctype html><body><div id=a title=t><span></span></div><script>
+const a = document.getElementById("a"), N = 1000000;
+function bench(name, f) {
+  f(1000);
+  const t0 = performance_now();
+  f(N);
+  const ns = (performance_now() - t0) * 1e6 / N;
+  console.log("BENCH " + name + " " + ns.toFixed(1));
+}
+function performance_now() { return Date.now(); }
+const o = {x: 1};
+bench("empty loop", n => { for (let i = 0; i < n; i++) {} });
+bench("JS property get", n => { let s = 0; for (let i = 0; i < n; i++) s += o.x; });
+bench("nodeType (getter, import)", n => { let s = 0; for (let i = 0; i < n; i++) s += a.nodeType; });
+bench("firstChild (getter, wrapper cache)", n => { let s; for (let i = 0; i < n; i++) s = a.firstChild; });
+bench("title (reflected attribute)", n => { let s; for (let i = 0; i < n; i++) s = a.title; });
+bench("getAttribute('title')", n => { let s; for (let i = 0; i < n; i++) s = a.getAttribute("title"); });
+bench("document.body", n => { let s; for (let i = 0; i < n; i++) s = document.body; });
+</script></body>`)
+		for l in logs { if strings.has_prefix(l, "BENCH ") { fmt.printf("  %s ns\n", l[6:]) } }
+		page.page_close(p)
+	}
+
 	base.scope_close(process)
 	js.cache_stop()
 	fmt.printf("\n%d failure(s)\n", failures)
