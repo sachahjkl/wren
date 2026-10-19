@@ -113,6 +113,8 @@ fetched concurrently and run in document order, each in its own instance sharing
   CSS parser and selectors are compiled in and unused so far.
 - CSP violation *reporting* (`report-uri` / `report-to`): violations go to the console only. No SRI (`integrity=`).
 - HTTP authentication (401), downloads (`Content-Disposition`), `blob:` URLs, WebSocket, cookie partitioning (CHIPS).
-- Text shaping (`vendor:kb_text_shape` is available in Odin), images (the renderer only has R8 atlas textures), IME.
+- IME. (Text is on DirectWrite through the toolkit: per-character fallback, shaping, bidi, color emoji; see
+  `ext/gui_toolkit/docs/text.md` and `src/browser/fonts.odin`. Not yet: vertical writing modes, `text-decoration` from
+  font metrics, ClearType.)
 - Wasm: threads and shared memory are off (each worker has its own store and memory); GC is available but off by default.
 - Streaming bodies to the guest: `Fetch_*` buffers the response (bounded by `max_body` and the per-page ceiling).
