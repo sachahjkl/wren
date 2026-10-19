@@ -96,6 +96,24 @@ ids_lookup :: proc(d: ^Document, id: string) -> base.Handle {
 	return best
 }
 
+// Every element of the document's tree whose id is `id`, in tree order (temp memory).
+ids_all :: proc(d: ^Document, id: string) -> []base.Handle {
+	if id == "" { return nil }
+	if !d.ids.on { ids_build(d) }
+	b, ok := d.ids.by_id[id]
+	if !ok { return nil }
+	out := make([dynamic]base.Handle, 0, 1 + len(b.more), context.temp_allocator)
+	if b.one != base.NIL_HANDLE && tree_root(d, b.one) == d.root { append(&out, b.one) }
+	for h in b.more { if tree_root(d, h) == d.root { append(&out, h) } }
+	if len(out) > 1 {
+		// insertion sort in tree order: ids are nearly always unique
+		for i in 1 ..< len(out) {
+			for j := i; j > 0 && tree_order_compare(d, out[j], out[j - 1]) < 0; j -= 1 { out[j], out[j - 1] = out[j - 1], out[j] }
+		}
+	}
+	return out[:]
+}
+
 // The first element in tree order of the subtree of `root` (itself excluded) whose id is `id` (a DocumentFragment's
 // or a detached element's getElementById): a walk, the index only covers the document's tree well.
 find_by_id_in :: proc(d: ^Document, root: base.Handle, id: string) -> base.Handle {

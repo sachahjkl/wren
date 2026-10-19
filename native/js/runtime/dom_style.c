@@ -90,7 +90,8 @@ static JSValue style_set(JSContext *ctx, dom_impl *d, const char *name, size_t l
     if (d->kind == DOM_STYLE_COMPUTED) { return read_only(ctx); }
     wj_str v, p;
     if (!wj_to_str(ctx, value, &v, WJ_STR_NULL_EMPTY, "")) { return JS_EXCEPTION; }
-    if (!wj_to_str(ctx, priority, &p, WJ_STR_NULL_EMPTY, "")) { wj_str_free(ctx, &v); return JS_EXCEPTION; }
+    /* priority: optional, "" by default */
+    if (!wj_to_str(ctx, priority, &p, WJ_STR_NULL_EMPTY | WJ_STR_OPTIONAL, "")) { wj_str_free(ctx, &v); return JS_EXCEPTION; }
     int32_t st = wr_InlineStyle_setProperty(d->node, (const uint8_t *)name, (uint32_t)len, (const uint8_t *)(v.ptr ? v.ptr : ""), (uint32_t)v.len,
                                             (const uint8_t *)(p.ptr ? p.ptr : ""), (uint32_t)p.len);
     wj_str_free(ctx, &v);

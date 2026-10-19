@@ -226,7 +226,16 @@ JSValue wjr_Node_get_nodeType(JSContext *ctx, JSValueConst this_val)
 {
     wj_obj *o = wj_this(ctx, this_val, WJ_IFACE_Node);
     if (!o) { return JS_EXCEPTION; }
-    if (is_attr(this_val)) { return JS_NewInt32(ctx, 2); }
+    /* the wrapper's interface says it: no call to the browser */
+    static const struct { int iface; int type; } kinds[] = {
+        {WJ_IFACE_Element, 1}, {WJ_IFACE_Attr, 2}, {WJ_IFACE_CDATASection, 4}, {WJ_IFACE_Text, 3},
+        {WJ_IFACE_ProcessingInstruction, 7}, {WJ_IFACE_Comment, 8}, {WJ_IFACE_Document, 9},
+        {WJ_IFACE_DocumentType, 10}, {WJ_IFACE_DocumentFragment, 11},
+    };
+    for (size_t i = 0; i < sizeof kinds / sizeof kinds[0]; i++) {
+        int k = kinds[i].iface;
+        if (o->iface >= k && o->iface < wj_interfaces[k].subtree_end) { return JS_NewInt32(ctx, kinds[i].type); }
+    }
     return JS_NewInt32(ctx, wr_Node_nodeType(o->handle));
 }
 
@@ -677,7 +686,7 @@ JSValue wjr_Element_toggleAttribute(JSContext *ctx, JSValueConst this_val, int a
     wj_str name;
     if (!wj_to_str(ctx, argv[0], &name, 0, "")) { return JS_EXCEPTION; }
     int32_t force = argc > 1 && !JS_IsUndefined(argv[1]) ? (JS_ToBool(ctx, argv[1]) ? 1 : 0) : -1;
-    int32_t r = 0;
+    uint8_t r = 0;
     int32_t st = wr_Element_toggleAttributeChecked(h, (const uint8_t *)(name.ptr ? name.ptr : ""), (uint32_t)name.len, force, &r);
     wj_str_free(ctx, &name);
     if (st < 0) { return wj_throw_status(ctx, st, "Element.toggleAttribute"); }
@@ -796,7 +805,7 @@ JSValue wjr_DOMTokenList_toggle(JSContext *ctx, JSValueConst this_val, int argc,
     wj_str s;
     if (!wj_to_str(ctx, argv[0], &s, 0, "")) { return JS_EXCEPTION; }
     int32_t force = argc > 1 && !JS_IsUndefined(argv[1]) ? (JS_ToBool(ctx, argv[1]) ? 1 : 0) : -1;
-    int32_t r = 0;
+    uint8_t r = 0;
     int32_t st = wr_TokenList_toggle(d->node, (const uint8_t *)d->name, (uint32_t)d->name_len, (const uint8_t *)(s.ptr ? s.ptr : ""), (uint32_t)s.len, force, &r);
     wj_str_free(ctx, &s);
     if (st < 0) { return wj_throw_status(ctx, st, "DOMTokenList.toggle"); }
@@ -811,7 +820,7 @@ JSValue wjr_DOMTokenList_replace(JSContext *ctx, JSValueConst this_val, int argc
     wj_str a, b;
     if (!wj_to_str(ctx, argv[0], &a, 0, "")) { return JS_EXCEPTION; }
     if (!wj_to_str(ctx, argv[1], &b, 0, "")) { wj_str_free(ctx, &a); return JS_EXCEPTION; }
-    int32_t r = 0;
+    uint8_t r = 0;
     int32_t st = wr_TokenList_replace(d->node, (const uint8_t *)d->name, (uint32_t)d->name_len, (const uint8_t *)(a.ptr ? a.ptr : ""), (uint32_t)a.len,
                                       (const uint8_t *)(b.ptr ? b.ptr : ""), (uint32_t)b.len, &r);
     wj_str_free(ctx, &a);
@@ -827,7 +836,7 @@ JSValue wjr_DOMTokenList_supports(JSContext *ctx, JSValueConst this_val, int arg
     if (argc < 1) { return wj_throw_arity(ctx, "DOMTokenList.supports", 1, argc); }
     wj_str s;
     if (!wj_to_str(ctx, argv[0], &s, 0, "")) { return JS_EXCEPTION; }
-    int32_t r = 0;
+    uint8_t r = 0;
     int32_t st = wr_TokenList_supports(d->node, (const uint8_t *)d->name, (uint32_t)d->name_len, (const uint8_t *)(s.ptr ? s.ptr : ""), (uint32_t)s.len, &r);
     wj_str_free(ctx, &s);
     if (st < 0) { return wj_throw_status(ctx, st, "DOMTokenList.supports"); }
@@ -1240,6 +1249,23 @@ JSValue wjr_Document_createAttributeNS(JSContext *ctx, JSValueConst this_val, in
     if (argc < 2) { return wj_throw_arity(ctx, "Document.createAttributeNS", 2, argc); }
     return wjr_Document_createAttribute(ctx, this_val, 1, argv + 1);
 }
+
+/* ---- innerHTML / outerHTML setters: (TrustedHTML or [LegacyNullToEmptyString] DOMString) ---- */
+
+static JSValue set_markup(JSContext *ctx, JSValueConst this_val, JSValueConst v, bool outer)
+{
+    uint64_t h = this_handle(ctx, this_val, WJ_IFACE_Element);
+    if (!h) { return JS_EXCEPTION; }
+    wj_str s;
+    if (!wj_to_str(ctx, v, &s, WJ_STR_NULL_EMPTY, "")) { return JS_EXCEPTION; }
+    const uint8_t *p = (const uint8_t *)(s.ptr ? s.ptr : "");
+    int32_t st = outer ? wr_Element_set_outerHTML(h, p, (uint32_t)s.len) : wr_Element_set_innerHTML(h, p, (uint32_t)s.len);
+    wj_str_free(ctx, &s);
+    return st < 0 ? wj_throw_status(ctx, st, outer ? "Element.outerHTML" : "Element.innerHTML") : JS_UNDEFINED;
+}
+
+JSValue wjr_Element_set_innerHTML(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return set_markup(ctx, this_val, v, false); }
+JSValue wjr_Element_set_outerHTML(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return set_markup(ctx, this_val, v, true); }
 
 /* ---- HTMLElement.hidden: (boolean or unrestricted double or DOMString)? ---- */
 

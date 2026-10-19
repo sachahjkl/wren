@@ -116,6 +116,17 @@ select_in :: proc(p: ^Page, root: base.Handle, list: css.Selector_List, first: b
 	scope := root
 	if rn := dom.get(d, root); rn == nil || rn.kind != .Element { scope = base.NIL_HANDLE }
 	m := script_match_ctx(p, scope)
+	// the subject has an #id and the search is in the document's tree: the id index gives the candidates
+	if id := subject_id(list); id != "" && dom.is_connected(d, root) {
+		for cur in dom.ids_all(d, id) {
+			if cur == root || !dom.is_ancestor_or_self(d, root, cur) { continue }
+			if style.matches_list(&m, cur, list) {
+				append(&out, cur)
+				if first { break }
+			}
+		}
+		return out
+	}
 	for cur := dom.next_in_tree(d, root, root); cur != base.NIL_HANDLE; cur = dom.next_in_tree(d, cur, root) {
 		n := dom.get(d, cur)
 		if n.kind != .Element { continue }
@@ -125,6 +136,17 @@ select_in :: proc(p: ^Page, root: base.Handle, list: css.Selector_List, first: b
 		}
 	}
 	return out
+}
+
+// The id every element a selector list matches must have ("" when not one): a single complex selector whose subject
+// compound has an #id.
+@(private)
+subject_id :: proc(list: css.Selector_List) -> string {
+	if len(list) != 1 { return "" }
+	cx := list[0]
+	if len(cx.compounds) == 0 { return "" }
+	for s in cx.compounds[len(cx.compounds) - 1].simples { if s.kind == .Id { return s.name } }
+	return ""
 }
 
 ParentNode_querySelector :: proc(c: ^Call, node: Api_Node, selectors: string) -> (u64, Api_Error) {

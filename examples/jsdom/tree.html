@@ -1,0 +1,243 @@
+<!doctype html>
+<html><head><title>  The   tree  </title></head>
+<body><div id="root"><p id="p1">one</p><!--c--><p id="p2">two</p></div>
+<script>
+section("node basics", () => {
+  const root = document.getElementById("root");
+  const p1 = document.getElementById("p1");
+  eq("nodeType element", root.nodeType, 1);
+  eq("nodeType text", p1.firstChild.nodeType, 3);
+  eq("nodeType comment", root.childNodes[1].nodeType, 8);
+  eq("nodeType document", document.nodeType, 9);
+  eq("nodeType doctype", document.doctype.nodeType, 10);
+  eq("nodeName element (upper case)", root.nodeName, "DIV");
+  eq("nodeName text", p1.firstChild.nodeName, "#text");
+  eq("nodeName comment", root.childNodes[1].nodeName, "#comment");
+  eq("nodeName document", document.nodeName, "#document");
+  eq("doctype name", document.doctype.name, "html");
+  eq("doctype ids", document.doctype.publicId + "|" + document.doctype.systemId, "|");
+  eq("document.firstChild is the doctype", document.firstChild, document.doctype);
+  eq("nodeValue text", p1.firstChild.nodeValue, "one");
+  eq("nodeValue element", root.nodeValue, null);
+  eq("textContent of the document", document.textContent, null);
+  eq("textContent of an element", root.textContent, "onetwo");
+  eq("parentNode", p1.parentNode, root);
+  eq("parentElement", p1.parentElement, root);
+  eq("parentElement of html", document.documentElement.parentElement, null);
+  eq("parentNode of html", document.documentElement.parentNode, document);
+  eq("ownerDocument", p1.ownerDocument, document);
+  eq("ownerDocument of the document", document.ownerDocument, null);
+  t("isConnected", p1.isConnected && !document.createElement("x").isConnected);
+  eq("getRootNode connected", p1.getRootNode(), document);
+  const lone = document.createElement("div");
+  lone.appendChild(document.createElement("span"));
+  eq("getRootNode detached", lone.firstChild.getRootNode(), lone);
+  t("hasChildNodes", root.hasChildNodes() && !lone.firstChild.hasChildNodes());
+  eq("firstElementChild", root.firstElementChild, p1);
+  eq("lastElementChild", root.lastElementChild.id, "p2");
+  eq("childElementCount", root.childElementCount, 2);
+  eq("nextElementSibling skips the comment", p1.nextElementSibling.id, "p2");
+  eq("previousElementSibling", root.lastElementChild.previousElementSibling, p1);
+  eq("document.title (whitespace collapsed)", document.title, "The tree");
+  t("one wrapper per node", root.firstChild === p1 && root.childNodes[0] === p1);
+});
+
+section("childNodes and children are live", () => {
+  const root = document.getElementById("root");
+  const kids = root.childNodes, els = root.children;
+  t("childNodes is [SameObject]", root.childNodes === kids && root.children === els);
+  eq("childNodes.length", kids.length, 3);
+  eq("children.length", els.length, 2);
+  const s = document.createElement("span");
+  root.appendChild(s);
+  eq("childNodes follows an insertion", kids.length, 4);
+  eq("children follows an insertion", els.length, 3);
+  eq("childNodes[3]", kids[3], s);
+  eq("item()", kids.item(3), s);
+  eq("item() past the end", kids.item(10), null);
+  eq("index past the end", kids[10], undefined);
+  t("NodeList is iterable", [...kids].length === 4 && Array.from(els).length === 3);
+  let n = 0; kids.forEach(() => n++);
+  eq("NodeList.forEach", n, 4);
+  eq("keys of a NodeList", Object.keys(kids).join(","), "0,1,2,3");
+  root.removeChild(s);
+  eq("childNodes follows a removal", kids.length, 3);
+  eq("namedItem", els.namedItem("p2").id, "p2");
+  t("instanceof", kids instanceof NodeList && els instanceof HTMLCollection);
+});
+
+section("mutation methods", () => {
+  const root = document.getElementById("root");
+  const a = document.createElement("a"), b = document.createElement("b"), c = document.createElement("i");
+  eq("appendChild returns the node", root.appendChild(a), a);
+  eq("insertBefore", root.insertBefore(b, a), b);
+  eq("order after insertBefore", root.lastChild.previousSibling, b);
+  eq("replaceChild returns the old child", root.replaceChild(c, b), b);
+  eq("replaced", a.previousSibling, c);
+  eq("removed node has no parent", b.parentNode, null);
+  eq("removeChild returns the child", root.removeChild(c), c);
+  root.insertBefore(c, null);
+  eq("insertBefore(null) appends", root.lastChild, c);
+  root.appendChild(a);
+  eq("appendChild moves an existing child", root.lastChild, a);
+  a.remove(); c.remove();
+  eq("remove()", a.parentNode, null);
+});
+
+section("pre-insertion validity", () => {
+  const root = document.getElementById("root");
+  const d = document.createElement("div");
+  throws("a node into its own descendant", () => d.appendChild(d), "HierarchyRequestError");
+  d.appendChild(document.createElement("span"));
+  throws("an ancestor into a descendant", () => d.firstChild.appendChild(d), "HierarchyRequestError");
+  throws("a reference child of another parent", () => root.insertBefore(document.createElement("p"), d.firstChild), "NotFoundError");
+  throws("removeChild of a non-child", () => root.removeChild(d), "NotFoundError");
+  throws("replaceChild of a non-child", () => root.replaceChild(document.createElement("p"), d), "NotFoundError");
+  throws("a text node into the document", () => document.appendChild(document.createTextNode("x")), "HierarchyRequestError");
+  throws("a second element into the document", () => document.appendChild(document.createElement("html")), "HierarchyRequestError");
+  throws("a second doctype", () => document.insertBefore(document.doctype.cloneNode(), document.documentElement), "HierarchyRequestError");
+  throws("a document into an element", () => root.appendChild(document), "HierarchyRequestError");
+  throws("a child of a text node", () => document.createTextNode("x").appendChild(document.createElement("b")), "HierarchyRequestError");
+  throws("not a node", () => root.appendChild({}), "TypeError");
+  throws("a doctype into an element", () => root.appendChild(document.doctype.cloneNode()), "HierarchyRequestError");
+  const f = document.createDocumentFragment();
+  f.append(document.createElement("a"), document.createElement("b"));
+  throws("a fragment with two elements into the document", () => document.appendChild(f), "HierarchyRequestError");
+});
+
+section("fragments", () => {
+  const f = document.createDocumentFragment();
+  eq("fragment nodeType", f.nodeType, 11);
+  eq("fragment nodeName", f.nodeName, "#document-fragment");
+  f.appendChild(document.createElement("em"));
+  f.appendChild(document.createTextNode("t"));
+  const host = document.createElement("div");
+  host.appendChild(f);
+  eq("inserting a fragment moves its children", host.childNodes.length, 2);
+  eq("the fragment is emptied", f.childNodes.length, 0);
+  const g = new DocumentFragment();
+  g.append("x", document.createElement("b"), "y");
+  eq("new DocumentFragment + append", g.textContent, "xy");
+  eq("getElementById in a fragment", (() => { const h = new DocumentFragment(); const e = document.createElement("q"); e.id = "inside"; h.appendChild(e); return h.getElementById("inside"); })().tagName, "Q");
+});
+
+section("ParentNode and ChildNode", () => {
+  const d = document.createElement("div");
+  d.append("a", document.createElement("b"), "c");
+  eq("append with strings and nodes", d.childNodes.length, 3);
+  eq("append text", d.textContent, "ac");
+  d.prepend("z");
+  eq("prepend", d.firstChild.data, "z");
+  d.replaceChildren(document.createElement("i"), "x");
+  eq("replaceChildren", d.innerHTML, "<i></i>x");
+  d.replaceChildren();
+  eq("replaceChildren() empties", d.childNodes.length, 0);
+  const s = document.createElement("s");
+  d.append(s);
+  s.before("1", "2");
+  s.after("3");
+  eq("before / after", d.textContent, "123");
+  s.replaceWith("R", document.createElement("u"));
+  eq("replaceWith", d.innerHTML, "12R<u></u>3");
+  const u = d.querySelector("u");
+  u.before(u);
+  eq("before(itself) keeps it", d.innerHTML, "12R<u></u>3");
+  d.lastChild.after(d.firstChild);
+  eq("after() moves a node", d.innerHTML, "2R<u></u>31");
+});
+
+section("text and character data", () => {
+  const t1 = document.createTextNode("hello world");
+  eq("length", t1.length, 11);
+  eq("substringData", t1.substringData(6, 5), "world");
+  t1.appendData("!");
+  t1.insertData(0, ">");
+  t1.deleteData(1, 6);
+  t1.replaceData(0, 1, "<");
+  eq("appendData insertData deleteData replaceData", t1.data, "<world!");
+  throws("substringData past the end", () => t1.substringData(99, 1), "IndexSizeError");
+  throws("deleteData past the end", () => t1.deleteData(99, 1), "IndexSizeError");
+  const p = document.createElement("p");
+  p.appendChild(t1);
+  const tail = t1.splitText(3);
+  eq("splitText", t1.data + "|" + tail.data, "<wo|rld!");
+  eq("splitText inserts the tail", t1.nextSibling, tail);
+  eq("wholeText", tail.wholeText, "<world!");
+  const e = document.createTextNode("é😀z");
+  eq("UTF-16 length", e.length, 4);
+  eq("UTF-16 substring", e.substringData(1, 2), "😀");
+  t1.data = "";
+  p.normalize();
+  eq("normalize drops empty and merges", p.childNodes.length + ":" + p.firstChild.data, "1:rld!");
+  const n = new Text("made");
+  eq("new Text", n.data, "made");
+  eq("new Comment", new Comment("c").data, "c");
+  const tx = document.createTextNode("x");
+  tx.textContent = "y";
+  eq("textContent of a text node", tx.data, "y");
+  tx.nodeValue = null;
+  eq("nodeValue = null", tx.data, "");
+});
+
+section("cloning and comparing", () => {
+  const d = document.createElement("div");
+  d.setAttribute("data-x", "1");
+  d.innerHTML = "<b class=k>bold</b><!--c-->";
+  const shallow = d.cloneNode();
+  eq("shallow clone", shallow.childNodes.length + ":" + shallow.getAttribute("data-x"), "0:1");
+  const deep = d.cloneNode(true);
+  eq("deep clone", deep.innerHTML, d.innerHTML);
+  t("isEqualNode", deep.isEqualNode(d) && !shallow.isEqualNode(d));
+  t("isSameNode", d.isSameNode(d) && !d.isSameNode(deep));
+  t("isEqualNode(null)", !d.isEqualNode(null));
+  throws("cloning the document", () => document.cloneNode(), "NotSupportedError");
+  const root = document.getElementById("root"), p1 = document.getElementById("p1"), p2 = document.getElementById("p2");
+  t("contains", root.contains(p1) && root.contains(root) && !p1.contains(root) && !root.contains(null));
+  eq("compareDocumentPosition following", p1.compareDocumentPosition(p2), Node.DOCUMENT_POSITION_FOLLOWING);
+  eq("compareDocumentPosition preceding", p2.compareDocumentPosition(p1), Node.DOCUMENT_POSITION_PRECEDING);
+  eq("compareDocumentPosition contains", p1.compareDocumentPosition(root), Node.DOCUMENT_POSITION_CONTAINS | Node.DOCUMENT_POSITION_PRECEDING);
+  eq("compareDocumentPosition contained by", root.compareDocumentPosition(p1), Node.DOCUMENT_POSITION_CONTAINED_BY | Node.DOCUMENT_POSITION_FOLLOWING);
+  eq("compareDocumentPosition same", p1.compareDocumentPosition(p1), 0);
+  t("compareDocumentPosition disconnected", (p1.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_DISCONNECTED) !== 0);
+  const imp = document.importNode(d, true);
+  eq("importNode deep", imp.innerHTML, d.innerHTML);
+  const adopted = document.adoptNode(p2.cloneNode(true));
+  eq("adoptNode", adopted.textContent, "two");
+});
+
+section("document members", () => {
+  eq("documentElement", document.documentElement.tagName, "HTML");
+  eq("head", document.head.tagName, "HEAD");
+  eq("body", document.body.tagName, "BODY");
+  eq("compatMode", document.compatMode, "CSS1Compat");
+  eq("characterSet", document.characterSet, "UTF-8");
+  eq("contentType", document.contentType, "text/html");
+  eq("URL", document.URL, "http://127.0.0.1:8765/jsdom/tree.html");
+  eq("documentURI", document.documentURI, document.URL);
+  eq("defaultView", document.defaultView, window);
+  eq("scrollingElement", document.scrollingElement, document.documentElement);
+  const old = document.title;
+  document.title = "Changed";
+  eq("title setter", document.title + ":" + document.querySelector("title").textContent, "Changed:Changed");
+  document.title = old;
+  eq("getElementById", document.getElementById("p2").textContent, "two");
+  eq("getElementById missing", document.getElementById("nope"), null);
+  const dup = document.createElement("span");
+  dup.id = "p2";
+  document.body.insertBefore(dup, document.body.firstChild);
+  eq("getElementById: first in tree order", document.getElementById("p2"), dup);
+  dup.remove();
+  eq("getElementById after the removal", document.getElementById("p2").tagName, "P");
+  dup.id = "later";
+  document.body.appendChild(dup);
+  eq("getElementById follows id changes", document.getElementById("later"), dup);
+  dup.removeAttribute("id");
+  eq("getElementById after removeAttribute", document.getElementById("later"), null);
+  dup.remove();
+  t("hasFocus", typeof document.hasFocus() === "boolean");
+  t("createCDATASection throws in HTML", (() => { try { document.createCDATASection("x"); return false; } catch (e) { return e.name === "NotSupportedError"; } })());
+});
+
+done();
+</script>
+</body></html>

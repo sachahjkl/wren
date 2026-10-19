@@ -821,6 +821,20 @@ int wj_platform_preinit(JSContext *ctx)
         /* Web IDL: the interface object's prototype property is not writable, enumerable or configurable */
         JS_DefinePropertyValueStr(ctx, ctor, "prototype", JS_DupValue(ctx, proto), 0);
         if (wj_define_members(ctx, ctor, i, (1u << WJ_M_STATIC_METHOD) | (1u << WJ_M_STATIC_ATTRIBUTE) | (1u << WJ_M_CONSTANT), false) < 0) { return -1; }
+        if (it->flags & WJ_I_INDEXED_ITERATOR) {
+            /* an interface that supports indexed properties is iterable by them (HTMLCollection, NamedNodeMap...) */
+            JSValue array = JS_GetPropertyStr(ctx, r->global, "Array");
+            JSValue ap = JS_GetPropertyStr(ctx, array, "prototype");
+            JSValue sym = JS_GetPropertyStr(ctx, r->global, "Symbol");
+            JSValue iter = JS_GetPropertyStr(ctx, sym, "iterator");
+            JSAtom ia = JS_ValueToAtom(ctx, iter);
+            JS_DefinePropertyValue(ctx, proto, ia, JS_GetPropertyStr(ctx, ap, "values"), JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE);
+            JS_FreeAtom(ctx, ia);
+            JS_FreeValue(ctx, iter);
+            JS_FreeValue(ctx, sym);
+            JS_FreeValue(ctx, ap);
+            JS_FreeValue(ctx, array);
+        }
         if (it->flags & WJ_I_ARRAY_ITERATOR) {
             /* Web IDL: a value iterator of an indexed collection uses %Array.prototype%'s own functions */
             JSValue array = JS_GetPropertyStr(ctx, r->global, "Array");

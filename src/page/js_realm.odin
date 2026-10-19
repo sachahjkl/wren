@@ -173,24 +173,14 @@ js_node_interface :: proc(p: ^Page, n: ^dom.Node) -> u32 {
 	case .Fragment: return JS_IFACE_DocumentFragment
 	case .Element:
 	}
-	#partial switch n.ns {
+	// the namespace the parser or createElementNS gave the element
+	switch n.ns {
 	case .SVG: return js_svg_interface(n.name)
 	case .MathML: return JS_IFACE_MathMLElement
 	case .None, .Other: return JS_IFACE_Element
+	case .HTML:
 	}
-	// HTML elements made without a namespace by older code: an element under <svg> (outside <foreignObject>) is SVG
-	name := n.name
-	if name == "svg" { return JS_IFACE_SVGSVGElement }
-	if name == "math" { return JS_IFACE_MathMLElement }
-	for cur := n.parent; cur != base.NIL_HANDLE; {
-		a := dom.get(p.doc, cur)
-		if a == nil || a.kind != .Element { break }
-		if a.name == "foreignobject" { break }
-		if a.name == "svg" { return js_svg_interface(name) }
-		if a.name == "math" { return JS_IFACE_MathMLElement }
-		cur = a.parent
-	}
-	return js_html_interface(name)
+	return js_html_interface(n.name)
 }
 
 // Process start: the bytecode cache shared by every realm (memory, and the profile's js-cache folder unless

@@ -19,14 +19,44 @@ typedef struct mo_impl {
     JSValue  callback;    /* counted */
     JSValue  self;        /* not counted */
     int32_t  slot;
-    bool     held;        /* a registration keeps it alive (mo_held) */
 } mo_impl;
 
-/* observers by slot (the microtask's `user`), not counted; and those kept alive by their registrations, counted */
+/* observers by slot (the notification's `user`), not counted */
 static JSValue *mo_slots;
 static int32_t mo_slot_cap;
-static JSValue *mo_held;
-static int32_t mo_held_n, mo_held_cap;
+
+/* DOM: a node's registered observer list keeps its observers alive. The wrapper of an observed node keeps an array of
+ * them in a [SameObject] slot past the generated ones (marked and freed with the wrapper), so an observer lives as long
+ * as some node it observes can still be reached, and no longer. */
+static bool mo_attach(JSContext *ctx, JSValueConst target, JSValueConst observer)
+{
+    extern const int wj_same_object_count;
+    wj_obj *o = wj_obj_of(target);
+    if (!o) { return true; }
+    int slot = wj_same_object_count;
+    if (slot >= o->n_same) {
+        uint16_t n = (uint16_t)(slot + 1);
+        JSValue *s = realloc(o->same, n * sizeof *s);
+        if (!s) { JS_ThrowOutOfMemory(ctx); return false; }
+        for (uint16_t i = o->n_same; i < n; i++) { s[i] = JS_UNDEFINED; }
+        o->same = s;
+        o->n_same = n;
+    }
+    if (!JS_IsObject(o->same[slot])) {
+        JS_FreeValue(ctx, o->same[slot]);
+        o->same[slot] = JS_NewArray(ctx);
+    }
+    JSValue arr = o->same[slot];
+    int64_t n = 0;
+    JS_GetLength(ctx, arr, &n);
+    for (int64_t i = 0; i < n; i++) {
+        JSValue x = JS_GetPropertyUint32(ctx, arr, (uint32_t)i);
+        bool same = JS_VALUE_GET_PTR(x) == JS_VALUE_GET_PTR(observer);
+        JS_FreeValue(ctx, x);
+        if (same) { return true; }
+    }
+    return JS_SetPropertyUint32(ctx, arr, (uint32_t)n, JS_DupValue(ctx, observer)) >= 0;
+}
 
 static void mo_free(void *p)
 {
@@ -48,30 +78,6 @@ static mo_impl *mo_of(JSContext *ctx, JSValueConst this_val)
     return o->impl;
 }
 
-static void mo_release_hold(JSContext *ctx, mo_impl *m)
-{
-    if (!m->held) { return; }
-    m->held = false;
-    for (int32_t i = 0; i < mo_held_n; i++) {
-        if (JS_VALUE_GET_PTR(mo_held[i]) == JS_VALUE_GET_PTR(m->self)) {
-            JSValue v = mo_held[i];
-            mo_held[i] = mo_held[--mo_held_n];
-            JS_FreeValue(ctx, v);
-            return;
-        }
-    }
-}
-
-/* Lets go of the observers whose registrations all died with their nodes (DOM: the nodes keep their observers alive). */
-static void mo_sweep(JSContext *ctx)
-{
-    for (int32_t i = mo_held_n - 1; i >= 0; i--) {
-        wj_obj *o = wj_obj_of(mo_held[i]);
-        mo_impl *m = o ? o->impl : NULL;
-        if (m && !wr_MutationObserver_live(m->host)) { mo_release_hold(ctx, m); }
-    }
-}
-
 WJ_EXPORT("wj_cb_mutation") void wj_cb_mutation(int32_t user);
 
 JSValue wjr_MutationObserver_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
@@ -79,7 +85,6 @@ JSValue wjr_MutationObserver_constructor(JSContext *ctx, JSValueConst new_target
     if (JS_IsUndefined(new_target)) { return JS_ThrowTypeError(ctx, "Constructor MutationObserver requires 'new'"); }
     if (argc < 1) { return wj_throw_arity(ctx, "MutationObserver", 1, argc); }
     if (!JS_IsFunction(ctx, argv[0])) { return JS_ThrowTypeError(ctx, "Failed to construct 'MutationObserver': The callback provided as parameter 1 is not a function."); }
-    mo_sweep(ctx);
     int32_t slot = 1;
     while (slot < mo_slot_cap && !JS_IsUndefined(mo_slots[slot])) { slot++; }
     if (slot >= mo_slot_cap) {
@@ -153,19 +158,7 @@ JSValue wjr_MutationObserver_observe(JSContext *ctx, JSValueConst this_val, int 
     int32_t st = wr_MutationObserver_observe(m->host, target, options, names ? (const uint8_t *)names : &empty, (uint32_t)names_len);
     free(names);
     if (st < 0) { return wj_throw_status(ctx, st, "MutationObserver.observe"); }
-    if (!m->held) {
-        mo_sweep(ctx);
-        if (mo_held_n == mo_held_cap) {
-            int32_t cap = mo_held_cap ? mo_held_cap * 2 : 16;
-            JSValue *h = realloc(mo_held, (size_t)cap * sizeof *h);
-            if (!h) { return JS_ThrowOutOfMemory(ctx); }
-            mo_held = h;
-            mo_held_cap = cap;
-        }
-        mo_held[mo_held_n++] = JS_DupValue(ctx, this_val);
-        m->held = true;
-    }
-    return JS_UNDEFINED;
+    return mo_attach(ctx, argv[0], this_val) ? JS_UNDEFINED : JS_EXCEPTION;
 }
 
 JSValue wjr_MutationObserver_disconnect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -174,7 +167,6 @@ JSValue wjr_MutationObserver_disconnect(JSContext *ctx, JSValueConst this_val, i
     mo_impl *m = mo_of(ctx, this_val);
     if (!m) { return JS_EXCEPTION; }
     wr_MutationObserver_disconnect(m->host);
-    mo_release_hold(ctx, m);
     return JS_UNDEFINED;
 }
 
@@ -256,6 +248,23 @@ WJ_EXPORT("wj_cb_mutation") void wj_cb_mutation(int32_t user)
     }
     JS_FreeValue(ctx, records);
     JS_FreeValue(ctx, self);
+}
+
+/* The browser queues the notification of an observer as a job of the engine (a microtask in the order of the
+ * promise reactions around it, as DOM queues it): the job delivers the records. */
+static JSValue mo_job(JSContext *ctx, int argc, JSValueConst *argv)
+{
+    int32_t user = 0;
+    if (argc > 0) { JS_ToInt32(ctx, &user, argv[0]); }
+    wj_cb_mutation(user);
+    return JS_UNDEFINED;
+}
+
+WJ_EXPORT("wj_mo_queue") void wj_mo_queue(int32_t user)
+{
+    JSContext *ctx = wj_the_realm.ctx;
+    JSValue arg = JS_NewInt32(ctx, user);
+    JS_EnqueueJob(ctx, mo_job, 1, &arg);
 }
 
 static JSValue record_field(JSContext *ctx, JSValueConst this_val, int i)

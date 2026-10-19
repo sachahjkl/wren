@@ -441,6 +441,8 @@ static void live_prune(JSContext *ctx)
     live_n = w;
 }
 
+JSValue wj_wrap_target(JSContext *ctx, uint64_t h);
+
 static JSValue event_for_host(JSContext *ctx, uint64_t h)
 {
     int64_t id = wr_Event_engineId(h);
@@ -478,6 +480,9 @@ static JSValue event_for_host(JSContext *ctx, uint64_t h)
     if (JS_IsException(obj)) { event_free(e); return obj; }
     obj_set_impl(obj, e);
     wj_obj_of(obj)->handle = h;
+    /* the target stays readable after the dispatch (the browser's event is gone then) */
+    JSValue target = wj_wrap_target(ctx, wr_Event_target(h));
+    if (JS_IsException(target)) { JS_FreeValue(ctx, JS_GetException(ctx)); } else { JS_FreeValue(ctx, e->target); e->target = target; }
     wj_event_wrapped(ctx, obj, h, (int)iface);
     if (live_n == live_cap) {
         uint32_t cap = live_cap ? live_cap * 2 : 8;

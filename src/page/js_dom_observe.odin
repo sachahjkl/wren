@@ -16,6 +16,7 @@ import "core:strings"
 import "wb:base"
 import "wb:dom"
 import lay "wb:layout"
+import "wb:wasm"
 
 MO_CHILD_LIST :: 1
 MO_ATTRIBUTES :: 2
@@ -353,8 +354,26 @@ mo_record :: proc(p: ^Page, mo: ^Mutation_Observer, kind: u8, target: base.Handl
 	append(&mo.queue, rec)
 	if !mo.pending {
 		mo.pending = true
-		queue_microtask(p, Microtask{instance = mo.instance, callback = mo.notify, user = mo.user})
+		mo_notify_later(p, mo)
 	}
+}
+
+// Queues the notification of an observer. For the JavaScript realm it is a job of the engine (wj_mo_queue: it runs
+// in order with the promise reactions queued around it, as the DOM's microtask would); only the job is queued here,
+// in the middle of a mutation, nothing runs. Other modules get a microtask of the page calling `notify`.
+@(private)
+mo_notify_later :: proc(p: ^Page, mo: ^Mutation_Observer) {
+	if r := p.js; r != nil && !r.failed && r.inst != nil && !r.inst.dead && mo.instance == r.inst.index {
+		argv := [1]u32{mo.user}
+		p.objects.depth += 1
+		res := wasm.call_raw(r.inst, "wj_mo_queue", argv[:])
+		p.objects.depth -= 1
+		if res != .Ok { guest_failed(p, r.inst); return }
+		// a mutation outside any script (the browser's own): the checkpoint that runs the job comes with a task
+		if p.objects.depth == 0 { host_post_checkpoint(p) }
+		return
+	}
+	queue_microtask(p, Microtask{instance = mo.instance, callback = mo.notify, user = mo.user})
 }
 
 ////////////////////////////////
@@ -453,7 +472,8 @@ range_contents :: proc(c: ^Call, sc: base.Handle, so: int, ec: base.Handle, eo: 
 	contained := make([dynamic]base.Handle, 0, 8, context.temp_allocator)
 	for ch := dom.get(d, ca).first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next {
 		if ch == first_partial || ch == last_partial { continue }
-		if boundary_compare(d, ca, dom.child_index(d, ch), sc, so) > 0 && boundary_compare(d, ca, dom.child_index(d, ch) + 1, ec, eo) < 0 {
+		// DOM "contained": (node, 0) after the start and (node, length) before the end
+		if boundary_compare(d, ch, 0, sc, so) > 0 && boundary_compare(d, ch, node_length(d, ch), ec, eo) < 0 {
 			if dom.get(d, ch).kind == .Doctype { return frag, fail(c, .Hierarchy, "The range contains a doctype.") }
 			append(&contained, ch)
 		}

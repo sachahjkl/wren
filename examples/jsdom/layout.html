@@ -1,0 +1,96 @@
+<!doctype html>
+<html><head><title>Layout</title>
+<style>
+body { margin: 0; }
+#wrap { position: relative; padding: 20px; }
+#box { width: 200px; height: 50px; margin: 10px; padding: 5px; border: 2px solid black; }
+#sc { overflow: auto; width: 100px; height: 100px; }
+#tall { height: 500px; }
+#gone { display: none; }
+</style></head>
+<body>
+<div id="wrap"><div id="box"></div><div id="sc"><div id="tall"></div></div><div id="gone"></div></div>
+<div style="height: 2000px"></div>
+<script>
+section("element geometry", () => {
+  const box = document.getElementById("box");
+  const r = box.getBoundingClientRect();
+  t("DOMRect", r instanceof DOMRect && r instanceof DOMRectReadOnly);
+  eq("getBoundingClientRect", [r.x, r.y, r.width, r.height].join(","), "30,30,214,64");
+  eq("top right bottom left", [r.top, r.right, r.bottom, r.left].join(","), "30,244,94,30");
+  eq("toJSON", JSON.stringify(r.toJSON()), '{"x":30,"y":30,"width":214,"height":64,"top":30,"right":244,"bottom":94,"left":30}');
+  const rects = box.getClientRects();
+  t("getClientRects", rects instanceof DOMRectList && rects.length === 1 && rects[0].width === 214 && rects.item(0) === rects[0]);
+  eq("offsetParent (positioned)", box.offsetParent.id, "wrap");
+  eq("offsetTop / offsetLeft", box.offsetTop + "," + box.offsetLeft, "30,30");
+  eq("offsetWidth / offsetHeight", box.offsetWidth + "," + box.offsetHeight, "214,64");
+  eq("clientTop / clientLeft", box.clientTop + "," + box.clientLeft, "2,2");
+  eq("clientWidth / clientHeight", box.clientWidth + "," + box.clientHeight, "210,60");
+  eq("offsetParent of the body's children", document.getElementById("wrap").offsetParent, document.body);
+  const gone = document.getElementById("gone");
+  eq("display:none: no box", gone.offsetWidth + "," + gone.getBoundingClientRect().width + "," + gone.getClientRects().length, "0,0,0");
+  eq("offsetParent of display:none", gone.offsetParent, null);
+  eq("detached element", document.createElement("div").getBoundingClientRect().height, 0);
+});
+
+section("scrolling", () => {
+  const sc = document.getElementById("sc");
+  eq("scrollHeight", sc.scrollHeight, 500);
+  eq("clientHeight of a scroll container", sc.clientHeight, 100);
+  sc.scrollTop = 50;
+  eq("scrollTop", sc.scrollTop, 50);
+  sc.scrollTo(0, 1000);
+  eq("scrollTo clamps", sc.scrollTop, 400);
+  sc.scrollBy({top: -100});
+  eq("scrollBy", sc.scrollTop, 300);
+  sc.scrollTop = 0;
+  eq("window.innerWidth / innerHeight", innerWidth + "x" + innerHeight, "800x600");
+  eq("devicePixelRatio", devicePixelRatio, 1);
+  eq("scrollY", scrollY + "," + pageYOffset, "0,0");
+  window.scrollTo(0, 100);
+  eq("window.scrollTo", scrollY, 100);
+  eq("document scrollTop follows", document.documentElement.scrollTop, 100);
+  const r = document.getElementById("box").getBoundingClientRect();
+  eq("client rect follows the scroll", r.y, -70);
+  window.scrollBy(0, -100);
+  eq("window.scrollBy", scrollY, 0);
+  document.getElementById("box").scrollIntoView();
+  eq("scrollIntoView", scrollY, 30);
+  window.scroll({top: 0});
+  eq("documentElement.clientWidth is the viewport", document.documentElement.clientWidth, 800);
+  t("document scrollHeight", document.documentElement.scrollHeight >= 2000);
+});
+
+section("hit testing", () => {
+  eq("elementFromPoint", document.elementFromPoint(35, 35).id, "box");
+  eq("elementFromPoint on the tall block", document.elementFromPoint(700, 500), document.body.children[1]);
+  eq("elementFromPoint outside the viewport", document.elementFromPoint(-5, 10), null);
+});
+
+section("geometry interfaces", () => {
+  const r = new DOMRect(1, 2, -3, 4);
+  eq("DOMRect with a negative width", r.left + "," + r.right, "-2,1");
+  r.width = 10;
+  eq("DOMRect setters", r.right, 11);
+  const ro = new DOMRectReadOnly(1, 2, 3, 4);
+  ro.x = 9;
+  eq("DOMRectReadOnly is read-only", ro.x, 1);
+  eq("fromRect", DOMRect.fromRect({x: 5, width: 2}).right, 7);
+});
+
+section("layout follows mutations", () => {
+  const box = document.getElementById("box");
+  box.style.width = "300px";
+  eq("offsetWidth after a style change", box.offsetWidth, 314);
+  box.style.width = "";
+  eq("back", box.offsetWidth, 214);
+  const add = document.createElement("div");
+  add.style.height = "40px";
+  document.getElementById("wrap").insertBefore(add, box);
+  eq("offsetTop after an insertion", box.offsetTop, 70);
+  add.remove();
+});
+
+done();
+</script>
+</body></html>
