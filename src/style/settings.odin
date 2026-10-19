@@ -64,6 +64,9 @@ Settings :: struct {
 	background_clip_text: bool,     // the painter clips backgrounds to text: `background-clip: text` is accepted
 	cq_max_rounds:       int,       // container queries: style + layout rounds per frame once container sizes change
 	presentational_hints: bool,     // HTML's presentational attributes (align, bgcolor, width...) style elements (hints.odin)
+	// not a preference: set by the page whose engine it is. Scripting is enabled for the document: <noscript> is not
+	// rendered (HTML 15.3.1), its content having been parsed as text (page/js_load_write.odin)
+	scripting:           bool,
 	quirks_rules:        bool,      // documents in quirks mode get the rendering quirks of HTML §15 (hints.odin, layout)
 }
 

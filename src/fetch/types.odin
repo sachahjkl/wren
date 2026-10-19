@@ -84,6 +84,8 @@ Request_Desc :: struct {
 	guard:           Header_Guard,
 	max_body:        int,               // 0 = net.DEFAULT_MAX_BODY
 	nonce:           string,            // the nonce attribute of the element that caused the request (CSP)
+	script:          Script_Type,       // destination Script / Worker: a Wasm module (default) or JavaScript (script_type.odin)
+	parser_inserted: bool,              // a script the parser inserted (CSP 'strict-dynamic' trusts only the others)
 }
 
 // The "environment settings object" of a document: who is asking.

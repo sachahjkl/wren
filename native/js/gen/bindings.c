@@ -5,10 +5,23 @@
 #include "wj.h"
 #include "bindings.h"
 
+JSValue wjr_AnimationFrameProvider_cancelAnimationFrame(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_AnimationFrameProvider_requestAnimationFrame(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CustomEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CustomEvent_get_detail(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CustomEvent_initCustomEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DedicatedWorkerGlobalScope_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_createElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_open(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_write(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_writeln(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ErrorEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ErrorEvent_get_colno(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ErrorEvent_get_error(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ErrorEvent_get_filename(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ErrorEvent_get_lineno(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ErrorEvent_get_message(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_EventTarget_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_EventTarget_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_EventTarget_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -34,6 +47,80 @@ JSValue wjr_Event_set_cancelBubble(JSContext *ctx, JSValueConst this_val, JSValu
 JSValue wjr_Event_set_returnValue(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Event_stopImmediatePropagation(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Event_stopPropagation(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_GlobalEventHandlers_get_onblur(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_GlobalEventHandlers_get_onerror(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_GlobalEventHandlers_get_onfocus(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_GlobalEventHandlers_get_onload(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_GlobalEventHandlers_get_onresize(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_GlobalEventHandlers_get_onscroll(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_GlobalEventHandlers_set_onblur(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_GlobalEventHandlers_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_GlobalEventHandlers_set_onfocus(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_GlobalEventHandlers_set_onload(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_GlobalEventHandlers_set_onresize(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_GlobalEventHandlers_set_onscroll(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_get_async(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_crossOrigin(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_referrerPolicy(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_src(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_text(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_set_async(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_crossOrigin(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_text(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_static_supports(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_IdleDeadline_get_didTimeout(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IdleDeadline_timeRemaining(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MessageEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MessageEvent_get_data(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PromiseRejectionEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PromiseRejectionEvent_get_promise(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PromiseRejectionEvent_get_reason(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onafterprint(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onbeforeprint(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onbeforeunload(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onhashchange(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onlanguagechange(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onmessage(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onmessageerror(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onoffline(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_ononline(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onpagehide(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onpagereveal(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onpageshow(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onpageswap(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onpopstate(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onrejectionhandled(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onstorage(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onunhandledrejection(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_get_onunload(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowEventHandlers_set_onafterprint(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onbeforeprint(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onbeforeunload(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onhashchange(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onlanguagechange(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onoffline(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_ononline(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onpagehide(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onpagereveal(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onpageshow(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onpageswap(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onpopstate(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onrejectionhandled(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onstorage(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onunhandledrejection(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowEventHandlers_set_onunload(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowOrWorkerGlobalScope_clearInterval(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_clearTimeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_queueMicrotask(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_reportError(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_setInterval(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_setTimeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_structuredClone(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Window_cancelIdleCallback(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_get_frameElement(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_frames(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_length(JSContext *ctx, JSValueConst this_val);
@@ -42,7 +129,12 @@ JSValue wjr_Window_get_parent(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_self(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_top(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_window(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_requestIdleCallback(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WorkerGlobalScope_get_self(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WorkerGlobalScope_importScripts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Worker_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Worker_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Worker_terminate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_assert(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_clear(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_count(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -721,8 +813,6 @@ static JSValue wjg_Document_get_onbeforematch(JSContext *ctx, JSValueConst this_
 static JSValue wjg_Document_set_onbeforematch(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "beforematch", v, 0); }
 static JSValue wjg_Document_get_onbeforetoggle(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "beforetoggle"); }
 static JSValue wjg_Document_set_onbeforetoggle(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "beforetoggle", v, 0); }
-static JSValue wjg_Document_get_onblur(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "blur"); }
-static JSValue wjg_Document_set_onblur(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "blur", v, 0); }
 static JSValue wjg_Document_get_oncancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "cancel"); }
 static JSValue wjg_Document_set_oncancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "cancel", v, 0); }
 static JSValue wjg_Document_get_oncanplay(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "canplay"); }
@@ -771,10 +861,6 @@ static JSValue wjg_Document_get_onemptied(JSContext *ctx, JSValueConst this_val)
 static JSValue wjg_Document_set_onemptied(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "emptied", v, 0); }
 static JSValue wjg_Document_get_onended(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "ended"); }
 static JSValue wjg_Document_set_onended(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "ended", v, 0); }
-static JSValue wjg_Document_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "error"); }
-static JSValue wjg_Document_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "error", v, 1); }
-static JSValue wjg_Document_get_onfocus(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "focus"); }
-static JSValue wjg_Document_set_onfocus(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "focus", v, 0); }
 static JSValue wjg_Document_get_onformdata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "formdata"); }
 static JSValue wjg_Document_set_onformdata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "formdata", v, 0); }
 static JSValue wjg_Document_get_oninput(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "input"); }
@@ -787,8 +873,6 @@ static JSValue wjg_Document_get_onkeypress(JSContext *ctx, JSValueConst this_val
 static JSValue wjg_Document_set_onkeypress(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "keypress", v, 0); }
 static JSValue wjg_Document_get_onkeyup(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "keyup"); }
 static JSValue wjg_Document_set_onkeyup(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "keyup", v, 0); }
-static JSValue wjg_Document_get_onload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "load"); }
-static JSValue wjg_Document_set_onload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "load", v, 0); }
 static JSValue wjg_Document_get_onloadeddata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "loadeddata"); }
 static JSValue wjg_Document_set_onloadeddata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "loadeddata", v, 0); }
 static JSValue wjg_Document_get_onloadedmetadata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "loadedmetadata"); }
@@ -823,10 +907,6 @@ static JSValue wjg_Document_get_onratechange(JSContext *ctx, JSValueConst this_v
 static JSValue wjg_Document_set_onratechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "ratechange", v, 0); }
 static JSValue wjg_Document_get_onreset(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "reset"); }
 static JSValue wjg_Document_set_onreset(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "reset", v, 0); }
-static JSValue wjg_Document_get_onresize(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "resize"); }
-static JSValue wjg_Document_set_onresize(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "resize", v, 0); }
-static JSValue wjg_Document_get_onscroll(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "scroll"); }
-static JSValue wjg_Document_set_onscroll(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "scroll", v, 0); }
 static JSValue wjg_Document_get_onscrollend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "scrollend"); }
 static JSValue wjg_Document_set_onscrollend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "scrollend", v, 0); }
 static JSValue wjg_Document_get_onsecuritypolicyviolation(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "securitypolicyviolation"); }
@@ -1150,8 +1230,6 @@ static JSValue wjg_HTMLElement_get_onbeforematch(JSContext *ctx, JSValueConst th
 static JSValue wjg_HTMLElement_set_onbeforematch(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "beforematch", v, 0); }
 static JSValue wjg_HTMLElement_get_onbeforetoggle(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "beforetoggle"); }
 static JSValue wjg_HTMLElement_set_onbeforetoggle(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "beforetoggle", v, 0); }
-static JSValue wjg_HTMLElement_get_onblur(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "blur"); }
-static JSValue wjg_HTMLElement_set_onblur(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "blur", v, 0); }
 static JSValue wjg_HTMLElement_get_oncancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "cancel"); }
 static JSValue wjg_HTMLElement_set_oncancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "cancel", v, 0); }
 static JSValue wjg_HTMLElement_get_oncanplay(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "canplay"); }
@@ -1200,10 +1278,6 @@ static JSValue wjg_HTMLElement_get_onemptied(JSContext *ctx, JSValueConst this_v
 static JSValue wjg_HTMLElement_set_onemptied(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "emptied", v, 0); }
 static JSValue wjg_HTMLElement_get_onended(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "ended"); }
 static JSValue wjg_HTMLElement_set_onended(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "ended", v, 0); }
-static JSValue wjg_HTMLElement_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "error"); }
-static JSValue wjg_HTMLElement_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "error", v, 1); }
-static JSValue wjg_HTMLElement_get_onfocus(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "focus"); }
-static JSValue wjg_HTMLElement_set_onfocus(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "focus", v, 0); }
 static JSValue wjg_HTMLElement_get_onformdata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "formdata"); }
 static JSValue wjg_HTMLElement_set_onformdata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "formdata", v, 0); }
 static JSValue wjg_HTMLElement_get_oninput(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "input"); }
@@ -1216,8 +1290,6 @@ static JSValue wjg_HTMLElement_get_onkeypress(JSContext *ctx, JSValueConst this_
 static JSValue wjg_HTMLElement_set_onkeypress(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "keypress", v, 0); }
 static JSValue wjg_HTMLElement_get_onkeyup(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "keyup"); }
 static JSValue wjg_HTMLElement_set_onkeyup(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "keyup", v, 0); }
-static JSValue wjg_HTMLElement_get_onload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "load"); }
-static JSValue wjg_HTMLElement_set_onload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "load", v, 0); }
 static JSValue wjg_HTMLElement_get_onloadeddata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "loadeddata"); }
 static JSValue wjg_HTMLElement_set_onloadeddata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "loadeddata", v, 0); }
 static JSValue wjg_HTMLElement_get_onloadedmetadata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "loadedmetadata"); }
@@ -1252,10 +1324,6 @@ static JSValue wjg_HTMLElement_get_onratechange(JSContext *ctx, JSValueConst thi
 static JSValue wjg_HTMLElement_set_onratechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "ratechange", v, 0); }
 static JSValue wjg_HTMLElement_get_onreset(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "reset"); }
 static JSValue wjg_HTMLElement_set_onreset(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "reset", v, 0); }
-static JSValue wjg_HTMLElement_get_onresize(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "resize"); }
-static JSValue wjg_HTMLElement_set_onresize(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "resize", v, 0); }
-static JSValue wjg_HTMLElement_get_onscroll(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "scroll"); }
-static JSValue wjg_HTMLElement_set_onscroll(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "scroll", v, 0); }
 static JSValue wjg_HTMLElement_get_onscrollend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "scrollend"); }
 static JSValue wjg_HTMLElement_set_onscrollend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "scrollend", v, 0); }
 static JSValue wjg_HTMLElement_get_onsecuritypolicyviolation(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "securitypolicyviolation"); }
@@ -1401,42 +1469,6 @@ static JSValue wjg_HTMLBodyElement_get_ongamepadconnected(JSContext *ctx, JSValu
 static JSValue wjg_HTMLBodyElement_set_ongamepadconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "gamepadconnected", v, 0); }
 static JSValue wjg_HTMLBodyElement_get_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "gamepaddisconnected"); }
 static JSValue wjg_HTMLBodyElement_set_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "gamepaddisconnected", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onafterprint(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "afterprint"); }
-static JSValue wjg_HTMLBodyElement_set_onafterprint(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "afterprint", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onbeforeprint(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "beforeprint"); }
-static JSValue wjg_HTMLBodyElement_set_onbeforeprint(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "beforeprint", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onbeforeunload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "beforeunload"); }
-static JSValue wjg_HTMLBodyElement_set_onbeforeunload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "beforeunload", v, 2); }
-static JSValue wjg_HTMLBodyElement_get_onhashchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "hashchange"); }
-static JSValue wjg_HTMLBodyElement_set_onhashchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "hashchange", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onlanguagechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "languagechange"); }
-static JSValue wjg_HTMLBodyElement_set_onlanguagechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "languagechange", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "message"); }
-static JSValue wjg_HTMLBodyElement_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "message", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "messageerror"); }
-static JSValue wjg_HTMLBodyElement_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "messageerror", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onoffline(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "offline"); }
-static JSValue wjg_HTMLBodyElement_set_onoffline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "offline", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_ononline(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "online"); }
-static JSValue wjg_HTMLBodyElement_set_ononline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "online", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onpagehide(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "pagehide"); }
-static JSValue wjg_HTMLBodyElement_set_onpagehide(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "pagehide", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onpagereveal(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "pagereveal"); }
-static JSValue wjg_HTMLBodyElement_set_onpagereveal(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "pagereveal", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onpageshow(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "pageshow"); }
-static JSValue wjg_HTMLBodyElement_set_onpageshow(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "pageshow", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onpageswap(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "pageswap"); }
-static JSValue wjg_HTMLBodyElement_set_onpageswap(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "pageswap", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onpopstate(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "popstate"); }
-static JSValue wjg_HTMLBodyElement_set_onpopstate(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "popstate", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onrejectionhandled(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "rejectionhandled"); }
-static JSValue wjg_HTMLBodyElement_set_onrejectionhandled(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "rejectionhandled", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onstorage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "storage"); }
-static JSValue wjg_HTMLBodyElement_set_onstorage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "storage", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onunhandledrejection(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "unhandledrejection"); }
-static JSValue wjg_HTMLBodyElement_set_onunhandledrejection(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "unhandledrejection", v, 0); }
-static JSValue wjg_HTMLBodyElement_get_onunload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 239, "unload"); }
-static JSValue wjg_HTMLBodyElement_set_onunload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 239, "unload", v, 0); }
 static JSValue wjg_HTMLButtonElement_get_disabled(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 240, "disabled", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLButtonElement_set_disabled(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 240, "disabled", WJ_REFLECT_BOOL, v, 0, 0, 0); }
 /* HTMLButtonElement.form -> forms.HTMLButtonElement_form */
@@ -1725,42 +1757,6 @@ static JSValue wjg_HTMLFrameSetElement_get_ongamepadconnected(JSContext *ctx, JS
 static JSValue wjg_HTMLFrameSetElement_set_ongamepadconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "gamepadconnected", v, 0); }
 static JSValue wjg_HTMLFrameSetElement_get_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "gamepaddisconnected"); }
 static JSValue wjg_HTMLFrameSetElement_set_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "gamepaddisconnected", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onafterprint(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "afterprint"); }
-static JSValue wjg_HTMLFrameSetElement_set_onafterprint(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "afterprint", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onbeforeprint(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "beforeprint"); }
-static JSValue wjg_HTMLFrameSetElement_set_onbeforeprint(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "beforeprint", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onbeforeunload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "beforeunload"); }
-static JSValue wjg_HTMLFrameSetElement_set_onbeforeunload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "beforeunload", v, 2); }
-static JSValue wjg_HTMLFrameSetElement_get_onhashchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "hashchange"); }
-static JSValue wjg_HTMLFrameSetElement_set_onhashchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "hashchange", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onlanguagechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "languagechange"); }
-static JSValue wjg_HTMLFrameSetElement_set_onlanguagechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "languagechange", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "message"); }
-static JSValue wjg_HTMLFrameSetElement_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "message", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "messageerror"); }
-static JSValue wjg_HTMLFrameSetElement_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "messageerror", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onoffline(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "offline"); }
-static JSValue wjg_HTMLFrameSetElement_set_onoffline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "offline", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_ononline(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "online"); }
-static JSValue wjg_HTMLFrameSetElement_set_ononline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "online", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onpagehide(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "pagehide"); }
-static JSValue wjg_HTMLFrameSetElement_set_onpagehide(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "pagehide", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onpagereveal(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "pagereveal"); }
-static JSValue wjg_HTMLFrameSetElement_set_onpagereveal(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "pagereveal", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onpageshow(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "pageshow"); }
-static JSValue wjg_HTMLFrameSetElement_set_onpageshow(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "pageshow", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onpageswap(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "pageswap"); }
-static JSValue wjg_HTMLFrameSetElement_set_onpageswap(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "pageswap", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onpopstate(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "popstate"); }
-static JSValue wjg_HTMLFrameSetElement_set_onpopstate(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "popstate", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onrejectionhandled(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "rejectionhandled"); }
-static JSValue wjg_HTMLFrameSetElement_set_onrejectionhandled(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "rejectionhandled", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onstorage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "storage"); }
-static JSValue wjg_HTMLFrameSetElement_set_onstorage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "storage", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onunhandledrejection(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "unhandledrejection"); }
-static JSValue wjg_HTMLFrameSetElement_set_onunhandledrejection(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "unhandledrejection", v, 0); }
-static JSValue wjg_HTMLFrameSetElement_get_onunload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 254, "unload"); }
-static JSValue wjg_HTMLFrameSetElement_set_onunload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 254, "unload", v, 0); }
 static JSValue wjg_HTMLHRElement_get_align(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 255, "align", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLHRElement_set_align(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 255, "align", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLHRElement_get_color(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 255, "color", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -3077,8 +3073,6 @@ static JSValue wjg_MathMLElement_get_onbeforematch(JSContext *ctx, JSValueConst 
 static JSValue wjg_MathMLElement_set_onbeforematch(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "beforematch", v, 0); }
 static JSValue wjg_MathMLElement_get_onbeforetoggle(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "beforetoggle"); }
 static JSValue wjg_MathMLElement_set_onbeforetoggle(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "beforetoggle", v, 0); }
-static JSValue wjg_MathMLElement_get_onblur(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "blur"); }
-static JSValue wjg_MathMLElement_set_onblur(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "blur", v, 0); }
 static JSValue wjg_MathMLElement_get_oncancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "cancel"); }
 static JSValue wjg_MathMLElement_set_oncancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "cancel", v, 0); }
 static JSValue wjg_MathMLElement_get_oncanplay(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "canplay"); }
@@ -3127,10 +3121,6 @@ static JSValue wjg_MathMLElement_get_onemptied(JSContext *ctx, JSValueConst this
 static JSValue wjg_MathMLElement_set_onemptied(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "emptied", v, 0); }
 static JSValue wjg_MathMLElement_get_onended(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "ended"); }
 static JSValue wjg_MathMLElement_set_onended(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "ended", v, 0); }
-static JSValue wjg_MathMLElement_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "error"); }
-static JSValue wjg_MathMLElement_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "error", v, 1); }
-static JSValue wjg_MathMLElement_get_onfocus(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "focus"); }
-static JSValue wjg_MathMLElement_set_onfocus(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "focus", v, 0); }
 static JSValue wjg_MathMLElement_get_onformdata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "formdata"); }
 static JSValue wjg_MathMLElement_set_onformdata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "formdata", v, 0); }
 static JSValue wjg_MathMLElement_get_oninput(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "input"); }
@@ -3143,8 +3133,6 @@ static JSValue wjg_MathMLElement_get_onkeypress(JSContext *ctx, JSValueConst thi
 static JSValue wjg_MathMLElement_set_onkeypress(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "keypress", v, 0); }
 static JSValue wjg_MathMLElement_get_onkeyup(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "keyup"); }
 static JSValue wjg_MathMLElement_set_onkeyup(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "keyup", v, 0); }
-static JSValue wjg_MathMLElement_get_onload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "load"); }
-static JSValue wjg_MathMLElement_set_onload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "load", v, 0); }
 static JSValue wjg_MathMLElement_get_onloadeddata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "loadeddata"); }
 static JSValue wjg_MathMLElement_set_onloadeddata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "loadeddata", v, 0); }
 static JSValue wjg_MathMLElement_get_onloadedmetadata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "loadedmetadata"); }
@@ -3179,10 +3167,6 @@ static JSValue wjg_MathMLElement_get_onratechange(JSContext *ctx, JSValueConst t
 static JSValue wjg_MathMLElement_set_onratechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "ratechange", v, 0); }
 static JSValue wjg_MathMLElement_get_onreset(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "reset"); }
 static JSValue wjg_MathMLElement_set_onreset(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "reset", v, 0); }
-static JSValue wjg_MathMLElement_get_onresize(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "resize"); }
-static JSValue wjg_MathMLElement_set_onresize(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "resize", v, 0); }
-static JSValue wjg_MathMLElement_get_onscroll(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "scroll"); }
-static JSValue wjg_MathMLElement_set_onscroll(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "scroll", v, 0); }
 static JSValue wjg_MathMLElement_get_onscrollend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "scrollend"); }
 static JSValue wjg_MathMLElement_set_onscrollend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "scrollend", v, 0); }
 static JSValue wjg_MathMLElement_get_onsecuritypolicyviolation(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "securitypolicyviolation"); }
@@ -3287,8 +3271,6 @@ static JSValue wjg_SVGElement_get_onbeforematch(JSContext *ctx, JSValueConst thi
 static JSValue wjg_SVGElement_set_onbeforematch(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "beforematch", v, 0); }
 static JSValue wjg_SVGElement_get_onbeforetoggle(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "beforetoggle"); }
 static JSValue wjg_SVGElement_set_onbeforetoggle(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "beforetoggle", v, 0); }
-static JSValue wjg_SVGElement_get_onblur(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "blur"); }
-static JSValue wjg_SVGElement_set_onblur(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "blur", v, 0); }
 static JSValue wjg_SVGElement_get_oncancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "cancel"); }
 static JSValue wjg_SVGElement_set_oncancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "cancel", v, 0); }
 static JSValue wjg_SVGElement_get_oncanplay(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "canplay"); }
@@ -3337,10 +3319,6 @@ static JSValue wjg_SVGElement_get_onemptied(JSContext *ctx, JSValueConst this_va
 static JSValue wjg_SVGElement_set_onemptied(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "emptied", v, 0); }
 static JSValue wjg_SVGElement_get_onended(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "ended"); }
 static JSValue wjg_SVGElement_set_onended(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "ended", v, 0); }
-static JSValue wjg_SVGElement_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "error"); }
-static JSValue wjg_SVGElement_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "error", v, 1); }
-static JSValue wjg_SVGElement_get_onfocus(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "focus"); }
-static JSValue wjg_SVGElement_set_onfocus(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "focus", v, 0); }
 static JSValue wjg_SVGElement_get_onformdata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "formdata"); }
 static JSValue wjg_SVGElement_set_onformdata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "formdata", v, 0); }
 static JSValue wjg_SVGElement_get_oninput(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "input"); }
@@ -3353,8 +3331,6 @@ static JSValue wjg_SVGElement_get_onkeypress(JSContext *ctx, JSValueConst this_v
 static JSValue wjg_SVGElement_set_onkeypress(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "keypress", v, 0); }
 static JSValue wjg_SVGElement_get_onkeyup(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "keyup"); }
 static JSValue wjg_SVGElement_set_onkeyup(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "keyup", v, 0); }
-static JSValue wjg_SVGElement_get_onload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "load"); }
-static JSValue wjg_SVGElement_set_onload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "load", v, 0); }
 static JSValue wjg_SVGElement_get_onloadeddata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "loadeddata"); }
 static JSValue wjg_SVGElement_set_onloadeddata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "loadeddata", v, 0); }
 static JSValue wjg_SVGElement_get_onloadedmetadata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "loadedmetadata"); }
@@ -3389,10 +3365,6 @@ static JSValue wjg_SVGElement_get_onratechange(JSContext *ctx, JSValueConst this
 static JSValue wjg_SVGElement_set_onratechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "ratechange", v, 0); }
 static JSValue wjg_SVGElement_get_onreset(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "reset"); }
 static JSValue wjg_SVGElement_set_onreset(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "reset", v, 0); }
-static JSValue wjg_SVGElement_get_onresize(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "resize"); }
-static JSValue wjg_SVGElement_set_onresize(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "resize", v, 0); }
-static JSValue wjg_SVGElement_get_onscroll(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "scroll"); }
-static JSValue wjg_SVGElement_set_onscroll(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "scroll", v, 0); }
 static JSValue wjg_SVGElement_get_onscrollend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "scrollend"); }
 static JSValue wjg_SVGElement_set_onscrollend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "scrollend", v, 0); }
 static JSValue wjg_SVGElement_get_onsecuritypolicyviolation(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "securitypolicyviolation"); }
@@ -3481,42 +3453,6 @@ static JSValue wjg_SVGSVGElement_get_ongamepadconnected(JSContext *ctx, JSValueC
 static JSValue wjg_SVGSVGElement_set_ongamepadconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "gamepadconnected", v, 0); }
 static JSValue wjg_SVGSVGElement_get_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "gamepaddisconnected"); }
 static JSValue wjg_SVGSVGElement_set_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "gamepaddisconnected", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onafterprint(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "afterprint"); }
-static JSValue wjg_SVGSVGElement_set_onafterprint(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "afterprint", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onbeforeprint(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "beforeprint"); }
-static JSValue wjg_SVGSVGElement_set_onbeforeprint(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "beforeprint", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onbeforeunload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "beforeunload"); }
-static JSValue wjg_SVGSVGElement_set_onbeforeunload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "beforeunload", v, 2); }
-static JSValue wjg_SVGSVGElement_get_onhashchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "hashchange"); }
-static JSValue wjg_SVGSVGElement_set_onhashchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "hashchange", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onlanguagechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "languagechange"); }
-static JSValue wjg_SVGSVGElement_set_onlanguagechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "languagechange", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "message"); }
-static JSValue wjg_SVGSVGElement_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "message", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "messageerror"); }
-static JSValue wjg_SVGSVGElement_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "messageerror", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onoffline(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "offline"); }
-static JSValue wjg_SVGSVGElement_set_onoffline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "offline", v, 0); }
-static JSValue wjg_SVGSVGElement_get_ononline(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "online"); }
-static JSValue wjg_SVGSVGElement_set_ononline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "online", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onpagehide(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "pagehide"); }
-static JSValue wjg_SVGSVGElement_set_onpagehide(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "pagehide", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onpagereveal(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "pagereveal"); }
-static JSValue wjg_SVGSVGElement_set_onpagereveal(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "pagereveal", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onpageshow(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "pageshow"); }
-static JSValue wjg_SVGSVGElement_set_onpageshow(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "pageshow", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onpageswap(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "pageswap"); }
-static JSValue wjg_SVGSVGElement_set_onpageswap(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "pageswap", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onpopstate(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "popstate"); }
-static JSValue wjg_SVGSVGElement_set_onpopstate(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "popstate", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onrejectionhandled(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "rejectionhandled"); }
-static JSValue wjg_SVGSVGElement_set_onrejectionhandled(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "rejectionhandled", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onstorage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "storage"); }
-static JSValue wjg_SVGSVGElement_set_onstorage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "storage", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onunhandledrejection(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "unhandledrejection"); }
-static JSValue wjg_SVGSVGElement_set_onunhandledrejection(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "unhandledrejection", v, 0); }
-static JSValue wjg_SVGSVGElement_get_onunload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 326, "unload"); }
-static JSValue wjg_SVGSVGElement_set_onunload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 326, "unload", v, 0); }
 static JSValue wjg_SVGScriptElement_get_type(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 338, "type", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_SVGScriptElement_set_type(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 338, "type", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_SVGStyleElement_get_type(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 340, "type", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -3787,8 +3723,6 @@ static JSValue wjg_Window_get_onbeforematch(JSContext *ctx, JSValueConst this_va
 static JSValue wjg_Window_set_onbeforematch(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "beforematch", v, 0); }
 static JSValue wjg_Window_get_onbeforetoggle(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "beforetoggle"); }
 static JSValue wjg_Window_set_onbeforetoggle(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "beforetoggle", v, 0); }
-static JSValue wjg_Window_get_onblur(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "blur"); }
-static JSValue wjg_Window_set_onblur(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "blur", v, 0); }
 static JSValue wjg_Window_get_oncancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "cancel"); }
 static JSValue wjg_Window_set_oncancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "cancel", v, 0); }
 static JSValue wjg_Window_get_oncanplay(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "canplay"); }
@@ -3837,10 +3771,6 @@ static JSValue wjg_Window_get_onemptied(JSContext *ctx, JSValueConst this_val) {
 static JSValue wjg_Window_set_onemptied(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "emptied", v, 0); }
 static JSValue wjg_Window_get_onended(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "ended"); }
 static JSValue wjg_Window_set_onended(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "ended", v, 0); }
-static JSValue wjg_Window_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "error"); }
-static JSValue wjg_Window_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "error", v, 1); }
-static JSValue wjg_Window_get_onfocus(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "focus"); }
-static JSValue wjg_Window_set_onfocus(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "focus", v, 0); }
 static JSValue wjg_Window_get_onformdata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "formdata"); }
 static JSValue wjg_Window_set_onformdata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "formdata", v, 0); }
 static JSValue wjg_Window_get_oninput(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "input"); }
@@ -3853,8 +3783,6 @@ static JSValue wjg_Window_get_onkeypress(JSContext *ctx, JSValueConst this_val) 
 static JSValue wjg_Window_set_onkeypress(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "keypress", v, 0); }
 static JSValue wjg_Window_get_onkeyup(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "keyup"); }
 static JSValue wjg_Window_set_onkeyup(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "keyup", v, 0); }
-static JSValue wjg_Window_get_onload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "load"); }
-static JSValue wjg_Window_set_onload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "load", v, 0); }
 static JSValue wjg_Window_get_onloadeddata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "loadeddata"); }
 static JSValue wjg_Window_set_onloadeddata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "loadeddata", v, 0); }
 static JSValue wjg_Window_get_onloadedmetadata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "loadedmetadata"); }
@@ -3889,10 +3817,6 @@ static JSValue wjg_Window_get_onratechange(JSContext *ctx, JSValueConst this_val
 static JSValue wjg_Window_set_onratechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "ratechange", v, 0); }
 static JSValue wjg_Window_get_onreset(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "reset"); }
 static JSValue wjg_Window_set_onreset(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "reset", v, 0); }
-static JSValue wjg_Window_get_onresize(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "resize"); }
-static JSValue wjg_Window_set_onresize(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "resize", v, 0); }
-static JSValue wjg_Window_get_onscroll(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "scroll"); }
-static JSValue wjg_Window_set_onscroll(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "scroll", v, 0); }
 static JSValue wjg_Window_get_onscrollend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "scrollend"); }
 static JSValue wjg_Window_set_onscrollend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "scrollend", v, 0); }
 static JSValue wjg_Window_get_onsecuritypolicyviolation(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "securitypolicyviolation"); }
@@ -3967,42 +3891,6 @@ static JSValue wjg_Window_get_ongamepadconnected(JSContext *ctx, JSValueConst th
 static JSValue wjg_Window_set_ongamepadconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "gamepadconnected", v, 0); }
 static JSValue wjg_Window_get_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "gamepaddisconnected"); }
 static JSValue wjg_Window_set_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "gamepaddisconnected", v, 0); }
-static JSValue wjg_Window_get_onafterprint(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "afterprint"); }
-static JSValue wjg_Window_set_onafterprint(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "afterprint", v, 0); }
-static JSValue wjg_Window_get_onbeforeprint(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "beforeprint"); }
-static JSValue wjg_Window_set_onbeforeprint(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "beforeprint", v, 0); }
-static JSValue wjg_Window_get_onbeforeunload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "beforeunload"); }
-static JSValue wjg_Window_set_onbeforeunload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "beforeunload", v, 2); }
-static JSValue wjg_Window_get_onhashchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "hashchange"); }
-static JSValue wjg_Window_set_onhashchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "hashchange", v, 0); }
-static JSValue wjg_Window_get_onlanguagechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "languagechange"); }
-static JSValue wjg_Window_set_onlanguagechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "languagechange", v, 0); }
-static JSValue wjg_Window_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "message"); }
-static JSValue wjg_Window_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "message", v, 0); }
-static JSValue wjg_Window_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "messageerror"); }
-static JSValue wjg_Window_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "messageerror", v, 0); }
-static JSValue wjg_Window_get_onoffline(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "offline"); }
-static JSValue wjg_Window_set_onoffline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "offline", v, 0); }
-static JSValue wjg_Window_get_ononline(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "online"); }
-static JSValue wjg_Window_set_ononline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "online", v, 0); }
-static JSValue wjg_Window_get_onpagehide(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "pagehide"); }
-static JSValue wjg_Window_set_onpagehide(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "pagehide", v, 0); }
-static JSValue wjg_Window_get_onpagereveal(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "pagereveal"); }
-static JSValue wjg_Window_set_onpagereveal(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "pagereveal", v, 0); }
-static JSValue wjg_Window_get_onpageshow(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "pageshow"); }
-static JSValue wjg_Window_set_onpageshow(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "pageshow", v, 0); }
-static JSValue wjg_Window_get_onpageswap(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "pageswap"); }
-static JSValue wjg_Window_set_onpageswap(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "pageswap", v, 0); }
-static JSValue wjg_Window_get_onpopstate(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "popstate"); }
-static JSValue wjg_Window_set_onpopstate(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "popstate", v, 0); }
-static JSValue wjg_Window_get_onrejectionhandled(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "rejectionhandled"); }
-static JSValue wjg_Window_set_onrejectionhandled(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "rejectionhandled", v, 0); }
-static JSValue wjg_Window_get_onstorage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "storage"); }
-static JSValue wjg_Window_set_onstorage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "storage", v, 0); }
-static JSValue wjg_Window_get_onunhandledrejection(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "unhandledrejection"); }
-static JSValue wjg_Window_set_onunhandledrejection(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "unhandledrejection", v, 0); }
-static JSValue wjg_Window_get_onunload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "unload"); }
-static JSValue wjg_Window_set_onunload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "unload", v, 0); }
 /* Window.origin -> document.Window_origin */
 static JSValue wjg_Window_get_origin(JSContext *ctx, JSValueConst this_val)
 {
@@ -4021,16 +3909,6 @@ static JSValue wjg_Window_get_isSecureContext(JSContext *ctx, JSValueConst this_
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_Window_isSecureContext();
     return JS_NewBool(ctx, r != 0);
-}
-
-/* Worker.terminate() -> workers.Worker_terminate */
-static JSValue wjg_Worker_terminate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 365);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t st = wr_Worker_terminate(self->handle);
-    if (st < 0) { return wj_throw_status(ctx, st, "Worker.terminate"); }
-    return JS_UNDEFINED;
 }
 
 static JSValue wjg_Worker_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 365, "error"); }
@@ -5367,11 +5245,11 @@ static const wj_member wj_m_DeviceChangeEvent[] = {
     { "userInsertedDevices", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 24, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ErrorEvent[] = {
-    { "message", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "filename", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "lineno", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "colno", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "message", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ErrorEvent_get_message, NULL, 0 },
+    { "filename", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ErrorEvent_get_filename, NULL, 0 },
+    { "lineno", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ErrorEvent_get_lineno, NULL, 0 },
+    { "colno", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ErrorEvent_get_colno, NULL, 0 },
+    { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ErrorEvent_get_error, NULL, 0 },
 };
 static const wj_member wj_m_FontFaceSetLoadEvent[] = {
     { "fontfaces", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 25, NULL, NULL, NULL, 0 },
@@ -5398,7 +5276,7 @@ static const wj_member wj_m_MediaStreamTrackEvent[] = {
     { "track", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 27, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_MessageEvent[] = {
-    { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MessageEvent_get_data, NULL, 0 },
     { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MessageEvent_get_origin, NULL, 0 },
     { "lastEventId", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MessageEvent_get_lastEventId, NULL, 0 },
     { "source", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -5447,8 +5325,8 @@ static const wj_member wj_m_ProgressEvent[] = {
     { "total", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PromiseRejectionEvent[] = {
-    { "promise", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "reason", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "promise", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PromiseRejectionEvent_get_promise, NULL, 0 },
+    { "reason", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PromiseRejectionEvent_get_reason, NULL, 0 },
 };
 static const wj_member wj_m_SpeechRecognitionErrorEvent[] = {
     { "error", WJ_M_ATTRIBUTE, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
@@ -6219,10 +6097,10 @@ static const wj_member wj_m_Document[] = {
     { "scripts", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 42, NULL, NULL, NULL, 0 },
     { "getElementsByName", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "currentScript", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_currentScript, NULL, 0 },
-    { "open", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "close", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "write", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "writeln", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "open", WJ_M_METHOD, 0, 0, wjr_Document_open, NULL, NULL, 0 },
+    { "close", WJ_M_METHOD, 0, 0, wjr_Document_close, NULL, NULL, 0 },
+    { "write", WJ_M_METHOD, 0, 0, wjr_Document_write, NULL, NULL, 0 },
+    { "writeln", WJ_M_METHOD, 0, 0, wjr_Document_writeln, NULL, NULL, 0 },
     { "defaultView", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "hasFocus", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "designMode", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -6293,7 +6171,7 @@ static const wj_member wj_m_Document[] = {
     { "onbeforeinput", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onbeforeinput, wjg_Document_set_onbeforeinput, 0 },
     { "onbeforematch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onbeforematch, wjg_Document_set_onbeforematch, 0 },
     { "onbeforetoggle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onbeforetoggle, wjg_Document_set_onbeforetoggle, 0 },
-    { "onblur", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onblur, wjg_Document_set_onblur, 0 },
+    { "onblur", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onblur, wjr_GlobalEventHandlers_set_onblur, 0 },
     { "oncancel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_oncancel, wjg_Document_set_oncancel, 0 },
     { "oncanplay", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_oncanplay, wjg_Document_set_oncanplay, 0 },
     { "oncanplaythrough", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_oncanplaythrough, wjg_Document_set_oncanplaythrough, 0 },
@@ -6318,15 +6196,15 @@ static const wj_member wj_m_Document[] = {
     { "ondurationchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_ondurationchange, wjg_Document_set_ondurationchange, 0 },
     { "onemptied", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onemptied, wjg_Document_set_onemptied, 0 },
     { "onended", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onended, wjg_Document_set_onended, 0 },
-    { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onerror, wjg_Document_set_onerror, 0 },
-    { "onfocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onfocus, wjg_Document_set_onfocus, 0 },
+    { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onerror, wjr_GlobalEventHandlers_set_onerror, 0 },
+    { "onfocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onfocus, wjr_GlobalEventHandlers_set_onfocus, 0 },
     { "onformdata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onformdata, wjg_Document_set_onformdata, 0 },
     { "oninput", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_oninput, wjg_Document_set_oninput, 0 },
     { "oninvalid", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_oninvalid, wjg_Document_set_oninvalid, 0 },
     { "onkeydown", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onkeydown, wjg_Document_set_onkeydown, 0 },
     { "onkeypress", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onkeypress, wjg_Document_set_onkeypress, 0 },
     { "onkeyup", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onkeyup, wjg_Document_set_onkeyup, 0 },
-    { "onload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onload, wjg_Document_set_onload, 0 },
+    { "onload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onload, wjr_GlobalEventHandlers_set_onload, 0 },
     { "onloadeddata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onloadeddata, wjg_Document_set_onloadeddata, 0 },
     { "onloadedmetadata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onloadedmetadata, wjg_Document_set_onloadedmetadata, 0 },
     { "onloadstart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onloadstart, wjg_Document_set_onloadstart, 0 },
@@ -6344,8 +6222,8 @@ static const wj_member wj_m_Document[] = {
     { "onprogress", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onprogress, wjg_Document_set_onprogress, 0 },
     { "onratechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onratechange, wjg_Document_set_onratechange, 0 },
     { "onreset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onreset, wjg_Document_set_onreset, 0 },
-    { "onresize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onresize, wjg_Document_set_onresize, 0 },
-    { "onscroll", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onscroll, wjg_Document_set_onscroll, 0 },
+    { "onresize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onresize, wjr_GlobalEventHandlers_set_onresize, 0 },
+    { "onscroll", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onscroll, wjr_GlobalEventHandlers_set_onscroll, 0 },
     { "onscrollend", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onscrollend, wjg_Document_set_onscrollend, 0 },
     { "onsecuritypolicyviolation", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onsecuritypolicyviolation, wjg_Document_set_onsecuritypolicyviolation, 0 },
     { "onseeked", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onseeked, wjg_Document_set_onseeked, 0 },
@@ -6634,7 +6512,7 @@ static const wj_member wj_m_HTMLElement[] = {
     { "onbeforeinput", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onbeforeinput, wjg_HTMLElement_set_onbeforeinput, 0 },
     { "onbeforematch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onbeforematch, wjg_HTMLElement_set_onbeforematch, 0 },
     { "onbeforetoggle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onbeforetoggle, wjg_HTMLElement_set_onbeforetoggle, 0 },
-    { "onblur", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onblur, wjg_HTMLElement_set_onblur, 0 },
+    { "onblur", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onblur, wjr_GlobalEventHandlers_set_onblur, 0 },
     { "oncancel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_oncancel, wjg_HTMLElement_set_oncancel, 0 },
     { "oncanplay", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_oncanplay, wjg_HTMLElement_set_oncanplay, 0 },
     { "oncanplaythrough", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_oncanplaythrough, wjg_HTMLElement_set_oncanplaythrough, 0 },
@@ -6659,15 +6537,15 @@ static const wj_member wj_m_HTMLElement[] = {
     { "ondurationchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_ondurationchange, wjg_HTMLElement_set_ondurationchange, 0 },
     { "onemptied", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onemptied, wjg_HTMLElement_set_onemptied, 0 },
     { "onended", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onended, wjg_HTMLElement_set_onended, 0 },
-    { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onerror, wjg_HTMLElement_set_onerror, 0 },
-    { "onfocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onfocus, wjg_HTMLElement_set_onfocus, 0 },
+    { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onerror, wjr_GlobalEventHandlers_set_onerror, 0 },
+    { "onfocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onfocus, wjr_GlobalEventHandlers_set_onfocus, 0 },
     { "onformdata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onformdata, wjg_HTMLElement_set_onformdata, 0 },
     { "oninput", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_oninput, wjg_HTMLElement_set_oninput, 0 },
     { "oninvalid", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_oninvalid, wjg_HTMLElement_set_oninvalid, 0 },
     { "onkeydown", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onkeydown, wjg_HTMLElement_set_onkeydown, 0 },
     { "onkeypress", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onkeypress, wjg_HTMLElement_set_onkeypress, 0 },
     { "onkeyup", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onkeyup, wjg_HTMLElement_set_onkeyup, 0 },
-    { "onload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onload, wjg_HTMLElement_set_onload, 0 },
+    { "onload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onload, wjr_GlobalEventHandlers_set_onload, 0 },
     { "onloadeddata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onloadeddata, wjg_HTMLElement_set_onloadeddata, 0 },
     { "onloadedmetadata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onloadedmetadata, wjg_HTMLElement_set_onloadedmetadata, 0 },
     { "onloadstart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onloadstart, wjg_HTMLElement_set_onloadstart, 0 },
@@ -6685,8 +6563,8 @@ static const wj_member wj_m_HTMLElement[] = {
     { "onprogress", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onprogress, wjg_HTMLElement_set_onprogress, 0 },
     { "onratechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onratechange, wjg_HTMLElement_set_onratechange, 0 },
     { "onreset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onreset, wjg_HTMLElement_set_onreset, 0 },
-    { "onresize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onresize, wjg_HTMLElement_set_onresize, 0 },
-    { "onscroll", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onscroll, wjg_HTMLElement_set_onscroll, 0 },
+    { "onresize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onresize, wjr_GlobalEventHandlers_set_onresize, 0 },
+    { "onscroll", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onscroll, wjr_GlobalEventHandlers_set_onscroll, 0 },
     { "onscrollend", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onscrollend, wjg_HTMLElement_set_onscrollend, 0 },
     { "onsecuritypolicyviolation", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onsecuritypolicyviolation, wjg_HTMLElement_set_onsecuritypolicyviolation, 0 },
     { "onseeked", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onseeked, wjg_HTMLElement_set_onseeked, 0 },
@@ -6803,24 +6681,24 @@ static const wj_member wj_m_HTMLBodyElement[] = {
     { "background", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_background, wjg_HTMLBodyElement_set_background, 0 },
     { "ongamepadconnected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_ongamepadconnected, wjg_HTMLBodyElement_set_ongamepadconnected, 0 },
     { "ongamepaddisconnected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_ongamepaddisconnected, wjg_HTMLBodyElement_set_ongamepaddisconnected, 0 },
-    { "onafterprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onafterprint, wjg_HTMLBodyElement_set_onafterprint, 0 },
-    { "onbeforeprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onbeforeprint, wjg_HTMLBodyElement_set_onbeforeprint, 0 },
-    { "onbeforeunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onbeforeunload, wjg_HTMLBodyElement_set_onbeforeunload, 0 },
-    { "onhashchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onhashchange, wjg_HTMLBodyElement_set_onhashchange, 0 },
-    { "onlanguagechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onlanguagechange, wjg_HTMLBodyElement_set_onlanguagechange, 0 },
-    { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onmessage, wjg_HTMLBodyElement_set_onmessage, 0 },
-    { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onmessageerror, wjg_HTMLBodyElement_set_onmessageerror, 0 },
-    { "onoffline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onoffline, wjg_HTMLBodyElement_set_onoffline, 0 },
-    { "ononline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_ononline, wjg_HTMLBodyElement_set_ononline, 0 },
-    { "onpagehide", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onpagehide, wjg_HTMLBodyElement_set_onpagehide, 0 },
-    { "onpagereveal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onpagereveal, wjg_HTMLBodyElement_set_onpagereveal, 0 },
-    { "onpageshow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onpageshow, wjg_HTMLBodyElement_set_onpageshow, 0 },
-    { "onpageswap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onpageswap, wjg_HTMLBodyElement_set_onpageswap, 0 },
-    { "onpopstate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onpopstate, wjg_HTMLBodyElement_set_onpopstate, 0 },
-    { "onrejectionhandled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onrejectionhandled, wjg_HTMLBodyElement_set_onrejectionhandled, 0 },
-    { "onstorage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onstorage, wjg_HTMLBodyElement_set_onstorage, 0 },
-    { "onunhandledrejection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onunhandledrejection, wjg_HTMLBodyElement_set_onunhandledrejection, 0 },
-    { "onunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBodyElement_get_onunload, wjg_HTMLBodyElement_set_onunload, 0 },
+    { "onafterprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onafterprint, wjr_WindowEventHandlers_set_onafterprint, 0 },
+    { "onbeforeprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onbeforeprint, wjr_WindowEventHandlers_set_onbeforeprint, 0 },
+    { "onbeforeunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onbeforeunload, wjr_WindowEventHandlers_set_onbeforeunload, 0 },
+    { "onhashchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onhashchange, wjr_WindowEventHandlers_set_onhashchange, 0 },
+    { "onlanguagechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onlanguagechange, wjr_WindowEventHandlers_set_onlanguagechange, 0 },
+    { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onmessage, wjr_WindowEventHandlers_set_onmessage, 0 },
+    { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onmessageerror, wjr_WindowEventHandlers_set_onmessageerror, 0 },
+    { "onoffline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onoffline, wjr_WindowEventHandlers_set_onoffline, 0 },
+    { "ononline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_ononline, wjr_WindowEventHandlers_set_ononline, 0 },
+    { "onpagehide", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpagehide, wjr_WindowEventHandlers_set_onpagehide, 0 },
+    { "onpagereveal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpagereveal, wjr_WindowEventHandlers_set_onpagereveal, 0 },
+    { "onpageshow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpageshow, wjr_WindowEventHandlers_set_onpageshow, 0 },
+    { "onpageswap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpageswap, wjr_WindowEventHandlers_set_onpageswap, 0 },
+    { "onpopstate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpopstate, wjr_WindowEventHandlers_set_onpopstate, 0 },
+    { "onrejectionhandled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onrejectionhandled, wjr_WindowEventHandlers_set_onrejectionhandled, 0 },
+    { "onstorage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onstorage, wjr_WindowEventHandlers_set_onstorage, 0 },
+    { "onunhandledrejection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onunhandledrejection, wjr_WindowEventHandlers_set_onunhandledrejection, 0 },
+    { "onunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onunload, wjr_WindowEventHandlers_set_onunload, 0 },
 };
 static const wj_member wj_m_HTMLButtonElement[] = {
     { "command", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -6945,24 +6823,24 @@ static const wj_member wj_m_HTMLFrameSetElement[] = {
     { "rows", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_rows, wjg_HTMLFrameSetElement_set_rows, 0 },
     { "ongamepadconnected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_ongamepadconnected, wjg_HTMLFrameSetElement_set_ongamepadconnected, 0 },
     { "ongamepaddisconnected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_ongamepaddisconnected, wjg_HTMLFrameSetElement_set_ongamepaddisconnected, 0 },
-    { "onafterprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onafterprint, wjg_HTMLFrameSetElement_set_onafterprint, 0 },
-    { "onbeforeprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onbeforeprint, wjg_HTMLFrameSetElement_set_onbeforeprint, 0 },
-    { "onbeforeunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onbeforeunload, wjg_HTMLFrameSetElement_set_onbeforeunload, 0 },
-    { "onhashchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onhashchange, wjg_HTMLFrameSetElement_set_onhashchange, 0 },
-    { "onlanguagechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onlanguagechange, wjg_HTMLFrameSetElement_set_onlanguagechange, 0 },
-    { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onmessage, wjg_HTMLFrameSetElement_set_onmessage, 0 },
-    { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onmessageerror, wjg_HTMLFrameSetElement_set_onmessageerror, 0 },
-    { "onoffline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onoffline, wjg_HTMLFrameSetElement_set_onoffline, 0 },
-    { "ononline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_ononline, wjg_HTMLFrameSetElement_set_ononline, 0 },
-    { "onpagehide", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onpagehide, wjg_HTMLFrameSetElement_set_onpagehide, 0 },
-    { "onpagereveal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onpagereveal, wjg_HTMLFrameSetElement_set_onpagereveal, 0 },
-    { "onpageshow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onpageshow, wjg_HTMLFrameSetElement_set_onpageshow, 0 },
-    { "onpageswap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onpageswap, wjg_HTMLFrameSetElement_set_onpageswap, 0 },
-    { "onpopstate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onpopstate, wjg_HTMLFrameSetElement_set_onpopstate, 0 },
-    { "onrejectionhandled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onrejectionhandled, wjg_HTMLFrameSetElement_set_onrejectionhandled, 0 },
-    { "onstorage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onstorage, wjg_HTMLFrameSetElement_set_onstorage, 0 },
-    { "onunhandledrejection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onunhandledrejection, wjg_HTMLFrameSetElement_set_onunhandledrejection, 0 },
-    { "onunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameSetElement_get_onunload, wjg_HTMLFrameSetElement_set_onunload, 0 },
+    { "onafterprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onafterprint, wjr_WindowEventHandlers_set_onafterprint, 0 },
+    { "onbeforeprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onbeforeprint, wjr_WindowEventHandlers_set_onbeforeprint, 0 },
+    { "onbeforeunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onbeforeunload, wjr_WindowEventHandlers_set_onbeforeunload, 0 },
+    { "onhashchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onhashchange, wjr_WindowEventHandlers_set_onhashchange, 0 },
+    { "onlanguagechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onlanguagechange, wjr_WindowEventHandlers_set_onlanguagechange, 0 },
+    { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onmessage, wjr_WindowEventHandlers_set_onmessage, 0 },
+    { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onmessageerror, wjr_WindowEventHandlers_set_onmessageerror, 0 },
+    { "onoffline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onoffline, wjr_WindowEventHandlers_set_onoffline, 0 },
+    { "ononline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_ononline, wjr_WindowEventHandlers_set_ononline, 0 },
+    { "onpagehide", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpagehide, wjr_WindowEventHandlers_set_onpagehide, 0 },
+    { "onpagereveal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpagereveal, wjr_WindowEventHandlers_set_onpagereveal, 0 },
+    { "onpageshow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpageshow, wjr_WindowEventHandlers_set_onpageshow, 0 },
+    { "onpageswap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpageswap, wjr_WindowEventHandlers_set_onpageswap, 0 },
+    { "onpopstate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpopstate, wjr_WindowEventHandlers_set_onpopstate, 0 },
+    { "onrejectionhandled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onrejectionhandled, wjr_WindowEventHandlers_set_onrejectionhandled, 0 },
+    { "onstorage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onstorage, wjr_WindowEventHandlers_set_onstorage, 0 },
+    { "onunhandledrejection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onunhandledrejection, wjr_WindowEventHandlers_set_onunhandledrejection, 0 },
+    { "onunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onunload, wjr_WindowEventHandlers_set_onunload, 0 },
 };
 static const wj_member wj_m_HTMLHRElement[] = {
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLHRElement_get_align, wjg_HTMLHRElement_set_align, 0 },
@@ -7318,19 +7196,19 @@ static const wj_member wj_m_HTMLQuoteElement[] = {
 };
 static const wj_member wj_m_HTMLScriptElement[] = {
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_type, wjg_HTMLScriptElement_set_type, 0 },
-    { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_src, wjr_HTMLScriptElement_set_src, 0 },
     { "noModule", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_noModule, wjg_HTMLScriptElement_set_noModule, 0 },
-    { "async", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "async", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_async, wjr_HTMLScriptElement_set_async, 0 },
     { "defer", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_defer, wjg_HTMLScriptElement_set_defer, 0 },
     { "blocking", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 73, NULL, NULL, wjg_HTMLScriptElement_set_blocking, 0 },
-    { "crossOrigin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "referrerPolicy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "crossOrigin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_crossOrigin, wjr_HTMLScriptElement_set_crossOrigin, 0 },
+    { "referrerPolicy", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_referrerPolicy, wjr_HTMLScriptElement_set_referrerPolicy, 0 },
     { "integrity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_integrity, wjg_HTMLScriptElement_set_integrity, 0 },
     { "fetchPriority", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "innerText", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "textContent", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "text", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "supports", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "text", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_text, wjr_HTMLScriptElement_set_text, 0 },
+    { "supports", WJ_M_STATIC_METHOD, 0, 1, wjr_HTMLScriptElement_static_supports, NULL, NULL, 0 },
     { "charset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_charset, wjg_HTMLScriptElement_set_charset, 0 },
     { "event", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_event, wjg_HTMLScriptElement_set_event, 0 },
     { "htmlFor", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_htmlFor, wjg_HTMLScriptElement_set_htmlFor, 0 },
@@ -7548,7 +7426,7 @@ static const wj_member wj_m_MathMLElement[] = {
     { "onbeforeinput", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onbeforeinput, wjg_MathMLElement_set_onbeforeinput, 0 },
     { "onbeforematch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onbeforematch, wjg_MathMLElement_set_onbeforematch, 0 },
     { "onbeforetoggle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onbeforetoggle, wjg_MathMLElement_set_onbeforetoggle, 0 },
-    { "onblur", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onblur, wjg_MathMLElement_set_onblur, 0 },
+    { "onblur", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onblur, wjr_GlobalEventHandlers_set_onblur, 0 },
     { "oncancel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_oncancel, wjg_MathMLElement_set_oncancel, 0 },
     { "oncanplay", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_oncanplay, wjg_MathMLElement_set_oncanplay, 0 },
     { "oncanplaythrough", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_oncanplaythrough, wjg_MathMLElement_set_oncanplaythrough, 0 },
@@ -7573,15 +7451,15 @@ static const wj_member wj_m_MathMLElement[] = {
     { "ondurationchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_ondurationchange, wjg_MathMLElement_set_ondurationchange, 0 },
     { "onemptied", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onemptied, wjg_MathMLElement_set_onemptied, 0 },
     { "onended", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onended, wjg_MathMLElement_set_onended, 0 },
-    { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onerror, wjg_MathMLElement_set_onerror, 0 },
-    { "onfocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onfocus, wjg_MathMLElement_set_onfocus, 0 },
+    { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onerror, wjr_GlobalEventHandlers_set_onerror, 0 },
+    { "onfocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onfocus, wjr_GlobalEventHandlers_set_onfocus, 0 },
     { "onformdata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onformdata, wjg_MathMLElement_set_onformdata, 0 },
     { "oninput", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_oninput, wjg_MathMLElement_set_oninput, 0 },
     { "oninvalid", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_oninvalid, wjg_MathMLElement_set_oninvalid, 0 },
     { "onkeydown", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onkeydown, wjg_MathMLElement_set_onkeydown, 0 },
     { "onkeypress", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onkeypress, wjg_MathMLElement_set_onkeypress, 0 },
     { "onkeyup", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onkeyup, wjg_MathMLElement_set_onkeyup, 0 },
-    { "onload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onload, wjg_MathMLElement_set_onload, 0 },
+    { "onload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onload, wjr_GlobalEventHandlers_set_onload, 0 },
     { "onloadeddata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onloadeddata, wjg_MathMLElement_set_onloadeddata, 0 },
     { "onloadedmetadata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onloadedmetadata, wjg_MathMLElement_set_onloadedmetadata, 0 },
     { "onloadstart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onloadstart, wjg_MathMLElement_set_onloadstart, 0 },
@@ -7599,8 +7477,8 @@ static const wj_member wj_m_MathMLElement[] = {
     { "onprogress", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onprogress, wjg_MathMLElement_set_onprogress, 0 },
     { "onratechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onratechange, wjg_MathMLElement_set_onratechange, 0 },
     { "onreset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onreset, wjg_MathMLElement_set_onreset, 0 },
-    { "onresize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onresize, wjg_MathMLElement_set_onresize, 0 },
-    { "onscroll", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onscroll, wjg_MathMLElement_set_onscroll, 0 },
+    { "onresize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onresize, wjr_GlobalEventHandlers_set_onresize, 0 },
+    { "onscroll", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onscroll, wjr_GlobalEventHandlers_set_onscroll, 0 },
     { "onscrollend", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onscrollend, wjg_MathMLElement_set_onscrollend, 0 },
     { "onsecuritypolicyviolation", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onsecuritypolicyviolation, wjg_MathMLElement_set_onsecuritypolicyviolation, 0 },
     { "onseeked", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onseeked, wjg_MathMLElement_set_onseeked, 0 },
@@ -7676,7 +7554,7 @@ static const wj_member wj_m_SVGElement[] = {
     { "onbeforeinput", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onbeforeinput, wjg_SVGElement_set_onbeforeinput, 0 },
     { "onbeforematch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onbeforematch, wjg_SVGElement_set_onbeforematch, 0 },
     { "onbeforetoggle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onbeforetoggle, wjg_SVGElement_set_onbeforetoggle, 0 },
-    { "onblur", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onblur, wjg_SVGElement_set_onblur, 0 },
+    { "onblur", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onblur, wjr_GlobalEventHandlers_set_onblur, 0 },
     { "oncancel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_oncancel, wjg_SVGElement_set_oncancel, 0 },
     { "oncanplay", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_oncanplay, wjg_SVGElement_set_oncanplay, 0 },
     { "oncanplaythrough", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_oncanplaythrough, wjg_SVGElement_set_oncanplaythrough, 0 },
@@ -7701,15 +7579,15 @@ static const wj_member wj_m_SVGElement[] = {
     { "ondurationchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_ondurationchange, wjg_SVGElement_set_ondurationchange, 0 },
     { "onemptied", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onemptied, wjg_SVGElement_set_onemptied, 0 },
     { "onended", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onended, wjg_SVGElement_set_onended, 0 },
-    { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onerror, wjg_SVGElement_set_onerror, 0 },
-    { "onfocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onfocus, wjg_SVGElement_set_onfocus, 0 },
+    { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onerror, wjr_GlobalEventHandlers_set_onerror, 0 },
+    { "onfocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onfocus, wjr_GlobalEventHandlers_set_onfocus, 0 },
     { "onformdata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onformdata, wjg_SVGElement_set_onformdata, 0 },
     { "oninput", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_oninput, wjg_SVGElement_set_oninput, 0 },
     { "oninvalid", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_oninvalid, wjg_SVGElement_set_oninvalid, 0 },
     { "onkeydown", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onkeydown, wjg_SVGElement_set_onkeydown, 0 },
     { "onkeypress", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onkeypress, wjg_SVGElement_set_onkeypress, 0 },
     { "onkeyup", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onkeyup, wjg_SVGElement_set_onkeyup, 0 },
-    { "onload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onload, wjg_SVGElement_set_onload, 0 },
+    { "onload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onload, wjr_GlobalEventHandlers_set_onload, 0 },
     { "onloadeddata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onloadeddata, wjg_SVGElement_set_onloadeddata, 0 },
     { "onloadedmetadata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onloadedmetadata, wjg_SVGElement_set_onloadedmetadata, 0 },
     { "onloadstart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onloadstart, wjg_SVGElement_set_onloadstart, 0 },
@@ -7727,8 +7605,8 @@ static const wj_member wj_m_SVGElement[] = {
     { "onprogress", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onprogress, wjg_SVGElement_set_onprogress, 0 },
     { "onratechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onratechange, wjg_SVGElement_set_onratechange, 0 },
     { "onreset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onreset, wjg_SVGElement_set_onreset, 0 },
-    { "onresize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onresize, wjg_SVGElement_set_onresize, 0 },
-    { "onscroll", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onscroll, wjg_SVGElement_set_onscroll, 0 },
+    { "onresize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onresize, wjr_GlobalEventHandlers_set_onresize, 0 },
+    { "onscroll", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onscroll, wjr_GlobalEventHandlers_set_onscroll, 0 },
     { "onscrollend", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onscrollend, wjg_SVGElement_set_onscrollend, 0 },
     { "onsecuritypolicyviolation", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onsecuritypolicyviolation, wjg_SVGElement_set_onsecuritypolicyviolation, 0 },
     { "onseeked", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_onseeked, wjg_SVGElement_set_onseeked, 0 },
@@ -7919,24 +7797,24 @@ static const wj_member wj_m_SVGSVGElement[] = {
     { "preserveAspectRatio", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 146, NULL, NULL, NULL, 0 },
     { "ongamepadconnected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_ongamepadconnected, wjg_SVGSVGElement_set_ongamepadconnected, 0 },
     { "ongamepaddisconnected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_ongamepaddisconnected, wjg_SVGSVGElement_set_ongamepaddisconnected, 0 },
-    { "onafterprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onafterprint, wjg_SVGSVGElement_set_onafterprint, 0 },
-    { "onbeforeprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onbeforeprint, wjg_SVGSVGElement_set_onbeforeprint, 0 },
-    { "onbeforeunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onbeforeunload, wjg_SVGSVGElement_set_onbeforeunload, 0 },
-    { "onhashchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onhashchange, wjg_SVGSVGElement_set_onhashchange, 0 },
-    { "onlanguagechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onlanguagechange, wjg_SVGSVGElement_set_onlanguagechange, 0 },
-    { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onmessage, wjg_SVGSVGElement_set_onmessage, 0 },
-    { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onmessageerror, wjg_SVGSVGElement_set_onmessageerror, 0 },
-    { "onoffline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onoffline, wjg_SVGSVGElement_set_onoffline, 0 },
-    { "ononline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_ononline, wjg_SVGSVGElement_set_ononline, 0 },
-    { "onpagehide", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onpagehide, wjg_SVGSVGElement_set_onpagehide, 0 },
-    { "onpagereveal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onpagereveal, wjg_SVGSVGElement_set_onpagereveal, 0 },
-    { "onpageshow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onpageshow, wjg_SVGSVGElement_set_onpageshow, 0 },
-    { "onpageswap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onpageswap, wjg_SVGSVGElement_set_onpageswap, 0 },
-    { "onpopstate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onpopstate, wjg_SVGSVGElement_set_onpopstate, 0 },
-    { "onrejectionhandled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onrejectionhandled, wjg_SVGSVGElement_set_onrejectionhandled, 0 },
-    { "onstorage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onstorage, wjg_SVGSVGElement_set_onstorage, 0 },
-    { "onunhandledrejection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onunhandledrejection, wjg_SVGSVGElement_set_onunhandledrejection, 0 },
-    { "onunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGSVGElement_get_onunload, wjg_SVGSVGElement_set_onunload, 0 },
+    { "onafterprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onafterprint, wjr_WindowEventHandlers_set_onafterprint, 0 },
+    { "onbeforeprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onbeforeprint, wjr_WindowEventHandlers_set_onbeforeprint, 0 },
+    { "onbeforeunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onbeforeunload, wjr_WindowEventHandlers_set_onbeforeunload, 0 },
+    { "onhashchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onhashchange, wjr_WindowEventHandlers_set_onhashchange, 0 },
+    { "onlanguagechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onlanguagechange, wjr_WindowEventHandlers_set_onlanguagechange, 0 },
+    { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onmessage, wjr_WindowEventHandlers_set_onmessage, 0 },
+    { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onmessageerror, wjr_WindowEventHandlers_set_onmessageerror, 0 },
+    { "onoffline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onoffline, wjr_WindowEventHandlers_set_onoffline, 0 },
+    { "ononline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_ononline, wjr_WindowEventHandlers_set_ononline, 0 },
+    { "onpagehide", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpagehide, wjr_WindowEventHandlers_set_onpagehide, 0 },
+    { "onpagereveal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpagereveal, wjr_WindowEventHandlers_set_onpagereveal, 0 },
+    { "onpageshow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpageshow, wjr_WindowEventHandlers_set_onpageshow, 0 },
+    { "onpageswap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpageswap, wjr_WindowEventHandlers_set_onpageswap, 0 },
+    { "onpopstate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpopstate, wjr_WindowEventHandlers_set_onpopstate, 0 },
+    { "onrejectionhandled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onrejectionhandled, wjr_WindowEventHandlers_set_onrejectionhandled, 0 },
+    { "onstorage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onstorage, wjr_WindowEventHandlers_set_onstorage, 0 },
+    { "onunhandledrejection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onunhandledrejection, wjr_WindowEventHandlers_set_onunhandledrejection, 0 },
+    { "onunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onunload, wjr_WindowEventHandlers_set_onunload, 0 },
 };
 static const wj_member wj_m_SVGSwitchElement[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
@@ -8371,8 +8249,8 @@ static const wj_member wj_m_Window[] = {
     { "captureEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "releaseEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "external", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE | WJ_F_SAME_OBJECT, 200, NULL, NULL, wj_replaceable_setter, 0 },
-    { "requestIdleCallback", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "cancelIdleCallback", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "requestIdleCallback", WJ_M_METHOD, 0, 1, wjr_Window_requestIdleCallback, NULL, NULL, 0 },
+    { "cancelIdleCallback", WJ_M_METHOD, 0, 1, wjr_Window_cancelIdleCallback, NULL, NULL, 0 },
     { "getSelection", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "speechSynthesis", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 201, NULL, NULL, NULL, 0 },
     { "onanimationstart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onanimationstart, wjg_Window_set_onanimationstart, 0 },
@@ -8388,7 +8266,7 @@ static const wj_member wj_m_Window[] = {
     { "onbeforeinput", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onbeforeinput, wjg_Window_set_onbeforeinput, 0 },
     { "onbeforematch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onbeforematch, wjg_Window_set_onbeforematch, 0 },
     { "onbeforetoggle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onbeforetoggle, wjg_Window_set_onbeforetoggle, 0 },
-    { "onblur", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onblur, wjg_Window_set_onblur, 0 },
+    { "onblur", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onblur, wjr_GlobalEventHandlers_set_onblur, 0 },
     { "oncancel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_oncancel, wjg_Window_set_oncancel, 0 },
     { "oncanplay", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_oncanplay, wjg_Window_set_oncanplay, 0 },
     { "oncanplaythrough", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_oncanplaythrough, wjg_Window_set_oncanplaythrough, 0 },
@@ -8413,15 +8291,15 @@ static const wj_member wj_m_Window[] = {
     { "ondurationchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_ondurationchange, wjg_Window_set_ondurationchange, 0 },
     { "onemptied", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onemptied, wjg_Window_set_onemptied, 0 },
     { "onended", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onended, wjg_Window_set_onended, 0 },
-    { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onerror, wjg_Window_set_onerror, 0 },
-    { "onfocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onfocus, wjg_Window_set_onfocus, 0 },
+    { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onerror, wjr_GlobalEventHandlers_set_onerror, 0 },
+    { "onfocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onfocus, wjr_GlobalEventHandlers_set_onfocus, 0 },
     { "onformdata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onformdata, wjg_Window_set_onformdata, 0 },
     { "oninput", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_oninput, wjg_Window_set_oninput, 0 },
     { "oninvalid", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_oninvalid, wjg_Window_set_oninvalid, 0 },
     { "onkeydown", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onkeydown, wjg_Window_set_onkeydown, 0 },
     { "onkeypress", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onkeypress, wjg_Window_set_onkeypress, 0 },
     { "onkeyup", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onkeyup, wjg_Window_set_onkeyup, 0 },
-    { "onload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onload, wjg_Window_set_onload, 0 },
+    { "onload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onload, wjr_GlobalEventHandlers_set_onload, 0 },
     { "onloadeddata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onloadeddata, wjg_Window_set_onloadeddata, 0 },
     { "onloadedmetadata", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onloadedmetadata, wjg_Window_set_onloadedmetadata, 0 },
     { "onloadstart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onloadstart, wjg_Window_set_onloadstart, 0 },
@@ -8439,8 +8317,8 @@ static const wj_member wj_m_Window[] = {
     { "onprogress", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onprogress, wjg_Window_set_onprogress, 0 },
     { "onratechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onratechange, wjg_Window_set_onratechange, 0 },
     { "onreset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onreset, wjg_Window_set_onreset, 0 },
-    { "onresize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onresize, wjg_Window_set_onresize, 0 },
-    { "onscroll", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onscroll, wjg_Window_set_onscroll, 0 },
+    { "onresize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onresize, wjr_GlobalEventHandlers_set_onresize, 0 },
+    { "onscroll", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_GlobalEventHandlers_get_onscroll, wjr_GlobalEventHandlers_set_onscroll, 0 },
     { "onscrollend", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onscrollend, wjg_Window_set_onscrollend, 0 },
     { "onsecuritypolicyviolation", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onsecuritypolicyviolation, wjg_Window_set_onsecuritypolicyviolation, 0 },
     { "onseeked", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onseeked, wjg_Window_set_onseeked, 0 },
@@ -8478,52 +8356,52 @@ static const wj_member wj_m_Window[] = {
     { "ontouchcancel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_ontouchcancel, wjg_Window_set_ontouchcancel, 0 },
     { "ongamepadconnected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_ongamepadconnected, wjg_Window_set_ongamepadconnected, 0 },
     { "ongamepaddisconnected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_ongamepaddisconnected, wjg_Window_set_ongamepaddisconnected, 0 },
-    { "onafterprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onafterprint, wjg_Window_set_onafterprint, 0 },
-    { "onbeforeprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onbeforeprint, wjg_Window_set_onbeforeprint, 0 },
-    { "onbeforeunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onbeforeunload, wjg_Window_set_onbeforeunload, 0 },
-    { "onhashchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onhashchange, wjg_Window_set_onhashchange, 0 },
-    { "onlanguagechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onlanguagechange, wjg_Window_set_onlanguagechange, 0 },
-    { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onmessage, wjg_Window_set_onmessage, 0 },
-    { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onmessageerror, wjg_Window_set_onmessageerror, 0 },
-    { "onoffline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onoffline, wjg_Window_set_onoffline, 0 },
-    { "ononline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_ononline, wjg_Window_set_ononline, 0 },
-    { "onpagehide", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onpagehide, wjg_Window_set_onpagehide, 0 },
-    { "onpagereveal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onpagereveal, wjg_Window_set_onpagereveal, 0 },
-    { "onpageshow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onpageshow, wjg_Window_set_onpageshow, 0 },
-    { "onpageswap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onpageswap, wjg_Window_set_onpageswap, 0 },
-    { "onpopstate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onpopstate, wjg_Window_set_onpopstate, 0 },
-    { "onrejectionhandled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onrejectionhandled, wjg_Window_set_onrejectionhandled, 0 },
-    { "onstorage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onstorage, wjg_Window_set_onstorage, 0 },
-    { "onunhandledrejection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onunhandledrejection, wjg_Window_set_onunhandledrejection, 0 },
-    { "onunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onunload, wjg_Window_set_onunload, 0 },
+    { "onafterprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onafterprint, wjr_WindowEventHandlers_set_onafterprint, 0 },
+    { "onbeforeprint", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onbeforeprint, wjr_WindowEventHandlers_set_onbeforeprint, 0 },
+    { "onbeforeunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onbeforeunload, wjr_WindowEventHandlers_set_onbeforeunload, 0 },
+    { "onhashchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onhashchange, wjr_WindowEventHandlers_set_onhashchange, 0 },
+    { "onlanguagechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onlanguagechange, wjr_WindowEventHandlers_set_onlanguagechange, 0 },
+    { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onmessage, wjr_WindowEventHandlers_set_onmessage, 0 },
+    { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onmessageerror, wjr_WindowEventHandlers_set_onmessageerror, 0 },
+    { "onoffline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onoffline, wjr_WindowEventHandlers_set_onoffline, 0 },
+    { "ononline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_ononline, wjr_WindowEventHandlers_set_ononline, 0 },
+    { "onpagehide", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpagehide, wjr_WindowEventHandlers_set_onpagehide, 0 },
+    { "onpagereveal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpagereveal, wjr_WindowEventHandlers_set_onpagereveal, 0 },
+    { "onpageshow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpageshow, wjr_WindowEventHandlers_set_onpageshow, 0 },
+    { "onpageswap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpageswap, wjr_WindowEventHandlers_set_onpageswap, 0 },
+    { "onpopstate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onpopstate, wjr_WindowEventHandlers_set_onpopstate, 0 },
+    { "onrejectionhandled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onrejectionhandled, wjr_WindowEventHandlers_set_onrejectionhandled, 0 },
+    { "onstorage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onstorage, wjr_WindowEventHandlers_set_onstorage, 0 },
+    { "onunhandledrejection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onunhandledrejection, wjr_WindowEventHandlers_set_onunhandledrejection, 0 },
+    { "onunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onunload, wjr_WindowEventHandlers_set_onunload, 0 },
     { "indexedDB", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 202, NULL, NULL, NULL, 0 },
     { "fetch", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "performance", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "origin", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_origin, wj_replaceable_setter, 0 },
     { "isSecureContext", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_isSecureContext, NULL, 0 },
     { "crossOriginIsolated", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "reportError", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "reportError", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_reportError, NULL, NULL, 0 },
     { "btoa", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "atob", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setTimeout", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clearTimeout", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "setInterval", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clearInterval", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "queueMicrotask", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "setTimeout", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setTimeout, NULL, NULL, 0 },
+    { "clearTimeout", WJ_M_METHOD, 0, 0, wjr_WindowOrWorkerGlobalScope_clearTimeout, NULL, NULL, 0 },
+    { "setInterval", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setInterval, NULL, NULL, 0 },
+    { "clearInterval", WJ_M_METHOD, 0, 0, wjr_WindowOrWorkerGlobalScope_clearInterval, NULL, NULL, 0 },
+    { "queueMicrotask", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_queueMicrotask, NULL, NULL, 0 },
     { "createImageBitmap", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "structuredClone", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "structuredClone", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_structuredClone, NULL, NULL, 0 },
     { "scheduler", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "caches", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 203, NULL, NULL, NULL, 0 },
     { "trustedTypes", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "crypto", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 204, NULL, NULL, NULL, 0 },
-    { "requestAnimationFrame", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "cancelAnimationFrame", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "requestAnimationFrame", WJ_M_METHOD, 0, 1, wjr_AnimationFrameProvider_requestAnimationFrame, NULL, NULL, 0 },
+    { "cancelAnimationFrame", WJ_M_METHOD, 0, 1, wjr_AnimationFrameProvider_cancelAnimationFrame, NULL, NULL, 0 },
     { "sessionStorage", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "localStorage", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Worker[] = {
-    { "terminate", WJ_M_METHOD, 0, 0, wjg_Worker_terminate, NULL, NULL, 0 },
-    { "postMessage", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "terminate", WJ_M_METHOD, 0, 0, wjr_Worker_terminate, NULL, NULL, 0 },
+    { "postMessage", WJ_M_METHOD, 0, 1, wjr_Worker_postMessage, NULL, NULL, 0 },
     { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Worker_get_onerror, wjg_Worker_set_onerror, 0 },
     { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Worker_get_onmessage, wjg_Worker_set_onmessage, 0 },
     { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Worker_get_onmessageerror, wjg_Worker_set_onmessageerror, 0 },
@@ -8532,7 +8410,7 @@ static const wj_member wj_m_WorkerGlobalScope[] = {
     { "self", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WorkerGlobalScope_get_self, NULL, 0 },
     { "location", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "navigator", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "importScripts", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "importScripts", WJ_M_METHOD, 0, 0, wjr_WorkerGlobalScope_importScripts, NULL, NULL, 0 },
     { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WorkerGlobalScope_get_onerror, wjg_WorkerGlobalScope_set_onerror, 0 },
     { "onlanguagechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WorkerGlobalScope_get_onlanguagechange, wjg_WorkerGlobalScope_set_onlanguagechange, 0 },
     { "onoffline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WorkerGlobalScope_get_onoffline, wjg_WorkerGlobalScope_set_onoffline, 0 },
@@ -8546,16 +8424,16 @@ static const wj_member wj_m_WorkerGlobalScope[] = {
     { "origin", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "isSecureContext", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "crossOriginIsolated", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "reportError", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "reportError", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_reportError, NULL, NULL, 0 },
     { "btoa", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "atob", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setTimeout", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clearTimeout", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "setInterval", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clearInterval", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "queueMicrotask", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "setTimeout", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setTimeout, NULL, NULL, 0 },
+    { "clearTimeout", WJ_M_METHOD, 0, 0, wjr_WindowOrWorkerGlobalScope_clearTimeout, NULL, NULL, 0 },
+    { "setInterval", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setInterval, NULL, NULL, 0 },
+    { "clearInterval", WJ_M_METHOD, 0, 0, wjr_WindowOrWorkerGlobalScope_clearInterval, NULL, NULL, 0 },
+    { "queueMicrotask", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_queueMicrotask, NULL, NULL, 0 },
     { "createImageBitmap", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "structuredClone", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "structuredClone", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_structuredClone, NULL, NULL, 0 },
     { "scheduler", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "caches", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 206, NULL, NULL, NULL, 0 },
     { "trustedTypes", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -8563,10 +8441,10 @@ static const wj_member wj_m_WorkerGlobalScope[] = {
 };
 static const wj_member wj_m_DedicatedWorkerGlobalScope[] = {
     { "name", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_DedicatedWorkerGlobalScope_get_name, wj_replaceable_setter, 0 },
-    { "postMessage", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "postMessage", WJ_M_METHOD, 0, 1, wjr_DedicatedWorkerGlobalScope_postMessage, NULL, NULL, 0 },
     { "close", WJ_M_METHOD, 0, 0, wjg_DedicatedWorkerGlobalScope_close, NULL, NULL, 0 },
-    { "requestAnimationFrame", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "cancelAnimationFrame", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "requestAnimationFrame", WJ_M_METHOD, 0, 1, wjr_AnimationFrameProvider_requestAnimationFrame, NULL, NULL, 0 },
+    { "cancelAnimationFrame", WJ_M_METHOD, 0, 1, wjr_AnimationFrameProvider_cancelAnimationFrame, NULL, NULL, 0 },
     { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_DedicatedWorkerGlobalScope_get_onmessage, wjg_DedicatedWorkerGlobalScope_set_onmessage, 0 },
     { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_DedicatedWorkerGlobalScope_get_onmessageerror, wjg_DedicatedWorkerGlobalScope_set_onmessageerror, 0 },
 };
@@ -8839,8 +8717,8 @@ static const wj_member wj_m_IDBRecord[] = {
     { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_IdleDeadline[] = {
-    { "timeRemaining", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "didTimeout", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "timeRemaining", WJ_M_METHOD, 0, 0, wjr_IdleDeadline_timeRemaining, NULL, NULL, 0 },
+    { "didTimeout", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IdleDeadline_get_didTimeout, NULL, 0 },
 };
 static const wj_member wj_m_ImageBitmap[] = {
     { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -10661,7 +10539,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_DeviceChangeEvent, .n_members = 2, .subtree_end = 126,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ErrorEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "ErrorEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_ErrorEvent_constructor,
       .members = wj_m_ErrorEvent, .n_members = 5, .subtree_end = 127,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10693,7 +10571,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MediaStreamTrackEvent, .n_members = 1, .subtree_end = 134,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MessageEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "MessageEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_MessageEvent_constructor,
       .members = wj_m_MessageEvent, .n_members = 6, .subtree_end = 135,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10729,7 +10607,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_ProgressEvent, .n_members = 3, .subtree_end = 143,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PromiseRejectionEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = NULL,
+    { .name = "PromiseRejectionEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = wjr_PromiseRejectionEvent_constructor,
       .members = wj_m_PromiseRejectionEvent, .n_members = 2, .subtree_end = 144,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11617,7 +11495,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_Window, .n_members = 214, .subtree_end = 365,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Worker", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "Worker", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_Worker_constructor,
       .members = wj_m_Worker, .n_members = 5, .subtree_end = 366,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11781,7 +11659,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_IDBRecord, .n_members = 3, .subtree_end = 406,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "IdleDeadline", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "IdleDeadline", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_IdleDeadline, .n_members = 2, .subtree_end = 407,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

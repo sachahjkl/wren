@@ -25,6 +25,8 @@ ua_stylesheet_text :: proc(s: ^Settings, allocator := context.allocator) -> stri
 		rest = rest[i + 2:]
 	}
 	strings.write_string(&sb, rest)
+	// HTML 15.3.1: noscript is not rendered when scripting is enabled for the document
+	if s.scripting { strings.write_string(&sb, "\nnoscript { display: none !important; }\n") }
 	return strings.to_string(sb)
 }
 

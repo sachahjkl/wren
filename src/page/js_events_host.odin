@@ -67,7 +67,10 @@ Event_interface :: proc(c: ^Call, event: Api_Event) -> u32 {
 	case "pageshow", "pagehide": return JS_IFACE_PageTransitionEvent
 	case "progress", "loadstart", "loadend", "abort", "timeout":
 		if is_object(u64(event.data.target)) { return JS_IFACE_ProgressEvent }
-	case "error": if event.data.data != "" && !is_object(u64(event.data.target)) { return JS_IFACE_ErrorEvent }
+	case "error":
+		t := u64(event.data.target)
+		// a worker's uncaught error at its Worker object is an ErrorEvent too (worker.odin: message, filename)
+		if event.data.data != "" && (!is_object(t) || object_data(c.page, t, &worker_vt) != nil) { return JS_IFACE_ErrorEvent }
 	}
 	return JS_IFACE_Event
 }

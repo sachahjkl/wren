@@ -1,0 +1,267 @@
+/* workers.c: dedicated workers whose script is JavaScript (HTML "workers"), from both sides:
+ *
+ *   * the page: new Worker(url, {name, type}), worker.postMessage(message, transfer), worker.terminate();
+ *   * the worker's realm (its own engine instance, on its own thread: src/page/js_workers.odin):
+ *     postMessage(message, transfer), importScripts(...urls);
+ *   * both: MessageEvent.data, the message structured-cloned (runtime/clone.c) and carried by the browser as bytes.
+ *
+ * A Worker object stays alive while its worker may still send it events (HTML: a worker the page can still hear from
+ * is not collected): the realm holds it until terminate(), or until the browser says the worker is gone. Messages
+ * from a module that is not JavaScript (a Wasm worker) are plain text: data is that string.
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "wj.h"
+#include "bindings.h"
+#include "qjs_internal.h"
+
+extern uint8_t *wj_clone_serialize(JSContext *ctx, JSValueConst value, JSValueConst transfer, size_t *len);
+extern JSValue wj_clone_deserialize(JSContext *ctx, const uint8_t *data, size_t len);
+extern bool wj_clone_is_serialized(const uint8_t *data, size_t len);
+extern JSValue *wj_event_extra(JSValueConst obj);
+extern JSValue wj_event_construct(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv, int iface, const char *name);
+extern wj_val wj_wrap_owned(wj_ctx *ctx, uint64_t handle, int iface, JSValueConst new_target);
+
+/* the Worker objects of this realm that are running (counted) */
+static JSValue *live_workers;
+static uint32_t live_n, live_cap;
+
+static void keep_worker(JSContext *ctx, JSValueConst w)
+{
+    if (live_n == live_cap) {
+        uint32_t cap = live_cap ? live_cap * 2 : 8;
+        JSValue *n = realloc(live_workers, cap * sizeof *n);
+        if (!n) { return; }
+        live_workers = n;
+        live_cap = cap;
+    }
+    live_workers[live_n++] = JS_DupValue(ctx, w);
+}
+
+static void let_go(JSContext *ctx, uint64_t handle)
+{
+    for (uint32_t i = 0; i < live_n; i++) {
+        wj_obj *o = wj_obj_of(live_workers[i]);
+        if (!o || o->handle != handle) { continue; }
+        JSValue w = live_workers[i];
+        live_workers[i] = live_workers[--live_n];
+        JS_FreeValue(ctx, w);
+        return;
+    }
+}
+
+/* The browser: the worker of `handle` is gone (it closed itself, failed to start, or its thread ended). */
+WJ_EXPORT("wj_worker_gone") void wj_worker_gone(uint64_t handle)
+{
+    JSContext *ctx = wj_the_realm.ctx;
+    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    let_go(ctx, handle);
+}
+
+/* {transfer} of StructuredSerializeOptions, or a transfer sequence (the legacy overload) */
+static bool transfer_argument(JSContext *ctx, int argc, JSValueConst *argv, JSValue *transfer)
+{
+    *transfer = JS_UNDEFINED;
+    if (argc < 2 || JS_IsUndefined(argv[1]) || JS_IsNull(argv[1])) { return true; }
+    if (!JS_IsObject(argv[1])) { JS_ThrowTypeError(ctx, "Failed to execute 'postMessage': The provided value is not of type 'StructuredSerializeOptions'."); return false; }
+    if (JS_IsArray(argv[1])) { *transfer = JS_DupValue(ctx, argv[1]); return true; }
+    /* any other iterable is a sequence too; an object with a transfer member is the options dictionary */
+    JSValue it = JS_GetPropertyStr(ctx, argv[1], "transfer");
+    if (JS_IsException(it)) { return false; }
+    *transfer = it;
+    return true;
+}
+
+static uint8_t *serialize_message(JSContext *ctx, int argc, JSValueConst *argv, size_t *len)
+{
+    if (argc < 1) { wj_throw_arity(ctx, "postMessage", 1, argc); return NULL; }
+    JSValue transfer;
+    if (!transfer_argument(ctx, argc, argv, &transfer)) { return NULL; }
+    uint8_t *bytes = wj_clone_serialize(ctx, argv[0], transfer, len);
+    JS_FreeValue(ctx, transfer);
+    return bytes;
+}
+
+/* ---- the page's side ---- */
+
+JSValue wjr_Worker_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
+{
+    if (JS_IsUndefined(new_target)) { return JS_ThrowTypeError(ctx, "Constructor Worker requires 'new'"); }
+    if (argc < 1) { return wj_throw_arity(ctx, "Worker", 1, argc); }
+    wj_str url;
+    if (!wj_to_str(ctx, argv[0], &url, WJ_STR_USV, "")) { return JS_EXCEPTION; }
+    wj_str name = { .ptr = "", .len = 0, .owned = false };
+    int32_t type = wr_WorkerType_Classic;
+    JSValueConst opt = wj_arg(argc, (JSValue *)argv, 1);
+    if (JS_IsObject(opt)) {
+        JSValue n = JS_GetPropertyStr(ctx, opt, "name");
+        if (JS_IsException(n)) { wj_str_free(ctx, &url); return n; }
+        bool ok = JS_IsUndefined(n) || wj_to_str(ctx, n, &name, 0, "");
+        JS_FreeValue(ctx, n);
+        if (!ok) { wj_str_free(ctx, &url); return JS_EXCEPTION; }
+        JSValue t = JS_GetPropertyStr(ctx, opt, "type");
+        if (JS_IsException(t)) { wj_str_free(ctx, &url); wj_str_free(ctx, &name); return t; }
+        if (!JS_IsUndefined(t)) {
+            const char *ts = JS_ToCString(ctx, t);
+            bool known = ts && (strcmp(ts, "classic") == 0 || strcmp(ts, "module") == 0);
+            if (ts && strcmp(ts, "module") == 0) { type = wr_WorkerType_Module; }
+            if (ts) { JS_FreeCString(ctx, ts); }
+            JS_FreeValue(ctx, t);
+            if (!known) {
+                wj_str_free(ctx, &url);
+                wj_str_free(ctx, &name);
+                if (!JS_HasException(ctx)) { JS_ThrowTypeError(ctx, "Failed to construct 'Worker': The provided value is not a valid enum value of type WorkerType."); }
+                return JS_EXCEPTION;
+            }
+        }
+    }
+    uint64_t h = 0;
+    int32_t st = wr_Worker_createScript((const uint8_t *)url.ptr, (uint32_t)url.len, (const uint8_t *)name.ptr, (uint32_t)name.len, type, &h);
+    wj_str_free(ctx, &url);
+    wj_str_free(ctx, &name);
+    if (st < 0) {
+        if (st == wr_Error_Syntax) { return wj_throw_status(ctx, st, "Worker"); }
+        if (st == wr_Error_Not_Supported) { return wj_throw_status(ctx, st, "Worker"); }
+        return wj_throw_dom(ctx, "SecurityError", "Failed to construct 'Worker': the browser refused to start the worker (the console says why).");
+    }
+    JSValue w = wj_wrap_owned(ctx, h, WJ_IFACE_Worker, new_target);
+    if (!JS_IsException(w)) { keep_worker(ctx, w); }
+    return w;
+}
+
+JSValue wjr_Worker_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *o = wj_this(ctx, this_val, WJ_IFACE_Worker);
+    if (!o) { return JS_EXCEPTION; }
+    size_t len = 0;
+    uint8_t *bytes = serialize_message(ctx, argc, argv, &len);
+    if (!bytes) { return JS_EXCEPTION; }
+    int32_t st = wr_Worker_postSerialized(o->handle, bytes, (uint32_t)len);
+    free(bytes);
+    if (st < 0) { return wj_throw_status(ctx, st, "Worker.postMessage"); }
+    return JS_UNDEFINED;
+}
+
+JSValue wjr_Worker_terminate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    wj_obj *o = wj_this(ctx, this_val, WJ_IFACE_Worker);
+    if (!o) { return JS_EXCEPTION; }
+    wr_Worker_terminate(o->handle);
+    let_go(ctx, o->handle);
+    return JS_UNDEFINED;
+}
+
+/* ---- the worker's side ---- */
+
+JSValue wjr_DedicatedWorkerGlobalScope_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    size_t len = 0;
+    uint8_t *bytes = serialize_message(ctx, argc, argv, &len);
+    if (!bytes) { return JS_EXCEPTION; }
+    int32_t st = wr_DedicatedWorkerGlobalScope_postSerialized(bytes, (uint32_t)len);
+    free(bytes);
+    if (st < 0) { return wj_throw_status(ctx, st, "postMessage"); }
+    return JS_UNDEFINED;
+}
+
+/* importScripts(...urls): every script fetched (synchronously, in order), then run in order; a failure throws
+ * NetworkError and runs nothing more. */
+JSValue wjr_WorkerGlobalScope_importScripts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    if (argc == 0) { return JS_UNDEFINED; }
+    char **sources = calloc((size_t)argc, sizeof(char *));
+    size_t *lens = calloc((size_t)argc, sizeof(size_t));
+    char **urls = calloc((size_t)argc, sizeof(char *));
+    if (!sources || !lens || !urls) { free(sources); free(lens); free(urls); return JS_ThrowOutOfMemory(ctx); }
+    JSValue result = JS_UNDEFINED;
+    for (int i = 0; i < argc; i++) {
+        wj_str u;
+        if (!wj_to_str(ctx, argv[i], &u, WJ_STR_USV, "")) { result = JS_EXCEPTION; break; }
+        /* the browser resolves it, fetches it and writes the final URL first, NUL, then the source */
+        int32_t n;
+        WJ_FETCH_STRING(n, wr_WorkerGlobalScope_importScript((const uint8_t *)u.ptr, (uint32_t)u.len, wj_scratch.data, wj_scratch.cap));
+        wj_str_free(ctx, &u);
+        if (n < 0) { result = wj_throw_status(ctx, n, "importScripts"); break; }
+        const char *nul = memchr(wj_scratch.data, 0, (size_t)n);
+        size_t ulen = nul ? (size_t)(nul - (const char *)wj_scratch.data) : 0;
+        urls[i] = malloc(ulen + 1);
+        sources[i] = malloc((size_t)n - (nul ? ulen + 1 : 0) + 1);
+        if (!urls[i] || !sources[i]) { result = JS_ThrowOutOfMemory(ctx); break; }
+        memcpy(urls[i], wj_scratch.data, ulen);
+        urls[i][ulen] = 0;
+        lens[i] = (size_t)n - (nul ? ulen + 1 : 0);
+        memcpy(sources[i], wj_scratch.data + (nul ? ulen + 1 : 0), lens[i]);
+        sources[i][lens[i]] = 0;
+    }
+    for (int i = 0; i < argc && !JS_IsException(result); i++) {
+        JSEvalOptions opt = { .version = JS_EVAL_OPTIONS_VERSION, .eval_flags = JS_EVAL_TYPE_GLOBAL, .filename = urls[i], .line_num = 1 };
+        JSValue r = JS_Eval2(ctx, sources[i], lens[i], &opt);
+        if (JS_IsException(r)) { result = r; break; }   /* rethrown to the caller of importScripts */
+        JS_FreeValue(ctx, r);
+    }
+    for (int i = 0; i < argc; i++) { free(sources[i]); free(urls[i]); }
+    free(sources);
+    free(lens);
+    free(urls);
+    return result;
+}
+
+/* ---- MessageEvent ---- */
+
+JSValue wjr_MessageEvent_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
+{
+    JSValue ev = wj_event_construct(ctx, new_target, argc, argv, WJ_IFACE_MessageEvent, "MessageEvent");
+    if (JS_IsException(ev)) { return ev; }
+    JSValueConst init = wj_arg(argc, (JSValue *)argv, 1);
+    JSValue data = JS_NULL;
+    if (JS_IsObject(init)) {
+        data = JS_GetPropertyStr(ctx, init, "data");
+        if (JS_IsException(data)) { JS_FreeValue(ctx, ev); return data; }
+        if (JS_IsUndefined(data)) { data = JS_NULL; }
+    }
+    JSValue cell = JS_NewArray(ctx);
+    JS_SetPropertyUint32(ctx, cell, 0, data);
+    JSValue *slot = wj_event_extra(ev);
+    if (slot) { JS_FreeValue(ctx, *slot); *slot = cell; } else { JS_FreeValue(ctx, cell); }
+    return ev;
+}
+
+/* MessageEvent.data: the same value each time (kept in the event's spare slot once made). */
+JSValue wjr_MessageEvent_get_data(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *o = wj_this(ctx, this_val, WJ_IFACE_MessageEvent);
+    if (!o) { return JS_EXCEPTION; }
+    JSValue *slot = wj_event_extra(this_val);
+    if (slot && JS_IsArray(*slot)) { return JS_GetPropertyUint32(ctx, *slot, 0); }
+    if (!o->handle) { return JS_NULL; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Event_data(o->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { n = 0; }
+    JSValue v;
+    if (wj_clone_is_serialized(wj_scratch.data, (size_t)n)) {
+        /* the scratch buffer may move while deserializing: a copy */
+        uint8_t *copy = malloc((size_t)n);
+        if (!copy) { return JS_ThrowOutOfMemory(ctx); }
+        memcpy(copy, wj_scratch.data, (size_t)n);
+        v = wj_clone_deserialize(ctx, copy, (size_t)n);
+        free(copy);
+        if (JS_IsException(v)) {
+            /* HTML: a message that cannot be deserialized is a messageerror; data is null */
+            JS_FreeValue(ctx, JS_GetException(ctx));
+            v = JS_NULL;
+        }
+    } else {
+        v = JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+    }
+    if (slot) {
+        JSValue cell = JS_NewArray(ctx);
+        JS_SetPropertyUint32(ctx, cell, 0, JS_DupValue(ctx, v));
+        JS_FreeValue(ctx, *slot);
+        *slot = cell;
+    }
+    return v;
+}

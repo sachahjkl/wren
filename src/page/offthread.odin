@@ -146,6 +146,7 @@ Html_Job :: struct {
 	style_min:  int,
 	css_opt:    css.Parse_Options,
 	max_sheet:  int,
+	scripting:  bool,             // parsed with the scripting flag: <noscript> holds text (js_load_write.odin)
 	out:        Parsed_Document,
 	done:       Document_Parsed,
 	user:       rawptr,
@@ -162,6 +163,7 @@ html_job_make :: proc(p: ^Page, data: []byte, decode: bool, header_charset: stri
 	j.default_encoding = strings.clone(p.settings.html.default_encoding)
 	j.max_nodes = p.settings.html.max_nodes
 	j.style_min = p.settings.threads.inline_style_min_bytes
+	j.scripting = p.worker == nil && js_enabled(p)
 	if p.engine != nil {
 		j.css_opt = style.parse_options(&p.engine.settings)
 		j.max_sheet = p.engine.settings.author_stylesheets ? p.engine.settings.max_sheet_bytes : -1
@@ -185,6 +187,7 @@ html_work :: proc(data: rawptr) {
 	doc := dom.document_create(nil)
 	j.out.doc = doc
 	j.out.result = html.parse_into(doc, doc.root, text, j.max_nodes)
+	if j.scripting { noscript_as_text(doc) }
 	if j.max_sheet < 0 { return }
 	stack := make([dynamic]base.Handle, context.temp_allocator)
 	append(&stack, doc.root)

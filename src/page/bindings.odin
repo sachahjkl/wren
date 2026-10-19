@@ -95,7 +95,7 @@ Element_removeAttribute :: proc(c: ^Call, element: Api_Element, name: string) ->
 
 EventTarget_addEventListener :: proc(c: ^Call, target: u64, type: string, callback: u32, user: i32, options: Api_ListenerOptions) -> (i32, Api_Error) {
 	if is_object(target) {
-		id, err := object_add_listener(c.page, target, type, callback, u32(user), .Once in options, c.owner)
+		id, err := object_add_listener(c.page, target, type, callback, u32(user), .Once in options, c.owner, capture = .Capture in options)
 		if err != .None { return 0, dom_error(err) }
 		return i32(id), .None
 	}

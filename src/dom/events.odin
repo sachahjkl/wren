@@ -36,9 +36,14 @@ Event :: struct {
 // altogether (the instance died).
 Invoke_Proc :: #type proc(user: rawptr, l: Listener, event: base.Handle) -> bool
 
+// The embedder's part of the propagation path beyond the document (HTML: an event of a node of the document reaches
+// its Window, first in the capture phase, last in the bubble phase). Returns false to stop dispatching altogether.
+Outer_Proc :: #type proc(user: rawptr, event: base.Handle, phase: Phase) -> bool
+
 Dispatcher :: struct {
 	events:  base.Pool(Event),   // transient: alive only while the dispatch runs
 	invoke:  Invoke_Proc,
+	outer:   Outer_Proc,         // nil: the path ends at the document
 	user:    rawptr,
 }
 
@@ -145,7 +150,14 @@ dispatch :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: Even
 		return e == nil || e.stop || e.stop_immediate
 	}
 
+	// a node of the document: the path goes on to the embedder's Window
+	outer := dp.outer != nil && path[len(path) - 1] == d.root ? dp.outer : nil
+
 	phases: {
+		if outer != nil {
+			if !outer(dp.user, eh, .Capturing) { return true }
+			if halted(dp, eh) { break phases }
+		}
 		// capture: root down to the target's parent
 		for i := len(path) - 1; i >= 1; i -= 1 {
 			if !run_node(d, dp, eh, path[i], .Capturing, true) { return true }
@@ -163,6 +175,7 @@ dispatch :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: Even
 				if !run_node(d, dp, eh, path[i], .Bubbling, false) { return true }
 				if halted(dp, eh) { break phases }
 			}
+			if outer != nil && !outer(dp.user, eh, .Bubbling) { return true }
 		}
 	}
 

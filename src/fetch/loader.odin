@@ -54,6 +54,8 @@ Task :: struct {
 	user_activation: bool,
 	initiator:       ^Environment,
 	nonce:           string,
+	script:          Script_Type,
+	parser_inserted: bool,
 	origin:          url.Origin,    // the request origin; becomes opaque once a cross-origin redirect tainted it
 	max_body:        int,
 	early_error:     Error_Kind,    // a validation failure found at start, reported from the loop
@@ -93,6 +95,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 		loader = l, mode = r.mode, credentials = r.credentials, redirect = r.redirect, destination = r.destination,
 		referrer_policy = r.referrer_policy, no_referrer = r.no_referrer, user_activation = r.user_activation,
 		initiator = r.initiator, max_body = r.max_body, on_event = d.on_event, user = d.user, scope = d.scope, collect = d.collect,
+		script = r.script, parser_inserted = r.parser_inserted,
 	}
 	t.headers = http.headers_make()
 	t.raw_headers = http.headers_make()
@@ -391,7 +394,12 @@ sec_fetch_site :: proc(t: ^Task) -> string {
 build_request_headers :: proc(t: ^Task) -> string {
 	l := t.loader
 	h := http.headers_clone(t.headers, context.temp_allocator)
-	if !http.has_header(h, "accept") { http.append_header(&h, "Accept", default_accept(t.destination)) }
+	if !http.has_header(h, "accept") {
+		// JavaScript scripts: HTML's "*/*"; JSON modules: "application/json,*/*;q=0.5"
+		accept := default_accept(t.destination)
+		if (t.destination == .Script || t.destination == .Worker) && t.script != .Wasm { accept = t.script == .Json_Module ? "application/json,*/*;q=0.5" : "*/*" }
+		http.append_header(&h, "Accept", accept)
+	}
 	if !http.has_header(h, "accept-language") && l.profile.settings.accept_language != "" { http.append_header(&h, "Accept-Language", l.profile.settings.accept_language) }
 
 	// Origin
@@ -615,7 +623,7 @@ on_response_headers :: proc(t: ^Task, ev: ^net.Event) {
 	m, has_mime := http.extract_mime(raw, context.temp_allocator)
 	nosniff := false
 	if v, ok := http.get_header(raw, "x-content-type-options"); ok { nosniff = strings.equal_fold(strings.trim_space(strings.split(v, ",", context.temp_allocator)[0]), "nosniff") }
-	if why, ok := check_destination_mime(t.destination, m, has_mime, nosniff); !ok {
+	if why, ok := check_task_mime(t, m, has_mime, nosniff); !ok {
 		fail(t, .Bad_Mime, why)
 		return
 	}
@@ -639,6 +647,15 @@ send_response :: proc(t: ^Task, status: int, raw: http.Headers, m: http.Mime, ha
 	}
 	ev := Event{kind = .Response, response = &resp}
 	deliver(t, &ev)
+}
+
+// A JavaScript script follows HTML's rules (script_type.odin), anything else its destination's.
+@(private)
+check_task_mime :: proc(t: ^Task, m: http.Mime, has: bool, nosniff: bool) -> (why: string, ok: bool) {
+	if (t.destination == .Script || t.destination == .Worker) && t.script != .Wasm {
+		return check_script_mime(t.script, m.type, m.subtype, has, nosniff)
+	}
+	return check_destination_mime(t.destination, m, has, nosniff)
 }
 
 // What a destination requires of the response's type (nosniff and the WebAssembly MIME rule).
@@ -724,7 +741,7 @@ synthetic :: proc(t: ^Task, status: int, mime: string, body: []byte) {
 	buf: [24]byte
 	http.append_header(&raw, "Content-Length", fmt.bprintf(buf[:], "%d", len(body)))
 	m, has := http.parse_mime(mime, context.temp_allocator)
-	if why, ok := check_destination_mime(t.destination, m, has, false); !ok { fail(t, .Bad_Mime, why); return }
+	if why, ok := check_task_mime(t, m, has, false); !ok { fail(t, .Bad_Mime, why); return }
 	send_response(t, status, raw, m, has)
 	if t.collect {
 		append(&t.collected, ..body)
@@ -917,7 +934,13 @@ content_security_check :: proc(t: ^Task) -> bool {
 	}
 	kind, applies := csp_kind(t.destination)
 	if !applies { return true }
-	v := csp.check_request(&env.policies, kind, t.target, env.origin, t.redirected, t.nonce)
+	v: csp.Verdict
+	if t.destination == .Script && t.script != .Wasm {
+		// JavaScript: 'strict-dynamic' and nonces as CSP 3 applies them to script elements (csp/script.odin)
+		v = csp.check_script_request(&env.policies, t.target, env.origin, t.redirected, t.nonce, t.parser_inserted)
+	} else {
+		v = csp.check_request(&env.policies, kind, t.target, env.origin, t.redirected, t.nonce)
+	}
 	for viol in v.violations { if env.on_violation != nil { env.on_violation(env.violation_user, viol) } }
 	if !v.allowed {
 		name := len(v.violations) > 0 ? v.violations[0].directive : "?"
