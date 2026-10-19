@@ -202,6 +202,18 @@ JSValue wjr_HTMLCollection_item(JSContext *ctx, JSValueConst this_val, int argc,
     return wj_wrap_node(ctx, list_item(d, i));
 }
 
+/* named properties: collection.name (the first element of that id or name) */
+JSValue wjr_HTMLCollection_named_get(JSContext *ctx, JSValueConst obj, const char *name, size_t len, bool *found)
+{
+    dom_impl *d = list_of(obj);
+    *found = false;
+    if (!d || d->kind != DOM_LIST_LIVE || len == 0) { return JS_UNDEFINED; }
+    uint64_t h = wr_Collection_namedItem(d->coll, (const uint8_t *)name, (uint32_t)len);
+    if (!h) { return JS_UNDEFINED; }
+    *found = true;
+    return wj_wrap_node(ctx, h);
+}
+
 JSValue wjr_HTMLCollection_namedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     dom_impl *d = dom_impl_of(ctx, this_val, WJ_IFACE_HTMLCollection);
@@ -575,6 +587,88 @@ JSValue wjr_Document_importNode(JSContext *ctx, JSValueConst this_val, int argc,
     int32_t st = wr_Node_cloneNode(node, deep, &h);
     if (st < 0) { return wj_throw_status(ctx, st, "Document.importNode"); }
     return wj_wrap_node(ctx, h);
+}
+
+static JSValue wrap_new_node(JSContext *ctx, int32_t st, uint64_t h, const char *what);
+
+/* The parts of a document: the page's, or one of createHTMLDocument (a document node of its own) */
+static JSValue document_part(JSContext *ctx, JSValueConst this_val, int which)
+{
+    uint64_t h = this_handle(ctx, this_val, WJ_IFACE_Document);
+    if (!h) { return JS_EXCEPTION; }
+    return wj_wrap_node(ctx, wr_Document_partOf(h, which));
+}
+
+JSValue wjr_Document_get_documentElement(JSContext *ctx, JSValueConst this_val) { return document_part(ctx, this_val, 0); }
+JSValue wjr_Document_get_head(JSContext *ctx, JSValueConst this_val) { return document_part(ctx, this_val, 1); }
+JSValue wjr_Document_get_body(JSContext *ctx, JSValueConst this_val) { return document_part(ctx, this_val, 2); }
+JSValue wjr_Document_get_doctype(JSContext *ctx, JSValueConst this_val) { return document_part(ctx, this_val, 3); }
+
+static bool is_page_document(uint64_t h) { return h == wr_Window_document(); }
+
+JSValue wjr_Document_set_body(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    uint64_t h = this_handle(ctx, this_val, WJ_IFACE_Document);
+    if (!h) { return JS_EXCEPTION; }
+    uint64_t body;
+    if (!dom_node_arg(ctx, v, &body, true, "body")) { return JS_EXCEPTION; }
+    if (!is_page_document(h)) {
+        /* another document node: its body replaced (or appended) like the page's */
+        uint64_t old = wr_Document_partOf(h, 2), de = wr_Document_partOf(h, 0);
+        int32_t st = old ? wr_Node_replaceChildChecked(wr_Node_parentNode(old), body, old) : de ? wr_Node_preInsert(de, body, 0) : wr_Error_Hierarchy;
+        return st < 0 ? wj_throw_status(ctx, st, "Document.body") : JS_UNDEFINED;
+    }
+    int32_t st = wr_Document_set_body(body);
+    return st < 0 ? wj_throw_status(ctx, st, "Document.body") : JS_UNDEFINED;
+}
+
+/* ---- DOMImplementation ---- */
+
+JSValue wjr_Document_get_implementation(JSContext *ctx, JSValueConst this_val)
+{
+    uint64_t h = this_handle(ctx, this_val, WJ_IFACE_Document);
+    if (!h) { return JS_EXCEPTION; }
+    return dom_new(ctx, WJ_IFACE_DOMImplementation, DOM_VALUES, this_val, h, NULL);
+}
+
+JSValue wjr_DOMImplementation_createHTMLDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    if (!dom_impl_of(ctx, this_val, WJ_IFACE_DOMImplementation)) { return JS_EXCEPTION; }
+    wj_str title;
+    if (!wj_to_str(ctx, wj_arg(argc, (JSValue *)argv, 0), &title, WJ_STR_OPTIONAL, "")) { return JS_EXCEPTION; }
+    uint64_t h = 0;
+    int32_t st = wr_DOMImplementation_createHTMLDocument((const uint8_t *)title.ptr, title.ptr ? (uint32_t)title.len : WR_ABSENT, &h);
+    wj_str_free(ctx, &title);
+    return wrap_new_node(ctx, st, h, "DOMImplementation.createHTMLDocument");
+}
+
+JSValue wjr_DOMImplementation_createDocumentType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    if (!dom_impl_of(ctx, this_val, WJ_IFACE_DOMImplementation)) { return JS_EXCEPTION; }
+    if (argc < 3) { return wj_throw_arity(ctx, "DOMImplementation.createDocumentType", 3, argc); }
+    wj_str s[3];
+    for (int i = 0; i < 3; i++) {
+        if (!wj_to_str(ctx, argv[i], &s[i], 0, "")) { for (int k = 0; k < i; k++) { wj_str_free(ctx, &s[k]); } return JS_EXCEPTION; }
+    }
+    uint64_t h = 0;
+    int32_t st = wr_DOMImplementation_createDocumentType((const uint8_t *)(s[0].ptr ? s[0].ptr : ""), (uint32_t)s[0].len, (const uint8_t *)(s[1].ptr ? s[1].ptr : ""), (uint32_t)s[1].len,
+                                                         (const uint8_t *)(s[2].ptr ? s[2].ptr : ""), (uint32_t)s[2].len, &h);
+    for (int i = 0; i < 3; i++) { wj_str_free(ctx, &s[i]); }
+    return wrap_new_node(ctx, st, h, "DOMImplementation.createDocumentType");
+}
+
+/* createDocument (an XML document): one document per page here */
+JSValue wjr_DOMImplementation_createDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    if (!dom_impl_of(ctx, this_val, WJ_IFACE_DOMImplementation)) { return JS_EXCEPTION; }
+    return wj_throw_dom(ctx, "NotSupportedError", "XML documents are not supported by this browser.");
+}
+
+JSValue wjr_DOMImplementation_hasFeature(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    return dom_impl_of(ctx, this_val, WJ_IFACE_DOMImplementation) ? JS_TRUE : JS_EXCEPTION;
 }
 
 JSValue wjr_Document_get_defaultView(JSContext *ctx, JSValueConst this_val)

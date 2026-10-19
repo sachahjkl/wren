@@ -442,6 +442,17 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `ParentNode_querySelectorAllPacked :: proc(c: ^Call, node: Api_Node, selectors: string) -> ([]u8, Api_Error)`
 
+### `HTMLFormElement_namedControl`
+
+```
+u64 HTMLFormElement_namedControl(Element form, string name)
+```
+
+form[name]: the first of the form's controls whose id or name is `name` (0 when none; the form's named
+properties shadow its prototype's, [LegacyOverrideBuiltIns], so this answers for every property read).
+
+Host: `HTMLFormElement_namedControl :: proc(c: ^Call, form: Api_Element, name: string) -> u64`
+
 ### `ParentNode_querySelector`
 
 ```
@@ -1357,6 +1368,78 @@ Node HTMLTemplateElement_content(Element element)
 template.content
 
 Host: `HTMLTemplateElement_content :: proc(c: ^Call, element: Api_Element) -> u64`
+
+### `HTMLInputElement_set_type`
+
+```
+void HTMLInputElement_set_type(Element element, string value) raises
+```
+
+input.type = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLInputElement_set_type :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HTMLInputElement_set_maxLength`
+
+```
+void HTMLInputElement_set_maxLength(Element element, i32 value) raises
+```
+
+input.maxLength = value: Index_Size for a negative value.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLInputElement_set_maxLength :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error`
+
+### `HTMLInputElement_set_minLength`
+
+```
+void HTMLInputElement_set_minLength(Element element, i32 value) raises
+```
+
+input.minLength = value: Index_Size for a negative value.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLInputElement_set_minLength :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error`
+
+### `HTMLTextAreaElement_set_maxLength`
+
+```
+void HTMLTextAreaElement_set_maxLength(Element element, i32 value) raises
+```
+
+textarea.maxLength = value: Index_Size for a negative value.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLTextAreaElement_set_maxLength :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error`
+
+### `HTMLTextAreaElement_set_minLength`
+
+```
+void HTMLTextAreaElement_set_minLength(Element element, i32 value) raises
+```
+
+textarea.minLength = value: Index_Size for a negative value.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLTextAreaElement_set_minLength :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error`
+
+### `HTMLOptionElement_set_text`
+
+```
+void HTMLOptionElement_set_text(Element element, string value) raises
+```
+
+option.text = value: its children replaced by one Text node.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLOptionElement_set_text :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
 
 ### `Element_boundingRect`
 
@@ -2689,4 +2772,40 @@ document.body = element: Hierarchy when not a <body> or <frameset>, or without a
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Document_set_body :: proc(c: ^Call, body: Api_Element) -> Api_Error`
+
+### `DOMImplementation_createHTMLDocument`
+
+```
+Node DOMImplementation_createHTMLDocument(optional string title) raises
+```
+
+document.implementation.createHTMLDocument(title): an inert document of its own (nothing loads or runs in it),
+made of the page's nodes: a doctype, <html>, <head> (with <title> when given) and <body>.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `DOMImplementation_createHTMLDocument :: proc(c: ^Call, title: Maybe(string)) -> (u64, Api_Error)`
+
+### `DOMImplementation_createDocumentType`
+
+```
+Node DOMImplementation_createDocumentType(string name, string public_id, string system_id) raises
+```
+
+document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `DOMImplementation_createDocumentType :: proc(c: ^Call, name: string, public_id: string, system_id: string) -> (u64, Api_Error)`
+
+### `Document_partOf`
+
+```
+Node Document_partOf(Node document, i32 which)
+```
+
+A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,
+3 doctype. 0 when there is none.
+
+Host: `Document_partOf :: proc(c: ^Call, document: Api_Node, which: i32) -> u64`
 

@@ -279,11 +279,15 @@ static void wj_obj_mark(JSRuntime *rt, JSValueConst val, JS_MarkFunc *mark_func)
 
 /* -- legacy platform objects: indexed -- */
 
+static int wj_named_get_own(JSContext *ctx, JSPropertyDescriptor *desc, JSValueConst obj, JSAtom prop);
+
 static int wj_indexed_get_own(JSContext *ctx, JSPropertyDescriptor *desc, JSValueConst obj, JSAtom prop)
 {
     wj_obj *o = wj_obj_of(obj);
     uint32_t idx;
-    if (!o || !JS_AtomGetArrayIndex(ctx, &idx, prop)) { return 0; }
+    if (!o) { return 0; }
+    /* an interface with indexed and named properties (HTMLCollection): a name that is not an index is looked up */
+    if (!JS_AtomGetArrayIndex(ctx, &idx, prop)) { return wj_named_get_own(ctx, desc, obj, prop); }
     const wj_interface *it = &wj_interfaces[o->iface];
     for (int i = o->iface; i >= 0 && !it->index_get; i = wj_interfaces[i].parent) { it = &wj_interfaces[i]; }
     if (!it->index_get) { return 0; }

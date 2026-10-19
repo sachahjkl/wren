@@ -20,6 +20,9 @@ partial module dom {
   /// node.querySelectorAll(selectors): the elements in tree order, 8 bytes (a handle, little endian) each. Syntax for
   /// an invalid selector list.
   bytes ParentNode_querySelectorAllPacked(Node node, string selectors) raises;
+  /// form[name]: the first of the form's controls whose id or name is `name` (0 when none; the form's named
+  /// properties shadow its prototype's, [LegacyOverrideBuiltIns], so this answers for every property read).
+  u64 HTMLFormElement_namedControl(Element form, string name);
   /// node.querySelector(selectors)
   Element ParentNode_querySelector(Node node, string selectors) raises;
 

@@ -70,6 +70,7 @@ foreign _m_dom {
 	@(link_name = "Collection_namedItem") _Collection_namedItem :: proc(collection: u64, name: [^]u8, name_len: u32) -> u64 ---
 	@(link_name = "Collection_names") _Collection_names :: proc(collection: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "ParentNode_querySelectorAllPacked") _ParentNode_querySelectorAllPacked :: proc(node: u64, selectors: [^]u8, selectors_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLFormElement_namedControl") _HTMLFormElement_namedControl :: proc(form: u64, name: [^]u8, name_len: u32) -> u64 ---
 	@(link_name = "ParentNode_querySelector") _ParentNode_querySelector :: proc(node: u64, selectors: [^]u8, selectors_len: u32, _ret: ^Element) -> Error ---
 	@(link_name = "TokenList_length") _TokenList_length :: proc(element: u64, attr: [^]u8, attr_len: u32) -> u32 ---
 	@(link_name = "TokenList_item") _TokenList_item :: proc(element: u64, attr: [^]u8, attr_len: u32, index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
@@ -156,6 +157,12 @@ foreign _m_dom {
 	@(link_name = "HTMLAnchorElement_text") _HTMLAnchorElement_text :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "HTMLAnchorElement_set_text") _HTMLAnchorElement_set_text :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "HTMLTemplateElement_content") _HTMLTemplateElement_content :: proc(element: u64) -> Node ---
+	@(link_name = "HTMLInputElement_set_type") _HTMLInputElement_set_type :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HTMLInputElement_set_maxLength") _HTMLInputElement_set_maxLength :: proc(element: u64, value: i32) -> Error ---
+	@(link_name = "HTMLInputElement_set_minLength") _HTMLInputElement_set_minLength :: proc(element: u64, value: i32) -> Error ---
+	@(link_name = "HTMLTextAreaElement_set_maxLength") _HTMLTextAreaElement_set_maxLength :: proc(element: u64, value: i32) -> Error ---
+	@(link_name = "HTMLTextAreaElement_set_minLength") _HTMLTextAreaElement_set_minLength :: proc(element: u64, value: i32) -> Error ---
+	@(link_name = "HTMLOptionElement_set_text") _HTMLOptionElement_set_text :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "Element_boundingRect") _Element_boundingRect :: proc(element: u64, _ret: ^DomRect) ---
 	@(link_name = "Element_clientRectsPacked") _Element_clientRectsPacked :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Element_clientTop") _Element_clientTop :: proc(element: u64) -> i32 ---
@@ -286,6 +293,9 @@ foreign _m_dom {
 	@(link_name = "Document_domain") _Document_domain :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_scrollingElement") _Document_scrollingElement :: proc() -> Element ---
 	@(link_name = "Document_set_body") _Document_set_body :: proc(body: u64) -> Error ---
+	@(link_name = "DOMImplementation_createHTMLDocument") _DOMImplementation_createHTMLDocument :: proc(title: [^]u8, title_len: u32, _ret: ^Node) -> Error ---
+	@(link_name = "DOMImplementation_createDocumentType") _DOMImplementation_createDocumentType :: proc(name: [^]u8, name_len: u32, public_id: [^]u8, public_id_len: u32, system_id: [^]u8, system_id_len: u32, _ret: ^Node) -> Error ---
+	@(link_name = "Document_partOf") _Document_partOf :: proc(document: u64, which: i32) -> Node ---
 }
 
 // document.documentElement (null in a worker).
@@ -691,6 +701,12 @@ ParentNode_querySelectorAllPacked_alloc :: proc(node: $T_node, selectors: string
 		cap = int(n)
 	}
 	return {}, .Truncated
+}
+
+// form[name]: the first of the form's controls whose id or name is `name` (0 when none; the form's named
+// properties shadow its prototype's, [LegacyOverrideBuiltIns], so this answers for every property read).
+HTMLFormElement_namedControl :: proc "contextless" (form: $T_form, name: string) -> u64 where intrinsics.type_is_integer(intrinsics.type_core_type(T_form)) && size_of(T_form) == 8 {
+	return _HTMLFormElement_namedControl(u64(form), raw_data(name), u32(len(name)))
 }
 
 // node.querySelector(selectors)
@@ -1876,6 +1892,36 @@ HTMLAnchorElement_set_text :: proc "contextless" (element: $T_element, value: st
 // template.content
 HTMLTemplateElement_content :: proc "contextless" (element: $T_element) -> Node where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
 	return _HTMLTemplateElement_content(u64(element))
+}
+
+// input.type = value
+HTMLInputElement_set_type :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLInputElement_set_type(u64(element), raw_data(value), u32(len(value)))
+}
+
+// input.maxLength = value: Index_Size for a negative value.
+HTMLInputElement_set_maxLength :: proc "contextless" (element: $T_element, value: i32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLInputElement_set_maxLength(u64(element), value)
+}
+
+// input.minLength = value: Index_Size for a negative value.
+HTMLInputElement_set_minLength :: proc "contextless" (element: $T_element, value: i32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLInputElement_set_minLength(u64(element), value)
+}
+
+// textarea.maxLength = value: Index_Size for a negative value.
+HTMLTextAreaElement_set_maxLength :: proc "contextless" (element: $T_element, value: i32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLTextAreaElement_set_maxLength(u64(element), value)
+}
+
+// textarea.minLength = value: Index_Size for a negative value.
+HTMLTextAreaElement_set_minLength :: proc "contextless" (element: $T_element, value: i32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLTextAreaElement_set_minLength(u64(element), value)
+}
+
+// option.text = value: its children replaced by one Text node.
+HTMLOptionElement_set_text :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLOptionElement_set_text(u64(element), raw_data(value), u32(len(value)))
 }
 
 // element.getBoundingClientRect(): the border box as drawn (transforms applied), in viewport coordinates.
@@ -3372,5 +3418,27 @@ Document_scrollingElement :: proc "contextless" () -> Element {
 // document.body = element: Hierarchy when not a <body> or <frameset>, or without a document element.
 Document_set_body :: proc "contextless" (body: $T_body) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_body)) && size_of(T_body) == 8 {
 	return _Document_set_body(u64(body))
+}
+
+// document.implementation.createHTMLDocument(title): an inert document of its own (nothing loads or runs in it),
+// made of the page's nodes: a doctype, <html>, <head> (with <title> when given) and <body>.
+DOMImplementation_createHTMLDocument :: proc "contextless" (title: Maybe(string) = nil) -> (result: Node, err: Error) {
+	_title_p: [^]u8
+	_title_n := max(u32)
+	if v, ok := title.?; ok { _title_p, _title_n = raw_data(v), u32(len(v)) }
+	err = _DOMImplementation_createHTMLDocument(_title_p, _title_n, &result)
+	return
+}
+
+// document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.
+DOMImplementation_createDocumentType :: proc "contextless" (name: string, public_id: string, system_id: string) -> (result: Node, err: Error) {
+	err = _DOMImplementation_createDocumentType(raw_data(name), u32(len(name)), raw_data(public_id), u32(len(public_id)), raw_data(system_id), u32(len(system_id)), &result)
+	return
+}
+
+// A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,
+// 3 doctype. 0 when there is none.
+Document_partOf :: proc "contextless" (document: $T_document, which: i32) -> Node where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 {
+	return _Document_partOf(u64(document), which)
 }
 

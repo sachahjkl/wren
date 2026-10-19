@@ -13,9 +13,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | | count |
 |---|---:|
 | interfaces, namespaces in the table | 556 |
-| exposed by default | 171 |
+| exposed by default | 174 |
 | members | 4991 |
-| members implemented | 2018 (40.4 %) |
+| members implemented | 2036 (40.8 %) |
 
 ## By specification
 
@@ -39,7 +39,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (0) | 4 / 28 |
 | `cssom.idl` | 16 (2) | 20 / 149 |
-| `dom.idl` | 35 (30) | 529 / 699 |
+| `dom.idl` | 35 (31) | 534 / 699 |
 | `encoding.idl` | 4 (1) | 1 / 19 |
 | `entries-api.idl` | 5 (0) | 0 / 13 |
 | `event-timing.idl` | 2 (0) | 0 / 8 |
@@ -47,7 +47,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (3) | 19 / 126 |
 | `hr-time.idl` | 1 (1) | 5 / 17 |
-| `html.idl` | 160 (79) | 830 / 1819 |
+| `html.idl` | 160 (81) | 843 / 1819 |
 | `intersection-observer.idl` | 2 (0) | 0 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -209,6 +209,15 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `const TIMEOUT_ERR`: generic (constant)
 - `const INVALID_NODE_TYPE_ERR`: generic (constant)
 - `const DATA_CLONE_ERR`: generic (constant)
+
+### DOMImplementation
+
+4 / 4 members.
+
+- `createDocumentType()`: C `wjr_DOMImplementation_createDocumentType`
+- `createDocument()`: C `wjr_DOMImplementation_createDocument`
+- `createHTMLDocument()`: C `wjr_DOMImplementation_createHTMLDocument`
+- `hasFeature()`: C `wjr_DOMImplementation_hasFeature`
 
 ### DOMRectList
 
@@ -603,7 +612,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Document : Node
 
-169 / 225 members.
+170 / 225 members.
 
 - `readonly rootElement`: not supported
 - `startViewTransition()`: not supported
@@ -613,7 +622,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `caretPositionFromPoint()`: not supported
 - `readonly scrollingElement`: import `dom.Document_scrollingElement`
 - `constructor()`: not supported
-- `readonly implementation`: not supported
+- `readonly implementation`: C `wjr_Document_get_implementation`
 - `readonly URL`: import `document.Document_URL`
 - `readonly documentURI`: import `dom.Document_documentURI`
 - `readonly compatMode`: import `dom.Document_compatMode`
@@ -621,8 +630,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly charset`: import `dom.Document_charset`
 - `readonly inputEncoding`: import `dom.Document_inputEncoding`
 - `readonly contentType`: import `dom.Document_contentType`
-- `readonly doctype`: import `dom.Document_doctype`
-- `readonly documentElement`: import `dom.Document_documentElement`
+- `readonly doctype`: C `wjr_Document_get_doctype`
+- `readonly documentElement`: C `wjr_Document_get_documentElement`
 - `getElementsByTagName()`: C `wjr_Document_getElementsByTagName`
 - `getElementsByTagNameNS()`: C `wjr_Document_getElementsByTagNameNS`
 - `getElementsByClassName()`: C `wjr_Document_getElementsByClassName`
@@ -656,8 +665,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly readyState`: import `dom.Document_readyState`
 - `title`: import `dom.Document_title`
 - `dir`: import `dom.Document_dir`
-- `body`: import `dom.Document_body`
-- `readonly head`: import `dom.Document_head`
+- `body`: C `wjr_Document_get_body`
+- `readonly head`: C `wjr_Document_get_head`
 - `readonly images`: C `wjr_Document_get_images`
 - `readonly embeds`: C `wjr_Document_get_embeds`
 - `readonly plugins`: C `wjr_Document_get_plugins`
@@ -1362,10 +1371,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLDataListElement : HTMLElement
 
-0 / 2 members.
+1 / 2 members.
 
 - `constructor()`: not supported
-- `readonly options`: not supported
+- `readonly options`: C `wjr_HTMLDataListElement_get_options`
 
 ### HTMLDetailsElement : HTMLElement
 
@@ -1443,7 +1452,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLFormElement : HTMLElement
 
-12 / 19 members.
+13 / 19 members.
 
 - `constructor()`: not supported
 - `acceptCharset`: generic (reflects a content attribute)
@@ -1457,7 +1466,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `target`: generic (reflects a content attribute)
 - `rel`: generic (reflects a content attribute)
 - `readonly relList`: C `wjr_HTMLFormElement_get_relList`
-- `readonly elements`: not supported
+- `readonly elements`: C `wjr_HTMLFormElement_get_elements`
 - `readonly length`: import `forms.HTMLFormElement_length`
 - `submit()`: import `forms.HTMLFormElement_submit`
 - `requestSubmit()`: import `forms.HTMLFormElement_requestSubmit`
@@ -1601,7 +1610,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLInputElement : HTMLElement
 
-40 / 63 members.
+41 / 63 members.
 
 - `webkitdirectory`: not supported
 - `readonly webkitEntries`: not supported
@@ -1627,9 +1636,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `indeterminate`: import `forms.HTMLInputElement_indeterminate`
 - `readonly list`: not supported
 - `max`: generic (reflects a content attribute)
-- `maxLength`: import `forms.HTMLInputElement_maxLength (setter not supported)`
+- `maxLength`: import `forms.HTMLInputElement_maxLength`
 - `min`: generic (reflects a content attribute)
-- `minLength`: import `forms.HTMLInputElement_minLength (setter not supported)`
+- `minLength`: import `forms.HTMLInputElement_minLength`
 - `multiple`: generic (reflects a content attribute)
 - `name`: generic (reflects a content attribute)
 - `pattern`: generic (reflects a content attribute)
@@ -1639,7 +1648,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `size`: generic (reflects a content attribute)
 - `src`: not supported
 - `step`: generic (reflects a content attribute)
-- `type`: import `forms.HTMLInputElement_type (setter not supported)`
+- `type`: import `forms.HTMLInputElement_type`
 - `defaultValue`: generic (reflects a content attribute)
 - `value`: import `forms.HTMLInputElement_value`
 - `valueAsDate`: not supported
@@ -1655,12 +1664,12 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `setCustomValidity()`: import `forms.HTMLInputElement_setCustomValidity`
 - `readonly labels`: not supported
 - `select()`: import `forms.HTMLInputElement_select`
-- `selectionStart`: import `forms.HTMLInputElement_selectionStart (setter not supported)`
-- `selectionEnd`: import `forms.HTMLInputElement_selectionEnd (setter not supported)`
-- `selectionDirection`: import `forms.HTMLInputElement_selectionDirection (setter not supported)`
+- `selectionStart`: import `forms.HTMLInputElement_selectionStart`
+- `selectionEnd`: import `forms.HTMLInputElement_selectionEnd`
+- `selectionDirection`: import `forms.HTMLInputElement_selectionDirection`
 - `setRangeText()`: not supported
 - `setRangeText()`: not supported
-- `setSelectionRange()`: not supported
+- `setSelectionRange()`: C `wjr_HTMLInputElement_setSelectionRange`
 - `showPicker()`: not supported
 - `align`: generic (reflects a content attribute)
 - `useMap`: generic (reflects a content attribute)
@@ -1913,7 +1922,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `defaultSelected`: generic (reflects a content attribute)
 - `selected`: import `forms.HTMLOptionElement_selected`
 - `value`: generic (reflects a content attribute)
-- `text`: import `forms.HTMLOptionElement_text (setter not supported)`
+- `text`: import `forms.HTMLOptionElement_text`
 - `readonly index`: import `forms.HTMLOptionElement_index`
 
 ### HTMLOutputElement : HTMLElement
@@ -2007,7 +2016,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLSelectElement : HTMLElement
 
-16 / 27 members.
+20 / 27 members.
 
 - `constructor()`: not supported
 - `autocomplete`: not supported
@@ -2018,13 +2027,13 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `required`: generic (reflects a content attribute)
 - `size`: generic (reflects a content attribute)
 - `readonly type`: import `forms.HTMLSelectElement_type`
-- `readonly options`: not supported
+- `readonly options`: C `wjr_HTMLSelectElement_get_options`
 - `length`: import `forms.HTMLSelectElement_length (setter not supported)`
 - `item()`: import `forms.HTMLSelectElement_item`
 - `namedItem()`: not supported
-- `add()`: not supported
-- `remove()`: not supported
-- `remove()`: not supported
+- `add()`: C `wjr_HTMLSelectElement_add`
+- `remove()`: C `wjr_HTMLSelectElement_remove`
+- `remove()`: C `wjr_HTMLSelectElement_remove`
 - `readonly selectedOptions`: not supported
 - `selectedIndex`: import `forms.HTMLSelectElement_selectedIndex`
 - `value`: import `forms.HTMLSelectElement_value`
@@ -2191,7 +2200,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTextAreaElement : HTMLElement
 
-22 / 32 members.
+23 / 32 members.
 
 - `constructor()`: not supported
 - `autocomplete`: not supported
@@ -2199,8 +2208,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `dirName`: generic (reflects a content attribute)
 - `disabled`: generic (reflects a content attribute)
 - `readonly form`: import `forms.HTMLTextAreaElement_form`
-- `maxLength`: import `forms.HTMLTextAreaElement_maxLength (setter not supported)`
-- `minLength`: import `forms.HTMLTextAreaElement_minLength (setter not supported)`
+- `maxLength`: import `forms.HTMLTextAreaElement_maxLength`
+- `minLength`: import `forms.HTMLTextAreaElement_minLength`
 - `name`: generic (reflects a content attribute)
 - `placeholder`: generic (reflects a content attribute)
 - `readOnly`: generic (reflects a content attribute)
@@ -2219,12 +2228,12 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `setCustomValidity()`: import `forms.HTMLTextAreaElement_setCustomValidity`
 - `readonly labels`: not supported
 - `select()`: import `forms.HTMLTextAreaElement_select`
-- `selectionStart`: import `forms.HTMLTextAreaElement_selectionStart (setter not supported)`
-- `selectionEnd`: import `forms.HTMLTextAreaElement_selectionEnd (setter not supported)`
-- `selectionDirection`: import `forms.HTMLTextAreaElement_selectionDirection (setter not supported)`
+- `selectionStart`: import `forms.HTMLTextAreaElement_selectionStart`
+- `selectionEnd`: import `forms.HTMLTextAreaElement_selectionEnd`
+- `selectionDirection`: import `forms.HTMLTextAreaElement_selectionDirection`
 - `setRangeText()`: not supported
 - `setRangeText()`: not supported
-- `setSelectionRange()`: not supported
+- `setSelectionRange()`: C `wjr_HTMLTextAreaElement_setSelectionRange`
 
 ### HTMLTimeElement : HTMLElement
 
@@ -3250,6 +3259,21 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `item()`: C `wjr_HTMLCollection_item`
 - `namedItem()`: C `wjr_HTMLCollection_namedItem`
 
+### HTMLFormControlsCollection : HTMLCollection
+
+1 / 1 members.
+
+- `namedItem()`: C `wjr_HTMLFormControlsCollection_namedItem`
+
+### HTMLOptionsCollection : HTMLCollection
+
+4 / 4 members.
+
+- `length`: C `wjr_HTMLOptionsCollection_get_length`
+- `add()`: C `wjr_HTMLOptionsCollection_add`
+- `remove()`: C `wjr_HTMLOptionsCollection_remove`
+- `selectedIndex`: C `wjr_HTMLOptionsCollection_get_selectedIndex`
+
 ### History
 
 2 / 8 members.
@@ -3507,7 +3531,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ## Not exposed (nothing implemented)
 
-TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, Blob, File, ByteLengthQueuingStrategy, CSS, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CanvasGradient, CanvasPattern, CanvasRenderingContext2D, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, Credential, FederatedCredential, PasswordCredential, CredentialsContainer, CryptoKey, CustomElementRegistry, CustomStateSet, OverconstrainedError, QuotaExceededError, DOMImplementation, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMStringList, DOMStringMap, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, ElementInternals, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ErrorEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, HashChangeEvent, IDBVersionChangeEvent, MediaQueryListEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, PageTransitionEvent, PopStateEvent, ProgressEvent, PromiseRejectionEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, StorageEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, DragEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, Clipboard, CloseWatcher, CookieStore, FileReader, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaQueryList, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, MessagePort, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, OffscreenCanvas, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestEventTarget, XMLHttpRequest, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, HTMLFormControlsCollection, HTMLOptionsCollection, Headers, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, IdleDeadline, ImageBitmap, ImageBitmapRenderingContext, ImageData, IntersectionObserver, IntersectionObserverEntry, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MessageChannel, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, Navigator, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, OffscreenCanvasRenderingContext2D, Origin, Path2D, PerformanceEntry, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformanceMark, PerformanceMeasure, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceObserver, PerformanceObserverEntryList, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStream, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ReadableStreamDefaultController, ReadableStreamDefaultReader, Request, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, Screen, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, Storage, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheet, CSSStyleSheet, StyleSheetList, SubtleCrypto, TextDecoderStream, TextEncoder, TextEncoderStream, TextMetrics, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, ValidityState, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, WorkerNavigator, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
+TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, Blob, File, ByteLengthQueuingStrategy, CSS, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CanvasGradient, CanvasPattern, CanvasRenderingContext2D, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, Credential, FederatedCredential, PasswordCredential, CredentialsContainer, CryptoKey, CustomElementRegistry, CustomStateSet, OverconstrainedError, QuotaExceededError, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMStringList, DOMStringMap, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, ElementInternals, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ErrorEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, HashChangeEvent, IDBVersionChangeEvent, MediaQueryListEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, PageTransitionEvent, PopStateEvent, ProgressEvent, PromiseRejectionEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, StorageEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, DragEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, Clipboard, CloseWatcher, CookieStore, FileReader, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaQueryList, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, MessagePort, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, OffscreenCanvas, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestEventTarget, XMLHttpRequest, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, Headers, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, IdleDeadline, ImageBitmap, ImageBitmapRenderingContext, ImageData, IntersectionObserver, IntersectionObserverEntry, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MessageChannel, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, Navigator, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, OffscreenCanvasRenderingContext2D, Origin, Path2D, PerformanceEntry, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformanceMark, PerformanceMeasure, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceObserver, PerformanceObserverEntryList, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStream, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ReadableStreamDefaultController, ReadableStreamDefaultReader, Request, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, Screen, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, Storage, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheet, CSSStyleSheet, StyleSheetList, SubtleCrypto, TextDecoderStream, TextEncoder, TextEncoderStream, TextMetrics, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, ValidityState, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, WorkerNavigator, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
 
 ## Browser functions that could not be bound
 
@@ -3520,17 +3544,14 @@ TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTime
 - Document.visibilityState: timers.Document_visibilityState exists but its result is not a string
 - HTMLButtonElement.validity: forms.HTMLButtonElement_validity exists but its result type does not match
 - HTMLFieldSetElement.validity: forms.HTMLFieldSetElement_validity exists but its result type does not match
-- HTMLFormElement.elements: forms.HTMLFormElement_elements exists but it takes 2 parameters for 0 arguments
 - HTMLImageElement.decode: images.HTMLImageElement_decode exists but the result type Promise<undefined> has no conversion
 - HTMLInputElement.valueAsDate: forms.HTMLInputElement_valueAsDate exists but the result type object? has no conversion
 - HTMLInputElement.valueAsDate (setter): forms.HTMLInputElement_setValueAsDate exists but an argument of type object? has no conversion
 - HTMLInputElement.validity: forms.HTMLInputElement_validity exists but its result type does not match
-- HTMLInputElement.setSelectionRange: forms.HTMLInputElement_setSelectionRange exists but parameter direction does not match DOMString
 - HTMLObjectElement.validity: forms.HTMLObjectElement_validity exists but its result type does not match
 - HTMLOutputElement.validity: forms.HTMLOutputElement_validity exists but its result type does not match
 - HTMLSelectElement.validity: forms.HTMLSelectElement_validity exists but its result type does not match
 - HTMLTextAreaElement.validity: forms.HTMLTextAreaElement_validity exists but its result type does not match
-- HTMLTextAreaElement.setSelectionRange: forms.HTMLTextAreaElement_setSelectionRange exists but parameter direction does not match DOMString
 - Performance.mark: performance.Performance_mark exists but an argument of type PerformanceMarkOptions has no conversion
 - Performance.measure: performance.Performance_measure exists but an argument of type (DOMString or PerformanceMeasureOptions) has no conversion
 - WebSocket.binaryType: websocket.WebSocket_binaryType exists but its result is not a string

@@ -45,6 +45,7 @@ Node :: struct {
 	kind:        Node_Kind,
 	ns:          Namespace,  // elements
 	held:        bool,       // a detached tree its owner keeps (a template's contents): not freed when nothing pins it
+	as_document: bool,       // a Fragment that stands for a document of its own (DOMImplementation.createHTMLDocument)
 	parent:      base.Handle,
 	first_child: base.Handle,
 	last_child:  base.Handle,

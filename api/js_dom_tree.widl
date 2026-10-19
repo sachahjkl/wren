@@ -149,4 +149,13 @@ partial module dom {
   Element Document_scrollingElement();
   /// document.body = element: Hierarchy when not a <body> or <frameset>, or without a document element.
   void Document_set_body(optional Element body) raises;
+
+  /// document.implementation.createHTMLDocument(title): an inert document of its own (nothing loads or runs in it),
+  /// made of the page's nodes: a doctype, <html>, <head> (with <title> when given) and <body>.
+  Node DOMImplementation_createHTMLDocument(optional string title) raises;
+  /// document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.
+  Node DOMImplementation_createDocumentType(string name, string public_id, string system_id) raises;
+  /// A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,
+  /// 3 doctype. 0 when there is none.
+  Node Document_partOf(Node document, i32 which);
 }

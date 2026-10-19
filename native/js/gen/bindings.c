@@ -39,6 +39,10 @@ JSValue wjr_CompositionEvent_get_data(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CustomEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CustomEvent_get_detail(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CustomEvent_initCustomEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMImplementation_createDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMImplementation_createDocumentType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMImplementation_createHTMLDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMImplementation_hasFeature(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DOMRectList_get_length(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_DOMRectList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
 JSValue wjr_DOMRectList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -95,15 +99,21 @@ JSValue wjr_Document_getElementsByTagName(JSContext *ctx, JSValueConst this_val,
 JSValue wjr_Document_getElementsByTagNameNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_getSelection(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_get_anchors(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_body(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_defaultView(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_doctype(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_documentElement(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_embeds(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_forms(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_head(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_images(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_implementation(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_links(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_location(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_plugins(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_scripts(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_importNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_set_body(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_ElementCSSInlineStyle_get_style(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Element_getAttributeNames(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_getAttributeNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -161,19 +171,43 @@ JSValue wjr_HTMLCollection_index_get(JSContext *ctx, JSValueConst obj, uint32_t 
 JSValue wjr_HTMLCollection_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 uint32_t wjr_HTMLCollection_length_hook(JSContext *ctx, JSValueConst obj);
 JSValue wjr_HTMLCollection_namedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLCollection_named_get(JSContext *ctx, JSValueConst obj, const char *name, size_t len, bool *found);
+JSValue wjr_HTMLDataListElement_get_options(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLElement_get_hidden(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLElement_set_hidden(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLFormControlsCollection_namedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLFormElement_get_elements(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLFormElement_get_relList(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLFormElement_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+uint32_t wjr_HTMLFormElement_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_HTMLFormElement_named_get(JSContext *ctx, JSValueConst obj, const char *name, size_t len, bool *found);
 JSValue wjr_HTMLIFrameElement_get_sandbox(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLInputElement_setSelectionRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLInputElement_set_selectionDirection(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLInputElement_set_selectionEnd(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLInputElement_set_selectionStart(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLLinkElement_get_relList(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLLinkElement_get_sizes(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLOptionsCollection_add(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLOptionsCollection_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLOptionsCollection_get_selectedIndex(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLOptionsCollection_remove(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLOptionsCollection_set_length(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLOptionsCollection_set_selectedIndex(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLOrSVGOrMathMLElement_focus(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLOrSVGOrMathMLElement_get_dataset(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLOutputElement_get_htmlFor(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLSelectElement_add(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLSelectElement_get_options(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLSelectElement_remove(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLTableElement_get_rows(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTableElement_get_tBodies(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTableRowElement_get_cells(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTableSectionElement_get_rows(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTextAreaElement_setSelectionRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLTextAreaElement_set_selectionDirection(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLTextAreaElement_set_selectionEnd(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLTextAreaElement_set_selectionStart(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_InputEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_InputEvent_get_data(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_InputEvent_get_dataTransfer(JSContext *ctx, JSValueConst this_val);
@@ -1202,24 +1236,6 @@ static JSValue wjg_Document_get_contentType(JSContext *ctx, JSValueConst this_va
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
 }
 
-/* Document.doctype -> dom.Document_doctype */
-static JSValue wjg_Document_get_doctype(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 227);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = wr_Document_doctype();
-    return wj_wrap_node(ctx, r);
-}
-
-/* Document.documentElement -> dom.Document_documentElement */
-static JSValue wjg_Document_get_documentElement(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 227);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = wr_Document_documentElement();
-    return wj_wrap_node(ctx, r);
-}
-
 /* Document.createDocumentFragment() -> dom.Document_createDocumentFragment */
 static JSValue wjg_Document_createDocumentFragment(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
@@ -1414,38 +1430,6 @@ static JSValue wjg_Document_set_dir(JSContext *ctx, JSValueConst this_val, JSVal
     wr_Document_set_dir((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
     wj_str_free(ctx, &a0);
     return JS_UNDEFINED;
-}
-
-/* Document.body -> dom.Document_body */
-static JSValue wjg_Document_get_body(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 227);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = wr_Document_body();
-    return wj_wrap_node(ctx, r);
-}
-
-/* Document.body = v -> dom.Document_set_body */
-static JSValue wjg_Document_set_body(JSContext *ctx, JSValueConst this_val, JSValueConst v)
-{
-    JSValueConst argv[1] = {v};
-    int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 227);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t a0 = 0;
-    if (!wj_to_handle(ctx, argv[0], 234, true, &a0, "Document.body: argument 1 is not of type 'HTMLElement'")) { return JS_EXCEPTION; }
-    int32_t st = wr_Document_set_body(a0);
-    if (st < 0) { return wj_throw_status(ctx, st, "Document.body"); }
-    return JS_UNDEFINED;
-}
-
-/* Document.head -> dom.Document_head */
-static JSValue wjg_Document_get_head(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 227);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = wr_Document_head();
-    return wj_wrap_node(ctx, r);
 }
 
 /* Document.currentScript -> dom.Document_currentScript */
@@ -4116,6 +4100,20 @@ static JSValue wjg_HTMLInputElement_get_maxLength(JSContext *ctx, JSValueConst t
     return JS_NewInt32(ctx, r);
 }
 
+/* HTMLInputElement.maxLength = v -> dom.HTMLInputElement_set_maxLength */
+static JSValue wjg_HTMLInputElement_set_maxLength(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 261);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t a0 = 0;
+    if (!wj_to_int32(ctx, argv[0], &a0, 32, 0)) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLInputElement_set_maxLength(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLInputElement.maxLength"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLInputElement_get_min(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 261, "min", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLInputElement_set_min(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 261, "min", WJ_REFLECT_STRING, v, 0, 0, 0); }
 /* HTMLInputElement.minLength -> forms.HTMLInputElement_minLength */
@@ -4125,6 +4123,20 @@ static JSValue wjg_HTMLInputElement_get_minLength(JSContext *ctx, JSValueConst t
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_HTMLInputElement_minLength(self->handle);
     return JS_NewInt32(ctx, r);
+}
+
+/* HTMLInputElement.minLength = v -> dom.HTMLInputElement_set_minLength */
+static JSValue wjg_HTMLInputElement_set_minLength(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 261);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t a0 = 0;
+    if (!wj_to_int32(ctx, argv[0], &a0, 32, 0)) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLInputElement_set_minLength(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLInputElement.minLength"); }
+    return JS_UNDEFINED;
 }
 
 static JSValue wjg_HTMLInputElement_get_multiple(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 261, "multiple", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
@@ -4152,6 +4164,21 @@ static JSValue wjg_HTMLInputElement_get_type(JSContext *ctx, JSValueConst this_v
     WJ_FETCH_STRING(n, wr_HTMLInputElement_type(self->handle, wj_scratch.data, wj_scratch.cap));
     if (n < 0) { return wj_throw_status(ctx, n, "HTMLInputElement.type"); }
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLInputElement.type = v -> dom.HTMLInputElement_set_type */
+static JSValue wjg_HTMLInputElement_set_type(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 261);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLInputElement_set_type(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLInputElement.type"); }
+    return JS_UNDEFINED;
 }
 
 static JSValue wjg_HTMLInputElement_get_defaultValue(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 261, "value", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -4605,6 +4632,21 @@ static JSValue wjg_HTMLOptionElement_get_text(JSContext *ctx, JSValueConst this_
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
 }
 
+/* HTMLOptionElement.text = v -> dom.HTMLOptionElement_set_text */
+static JSValue wjg_HTMLOptionElement_set_text(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 278);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLOptionElement_set_text(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLOptionElement.text"); }
+    return JS_UNDEFINED;
+}
+
 /* HTMLOptionElement.index -> forms.HTMLOptionElement_index */
 static JSValue wjg_HTMLOptionElement_get_index(JSContext *ctx, JSValueConst this_val)
 {
@@ -5054,6 +5096,20 @@ static JSValue wjg_HTMLTextAreaElement_get_maxLength(JSContext *ctx, JSValueCons
     return JS_NewInt32(ctx, r);
 }
 
+/* HTMLTextAreaElement.maxLength = v -> dom.HTMLTextAreaElement_set_maxLength */
+static JSValue wjg_HTMLTextAreaElement_set_maxLength(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 300);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t a0 = 0;
+    if (!wj_to_int32(ctx, argv[0], &a0, 32, 0)) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLTextAreaElement_set_maxLength(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLTextAreaElement.maxLength"); }
+    return JS_UNDEFINED;
+}
+
 /* HTMLTextAreaElement.minLength -> forms.HTMLTextAreaElement_minLength */
 static JSValue wjg_HTMLTextAreaElement_get_minLength(JSContext *ctx, JSValueConst this_val)
 {
@@ -5061,6 +5117,20 @@ static JSValue wjg_HTMLTextAreaElement_get_minLength(JSContext *ctx, JSValueCons
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_HTMLTextAreaElement_minLength(self->handle);
     return JS_NewInt32(ctx, r);
+}
+
+/* HTMLTextAreaElement.minLength = v -> dom.HTMLTextAreaElement_set_minLength */
+static JSValue wjg_HTMLTextAreaElement_set_minLength(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 300);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t a0 = 0;
+    if (!wj_to_int32(ctx, argv[0], &a0, 32, 0)) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLTextAreaElement_set_minLength(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLTextAreaElement.minLength"); }
+    return JS_UNDEFINED;
 }
 
 static JSValue wjg_HTMLTextAreaElement_get_name(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 300, "name", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -7908,10 +7978,10 @@ static const wj_member wj_m_QuotaExceededError[] = {
     { "requested", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMImplementation[] = {
-    { "createDocumentType", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "createDocument", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "createHTMLDocument", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "hasFeature", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "createDocumentType", WJ_M_METHOD, 0, 3, wjr_DOMImplementation_createDocumentType, NULL, NULL, 0 },
+    { "createDocument", WJ_M_METHOD, 0, 2, wjr_DOMImplementation_createDocument, NULL, NULL, 0 },
+    { "createHTMLDocument", WJ_M_METHOD, 0, 0, wjr_DOMImplementation_createHTMLDocument, NULL, NULL, 0 },
+    { "hasFeature", WJ_M_METHOD, 0, 0, wjr_DOMImplementation_hasFeature, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMMatrixReadOnly[] = {
     { "fromMatrix", WJ_M_STATIC_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -9033,7 +9103,7 @@ static const wj_member wj_m_Document[] = {
     { "elementsFromPoint", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "caretPositionFromPoint", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "scrollingElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_scrollingElement, NULL, 0 },
-    { "implementation", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 36, NULL, NULL, NULL, 0 },
+    { "implementation", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 36, NULL, wjr_Document_get_implementation, NULL, 0 },
     { "URL", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_URL, NULL, 0 },
     { "documentURI", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_documentURI, NULL, 0 },
     { "compatMode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_compatMode, NULL, 0 },
@@ -9041,8 +9111,8 @@ static const wj_member wj_m_Document[] = {
     { "charset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_charset, NULL, 0 },
     { "inputEncoding", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_inputEncoding, NULL, 0 },
     { "contentType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_contentType, NULL, 0 },
-    { "doctype", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_doctype, NULL, 0 },
-    { "documentElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_documentElement, NULL, 0 },
+    { "doctype", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_doctype, NULL, 0 },
+    { "documentElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_documentElement, NULL, 0 },
     { "getElementsByTagName", WJ_M_METHOD, 0, 1, wjr_Document_getElementsByTagName, NULL, NULL, 0 },
     { "getElementsByTagNameNS", WJ_M_METHOD, 0, 2, wjr_Document_getElementsByTagNameNS, NULL, NULL, 0 },
     { "getElementsByClassName", WJ_M_METHOD, 0, 1, wjr_Document_getElementsByClassName, NULL, NULL, 0 },
@@ -9076,8 +9146,8 @@ static const wj_member wj_m_Document[] = {
     { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_readyState, NULL, 0 },
     { "title", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_title, wjg_Document_set_title, 0 },
     { "dir", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_dir, wjg_Document_set_dir, 0 },
-    { "body", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_body, wjg_Document_set_body, 0 },
-    { "head", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_head, NULL, 0 },
+    { "body", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_body, wjr_Document_set_body, 0 },
+    { "head", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_head, NULL, 0 },
     { "images", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 37, NULL, wjr_Document_get_images, NULL, 0 },
     { "embeds", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 38, NULL, wjr_Document_get_embeds, NULL, 0 },
     { "plugins", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 39, NULL, wjr_Document_get_plugins, NULL, 0 },
@@ -9727,7 +9797,7 @@ static const wj_member wj_m_HTMLDataElement[] = {
     { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLDataElement_get_value, wjg_HTMLDataElement_set_value, 0 },
 };
 static const wj_member wj_m_HTMLDataListElement[] = {
-    { "options", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 59, NULL, NULL, NULL, 0 },
+    { "options", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 59, NULL, wjr_HTMLDataListElement_get_options, NULL, 0 },
 };
 static const wj_member wj_m_HTMLDetailsElement[] = {
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLDetailsElement_get_name, wjg_HTMLDetailsElement_set_name, 0 },
@@ -9787,7 +9857,7 @@ static const wj_member wj_m_HTMLFormElement[] = {
     { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFormElement_get_target, wjg_HTMLFormElement_set_target, 0 },
     { "rel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFormElement_get_rel, wjg_HTMLFormElement_set_rel, 0 },
     { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 62, NULL, wjr_HTMLFormElement_get_relList, wjg_HTMLFormElement_set_relList, 0 },
-    { "elements", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 63, NULL, NULL, NULL, 0 },
+    { "elements", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 63, NULL, wjr_HTMLFormElement_get_elements, NULL, 0 },
     { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFormElement_get_length, NULL, 0 },
     { "submit", WJ_M_METHOD, 0, 0, wjg_HTMLFormElement_submit, NULL, NULL, 0 },
     { "requestSubmit", WJ_M_METHOD, 0, 0, wjg_HTMLFormElement_requestSubmit, NULL, NULL, 0 },
@@ -9922,9 +9992,9 @@ static const wj_member wj_m_HTMLInputElement[] = {
     { "indeterminate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_indeterminate, wjg_HTMLInputElement_set_indeterminate, 0 },
     { "list", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "max", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_max, wjg_HTMLInputElement_set_max, 0 },
-    { "maxLength", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLInputElement_get_maxLength, NULL, 0 },
+    { "maxLength", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_maxLength, wjg_HTMLInputElement_set_maxLength, 0 },
     { "min", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_min, wjg_HTMLInputElement_set_min, 0 },
-    { "minLength", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLInputElement_get_minLength, NULL, 0 },
+    { "minLength", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_minLength, wjg_HTMLInputElement_set_minLength, 0 },
     { "multiple", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_multiple, wjg_HTMLInputElement_set_multiple, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_name, wjg_HTMLInputElement_set_name, 0 },
     { "pattern", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_pattern, wjg_HTMLInputElement_set_pattern, 0 },
@@ -9934,7 +10004,7 @@ static const wj_member wj_m_HTMLInputElement[] = {
     { "size", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_size, wjg_HTMLInputElement_set_size, 0 },
     { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "step", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_step, wjg_HTMLInputElement_set_step, 0 },
-    { "type", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLInputElement_get_type, NULL, 0 },
+    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_type, wjg_HTMLInputElement_set_type, 0 },
     { "defaultValue", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_defaultValue, wjg_HTMLInputElement_set_defaultValue, 0 },
     { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_value, wjg_HTMLInputElement_set_value, 0 },
     { "valueAsDate", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -9950,11 +10020,11 @@ static const wj_member wj_m_HTMLInputElement[] = {
     { "setCustomValidity", WJ_M_METHOD, 0, 1, wjg_HTMLInputElement_setCustomValidity, NULL, NULL, 0 },
     { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "select", WJ_M_METHOD, 0, 0, wjg_HTMLInputElement_select, NULL, NULL, 0 },
-    { "selectionStart", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLInputElement_get_selectionStart, NULL, 0 },
-    { "selectionEnd", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLInputElement_get_selectionEnd, NULL, 0 },
-    { "selectionDirection", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLInputElement_get_selectionDirection, NULL, 0 },
+    { "selectionStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_selectionStart, wjr_HTMLInputElement_set_selectionStart, 0 },
+    { "selectionEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_selectionEnd, wjr_HTMLInputElement_set_selectionEnd, 0 },
+    { "selectionDirection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_selectionDirection, wjr_HTMLInputElement_set_selectionDirection, 0 },
     { "setRangeText", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setSelectionRange", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "setSelectionRange", WJ_M_METHOD, 0, 2, wjr_HTMLInputElement_setSelectionRange, NULL, NULL, 0 },
     { "showPicker", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_align, wjg_HTMLInputElement_set_align, 0 },
     { "useMap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_useMap, wjg_HTMLInputElement_set_useMap, 0 },
@@ -10141,7 +10211,7 @@ static const wj_member wj_m_HTMLOptionElement[] = {
     { "defaultSelected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOptionElement_get_defaultSelected, wjg_HTMLOptionElement_set_defaultSelected, 0 },
     { "selected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOptionElement_get_selected, wjg_HTMLOptionElement_set_selected, 0 },
     { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOptionElement_get_value, wjg_HTMLOptionElement_set_value, 0 },
-    { "text", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLOptionElement_get_text, NULL, 0 },
+    { "text", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOptionElement_get_text, wjg_HTMLOptionElement_set_text, 0 },
     { "index", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOptionElement_get_index, NULL, 0 },
 };
 static const wj_member wj_m_HTMLOutputElement[] = {
@@ -10211,12 +10281,12 @@ static const wj_member wj_m_HTMLSelectElement[] = {
     { "required", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSelectElement_get_required, wjg_HTMLSelectElement_set_required, 0 },
     { "size", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSelectElement_get_size, wjg_HTMLSelectElement_set_size, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSelectElement_get_type, NULL, 0 },
-    { "options", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 74, NULL, NULL, NULL, 0 },
+    { "options", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 74, NULL, wjr_HTMLSelectElement_get_options, NULL, 0 },
     { "length", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLSelectElement_get_length, NULL, 0 },
     { "item", WJ_M_METHOD, 0, 1, wjg_HTMLSelectElement_item, NULL, NULL, 0 },
     { "namedItem", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "add", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "remove", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "add", WJ_M_METHOD, 0, 1, wjr_HTMLSelectElement_add, NULL, NULL, 0 },
+    { "remove", WJ_M_METHOD, 0, 0, wjr_HTMLSelectElement_remove, NULL, NULL, 0 },
     { "selectedOptions", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 75, NULL, NULL, NULL, 0 },
     { "selectedIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSelectElement_get_selectedIndex, wjg_HTMLSelectElement_set_selectedIndex, 0 },
     { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSelectElement_get_value, wjg_HTMLSelectElement_set_value, 0 },
@@ -10347,8 +10417,8 @@ static const wj_member wj_m_HTMLTextAreaElement[] = {
     { "dirName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_dirName, wjg_HTMLTextAreaElement_set_dirName, 0 },
     { "disabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_disabled, wjg_HTMLTextAreaElement_set_disabled, 0 },
     { "form", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_form, NULL, 0 },
-    { "maxLength", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLTextAreaElement_get_maxLength, NULL, 0 },
-    { "minLength", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLTextAreaElement_get_minLength, NULL, 0 },
+    { "maxLength", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_maxLength, wjg_HTMLTextAreaElement_set_maxLength, 0 },
+    { "minLength", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_minLength, wjg_HTMLTextAreaElement_set_minLength, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_name, wjg_HTMLTextAreaElement_set_name, 0 },
     { "placeholder", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_placeholder, wjg_HTMLTextAreaElement_set_placeholder, 0 },
     { "readOnly", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_readOnly, wjg_HTMLTextAreaElement_set_readOnly, 0 },
@@ -10367,11 +10437,11 @@ static const wj_member wj_m_HTMLTextAreaElement[] = {
     { "setCustomValidity", WJ_M_METHOD, 0, 1, wjg_HTMLTextAreaElement_setCustomValidity, NULL, NULL, 0 },
     { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "select", WJ_M_METHOD, 0, 0, wjg_HTMLTextAreaElement_select, NULL, NULL, 0 },
-    { "selectionStart", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLTextAreaElement_get_selectionStart, NULL, 0 },
-    { "selectionEnd", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLTextAreaElement_get_selectionEnd, NULL, 0 },
-    { "selectionDirection", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLTextAreaElement_get_selectionDirection, NULL, 0 },
+    { "selectionStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_selectionStart, wjr_HTMLTextAreaElement_set_selectionStart, 0 },
+    { "selectionEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_selectionEnd, wjr_HTMLTextAreaElement_set_selectionEnd, 0 },
+    { "selectionDirection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_selectionDirection, wjr_HTMLTextAreaElement_set_selectionDirection, 0 },
     { "setRangeText", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setSelectionRange", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "setSelectionRange", WJ_M_METHOD, 0, 2, wjr_HTMLTextAreaElement_setSelectionRange, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLTimeElement[] = {
     { "dateTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTimeElement_get_dateTime, wjg_HTMLTimeElement_set_dateTime, 0 },
@@ -11598,13 +11668,13 @@ static const wj_member wj_m_HTMLCollection[] = {
     { "namedItem", WJ_M_METHOD, 0, 1, wjr_HTMLCollection_namedItem, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLFormControlsCollection[] = {
-    { "namedItem", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "namedItem", WJ_M_METHOD, 0, 1, wjr_HTMLFormControlsCollection_namedItem, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLOptionsCollection[] = {
-    { "length", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "add", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "remove", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "selectedIndex", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLOptionsCollection_get_length, wjr_HTMLOptionsCollection_set_length, 0 },
+    { "add", WJ_M_METHOD, 0, 1, wjr_HTMLOptionsCollection_add, NULL, NULL, 0 },
+    { "remove", WJ_M_METHOD, 0, 1, wjr_HTMLOptionsCollection_remove, NULL, NULL, 0 },
+    { "selectedIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLOptionsCollection_get_selectedIndex, wjr_HTMLOptionsCollection_set_selectedIndex, 0 },
 };
 static const wj_member wj_m_Headers[] = {
     { "append", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
@@ -13408,7 +13478,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_QuotaExceededError, .n_members = 2, .subtree_end = 96,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMImplementation", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMImplementation", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_DOMImplementation, .n_members = 4, .subtree_end = 97,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -14034,7 +14104,7 @@ const wj_interface wj_interfaces[] = {
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "HTMLFormElement", .parent = 234, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_OVERRIDE_BUILTINS | WJ_I_INDEXED_ITERATOR | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLFormElement, .n_members = 18, .subtree_end = 253,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_HTMLFormElement_index_get, .length_get = wjr_HTMLFormElement_length_hook, .named_get = wjr_HTMLFormElement_named_get, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "HTMLFrameElement", .parent = 234, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLFrameElement, .n_members = 10, .subtree_end = 254,
@@ -14594,13 +14664,13 @@ const wj_interface wj_interfaces[] = {
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "HTMLCollection", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLCollection, .n_members = 3, .subtree_end = 395,
-      .index_get = wjr_HTMLCollection_index_get, .length_get = wjr_HTMLCollection_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_HTMLCollection_index_get, .length_get = wjr_HTMLCollection_length_hook, .named_get = wjr_HTMLCollection_named_get, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "HTMLFormControlsCollection", .parent = 392, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "HTMLFormControlsCollection", .parent = 392, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLFormControlsCollection, .n_members = 1, .subtree_end = 394,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "HTMLOptionsCollection", .parent = 392, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "HTMLOptionsCollection", .parent = 392, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLOptionsCollection, .n_members = 4, .subtree_end = 395,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

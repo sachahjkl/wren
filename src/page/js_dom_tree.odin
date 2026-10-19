@@ -138,7 +138,7 @@ Node_nodeName :: proc(c: ^Call, node: Api_Node) -> string {
 	case .Comment: return "#comment"
 	case .Document: return "#document"
 	case .Doctype: return n.name
-	case .Fragment: return "#document-fragment"
+	case .Fragment: return n.as_document ? "#document" : "#document-fragment"
 	}
 	return ""
 }
@@ -193,6 +193,7 @@ Node_set_nodeValue :: proc(c: ^Call, node: Api_Node, value: string) -> Api_Error
 Node_textContent :: proc(c: ^Call, node: Api_Node) -> (string, Api_Error) {
 	#partial switch node.data.kind {
 	case .Document, .Doctype: return "", .Not_Found
+	case .Fragment: if node.data.as_document { return "", .Not_Found }
 	}
 	return dom.text_content(c.page.doc, H(node.handle)), .None
 }
@@ -936,6 +937,57 @@ Document_scrollingElement :: proc(c: ^Call) -> u64 {
 		return u64(b)
 	}
 	return u64(jd_document_element(d))
+}
+
+DOMImplementation_createHTMLDocument :: proc(c: ^Call, title: Maybe(string)) -> (u64, Api_Error) {
+	d := jd_doc(c)
+	if d == nil { return 0, no_document(c) }
+	f := dom.create_fragment(d)
+	dom.get(d, f).as_document = true
+	dom.append_child(d, f, dom.create_doctype(d, "html", "", ""))
+	html := dom.create_element(d, "html")
+	head := dom.create_element(d, "head")
+	dom.append_child(d, f, html)
+	dom.append_child(d, html, head)
+	if t, ok := title.?; ok {
+		te := dom.create_element(d, "title")
+		dom.append_child(d, head, te)
+		if t != "" { dom.append_child(d, te, dom.create_text(d, t)) }
+	}
+	dom.append_child(d, html, dom.create_element(d, "body"))
+	return u64(f), .None
+}
+
+DOMImplementation_createDocumentType :: proc(c: ^Call, name: string, public_id: string, system_id: string) -> (u64, Api_Error) {
+	d := jd_doc(c)
+	if d == nil { return 0, no_document(c) }
+	if !valid_element_name(name) { return 0, fail(c, .Invalid_Character, "The qualified name provided is not a valid name.") }
+	return u64(dom.create_doctype(d, name, public_id, system_id)), .None
+}
+
+// The document element (0), head (1), body (2) or doctype (3) under a document node (the page's own, or one of
+// createHTMLDocument).
+Document_partOf :: proc(c: ^Call, document: Api_Node, which: i32) -> u64 {
+	d := c.page.doc
+	de := base.NIL_HANDLE
+	for ch := document.data.first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next {
+		k := dom.get(d, ch).kind
+		if which == 3 && k == .Doctype { return u64(ch) }
+		if k == .Element && de == base.NIL_HANDLE { de = ch }
+	}
+	switch which {
+	case 0: return u64(de)
+	case 1, 2:
+		n := jd_node(d, de)
+		if n == nil || n.name != "html" || n.ns != .HTML { return 0 }
+		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next {
+			cn := dom.get(d, ch)
+			if cn.kind != .Element || cn.ns != .HTML { continue }
+			if which == 1 && cn.name == "head" { return u64(ch) }
+			if which == 2 && (cn.name == "body" || cn.name == "frameset") { return u64(ch) }
+		}
+	}
+	return 0
 }
 
 Document_set_body :: proc(c: ^Call, body: Api_Element) -> Api_Error {

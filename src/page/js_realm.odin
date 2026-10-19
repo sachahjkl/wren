@@ -170,7 +170,7 @@ js_node_interface :: proc(p: ^Page, n: ^dom.Node) -> u32 {
 	case .Comment: return JS_IFACE_Comment
 	case .Document: return JS_IFACE_Document
 	case .Doctype: return JS_IFACE_DocumentType
-	case .Fragment: return JS_IFACE_DocumentFragment
+	case .Fragment: return n.as_document ? JS_IFACE_Document : JS_IFACE_DocumentFragment
 	case .Element:
 	}
 	// the namespace the parser or createElementNS gave the element

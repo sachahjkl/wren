@@ -164,6 +164,8 @@ typedef struct wr_UiEventData {
 } wr_UiEventData;
 
 /* module dom (partial): types */
+
+/* module dom (partial): types */
 // A rectangle (DOMRect).
 typedef struct wr_DomRect {
     double x;
@@ -547,6 +549,9 @@ WR_IMPORT("dom", "Collection_names") int32_t wr_Collection_names(uint64_t collec
 // node.querySelectorAll(selectors): the elements in tree order, 8 bytes (a handle, little endian) each. Syntax for
 // an invalid selector list.
 WR_IMPORT("dom", "ParentNode_querySelectorAllPacked") int32_t wr_ParentNode_querySelectorAllPacked(uint64_t node, const uint8_t *selectors, uint32_t selectors_len, uint8_t *_buf, uint32_t _cap);
+// form[name]: the first of the form's controls whose id or name is `name` (0 when none; the form's named
+// properties shadow its prototype's, [LegacyOverrideBuiltIns], so this answers for every property read).
+WR_IMPORT("dom", "HTMLFormElement_namedControl") uint64_t wr_HTMLFormElement_namedControl(uint64_t form, const uint8_t *name, uint32_t name_len);
 // node.querySelector(selectors)
 WR_IMPORT("dom", "ParentNode_querySelector") int32_t wr_ParentNode_querySelector(uint64_t node, const uint8_t *selectors, uint32_t selectors_len, uint64_t *_ret);
 // DOMTokenList over the content attribute `attr` of an element: its tokens (ordered set, ASCII whitespace split).
@@ -703,6 +708,18 @@ WR_IMPORT("dom", "HTMLAnchorElement_text") int32_t wr_HTMLAnchorElement_text(uin
 WR_IMPORT("dom", "HTMLAnchorElement_set_text") int32_t wr_HTMLAnchorElement_set_text(uint64_t element, const uint8_t *value, uint32_t value_len);
 // template.content
 WR_IMPORT("dom", "HTMLTemplateElement_content") uint64_t wr_HTMLTemplateElement_content(uint64_t element);
+// input.type = value
+WR_IMPORT("dom", "HTMLInputElement_set_type") int32_t wr_HTMLInputElement_set_type(uint64_t element, const uint8_t *value, uint32_t value_len);
+// input.maxLength = value: Index_Size for a negative value.
+WR_IMPORT("dom", "HTMLInputElement_set_maxLength") int32_t wr_HTMLInputElement_set_maxLength(uint64_t element, int32_t value);
+// input.minLength = value: Index_Size for a negative value.
+WR_IMPORT("dom", "HTMLInputElement_set_minLength") int32_t wr_HTMLInputElement_set_minLength(uint64_t element, int32_t value);
+// textarea.maxLength = value: Index_Size for a negative value.
+WR_IMPORT("dom", "HTMLTextAreaElement_set_maxLength") int32_t wr_HTMLTextAreaElement_set_maxLength(uint64_t element, int32_t value);
+// textarea.minLength = value: Index_Size for a negative value.
+WR_IMPORT("dom", "HTMLTextAreaElement_set_minLength") int32_t wr_HTMLTextAreaElement_set_minLength(uint64_t element, int32_t value);
+// option.text = value: its children replaced by one Text node.
+WR_IMPORT("dom", "HTMLOptionElement_set_text") int32_t wr_HTMLOptionElement_set_text(uint64_t element, const uint8_t *value, uint32_t value_len);
 // element.getBoundingClientRect(): the border box as drawn (transforms applied), in viewport coordinates.
 WR_IMPORT("dom", "Element_boundingRect") void wr_Element_boundingRect(uint64_t element, wr_DomRect *_ret);
 // element.getClientRects(): per box fragment, 32 bytes each (x, y, width, height as f64).
@@ -954,6 +971,14 @@ WR_IMPORT("dom", "Document_domain") int32_t wr_Document_domain(uint8_t *_buf, ui
 WR_IMPORT("dom", "Document_scrollingElement") uint64_t wr_Document_scrollingElement(void);
 // document.body = element: Hierarchy when not a <body> or <frameset>, or without a document element.
 WR_IMPORT("dom", "Document_set_body") int32_t wr_Document_set_body(uint64_t body);
+// document.implementation.createHTMLDocument(title): an inert document of its own (nothing loads or runs in it),
+// made of the page's nodes: a doctype, <html>, <head> (with <title> when given) and <body>.
+WR_IMPORT("dom", "DOMImplementation_createHTMLDocument") int32_t wr_DOMImplementation_createHTMLDocument(const uint8_t *title, uint32_t title_len, uint64_t *_ret);
+// document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.
+WR_IMPORT("dom", "DOMImplementation_createDocumentType") int32_t wr_DOMImplementation_createDocumentType(const uint8_t *name, uint32_t name_len, const uint8_t *public_id, uint32_t public_id_len, const uint8_t *system_id, uint32_t system_id_len, uint64_t *_ret);
+// A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,
+// 3 doctype. 0 when there is none.
+WR_IMPORT("dom", "Document_partOf") uint64_t wr_Document_partOf(uint64_t document, int32_t which);
 
 /* module encoding */
 // new TextEncoder().encode(text): a buffer of UTF-8. Quota past the page's memory limit.

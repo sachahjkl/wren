@@ -1,0 +1,16 @@
+/// The setters of form controls' IDL attributes that are content attributes underneath (src/page/js_dom_forms.odin):
+/// the controls' state stays the forms model's (module forms), which follows the attributes.
+partial module dom {
+  /// input.type = value
+  void HTMLInputElement_set_type(Element element, string value) raises;
+  /// input.maxLength = value: Index_Size for a negative value.
+  void HTMLInputElement_set_maxLength(Element element, i32 value) raises;
+  /// input.minLength = value: Index_Size for a negative value.
+  void HTMLInputElement_set_minLength(Element element, i32 value) raises;
+  /// textarea.maxLength = value: Index_Size for a negative value.
+  void HTMLTextAreaElement_set_maxLength(Element element, i32 value) raises;
+  /// textarea.minLength = value: Index_Size for a negative value.
+  void HTMLTextAreaElement_set_minLength(Element element, i32 value) raises;
+  /// option.text = value: its children replaced by one Text node.
+  void HTMLOptionElement_set_text(Element element, string value) raises;
+}

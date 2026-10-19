@@ -238,6 +238,30 @@ section("document members", () => {
   t("createCDATASection throws in HTML", (() => { try { document.createCDATASection("x"); return false; } catch (e) { return e.name === "NotSupportedError"; } })());
 });
 
+section("DOMImplementation", () => {
+  const impl = document.implementation;
+  t("implementation is [SameObject]", document.implementation === impl && impl instanceof DOMImplementation);
+  t("hasFeature", impl.hasFeature());
+  const doc = impl.createHTMLDocument("T");
+  t("createHTMLDocument makes a Document", doc instanceof Document && doc !== document && doc.nodeType === 9);
+  eq("its parts", [doc.documentElement.tagName, doc.head.tagName, doc.body.tagName, doc.doctype.name, doc.head.textContent].join(","), "HTML,HEAD,BODY,html,T");
+  // jQuery's support.createHTMLDocument test, and its parseHTML
+  const body = impl.createHTMLDocument("").body;
+  body.innerHTML = "<form></form><form></form>";
+  eq("innerHTML in another document", body.childNodes.length, 2);
+  eq("the page's body is untouched", document.body.querySelectorAll(":scope > form").length, 0);
+  const base = doc.createElement("base");
+  doc.head.appendChild(base);
+  const div = doc.createElement("div");
+  div.innerHTML = "<p>parsed</p>";
+  document.getElementById("root").appendChild(div.firstChild);
+  eq("nodes move from it into the page", document.getElementById("root").lastChild.textContent, "parsed");
+  document.getElementById("root").lastChild.remove();
+  const dt = impl.createDocumentType("svg", "-//W3C//DTD SVG 1.1//EN", "x.dtd");
+  eq("createDocumentType", dt.nodeType + "," + dt.name + "," + dt.publicId, "10,svg,-//W3C//DTD SVG 1.1//EN");
+  throws("createDocument", () => impl.createDocument(null, "x"), "NotSupportedError");
+});
+
 done();
 </script>
 </body></html>

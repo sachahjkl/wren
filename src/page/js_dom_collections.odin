@@ -439,7 +439,21 @@ Collection_namedItem :: proc(c: ^Call, collection: u64, name: string) -> u64 {
 		n := dom.get(d, h)
 		if n == nil || n.kind != .Element { continue }
 		if v, ok := attr_of(n, "id"); ok && v == name { return u64(h) }
-		if named_by_name(n) { if v, ok := attr_of(n, "name"); ok && v == name { return u64(h) } }
+		if named_by_name(n) || col.kind == .Form_Elements { if v, ok := attr_of(n, "name"); ok && v == name { return u64(h) } }
+	}
+	return 0
+}
+
+HTMLFormElement_namedControl :: proc(c: ^Call, form: Api_Element, name: string) -> u64 {
+	if name == "" || form.data.name != "form" { return 0 }
+	d := c.page.doc
+	col := Dom_Collection{kind = .Form_Elements}
+	root := H(form.handle)
+	for cur := dom.next_in_tree(d, root, root); cur != base.NIL_HANDLE; cur = dom.next_in_tree(d, cur, root) {
+		n := dom.get(d, cur)
+		if !collection_accepts(c.page, &col, cur, n) { continue }
+		if v, ok := attr_of(n, "id"); ok && v == name { return u64(cur) }
+		if v, ok := attr_of(n, "name"); ok && v == name { return u64(cur) }
 	}
 	return 0
 }
@@ -461,7 +475,7 @@ Collection_names :: proc(c: ^Call, collection: u64) -> string {
 		n := dom.get(d, h)
 		if n == nil || n.kind != .Element { continue }
 		if v, ok := attr_of(n, "id"); ok { add(&b, &seen, v) }
-		if named_by_name(n) { if v, ok := attr_of(n, "name"); ok { add(&b, &seen, v) } }
+		if named_by_name(n) || col.kind == .Form_Elements { if v, ok := attr_of(n, "name"); ok { add(&b, &seen, v) } }
 	}
 	return strings.to_string(b)
 }

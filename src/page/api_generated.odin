@@ -5556,6 +5556,33 @@ _t_dom_ParentNode_querySelectorAllPacked :: proc "c" (env: rawptr, caller: wasm.
 	return nil
 }
 
+// HTMLFormElement_namedControl :: proc(c: ^Call, form: Api_Element, name: string) -> u64
+@(private = "file")
+_t_dom_HTMLFormElement_namedControl :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLFormElement_namedControl", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.HTMLFormElement_namedControl: argument name is not valid UTF-8") }
+		return wasm.trap_new("dom.HTMLFormElement_namedControl: argument name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLFormElement_namedControl: argument form is not a live Element") }
+		return wasm.trap_new("dom.HTMLFormElement_namedControl: argument form is not a live Element")
+	}
+	_r := HTMLFormElement_namedControl(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // ParentNode_querySelector :: proc(c: ^Call, node: Api_Node, selectors: string) -> (u64, Api_Error)
 @(private = "file")
 _t_dom_ParentNode_querySelector :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -7936,6 +7963,150 @@ _t_events_UiEvent_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLInputElement_set_type :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HTMLInputElement_set_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLInputElement_set_type", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HTMLInputElement_set_type: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLInputElement_set_type: argument element is not a live Element")
+	}
+	_err := HTMLInputElement_set_type(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLInputElement_set_maxLength :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error
+@(private = "file")
+_t_dom_HTMLInputElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLInputElement_set_maxLength: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := HTMLInputElement_set_maxLength(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLInputElement_set_minLength :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error
+@(private = "file")
+_t_dom_HTMLInputElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLInputElement_set_minLength: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := HTMLInputElement_set_minLength(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTextAreaElement_set_maxLength :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error
+@(private = "file")
+_t_dom_HTMLTextAreaElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTextAreaElement_set_maxLength: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := HTMLTextAreaElement_set_maxLength(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTextAreaElement_set_minLength :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error
+@(private = "file")
+_t_dom_HTMLTextAreaElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTextAreaElement_set_minLength: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := HTMLTextAreaElement_set_minLength(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLOptionElement_set_text :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HTMLOptionElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLOptionElement_set_text", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HTMLOptionElement_set_text: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLOptionElement_set_text: argument element is not a live Element")
+	}
+	_err := HTMLOptionElement_set_text(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
 	return nil
 }
 
@@ -10653,6 +10824,96 @@ _t_dom_Document_set_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	return nil
 }
 
+// DOMImplementation_createHTMLDocument :: proc(c: ^Call, title: Maybe(string)) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_DOMImplementation_createHTMLDocument :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_absent0 := wasm.is_absent(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
+	if !_k0 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createHTMLDocument", "title") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.DOMImplementation_createHTMLDocument", "result pointer") }
+	_p0: Maybe(string)
+	if !_absent0 {
+		_v0 := string(_s0[:wasm.addr(&f, a[1])])
+		if !wasm.valid_utf8(_v0) {
+			return _fail_status(&c, a, .Type, "dom.DOMImplementation_createHTMLDocument: argument title is not valid UTF-8")
+		}
+		_p0 = _v0
+	}
+	_r, _err := DOMImplementation_createHTMLDocument(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DOMImplementation_createDocumentType :: proc(c: ^Call, name: string, public_id: string, system_id: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_DOMImplementation_createDocumentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocumentType", "name") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocumentType", "public_id") }
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocumentType", "system_id") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocumentType", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "dom.DOMImplementation_createDocumentType: argument name is not valid UTF-8")
+	}
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.DOMImplementation_createDocumentType: argument public_id is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.DOMImplementation_createDocumentType: argument system_id is not valid UTF-8")
+	}
+	_r, _err := DOMImplementation_createDocumentType(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_partOf :: proc(c: ^Call, document: Api_Node, which: i32) -> u64
+@(private = "file")
+_t_dom_Document_partOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Document_partOf: argument document is not a live Node") }
+		return wasm.trap_new("dom.Document_partOf: argument document is not a live Node")
+	}
+	_p1 := a[1].i32
+	_r := Document_partOf(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, init: Api_EventInit, engine_id: i64, time_stamp: f64) -> (bool, Api_Error)
 @(private = "file")
 _t_events_EventTarget_dispatchEngineEvent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -13175,6 +13436,7 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "Collection_namedItem", fn = _t_dom_Collection_namedItem, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Collection_names", fn = _t_dom_Collection_names, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "ParentNode_querySelectorAllPacked", fn = _t_dom_ParentNode_querySelectorAllPacked, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLFormElement_namedControl", fn = _t_dom_HTMLFormElement_namedControl, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "ParentNode_querySelector", fn = _t_dom_ParentNode_querySelector, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "TokenList_length", fn = _t_dom_TokenList_length, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "TokenList_item", fn = _t_dom_TokenList_item, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
@@ -13264,6 +13526,12 @@ api_imports := [?]wasm.Import{
 	{module = "events", name = "Event_uiData", fn = _t_events_Event_uiData, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "events", name = "UiEvent_key", fn = _t_events_UiEvent_key, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "UiEvent_code", fn = _t_events_UiEvent_code, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLInputElement_set_type", fn = _t_dom_HTMLInputElement_set_type, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLInputElement_set_maxLength", fn = _t_dom_HTMLInputElement_set_maxLength, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLInputElement_set_minLength", fn = _t_dom_HTMLInputElement_set_minLength, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTextAreaElement_set_maxLength", fn = _t_dom_HTMLTextAreaElement_set_maxLength, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTextAreaElement_set_minLength", fn = _t_dom_HTMLTextAreaElement_set_minLength, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLOptionElement_set_text", fn = _t_dom_HTMLOptionElement_set_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Element_boundingRect", fn = _t_dom_Element_boundingRect, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "Element_clientRectsPacked", fn = _t_dom_Element_clientRectsPacked, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Element_clientTop", fn = _t_dom_Element_clientTop, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
@@ -13394,6 +13662,9 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "Document_domain", fn = _t_dom_Document_domain, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_scrollingElement", fn = _t_dom_Document_scrollingElement, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_set_body", fn = _t_dom_Document_set_body, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "DOMImplementation_createHTMLDocument", fn = _t_dom_DOMImplementation_createHTMLDocument, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "DOMImplementation_createDocumentType", fn = _t_dom_DOMImplementation_createDocumentType, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_partOf", fn = _t_dom_Document_partOf, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "EventTarget_dispatchEngineEvent", fn = _t_events_EventTarget_dispatchEngineEvent, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I64, .F64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I64, .F64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_engineId", fn = _t_events_Event_engineId, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "Event_interface", fn = _t_events_Event_interface, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
