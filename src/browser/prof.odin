@@ -1,12 +1,16 @@
 #+vet !unused-imports
 package browser
 
-// Measurement tools, compiled in only with -define:PROFILE=true (build.bat profile -> build\browser_prof.exe). A normal build
-// contains none of this: every entry point below is an empty procedure when PROFILE is false.
+// Measurement of frames.
 //
-// What it records, at run time, when the environment variable WREN_PROF names an output prefix:
-//   * wall time of each phase of every frame (QueryPerformanceCounter), written as <prefix>.csv;
-//   * GPU time of the frame's draw commands (D3D11 timestamp queries, read back a few frames later);
+// Every build: the phase clock. prof_begin / prof_end around the steps of a frame add their wall time
+// (QueryPerformanceCounter) to the frame's phases, when someone reads them: the status bar's graph and the window
+// title (hud.odin), or the profiler. Off, each is one test of a flag.
+//
+// The profiler, compiled in only with -define:PROFILE=true (build.bat profile -> build\browser_prof.exe), records at run
+// time, when the environment variable WREN_PROF names an output prefix:
+//   * wall time of each phase of every frame, written as <prefix>.csv;
+//   * GPU time of the frame's draw commands (the renderer's timestamp queries, read back a few frames later);
 //   * with WREN_SAMPLE=1, a sampling profiler: a thread that every millisecond suspends the UI thread, reads its instruction
 //     pointer and attributes it to the phase being measured; symbols come from the PDB (our code) and from DLL exports
 //     (system, graphics driver). Written to <prefix>.txt together with the per-phase statistics and the process CPU time.
@@ -20,7 +24,7 @@ import "core:strings"
 import "core:sync"
 import "core:thread"
 import win "core:sys/windows"
-import "vendor:directx/d3d11"
+import "toolkit:render"
 import lay "wb:layout"
 
 foreign import dbghelp "system:dbghelp.lib"
@@ -33,14 +37,75 @@ foreign kernel32_prof {
 
 CONTEXT_CONTROL_AMD64 :: 0x100001
 
+// (Styles, Layout and Paint_Items run inside UI_Draw: the page is a custom box of the UI tree. Animation: the page's
+// animation frame callbacks.)
 Phase :: enum u8 {
-	None, Idle, Frame, Wait, Events, Loop, Input, Build_UI, UI_Draw, Styles, Layout, Paint_Items, Submit, Present,
+	None, Idle, Frame, Wait, Events, Loop, Input, Build_UI, UI_Draw, Styles, Layout, Paint_Items, Submit, Present, Animation,
+}
+
+// The phase clock of the frame being drawn. `on`: someone reads it this frame (hud_wants_clock, or the profiler).
+Phase_Clock :: struct {
+	on:      bool,
+	freq:    f64,
+	started: [Phase]i64,
+	acc:     [Phase]f64,   // ms of each phase so far in this frame
+	cur:     Phase,        // what runs now (the sampler attributes its samples to it)
+}
+
+phase_clock: Phase_Clock
+
+qpc :: proc "contextless" () -> i64 {
+	v: win.LARGE_INTEGER
+	win.QueryPerformanceCounter(&v)
+	return i64(v)
+}
+
+prof_begin :: proc "contextless" (p: Phase) {
+	if !phase_clock.on { return }
+	phase_clock.started[p] = qpc()
+	phase_clock.cur = p
+}
+
+prof_end :: proc "contextless" (p: Phase) {
+	if !phase_clock.on { return }
+	phase_clock.acc[p] += f64(qpc() - phase_clock.started[p]) * 1000 / phase_clock.freq
+	// the phase that was running underneath (if any) resumes
+	switch p {
+	case .Styles, .Layout, .Paint_Items: phase_clock.cur = .UI_Draw
+	case .Frame, .Idle: phase_clock.cur = .None
+	case .None, .Wait, .Events, .Loop, .Input, .Build_UI, .UI_Draw, .Submit, .Present, .Animation: phase_clock.cur = .Frame
+	}
+}
+
+prof_frame_begin :: proc() {
+	prof_mark(.First_Frame)
+	phase_clock.on = hud_wants_clock() || prof_on()
+	if !phase_clock.on { return }
+	if phase_clock.freq == 0 {
+		f: win.LARGE_INTEGER
+		win.QueryPerformanceFrequency(&f)
+		phase_clock.freq = f64(f)
+	}
+	phase_clock.acc = {}
+	prof_begin(.Frame)
+}
+
+// After the frame's present: the profiler records it, the status bar and the title take their sample.
+prof_frame_end :: proc(app: ^App, items, elements: int) {
+	prof_mark(.First_Present)
+	if items > 0 { prof_mark(.First_Page_Paint) }
+	if phase_clock.on {
+		prof_end(.Frame)
+		prof_record(app, items, elements)
+	}
+	hud_frame_end(app)
 }
 
 Frame_Rec :: struct {
 	t_ms:   f32,
 	dur:    [Phase]f32,
 	gpu_ms: f32,
+	gpu_index: int,   // the renderer's index of the timed submit of this frame (-1: none)
 	items, insts, batches, elements: i32,
 	// the layout pass of this frame, if any: its kind and its steps (lay.Layout.stats: box tree, layout, finishing,
 	// display list, spatial index), and the paragraphs laid out ahead on the layout threads / taken
@@ -76,21 +141,13 @@ foreign dbghelp {
 
 Sample :: struct { rip: u64, phase: Phase }
 
-GPU_SLOTS :: 6
-
 Prof :: struct {
 	on:        bool,
 	freq:      f64,
 	t0:        i64,
-	started:   [Phase]i64,
-	acc:       [Phase]f64,
 	frames:    [dynamic]Frame_Rec,
 	out:       string,
-	// GPU
-	q_disjoint, q_begin, q_end: [GPU_SLOTS]^d3d11.IQuery,
-	q_issued:  [GPU_SLOTS]bool,
-	q_frame:   [GPU_SLOTS]int,    // index in `frames` the slot belongs to
-	q_slot:    int,
+	gpu_next:  int,               // the renderer's timed-submit counter at the start of the frame
 	// sampling
 	sampling:  bool,
 	samples:   []Sample,
@@ -98,13 +155,14 @@ Prof :: struct {
 	stop:      bool,
 	target:    win.HANDLE,
 	sampler:   ^thread.Thread,
-	cur_phase: Phase,
 	cpu0_user, cpu0_kernel: u64,
 	wall0:     i64,
 	cur_lay:   Frame_Rec,         // the layout pass of the frame being measured (lay_* fields)
 }
 
 prof: Prof
+
+prof_on :: proc() -> bool { return prof.on }
 
 // QPC of each start-up moment (0: not reached). Recorded from the first line of main, before prof_init.
 startup_marks: [Startup_Mark]i64
@@ -115,16 +173,11 @@ prof_mark :: proc(m: Startup_Mark) {
 
 // The layout pass just run (after layout_document).
 prof_layout :: proc(l: ^lay.Layout) {
+	hud_layout(l)
 	if !prof.on { return }
 	prof.cur_lay.lay_pass = l.last_pass
 	prof.cur_lay.lay_steps = l.stats
 	prof.cur_lay.lay_pre = {i32(l.pre_counts[0]), i32(l.pre_counts[1])}
-}
-
-qpc :: proc() -> i64 {
-	v: win.LARGE_INTEGER
-	win.QueryPerformanceCounter(&v)
-	return i64(v)
 }
 
 filetime_u64 :: proc(ft: win.FILETIME) -> u64 { return u64(ft.dwHighDateTime) << 32 | u64(ft.dwLowDateTime) }
@@ -147,12 +200,6 @@ prof_init :: proc(app: ^App) {
 	prof.cpu0_user, prof.cpu0_kernel = process_cpu()
 	prof.wall0 = prof.t0
 
-	for i in 0 ..< GPU_SLOTS {
-		app.r.device->CreateQuery(&{Query = .TIMESTAMP_DISJOINT}, &prof.q_disjoint[i])
-		app.r.device->CreateQuery(&{Query = .TIMESTAMP}, &prof.q_begin[i])
-		app.r.device->CreateQuery(&{Query = .TIMESTAMP}, &prof.q_end[i])
-	}
-
 	if os.get_env("WREN_SAMPLE", context.temp_allocator) == "1" {
 		win.timeBeginPeriod(1)
 		h: win.HANDLE
@@ -172,87 +219,31 @@ sampler_proc :: proc(_: ^thread.Thread) {
 		ctx: win.CONTEXT
 		ctx.ContextFlags = CONTEXT_CONTROL_AMD64
 		if win.GetThreadContext(prof.target, &ctx) && prof.n_samples < len(prof.samples) {
-			prof.samples[prof.n_samples] = Sample{u64(ctx.Rip), prof.cur_phase}
+			prof.samples[prof.n_samples] = Sample{u64(ctx.Rip), phase_clock.cur}
 			prof.n_samples += 1
 		}
 		win.ResumeThread(prof.target)
 	}
 }
 
-prof_begin :: proc(p: Phase) {
+// One frame into the record (prof_frame_end). GPU times arrive a few frames late: each goes to the frame whose
+// timed submit it measured.
+prof_record :: proc(app: ^App, items, elements: int) {
 	if !prof.on { return }
-	prof.started[p] = qpc()
-	prof.cur_phase = p
-}
-
-prof_end :: proc(p: Phase) {
-	if !prof.on { return }
-	prof.acc[p] += f64(qpc() - prof.started[p]) * 1000 / prof.freq
-	// the phase that was running underneath (if any) resumes
-	switch p {
-	case .Styles, .Layout, .Paint_Items: prof.cur_phase = .UI_Draw
-	case .Frame, .Idle: prof.cur_phase = .None
-	case .None, .Wait, .Events, .Loop, .Input, .Build_UI, .UI_Draw, .Submit, .Present: prof.cur_phase = .Frame
-	}
-}
-
-prof_frame_begin :: proc() {
-	prof_mark(.First_Frame)
-	if !prof.on { return }
-	prof.acc = {}
-	prof.cur_lay = {}
-	prof_begin(.Frame)
-}
-
-prof_gpu_begin :: proc(app: ^App) {
-	if !prof.on { return }
-	s := prof.q_slot % GPU_SLOTS
-	if prof.q_issued[s] { return }   // the previous use of this slot has not been read back yet: skip this frame
-	app.r.ctx->Begin((^d3d11.IAsynchronous)(prof.q_disjoint[s]))
-	app.r.ctx->End((^d3d11.IAsynchronous)(prof.q_begin[s]))
-}
-
-prof_gpu_end :: proc(app: ^App) {
-	if !prof.on { return }
-	s := prof.q_slot % GPU_SLOTS
-	if prof.q_issued[s] { prof.q_slot += 1; return }
-	app.r.ctx->End((^d3d11.IAsynchronous)(prof.q_end[s]))
-	app.r.ctx->End((^d3d11.IAsynchronous)(prof.q_disjoint[s]))
-	prof.q_issued[s] = true
-	prof.q_frame[s] = len(prof.frames)
-	prof.q_slot += 1
-}
-
-prof_gpu_collect :: proc(app: ^App) {
-	if !prof.on { return }
-	for s in 0 ..< GPU_SLOTS {
-		if !prof.q_issued[s] { continue }
-		dj: d3d11.QUERY_DATA_TIMESTAMP_DISJOINT
-		if app.r.ctx->GetData((^d3d11.IAsynchronous)(prof.q_disjoint[s]), &dj, size_of(dj), {}) != 0 { continue }
-		t0, t1: u64
-		app.r.ctx->GetData((^d3d11.IAsynchronous)(prof.q_begin[s]), &t0, size_of(t0), {})
-		app.r.ctx->GetData((^d3d11.IAsynchronous)(prof.q_end[s]), &t1, size_of(t1), {})
-		prof.q_issued[s] = false
-		idx := prof.q_frame[s]
-		if !bool(dj.Disjoint) && dj.Frequency > 0 && idx < len(prof.frames) {
-			prof.frames[idx].gpu_ms = f32(f64(t1 - t0) * 1000 / f64(dj.Frequency))
-		}
-	}
-}
-
-prof_frame_end :: proc(app: ^App, items, elements: int) {
-	prof_mark(.First_Present)
-	if items > 0 { prof_mark(.First_Page_Paint) }
-	if !prof.on { return }
-	prof_end(.Frame)
-	rec := Frame_Rec{t_ms = f32(f64(qpc() - prof.t0) * 1000 / prof.freq)}
+	rec := Frame_Rec{t_ms = f32(f64(qpc() - prof.t0) * 1000 / prof.freq), gpu_index = -1}
 	rec.lay_pass, rec.lay_steps, rec.lay_pre = prof.cur_lay.lay_pass, prof.cur_lay.lay_steps, prof.cur_lay.lay_pre
 	prof.cur_lay = {}
-	for p in Phase { rec.dur[p] = f32(prof.acc[p]) }
+	for p in Phase { rec.dur[p] = f32(phase_clock.acc[p]) }
 	rec.items, rec.elements = i32(items), i32(elements)
 	rec.insts, rec.batches = i32(len(app.dc.insts)), i32(len(app.dc.batches))
+	if n := render.gpu_next_frame(&app.r); n > prof.gpu_next { rec.gpu_index = n - 1 }
+	prof.gpu_next = render.gpu_next_frame(&app.r)
 	append(&prof.frames, rec)
-	prof_gpu_collect(app)
+	if ms, index, ok := render.gpu_result(&app.r); ok {
+		for k := len(prof.frames) - 1; k >= max(0, len(prof.frames) - 16); k -= 1 {
+			if prof.frames[k].gpu_index == index { prof.frames[k].gpu_ms = ms; break }
+		}
+	}
 }
 
 ////////////////////////////////
@@ -463,13 +454,9 @@ report_samples :: proc(sb: ^strings.Builder) {
 
 prof_init :: proc(app: ^App) {}
 prof_mark :: proc(m: Startup_Mark) {}
-prof_layout :: proc(l: ^lay.Layout) {}
-prof_begin :: proc(p: Phase) {}
-prof_end :: proc(p: Phase) {}
-prof_frame_begin :: proc() {}
-prof_frame_end :: proc(app: ^App, items, elements: int) {}
-prof_gpu_begin :: proc(app: ^App) {}
-prof_gpu_end :: proc(app: ^App) {}
+prof_layout :: proc(l: ^lay.Layout) { hud_layout(l) }
+prof_record :: proc(app: ^App, items, elements: int) {}
+prof_on :: proc() -> bool { return false }
 prof_report :: proc() {}
 
 }

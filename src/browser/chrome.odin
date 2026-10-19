@@ -442,13 +442,18 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		if ui.menu_item("Save page as...", "Ctrl+S", enabled = web && t.page != nil).clicked { save_page(app, t) }
 		if ui.menu_item("View page source", "Ctrl+U", enabled = web && !strings.has_prefix(t.url, VIEW_SOURCE)).clicked { view_source(app, t) }
 		ui.menu_separator()
-		if ui.menu_item("Show console", checked = app.show_console).clicked { app.show_console = !app.show_console }
+		if ui.menu_submenu("View###view_sub") {
+			if ui.menu_item("Status bar", "Ctrl+B", checked = hud.cfg.bar_visible).clicked { toggle_status_bar(app) }
+			if ui.menu_item("Frame statistics", "Ctrl+Shift+B", checked = hud.panel_open).clicked { toggle_frame_stats(app) }
+			if ui.menu_item("Statistics in the title", checked = hud.cfg.title_stats).clicked { set_pref_bool(app, "browser.title.stats", !hud.cfg.title_stats) }
+			if ui.menu_item("Console", checked = app.show_console).clicked { app.show_console = !app.show_console }
+		}
 		if ui.menu_item("Settings", icon = GLYPH_GEAR).clicked && t != nil { navigate(app, t, "about:config") }
 		ui.menu_separator()
 		ui.next({width = ui.px(em * 14), height = ui.px(ui.dense(em * 1.8))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))
-			if ui.tags("weak") { ui.label(fmt.aprintf("%s %s###about", APP_NAME, APP_VERSION, allocator = ui.frame_allocator())) }
+			if ui.tags("weak") { ui.label(fmt.aprintf("%s %s (%s)###about", APP_NAME, APP_VERSION, app_commit(), allocator = ui.frame_allocator())) }
 		}
 	}
 }
@@ -484,9 +489,12 @@ chrome_shortcuts :: proc(app: ^App) {
 	case ui.key_press(.Equal, ctrl), ui.key_press(.Num_Add, ctrl), ui.key_press(.Equal, cs): zoom_step(app, t, 1)
 	case ui.key_press(.Minus, ctrl), ui.key_press(.Num_Subtract, ctrl): zoom_step(app, t, -1)
 	case ui.key_press(.N0, ctrl): zoom_set(app, t, 1)
+	case ui.key_press(.B, ctrl): toggle_status_bar(app)
+	case ui.key_press(.B, cs): toggle_frame_stats(app)
 	case t != nil && t.load != nil && t.load.task != base.NIL_HANDLE && ui.focus_key() == 0 && ui.key_press(.Escape):
 		// stops a load in progress (the document's request, and the modules still downloading)
 		stop_loading(app, t)
+	case hud.panel_open && ui.focus_key() == 0 && ui.key_press(.Escape): hud.panel_open = false
 	case ui.key_press(.Menu), ui.key_press(.F10, {.Shift}):
 		// the menu of what has the keyboard: a tab of the strip, else the page (the address bar handles its own)
 		name := ui.focused_name()

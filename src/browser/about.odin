@@ -2,14 +2,55 @@ package browser
 
 import "core:fmt"
 import "core:strings"
+import "toolkit:render"
 import "toolkit:ui"
 import "wb:base"
 import "wb:page"
 
 // Identity of the program. One place, so a rename touches nothing else.
 APP_NAME    :: "Wren"
-APP_VERSION :: "0.1"
+APP_VERSION :: "0.1.0"
 APP_TAGLINE :: "A small browser that runs WebAssembly, and nothing else."
+
+// The sources the program was built from, injected by build.bat (-define): the short commit hash, "+" when the tree
+// had uncommitted changes, and the commit's date. "dev" / "" when built without git (or by `odin test`).
+@(private = "file") COMMIT_DEFINE :: #config(WREN_COMMIT, "dev")
+APP_COMMIT_DATE :: #config(WREN_COMMIT_DATE, "")
+
+app_commit :: proc() -> string {
+	s := COMMIT_DEFINE
+	return len(s) > 1 && s[0] == 'g' ? s[1:] : s   // build.bat writes g<hash>
+}
+
+Build_Kind :: enum u8 { Release, Debug, Profile }
+
+// How this executable was built: profile (build.bat profile: optimized, with the profiler), debug (build.bat debug:
+// debug information, no optimization), release.
+BUILD_KIND :: Build_Kind.Profile when PROFILE else (Build_Kind.Debug when ODIN_DEBUG else Build_Kind.Release)
+
+build_kind_name :: proc(k: Build_Kind) -> string {
+	switch k {
+	case .Release: return "release"
+	case .Debug:   return "debug"
+	case .Profile: return "profile"
+	}
+	return ""
+}
+
+// "release", "profile", "debug", with the measurement options compiled in ("+gpu-timing": toolkit -define:GPU_TIMING;
+// GPU times are measured without it too, at run time: browser.status_bar.gpu_timing).
+describe_build :: proc(k: Build_Kind, gpu_timing_define: bool) -> string {
+	s := build_kind_name(k)
+	return gpu_timing_define ? fmt.tprintf("%s +gpu-timing", s) : s
+}
+
+build_description :: proc() -> string { return describe_build(BUILD_KIND, render.GPU_TIMING) }
+
+// "0.1.0 (1a2b3c4, 2026-10-19)", or "0.1.0 (dev)".
+version_long :: proc() -> string {
+	if APP_COMMIT_DATE != "" { return fmt.tprintf("%s (%s, %s)", APP_VERSION, app_commit(), APP_COMMIT_DATE) }
+	return fmt.tprintf("%s (%s)", APP_VERSION, app_commit())
+}
 
 HOME_URL :: "about:home"
 

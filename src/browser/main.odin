@@ -565,6 +565,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	prof_begin(.Styles)
 	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
 	prof_end(.Styles)
+	hud_styles(t.page, styled)
 	first := !t.page.render.painted
 	if first {
 		// render-blocking stylesheets and fonts first (page/render_blocking.odin): meanwhile the old frame, or the canvas
@@ -724,7 +725,7 @@ build_ui :: proc(app: ^App) {
 				pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
 				page_area_focus(app, t, pb)
 			}
-			// console strip + status
+			// console strip + status bar (status_bar.odin)
 			if t != nil {
 				lines := app.show_console ? min(len(t.console), 3) : 0
 				if lines > 0 {
@@ -736,17 +737,8 @@ build_ui :: proc(app: ^App) {
 						}
 					}
 				}
-				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.8))})
-				if ui.row(.Center) {
-					ui.spacer(ui.px(em * 0.5))
-					if ui.tags("weak") {
-						origin := ""
-						if t.page != nil { origin = t.page.env.location.scheme == "about" ? "built-in page" : url.origin_serialize(t.page.env.origin, context.temp_allocator) }
-						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.6))})
-						ui.label(fmt.aprintf("%s   |   origin %s   |   %d request(s)   |   %d cookie(s)   |   %d DOM node(s)###status", t.status, origin, fetch.in_flight(&app.loader), cookies.count(&app.profile.jar), t.page != nil ? t.page.doc.nodes.count : 0, allocator = ui.frame_allocator()))
-					}
-				}
 			}
+			status_bar_build(app, t)
 		}
 	}
 	context_menus_build(app)
@@ -786,6 +778,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		// form controls first: keyboard for the focused field, the open drop-down list (forms_shell.odin)
 		if forms_route_event(app, t, ev, index) { continue }
 		if t.page == nil { return }
+		if (ev.kind == .Mouse_Press || ev.kind == .Scroll) && hud_captures(ev.pos) { continue }   // the frame statistics panel
 		#partial switch ev.kind {
 		case .Mouse_Move:
 			last_move, have_move = ev, true   // only the last position of the frame matters: hit test once, after the loop
@@ -922,7 +915,9 @@ frame :: proc(app: ^App) {
 	shown := app.win.size.x > 0 && app.win.size.y > 0
 	for tab, i in app.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == app.current && tab.kind == .Web) } }
 	if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
+		prof_begin(.Animation)
 		page.run_animation_frames(t.page, f64(host.now_ns(&app.loop)) / 1e6)
+		prof_end(.Animation)
 		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 1) }
 	}
 
@@ -955,14 +950,12 @@ frame :: proc(app: ^App) {
 
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
-	prof_gpu_begin(app)   // after the clear: it waits for the back buffer (vsync), which is not drawing time
 	prof_begin(.UI_Draw)
 	ui.draw_tree(&app.ui_state, &app.dc)
 	prof_end(.UI_Draw)
 	prof_begin(.Submit)
-	draw.end_frame(&app.dc)
+	draw.end_frame(&app.dc)   // GPU time: the renderer's timestamp queries around its submit (hud.odin, prof.odin)
 	prof_end(.Submit)
-	prof_gpu_end(app)
 	prof_begin(.Present)
 	render.frame_end(&app.r)
 	app.presented = true
@@ -1065,6 +1058,7 @@ main :: proc() {
 	page_render.bare = forms_bare_control
 
 	prof_init(app)
+	hud_init(app)
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
 	app.win.user = app
@@ -1097,6 +1091,7 @@ main :: proc() {
 	net.client_destroy(&app.client)
 	fetch.profile_destroy(&app.profile)
 	appearance_destroy()
+	hud_destroy(app)
 	host.loop_destroy(&app.loop)
 	wasm.runtime_destroy()
 	measure_destroy(&app.measure)

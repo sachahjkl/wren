@@ -17,6 +17,18 @@ if not exist build mkdir build
 :: the web API from its description (api\*.widl): host bindings, guest SDK, docs, conformance tests (only what changed)
 odin run src/tools/bindgen -collection:wb=src -vet -out:build/bindgen.exe || exit /b 1
 set "COLL=-collection:toolkit=ext/gui_toolkit -collection:wb=src -resource:src/browser/wren.rc"
+:: the version of the sources (about.odin: APP_COMMIT, APP_COMMIT_DATE): short commit hash ("+" when the tree has
+:: uncommitted changes) and its date; "dev" without git. The hash goes in as g<hash> (as git describe writes it): Odin
+:: would read an all-digit value as a number.
+set "WREN_COMMIT=dev"
+set "WREN_DATE="
+for /f "delims=" %%i in ('git rev-parse --short HEAD 2^>nul') do set "WREN_COMMIT=g%%i"
+for /f "delims=" %%i in ('git log -1 --format^=%%cs 2^>nul') do set "WREN_DATE=%%i"
+if "%WREN_COMMIT%"=="dev" goto have_version
+git diff --quiet HEAD -- 2>nul || set "WREN_COMMIT=%WREN_COMMIT%+"
+:have_version
+set "COLL=%COLL% -define:WREN_COMMIT=%WREN_COMMIT%"
+if defined WREN_DATE set "COLL=%COLL% -define:WREN_COMMIT_DATE=%WREN_DATE%"
 if "%1"=="debug" goto debug
 if "%1"=="profile" goto profile
 odin build src/browser -out:build/browser.exe %COLL% -o:speed -vet -subsystem:windows

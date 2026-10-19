@@ -406,11 +406,13 @@ wt_enter :: proc(inst: ^Instance) -> bool {
 		if sync.atomic_add(&wt.running, 1) == 0 { sync.futex_signal(&wt.running) }
 	}
 	inst.depth += 1
+	guest_clock_enter()
 	return true
 }
 
 @(private)
 wt_leave :: proc(inst: ^Instance) {
+	guest_clock_leave()
 	inst.depth -= 1
 	if inst.depth == 0 {
 		sync.atomic_sub(&wt.running, 1)
