@@ -961,6 +961,11 @@ main :: proc() {
 	fetch.loader_init(&app.loader, &app.loop, &app.client, &app.blocking, &app.profile)
 	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "")
 	app.page_settings = page.settings_from_prefs(&app.prefs)
+	{
+		rs := wasm.runtime_settings_from_prefs(&app.prefs, app.profile_dir)
+		wasm.configure(rs)
+		wasm.runtime_settings_destroy(&rs)
+	}
 	if !page.register_imports() { fmt.eprintln("wasm runtime init failed"); return }
 	app.process = base.scope_make("process")
 	app.config_view.rows = make(map[string]^Row_State)
