@@ -19,8 +19,6 @@ Rx :: struct {
 	eng: ^Engine,
 	st:  ^Styled,
 	partial, full: int,
-	prev: ^Styled,       // debugging: the full pass of the previous step
-	prev_rec: ^Computed,
 }
 
 @(private = "file")
@@ -53,7 +51,6 @@ by_id :: proc(f: ^Rx, id: string) -> base.Handle { return dom.find_by_id(f.doc, 
 // Restyles after mutations; checks the result against a full pass. Returns whether the restyle was partial.
 @(private = "file")
 rx_step :: proc(t: ^testing.T, f: ^Rx, what: string, loc := #caller_location) -> bool {
-	when RESTYLE_DEBUG { f.prev_rec = style_of(f.st, base.Handle(4294967497)) }
 	_, ok := restyle_dom(f.eng, f.doc, f.st)
 	if !ok {
 		f.full += 1
@@ -65,48 +62,6 @@ rx_step :: proc(t: ^testing.T, f: ^Rx, what: string, loc := #caller_location) ->
 		f.partial += 1
 	}
 	diff := verify_styles(f.eng, f.doc, f.st, context.temp_allocator)
-	when RESTYLE_DEBUG {
-		if diff != "" {
-			full := compute_styles(f.eng, f.doc, {})
-			defer styled_destroy(full)
-			stack := make([dynamic]base.Handle, context.temp_allocator)
-			append(&stack, f.doc.root)
-			for len(stack) > 0 {
-				h := pop(&stack)
-				n := dom.get(f.doc, h)
-				if n.kind == .Element && !computed_equal(base_style_of(f.st, h), style_of(full, h)) {
-					for cur := h; cur != base.NIL_HANDLE && dom.get(f.doc, cur).kind == .Element; cur = dom.get(f.doc, cur).parent {
-						cn := dom.get(f.doc, cur)
-						cl, _ := attr(cn, "class")
-						a, b := base_style_of(f.st, cur), style_of(full, cur)
-						log.infof("  <%s class=%q> %v: display %v / %v, after %v/%v", cn.name, cl, cur, a.display, b.display, a.after != nil, b.after != nil)
-					}
-					p := dom.get(f.doc, h).parent
-					for ch := dom.get(f.doc, p).first_child; ch != base.NIL_HANDLE; ch = dom.get(f.doc, ch).next {
-						cn := dom.get(f.doc, ch)
-						if cn.kind != .Element { log.infof("    #text %q", cn.text); continue }
-						cl, _ := attr(cn, "class")
-						a, b := base_style_of(f.st, ch), style_of(full, ch)
-						log.infof("    sibling <%s class=%q> %v: display %v / %v reset %v inc %v", cn.name, cl, ch, a.display, b.display, a.counter_reset, a.counter_increment)
-					}
-					if f.prev != nil {
-						u := base.Handle(8589934756)
-						for cur := u; cur != base.NIL_HANDLE && dom.get(f.doc, cur).kind == .Element; cur = dom.get(f.doc, cur).parent {
-							cn := dom.get(f.doc, cur)
-							cl, _ := attr(cn, "class")
-							a, b := style_of(f.prev, cur), style_of(full, cur)
-							log.infof("    ul chain <%s class=%q> %v: display before %v now %v, reset %v", cn.name, cl, cur, a != nil ? a.display : Display.None, b.display, b.counter_reset)
-						}
-						if pa := style_of(f.prev, h); pa != nil && pa.after != nil && len(pa.after.content.items) > 0 { log.infof("    before this step: %q (record %p, now %p)", pa.after.content.items[0].text, f.prev_rec, base_style_of(f.st, h)) }
-					}
-					break
-				}
-				for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(f.doc, ch).prev { append(&stack, ch) }
-			}
-		}
-		if f.prev != nil { styled_destroy(f.prev) }
-		f.prev = compute_styles(f.eng, f.doc, {})
-	}
 	testing.expectf(t, diff == "", "%s: %s (%v)", what, diff, f.eng.last_restyle, loc = loc)
 	return ok
 }
@@ -404,6 +359,14 @@ restyle_dom_journal_and_records :: proc(t: ^testing.T) {
 	// records of elements not concerned stay; the pass keeps its identity
 	testing.expect(t, style_of(f.st, b) == rec_b)
 	testing.expect_value(t, f.st.pass_id, pass)
+	// restyled to the same values: the record stays and nothing is left behind
+	used := f.st.arena.total_used
+	s2 := f.st.serial
+	dom.set_attribute(f.doc, b, "style", "")
+	expect_partial(t, f, "no change", 1)
+	testing.expect(t, style_of(f.st, b) == rec_b)
+	testing.expect_value(t, f.st.serial, s2)
+	testing.expect_value(t, f.st.arena.total_used, used)
 }
 
 // A class on <body> that every section's descendants depend on: the forced subtree is shared out between threads, with
@@ -453,8 +416,6 @@ section > :first-child + * { line-height: 2 } .a:nth-child(3) ~ li { color: purp
 
 @(private = "file")
 RESTYLE_SEED :: #config(RESTYLE_SEED, 20261019)
-@(private = "file")
-RESTYLE_DEBUG :: #config(RESTYLE_DEBUG, false)
 
 @(private = "file")
 TAGS := [?]string{"div", "p", "span", "section", "li", "ul", "ol", "h3", "b"}

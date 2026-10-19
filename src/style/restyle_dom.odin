@@ -66,6 +66,7 @@ Walker :: struct {
 	s:        ^Styled,
 	doc:      ^dom.Document,
 	p:        ^Pass,
+	arena:    ^virtual.Arena,   // where p allocates
 	marks:    ^map[base.Handle]u8,
 	// main thread: changes are applied at once; a task (parallel) records them in `results`
 	task:     bool,
@@ -567,6 +568,18 @@ settle :: proc(w: ^Walker, h: base.Handle, c: ^Computed) -> (cur: ^Computed, cha
 	return c, true, old_base
 }
 
+// Computes the style of one element and settles it. A style equal to the one in force is dropped with all it
+// allocated (nothing else points into that memory): restyles that change nothing leave nothing behind.
+@(private = "file")
+restyle_one :: proc(w: ^Walker, f: ^Frame, n: ^dom.Node) -> (cur: ^Computed, changed: bool, old_base: ^Computed) {
+	w.marked += 1
+	tmp := virtual.arena_temp_begin(w.arena)
+	c := compute_element(w.p, f.h, n, f.parent, &f.bloom)
+	cur, changed, old_base = settle(w, f.h, c)
+	if changed { virtual.arena_temp_ignore(tmp) } else { virtual.arena_temp_end(tmp) }
+	return
+}
+
 @(private = "file")
 walk :: proc(w: ^Walker, start: []Frame) {
 	doc := w.doc
@@ -587,9 +600,7 @@ walk :: proc(w: ^Walker, start: []Frame) {
 				append(&w.deferred, Frame{h = f.h, parent = f.parent, bloom = f.bloom, force = true, sub = true})
 				continue
 			}
-			w.marked += 1
-			c := compute_element(w.p, f.h, n, f.parent, &f.bloom)
-			nc, changed, old := settle(w, f.h, c)
+			nc, changed, old := restyle_one(w, &f, n)
 			if changed {
 				if old == nil || !inherited_equal(old, nc) { inh_changed = true } else { other_changed = true }
 				if f.parent == nil && nc.font_size != s.root_font_size { w.root_font = true }
@@ -642,9 +653,7 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 		for &f in frontier {
 			n := dom.get(doc, f.h)
 			if n == nil || n.kind != .Element { continue }
-			w.marked += 1
-			c := compute_element(w.p, f.h, n, f.parent, &f.bloom)
-			nc, _, _ := settle(w, f.h, c)
+			nc, _, _ := restyle_one(w, &f, n)
 			child_bloom := f.bloom
 			bloom_add_element(&child_bloom, n)
 			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next {
@@ -670,6 +679,7 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 		_ = virtual.arena_init_growing(t.arena)
 		t.w.p = pass_make(t.w.e, t.w.s, t.w.doc, t.w.s.state)
 		t.w.p.alloc = virtual.arena_allocator(t.arena)
+		t.w.arena = t.arena
 		t.w.results = make([dynamic]Result)
 		walk(&t.w, t.frames)
 	}, &job)
@@ -738,6 +748,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 
 	w := Walker{e = e, s = s, doc = doc, marks = &m.marks}
 	w.p = pass_make(e, s, doc, s.state)
+	w.arena = &s.arena
 	defer pass_destroy(w.p)
 	w.defer_subtrees = pool != nil && host.thread_pool_size(pool) > 1 && work >= e.settings.inc_parallel_min
 	if len(m.marks) > 0 {
