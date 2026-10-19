@@ -530,6 +530,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	app := the_app
 	app.page_rect = b.rect
 	t := current_tab(app)
+	for other in app.tabs { if other != t { hold_release(other) } }   // a frame held in a tab not shown is of no use
 	if t == nil || t.kind != .Web {
 		draw.rect(dc, b.rect, to_draw(expected_canvas(app)))
 		return
