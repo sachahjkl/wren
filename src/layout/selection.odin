@@ -251,8 +251,42 @@ item_prefix_width :: proc(l: ^Layout, it: ^Display_Item, n: int, api: Text_Api) 
 	return w
 }
 
+// How a text item is shaped and spaced when painted.
+item_run :: proc(l: ^Layout, it: ^Display_Item) -> Text_Run {
+	if it.cs == nil { return {rtl = it.level & 1 == 1} }
+	return {rtl = it.level & 1 == 1, letter_spacing = it.cs.letter_spacing * l.scale, word_spacing = it.cs.word_spacing * l.scale, justify = it.extra}
+}
+
+// The x of the caret before byte `n` of a text item, from the item's left edge: through the shaped clusters when the
+// text interface has them (Text_Api.caret_x), else the prefix width (mirrored in a right-to-left item). The span of a
+// byte range [a, b) is between item_caret_x(a) and item_caret_x(b), in either order.
+item_caret_x :: proc(l: ^Layout, it: ^Display_Item, n: int, api: Text_Api) -> f32 {
+	fi := item_font(l, it)
+	if fi == nil || it.cs == nil { return 0 }
+	k := clamp(n, 0, len(it.text))
+	if api.caret_x != nil { return api.caret_x(api.user, fi.font, fi.size, it.text, item_run(l, it), k) }
+	w := item_prefix_width(l, it, k, api)
+	if it.level & 1 == 1 { return item_prefix_width(l, it, len(it.text), api) - w }
+	return w
+}
+
 // The character boundary of a text item nearest to `x` (relative to the item's left edge).
 item_offset_at :: proc(l: ^Layout, it: ^Display_Item, x: f32, api: Text_Api) -> int {
+	if it.text == "" { return 0 }
+	if api.hit_index != nil {
+		if fi := item_font(l, it); fi != nil && it.cs != nil {
+			return clamp(api.hit_index(api.user, fi.font, fi.size, it.text, item_run(l, it), x), 0, len(it.text))
+		}
+	}
+	if it.level & 1 == 1 {
+		// right to left without clusters: the prefix widths measured from the right edge
+		return item_offset_from_start(l, it, item_prefix_width(l, it, len(it.text), api) - x, api)
+	}
+	return item_offset_from_start(l, it, x, api)
+}
+
+@(private)
+item_offset_from_start :: proc(l: ^Layout, it: ^Display_Item, x: f32, api: Text_Api) -> int {
 	if x <= 0 || it.text == "" { return 0 }
 	// boundaries, then a binary search on their (monotonic) widths
 	bounds := make([dynamic]int, 0, len(it.text) + 1, context.temp_allocator)

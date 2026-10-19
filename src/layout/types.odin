@@ -41,13 +41,55 @@ Text_Api :: struct {
 	user:    rawptr,
 	// The face for a family list (as computed: generic names lower case), a weight (100..900) and slant.
 	font:    proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font,
-	// Advance width of one line of text at `size` device px.
+	// Advance width of one line of text at `size` device px: one directional run, shaped as a whole.
 	width:   proc(user: rawptr, f: Font, size: f32, text: string) -> f32,
 	metrics: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics,
-	// `width` may be called from several threads at once (`font` and `metrics` never are): lines of independent
-	// paragraphs are then built on the layout threads (parallel.odin)
+	// Optional. The font for everything the style says of it (stretch, oblique, OpenType features, variations); when
+	// nil, `font` is used with the family list, weight and slant.
+	font_request: proc(user: rawptr, req: ^Font_Request) -> Font,
+	// Optional. Resolved bidi embedding level of each byte of `text`, one paragraph (UAX #9) in a left-to-right or
+	// right-to-left base direction. Without it every paragraph is laid out left to right.
+	bidi:    proc(user: rawptr, text: string, rtl: bool, levels: []u8),
+	// Optional. The first line break opportunity inside `text` (a byte index > 0), or -1: for scripts written without
+	// spaces between words (Thai, Lao, Khmer, Myanmar), whose words need a dictionary (UAX #14).
+	line_break: proc(user: rawptr, text: string) -> int,
+	// Optional. `width` of text drawn with letter spacing (added after each character), which turns optional ligatures
+	// off; without it, `width` plus the spacing of each character.
+	width_spaced: proc(user: rawptr, f: Font, size: f32, text: string, letter_spacing: f32) -> f32,
+	// Optional (selection, find, carets: interaction code on the UI thread). The x of the caret before byte `index` of
+	// a text fragment shaped as painted, from its left edge, and the byte index whose caret is nearest to `x`: through
+	// the shaped clusters (a ligature or a grapheme of several characters is one cluster), right to left when
+	// `run.rtl`. Without them, prefix widths (mirrored in right-to-left fragments).
+	caret_x:   proc(user: rawptr, f: Font, size: f32, text: string, run: Text_Run, index: int) -> f32,
+	hit_index: proc(user: rawptr, f: Font, size: f32, text: string, run: Text_Run, x: f32) -> int,
+	// `width`, `bidi` and `line_break` may be called from several threads at once (`font` and `metrics` never are):
+	// lines of independent paragraphs are then built on the layout threads (parallel.odin)
 	concurrent: bool,
 }
+
+// How a text fragment is shaped and spaced when painted (Text_Api.caret_x / hit_index): one directional run, letter
+// spacing after each character, word spacing after each space, `justify` after each space (text-align: justify).
+Text_Run :: struct {
+	rtl:            bool,
+	letter_spacing: f32,
+	word_spacing:   f32,
+	justify:        f32,
+}
+
+// What the style says of a font (CSS Fonts 4), for Text_Api.font_request.
+Font_Request :: struct {
+	families:   []string,
+	weight:     u16,
+	italic:     bool,              // style != Normal
+	style:      style.Font_Style,
+	stretch:    f32,               // percentage
+	features:   []Font_Feature,    // OpenType features in order (later settings of a tag win): font-variant-*,
+	                               // font-kerning, then font-feature-settings
+	variations: []Font_Variation,  // font-variation-settings
+}
+
+Font_Feature :: struct { tag: [4]u8, value: u32 }
+Font_Variation :: struct { tag: [4]u8, value: f32 }
 
 // Natural size, in CSS px, of the content of a replaced element (a decoded image...). ok = false: not known (yet).
 // `ratio` (optional): the natural ratio (width / height) of content that has one but no natural size (an SVG with only
@@ -202,10 +244,15 @@ Font_Info :: struct {
 	ascent, descent, x_height: f32,
 	line_h:   f32,                  // used line-height
 	space:    f32,                  // width of U+0020
-	// what it was made from, to make it again when the faces change (families: in the layout's arena)
+	// what it was made from, to make it again when the faces change (families, features, variations: in the layout's
+	// arena)
 	families: []string,
 	weight:   u16,
 	italic:   bool,
+	style:    style.Font_Style,
+	stretch:  f32,
+	features: []Font_Feature,
+	variations: []Font_Variation,
 }
 
 Line :: struct {
@@ -220,6 +267,7 @@ Frag_Flag :: enum u8 { Left_Edge, Right_Edge }
 Frag :: struct {
 	kind:     Frag_Kind,
 	flags:    bit_set[Frag_Flag; u8],
+	level:    u8,                   // Text: bidi embedding level (odd: right to left; its text is one directional run)
 	item:     i32,                  // Text: the inline item
 	box:      i32,                  // Box: the inline box; Atomic: the atomic box; Text: the enclosing inline box or NONE
 	fi:       i32,
@@ -251,6 +299,7 @@ Item_Flags :: bit_set[Item_Flag; u8]
 Display_Item :: struct {
 	kind:     Item_Kind,
 	flags:    Item_Flags,
+	level:    u8,                   // Text: bidi embedding level of its text (odd: right to left)
 	space, clip, group: i32,
 	box:      i32,
 	node:     base.Handle,          // hit-test target: an element

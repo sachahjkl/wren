@@ -19,7 +19,6 @@ import "core:math"
 import "core:mem"
 import "core:strings"
 import "core:time"
-import "core:unicode/utf8"
 import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:font"
@@ -433,8 +432,9 @@ colors_for :: proc(el: base.Handle) -> (bg, fg: draw.Color, keep: bool) {
 
 @(private = "file")
 span_rect :: proc(l: ^Layout, it: ^lay.Display_Item, r: draw.Rect, a, b: int) -> draw.Rect {
-	x0 := lay.item_prefix_width(l, it, a, spaint.api)
-	x1 := lay.item_prefix_width(l, it, b, spaint.api)
+	// caret positions through the shaped clusters: a right-to-left item has the start of the range on the right
+	ca, cb := lay.item_caret_x(l, it, a, spaint.api), lay.item_caret_x(l, it, b, spaint.api)
+	x0, x1 := min(ca, cb), max(ca, cb)
 	return {{math.floor(r.min.x + x0), r.min.y}, {math.ceil(r.min.x + x1), r.max.y}}
 }
 
@@ -453,7 +453,10 @@ selection_paint_under :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_It
 	// line's end is highlighted too, as browsers do
 	if b == len(it.text) && !strings.has_suffix(it.text, " ") {
 		if node, _, hi, sok := lay.item_source(l, spaint.doc, idx); sok && lay.pos_compare(spaint.doc, {node, hi}, spaint.end) < 0 {
-			if fi := lay.item_font(l, it); fi != nil { rect.max.x += math.ceil(fi.space) }
+			if fi := lay.item_font(l, it); fi != nil {
+				// after the logical end: on the left of a right-to-left item
+				if it.level & 1 == 1 { rect.min.x -= math.ceil(fi.space) } else { rect.max.x += math.ceil(fi.space) }
+			}
 		}
 	}
 	draw.rect(dc, rect, bg)
@@ -474,7 +477,7 @@ selection_paint_over :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Ite
 		if fi == nil || it.cs == nil { return }
 		draw.push_clip(dc, span_rect(l, it, r, a, b))
 		baseline := it.baseline + (r.min.y - it.rect.min.y)
-		sel_draw_run(dc, font.Font_Id(fi.font), fi.size, {r.min.x, baseline}, fg, it.text, it.cs.letter_spacing * l.scale, it.cs.word_spacing * l.scale, it.extra)
+		sel_draw_run(dc, font.Font_Id(fi.font), fi.size, {r.min.x, baseline}, fg, it.text, text_shape_options(l, it.cs, it.level, it.extra))
 		draw.pop_clip(dc)
 	case .Replaced, .Control:
 		if it.node == base.NIL_HANDLE || !lay.node_in_range(spaint.doc, it.node, spaint.start, spaint.end) { return }
@@ -484,32 +487,11 @@ selection_paint_over :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Ite
 	}
 }
 
-// The painter's text run (render.odin draw_run): letter-spacing glyph by glyph, word-spacing and justification at spaces.
-sel_draw_run :: proc(dc: ^draw.Context, fid: font.Font_Id, size: f32, pos: draw.Vec2, col: draw.Color, text: string, ls, ws, extra: f32) {
-	if ls == 0 && ws == 0 && extra == 0 {
-		draw.text(dc, fid, size, pos, col, text)
-		return
-	}
-	pen := pos.x
-	if ls == 0 {
-		rest := text
-		for len(rest) > 0 {
-			i := strings.index_byte(rest, ' ')
-			piece := i < 0 ? rest : rest[:i + 1]
-			pen += draw.text(dc, fid, size, {pen, pos.y}, col, piece)
-			if i < 0 { break }
-			pen += ws + extra
-			rest = rest[i + 1:]
-		}
-		return
-	}
-	for i := 0; i < len(text); {
-		_, n := utf8.decode_rune_in_string(text[i:])
-		piece := text[i:i + n]
-		pen += draw.text(dc, fid, size, {pen, pos.y}, col, piece) + ls
-		if piece == " " { pen += ws + extra }
-		i += n
-	}
+// The painter's text run (render.odin draw_run): the fragment shaped as painted (one directional run, spacing and
+// justification in the shaper), so the selected glyphs land exactly on the ones drawn under them.
+sel_draw_run :: proc(dc: ^draw.Context, fid: font.Font_Id, size: f32, pos: draw.Vec2, col: draw.Color, text: string, opts: font.Shape_Options) {
+	sh := font.shape(dc.fonts, fid, size, text, opts, context.temp_allocator)
+	draw.glyph_run(dc, size, pos, col, sh.glyphs)
 }
 
 _ :: css
