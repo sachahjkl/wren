@@ -138,6 +138,7 @@ hold_release :: proc(t: ^Tab) {
 	if !h.active { return }
 	base.scope_close(h.nav)   // the old page, its modules and every request it still had
 	layout_reset(&h.layout)
+	page_fonts_drop(&page_render.fonts, h)   // its web faces, if the new page took over the tab's (fonts.odin)
 	h.active, h.nav, h.page = false, nil, nil
 }
 
@@ -145,6 +146,7 @@ hold_release :: proc(t: ^Tab) {
 hold_destroy :: proc(t: ^Tab) {
 	t.hold.active, t.hold.nav, t.hold.page = false, nil, nil
 	layout_destroy(&t.hold.layout)
+	page_fonts_drop(&page_render.fonts, &t.hold)
 }
 
 // Paints what the tab shows while its page cannot paint: the held frame if it is still exact and not timed out, else

@@ -8,7 +8,6 @@ package browser
 
 import "core:math"
 import "core:strings"
-import "core:unicode/utf8"
 import "toolkit:draw"
 import "toolkit:font"
 import "wb:base"
@@ -42,6 +41,7 @@ page_render_init :: proc(app: ^App) {
 	page_fonts_init(&page_render.fonts, &app.fonts, app.ui_font)
 	page_render.settings = lay.settings_from_prefs(&app.prefs)
 	render_settings_init(app)
+	font_settings_init(app)
 	effects_init(app)
 	page_render.watch_layout = config.watch(&app.prefs, "layout.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		page_render.settings = lay.settings_from_prefs(p)
@@ -373,33 +373,21 @@ paint_outline :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: d
 ////////////////////////////////
 // Text
 
+// Shaping options of a text fragment: one directional run (layout resolved the bidi levels), spacing as layout measured
+// it (letter-spacing after each character, word-spacing after each space and no-break space, justification after each
+// space).
+// The same as the carets and hit testing of selections use (fonts.odin run_shape_options).
+text_shape_options :: proc(l: ^Layout, cs: ^style.Computed, level: u8, extra: f32) -> font.Shape_Options {
+	return run_shape_options(lay.Text_Run{
+		rtl = level & 1 == 1, letter_spacing = cs.letter_spacing * l.scale, word_spacing = cs.word_spacing * l.scale, justify = extra,
+	})
+}
+
+// Draws one text fragment: shaped (cached by the toolkit) and drawn glyph by glyph from the atlas (draw.glyph_run).
 @(private = "file")
-draw_run :: proc(l: ^Layout, dc: ^draw.Context, fid: font.Font_Id, size: f32, pos: draw.Vec2, col: draw.Color, text: string, ls, ws, extra: f32) {
-	if ls == 0 && ws == 0 && extra == 0 {
-		draw.text(dc, fid, size, pos, col, text)
-		return
-	}
-	// spacing: glyph by glyph (letter-spacing), space by space (word-spacing, justification)
-	pen := pos.x
-	if ls == 0 {
-		rest := text
-		for len(rest) > 0 {
-			i := strings.index_byte(rest, ' ')
-			piece := i < 0 ? rest : rest[:i + 1]
-			pen += draw.text(dc, fid, size, {pen, pos.y}, col, piece)
-			if i < 0 { break }
-			pen += ws + extra
-			rest = rest[i + 1:]
-		}
-		return
-	}
-	for i := 0; i < len(text); {
-		_, n := utf8.decode_rune_in_string(text[i:])
-		piece := text[i:i + n]
-		pen += draw.text(dc, fid, size, {pen, pos.y}, col, piece) + ls
-		if piece == " " { pen += ws + extra }
-		i += n
-	}
+draw_run :: proc(dc: ^draw.Context, fid: font.Font_Id, size: f32, pos: draw.Vec2, col: draw.Color, text: string, opts: font.Shape_Options) {
+	sh := font.shape(dc.fonts, fid, size, text, opts, context.temp_allocator)
+	draw.glyph_run(dc, size, pos, col, sh.glyphs)
 }
 
 @(private = "file")
@@ -409,8 +397,7 @@ paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw
 	if cs == nil || fi == nil || it.text == "" { return }
 	fid := font.Font_Id(fi.font)
 	baseline := it.baseline + off.y
-	ls := cs.letter_spacing * l.scale
-	ws := cs.word_spacing * l.scale
+	opts := text_shape_options(l, cs, it.level, it.extra)
 	for i := len(cs.text_shadow) - 1; i >= 0; i -= 1 {
 		s := cs.text_shadow[i]
 		if s.color.a <= 0 { continue }
@@ -420,15 +407,15 @@ paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw
 			// a gaussian of half the blur radius (CSS Backgrounds §7.2), through a layer
 			ink := draw.rect_pad(draw.rect_shift(r, {s.x, s.y} * l.scale), fi.size * 0.5)
 			draw.push_effects(dc, ink, draw.Layer_Effects{alpha = 1, filters = {draw.filter_blur(s.blur * 0.5 * l.scale)}})
-			draw_run(l, dc, fid, fi.size, pos, col, it.text, ls, ws, it.extra)
+			draw_run(dc, fid, fi.size, pos, col, it.text, opts)
 			draw.pop_layer(dc)
 			continue
 		}
 		if s.blur > 0 { col.a *= 0.6 }
-		draw_run(l, dc, fid, fi.size, pos, col, it.text, ls, ws, it.extra)
+		draw_run(dc, fid, fi.size, pos, col, it.text, opts)
 	}
 	col := to_draw(cs.color)
-	draw_run(l, dc, fid, fi.size, {r.min.x, baseline}, col, it.text, ls, ws, it.extra)
+	draw_run(dc, fid, fi.size, {r.min.x, baseline}, col, it.text, opts)
 	if it.deco != {} {
 		dcol := to_draw(it.deco_color)
 		if it.deco_color.a == 0 { dcol = col }

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Texte — fallback, shaping, bidi · مرحبا 👋</title>
+<style>
+@font-face { font-family: "Digits"; src: url(fonts/roboto.ttf); unicode-range: U+30-39; }
+body { margin: 0; padding: 16px 24px; font: 17px/1.45 "Segoe UI", sans-serif; color: #1d2330; background: #fbfcff; }
+h1 { font-size: 26px; margin: 0 0 10px; }
+h2 { font-size: 15px; margin: 18px 0 4px; color: #4a5570; text-transform: uppercase; letter-spacing: 0.08em; }
+.row { display: flex; gap: 28px; flex-wrap: wrap; }
+.row > div { flex: 1 1 300px; }
+.big { font-size: 30px; }
+.box { border: 1px solid #ccd3e3; background: #fff; padding: 6px 10px; border-radius: 6px; }
+.cal { font-family: Calibri; }
+.cam { font-family: Cambria; }
+.gab { font-family: Gabriola; font-size: 32px; }
+.mono { font-family: Consolas, monospace; }
+.just { text-align: justify; width: 420px; }
+.digits { font-family: "Digits", "Times New Roman", serif; font-size: 24px; }
+.bahn { font-family: Bahnschrift; font-size: 26px; }
+</style>
+</head>
+<body>
+<h1>Texte : repli, shaping, bidi, emoji ✨</h1>
+
+<h2>Repli par caractère</h2>
+<div class="row">
+  <div class="box">← retour · → suite · ↔ ⇄ ✓ ✗ ☒ ★ ♫ ∑ ∫ √ ∞ ≠ ≤ ⌘ ⌥</div>
+  <div class="box">中文 日本語 한국어 · Ελληνικά · Русский · ქართული · Հայերեն</div>
+</div>
+
+<h2>Emoji couleur</h2>
+<div class="box big">😀 😍 🎉 👍🏽 👩‍💻 🏳️‍🌈 🇫🇷 ❤️ 🦊 🍕</div>
+
+<h2>Ligatures, crénage, fonctionnalités OpenType</h2>
+<div class="row">
+  <div class="box big cal">office fit flow · AV To Wa Ty</div>
+  <div class="box big cal" style="font-feature-settings: 'liga' 0; font-kerning: none">office fit flow · AV To Wa Ty</div>
+</div>
+<div class="row">
+  <div class="box cam" style="font-size: 22px">1/2 3/4 <span style="font-variant-numeric: diagonal-fractions">1/2 3/4</span> · 0123 <span style="font-variant-numeric: oldstyle-nums">0123456789</span></div>
+  <div class="box cal" style="font-size: 22px">Small caps : <span style="font-variant-caps: small-caps">Petites Capitales</span> · x<span style="font-variant-position: super">2</span> H<span style="font-variant-position: sub">2</span>O</div>
+</div>
+<div class="box gab">Gabriola : <span style="font-feature-settings: 'ss06'">Stylistic set six</span> · <span style="font-variant-ligatures: discretionary-ligatures">discretionary</span></div>
+<div class="box bahn">Bahnschrift <span style="font-variation-settings: 'wght' 300">300</span> <span style="font-variation-settings: 'wght' 700">700</span> <span style="font-variation-settings: 'wdth' 75">condensé</span></div>
+
+<h2>Scripts complexes</h2>
+<div class="row">
+  <div class="box big" dir="rtl" lang="ar">مرحبا بالعالم — العربية متصلة</div>
+  <div class="box big" lang="hi">नमस्ते दुनिया · क्षत्रिय · हिन्दी</div>
+</div>
+<div class="row">
+  <div class="box big" lang="th">ภาษาไทยไม่มีช่องว่างระหว่างคำ</div>
+  <div class="box big" dir="rtl" lang="he">שלום עולם · עברית</div>
+</div>
+
+<h2>Bidi</h2>
+<div class="row">
+  <div class="box">Le mot <b>שלום</b> veut dire « paix » ; en arabe <b>سلام</b> (2024 : ١٢٣).</div>
+  <div class="box" dir="rtl">הספר "Hello World" יצא ב-2024 ונמכר ב-30 ש"ח.</div>
+</div>
+<div class="box">Isolé : <bdi>إيان</bdi> a 3 messages · forcé : <bdo dir="rtl">abc def</bdo></div>
+
+<h2>unicode-range (chiffres en Roboto, le reste en Times)</h2>
+<div class="box digits">Rendez-vous le 19/10/2026 à 14h30, salle 404.</div>
+
+<h2>Espacement et justification</h2>
+<div class="row">
+  <div class="box" style="letter-spacing: 3px">letter-spacing: 3px office</div>
+  <div class="box" style="word-spacing: 12px">word-spacing: 12px entre les mots</div>
+</div>
+<p class="box just">Le texte justifié répartit l'espace libre entre les mots de chaque ligne, sauf la dernière. Les
+ligatures et le crénage restent ceux de la police, les espaces s'élargissent : c'est ce que fait un navigateur.</p>
+<pre class="box mono">tab-size:	8 colonnes	→	ok
+pre	garde	les	espaces   multiples</pre>
+</body>
+</html>

@@ -232,8 +232,9 @@ find_paint_item :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, id
 		if s.hi <= lo || s.lo >= hi { continue }
 		a, b, rok := lay.item_range(l, d, idx, {node, s.lo}, {node, s.hi})
 		if !rok { continue }
-		x0 := lay.item_prefix_width(l, it, a, api)
-		x1 := lay.item_prefix_width(l, it, b, api)
+		// through the shaped clusters: in a right-to-left item the match runs from its end's caret to its start's
+		ca, cb := lay.item_caret_x(l, it, a, api), lay.item_caret_x(l, it, b, api)
+		x0, x1 := min(ca, cb), max(ca, cb)
 		draw.rect(dc, {{r.min.x + x0, r.min.y}, {r.min.x + x1, r.max.y}}, s.match == find.active ? act : bg, 2 * the_app.ui_state.scale)
 	}
 }

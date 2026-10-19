@@ -28,6 +28,9 @@ Cx :: struct {
 	st:    ^style.Styled,
 	l:     Layout,
 	prefs: config.Prefs,
+	real:  bool,             // the browser's text stack (DirectWrite cascades, shaping, bidi) instead of a fake one
+	m:     Measure,
+	ss:    style.Settings,
 }
 
 COMP_SIZE :: [2]int{360, 300}
@@ -41,13 +44,15 @@ cx_metrics :: proc(user: rawptr, f: lay.Font, size: f32) -> lay.Font_Metrics { r
 
 @(private = "file")
 cx_layout :: proc(f: ^Cx) {
+	api := lay.Text_Api{user = f, font = cx_font, width = cx_width, metrics = cx_metrics}
+	if f.real { api = page_text_api(&page_render.fonts, &f.m, &f.ss) }
 	lay.run(&f.l, lay.Input{doc = f.doc, styled = f.st, settings = &page_render.settings,
-		text = lay.Text_Api{user = f, font = cx_font, width = cx_width, metrics = cx_metrics},
+		text = api,
 		viewport = {f32(COMP_SIZE.x), f32(COMP_SIZE.y)}, scale = 1, band_h = 256})
 }
 
 @(private = "file")
-cx_open :: proc(f: ^Cx, src: string) -> bool {
+cx_open :: proc(f: ^Cx, src: string, real := false) -> bool {
 	f.prefs = config.prefs_make()
 	register_all_prefs(&f.prefs)
 	s := render_settings_from_prefs(&f.prefs)
@@ -56,6 +61,13 @@ cx_open :: proc(f: ^Cx, src: string) -> bool {
 	font.init(&f.fonts)
 	ok: bool
 	f.face, ok = font.load_embedded(&f.fonts, font.FALLBACK_UI_DATA)
+	if real {
+		f.real = true
+		ui, uok := font.load_system(&f.fonts, "Segoe UI")
+		if !uok { return false }
+		page_fonts_init(&page_render.fonts, &f.fonts, ui)
+		f.ss = style.settings_default()
+	}
 	draw.init(&f.dc, &f.r, &f.fonts)
 	page_render.settings = lay.settings_from_prefs(&f.prefs)
 	effects_settings = effects_settings_from_prefs(&f.prefs)
@@ -81,6 +93,10 @@ cx_close :: proc(f: ^Cx) {
 	dom.document_destroy(f.doc)
 	draw.destroy(&f.dc)
 	render.destroy(&f.r)
+	if f.real {
+		page_fonts_destroy(&page_render.fonts)
+		style.settings_destroy(&f.ss)
+	}
 	font.destroy(&f.fonts)
 	config.prefs_destroy(&f.prefs)
 	compositor_settings = {enabled = true, chunk_items = 512, max_chunks = 4096, settle_frames = 3, memory = 256 << 20}
@@ -155,9 +171,12 @@ ul { margin: 4px 24px } li { text-decoration: underline }
 // One test: the scenarios switch the compositor on and off (a global setting).
 @(test)
 compositor_matches_direct_drawing :: proc(t: ^testing.T) {
+	page_render_test_lock()
+	defer page_render_test_unlock()
 	composited_pages(t)
 	transforms_move_slots(t)
 	recording_follows_changes(t)
+	multilingual_text(t)
 }
 
 @(private = "file")
@@ -258,4 +277,42 @@ recording_follows_changes :: proc(t: ^testing.T) {
 		}
 	}
 	testing.expectf(t, kept > 0 && m == changed, "a layout pass records the changed chunks only (%d recorded, %d changed, %d kept, %d before)", m, changed, kept, total)
+}
+
+// Text through the browser's text stack: fallback (the arrow in a Latin font, emoji), ligatures, bidi (an Arabic
+// paragraph with digits and Latin), color emoji with modifiers and ZWJ sequences, letter-spacing, justification,
+// small caps, and text rotated and scaled by a transform (rasterized at its screen size in the picture as directly).
+TEXT_PAGE :: `<!doctype html><html><head><style>
+html, body { margin: 0; background: #fff; color: #111; font: 15px 'Segoe UI' }
+p { margin: 3px 6px }
+.sp { letter-spacing: 2px; word-spacing: 4px }
+.j { text-align: justify; width: 220px }
+.t { margin: 18px 30px; width: 200px; transform: rotate(-8deg) scale(1.3); background: #fff3bf }
+.sc { font-variant: small-caps }
+.long { height: 600px }
+</style></head><body>
+<p>office &#x2190; back, affluent fjords</p>
+<p dir="rtl">&#x645;&#x631;&#x62D;&#x628;&#x627; &#x628;&#x627;&#x644;&#x639;&#x627;&#x644;&#x645; 123 abc</p>
+<p>emoji &#x1F600;&#x1F44D;&#x1F3FD; family &#x1F468;&#x200D;&#x1F469;&#x200D;&#x1F467; &#x5E9;&#x5DC;&#x5D5;&#x5DD; end</p>
+<p class="sp">spaced out words</p>
+<p class="j">justified text that wraps onto more than one line in this narrow box</p>
+<div class="t">Turned &#x639;&#x631;&#x628;&#x64A; &#x1F600; text</div>
+<p class="sc">Small Caps Here</p>
+<div class="long"></div>
+</body></html>`
+
+@(private = "file")
+multilingual_text :: proc(t: ^testing.T) {
+	f := new(Cx)
+	defer free(f)
+	if !cx_open(f, TEXT_PAGE, real = true) { testing.fail_now(t, "no D3D11 device (WARP) or Segoe UI") }
+	defer cx_close(f)
+	cx_paint(f, false)   // the glyph atlas fills in the same order for both
+	cx_same(t, f, "multilingual text", 0, 2)
+	again := cx_same(t, f, "multilingual text scrolled", 31, 2)
+	testing.expectf(t, again == 0, "scrolling text records nothing (%d)", again)
+	// the atlas pages its glyphs are on are cleared: every picture with text is stale and records again
+	font.clear_atlas(&f.fonts)
+	n := cx_same(t, f, "after the glyph atlas was cleared", 31, 2)
+	testing.expectf(t, n > 0, "pictures with text recorded again (%d)", n)
 }

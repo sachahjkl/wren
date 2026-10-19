@@ -114,6 +114,8 @@ div { position: absolute; top: 0; width: 40px; height: 40px }
 
 @(test)
 srgb_painting_matches_browsers :: proc(t: ^testing.T) {
+	page_render_test_lock()
+	defer page_render_test_unlock()
 	f := new(Paint_Fx)
 	defer free(f)
 	if !pf_open(f, PAINT_PAGE) { testing.fail_now(t, "no D3D11 device (WARP) or font") }

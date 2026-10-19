@@ -348,7 +348,7 @@ immediate_item :: proc(user: rawptr, l: ^Layout, it: ^lay.Display_Item) -> bool 
 @(private = "file")
 item_hash :: proc(c: ^Comp, l: ^Layout, it: ^lay.Display_Item, cache: ^map[^style.Computed]u64, chain: ^[dynamic]i32) -> u64 {
 	h: u64 = 0x84222325cbf29ce4
-	h = mix(h, u64(it.kind) | u64(transmute(u8)(it.flags - {.Hit})) << 8)
+	h = mix(h, u64(it.kind) | u64(transmute(u8)(it.flags - {.Hit})) << 8 | u64(it.level) << 16)   // level: the shaping direction
 	h = hash_bytes(h, &it.rect, size_of(it.rect))
 	h = hash_bytes(mix(h, u64(len(it.text))), raw_data(it.text), len(it.text))
 	if it.fi >= 0 && int(it.fi) < len(l.fonts) {
