@@ -329,6 +329,32 @@ JSValue wjr_Blob_bytes(JSContext *ctx, JSValueConst this_val, int argc, JSValueC
     return p;
 }
 
+JSValue wjr_Blob_stream(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    web_blob *b = web_this_impl(ctx, this_val, WJ_IFACE_Blob);
+    if (!b) { return JS_EXCEPTION; }
+    return web_stream_from_bytes(ctx, b->store ? b->store->data + b->offset : NULL, b->len);
+}
+
+/* textStream(): the text in one chunk (the bytes decoded as UTF-8) */
+JSValue wjr_Blob_textStream(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    web_blob *b = web_this_impl(ctx, this_val, WJ_IFACE_Blob);
+    if (!b) { return JS_EXCEPTION; }
+    JSValue text = web_utf8_string(ctx, b->store ? b->store->data + b->offset : (const uint8_t *)"", b->len, true);
+    if (JS_IsException(text)) { return text; }
+    JSValue s = web_stream_of(ctx, text);
+    JS_FreeValue(ctx, text);
+    return s;
+}
+
+JSValue wjr_File_get_webkitRelativePath(JSContext *ctx, JSValueConst this_val)
+{
+    return web_this_impl(ctx, this_val, WJ_IFACE_File) ? JS_NewString(ctx, "") : JS_EXCEPTION;
+}
+
 /* ---- blob: URLs ---- */
 
 /* url -> Blob, a Map made at pre-initialization with Map.prototype's functions of then (scripts cannot change them) */

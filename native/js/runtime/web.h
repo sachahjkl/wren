@@ -188,6 +188,13 @@ bool web_stream_disturbed(JSValueConst v);
 JSValue web_stream_from_host(JSContext *ctx, uint64_t host_stream, JSValueConst signal, JSValueConst keep);
 /* A stream of one Uint8Array chunk (a copy of the bytes), then closed. */
 JSValue web_stream_from_bytes(JSContext *ctx, const uint8_t *p, size_t n);
+/* A stream of one chunk (any value), then closed. */
+JSValue web_stream_of(JSContext *ctx, JSValueConst chunk);
+/* A stream the engine feeds: chunks pushed, then ended or failed */
+JSValue web_stream_pending(JSContext *ctx);
+void web_stream_push(JSContext *ctx, JSValueConst stream, JSValueConst chunk);
+void web_stream_end(JSContext *ctx, JSValueConst stream);
+void web_stream_fail(JSContext *ctx, JSValueConst stream, JSValueConst e);
 /* Reads every chunk (Uint8Array, or any BufferSource) of an unlocked stream: a promise of an ArrayBuffer of all the
  * bytes. TypeError (rejection) for a locked or disturbed stream, or a chunk that is not bytes. */
 JSValue web_stream_read_all(JSContext *ctx, JSValueConst stream);

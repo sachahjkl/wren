@@ -110,6 +110,9 @@ test("Response", async () => {
   const cl = new Response("twice");
   const cl2 = cl.clone();
   eq(await cl.text() + await cl2.text(), "twicetwice", "clone");
+  let ts = "";
+  for await (const c of new Response("t\u00e9xt").textStream()) ts += c;
+  eq(ts, "t\u00e9xt", "textStream()");
 });
 
 test("FormData", async () => {

@@ -17,6 +17,12 @@ test("Blob", async () => {
   eq(new Blob().size, 0, "empty");
   throws(() => new Blob("abc"), "TypeError", "parts must be a sequence");
   eq(await new Blob(["\ud800"]).text(), "\ufffd", "USVString parts");
+  const chunks = [];
+  for await (const c of b.stream()) chunks.push(...c);
+  eq(String.fromCharCode(...chunks), "abcdef", "stream()");
+  let txt = "";
+  for await (const c of new Blob(["h\u00e9"]).textStream()) txt += c;
+  eq(txt, "h\u00e9", "textStream()");
 });
 
 test("File", () => {
@@ -27,6 +33,7 @@ test("File", () => {
   ok(f.lastModified >= before - 1, "lastModified defaults to now");
   eq(new File([], "b", { lastModified: 42 }).lastModified, 42, "lastModified given");
   throws(() => new File(["x"]), "TypeError", "File needs a name");
+  eq(f.webkitRelativePath, "", "webkitRelativePath");
 });
 
 test("FileReader", async () => {

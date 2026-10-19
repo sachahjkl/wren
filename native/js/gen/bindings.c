@@ -19,7 +19,9 @@ JSValue wjr_Blob_constructor(JSContext *ctx, JSValueConst this_val, int argc, JS
 JSValue wjr_Blob_get_size(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Blob_get_type(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Blob_slice(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Blob_stream(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Blob_text(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Blob_textStream(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Body_arrayBuffer(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Body_blob(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Body_bytes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -28,6 +30,7 @@ JSValue wjr_Body_get_body(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Body_get_bodyUsed(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Body_json(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Body_text(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Body_textStream(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CloseEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CloseEvent_get_code(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CloseEvent_get_reason(JSContext *ctx, JSValueConst this_val);
@@ -88,6 +91,7 @@ JSValue wjr_FileReader_readAsText(JSContext *ctx, JSValueConst this_val, int arg
 JSValue wjr_File_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_File_get_lastModified(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_File_get_name(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_File_get_webkitRelativePath(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_FormData_append(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_FormData_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_FormData_entries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -190,11 +194,13 @@ JSValue wjr_PerformanceMark_get_detail(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceMeasure_get_detail(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Performance_clearMarks(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_clearMeasures(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Performance_clearResourceTimings(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_getEntries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_getEntriesByName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_getEntriesByType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_mark(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_measure(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Performance_setResourceTimingBufferSize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PopStateEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PopStateEvent_get_hasUAVisualTransition(JSContext *ctx, JSValueConst this_val);
@@ -4630,16 +4636,16 @@ static const wj_member wj_m_Blob[] = {
     { "size", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Blob_get_size, NULL, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Blob_get_type, NULL, 0 },
     { "slice", WJ_M_METHOD, 0, 0, wjr_Blob_slice, NULL, NULL, 0 },
-    { "stream", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "stream", WJ_M_METHOD, 0, 0, wjr_Blob_stream, NULL, NULL, 0 },
     { "text", WJ_M_METHOD, 0, 0, wjr_Blob_text, NULL, NULL, 0 },
     { "arrayBuffer", WJ_M_METHOD, 0, 0, wjr_Blob_arrayBuffer, NULL, NULL, 0 },
-    { "textStream", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "textStream", WJ_M_METHOD, 0, 0, wjr_Blob_textStream, NULL, NULL, 0 },
     { "bytes", WJ_M_METHOD, 0, 0, wjr_Blob_bytes, NULL, NULL, 0 },
 };
 static const wj_member wj_m_File[] = {
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_File_get_name, NULL, 0 },
     { "lastModified", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_File_get_lastModified, NULL, 0 },
-    { "webkitRelativePath", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "webkitRelativePath", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_File_get_webkitRelativePath, NULL, 0 },
 };
 static const wj_member wj_m_ByteLengthQueuingStrategy[] = {
     { "highWaterMark", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -8249,8 +8255,8 @@ static const wj_member wj_m_Performance[] = {
     { "getEntries", WJ_M_METHOD, 0, 0, wjr_Performance_getEntries, NULL, NULL, 0 },
     { "getEntriesByType", WJ_M_METHOD, 0, 1, wjr_Performance_getEntriesByType, NULL, NULL, 0 },
     { "getEntriesByName", WJ_M_METHOD, 0, 1, wjr_Performance_getEntriesByName, NULL, NULL, 0 },
-    { "clearResourceTimings", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "setResourceTimingBufferSize", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "clearResourceTimings", WJ_M_METHOD, 0, 0, wjr_Performance_clearResourceTimings, NULL, NULL, 0 },
+    { "setResourceTimingBufferSize", WJ_M_METHOD, 0, 1, wjr_Performance_setResourceTimingBufferSize, NULL, NULL, 0 },
     { "onresourcetimingbufferfull", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Performance_get_onresourcetimingbufferfull, wjg_Performance_set_onresourcetimingbufferfull, 0 },
     { "mark", WJ_M_METHOD, 0, 1, wjr_Performance_mark, NULL, NULL, 0 },
     { "clearMarks", WJ_M_METHOD, 0, 0, wjr_Performance_clearMarks, NULL, NULL, 0 },
@@ -9617,7 +9623,7 @@ static const wj_member wj_m_Request[] = {
     { "formData", WJ_M_METHOD, 0, 0, wjr_Body_formData, NULL, NULL, 0 },
     { "json", WJ_M_METHOD, 0, 0, wjr_Body_json, NULL, NULL, 0 },
     { "text", WJ_M_METHOD, 0, 0, wjr_Body_text, NULL, NULL, 0 },
-    { "textStream", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "textStream", WJ_M_METHOD, 0, 0, wjr_Body_textStream, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ResizeObserver[] = {
     { "observe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
@@ -9655,7 +9661,7 @@ static const wj_member wj_m_Response[] = {
     { "formData", WJ_M_METHOD, 0, 0, wjr_Body_formData, NULL, NULL, 0 },
     { "json", WJ_M_METHOD, 0, 0, wjr_Body_json, NULL, NULL, 0 },
     { "text", WJ_M_METHOD, 0, 0, wjr_Body_text, NULL, NULL, 0 },
-    { "textStream", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "textStream", WJ_M_METHOD, 0, 0, wjr_Body_textStream, NULL, NULL, 0 },
 };
 static const wj_member wj_m_SVGAngle[] = {
     { "SVG_ANGLETYPE_UNKNOWN", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },

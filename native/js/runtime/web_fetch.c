@@ -937,6 +937,42 @@ JSValue wjr_Body_json(JSContext *ctx, JSValueConst this_val, int argc, JSValueCo
 JSValue wjr_Body_blob(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return body_read(ctx, this_val, READ_BLOB); }
 JSValue wjr_Body_formData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return body_read(ctx, this_val, READ_FORMDATA); }
 
+/* textStream(): the body's text as a stream (one chunk once the whole body is decoded) */
+static JSValue on_text_ok(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic, JSValueConst *data)
+{
+    WJ_UNUSED(this_val); WJ_UNUSED(magic);
+    JSValueConst text = wj_arg(argc, (JSValue *)argv, 0);
+    int64_t len = 0;
+    if (JS_IsString(text) && JS_GetLength(ctx, text, &len) == 0 && len > 0) { web_stream_push(ctx, data[0], text); }
+    web_stream_end(ctx, data[0]);
+    return JS_UNDEFINED;
+}
+
+static JSValue on_text_err(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic, JSValueConst *data)
+{
+    WJ_UNUSED(this_val); WJ_UNUSED(magic);
+    web_stream_fail(ctx, data[0], wj_arg(argc, (JSValue *)argv, 0));
+    return JS_UNDEFINED;
+}
+
+static JSValue body_read(JSContext *ctx, JSValueConst this_val, int what);
+
+JSValue wjr_Body_textStream(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    JSValue headers, signal;
+    web_body *b = body_this(ctx, this_val, &headers, &signal);
+    if (!b) { return JS_EXCEPTION; }
+    if (body_unusable(b)) { return JS_ThrowTypeError(ctx, "Body has already been consumed."); }
+    JSValue s = web_stream_pending(ctx);
+    if (JS_IsException(s)) { return s; }
+    JSValue p = body_read(ctx, this_val, READ_TEXT);
+    JSValue d = web_then(ctx, p, on_text_ok, on_text_err, 1, (JSValueConst *)&s);
+    JS_FreeValue(ctx, d);
+    JS_FreeValue(ctx, p);
+    return s;
+}
+
 /* The body as a stream (made on first use: reading it is consuming the body). */
 static JSValue body_stream(JSContext *ctx, JSValueConst owner, web_body *b, JSValueConst signal)
 {

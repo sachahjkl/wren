@@ -366,6 +366,21 @@ static JSValue clear(JSContext *ctx, JSValueConst this_val, int argc, JSValueCon
 JSValue wjr_Performance_clearMarks(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { return clear(ctx, this_val, argc, argv, wr_PerformanceEntryType_Mark); }
 JSValue wjr_Performance_clearMeasures(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { return clear(ctx, this_val, argc, argv, wr_PerformanceEntryType_Measure); }
 
+/* Resource Timing: this browser records no resource entries, so there is nothing to clear and no buffer to size */
+JSValue wjr_Performance_clearResourceTimings(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    return perf_this(ctx, this_val) ? JS_UNDEFINED : JS_EXCEPTION;
+}
+
+JSValue wjr_Performance_setResourceTimingBufferSize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    if (!perf_this(ctx, this_val)) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Performance.setResourceTimingBufferSize", 1, argc); }
+    uint32_t n;
+    return wj_to_uint32(ctx, argv[0], &n, 32, 0) ? JS_UNDEFINED : JS_EXCEPTION;
+}
+
 JSValue wjr_Performance_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(argc); WJ_UNUSED(argv);

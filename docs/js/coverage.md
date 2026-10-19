@@ -15,13 +15,13 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 556 |
 | exposed by default | 175 |
 | members | 4991 |
-| members implemented | 1843 (36.9 %) |
+| members implemented | 1850 (37.1 %) |
 
 ## By specification
 
 | IDL file | interfaces (exposed) | members implemented |
 |---|---:|---:|
-| `FileAPI.idl` | 5 (3) | 28 / 38 |
+| `FileAPI.idl` | 5 (3) | 31 / 38 |
 | `IndexedDB.idl` | 12 (0) | 11 / 94 |
 | `SVG.idl` | 60 (35) | 194 / 455 |
 | `clipboard-apis.idl` | 4 (0) | 0 / 14 |
@@ -43,10 +43,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `encoding.idl` | 4 (2) | 9 / 19 |
 | `entries-api.idl` | 5 (0) | 0 / 13 |
 | `event-timing.idl` | 2 (0) | 0 / 8 |
-| `fetch.idl` | 4 (3) | 54 / 57 |
+| `fetch.idl` | 4 (3) | 56 / 57 |
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (0) | 0 / 126 |
-| `hr-time.idl` | 1 (1) | 11 / 17 |
+| `hr-time.idl` | 1 (1) | 13 / 17 |
 | `html.idl` | 160 (88) | 861 / 1819 |
 | `intersection-observer.idl` | 2 (0) | 0 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
@@ -100,26 +100,26 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Blob
 
-7 / 9 members.
+9 / 9 members.
 
 - `constructor()`: C `wjr_Blob_constructor`
 - `readonly size`: C `wjr_Blob_get_size`
 - `readonly type`: C `wjr_Blob_get_type`
 - `slice()`: C `wjr_Blob_slice`
-- `stream()`: not supported
+- `stream()`: C `wjr_Blob_stream`
 - `text()`: C `wjr_Blob_text`
 - `arrayBuffer()`: C `wjr_Blob_arrayBuffer`
-- `textStream()`: not supported
+- `textStream()`: C `wjr_Blob_textStream`
 - `bytes()`: C `wjr_Blob_bytes`
 
 ### File : Blob
 
-3 / 4 members.
+4 / 4 members.
 
 - `constructor()`: C `wjr_File_constructor`
 - `readonly name`: C `wjr_File_get_name`
 - `readonly lastModified`: C `wjr_File_get_lastModified`
-- `readonly webkitRelativePath`: not supported
+- `readonly webkitRelativePath`: C `wjr_File_get_webkitRelativePath`
 
 ### Crypto
 
@@ -2819,7 +2819,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Performance : EventTarget
 
-11 / 17 members.
+13 / 17 members.
 
 - `readonly eventCounts`: not supported
 - `readonly interactionCount`: not supported
@@ -2831,8 +2831,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `getEntries()`: C `wjr_Performance_getEntries`
 - `getEntriesByType()`: C `wjr_Performance_getEntriesByType`
 - `getEntriesByName()`: C `wjr_Performance_getEntriesByName`
-- `clearResourceTimings()`: not supported
-- `setResourceTimingBufferSize()`: not supported
+- `clearResourceTimings()`: C `wjr_Performance_clearResourceTimings`
+- `setResourceTimingBufferSize()`: C `wjr_Performance_setResourceTimingBufferSize`
 - `onresourcetimingbufferfull`: generic (event handler)
 - `mark()`: C `wjr_Performance_mark`
 - `clearMarks()`: C `wjr_Performance_clearMarks`
@@ -3366,7 +3366,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Request
 
-26 / 27 members.
+27 / 27 members.
 
 - `constructor()`: C `wjr_Request_constructor`
 - `readonly method`: C `wjr_Request_get_method`
@@ -3394,11 +3394,11 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `formData()` (Body): C `wjr_Body_formData`
 - `json()` (Body): C `wjr_Body_json`
 - `text()` (Body): C `wjr_Body_text`
-- `textStream()` (Body): not supported
+- `textStream()` (Body): C `wjr_Body_textStream`
 
 ### Response
 
-20 / 21 members.
+21 / 21 members.
 
 - `constructor()`: C `wjr_Response_constructor`
 - `static error()`: C `wjr_Response_static_error`
@@ -3420,7 +3420,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `formData()` (Body): C `wjr_Body_formData`
 - `json()` (Body): C `wjr_Body_json`
 - `text()` (Body): C `wjr_Body_text`
-- `textStream()` (Body): not supported
+- `textStream()` (Body): C `wjr_Body_textStream`
 
 ### Screen
 

@@ -609,6 +609,42 @@ JSValue web_stream_from_bytes(JSContext *ctx, const uint8_t *p, size_t n)
     return obj;
 }
 
+JSValue web_stream_pending(JSContext *ctx)
+{
+    JSValue obj = stream_new(ctx, JS_UNDEFINED, SRC_NONE);
+    if (!JS_IsException(obj)) { stream_of(obj)->started = true; }
+    return obj;
+}
+
+void web_stream_push(JSContext *ctx, JSValueConst stream, JSValueConst chunk)
+{
+    web_stream *s = stream_of(stream);
+    if (s) { stream_enqueue(ctx, s, JS_DupValue(ctx, chunk)); }
+}
+
+void web_stream_end(JSContext *ctx, JSValueConst stream)
+{
+    web_stream *s = stream_of(stream);
+    if (s) { stream_close(ctx, s); }
+}
+
+void web_stream_fail(JSContext *ctx, JSValueConst stream, JSValueConst e)
+{
+    web_stream *s = stream_of(stream);
+    if (s) { stream_error(ctx, s, e); }
+}
+
+JSValue web_stream_of(JSContext *ctx, JSValueConst chunk)
+{
+    JSValue obj = stream_new(ctx, JS_UNDEFINED, SRC_NONE);
+    if (JS_IsException(obj)) { return obj; }
+    web_stream *s = stream_of(obj);
+    s->started = true;
+    queue_push(s, JS_DupValue(ctx, chunk));
+    stream_close(ctx, s);
+    return obj;
+}
+
 JSValue wjr_ReadableStream_get_locked(JSContext *ctx, JSValueConst this_val)
 {
     web_stream *s = web_this_impl(ctx, this_val, WJ_IFACE_ReadableStream);
