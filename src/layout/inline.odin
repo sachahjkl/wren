@@ -188,6 +188,7 @@ LB_Buffers :: struct {
 	pending_floats: [dynamic]i32,
 	pending_abs:    [dynamic]Pending_Abs,
 	groups:         [dynamic]Align_Group,
+	segs:           [dynamic]Seg,       // the segments measured, kept for later passes (keep_segs)
 }
 
 @(private)
@@ -790,10 +791,16 @@ layout_atomic :: proc(c: ^Ctx, k: i32, cw: f32) -> f32 {
 layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool) {
 	b := &c.l.boxes[bi]
 	// a re-layout replaces the previous result; when it was the last one made, its storage is reused
-	if b.lines[1] > b.lines[0] && int(b.lines[1]) == len(c.l.lines) {
+	if b.lines[1] > b.lines[0] {
 		first_frag := c.l.lines[b.lines[0]].frags[0]
-		if int(c.l.lines[b.lines[1] - 1].frags[1]) == len(c.l.frags) { resize(&c.l.frags, int(first_frag)) }
-		resize(&c.l.lines, int(b.lines[0]))
+		last_frag := c.l.lines[b.lines[1] - 1].frags[1]
+		if int(b.lines[1]) == len(c.l.lines) {
+			if int(last_frag) == len(c.l.frags) { resize(&c.l.frags, int(first_frag)) } else { c.l.inc.dead_frags += int(last_frag - first_frag) }
+			resize(&c.l.lines, int(b.lines[0]))
+		} else {
+			c.l.inc.dead_lines += int(b.lines[1] - b.lines[0])
+			c.l.inc.dead_frags += int(last_frag - first_frag)
+		}
 	}
 	b.lines = {}
 	b.baseline, b.last_baseline = -1, -1
@@ -807,6 +814,7 @@ layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool) {
 			out = make([dynamic]Frag, 0, 64, context.temp_allocator), open = make([dynamic]Open_Box, 0, 4, context.temp_allocator),
 			unit = make([dynamic]Seg, 0, 8, context.temp_allocator), pending_floats = make([dynamic]i32, 0, 2, context.temp_allocator),
 			pending_abs = make([dynamic]Pending_Abs, 0, 2, context.temp_allocator), groups = make([dynamic]Align_Group, 0, 2, context.temp_allocator),
+			segs = make([dynamic]Seg, 0, 64, context.temp_allocator),
 		}
 		append(&c.lb_bufs, nb)
 	}
@@ -830,9 +838,34 @@ layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool) {
 	start_line(&lb)
 	blocks := false
 	it := Seg_Iter{c = c, idx = b.items[0], end = b.items[1], cw = cw}
+	// the segments of an unchanged context measured by an earlier pass (a resize lays every paragraph out again at a
+	// new width: its words keep their widths); else measured now and kept
+	cached := cached_segs(c, bi)   // a range of Inc_State.segs: read by index (nested contexts may append to it)
+	ci := cached[0]
+	measuring := cached[1] <= cached[0]
+	recording := measuring && c.inc != nil   // incremental passes only: a full pass (a page load) does not pay for it
+	clear(&bufs.segs)
 	for {
-		s, ok := next_seg(&it)
-		if !ok { break }
+		s: Seg
+		ok: bool
+		if !measuring {
+			if ci >= cached[1] { break }
+			s, ok = c.l.inc.segs[ci], true
+			ci += 1
+			if s.kind == .Open {
+				// edges of inline boxes resolve against the width: as next_seg does
+				ib := &c.l.boxes[c.l.inline_items[s.item].box]
+				resolve_box_model(c, ib, cw)
+				s.w = ib.margin[3] + ib.border[3] + ib.padding[3]
+			} else if s.kind == .Close {
+				ib := &c.l.boxes[c.l.inline_items[s.item].box]
+				s.w = ib.margin[1] + ib.border[1] + ib.padding[1]
+			}
+		} else {
+			s, ok = next_seg(&it)
+			if !ok { break }
+			if recording { append(&bufs.segs, s) }
+		}
 		switch s.kind {
 		case .Text, .Space, .Tab, .Open, .Close:
 			append(&lb.unit, s)
@@ -863,6 +896,7 @@ layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool) {
 	}
 	commit_unit(&lb, false)
 	if !lb.empty || lb.content || len(lb.pending_abs) > 0 || len(lb.pending_floats) > 0 { finish_line(&lb, true, true) }
+	if recording { keep_segs(c, bi, bufs.segs[:]) }
 
 	// publish: lines and fragments of this context are contiguous
 	b = &c.l.boxes[bi]

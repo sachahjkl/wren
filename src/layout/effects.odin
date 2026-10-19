@@ -42,7 +42,8 @@ isolated_contexts :: proc(l: ^Layout) -> []bool {
 	out := make([]bool, len(l.boxes), context.temp_allocator)
 	root_el := len(l.boxes) > 0 ? l.boxes[0].first : NONE
 	for &b in l.boxes {
-		if b.cs == nil || b.cs.mix_blend_mode == .Normal || .Root in b.flags { continue }
+		// dead boxes (left by partial rebuilds) keep a stale style pointer
+		if .Dead in b.flags || b.cs == nil || b.cs.mix_blend_mode == .Normal || .Root in b.flags { continue }
 		for p := b.parent; p != NONE; p = l.boxes[p].parent {
 			pb := &l.boxes[p]
 			if .Root in pb.flags || p == root_el { break }

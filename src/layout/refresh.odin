@@ -21,7 +21,7 @@ can_refresh :: proc(l: ^Layout, input: Input) -> bool {
 	st := input.styled
 	return l.styled == rawptr(st) && l.layout_serial == st.layout_serial && l.canvas == st.canvas &&
 		l.mutations == input.doc.mutations && l.viewport == input.viewport && l.scale == input.scale &&
-		l.settings == input.settings^
+		l.settings == input.settings^ && l.inc.images_gen == input.images_generation && l.inc.fonts_gen == input.fonts_generation
 }
 
 // Inherited paint-only properties: what an anonymous box takes from its parent that can change without a layout.
@@ -73,7 +73,7 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 	anon := anon_paint_props()
 	// boxes in index order: a parent comes before its children (anonymous boxes copy from their parent)
 	for &b in l.boxes {
-		if .Root in b.flags { continue }
+		if .Root in b.flags || .Dead in b.flags { continue }
 		if b.node == base.NIL_HANDLE {
 			if b.parent == NONE || b.cs == nil { continue }
 			pc := l.boxes[b.parent].cs
@@ -108,6 +108,19 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 
 @(private = "file")
 refresh_rest :: proc(l: ^Layout, input: Input, t0: time.Tick) -> bool {
+	if !refresh_paint_values(l, input) { return false }
+	l.serial = input.styled.serial
+	l.last_pass = .Refresh
+	l.passes[.Refresh] += 1
+	ms := f32(time.duration_milliseconds(time.tick_since(t0)))
+	l.stats = {0, ms, 0, 0, 0}
+	return true
+}
+
+// What the display list derives from paint-only values, read again from the styles of the boxes. false: a scroll
+// container would start or stop scrolling (a full finishing pass is needed).
+@(private)
+refresh_paint_values :: proc(l: ^Layout, input: Input) -> bool {
 	st := input.styled
 	// the root's or body's background is the canvas: painted by the shell, not by their item
 	for ii in l.canvas_items {
@@ -129,11 +142,6 @@ refresh_rest :: proc(l: ^Layout, input: Input, t0: time.Tick) -> bool {
 	}
 	for &cl in l.clips { cl.radii = clip_radii(l, &l.boxes[cl.box]) }
 	if transforms && !refresh_overflow(l, input.viewport) { return false }
-	l.serial = st.serial
-	l.last_pass = .Refresh
-	l.passes[.Refresh] += 1
-	ms := f32(time.duration_milliseconds(time.tick_since(t0)))
-	l.stats = {0, ms, 0, 0, 0}
 	return true
 }
 
@@ -142,8 +150,9 @@ refresh_rest :: proc(l: ^Layout, input: Input, t0: time.Tick) -> bool {
 refresh_overflow :: proc(l: ^Layout, vp: Vec2) -> bool {
 	order := preorder(l)
 	doc := compute_overflow(l, order, fixed_boxes(l, order), vp)
+	l.inc.doc_extent = doc
 	for &b in l.boxes {
-		if .Scroll not_in b.flags || .Propagated in b.flags || b.kind == .Inline { continue }
+		if .Scroll not_in b.flags || .Propagated in b.flags || b.kind == .Inline || .Dead in b.flags { continue }
 		port := padding_rect(&b)
 		ms := Vec2{max(b.overflow.max.x - port.max.x, 0), max(b.overflow.max.y - port.max.y, 0)}
 		if b.cs.overflow_x != .Scroll && b.cs.overflow_x != .Auto { ms.x = 0 }

@@ -526,16 +526,24 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	}
 	scale := ui.scale()
 	size := draw.rect_size(b.rect)
+	// an incremental layout reads what the style passes changed (layout.incremental.*)
+	ls := &page_render.settings
+	page.set_layout_journal(t.page, ls.incremental ? ls.inc_journal : 0)
 	prof_begin(.Styles)
 	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
 	prof_end(.Styles)
 	draw.rect(dc, b.rect, to_draw(styled.canvas))
 	adopt_web_fonts(t)
 	images_before_layout(t)
-	if layout_stale(&t.layout, t.page.doc, styled, size, scale) {
+	fonts_gen := u64(t.web_fonts)
+	if layout_stale(&t.layout, t.page.doc, styled, size, scale, t.image_sizes, fonts_gen) {
 		prof_begin(.Layout)
-		layout_document(&t.layout, t.page.doc, styled, &app.measure, &app.page_settings.style, size, scale, app.cfg.layout_band_px)
+		failures := t.layout.inc.verify_failures
+		layout_document(&t.layout, t.page.doc, styled, &app.measure, &app.page_settings.style, size, scale, app.cfg.layout_band_px, t.image_sizes, fonts_gen)
 		prof_end(.Layout)
+		if t.layout.inc.verify_failures != failures {
+			tab_log(t, .Warn, fmt.tprintf("layout.incremental.verify: incremental layout differs from a full one: %s", t.layout.inc.verify_report))
+		}
 	}
 	images_after_layout(t, size, scale)
 	scroll_to_fragment(t, size)
@@ -561,8 +569,7 @@ adopt_web_fonts :: proc(t: ^Tab) {
 		id, ok := font.load_from_memory(page_render.fonts.state, slice.clone(f.data))   // the font state owns its copy
 		if !ok { tab_log(t, .Warn, fmt.tprintf("font %q could not be read", f.family)); continue }
 		weight := f.weight[0] == f.weight[1] ? f.weight[0] : (f.weight[0] + f.weight[1]) / 2
-		register_face(&page_render.fonts, f.family, weight, f.italic, id)
-		t.layout.valid = false
+		register_face(&page_render.fonts, f.family, weight, f.italic, id)   // the layout sees t.web_fonts change
 	}
 }
 

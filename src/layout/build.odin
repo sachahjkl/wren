@@ -97,6 +97,7 @@ new_box :: proc(c: ^Ctx, kind: Box_Kind, cs: ^style.Computed, node: base.Handle,
 		content_space = 0, content_clip = NONE, group = NONE, scroll_space = NONE, depth = depth,
 		colspan = 1, rowspan = 1, layer = NONE,
 	})
+	append(&c.l.inc.info, Box_Info{cb = NONE, fcb = NONE, deco_box = NONE})
 	if parent != NONE {
 		p := &c.l.boxes[parent]
 		if p.last == NONE { p.first = idx } else { c.l.boxes[p.last].next = idx }
@@ -249,17 +250,8 @@ build_tree :: proc(c: ^Ctx) {
 	c.l.boxes[root].pos_ref = NONE
 
 	// the root element or body passes its overflow to the viewport (CSS Overflow §3.3)
-	c.root_el = base.NIL_HANDLE
-	for ch := dom.get(d, d.root).first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next {
-		if dom.get(d, ch).kind == .Element { c.root_el = ch; break }
-	}
-	c.body_el = base.NIL_HANDLE
+	c.root_el, c.body_el = canvas_elements(d)
 	c.l.doc_scroll_y = true
-	if c.root_el != base.NIL_HANDLE {
-		for ch := dom.get(d, c.root_el).first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next {
-			if n := dom.get(d, ch); n.kind == .Element && n.name == "body" { c.body_el = ch; break }
-		}
-	}
 
 	stack := make([dynamic]Frame, 0, 256, context.temp_allocator)
 	top := Frame{kind = .Visit, parent = root, mode = .Block, cb = root, fcb = root, depth = 0, ifc = NONE, deco_box = NONE}
@@ -268,16 +260,35 @@ build_tree :: proc(c: ^Ctx) {
 		rn := dom.get(d, d.root)
 		for ch := rn.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { g.node = ch; append(&stack, g) }
 	}
-	for len(stack) > 0 {
-		f := pop(&stack)
-		switch f.kind {
-		case .Close: add_item(c, Inline_Item{kind = .Close, box = f.parent, ifc = f.ifc})
-		case .Pseudo: visit_pseudo(c, &stack, f)
-		case .Visit: visit(c, &stack, f)
-		}
-	}
+	build_loop(c, &stack)
 	propagate_overflow(c)
 	group_items(c)
+}
+
+@(private)
+build_loop :: proc(c: ^Ctx, stack: ^[dynamic]Frame) {
+	for len(stack) > 0 {
+		f := pop(stack)
+		switch f.kind {
+		case .Close: add_item(c, Inline_Item{kind = .Close, box = f.parent, ifc = f.ifc})
+		case .Pseudo: visit_pseudo(c, stack, f)
+		case .Visit: visit(c, stack, f)
+		}
+	}
+}
+
+// The root element and the body (their backgrounds may be the canvas, their overflow the viewport's).
+@(private)
+canvas_elements :: proc(d: ^dom.Document) -> (root_el, body_el: base.Handle) {
+	for ch := dom.get(d, d.root).first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next {
+		if dom.get(d, ch).kind == .Element { root_el = ch; break }
+	}
+	if root_el != base.NIL_HANDLE {
+		for ch := dom.get(d, root_el).first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next {
+			if n := dom.get(d, ch); n.kind == .Element && n.name == "body" { body_el = ch; break }
+		}
+	}
+	return
 }
 
 @(private)
@@ -291,30 +302,30 @@ propagate_overflow :: proc(c: ^Ctx) {
 	if pick == base.NIL_HANDLE { return }
 	cs := style.style_of(c.st, pick)
 	c.l.doc_scroll_y = cs.overflow_y != .Hidden && cs.overflow_y != .Clip
-	for &b in c.l.boxes {
-		if b.node == pick && .Pseudo not_in b.flags {
-			b.flags -= {.Clips, .Scroll}
-			b.flags += {.Propagated}
-			if cs.display != .Flow_Root && cs.display != .Inline_Block && .Float not_in b.flags && .Abs not_in b.flags { b.flags -= {.Bfc} }
-			break
-		}
+	if bi := box_index(c.l, pick); bi != NONE {
+		b := &c.l.boxes[bi]
+		b.flags -= {.Clips, .Scroll}
+		b.flags += {.Propagated}
+		if cs.display != .Flow_Root && cs.display != .Inline_Block && .Float not_in b.flags && .Abs not_in b.flags { b.flags -= {.Bfc} }
 	}
 }
 
 // Items are appended in document order, which interleaves the items of nested contexts (an inline-block inside a
 // paragraph): a counting sort by context makes each context's items one contiguous range, order preserved.
+// `start`: only the items from there on (those of a partial rebuild, appended at the end) are grouped.
 @(private)
-group_items :: proc(c: ^Ctx) {
-	items := &c.l.inline_items
+group_items :: proc(c: ^Ctx, start := 0) {
+	items := c.l.inline_items[start:]
 	n := len(items)
 	if n == 0 { return }
 	nb := len(c.l.boxes)
 	count := make([]i32, nb + 1, context.temp_allocator)
 	for &it in items { count[it.ifc + 1] += 1 }
 	for i in 1 ..= nb { count[i] += count[i - 1] }
+	base := i32(start)
 	for bi in 0 ..< nb {
 		if count[bi + 1] > count[bi] {
-			c.l.boxes[bi].items = {count[bi], count[bi + 1]}
+			c.l.boxes[bi].items = {base + count[bi], base + count[bi + 1]}
 		}
 	}
 	sorted := make([]Inline_Item, n, context.temp_allocator)
@@ -323,7 +334,7 @@ group_items :: proc(c: ^Ctx) {
 		sorted[count[it.ifc] + fill[it.ifc]] = it
 		fill[it.ifc] += 1
 	}
-	copy(items[:], sorted)
+	copy(items, sorted)
 }
 
 @(private)
@@ -559,7 +570,7 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 		switch {
 		case .Abs in b.flags: add_item(c, Inline_Item{kind = .Abs, box = bi, ifc = g.ifc})
 		case .Float in b.flags: add_item(c, Inline_Item{kind = .Float, box = bi, ifc = g.ifc})
-		case kind == .Inline: add_item(c, Inline_Item{kind = .Open, box = bi, ifc = g.ifc, cs = cs, node = h})
+		case kind == .Inline: add_item(c, Inline_Item{kind = .Open, src = box_src(b), box = bi, ifc = g.ifc, cs = cs, node = h})
 		case lv == .Block || lv == .Table_Internal:
 			b.flags += {.Block_In_Inline}
 			add_item(c, Inline_Item{kind = .Block, box = bi, ifc = g.ifc})
@@ -586,14 +597,21 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 		has_block = pseudo ? false : has_block_child(c, h, cs, b.depth)
 		if pseudo && cs.content.kind == .Items { has_block = false }
 	}
+	note_frame(c, bi, g)
 	cf := child_frame(c, bi, g, has_block)
 	if .List_Item in c.l.boxes[bi].flags { make_marker(c, bi, h, cf) }
 	if kind == .Inline { append(stack, Frame{kind = .Close, parent = bi, ifc = g.ifc}) }
 	if pseudo {
-		emit_generated(c, h, cs, cf)
+		emit_generated(c, h, cs, cf, box_src(&c.l.boxes[bi]))
 		return
 	}
 	push_children(c, stack, h, cs, cf)
+}
+
+@(private)
+box_src :: proc(b: ^Box) -> Item_Src {
+	if .Pseudo not_in b.flags { return .Element }
+	return .Pseudo_After in b.flags ? .After : .Before
 }
 
 @(private)
@@ -663,11 +681,12 @@ visit_text :: proc(c: ^Ctx, f: Frame, n: ^dom.Node) {
 	prev := false
 	text := text_transform(c, n.text, cs.text_transform, &prev)
 	ib := c.l.boxes[g.parent].kind == .Inline ? g.parent : NONE
-	add_item(c, Inline_Item{kind = .Text, box = ib, ifc = g.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = g.deco, deco_color = g.deco_color, deco_box = g.deco_box})
+	src := owner == base.NIL_HANDLE ? Item_Src.Initial : Item_Src.Element
+	add_item(c, Inline_Item{kind = .Text, src = src, box = ib, ifc = g.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = g.deco, deco_color = g.deco_color, deco_box = g.deco_box})
 }
 
 @(private)
-emit_generated :: proc(c: ^Ctx, owner: base.Handle, cs: ^style.Computed, f: Frame) {
+emit_generated :: proc(c: ^Ctx, owner: base.Handle, cs: ^style.Computed, f: Frame, src: Item_Src) {
 	if cs.content.kind != .Items || f.mode != .Inline { return }
 	sb := strings.builder_make(c.sa)
 	for it in cs.content.items {
@@ -678,7 +697,9 @@ emit_generated :: proc(c: ^Ctx, owner: base.Handle, cs: ^style.Computed, f: Fram
 		case .Open_Quote:
 			strings.write_string(&sb, c.quote_depth % 2 == 0 ? "\u201c" : "\u2018")
 			c.quote_depth += 1
+			c.l.inc.quotes = true   // depends on everything before it in the document: no partial rebuilds
 		case .Close_Quote:
+			c.l.inc.quotes = true
 			c.quote_depth = max(c.quote_depth - 1, 0)
 			strings.write_string(&sb, c.quote_depth % 2 == 0 ? "\u201d" : "\u2019")
 		case .Url:
@@ -689,7 +710,7 @@ emit_generated :: proc(c: ^Ctx, owner: base.Handle, cs: ^style.Computed, f: Fram
 	prev := false
 	text = text_transform(c, text, cs.text_transform, &prev)
 	ib := c.l.boxes[f.parent].kind == .Inline ? f.parent : NONE
-	add_item(c, Inline_Item{kind = .Text, box = ib, ifc = f.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = f.deco, deco_color = f.deco_color, deco_box = f.deco_box})
+	add_item(c, Inline_Item{kind = .Text, src = src, box = ib, ifc = f.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = f.deco, deco_color = f.deco_color, deco_box = f.deco_box})
 }
 
 ////////////////////////////////
@@ -700,7 +721,8 @@ make_marker :: proc(c: ^Ctx, bi: i32, h: base.Handle, cf: Frame) {
 	b := &c.l.boxes[bi]
 	cs := b.cs
 	if cs.list_style_type == .None { return }
-	ordinal := list_ordinal(c, h)
+	ordinal := c.rebuilding == bi ? c.l.inc.info[bi].ordinal : list_ordinal(c, h)
+	c.l.inc.info[bi].ordinal = ordinal
 	text := marker_string(c, cs.list_style_type, ordinal)
 	if cs.list_style_position == .Inside && cf.mode == .Inline {
 		s := text

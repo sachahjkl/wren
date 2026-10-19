@@ -185,10 +185,8 @@ images_shell_frame :: proc(app: ^App) {
 images_before_layout :: proc(t: ^Tab) {
 	shell.page = t.page
 	page.images_sync(t.page)
-	if g := page.images_sizes_generation(t.page); g != t.image_sizes {
-		t.image_sizes = g
-		t.layout.valid = false
-	}
+	// a new generation makes the layout check the natural sizes it used (layout_stale / layout_document)
+	t.image_sizes = page.images_sizes_generation(t.page)
 }
 
 // After the layout: distances to the viewport of the images still waiting (loading=lazy, queued downloads).

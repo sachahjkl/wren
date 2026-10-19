@@ -27,6 +27,13 @@ Settings :: struct {
 	opacity_layers:     bool,      // opacity groups are composited from an offscreen layer (else per primitive)
 	grid_max_tracks:    int,       // grid lines are clamped to ± this (explicit and implicit tracks per axis)
 	grid_max_items:     int,       // grid items placed per container; the rest get no box
+	// incremental layout (incremental.odin)
+	incremental:        bool,      // lay out again only what changed
+	inc_max_ratio:      f32,       // share of the boxes to rebuild or invalidate past which a full pass is done
+	inc_garbage_ratio:  f32,       // memory left over by partial passes (share of what is alive) before a full pass
+	inc_journal:        int,       // entries of the mutation and style journals
+	inc_splice:         bool,      // patch the display list of what changed instead of building it again
+	inc_verify:         bool,      // after each incremental pass, a full pass in parallel: both must agree
 }
 
 PREFS := [?]config.Def{
@@ -73,6 +80,18 @@ PREFS := [?]config.Def{
 		description = "Largest grid line number honored, and most tracks a repeat() expands to. Placements further out are clamped, as CSS Grid allows (a hostile `grid-row: 10000000` or `repeat(10000000, 1px)` stays cheap)."},
 	{name = "layout.grid.max_items", kind = .Int, default = {i = 200_000}, bounded = true, min = 1000, max = 10_000_000,
 		description = "Most children of one grid container that are placed and laid out. The rest get no box."},
+	{name = "layout.incremental.enabled", kind = .Bool, default = {b = true},
+		description = "After a change (window resized, page script editing the document, style or animation that moves boxes, image or font arriving), lay out again only the boxes it affects, from journals of the changes. Off: every change lays the whole page out (same result, slower)."},
+	{name = "layout.incremental.max_ratio", kind = .Float, default = {f = 0.5}, bounded = true, min = 0, max = 1,
+		description = "Share of the boxes a change must rebuild or invalidate past which the whole page is laid out instead (a full pass is cheaper than many small ones). 0: always full."},
+	{name = "layout.incremental.garbage_ratio", kind = .Float, default = {f = 0.5}, bounded = true, min = 0.05, max = 8,
+		description = "Memory left behind by incremental passes (boxes, texts, fonts replaced), as a share of what is in use, past which the next pass is a full one that starts afresh."},
+	{name = "layout.incremental.journal_entries", kind = .Int, default = {i = 65536}, bounded = true, min = 256, max = 16 << 20,
+		description = "Changes remembered between two layouts (document mutations, style changes). More changes at once than this make a full layout."},
+	{name = "layout.incremental.splice_display_list", kind = .Bool, default = {b = true},
+		description = "When a change stays inside some text (nothing else moved), replace only its part of the display list instead of building the whole list again."},
+	{name = "layout.incremental.verify", kind = .Bool, default = {b = false},
+		description = "Diagnostics: after each incremental layout, also lay the page out from scratch and compare every box and display item; differences are reported to the console. Slow."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
@@ -113,6 +132,12 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		opacity_layers = config.bool_of(p, "layout.paint.opacity_layers"),
 		grid_max_tracks = int(config.int_of(p, "layout.grid.max_tracks")),
 		grid_max_items = int(config.int_of(p, "layout.grid.max_items")),
+		incremental = config.bool_of(p, "layout.incremental.enabled"),
+		inc_max_ratio = f32(config.float_of(p, "layout.incremental.max_ratio")),
+		inc_garbage_ratio = f32(config.float_of(p, "layout.incremental.garbage_ratio")),
+		inc_journal = int(config.int_of(p, "layout.incremental.journal_entries")),
+		inc_splice = config.bool_of(p, "layout.incremental.splice_display_list"),
+		inc_verify = config.bool_of(p, "layout.incremental.verify"),
 	}
 }
 

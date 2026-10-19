@@ -156,7 +156,10 @@ timeline_destroy :: proc(tl: ^Timeline, s: ^Styled = nil) {
 
 // Cancels everything (navigation, settings that turn animations off) without events.
 timeline_reset :: proc(tl: ^Timeline, s: ^Styled) {
-	if s != nil { restore_overlays(tl, s) }
+	if s != nil {
+		for h in tl.overlays { journal_add(s, h, .Box) }   // back to their cascaded values, whatever was animated
+		restore_overlays(tl, s)
+	}
 	for _, ea in tl.elements { element_free(tl, ea) }
 	clear(&tl.elements)
 	for _, ov in tl.overlays { overlay_free(ov) }
@@ -861,14 +864,20 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 	}
 	// overlays nobody needed this time
 	stale := make([dynamic]base.Handle, context.temp_allocator)
+	// for the layout journal: what the animated values (and those going back to their cascaded values) may change
+	level := props_level(ps_union(props, tl.last_props))
 	for h, ov in tl.overlays {
 		if ov.tick != tl.tick {
 			append(&stale, h)
-			if ov.sig != structure_sig(style_of(s, h)) { layout = true }
+			crossed := ov.sig != structure_sig(style_of(s, h))
+			if crossed { layout = true }
+			journal_add(s, h, crossed ? .Box : level)
 			continue
 		}
 		sig := structure_sig(&ov.c)
-		if sig != ov.sig { layout = true; ov.sig = sig }
+		crossed := sig != ov.sig
+		if crossed { layout = true; ov.sig = sig }
+		journal_add(s, h, crossed ? .Box : level)
 	}
 	for h in stale {
 		overlay_free(tl.overlays[h])

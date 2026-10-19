@@ -79,6 +79,7 @@ Styled :: struct {
 	changes:        [dynamic]Style_Change,
 	counters_used:  bool,                  // counters or quotes appear: partial restyles must keep their values right
 	motion:         bool,                  // some element has a transition or an animation
+	journal:        Layout_Journal,        // what changed for layout since an earlier pass (journal.odin)
 }
 
 // A computed style replaced by a partial restyle: `old` is what was in effect (animated values included), `new` the
@@ -97,6 +98,7 @@ styled_destroy :: proc(s: ^Styled) {
 	delete(s.thread_arenas)
 	delete(s.overlaid)
 	delete(s.changes)
+	journal_destroy(s)
 	virtual.arena_destroy(&s.arena)
 	free(s)
 }
@@ -117,6 +119,7 @@ styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 	delete(s.by_node)
 	delete(s.overlaid)
 	delete(s.changes)
+	journal_destroy(s)
 	virtual.arena_free_all(&s.arena)
 	e.spare = s.arena
 	e.has_spare = true
@@ -135,6 +138,7 @@ styled_touch :: proc(s: ^Styled) {
 	styled_serial += 1
 	s.serial = styled_serial
 	s.layout_serial = s.serial
+	journal_stamp(s)
 }
 
 style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
@@ -586,6 +590,7 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 				p.changed = true
 				if !p.layout_changed && !layout_equal(old_base, c) { p.layout_changed = true }
 				if s.track_changes { append(&s.changes, Style_Change{node = f.h, old = old, new = c}) }
+				journal_add(s, f.h, layout_level(old, c))
 				delete_key(&s.overlaid, f.h)   // the animation layer is rebuilt on top of the new style
 				s.by_node[idx] = c
 			}
@@ -687,6 +692,7 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	s.line_height_normal = e.settings.line_height_normal
 	s.canvas = e.settings.background_color
 	s.canvas_default = s.canvas
+	journal_init(e, s)
 	return s
 }
 
@@ -830,6 +836,7 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 		styled_serial += 1
 		s.serial = styled_serial
 		if p.layout_changed { s.layout_serial = s.serial }
+		journal_stamp(s)
 		update_canvas(s, doc)
 	}
 	return p.changed, true

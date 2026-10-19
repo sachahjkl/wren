@@ -65,6 +65,12 @@ configure_styles :: proc(p: ^Page) {
 	p.style_stale = true
 }
 
+// Asks the style passes of the page to keep a layout journal (style.Layout_Journal) of at most `max_entries` entries,
+// for an incremental layout; 0 turns it off. Cheap to call every frame.
+set_layout_journal :: proc(p: ^Page, max_entries: int) {
+	style.engine_set_journal(p.engine, max_entries)
+}
+
 // The inputs of :hover / :active / :focus / :target. Setting them is cheap and may happen many times per frame; the work
 // (a partial restyle, or nothing when no rule depends on what changed) happens once, in the next `styles` call.
 set_style_state :: proc(p: ^Page, state: style.State) {
@@ -213,6 +219,12 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 		if p.styled == nil || p.style_stale || p.styled.mutations != p.doc.mutations { sync_styles(p) }
 		old := p.styled
 		p.styled = style.compute_styles(e, p.doc, p.style_state, style_threads(p), p.settings.threads.style_min_nodes)
+		// what changed for an incremental layout (only when one asked: set_layout_journal)
+		if old != nil && p.doc.nodes.count >= p.settings.threads.style_min_nodes {
+			style.journal_diff(old, p.styled, style_threads(p))
+		} else {
+			style.journal_diff(old, p.styled)
+		}
 		// transitions compare against the old styles (animated values included): they go only after this
 		style.timeline_restyled(p.anim.timeline, p.doc, old, p.styled, now)
 		style.styled_recycle(e, old)

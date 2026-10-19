@@ -113,6 +113,7 @@ Engine :: struct {
 	state_uses_has:  bool,             // a state-dependent :has() exists: its effect cannot be scoped
 	viewport_units:  bool,             // some value uses vw/vh/vmin/vmax: a viewport change restyles
 	restyle_needed:  bool,             // set by `engine_set_environment`; the page clears it after restyling
+	journal_max:     int,              // > 0: passes keep a layout journal of at most this many entries (journal.odin)
 }
 
 ////////////////////////////////

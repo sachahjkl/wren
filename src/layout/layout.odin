@@ -5,13 +5,54 @@ import "core:time"
 import "wb:base"
 import "wb:style"
 
-// Entry points. A layout is redone from scratch when the document, its styles, the viewport or the scale change; what
-// survives is the scroll offset of each scroll container. All per-pass memory is either the layout's own arrays (reused,
-// their capacity kept) or the temp allocator.
+// Entry points. A pass is one of:
+//   * refresh (refresh.odin): only paint-only values changed; boxes and display list stay, values are re-read;
+//   * incremental (incremental.odin): from the journals of what changed (document mutations, style changes, viewport,
+//     natural sizes, fonts), only the boxes concerned are rebuilt and laid out again;
+//   * full: everything from scratch. What survives is the scroll offset of each scroll container.
+// All per-pass memory is either the layout's own arrays (reused, their capacity kept) or the temp allocator.
 
 // Lays out the document. The result stays valid until the next call (strings of the document are referenced, not copied).
 run :: proc(l: ^Layout, input: Input) {
 	if can_refresh(l, input) && refresh(l, input) { return }
+	if run_incremental(l, input) { return }
+	run_full(l, input)
+	if input.settings.incremental { inc_after_full(l, input) }
+}
+
+@(private)
+ctx_make :: proc(l: ^Layout, input: Input, marker: ^u8) -> Ctx {
+	c := Ctx{
+		l = l, d = input.doc, st = input.styled, set = &l.settings, text = input.text, replaced = input.replaced,
+		scale = input.scale, vp = input.viewport, sa = virtual.arena_allocator(&l.arena), last_fi = -1,
+		stack_base = uintptr(marker), stack_limit = l.settings.max_stack_bytes, rebuilding = NONE,
+	}
+	c.font_cache = make(map[Font_Key]i32, 64, context.temp_allocator)
+	c.anon_cs = make(map[Anon_Key]^style.Computed, 16, context.temp_allocator)
+	c.counters = make(map[base.Handle]List_Counter, 16, context.temp_allocator)
+	c.lb_bufs = make([dynamic]^LB_Buffers, 0, 8, context.temp_allocator)
+	return c
+}
+
+@(private)
+note_inputs :: proc(l: ^Layout, input: Input) {
+	l.mutations = input.doc.mutations
+	l.serial = input.styled.serial
+	l.layout_serial = input.styled.layout_serial
+	l.canvas = input.styled.canvas
+	l.styled = input.styled
+	l.viewport = input.viewport
+	l.scale = input.scale
+	l.settings = input.settings^
+	l.valid = true
+	l.inc.doc = input.doc
+	l.inc.images_gen = input.images_generation
+	l.inc.fonts_gen = input.fonts_generation
+	l.inc.lh_normal = input.styled.line_height_normal
+}
+
+@(private)
+run_full :: proc(l: ^Layout, input: Input) {
 	if !l.arena_ready {
 		_ = virtual.arena_init_growing(&l.arena)
 		l.arena_ready = true
@@ -21,32 +62,18 @@ run :: proc(l: ^Layout, input: Input) {
 	if l.scroll == nil { l.scroll = make(map[base.Handle]Vec2) }
 	clear(&l.boxes); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items)
 	clear(&l.node_box)
-	l.mutations = input.doc.mutations
-	l.serial = input.styled.serial
-	l.layout_serial = input.styled.layout_serial
-	l.canvas = input.styled.canvas
-	l.styled = input.styled
+	inc_reset(l)
+	note_inputs(l, input)
 	l.last_pass = .Full
 	l.passes[.Full] += 1
-	l.viewport = input.viewport
-	l.scale = input.scale
-	l.settings = input.settings^
-	l.valid = true
 
 	marker: u8
-	c := Ctx{
-		l = l, d = input.doc, st = input.styled, set = &l.settings, text = input.text, replaced = input.replaced,
-		scale = input.scale, vp = input.viewport, sa = virtual.arena_allocator(&l.arena), last_fi = -1,
-		stack_base = uintptr(&marker), stack_limit = l.settings.max_stack_bytes,
-	}
-	c.font_cache = make(map[Font_Key]i32, 64, context.temp_allocator)
-	c.anon_cs = make(map[Anon_Key]^style.Computed, 16, context.temp_allocator)
-	c.counters = make(map[base.Handle]List_Counter, 16, context.temp_allocator)
-	c.lb_bufs = make([dynamic]^LB_Buffers, 0, 8, context.temp_allocator)
+	c := ctx_make(l, input, &marker)
 
 	t0 := time.tick_now()
 	build_tree(&c)
 	l.canvas_els = {c.root_el, c.body_el}
+	mark_bfc_floats(&c, 0)
 	t1 := time.tick_now()
 	root := &l.boxes[0]
 	root.pos = {0, 0}
@@ -61,9 +88,12 @@ run :: proc(l: ^Layout, input: Input) {
 	t4 := time.tick_now()
 	build_bands(l, max(input.band_h, 16) * input.scale)
 	t5 := time.tick_now()
-	ms :: proc(a, b: time.Tick) -> f32 { return f32(time.duration_milliseconds(time.tick_diff(a, b))) }
 	l.stats = {ms(t0, t1), ms(t1, t2), ms(t2, t3), ms(t3, t4), ms(t4, t5)}
+	inc_note_full(l)
 }
+
+@(private)
+ms :: proc(a, b: time.Tick) -> f32 { return f32(time.duration_milliseconds(time.tick_diff(a, b))) }
 
 // Forgets the result (and, unless kept, the scroll offsets): a new document is coming.
 reset :: proc(l: ^Layout, keep_scroll := false) {
@@ -71,6 +101,7 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	clear(&l.spaces); clear(&l.clips); clear(&l.groups); clear(&l.band_start); clear(&l.band_items); clear(&l.node_box)
 	if !keep_scroll { clear(&l.scroll) }
 	clear(&l.deco_items)
+	inc_reset(l)
 	if l.arena_ready { virtual.arena_free_all(&l.arena) }
 	l.valid = false
 	l.last_pass = .None
@@ -84,6 +115,7 @@ destroy :: proc(l: ^Layout) {
 	delete(l.scroll)
 	delete(l.scratch)
 	delete(l.deco_items)
+	inc_destroy(l)
 	if l.arena_ready { virtual.arena_destroy(&l.arena) }
 	l^ = {}
 }

@@ -66,6 +66,7 @@ set_height :: proc(c: ^Ctx, ki: i32, w, cb_h, h: f32) {
 	}
 	k.size.y = h
 	k.cache_ok = true
+	k.cache_flow = false
 	k.cache_in = {w, cb_h, h}
 	k.cache_h = h
 }
