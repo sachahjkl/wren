@@ -1,27 +1,62 @@
 # web-platform-tests expectations of Wren for html/webappapis/timers, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/html/webappapis/timers/arguments.html: TIMEOUT
-/html/webappapis/timers/clearinterval-from-callback.any.html: TIMEOUT
-/html/webappapis/timers/clearinterval-from-callback.any.worker.html: TIMEOUT
-/html/webappapis/timers/cleartimeout-clearinterval.any.html: TIMEOUT
-/html/webappapis/timers/cleartimeout-clearinterval.any.worker.html: TIMEOUT
-/html/webappapis/timers/errors.html: TIMEOUT
-/html/webappapis/timers/evil-spec-example.any.html: TIMEOUT
-/html/webappapis/timers/evil-spec-example.any.worker.html: TIMEOUT
-/html/webappapis/timers/missing-timeout-setinterval.any.html: TIMEOUT
-/html/webappapis/timers/missing-timeout-setinterval.any.worker.html: TIMEOUT
-/html/webappapis/timers/negative-setinterval.any.html: TIMEOUT
-/html/webappapis/timers/negative-setinterval.any.worker.html: TIMEOUT
-/html/webappapis/timers/negative-settimeout.any.html: TIMEOUT
-/html/webappapis/timers/negative-settimeout.any.worker.html: TIMEOUT
+/html/webappapis/timers/arguments.html: OK
+	setInterval: PASS
+	setTimeout: PASS
+/html/webappapis/timers/clearinterval-from-callback.any.html: OK
+	Clearing an interval from the callback should still clear it.: PASS
+/html/webappapis/timers/clearinterval-from-callback.any.worker.html: OK
+	Clearing an interval from the callback should still clear it.: PASS
+/html/webappapis/timers/cleartimeout-clearinterval.any.html: OK
+	Clear interval with clearTimeout: PASS
+	Clear timeout with clearInterval: PASS
+/html/webappapis/timers/cleartimeout-clearinterval.any.worker.html: OK
+	Clear interval with clearTimeout: PASS
+	Clear timeout with clearInterval: PASS
+/html/webappapis/timers/errors.html: OK
+	setInterval, function argument: PASS
+	setInterval, string argument: PASS
+	setTimeout, function argument: PASS
+	setTimeout, string argument: PASS
+/html/webappapis/timers/evil-spec-example.any.html: OK
+	Interaction of setTimeout and WebIDL: PASS
+/html/webappapis/timers/evil-spec-example.any.worker.html: OK
+	Interaction of setTimeout and WebIDL: PASS
+/html/webappapis/timers/missing-timeout-setinterval.any.html: OK
+	Calling setInterval with no interval should be the same as if called with 0 interval: PASS
+	Calling setInterval with undefined interval should be the same as if called with 0 interval: PASS
+/html/webappapis/timers/missing-timeout-setinterval.any.worker.html: OK
+	Calling setInterval with no interval should be the same as if called with 0 interval: PASS
+	Calling setInterval with undefined interval should be the same as if called with 0 interval: PASS
+/html/webappapis/timers/negative-setinterval.any.html: OK
+	negative-setinterval: PASS
+/html/webappapis/timers/negative-setinterval.any.worker.html: OK
+	Untitled: PASS
+/html/webappapis/timers/negative-settimeout.any.html: OK
+	negative-settimeout: PASS
+/html/webappapis/timers/negative-settimeout.any.worker.html: OK
+	Untitled: PASS
 /html/webappapis/timers/setinterval-cross-realm-callback-report-exception.html: TIMEOUT
-/html/webappapis/timers/setinterval-settimeout-clamping.any.html: TIMEOUT
-/html/webappapis/timers/setinterval-settimeout-clamping.any.worker.html: TIMEOUT
+/html/webappapis/timers/setinterval-settimeout-clamping.any.html: OK
+	setInterval(0) before setTimeout(0): PASS
+	setTimeout(0) before setInterval(0): PASS
+/html/webappapis/timers/setinterval-settimeout-clamping.any.worker.html: OK
+	setInterval(0) before setTimeout(0): PASS
+	setTimeout(0) before setInterval(0): PASS
 /html/webappapis/timers/settimeout-cross-realm-callback-report-exception.html: TIMEOUT
-/html/webappapis/timers/settimeout-detached-iframe.html: TIMEOUT
-/html/webappapis/timers/settimeout-setinterval-handles.html: TIMEOUT
-/html/webappapis/timers/timer-nesting-not-inherited-in-microtask.html: TIMEOUT
-/html/webappapis/timers/type-long-setinterval.any.html: TIMEOUT
-/html/webappapis/timers/type-long-setinterval.any.worker.html: TIMEOUT
-/html/webappapis/timers/type-long-settimeout.any.html: TIMEOUT
-/html/webappapis/timers/type-long-settimeout.any.worker.html: TIMEOUT
+/html/webappapis/timers/settimeout-detached-iframe.html: OK
+	setTimeout() on a detached iframe's window does not throw and its callback never runs: FAIL
+/html/webappapis/timers/settimeout-setinterval-handles.html: OK
+	Timeouts and intervals share a set of unique active handles: PASS
+	setTimeout and setInterval should return numeric handles integer that is greater than zero: PASS
+/html/webappapis/timers/timer-nesting-not-inherited-in-microtask.html: OK
+	Test requires performance.now() to measure approximate timing of callbacks.: PASS
+	Test that a timer scheduled during a microtask checkpoint does not inherit the timer nesting level of the task that just ran.: FAIL
+/html/webappapis/timers/type-long-setinterval.any.html: OK
+	type-long-setinterval: PASS
+/html/webappapis/timers/type-long-setinterval.any.worker.html: OK
+	Untitled: PASS
+/html/webappapis/timers/type-long-settimeout.any.html: OK
+	type-long-settimeout: PASS
+/html/webappapis/timers/type-long-settimeout.any.worker.html: OK
+	Untitled: PASS

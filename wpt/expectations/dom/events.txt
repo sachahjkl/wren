@@ -1,217 +1,1053 @@
 # web-platform-tests expectations of Wren for dom/events, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/dom/events/AddEventListenerOptions-once.any.html: TIMEOUT
-/dom/events/AddEventListenerOptions-once.any.worker.html: TIMEOUT
-/dom/events/AddEventListenerOptions-passive.any.html: TIMEOUT
-/dom/events/AddEventListenerOptions-passive.any.worker.html: TIMEOUT
-/dom/events/AddEventListenerOptions-signal.any.html: TIMEOUT
-/dom/events/AddEventListenerOptions-signal.any.worker.html: TIMEOUT
-/dom/events/Body-FrameSet-Event-Handlers.html: TIMEOUT
-/dom/events/CustomEvent.html: TIMEOUT
-/dom/events/Event-cancelBubble.html: TIMEOUT
-/dom/events/Event-constants.html: TIMEOUT
-/dom/events/Event-constructors.any.html: TIMEOUT
-/dom/events/Event-constructors.any.worker.html: TIMEOUT
-/dom/events/Event-defaultPrevented-after-dispatch.html: TIMEOUT
-/dom/events/Event-defaultPrevented.html: TIMEOUT
-/dom/events/Event-dispatch-bubble-canceled.html: TIMEOUT
-/dom/events/Event-dispatch-bubbles-false.html: TIMEOUT
-/dom/events/Event-dispatch-bubbles-true.html: TIMEOUT
+/dom/events/AddEventListenerOptions-once.any.html: OK
+	Multiple once listeners should be invoked even if the stopImmediatePropagation is set: PASS
+	Once listener should be added / removed like normal listeners: PASS
+	Once listener should be invoked only once: PASS
+	Once listener should be invoked only once even if the event is nested: PASS
+/dom/events/AddEventListenerOptions-once.any.worker.html: OK
+	Multiple once listeners should be invoked even if the stopImmediatePropagation is set: PASS
+	Once listener should be added / removed like normal listeners: PASS
+	Once listener should be invoked only once: PASS
+	Once listener should be invoked only once even if the event is nested: PASS
+/dom/events/AddEventListenerOptions-passive.any.html: OK
+	Equivalence of option values: PASS
+	Supports passive option on addEventListener only: PASS
+	passive behavior of one listener should be unaffected by the presence of other listeners: FAIL
+	preventDefault should be ignored if-and-only-if the passive option is true: FAIL
+	returnValue should be ignored if-and-only-if the passive option is true: FAIL
+/dom/events/AddEventListenerOptions-passive.any.worker.html: OK
+	Equivalence of option values: PASS
+	Supports passive option on addEventListener only: PASS
+	passive behavior of one listener should be unaffected by the presence of other listeners: FAIL
+	preventDefault should be ignored if-and-only-if the passive option is true: FAIL
+	returnValue should be ignored if-and-only-if the passive option is true: FAIL
+/dom/events/AddEventListenerOptions-signal.any.html: OK
+	Aborting from a listener does not call future listeners: PASS
+	Aborting from a nested listener should remove it: PASS
+	Adding then aborting a listener in another listener does not call it: PASS
+	Passing an AbortSignal to addEventListener does not prevent removeEventListener: PASS
+	Passing an AbortSignal to addEventListener options should allow removing a listener: PASS
+	Passing an AbortSignal to addEventListener works with the capture flag: PASS
+	Passing an AbortSignal to addEventListener works with the once flag: PASS
+	Passing an AbortSignal to multiple listeners: PASS
+	Passing null as the signal should throw: PASS
+	Passing null as the signal should throw (listener is also null): PASS
+	Removing a once listener works with a passed signal: PASS
+/dom/events/AddEventListenerOptions-signal.any.worker.html: OK
+	Aborting from a listener does not call future listeners: PASS
+	Aborting from a nested listener should remove it: PASS
+	Adding then aborting a listener in another listener does not call it: PASS
+	Passing an AbortSignal to addEventListener does not prevent removeEventListener: PASS
+	Passing an AbortSignal to addEventListener options should allow removing a listener: PASS
+	Passing an AbortSignal to addEventListener works with the capture flag: PASS
+	Passing an AbortSignal to addEventListener works with the once flag: PASS
+	Passing an AbortSignal to multiple listeners: PASS
+	Passing null as the signal should throw: PASS
+	Passing null as the signal should throw (listener is also null): PASS
+	Removing a once listener works with a passed signal: PASS
+/dom/events/Body-FrameSet-Event-Handlers.html: OK
+	Enumerate HTMLBodyElement.onblur: PASS
+	Enumerate HTMLBodyElement.onerror: PASS
+	Enumerate HTMLBodyElement.onfocus: PASS
+	Enumerate HTMLBodyElement.onload: PASS
+	Enumerate HTMLBodyElement.onresize: PASS
+	Enumerate HTMLBodyElement.onscroll: PASS
+	Enumerate HTMLFrameSetElement.onblur: PASS
+	Enumerate HTMLFrameSetElement.onerror: PASS
+	Enumerate HTMLFrameSetElement.onfocus: PASS
+	Enumerate HTMLFrameSetElement.onload: PASS
+	Enumerate HTMLFrameSetElement.onresize: PASS
+	Enumerate HTMLFrameSetElement.onscroll: PASS
+	Forward HTMLBodyElement.onblur to Window: PASS
+	Forward HTMLBodyElement.onerror to Window: PASS
+	Forward HTMLBodyElement.onfocus to Window: PASS
+	Forward HTMLBodyElement.onload to Window: PASS
+	Forward HTMLBodyElement.onresize to Window: PASS
+	Forward HTMLBodyElement.onscroll to Window: PASS
+	Forward HTMLFrameSetElement.onblur to Window: PASS
+	Forward HTMLFrameSetElement.onerror to Window: PASS
+	Forward HTMLFrameSetElement.onfocus to Window: PASS
+	Forward HTMLFrameSetElement.onload to Window: PASS
+	Forward HTMLFrameSetElement.onresize to Window: PASS
+	Forward HTMLFrameSetElement.onscroll to Window: PASS
+	Reflect HTMLBodyElement.onblur: PASS
+	Reflect HTMLBodyElement.onerror: PASS
+	Reflect HTMLBodyElement.onfocus: PASS
+	Reflect HTMLBodyElement.onload: PASS
+	Reflect HTMLBodyElement.onresize: PASS
+	Reflect HTMLBodyElement.onscroll: PASS
+	Reflect HTMLFrameSetElement.onblur: PASS
+	Reflect HTMLFrameSetElement.onerror: PASS
+	Reflect HTMLFrameSetElement.onfocus: PASS
+	Reflect HTMLFrameSetElement.onload: PASS
+	Reflect HTMLFrameSetElement.onresize: PASS
+	Reflect HTMLFrameSetElement.onscroll: PASS
+	Set HTMLBodyElement.onblur: PASS
+	Set HTMLBodyElement.onerror: PASS
+	Set HTMLBodyElement.onfocus: PASS
+	Set HTMLBodyElement.onload: PASS
+	Set HTMLBodyElement.onresize: PASS
+	Set HTMLBodyElement.onscroll: PASS
+	Set HTMLFrameSetElement.onblur: PASS
+	Set HTMLFrameSetElement.onerror: PASS
+	Set HTMLFrameSetElement.onfocus: PASS
+	Set HTMLFrameSetElement.onload: PASS
+	Set HTMLFrameSetElement.onresize: PASS
+	Set HTMLFrameSetElement.onscroll: PASS
+/dom/events/CustomEvent.html: OK
+	CustomEvent dispatching.: PASS
+	First parameter to initCustomEvent should be mandatory.: PASS
+	initCustomEvent's default parameter values.: PASS
+/dom/events/Event-cancelBubble.html: OK
+	Event.cancelBubble=false must have no effect during event propagation.: PASS
+	Event.cancelBubble=false must have no effect.: PASS
+	Event.cancelBubble=true must set the stop propagation flag.: PASS
+	Initializing an event must set cancelBubble to false.: PASS
+	cancelBubble must be false after an event has been dispatched.: FAIL
+	cancelBubble must be false when an event is initially created.: PASS
+	stopImmediatePropagation() must set cancelBubble to true.: PASS
+	stopPropagation() must set cancelBubble to true.: PASS
+/dom/events/Event-constants.html: OK
+	Constants for eventPhase on CustomEvent object.: PASS
+	Constants for eventPhase on Event interface object.: PASS
+	Constants for eventPhase on Event object.: PASS
+	Constants for eventPhase on Event prototype object.: PASS
+/dom/events/Event-constructors.any.html: OK
+	Event constructors: PASS
+	Event constructors 1: PASS
+	Event constructors 10: PASS
+	Event constructors 11: PASS
+	Event constructors 12: PASS
+	Event constructors 13: PASS
+	Event constructors 2: PASS
+	Event constructors 3: PASS
+	Event constructors 4: PASS
+	Event constructors 5: PASS
+	Event constructors 6: PASS
+	Event constructors 7: PASS
+	Event constructors 8: PASS
+	Event constructors 9: PASS
+/dom/events/Event-constructors.any.worker.html: OK
+	Untitled: PASS
+	Untitled 1: PASS
+	Untitled 10: PASS
+	Untitled 11: PASS
+	Untitled 12: PASS
+	Untitled 13: PASS
+	Untitled 2: PASS
+	Untitled 3: PASS
+	Untitled 4: PASS
+	Untitled 5: PASS
+	Untitled 6: PASS
+	Untitled 7: PASS
+	Untitled 8: PASS
+	Untitled 9: PASS
+/dom/events/Event-defaultPrevented-after-dispatch.html: OK
+	Default prevention via preventDefault: PASS
+	Default prevention via returnValue: PASS
+/dom/events/Event-defaultPrevented.html: OK
+	When an event is created, defaultPrevented should be initialized to false.: PASS
+	initEvent should unset defaultPrevented.: PASS
+	initEvent should work correctly (cancelable).: PASS
+	initEvent should work correctly (not cancelable).: PASS
+	preventDefault() should change defaultPrevented if cancelable is true.: PASS
+	preventDefault() should not change defaultPrevented if cancelable is false.: PASS
+	returnValue should change defaultPrevented if cancelable is true.: PASS
+	returnValue should not change defaultPrevented if cancelable is false.: PASS
+/dom/events/Event-dispatch-bubble-canceled.html: OK
+	Setting cancelBubble=true prior to dispatchEvent(): FAIL
+/dom/events/Event-dispatch-bubbles-false.html: OK
+	In DOMImplementation.createHTMLDocument(): FAIL
+	In new Document(): FAIL
+	In window.document with click event: PASS
+	In window.document with load event: PASS
+	In window.document.cloneNode(true): FAIL
+/dom/events/Event-dispatch-bubbles-true.html: OK
+	In DOMImplementation.createHTMLDocument(): FAIL
+	In new Document(): FAIL
+	In window.document with click event: PASS
+	In window.document with load event: PASS
+	In window.document.cloneNode(true): FAIL
 /dom/events/Event-dispatch-click.html: TIMEOUT
-/dom/events/Event-dispatch-click.tentative.html: TIMEOUT
-/dom/events/Event-dispatch-detached-click.html: TIMEOUT
-/dom/events/Event-dispatch-detached-input-and-change.html: TIMEOUT
-/dom/events/Event-dispatch-handlers-changed.html: TIMEOUT
-/dom/events/Event-dispatch-listener-order.window.html: TIMEOUT
-/dom/events/Event-dispatch-multiple-cancelBubble.html: TIMEOUT
-/dom/events/Event-dispatch-multiple-stopPropagation.html: TIMEOUT
-/dom/events/Event-dispatch-omitted-capture.html: TIMEOUT
+	basic with click(): PASS
+	basic with dispatchEvent(): FAIL
+	basic with wrong event class: PASS
+	disabled checkbox should be checked from dispatchEvent(new MouseEvent("click")): FAIL
+	disabled checkbox should fire onclick: PASS
+	disabled checkbox should get legacy-canceled-activation behavior: FAIL
+	disabled checkbox should get legacy-canceled-activation behavior 2: PASS
+	disabled checkbox still has activation behavior: PASS
+	disabled checkbox still has activation behavior, part 2: PASS
+	disabled radio should be checked from dispatchEvent(new MouseEvent("click")): FAIL
+	disabled radio should fire onclick: PASS
+	disabled radio should get legacy-canceled-activation behavior: FAIL
+	disabled radio should get legacy-canceled-activation behavior 2: PASS
+	disabled radio still has activation behavior: PASS
+	disabled submit button should not activate: PASS
+	disabling checkbox in onclick listener shouldn't suppress onchange: PASS
+	disabling checkbox in onclick listener shouldn't suppress oninput: PASS
+	disabling radio in onclick listener shouldn't suppress onchange: PASS
+	disabling radio in onclick listener shouldn't suppress oninput: PASS
+	disconnected checkbox should be checked: PASS
+	disconnected checkbox should be checked from dispatchEvent(new MouseEvent('click')): FAIL
+	disconnected form should not submit: PASS
+	disconnected radio should be checked: PASS
+	disconnected radio should be checked from dispatchEvent(new MouseEvent('click')): FAIL
+	event state during post-click handling: TIMEOUT
+	look at parents only when event bubbles: PASS
+	look at parents when event bubbles: FAIL
+	pick the first with activation behavior <a href>: TIMEOUT
+	pick the first with activation behavior <input type=checkbox>: FAIL
+	pick the first with activation behavior <input type=radio>: FAIL
+	redispatch during post-click handling: TIMEOUT
+	submit button should not activate if the event listener disables it: PASS
+	submit button that morphed from checkbox should not activate: PASS
+/dom/events/Event-dispatch-click.tentative.html: OK
+	checkbox morphed into another type should not mutate checked state: PASS
+	disabled checkbox should not be checked from label click: PASS
+	disabled checkbox should not be checked from label click by dispatchEvent: PASS
+	disabled radio should not be checked from label click: PASS
+	disabled radio should not be checked from label click by dispatchEvent: PASS
+	radio morphed into another type should not steal the existing checked state: PASS
+/dom/events/Event-dispatch-detached-click.html: OK
+	Click event can be dispatched to an element that is not in the document.: PASS
+	Click event on an element not in the document: PASS
+/dom/events/Event-dispatch-detached-input-and-change.html: OK
+	attached checkbox should emit input and change events on click().: PASS
+	attached checkbox should emit input and change events on dispatchEvent(new MouseEvent('click')).: FAIL
+	attached radio should emit input and change events on click().: PASS
+	attached radio should emit input and change events on dispatchEvent(new MouseEvent('click')).: FAIL
+	attached to shadow dom checkbox should emit input and change events on click().: FAIL
+	attached to shadow dom checkbox should emit input and change events on dispatchEvent(new MouseEvent('click')).: FAIL
+	attached to shadow dom radio should emit input and change events on click().: FAIL
+	attached to shadow dom radio should emit input and change events on dispatchEvent(new MouseEvent('click')).: FAIL
+	detached checkbox should not emit input or change events on click().: PASS
+	detached checkbox should not emit input or change events on dispatchEvent(new MouseEvent('click')).: PASS
+	detached radio should not emit input or change events on click().: PASS
+	detached radio should not emit input or change events on dispatchEvent(new MouseEvent('click')).: PASS
+/dom/events/Event-dispatch-handlers-changed.html: OK
+	 Dispatch additional events inside an event listener : PASS
+/dom/events/Event-dispatch-listener-order.window.html: OK
+	Event-dispatch-listener-order: FAIL
+/dom/events/Event-dispatch-multiple-cancelBubble.html: OK
+	Multiple dispatchEvent() and cancelBubble: PASS
+/dom/events/Event-dispatch-multiple-stopPropagation.html: OK
+	 Multiple dispatchEvent() and stopPropagation() : PASS
+/dom/events/Event-dispatch-omitted-capture.html: OK
+	EventTarget.addEventListener with the capture argument omitted: PASS
 /dom/events/Event-dispatch-on-disabled-elements.html: TIMEOUT
-/dom/events/Event-dispatch-order-at-target.html: TIMEOUT
-/dom/events/Event-dispatch-order.html: TIMEOUT
-/dom/events/Event-dispatch-other-document.html: TIMEOUT
-/dom/events/Event-dispatch-propagation-stopped.html: TIMEOUT
-/dom/events/Event-dispatch-redispatch.html: TIMEOUT
-/dom/events/Event-dispatch-reenter.html: TIMEOUT
-/dom/events/Event-dispatch-single-activation-behavior.html: TIMEOUT
-/dom/events/Event-dispatch-target-moved.html: TIMEOUT
-/dom/events/Event-dispatch-target-removed.html: TIMEOUT
+	CSS Animation animationstart, animationiteration, animationend fire on disabled form elements: NOTRUN
+	CSS Animation's animationcancel event fires on disabled form elements: NOTRUN
+	CSS Transitions transitioncancel event fires on disabled form elements: NOTRUN
+	CSS Transitions transitionrun, transitionstart, transitionend events fire on disabled form elements: TIMEOUT
+	Calling click() on disabled elements must not dispatch events.: PASS
+	Can dispatch CustomEvents at disabled HTML elements.: PASS
+	Can dispatch untrusted 'click' Events at disabled HTML elements.: PASS
+	Can dispatch untrusted Events at disabled HTML elements.: PASS
+	Real clicks on disabled elements must not dispatch events.: NOTRUN
+/dom/events/Event-dispatch-order-at-target.html: OK
+	Listeners are invoked in correct order (AT_TARGET phase): PASS
+/dom/events/Event-dispatch-order.html: OK
+	Event phases order: PASS
+/dom/events/Event-dispatch-other-document.html: OK
+	Custom event on an element in another document: PASS
+/dom/events/Event-dispatch-propagation-stopped.html: OK
+	 Calling stopPropagation() prior to dispatchEvent() : FAIL
+/dom/events/Event-dispatch-redispatch.html: OK
+	Redispatching DOMContentLoaded event after being dispatched: PASS
+	Redispatching event which is being dispatched: PASS
+	Redispatching mouseup event whose default action dispatches a click event: FAIL
+	Synthesizing click on button...: PASS
+/dom/events/Event-dispatch-reenter.html: OK
+	 Dispatch additional events inside an event listener : PASS
+/dom/events/Event-dispatch-single-activation-behavior.html: OK
+	When clicking child <A></A> of parent <AREA></AREA>, only child should be activated.: FAIL
+	When clicking child <A></A> of parent <DETAILS><SUMMARY></SUMMARY></DETAILS>, only child should be activated.: FAIL
+	When clicking child <A></A> of parent <FORM><BUTTON type=reset></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <A></A> of parent <FORM><BUTTON type=submit></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <A></A> of parent <FORM><INPUT type=image></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <A></A> of parent <FORM><INPUT type=reset></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <A></A> of parent <FORM><INPUT type=submit></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <A></A> of parent <INPUT type=checkbox></INPUT>, only child should be activated.: FAIL
+	When clicking child <A></A> of parent <INPUT type=radio></INPUT>, only child should be activated.: FAIL
+	When clicking child <A></A> of parent <LABEL><BUTTON type=button></BUTTON></LABEL>, only child should be activated.: FAIL
+	When clicking child <A></A> of parent <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL>, only child should be activated.: FAIL
+	When clicking child <AREA></AREA> of parent <A></A>, only child should be activated.: FAIL
+	When clicking child <AREA></AREA> of parent <DETAILS><SUMMARY></SUMMARY></DETAILS>, only child should be activated.: FAIL
+	When clicking child <AREA></AREA> of parent <FORM><BUTTON type=reset></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <AREA></AREA> of parent <FORM><BUTTON type=submit></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <AREA></AREA> of parent <FORM><INPUT type=image></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <AREA></AREA> of parent <FORM><INPUT type=reset></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <AREA></AREA> of parent <FORM><INPUT type=submit></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <AREA></AREA> of parent <INPUT type=checkbox></INPUT>, only child should be activated.: FAIL
+	When clicking child <AREA></AREA> of parent <INPUT type=radio></INPUT>, only child should be activated.: FAIL
+	When clicking child <AREA></AREA> of parent <LABEL><BUTTON type=button></BUTTON></LABEL>, only child should be activated.: FAIL
+	When clicking child <AREA></AREA> of parent <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL>, only child should be activated.: FAIL
+	When clicking child <DETAILS><SUMMARY></SUMMARY></DETAILS> of parent <A></A>, only child should be activated.: FAIL
+	When clicking child <DETAILS><SUMMARY></SUMMARY></DETAILS> of parent <AREA></AREA>, only child should be activated.: FAIL
+	When clicking child <DETAILS><SUMMARY></SUMMARY></DETAILS> of parent <FORM><BUTTON type=reset></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <DETAILS><SUMMARY></SUMMARY></DETAILS> of parent <FORM><BUTTON type=submit></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <DETAILS><SUMMARY></SUMMARY></DETAILS> of parent <FORM><INPUT type=image></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <DETAILS><SUMMARY></SUMMARY></DETAILS> of parent <FORM><INPUT type=reset></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <DETAILS><SUMMARY></SUMMARY></DETAILS> of parent <FORM><INPUT type=submit></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <DETAILS><SUMMARY></SUMMARY></DETAILS> of parent <INPUT type=checkbox></INPUT>, only child should be activated.: FAIL
+	When clicking child <DETAILS><SUMMARY></SUMMARY></DETAILS> of parent <INPUT type=radio></INPUT>, only child should be activated.: FAIL
+	When clicking child <DETAILS><SUMMARY></SUMMARY></DETAILS> of parent <LABEL><BUTTON type=button></BUTTON></LABEL>, only child should be activated.: FAIL
+	When clicking child <DETAILS><SUMMARY></SUMMARY></DETAILS> of parent <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=reset></BUTTON></FORM> of parent <A></A>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=reset></BUTTON></FORM> of parent <AREA></AREA>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=reset></BUTTON></FORM> of parent <DETAILS><SUMMARY></SUMMARY></DETAILS>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=reset></BUTTON></FORM> of parent <FORM><BUTTON type=submit></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=reset></BUTTON></FORM> of parent <FORM><INPUT type=image></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=reset></BUTTON></FORM> of parent <FORM><INPUT type=reset></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=reset></BUTTON></FORM> of parent <FORM><INPUT type=submit></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=reset></BUTTON></FORM> of parent <INPUT type=checkbox></INPUT>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=reset></BUTTON></FORM> of parent <INPUT type=radio></INPUT>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=reset></BUTTON></FORM> of parent <LABEL><BUTTON type=button></BUTTON></LABEL>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=reset></BUTTON></FORM> of parent <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=submit></BUTTON></FORM> of parent <A></A>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=submit></BUTTON></FORM> of parent <AREA></AREA>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=submit></BUTTON></FORM> of parent <DETAILS><SUMMARY></SUMMARY></DETAILS>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=submit></BUTTON></FORM> of parent <FORM><BUTTON type=reset></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=submit></BUTTON></FORM> of parent <FORM><INPUT type=image></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=submit></BUTTON></FORM> of parent <FORM><INPUT type=reset></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=submit></BUTTON></FORM> of parent <FORM><INPUT type=submit></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=submit></BUTTON></FORM> of parent <INPUT type=checkbox></INPUT>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=submit></BUTTON></FORM> of parent <INPUT type=radio></INPUT>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=submit></BUTTON></FORM> of parent <LABEL><BUTTON type=button></BUTTON></LABEL>, only child should be activated.: FAIL
+	When clicking child <FORM><BUTTON type=submit></BUTTON></FORM> of parent <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=image></INPUT></FORM> of parent <A></A>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=image></INPUT></FORM> of parent <AREA></AREA>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=image></INPUT></FORM> of parent <DETAILS><SUMMARY></SUMMARY></DETAILS>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=image></INPUT></FORM> of parent <FORM><BUTTON type=reset></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=image></INPUT></FORM> of parent <FORM><BUTTON type=submit></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=image></INPUT></FORM> of parent <FORM><INPUT type=reset></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=image></INPUT></FORM> of parent <FORM><INPUT type=submit></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=image></INPUT></FORM> of parent <INPUT type=checkbox></INPUT>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=image></INPUT></FORM> of parent <INPUT type=radio></INPUT>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=image></INPUT></FORM> of parent <LABEL><BUTTON type=button></BUTTON></LABEL>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=image></INPUT></FORM> of parent <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=reset></INPUT></FORM> of parent <A></A>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=reset></INPUT></FORM> of parent <AREA></AREA>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=reset></INPUT></FORM> of parent <DETAILS><SUMMARY></SUMMARY></DETAILS>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=reset></INPUT></FORM> of parent <FORM><BUTTON type=reset></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=reset></INPUT></FORM> of parent <FORM><BUTTON type=submit></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=reset></INPUT></FORM> of parent <FORM><INPUT type=image></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=reset></INPUT></FORM> of parent <FORM><INPUT type=submit></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=reset></INPUT></FORM> of parent <INPUT type=checkbox></INPUT>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=reset></INPUT></FORM> of parent <INPUT type=radio></INPUT>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=reset></INPUT></FORM> of parent <LABEL><BUTTON type=button></BUTTON></LABEL>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=reset></INPUT></FORM> of parent <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=submit></INPUT></FORM> of parent <A></A>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=submit></INPUT></FORM> of parent <AREA></AREA>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=submit></INPUT></FORM> of parent <DETAILS><SUMMARY></SUMMARY></DETAILS>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=submit></INPUT></FORM> of parent <FORM><BUTTON type=reset></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=submit></INPUT></FORM> of parent <FORM><BUTTON type=submit></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=submit></INPUT></FORM> of parent <FORM><INPUT type=image></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=submit></INPUT></FORM> of parent <FORM><INPUT type=reset></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=submit></INPUT></FORM> of parent <INPUT type=checkbox></INPUT>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=submit></INPUT></FORM> of parent <INPUT type=radio></INPUT>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=submit></INPUT></FORM> of parent <LABEL><BUTTON type=button></BUTTON></LABEL>, only child should be activated.: FAIL
+	When clicking child <FORM><INPUT type=submit></INPUT></FORM> of parent <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL>, only child should be activated.: FAIL
+	When clicking child <INPUT type=checkbox></INPUT> of parent <A></A>, only child should be activated.: FAIL
+	When clicking child <INPUT type=checkbox></INPUT> of parent <AREA></AREA>, only child should be activated.: FAIL
+	When clicking child <INPUT type=checkbox></INPUT> of parent <DETAILS><SUMMARY></SUMMARY></DETAILS>, only child should be activated.: FAIL
+	When clicking child <INPUT type=checkbox></INPUT> of parent <FORM><BUTTON type=reset></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <INPUT type=checkbox></INPUT> of parent <FORM><BUTTON type=submit></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <INPUT type=checkbox></INPUT> of parent <FORM><INPUT type=image></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <INPUT type=checkbox></INPUT> of parent <FORM><INPUT type=reset></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <INPUT type=checkbox></INPUT> of parent <FORM><INPUT type=submit></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <INPUT type=checkbox></INPUT> of parent <INPUT type=radio></INPUT>, only child should be activated.: FAIL
+	When clicking child <INPUT type=checkbox></INPUT> of parent <LABEL><BUTTON type=button></BUTTON></LABEL>, only child should be activated.: FAIL
+	When clicking child <INPUT type=checkbox></INPUT> of parent <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL>, only child should be activated.: FAIL
+	When clicking child <INPUT type=radio></INPUT> of parent <A></A>, only child should be activated.: FAIL
+	When clicking child <INPUT type=radio></INPUT> of parent <AREA></AREA>, only child should be activated.: FAIL
+	When clicking child <INPUT type=radio></INPUT> of parent <DETAILS><SUMMARY></SUMMARY></DETAILS>, only child should be activated.: FAIL
+	When clicking child <INPUT type=radio></INPUT> of parent <FORM><BUTTON type=reset></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <INPUT type=radio></INPUT> of parent <FORM><BUTTON type=submit></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <INPUT type=radio></INPUT> of parent <FORM><INPUT type=image></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <INPUT type=radio></INPUT> of parent <FORM><INPUT type=reset></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <INPUT type=radio></INPUT> of parent <FORM><INPUT type=submit></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <INPUT type=radio></INPUT> of parent <INPUT type=checkbox></INPUT>, only child should be activated.: FAIL
+	When clicking child <INPUT type=radio></INPUT> of parent <LABEL><BUTTON type=button></BUTTON></LABEL>, only child should be activated.: FAIL
+	When clicking child <INPUT type=radio></INPUT> of parent <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL>, only child should be activated.: FAIL
+	When clicking child <LABEL><BUTTON type=button></BUTTON></LABEL> of parent <A></A>, only child should be activated.: PASS
+	When clicking child <LABEL><BUTTON type=button></BUTTON></LABEL> of parent <AREA></AREA>, only child should be activated.: PASS
+	When clicking child <LABEL><BUTTON type=button></BUTTON></LABEL> of parent <DETAILS><SUMMARY></SUMMARY></DETAILS>, only child should be activated.: PASS
+	When clicking child <LABEL><BUTTON type=button></BUTTON></LABEL> of parent <FORM><BUTTON type=reset></BUTTON></FORM>, only child should be activated.: PASS
+	When clicking child <LABEL><BUTTON type=button></BUTTON></LABEL> of parent <FORM><BUTTON type=submit></BUTTON></FORM>, only child should be activated.: PASS
+	When clicking child <LABEL><BUTTON type=button></BUTTON></LABEL> of parent <FORM><INPUT type=image></INPUT></FORM>, only child should be activated.: PASS
+	When clicking child <LABEL><BUTTON type=button></BUTTON></LABEL> of parent <FORM><INPUT type=reset></INPUT></FORM>, only child should be activated.: PASS
+	When clicking child <LABEL><BUTTON type=button></BUTTON></LABEL> of parent <FORM><INPUT type=submit></INPUT></FORM>, only child should be activated.: PASS
+	When clicking child <LABEL><BUTTON type=button></BUTTON></LABEL> of parent <INPUT type=checkbox></INPUT>, only child should be activated.: PASS
+	When clicking child <LABEL><BUTTON type=button></BUTTON></LABEL> of parent <INPUT type=radio></INPUT>, only child should be activated.: PASS
+	When clicking child <LABEL><BUTTON type=button></BUTTON></LABEL> of parent <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL>, only child should be activated.: PASS
+	When clicking child <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL> of parent <A></A>, only child should be activated.: FAIL
+	When clicking child <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL> of parent <AREA></AREA>, only child should be activated.: FAIL
+	When clicking child <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL> of parent <DETAILS><SUMMARY></SUMMARY></DETAILS>, only child should be activated.: FAIL
+	When clicking child <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL> of parent <FORM><BUTTON type=reset></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL> of parent <FORM><BUTTON type=submit></BUTTON></FORM>, only child should be activated.: FAIL
+	When clicking child <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL> of parent <FORM><INPUT type=image></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL> of parent <FORM><INPUT type=reset></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL> of parent <FORM><INPUT type=submit></INPUT></FORM>, only child should be activated.: FAIL
+	When clicking child <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL> of parent <INPUT type=checkbox></INPUT>, only child should be activated.: FAIL
+	When clicking child <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL> of parent <INPUT type=radio></INPUT>, only child should be activated.: FAIL
+	When clicking child <LABEL><INPUT type=checkbox></INPUT><SPAN></SPAN></LABEL> of parent <LABEL><BUTTON type=button></BUTTON></LABEL>, only child should be activated.: FAIL
+/dom/events/Event-dispatch-target-moved.html: OK
+	Event propagation path when an element in it is moved within the DOM: PASS
+/dom/events/Event-dispatch-target-removed.html: OK
+	Event propagation path when an element in it is removed from the DOM: PASS
 /dom/events/Event-dispatch-throwing-multiple-globals.html: TIMEOUT
-/dom/events/Event-dispatch-throwing.html: TIMEOUT
-/dom/events/Event-init-while-dispatching.html: TIMEOUT
-/dom/events/Event-initEvent.html: TIMEOUT
-/dom/events/Event-isTrusted.any.html: TIMEOUT
-/dom/events/Event-isTrusted.any.worker.html: TIMEOUT
-/dom/events/Event-propagation.html: TIMEOUT
-/dom/events/Event-returnValue.html: TIMEOUT
-/dom/events/Event-stopImmediatePropagation.html: TIMEOUT
-/dom/events/Event-stopPropagation-cancel-bubbling.html: TIMEOUT
-/dom/events/Event-subclasses-constructors.html: TIMEOUT
+	exception thrown in event listener function should result in error event on listener's global: TIMEOUT
+	exception thrown in event listener interface object should result in error event on listener's global: NOTRUN
+/dom/events/Event-dispatch-throwing.html: OK
+	Throwing in event listener with a single listeners: PASS
+	Throwing in event listener with multiple listeners: PASS
+/dom/events/Event-init-while-dispatching.html: OK
+	Calling initCustomEvent while dispatching.: PASS
+	Calling initEvent while dispatching.: PASS
+	Calling initKeyboardEvent while dispatching.: FAIL
+	Calling initMouseEvent while dispatching.: FAIL
+	Calling initUIEvent while dispatching.: FAIL
+/dom/events/Event-initEvent.html: OK
+	Calling initEvent during propagation.: PASS
+	Calling initEvent multiple times (getting type).: PASS
+	Calling initEvent multiple times (not getting type).: PASS
+	Calling initEvent must not have an effect during dispatching.: PASS
+	Calling initEvent must unset the stop immediate propagation flag.: PASS
+	Calling initEvent must unset the stop propagation flag.: PASS
+	First parameter to initEvent should be mandatory.: PASS
+	Properties of initEvent(type, false, false): PASS
+	Properties of initEvent(type, false, true): PASS
+	Properties of initEvent(type, true, false): PASS
+	Properties of initEvent(type, true, true): PASS
+	Tests initEvent's default parameter values.: PASS
+/dom/events/Event-isTrusted.any.html: OK
+	Event-isTrusted: FAIL
+/dom/events/Event-isTrusted.any.worker.html: OK
+	Untitled: FAIL
+/dom/events/Event-propagation.html: OK
+	After cancelBubble=true: FAIL
+	After stopImmediatePropagation(): FAIL
+	After stopPropagation(): FAIL
+	Newly-created Event: PASS
+	Reinitialized after cancelBubble=true: PASS
+	Reinitialized after stopImmediatePropagation(): PASS
+	Reinitialized after stopPropagation(): PASS
+/dom/events/Event-returnValue.html: OK
+	When an event is created, returnValue should be initialized to true.: PASS
+	initEvent should unset returnValue.: PASS
+	preventDefault() should change returnValue if cancelable is true.: PASS
+	preventDefault() should not change returnValue if cancelable is false.: PASS
+	returnValue should change returnValue if cancelable is true.: PASS
+	returnValue=false should have no effect if cancelable is false.: PASS
+	returnValue=true should have no effect once the canceled flag was set.: PASS
+/dom/events/Event-stopImmediatePropagation.html: OK
+	Event's stopImmediatePropagation: PASS
+/dom/events/Event-stopPropagation-cancel-bubbling.html: ERROR
+	Event-stopPropagation-cancel-bubbling: FAIL
+/dom/events/Event-subclasses-constructors.html: OK
+	CompositionEvent constructor (argument with default values): PASS
+	CompositionEvent constructor (argument with non-default values): PASS
+	CompositionEvent constructor (empty argument): PASS
+	CompositionEvent constructor (no argument): PASS
+	CompositionEvent constructor (null argument): PASS
+	CompositionEvent constructor (undefined argument): PASS
+	Event constructor (argument with default values): PASS
+	Event constructor (argument with non-default values): PASS
+	Event constructor (empty argument): PASS
+	Event constructor (no argument): PASS
+	Event constructor (null argument): PASS
+	Event constructor (undefined argument): PASS
+	FocusEvent constructor (argument with default values): PASS
+	FocusEvent constructor (argument with non-default values): PASS
+	FocusEvent constructor (empty argument): PASS
+	FocusEvent constructor (no argument): PASS
+	FocusEvent constructor (null argument): PASS
+	FocusEvent constructor (undefined argument): PASS
+	KeyboardEvent constructor (argument with default values): PASS
+	KeyboardEvent constructor (argument with non-default values): PASS
+	KeyboardEvent constructor (empty argument): PASS
+	KeyboardEvent constructor (no argument): PASS
+	KeyboardEvent constructor (null argument): PASS
+	KeyboardEvent constructor (undefined argument): PASS
+	MouseEvent constructor (argument with default values): PASS
+	MouseEvent constructor (argument with non-default values): PASS
+	MouseEvent constructor (empty argument): PASS
+	MouseEvent constructor (no argument): PASS
+	MouseEvent constructor (null argument): PASS
+	MouseEvent constructor (undefined argument): PASS
+	SubclassedEvent constructor (argument with default values): PASS
+	SubclassedEvent constructor (argument with non-default values): PASS
+	SubclassedEvent constructor (empty argument): PASS
+	SubclassedEvent constructor (no argument): PASS
+	SubclassedEvent constructor (null argument): PASS
+	SubclassedEvent constructor (undefined argument): PASS
+	UIEvent constructor (argument with default values): PASS
+	UIEvent constructor (argument with non-default values): PASS
+	UIEvent constructor (empty argument): PASS
+	UIEvent constructor (no argument): PASS
+	UIEvent constructor (null argument): PASS
+	UIEvent constructor (undefined argument): PASS
+	UIEvent constructor (view argument with wrong type): PASS
+	WheelEvent constructor (argument with default values): PASS
+	WheelEvent constructor (argument with non-default values): PASS
+	WheelEvent constructor (empty argument): PASS
+	WheelEvent constructor (no argument): PASS
+	WheelEvent constructor (null argument): PASS
+	WheelEvent constructor (undefined argument): PASS
 /dom/events/Event-timestamp-cross-realm-getter.html: TIMEOUT
-/dom/events/Event-timestamp-high-resolution.html: TIMEOUT
-/dom/events/Event-timestamp-high-resolution.https.html: TIMEOUT
-/dom/events/Event-timestamp-safe-resolution.html: TIMEOUT
-/dom/events/Event-type-empty.html: TIMEOUT
-/dom/events/Event-type.html: TIMEOUT
+	event.timeStamp is initialized using event's relevant global object: TIMEOUT
+/dom/events/Event-timestamp-high-resolution.html: OK
+	Constructed FocusEvent timestamp should be high resolution and have the same time origin as performance.now(): PASS
+	Constructed KeyboardEvent timestamp should be high resolution and have the same time origin as performance.now(): PASS
+	Constructed MouseEvent timestamp should be high resolution and have the same time origin as performance.now(): PASS
+	Constructed WheelEvent timestamp should be high resolution and have the same time origin as performance.now(): PASS
+/dom/events/Event-timestamp-high-resolution.https.html: OK
+	Constructed GamepadEvent timestamp should be high resolution and have the same time origin as performance.now(): FAIL
+/dom/events/Event-timestamp-safe-resolution.html: OK
+	Event timestamp should not have a resolution better than 5 microseconds: FAIL
+/dom/events/Event-type-empty.html: OK
+	Constructor: FAIL
+	initEvent: FAIL
+/dom/events/Event-type.html: OK
+	Event.type should be initialized by initEvent: PASS
+	Event.type should be initialized by the constructor: PASS
+	Event.type should initially be the empty string: PASS
 /dom/events/EventListener-addEventListener.sub.window.html: TIMEOUT
-/dom/events/EventListener-handleEvent-cross-realm.html: TIMEOUT
-/dom/events/EventListener-handleEvent.html: TIMEOUT
-/dom/events/EventListener-incumbent-global-1.sub.html: TIMEOUT
-/dom/events/EventListener-incumbent-global-2.sub.html: TIMEOUT
+	EventListener.addEventListener doesn't throw when a cross origin object is passed in.: TIMEOUT
+/dom/events/EventListener-handleEvent-cross-realm.html: OK
+	EventListener is cross-realm callable revoked Proxy: FAIL
+	EventListener is cross-realm non-callable revoked Proxy: FAIL
+	EventListener is cross-realm plain object with non-callable 'handleEvent' property: FAIL
+	EventListener is cross-realm plain object with revoked Proxy as 'handleEvent' property: FAIL
+	EventListener is cross-realm plain object without 'handleEvent' property: FAIL
+/dom/events/EventListener-handleEvent.html: OK
+	calls `handleEvent` method of `EventListener`: PASS
+	doesn't call `handleEvent` method on callable `EventListener`: PASS
+	performs `Get` every time event is dispatched: PASS
+	rethrows errors when getting `handleEvent`: PASS
+	throws if `handleEvent` is falsy and not callable: PASS
+	throws if `handleEvent` is thruthy and not callable: PASS
+/dom/events/EventListener-incumbent-global-1.sub.html: OK
+	Check the incumbent global EventListeners  are called with: FAIL
+/dom/events/EventListener-incumbent-global-2.sub.html: OK
+	Check the incumbent global EventListeners  are called with: FAIL
 /dom/events/EventListener-invoke-legacy.html: TIMEOUT
-/dom/events/EventListenerOptions-capture.html: TIMEOUT
-/dom/events/EventTarget-add-listener-platform-object.html: TIMEOUT
-/dom/events/EventTarget-add-remove-listener.any.html: TIMEOUT
-/dom/events/EventTarget-add-remove-listener.any.worker.html: TIMEOUT
-/dom/events/EventTarget-addEventListener.any.html: TIMEOUT
-/dom/events/EventTarget-addEventListener.any.worker.html: TIMEOUT
-/dom/events/EventTarget-constructible.any.html: TIMEOUT
-/dom/events/EventTarget-constructible.any.worker.html: TIMEOUT
-/dom/events/EventTarget-dispatchEvent-returnvalue.html: TIMEOUT
-/dom/events/EventTarget-dispatchEvent.html: TIMEOUT
-/dom/events/EventTarget-removeEventListener.any.html: TIMEOUT
-/dom/events/EventTarget-removeEventListener.any.worker.html: TIMEOUT
-/dom/events/EventTarget-this-of-listener.html: TIMEOUT
-/dom/events/EventTarget-window-constructor.html: TIMEOUT
-/dom/events/KeyEvent-initKeyEvent.html: TIMEOUT
-/dom/events/click-on-absolute-pseudo.html: TIMEOUT
-/dom/events/element-click.html: TIMEOUT
-/dom/events/event-disabled-dynamic.html: TIMEOUT
-/dom/events/event-global-event-targets.html: TIMEOUT
+	Legacy listener of animationend: TIMEOUT
+	Legacy listener of animationstart: TIMEOUT
+	Legacy listener of transitionend: TIMEOUT
+	Listener of animationend: TIMEOUT
+	Listener of animationstart: TIMEOUT
+	Listener of transitionend: TIMEOUT
+/dom/events/EventListenerOptions-capture.html: OK
+	Capture boolean should be honored correctly: PASS
+	Capture option should be honored correctly: PASS
+	Equivalence of option values: PASS
+	Supports capture option: PASS
+/dom/events/EventTarget-add-listener-platform-object.html: OK
+	addEventListener with a platform object: FAIL
+/dom/events/EventTarget-add-remove-listener.any.html: OK
+	Removing an event listener without explicit capture arg should succeed: PASS
+/dom/events/EventTarget-add-remove-listener.any.worker.html: OK
+	Removing an event listener without explicit capture arg should succeed: PASS
+/dom/events/EventTarget-addEventListener.any.html: OK
+	Adding a null event listener should succeed: PASS
+/dom/events/EventTarget-addEventListener.any.worker.html: OK
+	Adding a null event listener should succeed: PASS
+/dom/events/EventTarget-constructible.any.html: OK
+	A constructed EventTarget can be used as expected: PASS
+	A constructed EventTarget implements dispatch correctly: PASS
+	EventTarget can be subclassed: PASS
+/dom/events/EventTarget-constructible.any.worker.html: OK
+	A constructed EventTarget can be used as expected: PASS
+	A constructed EventTarget implements dispatch correctly: PASS
+	EventTarget can be subclassed: PASS
+/dom/events/EventTarget-dispatchEvent-returnvalue.html: OK
+	Return value of EventTarget.dispatchEvent() affected by preventDefault().: PASS
+	Return value of EventTarget.dispatchEvent() affected by returnValue.: PASS
+/dom/events/EventTarget-dispatchEvent.html: OK
+	Calling dispatchEvent(null).: PASS
+	Capturing event listeners should be called before non-capturing ones: PASS
+	Event listeners added during dispatch should be called: PASS
+	Exceptions from event listeners must not be propagated.: PASS
+	If the event's dispatch flag is set, an InvalidStateError must be thrown.: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (BeforeUnloadEvent).: FAIL
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (CompositionEvent).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (CustomEvent).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (DeviceMotionEvent).: FAIL
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (DeviceOrientationEvent).: FAIL
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (DragEvent).: FAIL
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (Event).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (Events).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (FocusEvent).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (HTMLEvents).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (HashChangeEvent).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (KeyboardEvent).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (MessageEvent).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (MouseEvent).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (MouseEvents).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (SVGEvents).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (StorageEvent).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (TextEvent).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (UIEvent).: PASS
+	If the event's initialized flag is not set, an InvalidStateError must be thrown (UIEvents).: PASS
+/dom/events/EventTarget-removeEventListener.any.html: OK
+	removing a null event listener should succeed: PASS
+/dom/events/EventTarget-removeEventListener.any.worker.html: OK
+	removing a null event listener should succeed: PASS
+/dom/events/EventTarget-this-of-listener.html: OK
+	addEventListener should not require handleEvent to be defined on object listeners: FAIL
+	dispatchEvent should invoke the current handleEvent method of the object: FAIL
+	handleEvent properties added to a function after addEventListener are not reached: FAIL
+	handleEvent properties added to a function before addEventListener are not reached: FAIL
+	the this value inside the event listener callback should be the node: FAIL
+	the this value inside the event listener object handleEvent should be the object: FAIL
+/dom/events/EventTarget-window-constructor.html: OK
+	Modifying window.constructor does not affect event dispatch: PASS
+/dom/events/KeyEvent-initKeyEvent.html: OK
+	KeyboardEvent.initKeyEvent shouldn't be defined (created by constructor): PASS
+	KeyboardEvent.initKeyEvent shouldn't be defined (created by createEvent("KeyboardEvent"): PASS
+	KeyboardEvent.prototype.initKeyEvent shouldn't be defined: PASS
+/dom/events/click-on-absolute-pseudo.html: OK
+	Click on pseudo-element that disappears on mousedown: FAIL
+/dom/events/element-click.html: OK
+	dynamic querySelectorAll, toggle async: PASS
+	dynamic querySelectorAll, toggle sync: PASS
+	static querySelectorAll: PASS
+/dom/events/event-disabled-dynamic.html: OK
+	disabled is honored properly in presence of dynamic changes: PASS
+/dom/events/event-global-event-targets.html: OK
+	An event target's _document property does not affect window.event: FAIL
+	window.event is set when dispatching on AbortSignal: FAIL
+	window.event is set when dispatching on EventTarget: FAIL
+	window.event is set when dispatching on FileReader: FAIL
+	window.event is set when dispatching on Performance: FAIL
 /dom/events/event-global-extra.window.html: TIMEOUT
-/dom/events/event-global-is-still-set-when-coercing-beforeunload-result.html: TIMEOUT
-/dom/events/event-global-is-still-set-when-reporting-exception-onerror.html: TIMEOUT
-/dom/events/event-global-replaceable.html: TIMEOUT
-/dom/events/event-global-set-before-handleEvent-lookup.window.html: TIMEOUT
-/dom/events/event-global.html: TIMEOUT
-/dom/events/event-global.worker.html: TIMEOUT
-/dom/events/event-handler-attribute-replace-preserves-passive.html: TIMEOUT
+	Listener from a different global: TIMEOUT
+	window.event and element from another document: FAIL
+	window.event and moving an element post-dispatch: FAIL
+	window.event for constructors from another global: EventTarget: FAIL
+	window.event for constructors from another global: XMLHttpRequest: FAIL
+	window.event should not be affected by nodes moving post-dispatch: FAIL
+/dom/events/event-global-is-still-set-when-coercing-beforeunload-result.html: OK
+	window.event is still set when 'beforeunload' result is coerced to string: FAIL
+/dom/events/event-global-is-still-set-when-reporting-exception-onerror.html: OK
+	window.onerror handler restores window.event after it reports an exception: FAIL
+/dom/events/event-global-replaceable.html: OK
+	Dispatching does not affect window.event after it's been replaced: PASS
+	Setting window.event replaces it: PASS
+/dom/events/event-global-set-before-handleEvent-lookup.window.html: OK
+	window.event is set before 'handleEvent' lookup: FAIL
+/dom/events/event-global.html: OK
+	event exists on window, which is initially set to undefined: FAIL
+	window.event is only defined during dispatch: FAIL
+	window.event is set to the current event during dispatch: FAIL
+	window.event is set to the current event, which is the event passed to dispatch: FAIL
+	window.event is set to the current event, which is the event passed to dispatch (2): FAIL
+	window.event is undefined if the target is in a shadow tree (event dispatched inside shadow tree): FAIL
+	window.event is undefined if the target is in a shadow tree (event dispatched outside shadow tree): FAIL
+	window.event is undefined inside window.onerror if the target is in a shadow tree (ErrorEvent dispatched inside shadow tree): FAIL
+/dom/events/event-global.worker.html: OK
+	There's no self.event (that's why we call it window.event) in workers: PASS
+/dom/events/event-handler-attribute-replace-preserves-passive.html: OK
+	Replacing a wheel event handler attribute on body via setAttribute preserves its passive flag: PASS
+	Replacing a wheel event handler attribute on document element via setAttribute preserves its passive flag: PASS
 /dom/events/event-listener-not-fully-active-adopted-node.html: TIMEOUT
+	Adopting the target into a fully active iframe's document during dispatch: NOTRUN
+	Adopting the target into a removed iframe's document during dispatch: NOTRUN
+	Event from a node created in a removed iframe's realm still reaches listeners in this document: NOTRUN
+	Node created in an iframe's realm and adopted into this document, iframe removed: TIMEOUT
+	Node created in this realm and adopted into an iframe's document, iframe removed: NOTRUN
 /dom/events/event-listener-not-fully-active-callback.html: TIMEOUT
+	Event handler attribute set to a function from a removed iframe: NOTRUN
+	Function callback from a removed iframe, with a fully active target: TIMEOUT
+	Listener added from a removed iframe, with a fully active target and callback: NOTRUN
+	handleEvent() callback from a removed iframe, with a fully active target: NOTRUN
 /dom/events/event-listener-not-fully-active-navigated.html: TIMEOUT
+	Targets in a document that its iframe has navigated away from: TIMEOUT
+	Targets in a nested iframe whose parent document is no longer fully active: NOTRUN
+	Targets in a nested iframe whose parent iframe was removed: NOTRUN
 /dom/events/event-listener-not-fully-active-target.html: TIMEOUT
-/dom/events/event-src-element-nullable.html: TIMEOUT
+	Abort listeners on an AbortSignal from a removed iframe do not run: NOTRUN
+	AbortSignal from a removed iframe is still aborted: NOTRUN
+	Compiled event handler content attribute on an element in a removed iframe: NOTRUN
+	Dispatch still happens for an EventTarget in a removed iframe, only the listeners are skipped: NOTRUN
+	Document of a removed iframe: NOTRUN
+	Element of a removed iframe: NOTRUN
+	Event handler IDL attribute on an element in a removed iframe: NOTRUN
+	EventTarget created in a removed iframe: TIMEOUT
+	EventTarget created in a removed iframe, with a listener added after removal: NOTRUN
+	EventTarget created in a removed iframe, with an event from that iframe: NOTRUN
+	It is the target's global that matters, not the event's: NOTRUN
+	Removing the iframe during the capture phase skips the remaining objects in the event path: NOTRUN
+	Removing the iframe from within a listener skips the remaining listeners on the same target: NOTRUN
+	Window of a removed iframe: NOTRUN
+	dispatchEvent() on an EventTarget in a removed iframe returns true: NOTRUN
+	handleEvent is not looked up for an EventTarget in a removed iframe: NOTRUN
+/dom/events/event-src-element-nullable.html: OK
+	Event srcElement should be nullable: PASS
 /dom/events/focus-event-document-move.html: TIMEOUT
-/dom/events/handler-count.html?document: TIMEOUT
-/dom/events/handler-count.html?element: TIMEOUT
-/dom/events/handler-count.html?window: TIMEOUT
-/dom/events/label-default-action.html: TIMEOUT
-/dom/events/legacy-pre-activation-behavior.window.html: TIMEOUT
-/dom/events/mouse-event-retarget.html: TIMEOUT
-/dom/events/no-focus-events-at-clicking-editable-content-in-link.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/generic-events-stay-cancelable.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-mousewheel-event-listener-on-body.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-mousewheel-event-listener-on-div.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-mousewheel-event-listener-on-document.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-mousewheel-event-listener-on-root.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-mousewheel-event-listener-on-window.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-touchmove-event-listener-on-body.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-touchmove-event-listener-on-div.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-touchmove-event-listener-on-document.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-touchmove-event-listener-on-root.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-touchmove-event-listener-on-window.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-touchstart-event-listener-on-body.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-touchstart-event-listener-on-div.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-touchstart-event-listener-on-document.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-touchstart-event-listener-on-root.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-touchstart-event-listener-on-window.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-body.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-div.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-document.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-root.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-window.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-mousewheel-event-listener-on-body.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-mousewheel-event-listener-on-div.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-mousewheel-event-listener-on-document.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-mousewheel-event-listener-on-root.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-mousewheel-event-listener-on-window.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-touchmove-event-listener-on-body.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-touchmove-event-listener-on-div.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-touchmove-event-listener-on-document.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-touchmove-event-listener-on-root.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-touchmove-event-listener-on-window.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-touchstart-event-listener-on-body.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-touchstart-event-listener-on-div.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-touchstart-event-listener-on-document.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-touchstart-event-listener-on-root.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-touchstart-event-listener-on-window.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-wheel-event-listener-on-body.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-wheel-event-listener-on-div.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-wheel-event-listener-on-document.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-wheel-event-listener-on-root.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/passive-wheel-event-listener-on-window.html: TIMEOUT
-/dom/events/non-cancelable-when-passive/synthetic-events-cancelable.html: TIMEOUT
-/dom/events/passive-by-default-non-node.html: TIMEOUT
-/dom/events/passive-by-default.html: TIMEOUT
-/dom/events/pointer-event-document-move.html: TIMEOUT
-/dom/events/preventDefault-during-activation-behavior.html: TIMEOUT
-/dom/events/relatedTarget.window.html: TIMEOUT
-/dom/events/remove-all-listeners.html: TIMEOUT
-/dom/events/scrolling/iframe-chains.html: TIMEOUT
+	Moving a node during mousedown should not crash: TIMEOUT
+/dom/events/handler-count.html?document: ERROR
+	Test addEventListener/removeEventListener on the document.: TIMEOUT
+	Test setting onanimationstart handler on the document.: NOTRUN
+/dom/events/handler-count.html?element: ERROR
+	Test addEventListener/removeEventListener on the element.: TIMEOUT
+	Test setting onanimationstart handler on the element.: NOTRUN
+/dom/events/handler-count.html?window: ERROR
+	Test addEventListener/removeEventListener on the window.: TIMEOUT
+	Test setting onanimationstart handler on the window.: NOTRUN
+/dom/events/label-default-action.html: OK
+	Label default action should not trigger when clicked button removes itself: PASS
+/dom/events/legacy-pre-activation-behavior.window.html: OK
+	Use NONE phase during legacy-pre-activation behavior: PASS
+/dom/events/mouse-event-retarget.html: OK
+	offsetX is correctly adjusted: FAIL
+/dom/events/no-focus-events-at-clicking-editable-content-in-link.html: OK
+	Click editable element in link: FAIL
+	Click editable link: FAIL
+/dom/events/non-cancelable-when-passive/generic-events-stay-cancelable.html: OK
+	A generic event with only passive listeners remains cancelable: PASS
+/dom/events/non-cancelable-when-passive/non-passive-mousewheel-event-listener-on-body.html: OK
+	non-passive mousewheel event listener on body: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-mousewheel-event-listener-on-div.html: OK
+	non-passive mousewheel event listener on div: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-mousewheel-event-listener-on-document.html: OK
+	non-passive mousewheel event listener on document: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-mousewheel-event-listener-on-root.html: OK
+	non-passive mousewheel event listener on root: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-mousewheel-event-listener-on-window.html: OK
+	non-passive mousewheel event listener on window: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-touchmove-event-listener-on-body.html: OK
+	non-passive touchmove event listener on body: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-touchmove-event-listener-on-div.html: OK
+	non-passive touchmove event listener on div: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-touchmove-event-listener-on-document.html: OK
+	non-passive touchmove event listener on document: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-touchmove-event-listener-on-root.html: OK
+	non-passive touchmove event listener on root: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-touchmove-event-listener-on-window.html: OK
+	non-passive-touchmove-event-listener-on-window: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-touchstart-event-listener-on-body.html: OK
+	non-passive touchstart event listener on body: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-touchstart-event-listener-on-div.html: OK
+	non-passive touchstart event listener on div: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-touchstart-event-listener-on-document.html: OK
+	non-passive touchstart event listener on document: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-touchstart-event-listener-on-root.html: OK
+	non-passive touchstart event listener on root: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-touchstart-event-listener-on-window.html: OK
+	non-passive touchstart event listener on window: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-body.html: OK
+	non-passive wheel event listener on body: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-div.html: OK
+	non-passive wheel event listener on div: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-document.html: OK
+	non-passive wheel event listener on document: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-root.html: OK
+	non-passive wheel event listener on root: FAIL
+/dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-window.html: OK
+	non-passive wheel event listener on window: FAIL
+/dom/events/non-cancelable-when-passive/passive-mousewheel-event-listener-on-body.html: OK
+	passive mousewheel event listener on body: FAIL
+/dom/events/non-cancelable-when-passive/passive-mousewheel-event-listener-on-div.html: OK
+	passive mousewheel event listener on div: FAIL
+/dom/events/non-cancelable-when-passive/passive-mousewheel-event-listener-on-document.html: OK
+	passive mousewheel event listener on document: FAIL
+/dom/events/non-cancelable-when-passive/passive-mousewheel-event-listener-on-root.html: OK
+	passive mousewheel event listener on root: FAIL
+/dom/events/non-cancelable-when-passive/passive-mousewheel-event-listener-on-window.html: OK
+	passive mousewheel event listener on window: FAIL
+/dom/events/non-cancelable-when-passive/passive-touchmove-event-listener-on-body.html: OK
+	passive touchmove event listener on body: FAIL
+/dom/events/non-cancelable-when-passive/passive-touchmove-event-listener-on-div.html: OK
+	passive touchmove event listener on div: FAIL
+/dom/events/non-cancelable-when-passive/passive-touchmove-event-listener-on-document.html: OK
+	passive touchmove event listener on document: FAIL
+/dom/events/non-cancelable-when-passive/passive-touchmove-event-listener-on-root.html: OK
+	passive touchmove event listener on root: FAIL
+/dom/events/non-cancelable-when-passive/passive-touchmove-event-listener-on-window.html: OK
+	passive touchmove event listener on window: FAIL
+/dom/events/non-cancelable-when-passive/passive-touchstart-event-listener-on-body.html: OK
+	passive touchstart event listener on body: FAIL
+/dom/events/non-cancelable-when-passive/passive-touchstart-event-listener-on-div.html: OK
+	passive touchstart event listener on div: FAIL
+/dom/events/non-cancelable-when-passive/passive-touchstart-event-listener-on-document.html: OK
+	passive touchstart event listener on document: FAIL
+/dom/events/non-cancelable-when-passive/passive-touchstart-event-listener-on-root.html: OK
+	passive touchstart event listener on root: FAIL
+/dom/events/non-cancelable-when-passive/passive-touchstart-event-listener-on-window.html: OK
+	passive touchstart event listener on window: FAIL
+/dom/events/non-cancelable-when-passive/passive-wheel-event-listener-on-body.html: OK
+	passive wheel event listener on body: FAIL
+/dom/events/non-cancelable-when-passive/passive-wheel-event-listener-on-div.html: OK
+	passive wheel event listener on div: FAIL
+/dom/events/non-cancelable-when-passive/passive-wheel-event-listener-on-document.html: OK
+	passive wheel event listener on document: FAIL
+/dom/events/non-cancelable-when-passive/passive-wheel-event-listener-on-root.html: OK
+	passive wheel event listener on root: FAIL
+/dom/events/non-cancelable-when-passive/passive-wheel-event-listener-on-window.html: OK
+	passive wheel event listener on window: FAIL
+/dom/events/non-cancelable-when-passive/synthetic-events-cancelable.html: OK
+	Synthetic mousewheel event with interface Event is not cancelable: PASS
+	Synthetic mousewheel event with interface WheelEvent is not cancelable: PASS
+	Synthetic touchcancel event with interface Event is not cancelable: PASS
+	Synthetic touchcancel event with interface TouchEvent is not cancelable: FAIL
+	Synthetic touchend event with interface Event is not cancelable: PASS
+	Synthetic touchend event with interface TouchEvent is not cancelable: FAIL
+	Synthetic touchmove event with interface Event is not cancelable: PASS
+	Synthetic touchmove event with interface TouchEvent is not cancelable: FAIL
+	Synthetic touchstart event with interface Event is not cancelable: PASS
+	Synthetic touchstart event with interface TouchEvent is not cancelable: FAIL
+	Synthetic wheel event with interface Event is not cancelable: PASS
+	Synthetic wheel event with interface WheelEvent is not cancelable: PASS
+/dom/events/passive-by-default-non-node.html: OK
+	wheel listeners on EventTarget are not passive by default: PASS
+	wheel listeners on Performance are not passive by default: PASS
+/dom/events/passive-by-default.html: OK
+	mousewheel listener is non-passive by default for HTMLDivElement: PASS
+	mousewheel listener is non-passive with {passive:false} for Document: PASS
+	mousewheel listener is non-passive with {passive:false} for HTMLBodyElement: PASS
+	mousewheel listener is non-passive with {passive:false} for HTMLDivElement: PASS
+	mousewheel listener is non-passive with {passive:false} for HTMLHtmlElement: PASS
+	mousewheel listener is non-passive with {passive:false} for Window: PASS
+	mousewheel listener is non-passive with {passive:undefined} for HTMLDivElement: PASS
+	mousewheel listener is passive by default for Document: FAIL
+	mousewheel listener is passive by default for HTMLBodyElement: FAIL
+	mousewheel listener is passive by default for HTMLHtmlElement: FAIL
+	mousewheel listener is passive by default for Window: FAIL
+	mousewheel listener is passive with {passive:true} for Document: FAIL
+	mousewheel listener is passive with {passive:true} for HTMLBodyElement: FAIL
+	mousewheel listener is passive with {passive:true} for HTMLDivElement: FAIL
+	mousewheel listener is passive with {passive:true} for HTMLHtmlElement: FAIL
+	mousewheel listener is passive with {passive:true} for Window: FAIL
+	mousewheel listener is passive with {passive:undefined} for Document: FAIL
+	mousewheel listener is passive with {passive:undefined} for HTMLBodyElement: FAIL
+	mousewheel listener is passive with {passive:undefined} for HTMLHtmlElement: FAIL
+	mousewheel listener is passive with {passive:undefined} for Window: FAIL
+	touchend listener is non-passive by default for Document: PASS
+	touchend listener is non-passive by default for HTMLBodyElement: PASS
+	touchend listener is non-passive by default for HTMLDivElement: PASS
+	touchend listener is non-passive by default for HTMLHtmlElement: PASS
+	touchend listener is non-passive by default for Window: PASS
+	touchend listener is non-passive with {passive:false} for Document: PASS
+	touchend listener is non-passive with {passive:false} for HTMLBodyElement: PASS
+	touchend listener is non-passive with {passive:false} for HTMLDivElement: PASS
+	touchend listener is non-passive with {passive:false} for HTMLHtmlElement: PASS
+	touchend listener is non-passive with {passive:false} for Window: PASS
+	touchend listener is non-passive with {passive:undefined} for Document: PASS
+	touchend listener is non-passive with {passive:undefined} for HTMLBodyElement: PASS
+	touchend listener is non-passive with {passive:undefined} for HTMLDivElement: PASS
+	touchend listener is non-passive with {passive:undefined} for HTMLHtmlElement: PASS
+	touchend listener is non-passive with {passive:undefined} for Window: PASS
+	touchend listener is passive with {passive:true} for Document: FAIL
+	touchend listener is passive with {passive:true} for HTMLBodyElement: FAIL
+	touchend listener is passive with {passive:true} for HTMLDivElement: FAIL
+	touchend listener is passive with {passive:true} for HTMLHtmlElement: FAIL
+	touchend listener is passive with {passive:true} for Window: FAIL
+	touchmove listener is non-passive by default for HTMLDivElement: PASS
+	touchmove listener is non-passive with {passive:false} for Document: PASS
+	touchmove listener is non-passive with {passive:false} for HTMLBodyElement: PASS
+	touchmove listener is non-passive with {passive:false} for HTMLDivElement: PASS
+	touchmove listener is non-passive with {passive:false} for HTMLHtmlElement: PASS
+	touchmove listener is non-passive with {passive:false} for Window: PASS
+	touchmove listener is non-passive with {passive:undefined} for HTMLDivElement: PASS
+	touchmove listener is passive by default for Document: FAIL
+	touchmove listener is passive by default for HTMLBodyElement: FAIL
+	touchmove listener is passive by default for HTMLHtmlElement: FAIL
+	touchmove listener is passive by default for Window: FAIL
+	touchmove listener is passive with {passive:true} for Document: FAIL
+	touchmove listener is passive with {passive:true} for HTMLBodyElement: FAIL
+	touchmove listener is passive with {passive:true} for HTMLDivElement: FAIL
+	touchmove listener is passive with {passive:true} for HTMLHtmlElement: FAIL
+	touchmove listener is passive with {passive:true} for Window: FAIL
+	touchmove listener is passive with {passive:undefined} for Document: FAIL
+	touchmove listener is passive with {passive:undefined} for HTMLBodyElement: FAIL
+	touchmove listener is passive with {passive:undefined} for HTMLHtmlElement: FAIL
+	touchmove listener is passive with {passive:undefined} for Window: FAIL
+	touchstart listener is non-passive by default for HTMLDivElement: PASS
+	touchstart listener is non-passive with {passive:false} for Document: PASS
+	touchstart listener is non-passive with {passive:false} for HTMLBodyElement: PASS
+	touchstart listener is non-passive with {passive:false} for HTMLDivElement: PASS
+	touchstart listener is non-passive with {passive:false} for HTMLHtmlElement: PASS
+	touchstart listener is non-passive with {passive:false} for Window: PASS
+	touchstart listener is non-passive with {passive:undefined} for HTMLDivElement: PASS
+	touchstart listener is passive by default for Document: FAIL
+	touchstart listener is passive by default for HTMLBodyElement: FAIL
+	touchstart listener is passive by default for HTMLHtmlElement: FAIL
+	touchstart listener is passive by default for Window: FAIL
+	touchstart listener is passive with {passive:true} for Document: FAIL
+	touchstart listener is passive with {passive:true} for HTMLBodyElement: FAIL
+	touchstart listener is passive with {passive:true} for HTMLDivElement: FAIL
+	touchstart listener is passive with {passive:true} for HTMLHtmlElement: FAIL
+	touchstart listener is passive with {passive:true} for Window: FAIL
+	touchstart listener is passive with {passive:undefined} for Document: FAIL
+	touchstart listener is passive with {passive:undefined} for HTMLBodyElement: FAIL
+	touchstart listener is passive with {passive:undefined} for HTMLHtmlElement: FAIL
+	touchstart listener is passive with {passive:undefined} for Window: FAIL
+	wheel listener is non-passive by default for HTMLDivElement: PASS
+	wheel listener is non-passive with {passive:false} for Document: PASS
+	wheel listener is non-passive with {passive:false} for HTMLBodyElement: PASS
+	wheel listener is non-passive with {passive:false} for HTMLDivElement: PASS
+	wheel listener is non-passive with {passive:false} for HTMLHtmlElement: PASS
+	wheel listener is non-passive with {passive:false} for Window: PASS
+	wheel listener is non-passive with {passive:undefined} for HTMLDivElement: PASS
+	wheel listener is passive by default for Document: FAIL
+	wheel listener is passive by default for HTMLBodyElement: FAIL
+	wheel listener is passive by default for HTMLHtmlElement: FAIL
+	wheel listener is passive by default for Window: FAIL
+	wheel listener is passive with {passive:true} for Document: FAIL
+	wheel listener is passive with {passive:true} for HTMLBodyElement: FAIL
+	wheel listener is passive with {passive:true} for HTMLDivElement: FAIL
+	wheel listener is passive with {passive:true} for HTMLHtmlElement: FAIL
+	wheel listener is passive with {passive:true} for Window: FAIL
+	wheel listener is passive with {passive:undefined} for Document: FAIL
+	wheel listener is passive with {passive:undefined} for HTMLBodyElement: FAIL
+	wheel listener is passive with {passive:undefined} for HTMLHtmlElement: FAIL
+	wheel listener is passive with {passive:undefined} for Window: FAIL
+/dom/events/pointer-event-document-move.html: OK
+	Moving a node to new document should move the registered event listeners together: FAIL
+/dom/events/preventDefault-during-activation-behavior.html: OK
+	behavior of preventDefault during activation behavior: PASS
+/dom/events/relatedTarget.window.html: ERROR
+/dom/events/remove-all-listeners.html: OK
+	Nested usage of once listeners should work.: PASS
+	Removing all listeners and then adding a new one should work.: PASS
+/dom/events/scrolling/iframe-chains.html: OK
+	Wheel scroll in iframe chains to containing element.: FAIL
 /dom/events/scrolling/input-text-scroll-event-when-using-arrow-keys.html: TIMEOUT
+	Scroll event fired for <input> element.: TIMEOUT
+	Scroll event fired for <textarea> element.: NOTRUN
 /dom/events/scrolling/save-iframe-scroll-offset-when-display-none.html: TIMEOUT
+	Ensure that the scroll position is not lost when the local iframe is set to display:none and shown again.: TIMEOUT
+	Ensure that the scroll position is not lost when the remote iframe is set to display:none and shown again.: NOTRUN
 /dom/events/scrolling/scroll-cross-origin-iframes.html: TIMEOUT
-/dom/events/scrolling/scroll-event-fired-to-element.html: TIMEOUT
+	Verify sibling cross-origin iframes can wheel-scroll.: TIMEOUT
+/dom/events/scrolling/scroll-event-fired-to-element.html: OK
+	scrollTop and scrollLeft being set with invalid scroll offset.: PASS
+	scrollTop and scrollLeft being set with the same value.: PASS
+	scrollTop and scrollLeft should fire scroll event.: FAIL
+	scrollTop and scrollLeft when scrolling above maximum offset.: FAIL
 /dom/events/scrolling/scroll-event-fired-to-iframe.html: TIMEOUT
-/dom/events/scrolling/scroll-event-not-fired-on-ancestor-style-change.html: TIMEOUT
-/dom/events/scrolling/scroll-events-fired-once-per-frame-across-display-none.html: TIMEOUT
-/dom/events/scrolling/scrollIntoView-in-onscroll-to-sticky.html: TIMEOUT
+	scrollX and scrollY being set with invalid scroll Scroll.: NOTRUN
+	scrollX and scrollY being set with the same value.: NOTRUN
+	scrollX and scrollY should fire scroll event.: TIMEOUT
+	scrollX and scrollY when scrolling above maximum Scroll.: NOTRUN
+/dom/events/scrolling/scroll-event-not-fired-on-ancestor-style-change.html: OK
+	Setting and removing 'overflow' on an ancestor fires no scroll event.: FAIL
+/dom/events/scrolling/scroll-events-fired-once-per-frame-across-display-none.html: OK
+	Only one scroll event fires when scrolling, toggling display: none, and scrolling again in the same frame: FAIL
+	Only one scrollend event fires when scrolling, toggling display: none, and scrolling again in the same frame: FAIL
+/dom/events/scrolling/scrollIntoView-in-onscroll-to-sticky.html: ERROR
 /dom/events/scrolling/scrollend-event-fired-after-instant-scroll-in-microtask.html: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-after-layout-clamping.html: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-after-sequence-of-scrolls.tentative.html: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-after-snap.html: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-mandatory-snap-point-after-load.html: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollBy-auto: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollBy-smooth: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollTo-auto: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollTo-smooth: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollBy-auto: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollBy-smooth: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollTo-auto: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollTo-smooth: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollLeft-auto: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollLeft-smooth: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollTop-auto: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollTop-smooth: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollLeft-auto: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollLeft-smooth: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollTop-auto: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollTop-smooth: TIMEOUT
+	scrolling state is false at the end of the test: TIMEOUT
+/dom/events/scrolling/scrollend-event-fired-after-layout-clamping.html: OK
+	scrollend event fires when layout clamps scroll offset: FAIL
+/dom/events/scrolling/scrollend-event-fired-after-sequence-of-scrolls.tentative.html: OK
+	Move down, up and down again, receive scrollend event only once: FAIL
+	Move right, left and right again, receive scrollend event only once: FAIL
+/dom/events/scrolling/scrollend-event-fired-after-snap.html: OK
+	Tests that scrollend is fired after fling snap animation completion.: FAIL
+	Tests that scrollend is fired after scroll snap animation completion.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-mandatory-snap-point-after-load.html: OK
+	scrollend event fired after load for mandatory snap point: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollBy-auto: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollBy-smooth: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollTo-auto: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollTo-smooth: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollBy-auto: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollBy-smooth: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollTo-auto: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollTo-smooth: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollLeft-auto: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollLeft-smooth: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollTop-auto: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollTop-smooth: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollLeft-auto: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollLeft-smooth: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollTop-auto: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollTop-smooth: ERROR
 /dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html?include=nested-scrollIntoView: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html?include=root-inline-end-block-end-behavior-auto: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html?include=root-inline-start-block-start-behavior-smooth: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html?include=subframe-inline-end-block-end-behavior-auto: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html?include=subframe-inline-start-block-start-behavior-smooth: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-to-document.html: TIMEOUT
-/dom/events/scrolling/scrollend-event-fired-to-element-with-overscroll-behavior.html: TIMEOUT
+	Tests scrollend event for nested scrollIntoView.: TIMEOUT
+/dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html?include=root-inline-end-block-end-behavior-auto: OK
+	Tests scrollend event for scrollIntoView with behavior 'auto' on root.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html?include=root-inline-start-block-start-behavior-smooth: OK
+	Tests scrollend event for scrollIntoView with behavior 'smooth' on root.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html?include=subframe-inline-end-block-end-behavior-auto: OK
+	Tests scrollend event for scrollIntoView with behavior 'auto' on subframe.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html?include=subframe-inline-start-block-start-behavior-smooth: OK
+	Tests scrollend event for scrollIntoView with behavior 'smooth' on subframe.: FAIL
+/dom/events/scrolling/scrollend-event-fired-to-document.html: OK
+	testing, horizontal: FAIL
+	testing, vertical: FAIL
+/dom/events/scrolling/scrollend-event-fired-to-element-with-overscroll-behavior.html: ERROR
 /dom/events/scrolling/scrollend-event-fired-to-window.html: TIMEOUT
-/dom/events/scrolling/scrollend-event-fires-for-repeat-key-ending-after-scroll-container-end-is-reached.html: TIMEOUT
-/dom/events/scrolling/scrollend-event-fires-on-visual-viewport.html: TIMEOUT
-/dom/events/scrolling/scrollend-event-fires-to-iframe-window.html: TIMEOUT
-/dom/events/scrolling/scrollend-event-for-user-scroll.html: TIMEOUT
+	testing, vertical: TIMEOUT
+/dom/events/scrolling/scrollend-event-fires-for-repeat-key-ending-after-scroll-container-end-is-reached.html: OK
+	scrollend event is fired after repeated Page Down key presses reach the end of the scroll region.: FAIL
+/dom/events/scrolling/scrollend-event-fires-on-visual-viewport.html: ERROR
+/dom/events/scrolling/scrollend-event-fires-to-iframe-window.html: ERROR
+/dom/events/scrolling/scrollend-event-for-user-scroll.html: OK
+	Tests that the target_div gets scrollend event when clicking scrollbar.: PASS
+	Tests that the target_div gets scrollend event when dragging the scrollbar thumb.: PASS
+	Tests that the target_div gets scrollend event when mouse wheel scrolling.: FAIL
+	Tests that the target_div gets scrollend event when sending DOWN key to the target.: FAIL
+	Tests that the target_div gets scrollend event when touch dragging.: FAIL
 /dom/events/scrolling/scrollend-event-handler-content-attributes.html: TIMEOUT
+	Tests scrollend event is fired to document event handler property: NOTRUN
+	Tests scrollend event is fired to element event handler property: NOTRUN
+	Tests scrollend event is handled by event handler content attribute.: TIMEOUT
+	Tests scrollend event is not fired to document body event handler content attribute.: NOTRUN
 /dom/events/scrolling/scrollend-event-not-fired-after-removing-scroller.tentative.html: TIMEOUT
-/dom/events/scrolling/scrollend-event-not-fired-on-no-scroll.html: TIMEOUT
+	No scrollend is received after removing parent div: TIMEOUT
+	No scrollend is received after removing scrolling element: NOTRUN
+	scrollend is received after removing descendant div: NOTRUN
+/dom/events/scrolling/scrollend-event-not-fired-on-no-scroll.html: OK
+	No scroll via keys on div shouldn't fire scrollend.: FAIL
+	No scroll via keys on document shouldn't fire scrollend.: FAIL
+	No scroll via wheel on div shouldn't fire scrollend.: FAIL
+	No scroll via wheel on document shouldn't fire scrollend.: FAIL
 /dom/events/scrolling/scrollend-fires-to-text-input.html: TIMEOUT
-/dom/events/scrolling/scrollend-with-snap-on-fractional-offset.html: TIMEOUT
-/dom/events/scrolling/visibility-hidden-scrolls.html: TIMEOUT
-/dom/events/scrolling/wheel-event-composed.html: TIMEOUT
-/dom/events/scrolling/wheel-event-no-scroll-after-prevent-default.html: TIMEOUT
-/dom/events/scrolling/wheel-event-transactions-basic.html?include=scroll-over-scrollable-child: TIMEOUT
-/dom/events/scrolling/wheel-event-transactions-basic.html?include=target-basic: TIMEOUT
-/dom/events/scrolling/wheel-event-transactions-basic.html?include=transaction-not-bound-to-scroll-frame: TIMEOUT
-/dom/events/scrolling/wheel-event-transactions-multiple-action-chains.html: TIMEOUT
-/dom/events/scrolling/wheel-event-transactions-target-display-change.html?include=contents: TIMEOUT
-/dom/events/scrolling/wheel-event-transactions-target-display-change.html?include=none: TIMEOUT
-/dom/events/scrolling/wheel-event-transactions-target-elements.html: TIMEOUT
-/dom/events/scrolling/wheel-event-transactions-target-move.html: TIMEOUT
-/dom/events/scrolling/wheel-event-transactions-target-removal.html: TIMEOUT
-/dom/events/scrolling/wheel-event-transactions-target-resize.html?include=passive-false: TIMEOUT
-/dom/events/scrolling/wheel-event-transactions-target-resize.html?include=passive-true: TIMEOUT
-/dom/events/shadow-relatedTarget.html: TIMEOUT
-/dom/events/webkit-animation-end-event.html: TIMEOUT
-/dom/events/webkit-animation-iteration-event.html: TIMEOUT
-/dom/events/webkit-animation-start-event.html: TIMEOUT
-/dom/events/webkit-transition-end-event.html: TIMEOUT
-/dom/events/window-composed-path.html: TIMEOUT
-/dom/events/window-event-restored-after-throwing-onerror.html: TIMEOUT
+	scrolled input field should receive scrollend when setting scrollLeft.: TIMEOUT
+	scrolled input field should receive scrollend with scrollBy({ behavior: 'instant' }).: NOTRUN
+	scrolled input field should receive scrollend with scrollBy({ behavior: 'smooth' }).: NOTRUN
+	scrolled input field should receive scrollend with scrollTo({ behavior: 'instant' }).: NOTRUN
+	scrolled input field should receive scrollend with scrollTo({ behavior: 'smooth' }).: NOTRUN
+/dom/events/scrolling/scrollend-with-snap-on-fractional-offset.html: ERROR
+/dom/events/scrolling/visibility-hidden-scrolls.html: ERROR
+	Scrolling over a visibility: visible child should scroll a visibility: hidden scroller.: FAIL
+	Scrolling should chain to a visibility: hidden element.: FAIL
+/dom/events/scrolling/wheel-event-composed.html: ERROR
+	wheel event must be composed: TIMEOUT
+/dom/events/scrolling/wheel-event-no-scroll-after-prevent-default.html: OK
+	When `preventDefault` is called on a WheelEvent, scrolling should be prevented.: FAIL
+/dom/events/scrolling/wheel-event-transactions-basic.html?include=scroll-over-scrollable-child: ERROR
+/dom/events/scrolling/wheel-event-transactions-basic.html?include=target-basic: ERROR
+/dom/events/scrolling/wheel-event-transactions-basic.html?include=transaction-not-bound-to-scroll-frame: ERROR
+/dom/events/scrolling/wheel-event-transactions-multiple-action-chains.html: OK
+	Two separate webdriver action chains should have different wheel event transactions: FAIL
+/dom/events/scrolling/wheel-event-transactions-target-display-change.html?include=contents: OK
+	Modify the initial wheel event target to display:contents: FAIL
+/dom/events/scrolling/wheel-event-transactions-target-display-change.html?include=none: OK
+	Modify the initial wheel event target to display:none: FAIL
+/dom/events/scrolling/wheel-event-transactions-target-elements.html: OK
+	Wheel event transactions target elements: FAIL
+/dom/events/scrolling/wheel-event-transactions-target-move.html: OK
+	Move the initial wheel event target.: FAIL
+/dom/events/scrolling/wheel-event-transactions-target-removal.html: OK
+	Remove the initial wheel event target.: FAIL
+/dom/events/scrolling/wheel-event-transactions-target-resize.html?include=passive-false: OK
+	Resize the initial target and use a passive:false listener: FAIL
+/dom/events/scrolling/wheel-event-transactions-target-resize.html?include=passive-true: OK
+	Resize the initial target and use a passive:true listener: FAIL
+/dom/events/shadow-relatedTarget.html: ERROR
+/dom/events/webkit-animation-end-event.html: ERROR
+/dom/events/webkit-animation-iteration-event.html: ERROR
+/dom/events/webkit-animation-start-event.html: ERROR
+/dom/events/webkit-transition-end-event.html: ERROR
+/dom/events/window-composed-path.html: OK
+	window target has an empty path after dispatch: PASS
+/dom/events/window-event-restored-after-throwing-onerror.html: OK
+	window.event is restored after a throwing window.onerror handler: FAIL

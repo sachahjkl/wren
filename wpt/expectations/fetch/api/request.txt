@@ -1,63 +1,956 @@
 # web-platform-tests expectations of Wren for fetch/api/request, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/fetch/api/request/destination/fetch-destination-frame.https.html: TIMEOUT
-/fetch/api/request/destination/fetch-destination-iframe.https.html: TIMEOUT
-/fetch/api/request/destination/fetch-destination-no-load-event.https.html: TIMEOUT
-/fetch/api/request/destination/fetch-destination-prefetch.https.html: TIMEOUT
-/fetch/api/request/destination/fetch-destination-worker.https.html: TIMEOUT
-/fetch/api/request/destination/fetch-destination.https.html: TIMEOUT
-/fetch/api/request/forbidden-method.any.html: TIMEOUT
-/fetch/api/request/forbidden-method.any.worker.html: TIMEOUT
-/fetch/api/request/multi-globals/construct-in-detached-frame.window.html: TIMEOUT
-/fetch/api/request/multi-globals/url-parsing.html: TIMEOUT
-/fetch/api/request/request-bad-port.any.html: TIMEOUT
-/fetch/api/request/request-bad-port.any.worker.html: TIMEOUT
-/fetch/api/request/request-cache-default-conditional.any.html: TIMEOUT
-/fetch/api/request/request-cache-default-conditional.any.worker.html: TIMEOUT
-/fetch/api/request/request-cache-default.any.html: TIMEOUT
-/fetch/api/request/request-cache-default.any.worker.html: TIMEOUT
-/fetch/api/request/request-cache-force-cache.any.html: TIMEOUT
-/fetch/api/request/request-cache-force-cache.any.worker.html: TIMEOUT
-/fetch/api/request/request-cache-no-cache.any.html: TIMEOUT
-/fetch/api/request/request-cache-no-cache.any.worker.html: TIMEOUT
-/fetch/api/request/request-cache-no-store.any.html: TIMEOUT
-/fetch/api/request/request-cache-no-store.any.worker.html: TIMEOUT
-/fetch/api/request/request-cache-only-if-cached.any.html: TIMEOUT
-/fetch/api/request/request-cache-only-if-cached.any.worker.html: TIMEOUT
-/fetch/api/request/request-cache-reload.any.html: TIMEOUT
-/fetch/api/request/request-cache-reload.any.worker.html: TIMEOUT
-/fetch/api/request/request-clone-readable-stream-body.any.html: TIMEOUT
-/fetch/api/request/request-clone-readable-stream-body.any.worker.html: TIMEOUT
-/fetch/api/request/request-clone.sub.html: TIMEOUT
-/fetch/api/request/request-constructor-init-body-override.any.html: TIMEOUT
-/fetch/api/request/request-constructor-init-body-override.any.worker.html: TIMEOUT
-/fetch/api/request/request-consume-empty.any.html: TIMEOUT
-/fetch/api/request/request-consume-empty.any.worker.html: TIMEOUT
-/fetch/api/request/request-consume.any.html: TIMEOUT
-/fetch/api/request/request-consume.any.worker.html: TIMEOUT
-/fetch/api/request/request-disturbed.any.html: TIMEOUT
-/fetch/api/request/request-disturbed.any.worker.html: TIMEOUT
-/fetch/api/request/request-error.any.html: TIMEOUT
-/fetch/api/request/request-error.any.worker.html: TIMEOUT
-/fetch/api/request/request-headers.any.html: TIMEOUT
-/fetch/api/request/request-headers.any.worker.html: TIMEOUT
-/fetch/api/request/request-init-001.sub.html: TIMEOUT
-/fetch/api/request/request-init-002.any.html: TIMEOUT
-/fetch/api/request/request-init-002.any.worker.html: TIMEOUT
-/fetch/api/request/request-init-003.sub.html: TIMEOUT
-/fetch/api/request/request-init-contenttype.any.html: TIMEOUT
-/fetch/api/request/request-init-contenttype.any.worker.html: TIMEOUT
-/fetch/api/request/request-init-priority.any.html: TIMEOUT
-/fetch/api/request/request-init-priority.any.worker.html: TIMEOUT
-/fetch/api/request/request-init-stream.any.html: TIMEOUT
-/fetch/api/request/request-init-stream.any.worker.html: TIMEOUT
-/fetch/api/request/request-keepalive-quota.html?include=fast: TIMEOUT
-/fetch/api/request/request-keepalive-quota.html?include=slow-1: TIMEOUT
-/fetch/api/request/request-keepalive-quota.html?include=slow-2: TIMEOUT
-/fetch/api/request/request-keepalive-quota.html?include=slow-3: TIMEOUT
-/fetch/api/request/request-keepalive.any.html: TIMEOUT
-/fetch/api/request/request-keepalive.any.worker.html: TIMEOUT
-/fetch/api/request/request-reset-attributes.https.html: TIMEOUT
-/fetch/api/request/request-structure.any.html: TIMEOUT
-/fetch/api/request/request-structure.any.worker.html: TIMEOUT
-/fetch/api/request/url-encoding.html: TIMEOUT
+/fetch/api/request/destination/fetch-destination-frame.https.html: OK
+	Initialize global state: FAIL
+	frame fetches with a "frame" Request.destination: FAIL
+/fetch/api/request/destination/fetch-destination-iframe.https.html: OK
+	Initialize global state: FAIL
+	iframe fetches with a "iframe" Request.destination: FAIL
+/fetch/api/request/destination/fetch-destination-no-load-event.https.html: OK
+	@import fetches with a "style" Request.destination: FAIL
+	Background image fetches with an "image" Request.destination: FAIL
+	CSS font fetches with an "font" Request.destination: FAIL
+	Cache.add() fetches with an empty string Request.destination: FAIL
+	Font loading API fetches with an "font" Request.destination: FAIL
+	Initialize global state: FAIL
+	SVG use element fetches with an "image" Request.destination: FAIL
+	importScripts() fetches with a "script" Request.destination: FAIL
+	sendBeacon() fetches with an empty string Request.destination: FAIL
+/fetch/api/request/destination/fetch-destination-prefetch.https.html: OK
+	HTMLLinkElement with rel=prefetch fetches with an empty string Request.destination: FAIL
+	Initialize global state: FAIL
+/fetch/api/request/destination/fetch-destination-worker.https.html: OK
+	DedicatedWorker fetches with a "worker" Request.destination: FAIL
+	Initialize global state: FAIL
+	SharedWorker fetches with a "sharedworker" Request.destination: FAIL
+/fetch/api/request/destination/fetch-destination.https.html: OK
+	AudioWorklet module fetches with a "audioworklet" Request.destination: FAIL
+	EventSource() fetches with an empty string Request.destination: FAIL
+	HTMLAudioElement fetches with an "audio" Request.destination: FAIL
+	HTMLImageElement fetches with an "image" Request.destination: FAIL
+	HTMLImageElement with a HTMLPictureElement parent attribute fetches with an "image" Request.destination: FAIL
+	HTMLImageElement with srcset attribute fetches with an "image" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=audio fetches with a "audio" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=document fetches with a "document" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=fetch fetches with an empty string Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=font fetches with a "font" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=image fetches with a "image" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=json fetches with a "json" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=manifest fetches with a "manifest" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=script fetches with a "script" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=sharedworker fetches with a "sharedworker" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=style fetches with a "style" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=track fetches with a "track" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=video fetches with a "video" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=worker fetches with a "worker" Request.destination: FAIL
+	HTMLLinkElement with rel=preload and as=xslt fetches with a "xslt" Request.destination: FAIL
+	HTMLLinkElement with rel=stylesheet fetches with a "style" Request.destination: FAIL
+	HTMLScriptElement fetches with a "script" Request.destination: FAIL
+	HTMLVideoElement fetches with a "video" Request.destination: FAIL
+	Import declaration with `type: "css"` fetches with a "style" Request.destination: FAIL
+	Import declaration with `type: "json"` fetches with a "json" Request.destination: FAIL
+	Import declaration with `type: "text"` fetches with a "text" Request.destination: FAIL
+	Initialize global state: FAIL
+	SVGImageElement fetches with an "image" Request.destination: FAIL
+	XMLHttpRequest() fetches with an empty string Request.destination: FAIL
+	fetch() fetches with an empty string Request.destination: FAIL
+/fetch/api/request/forbidden-method.any.html: OK
+	Request() with a forbidden method CONNECT must throw.: PASS
+	Request() with a forbidden method TRACE must throw.: PASS
+	Request() with a forbidden method TRACK must throw.: PASS
+	Request() with a forbidden method connect must throw.: PASS
+	Request() with a forbidden method trace must throw.: PASS
+	Request() with a forbidden method track must throw.: PASS
+/fetch/api/request/forbidden-method.any.worker.html: OK
+	Request() with a forbidden method CONNECT must throw.: PASS
+	Request() with a forbidden method TRACE must throw.: PASS
+	Request() with a forbidden method TRACK must throw.: PASS
+	Request() with a forbidden method connect must throw.: PASS
+	Request() with a forbidden method trace must throw.: PASS
+	Request() with a forbidden method track must throw.: PASS
+/fetch/api/request/multi-globals/construct-in-detached-frame.window.html: OK
+	creating a request from another request in a detached realm should work: FAIL
+/fetch/api/request/multi-globals/url-parsing.html: OK
+	should parse the URL relative to the current settings object: FAIL
+/fetch/api/request/request-bad-port.any.html: OK
+	Request on a port that is not bad should succeed through the proxy.: FAIL
+	Request on bad port 0 should throw TypeError.: PASS
+	Request on bad port 1 should throw TypeError.: PASS
+	Request on bad port 10080 should throw TypeError.: PASS
+	Request on bad port 101 should throw TypeError.: PASS
+	Request on bad port 102 should throw TypeError.: PASS
+	Request on bad port 103 should throw TypeError.: PASS
+	Request on bad port 104 should throw TypeError.: PASS
+	Request on bad port 109 should throw TypeError.: PASS
+	Request on bad port 11 should throw TypeError.: PASS
+	Request on bad port 110 should throw TypeError.: PASS
+	Request on bad port 111 should throw TypeError.: PASS
+	Request on bad port 113 should throw TypeError.: PASS
+	Request on bad port 115 should throw TypeError.: PASS
+	Request on bad port 117 should throw TypeError.: PASS
+	Request on bad port 119 should throw TypeError.: PASS
+	Request on bad port 123 should throw TypeError.: PASS
+	Request on bad port 13 should throw TypeError.: PASS
+	Request on bad port 135 should throw TypeError.: PASS
+	Request on bad port 137 should throw TypeError.: PASS
+	Request on bad port 139 should throw TypeError.: PASS
+	Request on bad port 143 should throw TypeError.: PASS
+	Request on bad port 15 should throw TypeError.: PASS
+	Request on bad port 161 should throw TypeError.: PASS
+	Request on bad port 17 should throw TypeError.: PASS
+	Request on bad port 1719 should throw TypeError.: PASS
+	Request on bad port 1720 should throw TypeError.: PASS
+	Request on bad port 1723 should throw TypeError.: PASS
+	Request on bad port 179 should throw TypeError.: PASS
+	Request on bad port 19 should throw TypeError.: PASS
+	Request on bad port 20 should throw TypeError.: PASS
+	Request on bad port 2049 should throw TypeError.: PASS
+	Request on bad port 21 should throw TypeError.: PASS
+	Request on bad port 22 should throw TypeError.: PASS
+	Request on bad port 23 should throw TypeError.: PASS
+	Request on bad port 25 should throw TypeError.: PASS
+	Request on bad port 3659 should throw TypeError.: PASS
+	Request on bad port 37 should throw TypeError.: PASS
+	Request on bad port 389 should throw TypeError.: PASS
+	Request on bad port 4045 should throw TypeError.: PASS
+	Request on bad port 4190 should throw TypeError.: PASS
+	Request on bad port 42 should throw TypeError.: PASS
+	Request on bad port 427 should throw TypeError.: PASS
+	Request on bad port 43 should throw TypeError.: PASS
+	Request on bad port 465 should throw TypeError.: PASS
+	Request on bad port 5060 should throw TypeError.: PASS
+	Request on bad port 5061 should throw TypeError.: PASS
+	Request on bad port 512 should throw TypeError.: PASS
+	Request on bad port 513 should throw TypeError.: PASS
+	Request on bad port 514 should throw TypeError.: PASS
+	Request on bad port 515 should throw TypeError.: PASS
+	Request on bad port 526 should throw TypeError.: PASS
+	Request on bad port 53 should throw TypeError.: PASS
+	Request on bad port 530 should throw TypeError.: PASS
+	Request on bad port 531 should throw TypeError.: PASS
+	Request on bad port 532 should throw TypeError.: PASS
+	Request on bad port 540 should throw TypeError.: PASS
+	Request on bad port 548 should throw TypeError.: PASS
+	Request on bad port 554 should throw TypeError.: PASS
+	Request on bad port 556 should throw TypeError.: PASS
+	Request on bad port 563 should throw TypeError.: PASS
+	Request on bad port 587 should throw TypeError.: PASS
+	Request on bad port 6000 should throw TypeError.: PASS
+	Request on bad port 601 should throw TypeError.: PASS
+	Request on bad port 636 should throw TypeError.: PASS
+	Request on bad port 6566 should throw TypeError.: PASS
+	Request on bad port 6665 should throw TypeError.: PASS
+	Request on bad port 6666 should throw TypeError.: PASS
+	Request on bad port 6667 should throw TypeError.: PASS
+	Request on bad port 6668 should throw TypeError.: PASS
+	Request on bad port 6669 should throw TypeError.: PASS
+	Request on bad port 6679 should throw TypeError.: PASS
+	Request on bad port 6697 should throw TypeError.: PASS
+	Request on bad port 69 should throw TypeError.: PASS
+	Request on bad port 7 should throw TypeError.: PASS
+	Request on bad port 77 should throw TypeError.: PASS
+	Request on bad port 79 should throw TypeError.: PASS
+	Request on bad port 87 should throw TypeError.: PASS
+	Request on bad port 9 should throw TypeError.: PASS
+	Request on bad port 95 should throw TypeError.: PASS
+	Request on bad port 989 should throw TypeError.: PASS
+	Request on bad port 990 should throw TypeError.: PASS
+	Request on bad port 993 should throw TypeError.: PASS
+	Request on bad port 995 should throw TypeError.: PASS
+/fetch/api/request/request-bad-port.any.worker.html: ERROR
+	Request on a port that is not bad should succeed through the proxy.: TIMEOUT
+	Request on bad port 0 should throw TypeError.: NOTRUN
+	Request on bad port 1 should throw TypeError.: NOTRUN
+	Request on bad port 10080 should throw TypeError.: NOTRUN
+	Request on bad port 101 should throw TypeError.: NOTRUN
+	Request on bad port 102 should throw TypeError.: NOTRUN
+	Request on bad port 103 should throw TypeError.: NOTRUN
+	Request on bad port 104 should throw TypeError.: NOTRUN
+	Request on bad port 109 should throw TypeError.: NOTRUN
+	Request on bad port 11 should throw TypeError.: NOTRUN
+	Request on bad port 110 should throw TypeError.: NOTRUN
+	Request on bad port 111 should throw TypeError.: NOTRUN
+	Request on bad port 113 should throw TypeError.: NOTRUN
+	Request on bad port 115 should throw TypeError.: NOTRUN
+	Request on bad port 117 should throw TypeError.: NOTRUN
+	Request on bad port 119 should throw TypeError.: NOTRUN
+	Request on bad port 123 should throw TypeError.: NOTRUN
+	Request on bad port 13 should throw TypeError.: NOTRUN
+	Request on bad port 135 should throw TypeError.: NOTRUN
+	Request on bad port 137 should throw TypeError.: NOTRUN
+	Request on bad port 139 should throw TypeError.: NOTRUN
+	Request on bad port 143 should throw TypeError.: NOTRUN
+	Request on bad port 15 should throw TypeError.: NOTRUN
+	Request on bad port 161 should throw TypeError.: NOTRUN
+	Request on bad port 17 should throw TypeError.: NOTRUN
+	Request on bad port 1719 should throw TypeError.: NOTRUN
+	Request on bad port 1720 should throw TypeError.: NOTRUN
+	Request on bad port 1723 should throw TypeError.: NOTRUN
+	Request on bad port 179 should throw TypeError.: NOTRUN
+	Request on bad port 19 should throw TypeError.: NOTRUN
+	Request on bad port 20 should throw TypeError.: NOTRUN
+	Request on bad port 2049 should throw TypeError.: NOTRUN
+	Request on bad port 21 should throw TypeError.: NOTRUN
+	Request on bad port 22 should throw TypeError.: NOTRUN
+	Request on bad port 23 should throw TypeError.: NOTRUN
+	Request on bad port 25 should throw TypeError.: NOTRUN
+	Request on bad port 3659 should throw TypeError.: NOTRUN
+	Request on bad port 37 should throw TypeError.: NOTRUN
+	Request on bad port 389 should throw TypeError.: NOTRUN
+	Request on bad port 4045 should throw TypeError.: NOTRUN
+	Request on bad port 4190 should throw TypeError.: NOTRUN
+	Request on bad port 42 should throw TypeError.: NOTRUN
+	Request on bad port 427 should throw TypeError.: NOTRUN
+	Request on bad port 43 should throw TypeError.: NOTRUN
+	Request on bad port 465 should throw TypeError.: NOTRUN
+	Request on bad port 5060 should throw TypeError.: NOTRUN
+	Request on bad port 5061 should throw TypeError.: NOTRUN
+	Request on bad port 512 should throw TypeError.: NOTRUN
+	Request on bad port 513 should throw TypeError.: NOTRUN
+	Request on bad port 514 should throw TypeError.: NOTRUN
+	Request on bad port 515 should throw TypeError.: NOTRUN
+	Request on bad port 526 should throw TypeError.: NOTRUN
+	Request on bad port 53 should throw TypeError.: NOTRUN
+	Request on bad port 530 should throw TypeError.: NOTRUN
+	Request on bad port 531 should throw TypeError.: NOTRUN
+	Request on bad port 532 should throw TypeError.: NOTRUN
+	Request on bad port 540 should throw TypeError.: NOTRUN
+	Request on bad port 548 should throw TypeError.: NOTRUN
+	Request on bad port 554 should throw TypeError.: NOTRUN
+	Request on bad port 556 should throw TypeError.: NOTRUN
+	Request on bad port 563 should throw TypeError.: NOTRUN
+	Request on bad port 587 should throw TypeError.: NOTRUN
+	Request on bad port 6000 should throw TypeError.: NOTRUN
+	Request on bad port 601 should throw TypeError.: NOTRUN
+	Request on bad port 636 should throw TypeError.: NOTRUN
+	Request on bad port 6566 should throw TypeError.: NOTRUN
+	Request on bad port 6665 should throw TypeError.: NOTRUN
+	Request on bad port 6666 should throw TypeError.: NOTRUN
+	Request on bad port 6667 should throw TypeError.: NOTRUN
+	Request on bad port 6668 should throw TypeError.: NOTRUN
+	Request on bad port 6669 should throw TypeError.: NOTRUN
+	Request on bad port 6679 should throw TypeError.: NOTRUN
+	Request on bad port 6697 should throw TypeError.: NOTRUN
+	Request on bad port 69 should throw TypeError.: NOTRUN
+	Request on bad port 7 should throw TypeError.: NOTRUN
+	Request on bad port 77 should throw TypeError.: NOTRUN
+	Request on bad port 79 should throw TypeError.: NOTRUN
+	Request on bad port 87 should throw TypeError.: NOTRUN
+	Request on bad port 9 should throw TypeError.: NOTRUN
+	Request on bad port 95 should throw TypeError.: NOTRUN
+	Request on bad port 989 should throw TypeError.: NOTRUN
+	Request on bad port 990 should throw TypeError.: NOTRUN
+	Request on bad port 993 should throw TypeError.: NOTRUN
+	Request on bad port 995 should throw TypeError.: NOTRUN
+/fetch/api/request/request-cache-default-conditional.any.html: OK
+	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+/fetch/api/request/request-cache-default-conditional.any.worker.html: ERROR
+	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: NOTRUN
+	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
+	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Etag and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Etag and stale response: NOTRUN
+	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
+	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: TIMEOUT
+	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
+	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Etag and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Etag and stale response: NOTRUN
+	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
+	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: NOTRUN
+	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: NOTRUN
+	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
+	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
+	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Etag and fresh response: NOTRUN
+	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Etag and stale response: NOTRUN
+	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
+	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
+	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: NOTRUN
+	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
+	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Etag and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Etag and stale response: NOTRUN
+	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
+	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: NOTRUN
+	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
+	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Etag and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Etag and stale response: NOTRUN
+	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
+	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
+/fetch/api/request/request-cache-default.any.html: OK
+	RequestCache "default" mode checks the cache for previously cached content and avoids going to the network if a fresh response exists with Etag and fresh response: FAIL
+	RequestCache "default" mode checks the cache for previously cached content and avoids going to the network if a fresh response exists with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode checks the cache for previously cached content and goes to the network for stale responses with Etag and stale response: FAIL
+	RequestCache "default" mode checks the cache for previously cached content and goes to the network for stale responses with Last-Modified and stale response: FAIL
+	Responses with the "Cache-Control: no-store" header are not stored in the cache with Etag and fresh response: FAIL
+	Responses with the "Cache-Control: no-store" header are not stored in the cache with Etag and stale response: FAIL
+	Responses with the "Cache-Control: no-store" header are not stored in the cache with Last-Modified and fresh response: FAIL
+	Responses with the "Cache-Control: no-store" header are not stored in the cache with Last-Modified and stale response: FAIL
+/fetch/api/request/request-cache-default.any.worker.html: ERROR
+	RequestCache "default" mode checks the cache for previously cached content and avoids going to the network if a fresh response exists with Etag and fresh response: NOTRUN
+	RequestCache "default" mode checks the cache for previously cached content and avoids going to the network if a fresh response exists with Last-Modified and fresh response: NOTRUN
+	RequestCache "default" mode checks the cache for previously cached content and goes to the network for stale responses with Etag and stale response: TIMEOUT
+	RequestCache "default" mode checks the cache for previously cached content and goes to the network for stale responses with Last-Modified and stale response: NOTRUN
+	Responses with the "Cache-Control: no-store" header are not stored in the cache with Etag and fresh response: NOTRUN
+	Responses with the "Cache-Control: no-store" header are not stored in the cache with Etag and stale response: NOTRUN
+	Responses with the "Cache-Control: no-store" header are not stored in the cache with Last-Modified and fresh response: NOTRUN
+	Responses with the "Cache-Control: no-store" header are not stored in the cache with Last-Modified and stale response: NOTRUN
+/fetch/api/request/request-cache-force-cache.any.html: OK
+	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for fresh responses with Etag and fresh response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for fresh responses with Last-Modified and fresh response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for stale responses with Etag and stale response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for stale responses with Last-Modified and stale response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Etag and fresh response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Etag and stale response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Last-Modified and fresh response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Last-Modified and stale response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Etag and fresh response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Etag and stale response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Last-Modified and fresh response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Last-Modified and stale response: FAIL
+	RequestCache "force-cache" stores the response in the cache if it goes to the network with Etag and fresh response: FAIL
+	RequestCache "force-cache" stores the response in the cache if it goes to the network with Etag and stale response: FAIL
+	RequestCache "force-cache" stores the response in the cache if it goes to the network with Last-Modified and fresh response: FAIL
+	RequestCache "force-cache" stores the response in the cache if it goes to the network with Last-Modified and stale response: FAIL
+/fetch/api/request/request-cache-force-cache.any.worker.html: ERROR
+	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for fresh responses with Etag and fresh response: NOTRUN
+	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for fresh responses with Last-Modified and fresh response: NOTRUN
+	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for stale responses with Etag and stale response: TIMEOUT
+	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for stale responses with Last-Modified and stale response: NOTRUN
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Etag and fresh response: NOTRUN
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Etag and stale response: NOTRUN
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Last-Modified and fresh response: NOTRUN
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Last-Modified and stale response: NOTRUN
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Etag and fresh response: NOTRUN
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Etag and stale response: NOTRUN
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Last-Modified and fresh response: NOTRUN
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Last-Modified and stale response: NOTRUN
+	RequestCache "force-cache" stores the response in the cache if it goes to the network with Etag and fresh response: NOTRUN
+	RequestCache "force-cache" stores the response in the cache if it goes to the network with Etag and stale response: NOTRUN
+	RequestCache "force-cache" stores the response in the cache if it goes to the network with Last-Modified and fresh response: NOTRUN
+	RequestCache "force-cache" stores the response in the cache if it goes to the network with Last-Modified and stale response: NOTRUN
+/fetch/api/request/request-cache-no-cache.any.html: OK
+	RequestCache "no-cache" mode revalidates fresh responses found in the cache with Etag and fresh response: FAIL
+	RequestCache "no-cache" mode revalidates fresh responses found in the cache with Last-Modified and fresh response: FAIL
+	RequestCache "no-cache" mode revalidates stale responses found in the cache with Etag and stale response: FAIL
+	RequestCache "no-cache" mode revalidates stale responses found in the cache with Last-Modified and stale response: FAIL
+/fetch/api/request/request-cache-no-cache.any.worker.html: ERROR
+	RequestCache "no-cache" mode revalidates fresh responses found in the cache with Etag and fresh response: NOTRUN
+	RequestCache "no-cache" mode revalidates fresh responses found in the cache with Last-Modified and fresh response: NOTRUN
+	RequestCache "no-cache" mode revalidates stale responses found in the cache with Etag and stale response: TIMEOUT
+	RequestCache "no-cache" mode revalidates stale responses found in the cache with Last-Modified and stale response: NOTRUN
+/fetch/api/request/request-cache-no-store.any.html: OK
+	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Etag and fresh response: FAIL
+	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Etag and stale response: FAIL
+	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and fresh response: FAIL
+	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and stale response: FAIL
+	RequestCache "no-store" mode does not store the response in the cache with Etag and fresh response: FAIL
+	RequestCache "no-store" mode does not store the response in the cache with Etag and stale response: FAIL
+	RequestCache "no-store" mode does not store the response in the cache with Last-Modified and fresh response: FAIL
+	RequestCache "no-store" mode does not store the response in the cache with Last-Modified and stale response: FAIL
+/fetch/api/request/request-cache-no-store.any.worker.html: ERROR
+	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Etag and fresh response: NOTRUN
+	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Etag and stale response: TIMEOUT
+	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and fresh response: NOTRUN
+	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and stale response: NOTRUN
+	RequestCache "no-store" mode does not store the response in the cache with Etag and fresh response: NOTRUN
+	RequestCache "no-store" mode does not store the response in the cache with Etag and stale response: NOTRUN
+	RequestCache "no-store" mode does not store the response in the cache with Last-Modified and fresh response: NOTRUN
+	RequestCache "no-store" mode does not store the response in the cache with Last-Modified and stale response: NOTRUN
+/fetch/api/request/request-cache-only-if-cached.any.html: OK
+	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Etag and fresh response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Etag and stale response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Last-Modified and fresh response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Last-Modified and stale response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Etag and fresh response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Etag and stale response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Last-Modified and fresh response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Last-Modified and stale response: FAIL
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for fresh responses with Etag and fresh response: FAIL
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for fresh responses with Last-Modified and fresh response: FAIL
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for stale responses with Etag and stale response: FAIL
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for stale responses with Last-Modified and stale response: FAIL
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and does not go to the network if a cached response is not found with Etag and fresh response: FAIL
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and does not go to the network if a cached response is not found with Last-Modified and fresh response: FAIL
+/fetch/api/request/request-cache-only-if-cached.any.worker.html: ERROR
+	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Etag and fresh response: NOTRUN
+	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Etag and stale response: NOTRUN
+	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Last-Modified and fresh response: NOTRUN
+	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Last-Modified and stale response: NOTRUN
+	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Etag and fresh response: NOTRUN
+	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Etag and stale response: NOTRUN
+	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Last-Modified and fresh response: NOTRUN
+	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Last-Modified and stale response: NOTRUN
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for fresh responses with Etag and fresh response: NOTRUN
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for fresh responses with Last-Modified and fresh response: NOTRUN
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for stale responses with Etag and stale response: TIMEOUT
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for stale responses with Last-Modified and stale response: NOTRUN
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and does not go to the network if a cached response is not found with Etag and fresh response: NOTRUN
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and does not go to the network if a cached response is not found with Last-Modified and fresh response: NOTRUN
+/fetch/api/request/request-cache-reload.any.html: OK
+	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Etag and fresh response: FAIL
+	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Etag and stale response: FAIL
+	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and fresh response: FAIL
+	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and stale response: FAIL
+	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Etag and fresh response: FAIL
+	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Etag and stale response: FAIL
+	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Last-Modified and fresh response: FAIL
+	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Last-Modified and stale response: FAIL
+	RequestCache "reload" mode does store the response in the cache with Etag and fresh response: FAIL
+	RequestCache "reload" mode does store the response in the cache with Etag and stale response: FAIL
+	RequestCache "reload" mode does store the response in the cache with Last-Modified and fresh response: FAIL
+	RequestCache "reload" mode does store the response in the cache with Last-Modified and stale response: FAIL
+/fetch/api/request/request-cache-reload.any.worker.html: ERROR
+	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Etag and fresh response: NOTRUN
+	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Etag and stale response: TIMEOUT
+	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and fresh response: NOTRUN
+	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and stale response: NOTRUN
+	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Etag and fresh response: NOTRUN
+	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Etag and stale response: NOTRUN
+	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Last-Modified and fresh response: NOTRUN
+	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Last-Modified and stale response: NOTRUN
+	RequestCache "reload" mode does store the response in the cache with Etag and fresh response: NOTRUN
+	RequestCache "reload" mode does store the response in the cache with Etag and stale response: NOTRUN
+	RequestCache "reload" mode does store the response in the cache with Last-Modified and fresh response: NOTRUN
+	RequestCache "reload" mode does store the response in the cache with Last-Modified and stale response: NOTRUN
+/fetch/api/request/request-clone-readable-stream-body.any.html: OK
+	new Request(clone) preserves a ReadableStream body that came from clone(): PASS
+/fetch/api/request/request-clone-readable-stream-body.any.worker.html: OK
+	new Request(clone) preserves a ReadableStream body that came from clone(): PASS
+/fetch/api/request/request-clone.sub.html: OK
+	Check cloning a request: PASS
+	Check cloning a request copies the headers: PASS
+/fetch/api/request/request-constructor-init-body-override.any.html: OK
+	Check that the body of a new request can be duplicated from an existing Request object: PASS
+	Check that the body of a new request can be overridden when created from an existing Request object: PASS
+/fetch/api/request/request-constructor-init-body-override.any.worker.html: OK
+	Check that the body of a new request can be duplicated from an existing Request object: PASS
+	Check that the body of a new request can be overridden when created from an existing Request object: PASS
+/fetch/api/request/request-consume-empty.any.html: OK
+	Consume empty ArrayBuffer request body as text: PASS
+	Consume empty FormData request body as text: FAIL
+	Consume empty URLSearchParams request body as text: PASS
+	Consume empty blob request body as arrayBuffer: PASS
+	Consume empty blob request body as text: PASS
+	Consume empty text request body as arrayBuffer: PASS
+	Consume empty text request body as text: PASS
+	Consume request's body as arrayBuffer: PASS
+	Consume request's body as blob: PASS
+	Consume request's body as formData with correct multipart type (error case): PASS
+	Consume request's body as formData with correct urlencoded type: PASS
+	Consume request's body as formData without correct type (error case): PASS
+	Consume request's body as json (error case): PASS
+	Consume request's body as text: PASS
+/fetch/api/request/request-consume-empty.any.worker.html: CRASH
+/fetch/api/request/request-consume.any.html: OK
+	Consume ArrayBuffer request's body as JSON: PASS
+	Consume ArrayBuffer request's body as arrayBuffer: PASS
+	Consume ArrayBuffer request's body as blob: PASS
+	Consume ArrayBuffer request's body as bytes: PASS
+	Consume ArrayBuffer request's body as text: PASS
+	Consume DataView request's body as JSON: PASS
+	Consume DataView request's body as arrayBuffer: PASS
+	Consume DataView request's body as blob: PASS
+	Consume DataView request's body as bytes: PASS
+	Consume DataView request's body as text: PASS
+	Consume Float32Array request's body as JSON: PASS
+	Consume Float32Array request's body as arrayBuffer: PASS
+	Consume Float32Array request's body as blob: PASS
+	Consume Float32Array request's body as bytes: PASS
+	Consume Float32Array request's body as text: PASS
+	Consume FormData request's body as FormData: PASS
+	Consume Int8Array request's body as JSON: PASS
+	Consume Int8Array request's body as arrayBuffer: PASS
+	Consume Int8Array request's body as blob: PASS
+	Consume Int8Array request's body as bytes: PASS
+	Consume Int8Array request's body as text: PASS
+	Consume JSON from text: '"1"': PASS
+	Consume JSON from text: '"\\"string\\""': PASS
+	Consume JSON from text: '"null"': PASS
+	Consume JSON from text: '"true"': PASS
+	Consume String request's body as JSON: PASS
+	Consume String request's body as arrayBuffer: PASS
+	Consume String request's body as blob: PASS
+	Consume String request's body as bytes: PASS
+	Consume String request's body as text: PASS
+	Consume Uint8Array request's body as JSON: PASS
+	Consume Uint8Array request's body as arrayBuffer: PASS
+	Consume Uint8Array request's body as blob: PASS
+	Consume Uint8Array request's body as bytes: PASS
+	Consume Uint8Array request's body as text: PASS
+	Consume blob response's body as arrayBuffer: PASS
+	Consume blob response's body as blob: PASS
+	Consume blob response's body as blob (empty blob as input): PASS
+	Consume blob response's body as bytes: PASS
+	Consume blob response's body as json: PASS
+	Consume blob response's body as text: PASS
+	Trying to consume bad JSON text as JSON: '[': PASS
+	Trying to consume bad JSON text as JSON: 'a': PASS
+	Trying to consume bad JSON text as JSON: 'undefined': PASS
+	Trying to consume bad JSON text as JSON: '{': PASS
+/fetch/api/request/request-consume.any.worker.html: CRASH
+/fetch/api/request/request-disturbed.any.html: OK
+	Check cloning a disturbed request: PASS
+	Check consuming a disturbed request: PASS
+	Check creating a new request from a disturbed request: PASS
+	Check creating a new request with a new body from a disturbed request: PASS
+	Input request used for creating new request became disturbed: FAIL
+	Input request used for creating new request with a new body is not disturbed: PASS
+	Request construction failure should not set "bodyUsed": PASS
+	Request without body cannot be disturbed: PASS
+	Request's body: initial state: PASS
+/fetch/api/request/request-disturbed.any.worker.html: OK
+	Check cloning a disturbed request: PASS
+	Check consuming a disturbed request: PASS
+	Check creating a new request from a disturbed request: PASS
+	Check creating a new request with a new body from a disturbed request: PASS
+	Input request used for creating new request became disturbed: FAIL
+	Input request used for creating new request with a new body is not disturbed: PASS
+	Request construction failure should not set "bodyUsed": PASS
+	Request without body cannot be disturbed: PASS
+	Request's body: initial state: PASS
+/fetch/api/request/request-error.any.html: OK
+	Bad cache init parameter value: PASS
+	Bad credentials init parameter value: PASS
+	Bad mode init parameter value: PASS
+	Bad redirect init parameter value: PASS
+	Bad referrerPolicy init parameter value: PASS
+	Input URL has credentials: PASS
+	Input URL is not valid: PASS
+	Request error: PASS
+	Request should get its content-type from init headers if one is provided: PASS
+	Request should get its content-type from the body if none is provided: PASS
+	Request should get its content-type from the init request: PASS
+	Request should not get its content-type from the init request if init headers are provided: PASS
+	Request with cache mode: only-if-cached and fetch mode cors: PASS
+	Request with cache mode: only-if-cached and fetch mode no-cors: PASS
+	Request with cache mode: only-if-cached and fetch mode: same-origin: PASS
+	RequestInit's cache mode is only-if-cached and mode is not same-origin: PASS
+	RequestInit's method is forbidden: PASS
+	RequestInit's method is invalid: PASS
+	RequestInit's mode is navigate: PASS
+	RequestInit's mode is no-cors and method is not simple: PASS
+	RequestInit's referrer is invalid: PASS
+	RequestInit's window is not null: PASS
+/fetch/api/request/request-error.any.worker.html: OK
+	Bad cache init parameter value: PASS
+	Bad credentials init parameter value: PASS
+	Bad mode init parameter value: PASS
+	Bad redirect init parameter value: PASS
+	Bad referrerPolicy init parameter value: PASS
+	Input URL has credentials: PASS
+	Input URL is not valid: PASS
+	Request should get its content-type from init headers if one is provided: PASS
+	Request should get its content-type from the body if none is provided: PASS
+	Request should get its content-type from the init request: PASS
+	Request should not get its content-type from the init request if init headers are provided: PASS
+	Request with cache mode: only-if-cached and fetch mode cors: PASS
+	Request with cache mode: only-if-cached and fetch mode no-cors: PASS
+	Request with cache mode: only-if-cached and fetch mode: same-origin: PASS
+	RequestInit's cache mode is only-if-cached and mode is not same-origin: PASS
+	RequestInit's method is forbidden: PASS
+	RequestInit's method is invalid: PASS
+	RequestInit's mode is navigate: PASS
+	RequestInit's mode is no-cors and method is not simple: PASS
+	RequestInit's referrer is invalid: PASS
+	RequestInit's window is not null: PASS
+	Untitled: PASS
+/fetch/api/request/request-headers.any.html: OK
+	Adding invalid no-cors request header "Content-Type: KO": PASS
+	Adding invalid no-cors request header "Empty-Value: ": PASS
+	Adding invalid no-cors request header "Potato: KO": PASS
+	Adding invalid no-cors request header "proxy: KO": PASS
+	Adding invalid no-cors request header "proxya: KO": PASS
+	Adding invalid no-cors request header "sec: KO": PASS
+	Adding invalid no-cors request header "secb: KO": PASS
+	Adding invalid request header "ACCEPT-ENCODING: KO": PASS
+	Adding invalid request header "Accept-Charset: KO": PASS
+	Adding invalid request header "Accept-Encoding: KO": PASS
+	Adding invalid request header "Access-Control-Request-Headers: KO": PASS
+	Adding invalid request header "Access-Control-Request-Method: KO": PASS
+	Adding invalid request header "Connection: KO": PASS
+	Adding invalid request header "Content-Length: KO": PASS
+	Adding invalid request header "Cookie2: KO": PASS
+	Adding invalid request header "Cookie: KO": PASS
+	Adding invalid request header "DNT: KO": PASS
+	Adding invalid request header "Date: KO": PASS
+	Adding invalid request header "Expect: KO": PASS
+	Adding invalid request header "Host: KO": PASS
+	Adding invalid request header "Keep-Alive: KO": PASS
+	Adding invalid request header "Origin: KO": PASS
+	Adding invalid request header "Proxy-: KO": PASS
+	Adding invalid request header "Referer: KO": PASS
+	Adding invalid request header "Sec-: KO": PASS
+	Adding invalid request header "Set-Cookie: KO": PASS
+	Adding invalid request header "TE: KO": PASS
+	Adding invalid request header "Trailer: KO": PASS
+	Adding invalid request header "Transfer-Encoding: KO": PASS
+	Adding invalid request header "Upgrade: KO": PASS
+	Adding invalid request header "Via: KO": PASS
+	Adding invalid request header "accept-charset: KO": PASS
+	Adding invalid request header "proxy-a: KO": PASS
+	Adding invalid request header "sec-b: KO": PASS
+	Adding valid no-cors request header "Accept-Language: OK": PASS
+	Adding valid no-cors request header "Accept: OK": PASS
+	Adding valid no-cors request header "CONTENT-type: text/plain;charset=UTF-8": PASS
+	Adding valid no-cors request header "content-TYPE: text/plain": PASS
+	Adding valid no-cors request header "content-language: OK": PASS
+	Adding valid no-cors request header "content-type: application/x-www-form-urlencoded": PASS
+	Adding valid no-cors request header "content-type: application/x-www-form-urlencoded;charset=UTF-8": PASS
+	Adding valid no-cors request header "content-type: multipart/form-data": PASS
+	Adding valid no-cors request header "content-type: multipart/form-data;charset=UTF-8": PASS
+	Adding valid request header "Content-Type: OK": PASS
+	Adding valid request header "Potato: OK": PASS
+	Adding valid request header "Set-Cookie2: OK": PASS
+	Adding valid request header "User-Agent: OK": PASS
+	Adding valid request header "proxy: OK": PASS
+	Adding valid request header "proxya: OK": PASS
+	Adding valid request header "sec: OK": PASS
+	Adding valid request header "secb: OK": PASS
+	Check that no-cors request constructor is filtering headers provided as init parameter: PASS
+	Check that no-cors request constructor is filtering headers provided as part of request parameter: PASS
+	Check that request constructor is filtering headers provided as init parameter: PASS
+	Request should get its content-type from init headers if one is provided: PASS
+	Request should get its content-type from the body if none is provided: PASS
+	Request should get its content-type from the init request: PASS
+	Request should not get its content-type from the init request if init headers are provided: PASS
+	Test that Request.headers has the [SameObject] extended attribute: PASS
+	Testing empty Request Content-Type header: PASS
+	Testing request header creations with various objects: PASS
+/fetch/api/request/request-headers.any.worker.html: OK
+	Adding invalid no-cors request header "Content-Type: KO": PASS
+	Adding invalid no-cors request header "Empty-Value: ": PASS
+	Adding invalid no-cors request header "Potato: KO": PASS
+	Adding invalid no-cors request header "proxy: KO": PASS
+	Adding invalid no-cors request header "proxya: KO": PASS
+	Adding invalid no-cors request header "sec: KO": PASS
+	Adding invalid no-cors request header "secb: KO": PASS
+	Adding invalid request header "ACCEPT-ENCODING: KO": PASS
+	Adding invalid request header "Accept-Charset: KO": PASS
+	Adding invalid request header "Accept-Encoding: KO": PASS
+	Adding invalid request header "Access-Control-Request-Headers: KO": PASS
+	Adding invalid request header "Access-Control-Request-Method: KO": PASS
+	Adding invalid request header "Connection: KO": PASS
+	Adding invalid request header "Content-Length: KO": PASS
+	Adding invalid request header "Cookie2: KO": PASS
+	Adding invalid request header "Cookie: KO": PASS
+	Adding invalid request header "DNT: KO": PASS
+	Adding invalid request header "Date: KO": PASS
+	Adding invalid request header "Expect: KO": PASS
+	Adding invalid request header "Host: KO": PASS
+	Adding invalid request header "Keep-Alive: KO": PASS
+	Adding invalid request header "Origin: KO": PASS
+	Adding invalid request header "Proxy-: KO": PASS
+	Adding invalid request header "Referer: KO": PASS
+	Adding invalid request header "Sec-: KO": PASS
+	Adding invalid request header "Set-Cookie: KO": PASS
+	Adding invalid request header "TE: KO": PASS
+	Adding invalid request header "Trailer: KO": PASS
+	Adding invalid request header "Transfer-Encoding: KO": PASS
+	Adding invalid request header "Upgrade: KO": PASS
+	Adding invalid request header "Via: KO": PASS
+	Adding invalid request header "accept-charset: KO": PASS
+	Adding invalid request header "proxy-a: KO": PASS
+	Adding invalid request header "sec-b: KO": PASS
+	Adding valid no-cors request header "Accept-Language: OK": PASS
+	Adding valid no-cors request header "Accept: OK": PASS
+	Adding valid no-cors request header "CONTENT-type: text/plain;charset=UTF-8": PASS
+	Adding valid no-cors request header "content-TYPE: text/plain": PASS
+	Adding valid no-cors request header "content-language: OK": PASS
+	Adding valid no-cors request header "content-type: application/x-www-form-urlencoded": PASS
+	Adding valid no-cors request header "content-type: application/x-www-form-urlencoded;charset=UTF-8": PASS
+	Adding valid no-cors request header "content-type: multipart/form-data": PASS
+	Adding valid no-cors request header "content-type: multipart/form-data;charset=UTF-8": PASS
+	Adding valid request header "Content-Type: OK": PASS
+	Adding valid request header "Potato: OK": PASS
+	Adding valid request header "Set-Cookie2: OK": PASS
+	Adding valid request header "User-Agent: OK": PASS
+	Adding valid request header "proxy: OK": PASS
+	Adding valid request header "proxya: OK": PASS
+	Adding valid request header "sec: OK": PASS
+	Adding valid request header "secb: OK": PASS
+	Check that no-cors request constructor is filtering headers provided as init parameter: PASS
+	Check that no-cors request constructor is filtering headers provided as part of request parameter: PASS
+	Check that request constructor is filtering headers provided as init parameter: PASS
+	Request should get its content-type from init headers if one is provided: PASS
+	Request should get its content-type from the body if none is provided: PASS
+	Request should get its content-type from the init request: PASS
+	Request should not get its content-type from the init request if init headers are provided: PASS
+	Test that Request.headers has the [SameObject] extended attribute: PASS
+	Testing empty Request Content-Type header: PASS
+	Testing request header creations with various objects: PASS
+/fetch/api/request/request-init-001.sub.html: OK
+	Check cache init value of default and associated getter: PASS
+	Check cache init value of force-cache and associated getter: PASS
+	Check cache init value of no-cache and associated getter: PASS
+	Check cache init value of no-store and associated getter: PASS
+	Check cache init value of reload and associated getter: PASS
+	Check credentials init value of include and associated getter: PASS
+	Check credentials init value of omit and associated getter: PASS
+	Check credentials init value of same-origin and associated getter: PASS
+	Check integrity init value of  and associated getter: PASS
+	Check integrity init value of AZERTYUIOP1234567890 and associated getter: PASS
+	Check method init value of DELETE and associated getter: PASS
+	Check method init value of GET and associated getter: PASS
+	Check method init value of Get and associated getter: PASS
+	Check method init value of HEAD and associated getter: PASS
+	Check method init value of OPTIONS and associated getter: PASS
+	Check method init value of PATCH and associated getter: PASS
+	Check method init value of POST and associated getter: PASS
+	Check method init value of PUT and associated getter: PASS
+	Check method init value of Put and associated getter: PASS
+	Check method init value of deleTe and associated getter: PASS
+	Check method init value of delete and associated getter: PASS
+	Check method init value of get and associated getter: PASS
+	Check method init value of hEad and associated getter: PASS
+	Check method init value of head and associated getter: PASS
+	Check method init value of optionS and associated getter: PASS
+	Check method init value of options and associated getter: PASS
+	Check method init value of patCh and associated getter: PASS
+	Check method init value of patch and associated getter: PASS
+	Check method init value of poSt and associated getter: PASS
+	Check method init value of post and associated getter: PASS
+	Check method init value of put and associated getter: PASS
+	Check mode init value of cors and associated getter: PASS
+	Check mode init value of no-cors and associated getter: PASS
+	Check mode init value of same-origin and associated getter: PASS
+	Check redirect init value of error and associated getter: PASS
+	Check redirect init value of follow and associated getter: PASS
+	Check redirect init value of manual and associated getter: PASS
+	Check referrer init value of  and associated getter: PASS
+	Check referrer init value of /relative/ressource and associated getter: PASS
+	Check referrer init value of about:client and associated getter: PASS
+	Check referrer init value of http://127.0.0.1:8778/ and associated getter: PASS
+	Check referrer init value of http://127.0.0.1:8778/relative/ressource?query=true#fragment and associated getter: PASS
+	Check referrer init value of http://test.url and associated getter: FAIL
+	Check referrerPolicy init value of  and associated getter: PASS
+	Check referrerPolicy init value of no-referrer and associated getter: PASS
+	Check referrerPolicy init value of no-referrer-when-downgrade and associated getter: PASS
+	Check referrerPolicy init value of origin and associated getter: PASS
+	Check referrerPolicy init value of origin-when-cross-origin and associated getter: PASS
+	Check referrerPolicy init value of same-origin and associated getter: PASS
+	Check referrerPolicy init value of strict-origin and associated getter: PASS
+	Check referrerPolicy init value of strict-origin-when-cross-origin and associated getter: PASS
+	Check referrerPolicy init value of unsafe-url and associated getter: PASS
+	Check window init value of null and associated getter: PASS
+/fetch/api/request/request-init-002.any.html: OK
+	Initialize Request with headers values: PASS
+	Initialize Request's body with "This is a USVString", text/plain;charset=UTF-8: PASS
+	Initialize Request's body with "[object Blob]", application/octet-binary: PASS
+	Initialize Request's body with "[object FormData]", multipart/form-data: PASS
+	Initialize Request's body with "hi!", text/plain;charset=UTF-8: PASS
+	Initialize Request's body with "name=value", application/x-www-form-urlencoded;charset=UTF-8: PASS
+	Initialize Request's body with "null", null: PASS
+	Initialize Request's body with "undefined", undefined: PASS
+/fetch/api/request/request-init-002.any.worker.html: CRASH
+/fetch/api/request/request-init-003.sub.html: OK
+	Check request values when initialized from Request: PASS
+	Check request values when initialized from Request and init values: PASS
+	Check request values when initialized from url and init values: PASS
+	Check request values when initialized from url string: PASS
+/fetch/api/request/request-init-contenttype.any.html: OK
+	Can override Content-Type for Request with Blob body (empty type): PASS
+	Can override Content-Type for Request with Blob body (no type set): PASS
+	Can override Content-Type for Request with Blob body (set type): PASS
+	Can override Content-Type for Request with FormData body: PASS
+	Can override Content-Type for Request with ReadableStream body: PASS
+	Can override Content-Type for Request with URLSearchParams body: PASS
+	Can override Content-Type for Request with buffer source body: PASS
+	Can override Content-Type for Request with empty body: PASS
+	Can override Content-Type for Request with string body: PASS
+	Default Content-Type for Request with Blob body (empty type): PASS
+	Default Content-Type for Request with Blob body (no type set): PASS
+	Default Content-Type for Request with Blob body (set type): PASS
+	Default Content-Type for Request with FormData body: PASS
+	Default Content-Type for Request with ReadableStream body: PASS
+	Default Content-Type for Request with URLSearchParams body: PASS
+	Default Content-Type for Request with buffer source body: PASS
+	Default Content-Type for Request with empty body: PASS
+	Default Content-Type for Request with string body: PASS
+/fetch/api/request/request-init-contenttype.any.worker.html: CRASH
+/fetch/api/request/request-init-priority.any.html: OK
+	fetch() with a 'auto' priority completes successfully: PASS
+	fetch() with a 'high' priority completes successfully: PASS
+	fetch() with a 'low' priority completes successfully: PASS
+	fetch() with an invalid priority returns a rejected promise with a TypeError: FAIL
+	new Request() throws a TypeError if any of RequestInit's members' values are invalid: FAIL
+	new Request() with a 'auto' priority does not throw an error: PASS
+	new Request() with a 'high' priority does not throw an error: PASS
+	new Request() with a 'low' priority does not throw an error: PASS
+/fetch/api/request/request-init-priority.any.worker.html: ERROR
+	fetch() with a 'auto' priority completes successfully: NOTRUN
+	fetch() with a 'high' priority completes successfully: TIMEOUT
+	fetch() with a 'low' priority completes successfully: NOTRUN
+	fetch() with an invalid priority returns a rejected promise with a TypeError: NOTRUN
+	new Request() throws a TypeError if any of RequestInit's members' values are invalid: FAIL
+	new Request() with a 'auto' priority does not throw an error: PASS
+	new Request() with a 'high' priority does not throw an error: PASS
+	new Request() with a 'low' priority does not throw an error: PASS
+/fetch/api/request/request-init-stream.any.html: OK
+	Constructing a Request with a Request on which body.getReader() is called: PASS
+	Constructing a Request with a Request on which body.getReader().read() is called: PASS
+	Constructing a Request with a Request on which read() and releaseLock() are called: PASS
+	Constructing a Request with a stream holds the original object.: PASS
+	Constructing a Request with a stream on which getReader() is called: PASS
+	Constructing a Request with a stream on which read() and releaseLock() are called: PASS
+	Constructing a Request with a stream on which read() is called: PASS
+	It is OK to omit .duplex when the body is a Blob.: PASS
+	It is OK to omit .duplex when the body is a Uint8Array.: PASS
+	It is OK to omit .duplex when the body is a string.: PASS
+	It is OK to omit .duplex when the body is null.: PASS
+	It is OK to omit duplex when init.body is not given and input.body is given.: PASS
+	It is OK to set .duplex = 'half' when the body is a Blob.: PASS
+	It is OK to set .duplex = 'half' when the body is a ReadableStream.: PASS
+	It is OK to set .duplex = 'half' when the body is a Uint8Array.: PASS
+	It is OK to set .duplex = 'half' when the body is a string.: PASS
+	It is OK to set .duplex = 'half' when the body is null.: PASS
+	It is error to omit .duplex when the body is a ReadableStream.: PASS
+	It is error to set .duplex = 'full' when the body is a Blob.: FAIL
+	It is error to set .duplex = 'full' when the body is a ReadableStream.: FAIL
+	It is error to set .duplex = 'full' when the body is a Uint8Array.: FAIL
+	It is error to set .duplex = 'full' when the body is a string.: FAIL
+	It is error to set .duplex = 'full' when the body is null.: FAIL
+/fetch/api/request/request-init-stream.any.worker.html: OK
+	Constructing a Request with a Request on which body.getReader() is called: PASS
+	Constructing a Request with a Request on which body.getReader().read() is called: PASS
+	Constructing a Request with a Request on which read() and releaseLock() are called: PASS
+	Constructing a Request with a stream holds the original object.: PASS
+	Constructing a Request with a stream on which getReader() is called: PASS
+	Constructing a Request with a stream on which read() and releaseLock() are called: PASS
+	Constructing a Request with a stream on which read() is called: PASS
+	It is OK to omit .duplex when the body is a Blob.: PASS
+	It is OK to omit .duplex when the body is a Uint8Array.: PASS
+	It is OK to omit .duplex when the body is a string.: PASS
+	It is OK to omit .duplex when the body is null.: PASS
+	It is OK to omit duplex when init.body is not given and input.body is given.: PASS
+	It is OK to set .duplex = 'half' when the body is a Blob.: PASS
+	It is OK to set .duplex = 'half' when the body is a ReadableStream.: PASS
+	It is OK to set .duplex = 'half' when the body is a Uint8Array.: PASS
+	It is OK to set .duplex = 'half' when the body is a string.: PASS
+	It is OK to set .duplex = 'half' when the body is null.: PASS
+	It is error to omit .duplex when the body is a ReadableStream.: PASS
+	It is error to set .duplex = 'full' when the body is a Blob.: FAIL
+	It is error to set .duplex = 'full' when the body is a ReadableStream.: FAIL
+	It is error to set .duplex = 'full' when the body is a Uint8Array.: FAIL
+	It is error to set .duplex = 'full' when the body is a string.: FAIL
+	It is error to set .duplex = 'full' when the body is null.: FAIL
+/fetch/api/request/request-keepalive-quota.html?include=fast: OK
+	A Keep-Alive fetch() with a body at the Quota Limit should succeed.: PASS
+	A Keep-Alive fetch() with a body over the Quota Limit should reject.: FAIL
+	A Keep-Alive fetch() with a small body should succeed.: PASS
+/fetch/api/request/request-keepalive-quota.html?include=slow-1: OK
+	A Keep-Alive fetch() should return its allocated Quota upon promise resolution.: PASS
+/fetch/api/request/request-keepalive-quota.html?include=slow-2: OK
+	A Keep-Alive fetch() should return only its allocated Quota upon promise resolution.: FAIL
+/fetch/api/request/request-keepalive-quota.html?include=slow-3: OK
+	A Keep-Alive fetch() should not be allowed if the Quota is used up.: FAIL
+/fetch/api/request/request-keepalive.any.html: OK
+	keepalive flag: PASS
+	keepalive flag with stream body: PASS
+/fetch/api/request/request-keepalive.any.worker.html: OK
+	keepalive flag: PASS
+	keepalive flag with stream body: PASS
+/fetch/api/request/request-reset-attributes.https.html: OK
+	Request.isHistoryNavigation is reset with non-empty RequestInit: FAIL
+	Request.isReloadNavigation is reset with non-empty RequestInit: FAIL
+	Request.mode is reset with non-empty RequestInit when it's "navigate": FAIL
+/fetch/api/request/request-structure.any.html: OK
+	Check bodyUsed attribute: PASS
+	Check cache attribute: PASS
+	Check credentials attribute: PASS
+	Check destination attribute: PASS
+	Check duplex attribute: PASS
+	Check headers attribute: PASS
+	Check integrity attribute: PASS
+	Check isHistoryNavigation attribute: PASS
+	Check isReloadNavigation attribute: PASS
+	Check method attribute: PASS
+	Check mode attribute: PASS
+	Check redirect attribute: PASS
+	Check referrer attribute: PASS
+	Check referrerPolicy attribute: PASS
+	Check url attribute: PASS
+	Request does not expose blocking attribute: PASS
+	Request does not expose internalpriority attribute: PASS
+	Request does not expose priority attribute: PASS
+	Request has arrayBuffer method: PASS
+	Request has blob method: PASS
+	Request has clone method: PASS
+	Request has formData method: PASS
+	Request has json method: PASS
+	Request has text method: PASS
+/fetch/api/request/request-structure.any.worker.html: OK
+	Check bodyUsed attribute: PASS
+	Check cache attribute: PASS
+	Check credentials attribute: PASS
+	Check destination attribute: PASS
+	Check duplex attribute: PASS
+	Check headers attribute: PASS
+	Check integrity attribute: PASS
+	Check isHistoryNavigation attribute: PASS
+	Check isReloadNavigation attribute: PASS
+	Check method attribute: PASS
+	Check mode attribute: PASS
+	Check redirect attribute: PASS
+	Check referrer attribute: PASS
+	Check referrerPolicy attribute: PASS
+	Check url attribute: PASS
+	Request does not expose blocking attribute: PASS
+	Request does not expose internalpriority attribute: PASS
+	Request does not expose priority attribute: PASS
+	Request has arrayBuffer method: PASS
+	Request has blob method: PASS
+	Request has clone method: PASS
+	Request has formData method: PASS
+	Request has json method: PASS
+	Request has text method: PASS
+/fetch/api/request/url-encoding.html: OK
+	URL encoding and Request: PASS
+	URL encoding and fetch(): PASS

@@ -1,76 +1,1405 @@
 # web-platform-tests expectations of Wren for streams, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/streams/idlharness.any.html: TIMEOUT
-/streams/idlharness.any.worker.html: TIMEOUT
-/streams/queuing-strategies-size-function-per-global.window.html: TIMEOUT
-/streams/queuing-strategies.any.html: TIMEOUT
-/streams/queuing-strategies.any.worker.html: TIMEOUT
-/streams/readable-streams/async-iterator.any.html: TIMEOUT
-/streams/readable-streams/async-iterator.any.worker.html: TIMEOUT
-/streams/readable-streams/bad-strategies.any.html: TIMEOUT
-/streams/readable-streams/bad-strategies.any.worker.html: TIMEOUT
-/streams/readable-streams/bad-underlying-sources.any.html: TIMEOUT
-/streams/readable-streams/bad-underlying-sources.any.worker.html: TIMEOUT
-/streams/readable-streams/cancel.any.html: TIMEOUT
-/streams/readable-streams/cancel.any.worker.html: TIMEOUT
-/streams/readable-streams/constructor.any.html: TIMEOUT
-/streams/readable-streams/constructor.any.worker.html: TIMEOUT
-/streams/readable-streams/count-queuing-strategy-integration.any.html: TIMEOUT
-/streams/readable-streams/count-queuing-strategy-integration.any.worker.html: TIMEOUT
-/streams/readable-streams/cross-realm-crash.window.html: TIMEOUT
-/streams/readable-streams/default-reader.any.html: TIMEOUT
-/streams/readable-streams/default-reader.any.worker.html: TIMEOUT
-/streams/readable-streams/floating-point-total-queue-size.any.html: TIMEOUT
-/streams/readable-streams/floating-point-total-queue-size.any.worker.html: TIMEOUT
-/streams/readable-streams/from.any.html: TIMEOUT
-/streams/readable-streams/from.any.worker.html: TIMEOUT
-/streams/readable-streams/garbage-collection.any.html: TIMEOUT
-/streams/readable-streams/garbage-collection.any.worker.html: TIMEOUT
-/streams/readable-streams/general.any.html: TIMEOUT
-/streams/readable-streams/general.any.worker.html: TIMEOUT
-/streams/readable-streams/global.html: TIMEOUT
-/streams/readable-streams/owning-type-message-port.tentative.any.html: TIMEOUT
-/streams/readable-streams/owning-type-message-port.tentative.any.worker.html: TIMEOUT
-/streams/readable-streams/owning-type-video-frame.tentative.any.html: TIMEOUT
-/streams/readable-streams/owning-type-video-frame.tentative.any.worker.html: TIMEOUT
-/streams/readable-streams/owning-type.tentative.any.html: TIMEOUT
-/streams/readable-streams/owning-type.tentative.any.worker.html: TIMEOUT
-/streams/readable-streams/patched-global.any.html: TIMEOUT
-/streams/readable-streams/patched-global.any.worker.html: TIMEOUT
-/streams/readable-streams/read-task-handling.window.html: TIMEOUT
+/streams/idlharness.any.html: OK
+	ByteLengthQueuingStrategy interface object length: FAIL
+	ByteLengthQueuingStrategy interface object name: FAIL
+	ByteLengthQueuingStrategy interface: attribute highWaterMark: FAIL
+	ByteLengthQueuingStrategy interface: attribute size: FAIL
+	ByteLengthQueuingStrategy interface: existence and properties of interface object: FAIL
+	ByteLengthQueuingStrategy interface: existence and properties of interface prototype object: FAIL
+	ByteLengthQueuingStrategy interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	ByteLengthQueuingStrategy interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	ByteLengthQueuingStrategy interface: new ByteLengthQueuingStrategy({ highWaterMark: 5 }) must inherit property "highWaterMark" with the proper type: FAIL
+	ByteLengthQueuingStrategy interface: new ByteLengthQueuingStrategy({ highWaterMark: 5 }) must inherit property "size" with the proper type: FAIL
+	ByteLengthQueuingStrategy must be primary interface of new ByteLengthQueuingStrategy({ highWaterMark: 5 }): FAIL
+	CountQueuingStrategy interface object length: FAIL
+	CountQueuingStrategy interface object name: FAIL
+	CountQueuingStrategy interface: attribute highWaterMark: FAIL
+	CountQueuingStrategy interface: attribute size: FAIL
+	CountQueuingStrategy interface: existence and properties of interface object: FAIL
+	CountQueuingStrategy interface: existence and properties of interface prototype object: FAIL
+	CountQueuingStrategy interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	CountQueuingStrategy interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	CountQueuingStrategy interface: new CountQueuingStrategy({ highWaterMark: 5 }) must inherit property "highWaterMark" with the proper type: FAIL
+	CountQueuingStrategy interface: new CountQueuingStrategy({ highWaterMark: 5 }) must inherit property "size" with the proper type: FAIL
+	CountQueuingStrategy must be primary interface of new CountQueuingStrategy({ highWaterMark: 5 }): FAIL
+	ReadableByteStreamController interface object length: FAIL
+	ReadableByteStreamController interface object name: FAIL
+	ReadableByteStreamController interface: attribute byobRequest: FAIL
+	ReadableByteStreamController interface: attribute desiredSize: FAIL
+	ReadableByteStreamController interface: calling enqueue(ArrayBufferView) on self.readableByteStreamController with too few arguments must throw TypeError: FAIL
+	ReadableByteStreamController interface: calling error(optional any) on self.readableByteStreamController with too few arguments must throw TypeError: PASS
+	ReadableByteStreamController interface: existence and properties of interface object: FAIL
+	ReadableByteStreamController interface: existence and properties of interface prototype object: FAIL
+	ReadableByteStreamController interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	ReadableByteStreamController interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	ReadableByteStreamController interface: operation close(): FAIL
+	ReadableByteStreamController interface: operation enqueue(ArrayBufferView): FAIL
+	ReadableByteStreamController interface: operation error(optional any): FAIL
+	ReadableByteStreamController interface: self.readableByteStreamController must inherit property "byobRequest" with the proper type: FAIL
+	ReadableByteStreamController interface: self.readableByteStreamController must inherit property "close()" with the proper type: PASS
+	ReadableByteStreamController interface: self.readableByteStreamController must inherit property "desiredSize" with the proper type: PASS
+	ReadableByteStreamController interface: self.readableByteStreamController must inherit property "enqueue(ArrayBufferView)" with the proper type: PASS
+	ReadableByteStreamController interface: self.readableByteStreamController must inherit property "error(optional any)" with the proper type: PASS
+	ReadableByteStreamController must be primary interface of self.readableByteStreamController: FAIL
+	ReadableStream interface object length: PASS
+	ReadableStream interface object name: PASS
+	ReadableStream interface: attribute locked: PASS
+	ReadableStream interface: calling cancel(optional any) on new ReadableStream() with too few arguments must throw TypeError: PASS
+	ReadableStream interface: calling from(async_sequence<any>) on new ReadableStream() with too few arguments must throw TypeError: FAIL
+	ReadableStream interface: calling getReader(optional ReadableStreamGetReaderOptions) on new ReadableStream() with too few arguments must throw TypeError: PASS
+	ReadableStream interface: calling pipeThrough(ReadableWritablePair, optional StreamPipeOptions) on new ReadableStream() with too few arguments must throw TypeError: FAIL
+	ReadableStream interface: calling pipeTo(WritableStream, optional StreamPipeOptions) on new ReadableStream() with too few arguments must throw TypeError: FAIL
+	ReadableStream interface: existence and properties of interface object: PASS
+	ReadableStream interface: existence and properties of interface prototype object: PASS
+	ReadableStream interface: existence and properties of interface prototype object's "constructor" property: PASS
+	ReadableStream interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	ReadableStream interface: new ReadableStream() must inherit property "cancel(optional any)" with the proper type: PASS
+	ReadableStream interface: new ReadableStream() must inherit property "from(async_sequence<any>)" with the proper type: PASS
+	ReadableStream interface: new ReadableStream() must inherit property "getReader(optional ReadableStreamGetReaderOptions)" with the proper type: PASS
+	ReadableStream interface: new ReadableStream() must inherit property "locked" with the proper type: PASS
+	ReadableStream interface: new ReadableStream() must inherit property "pipeThrough(ReadableWritablePair, optional StreamPipeOptions)" with the proper type: FAIL
+	ReadableStream interface: new ReadableStream() must inherit property "pipeTo(WritableStream, optional StreamPipeOptions)" with the proper type: FAIL
+	ReadableStream interface: new ReadableStream() must inherit property "tee()" with the proper type: PASS
+	ReadableStream interface: operation cancel(optional any): PASS
+	ReadableStream interface: operation from(async_sequence<any>): FAIL
+	ReadableStream interface: operation getReader(optional ReadableStreamGetReaderOptions): PASS
+	ReadableStream interface: operation pipeThrough(ReadableWritablePair, optional StreamPipeOptions): FAIL
+	ReadableStream interface: operation pipeTo(WritableStream, optional StreamPipeOptions): FAIL
+	ReadableStream interface: operation tee(): PASS
+	ReadableStream must be primary interface of new ReadableStream(): PASS
+	ReadableStreamBYOBReader includes ReadableStreamGenericReader: member names are unique: PASS
+	ReadableStreamBYOBReader interface object length: FAIL
+	ReadableStreamBYOBReader interface object name: FAIL
+	ReadableStreamBYOBReader interface: (new ReadableStream({ type: 'bytes' })).getReader({ mode: 'byob' }) must inherit property "cancel(optional any)" with the proper type: FAIL
+	ReadableStreamBYOBReader interface: (new ReadableStream({ type: 'bytes' })).getReader({ mode: 'byob' }) must inherit property "closed" with the proper type: FAIL
+	ReadableStreamBYOBReader interface: (new ReadableStream({ type: 'bytes' })).getReader({ mode: 'byob' }) must inherit property "read(ArrayBufferView, optional ReadableStreamBYOBReaderReadOptions)" with the proper type: FAIL
+	ReadableStreamBYOBReader interface: (new ReadableStream({ type: 'bytes' })).getReader({ mode: 'byob' }) must inherit property "releaseLock()" with the proper type: FAIL
+	ReadableStreamBYOBReader interface: attribute closed: FAIL
+	ReadableStreamBYOBReader interface: calling cancel(optional any) on (new ReadableStream({ type: 'bytes' })).getReader({ mode: 'byob' }) with too few arguments must throw TypeError: FAIL
+	ReadableStreamBYOBReader interface: calling read(ArrayBufferView, optional ReadableStreamBYOBReaderReadOptions) on (new ReadableStream({ type: 'bytes' })).getReader({ mode: 'byob' }) with too few arguments must throw TypeError: FAIL
+	ReadableStreamBYOBReader interface: existence and properties of interface object: FAIL
+	ReadableStreamBYOBReader interface: existence and properties of interface prototype object: FAIL
+	ReadableStreamBYOBReader interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	ReadableStreamBYOBReader interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	ReadableStreamBYOBReader interface: operation cancel(optional any): FAIL
+	ReadableStreamBYOBReader interface: operation read(ArrayBufferView, optional ReadableStreamBYOBReaderReadOptions): FAIL
+	ReadableStreamBYOBReader interface: operation releaseLock(): FAIL
+	ReadableStreamBYOBReader must be primary interface of (new ReadableStream({ type: 'bytes' })).getReader({ mode: 'byob' }): FAIL
+	ReadableStreamBYOBRequest interface object length: FAIL
+	ReadableStreamBYOBRequest interface object name: FAIL
+	ReadableStreamBYOBRequest interface: attribute view: FAIL
+	ReadableStreamBYOBRequest interface: calling respond(unsigned long long) on self.readableStreamByobRequest with too few arguments must throw TypeError: FAIL
+	ReadableStreamBYOBRequest interface: calling respondWithNewView(ArrayBufferView) on self.readableStreamByobRequest with too few arguments must throw TypeError: FAIL
+	ReadableStreamBYOBRequest interface: existence and properties of interface object: FAIL
+	ReadableStreamBYOBRequest interface: existence and properties of interface prototype object: FAIL
+	ReadableStreamBYOBRequest interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	ReadableStreamBYOBRequest interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	ReadableStreamBYOBRequest interface: operation respond(unsigned long long): FAIL
+	ReadableStreamBYOBRequest interface: operation respondWithNewView(ArrayBufferView): FAIL
+	ReadableStreamBYOBRequest interface: self.readableStreamByobRequest must inherit property "respond(unsigned long long)" with the proper type: FAIL
+	ReadableStreamBYOBRequest interface: self.readableStreamByobRequest must inherit property "respondWithNewView(ArrayBufferView)" with the proper type: FAIL
+	ReadableStreamBYOBRequest interface: self.readableStreamByobRequest must inherit property "view" with the proper type: FAIL
+	ReadableStreamBYOBRequest must be primary interface of self.readableStreamByobRequest: FAIL
+	ReadableStreamDefaultController interface object length: PASS
+	ReadableStreamDefaultController interface object name: PASS
+	ReadableStreamDefaultController interface: attribute desiredSize: PASS
+	ReadableStreamDefaultController interface: calling enqueue(optional any) on self.readableStreamDefaultController with too few arguments must throw TypeError: PASS
+	ReadableStreamDefaultController interface: calling error(optional any) on self.readableStreamDefaultController with too few arguments must throw TypeError: PASS
+	ReadableStreamDefaultController interface: existence and properties of interface object: PASS
+	ReadableStreamDefaultController interface: existence and properties of interface prototype object: PASS
+	ReadableStreamDefaultController interface: existence and properties of interface prototype object's "constructor" property: PASS
+	ReadableStreamDefaultController interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	ReadableStreamDefaultController interface: operation close(): PASS
+	ReadableStreamDefaultController interface: operation enqueue(optional any): PASS
+	ReadableStreamDefaultController interface: operation error(optional any): PASS
+	ReadableStreamDefaultController interface: self.readableStreamDefaultController must inherit property "close()" with the proper type: PASS
+	ReadableStreamDefaultController interface: self.readableStreamDefaultController must inherit property "desiredSize" with the proper type: PASS
+	ReadableStreamDefaultController interface: self.readableStreamDefaultController must inherit property "enqueue(optional any)" with the proper type: PASS
+	ReadableStreamDefaultController interface: self.readableStreamDefaultController must inherit property "error(optional any)" with the proper type: PASS
+	ReadableStreamDefaultController must be primary interface of self.readableStreamDefaultController: PASS
+	ReadableStreamDefaultReader includes ReadableStreamGenericReader: member names are unique: PASS
+	ReadableStreamDefaultReader interface object length: PASS
+	ReadableStreamDefaultReader interface object name: PASS
+	ReadableStreamDefaultReader interface: (new ReadableStream()).getReader() must inherit property "cancel(optional any)" with the proper type: PASS
+	ReadableStreamDefaultReader interface: (new ReadableStream()).getReader() must inherit property "closed" with the proper type: PASS
+	ReadableStreamDefaultReader interface: (new ReadableStream()).getReader() must inherit property "read()" with the proper type: PASS
+	ReadableStreamDefaultReader interface: (new ReadableStream()).getReader() must inherit property "releaseLock()" with the proper type: PASS
+	ReadableStreamDefaultReader interface: attribute closed: FAIL
+	ReadableStreamDefaultReader interface: calling cancel(optional any) on (new ReadableStream()).getReader() with too few arguments must throw TypeError: PASS
+	ReadableStreamDefaultReader interface: existence and properties of interface object: PASS
+	ReadableStreamDefaultReader interface: existence and properties of interface prototype object: PASS
+	ReadableStreamDefaultReader interface: existence and properties of interface prototype object's "constructor" property: PASS
+	ReadableStreamDefaultReader interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	ReadableStreamDefaultReader interface: operation cancel(optional any): PASS
+	ReadableStreamDefaultReader interface: operation read(): PASS
+	ReadableStreamDefaultReader interface: operation releaseLock(): PASS
+	ReadableStreamDefaultReader must be primary interface of (new ReadableStream()).getReader(): PASS
+	Stringification of (new ReadableStream()).getReader(): PASS
+	Stringification of (new ReadableStream({ type: 'bytes' })).getReader({ mode: 'byob' }): FAIL
+	Stringification of (new WritableStream()).getWriter(): FAIL
+	Stringification of new ByteLengthQueuingStrategy({ highWaterMark: 5 }): FAIL
+	Stringification of new CountQueuingStrategy({ highWaterMark: 5 }): FAIL
+	Stringification of new ReadableStream(): PASS
+	Stringification of new TransformStream(): FAIL
+	Stringification of new WritableStream(): FAIL
+	Stringification of self.readableByteStreamController: FAIL
+	Stringification of self.readableStreamByobRequest: FAIL
+	Stringification of self.readableStreamDefaultController: PASS
+	Stringification of self.transformStreamDefaultController: FAIL
+	Stringification of self.writableStreamDefaultController: FAIL
+	TransformStream interface object length: FAIL
+	TransformStream interface object name: FAIL
+	TransformStream interface: attribute readable: FAIL
+	TransformStream interface: attribute writable: FAIL
+	TransformStream interface: existence and properties of interface object: FAIL
+	TransformStream interface: existence and properties of interface prototype object: FAIL
+	TransformStream interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	TransformStream interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	TransformStream interface: new TransformStream() must inherit property "readable" with the proper type: FAIL
+	TransformStream interface: new TransformStream() must inherit property "writable" with the proper type: FAIL
+	TransformStream must be primary interface of new TransformStream(): FAIL
+	TransformStreamDefaultController interface object length: FAIL
+	TransformStreamDefaultController interface object name: FAIL
+	TransformStreamDefaultController interface: attribute desiredSize: FAIL
+	TransformStreamDefaultController interface: calling enqueue(optional any) on self.transformStreamDefaultController with too few arguments must throw TypeError: FAIL
+	TransformStreamDefaultController interface: calling error(optional any) on self.transformStreamDefaultController with too few arguments must throw TypeError: FAIL
+	TransformStreamDefaultController interface: existence and properties of interface object: FAIL
+	TransformStreamDefaultController interface: existence and properties of interface prototype object: FAIL
+	TransformStreamDefaultController interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	TransformStreamDefaultController interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	TransformStreamDefaultController interface: operation enqueue(optional any): FAIL
+	TransformStreamDefaultController interface: operation error(optional any): FAIL
+	TransformStreamDefaultController interface: operation terminate(): FAIL
+	TransformStreamDefaultController interface: self.transformStreamDefaultController must inherit property "desiredSize" with the proper type: FAIL
+	TransformStreamDefaultController interface: self.transformStreamDefaultController must inherit property "enqueue(optional any)" with the proper type: FAIL
+	TransformStreamDefaultController interface: self.transformStreamDefaultController must inherit property "error(optional any)" with the proper type: FAIL
+	TransformStreamDefaultController interface: self.transformStreamDefaultController must inherit property "terminate()" with the proper type: FAIL
+	TransformStreamDefaultController must be primary interface of self.transformStreamDefaultController: FAIL
+	WritableStream interface object length: FAIL
+	WritableStream interface object name: FAIL
+	WritableStream interface: attribute locked: FAIL
+	WritableStream interface: calling abort(optional any) on new WritableStream() with too few arguments must throw TypeError: FAIL
+	WritableStream interface: existence and properties of interface object: FAIL
+	WritableStream interface: existence and properties of interface prototype object: FAIL
+	WritableStream interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	WritableStream interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	WritableStream interface: new WritableStream() must inherit property "abort(optional any)" with the proper type: FAIL
+	WritableStream interface: new WritableStream() must inherit property "close()" with the proper type: FAIL
+	WritableStream interface: new WritableStream() must inherit property "getWriter()" with the proper type: FAIL
+	WritableStream interface: new WritableStream() must inherit property "locked" with the proper type: FAIL
+	WritableStream interface: operation abort(optional any): FAIL
+	WritableStream interface: operation close(): FAIL
+	WritableStream interface: operation getWriter(): FAIL
+	WritableStream must be primary interface of new WritableStream(): FAIL
+	WritableStreamDefaultController interface object length: FAIL
+	WritableStreamDefaultController interface object name: FAIL
+	WritableStreamDefaultController interface: attribute signal: FAIL
+	WritableStreamDefaultController interface: calling error(optional any) on self.writableStreamDefaultController with too few arguments must throw TypeError: FAIL
+	WritableStreamDefaultController interface: existence and properties of interface object: FAIL
+	WritableStreamDefaultController interface: existence and properties of interface prototype object: FAIL
+	WritableStreamDefaultController interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	WritableStreamDefaultController interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	WritableStreamDefaultController interface: operation error(optional any): FAIL
+	WritableStreamDefaultController interface: self.writableStreamDefaultController must inherit property "error(optional any)" with the proper type: FAIL
+	WritableStreamDefaultController interface: self.writableStreamDefaultController must inherit property "signal" with the proper type: FAIL
+	WritableStreamDefaultController must be primary interface of self.writableStreamDefaultController: FAIL
+	WritableStreamDefaultWriter interface object length: FAIL
+	WritableStreamDefaultWriter interface object name: FAIL
+	WritableStreamDefaultWriter interface: (new WritableStream()).getWriter() must inherit property "abort(optional any)" with the proper type: FAIL
+	WritableStreamDefaultWriter interface: (new WritableStream()).getWriter() must inherit property "close()" with the proper type: FAIL
+	WritableStreamDefaultWriter interface: (new WritableStream()).getWriter() must inherit property "closed" with the proper type: FAIL
+	WritableStreamDefaultWriter interface: (new WritableStream()).getWriter() must inherit property "desiredSize" with the proper type: FAIL
+	WritableStreamDefaultWriter interface: (new WritableStream()).getWriter() must inherit property "ready" with the proper type: FAIL
+	WritableStreamDefaultWriter interface: (new WritableStream()).getWriter() must inherit property "releaseLock()" with the proper type: FAIL
+	WritableStreamDefaultWriter interface: (new WritableStream()).getWriter() must inherit property "write(optional any)" with the proper type: FAIL
+	WritableStreamDefaultWriter interface: attribute closed: FAIL
+	WritableStreamDefaultWriter interface: attribute desiredSize: FAIL
+	WritableStreamDefaultWriter interface: attribute ready: FAIL
+	WritableStreamDefaultWriter interface: calling abort(optional any) on (new WritableStream()).getWriter() with too few arguments must throw TypeError: FAIL
+	WritableStreamDefaultWriter interface: calling write(optional any) on (new WritableStream()).getWriter() with too few arguments must throw TypeError: FAIL
+	WritableStreamDefaultWriter interface: existence and properties of interface object: FAIL
+	WritableStreamDefaultWriter interface: existence and properties of interface prototype object: FAIL
+	WritableStreamDefaultWriter interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	WritableStreamDefaultWriter interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	WritableStreamDefaultWriter interface: operation abort(optional any): FAIL
+	WritableStreamDefaultWriter interface: operation close(): FAIL
+	WritableStreamDefaultWriter interface: operation releaseLock(): FAIL
+	WritableStreamDefaultWriter interface: operation write(optional any): FAIL
+	WritableStreamDefaultWriter must be primary interface of (new WritableStream()).getWriter(): FAIL
+	idl_test setup: PASS
+	idl_test validation: PASS
+/streams/idlharness.any.worker.html: ERROR
+	idl_test setup: TIMEOUT
+/streams/queuing-strategies-size-function-per-global.window.html: OK
+	ByteLengthQueuingStrategy size should be different for objects in different realms: FAIL
+	CountQueuingStrategy size should be different for objects in different realms: FAIL
+/streams/queuing-strategies.any.html: ERROR
+/streams/queuing-strategies.any.worker.html: ERROR
+/streams/readable-streams/async-iterator.any.html: ERROR
+	Acquiring a reader after exhaustively async-iterating a stream: PASS
+	Acquiring a reader after partially async-iterating a stream: PASS
+	Acquiring a reader after return()ing from a stream that errors: PASS
+	Acquiring a reader and reading the remaining chunks after partially async-iterating a stream with preventCancel = true: PASS
+	Async iterator instances should have the correct list of properties: FAIL
+	Async-iterating a closed stream never executes the loop body, but works fine: PASS
+	Async-iterating a partially consumed stream: PASS
+	Async-iterating a pull source: PASS
+	Async-iterating a pull source manually: FAIL
+	Async-iterating a pull source with undefined values: PASS
+	Async-iterating a push source: PASS
+	Async-iterating a push source with undefined values: PASS
+	Async-iterating an empty but not closed/errored stream never executes the loop body and stalls the async function: PASS
+	Async-iterating an errored stream throws: PASS
+	Cancellation behavior when breaking inside loop body; preventCancel = false: PASS
+	Cancellation behavior when breaking inside loop body; preventCancel = true: PASS
+	Cancellation behavior when manually calling return(); preventCancel = false: PASS
+	Cancellation behavior when manually calling return(); preventCancel = true: PASS
+	Cancellation behavior when returning inside loop body; preventCancel = false: PASS
+	Cancellation behavior when returning inside loop body; preventCancel = true: PASS
+	Cancellation behavior when throwing inside loop body; preventCancel = false: PASS
+	Cancellation behavior when throwing inside loop body; preventCancel = true: PASS
+	close() while next() is pending: PASS
+	next() rejects if the stream errors: PASS
+	next() that succeeds; next() that reports an error(); next() [no awaiting]: FAIL
+	next() that succeeds; next() that reports an error(); return(): PASS
+	next() that succeeds; next() that reports an error(); return() [no awaiting]: FAIL
+	next() that succeeds; next() that reports an error; next(): PASS
+	next() that succeeds; return(): PASS
+	next() that succeeds; return() [no awaiting]: FAIL
+	return() does not rejects if the stream has not errored yet: PASS
+	return() rejects if the stream has errored: FAIL
+	return() should unlock the stream synchronously when preventCancel = false: PASS
+	return() should unlock the stream synchronously when preventCancel = true: PASS
+	return(); next(): PASS
+	return(); next() [no awaiting]: PASS
+	return(); next() with delayed cancel(): FAIL
+	return(); next() with delayed cancel() [no awaiting]: PASS
+	return(); return(): PASS
+	return(); return() [no awaiting]: PASS
+	values() throws if there's already a lock: PASS
+/streams/readable-streams/async-iterator.any.worker.html: ERROR
+	Acquiring a reader after exhaustively async-iterating a stream: PASS
+	Acquiring a reader after partially async-iterating a stream: PASS
+	Acquiring a reader after return()ing from a stream that errors: PASS
+	Acquiring a reader and reading the remaining chunks after partially async-iterating a stream with preventCancel = true: PASS
+	Async iterator instances should have the correct list of properties: FAIL
+	Async-iterating a closed stream never executes the loop body, but works fine: PASS
+	Async-iterating a partially consumed stream: PASS
+	Async-iterating a pull source: PASS
+	Async-iterating a pull source manually: FAIL
+	Async-iterating a pull source with undefined values: PASS
+	Async-iterating a push source: PASS
+	Async-iterating a push source with undefined values: PASS
+	Async-iterating an empty but not closed/errored stream never executes the loop body and stalls the async function: PASS
+	Async-iterating an errored stream throws: PASS
+	Cancellation behavior when breaking inside loop body; preventCancel = false: PASS
+	Cancellation behavior when breaking inside loop body; preventCancel = true: PASS
+	Cancellation behavior when manually calling return(); preventCancel = false: PASS
+	Cancellation behavior when manually calling return(); preventCancel = true: PASS
+	Cancellation behavior when returning inside loop body; preventCancel = false: PASS
+	Cancellation behavior when returning inside loop body; preventCancel = true: PASS
+	Cancellation behavior when throwing inside loop body; preventCancel = false: PASS
+	Cancellation behavior when throwing inside loop body; preventCancel = true: PASS
+	close() while next() is pending: PASS
+	next() rejects if the stream errors: PASS
+	next() that succeeds; next() that reports an error(); next() [no awaiting]: FAIL
+	next() that succeeds; next() that reports an error(); return(): PASS
+	next() that succeeds; next() that reports an error(); return() [no awaiting]: FAIL
+	next() that succeeds; next() that reports an error; next(): PASS
+	next() that succeeds; return(): PASS
+	next() that succeeds; return() [no awaiting]: FAIL
+	return() does not rejects if the stream has not errored yet: PASS
+	return() rejects if the stream has errored: FAIL
+	return() should unlock the stream synchronously when preventCancel = false: PASS
+	return() should unlock the stream synchronously when preventCancel = true: PASS
+	return(); next(): PASS
+	return(); next() [no awaiting]: PASS
+	return(); next() with delayed cancel(): FAIL
+	return(); next() with delayed cancel() [no awaiting]: PASS
+	return(); return(): PASS
+	return(); return() [no awaiting]: PASS
+	values() throws if there's already a lock: PASS
+/streams/readable-streams/bad-strategies.any.html: OK
+	Readable stream: invalid strategy.highWaterMark: PASS
+	Readable stream: invalid strategy.size return value: FAIL
+	Readable stream: invalid strategy.size return value when pulling: FAIL
+	Readable stream: strategy.size errors the stream and then returns Infinity: FAIL
+	Readable stream: strategy.size errors the stream and then throws: FAIL
+	Readable stream: throwing strategy.highWaterMark getter: PASS
+	Readable stream: throwing strategy.size getter: FAIL
+	Readable stream: throwing strategy.size method: FAIL
+/streams/readable-streams/bad-strategies.any.worker.html: OK
+	Readable stream: invalid strategy.highWaterMark: PASS
+	Readable stream: invalid strategy.size return value: FAIL
+	Readable stream: invalid strategy.size return value when pulling: FAIL
+	Readable stream: strategy.size errors the stream and then returns Infinity: FAIL
+	Readable stream: strategy.size errors the stream and then throws: FAIL
+	Readable stream: throwing strategy.highWaterMark getter: PASS
+	Readable stream: throwing strategy.size getter: FAIL
+	Readable stream: throwing strategy.size method: FAIL
+/streams/readable-streams/bad-underlying-sources.any.html: OK
+	Underlying source cancel: throwing getter: PASS
+	Underlying source cancel: throwing method: PASS
+	Underlying source pull: throwing getter (second pull does not result in a second get): PASS
+	Underlying source pull: throwing method (second pull): PASS
+	Underlying source start: throwing getter: PASS
+	Underlying source start: throwing method: PASS
+	Underlying source: calling close after error should throw: PASS
+	Underlying source: calling close on a non-empty canceled stream should throw: PASS
+	Underlying source: calling close on an empty canceled stream should throw: PASS
+	Underlying source: calling close twice on a non-empty stream should throw the second time: PASS
+	Underlying source: calling close twice on an empty stream should throw the second time: PASS
+	Underlying source: calling enqueue on a closed stream should throw: PASS
+	Underlying source: calling enqueue on a non-empty canceled stream should throw: PASS
+	Underlying source: calling enqueue on an empty canceled stream should throw: PASS
+	Underlying source: calling enqueue on an errored stream should throw: PASS
+	Underlying source: calling error after close should not throw: PASS
+	Underlying source: calling error and returning a rejected promise from pull should cause the stream to error with the first error: PASS
+	Underlying source: calling error and returning a rejected promise from start should cause the stream to error with the first error: PASS
+	Underlying source: calling error twice should not throw: PASS
+	Underlying source: throwing pull getter (initial pull): PASS
+	Underlying source: throwing pull method (initial pull): PASS
+	read should not error if it dequeues and pull() throws: FAIL
+/streams/readable-streams/bad-underlying-sources.any.worker.html: OK
+	Underlying source cancel: throwing getter: PASS
+	Underlying source cancel: throwing method: PASS
+	Underlying source pull: throwing getter (second pull does not result in a second get): PASS
+	Underlying source pull: throwing method (second pull): PASS
+	Underlying source start: throwing getter: PASS
+	Underlying source start: throwing method: PASS
+	Underlying source: calling close after error should throw: PASS
+	Underlying source: calling close on a non-empty canceled stream should throw: PASS
+	Underlying source: calling close on an empty canceled stream should throw: PASS
+	Underlying source: calling close twice on a non-empty stream should throw the second time: PASS
+	Underlying source: calling close twice on an empty stream should throw the second time: PASS
+	Underlying source: calling enqueue on a closed stream should throw: PASS
+	Underlying source: calling enqueue on a non-empty canceled stream should throw: PASS
+	Underlying source: calling enqueue on an empty canceled stream should throw: PASS
+	Underlying source: calling enqueue on an errored stream should throw: PASS
+	Underlying source: calling error after close should not throw: PASS
+	Underlying source: calling error and returning a rejected promise from pull should cause the stream to error with the first error: PASS
+	Underlying source: calling error and returning a rejected promise from start should cause the stream to error with the first error: PASS
+	Underlying source: calling error twice should not throw: PASS
+	Underlying source: throwing pull getter (initial pull): PASS
+	Underlying source: throwing pull method (initial pull): PASS
+	read should not error if it dequeues and pull() throws: FAIL
+/streams/readable-streams/cancel.any.html: OK
+	ReadableStream cancellation: cancel() on a locked stream should fail and not call the underlying source cancel: PASS
+	ReadableStream cancellation: cancel(reason) should pass through the given reason to the underlying source: PASS
+	ReadableStream cancellation: cancelling before start finishes should prevent pull() from being called: PASS
+	ReadableStream cancellation: if the underlying source's cancel method returns a promise, the promise returned by the stream's cancel should fulfill when that one does (1): PASS
+	ReadableStream cancellation: if the underlying source's cancel method returns a promise, the promise returned by the stream's cancel should fulfill when that one does (2): PASS
+	ReadableStream cancellation: if the underlying source's cancel method returns a promise, the promise returned by the stream's cancel should reject when that one does: PASS
+	ReadableStream cancellation: integration test on an infinite stream derived from a random push source: PASS
+	ReadableStream cancellation: returning a value from the underlying source's cancel should not affect the fulfillment value of the promise returned by the stream's cancel: PASS
+	ReadableStream cancellation: should fulfill promise when cancel callback went fine: PASS
+	ReadableStream cancellation: should reject promise when cancel callback raises an exception: PASS
+	ReadableStream cancellation: underlyingSource.cancel() should called, even with pending pull: PASS
+/streams/readable-streams/cancel.any.worker.html: OK
+	ReadableStream cancellation: cancel() on a locked stream should fail and not call the underlying source cancel: PASS
+	ReadableStream cancellation: cancel(reason) should pass through the given reason to the underlying source: PASS
+	ReadableStream cancellation: cancelling before start finishes should prevent pull() from being called: PASS
+	ReadableStream cancellation: if the underlying source's cancel method returns a promise, the promise returned by the stream's cancel should fulfill when that one does (1): PASS
+	ReadableStream cancellation: if the underlying source's cancel method returns a promise, the promise returned by the stream's cancel should fulfill when that one does (2): PASS
+	ReadableStream cancellation: if the underlying source's cancel method returns a promise, the promise returned by the stream's cancel should reject when that one does: PASS
+	ReadableStream cancellation: integration test on an infinite stream derived from a random push source: PASS
+	ReadableStream cancellation: returning a value from the underlying source's cancel should not affect the fulfillment value of the promise returned by the stream's cancel: PASS
+	ReadableStream cancellation: should fulfill promise when cancel callback went fine: PASS
+	ReadableStream cancellation: should reject promise when cancel callback raises an exception: PASS
+	ReadableStream cancellation: underlyingSource.cancel() should called, even with pending pull: PASS
+/streams/readable-streams/constructor.any.html: OK
+	underlyingSource argument should be converted after queuingStrategy argument: FAIL
+/streams/readable-streams/constructor.any.worker.html: OK
+	underlyingSource argument should be converted after queuingStrategy argument: FAIL
+/streams/readable-streams/count-queuing-strategy-integration.any.html: OK
+	Can construct a readable stream with a valid CountQueuingStrategy: FAIL
+	Correctly governs a ReadableStreamController's desiredSize property (HWM = 0): FAIL
+	Correctly governs a ReadableStreamController's desiredSize property (HWM = 1): FAIL
+	Correctly governs a ReadableStreamController's desiredSize property (HWM = 4): FAIL
+/streams/readable-streams/count-queuing-strategy-integration.any.worker.html: OK
+	Can construct a readable stream with a valid CountQueuingStrategy: FAIL
+	Correctly governs a ReadableStreamController's desiredSize property (HWM = 0): FAIL
+	Correctly governs a ReadableStreamController's desiredSize property (HWM = 1): FAIL
+	Correctly governs a ReadableStreamController's desiredSize property (HWM = 4): FAIL
+/streams/readable-streams/cross-realm-crash.window.html: OK
+	should not crash on reading from stream cancelled in destroyed realm: FAIL
+/streams/readable-streams/default-reader.any.html: OK
+	Cannot use an already-released reader to unlock a stream again: PASS
+	Constructing a ReadableStreamDefaultReader directly should be OK if the stream is closed: PASS
+	Constructing a ReadableStreamDefaultReader directly should be OK if the stream is errored: PASS
+	Constructing a ReadableStreamDefaultReader directly should fail if the stream is already locked (via direct construction): PASS
+	Constructing a ReadableStreamDefaultReader directly should fail if the stream is already locked (via getReader): PASS
+	Erroring a ReadableStream after checking closed should reject ReadableStreamDefaultReader closed promise: PASS
+	Erroring a ReadableStream before checking closed should reject ReadableStreamDefaultReader closed promise: PASS
+	Getting a ReadableStreamDefaultReader via getReader should fail if the stream is already locked (via direct construction): PASS
+	Getting a ReadableStreamDefaultReader via getReader should fail if the stream is already locked (via getReader): PASS
+	Getting a second reader after erroring the stream and releasing the reader should succeed: PASS
+	Multiple readers can access the stream in sequence: PASS
+	ReadableStreamDefaultReader closed promise should be rejected with undefined if that is the error: PASS
+	ReadableStreamDefaultReader closed should always return the same promise object: PASS
+	ReadableStreamDefaultReader constructor should get a ReadableStream object as argument: PASS
+	ReadableStreamDefaultReader: if start rejects with no parameter, it should error the stream with an undefined error: PASS
+	Reading from a reader for an empty stream will wait until a chunk is available: PASS
+	Reading twice on a closed stream: PASS
+	Reading twice on a stream that gets closed: PASS
+	Reading twice on a stream that gets errored: PASS
+	Reading twice on an errored stream: PASS
+	Second reader can read chunks after first reader was released with pending read requests: PASS
+	cancel() on a reader does not release the reader: PASS
+	cancel() on a released reader is a no-op and does not pass through: PASS
+	closed is replaced when stream closes and reader releases its lock: PASS
+	closed is replaced when stream errors and reader releases its lock: PASS
+	closed should be fulfilled after stream is closed (.closed access before acquiring): PASS
+	closed should be rejected after reader releases its lock (multiple stream locks): PASS
+	controller.close() should clear the list of pending read requests: PASS
+	getReader() should call ToString() on mode: PASS
+/streams/readable-streams/default-reader.any.worker.html: OK
+	Cannot use an already-released reader to unlock a stream again: PASS
+	Constructing a ReadableStreamDefaultReader directly should be OK if the stream is closed: PASS
+	Constructing a ReadableStreamDefaultReader directly should be OK if the stream is errored: PASS
+	Constructing a ReadableStreamDefaultReader directly should fail if the stream is already locked (via direct construction): PASS
+	Constructing a ReadableStreamDefaultReader directly should fail if the stream is already locked (via getReader): PASS
+	Erroring a ReadableStream after checking closed should reject ReadableStreamDefaultReader closed promise: PASS
+	Erroring a ReadableStream before checking closed should reject ReadableStreamDefaultReader closed promise: PASS
+	Getting a ReadableStreamDefaultReader via getReader should fail if the stream is already locked (via direct construction): PASS
+	Getting a ReadableStreamDefaultReader via getReader should fail if the stream is already locked (via getReader): PASS
+	Getting a second reader after erroring the stream and releasing the reader should succeed: PASS
+	Multiple readers can access the stream in sequence: PASS
+	ReadableStreamDefaultReader closed promise should be rejected with undefined if that is the error: PASS
+	ReadableStreamDefaultReader closed should always return the same promise object: PASS
+	ReadableStreamDefaultReader constructor should get a ReadableStream object as argument: PASS
+	ReadableStreamDefaultReader: if start rejects with no parameter, it should error the stream with an undefined error: PASS
+	Reading from a reader for an empty stream will wait until a chunk is available: PASS
+	Reading twice on a closed stream: PASS
+	Reading twice on a stream that gets closed: PASS
+	Reading twice on a stream that gets errored: PASS
+	Reading twice on an errored stream: PASS
+	Second reader can read chunks after first reader was released with pending read requests: PASS
+	cancel() on a reader does not release the reader: PASS
+	cancel() on a released reader is a no-op and does not pass through: PASS
+	closed is replaced when stream closes and reader releases its lock: PASS
+	closed is replaced when stream errors and reader releases its lock: PASS
+	closed should be fulfilled after stream is closed (.closed access before acquiring): PASS
+	closed should be rejected after reader releases its lock (multiple stream locks): PASS
+	controller.close() should clear the list of pending read requests: PASS
+	getReader() should call ToString() on mode: PASS
+/streams/readable-streams/floating-point-total-queue-size.any.html: OK
+	Floating point arithmetic must manifest near 0 (total ends up positive, and not clamped): FAIL
+	Floating point arithmetic must manifest near 0 (total ends up positive, but clamped): FAIL
+	Floating point arithmetic must manifest near 0 (total ends up zero): FAIL
+	Floating point arithmetic must manifest near NUMBER.MAX_SAFE_INTEGER (total ends up positive): FAIL
+/streams/readable-streams/floating-point-total-queue-size.any.worker.html: OK
+	Floating point arithmetic must manifest near 0 (total ends up positive, and not clamped): FAIL
+	Floating point arithmetic must manifest near 0 (total ends up positive, but clamped): FAIL
+	Floating point arithmetic must manifest near 0 (total ends up zero): FAIL
+	Floating point arithmetic must manifest near NUMBER.MAX_SAFE_INTEGER (total ends up positive): FAIL
+/streams/readable-streams/from.any.html: OK
+	ReadableStream.from accepts a ReadableStream: FAIL
+	ReadableStream.from accepts a ReadableStream async iterator: FAIL
+	ReadableStream.from accepts a Set: FAIL
+	ReadableStream.from accepts a Set iterator: FAIL
+	ReadableStream.from accepts a sync generator: FAIL
+	ReadableStream.from accepts a sync iterable of promises: FAIL
+	ReadableStream.from accepts a sync iterable of values: FAIL
+	ReadableStream.from accepts a sync iterable with a function iterator: FAIL
+	ReadableStream.from accepts an array iterator: FAIL
+	ReadableStream.from accepts an array of promises: FAIL
+	ReadableStream.from accepts an array of values: FAIL
+	ReadableStream.from accepts an async generator: FAIL
+	ReadableStream.from accepts an async iterable: FAIL
+	ReadableStream.from accepts an async iterable with a function iterator: FAIL
+	ReadableStream.from accepts an empty iterable: FAIL
+	ReadableStream.from ignores @@iterator if @@asyncIterator exists: FAIL
+	ReadableStream.from ignores a null @@asyncIterator: FAIL
+	ReadableStream.from re-throws errors from calling the @@asyncIterator method: FAIL
+	ReadableStream.from re-throws errors from calling the @@iterator method: FAIL
+	ReadableStream.from throws on invalid iterables; specifically 0: PASS
+	ReadableStream.from throws on invalid iterables; specifically NaN: PASS
+	ReadableStream.from throws on invalid iterables; specifically Object.create(null): PASS
+	ReadableStream.from throws on invalid iterables; specifically a function: PASS
+	ReadableStream.from throws on invalid iterables; specifically a string: PASS
+	ReadableStream.from throws on invalid iterables; specifically a symbol: PASS
+	ReadableStream.from throws on invalid iterables; specifically an object with a non-callable @@asyncIterator method: PASS
+	ReadableStream.from throws on invalid iterables; specifically an object with a non-callable @@iterator method: PASS
+	ReadableStream.from throws on invalid iterables; specifically an object with an @@asyncIterator method returning a non-object: PASS
+	ReadableStream.from throws on invalid iterables; specifically an object with an @@iterator method returning a non-object: PASS
+	ReadableStream.from throws on invalid iterables; specifically null: PASS
+	ReadableStream.from throws on invalid iterables; specifically true: PASS
+	ReadableStream.from throws on invalid iterables; specifically undefined: PASS
+	ReadableStream.from throws on invalid iterables; specifically {}: PASS
+	ReadableStream.from(array), push() to array while reading: FAIL
+	ReadableStream.from: calls next() after first read(): FAIL
+	ReadableStream.from: cancel() rejects when return() fulfills with a non-object: FAIL
+	ReadableStream.from: cancel() rejects when return() is not a method: FAIL
+	ReadableStream.from: cancel() rejects when return() rejects: FAIL
+	ReadableStream.from: cancel() rejects when return() throws synchronously: FAIL
+	ReadableStream.from: cancel() resolves when return() method is missing: FAIL
+	ReadableStream.from: cancelling the returned stream calls and awaits return(): FAIL
+	ReadableStream.from: reader.cancel() inside next(): FAIL
+	ReadableStream.from: reader.cancel() inside return(): FAIL
+	ReadableStream.from: reader.read() inside next(): FAIL
+	ReadableStream.from: return() is not called when iterator completes normally: FAIL
+	ReadableStream.from: stream errors when next() fulfills with a non-object: FAIL
+	ReadableStream.from: stream errors when next() rejects: FAIL
+	ReadableStream.from: stream errors when next() returns a non-object: FAIL
+	ReadableStream.from: stream errors when next() throws synchronously: FAIL
+	ReadableStream.from: stream stalls when next() never settles: FAIL
+/streams/readable-streams/from.any.worker.html: OK
+	ReadableStream.from accepts a ReadableStream: FAIL
+	ReadableStream.from accepts a ReadableStream async iterator: FAIL
+	ReadableStream.from accepts a Set: FAIL
+	ReadableStream.from accepts a Set iterator: FAIL
+	ReadableStream.from accepts a sync generator: FAIL
+	ReadableStream.from accepts a sync iterable of promises: FAIL
+	ReadableStream.from accepts a sync iterable of values: FAIL
+	ReadableStream.from accepts a sync iterable with a function iterator: FAIL
+	ReadableStream.from accepts an array iterator: FAIL
+	ReadableStream.from accepts an array of promises: FAIL
+	ReadableStream.from accepts an array of values: FAIL
+	ReadableStream.from accepts an async generator: FAIL
+	ReadableStream.from accepts an async iterable: FAIL
+	ReadableStream.from accepts an async iterable with a function iterator: FAIL
+	ReadableStream.from accepts an empty iterable: FAIL
+	ReadableStream.from ignores @@iterator if @@asyncIterator exists: FAIL
+	ReadableStream.from ignores a null @@asyncIterator: FAIL
+	ReadableStream.from re-throws errors from calling the @@asyncIterator method: FAIL
+	ReadableStream.from re-throws errors from calling the @@iterator method: FAIL
+	ReadableStream.from throws on invalid iterables; specifically 0: PASS
+	ReadableStream.from throws on invalid iterables; specifically NaN: PASS
+	ReadableStream.from throws on invalid iterables; specifically Object.create(null): PASS
+	ReadableStream.from throws on invalid iterables; specifically a function: PASS
+	ReadableStream.from throws on invalid iterables; specifically a string: PASS
+	ReadableStream.from throws on invalid iterables; specifically a symbol: PASS
+	ReadableStream.from throws on invalid iterables; specifically an object with a non-callable @@asyncIterator method: PASS
+	ReadableStream.from throws on invalid iterables; specifically an object with a non-callable @@iterator method: PASS
+	ReadableStream.from throws on invalid iterables; specifically an object with an @@asyncIterator method returning a non-object: PASS
+	ReadableStream.from throws on invalid iterables; specifically an object with an @@iterator method returning a non-object: PASS
+	ReadableStream.from throws on invalid iterables; specifically null: PASS
+	ReadableStream.from throws on invalid iterables; specifically true: PASS
+	ReadableStream.from throws on invalid iterables; specifically undefined: PASS
+	ReadableStream.from throws on invalid iterables; specifically {}: PASS
+	ReadableStream.from(array), push() to array while reading: FAIL
+	ReadableStream.from: calls next() after first read(): FAIL
+	ReadableStream.from: cancel() rejects when return() fulfills with a non-object: FAIL
+	ReadableStream.from: cancel() rejects when return() is not a method: FAIL
+	ReadableStream.from: cancel() rejects when return() rejects: FAIL
+	ReadableStream.from: cancel() rejects when return() throws synchronously: FAIL
+	ReadableStream.from: cancel() resolves when return() method is missing: FAIL
+	ReadableStream.from: cancelling the returned stream calls and awaits return(): FAIL
+	ReadableStream.from: reader.cancel() inside next(): FAIL
+	ReadableStream.from: reader.cancel() inside return(): FAIL
+	ReadableStream.from: reader.read() inside next(): FAIL
+	ReadableStream.from: return() is not called when iterator completes normally: FAIL
+	ReadableStream.from: stream errors when next() fulfills with a non-object: FAIL
+	ReadableStream.from: stream errors when next() rejects: FAIL
+	ReadableStream.from: stream errors when next() returns a non-object: FAIL
+	ReadableStream.from: stream errors when next() throws synchronously: FAIL
+	ReadableStream.from: stream stalls when next() never settles: FAIL
+/streams/readable-streams/garbage-collection.any.html: OK
+	A ReadableStream and its reader should not be garbage collected while there is a read promise pending: PASS
+	Garbage-collecting a ReadableStreamDefaultReader should not unlock its stream: PASS
+	ReadableStream closed promise should fulfill even if the stream and reader JS references are lost: PASS
+	ReadableStream closed promise should reject even if stream and reader JS references are lost: PASS
+	ReadableStreamController methods should continue working properly when scripts lose their reference to the readable stream: PASS
+/streams/readable-streams/garbage-collection.any.worker.html: OK
+	A ReadableStream and its reader should not be garbage collected while there is a read promise pending: PASS
+	Garbage-collecting a ReadableStreamDefaultReader should not unlock its stream: PASS
+	ReadableStream closed promise should fulfill even if the stream and reader JS references are lost: PASS
+	ReadableStream closed promise should reject even if stream and reader JS references are lost: PASS
+	ReadableStreamController methods should continue working properly when scripts lose their reference to the readable stream: PASS
+/streams/readable-streams/general.any.html: OK
+	ReadableStream can be constructed with no errors: PASS
+	ReadableStream can't be constructed with an invalid type: FAIL
+	ReadableStream can't be constructed with garbage: FAIL
+	ReadableStream constructor should throw for non-function start arguments: PASS
+	ReadableStream constructor will not tolerate initial garbage as cancel argument: PASS
+	ReadableStream constructor will not tolerate initial garbage as pull argument: PASS
+	ReadableStream integration test: adapting a random push source: PASS
+	ReadableStream integration test: adapting a sync pull source: PASS
+	ReadableStream integration test: adapting an async pull source: PASS
+	ReadableStream pull should be able to close a stream.: PASS
+	ReadableStream pull should be able to error a stream and throw.: PASS
+	ReadableStream pull should be able to error a stream.: PASS
+	ReadableStream should be able to call start method within prototype chain of its source: PASS
+	ReadableStream should be able to enqueue different objects.: PASS
+	ReadableStream start controller parameter should be extensible: PASS
+	ReadableStream start should be able to return a promise: PASS
+	ReadableStream start should be able to return a promise and reject it: PASS
+	ReadableStream start should be called with the proper thisArg: PASS
+	ReadableStream strategies: the default strategy should continue giving desiredSize of 1 if the chunks are read immediately: PASS
+	ReadableStream strategies: the default strategy should give desiredSize of 1 to start, decreasing by 1 per enqueue: PASS
+	ReadableStream: desiredSize when closed: PASS
+	ReadableStream: desiredSize when errored: PASS
+	ReadableStream: enqueue should throw when the stream is closed: PASS
+	ReadableStream: enqueue should throw when the stream is readable but draining: PASS
+	ReadableStream: if pull rejects, it should error the stream: FAIL
+	ReadableStream: should call pull after enqueueing from inside pull (with no read requests), if strategy allows: PASS
+	ReadableStream: should call pull in reaction to read()ing the last chunk, if not draining: PASS
+	ReadableStream: should call pull when trying to read from a started, empty stream: PASS
+	ReadableStream: should call underlying source methods as methods: PASS
+	ReadableStream: should not call pull after start if the stream is now closed: PASS
+	ReadableStream: should not call pull until the previous pull call's promise fulfills: PASS
+	ReadableStream: should not call pull() in reaction to read()ing the last chunk, if draining: PASS
+	ReadableStream: should only call pull once on a non-empty stream read from after start fulfills: PASS
+	ReadableStream: should only call pull once on a non-empty stream read from before start fulfills: PASS
+	ReadableStream: should only call pull once upon starting the stream: PASS
+	ReadableStream: should pull after start, and after every read: PASS
+	Subclassing ReadableStream should work: PASS
+	default ReadableStream getReader() should only accept mode:undefined: PASS
+/streams/readable-streams/general.any.worker.html: OK
+	ReadableStream can be constructed with no errors: PASS
+	ReadableStream can't be constructed with an invalid type: FAIL
+	ReadableStream can't be constructed with garbage: FAIL
+	ReadableStream constructor should throw for non-function start arguments: PASS
+	ReadableStream constructor will not tolerate initial garbage as cancel argument: PASS
+	ReadableStream constructor will not tolerate initial garbage as pull argument: PASS
+	ReadableStream integration test: adapting a random push source: PASS
+	ReadableStream integration test: adapting a sync pull source: PASS
+	ReadableStream integration test: adapting an async pull source: PASS
+	ReadableStream pull should be able to close a stream.: PASS
+	ReadableStream pull should be able to error a stream and throw.: PASS
+	ReadableStream pull should be able to error a stream.: PASS
+	ReadableStream should be able to call start method within prototype chain of its source: PASS
+	ReadableStream should be able to enqueue different objects.: PASS
+	ReadableStream start controller parameter should be extensible: PASS
+	ReadableStream start should be able to return a promise: PASS
+	ReadableStream start should be able to return a promise and reject it: PASS
+	ReadableStream start should be called with the proper thisArg: PASS
+	ReadableStream strategies: the default strategy should continue giving desiredSize of 1 if the chunks are read immediately: PASS
+	ReadableStream strategies: the default strategy should give desiredSize of 1 to start, decreasing by 1 per enqueue: PASS
+	ReadableStream: desiredSize when closed: PASS
+	ReadableStream: desiredSize when errored: PASS
+	ReadableStream: enqueue should throw when the stream is closed: PASS
+	ReadableStream: enqueue should throw when the stream is readable but draining: PASS
+	ReadableStream: if pull rejects, it should error the stream: FAIL
+	ReadableStream: should call pull after enqueueing from inside pull (with no read requests), if strategy allows: PASS
+	ReadableStream: should call pull in reaction to read()ing the last chunk, if not draining: PASS
+	ReadableStream: should call pull when trying to read from a started, empty stream: PASS
+	ReadableStream: should call underlying source methods as methods: PASS
+	ReadableStream: should not call pull after start if the stream is now closed: PASS
+	ReadableStream: should not call pull until the previous pull call's promise fulfills: PASS
+	ReadableStream: should not call pull() in reaction to read()ing the last chunk, if draining: PASS
+	ReadableStream: should only call pull once on a non-empty stream read from after start fulfills: PASS
+	ReadableStream: should only call pull once on a non-empty stream read from before start fulfills: PASS
+	ReadableStream: should only call pull once upon starting the stream: PASS
+	ReadableStream: should pull after start, and after every read: PASS
+	Subclassing ReadableStream should work: PASS
+	default ReadableStream getReader() should only accept mode:undefined: PASS
+/streams/readable-streams/global.html: ERROR
+/streams/readable-streams/owning-type-message-port.tentative.any.html: OK
+	Second branch of owning ReadableStream tee should end up into errors with transfer only values: FAIL
+	Transferred MessageChannel works as expected: FAIL
+/streams/readable-streams/owning-type-message-port.tentative.any.worker.html: OK
+	Second branch of owning ReadableStream tee should end up into errors with transfer only values: FAIL
+	Transferred MessageChannel works as expected: FAIL
+/streams/readable-streams/owning-type-video-frame.tentative.any.html: OK
+	ReadableStream of type owning should clone JS Objects with serializables when teeing: FAIL
+	ReadableStream of type owning should clone serializable objects when teeing: FAIL
+	ReadableStream of type owning should close serialized chunks: FAIL
+	ReadableStream of type owning should error when trying to enqueue not serializable values: FAIL
+	ReadableStream of type owning should transfer JS chunks with transferred values: FAIL
+/streams/readable-streams/owning-type-video-frame.tentative.any.worker.html: OK
+	ReadableStream of type owning should clone JS Objects with serializables when teeing: FAIL
+	ReadableStream of type owning should clone serializable objects when teeing: FAIL
+	ReadableStream of type owning should close serialized chunks: FAIL
+	ReadableStream of type owning should error when trying to enqueue not serializable values: FAIL
+	ReadableStream of type owning should transfer JS chunks with transferred values: FAIL
+/streams/readable-streams/owning-type.tentative.any.html: OK
+	ReadableStream can be constructed with owning type: PASS
+	ReadableStream of type owning should call start with a ReadableStreamDefaultController: PASS
+	ReadableStream of type owning should transfer enqueued chunks: FAIL
+	ReadableStream should be able to call enqueue with an empty transfer list: PASS
+	ReadableStream should check transfer parameter: FAIL
+/streams/readable-streams/owning-type.tentative.any.worker.html: OK
+	ReadableStream can be constructed with owning type: PASS
+	ReadableStream of type owning should call start with a ReadableStreamDefaultController: PASS
+	ReadableStream of type owning should transfer enqueued chunks: FAIL
+	ReadableStream should be able to call enqueue with an empty transfer list: PASS
+	ReadableStream should check transfer parameter: FAIL
+/streams/readable-streams/patched-global.any.html: OK
+	ReadableStream async iterator should use the original values of getReader() and ReadableStreamDefaultReader methods: PASS
+	ReadableStream tee() should not call the global ReadableStream: PASS
+	ReadableStream tee() should not touch Object.prototype properties: PASS
+	pipeTo() should not call Promise.prototype.then(): FAIL
+	tee() should not call Promise.prototype.then(): PASS
+/streams/readable-streams/patched-global.any.worker.html: OK
+	ReadableStream async iterator should use the original values of getReader() and ReadableStreamDefaultReader methods: PASS
+	ReadableStream tee() should not call the global ReadableStream: PASS
+	ReadableStream tee() should not touch Object.prototype properties: PASS
+	pipeTo() should not call Promise.prototype.then(): FAIL
+	tee() should not call Promise.prototype.then(): PASS
+/streams/readable-streams/read-task-handling.window.html: OK
+	reading from a stream should occur in a microtask scope: PASS
 /streams/readable-streams/reentrant-strategies.any.html: TIMEOUT
+	cancel() inside size() should work: NOTRUN
+	close request inside size() should work: NOTRUN
+	close() inside size() should not crash: TIMEOUT
+	desiredSize inside size() should work: NOTRUN
+	enqueue() inside size() should work: FAIL
+	error() inside size() should work: NOTRUN
+	getReader() inside size() should work: NOTRUN
+	pipeTo() inside size() should behave as expected: NOTRUN
+	read() inside of size() should behave as expected: NOTRUN
+	tee() inside size() should work: NOTRUN
 /streams/readable-streams/reentrant-strategies.any.worker.html: TIMEOUT
-/streams/readable-streams/tee.any.html: TIMEOUT
-/streams/readable-streams/tee.any.worker.html: TIMEOUT
-/streams/readable-streams/templated.any.html: TIMEOUT
-/streams/readable-streams/templated.any.worker.html: TIMEOUT
-/streams/writable-streams/aborting.any.html: TIMEOUT
-/streams/writable-streams/aborting.any.worker.html: TIMEOUT
-/streams/writable-streams/bad-strategies.any.html: TIMEOUT
-/streams/writable-streams/bad-strategies.any.worker.html: TIMEOUT
-/streams/writable-streams/bad-underlying-sinks.any.html: TIMEOUT
-/streams/writable-streams/bad-underlying-sinks.any.worker.html: TIMEOUT
-/streams/writable-streams/byte-length-queuing-strategy.any.html: TIMEOUT
-/streams/writable-streams/byte-length-queuing-strategy.any.worker.html: TIMEOUT
-/streams/writable-streams/close.any.html: TIMEOUT
-/streams/writable-streams/close.any.worker.html: TIMEOUT
-/streams/writable-streams/constructor.any.html: TIMEOUT
-/streams/writable-streams/constructor.any.worker.html: TIMEOUT
-/streams/writable-streams/count-queuing-strategy.any.html: TIMEOUT
-/streams/writable-streams/count-queuing-strategy.any.worker.html: TIMEOUT
-/streams/writable-streams/error.any.html: TIMEOUT
-/streams/writable-streams/error.any.worker.html: TIMEOUT
-/streams/writable-streams/floating-point-total-queue-size.any.html: TIMEOUT
-/streams/writable-streams/floating-point-total-queue-size.any.worker.html: TIMEOUT
-/streams/writable-streams/garbage-collection.any.html: TIMEOUT
-/streams/writable-streams/garbage-collection.any.worker.html: TIMEOUT
-/streams/writable-streams/general.any.html: TIMEOUT
-/streams/writable-streams/general.any.worker.html: TIMEOUT
-/streams/writable-streams/properties.any.html: TIMEOUT
-/streams/writable-streams/properties.any.worker.html: TIMEOUT
-/streams/writable-streams/reentrant-strategy.any.html: TIMEOUT
-/streams/writable-streams/reentrant-strategy.any.worker.html: TIMEOUT
-/streams/writable-streams/start.any.html: TIMEOUT
-/streams/writable-streams/start.any.worker.html: TIMEOUT
-/streams/writable-streams/write.any.html: TIMEOUT
-/streams/writable-streams/write.any.worker.html: TIMEOUT
+	cancel() inside size() should work: NOTRUN
+	close request inside size() should work: NOTRUN
+	close() inside size() should not crash: TIMEOUT
+	desiredSize inside size() should work: NOTRUN
+	enqueue() inside size() should work: FAIL
+	error() inside size() should work: NOTRUN
+	getReader() inside size() should work: NOTRUN
+	pipeTo() inside size() should behave as expected: NOTRUN
+	read() inside of size() should behave as expected: NOTRUN
+	tee() inside size() should work: NOTRUN
+/streams/readable-streams/tee.any.html: ERROR
+	ReadableStream teeing: canceling both branches in reverse order should aggregate the cancel reasons into an array: PASS
+	ReadableStream teeing: canceling both branches in sequence with delay: NOTRUN
+	ReadableStream teeing: canceling both branches should aggregate the cancel reasons into an array: PASS
+	ReadableStream teeing: canceling branch1 should finish when branch2 reads until end of stream: NOTRUN
+	ReadableStream teeing: canceling branch1 should finish when original stream errors: NOTRUN
+	ReadableStream teeing: canceling branch1 should not impact branch2: PASS
+	ReadableStream teeing: canceling branch2 should not impact branch1: PASS
+	ReadableStream teeing: closing the original should immediately close the branches: NOTRUN
+	ReadableStream teeing: enqueue() and close() while both branches are pulling: NOTRUN
+	ReadableStream teeing: erroring a teed stream should error both branches: TIMEOUT
+	ReadableStream teeing: erroring a teed stream should properly handle canceled branches: FAIL
+	ReadableStream teeing: erroring the original should immediately error the branches: NOTRUN
+	ReadableStream teeing: errors in the source should propagate to both branches: FAIL
+	ReadableStream teeing: failing to cancel the original stream should cause cancel() to reject on branches: FAIL
+	ReadableStream teeing: failing to cancel when canceling both branches in sequence with delay: NOTRUN
+	ReadableStream teeing: rs.tee() returns an array of two ReadableStreams: PASS
+	ReadableStream teeing: should be able to read one branch to the end without affecting the other: PASS
+	ReadableStream teeing: values should be equal across each branch: PASS
+	ReadableStreamTee should not pull more chunks than can fit in the branch queue: NOTRUN
+	ReadableStreamTee should not pull when original is already errored: NOTRUN
+	ReadableStreamTee should not use a modified ReadableStream constructor from the global object: PASS
+	ReadableStreamTee should only pull enough to fill the emptiest queue: NOTRUN
+	ReadableStreamTee stops pulling when original stream errors while both branches are reading: NOTRUN
+	ReadableStreamTee stops pulling when original stream errors while branch 1 is reading: NOTRUN
+	ReadableStreamTee stops pulling when original stream errors while branch 2 is reading: NOTRUN
+	Running templatedRSTeeCancel with ReadableStream teeing: PASS
+/streams/readable-streams/tee.any.worker.html: ERROR
+	ReadableStream teeing: canceling both branches in reverse order should aggregate the cancel reasons into an array: PASS
+	ReadableStream teeing: canceling both branches in sequence with delay: NOTRUN
+	ReadableStream teeing: canceling both branches should aggregate the cancel reasons into an array: PASS
+	ReadableStream teeing: canceling branch1 should finish when branch2 reads until end of stream: NOTRUN
+	ReadableStream teeing: canceling branch1 should finish when original stream errors: NOTRUN
+	ReadableStream teeing: canceling branch1 should not impact branch2: PASS
+	ReadableStream teeing: canceling branch2 should not impact branch1: PASS
+	ReadableStream teeing: closing the original should immediately close the branches: NOTRUN
+	ReadableStream teeing: enqueue() and close() while both branches are pulling: NOTRUN
+	ReadableStream teeing: erroring a teed stream should error both branches: TIMEOUT
+	ReadableStream teeing: erroring a teed stream should properly handle canceled branches: FAIL
+	ReadableStream teeing: erroring the original should immediately error the branches: NOTRUN
+	ReadableStream teeing: errors in the source should propagate to both branches: FAIL
+	ReadableStream teeing: failing to cancel the original stream should cause cancel() to reject on branches: FAIL
+	ReadableStream teeing: failing to cancel when canceling both branches in sequence with delay: NOTRUN
+	ReadableStream teeing: rs.tee() returns an array of two ReadableStreams: PASS
+	ReadableStream teeing: should be able to read one branch to the end without affecting the other: PASS
+	ReadableStream teeing: values should be equal across each branch: PASS
+	ReadableStreamTee should not pull more chunks than can fit in the branch queue: NOTRUN
+	ReadableStreamTee should not pull when original is already errored: NOTRUN
+	ReadableStreamTee should not use a modified ReadableStream constructor from the global object: PASS
+	ReadableStreamTee should only pull enough to fill the emptiest queue: NOTRUN
+	ReadableStreamTee stops pulling when original stream errors while both branches are reading: NOTRUN
+	ReadableStreamTee stops pulling when original stream errors while branch 1 is reading: NOTRUN
+	ReadableStreamTee stops pulling when original stream errors while branch 2 is reading: NOTRUN
+	Running templatedRSTeeCancel with ReadableStream teeing: PASS
+/streams/readable-streams/templated.any.html: OK
+	ReadableStream (closed via call in start): cancel() should return a distinct fulfilled promise each time: PASS
+	ReadableStream (closed via call in start): getReader() should be OK: PASS
+	ReadableStream (closed via call in start): locked should be false: PASS
+	ReadableStream (closed via call in start): should be able to acquire multiple readers if they are released in succession: PASS
+	ReadableStream (closed via call in start): should not be able to acquire a second reader if we don't release the first one: PASS
+	ReadableStream (closed via cancel): cancel() should return a distinct fulfilled promise each time: PASS
+	ReadableStream (closed via cancel): getReader() should be OK: PASS
+	ReadableStream (closed via cancel): locked should be false: PASS
+	ReadableStream (closed via cancel): should be able to acquire multiple readers if they are released in succession: PASS
+	ReadableStream (closed via cancel): should not be able to acquire a second reader if we don't release the first one: PASS
+	ReadableStream (empty) reader: canceling via the reader should cause the reader to act closed: PASS
+	ReadableStream (empty) reader: canceling via the stream should fail: PASS
+	ReadableStream (empty) reader: getReader() again on the stream should fail: PASS
+	ReadableStream (empty) reader: instances have the correct methods and properties: PASS
+	ReadableStream (empty) reader: locked should be true: PASS
+	ReadableStream (empty) reader: read() should never settle: PASS
+	ReadableStream (empty) reader: read() should return distinct promises each time: PASS
+	ReadableStream (empty) reader: releasing the lock should cause closed calls to reject with a TypeError: PASS
+	ReadableStream (empty) reader: releasing the lock should cause further read() calls to reject with a TypeError: PASS
+	ReadableStream (empty) reader: releasing the lock should cause locked to become false: PASS
+	ReadableStream (empty) reader: releasing the lock should reject all pending read requests: PASS
+	ReadableStream (empty) reader: two read()s should both never settle: PASS
+	ReadableStream (empty): calling getReader with invalid arguments should throw appropriate errors: PASS
+	ReadableStream (empty): instances have the correct methods and properties: FAIL
+	ReadableStream (errored via call in start): cancel() should return a distinct rejected promise each time: PASS
+	ReadableStream (errored via call in start): getReader() should return a reader that acts errored: PASS
+	ReadableStream (errored via call in start): locked should be false: PASS
+	ReadableStream (errored via call in start): read() twice should give the error each time: PASS
+	ReadableStream (errored via call in start): reader cancel() should return a distinct rejected promise each time: PASS
+	ReadableStream (errored via call in start): should be able to obtain a second reader, with the correct closed promise: PASS
+	ReadableStream (errored via call in start): should not be able to obtain additional readers if we don't release the first lock: PASS
+	ReadableStream (errored via returning a rejected promise in start) reader: closed should reject with the error: PASS
+	ReadableStream (errored via returning a rejected promise in start) reader: read() should reject with the error: PASS
+	ReadableStream (errored via returning a rejected promise in start) reader: releasing the lock should cause closed to reject and change identity: PASS
+	ReadableStream (errored via returning a rejected promise in start): getReader() should return a reader that acts errored: PASS
+	ReadableStream (errored via returning a rejected promise in start): locked should be false: PASS
+	ReadableStream (errored via returning a rejected promise in start): read() twice should give the error each time: PASS
+	ReadableStream (two chunks enqueued, still open) reader: calling read() twice without waiting will eventually give both chunks (nested): PASS
+	ReadableStream (two chunks enqueued, still open) reader: calling read() twice without waiting will eventually give both chunks (sequential): PASS
+	ReadableStream (two chunks enqueued, still open) reader: cancel() after a read() should still give that single read result: PASS
+	ReadableStream (two chunks enqueued, still open) reader: read() should return distinct promises each time: PASS
+	ReadableStream (two chunks enqueued, then closed) reader: draining the stream via read() should cause the reader closed promise to fulfill, but locked stays true: PASS
+	ReadableStream (two chunks enqueued, then closed) reader: reader's closed property always returns the same promise: PASS
+	ReadableStream (two chunks enqueued, then closed) reader: releasing the lock after the stream is closed should cause locked to become false: PASS
+	ReadableStream (two chunks enqueued, then closed) reader: releasing the lock should cause further read() calls to reject with a TypeError: PASS
+	ReadableStream (two chunks enqueued, then closed) reader: third read(), without waiting, should give { value: undefined, done: true } (nested): PASS
+	ReadableStream (two chunks enqueued, then closed) reader: third read(), without waiting, should give { value: undefined, done: true } (sequential): PASS
+	ReadableStream reader (closed after getting reader): cancel() should return a distinct fulfilled promise each time: PASS
+	ReadableStream reader (closed after getting reader): closed should fulfill with undefined: PASS
+	ReadableStream reader (closed after getting reader): read() multiple times should fulfill with { value: undefined, done: true }: PASS
+	ReadableStream reader (closed after getting reader): read() should fulfill with { value: undefined, done: true }: PASS
+	ReadableStream reader (closed after getting reader): read() should work when used within another read() fulfill callback: PASS
+	ReadableStream reader (closed after getting reader): releasing the lock should cause closed to reject and change identity: PASS
+	ReadableStream reader (closed before getting reader): cancel() should return a distinct fulfilled promise each time: PASS
+	ReadableStream reader (closed before getting reader): closed should fulfill with undefined: PASS
+	ReadableStream reader (closed before getting reader): read() multiple times should fulfill with { value: undefined, done: true }: PASS
+	ReadableStream reader (closed before getting reader): read() should fulfill with { value: undefined, done: true }: PASS
+	ReadableStream reader (closed before getting reader): read() should work when used within another read() fulfill callback: PASS
+	ReadableStream reader (closed before getting reader): releasing the lock should cause closed to reject and change identity: PASS
+	ReadableStream reader (closed via cancel after getting reader): cancel() should return a distinct fulfilled promise each time: PASS
+	ReadableStream reader (closed via cancel after getting reader): closed should fulfill with undefined: PASS
+	ReadableStream reader (closed via cancel after getting reader): read() multiple times should fulfill with { value: undefined, done: true }: PASS
+	ReadableStream reader (closed via cancel after getting reader): read() should fulfill with { value: undefined, done: true }: PASS
+	ReadableStream reader (closed via cancel after getting reader): read() should work when used within another read() fulfill callback: PASS
+	ReadableStream reader (closed via cancel after getting reader): releasing the lock should cause closed to reject and change identity: PASS
+	ReadableStream reader (errored after getting reader): closed should reject with the error: PASS
+	ReadableStream reader (errored after getting reader): read() should reject with the error: PASS
+	ReadableStream reader (errored after getting reader): releasing the lock should cause closed to reject and change identity: PASS
+	ReadableStream reader (errored before getting reader): closed should reject with the error: PASS
+	ReadableStream reader (errored before getting reader): read() should reject with the error: PASS
+	ReadableStream reader (errored before getting reader): releasing the lock should cause closed to reject and change identity: PASS
+	ReadableStream: close() throws after error(): PASS
+	ReadableStream: enqueue() throws after close(): PASS
+	ReadableStream: enqueue() throws after enqueue() and close(): PASS
+	ReadableStream: enqueue() throws after error(): PASS
+	Running templatedRSClosed with ReadableStream (closed via call in start): PASS
+	Running templatedRSClosed with ReadableStream (closed via cancel): PASS
+	Running templatedRSClosedReader with ReadableStream reader (closed after getting reader): PASS
+	Running templatedRSClosedReader with ReadableStream reader (closed before getting reader): PASS
+	Running templatedRSClosedReader with ReadableStream reader (closed via cancel after getting reader): PASS
+	Running templatedRSEmpty with ReadableStream (empty): PASS
+	Running templatedRSEmptyReader with ReadableStream (empty) reader: PASS
+	Running templatedRSErrored with ReadableStream (errored via call in start): PASS
+	Running templatedRSErrored with ReadableStream (errored via returning a rejected promise in start): PASS
+	Running templatedRSErroredReader with ReadableStream (errored via returning a rejected promise in start) reader: PASS
+	Running templatedRSErroredReader with ReadableStream reader (errored after getting reader): PASS
+	Running templatedRSErroredReader with ReadableStream reader (errored before getting reader): PASS
+	Running templatedRSErroredSyncOnly with ReadableStream (errored via call in start): PASS
+	Running templatedRSThrowAfterCloseOrError with ReadableStream: PASS
+	Running templatedRSTwoChunksClosedReader with ReadableStream (two chunks enqueued, then closed) reader: PASS
+	Running templatedRSTwoChunksOpenReader with ReadableStream (two chunks enqueued, still open) reader: PASS
+/streams/readable-streams/templated.any.worker.html: OK
+	ReadableStream (closed via call in start): cancel() should return a distinct fulfilled promise each time: PASS
+	ReadableStream (closed via call in start): getReader() should be OK: PASS
+	ReadableStream (closed via call in start): locked should be false: PASS
+	ReadableStream (closed via call in start): should be able to acquire multiple readers if they are released in succession: PASS
+	ReadableStream (closed via call in start): should not be able to acquire a second reader if we don't release the first one: PASS
+	ReadableStream (closed via cancel): cancel() should return a distinct fulfilled promise each time: PASS
+	ReadableStream (closed via cancel): getReader() should be OK: PASS
+	ReadableStream (closed via cancel): locked should be false: PASS
+	ReadableStream (closed via cancel): should be able to acquire multiple readers if they are released in succession: PASS
+	ReadableStream (closed via cancel): should not be able to acquire a second reader if we don't release the first one: PASS
+	ReadableStream (empty) reader: canceling via the reader should cause the reader to act closed: PASS
+	ReadableStream (empty) reader: canceling via the stream should fail: PASS
+	ReadableStream (empty) reader: getReader() again on the stream should fail: PASS
+	ReadableStream (empty) reader: instances have the correct methods and properties: PASS
+	ReadableStream (empty) reader: locked should be true: PASS
+	ReadableStream (empty) reader: read() should never settle: PASS
+	ReadableStream (empty) reader: read() should return distinct promises each time: PASS
+	ReadableStream (empty) reader: releasing the lock should cause closed calls to reject with a TypeError: PASS
+	ReadableStream (empty) reader: releasing the lock should cause further read() calls to reject with a TypeError: PASS
+	ReadableStream (empty) reader: releasing the lock should cause locked to become false: PASS
+	ReadableStream (empty) reader: releasing the lock should reject all pending read requests: PASS
+	ReadableStream (empty) reader: two read()s should both never settle: PASS
+	ReadableStream (empty): calling getReader with invalid arguments should throw appropriate errors: PASS
+	ReadableStream (empty): instances have the correct methods and properties: FAIL
+	ReadableStream (errored via call in start): cancel() should return a distinct rejected promise each time: PASS
+	ReadableStream (errored via call in start): getReader() should return a reader that acts errored: PASS
+	ReadableStream (errored via call in start): locked should be false: PASS
+	ReadableStream (errored via call in start): read() twice should give the error each time: PASS
+	ReadableStream (errored via call in start): reader cancel() should return a distinct rejected promise each time: PASS
+	ReadableStream (errored via call in start): should be able to obtain a second reader, with the correct closed promise: PASS
+	ReadableStream (errored via call in start): should not be able to obtain additional readers if we don't release the first lock: PASS
+	ReadableStream (errored via returning a rejected promise in start) reader: closed should reject with the error: PASS
+	ReadableStream (errored via returning a rejected promise in start) reader: read() should reject with the error: PASS
+	ReadableStream (errored via returning a rejected promise in start) reader: releasing the lock should cause closed to reject and change identity: PASS
+	ReadableStream (errored via returning a rejected promise in start): getReader() should return a reader that acts errored: PASS
+	ReadableStream (errored via returning a rejected promise in start): locked should be false: PASS
+	ReadableStream (errored via returning a rejected promise in start): read() twice should give the error each time: PASS
+	ReadableStream (two chunks enqueued, still open) reader: calling read() twice without waiting will eventually give both chunks (nested): PASS
+	ReadableStream (two chunks enqueued, still open) reader: calling read() twice without waiting will eventually give both chunks (sequential): PASS
+	ReadableStream (two chunks enqueued, still open) reader: cancel() after a read() should still give that single read result: PASS
+	ReadableStream (two chunks enqueued, still open) reader: read() should return distinct promises each time: PASS
+	ReadableStream (two chunks enqueued, then closed) reader: draining the stream via read() should cause the reader closed promise to fulfill, but locked stays true: PASS
+	ReadableStream (two chunks enqueued, then closed) reader: reader's closed property always returns the same promise: PASS
+	ReadableStream (two chunks enqueued, then closed) reader: releasing the lock after the stream is closed should cause locked to become false: PASS
+	ReadableStream (two chunks enqueued, then closed) reader: releasing the lock should cause further read() calls to reject with a TypeError: PASS
+	ReadableStream (two chunks enqueued, then closed) reader: third read(), without waiting, should give { value: undefined, done: true } (nested): PASS
+	ReadableStream (two chunks enqueued, then closed) reader: third read(), without waiting, should give { value: undefined, done: true } (sequential): PASS
+	ReadableStream reader (closed after getting reader): cancel() should return a distinct fulfilled promise each time: PASS
+	ReadableStream reader (closed after getting reader): closed should fulfill with undefined: PASS
+	ReadableStream reader (closed after getting reader): read() multiple times should fulfill with { value: undefined, done: true }: PASS
+	ReadableStream reader (closed after getting reader): read() should fulfill with { value: undefined, done: true }: PASS
+	ReadableStream reader (closed after getting reader): read() should work when used within another read() fulfill callback: PASS
+	ReadableStream reader (closed after getting reader): releasing the lock should cause closed to reject and change identity: PASS
+	ReadableStream reader (closed before getting reader): cancel() should return a distinct fulfilled promise each time: PASS
+	ReadableStream reader (closed before getting reader): closed should fulfill with undefined: PASS
+	ReadableStream reader (closed before getting reader): read() multiple times should fulfill with { value: undefined, done: true }: PASS
+	ReadableStream reader (closed before getting reader): read() should fulfill with { value: undefined, done: true }: PASS
+	ReadableStream reader (closed before getting reader): read() should work when used within another read() fulfill callback: PASS
+	ReadableStream reader (closed before getting reader): releasing the lock should cause closed to reject and change identity: PASS
+	ReadableStream reader (closed via cancel after getting reader): cancel() should return a distinct fulfilled promise each time: PASS
+	ReadableStream reader (closed via cancel after getting reader): closed should fulfill with undefined: PASS
+	ReadableStream reader (closed via cancel after getting reader): read() multiple times should fulfill with { value: undefined, done: true }: PASS
+	ReadableStream reader (closed via cancel after getting reader): read() should fulfill with { value: undefined, done: true }: PASS
+	ReadableStream reader (closed via cancel after getting reader): read() should work when used within another read() fulfill callback: PASS
+	ReadableStream reader (closed via cancel after getting reader): releasing the lock should cause closed to reject and change identity: PASS
+	ReadableStream reader (errored after getting reader): closed should reject with the error: PASS
+	ReadableStream reader (errored after getting reader): read() should reject with the error: PASS
+	ReadableStream reader (errored after getting reader): releasing the lock should cause closed to reject and change identity: PASS
+	ReadableStream reader (errored before getting reader): closed should reject with the error: PASS
+	ReadableStream reader (errored before getting reader): read() should reject with the error: PASS
+	ReadableStream reader (errored before getting reader): releasing the lock should cause closed to reject and change identity: PASS
+	ReadableStream: close() throws after error(): PASS
+	ReadableStream: enqueue() throws after close(): PASS
+	ReadableStream: enqueue() throws after enqueue() and close(): PASS
+	ReadableStream: enqueue() throws after error(): PASS
+	Running templatedRSClosed with ReadableStream (closed via call in start): PASS
+	Running templatedRSClosed with ReadableStream (closed via cancel): PASS
+	Running templatedRSClosedReader with ReadableStream reader (closed after getting reader): PASS
+	Running templatedRSClosedReader with ReadableStream reader (closed before getting reader): PASS
+	Running templatedRSClosedReader with ReadableStream reader (closed via cancel after getting reader): PASS
+	Running templatedRSEmpty with ReadableStream (empty): PASS
+	Running templatedRSEmptyReader with ReadableStream (empty) reader: PASS
+	Running templatedRSErrored with ReadableStream (errored via call in start): PASS
+	Running templatedRSErrored with ReadableStream (errored via returning a rejected promise in start): PASS
+	Running templatedRSErroredReader with ReadableStream (errored via returning a rejected promise in start) reader: PASS
+	Running templatedRSErroredReader with ReadableStream reader (errored after getting reader): PASS
+	Running templatedRSErroredReader with ReadableStream reader (errored before getting reader): PASS
+	Running templatedRSErroredSyncOnly with ReadableStream (errored via call in start): PASS
+	Running templatedRSThrowAfterCloseOrError with ReadableStream: PASS
+	Running templatedRSTwoChunksClosedReader with ReadableStream (two chunks enqueued, then closed) reader: PASS
+	Running templatedRSTwoChunksOpenReader with ReadableStream (two chunks enqueued, still open) reader: PASS
+/streams/writable-streams/aborting.any.html: OK
+	.closed should not resolve before fulfilled write(): FAIL
+	.closed should not resolve before rejected write(); write() error should not overwrite abort() error: FAIL
+	Aborting a WritableStream after it is closed is a no-op: FAIL
+	Aborting a WritableStream before it starts should cause the writer's unsettled ready promise to reject: FAIL
+	Aborting a WritableStream causes any outstanding write() promises to be rejected with the reason supplied: FAIL
+	Aborting a WritableStream immediately prevents future writes: FAIL
+	Aborting a WritableStream passes through the given reason: FAIL
+	Aborting a WritableStream prevents further writes after any that are in progress: FAIL
+	Aborting a WritableStream puts it in an errored state with the error passed to abort(): FAIL
+	Aborting a WritableStream should cause the writer's fulfilled ready promise to reset to a rejected one: FAIL
+	Closing a WritableStream and aborting it while it closes causes the stream to ignore the abort attempt: FAIL
+	Closing but then immediately aborting a WritableStream causes the stream to error: FAIL
+	Fulfillment value of writer.abort() call must be undefined even if the underlying sink returns a non-undefined value: FAIL
+	WritableStream if sink's abort throws, for an abort performed during a write, the promise returned by ws.abort() rejects: FAIL
+	WritableStream if sink's abort throws, the promise returned by multiple writer.abort()s is the same and rejects: FAIL
+	WritableStream if sink's abort throws, the promise returned by writer.abort() rejects: FAIL
+	WritableStream if sink's abort throws, the promise returned by ws.abort() rejects: FAIL
+	WritableStream should NOT call underlying sink's close if no abort is supplied (historical): FAIL
+	WritableStreamDefaultController.signal: FAIL
+	a rejecting sink.write() should not prevent sink.abort() from being called: FAIL
+	abort on a locked stream should reject: FAIL
+	abort with a string argument should set the stored error to that argument: FAIL
+	abort with an undefined argument should set the stored error to undefined: FAIL
+	abort with no arguments should set the stored error to undefined: FAIL
+	abort() on a released writer rejects: FAIL
+	abort() should be rejected with the rejection returned from close(): FAIL
+	abort() should succeed despite rejection from write: FAIL
+	an abort() that happens during a write() should trigger the underlying abort() even with a close() queued: FAIL
+	calling abort() on an errored stream should fulfill with undefined: FAIL
+	close() should reject with abort reason why abort() is first error: FAIL
+	controller.error(), writer.abort() while there is an in-flight close, and then finish the close: FAIL
+	controller.error(), writer.abort() while there is an in-flight write, and then finish the write: FAIL
+	if a writer is created for a stream with a pending abort, its ready should be rejected with the abort error: FAIL
+	if start attempts to error the controller after abort() has been called, then it should lose: FAIL
+	if underlying close() has started and then rejects, the abort() and close() promises should reject with the underlying close rejection reason: FAIL
+	promises returned from other writer methods should be rejected when writer abort() happens during sink start(): FAIL
+	recursive abort() call from abort() aborting signal: FAIL
+	recursive abort() call from abort() aborting signal (not started): FAIL
+	recursive close() call from abort() aborting signal: FAIL
+	recursive close() call from abort() aborting signal (not started): FAIL
+	releaseLock() during delayed async abort() should reject the writer.closed promise: FAIL
+	releaseLock() while aborting should reject the original closed promise: FAIL
+	returning a thenable from abort() should work: FAIL
+	sink abort() should not be called if stream was erroring due to bad strategy before abort() was called: FAIL
+	sink abort() should not be called if stream was erroring due to controller.error() before abort() was called: FAIL
+	sink abort() should not be called until sink start() is done: FAIL
+	stream abort() promise should still resolve if sink start() rejects: FAIL
+	the abort signal is not signalled on close failure: FAIL
+	the abort signal is not signalled on error: FAIL
+	the abort signal is not signalled on write failure: FAIL
+	the abort signal is signalled synchronously - close: FAIL
+	the abort signal is signalled synchronously - write: FAIL
+	underlying abort() should not be called if underlying close() has started: FAIL
+	underlying abort() should not be called until underlying write() completes: FAIL
+	when calling abort() twice on the same stream, both should give the same promise that fulfills with undefined: FAIL
+	when calling abort() twice on the same stream, but sequentially so so there's no pending abort the second time, both should fulfill with undefined: FAIL
+	when start errors after stream abort(), underlying sink abort() should be called anyway: FAIL
+	writer abort() during sink start() should replace the writer.ready promise synchronously: FAIL
+	writer close() promise should resolve before abort() promise: FAIL
+	writer.abort() while there is an in-flight write, and then finish the write with rejection: FAIL
+	writer.abort(), controller.error() while there is an in-flight close, and then finish the close: FAIL
+	writer.abort(), controller.error() while there is an in-flight write, and then finish the write: FAIL
+	writer.ready should reject on controller error without waiting for underlying write: FAIL
+	writes should be satisfied in order after rejected write when aborting: FAIL
+	writes should be satisfied in order when aborting: FAIL
+/streams/writable-streams/aborting.any.worker.html: OK
+	.closed should not resolve before fulfilled write(): FAIL
+	.closed should not resolve before rejected write(); write() error should not overwrite abort() error: FAIL
+	Aborting a WritableStream after it is closed is a no-op: FAIL
+	Aborting a WritableStream before it starts should cause the writer's unsettled ready promise to reject: FAIL
+	Aborting a WritableStream causes any outstanding write() promises to be rejected with the reason supplied: FAIL
+	Aborting a WritableStream immediately prevents future writes: FAIL
+	Aborting a WritableStream passes through the given reason: FAIL
+	Aborting a WritableStream prevents further writes after any that are in progress: FAIL
+	Aborting a WritableStream puts it in an errored state with the error passed to abort(): FAIL
+	Aborting a WritableStream should cause the writer's fulfilled ready promise to reset to a rejected one: FAIL
+	Closing a WritableStream and aborting it while it closes causes the stream to ignore the abort attempt: FAIL
+	Closing but then immediately aborting a WritableStream causes the stream to error: FAIL
+	Fulfillment value of writer.abort() call must be undefined even if the underlying sink returns a non-undefined value: FAIL
+	WritableStream if sink's abort throws, for an abort performed during a write, the promise returned by ws.abort() rejects: FAIL
+	WritableStream if sink's abort throws, the promise returned by multiple writer.abort()s is the same and rejects: FAIL
+	WritableStream if sink's abort throws, the promise returned by writer.abort() rejects: FAIL
+	WritableStream if sink's abort throws, the promise returned by ws.abort() rejects: FAIL
+	WritableStream should NOT call underlying sink's close if no abort is supplied (historical): FAIL
+	WritableStreamDefaultController.signal: FAIL
+	a rejecting sink.write() should not prevent sink.abort() from being called: FAIL
+	abort on a locked stream should reject: FAIL
+	abort with a string argument should set the stored error to that argument: FAIL
+	abort with an undefined argument should set the stored error to undefined: FAIL
+	abort with no arguments should set the stored error to undefined: FAIL
+	abort() on a released writer rejects: FAIL
+	abort() should be rejected with the rejection returned from close(): FAIL
+	abort() should succeed despite rejection from write: FAIL
+	an abort() that happens during a write() should trigger the underlying abort() even with a close() queued: FAIL
+	calling abort() on an errored stream should fulfill with undefined: FAIL
+	close() should reject with abort reason why abort() is first error: FAIL
+	controller.error(), writer.abort() while there is an in-flight close, and then finish the close: FAIL
+	controller.error(), writer.abort() while there is an in-flight write, and then finish the write: FAIL
+	if a writer is created for a stream with a pending abort, its ready should be rejected with the abort error: FAIL
+	if start attempts to error the controller after abort() has been called, then it should lose: FAIL
+	if underlying close() has started and then rejects, the abort() and close() promises should reject with the underlying close rejection reason: FAIL
+	promises returned from other writer methods should be rejected when writer abort() happens during sink start(): FAIL
+	recursive abort() call from abort() aborting signal: FAIL
+	recursive abort() call from abort() aborting signal (not started): FAIL
+	recursive close() call from abort() aborting signal: FAIL
+	recursive close() call from abort() aborting signal (not started): FAIL
+	releaseLock() during delayed async abort() should reject the writer.closed promise: FAIL
+	releaseLock() while aborting should reject the original closed promise: FAIL
+	returning a thenable from abort() should work: FAIL
+	sink abort() should not be called if stream was erroring due to bad strategy before abort() was called: FAIL
+	sink abort() should not be called if stream was erroring due to controller.error() before abort() was called: FAIL
+	sink abort() should not be called until sink start() is done: FAIL
+	stream abort() promise should still resolve if sink start() rejects: FAIL
+	the abort signal is not signalled on close failure: FAIL
+	the abort signal is not signalled on error: FAIL
+	the abort signal is not signalled on write failure: FAIL
+	the abort signal is signalled synchronously - close: FAIL
+	the abort signal is signalled synchronously - write: FAIL
+	underlying abort() should not be called if underlying close() has started: FAIL
+	underlying abort() should not be called until underlying write() completes: FAIL
+	when calling abort() twice on the same stream, both should give the same promise that fulfills with undefined: FAIL
+	when calling abort() twice on the same stream, but sequentially so so there's no pending abort the second time, both should fulfill with undefined: FAIL
+	when start errors after stream abort(), underlying sink abort() should be called anyway: FAIL
+	writer abort() during sink start() should replace the writer.ready promise synchronously: FAIL
+	writer close() promise should resolve before abort() promise: FAIL
+	writer.abort() while there is an in-flight write, and then finish the write with rejection: FAIL
+	writer.abort(), controller.error() while there is an in-flight close, and then finish the close: FAIL
+	writer.abort(), controller.error() while there is an in-flight write, and then finish the write: FAIL
+	writer.ready should reject on controller error without waiting for underlying write: FAIL
+	writes should be satisfied in order after rejected write when aborting: FAIL
+	writes should be satisfied in order when aborting: FAIL
+/streams/writable-streams/bad-strategies.any.html: OK
+	Writable stream: invalid size beats invalid highWaterMark: FAIL
+	Writable stream: invalid strategy.highWaterMark: FAIL
+	Writable stream: invalid strategy.size return value: FAIL
+	Writable stream: throwing strategy.highWaterMark getter: FAIL
+	Writable stream: throwing strategy.size getter: FAIL
+	Writable stream: throwing strategy.size method: FAIL
+	reject any non-function value for strategy.size: FAIL
+/streams/writable-streams/bad-strategies.any.worker.html: OK
+	Writable stream: invalid size beats invalid highWaterMark: FAIL
+	Writable stream: invalid strategy.highWaterMark: FAIL
+	Writable stream: invalid strategy.size return value: FAIL
+	Writable stream: throwing strategy.highWaterMark getter: FAIL
+	Writable stream: throwing strategy.size getter: FAIL
+	Writable stream: throwing strategy.size method: FAIL
+	reject any non-function value for strategy.size: FAIL
+/streams/writable-streams/bad-underlying-sinks.any.html: OK
+	abort: non-function abort method with .apply: FAIL
+	abort: throwing getter should cause abort() and closed to reject: FAIL
+	abort: throwing method should cause abort() and closed to reject: FAIL
+	close: non-function close method: FAIL
+	close: returning a rejected promise should cause writer close() and ready to reject: FAIL
+	close: throwing getter should cause constructor to throw: FAIL
+	close: throwing method should cause writer close() and ready to reject: FAIL
+	start: errors in start cause WritableStream constructor to throw: FAIL
+	start: non-function start method: FAIL
+	write: non-function write method: FAIL
+	write: returning a promise that becomes rejected after the writer write() should cause writer write() and ready to reject: FAIL
+	write: returning a rejected promise (second write) should cause writer write() and ready to reject: FAIL
+	write: throwing getter should cause write() and closed to reject: FAIL
+	write: throwing method should cause write() and closed to reject: FAIL
+/streams/writable-streams/bad-underlying-sinks.any.worker.html: OK
+	abort: non-function abort method with .apply: FAIL
+	abort: throwing getter should cause abort() and closed to reject: FAIL
+	abort: throwing method should cause abort() and closed to reject: FAIL
+	close: non-function close method: FAIL
+	close: returning a rejected promise should cause writer close() and ready to reject: FAIL
+	close: throwing getter should cause constructor to throw: FAIL
+	close: throwing method should cause writer close() and ready to reject: FAIL
+	start: errors in start cause WritableStream constructor to throw: FAIL
+	start: non-function start method: FAIL
+	write: non-function write method: FAIL
+	write: returning a promise that becomes rejected after the writer write() should cause writer write() and ready to reject: FAIL
+	write: returning a rejected promise (second write) should cause writer write() and ready to reject: FAIL
+	write: throwing getter should cause write() and closed to reject: FAIL
+	write: throwing method should cause write() and closed to reject: FAIL
+/streams/writable-streams/byte-length-queuing-strategy.any.html: OK
+	Closing a writable stream with in-flight writes below the high water mark delays the close call properly: FAIL
+/streams/writable-streams/byte-length-queuing-strategy.any.worker.html: OK
+	Closing a writable stream with in-flight writes below the high water mark delays the close call properly: FAIL
+/streams/writable-streams/close.any.html: OK
+	close() on a locked stream should reject: FAIL
+	close() on a stream with a pending close should reject: FAIL
+	close() on a writable stream should work: FAIL
+	close() on an closed stream should reject: FAIL
+	close() on an errored stream should reject: FAIL
+	close() on an erroring stream should reject: FAIL
+	close() should not reject until no sink methods are in flight: FAIL
+	close() should set state to CLOSED even if writer has detached: FAIL
+	fulfillment value of writer.close() call must be undefined even if the underlying sink returns a non-undefined value: FAIL
+	promises must fulfill/reject in the expected order on aborted and errored closure: FAIL
+	promises must fulfill/reject in the expected order on aborted closure: FAIL
+	promises must fulfill/reject in the expected order on closure: FAIL
+	ready promise should be initialised as fulfilled for a writer on a closed stream: FAIL
+	releaseLock on a stream with a pending close in which controller.error() was called: FAIL
+	releaseLock on a stream with a pending write in which the stream has been errored: FAIL
+	releaseLock() should not change the result of async close(): FAIL
+	releaseLock() should not change the result of sync close(): FAIL
+	returning a thenable from close() should work: FAIL
+	the promise returned by async abort during close should resolve: FAIL
+	when close is called on a WritableStream in waiting state, ready promise should be fulfilled: FAIL
+	when close is called on a WritableStream in waiting state, ready should be fulfilled immediately even if close takes a long time: FAIL
+	when close is called on a WritableStream in writable state, ready should return a fulfilled promise: FAIL
+	when sink calls error asynchronously while sink close is in-flight, the stream should not become errored: FAIL
+	when sink calls error synchronously while closing, the stream should not become errored: FAIL
+	when the sink throws during close, and the close is requested while a write is still in-flight, the stream should become errored during the close: FAIL
+	write() on a closed stream should reject: FAIL
+/streams/writable-streams/close.any.worker.html: OK
+	close() on a locked stream should reject: FAIL
+	close() on a stream with a pending close should reject: FAIL
+	close() on a writable stream should work: FAIL
+	close() on an closed stream should reject: FAIL
+	close() on an errored stream should reject: FAIL
+	close() on an erroring stream should reject: FAIL
+	close() should not reject until no sink methods are in flight: FAIL
+	close() should set state to CLOSED even if writer has detached: FAIL
+	fulfillment value of writer.close() call must be undefined even if the underlying sink returns a non-undefined value: FAIL
+	promises must fulfill/reject in the expected order on aborted and errored closure: FAIL
+	promises must fulfill/reject in the expected order on aborted closure: FAIL
+	promises must fulfill/reject in the expected order on closure: FAIL
+	ready promise should be initialised as fulfilled for a writer on a closed stream: FAIL
+	releaseLock on a stream with a pending close in which controller.error() was called: FAIL
+	releaseLock on a stream with a pending write in which the stream has been errored: FAIL
+	releaseLock() should not change the result of async close(): FAIL
+	releaseLock() should not change the result of sync close(): FAIL
+	returning a thenable from close() should work: FAIL
+	the promise returned by async abort during close should resolve: FAIL
+	when close is called on a WritableStream in waiting state, ready promise should be fulfilled: FAIL
+	when close is called on a WritableStream in waiting state, ready should be fulfilled immediately even if close takes a long time: FAIL
+	when close is called on a WritableStream in writable state, ready should return a fulfilled promise: FAIL
+	when sink calls error asynchronously while sink close is in-flight, the stream should not become errored: FAIL
+	when sink calls error synchronously while closing, the stream should not become errored: FAIL
+	when the sink throws during close, and the close is requested while a write is still in-flight, the stream should become errored during the close: FAIL
+	write() on a closed stream should reject: FAIL
+/streams/writable-streams/constructor.any.html: OK
+	WritableStream can't be constructed with a defined type: FAIL
+	WritableStream instances should have standard methods and properties: FAIL
+	WritableStream should be constructible with no arguments: FAIL
+	WritableStream should be writable and ready should fulfill immediately if the strategy does not apply backpressure: FAIL
+	WritableStreamDefaultController constructor should throw: FAIL
+	WritableStreamDefaultController constructor should throw when passed an initialised WritableStream: FAIL
+	WritableStreamDefaultWriter constructor should throw when stream argument is locked: FAIL
+	WritableStreamDefaultWriter should throw unless passed a WritableStream: FAIL
+	controller argument should be passed to start method: FAIL
+	controller argument should be passed to write method: FAIL
+	controller argument should not be passed to close method: FAIL
+	highWaterMark should be reflected to desiredSize: FAIL
+	underlyingSink argument should be converted after queuingStrategy argument: FAIL
+/streams/writable-streams/constructor.any.worker.html: OK
+	WritableStream can't be constructed with a defined type: FAIL
+	WritableStream instances should have standard methods and properties: FAIL
+	WritableStream should be constructible with no arguments: FAIL
+	WritableStream should be writable and ready should fulfill immediately if the strategy does not apply backpressure: FAIL
+	WritableStreamDefaultController constructor should throw: FAIL
+	WritableStreamDefaultController constructor should throw when passed an initialised WritableStream: FAIL
+	WritableStreamDefaultWriter constructor should throw when stream argument is locked: FAIL
+	WritableStreamDefaultWriter should throw unless passed a WritableStream: FAIL
+	controller argument should be passed to start method: FAIL
+	controller argument should be passed to write method: FAIL
+	controller argument should not be passed to close method: FAIL
+	highWaterMark should be reflected to desiredSize: FAIL
+	underlyingSink argument should be converted after queuingStrategy argument: FAIL
+/streams/writable-streams/count-queuing-strategy.any.html: OK
+	Can construct a writable stream with a valid CountQueuingStrategy: FAIL
+	Correctly governs the value of a WritableStream's state property (HWM = 0): FAIL
+	Correctly governs the value of a WritableStream's state property (HWM = 4): FAIL
+/streams/writable-streams/count-queuing-strategy.any.worker.html: OK
+	Can construct a writable stream with a valid CountQueuingStrategy: FAIL
+	Correctly governs the value of a WritableStream's state property (HWM = 0): FAIL
+	Correctly governs the value of a WritableStream's state property (HWM = 4): FAIL
+/streams/writable-streams/error.any.html: OK
+	controller.error() on closed stream should not throw: FAIL
+	controller.error() on errored stream should not throw: FAIL
+	controller.error() on erroring stream should not throw: FAIL
+	controller.error() should error the stream: FAIL
+	surplus calls to controller.error() should be a no-op: FAIL
+/streams/writable-streams/error.any.worker.html: OK
+	controller.error() on closed stream should not throw: FAIL
+	controller.error() on errored stream should not throw: FAIL
+	controller.error() on erroring stream should not throw: FAIL
+	controller.error() should error the stream: FAIL
+	surplus calls to controller.error() should be a no-op: FAIL
+/streams/writable-streams/floating-point-total-queue-size.any.html: OK
+	Floating point arithmetic must manifest near 0 (total ends up positive, and not clamped): FAIL
+	Floating point arithmetic must manifest near 0 (total ends up positive, but clamped): FAIL
+	Floating point arithmetic must manifest near 0 (total ends up zero): FAIL
+	Floating point arithmetic must manifest near NUMBER.MAX_SAFE_INTEGER (total ends up positive): FAIL
+/streams/writable-streams/floating-point-total-queue-size.any.worker.html: OK
+	Floating point arithmetic must manifest near 0 (total ends up positive, and not clamped): FAIL
+	Floating point arithmetic must manifest near 0 (total ends up positive, but clamped): FAIL
+	Floating point arithmetic must manifest near 0 (total ends up zero): FAIL
+	Floating point arithmetic must manifest near NUMBER.MAX_SAFE_INTEGER (total ends up positive): FAIL
+/streams/writable-streams/garbage-collection.any.html: OK
+	A WritableStream and its writer should not be garbage collected while there is a write promise pending: FAIL
+/streams/writable-streams/garbage-collection.any.worker.html: OK
+	A WritableStream and its writer should not be garbage collected while there is a write promise pending: FAIL
+/streams/writable-streams/general.any.html: OK
+	Subclassing WritableStream should work: FAIL
+	WritableStream should call underlying sink methods as methods: FAIL
+	WritableStream's strategy.size should not be called as a method: FAIL
+	closed and ready on a released writer: FAIL
+	desiredSize initial value: FAIL
+	desiredSize on a released writer: FAIL
+	desiredSize on a writer for a closed stream: FAIL
+	desiredSize on a writer for an errored stream: FAIL
+	methods should not not have .apply() or .call() called: FAIL
+	ready promise should fire before closed on releaseLock: FAIL
+	redundant releaseLock() is no-op: FAIL
+	the locked getter should return true if the stream has a writer: FAIL
+	ws.getWriter() on a closed WritableStream: FAIL
+	ws.getWriter() on a closing WritableStream: FAIL
+	ws.getWriter() on an aborted WritableStream: FAIL
+	ws.getWriter() on an errored WritableStream: FAIL
+/streams/writable-streams/general.any.worker.html: OK
+	Subclassing WritableStream should work: FAIL
+	WritableStream should call underlying sink methods as methods: FAIL
+	WritableStream's strategy.size should not be called as a method: FAIL
+	closed and ready on a released writer: FAIL
+	desiredSize initial value: FAIL
+	desiredSize on a released writer: FAIL
+	desiredSize on a writer for a closed stream: FAIL
+	desiredSize on a writer for an errored stream: FAIL
+	methods should not not have .apply() or .call() called: FAIL
+	ready promise should fire before closed on releaseLock: FAIL
+	redundant releaseLock() is no-op: FAIL
+	the locked getter should return true if the stream has a writer: FAIL
+	ws.getWriter() on a closed WritableStream: FAIL
+	ws.getWriter() on a closing WritableStream: FAIL
+	ws.getWriter() on an aborted WritableStream: FAIL
+	ws.getWriter() on an errored WritableStream: FAIL
+/streams/writable-streams/properties.any.html: OK
+	sink method abort should be called even when it's located on the prototype chain: FAIL
+	sink method abort should be called with the right number of arguments: FAIL
+	sink method close should be called even when it's located on the prototype chain: FAIL
+	sink method close should be called with the right number of arguments: FAIL
+	sink method start should be called even when it's located on the prototype chain: FAIL
+	sink method start should be called with the right number of arguments: FAIL
+	sink method write should be called even when it's located on the prototype chain: FAIL
+	sink method write should be called with the right number of arguments: FAIL
+/streams/writable-streams/properties.any.worker.html: OK
+	sink method abort should be called even when it's located on the prototype chain: FAIL
+	sink method abort should be called with the right number of arguments: FAIL
+	sink method close should be called even when it's located on the prototype chain: FAIL
+	sink method close should be called with the right number of arguments: FAIL
+	sink method start should be called even when it's located on the prototype chain: FAIL
+	sink method start should be called with the right number of arguments: FAIL
+	sink method write should be called even when it's located on the prototype chain: FAIL
+	sink method write should be called with the right number of arguments: FAIL
+/streams/writable-streams/reentrant-strategy.any.html: OK
+	abort() should work when called from within strategy.size(): FAIL
+	close() should work when called from within strategy.size(): FAIL
+	controller.error() should work when called from within strategy.size(): FAIL
+	original reader should error when new reader is created within strategy.size(): FAIL
+	releaseLock() should abort the write() when called within strategy.size(): FAIL
+	writer.write() promises should resolve in the standard order: FAIL
+	writes should be written in the standard order: FAIL
+/streams/writable-streams/reentrant-strategy.any.worker.html: OK
+	abort() should work when called from within strategy.size(): FAIL
+	close() should work when called from within strategy.size(): FAIL
+	controller.error() should work when called from within strategy.size(): FAIL
+	original reader should error when new reader is created within strategy.size(): FAIL
+	releaseLock() should abort the write() when called within strategy.size(): FAIL
+	writer.write() promises should resolve in the standard order: FAIL
+	writes should be written in the standard order: FAIL
+/streams/writable-streams/start.any.html: OK
+	controller.error() during async start should cause existing writes to fail: FAIL
+	controller.error() during start should cause writes to fail: FAIL
+	returning a thenable from start() should work: FAIL
+	underlying sink's close should not be called until start finishes: FAIL
+	underlying sink's write or close should not be called if start throws: FAIL
+	underlying sink's write or close should not be invoked if the promise returned by start is rejected: FAIL
+	underlying sink's write should not be called until start finishes: FAIL
+	when start() rejects, writer promises should reject in standard order: FAIL
+/streams/writable-streams/start.any.worker.html: OK
+	controller.error() during async start should cause existing writes to fail: FAIL
+	controller.error() during start should cause writes to fail: FAIL
+	returning a thenable from start() should work: FAIL
+	underlying sink's close should not be called until start finishes: FAIL
+	underlying sink's write or close should not be called if start throws: FAIL
+	underlying sink's write or close should not be invoked if the promise returned by start is rejected: FAIL
+	underlying sink's write should not be called until start finishes: FAIL
+	when start() rejects, writer promises should reject in standard order: FAIL
+/streams/writable-streams/write.any.html: OK
+	WritableStream should complete asynchronous writes before close resolves: FAIL
+	WritableStream should complete synchronous writes before close resolves: FAIL
+	WritableStream should transition to waiting until write is acknowledged: FAIL
+	WritableStreamDefaultWriter should work when manually constructed: FAIL
+	a large queue of writes should be processed completely: FAIL
+	failing DefaultWriter constructor should not release an existing writer: FAIL
+	fulfillment value of ws.write() call should be undefined even if the underlying sink returns a non-undefined value: FAIL
+	returning a thenable from write() should work: FAIL
+	when sink's write throws an error, the stream should become errored and the promise should reject: FAIL
+	when write returns a rejected promise, queued writes and close should be cleared: FAIL
+	write() on a stream with HWM 0 should not cause the ready Promise to resolve: FAIL
+	writer.write(), ready and closed reject with the error passed to controller.error() made before sink.write rejection: FAIL
+	writing to a released writer should reject the returned promise: FAIL
+/streams/writable-streams/write.any.worker.html: OK
+	WritableStream should complete asynchronous writes before close resolves: FAIL
+	WritableStream should complete synchronous writes before close resolves: FAIL
+	WritableStream should transition to waiting until write is acknowledged: FAIL
+	WritableStreamDefaultWriter should work when manually constructed: FAIL
+	a large queue of writes should be processed completely: FAIL
+	failing DefaultWriter constructor should not release an existing writer: FAIL
+	fulfillment value of ws.write() call should be undefined even if the underlying sink returns a non-undefined value: FAIL
+	returning a thenable from write() should work: FAIL
+	when sink's write throws an error, the stream should become errored and the promise should reject: FAIL
+	when write returns a rejected promise, queued writes and close should be cleared: FAIL
+	write() on a stream with HWM 0 should not cause the ready Promise to resolve: FAIL
+	writer.write(), ready and closed reject with the error passed to controller.error() made before sink.write rejection: FAIL
+	writing to a released writer should reject the returned promise: FAIL

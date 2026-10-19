@@ -1,121 +1,438 @@
 # web-platform-tests expectations of Wren for workers, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/workers/SharedWorker-constructor.html: TIMEOUT
-/workers/SharedWorker-detach-frame-in-error-event.html: TIMEOUT
-/workers/SharedWorker-exception-propagation.html: TIMEOUT
-/workers/SharedWorker-exception.html: TIMEOUT
-/workers/SharedWorker-extendedLifetime-blob.html: TIMEOUT
-/workers/SharedWorker-extendedLifetime-data.html: TIMEOUT
-/workers/SharedWorker-extendedLifetime-named-module.html: TIMEOUT
-/workers/SharedWorker-extendedLifetime.html: TIMEOUT
-/workers/SharedWorker-script-error.html: TIMEOUT
-/workers/SharedWorker-simple.html: TIMEOUT
-/workers/SharedWorkerPerformanceNow.html: TIMEOUT
-/workers/SharedWorker_blobUrl.html: TIMEOUT
+/workers/SharedWorker-constructor.html: OK
+	Test SharedWorker constructor suceeds.: FAIL
+	Test SharedWorker constructor with null name does not result in an exception.: FAIL
+	Test SharedWorker constructor with undefined name does not result in an exception.: FAIL
+	Test SharedWorker constructor without a name does not result in an exception.: FAIL
+	Test SharedWorker creation without arguments results in exception.: FAIL
+	Test recursive worker creation results in exception.: FAIL
+	Test toString exception propagated correctly.: FAIL
+/workers/SharedWorker-detach-frame-in-error-event.html: OK
+	Test frame detach in shared worker's error handler: FAIL
+/workers/SharedWorker-exception-propagation.html: OK
+	Uncaught error in shared worker should not propagate to window: FAIL
+/workers/SharedWorker-exception.html: OK
+	This test checks whether exceptions in SharedWorkers are logged to the parent document. An exception should be logged to the error console.: FAIL
+/workers/SharedWorker-extendedLifetime-blob.html: OK
+	Blob URL SharedWorker should survive across navigations with extendedLifetime: FAIL
+/workers/SharedWorker-extendedLifetime-data.html: OK
+	Data URL SharedWorker should survive across navigations with extendedLifetime: FAIL
+/workers/SharedWorker-extendedLifetime-named-module.html: OK
+	Module SharedWorker should survive across navigations with extendedLifetime: FAIL
+	Named SharedWorker should survive across navigations with extendedLifetime: FAIL
+/workers/SharedWorker-extendedLifetime.html: OK
+	SharedWorker lifetime should be extended with extendedLifetime: FAIL
+/workers/SharedWorker-script-error.html: OK
+	Test script error handled.: FAIL
+	Test script error unhandled.: FAIL
+/workers/SharedWorker-simple.html: OK
+	Test simple shared worker construction case.: FAIL
+/workers/SharedWorkerPerformanceNow.html: OK
+	performance.now() exists in shared workers and reports reasonable times: FAIL
+/workers/SharedWorker_blobUrl.html: OK
+	Blob URL shared by document on SharedWorker: FAIL
 /workers/SharedWorker_dataUrl.html: TIMEOUT
-/workers/Worker-base64.any.worker.html: TIMEOUT
-/workers/Worker-call.worker.html: TIMEOUT
-/workers/Worker-constructor-proto.any.worker.html: TIMEOUT
-/workers/Worker-creation-happens-in-parallel.https.html: TIMEOUT
-/workers/Worker-custom-event.any.worker.html: TIMEOUT
-/workers/Worker-formdata.any.worker.html: TIMEOUT
-/workers/Worker-location.sub.any.worker.html: TIMEOUT
+	Data URL not shared by cross-origin SharedWorkers: TIMEOUT
+	Data URLs shared by same-origin SharedWorkers: NOTRUN
+/workers/Worker-base64.any.worker.html: OK
+	Tests that atob() / btoa() functions are exposed to workers: PASS
+/workers/Worker-call.worker.html: OK
+	Test calling functions from WorkerContext.: PASS
+/workers/Worker-constructor-proto.any.worker.html: OK
+	Tests that setting the proto of a built in constructor is not reset.: FAIL
+/workers/Worker-creation-happens-in-parallel.https.html: OK
+	Tests that creation of a "new Worker()" will occur in parallel: FAIL
+/workers/Worker-custom-event.any.worker.html: OK
+	Test CustomEvents on workers.: PASS
+/workers/Worker-formdata.any.worker.html: CRASH
+/workers/Worker-location.sub.any.worker.html: OK
+	Test WorkerLocation properties.: FAIL
 /workers/Worker-messageport.html: TIMEOUT
-/workers/Worker-multi-port.html: TIMEOUT
-/workers/Worker-nested-importScripts-error.html: TIMEOUT
+	Test getting messages from a worker on a port.: TIMEOUT
+	Test sending many messages to workers using ports.: FAIL
+	Test sending message to a worker on a port.: FAIL
+	Test sending messages to workers with no port.: PASS
+/workers/Worker-multi-port.html: OK
+	Test empty postMessage throws exception.: PASS
+	Test postMessage on channel with previous failed postMessage calls.: FAIL
+	Test postMessage with incorrect ports throws exception: PASS
+	Test postMessage with no arguments.: PASS
+	Test postMessage with no port.: PASS
+	Test postMessage with no ports and empty array.: PASS
+	Test postMessage with null ports throws exception.: FAIL
+	Test postMessage with two ports.: FAIL
+	Test postMessage without sequence throws exception: PASS
+/workers/Worker-nested-importScripts-error.html: OK
+	Tests that errors from the import scripts come from the expected file.: FAIL
 /workers/Worker-postMessage-happens-in-parallel.https.html: TIMEOUT
-/workers/Worker-replace-event-handler.any.worker.html: TIMEOUT
-/workers/Worker-replace-global-constructor.any.worker.html: TIMEOUT
-/workers/Worker-replace-self.any.worker.html: TIMEOUT
-/workers/Worker-simultaneous-errors.html: TIMEOUT
-/workers/Worker-structure-message.html: TIMEOUT
-/workers/Worker-terminate-forever-during-evaluation.html: TIMEOUT
-/workers/Worker-terminate-forever.html: TIMEOUT
-/workers/Worker-termination-with-port-messages.html: TIMEOUT
-/workers/Worker-timeout-cancel-order.html: TIMEOUT
-/workers/Worker-timeout-decreasing-order.html: TIMEOUT
-/workers/Worker-timeout-increasing-order.html: TIMEOUT
-/workers/WorkerGlobalScope-close.html: TIMEOUT
-/workers/WorkerGlobalScope_ErrorEvent_colno.htm: TIMEOUT
-/workers/WorkerGlobalScope_ErrorEvent_filename.htm: TIMEOUT
-/workers/WorkerGlobalScope_ErrorEvent_lineno.htm: TIMEOUT
-/workers/WorkerGlobalScope_ErrorEvent_message.htm: TIMEOUT
-/workers/WorkerGlobalScope_importScripts.htm: TIMEOUT
-/workers/WorkerGlobalScope_importScripts_NetworkErr.htm: TIMEOUT
-/workers/WorkerGlobalScope_importScripts_NosniffErr.htm: TIMEOUT
-/workers/WorkerGlobalScope_requestAnimationFrame.worker.html: TIMEOUT
-/workers/WorkerGlobalScope_setInterval.htm: TIMEOUT
-/workers/WorkerGlobalScope_setTimeout.htm: TIMEOUT
+	Tests that calling "worker.postMessage()" will occur truly in parallel to the main JS thread: TIMEOUT
+/workers/Worker-replace-event-handler.any.worker.html: OK
+	Tests that repeatedly setting 'onmessage' within a worker doesn't crash.: PASS
+/workers/Worker-replace-global-constructor.any.worker.html: OK
+	Test replacing global constructors in a worker context.: PASS
+/workers/Worker-replace-self.any.worker.html: OK
+	Test that self is not replaceable.: PASS
+/workers/Worker-simultaneous-errors.html: OK
+	Test simultaneous errors on workers.: PASS
+/workers/Worker-structure-message.html: OK
+	Tests sending structure message to/from worker.: PASS
+/workers/Worker-terminate-forever-during-evaluation.html: OK
+	Worker is terminated during dynamic import(): FAIL
+	Worker is terminated during dynamic import() (module): FAIL
+	Worker is terminated during importScripts() call: PASS
+	Worker is terminated during nested importScripts() call: PASS
+	Worker is terminated during top-level await: FAIL
+	Worker is terminated during top-level script evaluation: PASS
+	Worker is terminated during top-level script evaluation (module): FAIL
+/workers/Worker-terminate-forever.html: OK
+	Tests terminating a worker that is trying to run forever.: PASS
+/workers/Worker-termination-with-port-messages.html: OK
+	This test terminates a worker when there are many undelivered MessagePort messages still waiting to be dispatched into the Worker Context. This causes termination of JS execution and test should not try to dispatch the remaining messages. Test succeeds if it does not hang or crash (if worker thread is running in the separate process, that process could hang or crash).: FAIL
+/workers/Worker-timeout-cancel-order.html: OK
+	Tests setting and canceling timeout in workers.: PASS
+/workers/Worker-timeout-decreasing-order.html: OK
+	Tests timeouts on the worker are fired in decreasing order.: PASS
+/workers/Worker-timeout-increasing-order.html: OK
+	Tests timeouts on the worker are fired in increasing order.: PASS
+/workers/WorkerGlobalScope-close.html: CRASH
+/workers/WorkerGlobalScope_ErrorEvent_colno.htm: OK
+	 WorkerGlobalScope onerror event handler argument: col : PASS
+/workers/WorkerGlobalScope_ErrorEvent_filename.htm: OK
+	 WorkerGlobalScope onerror event handler argument: location : PASS
+/workers/WorkerGlobalScope_ErrorEvent_lineno.htm: OK
+	 WorkerGlobalScope onerror event handler argument: line : PASS
+/workers/WorkerGlobalScope_ErrorEvent_message.htm: OK
+	 WorkerGlobalScope onerror event handler argument: message : PASS
+/workers/WorkerGlobalScope_importScripts.htm: OK
+	 WorkerGlobalScope API: importScripts() : PASS
+/workers/WorkerGlobalScope_importScripts_NetworkErr.htm: OK
+	 importScripts() with non-existent script file : PASS
+/workers/WorkerGlobalScope_importScripts_NosniffErr.htm: OK
+	importScripts throws on 'nosniff' violation: PASS
+/workers/WorkerGlobalScope_requestAnimationFrame.worker.html: OK
+	Untitled: FAIL
+/workers/WorkerGlobalScope_setInterval.htm: OK
+	 WorkerGlobalScope API: setInterval() : PASS
+/workers/WorkerGlobalScope_setTimeout.htm: OK
+	 WorkerGlobalScope API: setTimeout() : PASS
 /workers/WorkerLocation-origin.sub.window.html: TIMEOUT
+	workerLocation.origin must use ASCII code points: TIMEOUT
 /workers/WorkerLocation.htm: TIMEOUT
+	 WorkerLocation object : TIMEOUT
 /workers/WorkerLocation_hash.htm: TIMEOUT
+	 WorkerLocation URL decomposition IDL attribute: hash : TIMEOUT
 /workers/WorkerLocation_hash_encoding.htm: TIMEOUT
+	 WorkerLocation.hash with url encoding string : TIMEOUT
 /workers/WorkerLocation_hash_nonexist.htm: TIMEOUT
+	 WorkerLocation.hash with no <fragment> component : TIMEOUT
 /workers/WorkerLocation_host.htm: TIMEOUT
+	 WorkerLocation URL decomposition IDL attribute: host : TIMEOUT
 /workers/WorkerLocation_hostname.htm: TIMEOUT
+	 WorkerLocation URL decomposition IDL attribute: hostname : TIMEOUT
 /workers/WorkerLocation_href.htm: TIMEOUT
+	 WorkerLocation href attribute : TIMEOUT
 /workers/WorkerLocation_pathname.htm: TIMEOUT
+	 WorkerLocation URL decomposition IDL attribute: pathname : TIMEOUT
 /workers/WorkerLocation_port.htm: TIMEOUT
+	 WorkerLocation URL decomposition IDL attribute: port : TIMEOUT
 /workers/WorkerLocation_protocol.htm: TIMEOUT
+	 WorkerLocation URL decomposition IDL attribute: protocol : TIMEOUT
 /workers/WorkerLocation_search.htm: TIMEOUT
+	 WorkerLocation URL decomposition IDL attribute: search : TIMEOUT
 /workers/WorkerLocation_search_empty.htm: TIMEOUT
+	 WorkerLocation.search with empty <query> : TIMEOUT
 /workers/WorkerLocation_search_fragment.htm: TIMEOUT
+	 WorkerLocation.search with <fragment> in <query> : TIMEOUT
 /workers/WorkerLocation_search_nonexist.htm: TIMEOUT
-/workers/WorkerNavigator-hardware-concurrency.any.worker.html: TIMEOUT
-/workers/WorkerNavigator.any.worker.html: TIMEOUT
-/workers/WorkerNavigator_appName.htm: TIMEOUT
-/workers/WorkerNavigator_appVersion.htm: TIMEOUT
-/workers/WorkerNavigator_onLine.htm: TIMEOUT
-/workers/WorkerNavigator_platform.htm: TIMEOUT
-/workers/WorkerNavigator_userAgent.htm: TIMEOUT
-/workers/WorkerNavigator_userAgentData.http.html: TIMEOUT
-/workers/WorkerNavigator_userAgentData.https.html: TIMEOUT
-/workers/WorkerPerformanceNow.html: TIMEOUT
-/workers/Worker_ErrorEvent_bubbles_cancelable.htm: TIMEOUT
-/workers/Worker_ErrorEvent_error.htm: TIMEOUT
-/workers/Worker_ErrorEvent_filename.htm: TIMEOUT
-/workers/Worker_ErrorEvent_lineno.htm: TIMEOUT
-/workers/Worker_ErrorEvent_message.htm: TIMEOUT
-/workers/Worker_ErrorEvent_type.htm: TIMEOUT
-/workers/Worker_NosniffErr.htm: TIMEOUT
-/workers/Worker_basic.htm: TIMEOUT
-/workers/Worker_cross_origin_security_err.htm: TIMEOUT
-/workers/Worker_dispatchEvent_ErrorEvent.htm: TIMEOUT
-/workers/Worker_script_mimetype.htm: TIMEOUT
-/workers/Worker_terminate_event_queue.htm: TIMEOUT
-/workers/abrupt-completion.html: TIMEOUT
-/workers/data-url-shared.html: TIMEOUT
+	 WorkerLocation.search  with no <query> component : TIMEOUT
+/workers/WorkerNavigator-hardware-concurrency.any.worker.html: OK
+	Test worker navigator hardware concurrency.: PASS
+/workers/WorkerNavigator.any.worker.html: OK
+	Testing Navigator properties on workers.: PASS
+/workers/WorkerNavigator_appName.htm: OK
+	 WorkerNavigator appName : PASS
+/workers/WorkerNavigator_appVersion.htm: OK
+	 WorkerNavigator appVersion : FAIL
+/workers/WorkerNavigator_onLine.htm: OK
+	 WorkerNavigator.onLine : PASS
+/workers/WorkerNavigator_platform.htm: OK
+	 WorkerNavigator.platform : PASS
+/workers/WorkerNavigator_userAgent.htm: OK
+	 WorkerNavigator.userAgent : FAIL
+/workers/WorkerNavigator_userAgentData.http.html: OK
+	Test that userAgentData is not available in workers in non-secure contexts: PASS
+/workers/WorkerNavigator_userAgentData.https.html: OK
+	Platform version and wow64-ness on Linux and Fuchsia should contain fixed values: FAIL
+	Test that userAgentData is available in workers in secure contexts: FAIL
+/workers/WorkerPerformanceNow.html: OK
+	performance.now() exists in dedicated workers and reports reasonable times: FAIL
+/workers/Worker_ErrorEvent_bubbles_cancelable.htm: OK
+	ErrorEvent on worker doesn't bubble and is cancelable: PASS
+/workers/Worker_ErrorEvent_error.htm: OK
+	Error handler outside the worker should not see the error value: FAIL
+	Error handlers inside a worker should see the error value: PASS
+	Worker_ErrorEvent_error: PASS
+/workers/Worker_ErrorEvent_filename.htm: OK
+	 AbstractWorker ErrorEvent.filename : PASS
+/workers/Worker_ErrorEvent_lineno.htm: OK
+	 AbstractWorker ErrorEvent.lineno : FAIL
+/workers/Worker_ErrorEvent_message.htm: OK
+	 AbstractWorker ErrorEvent.message : PASS
+/workers/Worker_ErrorEvent_type.htm: OK
+	 AbstractWorker ErrorEvent.type : PASS
+/workers/Worker_NosniffErr.htm: OK
+	 Worker with nosniff X-Content-Type-Options header : PASS
+/workers/Worker_basic.htm: OK
+	MessageEvent.data: PASS
+	MessageEvent.type: PASS
+	Worker constructor: PASS
+/workers/Worker_cross_origin_security_err.htm: OK
+	Cross-origin classic workers should fail to fetch: FAIL
+	Cross-origin module workers should fail to fetch: FAIL
+/workers/Worker_dispatchEvent_ErrorEvent.htm: OK
+	 ErrorEvent and Worker.dispatchEvent() : PASS
+	ErrorEvent constructor called as normal function: PASS
+	initErrorEvent: PASS
+/workers/Worker_script_mimetype.htm: OK
+	HTTP(S) URLs which respond with text/plain MIME type must not work: FAIL
+	HTTP(S) URLs which respond with text/plain MIME type must not work on SharedWorkers: FAIL
+	blob: URLs should load, despite no MIME type for the backing Blob: FAIL
+	blob: URLs should load, despite the wrong MIME type for the backing Blob: FAIL
+	data: URLs should load, despite the wrong MIME type: PASS
+/workers/Worker_terminate_event_queue.htm: OK
+	 AbstractWorker terminate(): clear event queue : PASS
+/workers/abrupt-completion.html: OK
+	DedicatedWorker should correctly handle abrupt completion: FAIL
+	SharedWorker should correctly handle abrupt completion: FAIL
+/workers/data-url-shared.html: OK
+	A data: URL shared worker should not be shared among origins.: FAIL
+	application/javascript MIME allowed: FAIL
+	communication goes both ways: FAIL
+	cross-origin worker: FAIL
+	empty MIME allowed: FAIL
+	indexedDB is inaccessible: FAIL
+	indexedDB is present: FAIL
+	text/plain MIME allowed: FAIL
+	worker has opaque origin: FAIL
 /workers/data-url.html: TIMEOUT
-/workers/dedicated-worker-from-blob-url.window.html: TIMEOUT
+	application/javascript MIME allowed: PASS
+	communication goes both ways: PASS
+	cross-origin worker: PASS
+	empty MIME allowed: PASS
+	indexedDB is inaccessible: PASS
+	indexedDB is present: FAIL
+	invalid javascript produces error: PASS
+	text/plain MIME allowed: PASS
+	worker has opaque origin: TIMEOUT
+/workers/dedicated-worker-from-blob-url.window.html: OK
+	Blob URLs should not resolve relative to document base URL.: FAIL
+	Creating a dedicated worker from a blob URL works immediately before revoking.: FAIL
+	Creating a dedicated worker from a blob URL works.: FAIL
 /workers/dedicated-worker-in-data-url-context.window.html: TIMEOUT
-/workers/dedicated-worker-parse-error-failure.html: TIMEOUT
-/workers/dedicated-worker-runtime-error-is-not-parse-error.html: TIMEOUT
-/workers/importscripts_mime.any.worker.html: TIMEOUT
-/workers/importscripts_mime_local.any.worker.html: TIMEOUT
-/workers/name-property.html: TIMEOUT
-/workers/nested_worker.worker.html: TIMEOUT
-/workers/nested_worker_close_from_parent_worker.html: TIMEOUT
+	Create a data url dedicated worker in a data url dedicated worker: NOTRUN
+	Create a data url dedicated worker in a data url frame: NOTRUN
+	Create a dedicated worker in a data url dedicated worker: NOTRUN
+	Create a dedicated worker in a data url frame: TIMEOUT
+/workers/dedicated-worker-parse-error-failure.html: OK
+	Classic worker construction for script with syntax error should dispatch an event named error.: FAIL
+	Static import on classic worker should dispatch an event named error.: FAIL
+/workers/dedicated-worker-runtime-error-is-not-parse-error.html: OK
+	JSON.parse() error dispatches ErrorEvent at Worker: PASS
+	Script parse error dispatches plain Event at Worker: FAIL
+	eval() with syntax error dispatches ErrorEvent at Worker: PASS
+/workers/importscripts_mime.any.worker.html: OK
+	importScripts() requires scripty MIME types: TEXT/HTML is blocked.: PASS
+	importScripts() requires scripty MIME types: TeXt/HtMl is blocked.: PASS
+	importScripts() requires scripty MIME types: Text/html is blocked.: PASS
+	importScripts() requires scripty MIME types: aaa/aaa is blocked.: PASS
+	importScripts() requires scripty MIME types: application/javascript is allowed.: FAIL
+	importScripts() requires scripty MIME types: application/octet-stream is blocked.: PASS
+	importScripts() requires scripty MIME types: application/xml is blocked.: PASS
+	importScripts() requires scripty MIME types: image/png is blocked.: PASS
+	importScripts() requires scripty MIME types: potato/text is blocked.: PASS
+	importScripts() requires scripty MIME types: text/Html is blocked.: PASS
+	importScripts() requires scripty MIME types: text/csv is blocked.: PASS
+	importScripts() requires scripty MIME types: text/csv; charset=utf-8 is blocked.: PASS
+	importScripts() requires scripty MIME types: text/csv;bla;bla is blocked.: PASS
+	importScripts() requires scripty MIME types: text/csv;charset=utf-8 is blocked.: PASS
+	importScripts() requires scripty MIME types: text/ecmascript is allowed.: FAIL
+	importScripts() requires scripty MIME types: text/html is blocked.: PASS
+	importScripts() requires scripty MIME types: text/javascript is allowed.: FAIL
+	importScripts() requires scripty MIME types: text/javascript; charset=utf-8 is allowed.: FAIL
+	importScripts() requires scripty MIME types: text/javascript;bla;bla is allowed.: FAIL
+	importScripts() requires scripty MIME types: text/javascript;charset=utf-8 is allowed.: FAIL
+	importScripts() requires scripty MIME types: text/plain is blocked.: PASS
+	importScripts() requires scripty MIME types: text/potato is blocked.: PASS
+	importScripts() requires scripty MIME types: video/mpeg is blocked.: PASS
+	importScripts() requires scripty MIME types: zzz/zzz is blocked.: PASS
+/workers/importscripts_mime_local.any.worker.html: OK
+	importScripts() requires scripty MIME types for blob: URLs: TEXT/HTML is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: TeXt/HtMl is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: Text/html is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: aaa/aaa is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: application/javascript is allowed.: FAIL
+	importScripts() requires scripty MIME types for blob: URLs: application/octet-stream is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: application/xml is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: image/png is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: potato/text is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: text/Html is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: text/csv is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: text/csv; charset=utf-8 is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: text/csv;bla;bla is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: text/csv;charset=utf-8 is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: text/ecmascript is allowed.: FAIL
+	importScripts() requires scripty MIME types for blob: URLs: text/html is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: text/javascript is allowed.: FAIL
+	importScripts() requires scripty MIME types for blob: URLs: text/javascript; charset=utf-8 is allowed.: FAIL
+	importScripts() requires scripty MIME types for blob: URLs: text/javascript;bla;bla is allowed.: FAIL
+	importScripts() requires scripty MIME types for blob: URLs: text/javascript;charset=utf-8 is allowed.: FAIL
+	importScripts() requires scripty MIME types for blob: URLs: text/plain is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: text/potato is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: video/mpeg is blocked.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: zzz/zzz is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: TEXT/HTML is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: TeXt/HtMl is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: Text/html is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: aaa/aaa is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: application/javascript is allowed.: PASS
+	importScripts() requires scripty MIME types for data: URLs: application/octet-stream is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: application/xml is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: image/png is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: potato/text is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: text/Html is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: text/csv is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: text/csv; charset=utf-8 is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: text/csv;bla;bla is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: text/csv;charset=utf-8 is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: text/ecmascript is allowed.: PASS
+	importScripts() requires scripty MIME types for data: URLs: text/html is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: text/javascript is allowed.: PASS
+	importScripts() requires scripty MIME types for data: URLs: text/javascript; charset=utf-8 is allowed.: PASS
+	importScripts() requires scripty MIME types for data: URLs: text/javascript;bla;bla is allowed.: PASS
+	importScripts() requires scripty MIME types for data: URLs: text/javascript;charset=utf-8 is allowed.: PASS
+	importScripts() requires scripty MIME types for data: URLs: text/plain is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: text/potato is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: video/mpeg is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: zzz/zzz is blocked.: FAIL
+/workers/name-property.html: ERROR
+	Declaring name as an accidental global must not cause a harness error for DedicatedWorkerGlobalScope: PASS
+	name property is replaceable for DedicatedWorkerGlobalScope: PASS
+	name property value for DedicatedWorkerGlobalScope: PASS
+/workers/nested_worker.worker.html: OK
+	Nested worker: FAIL
+/workers/nested_worker_close_from_parent_worker.html: OK
+	Test terminating a nested workers by calling terminate() from its parent worker: FAIL
 /workers/nested_worker_close_self.worker.html: TIMEOUT
-/workers/nested_worker_importScripts.worker.html: TIMEOUT
-/workers/nested_worker_sync_xhr.worker.html: TIMEOUT
-/workers/nested_worker_terminate_from_document.html: TIMEOUT
+	Nested work that closes itself: FAIL
+/workers/nested_worker_importScripts.worker.html: OK
+	Nested worker that calls importScripts(): FAIL
+/workers/nested_worker_sync_xhr.worker.html: OK
+	Nested worker that issues a sync XHR: FAIL
+/workers/nested_worker_terminate_from_document.html: OK
+	Test terminating a chain of nested workers by calling terminate() from the owning document: FAIL
 /workers/opaque-origin.html: TIMEOUT
-/workers/postMessage_DataCloneErr.htm: TIMEOUT
-/workers/postMessage_block.https.html: TIMEOUT
-/workers/postMessage_clone_port.htm: TIMEOUT
-/workers/postMessage_clone_port_error.htm: TIMEOUT
-/workers/postMessage_event_properties.htm: TIMEOUT
-/workers/postMessage_ports_readonly_array.htm: TIMEOUT
-/workers/postMessage_target_source.htm: TIMEOUT
-/workers/same-origin-check.sub.html: TIMEOUT
-/workers/shared-worker-from-blob-url.window.html: TIMEOUT
+/workers/postMessage_DataCloneErr.htm: OK
+	 postMessage() with WorkerNavigator : PASS
+/workers/postMessage_block.https.html: OK
+	postMessage and block: FAIL
+/workers/postMessage_clone_port.htm: OK
+	 postMessage(): clone a port : FAIL
+/workers/postMessage_clone_port_error.htm: OK
+	 postMessage(): cloning source port : PASS
+/workers/postMessage_event_properties.htm: OK
+	 postMessage(): MessageEvent properties : PASS
+/workers/postMessage_ports_readonly_array.htm: OK
+	 postMessage(): read-only ports array : FAIL
+/workers/postMessage_target_source.htm: OK
+	 postMessage(): target port and source port : PASS
+/workers/same-origin-check.sub.html: OK
+	SharedWorker: cross-origin (classic): PASS
+	SharedWorker: cross-origin (module): PASS
+	SharedWorker: cross-origin-to-same-origin-redirect (classic): PASS
+	SharedWorker: cross-origin-to-same-origin-redirect (module): PASS
+	SharedWorker: same-origin-to-cross-origin-redirect (classic): PASS
+	SharedWorker: same-origin-to-cross-origin-redirect (module): PASS
+	SharedWorker: same-origin-to-cross-origin-to-same-origin-redirect (classic): PASS
+	SharedWorker: same-origin-to-cross-origin-to-same-origin-redirect (module): PASS
+	Worker: cross-origin (classic): FAIL
+	Worker: cross-origin (module): PASS
+	Worker: cross-origin-to-same-origin-redirect (classic): PASS
+	Worker: cross-origin-to-same-origin-redirect (module): PASS
+	Worker: same-origin-to-cross-origin-redirect (classic): PASS
+	Worker: same-origin-to-cross-origin-redirect (module): PASS
+	Worker: same-origin-to-cross-origin-to-same-origin-redirect (classic): PASS
+	Worker: same-origin-to-cross-origin-to-same-origin-redirect (module): PASS
+/workers/shared-worker-from-blob-url.window.html: OK
+	Blob URLs should not resolve relative to document base URL.: FAIL
+	Connecting to a shared worker on a revoked blob URL works.: FAIL
+	Creating a shared worker from a blob URL works immediately before revoking.: FAIL
+	Creating a shared worker from a blob URL works.: FAIL
 /workers/shared-worker-in-data-url-context.window.html: TIMEOUT
-/workers/shared-worker-name-via-options.html: TIMEOUT
-/workers/shared-worker-options-mismatch.html: TIMEOUT
-/workers/shared-worker-parse-error-failure.html: TIMEOUT
-/workers/shared-worker-partitioned-cookies.tentative.https.html: TIMEOUT
-/workers/shared-worker-partitioned.tentative.html: TIMEOUT
-/workers/shared-worker-runtime-error-is-not-parse-error.html: TIMEOUT
-/workers/worker-performance.worker.html: TIMEOUT
+	Create a data url shared worker in a data url frame: NOTRUN
+	Create a shared worker in a data url frame: TIMEOUT
+/workers/shared-worker-name-via-options.html: OK
+	Test the name property of shared workers mixing constructor options and constructor strings: FAIL
+/workers/shared-worker-options-mismatch.html: OK
+	Connecting to shared worker with different options should be blocked: classic to module: FAIL
+	Connecting to shared worker with different options should be blocked: default to extended in classic: FAIL
+	Connecting to shared worker with different options should be blocked: default to extended in module: FAIL
+	Connecting to shared worker with different options should be blocked: default to include in classic: FAIL
+	Connecting to shared worker with different options should be blocked: default to include in module: FAIL
+	Connecting to shared worker with different options should be blocked: default to module: FAIL
+	Connecting to shared worker with different options should be blocked: default to omit in classic: FAIL
+	Connecting to shared worker with different options should be blocked: default to omit in module: FAIL
+	Connecting to shared worker with different options should be blocked: extended to default in classic: FAIL
+	Connecting to shared worker with different options should be blocked: extended to default in module: FAIL
+	Connecting to shared worker with different options should be blocked: false to true in classic: FAIL
+	Connecting to shared worker with different options should be blocked: false to true in module: FAIL
+	Connecting to shared worker with different options should be blocked: include to default in classic: FAIL
+	Connecting to shared worker with different options should be blocked: include to default in module: FAIL
+	Connecting to shared worker with different options should be blocked: include to omit in classic: FAIL
+	Connecting to shared worker with different options should be blocked: include to omit in module: FAIL
+	Connecting to shared worker with different options should be blocked: include to same-origin in classic: FAIL
+	Connecting to shared worker with different options should be blocked: include to same-origin in module: FAIL
+	Connecting to shared worker with different options should be blocked: module to classic: FAIL
+	Connecting to shared worker with different options should be blocked: module to default: FAIL
+	Connecting to shared worker with different options should be blocked: omit to default in classic: FAIL
+	Connecting to shared worker with different options should be blocked: omit to default in module: FAIL
+	Connecting to shared worker with different options should be blocked: omit to include in classic: FAIL
+	Connecting to shared worker with different options should be blocked: omit to include in module: FAIL
+	Connecting to shared worker with different options should be blocked: omit to same-origin in classic: FAIL
+	Connecting to shared worker with different options should be blocked: omit to same-origin in module: FAIL
+	Connecting to shared worker with different options should be blocked: same-origin to include in classic: FAIL
+	Connecting to shared worker with different options should be blocked: same-origin to include in module: FAIL
+	Connecting to shared worker with different options should be blocked: same-origin to omit in classic: FAIL
+	Connecting to shared worker with different options should be blocked: same-origin to omit in module: FAIL
+	Connecting to shared worker with different options should be blocked: true to false in classic: FAIL
+	Connecting to shared worker with different options should be blocked: true to false in module: FAIL
+/workers/shared-worker-parse-error-failure.html: OK
+	Classic shared worker construction for script with syntax error should dispatch an event named error.: FAIL
+	Static import on classic shared worker should dispatch an event named error.: FAIL
+/workers/shared-worker-partitioned-cookies.tentative.https.html: OK
+	SharedWorker: Partitioned Cookies: FAIL
+/workers/shared-worker-partitioned.tentative.html: OK
+	Test partitioning of shared workers: FAIL
+/workers/shared-worker-runtime-error-is-not-parse-error.html: OK
+	JSON.parse() error fires at global scope but not at SharedWorker: FAIL
+	Script parse error dispatches plain Event at SharedWorker: FAIL
+	eval() with syntax error fires at global scope but not at SharedWorker: FAIL
+/workers/worker-performance.worker.html: OK
+	Can use clearMarks and clearMeasures in workers: FAIL
+	Can use performance.getEntriesByName in workers: FAIL
+	Can use performance.getEntriesByType in workers: FAIL
+	Can use performance.mark in workers: FAIL
+	Can use performance.measure in workers: FAIL
+	Can use performance.now in workers: PASS
+	Performance marks and measures seem to be working correctly in workers: FAIL
+	Resource timing seems to work in workers: FAIL
+	There are no navigation type performance entries in workers: FAIL
+	performance.clearResourceTimings in workers: FAIL
+	performance.navigation is not available in workers: PASS
+	performance.setResourceTimingBufferSize in workers: FAIL
+	performance.timing is not available in workers: PASS
+	performance.toJSON is available in workers: FAIL
 /workers/worker-request-animation-frame.html: TIMEOUT
+	requestAnimationTime reports frame time relative to worker load: TIMEOUT
 /workers/worker-url-encoding.html: TIMEOUT
+	Worker URL is parsed using document encoding: TIMEOUT

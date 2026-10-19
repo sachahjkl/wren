@@ -1,8 +1,22 @@
 # web-platform-tests expectations of Wren for html/webappapis/microtask-queuing, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /html/webappapis/microtask-queuing/queue-microtask-cross-realm-callback-report-exception.html: TIMEOUT
-/html/webappapis/microtask-queuing/queue-microtask-exceptions.any.html: TIMEOUT
-/html/webappapis/microtask-queuing/queue-microtask-exceptions.any.worker.html: TIMEOUT
-/html/webappapis/microtask-queuing/queue-microtask.any.html: TIMEOUT
-/html/webappapis/microtask-queuing/queue-microtask.any.worker.html: TIMEOUT
-/html/webappapis/microtask-queuing/queue-microtask.window.html: TIMEOUT
+/html/webappapis/microtask-queuing/queue-microtask-exceptions.any.html: OK
+	It rethrows exceptions: PASS
+/html/webappapis/microtask-queuing/queue-microtask-exceptions.any.worker.html: OK
+	It rethrows exceptions: PASS
+/html/webappapis/microtask-queuing/queue-microtask.any.html: OK
+	It calls the callback asynchronously: PASS
+	It does not pass any arguments: PASS
+	It exists and is a function: PASS
+	It interleaves with promises as expected: PASS
+	It throws when given non-functions: PASS
+/html/webappapis/microtask-queuing/queue-microtask.any.worker.html: OK
+	It calls the callback asynchronously: PASS
+	It does not pass any arguments: PASS
+	It exists and is a function: PASS
+	It interleaves with promises as expected: PASS
+	It throws when given non-functions: PASS
+/html/webappapis/microtask-queuing/queue-microtask.window.html: OK
+	It interleaves with MutationObservers and promises together as expected: PASS
+	It interleaves with MutationObservers as expected: PASS

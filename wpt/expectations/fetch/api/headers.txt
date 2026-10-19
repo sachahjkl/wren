@@ -1,28 +1,529 @@
 # web-platform-tests expectations of Wren for fetch/api/headers, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/fetch/api/headers/header-setcookie.any.html: TIMEOUT
-/fetch/api/headers/header-setcookie.any.worker.html: TIMEOUT
-/fetch/api/headers/header-values-last-event-id.any.html: TIMEOUT
-/fetch/api/headers/header-values-last-event-id.any.worker.html: TIMEOUT
-/fetch/api/headers/header-values-normalize.any.html: TIMEOUT
-/fetch/api/headers/header-values-normalize.any.worker.html: TIMEOUT
-/fetch/api/headers/header-values.any.html: TIMEOUT
-/fetch/api/headers/header-values.any.worker.html: TIMEOUT
-/fetch/api/headers/headers-basic.any.html: TIMEOUT
-/fetch/api/headers/headers-basic.any.worker.html: TIMEOUT
-/fetch/api/headers/headers-casing.any.html: TIMEOUT
-/fetch/api/headers/headers-casing.any.worker.html: TIMEOUT
-/fetch/api/headers/headers-combine.any.html: TIMEOUT
-/fetch/api/headers/headers-combine.any.worker.html: TIMEOUT
-/fetch/api/headers/headers-errors.any.html: TIMEOUT
-/fetch/api/headers/headers-errors.any.worker.html: TIMEOUT
-/fetch/api/headers/headers-forbidden-override.any.html: TIMEOUT
-/fetch/api/headers/headers-forbidden-override.any.worker.html: TIMEOUT
-/fetch/api/headers/headers-no-cors.any.html: TIMEOUT
-/fetch/api/headers/headers-no-cors.any.worker.html: TIMEOUT
-/fetch/api/headers/headers-normalize.any.html: TIMEOUT
-/fetch/api/headers/headers-normalize.any.worker.html: TIMEOUT
-/fetch/api/headers/headers-record.any.html: TIMEOUT
-/fetch/api/headers/headers-record.any.worker.html: TIMEOUT
-/fetch/api/headers/headers-structure.any.html: TIMEOUT
-/fetch/api/headers/headers-structure.any.worker.html: TIMEOUT
+/fetch/api/headers/header-setcookie.any.html: OK
+	Adding Set-Cookie headers normalizes their value: PASS
+	Adding invalid Set-Cookie headers throws: PASS
+	Headers iterator does not combine set-cookie & set-cookie2 headers: PASS
+	Headers iterator does not combine set-cookie headers: PASS
+	Headers iterator does not special case set-cookie2 headers: PASS
+	Headers iterator is correctly updated with set-cookie changes: PASS
+	Headers iterator is correctly updated with set-cookie changes #2: PASS
+	Headers iterator preserves per header ordering, but sorts keys alphabetically: PASS
+	Headers iterator preserves per header ordering, but sorts keys alphabetically (and ignores value ordering): PASS
+	Headers iterator preserves set-cookie ordering: PASS
+	Headers.prototype.append works for set-cookie: PASS
+	Headers.prototype.delete works for set-cookie: PASS
+	Headers.prototype.get combines set-cookie headers in order: PASS
+	Headers.prototype.getSetCookie ignores set-cookie2 headers: PASS
+	Headers.prototype.getSetCookie preserves header ordering: PASS
+	Headers.prototype.getSetCookie with an empty header: PASS
+	Headers.prototype.getSetCookie with multiple headers: PASS
+	Headers.prototype.getSetCookie with no headers present: PASS
+	Headers.prototype.getSetCookie with one header: PASS
+	Headers.prototype.getSetCookie with one header created from an object: PASS
+	Headers.prototype.getSetCookie with two equal headers: PASS
+	Headers.prototype.has works for set-cookie: PASS
+	Headers.prototype.set works for set-cookie: PASS
+	Set-Cookie is a forbidden response header: PASS
+/fetch/api/headers/header-setcookie.any.worker.html: OK
+	Adding Set-Cookie headers normalizes their value: PASS
+	Adding invalid Set-Cookie headers throws: PASS
+	Headers iterator does not combine set-cookie & set-cookie2 headers: PASS
+	Headers iterator does not combine set-cookie headers: PASS
+	Headers iterator does not special case set-cookie2 headers: PASS
+	Headers iterator is correctly updated with set-cookie changes: PASS
+	Headers iterator is correctly updated with set-cookie changes #2: PASS
+	Headers iterator preserves per header ordering, but sorts keys alphabetically: PASS
+	Headers iterator preserves per header ordering, but sorts keys alphabetically (and ignores value ordering): PASS
+	Headers iterator preserves set-cookie ordering: PASS
+	Headers.prototype.append works for set-cookie: PASS
+	Headers.prototype.delete works for set-cookie: PASS
+	Headers.prototype.get combines set-cookie headers in order: PASS
+	Headers.prototype.getSetCookie ignores set-cookie2 headers: PASS
+	Headers.prototype.getSetCookie preserves header ordering: PASS
+	Headers.prototype.getSetCookie with an empty header: PASS
+	Headers.prototype.getSetCookie with multiple headers: PASS
+	Headers.prototype.getSetCookie with no headers present: PASS
+	Headers.prototype.getSetCookie with one header: PASS
+	Headers.prototype.getSetCookie with one header created from an object: PASS
+	Headers.prototype.getSetCookie with two equal headers: PASS
+	Headers.prototype.has works for set-cookie: PASS
+	Headers.prototype.set works for set-cookie: PASS
+	Set-Cookie is a forbidden response header: PASS
+/fetch/api/headers/header-values-last-event-id.any.html: OK
+	fetch() sends the bytes of a non-ASCII Last-Event-ID header value unchanged: FAIL
+/fetch/api/headers/header-values-last-event-id.any.worker.html: ERROR
+	fetch() sends the bytes of a non-ASCII Last-Event-ID header value unchanged: TIMEOUT
+/fetch/api/headers/header-values-normalize.any.html: OK
+	XMLHttpRequest with value %00: PASS
+	XMLHttpRequest with value %01: FAIL
+	XMLHttpRequest with value %02: FAIL
+	XMLHttpRequest with value %03: FAIL
+	XMLHttpRequest with value %04: FAIL
+	XMLHttpRequest with value %05: FAIL
+	XMLHttpRequest with value %06: FAIL
+	XMLHttpRequest with value %07: FAIL
+	XMLHttpRequest with value %08: FAIL
+	XMLHttpRequest with value %09: FAIL
+	XMLHttpRequest with value %0A: FAIL
+	XMLHttpRequest with value %0D: FAIL
+	XMLHttpRequest with value %0E: FAIL
+	XMLHttpRequest with value %0F: FAIL
+	XMLHttpRequest with value %10: FAIL
+	XMLHttpRequest with value %11: FAIL
+	XMLHttpRequest with value %12: FAIL
+	XMLHttpRequest with value %13: FAIL
+	XMLHttpRequest with value %14: FAIL
+	XMLHttpRequest with value %15: FAIL
+	XMLHttpRequest with value %16: FAIL
+	XMLHttpRequest with value %17: FAIL
+	XMLHttpRequest with value %18: FAIL
+	XMLHttpRequest with value %19: FAIL
+	XMLHttpRequest with value %1A: FAIL
+	XMLHttpRequest with value %1B: FAIL
+	XMLHttpRequest with value %1C: FAIL
+	XMLHttpRequest with value %1D: FAIL
+	XMLHttpRequest with value %1E: FAIL
+	XMLHttpRequest with value %1F: FAIL
+	XMLHttpRequest with value %20: FAIL
+	fetch() with value %00: PASS
+	fetch() with value %01: FAIL
+	fetch() with value %02: FAIL
+	fetch() with value %03: FAIL
+	fetch() with value %04: FAIL
+	fetch() with value %05: FAIL
+	fetch() with value %06: FAIL
+	fetch() with value %07: FAIL
+	fetch() with value %08: FAIL
+	fetch() with value %09: FAIL
+	fetch() with value %0A: FAIL
+	fetch() with value %0D: FAIL
+	fetch() with value %0E: FAIL
+	fetch() with value %0F: FAIL
+	fetch() with value %10: FAIL
+	fetch() with value %11: FAIL
+	fetch() with value %12: FAIL
+	fetch() with value %13: FAIL
+	fetch() with value %14: FAIL
+	fetch() with value %15: FAIL
+	fetch() with value %16: FAIL
+	fetch() with value %17: FAIL
+	fetch() with value %18: FAIL
+	fetch() with value %19: FAIL
+	fetch() with value %1A: FAIL
+	fetch() with value %1B: FAIL
+	fetch() with value %1C: FAIL
+	fetch() with value %1D: FAIL
+	fetch() with value %1E: FAIL
+	fetch() with value %1F: FAIL
+	fetch() with value %20: FAIL
+/fetch/api/headers/header-values-normalize.any.worker.html: ERROR
+	fetch() with value %00: PASS
+	fetch() with value %01: TIMEOUT
+	fetch() with value %02: NOTRUN
+	fetch() with value %03: NOTRUN
+	fetch() with value %04: NOTRUN
+	fetch() with value %05: NOTRUN
+	fetch() with value %06: NOTRUN
+	fetch() with value %07: NOTRUN
+	fetch() with value %08: NOTRUN
+	fetch() with value %09: NOTRUN
+	fetch() with value %0A: NOTRUN
+	fetch() with value %0D: NOTRUN
+	fetch() with value %0E: NOTRUN
+	fetch() with value %0F: NOTRUN
+	fetch() with value %10: NOTRUN
+	fetch() with value %11: NOTRUN
+	fetch() with value %12: NOTRUN
+	fetch() with value %13: NOTRUN
+	fetch() with value %14: NOTRUN
+	fetch() with value %15: NOTRUN
+	fetch() with value %16: NOTRUN
+	fetch() with value %17: NOTRUN
+	fetch() with value %18: NOTRUN
+	fetch() with value %19: NOTRUN
+	fetch() with value %1A: NOTRUN
+	fetch() with value %1B: NOTRUN
+	fetch() with value %1C: NOTRUN
+	fetch() with value %1D: NOTRUN
+	fetch() with value %1E: NOTRUN
+	fetch() with value %1F: NOTRUN
+	fetch() with value %20: NOTRUN
+/fetch/api/headers/header-values.any.html: OK
+	XMLHttpRequest with all valid values: FAIL
+	XMLHttpRequest with value x%00x needs to throw: PASS
+	XMLHttpRequest with value x%0Ax needs to throw: PASS
+	XMLHttpRequest with value x%0Dx needs to throw: PASS
+	fetch() with all valid values: FAIL
+	fetch() with value x%00x needs to throw: PASS
+	fetch() with value x%0Ax needs to throw: PASS
+	fetch() with value x%0Dx needs to throw: PASS
+/fetch/api/headers/header-values.any.worker.html: ERROR
+	fetch() with all valid values: TIMEOUT
+	fetch() with value x%00x needs to throw: PASS
+	fetch() with value x%0Ax needs to throw: PASS
+	fetch() with value x%0Dx needs to throw: PASS
+/fetch/api/headers/headers-basic.any.html: OK
+	Appending a value pair during iteration causes it to be reached during iteration: PASS
+	Check Symbol.iterator method: PASS
+	Check append method: PASS
+	Check delete method: PASS
+	Check entries method: PASS
+	Check forEach method: PASS
+	Check get method: PASS
+	Check has method: PASS
+	Check keys method: PASS
+	Check set method: PASS
+	Check values method: PASS
+	Create headers from empty object: PASS
+	Create headers from no parameter: PASS
+	Create headers from undefined parameter: PASS
+	Create headers with 1 should throw: PASS
+	Create headers with existing headers: PASS
+	Create headers with existing headers with custom iterator: FAIL
+	Create headers with null should throw: PASS
+	Create headers with record: PASS
+	Create headers with sequence: PASS
+	Iteration skips elements removed while iterating: PASS
+	Prepending a value pair before the current element position causes it to be skipped during iteration and adds the current element a second time: PASS
+	Removing elements already iterated over causes an element to be skipped during iteration: PASS
+/fetch/api/headers/headers-basic.any.worker.html: OK
+	Appending a value pair during iteration causes it to be reached during iteration: PASS
+	Check Symbol.iterator method: PASS
+	Check append method: PASS
+	Check delete method: PASS
+	Check entries method: PASS
+	Check forEach method: PASS
+	Check get method: PASS
+	Check has method: PASS
+	Check keys method: PASS
+	Check set method: PASS
+	Check values method: PASS
+	Create headers from empty object: PASS
+	Create headers from no parameter: PASS
+	Create headers from undefined parameter: PASS
+	Create headers with 1 should throw: PASS
+	Create headers with existing headers: PASS
+	Create headers with existing headers with custom iterator: FAIL
+	Create headers with null should throw: PASS
+	Create headers with record: PASS
+	Create headers with sequence: PASS
+	Iteration skips elements removed while iterating: PASS
+	Prepending a value pair before the current element position causes it to be skipped during iteration and adds the current element a second time: PASS
+	Removing elements already iterated over causes an element to be skipped during iteration: PASS
+/fetch/api/headers/headers-casing.any.html: OK
+	Check append method, names use characters with different case: PASS
+	Check delete method, names use characters with different case: PASS
+	Check set method, names use characters with different case: PASS
+	Create headers, names use characters with different case: PASS
+/fetch/api/headers/headers-casing.any.worker.html: OK
+	Check append method, names use characters with different case: PASS
+	Check delete method, names use characters with different case: PASS
+	Check set method, names use characters with different case: PASS
+	Create headers, names use characters with different case: PASS
+/fetch/api/headers/headers-combine.any.html: OK
+	Check append methods when called with already used name: PASS
+	Check delete and has methods when using same name for different values: PASS
+	Check set methods when called with already used name: PASS
+	Create headers using same name for different values: PASS
+	Iterate combined values: PASS
+	Iterate combined values in sorted order: PASS
+/fetch/api/headers/headers-combine.any.worker.html: OK
+	Check append methods when called with already used name: PASS
+	Check delete and has methods when using same name for different values: PASS
+	Check set methods when called with already used name: PASS
+	Create headers using same name for different values: PASS
+	Iterate combined values: PASS
+	Iterate combined values in sorted order: PASS
+/fetch/api/headers/headers-errors.any.html: OK
+	Check headers append with an invalid name [object Object]: PASS
+	Check headers append with an invalid name invalidĀ: PASS
+	Check headers append with an invalid value invalidĀ: PASS
+	Check headers delete with an invalid name [object Object]: PASS
+	Check headers delete with an invalid name invalidĀ: PASS
+	Check headers get with an invalid name [object Object]: PASS
+	Check headers get with an invalid name invalidĀ: PASS
+	Check headers has with an invalid name [object Object]: PASS
+	Check headers has with an invalid name invalidĀ: PASS
+	Check headers set with an invalid name [object Object]: PASS
+	Check headers set with an invalid name invalidĀ: PASS
+	Check headers set with an invalid value invalidĀ: PASS
+	Create headers giving an array having one string as init argument: PASS
+	Create headers giving an array having three strings as init argument: PASS
+	Create headers giving bad header name as init argument: PASS
+	Create headers giving bad header value as init argument: PASS
+	Headers forEach loop should stop if callback is throwing exception: PASS
+	Headers forEach throws if argument is not callable: PASS
+/fetch/api/headers/headers-errors.any.worker.html: OK
+	Check headers append with an invalid name [object Object]: PASS
+	Check headers append with an invalid name invalidĀ: PASS
+	Check headers append with an invalid value invalidĀ: PASS
+	Check headers delete with an invalid name [object Object]: PASS
+	Check headers delete with an invalid name invalidĀ: PASS
+	Check headers get with an invalid name [object Object]: PASS
+	Check headers get with an invalid name invalidĀ: PASS
+	Check headers has with an invalid name [object Object]: PASS
+	Check headers has with an invalid name invalidĀ: PASS
+	Check headers set with an invalid name [object Object]: PASS
+	Check headers set with an invalid name invalidĀ: PASS
+	Check headers set with an invalid value invalidĀ: PASS
+	Create headers giving an array having one string as init argument: PASS
+	Create headers giving an array having three strings as init argument: PASS
+	Create headers giving bad header name as init argument: PASS
+	Create headers giving bad header value as init argument: PASS
+	Headers forEach loop should stop if callback is throwing exception: PASS
+	Headers forEach throws if argument is not callable: PASS
+/fetch/api/headers/headers-forbidden-override.any.html: OK
+	header X-HTTP-METHOD is allowed to use value ",TRACE",: PASS
+	header X-HTTP-METHOD is allowed to use value GET: PASS
+	header X-HTTP-METHOD is allowed to use value GETTRACE: PASS
+	header X-HTTP-METHOD is forbidden to use value \ttrack: PASS
+	header X-HTTP-METHOD is forbidden to use value \nconnect: PASS
+	header X-HTTP-METHOD is forbidden to use value \rtrace: PASS
+	header X-HTTP-METHOD is forbidden to use value  connect: PASS
+	header X-HTTP-METHOD is forbidden to use value CONNECT: PASS
+	header X-HTTP-METHOD is forbidden to use value GET,track : PASS
+	header X-HTTP-METHOD is forbidden to use value TRACE: PASS
+	header X-HTTP-METHOD is forbidden to use value TRACK: PASS
+	header X-HTTP-METHOD is forbidden to use value connect: PASS
+	header X-HTTP-METHOD is forbidden to use value trace: PASS
+	header X-HTTP-METHOD is forbidden to use value trace,: PASS
+	header X-HTTP-METHOD is forbidden to use value track: PASS
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value ",TRACE",: PASS
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value GET: PASS
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value GETTRACE: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value \ttrack: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value \nconnect: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value \rtrace: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value  connect: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value CONNECT: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value GET,track : PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACE: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACK: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value connect: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace,: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value track: PASS
+	header X-METHOD-OVERRIDE is allowed to use value ",TRACE",: PASS
+	header X-METHOD-OVERRIDE is allowed to use value GET: PASS
+	header X-METHOD-OVERRIDE is allowed to use value GETTRACE: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value \ttrack: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value \nconnect: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value \rtrace: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value  connect: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value CONNECT: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value GET,track : PASS
+	header X-METHOD-OVERRIDE is forbidden to use value TRACE: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value TRACK: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value connect: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value trace: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value trace,: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value track: PASS
+	header x-http-method is allowed to use value ",TRACE",: PASS
+	header x-http-method is allowed to use value GET: PASS
+	header x-http-method is allowed to use value GETTRACE: PASS
+	header x-http-method is forbidden to use value \ttrack: PASS
+	header x-http-method is forbidden to use value \nconnect: PASS
+	header x-http-method is forbidden to use value \rtrace: PASS
+	header x-http-method is forbidden to use value  connect: PASS
+	header x-http-method is forbidden to use value CONNECT: PASS
+	header x-http-method is forbidden to use value GET,track : PASS
+	header x-http-method is forbidden to use value TRACE: PASS
+	header x-http-method is forbidden to use value TRACK: PASS
+	header x-http-method is forbidden to use value connect: PASS
+	header x-http-method is forbidden to use value trace: PASS
+	header x-http-method is forbidden to use value trace,: PASS
+	header x-http-method is forbidden to use value track: PASS
+	header x-http-method-override is allowed to use value ",TRACE",: PASS
+	header x-http-method-override is allowed to use value GET: PASS
+	header x-http-method-override is allowed to use value GETTRACE: PASS
+	header x-http-method-override is forbidden to use value \ttrack: PASS
+	header x-http-method-override is forbidden to use value \nconnect: PASS
+	header x-http-method-override is forbidden to use value \rtrace: PASS
+	header x-http-method-override is forbidden to use value  connect: PASS
+	header x-http-method-override is forbidden to use value CONNECT: PASS
+	header x-http-method-override is forbidden to use value GET,track : PASS
+	header x-http-method-override is forbidden to use value TRACE: PASS
+	header x-http-method-override is forbidden to use value TRACK: PASS
+	header x-http-method-override is forbidden to use value connect: PASS
+	header x-http-method-override is forbidden to use value trace: PASS
+	header x-http-method-override is forbidden to use value trace,: PASS
+	header x-http-method-override is forbidden to use value track: PASS
+	header x-method-override is allowed to use value ",TRACE",: PASS
+	header x-method-override is allowed to use value GET: PASS
+	header x-method-override is allowed to use value GETTRACE: PASS
+	header x-method-override is forbidden to use value \ttrack: PASS
+	header x-method-override is forbidden to use value \nconnect: PASS
+	header x-method-override is forbidden to use value \rtrace: PASS
+	header x-method-override is forbidden to use value  connect: PASS
+	header x-method-override is forbidden to use value CONNECT: PASS
+	header x-method-override is forbidden to use value GET,track : PASS
+	header x-method-override is forbidden to use value TRACE: PASS
+	header x-method-override is forbidden to use value TRACK: PASS
+	header x-method-override is forbidden to use value connect: PASS
+	header x-method-override is forbidden to use value trace: PASS
+	header x-method-override is forbidden to use value trace,: PASS
+	header x-method-override is forbidden to use value track: PASS
+/fetch/api/headers/headers-forbidden-override.any.worker.html: OK
+	header X-HTTP-METHOD is allowed to use value ",TRACE",: PASS
+	header X-HTTP-METHOD is allowed to use value GET: PASS
+	header X-HTTP-METHOD is allowed to use value GETTRACE: PASS
+	header X-HTTP-METHOD is forbidden to use value \ttrack: PASS
+	header X-HTTP-METHOD is forbidden to use value \nconnect: PASS
+	header X-HTTP-METHOD is forbidden to use value \rtrace: PASS
+	header X-HTTP-METHOD is forbidden to use value  connect: PASS
+	header X-HTTP-METHOD is forbidden to use value CONNECT: PASS
+	header X-HTTP-METHOD is forbidden to use value GET,track : PASS
+	header X-HTTP-METHOD is forbidden to use value TRACE: PASS
+	header X-HTTP-METHOD is forbidden to use value TRACK: PASS
+	header X-HTTP-METHOD is forbidden to use value connect: PASS
+	header X-HTTP-METHOD is forbidden to use value trace: PASS
+	header X-HTTP-METHOD is forbidden to use value trace,: PASS
+	header X-HTTP-METHOD is forbidden to use value track: PASS
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value ",TRACE",: PASS
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value GET: PASS
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value GETTRACE: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value \ttrack: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value \nconnect: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value \rtrace: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value  connect: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value CONNECT: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value GET,track : PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACE: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACK: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value connect: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace,: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value track: PASS
+	header X-METHOD-OVERRIDE is allowed to use value ",TRACE",: PASS
+	header X-METHOD-OVERRIDE is allowed to use value GET: PASS
+	header X-METHOD-OVERRIDE is allowed to use value GETTRACE: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value \ttrack: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value \nconnect: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value \rtrace: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value  connect: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value CONNECT: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value GET,track : PASS
+	header X-METHOD-OVERRIDE is forbidden to use value TRACE: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value TRACK: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value connect: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value trace: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value trace,: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value track: PASS
+	header x-http-method is allowed to use value ",TRACE",: PASS
+	header x-http-method is allowed to use value GET: PASS
+	header x-http-method is allowed to use value GETTRACE: PASS
+	header x-http-method is forbidden to use value \ttrack: PASS
+	header x-http-method is forbidden to use value \nconnect: PASS
+	header x-http-method is forbidden to use value \rtrace: PASS
+	header x-http-method is forbidden to use value  connect: PASS
+	header x-http-method is forbidden to use value CONNECT: PASS
+	header x-http-method is forbidden to use value GET,track : PASS
+	header x-http-method is forbidden to use value TRACE: PASS
+	header x-http-method is forbidden to use value TRACK: PASS
+	header x-http-method is forbidden to use value connect: PASS
+	header x-http-method is forbidden to use value trace: PASS
+	header x-http-method is forbidden to use value trace,: PASS
+	header x-http-method is forbidden to use value track: PASS
+	header x-http-method-override is allowed to use value ",TRACE",: PASS
+	header x-http-method-override is allowed to use value GET: PASS
+	header x-http-method-override is allowed to use value GETTRACE: PASS
+	header x-http-method-override is forbidden to use value \ttrack: PASS
+	header x-http-method-override is forbidden to use value \nconnect: PASS
+	header x-http-method-override is forbidden to use value \rtrace: PASS
+	header x-http-method-override is forbidden to use value  connect: PASS
+	header x-http-method-override is forbidden to use value CONNECT: PASS
+	header x-http-method-override is forbidden to use value GET,track : PASS
+	header x-http-method-override is forbidden to use value TRACE: PASS
+	header x-http-method-override is forbidden to use value TRACK: PASS
+	header x-http-method-override is forbidden to use value connect: PASS
+	header x-http-method-override is forbidden to use value trace: PASS
+	header x-http-method-override is forbidden to use value trace,: PASS
+	header x-http-method-override is forbidden to use value track: PASS
+	header x-method-override is allowed to use value ",TRACE",: PASS
+	header x-method-override is allowed to use value GET: PASS
+	header x-method-override is allowed to use value GETTRACE: PASS
+	header x-method-override is forbidden to use value \ttrack: PASS
+	header x-method-override is forbidden to use value \nconnect: PASS
+	header x-method-override is forbidden to use value \rtrace: PASS
+	header x-method-override is forbidden to use value  connect: PASS
+	header x-method-override is forbidden to use value CONNECT: PASS
+	header x-method-override is forbidden to use value GET,track : PASS
+	header x-method-override is forbidden to use value TRACE: PASS
+	header x-method-override is forbidden to use value TRACK: PASS
+	header x-method-override is forbidden to use value connect: PASS
+	header x-method-override is forbidden to use value trace: PASS
+	header x-method-override is forbidden to use value trace,: PASS
+	header x-method-override is forbidden to use value track: PASS
+/fetch/api/headers/headers-no-cors.any.html: OK
+	"no-cors" Headers object cannot have accept set to , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
+	"no-cors" Headers object cannot have accept set to sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
+	"no-cors" Headers object cannot have accept-language set to , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
+	"no-cors" Headers object cannot have accept-language set to sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
+	"no-cors" Headers object cannot have content-language set to , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
+	"no-cors" Headers object cannot have content-language set to sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
+	"no-cors" Headers object cannot have content-type set to text/plain;ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, text/plain: PASS
+	Loading data…: FAIL
+/fetch/api/headers/headers-no-cors.any.worker.html: ERROR
+	"no-cors" Headers object cannot have accept set to , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
+	"no-cors" Headers object cannot have accept set to sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
+	"no-cors" Headers object cannot have accept-language set to , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
+	"no-cors" Headers object cannot have accept-language set to sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
+	"no-cors" Headers object cannot have content-language set to , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
+	"no-cors" Headers object cannot have content-language set to sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
+	"no-cors" Headers object cannot have content-type set to text/plain;ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, text/plain: PASS
+	Loading data…: TIMEOUT
+/fetch/api/headers/headers-normalize.any.html: OK
+	Check append method with not normalized values: PASS
+	Check set method with not normalized values: PASS
+	Create headers with not normalized values: PASS
+/fetch/api/headers/headers-normalize.any.worker.html: OK
+	Check append method with not normalized values: PASS
+	Check set method with not normalized values: PASS
+	Create headers with not normalized values: PASS
+/fetch/api/headers/headers-record.any.html: OK
+	Basic operation with Symbol keys: FAIL
+	Basic operation with one property: PASS
+	Basic operation with one property and a proto: PASS
+	Correct operation ordering with non-enumerable properties: FAIL
+	Correct operation ordering with repeated keys: PASS
+	Correct operation ordering with two properties: FAIL
+	Correct operation ordering with two properties one of which has an invalid name: FAIL
+	Correct operation ordering with two properties one of which has an invalid value: FAIL
+	Correct operation ordering with undefined descriptors: FAIL
+	Operation with non-enumerable Symbol keys: FAIL
+	Passing nothing to Headers constructor: PASS
+	Passing null to Headers constructor: PASS
+	Passing undefined to Headers constructor: PASS
+/fetch/api/headers/headers-record.any.worker.html: OK
+	Basic operation with Symbol keys: FAIL
+	Basic operation with one property: PASS
+	Basic operation with one property and a proto: PASS
+	Correct operation ordering with non-enumerable properties: FAIL
+	Correct operation ordering with repeated keys: PASS
+	Correct operation ordering with two properties: FAIL
+	Correct operation ordering with two properties one of which has an invalid name: FAIL
+	Correct operation ordering with two properties one of which has an invalid value: FAIL
+	Correct operation ordering with undefined descriptors: FAIL
+	Operation with non-enumerable Symbol keys: FAIL
+	Passing nothing to Headers constructor: PASS
+	Passing null to Headers constructor: PASS
+	Passing undefined to Headers constructor: PASS
+/fetch/api/headers/headers-structure.any.html: OK
+	Headers has append method: PASS
+	Headers has delete method: PASS
+	Headers has entries method: PASS
+	Headers has get method: PASS
+	Headers has has method: PASS
+	Headers has keys method: PASS
+	Headers has set method: PASS
+	Headers has values method: PASS
+/fetch/api/headers/headers-structure.any.worker.html: OK
+	Headers has append method: PASS
+	Headers has delete method: PASS
+	Headers has entries method: PASS
+	Headers has get method: PASS
+	Headers has has method: PASS
+	Headers has keys method: PASS
+	Headers has set method: PASS
+	Headers has values method: PASS

@@ -1,58 +1,481 @@
 # web-platform-tests expectations of Wren for webidl/ecmascript-binding, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/webidl/ecmascript-binding/allow-resizable.html: TIMEOUT
-/webidl/ecmascript-binding/allow-shared.https.html: TIMEOUT
-/webidl/ecmascript-binding/attributes-accessors-unique-function-objects.html: TIMEOUT
-/webidl/ecmascript-binding/builtin-function-properties.any.html: TIMEOUT
-/webidl/ecmascript-binding/builtin-function-properties.any.worker.html: TIMEOUT
-/webidl/ecmascript-binding/class-string-interface.any.html: TIMEOUT
-/webidl/ecmascript-binding/class-string-interface.any.worker.html: TIMEOUT
-/webidl/ecmascript-binding/class-string-iterator-prototype-object.any.html: TIMEOUT
-/webidl/ecmascript-binding/class-string-iterator-prototype-object.any.worker.html: TIMEOUT
-/webidl/ecmascript-binding/class-string-named-properties-object.window.html: TIMEOUT
+/webidl/ecmascript-binding/allow-resizable.html: OK
+	APIs with [AllowShared] but without [AllowResizable] throw when passed growable SharedArrayBuffers: FAIL
+	APIs without [AllowResizable] throw when passed resizable ArrayBuffers: FAIL
+/webidl/ecmascript-binding/allow-shared.https.html: OK
+	APIs without [AllowShared] do not accept SharedArrayBuffer-backed views with pre-existing wrapper: FAIL
+/webidl/ecmascript-binding/attributes-accessors-unique-function-objects.html: OK
+	For attributes, each copy of the accessor property has distinct built-in function objects for its getters and setters.: PASS
+/webidl/ecmascript-binding/builtin-function-properties.any.html: OK
+	Constructor property enumeration order of "length", "name", and "prototype": PASS
+	Getter property enumeration order of "length" and "name": PASS
+	Method property enumeration order of "length" and "name": PASS
+/webidl/ecmascript-binding/builtin-function-properties.any.worker.html: OK
+	Constructor property enumeration order of "length", "name", and "prototype": PASS
+	Getter property enumeration order of "length" and "name": PASS
+	Method property enumeration order of "length" and "name": PASS
+/webidl/ecmascript-binding/class-string-interface.any.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	@@toStringTag must not exist on the instance: PASS
+	Object.prototype.toString applied after deleting @@toStringTag: PASS
+	Object.prototype.toString applied after modifying the prototype's @@toStringTag: PASS
+	Object.prototype.toString applied to a null-prototype instance: PASS
+	Object.prototype.toString applied to an instance: PASS
+	Object.prototype.toString applied to the instance after modifying the instance's @@toStringTag: PASS
+	Object.prototype.toString applied to the prototype: PASS
+/webidl/ecmascript-binding/class-string-interface.any.worker.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	@@toStringTag must not exist on the instance: PASS
+	Object.prototype.toString applied after deleting @@toStringTag: PASS
+	Object.prototype.toString applied after modifying the prototype's @@toStringTag: PASS
+	Object.prototype.toString applied to a null-prototype instance: PASS
+	Object.prototype.toString applied to an instance: PASS
+	Object.prototype.toString applied to the instance after modifying the instance's @@toStringTag: PASS
+	Object.prototype.toString applied to the prototype: PASS
+/webidl/ecmascript-binding/class-string-iterator-prototype-object.any.html: OK
+	@@toStringTag exists with the appropriate descriptor: PASS
+	Object.prototype.toString: PASS
+	Object.prototype.toString applied after modifying @@toStringTag: PASS
+	Object.prototype.toString applied after nulling the prototype: PASS
+	Object.prototype.toString applied to a null-prototype instance: PASS
+/webidl/ecmascript-binding/class-string-iterator-prototype-object.any.worker.html: OK
+	@@toStringTag exists with the appropriate descriptor: PASS
+	Object.prototype.toString: PASS
+	Object.prototype.toString applied after modifying @@toStringTag: PASS
+	Object.prototype.toString applied after nulling the prototype: PASS
+	Object.prototype.toString applied to a null-prototype instance: PASS
+/webidl/ecmascript-binding/class-string-named-properties-object.window.html: OK
+	@@toStringTag exists with the appropriate descriptor: FAIL
+	Object.prototype.toString: FAIL
 /webidl/ecmascript-binding/constructors.html: TIMEOUT
-/webidl/ecmascript-binding/default-iterator-object.html: TIMEOUT
+	Realm for constructed objects: TIMEOUT
+/webidl/ecmascript-binding/default-iterator-object.html: OK
+	@@toStringTag has correct value from prototype: PASS
+	Default iterator objects for an interface have the same prototype: PASS
+	Object.prototype.toString returns correct value: PASS
 /webidl/ecmascript-binding/default-toJSON-cross-realm.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-audioworklet.https.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-constants.any.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-constants.any.worker.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-constructor-and-prototype.any.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-constructor-and-prototype.any.worker.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-constructor-behavior.any.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-constructor-behavior.any.worker.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any.worker.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-is-error.any.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-is-error.any.worker.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-stack-accessor.any.html: TIMEOUT
-/webidl/ecmascript-binding/es-exceptions/DOMException-stack-accessor.any.worker.html: TIMEOUT
+	Cross-realm [Default] toJSON() converts its interface attributes to ECMAScript values of correct realm: NOTRUN
+	Cross-realm [Default] toJSON() creates result object in its realm: TIMEOUT
+/webidl/ecmascript-binding/es-exceptions/DOMException-audioworklet.https.html: ERROR
+	A DOMException can be posted to AudioWorkletGlobalScope: NOTRUN
+	A DOMException created in AudioWorkletGlobalScope can be posted to the window: NOTRUN
+	A QuotaExceededError can be posted to AudioWorkletGlobalScope: NOTRUN
+	A QuotaExceededError created in AudioWorkletGlobalScope can be posted to the window: NOTRUN
+	DOMException and QuotaExceededError are exposed in AudioWorkletGlobalScope: NOTRUN
+/webidl/ecmascript-binding/es-exceptions/DOMException-constants.any.html: OK
+	Constant ABORT_ERR on DOMException constructor object: PASS
+	Constant ABORT_ERR on DOMException prototype object: PASS
+	Constant DATA_CLONE_ERR on DOMException constructor object: PASS
+	Constant DATA_CLONE_ERR on DOMException prototype object: PASS
+	Constant DOMSTRING_SIZE_ERR on DOMException constructor object: PASS
+	Constant DOMSTRING_SIZE_ERR on DOMException prototype object: PASS
+	Constant HIERARCHY_REQUEST_ERR on DOMException constructor object: PASS
+	Constant HIERARCHY_REQUEST_ERR on DOMException prototype object: PASS
+	Constant INDEX_SIZE_ERR on DOMException constructor object: PASS
+	Constant INDEX_SIZE_ERR on DOMException prototype object: PASS
+	Constant INUSE_ATTRIBUTE_ERR on DOMException constructor object: PASS
+	Constant INUSE_ATTRIBUTE_ERR on DOMException prototype object: PASS
+	Constant INVALID_ACCESS_ERR on DOMException constructor object: PASS
+	Constant INVALID_ACCESS_ERR on DOMException prototype object: PASS
+	Constant INVALID_CHARACTER_ERR on DOMException constructor object: PASS
+	Constant INVALID_CHARACTER_ERR on DOMException prototype object: PASS
+	Constant INVALID_MODIFICATION_ERR on DOMException constructor object: PASS
+	Constant INVALID_MODIFICATION_ERR on DOMException prototype object: PASS
+	Constant INVALID_NODE_TYPE_ERR on DOMException constructor object: PASS
+	Constant INVALID_NODE_TYPE_ERR on DOMException prototype object: PASS
+	Constant INVALID_STATE_ERR on DOMException constructor object: PASS
+	Constant INVALID_STATE_ERR on DOMException prototype object: PASS
+	Constant NAMESPACE_ERR on DOMException constructor object: PASS
+	Constant NAMESPACE_ERR on DOMException prototype object: PASS
+	Constant NETWORK_ERR on DOMException constructor object: PASS
+	Constant NETWORK_ERR on DOMException prototype object: PASS
+	Constant NOT_FOUND_ERR on DOMException constructor object: PASS
+	Constant NOT_FOUND_ERR on DOMException prototype object: PASS
+	Constant NOT_SUPPORTED_ERR on DOMException constructor object: PASS
+	Constant NOT_SUPPORTED_ERR on DOMException prototype object: PASS
+	Constant NO_DATA_ALLOWED_ERR on DOMException constructor object: PASS
+	Constant NO_DATA_ALLOWED_ERR on DOMException prototype object: PASS
+	Constant NO_MODIFICATION_ALLOWED_ERR on DOMException constructor object: PASS
+	Constant NO_MODIFICATION_ALLOWED_ERR on DOMException prototype object: PASS
+	Constant QUOTA_EXCEEDED_ERR on DOMException constructor object: PASS
+	Constant QUOTA_EXCEEDED_ERR on DOMException prototype object: PASS
+	Constant SECURITY_ERR on DOMException constructor object: PASS
+	Constant SECURITY_ERR on DOMException prototype object: PASS
+	Constant SYNTAX_ERR on DOMException constructor object: PASS
+	Constant SYNTAX_ERR on DOMException prototype object: PASS
+	Constant TIMEOUT_ERR on DOMException constructor object: PASS
+	Constant TIMEOUT_ERR on DOMException prototype object: PASS
+	Constant TYPE_MISMATCH_ERR on DOMException constructor object: PASS
+	Constant TYPE_MISMATCH_ERR on DOMException prototype object: PASS
+	Constant URL_MISMATCH_ERR on DOMException constructor object: PASS
+	Constant URL_MISMATCH_ERR on DOMException prototype object: PASS
+	Constant VALIDATION_ERR on DOMException constructor object: PASS
+	Constant VALIDATION_ERR on DOMException prototype object: PASS
+	Constant WRONG_DOCUMENT_ERR on DOMException constructor object: PASS
+	Constant WRONG_DOCUMENT_ERR on DOMException prototype object: PASS
+	DOMException-constants: PASS
+/webidl/ecmascript-binding/es-exceptions/DOMException-constants.any.worker.html: OK
+	Constant ABORT_ERR on DOMException constructor object: PASS
+	Constant ABORT_ERR on DOMException prototype object: PASS
+	Constant DATA_CLONE_ERR on DOMException constructor object: PASS
+	Constant DATA_CLONE_ERR on DOMException prototype object: PASS
+	Constant DOMSTRING_SIZE_ERR on DOMException constructor object: PASS
+	Constant DOMSTRING_SIZE_ERR on DOMException prototype object: PASS
+	Constant HIERARCHY_REQUEST_ERR on DOMException constructor object: PASS
+	Constant HIERARCHY_REQUEST_ERR on DOMException prototype object: PASS
+	Constant INDEX_SIZE_ERR on DOMException constructor object: PASS
+	Constant INDEX_SIZE_ERR on DOMException prototype object: PASS
+	Constant INUSE_ATTRIBUTE_ERR on DOMException constructor object: PASS
+	Constant INUSE_ATTRIBUTE_ERR on DOMException prototype object: PASS
+	Constant INVALID_ACCESS_ERR on DOMException constructor object: PASS
+	Constant INVALID_ACCESS_ERR on DOMException prototype object: PASS
+	Constant INVALID_CHARACTER_ERR on DOMException constructor object: PASS
+	Constant INVALID_CHARACTER_ERR on DOMException prototype object: PASS
+	Constant INVALID_MODIFICATION_ERR on DOMException constructor object: PASS
+	Constant INVALID_MODIFICATION_ERR on DOMException prototype object: PASS
+	Constant INVALID_NODE_TYPE_ERR on DOMException constructor object: PASS
+	Constant INVALID_NODE_TYPE_ERR on DOMException prototype object: PASS
+	Constant INVALID_STATE_ERR on DOMException constructor object: PASS
+	Constant INVALID_STATE_ERR on DOMException prototype object: PASS
+	Constant NAMESPACE_ERR on DOMException constructor object: PASS
+	Constant NAMESPACE_ERR on DOMException prototype object: PASS
+	Constant NETWORK_ERR on DOMException constructor object: PASS
+	Constant NETWORK_ERR on DOMException prototype object: PASS
+	Constant NOT_FOUND_ERR on DOMException constructor object: PASS
+	Constant NOT_FOUND_ERR on DOMException prototype object: PASS
+	Constant NOT_SUPPORTED_ERR on DOMException constructor object: PASS
+	Constant NOT_SUPPORTED_ERR on DOMException prototype object: PASS
+	Constant NO_DATA_ALLOWED_ERR on DOMException constructor object: PASS
+	Constant NO_DATA_ALLOWED_ERR on DOMException prototype object: PASS
+	Constant NO_MODIFICATION_ALLOWED_ERR on DOMException constructor object: PASS
+	Constant NO_MODIFICATION_ALLOWED_ERR on DOMException prototype object: PASS
+	Constant QUOTA_EXCEEDED_ERR on DOMException constructor object: PASS
+	Constant QUOTA_EXCEEDED_ERR on DOMException prototype object: PASS
+	Constant SECURITY_ERR on DOMException constructor object: PASS
+	Constant SECURITY_ERR on DOMException prototype object: PASS
+	Constant SYNTAX_ERR on DOMException constructor object: PASS
+	Constant SYNTAX_ERR on DOMException prototype object: PASS
+	Constant TIMEOUT_ERR on DOMException constructor object: PASS
+	Constant TIMEOUT_ERR on DOMException prototype object: PASS
+	Constant TYPE_MISMATCH_ERR on DOMException constructor object: PASS
+	Constant TYPE_MISMATCH_ERR on DOMException prototype object: PASS
+	Constant URL_MISMATCH_ERR on DOMException constructor object: PASS
+	Constant URL_MISMATCH_ERR on DOMException prototype object: PASS
+	Constant VALIDATION_ERR on DOMException constructor object: PASS
+	Constant VALIDATION_ERR on DOMException prototype object: PASS
+	Constant WRONG_DOCUMENT_ERR on DOMException constructor object: PASS
+	Constant WRONG_DOCUMENT_ERR on DOMException prototype object: PASS
+	Untitled: PASS
+/webidl/ecmascript-binding/es-exceptions/DOMException-constructor-and-prototype.any.html: OK
+	existence and property descriptor of DOMException: PASS
+	existence and property descriptor of DOMException.prototype: PASS
+	existence and property descriptor of DOMException.prototype.constructor: PASS
+/webidl/ecmascript-binding/es-exceptions/DOMException-constructor-and-prototype.any.worker.html: OK
+	existence and property descriptor of DOMException: PASS
+	existence and property descriptor of DOMException.prototype: PASS
+	existence and property descriptor of DOMException.prototype.constructor: PASS
+/webidl/ecmascript-binding/es-exceptions/DOMException-constructor-behavior.any.html: OK
+	new DOMException("bar", "NotSupportedError"): PASS
+	new DOMException("bar", "NotSupportedError"): inherited-ness: PASS
+	new DOMException("bar", "foo"): PASS
+	new DOMException("bar", undefined): PASS
+	new DOMException("foo"): PASS
+	new DOMException("foo"): inherited-ness: PASS
+	new DOMException(): PASS
+	new DOMException(): inherited-ness: PASS
+	new DOMException(null): PASS
+	new DOMException(undefined): PASS
+	new DOMException(undefined): inherited-ness: PASS
+	new DOMexception("msg", "AbortError"): PASS
+	new DOMexception("msg", "ConstraintError"): PASS
+	new DOMexception("msg", "DOMStringSizeError"): PASS
+	new DOMexception("msg", "DataCloneError"): PASS
+	new DOMexception("msg", "DataError"): PASS
+	new DOMexception("msg", "EncodingError"): PASS
+	new DOMexception("msg", "HierarchyRequestError"): PASS
+	new DOMexception("msg", "InUseAttributeError"): PASS
+	new DOMexception("msg", "IndexSizeError"): PASS
+	new DOMexception("msg", "InvalidAccessError"): PASS
+	new DOMexception("msg", "InvalidCharacterError"): PASS
+	new DOMexception("msg", "InvalidModificationError"): PASS
+	new DOMexception("msg", "InvalidNodeTypeError"): PASS
+	new DOMexception("msg", "InvalidStateError"): PASS
+	new DOMexception("msg", "NamespaceError"): PASS
+	new DOMexception("msg", "NetworkError"): PASS
+	new DOMexception("msg", "NoDataAllowedError"): PASS
+	new DOMexception("msg", "NoModificationAllowedError"): PASS
+	new DOMexception("msg", "NotAllowedError"): PASS
+	new DOMexception("msg", "NotFoundError"): PASS
+	new DOMexception("msg", "NotReadableError"): PASS
+	new DOMexception("msg", "NotSupportedError"): PASS
+	new DOMexception("msg", "OperationError"): PASS
+	new DOMexception("msg", "QuotaExceededError"): PASS
+	new DOMexception("msg", "ReadOnlyError"): PASS
+	new DOMexception("msg", "SecurityError"): PASS
+	new DOMexception("msg", "SyntaxError"): PASS
+	new DOMexception("msg", "TimeoutError"): PASS
+	new DOMexception("msg", "TransactionInactiveError"): PASS
+	new DOMexception("msg", "TypeMismatchError"): PASS
+	new DOMexception("msg", "URLMismatchError"): PASS
+	new DOMexception("msg", "UnknownError"): PASS
+	new DOMexception("msg", "ValidationError"): PASS
+	new DOMexception("msg", "VersionError"): PASS
+	new DOMexception("msg", "WrongDocumentError"): PASS
+/webidl/ecmascript-binding/es-exceptions/DOMException-constructor-behavior.any.worker.html: OK
+	new DOMException("bar", "NotSupportedError"): PASS
+	new DOMException("bar", "NotSupportedError"): inherited-ness: PASS
+	new DOMException("bar", "foo"): PASS
+	new DOMException("bar", undefined): PASS
+	new DOMException("foo"): PASS
+	new DOMException("foo"): inherited-ness: PASS
+	new DOMException(): PASS
+	new DOMException(): inherited-ness: PASS
+	new DOMException(null): PASS
+	new DOMException(undefined): PASS
+	new DOMException(undefined): inherited-ness: PASS
+	new DOMexception("msg", "AbortError"): PASS
+	new DOMexception("msg", "ConstraintError"): PASS
+	new DOMexception("msg", "DOMStringSizeError"): PASS
+	new DOMexception("msg", "DataCloneError"): PASS
+	new DOMexception("msg", "DataError"): PASS
+	new DOMexception("msg", "EncodingError"): PASS
+	new DOMexception("msg", "HierarchyRequestError"): PASS
+	new DOMexception("msg", "InUseAttributeError"): PASS
+	new DOMexception("msg", "IndexSizeError"): PASS
+	new DOMexception("msg", "InvalidAccessError"): PASS
+	new DOMexception("msg", "InvalidCharacterError"): PASS
+	new DOMexception("msg", "InvalidModificationError"): PASS
+	new DOMexception("msg", "InvalidNodeTypeError"): PASS
+	new DOMexception("msg", "InvalidStateError"): PASS
+	new DOMexception("msg", "NamespaceError"): PASS
+	new DOMexception("msg", "NetworkError"): PASS
+	new DOMexception("msg", "NoDataAllowedError"): PASS
+	new DOMexception("msg", "NoModificationAllowedError"): PASS
+	new DOMexception("msg", "NotAllowedError"): PASS
+	new DOMexception("msg", "NotFoundError"): PASS
+	new DOMexception("msg", "NotReadableError"): PASS
+	new DOMexception("msg", "NotSupportedError"): PASS
+	new DOMexception("msg", "OperationError"): PASS
+	new DOMexception("msg", "QuotaExceededError"): PASS
+	new DOMexception("msg", "ReadOnlyError"): PASS
+	new DOMexception("msg", "SecurityError"): PASS
+	new DOMexception("msg", "SyntaxError"): PASS
+	new DOMexception("msg", "TimeoutError"): PASS
+	new DOMexception("msg", "TransactionInactiveError"): PASS
+	new DOMexception("msg", "TypeMismatchError"): PASS
+	new DOMexception("msg", "URLMismatchError"): PASS
+	new DOMexception("msg", "UnknownError"): PASS
+	new DOMexception("msg", "ValidationError"): PASS
+	new DOMexception("msg", "VersionError"): PASS
+	new DOMexception("msg", "WrongDocumentError"): PASS
+/webidl/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any.html: OK
+	Cannot construct without new: PASS
+	DOMException.prototype.toString() applied to DOMException.prototype throws because of name/message brand checks: PASS
+	If the implementation has a stack property on normal errors, it also does on DOMExceptions: PASS
+	Inherits its toString() from Error.prototype: PASS
+	Object.prototype.toString behavior is like other interfaces: PASS
+	code getter performs brand checks (i.e. is not [LegacyLenientThis]): PASS
+	code property descriptor: PASS
+	code property is not affected by shadowing the name property: PASS
+	does not inherit from Error: class-side: PASS
+	inherits from Error: prototype-side: PASS
+	message getter performs brand checks (i.e. is not [LegacyLenientThis]): PASS
+	message property descriptor: PASS
+	name getter performs brand checks (i.e. is not [LegacyLenientThis]): PASS
+	name property descriptor: PASS
+	toString() behavior from Error.prototype applies as expected: PASS
+/webidl/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any.worker.html: OK
+	Cannot construct without new: PASS
+	DOMException.prototype.toString() applied to DOMException.prototype throws because of name/message brand checks: PASS
+	If the implementation has a stack property on normal errors, it also does on DOMExceptions: PASS
+	Inherits its toString() from Error.prototype: PASS
+	Object.prototype.toString behavior is like other interfaces: PASS
+	code getter performs brand checks (i.e. is not [LegacyLenientThis]): PASS
+	code property descriptor: PASS
+	code property is not affected by shadowing the name property: PASS
+	does not inherit from Error: class-side: PASS
+	inherits from Error: prototype-side: PASS
+	message getter performs brand checks (i.e. is not [LegacyLenientThis]): PASS
+	message property descriptor: PASS
+	name getter performs brand checks (i.e. is not [LegacyLenientThis]): PASS
+	name property descriptor: PASS
+	toString() behavior from Error.prototype applies as expected: PASS
+/webidl/ecmascript-binding/es-exceptions/DOMException-is-error.any.html: OK
+	DOMException-is-error: FAIL
+/webidl/ecmascript-binding/es-exceptions/DOMException-is-error.any.worker.html: OK
+	Untitled: FAIL
+/webidl/ecmascript-binding/es-exceptions/DOMException-stack-accessor.any.html: OK
+	DOMException instance does not have an own stack property: FAIL
+	DOMException.prototype does not have an own stack property: PASS
+	Error.prototype.stack getter works on DOMException instances: FAIL
+	Error.prototype.stack is an accessor property with correct attributes: PASS
+	Error.prototype.stack setter ignores Error.prototype itself: FAIL
+	Error.prototype.stack setter installs own data property on DOMException instances: FAIL
+	new DOMException() has a stack property that is a string: PASS
+	new DOMException() with no arguments has a stack property that is a string: PASS
+	thrown DOMException from DOM API has a stack property that is a string: PASS
+/webidl/ecmascript-binding/es-exceptions/DOMException-stack-accessor.any.worker.html: OK
+	DOMException instance does not have an own stack property: FAIL
+	DOMException.prototype does not have an own stack property: PASS
+	Error.prototype.stack getter works on DOMException instances: FAIL
+	Error.prototype.stack is an accessor property with correct attributes: PASS
+	Error.prototype.stack setter ignores Error.prototype itself: FAIL
+	Error.prototype.stack setter installs own data property on DOMException instances: FAIL
+	new DOMException() has a stack property that is a string: PASS
+	new DOMException() with no arguments has a stack property that is a string: PASS
 /webidl/ecmascript-binding/es-exceptions/exceptions.html: TIMEOUT
-/webidl/ecmascript-binding/global-immutable-prototype.any.html: TIMEOUT
-/webidl/ecmascript-binding/global-immutable-prototype.any.worker.html: TIMEOUT
+	Object.getPrototypeOf(exception) === DOMException.prototype: PASS
+	Object.prototype.toString.call(exception) === "[object DOMException]": PASS
+	exception.code === DOMException.HIERARCHY_REQUEST_ERR: PASS
+	exception.hasOwnProperty("message"): PASS
+	exception.hasOwnProperty("name"): PASS
+	exception.name === "HierarchyRequestError": PASS
+/webidl/ecmascript-binding/global-immutable-prototype.any.html: OK
+	Setting to a different prototype: FAIL
+	Setting to the same prototype: PASS
+/webidl/ecmascript-binding/global-immutable-prototype.any.worker.html: OK
+	Setting to a different prototype: FAIL
+	Setting to the same prototype: PASS
 /webidl/ecmascript-binding/global-object-implicit-this-value-cross-realm.html: TIMEOUT
-/webidl/ecmascript-binding/global-object-implicit-this-value.any.html: TIMEOUT
-/webidl/ecmascript-binding/global-object-implicit-this-value.any.worker.html: TIMEOUT
-/webidl/ecmascript-binding/has-instance.html: TIMEOUT
-/webidl/ecmascript-binding/interface-object-set-receiver.html: TIMEOUT
-/webidl/ecmascript-binding/interface-object.html: TIMEOUT
-/webidl/ecmascript-binding/interface-prototype-constructor-set-receiver.html: TIMEOUT
-/webidl/ecmascript-binding/interface-prototype-object.html: TIMEOUT
+	Cross-realm global object's getter called on null / undefined: NOTRUN
+	Cross-realm global object's getter throws when called on incompatible object: TIMEOUT
+	Cross-realm global object's operation called on null / undefined: NOTRUN
+	Cross-realm global object's operation throws when called on incompatible object: NOTRUN
+	Cross-realm global object's setter called on null / undefined: NOTRUN
+	Cross-realm global object's setter throws when called on incompatible object: NOTRUN
+/webidl/ecmascript-binding/global-object-implicit-this-value.any.html: OK
+	Global object's getter throws when called on incompatible object: FAIL
+	Global object's getter throws when called on incompatible object (document.all): FAIL
+	Global object's getter works when called on null / undefined: PASS
+	Global object's operation throws when called on incompatible object: FAIL
+	Global object's operation throws when called on incompatible object (document.all): FAIL
+	Global object's operation works when called on null / undefined: PASS
+	Global object's setter throws when called on incompatible object: FAIL
+	Global object's setter throws when called on incompatible object (document.all): PASS
+	Global object's setter works when called on null / undefined: FAIL
+/webidl/ecmascript-binding/global-object-implicit-this-value.any.worker.html: ERROR
+	Global object's getter throws when called on incompatible object: FAIL
+	Global object's operation throws when called on incompatible object: FAIL
+	Global object's setter throws when called on incompatible object: FAIL
+/webidl/ecmascript-binding/has-instance.html: OK
+	Manually-constructed prototype chains are correctly handled by instanceof: PASS
+	instanceof must return false across different globals, for platform objects: FAIL
+	platform objects do not have Symbol.hasInstance installed: PASS
+/webidl/ecmascript-binding/interface-object-set-receiver.html: OK
+	Direct [[Set]] preserves [[Enumerable]]: false property attribute: PASS
+	Prototype chain [[Set]] creates property on receiver: PASS
+/webidl/ecmascript-binding/interface-object.html: OK
+	An interface object deleted after it has been accessed is undefined: PASS
+	An interface object deleted before it has been defined is undefined: PASS
+	Fancy property names don't break the resolve hook on Window: PASS
+	Interface objects deleted multiple times stay deleted: PASS
+/webidl/ecmascript-binding/interface-prototype-constructor-set-receiver.html: OK
+	Direct [[Set]] preserves [[Enumerable]]: false property attribute: FAIL
+	Prototype chain [[Set]] creates property on receiver: PASS
+/webidl/ecmascript-binding/interface-prototype-object.html: OK
+	[Unscopable] extended attribute makes @@unscopables object on the prototype object, whose prototype is null.: FAIL
 /webidl/ecmascript-binding/invalid-this-value-cross-realm.html: TIMEOUT
-/webidl/ecmascript-binding/iterator-invalidation-foreach.html: TIMEOUT
-/webidl/ecmascript-binding/iterator-prototype-object.html: TIMEOUT
-/webidl/ecmascript-binding/legacy-callback-interface-object.html: TIMEOUT
-/webidl/ecmascript-binding/legacy-factor-function-subclass.window.html: TIMEOUT
-/webidl/ecmascript-binding/legacy-factory-function-builtin-properties.window.html: TIMEOUT
-/webidl/ecmascript-binding/legacy-platform-object/DefineOwnProperty.html: TIMEOUT
-/webidl/ecmascript-binding/legacy-platform-object/GetOwnProperty.html: TIMEOUT
-/webidl/ecmascript-binding/legacy-platform-object/OwnPropertyKeys.html: TIMEOUT
-/webidl/ecmascript-binding/legacy-platform-object/Set.html: TIMEOUT
-/webidl/ecmascript-binding/no-regexp-special-casing.any.html: TIMEOUT
-/webidl/ecmascript-binding/no-regexp-special-casing.any.worker.html: TIMEOUT
-/webidl/ecmascript-binding/observable-array-no-leak-of-internals.window.html: TIMEOUT
-/webidl/ecmascript-binding/observable-array-ownkeys.window.html: TIMEOUT
-/webidl/ecmascript-binding/put-forwards.html: TIMEOUT
-/webidl/ecmascript-binding/replaceable-setter-throws-if-defineownproperty-fails.html: TIMEOUT
-/webidl/ecmascript-binding/sequence-conversion.html: TIMEOUT
-/webidl/ecmascript-binding/setter-argument.html: TIMEOUT
-/webidl/ecmascript-binding/window-named-properties-object.html: TIMEOUT
+	Cross-realm getter throws when called on incompatible object: TIMEOUT
+	Cross-realm operation throws when called on incompatible object: NOTRUN
+	Cross-realm setter throws when called on incompatible object: NOTRUN
+/webidl/ecmascript-binding/iterator-invalidation-foreach.html: OK
+	Elements added during iteration with forEach will be reached: PASS
+	Removing elements already iterated over during forEach will cause iterator to skip an element: PASS
+	forEach will not iterate over elements removed during iteration: PASS
+/webidl/ecmascript-binding/iterator-prototype-object.html: OK
+	Has %IteratorPrototype% as prototype: PASS
+	Is specific to an interface: PASS
+	next() exists and is writable, enumerable, and configurable: PASS
+	next() throws TypeError when called on ineligible receiver: PASS
+/webidl/ecmascript-binding/legacy-callback-interface-object.html: OK
+	Must be a function according to typeof: FAIL
+	Must have an own length property with value zero and the correct descriptors: FAIL
+	Must have an own name property equal to the interface name and with the correct descriptors: FAIL
+	Must have the correct [[Prototype]]: FAIL
+	Must have the correct property descriptor: PASS
+	Must not have a .prototype property: PASS
+	Must throw a TypeError when called or constructed: PASS
+	instanceof must throw but only when we don't bail out early: FAIL
+/webidl/ecmascript-binding/legacy-factor-function-subclass.window.html: OK
+	[LegacyFactoryFunction] can be subclassed and correctly handles NewTarget: FAIL
+/webidl/ecmascript-binding/legacy-factory-function-builtin-properties.window.html: OK
+	Legacy factory function property enumeration order of "length", "name", and "prototype": FAIL
+/webidl/ecmascript-binding/legacy-platform-object/DefineOwnProperty.html: OK
+	Test [[DefineOwnProperty]] with indexed property setter support.: FAIL
+	Test [[DefineOwnProperty]] with named property setter support.: FAIL
+	Test [[DefineOwnProperty]] with no indexed property setter support.: FAIL
+	Test [[DefineOwnProperty]] with no named property setter support.: FAIL
+/webidl/ecmascript-binding/legacy-platform-object/GetOwnProperty.html: OK
+	[[GetOwnProperty]] with getters and no setters: FAIL
+	[[GetOwnProperty]] with indexed property getters and setters: FAIL
+	[[GetOwnProperty]] with named property getters and setters: PASS
+/webidl/ecmascript-binding/legacy-platform-object/OwnPropertyKeys.html: OK
+	must enumerate own properties after indexed and named properties even when they're added first: FAIL
+	must enumerate property indices in ascending numerical order: PASS
+	must enumerate property names in list order: PASS
+	must enumerate symbols after strings, regardless of which ones got added first: FAIL
+	must first enumerate property indices in ascending numerical order, then named properties in list order: FAIL
+/webidl/ecmascript-binding/legacy-platform-object/Set.html: OK
+	must allow assigning to a named property on an object which implements a named property getter but not a setter in strict mode: PASS
+	must allow assigning to a named property on an object which implements a named property getter but not a setter when not in strict mode: PASS
+	must allow assigning to a symbol property on an object which implements an indexed property getter but not a setter in strict mode: PASS
+	must allow assigning to a symbol property on an object which implements an indexed property getter but not a setter when not in strict mode: PASS
+	must allow assigning to a symbol property on an object which implements indexed and named property getters and setters in strict mode: PASS
+	must allow assigning to a symbol property on an object which implements indexed and named property getters and setters when not in strict mode: PASS
+	must allow assigning to a symbol property on an object which implements indexed and named property getters but no setters in strict mode: PASS
+	must allow assigning to a symbol property on an object which implements indexed and named property getters but no setters when not in strict mode: PASS
+	must allow setting built-in property on a [LegacyOverrideBuiltIns] object even if a named property shadows it: FAIL
+	must not set the property value when assigning to a numeric property on an object which implements an indexed property getter but not a setter when not in strict mode: FAIL
+	must throw when assigning to a numeric property on an object which implements a indexed property getter but not a setter in strict mode: PASS
+/webidl/ecmascript-binding/no-regexp-special-casing.any.html: OK
+	Can be used as an object implementing a callback interface: PASS
+	Can convert a RegExp to a USVString: PASS
+	Conversion to a dictionary works: PASS
+	Conversion to a sequence works: PASS
+/webidl/ecmascript-binding/no-regexp-special-casing.any.worker.html: OK
+	Can be used as an object implementing a callback interface: PASS
+	Can convert a RegExp to a USVString: PASS
+	Conversion to a dictionary works: PASS
+	Conversion to a sequence works: PASS
+/webidl/ecmascript-binding/observable-array-no-leak-of-internals.window.html: OK
+	ObservableArray's internals won't leak: FAIL
+/webidl/ecmascript-binding/observable-array-ownkeys.window.html: OK
+	ObservableArray's ownKeys trap: FAIL
+/webidl/ecmascript-binding/put-forwards.html: OK
+	Does not throw when setter of [PutForwards] attribute returns false: FAIL
+	Exception propagation from getter of [PutForwards] attribute: PASS
+	Exception propagation from setter of [PutForwards] target attribute: PASS
+	Overriding getter of [PutForwards] attribute: PASS
+	Overriding setter of [PutForwards] target attribute: PASS
+	Overriding target of [PutForwards] attribute: PASS
+	Setting a.relList to noreferrer is reflected in rel: PASS
+	Setting area.relList to noreferrer is reflected in rel: PASS
+	Setting form.relList to noreferrer is reflected in rel: PASS
+	Setting link.relList to stylesheet is reflected in rel: PASS
+	TypeError when getter of [PutForwards] attribute returns non-object: PASS
+/webidl/ecmascript-binding/replaceable-setter-throws-if-defineownproperty-fails.html: OK
+	window.event setter throws TypeError if called on non-configurable non-writable data property: FAIL
+	window.innerWidth setter throws TypeError if called on non-configurable accessor property: FAIL
+	window.length setter throws TypeError if called on non-configurable non-writable data property: FAIL
+	window.origin setter throws TypeError if called on non-configurable accessor property: FAIL
+	window.outerHeight setter throws TypeError if called on non-configurable non-writable data property: FAIL
+	window.parent setter throws TypeError if called on non-configurable accessor property: FAIL
+	window.screen setter throws TypeError if called on non-configurable non-writable data property: FAIL
+	window.self setter throws TypeError if called on non-configurable accessor property: FAIL
+/webidl/ecmascript-binding/sequence-conversion.html: ERROR
+/webidl/ecmascript-binding/setter-argument.html: ERROR
+/webidl/ecmascript-binding/window-named-properties-object.html: OK
+	[[DefineOwnProperty]]: FAIL
+	[[Delete]]: FAIL
+	[[GetOwnProperty]]: FAIL
+	[[GetOwnProperty]] (named property visibility algorithm): FAIL
+	[[Get]]: FAIL
+	[[Get]] (named property visibility algorithm): FAIL
+	[[HasProperty]]: FAIL
+	[[OwnPropertyKeys]]: FAIL
+	[[PreventExtensions]] and [[IsExtensible]]: FAIL
+	[[SetPrototypeOf]] and [[GetPrototypeOf]]: FAIL
+	[[Set]] (Reflect.set): FAIL
+	[[Set]] (direct): FAIL
+	[[Set]] (prototype chain): FAIL

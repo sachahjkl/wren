@@ -1,14 +1,74 @@
 # web-platform-tests expectations of Wren for dom/collections, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/dom/collections/HTMLCollection-as-prototype.html: TIMEOUT
-/dom/collections/HTMLCollection-delete.html: TIMEOUT
-/dom/collections/HTMLCollection-detached-root-gc.html: TIMEOUT
-/dom/collections/HTMLCollection-empty-name.html: TIMEOUT
-/dom/collections/HTMLCollection-iterator.html: TIMEOUT
-/dom/collections/HTMLCollection-live-item-removal.html: TIMEOUT
-/dom/collections/HTMLCollection-live-mutations.window.html: TIMEOUT
-/dom/collections/HTMLCollection-own-props.html: TIMEOUT
-/dom/collections/HTMLCollection-supported-property-indices.html: TIMEOUT
-/dom/collections/HTMLCollection-supported-property-names.html: TIMEOUT
-/dom/collections/domstringmap-supported-property-names.html: TIMEOUT
-/dom/collections/namednodemap-supported-property-names.html: TIMEOUT
+/dom/collections/HTMLCollection-as-prototype.html: OK
+	HTMLCollection as a prototype and setting own properties: PASS
+	HTMLCollection as a prototype should not allow getting .length on the base object: PASS
+/dom/collections/HTMLCollection-delete.html: OK
+	Loose id: PASS
+	Loose name: PASS
+	Strict id: FAIL
+	Strict name: FAIL
+/dom/collections/HTMLCollection-detached-root-gc.html: OK
+	children: PASS
+	getElementsByClassName(): PASS
+	getElementsByTagName(): PASS
+	getElementsByTagName() rooted at a descendant: PASS
+	getElementsByTagNameNS(): PASS
+/dom/collections/HTMLCollection-empty-name.html: OK
+	Empty string as a name for Document.getElementsByClassName: PASS
+	Empty string as a name for Document.getElementsByTagName: PASS
+	Empty string as a name for Document.getElementsByTagNameNS: PASS
+	Empty string as a name for Element.children: PASS
+	Empty string as a name for Element.getElementsByClassName: PASS
+	Empty string as a name for Element.getElementsByTagName: PASS
+	Empty string as a name for Element.getElementsByTagNameNS: PASS
+/dom/collections/HTMLCollection-iterator.html: OK
+	HTMLCollection does not have iterable's entries method.: PASS
+	HTMLCollection does not have iterable's forEach method.: PASS
+	HTMLCollection does not have iterable's values method.: PASS
+	HTMLCollection has Symbol.iterator.: PASS
+	HTMLCollection has length method.: PASS
+	HTMLCollection is iterable via for-of loop.: PASS
+/dom/collections/HTMLCollection-live-item-removal.html: OK
+	document.body.getElementsByClassName collection should update live when removing item(0): PASS
+	getElementsByClassName collection should update live when removing item(0): PASS
+/dom/collections/HTMLCollection-live-mutations.window.html: OK
+	HTMLCollection live mutations: HTMLCollection ownPropertyNames: FAIL
+	HTMLCollection live mutations: HTMLCollection.item(index): PASS
+	HTMLCollection live mutations: HTMLCollection.length: PASS
+	HTMLCollection live mutations: HTMLCollection.namedItem(index): PASS
+	HTMLCollection live mutations: HTMLCollection[index]: PASS
+/dom/collections/HTMLCollection-own-props.html: OK
+	Setting array index while indexed property doesn't exist (loose): FAIL
+	Setting array index while indexed property doesn't exist (strict): PASS
+	Setting array index while indexed property exists (loose): PASS
+	Setting array index while indexed property exists (strict): PASS
+	Setting non-array index while named property doesn't exist (loose): PASS
+	Setting non-array index while named property doesn't exist (strict): PASS
+	Setting non-array index while named property exists (loose): FAIL
+	Setting non-array index while named property exists (strict): FAIL
+/dom/collections/HTMLCollection-supported-property-indices.html: OK
+	Handling of property names that look like integers around 2^31: PASS
+	Handling of property names that look like integers around 2^32: PASS
+	Handling of property names that look like negative integers: PASS
+	Handling of property names that look like small nonnegative integers: PASS
+	Trying to delete an indexed property name should never work: FAIL
+	Trying to set an expando that would shadow an already-existing indexed property: FAIL
+	Trying to set an expando with an indexed property name past the end of the list: FAIL
+/dom/collections/HTMLCollection-supported-property-names.html: OK
+	Object.getOwnPropertyNames on HTMLCollection: FAIL
+	Object.getOwnPropertyNames on HTMLCollection with expando object: FAIL
+	Object.getOwnPropertyNames on HTMLCollection with non-HTML namespace: PASS
+	Trying to set a non-configurable expando that shadows a named property that gets added later: PASS
+	Trying to set an expando that shadows a named property that gets added later: PASS
+	Trying to set an expando that would shadow an already-existing named property: FAIL
+/dom/collections/domstringmap-supported-property-names.html: OK
+	Object.getOwnPropertyNames on DOMStringMap, attribute set on dataset in JS: PASS
+	Object.getOwnPropertyNames on DOMStringMap, attribute set on element in JS: PASS
+	Object.getOwnPropertyNames on DOMStringMap, data attribute trailing hyphen: PASS
+	Object.getOwnPropertyNames on DOMStringMap, empty data attribute: PASS
+	Object.getOwnPropertyNames on DOMStringMap, multiple data attributes: PASS
+/dom/collections/namednodemap-supported-property-names.html: OK
+	Object.getOwnPropertyNames on NamedNodeMap: FAIL
+	Object.getOwnPropertyNames on NamedNodeMap after attribute removal: FAIL
+	Object.getOwnPropertyNames on NamedNodeMap of input: FAIL

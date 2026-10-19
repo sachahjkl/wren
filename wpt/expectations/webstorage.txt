@@ -1,56 +1,1337 @@
 # web-platform-tests expectations of Wren for webstorage, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/webstorage/defineProperty.window.html: TIMEOUT
-/webstorage/document-domain.html: TIMEOUT
+/webstorage/defineProperty.window.html: OK
+	Defining data property for key 9 on localStorage: PASS
+	Defining data property for key 9 on localStorage twice: PASS
+	Defining data property for key 9 on sessionStorage: PASS
+	Defining data property for key 9 on sessionStorage twice: PASS
+	Defining data property for key x on localStorage: PASS
+	Defining data property for key x on localStorage twice: PASS
+	Defining data property for key x on sessionStorage: PASS
+	Defining data property for key x on sessionStorage twice: PASS
+	Defining data property with toString for key 9 on localStorage: PASS
+	Defining data property with toString for key 9 on sessionStorage: PASS
+	Defining data property with toString for key x on localStorage: PASS
+	Defining data property with toString for key x on sessionStorage: PASS
+/webstorage/document-domain.html: OK
+	localStorage and document.domain: FAIL
 /webstorage/event_basic.html: TIMEOUT
-/webstorage/event_body_attribute.html: TIMEOUT
+	sessionStorage mutations fire StorageEvents that are caught by the event listener set via window.onstorage.: TIMEOUT
+/webstorage/event_body_attribute.html: OK
+	localStorage mutations fire StorageEvents that are caught by the event listener specified as an attribute on the body.: FAIL
+	sessionStorage mutations fire StorageEvents that are caught by the event listener specified as an attribute on the body.: FAIL
 /webstorage/event_case_sensitive.html: TIMEOUT
-/webstorage/event_constructor.window.html: TIMEOUT
-/webstorage/event_initstorageevent.window.html: TIMEOUT
+	sessionStorage storage events fire even when only the case of the value changes.: TIMEOUT
+/webstorage/event_constructor.window.html: OK
+	StorageEvent constructor called as normal function: PASS
+	constructor with just type argument: PASS
+	constructor with no arguments: PASS
+	constructor with null type argument and members: PASS
+	constructor with sensible type argument and members: PASS
+	constructor with undefined type argument and members: PASS
+/webstorage/event_initstorageevent.window.html: OK
+	initStorageEvent with 0 arguments: FAIL
+	initStorageEvent with 1 argument: FAIL
+	initStorageEvent with 8 null arguments: FAIL
+	initStorageEvent with 8 sensible arguments: FAIL
+	initStorageEvent with 8 undefined arguments: FAIL
 /webstorage/event_local_key.html: TIMEOUT
+	key property test of local event - Local event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
 /webstorage/event_local_newvalue.html: TIMEOUT
+	newValue property test of local event - Local event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
 /webstorage/event_local_oldvalue.html: TIMEOUT
+	oldValue property test of local event - Local event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
 /webstorage/event_local_removeitem.html: TIMEOUT
+	key property test of local event: TIMEOUT
 /webstorage/event_local_storagearea.html: TIMEOUT
+	storageArea property test of local event - Local event is fired due to an invocation of the setItem() method.: TIMEOUT
 /webstorage/event_local_url.html: TIMEOUT
-/webstorage/event_local_window_open_oldvalue.html: TIMEOUT
+	url property test of local event - Local event is fired due to an invocation of the setItem() method.: TIMEOUT
+/webstorage/event_local_window_open_oldvalue.html: OK
+	oldValue property test of local event from window.open() - Local event is fired due to an invocation of the setItem(), clear() methods.: FAIL
 /webstorage/event_no_duplicates.html: TIMEOUT
 /webstorage/event_session_key.html: TIMEOUT
+	key property test of session event - Session event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
 /webstorage/event_session_newvalue.html: TIMEOUT
+	newvalue property test of session event - Session event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
 /webstorage/event_session_oldvalue.html: TIMEOUT
+	oldvalue property test of session event - Session event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
 /webstorage/event_session_removeitem.html: TIMEOUT
+	key property test of session event: TIMEOUT
 /webstorage/event_session_storagearea.html: TIMEOUT
+	storageArea property test of session event - session event is fired due to an invocation of the setItem() method.: TIMEOUT
 /webstorage/event_session_url.html: TIMEOUT
-/webstorage/event_session_window_open_scope.html: TIMEOUT
-/webstorage/event_setattribute.html: TIMEOUT
+	url property test of session event - Session event is fired due to an invocation of the setItem() method.: TIMEOUT
+/webstorage/event_session_window_open_scope.html: OK
+	sessionStorage events from a new window opened via window.open() should not fire in the opener: FAIL
+/webstorage/event_setattribute.html: OK
+	localStorage mutations fire StorageEvents that are caught by the event listener attached via setattribute.: FAIL
+	sessionStorage mutations fire StorageEvents that are caught by the event listener attached via setattribute.: FAIL
 /webstorage/localstorage-about-blank-3P-iframe-opens-3P-window.partitioned.html: TIMEOUT
+	StorageKey: test 3P about:blank window opened from a 3P iframe: TIMEOUT
 /webstorage/localstorage-basic-partitioned.sub.html: TIMEOUT
-/webstorage/localstorage-cross-origin-iframe.https.window.html: TIMEOUT
+	Simple test for partitioned localStorage: TIMEOUT
+/webstorage/localstorage-cross-origin-iframe.https.window.html: OK
+	LocalStorage should be accessible on both same_origin and cross_origin iframes: FAIL
 /webstorage/localstorage-share-data-unrelated-origins.html: TIMEOUT
-/webstorage/missing_arguments.window.html: TIMEOUT
+	Ensure two about:srcdoc origins cannot share localstorage: TIMEOUT
+/webstorage/missing_arguments.window.html: OK
+	Should throw TypeError for function "function() { localStorage.getItem(); }".: PASS
+	Should throw TypeError for function "function() { localStorage.key(); }".: PASS
+	Should throw TypeError for function "function() { localStorage.removeItem(); }".: PASS
+	Should throw TypeError for function "function() { localStorage.setItem("a"); }".: PASS
+	Should throw TypeError for function "function() { localStorage.setItem(); }".: PASS
+	Should throw TypeError for function "function() { sessionStorage.getItem(); }".: PASS
+	Should throw TypeError for function "function() { sessionStorage.key(); }".: PASS
+	Should throw TypeError for function "function() { sessionStorage.removeItem(); }".: PASS
+	Should throw TypeError for function "function() { sessionStorage.setItem("a"); }".: PASS
+	Should throw TypeError for function "function() { sessionStorage.setItem(); }".: PASS
 /webstorage/sessionStorage-basic-partitioned.sub.html: TIMEOUT
-/webstorage/set.window.html: TIMEOUT
-/webstorage/storage_builtins.window.html: TIMEOUT
-/webstorage/storage_clear.window.html: TIMEOUT
-/webstorage/storage_enumerate.window.html: TIMEOUT
-/webstorage/storage_functions_not_overwritten.window.html: TIMEOUT
-/webstorage/storage_getitem.window.html: TIMEOUT
-/webstorage/storage_in.window.html: TIMEOUT
-/webstorage/storage_indexing.window.html: TIMEOUT
-/webstorage/storage_key.window.html: TIMEOUT
-/webstorage/storage_key_empty_string.window.html: TIMEOUT
-/webstorage/storage_length.window.html: TIMEOUT
-/webstorage/storage_local_quota_independent_from_session.window.html: TIMEOUT
-/webstorage/storage_local_setitem_quotaexceedederr.window.html: TIMEOUT
-/webstorage/storage_local_window_open.window.html: TIMEOUT
-/webstorage/storage_removeitem.window.html: TIMEOUT
-/webstorage/storage_session_quota_independent_from_local.window.html: TIMEOUT
-/webstorage/storage_session_setitem_quotaexceedederr.window.html: TIMEOUT
-/webstorage/storage_session_window_noopener.window.html: TIMEOUT
-/webstorage/storage_session_window_open.window.html: TIMEOUT
-/webstorage/storage_session_window_reopen.window.html: TIMEOUT
-/webstorage/storage_set_value_enumerate.window.html: TIMEOUT
-/webstorage/storage_setitem.window.html: TIMEOUT
-/webstorage/storage_string_conversion.window.html: TIMEOUT
-/webstorage/storage_supported_property_names.window.html: TIMEOUT
-/webstorage/symbol-props.window.html: TIMEOUT
+	Simple test for partitioned sessionStorage: TIMEOUT
+/webstorage/set.window.html: OK
+	Setting property for key 9 on localStorage: PASS
+	Setting property for key 9 on localStorage with accessor property on prototype: FAIL
+	Setting property for key 9 on localStorage with data property on prototype: FAIL
+	Setting property for key 9 on localStorage with data property on prototype and existing item: FAIL
+	Setting property for key 9 on sessionStorage: PASS
+	Setting property for key 9 on sessionStorage with accessor property on prototype: FAIL
+	Setting property for key 9 on sessionStorage with data property on prototype: FAIL
+	Setting property for key 9 on sessionStorage with data property on prototype and existing item: FAIL
+	Setting property for key x on localStorage: PASS
+	Setting property for key x on localStorage with accessor property on prototype: FAIL
+	Setting property for key x on localStorage with data property on prototype: FAIL
+	Setting property for key x on localStorage with data property on prototype and existing item: FAIL
+	Setting property for key x on sessionStorage: PASS
+	Setting property for key x on sessionStorage with accessor property on prototype: FAIL
+	Setting property for key x on sessionStorage with data property on prototype: FAIL
+	Setting property for key x on sessionStorage with data property on prototype and existing item: FAIL
+	Setting property with toString for key 9 on localStorage: PASS
+	Setting property with toString for key 9 on sessionStorage: PASS
+	Setting property with toString for key x on localStorage: PASS
+	Setting property with toString for key x on sessionStorage: PASS
+/webstorage/storage_builtins.window.html: OK
+	Builtins in localStorage: FAIL
+	Builtins in sessionStorage: FAIL
+/webstorage/storage_clear.window.html: OK
+	Clear in localStorage: PASS
+	Clear in sessionStorage: PASS
+/webstorage/storage_enumerate.window.html: OK
+	localStorage: enumerate a Storage object and get only the keys as a result and the built-in properties of the Storage object should be ignored: PASS
+	localStorage: test enumeration of numeric and non-numeric keys: PASS
+	sessionStorage: enumerate a Storage object and get only the keys as a result and the built-in properties of the Storage object should be ignored: PASS
+	sessionStorage: test enumeration of numeric and non-numeric keys: PASS
+/webstorage/storage_functions_not_overwritten.window.html: OK
+	localStorage should be not rendered unusable by setting a key with the same name as a storage function such that the function is hidden: PASS
+	sessionStorage should be not rendered unusable by setting a key with the same name as a storage function such that the function is hidden: PASS
+/webstorage/storage_getitem.window.html: OK
+	All items should be added to localStorage.: PASS
+	All items should be added to sessionStorage.: PASS
+	Get value by getIten(key) and named access in localStorage.: PASS
+	Get value by getIten(key) and named access in sessionStorage.: PASS
+	Named access to localStorage should be correct: PASS
+	Named access to sessionStorage should be correct: PASS
+	localStorage.getItem should be correct: PASS
+	sessionStorage.getItem should be correct: PASS
+/webstorage/storage_in.window.html: OK
+	The in operator in localStorage: method access: PASS
+	The in operator in localStorage: property access: PASS
+	The in operator in sessionStorage: method access: PASS
+	The in operator in sessionStorage: property access: PASS
+/webstorage/storage_indexing.window.html: OK
+	Getting existing number-valued properties on localStorage: PASS
+	Getting existing number-valued properties on sessionStorage: PASS
+	Getting number properties on localStorage: PASS
+	Getting number properties on sessionStorage: PASS
+	Getting number-valued string properties on localStorage: PASS
+	Getting number-valued string properties on sessionStorage: PASS
+	Indexed getter on localStorage: PASS
+	Indexed getter on sessionStorage: PASS
+/webstorage/storage_key.window.html: OK
+	localStorage.key: PASS
+	localStorage.key with value changes: PASS
+	localStorage.key() should return null for out-of-range arguments.: PASS
+	localStorage.key(0) should return the right thing.: PASS
+	localStorage.key(1) should return the right thing.: PASS
+	localStorage.key(2) should return the right thing.: PASS
+	localStorage.key(3) should return the right thing.: PASS
+	localStorage.key(4294967296) should return the right thing.: PASS
+	localStorage.key(4294967297) should return the right thing.: PASS
+	localStorage.key(4294967298) should return the right thing.: PASS
+	localStorage.key(4294967299) should return the right thing.: PASS
+	sessionStorage.key: PASS
+	sessionStorage.key with value changes: PASS
+	sessionStorage.key() should return null for out-of-range arguments.: PASS
+	sessionStorage.key(0) should return the right thing.: PASS
+	sessionStorage.key(1) should return the right thing.: PASS
+	sessionStorage.key(2) should return the right thing.: PASS
+	sessionStorage.key(3) should return the right thing.: PASS
+	sessionStorage.key(4294967296) should return the right thing.: PASS
+	sessionStorage.key(4294967297) should return the right thing.: PASS
+	sessionStorage.key(4294967298) should return the right thing.: PASS
+	sessionStorage.key(4294967299) should return the right thing.: PASS
+/webstorage/storage_key_empty_string.window.html: OK
+	localStorage.key with empty string: PASS
+	sessionStorage.key with empty string: PASS
+/webstorage/storage_length.window.html: OK
+	localStorage.length (method access): PASS
+	localStorage.length (proprty access): PASS
+	sessionStorage.length (method access): PASS
+	sessionStorage.length (proprty access): PASS
+/webstorage/storage_local_quota_independent_from_session.window.html: OK
+	localStorage retains comparable quota after sessionStorage exhaustion: FAIL
+/webstorage/storage_local_setitem_quotaexceedederr.window.html: OK
+	Throws QuotaExceededError when the quota has been exceeded: FAIL
+/webstorage/storage_local_window_open.window.html: OK
+	A new window to make sure there is a copy of the previous window's localStorage, and that they do not diverge after a change: FAIL
+/webstorage/storage_removeitem.window.html: OK
+	delete localStorage[]: PASS
+	delete sessionStorage[]: PASS
+	localStorage.removeItem(): PASS
+	localStorage.removeItem(null): PASS
+	localStorage.removeItem(undefined): PASS
+	sessionStorage.removeItem(): PASS
+	sessionStorage.removeItem(null): PASS
+	sessionStorage.removeItem(undefined): PASS
+/webstorage/storage_session_quota_independent_from_local.window.html: OK
+	sessionStorage retains comparable quota after localStorage exhaustion: FAIL
+/webstorage/storage_session_setitem_quotaexceedederr.window.html: OK
+	Throws QuotaExceededError when the quota has been exceeded: FAIL
+/webstorage/storage_session_window_noopener.window.html: OK
+	A new noopener window to make sure there is a not copy of the previous window's sessionStorage: FAIL
+/webstorage/storage_session_window_open.window.html: OK
+	A new window to make sure there is a copy of the previous window's sessionStorage, and that they diverge after a change: FAIL
+/webstorage/storage_session_window_reopen.window.html: OK
+	ensure that re-opening a named window doesn't copy sessionStorage: FAIL
+/webstorage/storage_set_value_enumerate.window.html: OK
+	enumerate a localStorage object with the key and get the values: PASS
+	enumerate a sessionStorage object with the key and get the values: PASS
+/webstorage/storage_setitem.window.html: OK
+	localStorage key containing null: PASS
+	localStorage value containing null: PASS
+	localStorage.setItem(): PASS
+	localStorage.setItem(_, null): PASS
+	localStorage.setItem(_, undefined): PASS
+	localStorage.setItem(null, _): PASS
+	localStorage.setItem(undefined, _): PASS
+	localStorage.setItem({ throws }): PASS
+	localStorage[" "]: PASS
+	localStorage["!"]: PASS
+	localStorage["#"]: PASS
+	localStorage["$"]: PASS
+	localStorage["%"]: PASS
+	localStorage["&"]: PASS
+	localStorage["'"]: PASS
+	localStorage["("]: PASS
+	localStorage[")"]: PASS
+	localStorage["*"]: PASS
+	localStorage["+"]: PASS
+	localStorage[","]: PASS
+	localStorage["-"]: PASS
+	localStorage["."]: PASS
+	localStorage["/"]: PASS
+	localStorage["0"]: PASS
+	localStorage["1"]: PASS
+	localStorage["2"]: PASS
+	localStorage["3"]: PASS
+	localStorage["4"]: PASS
+	localStorage["5"]: PASS
+	localStorage["6"]: PASS
+	localStorage["7"]: PASS
+	localStorage["8"]: PASS
+	localStorage["9"]: PASS
+	localStorage[":"]: PASS
+	localStorage[";"]: PASS
+	localStorage["<"]: PASS
+	localStorage["="]: PASS
+	localStorage[">"]: PASS
+	localStorage["?"]: PASS
+	localStorage["@"]: PASS
+	localStorage["A"]: PASS
+	localStorage["B"]: PASS
+	localStorage["C"]: PASS
+	localStorage["D"]: PASS
+	localStorage["E"]: PASS
+	localStorage["F"]: PASS
+	localStorage["G"]: PASS
+	localStorage["H"]: PASS
+	localStorage["I"]: PASS
+	localStorage["J"]: PASS
+	localStorage["K"]: PASS
+	localStorage["L"]: PASS
+	localStorage["M"]: PASS
+	localStorage["N"]: PASS
+	localStorage["O"]: PASS
+	localStorage["P"]: PASS
+	localStorage["Q"]: PASS
+	localStorage["R"]: PASS
+	localStorage["S"]: PASS
+	localStorage["T"]: PASS
+	localStorage["U"]: PASS
+	localStorage["U+d800"]: FAIL
+	localStorage["U+d83ca"]: FAIL
+	localStorage["U+dbff"]: FAIL
+	localStorage["U+dc00"]: FAIL
+	localStorage["U+dfff"]: FAIL
+	localStorage["V"]: PASS
+	localStorage["W"]: PASS
+	localStorage["X"]: PASS
+	localStorage["Y"]: PASS
+	localStorage["Z"]: PASS
+	localStorage["["]: PASS
+	localStorage["\\""]: PASS
+	localStorage["\\0"]: PASS
+	localStorage["\\\\"]: PASS
+	localStorage["\\b"]: PASS
+	localStorage["\\f"]: PASS
+	localStorage["\\n"]: PASS
+	localStorage["\\r"]: PASS
+	localStorage["\\t"]: PASS
+	localStorage["\\ufffd"]: PASS
+	localStorage["\\ufffe"]: PASS
+	localStorage["\\uffff"]: PASS
+	localStorage["\\v"]: PASS
+	localStorage["\\x01"]: PASS
+	localStorage["\\x02"]: PASS
+	localStorage["\\x03"]: PASS
+	localStorage["\\x04"]: PASS
+	localStorage["\\x05"]: PASS
+	localStorage["\\x06"]: PASS
+	localStorage["\\x07"]: PASS
+	localStorage["\\x0e"]: PASS
+	localStorage["\\x0f"]: PASS
+	localStorage["\\x10"]: PASS
+	localStorage["\\x11"]: PASS
+	localStorage["\\x12"]: PASS
+	localStorage["\\x13"]: PASS
+	localStorage["\\x14"]: PASS
+	localStorage["\\x15"]: PASS
+	localStorage["\\x16"]: PASS
+	localStorage["\\x17"]: PASS
+	localStorage["\\x18"]: PASS
+	localStorage["\\x19"]: PASS
+	localStorage["\\x1a"]: PASS
+	localStorage["\\x1b"]: PASS
+	localStorage["\\x1c"]: PASS
+	localStorage["\\x1d"]: PASS
+	localStorage["\\x1e"]: PASS
+	localStorage["\\x1f"]: PASS
+	localStorage["]"]: PASS
+	localStorage["^"]: PASS
+	localStorage["_"]: PASS
+	localStorage["`"]: PASS
+	localStorage["a"]: PASS
+	localStorage["aU+df4d"]: FAIL
+	localStorage["b"]: PASS
+	localStorage["c"]: PASS
+	localStorage["d"]: PASS
+	localStorage["e"]: PASS
+	localStorage["f"]: PASS
+	localStorage["g"]: PASS
+	localStorage["h"]: PASS
+	localStorage["i"]: PASS
+	localStorage["j"]: PASS
+	localStorage["k"]: PASS
+	localStorage["l"]: PASS
+	localStorage["m"]: PASS
+	localStorage["n"]: PASS
+	localStorage["o"]: PASS
+	localStorage["p"]: PASS
+	localStorage["q"]: PASS
+	localStorage["r"]: PASS
+	localStorage["s"]: PASS
+	localStorage["t"]: PASS
+	localStorage["u"]: PASS
+	localStorage["v"]: PASS
+	localStorage["w"]: PASS
+	localStorage["x"]: PASS
+	localStorage["y"]: PASS
+	localStorage["z"]: PASS
+	localStorage["{"]: PASS
+	localStorage["|"]: PASS
+	localStorage["}"]: PASS
+	localStorage["~"]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[""]: PASS
+	localStorage[" "]: PASS
+	localStorage["¡"]: PASS
+	localStorage["¢"]: PASS
+	localStorage["£"]: PASS
+	localStorage["¤"]: PASS
+	localStorage["¥"]: PASS
+	localStorage["¦"]: PASS
+	localStorage["§"]: PASS
+	localStorage["¨"]: PASS
+	localStorage["©"]: PASS
+	localStorage["ª"]: PASS
+	localStorage["«"]: PASS
+	localStorage["¬"]: PASS
+	localStorage["­"]: PASS
+	localStorage["®"]: PASS
+	localStorage["¯"]: PASS
+	localStorage["°"]: PASS
+	localStorage["±"]: PASS
+	localStorage["²"]: PASS
+	localStorage["³"]: PASS
+	localStorage["´"]: PASS
+	localStorage["µ"]: PASS
+	localStorage["¶"]: PASS
+	localStorage["·"]: PASS
+	localStorage["¸"]: PASS
+	localStorage["¹"]: PASS
+	localStorage["º"]: PASS
+	localStorage["»"]: PASS
+	localStorage["¼"]: PASS
+	localStorage["½"]: PASS
+	localStorage["¾"]: PASS
+	localStorage["¿"]: PASS
+	localStorage["À"]: PASS
+	localStorage["Á"]: PASS
+	localStorage["Â"]: PASS
+	localStorage["Ã"]: PASS
+	localStorage["Ä"]: PASS
+	localStorage["Å"]: PASS
+	localStorage["Æ"]: PASS
+	localStorage["Ç"]: PASS
+	localStorage["È"]: PASS
+	localStorage["É"]: PASS
+	localStorage["Ê"]: PASS
+	localStorage["Ë"]: PASS
+	localStorage["Ì"]: PASS
+	localStorage["Í"]: PASS
+	localStorage["Î"]: PASS
+	localStorage["Ï"]: PASS
+	localStorage["Ð"]: PASS
+	localStorage["Ñ"]: PASS
+	localStorage["Ò"]: PASS
+	localStorage["Ó"]: PASS
+	localStorage["Ô"]: PASS
+	localStorage["Õ"]: PASS
+	localStorage["Ö"]: PASS
+	localStorage["×"]: PASS
+	localStorage["Ø"]: PASS
+	localStorage["Ù"]: PASS
+	localStorage["Ú"]: PASS
+	localStorage["Û"]: PASS
+	localStorage["Ü"]: PASS
+	localStorage["Ý"]: PASS
+	localStorage["Þ"]: PASS
+	localStorage["ß"]: PASS
+	localStorage["à"]: PASS
+	localStorage["á"]: PASS
+	localStorage["â"]: PASS
+	localStorage["ã"]: PASS
+	localStorage["ä"]: PASS
+	localStorage["å"]: PASS
+	localStorage["æ"]: PASS
+	localStorage["ç"]: PASS
+	localStorage["è"]: PASS
+	localStorage["é"]: PASS
+	localStorage["ê"]: PASS
+	localStorage["ë"]: PASS
+	localStorage["ì"]: PASS
+	localStorage["í"]: PASS
+	localStorage["î"]: PASS
+	localStorage["ï"]: PASS
+	localStorage["ð"]: PASS
+	localStorage["ñ"]: PASS
+	localStorage["ò"]: PASS
+	localStorage["ó"]: PASS
+	localStorage["ô"]: PASS
+	localStorage["õ"]: PASS
+	localStorage["ö"]: PASS
+	localStorage["÷"]: PASS
+	localStorage["ø"]: PASS
+	localStorage["ù"]: PASS
+	localStorage["ú"]: PASS
+	localStorage["û"]: PASS
+	localStorage["ü"]: PASS
+	localStorage["ý"]: PASS
+	localStorage["þ"]: PASS
+	localStorage["ÿ"]: PASS
+	localStorage["퟿"]: PASS
+	localStorage[""]: PASS
+	localStorage["🍍"]: PASS
+	localStorage["􏿿"]: PASS
+	localStorage[]: PASS
+	localStorage[] = " ": PASS
+	localStorage[] = "!": PASS
+	localStorage[] = "#": PASS
+	localStorage[] = "$": PASS
+	localStorage[] = "%": PASS
+	localStorage[] = "&": PASS
+	localStorage[] = "'": PASS
+	localStorage[] = "(": PASS
+	localStorage[] = ")": PASS
+	localStorage[] = "*": PASS
+	localStorage[] = "+": PASS
+	localStorage[] = ",": PASS
+	localStorage[] = "-": PASS
+	localStorage[] = ".": PASS
+	localStorage[] = "/": PASS
+	localStorage[] = "0": PASS
+	localStorage[] = "1": PASS
+	localStorage[] = "2": PASS
+	localStorage[] = "3": PASS
+	localStorage[] = "4": PASS
+	localStorage[] = "5": PASS
+	localStorage[] = "6": PASS
+	localStorage[] = "7": PASS
+	localStorage[] = "8": PASS
+	localStorage[] = "9": PASS
+	localStorage[] = ":": PASS
+	localStorage[] = ";": PASS
+	localStorage[] = "<": PASS
+	localStorage[] = "=": PASS
+	localStorage[] = ">": PASS
+	localStorage[] = "?": PASS
+	localStorage[] = "@": PASS
+	localStorage[] = "A": PASS
+	localStorage[] = "B": PASS
+	localStorage[] = "C": PASS
+	localStorage[] = "D": PASS
+	localStorage[] = "E": PASS
+	localStorage[] = "F": PASS
+	localStorage[] = "G": PASS
+	localStorage[] = "H": PASS
+	localStorage[] = "I": PASS
+	localStorage[] = "J": PASS
+	localStorage[] = "K": PASS
+	localStorage[] = "L": PASS
+	localStorage[] = "M": PASS
+	localStorage[] = "N": PASS
+	localStorage[] = "O": PASS
+	localStorage[] = "P": PASS
+	localStorage[] = "Q": PASS
+	localStorage[] = "R": PASS
+	localStorage[] = "S": PASS
+	localStorage[] = "T": PASS
+	localStorage[] = "U": PASS
+	localStorage[] = "U+d800": FAIL
+	localStorage[] = "U+d83ca": FAIL
+	localStorage[] = "U+dbff": FAIL
+	localStorage[] = "U+dc00": FAIL
+	localStorage[] = "U+dfff": FAIL
+	localStorage[] = "V": PASS
+	localStorage[] = "W": PASS
+	localStorage[] = "X": PASS
+	localStorage[] = "Y": PASS
+	localStorage[] = "Z": PASS
+	localStorage[] = "[": PASS
+	localStorage[] = "\\"": PASS
+	localStorage[] = "\\0": PASS
+	localStorage[] = "\\\\": PASS
+	localStorage[] = "\\b": PASS
+	localStorage[] = "\\f": PASS
+	localStorage[] = "\\n": PASS
+	localStorage[] = "\\r": PASS
+	localStorage[] = "\\t": PASS
+	localStorage[] = "\\ufffd": PASS
+	localStorage[] = "\\ufffe": PASS
+	localStorage[] = "\\uffff": PASS
+	localStorage[] = "\\v": PASS
+	localStorage[] = "\\x01": PASS
+	localStorage[] = "\\x02": PASS
+	localStorage[] = "\\x03": PASS
+	localStorage[] = "\\x04": PASS
+	localStorage[] = "\\x05": PASS
+	localStorage[] = "\\x06": PASS
+	localStorage[] = "\\x07": PASS
+	localStorage[] = "\\x0e": PASS
+	localStorage[] = "\\x0f": PASS
+	localStorage[] = "\\x10": PASS
+	localStorage[] = "\\x11": PASS
+	localStorage[] = "\\x12": PASS
+	localStorage[] = "\\x13": PASS
+	localStorage[] = "\\x14": PASS
+	localStorage[] = "\\x15": PASS
+	localStorage[] = "\\x16": PASS
+	localStorage[] = "\\x17": PASS
+	localStorage[] = "\\x18": PASS
+	localStorage[] = "\\x19": PASS
+	localStorage[] = "\\x1a": PASS
+	localStorage[] = "\\x1b": PASS
+	localStorage[] = "\\x1c": PASS
+	localStorage[] = "\\x1d": PASS
+	localStorage[] = "\\x1e": PASS
+	localStorage[] = "\\x1f": PASS
+	localStorage[] = "]": PASS
+	localStorage[] = "^": PASS
+	localStorage[] = "_": PASS
+	localStorage[] = "`": PASS
+	localStorage[] = "a": PASS
+	localStorage[] = "aU+df4d": FAIL
+	localStorage[] = "b": PASS
+	localStorage[] = "c": PASS
+	localStorage[] = "d": PASS
+	localStorage[] = "e": PASS
+	localStorage[] = "f": PASS
+	localStorage[] = "g": PASS
+	localStorage[] = "h": PASS
+	localStorage[] = "i": PASS
+	localStorage[] = "j": PASS
+	localStorage[] = "k": PASS
+	localStorage[] = "l": PASS
+	localStorage[] = "m": PASS
+	localStorage[] = "n": PASS
+	localStorage[] = "o": PASS
+	localStorage[] = "p": PASS
+	localStorage[] = "q": PASS
+	localStorage[] = "r": PASS
+	localStorage[] = "s": PASS
+	localStorage[] = "t": PASS
+	localStorage[] = "u": PASS
+	localStorage[] = "v": PASS
+	localStorage[] = "w": PASS
+	localStorage[] = "x": PASS
+	localStorage[] = "y": PASS
+	localStorage[] = "z": PASS
+	localStorage[] = "{": PASS
+	localStorage[] = "|": PASS
+	localStorage[] = "}": PASS
+	localStorage[] = "~": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "": PASS
+	localStorage[] = " ": PASS
+	localStorage[] = "¡": PASS
+	localStorage[] = "¢": PASS
+	localStorage[] = "£": PASS
+	localStorage[] = "¤": PASS
+	localStorage[] = "¥": PASS
+	localStorage[] = "¦": PASS
+	localStorage[] = "§": PASS
+	localStorage[] = "¨": PASS
+	localStorage[] = "©": PASS
+	localStorage[] = "ª": PASS
+	localStorage[] = "«": PASS
+	localStorage[] = "¬": PASS
+	localStorage[] = "­": PASS
+	localStorage[] = "®": PASS
+	localStorage[] = "¯": PASS
+	localStorage[] = "°": PASS
+	localStorage[] = "±": PASS
+	localStorage[] = "²": PASS
+	localStorage[] = "³": PASS
+	localStorage[] = "´": PASS
+	localStorage[] = "µ": PASS
+	localStorage[] = "¶": PASS
+	localStorage[] = "·": PASS
+	localStorage[] = "¸": PASS
+	localStorage[] = "¹": PASS
+	localStorage[] = "º": PASS
+	localStorage[] = "»": PASS
+	localStorage[] = "¼": PASS
+	localStorage[] = "½": PASS
+	localStorage[] = "¾": PASS
+	localStorage[] = "¿": PASS
+	localStorage[] = "À": PASS
+	localStorage[] = "Á": PASS
+	localStorage[] = "Â": PASS
+	localStorage[] = "Ã": PASS
+	localStorage[] = "Ä": PASS
+	localStorage[] = "Å": PASS
+	localStorage[] = "Æ": PASS
+	localStorage[] = "Ç": PASS
+	localStorage[] = "È": PASS
+	localStorage[] = "É": PASS
+	localStorage[] = "Ê": PASS
+	localStorage[] = "Ë": PASS
+	localStorage[] = "Ì": PASS
+	localStorage[] = "Í": PASS
+	localStorage[] = "Î": PASS
+	localStorage[] = "Ï": PASS
+	localStorage[] = "Ð": PASS
+	localStorage[] = "Ñ": PASS
+	localStorage[] = "Ò": PASS
+	localStorage[] = "Ó": PASS
+	localStorage[] = "Ô": PASS
+	localStorage[] = "Õ": PASS
+	localStorage[] = "Ö": PASS
+	localStorage[] = "×": PASS
+	localStorage[] = "Ø": PASS
+	localStorage[] = "Ù": PASS
+	localStorage[] = "Ú": PASS
+	localStorage[] = "Û": PASS
+	localStorage[] = "Ü": PASS
+	localStorage[] = "Ý": PASS
+	localStorage[] = "Þ": PASS
+	localStorage[] = "ß": PASS
+	localStorage[] = "à": PASS
+	localStorage[] = "á": PASS
+	localStorage[] = "â": PASS
+	localStorage[] = "ã": PASS
+	localStorage[] = "ä": PASS
+	localStorage[] = "å": PASS
+	localStorage[] = "æ": PASS
+	localStorage[] = "ç": PASS
+	localStorage[] = "è": PASS
+	localStorage[] = "é": PASS
+	localStorage[] = "ê": PASS
+	localStorage[] = "ë": PASS
+	localStorage[] = "ì": PASS
+	localStorage[] = "í": PASS
+	localStorage[] = "î": PASS
+	localStorage[] = "ï": PASS
+	localStorage[] = "ð": PASS
+	localStorage[] = "ñ": PASS
+	localStorage[] = "ò": PASS
+	localStorage[] = "ó": PASS
+	localStorage[] = "ô": PASS
+	localStorage[] = "õ": PASS
+	localStorage[] = "ö": PASS
+	localStorage[] = "÷": PASS
+	localStorage[] = "ø": PASS
+	localStorage[] = "ù": PASS
+	localStorage[] = "ú": PASS
+	localStorage[] = "û": PASS
+	localStorage[] = "ü": PASS
+	localStorage[] = "ý": PASS
+	localStorage[] = "þ": PASS
+	localStorage[] = "ÿ": PASS
+	localStorage[] = "퟿": PASS
+	localStorage[] = "": PASS
+	localStorage[] = "🍍": PASS
+	localStorage[] = "􏿿": PASS
+	localStorage[] = null: PASS
+	localStorage[] = undefined: PASS
+	localStorage[] = { throws }: PASS
+	localStorage[] update: PASS
+	localStorage[null]: PASS
+	localStorage[undefined]: PASS
+	sessionStorage key containing null: PASS
+	sessionStorage value containing null: PASS
+	sessionStorage.setItem(): PASS
+	sessionStorage.setItem(_, null): PASS
+	sessionStorage.setItem(_, undefined): PASS
+	sessionStorage.setItem(null, _): PASS
+	sessionStorage.setItem(undefined, _): PASS
+	sessionStorage.setItem({ throws }): PASS
+	sessionStorage[" "]: PASS
+	sessionStorage["!"]: PASS
+	sessionStorage["#"]: PASS
+	sessionStorage["$"]: PASS
+	sessionStorage["%"]: PASS
+	sessionStorage["&"]: PASS
+	sessionStorage["'"]: PASS
+	sessionStorage["("]: PASS
+	sessionStorage[")"]: PASS
+	sessionStorage["*"]: PASS
+	sessionStorage["+"]: PASS
+	sessionStorage[","]: PASS
+	sessionStorage["-"]: PASS
+	sessionStorage["."]: PASS
+	sessionStorage["/"]: PASS
+	sessionStorage["0"]: PASS
+	sessionStorage["1"]: PASS
+	sessionStorage["2"]: PASS
+	sessionStorage["3"]: PASS
+	sessionStorage["4"]: PASS
+	sessionStorage["5"]: PASS
+	sessionStorage["6"]: PASS
+	sessionStorage["7"]: PASS
+	sessionStorage["8"]: PASS
+	sessionStorage["9"]: PASS
+	sessionStorage[":"]: PASS
+	sessionStorage[";"]: PASS
+	sessionStorage["<"]: PASS
+	sessionStorage["="]: PASS
+	sessionStorage[">"]: PASS
+	sessionStorage["?"]: PASS
+	sessionStorage["@"]: PASS
+	sessionStorage["A"]: PASS
+	sessionStorage["B"]: PASS
+	sessionStorage["C"]: PASS
+	sessionStorage["D"]: PASS
+	sessionStorage["E"]: PASS
+	sessionStorage["F"]: PASS
+	sessionStorage["G"]: PASS
+	sessionStorage["H"]: PASS
+	sessionStorage["I"]: PASS
+	sessionStorage["J"]: PASS
+	sessionStorage["K"]: PASS
+	sessionStorage["L"]: PASS
+	sessionStorage["M"]: PASS
+	sessionStorage["N"]: PASS
+	sessionStorage["O"]: PASS
+	sessionStorage["P"]: PASS
+	sessionStorage["Q"]: PASS
+	sessionStorage["R"]: PASS
+	sessionStorage["S"]: PASS
+	sessionStorage["T"]: PASS
+	sessionStorage["U"]: PASS
+	sessionStorage["U+d800"]: FAIL
+	sessionStorage["U+d83ca"]: FAIL
+	sessionStorage["U+dbff"]: FAIL
+	sessionStorage["U+dc00"]: FAIL
+	sessionStorage["U+dfff"]: FAIL
+	sessionStorage["V"]: PASS
+	sessionStorage["W"]: PASS
+	sessionStorage["X"]: PASS
+	sessionStorage["Y"]: PASS
+	sessionStorage["Z"]: PASS
+	sessionStorage["["]: PASS
+	sessionStorage["\\""]: PASS
+	sessionStorage["\\0"]: PASS
+	sessionStorage["\\\\"]: PASS
+	sessionStorage["\\b"]: PASS
+	sessionStorage["\\f"]: PASS
+	sessionStorage["\\n"]: PASS
+	sessionStorage["\\r"]: PASS
+	sessionStorage["\\t"]: PASS
+	sessionStorage["\\ufffd"]: PASS
+	sessionStorage["\\ufffe"]: PASS
+	sessionStorage["\\uffff"]: PASS
+	sessionStorage["\\v"]: PASS
+	sessionStorage["\\x01"]: PASS
+	sessionStorage["\\x02"]: PASS
+	sessionStorage["\\x03"]: PASS
+	sessionStorage["\\x04"]: PASS
+	sessionStorage["\\x05"]: PASS
+	sessionStorage["\\x06"]: PASS
+	sessionStorage["\\x07"]: PASS
+	sessionStorage["\\x0e"]: PASS
+	sessionStorage["\\x0f"]: PASS
+	sessionStorage["\\x10"]: PASS
+	sessionStorage["\\x11"]: PASS
+	sessionStorage["\\x12"]: PASS
+	sessionStorage["\\x13"]: PASS
+	sessionStorage["\\x14"]: PASS
+	sessionStorage["\\x15"]: PASS
+	sessionStorage["\\x16"]: PASS
+	sessionStorage["\\x17"]: PASS
+	sessionStorage["\\x18"]: PASS
+	sessionStorage["\\x19"]: PASS
+	sessionStorage["\\x1a"]: PASS
+	sessionStorage["\\x1b"]: PASS
+	sessionStorage["\\x1c"]: PASS
+	sessionStorage["\\x1d"]: PASS
+	sessionStorage["\\x1e"]: PASS
+	sessionStorage["\\x1f"]: PASS
+	sessionStorage["]"]: PASS
+	sessionStorage["^"]: PASS
+	sessionStorage["_"]: PASS
+	sessionStorage["`"]: PASS
+	sessionStorage["a"]: PASS
+	sessionStorage["aU+df4d"]: FAIL
+	sessionStorage["b"]: PASS
+	sessionStorage["c"]: PASS
+	sessionStorage["d"]: PASS
+	sessionStorage["e"]: PASS
+	sessionStorage["f"]: PASS
+	sessionStorage["g"]: PASS
+	sessionStorage["h"]: PASS
+	sessionStorage["i"]: PASS
+	sessionStorage["j"]: PASS
+	sessionStorage["k"]: PASS
+	sessionStorage["l"]: PASS
+	sessionStorage["m"]: PASS
+	sessionStorage["n"]: PASS
+	sessionStorage["o"]: PASS
+	sessionStorage["p"]: PASS
+	sessionStorage["q"]: PASS
+	sessionStorage["r"]: PASS
+	sessionStorage["s"]: PASS
+	sessionStorage["t"]: PASS
+	sessionStorage["u"]: PASS
+	sessionStorage["v"]: PASS
+	sessionStorage["w"]: PASS
+	sessionStorage["x"]: PASS
+	sessionStorage["y"]: PASS
+	sessionStorage["z"]: PASS
+	sessionStorage["{"]: PASS
+	sessionStorage["|"]: PASS
+	sessionStorage["}"]: PASS
+	sessionStorage["~"]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage[" "]: PASS
+	sessionStorage["¡"]: PASS
+	sessionStorage["¢"]: PASS
+	sessionStorage["£"]: PASS
+	sessionStorage["¤"]: PASS
+	sessionStorage["¥"]: PASS
+	sessionStorage["¦"]: PASS
+	sessionStorage["§"]: PASS
+	sessionStorage["¨"]: PASS
+	sessionStorage["©"]: PASS
+	sessionStorage["ª"]: PASS
+	sessionStorage["«"]: PASS
+	sessionStorage["¬"]: PASS
+	sessionStorage["­"]: PASS
+	sessionStorage["®"]: PASS
+	sessionStorage["¯"]: PASS
+	sessionStorage["°"]: PASS
+	sessionStorage["±"]: PASS
+	sessionStorage["²"]: PASS
+	sessionStorage["³"]: PASS
+	sessionStorage["´"]: PASS
+	sessionStorage["µ"]: PASS
+	sessionStorage["¶"]: PASS
+	sessionStorage["·"]: PASS
+	sessionStorage["¸"]: PASS
+	sessionStorage["¹"]: PASS
+	sessionStorage["º"]: PASS
+	sessionStorage["»"]: PASS
+	sessionStorage["¼"]: PASS
+	sessionStorage["½"]: PASS
+	sessionStorage["¾"]: PASS
+	sessionStorage["¿"]: PASS
+	sessionStorage["À"]: PASS
+	sessionStorage["Á"]: PASS
+	sessionStorage["Â"]: PASS
+	sessionStorage["Ã"]: PASS
+	sessionStorage["Ä"]: PASS
+	sessionStorage["Å"]: PASS
+	sessionStorage["Æ"]: PASS
+	sessionStorage["Ç"]: PASS
+	sessionStorage["È"]: PASS
+	sessionStorage["É"]: PASS
+	sessionStorage["Ê"]: PASS
+	sessionStorage["Ë"]: PASS
+	sessionStorage["Ì"]: PASS
+	sessionStorage["Í"]: PASS
+	sessionStorage["Î"]: PASS
+	sessionStorage["Ï"]: PASS
+	sessionStorage["Ð"]: PASS
+	sessionStorage["Ñ"]: PASS
+	sessionStorage["Ò"]: PASS
+	sessionStorage["Ó"]: PASS
+	sessionStorage["Ô"]: PASS
+	sessionStorage["Õ"]: PASS
+	sessionStorage["Ö"]: PASS
+	sessionStorage["×"]: PASS
+	sessionStorage["Ø"]: PASS
+	sessionStorage["Ù"]: PASS
+	sessionStorage["Ú"]: PASS
+	sessionStorage["Û"]: PASS
+	sessionStorage["Ü"]: PASS
+	sessionStorage["Ý"]: PASS
+	sessionStorage["Þ"]: PASS
+	sessionStorage["ß"]: PASS
+	sessionStorage["à"]: PASS
+	sessionStorage["á"]: PASS
+	sessionStorage["â"]: PASS
+	sessionStorage["ã"]: PASS
+	sessionStorage["ä"]: PASS
+	sessionStorage["å"]: PASS
+	sessionStorage["æ"]: PASS
+	sessionStorage["ç"]: PASS
+	sessionStorage["è"]: PASS
+	sessionStorage["é"]: PASS
+	sessionStorage["ê"]: PASS
+	sessionStorage["ë"]: PASS
+	sessionStorage["ì"]: PASS
+	sessionStorage["í"]: PASS
+	sessionStorage["î"]: PASS
+	sessionStorage["ï"]: PASS
+	sessionStorage["ð"]: PASS
+	sessionStorage["ñ"]: PASS
+	sessionStorage["ò"]: PASS
+	sessionStorage["ó"]: PASS
+	sessionStorage["ô"]: PASS
+	sessionStorage["õ"]: PASS
+	sessionStorage["ö"]: PASS
+	sessionStorage["÷"]: PASS
+	sessionStorage["ø"]: PASS
+	sessionStorage["ù"]: PASS
+	sessionStorage["ú"]: PASS
+	sessionStorage["û"]: PASS
+	sessionStorage["ü"]: PASS
+	sessionStorage["ý"]: PASS
+	sessionStorage["þ"]: PASS
+	sessionStorage["ÿ"]: PASS
+	sessionStorage["퟿"]: PASS
+	sessionStorage[""]: PASS
+	sessionStorage["🍍"]: PASS
+	sessionStorage["􏿿"]: PASS
+	sessionStorage[]: PASS
+	sessionStorage[] = " ": PASS
+	sessionStorage[] = "!": PASS
+	sessionStorage[] = "#": PASS
+	sessionStorage[] = "$": PASS
+	sessionStorage[] = "%": PASS
+	sessionStorage[] = "&": PASS
+	sessionStorage[] = "'": PASS
+	sessionStorage[] = "(": PASS
+	sessionStorage[] = ")": PASS
+	sessionStorage[] = "*": PASS
+	sessionStorage[] = "+": PASS
+	sessionStorage[] = ",": PASS
+	sessionStorage[] = "-": PASS
+	sessionStorage[] = ".": PASS
+	sessionStorage[] = "/": PASS
+	sessionStorage[] = "0": PASS
+	sessionStorage[] = "1": PASS
+	sessionStorage[] = "2": PASS
+	sessionStorage[] = "3": PASS
+	sessionStorage[] = "4": PASS
+	sessionStorage[] = "5": PASS
+	sessionStorage[] = "6": PASS
+	sessionStorage[] = "7": PASS
+	sessionStorage[] = "8": PASS
+	sessionStorage[] = "9": PASS
+	sessionStorage[] = ":": PASS
+	sessionStorage[] = ";": PASS
+	sessionStorage[] = "<": PASS
+	sessionStorage[] = "=": PASS
+	sessionStorage[] = ">": PASS
+	sessionStorage[] = "?": PASS
+	sessionStorage[] = "@": PASS
+	sessionStorage[] = "A": PASS
+	sessionStorage[] = "B": PASS
+	sessionStorage[] = "C": PASS
+	sessionStorage[] = "D": PASS
+	sessionStorage[] = "E": PASS
+	sessionStorage[] = "F": PASS
+	sessionStorage[] = "G": PASS
+	sessionStorage[] = "H": PASS
+	sessionStorage[] = "I": PASS
+	sessionStorage[] = "J": PASS
+	sessionStorage[] = "K": PASS
+	sessionStorage[] = "L": PASS
+	sessionStorage[] = "M": PASS
+	sessionStorage[] = "N": PASS
+	sessionStorage[] = "O": PASS
+	sessionStorage[] = "P": PASS
+	sessionStorage[] = "Q": PASS
+	sessionStorage[] = "R": PASS
+	sessionStorage[] = "S": PASS
+	sessionStorage[] = "T": PASS
+	sessionStorage[] = "U": PASS
+	sessionStorage[] = "U+d800": FAIL
+	sessionStorage[] = "U+d83ca": FAIL
+	sessionStorage[] = "U+dbff": FAIL
+	sessionStorage[] = "U+dc00": FAIL
+	sessionStorage[] = "U+dfff": FAIL
+	sessionStorage[] = "V": PASS
+	sessionStorage[] = "W": PASS
+	sessionStorage[] = "X": PASS
+	sessionStorage[] = "Y": PASS
+	sessionStorage[] = "Z": PASS
+	sessionStorage[] = "[": PASS
+	sessionStorage[] = "\\"": PASS
+	sessionStorage[] = "\\0": PASS
+	sessionStorage[] = "\\\\": PASS
+	sessionStorage[] = "\\b": PASS
+	sessionStorage[] = "\\f": PASS
+	sessionStorage[] = "\\n": PASS
+	sessionStorage[] = "\\r": PASS
+	sessionStorage[] = "\\t": PASS
+	sessionStorage[] = "\\ufffd": PASS
+	sessionStorage[] = "\\ufffe": PASS
+	sessionStorage[] = "\\uffff": PASS
+	sessionStorage[] = "\\v": PASS
+	sessionStorage[] = "\\x01": PASS
+	sessionStorage[] = "\\x02": PASS
+	sessionStorage[] = "\\x03": PASS
+	sessionStorage[] = "\\x04": PASS
+	sessionStorage[] = "\\x05": PASS
+	sessionStorage[] = "\\x06": PASS
+	sessionStorage[] = "\\x07": PASS
+	sessionStorage[] = "\\x0e": PASS
+	sessionStorage[] = "\\x0f": PASS
+	sessionStorage[] = "\\x10": PASS
+	sessionStorage[] = "\\x11": PASS
+	sessionStorage[] = "\\x12": PASS
+	sessionStorage[] = "\\x13": PASS
+	sessionStorage[] = "\\x14": PASS
+	sessionStorage[] = "\\x15": PASS
+	sessionStorage[] = "\\x16": PASS
+	sessionStorage[] = "\\x17": PASS
+	sessionStorage[] = "\\x18": PASS
+	sessionStorage[] = "\\x19": PASS
+	sessionStorage[] = "\\x1a": PASS
+	sessionStorage[] = "\\x1b": PASS
+	sessionStorage[] = "\\x1c": PASS
+	sessionStorage[] = "\\x1d": PASS
+	sessionStorage[] = "\\x1e": PASS
+	sessionStorage[] = "\\x1f": PASS
+	sessionStorage[] = "]": PASS
+	sessionStorage[] = "^": PASS
+	sessionStorage[] = "_": PASS
+	sessionStorage[] = "`": PASS
+	sessionStorage[] = "a": PASS
+	sessionStorage[] = "aU+df4d": FAIL
+	sessionStorage[] = "b": PASS
+	sessionStorage[] = "c": PASS
+	sessionStorage[] = "d": PASS
+	sessionStorage[] = "e": PASS
+	sessionStorage[] = "f": PASS
+	sessionStorage[] = "g": PASS
+	sessionStorage[] = "h": PASS
+	sessionStorage[] = "i": PASS
+	sessionStorage[] = "j": PASS
+	sessionStorage[] = "k": PASS
+	sessionStorage[] = "l": PASS
+	sessionStorage[] = "m": PASS
+	sessionStorage[] = "n": PASS
+	sessionStorage[] = "o": PASS
+	sessionStorage[] = "p": PASS
+	sessionStorage[] = "q": PASS
+	sessionStorage[] = "r": PASS
+	sessionStorage[] = "s": PASS
+	sessionStorage[] = "t": PASS
+	sessionStorage[] = "u": PASS
+	sessionStorage[] = "v": PASS
+	sessionStorage[] = "w": PASS
+	sessionStorage[] = "x": PASS
+	sessionStorage[] = "y": PASS
+	sessionStorage[] = "z": PASS
+	sessionStorage[] = "{": PASS
+	sessionStorage[] = "|": PASS
+	sessionStorage[] = "}": PASS
+	sessionStorage[] = "~": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = " ": PASS
+	sessionStorage[] = "¡": PASS
+	sessionStorage[] = "¢": PASS
+	sessionStorage[] = "£": PASS
+	sessionStorage[] = "¤": PASS
+	sessionStorage[] = "¥": PASS
+	sessionStorage[] = "¦": PASS
+	sessionStorage[] = "§": PASS
+	sessionStorage[] = "¨": PASS
+	sessionStorage[] = "©": PASS
+	sessionStorage[] = "ª": PASS
+	sessionStorage[] = "«": PASS
+	sessionStorage[] = "¬": PASS
+	sessionStorage[] = "­": PASS
+	sessionStorage[] = "®": PASS
+	sessionStorage[] = "¯": PASS
+	sessionStorage[] = "°": PASS
+	sessionStorage[] = "±": PASS
+	sessionStorage[] = "²": PASS
+	sessionStorage[] = "³": PASS
+	sessionStorage[] = "´": PASS
+	sessionStorage[] = "µ": PASS
+	sessionStorage[] = "¶": PASS
+	sessionStorage[] = "·": PASS
+	sessionStorage[] = "¸": PASS
+	sessionStorage[] = "¹": PASS
+	sessionStorage[] = "º": PASS
+	sessionStorage[] = "»": PASS
+	sessionStorage[] = "¼": PASS
+	sessionStorage[] = "½": PASS
+	sessionStorage[] = "¾": PASS
+	sessionStorage[] = "¿": PASS
+	sessionStorage[] = "À": PASS
+	sessionStorage[] = "Á": PASS
+	sessionStorage[] = "Â": PASS
+	sessionStorage[] = "Ã": PASS
+	sessionStorage[] = "Ä": PASS
+	sessionStorage[] = "Å": PASS
+	sessionStorage[] = "Æ": PASS
+	sessionStorage[] = "Ç": PASS
+	sessionStorage[] = "È": PASS
+	sessionStorage[] = "É": PASS
+	sessionStorage[] = "Ê": PASS
+	sessionStorage[] = "Ë": PASS
+	sessionStorage[] = "Ì": PASS
+	sessionStorage[] = "Í": PASS
+	sessionStorage[] = "Î": PASS
+	sessionStorage[] = "Ï": PASS
+	sessionStorage[] = "Ð": PASS
+	sessionStorage[] = "Ñ": PASS
+	sessionStorage[] = "Ò": PASS
+	sessionStorage[] = "Ó": PASS
+	sessionStorage[] = "Ô": PASS
+	sessionStorage[] = "Õ": PASS
+	sessionStorage[] = "Ö": PASS
+	sessionStorage[] = "×": PASS
+	sessionStorage[] = "Ø": PASS
+	sessionStorage[] = "Ù": PASS
+	sessionStorage[] = "Ú": PASS
+	sessionStorage[] = "Û": PASS
+	sessionStorage[] = "Ü": PASS
+	sessionStorage[] = "Ý": PASS
+	sessionStorage[] = "Þ": PASS
+	sessionStorage[] = "ß": PASS
+	sessionStorage[] = "à": PASS
+	sessionStorage[] = "á": PASS
+	sessionStorage[] = "â": PASS
+	sessionStorage[] = "ã": PASS
+	sessionStorage[] = "ä": PASS
+	sessionStorage[] = "å": PASS
+	sessionStorage[] = "æ": PASS
+	sessionStorage[] = "ç": PASS
+	sessionStorage[] = "è": PASS
+	sessionStorage[] = "é": PASS
+	sessionStorage[] = "ê": PASS
+	sessionStorage[] = "ë": PASS
+	sessionStorage[] = "ì": PASS
+	sessionStorage[] = "í": PASS
+	sessionStorage[] = "î": PASS
+	sessionStorage[] = "ï": PASS
+	sessionStorage[] = "ð": PASS
+	sessionStorage[] = "ñ": PASS
+	sessionStorage[] = "ò": PASS
+	sessionStorage[] = "ó": PASS
+	sessionStorage[] = "ô": PASS
+	sessionStorage[] = "õ": PASS
+	sessionStorage[] = "ö": PASS
+	sessionStorage[] = "÷": PASS
+	sessionStorage[] = "ø": PASS
+	sessionStorage[] = "ù": PASS
+	sessionStorage[] = "ú": PASS
+	sessionStorage[] = "û": PASS
+	sessionStorage[] = "ü": PASS
+	sessionStorage[] = "ý": PASS
+	sessionStorage[] = "þ": PASS
+	sessionStorage[] = "ÿ": PASS
+	sessionStorage[] = "퟿": PASS
+	sessionStorage[] = "": PASS
+	sessionStorage[] = "🍍": PASS
+	sessionStorage[] = "􏿿": PASS
+	sessionStorage[] = null: PASS
+	sessionStorage[] = undefined: PASS
+	sessionStorage[] = { throws }: PASS
+	sessionStorage[] update: PASS
+	sessionStorage[null]: PASS
+	sessionStorage[undefined]: PASS
+/webstorage/storage_string_conversion.window.html: OK
+	localStorage only stores strings: PASS
+	sessionStorage only stores strings: PASS
+/webstorage/storage_supported_property_names.window.html: OK
+	Object.getOwnPropertyNames on localStorage Storage: PASS
+	Object.getOwnPropertyNames on localStorage storage with empty collection: PASS
+	Object.getOwnPropertyNames on sessionStorage Storage: PASS
+	Object.getOwnPropertyNames on sessionStorage storage with empty collection: PASS
+/webstorage/symbol-props.window.html: OK
+	localStorage: defineProperty + get: PASS
+	localStorage: defineProperty not configurable: PASS
+	localStorage: delete existing property: PASS
+	localStorage: delete non-existent property: PASS
+	localStorage: get with symbol on prototype: PASS
+	localStorage: plain set + get (loose): PASS
+	localStorage: plain set + get (strict): PASS
+	sessionStorage: defineProperty + get: PASS
+	sessionStorage: defineProperty not configurable: PASS
+	sessionStorage: delete existing property: PASS
+	sessionStorage: delete non-existent property: PASS
+	sessionStorage: get with symbol on prototype: PASS
+	sessionStorage: plain set + get (loose): PASS
+	sessionStorage: plain set + get (strict): PASS
