@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>JavaScript in Wren</title>
+<style>
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  body { max-width: 46rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+  h1 { font-size: 1.6rem; margin-bottom: .2rem; }
+  .lead { color: GrayText; margin-top: 0; }
+  section { border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 10px; padding: .8rem 1rem; margin: 1rem 0; }
+  h2 { font-size: 1.05rem; margin: 0 0 .5rem; }
+  button { font: inherit; padding: .3rem .9rem; border-radius: 6px; }
+  #count { font-weight: 700; font-variant-numeric: tabular-nums; }
+  #list li { margin: .1rem 0; }
+  .ok { color: #1a7f37; } .ko { color: #cf222e; }
+  code { font-family: Consolas, monospace; font-size: .92em; }
+  #facts td:first-child { padding-right: 1rem; color: GrayText; }
+</style>
+</head>
+<body>
+<h1>JavaScript, inside WebAssembly</h1>
+<p class="lead">This page is plain HTML and JavaScript. Wren runs its scripts in QuickJS-ng compiled to WebAssembly,
+one sandboxed instance per page; the DOM it touches is the browser's own.</p>
+
+<section>
+  <h2>Events</h2>
+  <button id="inc" type="button">Click me</button>
+  <span>clicked <span id="count">0</span> times</span>
+</section>
+
+<section>
+  <h2>Building the DOM</h2>
+  <ul id="list"></ul>
+</section>
+
+<section>
+  <h2>The realm</h2>
+  <table id="facts"></table>
+</section>
+
+<script>
+  "use strict";
+  const count = document.getElementById("count");
+  let n = 0;
+  document.getElementById("inc").addEventListener("click", () => { count.textContent = String(++n); });
+
+  const list = document.getElementById("list");
+  const items = ["a node per item, made with createElement", "inserted with appendChild", "styled through the DOM"];
+  for (const [i, text] of items.entries()) {
+    const li = document.createElement("li");
+    li.textContent = `${i + 1}. ${text}`;
+    list.appendChild(li);
+  }
+
+  const facts = document.getElementById("facts");
+  function fact(name, value) {
+    const tr = document.createElement("tr");
+    const a = document.createElement("td"), b = document.createElement("td");
+    a.textContent = name;
+    b.textContent = value;
+    tr.appendChild(a);
+    tr.appendChild(b);
+    facts.appendChild(tr);
+  }
+  fact("document.title", document.title);
+  fact("the body's interface", Object.prototype.toString.call(document.body));
+  fact("element prototypes", [HTMLDivElement, HTMLElement, Element, Node, EventTarget].map(c => c.name).join(" → "));
+  fact("ES2023+", [[3, 1, 2].toSorted().join(""), Object.groupBy([1, 2, 3], x => x % 2 ? "odd" : "even").odd.length, 2n ** 64n].join(", "));
+  Promise.resolve().then(() => fact("microtasks", "promise reactions run after the script"));
+</script>
+</body>
+</html>
