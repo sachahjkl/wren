@@ -277,6 +277,10 @@ Run 'p10k_resize_pacing' (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; Resize
 # resolution turns into 16 or 31 ms, and pauses let the compositor settle and record between steps)
 Run 'p10k_resize_drag' (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; ResizeDrag $h 6000 4 } $false
 Run 'p50k_resize_drag' (FileUrl $p50k) { param($h) Start-Sleep 20; Mark; ResizeDrag $h 6000 4 } $false
+# the same page with a media query on the width (as most sites have): every step restyles the whole page
+$p10kmq = Join-Path $out 'p10k_mq.html'
+if (-not (Test-Path $p10kmq)) { [IO.File]::WriteAllText($p10kmq, [IO.File]::ReadAllText($p10k).Replace('</style>', '@media (max-width: 400px) { h3 { font-size: 14px } }</style>')) }
+Run 'p10k_mq_resize_drag' (FileUrl $p10kmq) { param($h) Start-Sleep 5; Mark; ResizeDrag $h 6000 4 } $false
 Run 'anim_pacing'       (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
 Run 'transforms_pacing' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
 Run 'effects_pacing'    (FileUrl (Join-Path $site 'effects.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false

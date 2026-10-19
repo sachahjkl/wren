@@ -162,9 +162,38 @@ Pre_Predict :: struct {
 	chunks: int,
 }
 
+// What pre_predict finds from the boxes and their styles, kept for the next passes while neither changes (a resize:
+// only the widths change, and old_cw, read again from the boxes of the contexts that qualify).
+@(private)
+Pre_Keep :: struct {
+	key:   [3]u64,          // as Dl_Walks
+	boxes: [dynamic]Pre_Box,
+	plain: [dynamic]bool,
+	ifcs:  [dynamic]i32,    // the simple contexts
+}
+
 @(private)
 pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box {
 	l := c.l
+	keep := &l.pre_keep
+	if keep.key == dl_walks_key(l) && len(keep.boxes) == len(l.boxes) {
+		c.plain = keep.plain[:]
+		if c.inc != nil {
+			Stale :: struct { l: ^Layout, chunks: int }
+			st := Stale{l, clamp(len(keep.ifcs) / 512, 1, host.thread_pool_size(pool) * 4)}
+			host.parallel_for(pool, st.chunks, proc(data: rawptr, k: int) {
+				st := (^Stale)(data)
+				l := st.l
+				n := len(l.pre_keep.ifcs)
+				for i in l.pre_keep.ifcs[k * n / st.chunks:(k + 1) * n / st.chunks] {
+					b := &l.boxes[i]
+					l.pre_keep.boxes[i].old_cw = pre_stale(b) ? -1 : b.cache_in[0] - pb_w(b)
+				}
+			}, &st)
+		}
+		pre_widths(c, pred, keep.boxes[:], nil)
+		return keep.boxes[:]
+	}
 	pp := Pre_Predict{c = c, boxes = make([]Pre_Box, len(l.boxes), context.temp_allocator), plain = make([]bool, len(l.boxes), context.temp_allocator)}
 	c.plain = pp.plain
 	pp.chunks = clamp(len(l.boxes) / 1024, 1, host.thread_pool_size(pool) * 4)
@@ -218,10 +247,23 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 		}
 	}, &pp)
 
+	clear(&keep.ifcs)
+	pre_widths(c, pred, pp.boxes, &keep.ifcs)
+	keep.key = dl_walks_key(l)
+	resize(&keep.boxes, len(pp.boxes)); copy(keep.boxes[:], pp.boxes)
+	resize(&keep.plain, len(pp.plain)); copy(keep.plain[:], pp.plain)
+	return pp.boxes
+}
+
+// The predicted content widths (pred), from the viewport down; `ifcs`: collects the simple contexts.
+@(private)
+pre_widths :: proc(c: ^Ctx, pred: []f32, boxes: []Pre_Box, ifcs: ^[dynamic]i32) {
+	l := c.l
 	pred[0] = c.vp.x
 	for i in 1 ..< len(l.boxes) {
 		pred[i] = -1
-		x := &pp.boxes[i]
+		x := &boxes[i]
+		if ifcs != nil && x.simple { append(ifcs, i32(i)) }
 		if !x.follows { continue }
 		// parents come first, except after partial rebuilds (new boxes go at the end): not known then
 		p := x.parent
@@ -233,7 +275,6 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 		w := max(pcw - ml - mr, pbw)
 		pred[i] = max(w - pbw, 0)
 	}
-	return pp.boxes
 }
 
 // Horizontal margins (auto: 0) and border + padding of a block in flow against its parent's content width, as
@@ -566,6 +607,8 @@ pre_destroy :: proc(l: ^Layout) {
 	}
 	delete(l.pre_chunks)
 	l.pre_chunks = nil
+	delete(l.pre_keep.boxes); delete(l.pre_keep.plain); delete(l.pre_keep.ifcs)
+	l.pre_keep = {}
 }
 
 ////////////////////////////////

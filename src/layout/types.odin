@@ -402,6 +402,7 @@ Layout :: struct {
 	tree_order:   bool,                    // last full pass: the boxes are in tree order (finishing walks them as they are)
 	tree_gen:     u64,                     // bumped whenever boxes are made (full pass, partial rebuild)
 	dl_walks:     Dl_Walks,                // the page's own stacking context: its walks, kept while the boxes and styles stay
+	pre_keep:     Pre_Keep,                // what the layout threads found from the boxes' styles, likewise (parallel.odin)
 }
 
 // What building the display list of the page's stacking context finds by walking the whole box tree: its layers, and
