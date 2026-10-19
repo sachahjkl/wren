@@ -21,6 +21,7 @@ import "core:sync"
 import "core:thread"
 import win "core:sys/windows"
 import "vendor:directx/d3d11"
+import lay "wb:layout"
 
 foreign import dbghelp "system:dbghelp.lib"
 foreign import kernel32_prof "system:Kernel32.lib"
@@ -41,6 +42,16 @@ Frame_Rec :: struct {
 	dur:    [Phase]f32,
 	gpu_ms: f32,
 	items, insts, batches, elements: i32,
+	// the layout pass of this frame, if any: its kind and its steps (lay.Layout.stats: box tree, layout, finishing,
+	// display list, spatial index), and the paragraphs laid out ahead on the layout threads / taken
+	lay_pass:  lay.Pass_Kind,
+	lay_steps: [5]f32,
+	lay_pre:   [2]i32,
+}
+
+// Moments of the start-up, in ms since the process was created (prof_mark).
+Startup_Mark :: enum u8 {
+	Main, Prefs, Window, Shell, Navigation, Renderer, UI_Fonts, Loop, First_Frame, First_Present, First_Page_Paint,
 }
 
 when PROFILE {
@@ -90,9 +101,25 @@ Prof :: struct {
 	cur_phase: Phase,
 	cpu0_user, cpu0_kernel: u64,
 	wall0:     i64,
+	cur_lay:   Frame_Rec,         // the layout pass of the frame being measured (lay_* fields)
 }
 
 prof: Prof
+
+// QPC of each start-up moment (0: not reached). Recorded from the first line of main, before prof_init.
+startup_marks: [Startup_Mark]i64
+
+prof_mark :: proc(m: Startup_Mark) {
+	if startup_marks[m] == 0 { startup_marks[m] = qpc() }
+}
+
+// The layout pass just run (after layout_document).
+prof_layout :: proc(l: ^lay.Layout) {
+	if !prof.on { return }
+	prof.cur_lay.lay_pass = l.last_pass
+	prof.cur_lay.lay_steps = l.stats
+	prof.cur_lay.lay_pre = {i32(l.pre_counts[0]), i32(l.pre_counts[1])}
+}
 
 qpc :: proc() -> i64 {
 	v: win.LARGE_INTEGER
@@ -170,8 +197,10 @@ prof_end :: proc(p: Phase) {
 }
 
 prof_frame_begin :: proc() {
+	prof_mark(.First_Frame)
 	if !prof.on { return }
 	prof.acc = {}
+	prof.cur_lay = {}
 	prof_begin(.Frame)
 }
 
@@ -212,9 +241,13 @@ prof_gpu_collect :: proc(app: ^App) {
 }
 
 prof_frame_end :: proc(app: ^App, items, elements: int) {
+	prof_mark(.First_Present)
+	if items > 0 { prof_mark(.First_Page_Paint) }
 	if !prof.on { return }
 	prof_end(.Frame)
 	rec := Frame_Rec{t_ms = f32(f64(qpc() - prof.t0) * 1000 / prof.freq)}
+	rec.lay_pass, rec.lay_steps, rec.lay_pre = prof.cur_lay.lay_pass, prof.cur_lay.lay_steps, prof.cur_lay.lay_pre
+	prof.cur_lay = {}
 	for p in Phase { rec.dur[p] = f32(prof.acc[p]) }
 	rec.items, rec.elements = i32(items), i32(elements)
 	rec.insts, rec.batches = i32(len(app.dc.insts)), i32(len(app.dc.batches))
@@ -274,6 +307,8 @@ prof_report :: proc() {
 	last: Frame_Rec
 	if len(prof.frames) > 0 { last = prof.frames[len(prof.frames) - 1] }
 	fmt.sbprintf(&sb, "\nlast frame: %d layout items, %d instances, %d batches, %d styled elements\n", last.items, last.insts, last.batches, last.elements)
+	report_startup(&sb)
+	report_layout_passes(&sb)
 
 	if prof.sampling && prof.n_samples > 0 { report_samples(&sb) }
 
@@ -282,13 +317,78 @@ prof_report :: proc() {
 	csv := strings.builder_make(context.temp_allocator)
 	strings.write_string(&csv, "t_ms,gpu_ms,items,insts,batches,elements")
 	for p in Phase { fmt.sbprintf(&csv, ",%v", p) }
+	strings.write_string(&csv, ",lay_pass,lay_tree,lay_layout,lay_finish,lay_display,lay_bands,lay_ahead,lay_taken")
 	strings.write_byte(&csv, '\n')
 	for f in prof.frames {
 		fmt.sbprintf(&csv, "%.3f,%.3f,%d,%d,%d,%d", f.t_ms, f.gpu_ms, f.items, f.insts, f.batches, f.elements)
 		for p in Phase { fmt.sbprintf(&csv, ",%.3f", f.dur[p]) }
+		fmt.sbprintf(&csv, ",%v", f.lay_pass)
+		for s in f.lay_steps { fmt.sbprintf(&csv, ",%.3f", s) }
+		fmt.sbprintf(&csv, ",%d,%d", f.lay_pre[0], f.lay_pre[1])
 		strings.write_byte(&csv, '\n')
 	}
 	_ = os.write_entire_file(strings.concatenate({prof.out, ".csv"}, context.temp_allocator), transmute([]byte)strings.to_string(csv))
+}
+
+// Start-up moments since the process was created (its creation time, brought into the QPC time line).
+report_startup :: proc(sb: ^strings.Builder) {
+	c, e, k, u: win.FILETIME
+	win.GetProcessTimes(win.GetCurrentProcess(), &c, &e, &k, &u)
+	now_ft: win.FILETIME
+	win.GetSystemTimePreciseAsFileTime(&now_ft)
+	now_q := qpc()
+	since_ms := f64(filetime_u64(now_ft) - filetime_u64(c)) / 1e4
+	created := f64(now_q) - since_ms * prof.freq / 1000   // QPC of the process creation
+	at :: proc(q: i64, created, freq: f64) -> f64 { return (f64(q) - created) * 1000 / freq }
+	fmt.sbprintf(sb, "\n-- start-up (ms since the process was created)\n")
+	for m in Startup_Mark {
+		if startup_marks[m] == 0 { fmt.sbprintf(sb, "  %-17v        -\n", m); continue }
+		fmt.sbprintf(sb, "  %-17v %8.1f\n", m, at(startup_marks[m], created, prof.freq))
+	}
+	if startup_marks[.Navigation] != 0 && startup_marks[.First_Page_Paint] != 0 {
+		fmt.sbprintf(sb, "  navigation -> first page paint: %.1f ms\n", f64(startup_marks[.First_Page_Paint] - startup_marks[.Navigation]) * 1000 / prof.freq)
+	}
+	// the page as it ends up: the first frame that paints as many layout items as the last one
+	if n := len(prof.frames); n > 0 && prof.frames[n - 1].items > 0 {
+		final := prof.frames[n - 1].items
+		for f in prof.frames {
+			if f.items < final { continue }
+			t := at(prof.t0, created, prof.freq) + f64(f.t_ms)
+			fmt.sbprintf(sb, "  first frame with the page's final content (%d items): %.1f ms", final, t)
+			if startup_marks[.Navigation] != 0 { fmt.sbprintf(sb, " (navigation + %.1f ms)", t - at(startup_marks[.Navigation], created, prof.freq)) }
+			strings.write_byte(sb, '\n')
+			break
+		}
+	}
+}
+
+// Layout passes by kind: how many, and their steps (ms).
+report_layout_passes :: proc(sb: ^strings.Builder) {
+	STEPS :: [5]string{"tree", "layout", "finish", "display", "bands"}
+	steps := STEPS
+	fmt.sbprintf(sb, "\n-- layout passes (ms): %-8s %7s %8s %8s %8s\n", "step", "n", "p50", "mean", "max")
+	for kind in lay.Pass_Kind {
+		if kind == .None { continue }
+		n := 0
+		for f in prof.frames { if f.lay_pass == kind { n += 1 } }
+		if n == 0 { continue }
+		for name, si in steps {
+			v := make([dynamic]f64, context.temp_allocator)
+			for f in prof.frames { if f.lay_pass == kind { append(&v, f64(f.lay_steps[si])) } }
+			s := stat_of(v[:])
+			fmt.sbprintf(sb, "  %-11v %-8s %7d %8.3f %8.3f %8.3f\n", kind, name, s.n, s.p50, s.mean, s.max)
+		}
+	}
+	// every full pass, with the paragraphs laid out ahead on the layout threads
+	shown := 0
+	for f in prof.frames {
+		if f.lay_pass != .Full || shown >= 20 { continue }
+		shown += 1
+		total: f32
+		for s in f.lay_steps { total += s }
+		fmt.sbprintf(sb, "  full pass at %8.1f ms: %7.2f ms = tree %.2f + layout %.2f + finish %.2f + display %.2f + bands %.2f; paragraphs ahead %d, taken %d\n",
+			f.t_ms, total, f.lay_steps[0], f.lay_steps[1], f.lay_steps[2], f.lay_steps[3], f.lay_steps[4], f.lay_pre[0], f.lay_pre[1])
+	}
 }
 
 report_samples :: proc(sb: ^strings.Builder) {
@@ -362,6 +462,8 @@ report_samples :: proc(sb: ^strings.Builder) {
 } else {
 
 prof_init :: proc(app: ^App) {}
+prof_mark :: proc(m: Startup_Mark) {}
+prof_layout :: proc(l: ^lay.Layout) {}
 prof_begin :: proc(p: Phase) {}
 prof_end :: proc(p: Phase) {}
 prof_frame_begin :: proc() {}

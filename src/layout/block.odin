@@ -329,6 +329,7 @@ flow_blocks :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse_t
 	local: Strut
 	open := collapse_top && fc.open != nil
 	through = true
+	for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next { prefetch_fields(c.l.boxes[ch].cs, LAYOUT_FIELDS) }
 	for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next {
 		k := &c.l.boxes[ch]
 		strut := open ? fc.open : &local
@@ -343,7 +344,7 @@ flow_blocks :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse_t
 			place_float(c, ch, bi, cw, fc, ctop + y + (open ? 0 : strut_value(local)))
 			continue
 		}
-		resolve_box_model(c, k, cw)
+		if !pre_model(c, ch, k) { resolve_box_model(c, k, cw) }
 		k = &c.l.boxes[ch]
 		mt := k.margin[0]
 		if k.auto_t { mt = 0; k.margin[0] = 0 }

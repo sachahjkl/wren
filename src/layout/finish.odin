@@ -138,7 +138,14 @@ relative_offset :: proc(c: ^Ctx, b: ^Box) -> Vec2 {
 @(private)
 finish :: proc(c: ^Ctx) {
 	l := c.l
-	order := preorder(l)
+	order: []i32
+	if c.inc == nil && l.tree_order {
+		// a full pass made its boxes in tree order: no walk needed
+		order = make([]i32, len(l.boxes), context.temp_allocator)
+		for i in 0 ..< len(order) { order[i] = i32(i) }
+	} else {
+		order = preorder(l)
+	}
 
 	// coordinates
 	for x in order {
@@ -193,7 +200,9 @@ finish :: proc(c: ^Ctx) {
 		}
 		tp := &l.boxes[b.parent]
 		b.group = tp.group
-		if fx := box_effects(b.cs) + (isolate[x] ? Group_Effects{.Isolate} : {}); fx != {} {
+		fx := isolate[x] ? Group_Effects{.Isolate} : {}
+		if .Effects in b.flags { fx += box_effects(b.cs) }
+		if fx != {} {
 			append(&l.groups, Group{parent = b.group, box = x, alpha = max(b.cs.opacity, 0), effects = fx})
 			b.group = i32(len(l.groups) - 1)
 		}

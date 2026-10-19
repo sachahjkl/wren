@@ -41,17 +41,19 @@ build_bands :: proc(l: ^Layout, band_h: f32) {
 		b1 := clamp(int((r.max.y - sp.band0) / sp.band_h), b0, int(sp.band_count) - 1)
 		return int(sp.band_first) + b0, int(sp.band_first) + b1
 	}
-	for &it in l.items {
+	// the bands of each item, found once (the items are large: read them once more, not twice)
+	spans := make([][2]u32, len(l.items), context.temp_allocator)
+	for &it, i in l.items {
 		b0, b1 := span(&l.spaces[it.space], it.rect)
+		spans[i] = {u32(b0), u32(b1)}
 		for b in b0 ..= b1 { l.band_start[b + 1] += 1 }
 	}
 	for b in 1 ..< len(l.band_start) { l.band_start[b] += l.band_start[b - 1] }
 	clear(&l.band_items)
-	resize(&l.band_items, int(l.band_start[len(l.band_start) - 1]))
+	non_zero_resize(&l.band_items, int(l.band_start[len(l.band_start) - 1]))
 	fill := make([]u32, int(total), context.temp_allocator)
-	for &it, i in l.items {
-		b0, b1 := span(&l.spaces[it.space], it.rect)
-		for b in b0 ..= b1 {
+	for sp, i in spans {
+		for b in int(sp[0]) ..= int(sp[1]) {
 			l.band_items[int(l.band_start[b] + fill[b])] = u32(i)
 			fill[b] += 1
 		}

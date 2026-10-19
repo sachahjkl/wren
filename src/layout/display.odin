@@ -29,7 +29,9 @@ hit_node :: proc(c: ^Ctx, bi: i32) -> base.Handle {
 }
 
 @(private)
-push_item :: proc(c: ^Ctx, it: Display_Item) { append(&c.l.items, it) }
+push_item :: proc(c: ^Ctx, it: Display_Item) {
+	if c.dl_out != nil { append(c.dl_out, it) } else { append(&c.l.items, it) }
+}
 
 @(private)
 item_for_box :: proc(c: ^Ctx, kind: Item_Kind, bi: i32, r: Rect) -> Display_Item {
@@ -143,6 +145,7 @@ hoisted :: #force_inline proc(b: ^Box) -> bool { return .Positioned in b.flags |
 @(private)
 paint_content :: proc(p: ^Paint_Ctx, root: i32) {
 	c := p.c
+	if c.dl_par && c.dl_out == nil && paint_content_shared(p, root) { return }
 	stack := make([dynamic]i32, 0, 32, context.temp_allocator)
 	push_children :: proc(c: ^Ctx, stack: ^[dynamic]i32, x: i32) {
 		n := len(stack)
@@ -190,12 +193,14 @@ paint_content :: proc(p: ^Paint_Ctx, root: i32) {
 emit_own_lines :: proc(p: ^Paint_Ctx, x: i32) {
 	c := p.c
 	b := &c.l.boxes[x]
-	start := i32(len(c.l.items))
+	out := c.dl_out != nil ? c.dl_out : &c.l.items
+	start := i32(len(out))
 	if .List_Item in b.flags { emit_marker(p, x) }
 	if .Ifc in c.l.boxes[x].flags {
 		emit_lines(p, x, NONE)
 		inf := &c.l.inc.info[x]
-		inf.items, inf.items_gen = {start, i32(len(c.l.items))}, c.l.inc.dl_gen
+		inf.items, inf.items_gen = {start, i32(len(out))}, c.l.inc.dl_gen
+		if c.dl_fix != nil { append(c.dl_fix, x) }
 	}
 }
 
@@ -283,6 +288,8 @@ emit_scrollbars :: proc(c: ^Ctx, bi: i32) {
 build_display_list :: proc(c: ^Ctx) {
 	clear(&c.l.items)
 	c.l.inc.dl_gen += 1
+	c.dl_par = par_threads(c.l.settings.threads) > 0 && len(c.l.boxes) >= max(c.l.settings.threads_min_boxes, 1)
+	defer c.dl_par = false
 	p := Paint_Ctx{c = c}
 	paint_stacking(&p, 0)
 }

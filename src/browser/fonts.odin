@@ -4,6 +4,8 @@ import "core:strings"
 import win "core:sys/windows"
 import "toolkit:font"
 import "toolkit:platform"
+import "toolkit:ui"
+import "wb:host"
 import lay "wb:layout"
 import "wb:style"
 
@@ -279,6 +281,75 @@ resolve_font :: proc(pf: ^Page_Fonts, families: []string, weight: u16, italic: b
 }
 
 ////////////////////////////////
+// Start-up: fonts loaded while the renderer starts
+
+// The renderer's start-up (device, shaders) is the longest step before the first frame and touches no font. Meanwhile a
+// thread loads the interface fonts, reads the font registry and loads the faces the first page most likely asks for
+// (the generic families, regular and bold). The font state belongs to that thread until fonts_preload_finish.
+Font_Preload :: struct {
+	th:       ^host.Thread,
+	fonts:    ^font.State,
+	pf:       Page_Fonts,     // registry and faces loaded, adopted by page_render.fonts
+	generics: [dynamic]string,
+	ui_font, icons: font.Font_Id,
+	ui_ok, icons_ok: bool,
+}
+
+fonts_preload_start :: proc(app: ^App) -> ^Font_Preload {
+	fp := new(Font_Preload)
+	fp.fonts = &app.fonts
+	ss := style.settings_from_prefs(&app.prefs)
+	defer style.settings_destroy(&ss)
+	for g in ([]string{ss.default_generic, "sans-serif", "serif", "monospace"}) {
+		name := style.generic_family(&ss, g)
+		if name == "" { continue }
+		lower := strings.to_lower(name)
+		dup := false
+		for x in fp.generics { if x == lower { dup = true } }
+		if dup { delete(lower) } else { append(&fp.generics, lower) }
+	}
+	fp.th = host.thread_start(proc(data: rawptr) {
+		fp := (^Font_Preload)(data)
+		fp.ui_font, fp.ui_ok, _ = font.load_system_or_embedded(fp.fonts, platform.system_font_path("segoeui.ttf"), font.FALLBACK_UI_DATA)
+		fp.icons, fp.icons_ok = font.load_embedded(fp.fonts, ui.ICON_FONT_DATA)
+		page_fonts_init(&fp.pf, fp.fonts, fp.ui_font)
+		scan(&fp.pf)
+		for name in fp.generics {
+			for weight in ([]u16{400, 700}) { _ = pick_face(&fp.pf, name, weight, false) }
+		}
+	}, fp)   // nil (no thread): fonts_preload_finish does the work
+	return fp
+}
+
+// Joins the thread (or does its work here if it could not start). The interface fonts go to `app`.
+fonts_preload_finish :: proc(app: ^App, fp: ^Font_Preload) -> (ok: bool) {
+	if fp.th != nil {
+		host.thread_join(fp.th)
+	} else {
+		fp.ui_font, fp.ui_ok, _ = font.load_system_or_embedded(fp.fonts, platform.system_font_path("segoeui.ttf"), font.FALLBACK_UI_DATA)
+		fp.icons, fp.icons_ok = font.load_embedded(fp.fonts, ui.ICON_FONT_DATA)
+	}
+	app.ui_font, app.icons = fp.ui_font, fp.icons
+	return fp.ui_ok && fp.icons_ok
+}
+
+// After page_render_init: the page fonts take over what the thread read and loaded. Frees `fp`.
+fonts_preload_adopt :: proc(pf: ^Page_Fonts, fp: ^Font_Preload) {
+	if fp.pf.scanned {
+		for name, fam in pf.families { for f in fam.faces { delete(f.path) }; delete(fam.faces); free(fam); delete(name) }
+		delete(pf.families)
+		for path in pf.loaded { delete(path) }
+		delete(pf.loaded)
+		pf.families, pf.loaded, pf.scanned = fp.pf.families, fp.pf.loaded, true
+		fp.pf.families, fp.pf.loaded = nil, nil
+	}
+	page_fonts_destroy(&fp.pf)
+	for g in fp.generics { delete(g) }
+	delete(fp.generics)
+	free(fp)
+}
+
+////////////////////////////////
 // The text interface the layout engine measures with
 
 @(private = "file")
@@ -310,5 +381,6 @@ page_text_api :: proc(pf: ^Page_Fonts, m: ^Measure, settings: ^style.Settings) -
 			xh := g.size.y > 0 ? -g.offset.y : size * 0.5
 			return {ascent = m.ascent, descent = m.descent, x_height = xh}
 		},
+		concurrent = true,   // measure_width locks around the toolkit
 	}
 }

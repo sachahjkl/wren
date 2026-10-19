@@ -44,6 +44,9 @@ Text_Api :: struct {
 	// Advance width of one line of text at `size` device px.
 	width:   proc(user: rawptr, f: Font, size: f32, text: string) -> f32,
 	metrics: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics,
+	// `width` may be called from several threads at once (`font` and `metrics` never are): lines of independent
+	// paragraphs are then built on the layout threads (parallel.odin)
+	concurrent: bool,
 }
 
 // Natural size, in CSS px, of the content of a replaced element (a decoded image...). ok = false: not known (yet).
@@ -111,6 +114,10 @@ Box_Flag :: enum u8 {
 	Bfc_Floats,    // some float inside takes part in the block formatting context this box is in (incremental.odin)
 	Neg_Margins,   // some box inside, in the same block formatting context, may have a negative vertical margin
 	Dead,          // left over by a partial rebuild of the box tree: in no tree, read by nothing
+	// set with Stacking when the box is built (a change across these thresholds rebuilds the box, as for Stacking):
+	// passes over every box read the style only for the boxes that have them
+	Effects,       // may make an effect group (opacity, filter, backdrop-filter, mix-blend-mode, clip-path: box_effects)
+	Blends,        // mix-blend-mode other than normal (isolated_contexts)
 }
 Box_Flags :: bit_set[Box_Flag; u32]
 
@@ -336,6 +343,9 @@ Layout :: struct {
 	arena_ready:  bool,
 	scratch:      [dynamic]u32,
 	inc:          Inc_State,               // what incremental passes need between runs (incremental.odin)
+	pre_chunks:   [dynamic]Pre_Chunk,      // storage of the lines laid out ahead on the layout threads (parallel.odin)
+	pre_counts:   [2]int,                  // last full pass: contexts laid out ahead, and taken (diagnostics, tests)
+	tree_order:   bool,                    // last full pass: the boxes are in tree order (finishing walks them as they are)
 }
 
 DOCUMENT_SPACE :: i32(0)
