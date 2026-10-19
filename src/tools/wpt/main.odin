@@ -5,7 +5,9 @@
 //
 //   wpt [-root build/wpt/wpt] [-suites wpt/suites.txt] [-expect wpt/expectations] [-server http://127.0.0.1:8768]
 //       [-timeout ms] [-idle ms] [-jobs n] [-quick] [-update] [-md report.md] [-results results.txt] [-only prefix]
-//       [--pref name=value]...
+//       [-reference edge_results.txt] [-list] [--pref name=value]...
+// -list prints the tests (path, long timeout, folder) and stops; -reference adds the subtests of a reference run in
+// another browser to the table (tools\wpt.ps1 -Edge writes it in the format of the expectations).
 //
 // Isolation: the tests run in child processes (`wpt -child list out`), a few dozen each, `-jobs` at a time; a child
 // that dies or stops answering loses only the test it was running (CRASH), the others go to a new child.
@@ -54,9 +56,9 @@ Suite :: struct {
 }
 
 Options :: struct {
-	root, suites, expect, server, md, results, only, self: string,
+	root, suites, expect, server, md, results, only, self, reference: string,
 	timeout_ms, idle_ms, jobs, chunk: int,
-	quick, update: bool,
+	quick, update, list: bool,
 	prefs_args: [dynamic]string,
 }
 
@@ -98,6 +100,8 @@ parse_options :: proc(args: []string) {
 		case "-md": opts.md = need(args, &i)
 		case "-results": opts.results = need(args, &i)
 		case "-only": opts.only = need(args, &i)
+		case "-list": opts.list = true
+		case "-reference": opts.reference = need(args, &i)
 		case "--pref": append(&opts.prefs_args, "--pref", need(args, &i))
 		case: usage()
 		}
@@ -421,20 +425,31 @@ parent_main :: proc() -> int {
 	expected := make(map[string]Expect)
 	for s in suites { read_expectations(expect_file(s.folder), &expected) }
 	if opts.quick {
-		// a fixed sample: per folder, the first QUICK_PER_FOLDER tests (in path order) not expected to time out
+		// a fixed sample: per folder, the first QUICK_PER_FOLDER tests (in path order), those not expected to time out
+		// first (they say the most for the time they take)
 		QUICK_PER_FOLDER :: 2
 		kept := make([dynamic]Test)
 		per := make(map[string]int)
-		for t in tests {
-			if per[t.folder] >= QUICK_PER_FOLDER { continue }
-			if e, found := expected[t.path]; found && (strings.contains(e.status, "TIMEOUT") || strings.contains(e.status, "CRASH")) { continue }
-			append(&kept, t)
-			per[t.folder] += 1
+		taken := make(map[string]bool)
+		for pass in 0 ..< 2 {
+			for t in tests {
+				if per[t.folder] >= QUICK_PER_FOLDER || taken[t.path] { continue }
+				if e, found := expected[t.path]; pass == 0 && found && (strings.contains(e.status, "TIMEOUT") || strings.contains(e.status, "CRASH")) { continue }
+				append(&kept, t)
+				taken[t.path] = true
+				per[t.folder] += 1
+			}
 		}
+		slice.sort_by(kept[:], proc(a, b: Test) -> bool { return a.path < b.path })
 		tests = kept
 	}
 	if opts.update && (opts.quick || opts.only != "") { fmt.eprintln("wpt: -update needs a full run (no -quick, no -only)"); return 2 }
 	if len(tests) == 0 { fmt.eprintln("wpt: no test"); return 2 }
+	if opts.list {
+		// what a reference run in another browser needs: path, long timeout, folder
+		for t in tests { fmt.printfln("%s\t%d\t%s", t.path, t.long ? 1 : 0, t.folder) }
+		return 0
+	}
 	fmt.printfln("%d tests in %d folders, %d at a time", len(tests), len(suites), opts.jobs)
 
 	results := make(map[string]^Result)
@@ -514,10 +529,13 @@ Folder_Stats :: struct {
 	files, files_ok, files_timeout, files_error, files_crash: int,
 	subs, pass: int,
 	regressions, improvements, new_tests: int,
+	ref_subs, ref_pass, both_pass: int,   // the reference run (Edge): its subtests, its passes, those Wren passes too
 }
 
 report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expected: map[string]Expect, elapsed: f64) -> int {
 	stats := make(map[string]Folder_Stats)
+	reference := make(map[string]Expect)
+	have_ref := opts.reference != "" && read_expectations(opts.reference, &reference)
 	regress := strings.builder_make()
 	better := strings.builder_make()
 	by_folder := make(map[string][dynamic]^Result)
@@ -538,6 +556,15 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 			seen[s.name] = s.status
 			st.subs += 1
 			if s.status == "PASS" { st.pass += 1 }
+		}
+		if ref, has_ref := reference[t.path]; has_ref {
+			for name, s in ref.subs {
+				st.ref_subs += 1
+				if s == "PASS" {
+					st.ref_pass += 1
+					if seen[name] == "PASS" { st.both_pass += 1 }
+				}
+			}
 		}
 		if e, has := expected[t.path]; has {
 			if status_ok(e.status, "OK") && r.status != "OK" {
@@ -573,20 +600,36 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 
 	// the table
 	md := strings.builder_make()
-	fmt.sbprintln(&md, "| folder | tests | OK | TIMEOUT | ERROR | CRASH | subtests | PASS | pass rate | regressions |")
-	fmt.sbprintln(&md, "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+	if have_ref {
+		fmt.sbprintln(&md, "| folder | tests | OK | TIMEOUT | ERROR | CRASH | subtests | PASS | pass rate | Edge subtests | Edge PASS | Wren PASS / Edge PASS | regressions |")
+		fmt.sbprintln(&md, "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+	} else {
+		fmt.sbprintln(&md, "| folder | tests | OK | TIMEOUT | ERROR | CRASH | subtests | PASS | pass rate | regressions |")
+		fmt.sbprintln(&md, "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+	}
 	total: Folder_Stats
 	for s in suites {
 		st := stats[s.folder]
 		if st.files == 0 && opts.only != "" { continue }
 		rate := st.subs > 0 ? 100 * f64(st.pass) / f64(st.subs) : 0
-		fmt.sbprintfln(&md, "| %s | %d | %d | %d | %d | %d | %d | %d | %.1f %% | %d |", s.folder, st.files, st.files_ok, st.files_timeout, st.files_error, st.files_crash, st.subs, st.pass, rate, st.regressions)
+		if have_ref {
+			rr := st.ref_pass > 0 ? 100 * f64(st.both_pass) / f64(st.ref_pass) : 0
+			fmt.sbprintfln(&md, "| %s | %d | %d | %d | %d | %d | %d | %d | %.1f %% | %d | %d | %.1f %% | %d |", s.folder, st.files, st.files_ok, st.files_timeout, st.files_error, st.files_crash, st.subs, st.pass, rate, st.ref_subs, st.ref_pass, rr, st.regressions)
+		} else {
+			fmt.sbprintfln(&md, "| %s | %d | %d | %d | %d | %d | %d | %d | %.1f %% | %d |", s.folder, st.files, st.files_ok, st.files_timeout, st.files_error, st.files_crash, st.subs, st.pass, rate, st.regressions)
+		}
 		total.files += st.files; total.files_ok += st.files_ok; total.files_timeout += st.files_timeout; total.files_error += st.files_error
 		total.files_crash += st.files_crash; total.subs += st.subs; total.pass += st.pass; total.regressions += st.regressions
 		total.improvements += st.improvements; total.new_tests += st.new_tests
+		total.ref_subs += st.ref_subs; total.ref_pass += st.ref_pass; total.both_pass += st.both_pass
 	}
 	trate := total.subs > 0 ? 100 * f64(total.pass) / f64(total.subs) : 0
-	fmt.sbprintfln(&md, "| **total** | **%d** | **%d** | **%d** | **%d** | **%d** | **%d** | **%d** | **%.1f %%** | **%d** |", total.files, total.files_ok, total.files_timeout, total.files_error, total.files_crash, total.subs, total.pass, trate, total.regressions)
+	if have_ref {
+		trr := total.ref_pass > 0 ? 100 * f64(total.both_pass) / f64(total.ref_pass) : 0
+		fmt.sbprintfln(&md, "| **total** | **%d** | **%d** | **%d** | **%d** | **%d** | **%d** | **%d** | **%.1f %%** | **%d** | **%d** | **%.1f %%** | **%d** |", total.files, total.files_ok, total.files_timeout, total.files_error, total.files_crash, total.subs, total.pass, trate, total.ref_subs, total.ref_pass, trr, total.regressions)
+	} else {
+		fmt.sbprintfln(&md, "| **total** | **%d** | **%d** | **%d** | **%d** | **%d** | **%d** | **%d** | **%.1f %%** | **%d** |", total.files, total.files_ok, total.files_timeout, total.files_error, total.files_crash, total.subs, total.pass, trate, total.regressions)
+	}
 	fmt.sbprintfln(&md, "\n%d tests in %.0f s (%d at a time, -timeout %d ms); %d improvement(s) over the expectations, %d test(s) without expectations.",
 		total.files, elapsed, opts.jobs, opts.timeout_ms, total.improvements, total.new_tests)
 	fmt.print(strings.to_string(md))

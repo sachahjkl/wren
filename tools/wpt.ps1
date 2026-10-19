@@ -2,7 +2,7 @@
 # src\tools\wpt against the test server (tools\testserver\wpt.go, http://127.0.0.1:8768/), compared with the
 # expectations of wpt\expectations.
 #   powershell -NoProfile -File tools\wpt.ps1 [-Quick] [-Update] [-Only /dom/nodes/] [-Jobs n] [-TimeoutMs 10000]
-#       [-Fetch] [-UpdateManifest] [-NoServer] [-Port 8778] [-Pref name=value,...]
+#       [-Fetch] [-UpdateManifest] [-NoServer] [-Port 8778] [-Pref name=value,...] [-Edge]
 # Pinned: the WPT commit below; the checkout (build\wpt\wpt, a partial sparse clone of that commit: the measured folders
 # and the shared ones) is verified file by file against wpt\MANIFEST.txt (SHA-256 of every file). -UpdateManifest
 # rewrites that list after a change of the commit or of the folders (and says so); -Fetch only fetches and verifies.
@@ -12,8 +12,10 @@
 # Outputs in build\wpt: report.md (pass rates per folder), results.txt (every test and subtest), children\ (logs).
 # Exit status: 1 on a regression against the expectations (not on an expected failure). -Update rewrites them (full
 # run only). -Quick: a fixed sample of a few tests per folder (tools\test_all.ps1 -Quick).
+# -Edge runs the same tests in Microsoft Edge headless instead (build\wpt\edge_results.txt): the reference columns of
+# the table of later runs (how many subtests there are, how many Edge passes, the share of those Wren passes).
 param([switch]$Quick, [switch]$Update, [string]$Only = '', [int]$Jobs = 0, [int]$TimeoutMs = 10000, [switch]$Fetch,
-      [switch]$UpdateManifest, [switch]$NoServer, [int]$Port = 0, [string[]]$Pref = @())
+      [switch]$UpdateManifest, [switch]$NoServer, [int]$Port = 0, [string[]]$Pref = @(), [switch]$Edge)
 # (failures are checked by exit status: what native tools write on stderr is not an error; throw stops the script)
 $ErrorActionPreference = 'Continue'
 $WptCommit = '4ad507b28db0a636f528def9161d109fe11b93a3'
@@ -112,6 +114,81 @@ if ($Update) { $runArgs += '-update' }
 if ($Only) { $runArgs += @('-only', $Only) }
 foreach ($p in @($Pref | ForEach-Object { $_ -split ',' } | Where-Object { $_ })) { $runArgs += @('--pref', $p) }
 
+$edgeResults = Join-Path $out 'edge_results.txt'
+if ((Test-Path $edgeResults) -and -not $Edge) { $runArgs += @('-reference', $edgeResults) }
+
+# The reference run in Edge (-Edge): the same tests, the same server, testharnessreport.js puts its JSON in the document
+# (<pre id="wren-wpt-result">), read with --dump-dom after a virtual time budget of the test's timeout. Written to
+# build\wpt\edge_results.txt (the expectations' format), which later runs of Wren add to their table.
+function Run-Edge([string]$server) {
+    $edge = @("${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe", "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $edge) { throw 'Microsoft Edge not found' }
+    $listArgs = @($runArgs | Where-Object { $_ -ne '-update' }) + @('-list')
+    $tests = @(& $exe @listArgs 2>$null | Where-Object { $_ -match "`t" } | ForEach-Object { $p = $_ -split "`t"; [pscustomobject]@{ path = $p[0]; long = $p[1] -eq '1' } })
+    $slots = if ($Jobs -gt 0) { $Jobs } else { [Math]::Max(1, [Environment]::ProcessorCount / 2) }
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) "wren_wpt_edge_$PID"
+    New-Item -ItemType Directory -Force $tmp | Out-Null
+    $running = @{}; $results = @{}; $next = 0; $n = 0
+    # throwaway profiles and outputs, removed once Edge's helper processes let go of them
+    $pending = New-Object System.Collections.Generic.List[string]
+    $sweep = { foreach ($f in @($pending)) { try { if (Test-Path $f -PathType Container) { [IO.Directory]::Delete($f, $true) } elseif (Test-Path $f) { [IO.File]::Delete($f) }; $pending.Remove($f) | Out-Null } catch { } } }
+    $harness = @('OK', 'ERROR', 'TIMEOUT', 'PRECONDITION_FAILED'); $sub = @('PASS', 'FAIL', 'TIMEOUT', 'NOTRUN', 'PRECONDITION_FAILED')
+    $finish = {
+        param($slot)
+        $r = $running[$slot]
+        # (Edge's helper processes inherit its standard output and may still hold the file: read it shared)
+        $html = ''
+        try {
+            $fs = [IO.File]::Open($r.dom, 'Open', 'Read', 'ReadWrite, Delete')
+            try { $html = (New-Object IO.StreamReader($fs)).ReadToEnd() } finally { $fs.Close() }
+        } catch { }
+        $m = [regex]::Match($html, '<pre id="wren-wpt-result">([\s\S]*?)</pre>')
+        $lines = New-Object System.Collections.Generic.List[string]
+        $j = $null
+        if ($m.Success) { try { $j = [Net.WebUtility]::HtmlDecode($m.Groups[1].Value) | ConvertFrom-Json } catch { $j = $null } }
+        if ($j) {
+            $lines.Add("$($r.test.path): $($harness[[int]$j.status])")
+            foreach ($t in ($j.tests | Sort-Object name -Unique)) {
+                $name = ([string]$t.name).Replace('\', '\\').Replace("`n", '\n').Replace("`r", '\r').Replace("`t", '\t')
+                $lines.Add("`t${name}: $($sub[[int]$t.status])")
+            }
+        } else {
+            $lines.Add("$($r.test.path): TIMEOUT")
+        }
+        $results[$r.test.path] = $lines -join "`n"
+        $pending.Add($r.profile); $pending.Add($r.dom)
+        $running.Remove($slot)
+    }
+    while ($next -lt $tests.Count -or $running.Count -gt 0) {
+        foreach ($slot in @($running.Keys)) {
+            $r = $running[$slot]
+            if ($r.process.HasExited) { & $finish $slot }
+            elseif (((Get-Date) - $r.started).TotalSeconds -gt $r.limit) { try { $r.process.Kill() } catch { }; Start-Sleep -Milliseconds 200; & $finish $slot }
+        }
+        for ($slot = 0; $slot -lt $slots -and $next -lt $tests.Count; $slot++) {
+            if ($running.ContainsKey($slot)) { continue }
+            $t = $tests[$next]; $next++; $n++
+            $budget = $TimeoutMs * $(if ($t.long) { 6 } else { 1 })
+            $profile = Join-Path $tmp "p$n"
+            $dom = Join-Path $tmp "d$n.html"
+            $a = @('--headless=new', '--disable-gpu', '--no-first-run', '--disable-extensions', "--user-data-dir=$profile", "--virtual-time-budget=$budget", '--dump-dom', "$server$($t.path)")
+            $proc = Start-Process $edge -ArgumentList $a -PassThru -WindowStyle Hidden -RedirectStandardOutput $dom
+            $running[$slot] = [pscustomobject]@{ process = $proc; test = $t; dom = $dom; profile = $profile; started = Get-Date; limit = $budget / 1000 + 60 }
+        }
+        Write-Host -NoNewline ("`r{0}/{1}" -f ($n - $running.Count), $tests.Count)
+        if ($pending.Count -gt 4 * $slots) { & $sweep }
+        Start-Sleep -Milliseconds 100
+    }
+    $deadline = (Get-Date).AddSeconds(30)
+    while ($pending.Count -gt 0 -and (Get-Date) -lt $deadline) { & $sweep; Start-Sleep -Milliseconds 500 }
+    Write-Host ''
+    $text = "# web-platform-tests in Edge $((Get-Item $edge).VersionInfo.ProductVersion) (tools\wpt.ps1 -Edge): the reference of the table`n"
+    $text += (($results.Keys | Sort-Object { $_ } -CaseSensitive) | ForEach-Object { $results[$_] }) -join "`n"
+    [IO.File]::WriteAllText($edgeResults, $text + "`n")
+    try { [IO.Directory]::Delete($tmp, $true) } catch { }
+    "Edge results: $edgeResults ($($tests.Count) tests)"
+}
+
 $srv = $null
 try {
     if (-not $NoServer) {
@@ -120,8 +197,13 @@ try {
     }
     Push-Location $root
     try {
-        & $exe @runArgs 2>$null
-        $status = $LASTEXITCODE
+        if ($Edge) {
+            Run-Edge "http://127.0.0.1:$Port"
+            $status = 0
+        } else {
+            & $exe @runArgs 2>$null
+            $status = $LASTEXITCODE
+        }
     } finally { Pop-Location }
 } finally {
     if ($srv) { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }

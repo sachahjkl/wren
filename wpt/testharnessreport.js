@@ -6,7 +6,8 @@
 // test's time is up, as wptrunner does) and without its HTML output. When it completes, the results go to the runner
 // as one console message: "WPTRESULT " + JSON {status, message, tests: [{name, status, message}]} with testharness.js's
 // numeric statuses (harness: 0 OK, 1 ERROR, 2 TIMEOUT, 3 PRECONDITION_FAILED; tests: 0 PASS, 1 FAIL, 2 TIMEOUT,
-// 3 NOTRUN, 4 PRECONDITION_FAILED). Messages are cut to keep the line reasonable.
+// 3 NOTRUN, 4 PRECONDITION_FAILED). Messages are cut to keep the line reasonable. The JSON also goes into the document
+// (<pre id="wren-wpt-result">) for the reference run in Edge.
 (function () {
   "use strict";
   var MAX_MESSAGE = 2000;
@@ -23,6 +24,17 @@
     for (var i = 0; i < tests.length; i++) {
       out.tests.push({ name: String(tests[i].name), status: tests[i].status, message: cut(tests[i].message) });
     }
-    log("WPTRESULT " + JSON.stringify(out));
+    var text = JSON.stringify(out);
+    log("WPTRESULT " + text);
+    // the same in the document, for a browser whose console the runner cannot read (tools\wpt.ps1 -Edge reads it
+    // with Edge's --dump-dom)
+    try {
+      if (typeof document !== "undefined" && document.documentElement) {
+        var pre = document.createElement("pre");
+        pre.id = "wren-wpt-result";
+        pre.textContent = text;
+        document.documentElement.appendChild(pre);
+      }
+    } catch (e) {}
   });
 })();
