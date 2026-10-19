@@ -14,9 +14,7 @@ package page
 import "core:fmt"
 import "core:strings"
 import "wb:base"
-import "wb:dom"
 import "wb:host"
-import "wb:wasm"
 
 Promise_State :: enum i32 { Pending = 0, Fulfilled = 1, Rejected = 2 }
 
@@ -146,63 +144,40 @@ buffer_bytes :: proc(p: ^Page, h: u64) -> []byte {
 ////////////////////////////////
 // Imports: module "async"
 
-n_queueMicrotask :: proc "c" (env: wasm.Exec_Env, cb, user: i32) {
-	context = ctx()
-	queue_microtask(page_of(env), Microtask{instance = inst_of(env).index, callback = u32(cb), user = u32(user)})
+queueMicrotask :: proc(c: ^Call, callback: u32, user: i32) {
+	queue_microtask(c.page, Microtask{instance = c.owner, callback = callback, user = u32(user)})
 }
 
-n_Promise_create :: proc "c" (env: wasm.Exec_Env) -> u64 {
-	context = ctx()
-	return promise_create(page_of(env), inst_of(env).index)
+Promise_create :: proc(c: ^Call) -> u64 { return promise_create(c.page, c.owner) }
+
+Promise_resolve :: proc(c: ^Call, promise: Api_Promise, value: i64, text: string) -> Api_Error {
+	if !promise_resolve(c.page, promise.handle, value, text) { return fail(c, .Invalid_Argument, "the promise is settled already") }
+	return .None
 }
 
-n_Promise_resolve :: proc "c" (env: wasm.Exec_Env, h: u64, value: i64, text: [^]u8, tl: i32) -> i32 {
-	context = ctx()
-	return promise_resolve(page_of(env), h, value, str(text, tl)) ? 0 : i32(dom.Error.Invalid_Argument)
-}
-
-n_Promise_reject :: proc "c" (env: wasm.Exec_Env, h: u64, code: i64, text: [^]u8, tl: i32) -> i32 {
-	context = ctx()
-	return promise_reject(page_of(env), h, code, str(text, tl)) ? 0 : i32(dom.Error.Invalid_Argument)
+Promise_reject :: proc(c: ^Call, promise: Api_Promise, code: i64, message: string) -> Api_Error {
+	if !promise_reject(c.page, promise.handle, code, message) { return fail(c, .Invalid_Argument, "the promise is settled already") }
+	return .None
 }
 
 // Registers a reaction; if the promise is already settled it is queued at once.
-n_Promise_then :: proc "c" (env: wasm.Exec_Env, h: u64, cb, user: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	pr := promise_get(p, h)
-	if pr == nil { return i32(dom.Error.Invalid_Handle) }
+Promise_then :: proc(c: ^Call, promise: Api_Promise, callback: u32, user: i32) {
+	pr := promise.data
 	pr.handled = true
-	r := Reaction{inst_of(env).index, u32(cb), u32(user)}
+	r := Reaction{c.owner, callback, u32(user)}
 	if pr.state == .Pending {
 		append(&pr.reactions, r)
 	} else {
-		queue_microtask(p, Microtask{instance = r.instance, callback = r.callback, user = r.user, promise = h, state = i32(pr.state)})
+		queue_microtask(c.page, Microtask{instance = r.instance, callback = r.callback, user = r.user, promise = promise.handle, state = i32(pr.state)})
 	}
-	return 0
 }
 
-n_Promise_state :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	if pr := promise_get(page_of(env), h); pr != nil { return i32(pr.state) }
-	return -1
-}
+Promise_state :: proc(c: ^Call, promise: Api_Promise) -> Api_PromiseState { return Api_PromiseState(promise.data.state) }
+Promise_value :: proc(c: ^Call, promise: Api_Promise) -> i64 { return promise.data.value }
+Promise_text :: proc(c: ^Call, promise: Api_Promise) -> string { return promise.data.text }
 
-n_Promise_value :: proc "c" (env: wasm.Exec_Env, h: u64) -> i64 {
-	context = ctx()
-	if pr := promise_get(page_of(env), h); pr != nil { return pr.value }
-	return 0
-}
-
-n_Promise_text :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	pr := promise_get(page_of(env), h)
-	if pr == nil { return i32(dom.Error.Invalid_Handle) }
-	return out_string(pr.text, buf, cap)
-}
-
-// Promise.all over the handles at `list` (`bytes` long, i64 each): fulfilled with value = n when every one is fulfilled, rejected with
-// the first rejection's value and text.
+// Promise.all over `promises`: fulfilled with value = n when every one is fulfilled, rejected with the first rejection's
+// value and text.
 All_State :: struct { target: u64, remaining: int, done: bool }
 
 @(private)
@@ -227,26 +202,22 @@ all_reaction :: proc(p: ^Page, state_h: u64, settled: u64) {
 // Host-side reactions (no guest involved): when `promise` settles, `state` (an All_State object) is updated.
 Host_Reaction :: struct { promise, state: u64 }
 
-n_Promise_all :: proc "c" (env: wasm.Exec_Env, list_bytes: [^]u8, bytes: i32) -> u64 {
-	context = ctx()
-	n := bytes / 8
-	list := ([^]u64)(list_bytes)
-	p := page_of(env)
-	owner := inst_of(env).index
-	target := promise_create(p, owner)
-	if n <= 0 { promise_resolve(p, target, 0); return target }
+Promise_all :: proc(c: ^Call, promises: []u64) -> u64 {
+	p := c.page
+	target := promise_create(p, c.owner)
+	if len(promises) == 0 { promise_resolve(p, target, 0); return target }
 	st := new(All_State)
-	st.target, st.remaining = target, int(n)
-	sh := object_create(p, &all_vt, st, owner)
-	for i in 0 ..< int(n) {
-		pr := promise_get(p, list[i])
+	st.target, st.remaining = target, len(promises)
+	sh := object_create(p, &all_vt, st, c.owner)
+	for h in promises {
+		pr := promise_get(p, h)
 		if pr == nil {
-			promise_reject(p, target, i64(dom.Error.Invalid_Handle), "Promise.all: not a promise")
+			promise_reject(p, target, i64(Api_Error.Invalid_Handle), "Promise.all: not a promise")
 			object_release(p, sh)
 			return target
 		}
 		pr.handled = true
-		append(&p.host_reactions, Host_Reaction{list[i], sh})
+		append(&p.host_reactions, Host_Reaction{h, sh})
 	}
 	host_reactions_run(p)
 	return target
@@ -265,87 +236,50 @@ host_reactions_run :: proc(p: ^Page) {
 	}
 }
 
-n_Object_release :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	return object_release(page_of(env), h) ? 0 : i32(dom.Error.Invalid_Handle)
+Object_release :: proc(c: ^Call, object: Api_Object) -> Api_Error {
+	object_release(c.page, object.handle)
+	return .None
 }
 
 // The interface name of an object ("Promise", "ArrayBuffer"...), for diagnostics.
-n_Object_kind :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	o := object_get(page_of(env), h)
-	if o == nil { return i32(dom.Error.Invalid_Handle) }
-	return out_string(o.vt.name, buf, cap)
+Object_kind :: proc(c: ^Call, object: Api_Object) -> string { return object.data.vt.name }
+
+Buffer_create :: proc(c: ^Call, data: []u8) -> (u64, Api_Error) {
+	b := buffer_create(c.page, data, c.owner)
+	if b == 0 { return 0, fail(c, .Quota, "QuotaExceededError: page memory limit") }
+	return b, .None
 }
 
-n_Buffer_create :: proc "c" (env: wasm.Exec_Env, src: [^]u8, n: i32) -> u64 {
-	context = ctx()
-	return buffer_create(page_of(env), src[:max(n, 0)], inst_of(env).index)
-}
-
-n_Buffer_alloc :: proc "c" (env: wasm.Exec_Env, n: i64) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	if n < 0 || int(n) > p.settings.max_fetch_bytes - p.held { return 0 }
+Buffer_alloc :: proc(c: ^Call, length: i64) -> (u64, Api_Error) {
+	p := c.page
+	if length < 0 { return 0, fail(c, .Range, "RangeError: negative length") }
+	if int(length) > p.settings.max_fetch_bytes - p.held { return 0, fail(c, .Quota, "QuotaExceededError: page memory limit") }
 	b := new(Buffer)
-	b.bytes = make([dynamic]byte, int(n))
-	p.held += int(n)
-	return object_create(p, &buffer_vt, b, inst_of(env).index)
+	b.bytes = make([dynamic]byte, int(length))
+	p.held += int(length)
+	return object_create(p, &buffer_vt, b, c.owner), .None
 }
 
-n_Buffer_length :: proc "c" (env: wasm.Exec_Env, h: u64) -> i64 {
-	context = ctx()
-	if b := buffer_get(page_of(env), h); b != nil { return i64(len(b.bytes)) }
-	return -1
-}
+Buffer_length :: proc(c: ^Call, buffer: Api_Buffer) -> i64 { return i64(len(buffer.data.bytes)) }
 
-n_Buffer_read :: proc "c" (env: wasm.Exec_Env, h: u64, offset: i64, dst: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	b := buffer_get(page_of(env), h)
-	if b == nil { return i32(dom.Error.Invalid_Handle) }
+Buffer_read :: proc(c: ^Call, buffer: Api_Buffer, offset: i64, destination: []u8) -> i32 {
+	b := buffer.data
 	if offset < 0 || offset >= i64(len(b.bytes)) { return 0 }
-	k := min(int(max(cap, 0)), len(b.bytes) - int(offset))
-	copy(dst[:k], b.bytes[offset:][:k])
-	return i32(k)
+	return i32(copy(destination, b.bytes[offset:]))
 }
 
-n_Buffer_write :: proc "c" (env: wasm.Exec_Env, h: u64, offset: i64, src: [^]u8, n: i32) -> i32 {
-	context = ctx()
-	b := buffer_get(page_of(env), h)
-	if b == nil { return i32(dom.Error.Invalid_Handle) }
+Buffer_write :: proc(c: ^Call, buffer: Api_Buffer, offset: i64, source: []u8) -> i32 {
+	b := buffer.data
 	if offset < 0 || offset >= i64(len(b.bytes)) { return 0 }
-	k := min(int(max(n, 0)), len(b.bytes) - int(offset))
-	copy(b.bytes[offset:][:k], src[:k])
-	return i32(k)
+	return i32(copy(b.bytes[offset:], source))
 }
 
-n_Buffer_slice :: proc "c" (env: wasm.Exec_Env, h: u64, start, end: i64) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	b := buffer_get(p, h)
-	if b == nil { return 0 }
+Buffer_slice :: proc(c: ^Call, buffer: Api_Buffer, start, end: i64) -> (u64, Api_Error) {
+	b := buffer.data
 	n := i64(len(b.bytes))
 	s := clamp(start < 0 ? n + start : start, 0, n)
 	e := clamp(end < 0 ? n + end : end, s, n)
-	return buffer_create(p, b.bytes[s:e], inst_of(env).index)
-}
-
-async_symbols := [?]wasm.Native_Symbol{
-	{"queueMicrotask", rawptr(n_queueMicrotask), "(ii)", nil},
-	{"Promise_create", rawptr(n_Promise_create), "()I", nil},
-	{"Promise_resolve", rawptr(n_Promise_resolve), "(II*~)i", nil},
-	{"Promise_reject", rawptr(n_Promise_reject), "(II*~)i", nil},
-	{"Promise_then", rawptr(n_Promise_then), "(Iii)i", nil},
-	{"Promise_state", rawptr(n_Promise_state), "(I)i", nil},
-	{"Promise_value", rawptr(n_Promise_value), "(I)I", nil},
-	{"Promise_text", rawptr(n_Promise_text), "(I*~)i", nil},
-	{"Promise_all", rawptr(n_Promise_all), "(*~)I", nil},
-	{"Object_release", rawptr(n_Object_release), "(I)i", nil},
-	{"Object_kind", rawptr(n_Object_kind), "(I*~)i", nil},
-	{"Buffer_create", rawptr(n_Buffer_create), "(*~)I", nil},
-	{"Buffer_alloc", rawptr(n_Buffer_alloc), "(I)I", nil},
-	{"Buffer_length", rawptr(n_Buffer_length), "(I)I", nil},
-	{"Buffer_read", rawptr(n_Buffer_read), "(II*~)i", nil},
-	{"Buffer_write", rawptr(n_Buffer_write), "(II*~)i", nil},
-	{"Buffer_slice", rawptr(n_Buffer_slice), "(III)I", nil},
+	h := buffer_create(c.page, b.bytes[s:e], c.owner)
+	if h == 0 { return 0, fail(c, .Quota, "QuotaExceededError: page memory limit") }
+	return h, .None
 }

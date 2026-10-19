@@ -1,5 +1,5 @@
-// Compares the Wasm engines: instantiation (first load, memory cache, disk cache), compute kernels, host calls and
-// memory per instance. Prints a Markdown table.
+// Compares the compiler configurations of the Wasm engine: instantiation (first load, memory cache, disk cache), compute
+// kernels, host calls through the generated bindings (bench.widl) and memory per instance. Prints a Markdown table.
 //   wasmbench build\wasmbench.wasm [more.wasm ...]    (the first module is examples/wasmbench; the others are only
 //                                                      instantiated: page modules such as build\e2e.wasm)
 package wasmbench
@@ -41,26 +41,25 @@ memory_now :: proc() -> (working_set, private: int) {
 	return int(c.WorkingSetSize), int(c.PrivateUsage)
 }
 
-b_nop :: proc "c" (env: wasm.Exec_Env) {}
-b_touch :: proc "c" (env: wasm.Exec_Env, p: [^]u8, n: i32) -> i32 { return i32(p[0]) + n }
+// The context the generated bindings (bench_generated.odin) expect, and the implementations of bench.widl.
+Call :: struct { inst: ^wasm.Instance, message: string }
+api_begin :: #force_inline proc "contextless" (inst: ^wasm.Instance) -> Call { return Call{inst = inst} }
+api_scrub :: proc(s: string, allocator := context.allocator) -> string { return s }
 
-BENCH_SYMBOLS := [?]wasm.Native_Symbol{
-	{"nop", rawptr(b_nop), "()", nil},
-	{"touch", rawptr(b_touch), "(*~)i", nil},
-}
+nop :: proc(c: ^Call) {}
+touch :: proc(c: ^Call, data: []u8) -> i32 { return i32(data[0]) + i32(len(data)) }
+touch_string :: proc(c: ^Call, text: string) -> i32 { return i32(text[0]) + i32(len(text)) }
 
 Config :: struct {
 	name:     string,
-	engine:   wasm.Engine_Kind,
 	compiler: wasm.Compiler,
 	opt:      wasm.Opt_Level,
 }
 
 CONFIGS := [?]Config{
-	{"wamr (fast interpreter)", .Wamr, .Cranelift, .Speed},
-	{"wasmtime cranelift speed", .Wasmtime, .Cranelift, .Speed},
-	{"wasmtime cranelift none", .Wasmtime, .Cranelift, .None},
-	{"wasmtime winch", .Wasmtime, .Winch, .Speed},
+	{"cranelift speed", .Cranelift, .Speed},
+	{"cranelift none", .Cranelift, .None},
+	{"winch", .Winch, .Speed},
 }
 
 cache_dir: string
@@ -68,12 +67,11 @@ cache_dir: string
 start :: proc(c: Config) {
 	wasm.runtime_destroy()
 	rs := wasm.runtime_settings_default()
-	rs.engine = c.engine
 	rs.compiler = c.compiler
 	rs.opt_level = c.opt
 	rs.cache_dir = cache_dir
 	wasm.configure(rs)
-	if !page.register_imports() || !wasm.register("bench", BENCH_SYMBOLS[:]) { fmt.eprintln("register failed"); os.exit(1) }
+	if !page.register_imports() || !api_register() { fmt.eprintln("register failed"); os.exit(1) }
 }
 
 options :: proc() -> wasm.Options {
@@ -161,7 +159,7 @@ main :: proc() {
 			// first load: nothing cached (median of 3, caches emptied in between)
 			firsts: [3]f64
 			for k in 0 ..< len(firsts) {
-				if cfg.engine == .Wasmtime { wasm.cache_flush(); wasm.cache_clear_memory(); _ = os.remove_all(cache_dir); start(cfg) }
+				wasm.cache_flush(); wasm.cache_clear_memory(); _ = os.remove_all(cache_dir); start(cfg)
 				inst, ms := create(image)
 				firsts[k] = ms
 				wasm.destroy(inst)
@@ -170,14 +168,10 @@ main :: proc() {
 			again: [5]f64
 			for k in 0 ..< len(again) { inst, ms := create(image); again[k] = ms; wasm.destroy(inst) }
 			set(&rows, fmt.tprintf("instantiate %s: compiled module in memory (ms)", names[mi]), ci, fmt.tprintf("%.3f", median(again[:])))
-			if cfg.engine == .Wasmtime {
-				wasm.cache_flush()
-				disk: [3]f64
-				for k in 0 ..< len(disk) { start(cfg); inst, ms := create(image); disk[k] = ms; wasm.destroy(inst) }
-				set(&rows, fmt.tprintf("instantiate %s: next start, disk cache (ms)", names[mi]), ci, fmt.tprintf("%.2f", median(disk[:])))
-			} else {
-				set(&rows, fmt.tprintf("instantiate %s: next start, disk cache (ms)", names[mi]), ci, "n/a")
-			}
+			wasm.cache_flush()
+			disk: [3]f64
+			for k in 0 ..< len(disk) { start(cfg); inst, ms := create(image); disk[k] = ms; wasm.destroy(inst) }
+			set(&rows, fmt.tprintf("instantiate %s: next start, disk cache (ms)", names[mi]), ci, fmt.tprintf("%.2f", median(disk[:])))
 		}
 
 		inst, _ := create(images[0])
@@ -186,7 +180,8 @@ main :: proc() {
 		set(&rows, "FNV-1a hash, 16 MiB (ms)", ci, fmt.tprintf("%.1f", timed(inst, "hash", 4)))
 		n :: 1_000_000
 		set(&rows, "1 M host calls () (ns/call)", ci, fmt.tprintf("%.1f", timed(inst, "calls_nop", n) * 1e6 / n))
-		set(&rows, "1 M host calls (ptr, len) (ns/call)", ci, fmt.tprintf("%.1f", timed(inst, "calls_bytes", n) * 1e6 / n))
+		set(&rows, "1 M host calls (bytes: ptr, len) (ns/call)", ci, fmt.tprintf("%.1f", timed(inst, "calls_bytes", n) * 1e6 / n))
+		set(&rows, "1 M host calls (string, checked UTF-8, 64 bytes) (ns/call)", ci, fmt.tprintf("%.1f", timed(inst, "calls_string", n) * 1e6 / n))
 		wasm.destroy(inst)
 
 		// memory per instance: 32 instances of the second module (a page module) when given, else the bench module

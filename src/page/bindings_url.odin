@@ -6,9 +6,7 @@ package page
 // A URL's searchParams object is linked to it both ways, as in the standard: changing the URL's search re-parses the
 // list; changing the list rewrites the URL's query. Either object may be released first; the link is then dropped.
 
-import "wb:dom"
 import "wb:url"
-import "wb:wasm"
 
 Url_Object :: struct {
 	u:      url.URL,
@@ -67,85 +65,70 @@ params_update :: proc(p: ^Page, po: ^Params_Object, self: u64) {
 ////////////////////////////////
 // URL
 
-// new URL(input, base): has_base = 0 for no base. 0 = TypeError (invalid URL or base).
-n_URL_parse :: proc "c" (env: wasm.Exec_Env, input: [^]u8, il: i32, base_s: [^]u8, bl: i32, has_base: i32) -> u64 {
-	context = ctx()
-	p := page_of(env)
+@(private)
+parse_base :: proc(base: Maybe(string)) -> (b: url.URL, has, ok: bool) {
+	s, given := base.?
+	if !given { return {}, false, true }
+	b, ok = url.parse(s, nil, context.temp_allocator)
+	return b, true, ok
+}
+
+// new URL(input, base)
+URL_parse :: proc(c: ^Call, input: string, base: Maybe(string)) -> (u64, Api_Error) {
+	p := c.page
 	max_len := p.settings.web.url_max_length
-	if int(il) > max_len || int(bl) > max_len { return 0 }
-	bp: ^url.URL
-	b: url.URL
-	if has_base != 0 {
-		ok: bool
-		if b, ok = url.parse(str(base_s, bl), nil, context.temp_allocator); !ok { return 0 }
-		bp = &b
-	}
-	u, ok := url.parse(str(input, il), bp)
-	if !ok { return 0 }
-	if len(u.href) > max_len { url.destroy(&u); return 0 }
+	if len(input) > max_len || len(base.? or_else "") > max_len { return 0, fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
+	b, has, ok := parse_base(base)
+	if !ok { return 0, fail(c, .Type, "TypeError: invalid base URL") }
+	u, uok := url.parse(input, has ? &b : nil)
+	if !uok { return 0, fail(c, .Type, "TypeError: invalid URL") }
+	if len(u.href) > max_len { url.destroy(&u); return 0, fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
 	o := new(Url_Object)
 	o.u = u
-	return object_create(p, &url_vt, o, inst_of(env).index)
+	return object_create(p, &url_vt, o, c.owner), .None
 }
 
 // URL.canParse(input, base)
-n_URL_canParse :: proc "c" (env: wasm.Exec_Env, input: [^]u8, il: i32, base_s: [^]u8, bl: i32, has_base: i32) -> i32 {
-	context = ctx()
-	bp: ^url.URL
-	b: url.URL
-	if has_base != 0 {
-		ok: bool
-		if b, ok = url.parse(str(base_s, bl), nil, context.temp_allocator); !ok { return 0 }
-		bp = &b
-	}
-	_, ok := url.parse(str(input, il), bp, context.temp_allocator)
-	return ok ? 1 : 0
+URL_canParse :: proc(c: ^Call, input: string, base: Maybe(string)) -> bool {
+	b, has, ok := parse_base(base)
+	if !ok { return false }
+	_, uok := url.parse(input, has ? &b : nil, context.temp_allocator)
+	return uok
 }
 
-// Getter of a component (url.Component numbering: 0 href ... 9 hash, 10 origin).
-n_URL_get :: proc "c" (env: wasm.Exec_Env, h: u64, component: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	o := url_obj(page_of(env), h)
-	if o == nil { return i32(dom.Error.Invalid_Handle) }
-	if component < 0 || component > i32(url.Component.Origin) { return i32(dom.Error.Invalid_Argument) }
-	return out_string(url.component(o.u, url.Component(component), context.temp_allocator), buf, cap)
+URL_get :: proc(c: ^Call, u: Api_URL, component: Api_URLComponent) -> string {
+	return url.component(u.data.u, url.Component(component), context.temp_allocator)
 }
 
-// Setter of a component. Only href can fail (WEB_ERR_TYPE); other values the standard ignores leave the URL unchanged.
-n_URL_set :: proc "c" (env: wasm.Exec_Env, h: u64, component: i32, value: [^]u8, vl: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	o := url_obj(p, h)
-	if o == nil { return i32(dom.Error.Invalid_Handle) }
-	if component < 0 || component >= i32(url.Component.Origin) { return i32(dom.Error.Invalid_Argument) }
-	if int(vl) > p.settings.web.url_max_length { return WEB_ERR_TYPE }
-	nu, res := url.set_component(o.u, url.Component(component), str(value, vl))
+// Only href can fail; values the standard ignores leave the URL unchanged.
+URL_set :: proc(c: ^Call, u: Api_URL, component: Api_URLComponent, value: string) -> Api_Error {
+	p := c.page
+	o := u.data
+	if component == .Origin { return fail(c, .Invalid_Argument, "origin is read-only") }
+	if len(value) > p.settings.web.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
+	nu, res := url.set_component(o.u, url.Component(component), value)
 	switch res {
 	case .Ok:
-	case .Invalid: return WEB_ERR_TYPE
-	case .Read_Only: return i32(dom.Error.Invalid_Argument)
-	case .Failed: return WEB_ERR_TYPE
+	case .Invalid, .Failed: return fail(c, .Type, "TypeError: invalid URL")
+	case .Read_Only: return .Invalid_Argument
 	}
-	if len(nu.href) > p.settings.web.url_max_length { url.destroy(&nu); return WEB_ERR_TYPE }
+	if len(nu.href) > p.settings.web.url_max_length { url.destroy(&nu); return fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
 	url.destroy(&o.u)
 	o.u = nu
-	c := url.Component(component)
-	if c == .Href || c == .Search { url_sync_params(p, o, h) }
-	return 0
+	if component == .Href || component == .Search { url_sync_params(p, o, u.handle) }
+	return .None
 }
 
 // url.searchParams: the same object every time (while it is not released).
-n_URL_searchParams :: proc "c" (env: wasm.Exec_Env, h: u64) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	o := url_obj(p, h)
-	if o == nil { return 0 }
-	if po := params_obj(p, o.params); po != nil && po.url == h { return o.params }
+URL_searchParams :: proc(c: ^Call, u: Api_URL) -> u64 {
+	p := c.page
+	o := u.data
+	if po := params_obj(p, o.params); po != nil && po.url == u.handle { return o.params }
 	po := new(Params_Object)
 	po.sp = url.params_make()
-	po.url = h
+	po.url = u.handle
 	url.params_parse(&po.sp, o.u.query if o.u.has_query else "")
-	o.params = object_create(p, &params_vt, po, inst_of(env).index)
+	o.params = object_create(p, &params_vt, po, c.owner)
 	return o.params
 }
 
@@ -153,144 +136,72 @@ n_URL_searchParams :: proc "c" (env: wasm.Exec_Env, h: u64) -> u64 {
 // URLSearchParams
 
 // new URLSearchParams(init): a query string, with or without the leading "?".
-n_URLSearchParams_create :: proc "c" (env: wasm.Exec_Env, init: [^]u8, n: i32) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	if int(n) > p.settings.web.url_max_length { return 0 }
-	s := str(init, n)
+URLSearchParams_create :: proc(c: ^Call, init: string) -> (u64, Api_Error) {
+	p := c.page
+	if len(init) > p.settings.web.url_max_length { return 0, fail(c, .Type, "TypeError: too long (web.url_max_length)") }
+	s := init
 	if len(s) > 0 && s[0] == '?' { s = s[1:] }
 	po := new(Params_Object)
 	po.sp = url.params_make()
 	url.params_parse(&po.sp, s)
-	return object_create(p, &params_vt, po, inst_of(env).index)
+	return object_create(p, &params_vt, po, c.owner), .None
 }
 
-@(private)
-params_of :: proc "contextless" (env: wasm.Exec_Env, h: u64) -> (^Page, ^Params_Object) {
-	context = ctx()
-	p := page_of(env)
-	return p, params_obj(p, h)
+URLSearchParams_size :: proc(c: ^Call, params: Api_URLSearchParams) -> i32 { return i32(len(params.data.sp.list)) }
+
+URLSearchParams_append :: proc(c: ^Call, params: Api_URLSearchParams, name, value: string) {
+	url.params_append(&params.data.sp, name, value)
+	params_update(c.page, params.data, params.handle)
 }
 
-n_URLSearchParams_size :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	_, po := params_of(env, h)
-	if po == nil { return i32(dom.Error.Invalid_Handle) }
-	return i32(len(po.sp.list))
+URLSearchParams_delete :: proc(c: ^Call, params: Api_URLSearchParams, name: string, value: Maybe(string)) {
+	v, has := value.?
+	url.params_delete(&params.data.sp, name, v, has)
+	params_update(c.page, params.data, params.handle)
 }
 
-n_URLSearchParams_append :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32, value: [^]u8, vl: i32) -> i32 {
-	context = ctx()
-	p, po := params_of(env, h)
-	if po == nil { return i32(dom.Error.Invalid_Handle) }
-	url.params_append(&po.sp, utf8_scrub(str(name, nl), context.temp_allocator), utf8_scrub(str(value, vl), context.temp_allocator))
-	params_update(p, po, h)
-	return 0
+URLSearchParams_get :: proc(c: ^Call, params: Api_URLSearchParams, name: string) -> (string, Api_Error) {
+	v, ok := url.params_get(params.data.sp, name)
+	if !ok { return "", .Not_Found }
+	return v, .None
 }
 
-// delete(name) when has_value is 0, delete(name, value) otherwise.
-n_URLSearchParams_delete :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32, value: [^]u8, vl: i32, has_value: i32) -> i32 {
-	context = ctx()
-	p, po := params_of(env, h)
-	if po == nil { return i32(dom.Error.Invalid_Handle) }
-	url.params_delete(&po.sp, str(name, nl), str(value, vl), has_value != 0)
-	params_update(p, po, h)
-	return 0
+URLSearchParams_count :: proc(c: ^Call, params: Api_URLSearchParams, name: string) -> i32 { return i32(url.params_count(params.data.sp, name)) }
+
+URLSearchParams_getNth :: proc(c: ^Call, params: Api_URLSearchParams, name: string, index: i32) -> (string, Api_Error) {
+	v, ok := url.params_get_nth(params.data.sp, name, int(index))
+	if !ok { return "", .Not_Found }
+	return v, .None
 }
 
-// get(name): length needed, Not_Found when absent (null).
-n_URLSearchParams_get :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	_, po := params_of(env, h)
-	if po == nil { return i32(dom.Error.Invalid_Handle) }
-	v, ok := url.params_get(po.sp, str(name, nl))
-	if !ok { return i32(dom.Error.Not_Found) }
-	return out_string(v, buf, cap)
+URLSearchParams_has :: proc(c: ^Call, params: Api_URLSearchParams, name: string, value: Maybe(string)) -> bool {
+	v, has := value.?
+	return url.params_has(params.data.sp, name, v, has)
 }
 
-// getAll(name), one value at a time: how many there are...
-n_URLSearchParams_count :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32) -> i32 {
-	context = ctx()
-	_, po := params_of(env, h)
-	if po == nil { return i32(dom.Error.Invalid_Handle) }
-	return i32(url.params_count(po.sp, str(name, nl)))
+URLSearchParams_set :: proc(c: ^Call, params: Api_URLSearchParams, name, value: string) {
+	url.params_set(&params.data.sp, name, value)
+	params_update(c.page, params.data, params.handle)
 }
 
-// ...and the n-th one.
-n_URLSearchParams_getNth :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32, n: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	_, po := params_of(env, h)
-	if po == nil { return i32(dom.Error.Invalid_Handle) }
-	v, ok := url.params_get_nth(po.sp, str(name, nl), int(n))
-	if !ok { return i32(dom.Error.Not_Found) }
-	return out_string(v, buf, cap)
+URLSearchParams_sort :: proc(c: ^Call, params: Api_URLSearchParams) {
+	url.params_sort(&params.data.sp)
+	params_update(c.page, params.data, params.handle)
 }
 
-n_URLSearchParams_has :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32, value: [^]u8, vl: i32, has_value: i32) -> i32 {
-	context = ctx()
-	_, po := params_of(env, h)
-	if po == nil { return i32(dom.Error.Invalid_Handle) }
-	return url.params_has(po.sp, str(name, nl), str(value, vl), has_value != 0) ? 1 : 0
-}
-
-n_URLSearchParams_set :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32, value: [^]u8, vl: i32) -> i32 {
-	context = ctx()
-	p, po := params_of(env, h)
-	if po == nil { return i32(dom.Error.Invalid_Handle) }
-	url.params_set(&po.sp, utf8_scrub(str(name, nl), context.temp_allocator), utf8_scrub(str(value, vl), context.temp_allocator))
-	params_update(p, po, h)
-	return 0
-}
-
-n_URLSearchParams_sort :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	p, po := params_of(env, h)
-	if po == nil { return i32(dom.Error.Invalid_Handle) }
-	url.params_sort(&po.sp)
-	params_update(p, po, h)
-	return 0
-}
-
-n_URLSearchParams_toString :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	_, po := params_of(env, h)
-	if po == nil { return i32(dom.Error.Invalid_Handle) }
-	return out_string(url.params_serialize(po.sp, context.temp_allocator), buf, cap)
+URLSearchParams_toString :: proc(c: ^Call, params: Api_URLSearchParams) -> string {
+	return url.params_serialize(params.data.sp, context.temp_allocator)
 }
 
 // Iteration: the name / value of the pair at `index` (Not_Found past the end).
-n_URLSearchParams_nameAt :: proc "c" (env: wasm.Exec_Env, h: u64, index: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	_, po := params_of(env, h)
-	if po == nil { return i32(dom.Error.Invalid_Handle) }
-	if index < 0 || int(index) >= len(po.sp.list) { return i32(dom.Error.Not_Found) }
-	return out_string(po.sp.list[index].name, buf, cap)
+URLSearchParams_nameAt :: proc(c: ^Call, params: Api_URLSearchParams, index: i32) -> (string, Api_Error) {
+	l := params.data.sp.list
+	if index < 0 || int(index) >= len(l) { return "", .Not_Found }
+	return l[index].name, .None
 }
 
-n_URLSearchParams_valueAt :: proc "c" (env: wasm.Exec_Env, h: u64, index: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	_, po := params_of(env, h)
-	if po == nil { return i32(dom.Error.Invalid_Handle) }
-	if index < 0 || int(index) >= len(po.sp.list) { return i32(dom.Error.Not_Found) }
-	return out_string(po.sp.list[index].value, buf, cap)
-}
-
-url_symbols := [?]wasm.Native_Symbol{
-	{"URL_parse", rawptr(n_URL_parse), "(*~*~i)I", nil},
-	{"URL_canParse", rawptr(n_URL_canParse), "(*~*~i)i", nil},
-	{"URL_get", rawptr(n_URL_get), "(Ii*~)i", nil},
-	{"URL_set", rawptr(n_URL_set), "(Ii*~)i", nil},
-	{"URL_searchParams", rawptr(n_URL_searchParams), "(I)I", nil},
-	{"URLSearchParams_create", rawptr(n_URLSearchParams_create), "(*~)I", nil},
-	{"URLSearchParams_size", rawptr(n_URLSearchParams_size), "(I)i", nil},
-	{"URLSearchParams_append", rawptr(n_URLSearchParams_append), "(I*~*~)i", nil},
-	{"URLSearchParams_delete", rawptr(n_URLSearchParams_delete), "(I*~*~i)i", nil},
-	{"URLSearchParams_get", rawptr(n_URLSearchParams_get), "(I*~*~)i", nil},
-	{"URLSearchParams_count", rawptr(n_URLSearchParams_count), "(I*~)i", nil},
-	{"URLSearchParams_getNth", rawptr(n_URLSearchParams_getNth), "(I*~i*~)i", nil},
-	{"URLSearchParams_has", rawptr(n_URLSearchParams_has), "(I*~*~i)i", nil},
-	{"URLSearchParams_set", rawptr(n_URLSearchParams_set), "(I*~*~)i", nil},
-	{"URLSearchParams_sort", rawptr(n_URLSearchParams_sort), "(I)i", nil},
-	{"URLSearchParams_toString", rawptr(n_URLSearchParams_toString), "(I*~)i", nil},
-	{"URLSearchParams_nameAt", rawptr(n_URLSearchParams_nameAt), "(Ii*~)i", nil},
-	{"URLSearchParams_valueAt", rawptr(n_URLSearchParams_valueAt), "(Ii*~)i", nil},
+URLSearchParams_valueAt :: proc(c: ^Call, params: Api_URLSearchParams, index: i32) -> (string, Api_Error) {
+	l := params.data.sp.list
+	if index < 0 || int(index) >= len(l) { return "", .Not_Found }
+	return l[index].value, .None
 }

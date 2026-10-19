@@ -65,7 +65,7 @@ main :: proc() {
 	profile = fetch.profile_make()
 	fetch.loader_init(&loader, &loop, &client, &blocking, &profile)
 	settings = page.settings_default()
-	wasm.configure_from_args(os.args[1:])   // --pref wasm.engine=wamr ...
+	wasm.configure_from_args(os.args[1:])   // --pref wasm.wasmtime.compiler=winch ...
 	if !page.register_imports() { fmt.eprintln("register failed"); os.exit(2) }
 
 	process := base.scope_make("process")

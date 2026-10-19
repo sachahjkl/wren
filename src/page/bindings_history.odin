@@ -12,7 +12,6 @@ package page
 import "core:strings"
 import "wb:dom"
 import "wb:url"
-import "wb:wasm"
 
 window_vt := Object_VTable{name = "Window"}
 
@@ -178,93 +177,72 @@ can_rewrite_url :: proc(doc, target: url.URL) -> bool {
 ////////////////////////////////
 // Imports
 
-n_Window_self :: proc "c" (env: wasm.Exec_Env) -> u64 {
-	context = ctx()
-	return window_object(page_of(env), inst_of(env).index)
-}
+Window_self :: proc(c: ^Call) -> u64 { return window_object(c.page, c.owner) }
 
 // The Document node (target of visibilitychange, readystatechange...).
-n_Document_self :: proc "c" (env: wasm.Exec_Env) -> u64 {
-	context = ctx()
-	return u64(page_of(env).doc.root)
-}
+Document_self :: proc(c: ^Call) -> u64 { return u64(c.page.doc.root) }
 
-n_Location_get :: proc "c" (env: wasm.Exec_Env, component: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	if component < 0 || component > i32(url.Component.Origin) { return i32(dom.Error.Invalid_Argument) }
-	return out_string(url.component(page_of(env).env.location, url.Component(component), context.temp_allocator), buf, cap)
+Location_get :: proc(c: ^Call, component: Api_URLComponent) -> string {
+	return url.component(c.page.env.location, url.Component(component), context.temp_allocator)
 }
 
 @(private)
-location_assign :: proc(env: wasm.Exec_Env, s: string, replace: bool) -> i32 {
-	p := page_of(env)
-	if len(s) > p.settings.web.url_max_length { return WEB_ERR_TYPE }
+location_assign :: proc(c: ^Call, s: string, replace: bool) -> Api_Error {
+	p := c.page
+	if len(s) > p.settings.web.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
 	target, ok := url.parse(s, &p.env.location, context.temp_allocator)
-	if !ok { return WEB_ERR_SYNTAX }
+	if !ok { return fail(c, .Syntax, "SyntaxError: invalid URL") }
 	location_navigate(p, target, replace)
-	return 0
+	return .None
 }
 
-n_Location_assign :: proc "c" (env: wasm.Exec_Env, s: [^]u8, n: i32) -> i32 {
-	context = ctx()
-	return location_assign(env, str(s, n), false)
-}
+Location_assign :: proc(c: ^Call, target: string) -> Api_Error { return location_assign(c, target, false) }
+Location_replace :: proc(c: ^Call, target: string) -> Api_Error { return location_assign(c, target, true) }
 
-n_Location_replace :: proc "c" (env: wasm.Exec_Env, s: [^]u8, n: i32) -> i32 {
-	context = ctx()
-	return location_assign(env, str(s, n), true)
-}
-
-n_Location_reload :: proc "c" (env: wasm.Exec_Env) -> i32 {
-	context = ctx()
-	p := page_of(env)
+Location_reload :: proc(c: ^Call) {
+	p := c.page
 	request_navigation(p, .Reload, p.env.location.href)
-	return 0
 }
 
-// location.protocol = ..., location.hash = ... (component numbers of url.Component; href behaves like assign).
-n_Location_set :: proc "c" (env: wasm.Exec_Env, component: i32, value: [^]u8, n: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	v := str(value, n)
-	if component == i32(url.Component.Href) { return location_assign(env, v, false) }
-	if component < 0 || component >= i32(url.Component.Origin) { return i32(dom.Error.Invalid_Argument) }
-	if len(v) > p.settings.web.url_max_length { return WEB_ERR_TYPE }
-	c := url.Component(component)
-	nu, res := url.set_component(p.env.location, c, v, context.temp_allocator)
-	if res != .Ok { return WEB_ERR_SYNTAX }
-	if c == .Hash && nu.fragment == p.env.location.fragment && nu.has_fragment == p.env.location.has_fragment { return 0 }
+// location.protocol = ..., location.hash = ... (href behaves like assign).
+Location_set :: proc(c: ^Call, component: Api_URLComponent, value: string) -> Api_Error {
+	p := c.page
+	if component == .Href { return location_assign(c, value, false) }
+	if component == .Origin { return fail(c, .Invalid_Argument, "origin is read-only") }
+	if len(value) > p.settings.web.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
+	uc := url.Component(component)
+	nu, res := url.set_component(p.env.location, uc, value, context.temp_allocator)
+	if res != .Ok { return fail(c, .Syntax, "SyntaxError: invalid value") }
+	if uc == .Hash && nu.fragment == p.env.location.fragment && nu.has_fragment == p.env.location.has_fragment { return .None }
 	// a protocol change to something that is not http(s) is ignored (Location protocol setter)
-	if c == .Protocol && nu.scheme != "http" && nu.scheme != "https" { return 0 }
+	if uc == .Protocol && nu.scheme != "http" && nu.scheme != "https" { return .None }
 	location_navigate(p, nu, false)
-	return 0
+	return .None
 }
 
-n_History_length :: proc "c" (env: wasm.Exec_Env) -> i32 {
-	context = ctx()
-	return i32(session_length(page_of(env).web.session))
-}
+History_length :: proc(c: ^Call) -> i32 { return i32(session_length(c.page.web.session)) }
 
 // history.state: Not_Found when it is null.
-n_History_state :: proc "c" (env: wasm.Exec_Env, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	w := page_of(env).web
-	if !w.has_state { return i32(dom.Error.Not_Found) }
-	return out_string(w.history_state, buf, cap)
+History_state :: proc(c: ^Call) -> (string, Api_Error) {
+	w := c.page.web
+	if !w.has_state { return "", .Not_Found }
+	return w.history_state, .None
 }
 
 @(private)
-history_change :: proc(env: wasm.Exec_Env, state: string, has_state: bool, u: string, has_url: bool, replace: bool) -> i32 {
-	p := page_of(env)
+history_change :: proc(c: ^Call, state_arg, url_arg: Maybe(string), replace: bool) -> Api_Error {
+	p := c.page
 	s := &p.settings.web
-	if has_state && len(state) > s.history_max_state_bytes { return WEB_ERR_DATA_CLONE }
-	if len(u) > s.url_max_length { return WEB_ERR_TYPE }
+	state, has_state := state_arg.?
+	u, has_url := url_arg.?
+	if has_state && len(state) > s.history_max_state_bytes { return fail(c, .Data_Clone, "DataCloneError: the state is over history.max_state_bytes") }
+	if len(u) > s.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
 	target := p.env.location
 	if has_url {
 		ok: bool
 		target, ok = url.parse(u, &p.env.location, context.temp_allocator)
-		if !ok { return WEB_ERR_SYNTAX }
-		if !can_rewrite_url(p.env.location, target) { return WEB_ERR_SECURITY }
+		if !ok { return fail(c, .Syntax, "SyntaxError: invalid URL") }
+		if !can_rewrite_url(p.env.location, target) { return fail(c, .Security, "SecurityError: the document's URL cannot be rewritten to this one") }
 	}
 	href := strings.clone(target.href, context.temp_allocator)
 	sh := p.web.session
@@ -276,42 +254,18 @@ history_change :: proc(env: wasm.Exec_Env, state: string, has_state: bool, u: st
 	set_document_url(p, href)
 	set_history_state(p, state, has_state)
 	notify_url_changed(p)
-	return 0
+	return .None
 }
 
-n_History_pushState :: proc "c" (env: wasm.Exec_Env, state: [^]u8, sl: i32, has_state: i32, u: [^]u8, ul: i32, has_url: i32) -> i32 {
-	context = ctx()
-	return history_change(env, str(state, sl), has_state != 0, str(u, ul), has_url != 0, false)
-}
-
-n_History_replaceState :: proc "c" (env: wasm.Exec_Env, state: [^]u8, sl: i32, has_state: i32, u: [^]u8, ul: i32, has_url: i32) -> i32 {
-	context = ctx()
-	return history_change(env, str(state, sl), has_state != 0, str(u, ul), has_url != 0, true)
-}
+History_pushState :: proc(c: ^Call, state, target: Maybe(string)) -> Api_Error { return history_change(c, state, target, false) }
+History_replaceState :: proc(c: ^Call, state, target: Maybe(string)) -> Api_Error { return history_change(c, state, target, true) }
 
 // history.go(delta); back() is go(-1), forward() go(1), go(0) reloads. Asynchronous, as in HTML.
-n_History_go :: proc "c" (env: wasm.Exec_Env, delta: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
+History_go :: proc(c: ^Call, delta: i32) {
+	p := c.page
 	if delta == 0 {
 		request_navigation(p, .Reload, p.env.location.href)
 	} else {
 		request_navigation(p, .Traverse, "", int(delta))
 	}
-	return 0
-}
-
-history_symbols := [?]wasm.Native_Symbol{
-	{"Window_self", rawptr(n_Window_self), "()I", nil},
-	{"Document_self", rawptr(n_Document_self), "()I", nil},
-	{"Location_get", rawptr(n_Location_get), "(i*~)i", nil},
-	{"Location_set", rawptr(n_Location_set), "(i*~)i", nil},
-	{"Location_assign", rawptr(n_Location_assign), "(*~)i", nil},
-	{"Location_replace", rawptr(n_Location_replace), "(*~)i", nil},
-	{"Location_reload", rawptr(n_Location_reload), "()i", nil},
-	{"History_length", rawptr(n_History_length), "()i", nil},
-	{"History_state", rawptr(n_History_state), "(*~)i", nil},
-	{"History_pushState", rawptr(n_History_pushState), "(*~i*~i)i", nil},
-	{"History_replaceState", rawptr(n_History_replaceState), "(*~i*~i)i", nil},
-	{"History_go", rawptr(n_History_go), "(i)i", nil},
 }

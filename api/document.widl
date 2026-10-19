@@ -1,0 +1,17 @@
+/// The document's address, origin and cookies. Window_origin and Window_isSecureContext belong to
+/// WindowOrWorkerGlobalScope: in a worker they describe the worker.
+[Exposed=(Window,Worker)]
+module document {
+  /// document.URL. Invalid_Handle in a worker (see WorkerGlobalScope_location).
+  string Document_URL() raises;
+  /// self.origin ("null" for an opaque origin).
+  string Window_origin();
+  /// self.isSecureContext
+  bool Window_isSecureContext();
+  /// document.cookie: the cookies scripts may see, "name=value; ...". Security for a document without a tuple origin
+  /// on http(s), and in a worker.
+  string Document_cookie_get() raises;
+  /// document.cookie = cookie. 0 when stored (or deleted), else 1 + the browser's reason (cookies.Store_Result) for
+  /// refusing it. Security as for the getter.
+  i32 Document_cookie_set(string cookie) raises;
+}

@@ -1,0 +1,34 @@
+/// High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure,
+/// getEntriesByName / getEntriesByType (one entry at a time), clearMarks / clearMeasures. Entries are kept in startTime
+/// order, at most performance.max_user_timing_entries (the oldest go first).
+[Exposed=(Window,Worker)]
+module performance {
+  /// The entries a query matches (Any: both).
+  enum PerformanceEntryType : i32 { Any, Mark, Measure }
+
+  /// performance.now()
+  f64 Performance_now();
+  /// performance.timeOrigin (ms since the Unix epoch).
+  f64 Performance_timeOrigin();
+  /// performance.mark(name, {startTime}): a negative or NaN start_time means now. Syntax for an empty name.
+  void Performance_mark(string name, f64 start_time = -1) raises;
+  /// performance.measure(name, startMark, endMark): an empty start is the time origin, an empty end is now. Syntax for
+  /// a mark that does not exist.
+  void Performance_measure(string name, string start_mark = "", string end_mark = "") raises;
+  /// performance.measure(name, {start, end})
+  void Performance_measureTimes(string name, f64 start, f64 end) raises;
+  /// How many entries match `name` ("" = any) and `entry_type`.
+  i32 Performance_entryCount(string name, PerformanceEntryType entry_type);
+  /// startTime of the index-th matching entry (NaN when none).
+  f64 Performance_entryStartTime(string name, PerformanceEntryType entry_type, i32 index);
+  /// duration of the index-th matching entry (NaN when none).
+  f64 Performance_entryDuration(string name, PerformanceEntryType entry_type, i32 index);
+  /// name of the index-th matching entry: Not_Found when none.
+  string Performance_entryName(string name, PerformanceEntryType entry_type, i32 index) raises;
+  /// entryType of the index-th matching entry (Mark or Measure): Not_Found when none.
+  PerformanceEntryType Performance_entryType(string name, PerformanceEntryType entry_type, i32 index) raises;
+  /// performance.clearMarks(name): "" clears all.
+  void Performance_clearMarks(string name = "");
+  /// performance.clearMeasures(name): "" clears all.
+  void Performance_clearMeasures(string name = "");
+}

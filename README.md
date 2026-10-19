@@ -4,32 +4,43 @@ A browser where WebAssembly is the only execution engine. No JavaScript, no glue
 resolved by the browser itself. Written in Odin on top of [gui_toolkit](https://github.com/sachahjkl/gui_toolkit);
 Windows first, platform services used wherever they exist (WinHTTP for HTTP/TLS, D3D11 for drawing).
 
-    build.bat                      # build\browser.exe  (fetches Wasmtime, builds WAMR and Lexbor on first use)
+    build.bat                      # build\browser.exe  (fetches Wasmtime, builds Lexbor on first use)
     build\browser.exe http://127.0.0.1:8765/site/index.html      (run build\testserver.exe first), or a file:/// URL
     powershell -File tools\test_all.ps1 [-Quick]
 
-Needs: Odin (`dev-2026-10`), Visual Studio 2022 (MSVC, for WAMR and Lexbor), Go (only for the test server). Dependencies
-are pinned submodules: `ext/gui_toolkit` (tag v0.3.2), `ext/lexbor` (v3.0.1) and `ext/wamr` (a commit after 2.4.5 that has
-the instruction-limit fix for the MSVC build), plus the Wasmtime C API (see *Wasm engines*). The Public Suffix List is
-embedded (`tools/update_psl.ps1` refreshes it).
+Needs: Odin (`dev-2026-10`), Visual Studio 2022 (MSVC, for Lexbor), Go (only for the test server). Dependencies are
+pinned submodules: `ext/gui_toolkit` (tag v0.3.2) and `ext/lexbor` (v3.0.1), plus the Wasmtime C API (see *Wasm
+engine*). The Public Suffix List is embedded (`tools/update_psl.ps1` refreshes it).
 
-## Wasm engines
+## Wasm engine
 
-Two engines behind one API (`src/wasm`), chosen by the preference `wasm.engine` (read at start-up):
+Wasmtime, the official C API release **v49.0.3**, downloaded by `tools\fetch_wasmtime.ps1` (version and SHA-256 pinned
+in the script) into `build\wasmtime`; the static `wasmtime.lib` is linked into `browser.exe` (no DLL; it adds about
+12 MB). It needs `ws2_32 advapi32 userenv ntdll shell32 ole32 bcrypt kernel32` and the dynamic CRT
+(`msvcrt ucrt vcruntime`), declared in `src/wasm/wasmtime.odin`. Modules are compiled by Cranelift (or Winch,
+`wasm.wasmtime.compiler`), kept in a memory cache and in an HMAC-authenticated disk cache of the profile (`wasm-cache`),
+and every call from the host has a wall-clock deadline (`wasm.max_call_ms`, epoch interruption; with
+`wasm.wasmtime.fuel`, also an instruction budget). `src/tools/wasmbench` compares the compiler configurations and
+measures host calls.
 
-- **Wasmtime** (default): the official C API release **v49.0.3**, downloaded by `tools\fetch_wasmtime.ps1` (version and
-  SHA-256 pinned in the script) into `build\wasmtime`; the static `wasmtime.lib` is linked into `browser.exe` (no DLL; it
-  adds about 12 MB). It needs `ws2_32 advapi32 userenv ntdll shell32 ole32 bcrypt kernel32` and the dynamic CRT
-  (`msvcrt ucrt vcruntime`), declared in `src/wasm/wasmtime.odin`. Modules are compiled by Cranelift (or Winch,
-  `wasm.wasmtime.compiler`), kept in a memory cache and in an HMAC-authenticated disk cache of the profile (`wasm-cache`),
-  and every call from the host has a wall-clock deadline (`wasm.max_call_ms`, epoch interruption).
-- **WAMR**: the fast interpreter (`tools\build_wamr.bat`, built once into `build\wamr`; built without WAMR's copy of the
-  wasm-c-api, which Wasmtime provides). Calls are bounded by an instruction budget (`wasm.instruction_budget`).
+## The web API: one description, everything generated
 
-Host functions are declared once (`wasm.Native_Symbol`: name, procedure, signature) and called through thunks generated
-per signature shape: `build.bat` runs `src/tools/wasmthunks`, which rewrites `src/wasm/thunks_generated.odin` when the
-signatures of the sources change. `src/tools/wasmbench` compares the engines. `test_all.ps1` runs the page, web API
-and workers end-to-end tests once per engine (`-Engines wasmtime,wamr`).
+Every Wasm import of the browser is described once, in `api/*.widl` (a dialect of Web IDL: modules, functions, typed
+handles, enums, flags, structs, callbacks, `raises`, `[Exposed=Window|Worker]`, documentation). `src/tools/bindgen`
+generates from it, deterministically:
+
+- the host side, `src/page/api_generated.odin`: one trampoline per import, defined directly on the Wasmtime linker,
+  which checks every address against the module's memory, converts strings (UTF-8 checked), handles (looked up by
+  kind), enums, flags and structs, and calls the implementation (`bindings_*.odin`) with Odin values. The expected
+  prototype of each implementation is written above its trampoline: a missing or mistyped one does not compile;
+- the Odin guest SDK, `sdk/odin/web/<module>.odin` (distinct handle types, `string` / `[]u8` / `Maybe`, `(T, Error)`
+  results, `F` / `F_len` / `F_alloc` for strings of unknown size);
+- the documentation, `docs/api/` (with the ABI);
+- conformance tests: `examples/apiconformance` and `src/tools/apiconformance/cases_generated.odin` (bad addresses, bad
+  UTF-8, dead handles, enums out of range, buffers too small, for every function).
+
+`build.bat` regenerates what changed; `test_all.ps1` fails when a generated file is out of date (`bindgen -check`).
+Imports take 64-bit addresses in a module whose memory 0 is memory64 (`wasm.features.memory64`).
 
 ## Layout
 
@@ -43,15 +54,17 @@ and workers end-to-end tests once per engine (`-Engines wasmtime,wamr`).
 | `src/cookies` | the cookie jar (RFC 6265bis): parsing, storage model, SameSite, prefixes, eviction, persistence |
 | `src/csp` | Content Security Policy 3: parsing, source matching, fallbacks, nonces, report-only |
 | `src/fetch` | **the policy layer** (Fetch Standard): modes, CORS + preflight cache, credentials, redirects, HSTS, referrer policy, mixed content, schemes (http, file, data), MIME checks, response filtering |
-| `src/wasm` | the Wasm engines (Wasmtime, WAMR) behind one `Instance` API: host functions, validated pointers, deadlines / budgets, limits, compiled-code caches |
+| `src/wasm` | the Wasm engine (Wasmtime): instances, host functions on the linker with address checks (memory64 too), deadlines, limits, compiled-code caches |
 | `src/html` | HTML5 parsing (Lexbor through a C shim), charset sniffing and decoding, `<title>`, Wasm script discovery |
 | `src/dom` | document tree, attributes, listeners, capture/target/bubble dispatch |
-| `src/page` | one document = DOM + its Wasm instances + its requests and timers + its Environment (origin, CSP, referrer policy); the import tables (`bindings*.odin`) |
+| `src/page` | one document = DOM + its Wasm instances + its requests and timers + its Environment (origin, CSP, referrer policy); the implementations of the imports (`bindings*.odin`) behind the generated trampolines (`api_generated.odin`) |
 | `src/browser` | the shell: tabs, navigation, address bar, console strip, placeholder painter (`render.odin`) |
 | `src/shim` | C shims over Lexbor (HTML events, URL parser, encodings) |
-| `sdk/odin/web` | guest-side bindings for Odin (`freestanding_wasm32`); other languages get generated ones |
+| `api/` | the description of the web API (`*.widl`), source of the bindings, SDK, docs and conformance tests (`src/tools/bindgen`) |
+| `sdk/odin/web` | the generated guest SDK for Odin (`freestanding_wasm32`) |
+| `docs/api` | the generated API reference |
 | `examples/` | guest pages: `hello`, `e2e` (DOM, events, timers, fetch, cookies, origin), `counter` + `site/` (an HTML page that names its module) |
-| `tools/` | Wasmtime fetch, WAMR / Lexbor builds, test server (Go), stress, test, perf and screenshot scripts |
+| `tools/` | Wasmtime fetch, Lexbor build, test server (Go), stress, test, perf and screenshot scripts |
 
 ## The rules that keep it from breaking at scale
 
@@ -70,8 +83,8 @@ and workers end-to-end tests once per engine (`-Engines wasmtime,wamr`).
    waiting never counts against connect timeouts); reading pauses when 1 MB is queued for a request; `max_body` caps a
    response; ≤ 20 redirects (the Fetch Standard's number); cookies ≤ 180 per site and 3000 total (browser norm) with LRU
    eviction; preflight cache ≤ 1000; fetch records a page may hold ≤ 1 GiB; guest memory is capped; every host→guest call
-   has a deadline (Wasmtime) or an instruction budget (WAMR): a spinning script is stopped, the instance lives on.
-6. **The guest cannot reach host memory.** Native signatures declare `(*~)` pointer+length pairs, validated (same rules with both engines)
+   has a deadline (epoch interruption): a spinning script is stopped, the instance lives on.
+6. **The guest cannot reach host memory.** Every address+length pair of an import is checked by its generated trampoline
    against the guest's linear memory before our code runs; strings are copied out through caller-provided buffers.
 7. **No recursion on hostile depth.** Tree destruction, text extraction, searches and the HTML replay are iterative.
 

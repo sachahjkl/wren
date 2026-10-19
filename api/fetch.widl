@@ -1,0 +1,34 @@
+/// The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch:
+/// Fetch_status, Fetch_headers, Fetch_release... apply to it).
+///   * Fetch_promise settles with the Response when the headers arrive; it is rejected on a network error (Network)
+///     or an abort (the signal's reason).
+///   * Response_text / Response_arrayBuffer settle when the whole body is there; a body is consumed once (bodyUsed).
+///   * Response_body is a minimal ReadableStream: Stream_read settles with a buffer of what arrived since the last read,
+///     or with 0 (text "done") at the end; Stream_cancel stops the download.
+///   * An abort signal cancels the request and fails it with error kind Aborted.
+[Exposed=Window]
+module fetch {
+  /// The body of a response being read in chunks.
+  handle ReadableStream : Object = Body_Stream via lookup_ReadableStream;
+
+  /// fetch(url, init): the body is `body`, or the bytes of `body_buffer` when given. Type when the signal is not an
+  /// AbortSignal or the buffer not a buffer.
+  Promise<Response> Fetch_promise(string url, string method = "GET", string headers = "", optional bytes body, optional Buffer body_buffer, optional AbortSignal signal, FetchOptions options = none) raises;
+  /// The callback API (Fetch_start) with an abort signal and an optional buffer body.
+  Fetch Fetch_startWithSignal(string url, FetchCallback callback, i32 user = 0, string method = "GET", string headers = "", optional bytes body, optional Buffer body_buffer, optional AbortSignal signal, FetchOptions options = none) raises;
+  /// response.text(): settles with the text (decoded as UTF-8) in the promise's text, its length as value.
+  /// A callback fetch can be read once it is done (Invalid_State before).
+  Promise<string> Response_text(Response response);
+  /// response.arrayBuffer(): settles with a buffer.
+  Promise<Buffer> Response_arrayBuffer(Response response);
+  /// response.bytes(): the same as arrayBuffer on this platform.
+  Promise<Buffer> Response_bytes(Response response);
+  /// response.bodyUsed
+  bool Response_bodyUsed(Response response);
+  /// response.body: the body as a stream. Type when the body was used already.
+  ReadableStream Response_body(Response response) raises;
+  /// reader.read(): settles with a buffer, or with 0 at the end.
+  Promise<Buffer> Stream_read(ReadableStream stream);
+  /// reader.cancel(): the download stops, waiting reads settle with "done".
+  void Stream_cancel(ReadableStream stream);
+}

@@ -6,12 +6,11 @@ package page
 
 import "core:strings"
 import "wb:base"
-import "wb:dom"
 import "wb:fetch"
+import "wb:dom"
 import "wb:forms"
 import "wb:host"
 import "wb:url"
-import "wb:wasm"
 
 Form_Data :: struct { entries: [dynamic]forms.Entry }
 
@@ -46,53 +45,43 @@ formdata_event :: proc(user: rawptr, form: base.Handle, entries: ^[dynamic]forms
 }
 
 @(private)
-fd_of :: proc(env: wasm.Exec_Env, h: u64) -> ^Form_Data { return formdata_get(page_of(env), h) }
-
-@(private)
 too_many :: proc(p: ^Page, fd: ^Form_Data) -> bool { return len(fd.entries) >= p.settings.forms.max_entries }
 
-n_FormData_create :: proc "c" (env: wasm.Exec_Env, form, submitter: u64) -> u64 {
-	context = ctx()
-	p := page_of(env)
+FormData_create :: proc(c: ^Call, form: Api_Element, submitter: Api_Element) -> (u64, Api_Error) {
+	p := c.page
 	pf := page_forms(p)
 	list: [dynamic]forms.Entry
-	if form != 0 {
-		if forms.kind(pf, H(form)) != .Form { return 0 }
-		if submitter != 0 && (!forms.is_submit_button(pf, H(submitter)) || forms.form_owner(pf, H(submitter)) != H(form)) { return 0 }
+	if form.handle != 0 {
+		if forms.kind(pf, H(form.handle)) != .Form { return 0, fail(c, .Invalid_Handle, "not a form") }
+		if submitter.handle != 0 && (!forms.is_submit_button(pf, H(submitter.handle)) || forms.form_owner(pf, H(submitter.handle)) != H(form.handle)) {
+			return 0, fail(c, .Invalid_Handle, "not a submit button of this form")
+		}
 		ok: bool
-		list, ok = forms.construct_entry_list(pf, H(form), H(submitter))
-		if !ok { return 0 }   // InvalidStateError: the form is already constructing its entry list
+		list, ok = forms.construct_entry_list(pf, H(form.handle), H(submitter.handle))
+		if !ok { return 0, fail(c, .Invalid_State, "InvalidStateError: the form is already constructing its entry list") }
 	}
-	h, fd := formdata_create(p, inst_of(env).index)
+	h, fd := formdata_create(p, c.owner)
 	fd.entries = list
-	return h
+	return h, .None
 }
 
-n_FormData_append :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32, value: [^]u8, vl: i32) -> i32 {
-	context = ctx()
-	fd := fd_of(env, h)
-	if fd == nil { return i32(dom.Error.Invalid_Handle) }
-	if too_many(page_of(env), fd) { return i32(dom.Error.Invalid_Argument) }
-	append(&fd.entries, forms.Entry{name = strings.clone(str(name, nl)), value = strings.clone(str(value, vl))})
-	return 0
+FormData_append :: proc(c: ^Call, data: Api_FormData, name, value: string) -> Api_Error {
+	fd := data.data
+	if too_many(c.page, fd) { return fail(c, .Invalid_Argument, "too many entries (forms.max_entries)") }
+	append(&fd.entries, forms.Entry{name = strings.clone(name), value = strings.clone(value)})
+	return .None
 }
 
 // append(name, blob, filename): the bytes of a buffer as a file entry ("blob" when no file name is given).
-n_FormData_appendBlob :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32, buffer: u64, filename: [^]u8, fl: i32, mime: [^]u8, ml: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	fd := fd_of(env, h)
-	if fd == nil { return i32(dom.Error.Invalid_Handle) }
-	b := buffer_get(p, buffer)
-	if b == nil { return i32(dom.Error.Invalid_Handle) }
-	if too_many(p, fd) { return i32(dom.Error.Invalid_Argument) }
-	data := make([]byte, len(b.bytes))
-	copy(data, b.bytes[:])
-	fname := str(filename, fl)
-	append(&fd.entries, forms.Entry{name = strings.clone(str(name, nl)), is_file = true, file = forms.File{
-		name = strings.clone(fname == "" ? "blob" : fname), mime = strings.clone(str(mime, ml)), size = i64(len(data)), data = data,
+FormData_appendBlob :: proc(c: ^Call, data: Api_FormData, name: string, blob: Api_Buffer, filename: string, mime: string) -> Api_Error {
+	fd := data.data
+	if too_many(c.page, fd) { return fail(c, .Invalid_Argument, "too many entries (forms.max_entries)") }
+	bytes := make([]byte, len(blob.data.bytes))
+	copy(bytes, blob.data.bytes[:])
+	append(&fd.entries, forms.Entry{name = strings.clone(name), is_file = true, file = forms.File{
+		name = strings.clone(filename == "" ? "blob" : filename), mime = strings.clone(mime), size = i64(len(bytes)), data = bytes,
 	}})
-	return 0
+	return .None
 }
 
 @(private)
@@ -112,121 +101,87 @@ fd_remove_all :: proc(fd: ^Form_Data, name: string) -> (first: int) {
 }
 
 // set(name, value): replaces the first entry of that name and removes the others (appends when there is none).
-n_FormData_set :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32, value: [^]u8, vl: i32) -> i32 {
-	context = ctx()
-	fd := fd_of(env, h)
-	if fd == nil { return i32(dom.Error.Invalid_Handle) }
-	n := str(name, nl)
-	at := fd_remove_all(fd, n)
-	e := forms.Entry{name = strings.clone(n), value = strings.clone(str(value, vl))}
+FormData_set :: proc(c: ^Call, data: Api_FormData, name, value: string) -> Api_Error {
+	fd := data.data
+	at := fd_remove_all(fd, name)
+	e := forms.Entry{name = strings.clone(name), value = strings.clone(value)}
 	if at < 0 {
-		if too_many(page_of(env), fd) { forms.entry_destroy(&e); return i32(dom.Error.Invalid_Argument) }
+		if too_many(c.page, fd) { forms.entry_destroy(&e); return fail(c, .Invalid_Argument, "too many entries (forms.max_entries)") }
 		append(&fd.entries, e)
 	} else {
 		inject_at(&fd.entries, at, e)
 	}
-	return 0
+	return .None
 }
 
-n_FormData_delete :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32) -> i32 {
-	context = ctx()
-	fd := fd_of(env, h)
-	if fd == nil { return i32(dom.Error.Invalid_Handle) }
-	fd_remove_all(fd, str(name, nl))
-	return 0
-}
+FormData_delete :: proc(c: ^Call, data: Api_FormData, name: string) { fd_remove_all(data.data, name) }
 
-n_FormData_has :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32) -> i32 {
-	context = ctx()
-	fd := fd_of(env, h)
-	if fd == nil { return i32(dom.Error.Invalid_Handle) }
-	n := str(name, nl)
-	for e in fd.entries { if e.name == n { return 1 } }
-	return 0
+FormData_has :: proc(c: ^Call, data: Api_FormData, name: string) -> bool {
+	for e in data.data.entries { if e.name == name { return true } }
+	return false
 }
 
 // The number of entries named `name` (getAll().length).
-n_FormData_count :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32) -> i32 {
-	context = ctx()
-	fd := fd_of(env, h)
-	if fd == nil { return i32(dom.Error.Invalid_Handle) }
-	n := str(name, nl)
-	c: i32
-	for e in fd.entries { if e.name == n { c += 1 } }
-	return c
+FormData_count :: proc(c: ^Call, data: Api_FormData, name: string) -> i32 {
+	n: i32
+	for e in data.data.entries { if e.name == name { n += 1 } }
+	return n
 }
 
 @(private)
 entry_text :: proc(e: forms.Entry) -> string { return e.is_file ? e.file.name : e.value }
 
 // getAll(name)[i]: the value (a file entry gives its file name). Not_Found when there is no such entry.
-n_FormData_getAt :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32, index: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	fd := fd_of(env, h)
-	if fd == nil { return i32(dom.Error.Invalid_Handle) }
-	n := str(name, nl)
+FormData_getAt :: proc(c: ^Call, data: Api_FormData, name: string, index: i32) -> (string, Api_Error) {
 	k: i32
-	for e in fd.entries {
-		if e.name != n { continue }
-		if k == index { return out_string(entry_text(e), buf, cap) }
+	for e in data.data.entries {
+		if e.name != name { continue }
+		if k == index { return entry_text(e), .None }
 		k += 1
 	}
-	return i32(dom.Error.Not_Found)
+	return "", .Not_Found
 }
 
-n_FormData_get :: proc "c" (env: wasm.Exec_Env, h: u64, name: [^]u8, nl: i32, buf: [^]u8, cap: i32) -> i32 {
-	return n_FormData_getAt(env, h, name, nl, 0, buf, cap)
-}
+FormData_get :: proc(c: ^Call, data: Api_FormData, name: string) -> (string, Api_Error) { return FormData_getAt(c, data, name, 0) }
 
-n_FormData_size :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	fd := fd_of(env, h)
-	if fd == nil { return i32(dom.Error.Invalid_Handle) }
-	return i32(len(fd.entries))
-}
+FormData_size :: proc(c: ^Call, data: Api_FormData) -> i32 { return i32(len(data.data.entries)) }
 
 @(private)
-entry_at :: proc(env: wasm.Exec_Env, h: u64, i: i32) -> ^forms.Entry {
-	fd := fd_of(env, h)
-	if fd == nil || i < 0 || int(i) >= len(fd.entries) { return nil }
+entry_at :: proc(data: Api_FormData, i: i32) -> ^forms.Entry {
+	fd := data.data
+	if i < 0 || int(i) >= len(fd.entries) { return nil }
 	return &fd.entries[i]
 }
 
-n_FormData_nameAt :: proc "c" (env: wasm.Exec_Env, h: u64, i: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	e := entry_at(env, h, i)
-	if e == nil { return i32(dom.Error.Not_Found) }
-	return out_string(e.name, buf, cap)
+FormData_nameAt :: proc(c: ^Call, data: Api_FormData, index: i32) -> (string, Api_Error) {
+	e := entry_at(data, index)
+	if e == nil { return "", .Not_Found }
+	return e.name, .None
 }
 
-n_FormData_valueAt :: proc "c" (env: wasm.Exec_Env, h: u64, i: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	e := entry_at(env, h, i)
-	if e == nil { return i32(dom.Error.Not_Found) }
-	return out_string(entry_text(e^), buf, cap)
+FormData_valueAt :: proc(c: ^Call, data: Api_FormData, index: i32) -> (string, Api_Error) {
+	e := entry_at(data, index)
+	if e == nil { return "", .Not_Found }
+	return entry_text(e^), .None
 }
 
-n_FormData_isFileAt :: proc "c" (env: wasm.Exec_Env, h: u64, i: i32) -> i32 {
-	context = ctx()
-	e := entry_at(env, h, i)
-	if e == nil { return i32(dom.Error.Not_Found) }
-	return e.is_file ? 1 : 0
+FormData_isFileAt :: proc(c: ^Call, data: Api_FormData, index: i32) -> (bool, Api_Error) {
+	e := entry_at(data, index)
+	if e == nil { return false, .Not_Found }
+	return e.is_file, .None
 }
 
-n_FormData_fileSizeAt :: proc "c" (env: wasm.Exec_Env, h: u64, i: i32) -> i64 {
-	context = ctx()
-	e := entry_at(env, h, i)
+FormData_fileSizeAt :: proc(c: ^Call, data: Api_FormData, index: i32) -> i64 {
+	e := entry_at(data, index)
 	if e == nil || !e.is_file { return -1 }
 	return e.file.size
 }
 
-n_FormData_fileTypeAt :: proc "c" (env: wasm.Exec_Env, h: u64, i: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	e := entry_at(env, h, i)
-	if e == nil || !e.is_file { return i32(dom.Error.Not_Found) }
-	return out_string(e.file.mime, buf, cap)
+FormData_fileTypeAt :: proc(c: ^Call, data: Api_FormData, index: i32) -> (string, Api_Error) {
+	e := entry_at(data, index)
+	if e == nil || !e.is_file { return "", .Not_Found }
+	return e.file.mime, .None
 }
-
 ////////////////////////////////
 // Sending a FormData with fetch
 
@@ -285,25 +240,26 @@ fail_fetch :: proc(p: ^Page, f: ^Fetch, message: string) {
 	}
 }
 
-// Fetch with a FormData body: `enctype` 0 multipart/form-data (the Fetch default), 1 urlencoded, 2 text/plain. The
-// Content-Type (with its boundary) is set unless the headers name one. Same options and callback as Fetch_start.
-n_Fetch_startFormData :: proc "c" (env: wasm.Exec_Env, target: [^]u8, tl: i32, method: [^]u8, ml: i32, headers: [^]u8, hl: i32, formdata: u64, enctype, options, callback, user: i32) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	fd := formdata_get(p, formdata)
-	if fd == nil { return 0 }
-	inst := inst_of(env)
-	h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = inst.index, callback = u32(callback), user = u32(user)})
+// Fetch with a FormData body: the Content-Type (with its boundary) is set unless the headers name one. Same options and
+// callback as Fetch_start.
+Fetch_startFormData :: proc(c: ^Call, target: string, data: Api_FormData, callback: u32, user: i32, method: string, headers: string, enctype: Api_FormEnctype, options: Api_FetchOptions) -> u64 {
+	p := c.page
+	fd := data.data
+	h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = c.owner, callback = callback, user = u32(user)})
 	f.self = h
-	abs := str(target, tl)
+	abs := target
 	if u, ok := url.parse(abs, &p.env.location, context.temp_allocator); ok { abs = u.href }
 
 	job := new(Body_Job)
 	job.page, job.fetch = p, h
 	job.settings = p.settings.forms
-	job.sub.enctype = enctype == 1 ? .Urlencoded : enctype == 2 ? .Text_Plain : .Multipart
+	switch enctype {
+	case .Multipart:  job.sub.enctype = .Multipart
+	case .Urlencoded: job.sub.enctype = .Urlencoded
+	case .Text_Plain: job.sub.enctype = .Text_Plain
+	}
 	for e in fd.entries { append(&job.sub.entries, forms.entry_clone(e)) }
-	job.target, job.method, job.headers, job.options = strings.clone(abs), strings.clone(str(method, ml)), strings.clone(str(headers, hl)), u32(options)
+	job.target, job.method, job.headers, job.options = strings.clone(abs), strings.clone(method), strings.clone(headers), fetch_options_pack(options)
 
 	if !forms.needs_file_reads(job.sub.entries[:]) {
 		body_job_work(job)
@@ -318,7 +274,6 @@ n_Fetch_startFormData :: proc "c" (env: wasm.Exec_Env, target: [^]u8, tl: i32, m
 	}, job)
 	return u64(h)
 }
-
 @(private)
 body_job_work :: proc(data: rawptr) {
 	job := (^Body_Job)(data)

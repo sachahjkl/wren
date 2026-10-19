@@ -1,0 +1,29 @@
+/// AbortController and AbortSignal (DOM Standard). A signal is an EventTarget ("abort"). Its reason is a (code, text)
+/// pair: AbortError by default, TimeoutError for AbortSignal.timeout(). Dependent signals (AbortSignal.any) follow their
+/// sources as the specification describes.
+[Exposed=Window]
+module abort {
+  handle AbortController : Object = Abort_Controller via lookup_AbortController;
+  handle AbortSignal : Object = Abort_Signal via lookup_AbortSignal;
+
+  /// new AbortController()
+  AbortController AbortController_create();
+  /// controller.signal
+  AbortSignal AbortController_signal(AbortController controller);
+  /// controller.abort(reason): code 0 and an empty reason give the default AbortError.
+  void AbortController_abort(AbortController controller, i64 code = 0, string reason = "");
+  /// signal.aborted
+  bool AbortSignal_aborted(AbortSignal signal);
+  /// The code of signal.reason (0 while not aborted).
+  i64 AbortSignal_reasonCode(AbortSignal signal);
+  /// The text of signal.reason.
+  string AbortSignal_reason(AbortSignal signal);
+  /// signal.throwIfAborted(): 0, or the reason's code.
+  i64 AbortSignal_throwIfAborted(AbortSignal signal);
+  /// AbortSignal.abort(reason): a signal aborted already.
+  AbortSignal AbortSignal_abort(i64 code = 0, string reason = "");
+  /// AbortSignal.timeout(ms): aborted with TimeoutError after `ms`. Range for a negative or NaN delay.
+  AbortSignal AbortSignal_timeout(f64 ms) raises;
+  /// AbortSignal.any(signals). Invalid_Handle when one is not a signal, Range past abort.max_signal_sources.
+  AbortSignal AbortSignal_any(AbortSignal[] signals) raises;
+}

@@ -1,0 +1,33 @@
+/// Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never
+/// inside the call; same-document changes (pushState, fragments) fire popstate / hashchange as HTML says.
+[Exposed=Window]
+module history {
+  /// The Window object (an EventTarget: popstate, hashchange, storage...).
+  handle Window : Object;
+
+  /// window (the same object every time).
+  Window Window_self();
+  /// document, as a node (target of visibilitychange, readystatechange...).
+  Node Document_self();
+  /// location.href, location.protocol...
+  string Location_get(URLComponent component);
+  /// location.protocol = ..., location.hash = ... (href behaves like assign). Syntax for an invalid URL, Type when too long.
+  void Location_set(URLComponent component, string value) raises;
+  /// location.assign(url)
+  void Location_assign(string url) raises;
+  /// location.replace(url)
+  void Location_replace(string url) raises;
+  /// location.reload()
+  void Location_reload();
+  /// history.length
+  i32 History_length();
+  /// history.state: Not_Found when null.
+  string History_state() raises;
+  /// history.pushState(state, "", url): Data_Clone past history.max_state_bytes, Syntax for an invalid URL, Security
+  /// for a URL the document cannot be rewritten to.
+  void History_pushState(optional string state, optional string url) raises;
+  /// history.replaceState(state, "", url)
+  void History_replaceState(optional string state, optional string url) raises;
+  /// history.go(delta): back() is go(-1), forward() go(1), go(0) reloads. Asynchronous.
+  void History_go(i32 delta = 0);
+}

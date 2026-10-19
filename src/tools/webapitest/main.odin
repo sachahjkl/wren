@@ -101,7 +101,7 @@ main :: proc() {
 	settings = page.settings_default()
 	settings.web.storage_quota = 2000
 	settings.web.background_align_ms = 200
-	wasm.configure_from_args(os.args[1:])   // --pref wasm.engine=wamr ...
+	wasm.configure_from_args(os.args[1:])   // --pref wasm.wasmtime.compiler=winch ...
 	if !page.register_imports() { fmt.eprintln("register failed"); os.exit(2) }
 	os.remove_all(PROFILE_DIR)
 	page.storage_manager_init(&storage, &loop, &blocking, PROFILE_DIR)
@@ -201,8 +201,10 @@ main :: proc() {
 
 	rc_stale := call(p, inst, "stale_probe")
 	check(rc_stale == 1, fmt.tprintf("stale handles and bad arguments are refused cleanly (%d)", rc_stale))
+	check(call(p, inst, "stale_getter_probe") == min(i32) && strings.contains(inst.last_error, "not a live URL"), fmt.tprintf("a getter on a released object traps (%q)", inst.last_error))
+	check(call(p, inst, "wrong_kind_probe") == min(i32) && strings.contains(inst.last_error, "not a live TextDecoder"), fmt.tprintf("a handle of another kind traps (%q)", inst.last_error))
 	held := p.held
-	check(call(p, inst, "bad_length_probe") == min(i32), "a negative length traps in the runtime instead of reaching the host")
+	check(call(p, inst, "bad_length_probe") == min(i32) && strings.contains(inst.last_error, "out of bounds"), "a length past the memory traps in the binding layer instead of reaching the implementation")
 	check(p.held == held && call(p, inst, "url_probe") == 1, "the instance stays usable after the trap")
 
 	////////////////////////////////

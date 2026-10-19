@@ -1,0 +1,11 @@
+/// Host functions of the call benchmark (src/tools/wasmbench): the cheapest import of each shape, to measure what the
+/// binding layer itself costs.
+[Exposed=(Window,Worker)]
+module bench {
+  /// Does nothing.
+  void nop();
+  /// Reads the first byte: (address, length) checked against the memory.
+  i32 touch(bytes data);
+  /// Same with a string: also checked to be UTF-8.
+  i32 touch_string(string text);
+}

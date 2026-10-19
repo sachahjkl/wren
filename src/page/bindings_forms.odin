@@ -15,13 +15,11 @@ package page
 //     FocusEvent.relatedTarget and FormDataEvent.formData -> Event_object
 
 import "core:math"
-import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:forms"
 import "wb:host"
 import "wb:style"
-import "wb:wasm"
 
 // What the embedder (the shell) provides. Every callback runs from a loop task, never inside guest code.
 Forms_Embedder :: struct {
@@ -175,438 +173,268 @@ forms_style_query :: proc(user: rawptr, el: base.Handle, q: style.Control_Query)
 // Imports: module "forms"
 
 @(private)
-F :: proc(env: wasm.Exec_Env) -> ^forms.Forms { return page_forms(page_of(env)) }
+F :: proc(c: ^Call) -> ^forms.Forms { return page_forms(c.page) }
+
+// forms.Error -> the API's codes.
+@(private)
+E :: proc(c: ^Call, e: forms.Error) -> Api_Error {
+	switch e {
+	case .None:          return .None
+	case .Invalid_Handle: return .Invalid_Handle
+	case .Not_Supported: return fail(c, .Not_Supported, "NotSupportedError: this does not apply to this control")
+	case .Invalid_State: return fail(c, .Invalid_State, "InvalidStateError")
+	case .Index_Size:    return fail(c, .Index_Size, "IndexSizeError")
+	case .Not_Allowed:   return fail(c, .Not_Allowed, "NotAllowedError")
+	}
+	return .Invalid_Argument
+}
 
 @(private)
-is_el :: proc(env: wasm.Exec_Env, h: u64) -> bool {
-	n := dom.get(page_of(env).doc, H(h))
-	return n != nil && n.kind == .Element
+bool_attr :: proc(c: ^Call, el: Api_Element, name: string, v: bool) {
+	p := c.page
+	if v { dom.set_attribute(p.doc, H(el.handle), name, "") } else { dom.remove_attribute(p.doc, H(el.handle), name) }
+	forms.changed(page_forms(p), H(el.handle))
 }
 
 @(private)
-E :: proc(e: forms.Error) -> i32 { return i32(e) }
-
-@(private)
-bool_attr :: proc(env: wasm.Exec_Env, h: u64, name: string, v: i32) -> i32 {
-	p := page_of(env)
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	if v != 0 { dom.set_attribute(p.doc, H(h), name, "") } else { dom.remove_attribute(p.doc, H(h), name) }
-	forms.changed(page_forms(p), H(h))
-	return 0
+has_attr :: proc(c: ^Call, el: Api_Element, name: string) -> bool {
+	_, ok := dom.get_attribute(c.page.doc, H(el.handle), name)
+	return ok
 }
 
-n_value :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	return out_string(forms.value(F(env), H(h)), buf, cap)
+forms_value :: proc(c: ^Call, control: Api_Element) -> string { return forms.value(F(c), H(control.handle)) }
+forms_setValue :: proc(c: ^Call, control: Api_Element, value: string) -> Api_Error { return E(c, forms.set_value(F(c), H(control.handle), value)) }
+forms_defaultValue :: proc(c: ^Call, control: Api_Element) -> string { return forms.default_value(F(c), H(control.handle)) }
+forms_setDefaultValue :: proc(c: ^Call, control: Api_Element, value: string) -> Api_Error { return E(c, forms.set_default_value(F(c), H(control.handle), value)) }
+forms_checked :: proc(c: ^Call, control: Api_Element) -> bool { return forms.checked(F(c), H(control.handle)) }
+forms_setChecked :: proc(c: ^Call, control: Api_Element, checked: bool) -> Api_Error { return E(c, forms.set_checked(F(c), H(control.handle), checked)) }
+forms_defaultChecked :: proc(c: ^Call, control: Api_Element) -> bool { return forms.default_checked(F(c), H(control.handle)) }
+forms_setDefaultChecked :: proc(c: ^Call, control: Api_Element, checked: bool) { forms.set_default_checked(F(c), H(control.handle), checked) }
+forms_indeterminate :: proc(c: ^Call, control: Api_Element) -> bool { return forms.indeterminate(F(c), H(control.handle)) }
+forms_setIndeterminate :: proc(c: ^Call, control: Api_Element, indeterminate: bool) { forms.set_indeterminate(F(c), H(control.handle), indeterminate) }
+forms_type :: proc(c: ^Call, control: Api_Element) -> string { return forms.type_name(F(c), H(control.handle)) }
+
+forms_name :: proc(c: ^Call, control: Api_Element) -> string {
+	v, _ := dom.get_attribute(c.page.doc, H(control.handle), "name")
+	return v
 }
-n_setValue :: proc "c" (env: wasm.Exec_Env, h: u64, s: [^]u8, n: i32) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	return E(forms.set_value(F(env), H(h), str(s, n)))
+
+forms_form :: proc(c: ^Call, control: Api_Element) -> u64 { return u64(forms.form_owner(F(c), H(control.handle))) }
+forms_disabled :: proc(c: ^Call, control: Api_Element) -> bool { return has_attr(c, control, "disabled") }
+forms_setDisabled :: proc(c: ^Call, control: Api_Element, disabled: bool) { bool_attr(c, control, "disabled", disabled) }
+forms_readOnly :: proc(c: ^Call, control: Api_Element) -> bool { return has_attr(c, control, "readonly") }
+forms_setReadOnly :: proc(c: ^Call, control: Api_Element, read_only: bool) { bool_attr(c, control, "readonly", read_only) }
+forms_required :: proc(c: ^Call, control: Api_Element) -> bool { return has_attr(c, control, "required") }
+forms_setRequired :: proc(c: ^Call, control: Api_Element, required: bool) { bool_attr(c, control, "required", required) }
+forms_willValidate :: proc(c: ^Call, control: Api_Element) -> bool { return forms.will_validate(F(c), H(control.handle)) }
+forms_validity :: proc(c: ^Call, control: Api_Element) -> Api_ValidityState { return transmute(Api_ValidityState)u32(transmute(u32)forms.validity(F(c), H(control.handle))) }
+forms_validationMessage :: proc(c: ^Call, control: Api_Element) -> string { return forms.validation_message(F(c), H(control.handle)) }
+forms_setCustomValidity :: proc(c: ^Call, control: Api_Element, message: string) { forms.set_custom_validity(F(c), H(control.handle), message) }
+forms_checkValidity :: proc(c: ^Call, control: Api_Element) -> bool { return forms.check_validity(F(c), H(control.handle)) }
+
+forms_reportValidity :: proc(c: ^Call, control: Api_Element) -> bool {
+	ok := forms.report_validity(F(c), H(control.handle))
+	forms_repaint(c.page)
+	return ok
 }
-n_defaultValue :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	return out_string(forms.default_value(F(env), H(h)), buf, cap)
-}
-n_setDefaultValue :: proc "c" (env: wasm.Exec_Env, h: u64, s: [^]u8, n: i32) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	return E(forms.set_default_value(F(env), H(h), str(s, n)))
-}
-n_checked :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return forms.checked(F(env), H(h)) ? 1 : 0 }
-n_setChecked :: proc "c" (env: wasm.Exec_Env, h: u64, v: i32) -> i32 { context = ctx(); return E(forms.set_checked(F(env), H(h), v != 0)) }
-n_defaultChecked :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return forms.default_checked(F(env), H(h)) ? 1 : 0 }
-n_setDefaultChecked :: proc "c" (env: wasm.Exec_Env, h: u64, v: i32) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	forms.set_default_checked(F(env), H(h), v != 0)
-	return 0
-}
-n_indeterminate :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return forms.indeterminate(F(env), H(h)) ? 1 : 0 }
-n_setIndeterminate :: proc "c" (env: wasm.Exec_Env, h: u64, v: i32) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	forms.set_indeterminate(F(env), H(h), v != 0)
-	return 0
-}
-n_type :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	return out_string(forms.type_name(F(env), H(h)), buf, cap)
-}
-n_name :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	v, _ := dom.get_attribute(page_of(env).doc, H(h), "name")
-	return out_string(v, buf, cap)
-}
-n_form :: proc "c" (env: wasm.Exec_Env, h: u64) -> u64 { context = ctx(); return u64(forms.form_owner(F(env), H(h))) }
-n_disabled :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	v, ok := dom.get_attribute(page_of(env).doc, H(h), "disabled")
-	_ = v
-	return ok ? 1 : 0
-}
-n_setDisabled :: proc "c" (env: wasm.Exec_Env, h: u64, v: i32) -> i32 { context = ctx(); return bool_attr(env, h, "disabled", v) }
-n_readOnly :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); _, ok := dom.get_attribute(page_of(env).doc, H(h), "readonly"); return ok ? 1 : 0 }
-n_setReadOnly :: proc "c" (env: wasm.Exec_Env, h: u64, v: i32) -> i32 { context = ctx(); return bool_attr(env, h, "readonly", v) }
-n_required :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); _, ok := dom.get_attribute(page_of(env).doc, H(h), "required"); return ok ? 1 : 0 }
-n_setRequired :: proc "c" (env: wasm.Exec_Env, h: u64, v: i32) -> i32 { context = ctx(); return bool_attr(env, h, "required", v) }
-n_willValidate :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return forms.will_validate(F(env), H(h)) ? 1 : 0 }
-n_validity :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	return i32(transmute(u32)forms.validity(F(env), H(h)))
-}
-n_validationMessage :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	return out_string(forms.validation_message(F(env), H(h)), buf, cap)
-}
-n_setCustomValidity :: proc "c" (env: wasm.Exec_Env, h: u64, s: [^]u8, n: i32) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	forms.set_custom_validity(F(env), H(h), str(s, n))
-	return 0
-}
-n_checkValidity :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	return forms.check_validity(F(env), H(h)) ? 1 : 0
-}
-n_reportValidity :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	ok := forms.report_validity(F(env), H(h))
-	forms_repaint(page_of(env))
-	return ok ? 1 : 0
-}
-n_select :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return E(forms.select_text(F(env), H(h))) }
-n_selectionStart :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	s, _, _, ok := forms.selection_utf16(F(env), H(h))
+
+forms_select :: proc(c: ^Call, control: Api_Element) -> Api_Error { return E(c, forms.select_text(F(c), H(control.handle))) }
+
+forms_selectionStart :: proc(c: ^Call, control: Api_Element) -> i32 {
+	s, _, _, ok := forms.selection_utf16(F(c), H(control.handle))
 	return ok ? i32(s) : -1
 }
-n_selectionEnd :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	_, e, _, ok := forms.selection_utf16(F(env), H(h))
+
+forms_selectionEnd :: proc(c: ^Call, control: Api_Element) -> i32 {
+	_, e, _, ok := forms.selection_utf16(F(c), H(control.handle))
 	return ok ? i32(e) : -1
 }
-n_selectionDirection :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	_, _, d, ok := forms.selection_utf16(F(env), H(h))
-	if !ok { return i32(forms.Error.Invalid_State) }
+
+forms_selectionDirection :: proc(c: ^Call, control: Api_Element) -> (string, Api_Error) {
+	_, _, d, ok := forms.selection_utf16(F(c), H(control.handle))
+	if !ok { return "", E(c, .Invalid_State) }
 	switch d {
-	case .Forward: return out_string("forward", buf, cap)
-	case .Backward: return out_string("backward", buf, cap)
+	case .Forward: return "forward", .None
+	case .Backward: return "backward", .None
 	case .None:
 	}
-	return out_string("none", buf, cap)
+	return "none", .None
 }
-// direction: 0 none, 1 forward, 2 backward
-n_setSelectionRange :: proc "c" (env: wasm.Exec_Env, h: u64, start, end, dir: i32) -> i32 {
-	context = ctx()
+
+forms_setSelectionRange :: proc(c: ^Call, control: Api_Element, start, end: i32, direction: Api_SelectionDirection) -> Api_Error {
 	d := forms.Direction.None
-	if dir == 1 { d = .Forward } else if dir == 2 { d = .Backward }
-	return E(forms.set_selection_range(F(env), H(h), int(start), int(end), d))
+	switch direction {
+	case .None:
+	case .Forward: d = .Forward
+	case .Backward: d = .Backward
+	}
+	return E(c, forms.set_selection_range(F(c), H(control.handle), int(start), int(end), d))
 }
-// start/end < 0: the selection. mode: 0 preserve, 1 select, 2 start, 3 end.
-n_setRangeText :: proc "c" (env: wasm.Exec_Env, h: u64, s: [^]u8, n: i32, start, end, mode: i32) -> i32 {
-	context = ctx()
+
+// start / end < 0: the selection.
+forms_setRangeText :: proc(c: ^Call, control: Api_Element, text: string, start, end: i32, mode: Api_SelectionMode) -> Api_Error {
 	m := forms.Select_Mode.Preserve
-	switch mode { case 1: m = .Select; case 2: m = .Start; case 3: m = .End }
-	return E(forms.set_range_text(F(env), H(h), str(s, n), int(start), int(end), m))
+	switch mode {
+	case .Preserve:
+	case .Select: m = .Select
+	case .Start: m = .Start
+	case .End: m = .End
+	}
+	return E(c, forms.set_range_text(F(c), H(control.handle), text, int(start), int(end), m))
 }
-n_stepUp :: proc "c" (env: wasm.Exec_Env, h: u64, count: i32) -> i32 { context = ctx(); return E(forms.step(F(env), H(h), int(count))) }
-n_stepDown :: proc "c" (env: wasm.Exec_Env, h: u64, count: i32) -> i32 { context = ctx(); return E(forms.step(F(env), H(h), -int(count))) }
-n_valueAsNumber :: proc "c" (env: wasm.Exec_Env, h: u64) -> f64 { context = ctx(); return forms.value_as_number(F(env), H(h)) }
-n_setValueAsNumber :: proc "c" (env: wasm.Exec_Env, h: u64, v: f64) -> i32 { context = ctx(); return E(forms.set_value_as_number(F(env), H(h), v)) }
-n_valueAsDate :: proc "c" (env: wasm.Exec_Env, h: u64) -> f64 {
-	context = ctx()
-	if ms, ok := forms.value_as_date(F(env), H(h)); ok { return ms }
+
+forms_maxLength :: proc(c: ^Call, control: Api_Element) -> i32 { return i32(forms.max_length(F(c), H(control.handle))) }
+forms_minLength :: proc(c: ^Call, control: Api_Element) -> i32 { return i32(forms.min_length(F(c), H(control.handle))) }
+forms_stepUp :: proc(c: ^Call, control: Api_Element, count: i32) -> Api_Error { return E(c, forms.step(F(c), H(control.handle), int(count))) }
+forms_stepDown :: proc(c: ^Call, control: Api_Element, count: i32) -> Api_Error { return E(c, forms.step(F(c), H(control.handle), -int(count))) }
+forms_valueAsNumber :: proc(c: ^Call, control: Api_Element) -> f64 { return forms.value_as_number(F(c), H(control.handle)) }
+forms_setValueAsNumber :: proc(c: ^Call, control: Api_Element, value: f64) -> Api_Error { return E(c, forms.set_value_as_number(F(c), H(control.handle), value)) }
+
+forms_valueAsDate :: proc(c: ^Call, control: Api_Element) -> f64 {
+	if ms, ok := forms.value_as_date(F(c), H(control.handle)); ok { return ms }
 	return math.nan_f64()
 }
-n_setValueAsDate :: proc "c" (env: wasm.Exec_Env, h: u64, ms: f64) -> i32 {
-	context = ctx()
-	return E(forms.set_value_as_date(F(env), H(h), ms, math.is_nan(ms)))
+
+forms_setValueAsDate :: proc(c: ^Call, control: Api_Element, ms: f64) -> Api_Error {
+	return E(c, forms.set_value_as_date(F(c), H(control.handle), ms, math.is_nan(ms)))
 }
-n_files_length :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return i32(len(forms.files(F(env), H(h)))) }
-n_fileName :: proc "c" (env: wasm.Exec_Env, h: u64, i: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	fl := forms.files(F(env), H(h))
-	if i < 0 || int(i) >= len(fl) { return i32(dom.Error.Not_Found) }
-	return out_string(fl[i].name, buf, cap)
+
+forms_files_length :: proc(c: ^Call, control: Api_Element) -> i32 { return i32(len(forms.files(F(c), H(control.handle)))) }
+
+forms_fileName :: proc(c: ^Call, control: Api_Element, index: i32) -> (string, Api_Error) {
+	fl := forms.files(F(c), H(control.handle))
+	if index < 0 || int(index) >= len(fl) { return "", .Not_Found }
+	return fl[index].name, .None
 }
-n_fileSize :: proc "c" (env: wasm.Exec_Env, h: u64, i: i32) -> i64 {
-	context = ctx()
-	fl := forms.files(F(env), H(h))
-	if i < 0 || int(i) >= len(fl) { return -1 }
-	return fl[i].size
+
+forms_fileSize :: proc(c: ^Call, control: Api_Element, index: i32) -> i64 {
+	fl := forms.files(F(c), H(control.handle))
+	if index < 0 || int(index) >= len(fl) { return -1 }
+	return fl[index].size
 }
-n_fileType :: proc "c" (env: wasm.Exec_Env, h: u64, i: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	fl := forms.files(F(env), H(h))
-	if i < 0 || int(i) >= len(fl) { return i32(dom.Error.Not_Found) }
-	return out_string(fl[i].mime, buf, cap)
+
+forms_fileType :: proc(c: ^Call, control: Api_Element, index: i32) -> (string, Api_Error) {
+	fl := forms.files(F(c), H(control.handle))
+	if index < 0 || int(index) >= len(fl) { return "", .Not_Found }
+	return fl[index].mime, .None
 }
-n_maxLength :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return i32(forms.max_length(F(env), H(h))) }
-n_minLength :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return i32(forms.min_length(F(env), H(h))) }
 
 // select
-n_selectedIndex :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return i32(forms.selected_index(F(env), H(h))) }
-n_setSelectedIndex :: proc "c" (env: wasm.Exec_Env, h: u64, i: i32) -> i32 {
-	context = ctx()
-	if forms.kind(F(env), H(h)) != .Select { return i32(dom.Error.Invalid_Handle) }
-	forms.set_selected_index(F(env), H(h), int(i))
-	return 0
+HTMLSelectElement_selectedIndex :: proc(c: ^Call, select: Api_Element) -> i32 { return i32(forms.selected_index(F(c), H(select.handle))) }
+
+HTMLSelectElement_setSelectedIndex :: proc(c: ^Call, select: Api_Element, index: i32) -> Api_Error {
+	if forms.kind(F(c), H(select.handle)) != .Select { return fail(c, .Invalid_Handle, "not a select") }
+	forms.set_selected_index(F(c), H(select.handle), int(index))
+	return .None
 }
-n_select_length :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return i32(len(forms.select_options(F(env), H(h)))) }
-n_select_item :: proc "c" (env: wasm.Exec_Env, h: u64, i: i32) -> u64 {
-	context = ctx()
-	opts := forms.select_options(F(env), H(h))
-	if i < 0 || int(i) >= len(opts) { return 0 }
-	return u64(opts[i])
+
+HTMLSelectElement_length :: proc(c: ^Call, select: Api_Element) -> i32 { return i32(len(forms.select_options(F(c), H(select.handle)))) }
+
+HTMLSelectElement_item :: proc(c: ^Call, select: Api_Element, index: i32) -> u64 {
+	opts := forms.select_options(F(c), H(select.handle))
+	if index < 0 || int(index) >= len(opts) { return 0 }
+	return u64(opts[index])
 }
-n_selectedOptions_length :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	f := F(env)
-	c: i32
-	for o in forms.select_options_synced(f, H(h)) { if forms.option_selected(f, o) { c += 1 } }
-	return c
+
+HTMLSelectElement_selectedOptions_length :: proc(c: ^Call, select: Api_Element) -> i32 {
+	f := F(c)
+	n: i32
+	for o in forms.select_options_synced(f, H(select.handle)) { if forms.option_selected(f, o) { n += 1 } }
+	return n
 }
-n_selectedOptions_item :: proc "c" (env: wasm.Exec_Env, h: u64, i: i32) -> u64 {
-	context = ctx()
-	f := F(env)
+
+HTMLSelectElement_selectedOptions_item :: proc(c: ^Call, select: Api_Element, index: i32) -> u64 {
+	f := F(c)
 	k: i32
-	for o in forms.select_options_synced(f, H(h)) {
+	for o in forms.select_options_synced(f, H(select.handle)) {
 		if !forms.option_selected(f, o) { continue }
-		if k == i { return u64(o) }
+		if k == index { return u64(o) }
 		k += 1
 	}
 	return 0
 }
 
 // option
-n_option_selected :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return forms.option_selected(F(env), H(h)) ? 1 : 0 }
-n_option_setSelected :: proc "c" (env: wasm.Exec_Env, h: u64, v: i32) -> i32 {
-	context = ctx()
-	if forms.kind(F(env), H(h)) != .Option { return i32(dom.Error.Invalid_Handle) }
-	forms.set_option_selected(F(env), H(h), v != 0)
-	return 0
-}
-n_option_defaultSelected :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return forms.default_selected(F(env), H(h)) ? 1 : 0 }
-n_option_setDefaultSelected :: proc "c" (env: wasm.Exec_Env, h: u64, v: i32) -> i32 {
-	context = ctx()
-	if forms.kind(F(env), H(h)) != .Option { return i32(dom.Error.Invalid_Handle) }
-	forms.set_default_selected(F(env), H(h), v != 0)
-	return 0
-}
-n_option_index :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return i32(forms.option_index(F(env), H(h))) }
-n_option_text :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	return out_string(forms.option_text(F(env), H(h)), buf, cap)
-}
-n_option_label :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	return out_string(forms.option_label(F(env), H(h)), buf, cap)
+HTMLOptionElement_selected :: proc(c: ^Call, option: Api_Element) -> bool { return forms.option_selected(F(c), H(option.handle)) }
+
+HTMLOptionElement_setSelected :: proc(c: ^Call, option: Api_Element, selected: bool) -> Api_Error {
+	if forms.kind(F(c), H(option.handle)) != .Option { return fail(c, .Invalid_Handle, "not an option") }
+	forms.set_option_selected(F(c), H(option.handle), selected)
+	return .None
 }
 
+HTMLOptionElement_defaultSelected :: proc(c: ^Call, option: Api_Element) -> bool { return forms.default_selected(F(c), H(option.handle)) }
+
+HTMLOptionElement_setDefaultSelected :: proc(c: ^Call, option: Api_Element, selected: bool) -> Api_Error {
+	if forms.kind(F(c), H(option.handle)) != .Option { return fail(c, .Invalid_Handle, "not an option") }
+	forms.set_default_selected(F(c), H(option.handle), selected)
+	return .None
+}
+
+HTMLOptionElement_index :: proc(c: ^Call, option: Api_Element) -> i32 { return i32(forms.option_index(F(c), H(option.handle))) }
+HTMLOptionElement_text :: proc(c: ^Call, option: Api_Element) -> string { return forms.option_text(F(c), H(option.handle)) }
+HTMLOptionElement_label :: proc(c: ^Call, option: Api_Element) -> string { return forms.option_label(F(c), H(option.handle)) }
+
 // form
-n_form_submit :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	if forms.kind(F(env), H(h)) != .Form { return i32(dom.Error.Invalid_Handle) }
-	forms.submit(F(env), H(h), base.NIL_HANDLE, from_method = true)
-	return 0
+HTMLFormElement_submit :: proc(c: ^Call, form: Api_Element) -> Api_Error {
+	if forms.kind(F(c), H(form.handle)) != .Form { return fail(c, .Invalid_Handle, "not a form") }
+	forms.submit(F(c), H(form.handle), base.NIL_HANDLE, from_method = true)
+	return .None
 }
-n_form_requestSubmit :: proc "c" (env: wasm.Exec_Env, h, submitter: u64) -> i32 {
-	context = ctx()
-	return E(forms.request_submit(F(env), H(h), H(submitter)))
+
+HTMLFormElement_requestSubmit :: proc(c: ^Call, form: Api_Element, submitter: Api_Element) -> Api_Error {
+	return E(c, forms.request_submit(F(c), H(form.handle), H(submitter.handle)))
 }
-n_form_reset :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	if forms.kind(F(env), H(h)) != .Form { return i32(dom.Error.Invalid_Handle) }
-	forms.reset(F(env), H(h))
-	return 0
+
+HTMLFormElement_reset :: proc(c: ^Call, form: Api_Element) -> Api_Error {
+	if forms.kind(F(c), H(form.handle)) != .Form { return fail(c, .Invalid_Handle, "not a form") }
+	forms.reset(F(c), H(form.handle))
+	return .None
 }
-n_form_length :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 { context = ctx(); return i32(len(forms.form_elements(F(env), H(h)))) }
-n_form_elements :: proc "c" (env: wasm.Exec_Env, h: u64, i: i32) -> u64 {
-	context = ctx()
-	els := forms.form_elements(F(env), H(h))
-	if i < 0 || int(i) >= len(els) { return 0 }
-	return u64(els[i])
+
+HTMLFormElement_length :: proc(c: ^Call, form: Api_Element) -> i32 { return i32(len(forms.form_elements(F(c), H(form.handle)))) }
+
+HTMLFormElement_elements :: proc(c: ^Call, form: Api_Element, index: i32) -> u64 {
+	els := forms.form_elements(F(c), H(form.handle))
+	if index < 0 || int(index) >= len(els) { return 0 }
+	return u64(els[index])
 }
+
 // namedItem: the first owned element whose id or name is `name`.
-n_form_namedItem :: proc "c" (env: wasm.Exec_Env, h: u64, s: [^]u8, n: i32) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	name := str(s, n)
-	for e in forms.form_elements(F(env), H(h)) {
+HTMLFormElement_namedItem :: proc(c: ^Call, form: Api_Element, name: string) -> u64 {
+	p := c.page
+	for e in forms.form_elements(F(c), H(form.handle)) {
 		if v, ok := dom.get_attribute(p.doc, e, "id"); ok && v == name { return u64(e) }
 		if v, ok := dom.get_attribute(p.doc, e, "name"); ok && v == name { return u64(e) }
 	}
 	return 0
 }
-n_label_control :: proc "c" (env: wasm.Exec_Env, h: u64) -> u64 { context = ctx(); return u64(forms.labeled_control(F(env), H(h))) }
+
+HTMLLabelElement_control :: proc(c: ^Call, label: Api_Element) -> u64 { return u64(forms.labeled_control(F(c), H(label.handle))) }
 
 // focus
-n_focus :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	ok := forms.focus(F(env), H(h))
-	forms_repaint(page_of(env))
-	return ok ? 1 : 0
+HTMLElement_focus :: proc(c: ^Call, element: Api_Element) -> bool {
+	ok := forms.focus(F(c), H(element.handle))
+	forms_repaint(c.page)
+	return ok
 }
-n_blur :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	forms.blur_element(F(env), H(h))
-	forms_repaint(page_of(env))
-	return 0
+
+HTMLElement_blur :: proc(c: ^Call, element: Api_Element) {
+	forms.blur_element(F(c), H(element.handle))
+	forms_repaint(c.page)
 }
-n_click :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	if !is_el(env, h) { return i32(dom.Error.Invalid_Handle) }
-	return forms.synthetic_click(F(env), H(h)) ? 1 : 0
-}
-n_activeElement :: proc "c" (env: wasm.Exec_Env) -> u64 {
-	context = ctx()
-	p := page_of(env)
+
+HTMLElement_click :: proc(c: ^Call, element: Api_Element) -> bool { return forms.synthetic_click(F(c), H(element.handle)) }
+
+Document_activeElement :: proc(c: ^Call) -> u64 {
+	p := c.page
 	if f := page_forms(p).focus; f != base.NIL_HANDLE { return u64(f) }
 	return u64(p.body)
 }
-n_dialog_returnValue :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	return out_string(forms.dialog_return_value(F(env), H(h)), buf, cap)
-}
+
+HTMLDialogElement_returnValue :: proc(c: ^Call, dialog: Api_Element) -> string { return forms.dialog_return_value(F(c), H(dialog.handle)) }
 
 @(private)
 forms_repaint :: proc(p: ^Page) {
 	if pf := p.formctl; pf != nil && pf.embedder.changed != nil { pf.embedder.changed(pf.embedder.user, p) }
-}
-
-@(private)
-Alias :: struct { names: []string, member: string, fn: rawptr, sig: cstring }
-
-@(private)
-INPUT :: []string{"HTMLInputElement"}
-@(private)
-VALUE_IFACES :: []string{"HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement", "HTMLOptionElement", "HTMLOutputElement"}
-@(private)
-CONTROL_IFACES :: []string{"HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement", "HTMLOutputElement", "HTMLFieldSetElement", "HTMLObjectElement"}
-@(private)
-TEXT_IFACES :: []string{"HTMLInputElement", "HTMLTextAreaElement"}
-@(private)
-VALIDATE_IFACES :: []string{"HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement", "HTMLOutputElement", "HTMLFieldSetElement", "HTMLObjectElement", "HTMLFormElement"}
-
-@(private)
-FORMS_SHARED := [?]Alias{
-		{VALUE_IFACES, "value", rawptr(n_value), "(I*~)i"},
-		{VALUE_IFACES, "setValue", rawptr(n_setValue), "(I*~)i"},
-		{{"HTMLInputElement", "HTMLTextAreaElement", "HTMLOutputElement"}, "defaultValue", rawptr(n_defaultValue), "(I*~)i"},
-		{{"HTMLInputElement", "HTMLTextAreaElement", "HTMLOutputElement"}, "setDefaultValue", rawptr(n_setDefaultValue), "(I*~)i"},
-		{INPUT, "checked", rawptr(n_checked), "(I)i"},
-		{INPUT, "setChecked", rawptr(n_setChecked), "(Ii)i"},
-		{INPUT, "defaultChecked", rawptr(n_defaultChecked), "(I)i"},
-		{INPUT, "setDefaultChecked", rawptr(n_setDefaultChecked), "(Ii)i"},
-		{INPUT, "indeterminate", rawptr(n_indeterminate), "(I)i"},
-		{INPUT, "setIndeterminate", rawptr(n_setIndeterminate), "(Ii)i"},
-		{CONTROL_IFACES, "type", rawptr(n_type), "(I*~)i"},
-		{CONTROL_IFACES, "name", rawptr(n_name), "(I*~)i"},
-		{{"HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement", "HTMLOutputElement", "HTMLFieldSetElement", "HTMLObjectElement", "HTMLOptionElement", "HTMLLabelElement", "HTMLLegendElement"}, "form", rawptr(n_form), "(I)I"},
-		{{"HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement", "HTMLFieldSetElement", "HTMLOptionElement", "HTMLOptGroupElement"}, "disabled", rawptr(n_disabled), "(I)i"},
-		{{"HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement", "HTMLFieldSetElement", "HTMLOptionElement", "HTMLOptGroupElement"}, "setDisabled", rawptr(n_setDisabled), "(Ii)i"},
-		{TEXT_IFACES, "readOnly", rawptr(n_readOnly), "(I)i"},
-		{TEXT_IFACES, "setReadOnly", rawptr(n_setReadOnly), "(Ii)i"},
-		{{"HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement"}, "required", rawptr(n_required), "(I)i"},
-		{{"HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement"}, "setRequired", rawptr(n_setRequired), "(Ii)i"},
-		{CONTROL_IFACES, "willValidate", rawptr(n_willValidate), "(I)i"},
-		{CONTROL_IFACES, "validity", rawptr(n_validity), "(I)i"},
-		{CONTROL_IFACES, "validationMessage", rawptr(n_validationMessage), "(I*~)i"},
-		{CONTROL_IFACES, "setCustomValidity", rawptr(n_setCustomValidity), "(I*~)i"},
-		{VALIDATE_IFACES, "checkValidity", rawptr(n_checkValidity), "(I)i"},
-		{VALIDATE_IFACES, "reportValidity", rawptr(n_reportValidity), "(I)i"},
-		{TEXT_IFACES, "select", rawptr(n_select), "(I)i"},
-		{TEXT_IFACES, "selectionStart", rawptr(n_selectionStart), "(I)i"},
-		{TEXT_IFACES, "selectionEnd", rawptr(n_selectionEnd), "(I)i"},
-		{TEXT_IFACES, "selectionDirection", rawptr(n_selectionDirection), "(I*~)i"},
-		{TEXT_IFACES, "setSelectionRange", rawptr(n_setSelectionRange), "(Iiii)i"},
-		{TEXT_IFACES, "setRangeText", rawptr(n_setRangeText), "(I*~iii)i"},
-		{TEXT_IFACES, "maxLength", rawptr(n_maxLength), "(I)i"},
-		{TEXT_IFACES, "minLength", rawptr(n_minLength), "(I)i"},
-		{INPUT, "stepUp", rawptr(n_stepUp), "(Ii)i"},
-		{INPUT, "stepDown", rawptr(n_stepDown), "(Ii)i"},
-		{INPUT, "valueAsNumber", rawptr(n_valueAsNumber), "(I)F"},
-		{INPUT, "setValueAsNumber", rawptr(n_setValueAsNumber), "(IF)i"},
-		{INPUT, "valueAsDate", rawptr(n_valueAsDate), "(I)F"},
-		{INPUT, "setValueAsDate", rawptr(n_setValueAsDate), "(IF)i"},
-		{INPUT, "files_length", rawptr(n_files_length), "(I)i"},
-		{INPUT, "fileName", rawptr(n_fileName), "(Ii*~)i"},
-		{INPUT, "fileSize", rawptr(n_fileSize), "(Ii)I"},
-		{INPUT, "fileType", rawptr(n_fileType), "(Ii*~)i"},
-}
-
-// Names that are not shared: (full import name, function, signature).
-@(private)
-FORMS_SINGLE := [?]wasm.Native_Symbol{
-	{"HTMLSelectElement_selectedIndex", rawptr(n_selectedIndex), "(I)i", nil},
-	{"HTMLSelectElement_setSelectedIndex", rawptr(n_setSelectedIndex), "(Ii)i", nil},
-	{"HTMLSelectElement_length", rawptr(n_select_length), "(I)i", nil},
-	{"HTMLSelectElement_item", rawptr(n_select_item), "(Ii)I", nil},
-	{"HTMLSelectElement_selectedOptions_length", rawptr(n_selectedOptions_length), "(I)i", nil},
-	{"HTMLSelectElement_selectedOptions_item", rawptr(n_selectedOptions_item), "(Ii)I", nil},
-	{"HTMLOptionElement_selected", rawptr(n_option_selected), "(I)i", nil},
-	{"HTMLOptionElement_setSelected", rawptr(n_option_setSelected), "(Ii)i", nil},
-	{"HTMLOptionElement_defaultSelected", rawptr(n_option_defaultSelected), "(I)i", nil},
-	{"HTMLOptionElement_setDefaultSelected", rawptr(n_option_setDefaultSelected), "(Ii)i", nil},
-	{"HTMLOptionElement_index", rawptr(n_option_index), "(I)i", nil},
-	{"HTMLOptionElement_text", rawptr(n_option_text), "(I*~)i", nil},
-	{"HTMLOptionElement_label", rawptr(n_option_label), "(I*~)i", nil},
-	{"HTMLFormElement_submit", rawptr(n_form_submit), "(I)i", nil},
-	{"HTMLFormElement_requestSubmit", rawptr(n_form_requestSubmit), "(II)i", nil},
-	{"HTMLFormElement_reset", rawptr(n_form_reset), "(I)i", nil},
-	{"HTMLFormElement_length", rawptr(n_form_length), "(I)i", nil},
-	{"HTMLFormElement_elements", rawptr(n_form_elements), "(Ii)I", nil},
-	{"HTMLFormElement_namedItem", rawptr(n_form_namedItem), "(I*~)I", nil},
-	{"HTMLLabelElement_control", rawptr(n_label_control), "(I)I", nil},
-	{"HTMLElement_focus", rawptr(n_focus), "(I)i", nil},
-	{"HTMLElement_blur", rawptr(n_blur), "(I)i", nil},
-	{"HTMLElement_click", rawptr(n_click), "(I)i", nil},
-	{"Document_activeElement", rawptr(n_activeElement), "()I", nil},
-	{"HTMLDialogElement_returnValue", rawptr(n_dialog_returnValue), "(I*~)i", nil},
-	{"FormData_create", rawptr(n_FormData_create), "(II)I", nil},
-	{"FormData_append", rawptr(n_FormData_append), "(I*~*~)i", nil},
-	{"FormData_appendBlob", rawptr(n_FormData_appendBlob), "(I*~I*~*~)i", nil},
-	{"FormData_set", rawptr(n_FormData_set), "(I*~*~)i", nil},
-	{"FormData_delete", rawptr(n_FormData_delete), "(I*~)i", nil},
-	{"FormData_has", rawptr(n_FormData_has), "(I*~)i", nil},
-	{"FormData_count", rawptr(n_FormData_count), "(I*~)i", nil},
-	{"FormData_get", rawptr(n_FormData_get), "(I*~*~)i", nil},
-	{"FormData_getAt", rawptr(n_FormData_getAt), "(I*~i*~)i", nil},
-	{"FormData_size", rawptr(n_FormData_size), "(I)i", nil},
-	{"FormData_nameAt", rawptr(n_FormData_nameAt), "(Ii*~)i", nil},
-	{"FormData_valueAt", rawptr(n_FormData_valueAt), "(Ii*~)i", nil},
-	{"FormData_isFileAt", rawptr(n_FormData_isFileAt), "(Ii)i", nil},
-	{"FormData_fileSizeAt", rawptr(n_FormData_fileSizeAt), "(Ii)I", nil},
-	{"FormData_fileTypeAt", rawptr(n_FormData_fileTypeAt), "(Ii*~)i", nil},
-	{"Fetch_startFormData", rawptr(n_Fetch_startFormData), "(*~*~*~Iiiii)I", nil},
-}
-
-// The import table of module "forms" (built once; WAMR keeps pointers into it for the life of the runtime).
-@(private)
-forms_symbols: [dynamic]wasm.Native_Symbol
-
-@(private)
-build_forms_symbols :: proc() -> []wasm.Native_Symbol {
-	if len(forms_symbols) > 0 { return forms_symbols[:] }
-	for a in FORMS_SHARED {
-		for iface in a.names {
-			name := strings.clone_to_cstring(strings.concatenate({iface, "_", a.member}, context.temp_allocator))
-			append(&forms_symbols, wasm.Native_Symbol{name, a.fn, a.sig, nil})
-		}
-	}
-	for s in FORMS_SINGLE { append(&forms_symbols, s) }
-	return forms_symbols[:]
 }

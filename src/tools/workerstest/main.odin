@@ -79,7 +79,7 @@ pump_until :: proc(cond: proc() -> bool, seconds := 10.0) -> bool {
 // Writes `s` into the page module's command buffer; returns its length.
 put_cmd :: proc(inst: ^wasm.Instance, s: string) -> u32 {
 	ptr, _ := wasm.call_i32(inst, "cmd_ptr")
-	dst := wasm.guest_bytes(inst, u32(ptr), u32(len(s)))
+	dst := wasm.guest_bytes(inst, u64(u32(ptr)), u64(len(s)))
 	copy(dst, s)
 	return u32(len(s))
 }
@@ -117,7 +117,7 @@ main :: proc() {
 	profile = fetch.profile_make()
 	fetch.loader_init(&loader, &loop, &client, &blocking, &profile)
 	settings = page.settings_default()
-	wasm.configure_from_args(os.args[1:])   // --pref wasm.engine=wamr ...
+	wasm.configure_from_args(os.args[1:])   // --pref wasm.wasmtime.compiler=winch ...
 	if !page.register_imports() { fmt.eprintln("register failed"); os.exit(2) }
 	process := base.scope_make("process")
 
@@ -278,8 +278,8 @@ main :: proc() {
 		if kind == "spin" {
 			check(dt < 100, "a worker computing continuously stops in less than 100 ms")
 		} else {
-			// one endless task: it ends with the instruction budget (workers.instruction_budget)
-			check(dt < 2000, "a worker stuck in one endless task stops within its instruction budget")
+			// one endless task: terminate interrupts it (epoch interruption, within wasm.wasmtime.epoch_tick_ms)
+			check(dt < 2000, "a worker stuck in one endless task is interrupted")
 		}
 		pump(50)
 		count := 0

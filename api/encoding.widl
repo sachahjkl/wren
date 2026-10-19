@@ -1,0 +1,36 @@
+/// TextEncoder and TextDecoder (Encoding Standard). Decoders keep their state between calls, so every WHATWG label
+/// works, in replacement or fatal mode, with BOM handling and `stream`: a sequence cut between two chunks is completed by
+/// the next call. Output is UTF-8.
+[Exposed=(Window,Worker)]
+module encoding {
+  handle TextDecoder : Object = Text_Decoder via lookup_TextDecoder;
+
+  /// TextDecoderOptions
+  flags TextDecoderOptions : u32 { Fatal, Ignore_BOM }
+
+  /// What TextEncoder.encodeInto did, in bytes.
+  struct EncodeIntoResult {
+    /// Bytes of the source consumed (whole characters only).
+    u64 read;
+    /// Bytes written to the destination.
+    u64 written;
+  }
+
+  /// new TextEncoder().encode(text): a buffer of UTF-8. Quota past the page's memory limit.
+  Buffer TextEncoder_encode(usvstring text) raises;
+  /// encoder.encodeInto(source, destination): invalid UTF-8 in the source counts as U+FFFD (3 bytes).
+  EncodeIntoResult TextEncoder_encodeInto(bytes source, out bytes destination);
+  /// new TextDecoder(label, options): Range for an unknown label ("" = utf-8).
+  TextDecoder TextDecoder_create(string label = "", TextDecoderOptions options = none) raises;
+  /// decoder.encoding (lower case)
+  string TextDecoder_encoding(TextDecoder decoder);
+  /// decoder.fatal and decoder.ignoreBOM
+  TextDecoderOptions TextDecoder_flags(TextDecoder decoder);
+  /// decoder.decode(input, {stream}): Type for invalid input in fatal mode. TextDecoder_output reads the whole result
+  /// again when the buffer was too small.
+  [Effects] string TextDecoder_decode(TextDecoder decoder, bytes input, bool stream = false) raises;
+  /// The same from a buffer (a fetch body, a stream chunk).
+  [Effects] string TextDecoder_decodeBuffer(TextDecoder decoder, Buffer input, bool stream = false) raises;
+  /// The result of the last decode.
+  string TextDecoder_output(TextDecoder decoder);
+}

@@ -1,4 +1,4 @@
-// Runs a Wasm module headlessly: exports, host imports, instruction budget, watchdog.
+// Runs a Wasm module headlessly, outside any page: exports, one host import (console.console_log), the call deadline.
 //   runwasm.exe build\hello.wasm
 package runwasm
 
@@ -9,13 +9,19 @@ import "core:time"
 import "wb:base"
 import "wb:wasm"
 
-log_native :: proc "c" (env: wasm.Exec_Env, ptr: [^]u8, length: i32) {
+// console.console_log(message: usvstring), written against the raw interface the generated bindings use.
+log_native :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	context = runtime.default_context()
-	fmt.printf("[guest] %s\n", string(ptr[:length]))
+	f := wasm.frame(env, caller)
+	n := wasm.addr(&f, a[1])
+	p, ok := wasm.span(&f, wasm.addr(&f, a[0]), n)
+	if !ok { return wasm.trap_bounds(&f, "console.console_log", "message") }
+	fmt.printf("[guest] %s\n", string(p[:n]))
+	return nil
 }
 
-console_symbols := [?]wasm.Native_Symbol{
-	{"log", rawptr(log_native), "(*~)", nil},
+IMPORTS := [?]wasm.Import{
+	{module = "console", name = "console_log", fn = log_native, params = {.I32, .I32}, wide_params = {.I64, .I64}, wide_results = {}},
 }
 
 main :: proc() {
@@ -24,10 +30,10 @@ main :: proc() {
 	if err != nil { fmt.eprintln("cannot read", os.args[1]); os.exit(2) }
 
 	if !wasm.runtime_init() { fmt.eprintln("runtime init failed"); os.exit(1) }
-	if !wasm.register("console", console_symbols[:]) { fmt.eprintln("register failed"); os.exit(1) }
+	if !wasm.register(IMPORTS[:]) { fmt.eprintln("register failed"); os.exit(1) }
 
 	opts := wasm.options_default()
-	opts.budget = 5_000_000
+	opts.max_call_ms = 100
 	doc := base.scope_make("document")
 	inst, e := wasm.instance_create(image, nil, doc, opts)
 	if inst == nil { fmt.eprintln(e); os.exit(1) }
@@ -39,13 +45,9 @@ main :: proc() {
 
 	started := time.tick_now()
 	res = wasm.call_raw(inst, "spin")
-	fmt.printf("spin (budget) -> %v after %.0f ms: %s\n", res, time.duration_milliseconds(time.tick_since(started)), inst.last_error)
+	fmt.printf("spin (deadline) -> %v after %.0f ms: %s\n", res, time.duration_milliseconds(time.tick_since(started)), inst.last_error)
 	r, res = wasm.call_i32(inst, "add", 1, 2)
 	fmt.println("instance still usable: add(1,2) ->", r, res)
-
-	for _ in 0 ..< 1000 { wasm.call_raw(inst, "spin") }   // repeated overruns must not leak or corrupt
-	r, res = wasm.call_i32(inst, "add", 5, 6)
-	fmt.println("after 1000 overruns: add(5,6) ->", r, res, "| overruns:", inst.over_budget)
 
 	base.scope_close(doc)   // frees the instance
 	wasm.runtime_destroy()

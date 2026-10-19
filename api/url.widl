@@ -1,0 +1,50 @@
+/// URL and URLSearchParams (WHATWG URL Standard) as host objects. A URL's searchParams is linked to it both ways:
+/// changing the URL's search re-parses the list, changing the list rewrites the URL's query. Either may be released
+/// first.
+[Exposed=(Window,Worker)]
+module url {
+  handle URL : Object = Url_Object via lookup_URL;
+  handle URLSearchParams : Object = Params_Object via lookup_URLSearchParams;
+
+  /// A component of a URL (also used by Location).
+  enum URLComponent : i32 { Href, Protocol, Username, Password, Host, Hostname, Port, Pathname, Search, Hash, Origin }
+
+  /// new URL(input, base): Type when the input (or the base) is not a valid URL or too long (web.url_max_length).
+  URL URL_parse(string input, optional string base) raises;
+  /// URL.canParse(input, base)
+  bool URL_canParse(string input, optional string base);
+  /// A getter: url.href, url.protocol...
+  string URL_get(URL url, URLComponent component);
+  /// A setter. Only href can fail (Type); values the standard ignores leave the URL unchanged. Origin is read-only
+  /// (Invalid_Argument).
+  void URL_set(URL url, URLComponent component, string value) raises;
+  /// url.searchParams: the same object every time.
+  URLSearchParams URL_searchParams(URL url);
+
+  /// new URLSearchParams(init): a query string, with or without its "?". Type when too long.
+  URLSearchParams URLSearchParams_create(string init = "") raises;
+  /// params.size
+  i32 URLSearchParams_size(URLSearchParams params);
+  /// params.append(name, value)
+  void URLSearchParams_append(URLSearchParams params, usvstring name, usvstring value);
+  /// params.delete(name, value)
+  void URLSearchParams_delete(URLSearchParams params, string name, optional string value);
+  /// params.get(name): Not_Found when absent.
+  string URLSearchParams_get(URLSearchParams params, string name) raises;
+  /// params.getAll(name).length
+  i32 URLSearchParams_count(URLSearchParams params, string name);
+  /// params.getAll(name)[index]: Not_Found past the end.
+  string URLSearchParams_getNth(URLSearchParams params, string name, i32 index) raises;
+  /// params.has(name, value)
+  bool URLSearchParams_has(URLSearchParams params, string name, optional string value);
+  /// params.set(name, value)
+  void URLSearchParams_set(URLSearchParams params, usvstring name, usvstring value);
+  /// params.sort()
+  void URLSearchParams_sort(URLSearchParams params);
+  /// params.toString()
+  string URLSearchParams_toString(URLSearchParams params);
+  /// The name of the pair at `index` (iteration): Not_Found past the end.
+  string URLSearchParams_nameAt(URLSearchParams params, i32 index) raises;
+  /// The value of the pair at `index`: Not_Found past the end.
+  string URLSearchParams_valueAt(URLSearchParams params, i32 index) raises;
+}

@@ -6,18 +6,14 @@ import "wb:config"
 
 // Two levels of settings:
 //   * Options: per instance (a page's modules, a worker's module), read for every new page (page.Settings.wasm).
-//   * Runtime_Settings: the engine itself (which engine, compiler, proposals, caches). Wasmtime compiles with one
+//   * Runtime_Settings: the engine itself (compiler, proposals, caches). Wasmtime compiles with one
 //     configuration per process, so these take effect at the next start (`restart`).
 
 PREFS := [?]config.Def{
-	{name = "wasm.engine", kind = .String, default = {s = "wasmtime"}, choices = {"wasmtime", "wamr"}, restart = true,
-		description = "Engine that runs page and worker modules. wasmtime compiles them to machine code (Cranelift or Winch) and stops a call with a wall-clock deadline (wasm.max_call_ms); wamr interprets them and stops a call with an instruction budget (wasm.instruction_budget)."},
 	{name = "wasm.instruction_budget", kind = .Int, default = {i = 50_000_000}, bounded = true, min = -1, max = 1 << 40, unit = "instructions",
-		description = "Instructions a module may run per call from the browser (an event, a timer, a callback) with the wamr engine, or with wasmtime when wasm.wasmtime.fuel is on. A module that exceeds it is stopped and stays usable. -1 = unlimited. About 700 million instructions run per second in the interpreter."},
+		description = "Instructions a module may run per call from the browser (an event, a timer, a callback) when wasm.wasmtime.fuel is on. A module that exceeds it is stopped and stays usable. -1 = unlimited."},
 	{name = "wasm.max_call_ms", kind = .Int, default = {i = 1000}, bounded = true, min = -1, max = 3_600_000, unit = "ms",
-		description = "Wall-clock time one call from the browser into a module (an event, a timer, a callback, with everything it calls back) may take with the wasmtime engine. Past it the call traps, the page stays responsive and the module stays usable. -1 = unlimited."},
-	{name = "wasm.stack_bytes", kind = .Int, default = {i = 256 << 10}, bounded = true, min = 16 << 10, max = 256 << 20, bytes = true, unit = "bytes",
-		description = "Value stack of the wamr interpreter for one module (bounds recursion depth). The wasmtime engine uses wasm.wasmtime.max_stack_bytes."},
+		description = "Wall-clock time one call from the browser into a module (an event, a timer, a callback, with everything it calls back) may take. Past it the call traps, the page stays responsive and the module stays usable. -1 = unlimited."},
 	{name = "wasm.max_memory_pages", kind = .Int, default = {i = 16384}, bounded = true, min = 1, max = 65536, unit = "pages of 64 KiB",
 		description = "Most linear memory a module may grow to (16384 = 1 GiB). A smaller maximum declared by the module itself still applies."},
 	{name = "wasm.max_table_elements", kind = .Int, default = {i = 1 << 20}, bounded = true, min = -1, max = 1 << 32, unit = "elements",
@@ -58,7 +54,7 @@ PREFS := [?]config.Def{
 	{name = "wasm.features.multi_value", kind = .Bool, default = {b = true}, restart = true, description = "Functions and blocks with several results (wasmtime)."},
 	{name = "wasm.features.tail_call", kind = .Bool, default = {b = true}, restart = true, description = "Tail calls (wasmtime with cranelift)."},
 	{name = "wasm.features.multi_memory", kind = .Bool, default = {b = true}, restart = true, description = "Several linear memories per module (wasmtime). Host functions always use memory 0."},
-	{name = "wasm.features.memory64", kind = .Bool, default = {b = false}, restart = true, description = "64-bit linear memories (wasmtime). The browser's imports take 32-bit pointers, so such a module can only use imports without pointers."},
+	{name = "wasm.features.memory64", kind = .Bool, default = {b = false}, restart = true, description = "64-bit linear memories. A module whose memory 0 is 64-bit imports the browser's functions with 64-bit addresses and lengths."},
 	{name = "wasm.features.exceptions", kind = .Bool, default = {b = true}, restart = true, description = "Exception handling (try_table, throw) (wasmtime)."},
 	{name = "wasm.features.function_references", kind = .Bool, default = {b = false}, restart = true, description = "Typed function references (wasmtime with cranelift)."},
 	{name = "wasm.features.gc", kind = .Bool, default = {b = false}, restart = true, description = "Garbage-collected structs and arrays (wasmtime with cranelift; implies typed function references)."},
@@ -76,7 +72,6 @@ register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
 
 options_from_prefs :: proc(p: ^config.Prefs) -> Options {
 	return Options{
-		stack_size = u32(config.int_of(p, "wasm.stack_bytes")),
 		max_pages = u32(config.int_of(p, "wasm.max_memory_pages")),
 		budget = i32(min(config.int_of(p, "wasm.instruction_budget"), i64(max(i32)))),
 		max_call_ms = config.int_of(p, "wasm.max_call_ms"),
@@ -101,7 +96,6 @@ Features :: struct {
 }
 
 Runtime_Settings :: struct {
-	engine:               Engine_Kind,
 	max_instances:        int,
 	compiler:             Compiler,
 	opt_level:            Opt_Level,
@@ -137,7 +131,6 @@ runtime_settings_from_prefs :: proc(p: ^config.Prefs, profile_dir: string) -> Ru
 		wide_arithmetic = config.bool_of(p, "wasm.features.wide_arithmetic"),
 	}
 	rs := Runtime_Settings{
-		engine = config.string_of(p, "wasm.engine") == "wamr" ? .Wamr : .Wasmtime,
 		max_instances = int(config.int_of(p, "wasm.max_instances")),
 		compiler = config.string_of(p, "wasm.wasmtime.compiler") == "winch" ? .Winch : .Cranelift,
 		parallel_compilation = config.bool_of(p, "wasm.wasmtime.parallel_compilation"),

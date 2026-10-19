@@ -1,0 +1,56 @@
+/// The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a
+/// node see no live node, and those returning one return null.
+[Exposed=(Window,Worker)]
+module dom {
+  /// A node of the document. A node created by the module and never inserted lives until Node_release.
+  handle Node : EventTarget = dom.Node via lookup_Node;
+  /// A node that is an element.
+  handle Element : Node = dom.Node via lookup_Element;
+
+  /// document.documentElement (null in a worker).
+  Element Document_documentElement();
+  /// document.head (null in a worker).
+  Element Document_head();
+  /// document.body (null in a worker).
+  Element Document_body();
+  /// document.createElement(tag). Invalid_Argument for an empty tag, Invalid_Handle in a worker (no document).
+  Element Document_createElement(string tag) raises;
+  /// document.createTextNode(text). Invalid_Handle in a worker.
+  Node Document_createTextNode(string text) raises;
+  /// document.getElementById(id): null when there is none.
+  Element Document_getElementById(string id);
+
+  /// parent.appendChild(child).
+  void Node_appendChild(Node parent, Node child) raises;
+  /// parent.insertBefore(child, ref): ref null appends. Not_Found when ref is not a child of parent.
+  void Node_insertBefore(Node parent, Node child, optional Node ref) raises;
+  /// parent.removeChild(child). Not_Found when child is not a child of parent.
+  void Node_removeChild(Node parent, Node child) raises;
+  /// Frees a detached node (and its subtree) the module no longer needs. Attached when it is still in the tree.
+  void Node_release(Node node) raises;
+  /// node.parentNode (null when detached).
+  Node Node_parentNode(Node node);
+  /// node.firstChild
+  Node Node_firstChild(Node node);
+  /// node.lastChild
+  Node Node_lastChild(Node node);
+  /// node.previousSibling
+  Node Node_previousSibling(Node node);
+  /// node.nextSibling
+  Node Node_nextSibling(Node node);
+  /// node.nodeType: 1 element, 3 text, 8 comment, 9 document.
+  i32 Node_nodeType(Node node);
+  /// node.textContent = text
+  void Node_setTextContent(Node node, string text) raises;
+  /// node.textContent
+  string Node_getTextContent(Node node);
+
+  /// element.tagName (lower case for HTML elements).
+  string Element_tagName(Element element);
+  /// element.setAttribute(name, value)
+  void Element_setAttribute(Element element, string name, string value) raises;
+  /// element.getAttribute(name): Not_Found when the attribute is absent (null).
+  string Element_getAttribute(Element element, string name) raises;
+  /// element.removeAttribute(name)
+  void Element_removeAttribute(Element element, string name) raises;
+}

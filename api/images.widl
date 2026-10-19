@@ -1,0 +1,19 @@
+/// Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and
+/// naturalHeight are density-corrected CSS pixels (0 until the image is available).
+[Exposed=(Window,Worker)]
+module images {
+  handle HTMLImageElement : Element = Img_Element via lookup_HTMLImageElement;
+
+  i32 HTMLImageElement_naturalWidth(HTMLImageElement image);
+  i32 HTMLImageElement_naturalHeight(HTMLImageElement image);
+  bool HTMLImageElement_complete(HTMLImageElement image);
+  /// The absolute URL of the chosen source ("" when none).
+  string HTMLImageElement_currentSrc(HTMLImageElement image);
+  /// image.decode(): settles (value 0) once decoded at its natural size; rejected with Encoding when it is broken or its
+  /// source changes first.
+  Promise HTMLImageElement_decode(HTMLImageElement image);
+  /// Decodes an image file (PNG, JPEG, GIF, BMP, ICO, TIFF, WebP / AVIF where the codecs exist) on the decoding
+  /// threads: settles with a buffer of RGBA8 pixels (straight alpha, sRGB, rows top-down) as value and "<width>x<height>"
+  /// as text (first frame of an animation). Rejected with Encoding (not an image, corrupt, over the limits) or Quota.
+  Promise<Buffer> Image_decode(Buffer data);
+}

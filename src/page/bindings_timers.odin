@@ -16,7 +16,6 @@ import "core:math"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
-import "wb:wasm"
 
 Frame_Callback :: struct {
 	id:        u64,
@@ -105,61 +104,49 @@ timer_start :: proc(p: ^Page, inst: u32, cb: i32, user: u64, wide: bool, delay_m
 	return u64(h)
 }
 
-n_Timers_setTimeout :: proc "c" (env: wasm.Exec_Env, cb, user: i32, delay_ms: f64) -> u64 {
-	context = ctx()
-	return timer_start(page_of(env), inst_of(env).index, cb, u64(u32(user)), false, delay_ms, false)
+Timers_setTimeout :: proc(c: ^Call, callback: u32, user: i32, delay_ms: f64) -> u64 {
+	return timer_start(c.page, c.owner, i32(callback), u64(u32(user)), false, delay_ms, false)
 }
-n_Timers_setInterval :: proc "c" (env: wasm.Exec_Env, cb, user: i32, delay_ms: f64) -> u64 {
-	context = ctx()
-	return timer_start(page_of(env), inst_of(env).index, cb, u64(u32(user)), false, delay_ms, true)
+Timers_setInterval :: proc(c: ^Call, callback: u32, user: i32, delay_ms: f64) -> u64 {
+	return timer_start(c.page, c.owner, i32(callback), u64(u32(user)), false, delay_ms, true)
 }
 // Same with a 64-bit user value: the callback is (user: i64).
-n_Timers_setTimeout64 :: proc "c" (env: wasm.Exec_Env, cb: i32, user: u64, delay_ms: f64) -> u64 {
-	context = ctx()
-	return timer_start(page_of(env), inst_of(env).index, cb, user, true, delay_ms, false)
+Timers_setTimeout64 :: proc(c: ^Call, callback: u32, user: i64, delay_ms: f64) -> u64 {
+	return timer_start(c.page, c.owner, i32(callback), u64(user), true, delay_ms, false)
 }
-n_Timers_setInterval64 :: proc "c" (env: wasm.Exec_Env, cb: i32, user: u64, delay_ms: f64) -> u64 {
-	context = ctx()
-	return timer_start(page_of(env), inst_of(env).index, cb, user, true, delay_ms, true)
+Timers_setInterval64 :: proc(c: ^Call, callback: u32, user: i64, delay_ms: f64) -> u64 {
+	return timer_start(c.page, c.owner, i32(callback), u64(user), true, delay_ms, true)
 }
-n_Timers_clear :: proc "c" (env: wasm.Exec_Env, timer: u64) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	t, ok := base.pool_remove(&p.timers, H(timer))
-	if !ok { return i32(dom.Error.Invalid_Handle) }
+Timers_clear :: proc(c: ^Call, timer: Api_Timer) -> Api_Error {
+	p := c.page
+	t, _ := base.pool_remove(&p.timers, H(timer.handle))
 	host.clear_timer(p.loop, t.handle)
-	return 0
-}
-// The loop clock (ms since the browser started). performance.now() is the page's own timeline.
-n_Timers_now :: proc "c" (env: wasm.Exec_Env) -> f64 {
-	context = ctx()
-	return f64(host.now_ns(page_of(env).loop)) / 1e6
-}
+	return .None
+}// The loop clock (ms since the browser started). performance.now() is the page's own timeline.
+Timers_now :: proc(c: ^Call) -> f64 { return f64(host.now_ns(c.page.loop)) / 1e6 }
 
 ////////////////////////////////
 // requestAnimationFrame
 
-n_requestAnimationFrame :: proc "c" (env: wasm.Exec_Env, cb, user: i32) -> u64 {
-	context = ctx()
-	p := page_of(env)
+requestAnimationFrame :: proc(c: ^Call, callback: u32, user: i32) -> u64 {
+	p := c.page
 	w := p.web
 	if len(w.frames) >= p.settings.web.max_frame_callbacks { return 0 }
 	w.next_frame_id += 1
-	append(&w.frames, Frame_Callback{id = w.next_frame_id, instance = inst_of(env).index, callback = u32(cb), user = u32(user)})
+	append(&w.frames, Frame_Callback{id = w.next_frame_id, instance = c.owner, callback = callback, user = u32(user)})
 	return w.next_frame_id
 }
 
-n_cancelAnimationFrame :: proc "c" (env: wasm.Exec_Env, id: u64) -> i32 {
-	context = ctx()
-	w := page_of(env).web
+cancelAnimationFrame :: proc(c: ^Call, id: u64) -> Api_Error {
+	w := c.page.web
 	for f, i in w.frames {
-		if f.id == id { ordered_remove(&w.frames, i); return 0 }
+		if f.id == id { ordered_remove(&w.frames, i); return .None }
 	}
 	// cancelled from a callback of the frame being run: it must not run
 	if w.running_frames != nil {
-		for &f in w.running_frames^ { if f.id == id && !f.cancelled { f.cancelled = true; return 0 } }
+		for &f in w.running_frames^ { if f.id == id && !f.cancelled { f.cancelled = true; return .None } }
 	}
-	return i32(dom.Error.Not_Found)
+	return .Not_Found
 }
 
 // True when the page has animation frame callbacks waiting and is visible: the shell renders a frame for it.
@@ -197,28 +184,26 @@ run_animation_frames :: proc(p: ^Page, now_ms: f64) -> int {
 ////////////////////////////////
 // requestIdleCallback
 
-n_requestIdleCallback :: proc "c" (env: wasm.Exec_Env, cb, user: i32, timeout_ms: f64) -> u64 {
-	context = ctx()
-	p := page_of(env)
+requestIdleCallback :: proc(c: ^Call, callback: u32, user: i32, timeout_ms: f64) -> u64 {
+	p := c.page
 	w := p.web
 	if len(w.idle) >= p.settings.web.max_idle_callbacks { return 0 }
 	w.next_idle_id += 1
-	c := Idle_Callback{id = w.next_idle_id, instance = inst_of(env).index, callback = u32(cb), user = u32(user)}
+	ic := Idle_Callback{id = w.next_idle_id, instance = c.owner, callback = callback, user = u32(user)}
 	if !math.is_nan(timeout_ms) && timeout_ms > 0 {
-		c.timeout_ns = host.now_ns(p.loop) + i64(min(timeout_ms, f64(max(i32))) * 1e6)
+		ic.timeout_ns = host.now_ns(p.loop) + i64(min(timeout_ms, f64(max(i32))) * 1e6)
 	}
-	append(&w.idle, c)
+	append(&w.idle, ic)
 	idle_schedule(p)
 	return w.next_idle_id
 }
 
-n_cancelIdleCallback :: proc "c" (env: wasm.Exec_Env, id: u64) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	for c, i in p.web.idle {
-		if c.id == id { ordered_remove(&p.web.idle, i); idle_schedule(p); return 0 }
+cancelIdleCallback :: proc(c: ^Call, id: u64) -> Api_Error {
+	p := c.page
+	for ic, i in p.web.idle {
+		if ic.id == id { ordered_remove(&p.web.idle, i); idle_schedule(p); return .None }
 	}
-	return i32(dom.Error.Not_Found)
+	return .Not_Found
 }
 
 // Arms the idle scan: soon (timers.idle_poll_ms), or at the earliest timeout when that comes first.
@@ -297,22 +282,4 @@ set_page_visible :: proc(p: ^Page, visible: bool) {
 
 page_visible :: proc(p: ^Page) -> bool { return p.web.visible }
 
-// 0 "visible", 1 "hidden"
-n_Document_visibilityState :: proc "c" (env: wasm.Exec_Env) -> i32 {
-	context = ctx()
-	return page_of(env).web.visible ? 0 : 1
-}
-
-timers_symbols := [?]wasm.Native_Symbol{
-	{"Timers_setTimeout", rawptr(n_Timers_setTimeout), "(iiF)I", nil},
-	{"Timers_setInterval", rawptr(n_Timers_setInterval), "(iiF)I", nil},
-	{"Timers_setTimeout64", rawptr(n_Timers_setTimeout64), "(iIF)I", nil},
-	{"Timers_setInterval64", rawptr(n_Timers_setInterval64), "(iIF)I", nil},
-	{"Timers_clear", rawptr(n_Timers_clear), "(I)i", nil},
-	{"Timers_now", rawptr(n_Timers_now), "()F", nil},
-	{"requestAnimationFrame", rawptr(n_requestAnimationFrame), "(ii)I", nil},
-	{"cancelAnimationFrame", rawptr(n_cancelAnimationFrame), "(I)i", nil},
-	{"requestIdleCallback", rawptr(n_requestIdleCallback), "(iiF)I", nil},
-	{"cancelIdleCallback", rawptr(n_cancelIdleCallback), "(I)i", nil},
-	{"Document_visibilityState", rawptr(n_Document_visibilityState), "()i", nil},
-}
+Document_visibilityState :: proc(c: ^Call) -> Api_VisibilityState { return c.page.web.visible ? .Visible : .Hidden }

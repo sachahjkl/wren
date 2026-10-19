@@ -10,7 +10,7 @@ import "web:web"
 SECTIONS :: 323
 WORDS :: [?]string{"lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor"}
 
-target: web.Handle
+target: web.Element
 on: bool
 seed: u32 = 12345
 
@@ -27,11 +27,16 @@ itoa :: proc "contextless" (v: i64, buf: []u8) -> string {
 	return string(buf[i:])
 }
 
-el :: proc "contextless" (parent: web.Handle, tag, class: string) -> web.Handle {
-	e := web.create_element(tag)
-	if class != "" { web.set_attribute(e, "class", class) }
+el :: proc "contextless" (parent: web.Element, tag, class: string) -> web.Element {
+	e, _ := web.Document_createElement(tag)
+	if class != "" { web.Element_setAttribute(e, "class", class) }
 	web.Node_appendChild(parent, e)
 	return e
+}
+
+text :: proc "contextless" (s: string) -> web.Node {
+	n, _ := web.Document_createTextNode(s)
+	return n
 }
 
 sentence :: proc "contextless" (buf: []u8) -> string {
@@ -48,13 +53,13 @@ sentence :: proc "contextless" (buf: []u8) -> string {
 
 on_tick :: proc "contextless" (user: i32) {
 	on = !on
-	web.set_attribute(target, "class", on ? "sec on" : "sec")
+	web.Element_setAttribute(target, "class", on ? "sec on" : "sec")
 }
 
 @(export)
 wb_main :: proc "contextless" () {
-	root := web.get_element_by_id("root")
-	if root == web.NIL { web.error("#root not found"); return }
+	root := web.Document_getElementById("root")
+	if root == 0 { web.console_error("#root not found"); return }
 	buf: [128]u8
 	num: [24]u8
 	for s in 0 ..< SECTIONS {
@@ -67,15 +72,15 @@ wb_main :: proc "contextless" () {
 			t := itoa(i64(s * 5 + a), num[:])
 			copy(title[:], "Title ")
 			copy(title[6:], t)
-			web.Node_appendChild(h, web.create_text(string(title[:6 + len(t)])))
+			web.Node_appendChild(h, text(string(title[:6 + len(t)])))
 			p := el(art, "p", "")
 			for _ in 0 ..< 3 {
 				sp := el(p, "span", "")
-				web.Node_appendChild(sp, web.create_text(sentence(buf[:])))
+				web.Node_appendChild(sp, text(sentence(buf[:])))
 			}
 		}
 	}
-	web.set_attribute(target, "id", "target")
+	web.Element_setAttribute(target, "id", "target")
 	web.Timers_setInterval(on_tick, 0, 16)
-	web.log("mutation_class page ready")
+	web.console_log("mutation_class page ready")
 }
