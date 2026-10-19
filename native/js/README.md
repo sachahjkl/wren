@@ -56,8 +56,13 @@ implemented by, first match wins:
    null for nullable results, `appendChild`-like results). Write the function in `api/js_*.widl` (or a module's own
    file) and its Odin implementation in `src/page/js_*.odin`; bindgen binds it. `docs/js/coverage.md` lists what each
    member uses, and the browser functions that exist but could not be bound (with the reason).
-4. Otherwise the member exists and throws `NotSupportedError`. An interface with nothing implemented is absent from the
-   global (pref `javascript.bindings.expose_unimplemented`).
+4. Otherwise the member is absent (pref `javascript.bindings.unimplemented = throw`: present and throwing
+   `NotSupportedError`). An interface with nothing implemented is absent from the global (pref
+   `javascript.bindings.expose_unimplemented`).
+
+Dictionaries: `gen/bindings.h` declares a struct and a converter per dictionary a member takes
+(`wjd_<Name>_from(ctx, value, &out)` with Web IDL's order, defaults, `required`, enum checks; `has_<member>` for members
+without a default; `wjd_<Name>_free`). Use them in hand-written members instead of reading properties by hand.
 
 ## Rules
 

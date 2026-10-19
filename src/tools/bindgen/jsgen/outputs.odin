@@ -6,18 +6,21 @@ import "core:strings"
 import "wb:tools/bindgen/webidl"
 
 @(private)
-emit_h :: proc(g: ^Gen) -> string {
+emit_h :: proc(g: ^Gen, dicts: string) -> string {
 	b := strings.builder_make()
 	wl(&b, "/* %s */", GENERATED_BY)
 	wl(&b, "/* The index of each interface in wj_interfaces (pre-order of inheritance), for hand-written code. */")
 	wl(&b, "#ifndef WJ_BINDINGS_H")
 	wl(&b, "#define WJ_BINDINGS_H")
 	wl(&b, "")
+	wl(&b, "#include \"wj.h\"")
+	wl(&b, "")
 	for it, i in g.included { wl(&b, "#define WJ_IFACE_%s %d", it.name, i) }
 	wl(&b, "#define WJ_IFACE_COUNT %d", len(g.included))
 	wl(&b, "")
 	wl(&b, "extern const int wj_same_object_count;")
 	wl(&b, "")
+	strings.write_string(&b, dicts)
 	wl(&b, "#endif")
 	return strings.to_string(b)
 }

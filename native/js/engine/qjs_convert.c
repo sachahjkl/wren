@@ -127,6 +127,22 @@ void wj_str_free(wj_ctx *ctx, wj_str *s)
     s->owned = false;
 }
 
+int wj_enum_index(const wj_str *s, const char *const *values)
+{
+    for (int i = 0; values[i]; i++) {
+        if (strlen(values[i]) == s->len && memcmp(values[i], s->ptr, s->len) == 0) { return i; }
+    }
+    return -1;
+}
+
+bool wj_check_enum(wj_ctx *ctx, wj_str *s, const char *const *values, const char *type)
+{
+    if (wj_enum_index(s, values) >= 0) { return true; }
+    JS_ThrowTypeError(ctx, "The provided value '%.*s' is not a valid enum value of type %s.", (int)(s->len > 64 ? 64 : s->len), s->ptr ? s->ptr : "", type);
+    wj_str_free(ctx, s);
+    return false;
+}
+
 bool wj_to_handle(wj_ctx *ctx, wj_val v, int iface, bool nullable, uint64_t *out, const char *message)
 {
     *out = 0;

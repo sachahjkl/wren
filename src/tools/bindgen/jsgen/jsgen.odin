@@ -112,9 +112,12 @@ generate :: proc(api: ^idl.Api, m: ^webidl.Model, raw_impls: []string, odin_pack
 	}
 
 	emit_c(&g, impls)
+	dh := strings.builder_make()
+	dc := strings.builder_make()
+	emit_dicts(&g, &dh, &dc)
 	out: Output
-	out.c = strings.to_string(g.c)
-	out.h = emit_h(&g)
+	out.c = strings.concatenate({strings.to_string(g.c), "\n", strings.to_string(dc)})
+	out.h = emit_h(&g, strings.to_string(dh))
 	out.odin = emit_odin(&g, odin_package)
 	out.coverage = emit_coverage(&g, impls)
 	out.problems = g.problems[:]
@@ -378,9 +381,17 @@ emit_css_property :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) ->
 	return
 }
 
+// A C identifier for an IDL name: dashes replaced, C keywords suffixed (inline -> inline_).
 @(private)
 c_ident :: proc(s: string) -> string {
 	out, _ := strings.replace_all(s, "-", "_", context.temp_allocator)
+	switch out {
+	case "auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern",
+	     "float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short", "signed",
+	     "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "bool",
+	     "true", "false":
+		return strings.concatenate({out, "_"}, context.temp_allocator)
+	}
 	return out
 }
 
@@ -779,6 +790,7 @@ emit_c :: proc(g: ^Gen, impls: [][]Member_Impl) {
 	wl(&head, "/* %s */", GENERATED_BY)
 	wl(&head, "/* The interface table of the realm and the glue of the members the browser implements (src/tools/bindgen/jsgen). */")
 	wl(&head, "#include <math.h>")
+	wl(&head, "#include <string.h>")
 	wl(&head, "#include \"wj.h\"")
 	wl(&head, "#include \"bindings.h\"")
 	wl(&head, "")

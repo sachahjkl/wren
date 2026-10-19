@@ -266,6 +266,10 @@ enum {
 /* DOMString / USVString as UTF-8; undefined takes `def` unless optional or nullable. Free with wj_str_free. */
 bool wj_to_str(wj_ctx *ctx, wj_val v, wj_str *out, int flags, const char *def);
 void wj_str_free(wj_ctx *ctx, wj_str *s);
+/* An IDL enum value: `s` must be one of `values` (NULL-terminated), else TypeError (and `s` is freed). */
+bool wj_check_enum(wj_ctx *ctx, wj_str *s, const char *const *values, const char *type);
+/* The index of `s` in `values`, -1 when absent. */
+int wj_enum_index(const wj_str *s, const char *const *values);
 
 /* An argument of interface type: the handle behind a platform object of `iface` (or a descendant); null/undefined
  * accepted when `nullable` (handle 0). TypeError `message` otherwise. */

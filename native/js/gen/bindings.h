@@ -3,6 +3,8 @@
 #ifndef WJ_BINDINGS_H
 #define WJ_BINDINGS_H
 
+#include "wj.h"
+
 #define WJ_IFACE_AbortController 0
 #define WJ_IFACE_TaskController 1
 #define WJ_IFACE_AbstractRange 2
@@ -562,5 +564,1801 @@
 #define WJ_IFACE_COUNT 556
 
 extern const int wj_same_object_count;
+
+/* Dictionaries (src/tools/bindgen/jsgen/dicts.odin): wjd_<Name>_from converts, wjd_<Name>_free releases. */
+typedef struct wjd_TaskControllerInit {
+    wj_str priority;
+} wjd_TaskControllerInit;
+bool wjd_TaskControllerInit_from(JSContext *ctx, JSValueConst v, wjd_TaskControllerInit *out);
+void wjd_TaskControllerInit_free(JSContext *ctx, wjd_TaskControllerInit *d);
+typedef struct wjd_StaticRangeInit {
+    JSValue endContainer;   /* Node */
+    bool has_endContainer;
+    uint32_t endOffset;
+    bool has_endOffset;
+    JSValue startContainer;   /* Node */
+    bool has_startContainer;
+    uint32_t startOffset;
+    bool has_startOffset;
+} wjd_StaticRangeInit;
+bool wjd_StaticRangeInit_from(JSContext *ctx, JSValueConst v, wjd_StaticRangeInit *out);
+void wjd_StaticRangeInit_free(JSContext *ctx, wjd_StaticRangeInit *d);
+typedef struct wjd_OptionalEffectTiming {
+    double delay;
+    bool has_delay;
+    wj_str direction;
+    bool has_direction;
+    JSValue duration;   /* (unrestricted double or DOMString) */
+    bool has_duration;
+    wj_str easing;
+    bool has_easing;
+    double endDelay;
+    bool has_endDelay;
+    wj_str fill;
+    bool has_fill;
+    double iterationStart;
+    bool has_iterationStart;
+    double iterations;
+    bool has_iterations;
+} wjd_OptionalEffectTiming;
+bool wjd_OptionalEffectTiming_from(JSContext *ctx, JSValueConst v, wjd_OptionalEffectTiming *out);
+void wjd_OptionalEffectTiming_free(JSContext *ctx, wjd_OptionalEffectTiming *d);
+typedef struct wjd_EffectTiming {
+    wj_str direction;
+    wj_str easing;
+    wj_str fill;
+    double iterationStart;
+    double iterations;
+} wjd_EffectTiming;
+bool wjd_EffectTiming_from(JSContext *ctx, JSValueConst v, wjd_EffectTiming *out);
+void wjd_EffectTiming_free(JSContext *ctx, wjd_EffectTiming *d);
+typedef struct wjd_KeyframeEffectOptions {
+    struct wjd_EffectTiming base;
+    wj_str composite;
+    wj_str pseudoElement;
+} wjd_KeyframeEffectOptions;
+bool wjd_KeyframeEffectOptions_from(JSContext *ctx, JSValueConst v, wjd_KeyframeEffectOptions *out);
+void wjd_KeyframeEffectOptions_free(JSContext *ctx, wjd_KeyframeEffectOptions *d);
+typedef struct wjd_DocumentTimelineOptions {
+    double originTime;
+} wjd_DocumentTimelineOptions;
+bool wjd_DocumentTimelineOptions_from(JSContext *ctx, JSValueConst v, wjd_DocumentTimelineOptions *out);
+void wjd_DocumentTimelineOptions_free(JSContext *ctx, wjd_DocumentTimelineOptions *d);
+typedef struct wjd_AudioBufferOptions {
+    uint32_t length;
+    bool has_length;
+    uint32_t numberOfChannels;
+    double sampleRate;
+    bool has_sampleRate;
+} wjd_AudioBufferOptions;
+bool wjd_AudioBufferOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioBufferOptions *out);
+void wjd_AudioBufferOptions_free(JSContext *ctx, wjd_AudioBufferOptions *d);
+typedef struct wjd_BlobPropertyBag {
+    wj_str endings;
+    wj_str type;
+} wjd_BlobPropertyBag;
+bool wjd_BlobPropertyBag_from(JSContext *ctx, JSValueConst v, wjd_BlobPropertyBag *out);
+void wjd_BlobPropertyBag_free(JSContext *ctx, wjd_BlobPropertyBag *d);
+typedef struct wjd_FilePropertyBag {
+    struct wjd_BlobPropertyBag base;
+    int64_t lastModified;
+    bool has_lastModified;
+} wjd_FilePropertyBag;
+bool wjd_FilePropertyBag_from(JSContext *ctx, JSValueConst v, wjd_FilePropertyBag *out);
+void wjd_FilePropertyBag_free(JSContext *ctx, wjd_FilePropertyBag *d);
+typedef struct wjd_QueuingStrategyInit {
+    double highWaterMark;
+    bool has_highWaterMark;
+} wjd_QueuingStrategyInit;
+bool wjd_QueuingStrategyInit_from(JSContext *ctx, JSValueConst v, wjd_QueuingStrategyInit *out);
+void wjd_QueuingStrategyInit_free(JSContext *ctx, wjd_QueuingStrategyInit *d);
+typedef struct wjd_PropertyDefinition {
+    bool inherits;
+    wj_str initialValue;
+    bool has_initialValue;
+    wj_str name;
+    bool has_name;
+    wj_str syntax;
+} wjd_PropertyDefinition;
+bool wjd_PropertyDefinition_from(JSContext *ctx, JSValueConst v, wjd_PropertyDefinition *out);
+void wjd_PropertyDefinition_free(JSContext *ctx, wjd_PropertyDefinition *d);
+typedef struct wjd_CSSMatrixComponentOptions {
+    bool is2D;
+    bool has_is2D;
+} wjd_CSSMatrixComponentOptions;
+bool wjd_CSSMatrixComponentOptions_from(JSContext *ctx, JSValueConst v, wjd_CSSMatrixComponentOptions *out);
+void wjd_CSSMatrixComponentOptions_free(JSContext *ctx, wjd_CSSMatrixComponentOptions *d);
+typedef struct wjd_CacheQueryOptions {
+    bool ignoreMethod;
+    bool ignoreSearch;
+    bool ignoreVary;
+} wjd_CacheQueryOptions;
+bool wjd_CacheQueryOptions_from(JSContext *ctx, JSValueConst v, wjd_CacheQueryOptions *out);
+void wjd_CacheQueryOptions_free(JSContext *ctx, wjd_CacheQueryOptions *d);
+typedef struct wjd_MultiCacheQueryOptions {
+    struct wjd_CacheQueryOptions base;
+    wj_str cacheName;
+    bool has_cacheName;
+} wjd_MultiCacheQueryOptions;
+bool wjd_MultiCacheQueryOptions_from(JSContext *ctx, JSValueConst v, wjd_MultiCacheQueryOptions *out);
+void wjd_MultiCacheQueryOptions_free(JSContext *ctx, wjd_MultiCacheQueryOptions *d);
+typedef struct wjd_DOMMatrix2DInit {
+    double a;
+    bool has_a;
+    double b;
+    bool has_b;
+    double c;
+    bool has_c;
+    double d;
+    bool has_d;
+    double e;
+    bool has_e;
+    double f;
+    bool has_f;
+    double m11;
+    bool has_m11;
+    double m12;
+    bool has_m12;
+    double m21;
+    bool has_m21;
+    double m22;
+    bool has_m22;
+    double m41;
+    bool has_m41;
+    double m42;
+    bool has_m42;
+} wjd_DOMMatrix2DInit;
+bool wjd_DOMMatrix2DInit_from(JSContext *ctx, JSValueConst v, wjd_DOMMatrix2DInit *out);
+void wjd_DOMMatrix2DInit_free(JSContext *ctx, wjd_DOMMatrix2DInit *d);
+typedef struct wjd_ImageDataSettings {
+    wj_str colorSpace;
+    bool has_colorSpace;
+    wj_str pixelFormat;
+} wjd_ImageDataSettings;
+bool wjd_ImageDataSettings_from(JSContext *ctx, JSValueConst v, wjd_ImageDataSettings *out);
+void wjd_ImageDataSettings_free(JSContext *ctx, wjd_ImageDataSettings *d);
+typedef struct wjd_DOMPointInit {
+    double w;
+    double x;
+    double y;
+    double z;
+} wjd_DOMPointInit;
+bool wjd_DOMPointInit_from(JSContext *ctx, JSValueConst v, wjd_DOMPointInit *out);
+void wjd_DOMPointInit_free(JSContext *ctx, wjd_DOMPointInit *d);
+typedef struct wjd_ClipboardItemOptions {
+    wj_str presentationStyle;
+} wjd_ClipboardItemOptions;
+bool wjd_ClipboardItemOptions_from(JSContext *ctx, JSValueConst v, wjd_ClipboardItemOptions *out);
+void wjd_ClipboardItemOptions_free(JSContext *ctx, wjd_ClipboardItemOptions *d);
+typedef struct wjd_CookieStoreGetOptions {
+    wj_str name;
+    bool has_name;
+    wj_str url;
+    bool has_url;
+} wjd_CookieStoreGetOptions;
+bool wjd_CookieStoreGetOptions_from(JSContext *ctx, JSValueConst v, wjd_CookieStoreGetOptions *out);
+void wjd_CookieStoreGetOptions_free(JSContext *ctx, wjd_CookieStoreGetOptions *d);
+typedef struct wjd_CredentialData {
+    wj_str id;
+    bool has_id;
+} wjd_CredentialData;
+bool wjd_CredentialData_from(JSContext *ctx, JSValueConst v, wjd_CredentialData *out);
+void wjd_CredentialData_free(JSContext *ctx, wjd_CredentialData *d);
+typedef struct wjd_FederatedCredentialInit {
+    struct wjd_CredentialData base;
+    wj_str iconURL;
+    bool has_iconURL;
+    wj_str name;
+    bool has_name;
+    wj_str origin;
+    bool has_origin;
+    wj_str protocol;
+    bool has_protocol;
+    wj_str provider;
+    bool has_provider;
+} wjd_FederatedCredentialInit;
+bool wjd_FederatedCredentialInit_from(JSContext *ctx, JSValueConst v, wjd_FederatedCredentialInit *out);
+void wjd_FederatedCredentialInit_free(JSContext *ctx, wjd_FederatedCredentialInit *d);
+typedef struct wjd_PasswordCredentialData {
+    struct wjd_CredentialData base;
+    wj_str iconURL;
+    bool has_iconURL;
+    wj_str name;
+    bool has_name;
+    wj_str origin;
+    bool has_origin;
+    wj_str password;
+    bool has_password;
+} wjd_PasswordCredentialData;
+bool wjd_PasswordCredentialData_from(JSContext *ctx, JSValueConst v, wjd_PasswordCredentialData *out);
+void wjd_PasswordCredentialData_free(JSContext *ctx, wjd_PasswordCredentialData *d);
+typedef struct wjd_FederatedCredentialRequestOptions {
+    JSValue protocols;   /* sequence<DOMString> */
+    bool has_protocols;
+    JSValue providers;   /* sequence<USVString> */
+    bool has_providers;
+} wjd_FederatedCredentialRequestOptions;
+bool wjd_FederatedCredentialRequestOptions_from(JSContext *ctx, JSValueConst v, wjd_FederatedCredentialRequestOptions *out);
+void wjd_FederatedCredentialRequestOptions_free(JSContext *ctx, wjd_FederatedCredentialRequestOptions *d);
+typedef struct wjd_CredentialRequestOptions {
+    struct wjd_FederatedCredentialRequestOptions federated;
+    bool has_federated;
+    wj_str mediation;
+    bool password;
+    JSValue signal;   /* AbortSignal */
+    bool has_signal;
+    wj_str uiMode;
+    bool has_uiMode;
+} wjd_CredentialRequestOptions;
+bool wjd_CredentialRequestOptions_from(JSContext *ctx, JSValueConst v, wjd_CredentialRequestOptions *out);
+void wjd_CredentialRequestOptions_free(JSContext *ctx, wjd_CredentialRequestOptions *d);
+typedef struct wjd_CredentialCreationOptions {
+    struct wjd_FederatedCredentialInit federated;
+    bool has_federated;
+    wj_str mediation;
+    JSValue password;   /* PasswordCredentialInit */
+    bool has_password;
+    JSValue signal;   /* AbortSignal */
+    bool has_signal;
+} wjd_CredentialCreationOptions;
+bool wjd_CredentialCreationOptions_from(JSContext *ctx, JSValueConst v, wjd_CredentialCreationOptions *out);
+void wjd_CredentialCreationOptions_free(JSContext *ctx, wjd_CredentialCreationOptions *d);
+typedef struct wjd_ElementDefinitionOptions {
+    wj_str extends;
+    bool has_extends;
+} wjd_ElementDefinitionOptions;
+bool wjd_ElementDefinitionOptions_from(JSContext *ctx, JSValueConst v, wjd_ElementDefinitionOptions *out);
+void wjd_ElementDefinitionOptions_free(JSContext *ctx, wjd_ElementDefinitionOptions *d);
+typedef struct wjd_QuotaExceededErrorOptions {
+    double quota;
+    bool has_quota;
+    double requested;
+    bool has_requested;
+} wjd_QuotaExceededErrorOptions;
+bool wjd_QuotaExceededErrorOptions_from(JSContext *ctx, JSValueConst v, wjd_QuotaExceededErrorOptions *out);
+void wjd_QuotaExceededErrorOptions_free(JSContext *ctx, wjd_QuotaExceededErrorOptions *d);
+typedef struct wjd_DOMMatrixInit {
+    struct wjd_DOMMatrix2DInit base;
+    bool is2D;
+    bool has_is2D;
+    double m13;
+    double m14;
+    double m23;
+    double m24;
+    double m31;
+    double m32;
+    double m33;
+    double m34;
+    double m43;
+    double m44;
+} wjd_DOMMatrixInit;
+bool wjd_DOMMatrixInit_from(JSContext *ctx, JSValueConst v, wjd_DOMMatrixInit *out);
+void wjd_DOMMatrixInit_free(JSContext *ctx, wjd_DOMMatrixInit *d);
+typedef struct wjd_DOMRectInit {
+    double height;
+    double width;
+    double x;
+    double y;
+} wjd_DOMRectInit;
+bool wjd_DOMRectInit_from(JSContext *ctx, JSValueConst v, wjd_DOMRectInit *out);
+void wjd_DOMRectInit_free(JSContext *ctx, wjd_DOMRectInit *d);
+typedef struct wjd_DOMQuadInit {
+    struct wjd_DOMPointInit p1;
+    bool has_p1;
+    struct wjd_DOMPointInit p2;
+    bool has_p2;
+    struct wjd_DOMPointInit p3;
+    bool has_p3;
+    struct wjd_DOMPointInit p4;
+    bool has_p4;
+} wjd_DOMQuadInit;
+bool wjd_DOMQuadInit_from(JSContext *ctx, JSValueConst v, wjd_DOMQuadInit *out);
+void wjd_DOMQuadInit_free(JSContext *ctx, wjd_DOMQuadInit *d);
+typedef struct wjd_ValidityStateFlags {
+    bool badInput;
+    bool customError;
+    bool patternMismatch;
+    bool rangeOverflow;
+    bool rangeUnderflow;
+    bool stepMismatch;
+    bool tooLong;
+    bool tooShort;
+    bool typeMismatch;
+    bool valueMissing;
+} wjd_ValidityStateFlags;
+bool wjd_ValidityStateFlags_from(JSContext *ctx, JSValueConst v, wjd_ValidityStateFlags *out);
+void wjd_ValidityStateFlags_free(JSContext *ctx, wjd_ValidityStateFlags *d);
+typedef struct wjd_EventInit {
+    bool bubbles;
+    bool cancelable;
+    bool composed;
+} wjd_EventInit;
+bool wjd_EventInit_from(JSContext *ctx, JSValueConst v, wjd_EventInit *out);
+void wjd_EventInit_free(JSContext *ctx, wjd_EventInit *d);
+typedef struct wjd_AnimationEventInit {
+    struct wjd_EventInit base;
+    wj_str animationName;
+    double elapsedTime;
+    wj_str pseudoElement;
+} wjd_AnimationEventInit;
+bool wjd_AnimationEventInit_from(JSContext *ctx, JSValueConst v, wjd_AnimationEventInit *out);
+void wjd_AnimationEventInit_free(JSContext *ctx, wjd_AnimationEventInit *d);
+typedef struct wjd_AudioProcessingEventInit {
+    struct wjd_EventInit base;
+    JSValue inputBuffer;   /* AudioBuffer */
+    bool has_inputBuffer;
+    JSValue outputBuffer;   /* AudioBuffer */
+    bool has_outputBuffer;
+    double playbackTime;
+    bool has_playbackTime;
+} wjd_AudioProcessingEventInit;
+bool wjd_AudioProcessingEventInit_from(JSContext *ctx, JSValueConst v, wjd_AudioProcessingEventInit *out);
+void wjd_AudioProcessingEventInit_free(JSContext *ctx, wjd_AudioProcessingEventInit *d);
+typedef struct wjd_BufferedChangeEventInit {
+    struct wjd_EventInit base;
+    JSValue addedRanges;   /* TimeRanges */
+    bool has_addedRanges;
+    JSValue removedRanges;   /* TimeRanges */
+    bool has_removedRanges;
+} wjd_BufferedChangeEventInit;
+bool wjd_BufferedChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_BufferedChangeEventInit *out);
+void wjd_BufferedChangeEventInit_free(JSContext *ctx, wjd_BufferedChangeEventInit *d);
+typedef struct wjd_ClipboardChangeEventInit {
+    struct wjd_EventInit base;
+    JSValue changeId;   /* bigint */
+    JSValue types;   /* sequence<DOMString> */
+} wjd_ClipboardChangeEventInit;
+bool wjd_ClipboardChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_ClipboardChangeEventInit *out);
+void wjd_ClipboardChangeEventInit_free(JSContext *ctx, wjd_ClipboardChangeEventInit *d);
+typedef struct wjd_ClipboardEventInit {
+    struct wjd_EventInit base;
+    JSValue clipboardData;   /* DataTransfer? */
+} wjd_ClipboardEventInit;
+bool wjd_ClipboardEventInit_from(JSContext *ctx, JSValueConst v, wjd_ClipboardEventInit *out);
+void wjd_ClipboardEventInit_free(JSContext *ctx, wjd_ClipboardEventInit *d);
+typedef struct wjd_CloseEventInit {
+    struct wjd_EventInit base;
+    uint32_t code;
+    wj_str reason;
+    bool wasClean;
+} wjd_CloseEventInit;
+bool wjd_CloseEventInit_from(JSContext *ctx, JSValueConst v, wjd_CloseEventInit *out);
+void wjd_CloseEventInit_free(JSContext *ctx, wjd_CloseEventInit *d);
+typedef struct wjd_CommandEventInit {
+    struct wjd_EventInit base;
+    wj_str command;
+    JSValue source;   /* Element? */
+} wjd_CommandEventInit;
+bool wjd_CommandEventInit_from(JSContext *ctx, JSValueConst v, wjd_CommandEventInit *out);
+void wjd_CommandEventInit_free(JSContext *ctx, wjd_CommandEventInit *d);
+typedef struct wjd_CookieChangeEventInit {
+    struct wjd_EventInit base;
+    JSValue changed;   /* CookieList */
+    bool has_changed;
+    JSValue deleted;   /* CookieList */
+    bool has_deleted;
+} wjd_CookieChangeEventInit;
+bool wjd_CookieChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_CookieChangeEventInit *out);
+void wjd_CookieChangeEventInit_free(JSContext *ctx, wjd_CookieChangeEventInit *d);
+typedef struct wjd_CustomEventInit {
+    struct wjd_EventInit base;
+    JSValue detail;   /* any */
+} wjd_CustomEventInit;
+bool wjd_CustomEventInit_from(JSContext *ctx, JSValueConst v, wjd_CustomEventInit *out);
+void wjd_CustomEventInit_free(JSContext *ctx, wjd_CustomEventInit *d);
+typedef struct wjd_DeviceChangeEventInit {
+    struct wjd_EventInit base;
+    JSValue devices;   /* sequence<MediaDeviceInfo> */
+} wjd_DeviceChangeEventInit;
+bool wjd_DeviceChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_DeviceChangeEventInit *out);
+void wjd_DeviceChangeEventInit_free(JSContext *ctx, wjd_DeviceChangeEventInit *d);
+typedef struct wjd_ErrorEventInit {
+    struct wjd_EventInit base;
+    uint32_t colno;
+    JSValue error;   /* any */
+    bool has_error;
+    wj_str filename;
+    uint32_t lineno;
+    wj_str message;
+} wjd_ErrorEventInit;
+bool wjd_ErrorEventInit_from(JSContext *ctx, JSValueConst v, wjd_ErrorEventInit *out);
+void wjd_ErrorEventInit_free(JSContext *ctx, wjd_ErrorEventInit *d);
+typedef struct wjd_FontFaceSetLoadEventInit {
+    struct wjd_EventInit base;
+    JSValue fontfaces;   /* sequence<FontFace> */
+} wjd_FontFaceSetLoadEventInit;
+bool wjd_FontFaceSetLoadEventInit_from(JSContext *ctx, JSValueConst v, wjd_FontFaceSetLoadEventInit *out);
+void wjd_FontFaceSetLoadEventInit_free(JSContext *ctx, wjd_FontFaceSetLoadEventInit *d);
+typedef struct wjd_FormDataEventInit {
+    struct wjd_EventInit base;
+    JSValue formData;   /* FormData */
+    bool has_formData;
+} wjd_FormDataEventInit;
+bool wjd_FormDataEventInit_from(JSContext *ctx, JSValueConst v, wjd_FormDataEventInit *out);
+void wjd_FormDataEventInit_free(JSContext *ctx, wjd_FormDataEventInit *d);
+typedef struct wjd_GamepadEventInit {
+    struct wjd_EventInit base;
+    JSValue gamepad;   /* Gamepad? */
+} wjd_GamepadEventInit;
+bool wjd_GamepadEventInit_from(JSContext *ctx, JSValueConst v, wjd_GamepadEventInit *out);
+void wjd_GamepadEventInit_free(JSContext *ctx, wjd_GamepadEventInit *d);
+typedef struct wjd_HashChangeEventInit {
+    struct wjd_EventInit base;
+    wj_str newURL;
+    wj_str oldURL;
+} wjd_HashChangeEventInit;
+bool wjd_HashChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_HashChangeEventInit *out);
+void wjd_HashChangeEventInit_free(JSContext *ctx, wjd_HashChangeEventInit *d);
+typedef struct wjd_IDBVersionChangeEventInit {
+    struct wjd_EventInit base;
+    uint64_t newVersion;
+    uint64_t oldVersion;
+} wjd_IDBVersionChangeEventInit;
+bool wjd_IDBVersionChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_IDBVersionChangeEventInit *out);
+void wjd_IDBVersionChangeEventInit_free(JSContext *ctx, wjd_IDBVersionChangeEventInit *d);
+typedef struct wjd_MediaQueryListEventInit {
+    struct wjd_EventInit base;
+    bool matches;
+    wj_str media;
+} wjd_MediaQueryListEventInit;
+bool wjd_MediaQueryListEventInit_from(JSContext *ctx, JSValueConst v, wjd_MediaQueryListEventInit *out);
+void wjd_MediaQueryListEventInit_free(JSContext *ctx, wjd_MediaQueryListEventInit *d);
+typedef struct wjd_MediaStreamTrackEventInit {
+    struct wjd_EventInit base;
+    JSValue track;   /* MediaStreamTrack */
+    bool has_track;
+} wjd_MediaStreamTrackEventInit;
+bool wjd_MediaStreamTrackEventInit_from(JSContext *ctx, JSValueConst v, wjd_MediaStreamTrackEventInit *out);
+void wjd_MediaStreamTrackEventInit_free(JSContext *ctx, wjd_MediaStreamTrackEventInit *d);
+typedef struct wjd_MessageEventInit {
+    struct wjd_EventInit base;
+    JSValue data;   /* any */
+    wj_str lastEventId;
+    wj_str origin;
+    JSValue ports;   /* sequence<MessagePort> */
+    JSValue source;   /* MessageEventSource? */
+} wjd_MessageEventInit;
+bool wjd_MessageEventInit_from(JSContext *ctx, JSValueConst v, wjd_MessageEventInit *out);
+void wjd_MessageEventInit_free(JSContext *ctx, wjd_MessageEventInit *d);
+typedef struct wjd_NavigateEventInit {
+    struct wjd_EventInit base;
+    bool canIntercept;
+    JSValue destination;   /* NavigationDestination */
+    bool has_destination;
+    wj_str downloadRequest;
+    JSValue formData;   /* FormData? */
+    bool hasUAVisualTransition;
+    bool hashChange;
+    JSValue info;   /* any */
+    bool has_info;
+    wj_str navigationType;
+    JSValue signal;   /* AbortSignal */
+    bool has_signal;
+    JSValue sourceElement;   /* Element? */
+    bool userInitiated;
+} wjd_NavigateEventInit;
+bool wjd_NavigateEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigateEventInit *out);
+void wjd_NavigateEventInit_free(JSContext *ctx, wjd_NavigateEventInit *d);
+typedef struct wjd_NavigationInterceptOptions {
+    wj_str focusReset;
+    bool has_focusReset;
+    JSValue handler;   /* NavigationInterceptHandler */
+    bool has_handler;
+    JSValue precommitHandler;   /* NavigationPrecommitHandler */
+    bool has_precommitHandler;
+    wj_str scroll;
+    bool has_scroll;
+} wjd_NavigationInterceptOptions;
+bool wjd_NavigationInterceptOptions_from(JSContext *ctx, JSValueConst v, wjd_NavigationInterceptOptions *out);
+void wjd_NavigationInterceptOptions_free(JSContext *ctx, wjd_NavigationInterceptOptions *d);
+typedef struct wjd_NavigationCurrentEntryChangeEventInit {
+    struct wjd_EventInit base;
+    JSValue from;   /* NavigationHistoryEntry */
+    bool has_from;
+    JSValue navigationType;   /* NavigationType? */
+} wjd_NavigationCurrentEntryChangeEventInit;
+bool wjd_NavigationCurrentEntryChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigationCurrentEntryChangeEventInit *out);
+void wjd_NavigationCurrentEntryChangeEventInit_free(JSContext *ctx, wjd_NavigationCurrentEntryChangeEventInit *d);
+typedef struct wjd_OfflineAudioCompletionEventInit {
+    struct wjd_EventInit base;
+    JSValue renderedBuffer;   /* AudioBuffer */
+    bool has_renderedBuffer;
+} wjd_OfflineAudioCompletionEventInit;
+bool wjd_OfflineAudioCompletionEventInit_from(JSContext *ctx, JSValueConst v, wjd_OfflineAudioCompletionEventInit *out);
+void wjd_OfflineAudioCompletionEventInit_free(JSContext *ctx, wjd_OfflineAudioCompletionEventInit *d);
+typedef struct wjd_PageRevealEventInit {
+    struct wjd_EventInit base;
+    JSValue viewTransition;   /* ViewTransition? */
+} wjd_PageRevealEventInit;
+bool wjd_PageRevealEventInit_from(JSContext *ctx, JSValueConst v, wjd_PageRevealEventInit *out);
+void wjd_PageRevealEventInit_free(JSContext *ctx, wjd_PageRevealEventInit *d);
+typedef struct wjd_PageSwapEventInit {
+    struct wjd_EventInit base;
+    JSValue activation;   /* NavigationActivation? */
+    JSValue viewTransition;   /* ViewTransition? */
+} wjd_PageSwapEventInit;
+bool wjd_PageSwapEventInit_from(JSContext *ctx, JSValueConst v, wjd_PageSwapEventInit *out);
+void wjd_PageSwapEventInit_free(JSContext *ctx, wjd_PageSwapEventInit *d);
+typedef struct wjd_PageTransitionEventInit {
+    struct wjd_EventInit base;
+    bool persisted;
+} wjd_PageTransitionEventInit;
+bool wjd_PageTransitionEventInit_from(JSContext *ctx, JSValueConst v, wjd_PageTransitionEventInit *out);
+void wjd_PageTransitionEventInit_free(JSContext *ctx, wjd_PageTransitionEventInit *d);
+typedef struct wjd_PopStateEventInit {
+    struct wjd_EventInit base;
+    bool hasUAVisualTransition;
+    JSValue state;   /* any */
+} wjd_PopStateEventInit;
+bool wjd_PopStateEventInit_from(JSContext *ctx, JSValueConst v, wjd_PopStateEventInit *out);
+void wjd_PopStateEventInit_free(JSContext *ctx, wjd_PopStateEventInit *d);
+typedef struct wjd_ProgressEventInit {
+    struct wjd_EventInit base;
+    bool lengthComputable;
+    double loaded;
+    double total;
+} wjd_ProgressEventInit;
+bool wjd_ProgressEventInit_from(JSContext *ctx, JSValueConst v, wjd_ProgressEventInit *out);
+void wjd_ProgressEventInit_free(JSContext *ctx, wjd_ProgressEventInit *d);
+typedef struct wjd_PromiseRejectionEventInit {
+    struct wjd_EventInit base;
+    JSValue promise;   /* object */
+    bool has_promise;
+    JSValue reason;   /* any */
+    bool has_reason;
+} wjd_PromiseRejectionEventInit;
+bool wjd_PromiseRejectionEventInit_from(JSContext *ctx, JSValueConst v, wjd_PromiseRejectionEventInit *out);
+void wjd_PromiseRejectionEventInit_free(JSContext *ctx, wjd_PromiseRejectionEventInit *d);
+typedef struct wjd_SpeechRecognitionErrorEventInit {
+    struct wjd_EventInit base;
+    wj_str error;
+    bool has_error;
+    wj_str message;
+} wjd_SpeechRecognitionErrorEventInit;
+bool wjd_SpeechRecognitionErrorEventInit_from(JSContext *ctx, JSValueConst v, wjd_SpeechRecognitionErrorEventInit *out);
+void wjd_SpeechRecognitionErrorEventInit_free(JSContext *ctx, wjd_SpeechRecognitionErrorEventInit *d);
+typedef struct wjd_SpeechRecognitionEventInit {
+    struct wjd_EventInit base;
+    uint32_t resultIndex;
+    JSValue results;   /* SpeechRecognitionResultList */
+    bool has_results;
+} wjd_SpeechRecognitionEventInit;
+bool wjd_SpeechRecognitionEventInit_from(JSContext *ctx, JSValueConst v, wjd_SpeechRecognitionEventInit *out);
+void wjd_SpeechRecognitionEventInit_free(JSContext *ctx, wjd_SpeechRecognitionEventInit *d);
+typedef struct wjd_SpeechSynthesisEventInit {
+    struct wjd_EventInit base;
+    uint32_t charIndex;
+    uint32_t charLength;
+    double elapsedTime;
+    wj_str name;
+    JSValue utterance;   /* SpeechSynthesisUtterance */
+    bool has_utterance;
+} wjd_SpeechSynthesisEventInit;
+bool wjd_SpeechSynthesisEventInit_from(JSContext *ctx, JSValueConst v, wjd_SpeechSynthesisEventInit *out);
+void wjd_SpeechSynthesisEventInit_free(JSContext *ctx, wjd_SpeechSynthesisEventInit *d);
+typedef struct wjd_SpeechSynthesisErrorEventInit {
+    struct wjd_SpeechSynthesisEventInit base;
+    wj_str error;
+    bool has_error;
+} wjd_SpeechSynthesisErrorEventInit;
+bool wjd_SpeechSynthesisErrorEventInit_from(JSContext *ctx, JSValueConst v, wjd_SpeechSynthesisErrorEventInit *out);
+void wjd_SpeechSynthesisErrorEventInit_free(JSContext *ctx, wjd_SpeechSynthesisErrorEventInit *d);
+typedef struct wjd_StorageEventInit {
+    struct wjd_EventInit base;
+    wj_str key;
+    wj_str newValue;
+    wj_str oldValue;
+    JSValue storageArea;   /* Storage? */
+    wj_str url;
+} wjd_StorageEventInit;
+bool wjd_StorageEventInit_from(JSContext *ctx, JSValueConst v, wjd_StorageEventInit *out);
+void wjd_StorageEventInit_free(JSContext *ctx, wjd_StorageEventInit *d);
+typedef struct wjd_SubmitEventInit {
+    struct wjd_EventInit base;
+    JSValue submitter;   /* HTMLElement? */
+} wjd_SubmitEventInit;
+bool wjd_SubmitEventInit_from(JSContext *ctx, JSValueConst v, wjd_SubmitEventInit *out);
+void wjd_SubmitEventInit_free(JSContext *ctx, wjd_SubmitEventInit *d);
+typedef struct wjd_TaskPriorityChangeEventInit {
+    struct wjd_EventInit base;
+    wj_str previousPriority;
+    bool has_previousPriority;
+} wjd_TaskPriorityChangeEventInit;
+bool wjd_TaskPriorityChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_TaskPriorityChangeEventInit *out);
+void wjd_TaskPriorityChangeEventInit_free(JSContext *ctx, wjd_TaskPriorityChangeEventInit *d);
+typedef struct wjd_ToggleEventInit {
+    struct wjd_EventInit base;
+    wj_str newState;
+    wj_str oldState;
+    JSValue source;   /* Element? */
+} wjd_ToggleEventInit;
+bool wjd_ToggleEventInit_from(JSContext *ctx, JSValueConst v, wjd_ToggleEventInit *out);
+void wjd_ToggleEventInit_free(JSContext *ctx, wjd_ToggleEventInit *d);
+typedef struct wjd_TrackEventInit {
+    struct wjd_EventInit base;
+    JSValue track;   /* (VideoTrack or AudioTrack or TextTrack)? */
+} wjd_TrackEventInit;
+bool wjd_TrackEventInit_from(JSContext *ctx, JSValueConst v, wjd_TrackEventInit *out);
+void wjd_TrackEventInit_free(JSContext *ctx, wjd_TrackEventInit *d);
+typedef struct wjd_TransitionEventInit {
+    struct wjd_EventInit base;
+    double elapsedTime;
+    wj_str propertyName;
+    wj_str pseudoElement;
+} wjd_TransitionEventInit;
+bool wjd_TransitionEventInit_from(JSContext *ctx, JSValueConst v, wjd_TransitionEventInit *out);
+void wjd_TransitionEventInit_free(JSContext *ctx, wjd_TransitionEventInit *d);
+typedef struct wjd_UIEventInit {
+    struct wjd_EventInit base;
+    int32_t detail;
+    JSValue view;   /* Window? */
+    uint32_t which;
+} wjd_UIEventInit;
+bool wjd_UIEventInit_from(JSContext *ctx, JSValueConst v, wjd_UIEventInit *out);
+void wjd_UIEventInit_free(JSContext *ctx, wjd_UIEventInit *d);
+typedef struct wjd_CompositionEventInit {
+    struct wjd_UIEventInit base;
+    wj_str data;
+} wjd_CompositionEventInit;
+bool wjd_CompositionEventInit_from(JSContext *ctx, JSValueConst v, wjd_CompositionEventInit *out);
+void wjd_CompositionEventInit_free(JSContext *ctx, wjd_CompositionEventInit *d);
+typedef struct wjd_FocusEventInit {
+    struct wjd_UIEventInit base;
+    JSValue relatedTarget;   /* EventTarget? */
+} wjd_FocusEventInit;
+bool wjd_FocusEventInit_from(JSContext *ctx, JSValueConst v, wjd_FocusEventInit *out);
+void wjd_FocusEventInit_free(JSContext *ctx, wjd_FocusEventInit *d);
+typedef struct wjd_InputEventInit {
+    struct wjd_UIEventInit base;
+    wj_str data;
+    JSValue dataTransfer;   /* DataTransfer? */
+    wj_str inputType;
+    bool isComposing;
+    JSValue targetRanges;   /* sequence<StaticRange> */
+} wjd_InputEventInit;
+bool wjd_InputEventInit_from(JSContext *ctx, JSValueConst v, wjd_InputEventInit *out);
+void wjd_InputEventInit_free(JSContext *ctx, wjd_InputEventInit *d);
+typedef struct wjd_EventModifierInit {
+    struct wjd_UIEventInit base;
+    bool altKey;
+    bool ctrlKey;
+    bool metaKey;
+    bool modifierAltGraph;
+    bool modifierCapsLock;
+    bool modifierFn;
+    bool modifierFnLock;
+    bool modifierHyper;
+    bool modifierNumLock;
+    bool modifierScrollLock;
+    bool modifierSuper;
+    bool modifierSymbol;
+    bool modifierSymbolLock;
+    bool shiftKey;
+} wjd_EventModifierInit;
+bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifierInit *out);
+void wjd_EventModifierInit_free(JSContext *ctx, wjd_EventModifierInit *d);
+typedef struct wjd_KeyboardEventInit {
+    struct wjd_EventModifierInit base;
+    uint32_t charCode;
+    wj_str code;
+    bool isComposing;
+    wj_str key;
+    uint32_t keyCode;
+    uint32_t location;
+    bool repeat;
+} wjd_KeyboardEventInit;
+bool wjd_KeyboardEventInit_from(JSContext *ctx, JSValueConst v, wjd_KeyboardEventInit *out);
+void wjd_KeyboardEventInit_free(JSContext *ctx, wjd_KeyboardEventInit *d);
+typedef struct wjd_MouseEventInit {
+    struct wjd_EventModifierInit base;
+    int32_t button;
+    uint32_t buttons;
+    int32_t clientX;
+    int32_t clientY;
+    JSValue relatedTarget;   /* EventTarget? */
+    int32_t screenX;
+    int32_t screenY;
+} wjd_MouseEventInit;
+bool wjd_MouseEventInit_from(JSContext *ctx, JSValueConst v, wjd_MouseEventInit *out);
+void wjd_MouseEventInit_free(JSContext *ctx, wjd_MouseEventInit *d);
+typedef struct wjd_DragEventInit {
+    struct wjd_MouseEventInit base;
+    JSValue dataTransfer;   /* DataTransfer? */
+} wjd_DragEventInit;
+bool wjd_DragEventInit_from(JSContext *ctx, JSValueConst v, wjd_DragEventInit *out);
+void wjd_DragEventInit_free(JSContext *ctx, wjd_DragEventInit *d);
+typedef struct wjd_PointerEventInit {
+    struct wjd_MouseEventInit base;
+    double altitudeAngle;
+    bool has_altitudeAngle;
+    double azimuthAngle;
+    bool has_azimuthAngle;
+    JSValue coalescedEvents;   /* sequence<PointerEvent> */
+    double height;
+    bool isPrimary;
+    int32_t persistentDeviceId;
+    int32_t pointerId;
+    wj_str pointerType;
+    JSValue predictedEvents;   /* sequence<PointerEvent> */
+    double pressure;
+    double tangentialPressure;
+    int32_t tiltX;
+    bool has_tiltX;
+    int32_t tiltY;
+    bool has_tiltY;
+    int32_t twist;
+    double width;
+} wjd_PointerEventInit;
+bool wjd_PointerEventInit_from(JSContext *ctx, JSValueConst v, wjd_PointerEventInit *out);
+void wjd_PointerEventInit_free(JSContext *ctx, wjd_PointerEventInit *d);
+typedef struct wjd_WheelEventInit {
+    struct wjd_MouseEventInit base;
+    uint32_t deltaMode;
+    double deltaX;
+    double deltaY;
+    double deltaZ;
+    bool momentum;
+} wjd_WheelEventInit;
+bool wjd_WheelEventInit_from(JSContext *ctx, JSValueConst v, wjd_WheelEventInit *out);
+void wjd_WheelEventInit_free(JSContext *ctx, wjd_WheelEventInit *d);
+typedef struct wjd_TouchEventInit {
+    struct wjd_EventModifierInit base;
+    JSValue changedTouches;   /* sequence<Touch> */
+    JSValue targetTouches;   /* sequence<Touch> */
+    JSValue touches;   /* sequence<Touch> */
+} wjd_TouchEventInit;
+bool wjd_TouchEventInit_from(JSContext *ctx, JSValueConst v, wjd_TouchEventInit *out);
+void wjd_TouchEventInit_free(JSContext *ctx, wjd_TouchEventInit *d);
+typedef struct wjd_EventListenerOptions {
+    bool capture;
+} wjd_EventListenerOptions;
+bool wjd_EventListenerOptions_from(JSContext *ctx, JSValueConst v, wjd_EventListenerOptions *out);
+void wjd_EventListenerOptions_free(JSContext *ctx, wjd_EventListenerOptions *d);
+typedef struct wjd_AddEventListenerOptions {
+    struct wjd_EventListenerOptions base;
+    bool once;
+    bool passive;
+    bool has_passive;
+    JSValue signal;   /* AbortSignal */
+    bool has_signal;
+} wjd_AddEventListenerOptions;
+bool wjd_AddEventListenerOptions_from(JSContext *ctx, JSValueConst v, wjd_AddEventListenerOptions *out);
+void wjd_AddEventListenerOptions_free(JSContext *ctx, wjd_AddEventListenerOptions *d);
+typedef struct wjd_TaskSignalAnyInit {
+    JSValue priority;   /* (TaskPriority or TaskSignal) */
+} wjd_TaskSignalAnyInit;
+bool wjd_TaskSignalAnyInit_from(JSContext *ctx, JSValueConst v, wjd_TaskSignalAnyInit *out);
+void wjd_TaskSignalAnyInit_free(JSContext *ctx, wjd_TaskSignalAnyInit *d);
+typedef struct wjd_AudioNodeOptions {
+    uint32_t channelCount;
+    bool has_channelCount;
+    wj_str channelCountMode;
+    bool has_channelCountMode;
+    wj_str channelInterpretation;
+    bool has_channelInterpretation;
+} wjd_AudioNodeOptions;
+bool wjd_AudioNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioNodeOptions *out);
+void wjd_AudioNodeOptions_free(JSContext *ctx, wjd_AudioNodeOptions *d);
+typedef struct wjd_AnalyserOptions {
+    struct wjd_AudioNodeOptions base;
+    uint32_t fftSize;
+    double maxDecibels;
+    double minDecibels;
+    double smoothingTimeConstant;
+} wjd_AnalyserOptions;
+bool wjd_AnalyserOptions_from(JSContext *ctx, JSValueConst v, wjd_AnalyserOptions *out);
+void wjd_AnalyserOptions_free(JSContext *ctx, wjd_AnalyserOptions *d);
+typedef struct wjd_AudioBufferSourceOptions {
+    JSValue buffer;   /* AudioBuffer? */
+    bool has_buffer;
+    double detune;
+    bool loop;
+    double loopEnd;
+    double loopStart;
+    double playbackRate;
+} wjd_AudioBufferSourceOptions;
+bool wjd_AudioBufferSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioBufferSourceOptions *out);
+void wjd_AudioBufferSourceOptions_free(JSContext *ctx, wjd_AudioBufferSourceOptions *d);
+typedef struct wjd_ConstantSourceOptions {
+    double offset;
+} wjd_ConstantSourceOptions;
+bool wjd_ConstantSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_ConstantSourceOptions *out);
+void wjd_ConstantSourceOptions_free(JSContext *ctx, wjd_ConstantSourceOptions *d);
+typedef struct wjd_OscillatorOptions {
+    struct wjd_AudioNodeOptions base;
+    double detune;
+    double frequency;
+    JSValue periodicWave;   /* PeriodicWave */
+    bool has_periodicWave;
+    wj_str type;
+} wjd_OscillatorOptions;
+bool wjd_OscillatorOptions_from(JSContext *ctx, JSValueConst v, wjd_OscillatorOptions *out);
+void wjd_OscillatorOptions_free(JSContext *ctx, wjd_OscillatorOptions *d);
+typedef struct wjd_AudioWorkletNodeOptions {
+    struct wjd_AudioNodeOptions base;
+    uint32_t numberOfInputs;
+    uint32_t numberOfOutputs;
+    JSValue outputChannelCount;   /* sequence<unsigned long> */
+    bool has_outputChannelCount;
+    JSValue parameterData;   /* record<DOMString, double> */
+    bool has_parameterData;
+    JSValue processorOptions;   /* object */
+    bool has_processorOptions;
+} wjd_AudioWorkletNodeOptions;
+bool wjd_AudioWorkletNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioWorkletNodeOptions *out);
+void wjd_AudioWorkletNodeOptions_free(JSContext *ctx, wjd_AudioWorkletNodeOptions *d);
+typedef struct wjd_BiquadFilterOptions {
+    struct wjd_AudioNodeOptions base;
+    double Q;
+    double detune;
+    double frequency;
+    double gain;
+    wj_str type;
+} wjd_BiquadFilterOptions;
+bool wjd_BiquadFilterOptions_from(JSContext *ctx, JSValueConst v, wjd_BiquadFilterOptions *out);
+void wjd_BiquadFilterOptions_free(JSContext *ctx, wjd_BiquadFilterOptions *d);
+typedef struct wjd_ChannelMergerOptions {
+    struct wjd_AudioNodeOptions base;
+    uint32_t numberOfInputs;
+} wjd_ChannelMergerOptions;
+bool wjd_ChannelMergerOptions_from(JSContext *ctx, JSValueConst v, wjd_ChannelMergerOptions *out);
+void wjd_ChannelMergerOptions_free(JSContext *ctx, wjd_ChannelMergerOptions *d);
+typedef struct wjd_ChannelSplitterOptions {
+    struct wjd_AudioNodeOptions base;
+    uint32_t numberOfOutputs;
+} wjd_ChannelSplitterOptions;
+bool wjd_ChannelSplitterOptions_from(JSContext *ctx, JSValueConst v, wjd_ChannelSplitterOptions *out);
+void wjd_ChannelSplitterOptions_free(JSContext *ctx, wjd_ChannelSplitterOptions *d);
+typedef struct wjd_ConvolverOptions {
+    struct wjd_AudioNodeOptions base;
+    JSValue buffer;   /* AudioBuffer? */
+    bool has_buffer;
+    bool disableNormalization;
+} wjd_ConvolverOptions;
+bool wjd_ConvolverOptions_from(JSContext *ctx, JSValueConst v, wjd_ConvolverOptions *out);
+void wjd_ConvolverOptions_free(JSContext *ctx, wjd_ConvolverOptions *d);
+typedef struct wjd_DelayOptions {
+    struct wjd_AudioNodeOptions base;
+    double delayTime;
+    double maxDelayTime;
+} wjd_DelayOptions;
+bool wjd_DelayOptions_from(JSContext *ctx, JSValueConst v, wjd_DelayOptions *out);
+void wjd_DelayOptions_free(JSContext *ctx, wjd_DelayOptions *d);
+typedef struct wjd_DynamicsCompressorOptions {
+    struct wjd_AudioNodeOptions base;
+    double attack;
+    double knee;
+    double ratio;
+    double release;
+    double threshold;
+} wjd_DynamicsCompressorOptions;
+bool wjd_DynamicsCompressorOptions_from(JSContext *ctx, JSValueConst v, wjd_DynamicsCompressorOptions *out);
+void wjd_DynamicsCompressorOptions_free(JSContext *ctx, wjd_DynamicsCompressorOptions *d);
+typedef struct wjd_GainOptions {
+    struct wjd_AudioNodeOptions base;
+    double gain;
+} wjd_GainOptions;
+bool wjd_GainOptions_from(JSContext *ctx, JSValueConst v, wjd_GainOptions *out);
+void wjd_GainOptions_free(JSContext *ctx, wjd_GainOptions *d);
+typedef struct wjd_IIRFilterOptions {
+    struct wjd_AudioNodeOptions base;
+    JSValue feedback;   /* sequence<double> */
+    bool has_feedback;
+    JSValue feedforward;   /* sequence<double> */
+    bool has_feedforward;
+} wjd_IIRFilterOptions;
+bool wjd_IIRFilterOptions_from(JSContext *ctx, JSValueConst v, wjd_IIRFilterOptions *out);
+void wjd_IIRFilterOptions_free(JSContext *ctx, wjd_IIRFilterOptions *d);
+typedef struct wjd_MediaElementAudioSourceOptions {
+    JSValue mediaElement;   /* HTMLMediaElement */
+    bool has_mediaElement;
+} wjd_MediaElementAudioSourceOptions;
+bool wjd_MediaElementAudioSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_MediaElementAudioSourceOptions *out);
+void wjd_MediaElementAudioSourceOptions_free(JSContext *ctx, wjd_MediaElementAudioSourceOptions *d);
+typedef struct wjd_MediaStreamAudioSourceOptions {
+    JSValue mediaStream;   /* MediaStream */
+    bool has_mediaStream;
+} wjd_MediaStreamAudioSourceOptions;
+bool wjd_MediaStreamAudioSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_MediaStreamAudioSourceOptions *out);
+void wjd_MediaStreamAudioSourceOptions_free(JSContext *ctx, wjd_MediaStreamAudioSourceOptions *d);
+typedef struct wjd_MediaStreamTrackAudioSourceOptions {
+    JSValue mediaStreamTrack;   /* MediaStreamTrack */
+    bool has_mediaStreamTrack;
+} wjd_MediaStreamTrackAudioSourceOptions;
+bool wjd_MediaStreamTrackAudioSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_MediaStreamTrackAudioSourceOptions *out);
+void wjd_MediaStreamTrackAudioSourceOptions_free(JSContext *ctx, wjd_MediaStreamTrackAudioSourceOptions *d);
+typedef struct wjd_PannerOptions {
+    struct wjd_AudioNodeOptions base;
+    double coneInnerAngle;
+    double coneOuterAngle;
+    double coneOuterGain;
+    wj_str distanceModel;
+    double maxDistance;
+    double orientationX;
+    double orientationY;
+    double orientationZ;
+    wj_str panningModel;
+    double positionX;
+    double positionY;
+    double positionZ;
+    double refDistance;
+    double rolloffFactor;
+} wjd_PannerOptions;
+bool wjd_PannerOptions_from(JSContext *ctx, JSValueConst v, wjd_PannerOptions *out);
+void wjd_PannerOptions_free(JSContext *ctx, wjd_PannerOptions *d);
+typedef struct wjd_StereoPannerOptions {
+    struct wjd_AudioNodeOptions base;
+    double pan;
+} wjd_StereoPannerOptions;
+bool wjd_StereoPannerOptions_from(JSContext *ctx, JSValueConst v, wjd_StereoPannerOptions *out);
+void wjd_StereoPannerOptions_free(JSContext *ctx, wjd_StereoPannerOptions *d);
+typedef struct wjd_WaveShaperOptions {
+    struct wjd_AudioNodeOptions base;
+    JSValue curve;   /* sequence<float> */
+    bool has_curve;
+    wj_str oversample;
+} wjd_WaveShaperOptions;
+bool wjd_WaveShaperOptions_from(JSContext *ctx, JSValueConst v, wjd_WaveShaperOptions *out);
+void wjd_WaveShaperOptions_free(JSContext *ctx, wjd_WaveShaperOptions *d);
+typedef struct wjd_PeriodicWaveConstraints {
+    bool disableNormalization;
+} wjd_PeriodicWaveConstraints;
+bool wjd_PeriodicWaveConstraints_from(JSContext *ctx, JSValueConst v, wjd_PeriodicWaveConstraints *out);
+void wjd_PeriodicWaveConstraints_free(JSContext *ctx, wjd_PeriodicWaveConstraints *d);
+typedef struct wjd_AudioContextOptions {
+    JSValue latencyHint;   /* (AudioContextLatencyCategory or double) */
+    JSValue renderSizeHint;   /* (AudioContextRenderSizeCategory or unsigned long) */
+    double sampleRate;
+    bool has_sampleRate;
+    JSValue sinkId;   /* (DOMString or AudioSinkOptions) */
+    bool has_sinkId;
+} wjd_AudioContextOptions;
+bool wjd_AudioContextOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioContextOptions *out);
+void wjd_AudioContextOptions_free(JSContext *ctx, wjd_AudioContextOptions *d);
+typedef struct wjd_AudioSinkOptions {
+    wj_str type;
+    bool has_type;
+} wjd_AudioSinkOptions;
+bool wjd_AudioSinkOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioSinkOptions *out);
+void wjd_AudioSinkOptions_free(JSContext *ctx, wjd_AudioSinkOptions *d);
+typedef struct wjd_OfflineAudioContextOptions {
+    uint32_t length;
+    uint32_t numberOfChannels;
+    JSValue renderSizeHint;   /* (AudioContextRenderSizeCategory or unsigned long) */
+    double sampleRate;
+    bool has_sampleRate;
+} wjd_OfflineAudioContextOptions;
+bool wjd_OfflineAudioContextOptions_from(JSContext *ctx, JSValueConst v, wjd_OfflineAudioContextOptions *out);
+void wjd_OfflineAudioContextOptions_free(JSContext *ctx, wjd_OfflineAudioContextOptions *d);
+typedef struct wjd_ClipboardUnsanitizedFormats {
+    JSValue unsanitized;   /* sequence<DOMString> */
+    bool has_unsanitized;
+} wjd_ClipboardUnsanitizedFormats;
+bool wjd_ClipboardUnsanitizedFormats_from(JSContext *ctx, JSValueConst v, wjd_ClipboardUnsanitizedFormats *out);
+void wjd_ClipboardUnsanitizedFormats_free(JSContext *ctx, wjd_ClipboardUnsanitizedFormats *d);
+typedef struct wjd_CloseWatcherOptions {
+    JSValue signal;   /* AbortSignal */
+    bool has_signal;
+} wjd_CloseWatcherOptions;
+bool wjd_CloseWatcherOptions_from(JSContext *ctx, JSValueConst v, wjd_CloseWatcherOptions *out);
+void wjd_CloseWatcherOptions_free(JSContext *ctx, wjd_CloseWatcherOptions *d);
+typedef struct wjd_CookieInit {
+    wj_str domain;
+    double expires;
+    int64_t maxAge;
+    wj_str name;
+    bool has_name;
+    bool partitioned;
+    wj_str path;
+    wj_str sameSite;
+    wj_str value;
+    bool has_value;
+} wjd_CookieInit;
+bool wjd_CookieInit_from(JSContext *ctx, JSValueConst v, wjd_CookieInit *out);
+void wjd_CookieInit_free(JSContext *ctx, wjd_CookieInit *d);
+typedef struct wjd_CookieStoreDeleteOptions {
+    wj_str domain;
+    wj_str name;
+    bool has_name;
+    bool partitioned;
+    wj_str path;
+} wjd_CookieStoreDeleteOptions;
+bool wjd_CookieStoreDeleteOptions_from(JSContext *ctx, JSValueConst v, wjd_CookieStoreDeleteOptions *out);
+void wjd_CookieStoreDeleteOptions_free(JSContext *ctx, wjd_CookieStoreDeleteOptions *d);
+typedef struct wjd_EventSourceInit {
+    bool withCredentials;
+} wjd_EventSourceInit;
+bool wjd_EventSourceInit_from(JSContext *ctx, JSValueConst v, wjd_EventSourceInit *out);
+void wjd_EventSourceInit_free(JSContext *ctx, wjd_EventSourceInit *d);
+typedef struct wjd_IDBTransactionOptions {
+    wj_str durability;
+} wjd_IDBTransactionOptions;
+bool wjd_IDBTransactionOptions_from(JSContext *ctx, JSValueConst v, wjd_IDBTransactionOptions *out);
+void wjd_IDBTransactionOptions_free(JSContext *ctx, wjd_IDBTransactionOptions *d);
+typedef struct wjd_IDBObjectStoreParameters {
+    bool autoIncrement;
+    JSValue keyPath;   /* (DOMString or sequence<DOMString>)? */
+} wjd_IDBObjectStoreParameters;
+bool wjd_IDBObjectStoreParameters_from(JSContext *ctx, JSValueConst v, wjd_IDBObjectStoreParameters *out);
+void wjd_IDBObjectStoreParameters_free(JSContext *ctx, wjd_IDBObjectStoreParameters *d);
+typedef struct wjd_MediaStreamConstraints {
+    JSValue audio;   /* (boolean or MediaTrackConstraints) */
+    JSValue video;   /* (boolean or MediaTrackConstraints) */
+} wjd_MediaStreamConstraints;
+bool wjd_MediaStreamConstraints_from(JSContext *ctx, JSValueConst v, wjd_MediaStreamConstraints *out);
+void wjd_MediaStreamConstraints_free(JSContext *ctx, wjd_MediaStreamConstraints *d);
+typedef struct wjd_MediaTrackConstraintSet {
+    JSValue aspectRatio;   /* ConstrainDouble */
+    bool has_aspectRatio;
+    JSValue autoGainControl;   /* ConstrainBoolean */
+    bool has_autoGainControl;
+    JSValue backgroundBlur;   /* ConstrainBoolean */
+    bool has_backgroundBlur;
+    JSValue channelCount;   /* ConstrainULong */
+    bool has_channelCount;
+    JSValue deviceId;   /* ConstrainDOMString */
+    bool has_deviceId;
+    JSValue echoCancellation;   /* ConstrainBooleanOrDOMString */
+    bool has_echoCancellation;
+    JSValue facingMode;   /* ConstrainDOMString */
+    bool has_facingMode;
+    JSValue frameRate;   /* ConstrainDouble */
+    bool has_frameRate;
+    JSValue groupId;   /* ConstrainDOMString */
+    bool has_groupId;
+    JSValue height;   /* ConstrainULong */
+    bool has_height;
+    JSValue latency;   /* ConstrainDouble */
+    bool has_latency;
+    JSValue noiseSuppression;   /* ConstrainBoolean */
+    bool has_noiseSuppression;
+    JSValue resizeMode;   /* ConstrainDOMString */
+    bool has_resizeMode;
+    JSValue sampleRate;   /* ConstrainULong */
+    bool has_sampleRate;
+    JSValue sampleSize;   /* ConstrainULong */
+    bool has_sampleSize;
+    JSValue width;   /* ConstrainULong */
+    bool has_width;
+} wjd_MediaTrackConstraintSet;
+bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaTrackConstraintSet *out);
+void wjd_MediaTrackConstraintSet_free(JSContext *ctx, wjd_MediaTrackConstraintSet *d);
+typedef struct wjd_MediaTrackConstraints {
+    struct wjd_MediaTrackConstraintSet base;
+    JSValue advanced;   /* sequence<MediaTrackConstraintSet> */
+    bool has_advanced;
+} wjd_MediaTrackConstraints;
+bool wjd_MediaTrackConstraints_from(JSContext *ctx, JSValueConst v, wjd_MediaTrackConstraints *out);
+void wjd_MediaTrackConstraints_free(JSContext *ctx, wjd_MediaTrackConstraints *d);
+typedef struct wjd_StructuredSerializeOptions {
+    JSValue transfer;   /* sequence<object> */
+} wjd_StructuredSerializeOptions;
+bool wjd_StructuredSerializeOptions_from(JSContext *ctx, JSValueConst v, wjd_StructuredSerializeOptions *out);
+void wjd_StructuredSerializeOptions_free(JSContext *ctx, wjd_StructuredSerializeOptions *d);
+typedef struct wjd_NavigationUpdateCurrentEntryOptions {
+    JSValue state;   /* any */
+    bool has_state;
+} wjd_NavigationUpdateCurrentEntryOptions;
+bool wjd_NavigationUpdateCurrentEntryOptions_from(JSContext *ctx, JSValueConst v, wjd_NavigationUpdateCurrentEntryOptions *out);
+void wjd_NavigationUpdateCurrentEntryOptions_free(JSContext *ctx, wjd_NavigationUpdateCurrentEntryOptions *d);
+typedef struct wjd_NavigationOptions {
+    JSValue info;   /* any */
+    bool has_info;
+} wjd_NavigationOptions;
+bool wjd_NavigationOptions_from(JSContext *ctx, JSValueConst v, wjd_NavigationOptions *out);
+void wjd_NavigationOptions_free(JSContext *ctx, wjd_NavigationOptions *d);
+typedef struct wjd_NavigationNavigateOptions {
+    struct wjd_NavigationOptions base;
+    wj_str history;
+    JSValue state;   /* any */
+    bool has_state;
+} wjd_NavigationNavigateOptions;
+bool wjd_NavigationNavigateOptions_from(JSContext *ctx, JSValueConst v, wjd_NavigationNavigateOptions *out);
+void wjd_NavigationNavigateOptions_free(JSContext *ctx, wjd_NavigationNavigateOptions *d);
+typedef struct wjd_NavigationReloadOptions {
+    struct wjd_NavigationOptions base;
+    JSValue state;   /* any */
+    bool has_state;
+} wjd_NavigationReloadOptions;
+bool wjd_NavigationReloadOptions_from(JSContext *ctx, JSValueConst v, wjd_NavigationReloadOptions *out);
+void wjd_NavigationReloadOptions_free(JSContext *ctx, wjd_NavigationReloadOptions *d);
+typedef struct wjd_GetRootNodeOptions {
+    bool composed;
+} wjd_GetRootNodeOptions;
+bool wjd_GetRootNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_GetRootNodeOptions *out);
+void wjd_GetRootNodeOptions_free(JSContext *ctx, wjd_GetRootNodeOptions *d);
+typedef struct wjd_SetHTMLOptions {
+    JSValue sanitizer;   /* (Sanitizer or SanitizerConfig or SanitizerPresets) */
+} wjd_SetHTMLOptions;
+bool wjd_SetHTMLOptions_from(JSContext *ctx, JSValueConst v, wjd_SetHTMLOptions *out);
+void wjd_SetHTMLOptions_free(JSContext *ctx, wjd_SetHTMLOptions *d);
+typedef struct wjd_SetHTMLUnsafeOptions {
+    bool runScripts;
+    JSValue sanitizer;   /* (Sanitizer or SanitizerConfig or SanitizerPresets) */
+    bool has_sanitizer;
+} wjd_SetHTMLUnsafeOptions;
+bool wjd_SetHTMLUnsafeOptions_from(JSContext *ctx, JSValueConst v, wjd_SetHTMLUnsafeOptions *out);
+void wjd_SetHTMLUnsafeOptions_free(JSContext *ctx, wjd_SetHTMLUnsafeOptions *d);
+typedef struct wjd_BoxQuadOptions {
+    wj_str box;
+    JSValue relativeTo;   /* GeometryNode */
+    bool has_relativeTo;
+} wjd_BoxQuadOptions;
+bool wjd_BoxQuadOptions_from(JSContext *ctx, JSValueConst v, wjd_BoxQuadOptions *out);
+void wjd_BoxQuadOptions_free(JSContext *ctx, wjd_BoxQuadOptions *d);
+typedef struct wjd_ConvertCoordinateOptions {
+    wj_str fromBox;
+    wj_str toBox;
+} wjd_ConvertCoordinateOptions;
+bool wjd_ConvertCoordinateOptions_from(JSContext *ctx, JSValueConst v, wjd_ConvertCoordinateOptions *out);
+void wjd_ConvertCoordinateOptions_free(JSContext *ctx, wjd_ConvertCoordinateOptions *d);
+typedef struct wjd_StartViewTransitionOptions {
+    JSValue types;   /* sequence<DOMString>? */
+    JSValue update;   /* ViewTransitionUpdateCallback? */
+} wjd_StartViewTransitionOptions;
+bool wjd_StartViewTransitionOptions_from(JSContext *ctx, JSValueConst v, wjd_StartViewTransitionOptions *out);
+void wjd_StartViewTransitionOptions_free(JSContext *ctx, wjd_StartViewTransitionOptions *d);
+typedef struct wjd_CaretPositionFromPointOptions {
+    JSValue shadowRoots;   /* sequence<ShadowRoot> */
+} wjd_CaretPositionFromPointOptions;
+bool wjd_CaretPositionFromPointOptions_from(JSContext *ctx, JSValueConst v, wjd_CaretPositionFromPointOptions *out);
+void wjd_CaretPositionFromPointOptions_free(JSContext *ctx, wjd_CaretPositionFromPointOptions *d);
+typedef struct wjd_ElementCreationOptions {
+    JSValue customElementRegistry;   /* CustomElementRegistry? */
+    bool has_customElementRegistry;
+    wj_str is;
+    bool has_is;
+} wjd_ElementCreationOptions;
+bool wjd_ElementCreationOptions_from(JSContext *ctx, JSValueConst v, wjd_ElementCreationOptions *out);
+void wjd_ElementCreationOptions_free(JSContext *ctx, wjd_ElementCreationOptions *d);
+typedef struct wjd_ImportNodeOptions {
+    JSValue customElementRegistry;   /* CustomElementRegistry */
+    bool has_customElementRegistry;
+    bool selfOnly;
+} wjd_ImportNodeOptions;
+bool wjd_ImportNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_ImportNodeOptions *out);
+void wjd_ImportNodeOptions_free(JSContext *ctx, wjd_ImportNodeOptions *d);
+typedef struct wjd_ParseHTMLUnsafeOptions {
+    JSValue sanitizer;   /* (Sanitizer or SanitizerConfig or SanitizerPresets) */
+    bool has_sanitizer;
+} wjd_ParseHTMLUnsafeOptions;
+bool wjd_ParseHTMLUnsafeOptions_from(JSContext *ctx, JSValueConst v, wjd_ParseHTMLUnsafeOptions *out);
+void wjd_ParseHTMLUnsafeOptions_free(JSContext *ctx, wjd_ParseHTMLUnsafeOptions *d);
+typedef struct wjd_AriaNotificationOptions {
+    wj_str priority;
+} wjd_AriaNotificationOptions;
+bool wjd_AriaNotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_AriaNotificationOptions *out);
+void wjd_AriaNotificationOptions_free(JSContext *ctx, wjd_AriaNotificationOptions *d);
+typedef struct wjd_GetHTMLOptions {
+    bool serializableShadowRoots;
+    JSValue shadowRoots;   /* sequence<ShadowRoot> */
+} wjd_GetHTMLOptions;
+bool wjd_GetHTMLOptions_from(JSContext *ctx, JSValueConst v, wjd_GetHTMLOptions *out);
+void wjd_GetHTMLOptions_free(JSContext *ctx, wjd_GetHTMLOptions *d);
+typedef struct wjd_CheckVisibilityOptions {
+    bool checkOpacity;
+    bool checkVisibilityCSS;
+    bool contentVisibilityAuto;
+    bool opacityProperty;
+    bool visibilityProperty;
+} wjd_CheckVisibilityOptions;
+bool wjd_CheckVisibilityOptions_from(JSContext *ctx, JSValueConst v, wjd_CheckVisibilityOptions *out);
+void wjd_CheckVisibilityOptions_free(JSContext *ctx, wjd_CheckVisibilityOptions *d);
+typedef struct wjd_ScrollOptions {
+    wj_str behavior;
+} wjd_ScrollOptions;
+bool wjd_ScrollOptions_from(JSContext *ctx, JSValueConst v, wjd_ScrollOptions *out);
+void wjd_ScrollOptions_free(JSContext *ctx, wjd_ScrollOptions *d);
+typedef struct wjd_ScrollIntoViewOptions {
+    struct wjd_ScrollOptions base;
+    wj_str block;
+    wj_str container;
+    wj_str inline_;
+} wjd_ScrollIntoViewOptions;
+bool wjd_ScrollIntoViewOptions_from(JSContext *ctx, JSValueConst v, wjd_ScrollIntoViewOptions *out);
+void wjd_ScrollIntoViewOptions_free(JSContext *ctx, wjd_ScrollIntoViewOptions *d);
+typedef struct wjd_ScrollToOptions {
+    struct wjd_ScrollOptions base;
+    double left;
+    bool has_left;
+    double top;
+    bool has_top;
+} wjd_ScrollToOptions;
+bool wjd_ScrollToOptions_from(JSContext *ctx, JSValueConst v, wjd_ScrollToOptions *out);
+void wjd_ScrollToOptions_free(JSContext *ctx, wjd_ScrollToOptions *d);
+typedef struct wjd_ShadowRootInit {
+    bool clonable;
+    JSValue customElementRegistry;   /* CustomElementRegistry? */
+    bool has_customElementRegistry;
+    bool delegatesFocus;
+    wj_str mode;
+    bool has_mode;
+    bool serializable;
+    wj_str slotAssignment;
+} wjd_ShadowRootInit;
+bool wjd_ShadowRootInit_from(JSContext *ctx, JSValueConst v, wjd_ShadowRootInit *out);
+void wjd_ShadowRootInit_free(JSContext *ctx, wjd_ShadowRootInit *d);
+typedef struct wjd_FullscreenOptions {
+    wj_str keyboardLock;
+    wj_str navigationUI;
+} wjd_FullscreenOptions;
+bool wjd_FullscreenOptions_from(JSContext *ctx, JSValueConst v, wjd_FullscreenOptions *out);
+void wjd_FullscreenOptions_free(JSContext *ctx, wjd_FullscreenOptions *d);
+typedef struct wjd_KeyframeAnimationOptions {
+    struct wjd_KeyframeEffectOptions base;
+    wj_str id;
+    JSValue timeline;   /* AnimationTimeline? */
+    bool has_timeline;
+} wjd_KeyframeAnimationOptions;
+bool wjd_KeyframeAnimationOptions_from(JSContext *ctx, JSValueConst v, wjd_KeyframeAnimationOptions *out);
+void wjd_KeyframeAnimationOptions_free(JSContext *ctx, wjd_KeyframeAnimationOptions *d);
+typedef struct wjd_GetAnimationsOptions {
+    wj_str pseudoElement;
+    bool subtree;
+} wjd_GetAnimationsOptions;
+bool wjd_GetAnimationsOptions_from(JSContext *ctx, JSValueConst v, wjd_GetAnimationsOptions *out);
+void wjd_GetAnimationsOptions_free(JSContext *ctx, wjd_GetAnimationsOptions *d);
+typedef struct wjd_ShowPopoverOptions {
+    JSValue source;   /* HTMLElement */
+    bool has_source;
+} wjd_ShowPopoverOptions;
+bool wjd_ShowPopoverOptions_from(JSContext *ctx, JSValueConst v, wjd_ShowPopoverOptions *out);
+void wjd_ShowPopoverOptions_free(JSContext *ctx, wjd_ShowPopoverOptions *d);
+typedef struct wjd_TogglePopoverOptions {
+    struct wjd_ShowPopoverOptions base;
+    bool force;
+    bool has_force;
+} wjd_TogglePopoverOptions;
+bool wjd_TogglePopoverOptions_from(JSContext *ctx, JSValueConst v, wjd_TogglePopoverOptions *out);
+void wjd_TogglePopoverOptions_free(JSContext *ctx, wjd_TogglePopoverOptions *d);
+typedef struct wjd_FocusOptions {
+    bool focusVisible;
+    bool has_focusVisible;
+    bool preventScroll;
+} wjd_FocusOptions;
+bool wjd_FocusOptions_from(JSContext *ctx, JSValueConst v, wjd_FocusOptions *out);
+void wjd_FocusOptions_free(JSContext *ctx, wjd_FocusOptions *d);
+typedef struct wjd_AssignedNodesOptions {
+    bool flatten;
+} wjd_AssignedNodesOptions;
+bool wjd_AssignedNodesOptions_from(JSContext *ctx, JSValueConst v, wjd_AssignedNodesOptions *out);
+void wjd_AssignedNodesOptions_free(JSContext *ctx, wjd_AssignedNodesOptions *d);
+typedef struct wjd_SVGBoundingBoxOptions {
+    bool clipped;
+    bool fill;
+    bool markers;
+    bool stroke;
+} wjd_SVGBoundingBoxOptions;
+bool wjd_SVGBoundingBoxOptions_from(JSContext *ctx, JSValueConst v, wjd_SVGBoundingBoxOptions *out);
+void wjd_SVGBoundingBoxOptions_free(JSContext *ctx, wjd_SVGBoundingBoxOptions *d);
+typedef struct wjd_NotificationOptions {
+    JSValue actions;   /* sequence<NotificationAction> */
+    wj_str badge;
+    bool has_badge;
+    wj_str body;
+    JSValue data;   /* any */
+    wj_str dir;
+    wj_str icon;
+    bool has_icon;
+    wj_str image;
+    bool has_image;
+    wj_str lang;
+    wj_str navigate;
+    bool has_navigate;
+    bool renotify;
+    bool requireInteraction;
+    bool silent;
+    wj_str tag;
+    uint64_t timestamp;
+    bool has_timestamp;
+    JSValue vibrate;   /* VibratePattern */
+    bool has_vibrate;
+} wjd_NotificationOptions;
+bool wjd_NotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_NotificationOptions *out);
+void wjd_NotificationOptions_free(JSContext *ctx, wjd_NotificationOptions *d);
+typedef struct wjd_ImageEncodeOptions {
+    double quality;
+    bool has_quality;
+    wj_str type;
+} wjd_ImageEncodeOptions;
+bool wjd_ImageEncodeOptions_from(JSContext *ctx, JSValueConst v, wjd_ImageEncodeOptions *out);
+void wjd_ImageEncodeOptions_free(JSContext *ctx, wjd_ImageEncodeOptions *d);
+typedef struct wjd_PerformanceMarkOptions {
+    JSValue detail;   /* any */
+    bool has_detail;
+    double startTime;
+    bool has_startTime;
+} wjd_PerformanceMarkOptions;
+bool wjd_PerformanceMarkOptions_from(JSContext *ctx, JSValueConst v, wjd_PerformanceMarkOptions *out);
+void wjd_PerformanceMarkOptions_free(JSContext *ctx, wjd_PerformanceMarkOptions *d);
+typedef struct wjd_PerformanceMeasureOptions {
+    JSValue detail;   /* any */
+    bool has_detail;
+    double duration;
+    bool has_duration;
+    JSValue end;   /* (DOMString or DOMHighResTimeStamp) */
+    bool has_end;
+    JSValue start;   /* (DOMString or DOMHighResTimeStamp) */
+    bool has_start;
+} wjd_PerformanceMeasureOptions;
+bool wjd_PerformanceMeasureOptions_from(JSContext *ctx, JSValueConst v, wjd_PerformanceMeasureOptions *out);
+void wjd_PerformanceMeasureOptions_free(JSContext *ctx, wjd_PerformanceMeasureOptions *d);
+typedef struct wjd_RegistrationOptions {
+    wj_str scope;
+    bool has_scope;
+    wj_str type;
+    wj_str updateViaCache;
+} wjd_RegistrationOptions;
+bool wjd_RegistrationOptions_from(JSContext *ctx, JSValueConst v, wjd_RegistrationOptions *out);
+void wjd_RegistrationOptions_free(JSContext *ctx, wjd_RegistrationOptions *d);
+typedef struct wjd_GetNotificationOptions {
+    wj_str tag;
+} wjd_GetNotificationOptions;
+bool wjd_GetNotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_GetNotificationOptions *out);
+void wjd_GetNotificationOptions_free(JSContext *ctx, wjd_GetNotificationOptions *d);
+typedef struct wjd_WorkerOptions {
+    wj_str credentials;
+    wj_str name;
+    wj_str type;
+} wjd_WorkerOptions;
+bool wjd_WorkerOptions_from(JSContext *ctx, JSValueConst v, wjd_WorkerOptions *out);
+void wjd_WorkerOptions_free(JSContext *ctx, wjd_WorkerOptions *d);
+typedef struct wjd_SharedWorkerOptions {
+    struct wjd_WorkerOptions base;
+    bool extendedLifetime;
+} wjd_SharedWorkerOptions;
+bool wjd_SharedWorkerOptions_from(JSContext *ctx, JSValueConst v, wjd_SharedWorkerOptions *out);
+void wjd_SharedWorkerOptions_free(JSContext *ctx, wjd_SharedWorkerOptions *d);
+typedef struct wjd_SpeechRecognitionOptions {
+    JSValue langs;   /* sequence<DOMString> */
+    bool has_langs;
+    bool processLocally;
+    wj_str quality;
+} wjd_SpeechRecognitionOptions;
+bool wjd_SpeechRecognitionOptions_from(JSContext *ctx, JSValueConst v, wjd_SpeechRecognitionOptions *out);
+void wjd_SpeechRecognitionOptions_free(JSContext *ctx, wjd_SpeechRecognitionOptions *d);
+typedef struct wjd_RequestInit {
+    JSValue body;   /* BodyInit? */
+    bool has_body;
+    wj_str cache;
+    bool has_cache;
+    wj_str credentials;
+    bool has_credentials;
+    wj_str duplex;
+    bool has_duplex;
+    JSValue headers;   /* HeadersInit */
+    bool has_headers;
+    wj_str integrity;
+    bool has_integrity;
+    bool keepalive;
+    bool has_keepalive;
+    wj_str method;
+    bool has_method;
+    wj_str mode;
+    bool has_mode;
+    wj_str priority;
+    bool has_priority;
+    wj_str redirect;
+    bool has_redirect;
+    wj_str referrer;
+    bool has_referrer;
+    wj_str referrerPolicy;
+    bool has_referrerPolicy;
+    JSValue signal;   /* AbortSignal? */
+    bool has_signal;
+    JSValue window;   /* any */
+    bool has_window;
+} wjd_RequestInit;
+bool wjd_RequestInit_from(JSContext *ctx, JSValueConst v, wjd_RequestInit *out);
+void wjd_RequestInit_free(JSContext *ctx, wjd_RequestInit *d);
+typedef struct wjd_DeferredRequestInit {
+    struct wjd_RequestInit base;
+    double activateAfter;
+    bool has_activateAfter;
+} wjd_DeferredRequestInit;
+bool wjd_DeferredRequestInit_from(JSContext *ctx, JSValueConst v, wjd_DeferredRequestInit *out);
+void wjd_DeferredRequestInit_free(JSContext *ctx, wjd_DeferredRequestInit *d);
+typedef struct wjd_WindowPostMessageOptions {
+    struct wjd_StructuredSerializeOptions base;
+    wj_str targetOrigin;
+} wjd_WindowPostMessageOptions;
+bool wjd_WindowPostMessageOptions_from(JSContext *ctx, JSValueConst v, wjd_WindowPostMessageOptions *out);
+void wjd_WindowPostMessageOptions_free(JSContext *ctx, wjd_WindowPostMessageOptions *d);
+typedef struct wjd_IdleRequestOptions {
+    uint32_t timeout;
+    bool has_timeout;
+} wjd_IdleRequestOptions;
+bool wjd_IdleRequestOptions_from(JSContext *ctx, JSValueConst v, wjd_IdleRequestOptions *out);
+void wjd_IdleRequestOptions_free(JSContext *ctx, wjd_IdleRequestOptions *d);
+typedef struct wjd_ImageBitmapOptions {
+    wj_str colorSpaceConversion;
+    wj_str imageOrientation;
+    wj_str premultiplyAlpha;
+    uint32_t resizeHeight;
+    bool has_resizeHeight;
+    wj_str resizeQuality;
+    uint32_t resizeWidth;
+    bool has_resizeWidth;
+} wjd_ImageBitmapOptions;
+bool wjd_ImageBitmapOptions_from(JSContext *ctx, JSValueConst v, wjd_ImageBitmapOptions *out);
+void wjd_ImageBitmapOptions_free(JSContext *ctx, wjd_ImageBitmapOptions *d);
+typedef struct wjd_FileSystemFlags {
+    bool create;
+    bool exclusive;
+} wjd_FileSystemFlags;
+bool wjd_FileSystemFlags_from(JSContext *ctx, JSValueConst v, wjd_FileSystemFlags *out);
+void wjd_FileSystemFlags_free(JSContext *ctx, wjd_FileSystemFlags *d);
+typedef struct wjd_FontFaceDescriptors {
+    wj_str ascentOverride;
+    wj_str descentOverride;
+    wj_str display;
+    wj_str featureSettings;
+    wj_str lineGapOverride;
+    wj_str stretch;
+    wj_str style;
+    wj_str unicodeRange;
+    wj_str variationSettings;
+    wj_str weight;
+} wjd_FontFaceDescriptors;
+bool wjd_FontFaceDescriptors_from(JSContext *ctx, JSValueConst v, wjd_FontFaceDescriptors *out);
+void wjd_FontFaceDescriptors_free(JSContext *ctx, wjd_FontFaceDescriptors *d);
+typedef struct wjd_GamepadEffectParameters {
+    uint64_t duration;
+    double leftTrigger;
+    double rightTrigger;
+    uint64_t startDelay;
+    double strongMagnitude;
+    double weakMagnitude;
+} wjd_GamepadEffectParameters;
+bool wjd_GamepadEffectParameters_from(JSContext *ctx, JSValueConst v, wjd_GamepadEffectParameters *out);
+void wjd_GamepadEffectParameters_free(JSContext *ctx, wjd_GamepadEffectParameters *d);
+typedef struct wjd_HighlightsFromPointOptions {
+    JSValue shadowRoots;   /* sequence<ShadowRoot> */
+} wjd_HighlightsFromPointOptions;
+bool wjd_HighlightsFromPointOptions_from(JSContext *ctx, JSValueConst v, wjd_HighlightsFromPointOptions *out);
+void wjd_HighlightsFromPointOptions_free(JSContext *ctx, wjd_HighlightsFromPointOptions *d);
+typedef struct wjd_IDBGetAllOptions {
+    uint32_t count;
+    bool has_count;
+    wj_str direction;
+    JSValue query;   /* any */
+} wjd_IDBGetAllOptions;
+bool wjd_IDBGetAllOptions_from(JSContext *ctx, JSValueConst v, wjd_IDBGetAllOptions *out);
+void wjd_IDBGetAllOptions_free(JSContext *ctx, wjd_IDBGetAllOptions *d);
+typedef struct wjd_IDBIndexParameters {
+    bool multiEntry;
+    bool unique;
+} wjd_IDBIndexParameters;
+bool wjd_IDBIndexParameters_from(JSContext *ctx, JSValueConst v, wjd_IDBIndexParameters *out);
+void wjd_IDBIndexParameters_free(JSContext *ctx, wjd_IDBIndexParameters *d);
+typedef struct wjd_IntersectionObserverInit {
+    int32_t delay;
+    JSValue root;   /* (Element or Document)? */
+    wj_str rootMargin;
+    wj_str scrollMargin;
+    JSValue threshold;   /* (double or sequence<double>) */
+    bool trackVisibility;
+} wjd_IntersectionObserverInit;
+bool wjd_IntersectionObserverInit_from(JSContext *ctx, JSValueConst v, wjd_IntersectionObserverInit *out);
+void wjd_IntersectionObserverInit_free(JSContext *ctx, wjd_IntersectionObserverInit *d);
+typedef struct wjd_IntersectionObserverEntryInit {
+    struct wjd_DOMRectInit boundingClientRect;
+    bool has_boundingClientRect;
+    double intersectionRatio;
+    bool has_intersectionRatio;
+    struct wjd_DOMRectInit intersectionRect;
+    bool has_intersectionRect;
+    bool isIntersecting;
+    bool has_isIntersecting;
+    bool isVisible;
+    bool has_isVisible;
+    JSValue rootBounds;   /* DOMRectInit? */
+    bool has_rootBounds;
+    JSValue target;   /* Element */
+    bool has_target;
+    double time;
+    bool has_time;
+} wjd_IntersectionObserverEntryInit;
+bool wjd_IntersectionObserverEntryInit_from(JSContext *ctx, JSValueConst v, wjd_IntersectionObserverEntryInit *out);
+void wjd_IntersectionObserverEntryInit_free(JSContext *ctx, wjd_IntersectionObserverEntryInit *d);
+typedef struct wjd_LockOptions {
+    bool ifAvailable;
+    wj_str mode;
+    JSValue signal;   /* AbortSignal */
+    bool has_signal;
+    bool steal;
+} wjd_LockOptions;
+bool wjd_LockOptions_from(JSContext *ctx, JSValueConst v, wjd_LockOptions *out);
+void wjd_LockOptions_free(JSContext *ctx, wjd_LockOptions *d);
+typedef struct wjd_MediaMetadataInit {
+    wj_str album;
+    wj_str artist;
+    JSValue artwork;   /* sequence<MediaImage> */
+    JSValue chapterInfo;   /* sequence<ChapterInformationInit> */
+    wj_str title;
+} wjd_MediaMetadataInit;
+bool wjd_MediaMetadataInit_from(JSContext *ctx, JSValueConst v, wjd_MediaMetadataInit *out);
+void wjd_MediaMetadataInit_free(JSContext *ctx, wjd_MediaMetadataInit *d);
+typedef struct wjd_MediaPositionState {
+    double duration;
+    bool has_duration;
+    double playbackRate;
+    bool has_playbackRate;
+    double position;
+    bool has_position;
+} wjd_MediaPositionState;
+bool wjd_MediaPositionState_from(JSContext *ctx, JSValueConst v, wjd_MediaPositionState *out);
+void wjd_MediaPositionState_free(JSContext *ctx, wjd_MediaPositionState *d);
+typedef struct wjd_MutationObserverInit {
+    JSValue attributeFilter;   /* sequence<DOMString> */
+    bool has_attributeFilter;
+    bool attributeOldValue;
+    bool has_attributeOldValue;
+    bool attributes;
+    bool has_attributes;
+    bool characterData;
+    bool has_characterData;
+    bool characterDataOldValue;
+    bool has_characterDataOldValue;
+    bool childList;
+    bool subtree;
+} wjd_MutationObserverInit;
+bool wjd_MutationObserverInit_from(JSContext *ctx, JSValueConst v, wjd_MutationObserverInit *out);
+void wjd_MutationObserverInit_free(JSContext *ctx, wjd_MutationObserverInit *d);
+typedef struct wjd_ShareData {
+    JSValue files;   /* sequence<File> */
+    bool has_files;
+    wj_str text;
+    bool has_text;
+    wj_str title;
+    bool has_title;
+    wj_str url;
+    bool has_url;
+} wjd_ShareData;
+bool wjd_ShareData_from(JSContext *ctx, JSValueConst v, wjd_ShareData *out);
+void wjd_ShareData_free(JSContext *ctx, wjd_ShareData *d);
+typedef struct wjd_PerformanceObserverInit {
+    bool buffered;
+    bool has_buffered;
+    double durationThreshold;
+    bool has_durationThreshold;
+    JSValue entryTypes;   /* sequence<DOMString> */
+    bool has_entryTypes;
+    wj_str type;
+    bool has_type;
+} wjd_PerformanceObserverInit;
+bool wjd_PerformanceObserverInit_from(JSContext *ctx, JSValueConst v, wjd_PerformanceObserverInit *out);
+void wjd_PerformanceObserverInit_free(JSContext *ctx, wjd_PerformanceObserverInit *d);
+typedef struct wjd_PeriodicWaveOptions {
+    struct wjd_PeriodicWaveConstraints base;
+    JSValue imag;   /* sequence<float> */
+    bool has_imag;
+    JSValue real;   /* sequence<float> */
+    bool has_real;
+} wjd_PeriodicWaveOptions;
+bool wjd_PeriodicWaveOptions_from(JSContext *ctx, JSValueConst v, wjd_PeriodicWaveOptions *out);
+void wjd_PeriodicWaveOptions_free(JSContext *ctx, wjd_PeriodicWaveOptions *d);
+typedef struct wjd_QueuingStrategy {
+    double highWaterMark;
+    bool has_highWaterMark;
+    JSValue size;   /* QueuingStrategySize */
+    bool has_size;
+} wjd_QueuingStrategy;
+bool wjd_QueuingStrategy_from(JSContext *ctx, JSValueConst v, wjd_QueuingStrategy *out);
+void wjd_QueuingStrategy_free(JSContext *ctx, wjd_QueuingStrategy *d);
+typedef struct wjd_ReadableStreamGetReaderOptions {
+    wj_str mode;
+    bool has_mode;
+} wjd_ReadableStreamGetReaderOptions;
+bool wjd_ReadableStreamGetReaderOptions_from(JSContext *ctx, JSValueConst v, wjd_ReadableStreamGetReaderOptions *out);
+void wjd_ReadableStreamGetReaderOptions_free(JSContext *ctx, wjd_ReadableStreamGetReaderOptions *d);
+typedef struct wjd_ReadableWritablePair {
+    JSValue readable;   /* ReadableStream */
+    bool has_readable;
+    JSValue writable;   /* WritableStream */
+    bool has_writable;
+} wjd_ReadableWritablePair;
+bool wjd_ReadableWritablePair_from(JSContext *ctx, JSValueConst v, wjd_ReadableWritablePair *out);
+void wjd_ReadableWritablePair_free(JSContext *ctx, wjd_ReadableWritablePair *d);
+typedef struct wjd_StreamPipeOptions {
+    bool preventAbort;
+    bool preventCancel;
+    bool preventClose;
+    JSValue signal;   /* AbortSignal */
+    bool has_signal;
+} wjd_StreamPipeOptions;
+bool wjd_StreamPipeOptions_from(JSContext *ctx, JSValueConst v, wjd_StreamPipeOptions *out);
+void wjd_StreamPipeOptions_free(JSContext *ctx, wjd_StreamPipeOptions *d);
+typedef struct wjd_ReadableStreamIteratorOptions {
+    bool preventCancel;
+} wjd_ReadableStreamIteratorOptions;
+bool wjd_ReadableStreamIteratorOptions_from(JSContext *ctx, JSValueConst v, wjd_ReadableStreamIteratorOptions *out);
+void wjd_ReadableStreamIteratorOptions_free(JSContext *ctx, wjd_ReadableStreamIteratorOptions *d);
+typedef struct wjd_ReadableStreamBYOBReaderReadOptions {
+    uint64_t min;
+} wjd_ReadableStreamBYOBReaderReadOptions;
+bool wjd_ReadableStreamBYOBReaderReadOptions_from(JSContext *ctx, JSValueConst v, wjd_ReadableStreamBYOBReaderReadOptions *out);
+void wjd_ReadableStreamBYOBReaderReadOptions_free(JSContext *ctx, wjd_ReadableStreamBYOBReaderReadOptions *d);
+typedef struct wjd_ResizeObserverOptions {
+    wj_str box;
+} wjd_ResizeObserverOptions;
+bool wjd_ResizeObserverOptions_from(JSContext *ctx, JSValueConst v, wjd_ResizeObserverOptions *out);
+void wjd_ResizeObserverOptions_free(JSContext *ctx, wjd_ResizeObserverOptions *d);
+typedef struct wjd_ResponseInit {
+    JSValue headers;   /* HeadersInit */
+    bool has_headers;
+    uint32_t status;
+    wj_str statusText;
+} wjd_ResponseInit;
+bool wjd_ResponseInit_from(JSContext *ctx, JSValueConst v, wjd_ResponseInit *out);
+void wjd_ResponseInit_free(JSContext *ctx, wjd_ResponseInit *d);
+typedef struct wjd_SanitizerConfig {
+    JSValue attributes;   /* sequence<SanitizerAttribute> */
+    bool has_attributes;
+    bool comments;
+    bool has_comments;
+    bool dataAttributes;
+    bool has_dataAttributes;
+    JSValue elements;   /* sequence<SanitizerElementWithAttributes> */
+    bool has_elements;
+    bool javascriptURLs;
+    bool has_javascriptURLs;
+    JSValue processingInstructions;   /* sequence<SanitizerPI> */
+    bool has_processingInstructions;
+    JSValue removeAttributes;   /* sequence<SanitizerAttribute> */
+    bool has_removeAttributes;
+    JSValue removeElements;   /* sequence<SanitizerElement> */
+    bool has_removeElements;
+    JSValue removeProcessingInstructions;   /* sequence<SanitizerPI> */
+    bool has_removeProcessingInstructions;
+    JSValue replaceWithChildrenElements;   /* sequence<SanitizerElement> */
+    bool has_replaceWithChildrenElements;
+} wjd_SanitizerConfig;
+bool wjd_SanitizerConfig_from(JSContext *ctx, JSValueConst v, wjd_SanitizerConfig *out);
+void wjd_SanitizerConfig_free(JSContext *ctx, wjd_SanitizerConfig *d);
+typedef struct wjd_SanitizerElementNamespace {
+    wj_str name;
+    bool has_name;
+    wj_str namespace;
+} wjd_SanitizerElementNamespace;
+bool wjd_SanitizerElementNamespace_from(JSContext *ctx, JSValueConst v, wjd_SanitizerElementNamespace *out);
+void wjd_SanitizerElementNamespace_free(JSContext *ctx, wjd_SanitizerElementNamespace *d);
+typedef struct wjd_SanitizerElementNamespaceWithAttributes {
+    struct wjd_SanitizerElementNamespace base;
+    JSValue attributes;   /* sequence<SanitizerAttribute> */
+    bool has_attributes;
+    JSValue removeAttributes;   /* sequence<SanitizerAttribute> */
+    bool has_removeAttributes;
+} wjd_SanitizerElementNamespaceWithAttributes;
+bool wjd_SanitizerElementNamespaceWithAttributes_from(JSContext *ctx, JSValueConst v, wjd_SanitizerElementNamespaceWithAttributes *out);
+void wjd_SanitizerElementNamespaceWithAttributes_free(JSContext *ctx, wjd_SanitizerElementNamespaceWithAttributes *d);
+typedef struct wjd_SanitizerProcessingInstruction {
+    wj_str target;
+    bool has_target;
+} wjd_SanitizerProcessingInstruction;
+bool wjd_SanitizerProcessingInstruction_from(JSContext *ctx, JSValueConst v, wjd_SanitizerProcessingInstruction *out);
+void wjd_SanitizerProcessingInstruction_free(JSContext *ctx, wjd_SanitizerProcessingInstruction *d);
+typedef struct wjd_SanitizerAttributeNamespace {
+    wj_str name;
+    bool has_name;
+    wj_str namespace;
+} wjd_SanitizerAttributeNamespace;
+bool wjd_SanitizerAttributeNamespace_from(JSContext *ctx, JSValueConst v, wjd_SanitizerAttributeNamespace *out);
+void wjd_SanitizerAttributeNamespace_free(JSContext *ctx, wjd_SanitizerAttributeNamespace *d);
+typedef struct wjd_SchedulerPostTaskOptions {
+    uint64_t delay;
+    wj_str priority;
+    bool has_priority;
+    JSValue signal;   /* AbortSignal */
+    bool has_signal;
+} wjd_SchedulerPostTaskOptions;
+bool wjd_SchedulerPostTaskOptions_from(JSContext *ctx, JSValueConst v, wjd_SchedulerPostTaskOptions *out);
+void wjd_SchedulerPostTaskOptions_free(JSContext *ctx, wjd_SchedulerPostTaskOptions *d);
+typedef struct wjd_IsInputPendingOptions {
+    bool includeContinuous;
+} wjd_IsInputPendingOptions;
+bool wjd_IsInputPendingOptions_from(JSContext *ctx, JSValueConst v, wjd_IsInputPendingOptions *out);
+void wjd_IsInputPendingOptions_free(JSContext *ctx, wjd_IsInputPendingOptions *d);
+typedef struct wjd_GetComposedRangesOptions {
+    JSValue shadowRoots;   /* sequence<ShadowRoot> */
+} wjd_GetComposedRangesOptions;
+bool wjd_GetComposedRangesOptions_from(JSContext *ctx, JSValueConst v, wjd_GetComposedRangesOptions *out);
+void wjd_GetComposedRangesOptions_free(JSContext *ctx, wjd_GetComposedRangesOptions *d);
+typedef struct wjd_CSSStyleSheetInit {
+    wj_str baseURL;
+    bool disabled;
+    JSValue media;   /* (MediaList or DOMString) */
+} wjd_CSSStyleSheetInit;
+bool wjd_CSSStyleSheetInit_from(JSContext *ctx, JSValueConst v, wjd_CSSStyleSheetInit *out);
+void wjd_CSSStyleSheetInit_free(JSContext *ctx, wjd_CSSStyleSheetInit *d);
+typedef struct wjd_JsonWebKey {
+    wj_str alg;
+    bool has_alg;
+    wj_str crv;
+    bool has_crv;
+    wj_str d;
+    bool has_d;
+    wj_str dp;
+    bool has_dp;
+    wj_str dq;
+    bool has_dq;
+    wj_str e;
+    bool has_e;
+    bool ext;
+    bool has_ext;
+    wj_str k;
+    bool has_k;
+    JSValue key_ops;   /* sequence<DOMString> */
+    bool has_key_ops;
+    wj_str kty;
+    bool has_kty;
+    wj_str n;
+    bool has_n;
+    JSValue oth;   /* sequence<RsaOtherPrimesInfo> */
+    bool has_oth;
+    wj_str p;
+    bool has_p;
+    wj_str q;
+    bool has_q;
+    wj_str qi;
+    bool has_qi;
+    wj_str use;
+    bool has_use;
+    wj_str x;
+    bool has_x;
+    wj_str y;
+    bool has_y;
+} wjd_JsonWebKey;
+bool wjd_JsonWebKey_from(JSContext *ctx, JSValueConst v, wjd_JsonWebKey *out);
+void wjd_JsonWebKey_free(JSContext *ctx, wjd_JsonWebKey *d);
+typedef struct wjd_TextDecoderOptions {
+    bool fatal;
+    bool ignoreBOM;
+} wjd_TextDecoderOptions;
+bool wjd_TextDecoderOptions_from(JSContext *ctx, JSValueConst v, wjd_TextDecoderOptions *out);
+void wjd_TextDecoderOptions_free(JSContext *ctx, wjd_TextDecoderOptions *d);
+typedef struct wjd_TextDecodeOptions {
+    bool stream;
+} wjd_TextDecodeOptions;
+bool wjd_TextDecodeOptions_from(JSContext *ctx, JSValueConst v, wjd_TextDecodeOptions *out);
+void wjd_TextDecodeOptions_free(JSContext *ctx, wjd_TextDecodeOptions *d);
+typedef struct wjd_TouchInit {
+    double altitudeAngle;
+    double azimuthAngle;
+    double clientX;
+    double clientY;
+    double force;
+    int32_t identifier;
+    bool has_identifier;
+    double pageX;
+    double pageY;
+    double radiusX;
+    double radiusY;
+    double rotationAngle;
+    double screenX;
+    double screenY;
+    JSValue target;   /* EventTarget */
+    bool has_target;
+    wj_str touchType;
+} wjd_TouchInit;
+bool wjd_TouchInit_from(JSContext *ctx, JSValueConst v, wjd_TouchInit *out);
+void wjd_TouchInit_free(JSContext *ctx, wjd_TouchInit *d);
+typedef struct wjd_TrustedTypePolicyOptions {
+    JSValue createHTML;   /* CreateHTMLCallback */
+    bool has_createHTML;
+    JSValue createParserOptions;   /* CreateParserOptionsCallback */
+    bool has_createParserOptions;
+    JSValue createScript;   /* CreateScriptCallback */
+    bool has_createScript;
+    JSValue createScriptURL;   /* CreateScriptURLCallback */
+    bool has_createScriptURL;
+} wjd_TrustedTypePolicyOptions;
+bool wjd_TrustedTypePolicyOptions_from(JSContext *ctx, JSValueConst v, wjd_TrustedTypePolicyOptions *out);
+void wjd_TrustedTypePolicyOptions_free(JSContext *ctx, wjd_TrustedTypePolicyOptions *d);
+typedef struct wjd_WorkletOptions {
+    wj_str credentials;
+} wjd_WorkletOptions;
+bool wjd_WorkletOptions_from(JSContext *ctx, JSValueConst v, wjd_WorkletOptions *out);
+void wjd_WorkletOptions_free(JSContext *ctx, wjd_WorkletOptions *d);
 
 #endif
