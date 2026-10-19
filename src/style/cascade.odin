@@ -64,6 +64,7 @@ Styled :: struct {
 	by_node:        [dynamic]^Computed,
 	initial:        ^Computed,
 	root_font_size: f32,
+	root_line_height: f32,   // px: what rlh means
 	mutations:      u64,     // the document's mutation counter when this was computed
 	serial:         u64,     // unique per pass: lets layout notice that styles changed even if nothing else did
 	layout_serial:  u64,     // the serial of the last change that was not paint-only (paint_change.odin)
@@ -182,13 +183,27 @@ Var_Env :: struct {
 	parent:   ^Custom_Props,
 	final:    ^Custom_Props,          // set once resolution is finished
 	budget:   int,
+	cx:       ^Cx,                    // the element: registered properties compute their values with it (nil: as written)
+}
+
+// What an element gets for a custom property it does not declare: its parent's value, except for a registered property
+// that does not inherit; then the registered initial value, if any.
+@(private)
+custom_inherited :: proc(env: ^Var_Env, name: string) -> (string, bool) {
+	reg := registered(env.engine, name)
+	if env.parent != nil && (reg == nil || reg.inherits) {
+		if v, ok := env.parent.values[name]; ok { return v, true }
+	}
+	if reg != nil && reg.has_initial { return reg.initial, true }
+	return "", false
 }
 
 @(private)
 var_lookup :: proc(env: ^Var_Env, name: string, depth: int) -> (string, bool) {
 	if env.final != nil {
-		v, ok := env.final.values[name]
-		return v, ok
+		if v, ok := env.final.values[name]; ok { return v, true }
+		if reg := registered(env.engine, name); reg != nil && reg.has_initial { return reg.initial, true }
+		return "", false
 	}
 	if cand, has := env.pending[name]; has && cand.valid {
 		switch env.state[name] {
@@ -196,21 +211,42 @@ var_lookup :: proc(env: ^Var_Env, name: string, depth: int) -> (string, bool) {
 		case 2: return env.resolved[name], true
 		}
 		env.state[name] = 1
-		vals, ok := substitute(env, cand.decl.value, depth + 1)
+		reg := registered(env.engine, name)
+		text: string
+		ok: bool
+		switch css_wide_keyword(cand.decl.value) {
+		case "initial":
+			// the guaranteed-invalid value, or the registered initial value
+			if reg != nil && reg.has_initial { text, ok = reg.initial, true }
+		case "inherit":
+			if env.parent != nil { text, ok = env.parent.values[name] }
+			if !ok && reg != nil && reg.has_initial { text, ok = reg.initial, true }
+		case "unset", "revert", "revert-layer":
+			text, ok = custom_inherited(env, name)
+		case:
+			vals: []css.Value
+			vals, ok = substitute(env, cand.decl.value, depth + 1)
+			if ok {
+				if reg != nil && !reg.universal && env.cx != nil {
+					text, ok = registered_compute(env.cx, reg, vals, env.alloc)
+					// invalid at computed-value time: as if `unset`
+					if !ok { text, ok = custom_inherited(env, name) }
+				} else {
+					text = css.serialize_values(vals, env.alloc)
+				}
+			} else if reg != nil {
+				text, ok = custom_inherited(env, name)
+			}
+		}
 		if !ok {
 			env.state[name] = 3
 			return "", false
 		}
-		text := css.serialize_values(vals, env.alloc)
 		env.resolved[name] = text
 		env.state[name] = 2
 		return text, true
 	}
-	if env.parent != nil {
-		v, ok := env.parent.values[name]
-		return v, ok
-	}
-	return "", false
+	return custom_inherited(env, name)
 }
 
 @(private)
@@ -290,7 +326,8 @@ Pass :: struct {
 }
 
 @(private)
-consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css.Specificity) {
+consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css.Specificity, parent: ^Computed) {
+	if rule.cq != nil && !container_conditions_hold(rule.cq, parent != nil ? parent.containers : nil, parent != nil ? parent.custom : nil) { return }
 	for &d in rule.decls {
 		k := make_key(rule, d.important, spec)
 		cand := &p.ws[d.prop]
@@ -372,8 +409,8 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	e := p.e
 	a := p.alloc
 	cust: map[string]Custom_Cand
-	for ent in entries { consider(p, &cust, ent.rule, ent.complex.specificity) }
-	if inline_rule != nil { consider(p, &cust, inline_rule, css.Specificity{max(u32), 0, 0}) }
+	for ent in entries { consider(p, &cust, ent.rule, ent.complex.specificity, parent) }
+	if inline_rule != nil { consider(p, &cust, inline_rule, css.Specificity{max(u32), 0, 0}, parent) }
 	slice.sort(p.touched[:])   // enum order = dependency order (font-size and color first)
 
 	c := new(Computed, a)
@@ -390,20 +427,29 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	scheme_settle(&cx, s.page_scheme, e.env.prefers_dark)
 	cx.lc = css.Length_Context{
 		font_size = f64(c.font_size), root_font_size = f64(s.root_font_size > 0 ? s.root_font_size : e.settings.default_font_size),
-		x_height = f64(c.font_size) * 0.5, ch = f64(c.font_size) * 0.5, vw = e.env.width, vh = e.env.height,
+		x_height = f64(c.font_size) * css.X_HEIGHT_EM, ch = f64(c.font_size) * css.CH_EM, vw = e.env.width, vh = e.env.height,
+		line_height = f64(used_line_height(c, s.line_height_normal)), root_line_height = f64(s.root_line_height),
 	}
+	container_units(&cx.lc, parent != nil ? parent.containers : nil)
 
 	// custom properties (the maps exist only for elements that declare some)
-	env := Var_Env{engine = e, alloc = a, budget = e.settings.max_var_bytes}
+	env := Var_Env{engine = e, alloc = a, budget = e.settings.max_var_bytes, cx = &cx}
 	env.parent = c.custom
-	if len(cust) > 0 {
+	// registered properties that do not inherit stop here: the map is copied without them
+	drops_noninherited := e.registered_noninherited > 0 && c.custom != nil && carries_noninherited(e, c.custom)
+	if len(cust) > 0 || drops_noninherited {
 		env.pending = make(map[string]Custom_Cand, context.temp_allocator)
 		env.resolved = make(map[string]string, context.temp_allocator)
 		env.state = make(map[string]u8, context.temp_allocator)
 		for k, v in cust { env.pending[k] = v }
 		props := new(Custom_Props, a)
 		props.values = make(map[string]string, a)
-		if c.custom != nil { for k, v in c.custom.values { props.values[k] = v } }
+		if c.custom != nil {
+			for k, v in c.custom.values {
+				if reg := registered(e, k); reg != nil && !reg.inherits { continue }
+				props.values[k] = v
+			}
+		}
 		for name in cust {
 			text, ok := var_lookup(&env, name, 0)
 			if ok { props.values[name] = text } else { delete_key(&props.values, name) }
@@ -414,46 +460,117 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	env.final = c.custom != nil ? c.custom : &empty_props
 	env.pending = nil
 
+	var_decls: [dynamic]^Pre_Decl
 	for pr in p.touched {
 		cand := p.ws[pr]
-		if cand.origin == .Author {
-			if !e.settings.author_colors && is_color_prop(pr) { continue }
-			if !e.settings.author_fonts && (pr == .Font_Family || pr == .Font_Size) { continue }
-		}
-		vals := cand.decl.value
 		if cand.decl.has_var {
-			env.budget = e.settings.max_var_bytes
-			sub, ok := substitute(&env, vals, 0)
-			if !ok { apply_unset(&cx, pr); continue }
-			vals = sub
+			if var_decls == nil { var_decls = make([dynamic]^Pre_Decl, context.temp_allocator) }
+			append(&var_decls, cand.decl)
 		}
-		if cand.decl.short != .None {
-			longs, ok := expand_shorthand(cand.decl.short, vals, a)
-			found := false
-			if ok { for l in longs { if l.prop == pr { vals = l.vals; found = true; break } } }
-			if !found { apply_unset(&cx, pr); continue }
-		}
-		switch css_wide_keyword(vals) {
-		case "inherit":
-			copy_prop(c, parent != nil ? parent : s.initial, pr)
-			ps_add(&cx.explicit, pr)
-			if parent != nil { ps_add(&c.inherits, pr) }
-		case "initial": copy_prop(c, s.initial, pr); ps_remove(&c.inherits, pr)
-		case "unset", "revert", "revert-layer": apply_unset(&cx, pr)
-		case:
-			if apply_prop(&cx, pr, vals) { ps_remove(&c.inherits, pr) } else { apply_unset(&cx, pr) }
+		// `revert` and `revert-layer` go back to the declaration that would have won without the current origin or
+		// layer; a chain of them is followed (bounded: every step leaves a layer or an origin behind)
+		for _ in 0 ..< 64 {
+			if cand.origin == .Author {
+				if !e.settings.author_colors && is_color_prop(pr) { break }
+				if !e.settings.author_fonts && (pr == .Font_Family || pr == .Font_Size) { break }
+			}
+			vals := cand.decl.value
+			if cand.decl.has_var {
+				env.budget = e.settings.max_var_bytes
+				sub, ok := substitute(&env, vals, 0)
+				if !ok { apply_unset(&cx, pr); break }
+				vals = sub
+			}
+			if cand.decl.short != .None {
+				longs, ok := expand_shorthand(cand.decl.short, vals, a)
+				found := false
+				if ok { for l in longs { if l.prop == pr { vals = l.vals; found = true; break } } }
+				if !found { apply_unset(&cx, pr); break }
+			}
+			switch kw := css_wide_keyword(vals); kw {
+			case "inherit":
+				copy_prop(c, parent != nil ? parent : s.initial, pr)
+				ps_add(&cx.explicit, pr)
+				if parent != nil { ps_add(&c.inherits, pr) }
+			case "initial": copy_prop(c, s.initial, pr); ps_remove(&c.inherits, pr)
+			case "unset": apply_unset(&cx, pr)
+			case "revert", "revert-layer":
+				if prev, found := revert_candidate(entries, inline_rule, pr, cand.key, kw == "revert", parent); found {
+					cand = prev
+					continue
+				}
+				apply_unset(&cx, pr)
+			case:
+				if apply_prop(&cx, pr, vals) { ps_remove(&c.inherits, pr) } else { apply_unset(&cx, pr) }
+			}
+			break
 		}
 		if pr == .Color_Scheme || pr == .Color { scheme_settle(&cx, s.page_scheme, e.env.prefers_dark) }
 		if pr == .Font_Size {
 			cx.lc.font_size = f64(c.font_size)
-			cx.lc.x_height = f64(c.font_size) * 0.5
-			cx.lc.ch = f64(c.font_size) * 0.5
+			cx.lc.x_height = f64(c.font_size) * css.X_HEIGHT_EM
+			cx.lc.ch = f64(c.font_size) * css.CH_EM
 		}
+		if pr == .Font_Size || pr == .Line_Height { cx.lc.line_height = f64(used_line_height(c, s.line_height_normal)) }
 	}
 	for pr in p.touched { p.ws[pr] = {} }
 	clear(&p.touched)
+	// an animation may set registered custom properties: what depends on them is recomputed per keyframe
+	if len(var_decls) > 0 && len(e.registered) > 0 && has_animations(c) {
+		// copied with their values: the style must not point into rules that a rebuild frees
+		list := make([]Pre_Decl, len(var_decls), a)
+		for d, i in var_decls { list[i] = d^ }
+		deep_clone(&list, type_info_of([]Pre_Decl), a)
+		c.anim_vars = list
+	}
 	finish_style(&cx, h)
+	if e.container_dependent || c.container_type != .Normal || (parent != nil && parent.containers != nil) {
+		c.containers = container_chain(e, c, parent, a)
+	}
 	return c
+}
+
+// The declaration of `pr` that wins once the origin (`revert`) or the cascade layer (`revert-layer`) of `from` is left
+// out: the strongest among those strictly below that boundary.
+@(private)
+revert_candidate :: proc(entries: []Entry, inline_rule: ^Rule, pr: Prop, from: Cascade_Key, whole_origin: bool, parent: ^Computed) -> (best: Cand, found: bool) {
+	below :: proc(k, from: Cascade_Key, whole_origin: bool) -> bool {
+		if whole_origin {
+			// author levels are 2 (normal) and 3 (important); user 1 and 4; UA 0 and 5: leave the origin out entirely
+			origin_of :: proc(level: u8) -> int { switch level { case 0, 5: return 0; case 1, 4: return 1 }; return 2 }
+			return origin_of(k.level) < origin_of(from.level) && k.level < from.level
+		}
+		if k.level != from.level { return k.level < from.level }
+		return k.layer < from.layer
+	}
+	consider_rule :: proc(r: ^Rule, spec: css.Specificity, pr: Prop, from: Cascade_Key, whole_origin: bool, parent: ^Computed, best: ^Cand, found: ^bool) {
+		if r.cq != nil && !container_conditions_hold(r.cq, parent != nil ? parent.containers : nil, parent != nil ? parent.custom : nil) { return }
+		for &d in r.decls {
+			if d.prop != pr { continue }
+			k := make_key(r, d.important, spec)
+			if !below(k, from, whole_origin) { continue }
+			if !found^ || key_ge(k, best.key) { best^ = Cand{&d, k, r.origin, true}; found^ = true }
+		}
+	}
+	for ent in entries { consider_rule(ent.rule, ent.complex.specificity, pr, from, whole_origin, parent, &best, &found) }
+	if inline_rule != nil { consider_rule(inline_rule, css.Specificity{max(u32), 0, 0}, pr, from, whole_origin, parent, &best, &found) }
+	return
+}
+
+@(private)
+carries_noninherited :: proc(e: ^Engine, props: ^Custom_Props) -> bool {
+	for name, reg in e.registered { if !reg.inherits && name in props.values { return true } }
+	return false
+}
+
+// The line height in px (what lh means): `normal` is `line_height_normal` times the font size.
+used_line_height :: proc(c: ^Computed, normal: f32) -> f32 {
+	switch c.line_height.kind {
+	case .Number: return c.line_height.v * c.font_size
+	case .Length: return c.line_height.v
+	case .Normal:
+	}
+	return (normal > 0 ? normal : 1.2) * c.font_size
 }
 
 // `unset`: inherit when the property is inherited, otherwise its initial value.
@@ -503,6 +620,12 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	if !ps_has(cx.explicit, .Outline_Color) { c.outline_color = c.color }
 	if !ps_has(cx.explicit, .Text_Decoration_Color) { c.text_decoration_color = c.color }
 	derive_fields(c)
+	// a query container has size containment in the axes it measures, layout and style containment (CSS Contain 3 §6.2)
+	switch c.container_type {
+	case .Normal:
+	case .Size: c.contain += {.Size, .Layout, .Style}
+	case .Inline_Size: c.contain += {.Inline_Size, .Layout, .Style}
+	}
 	if c.position == .Absolute || c.position == .Fixed || c.float != .None { c.display = blockify(c.display) }
 	if (c.overflow_x == .Visible) != (c.overflow_y == .Visible) {
 		if c.overflow_x == .Visible { c.overflow_x = .Auto } else { c.overflow_y = .Auto }
@@ -604,7 +727,10 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 			s.by_node[idx] = c
 			if p.counters != nil { counters_enter(p.counters, doc, f.h, n, c, hidden, p.alloc) } else { resolve_static(doc, f.h, c, p.alloc) }
 		}
-		if f.parent == nil && s.root_font_size == 0 { s.root_font_size = c.font_size }
+		if f.parent == nil && s.root_font_size == 0 {
+			s.root_font_size = c.font_size
+			s.root_line_height = used_line_height(c, s.line_height_normal)
+		}
 		if !sync.atomic_load(&s.motion) && (has_transitions(c) || has_animations(c)) { sync.atomic_store(&s.motion, true) }   // threads of a parallel pass may race here
 		if !descend && f.h == root { break }
 		if p.counters != nil { append(&stack, Frame{h = f.h, hidden = hidden, exit = true, c = c}) }

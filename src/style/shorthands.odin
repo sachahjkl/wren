@@ -76,7 +76,7 @@ tables_build :: proc() {
 		"transform", "transform-origin", "transform-style", "backface-visibility", "perspective", "perspective-origin",
 		"filter", "backdrop-filter", "appearance", "clip-path", "hyphens", "text-decoration-style", "text-decoration-color",
 		"text-decoration-line", "text-decoration-thickness", "text-underline-offset", "font-variant-caps", "background-clip",
-		"background-origin", "user-select", "column-count", "column-width", "columns", "column-gap",
+		"background-origin", "user-select", "column-count", "column-width", "columns", "column-gap", "text-decoration",
 	}) {
 		alias_by_name[strings.concatenate({"-webkit-", name})] = name
 		alias_by_name[strings.concatenate({"-moz-", name})] = name
@@ -160,7 +160,25 @@ short_longhands :: proc(s: Short) -> []Prop {
 	@(static) padding_inline := [?]Prop{.Padding_Left, .Padding_Right}
 	@(static) inset_block := [?]Prop{.Top, .Bottom}
 	@(static) inset_inline := [?]Prop{.Left, .Right}
+	@(static) container := [?]Prop{.Container_Name, .Container_Type}
+	@(static) border_block := [?]Prop{.Border_Top_Width, .Border_Bottom_Width, .Border_Top_Style, .Border_Bottom_Style, .Border_Top_Color, .Border_Bottom_Color}
+	@(static) border_inline := [?]Prop{.Border_Left_Width, .Border_Right_Width, .Border_Left_Style, .Border_Right_Style, .Border_Left_Color, .Border_Right_Color}
+	@(static) bb_width := [?]Prop{.Border_Top_Width, .Border_Bottom_Width}
+	@(static) bb_style := [?]Prop{.Border_Top_Style, .Border_Bottom_Style}
+	@(static) bb_color := [?]Prop{.Border_Top_Color, .Border_Bottom_Color}
+	@(static) bi_width := [?]Prop{.Border_Left_Width, .Border_Right_Width}
+	@(static) bi_style := [?]Prop{.Border_Left_Style, .Border_Right_Style}
+	@(static) bi_color := [?]Prop{.Border_Left_Color, .Border_Right_Color}
 	switch s {
+	case .Container: return container[:]
+	case .Border_Block: return border_block[:]
+	case .Border_Inline: return border_inline[:]
+	case .Border_Block_Width: return bb_width[:]
+	case .Border_Block_Style: return bb_style[:]
+	case .Border_Block_Color: return bb_color[:]
+	case .Border_Inline_Width: return bi_width[:]
+	case .Border_Inline_Style: return bi_style[:]
+	case .Border_Inline_Color: return bi_color[:]
 	case .None: return nil
 	case .Margin: return margin[:]
 	case .Padding: return padding[:]
@@ -253,7 +271,7 @@ is_width_item :: proc(v: css.Value) -> bool {
 		case .Ident: switch strings.to_lower(v.tok.text, context.temp_allocator) { case "thin", "medium", "thick": return true }
 		}
 	case .Function:
-		switch strings.to_lower(v.tok.text, context.temp_allocator) { case "calc", "min", "max", "clamp": return true }
+		return css.is_math_function(v.tok.text)
 	}
 	return false
 }
@@ -361,6 +379,35 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 		if len(items) < 1 || len(items) > 2 { return nil, false }
 		emit(&res, .Row_Gap, items[0:1])
 		emit(&res, .Column_Gap, items[len(items) - 1:])
+
+	case .Border_Block_Width, .Border_Block_Style, .Border_Block_Color, .Border_Inline_Width, .Border_Inline_Style, .Border_Inline_Color:
+		// start and end (horizontal writing, left to right: block = top / bottom, inline = left / right)
+		if len(items) < 1 || len(items) > 2 { return nil, false }
+		props := short_longhands(s)
+		emit(&res, props[0], items[0:1]); emit(&res, props[1], items[len(items) - 1:])
+
+	case .Border_Block, .Border_Inline:
+		if len(items) == 0 { return nil, false }
+		w, st, col, good := line_parts(items)
+		if !good { return nil, false }
+		props := short_longhands(s)
+		emit(&res, props[0], or_initial(w)); emit(&res, props[1], or_initial(w))
+		emit(&res, props[2], or_initial(st)); emit(&res, props[3], or_initial(st))
+		emit(&res, props[4], or_initial(col)); emit(&res, props[5], or_initial(col))
+
+	case .Container:
+		// <container-name> [ / <container-type> ]?
+		slash := -1
+		for it, i in items { if is_delim(it, "/") { slash = i; break } }
+		names := slash >= 0 ? items[:slash] : items
+		if len(names) == 0 { return nil, false }
+		emit(&res, .Container_Name, join_items(names, a))
+		if slash >= 0 {
+			if slash + 1 >= len(items) { return nil, false }
+			emit(&res, .Container_Type, join_items(items[slash + 1:], a))
+		} else {
+			emit(&res, .Container_Type, INITIAL_KW[:])
+		}
 
 	case .Overflow:
 		if len(items) < 1 || len(items) > 2 { return nil, false }
@@ -479,9 +526,7 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 
 @(private)
 is_calc_function :: proc(v: css.Value) -> bool {
-	if v.kind != .Function { return false }
-	switch strings.to_lower(v.tok.text, context.temp_allocator) { case "calc", "min", "max", "clamp": return true }
-	return false
+	return v.kind == .Function && css.is_math_function(v.tok.text)
 }
 
 @(private)

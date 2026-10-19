@@ -589,6 +589,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			tab_log(t, .Warn, fmt.tprintf("layout.incremental.verify: incremental layout differs from a full one: %s", t.layout.inc.verify_report))
 		}
 	}
+	styled = settle_container_queries(app, t, styled, size, scale, fonts_gen)
 	images_after_layout(t, size, scale)
 	if first {
 		// the first useful paint: something to see, or nothing left to wait for once the hold is over

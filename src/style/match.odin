@@ -463,7 +463,12 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		return strings.equal_fold(l, s.name) || (len(l) > len(s.name) && l[len(s.name)] == '-' && strings.equal_fold(l[:len(s.name)], s.name))
 	case .Dir: return dir_of(m, el) == s.name
 	case .Defined: return true
-	case .Before, .After, .First_Line, .First_Letter, .Selection, .Placeholder, .Marker, .Backdrop: return false
+	case .Open:
+		if n.name != "details" && n.name != "dialog" { return false }
+		_, ok := attr(n, "open")
+		return ok
+	case .Never: return false
+	case .Before, .After, .First_Line, .First_Letter, .Selection, .Placeholder, .Marker, .Backdrop, .Other_Element: return false
 	}
 	return false
 }

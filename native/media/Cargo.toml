@@ -24,6 +24,12 @@ enough = "=0.4.5"   # zenavif-parse's cancellation token (Unstoppable)
 rav1d = { version = "=1.1.0", default-features = false, features = ["asm", "bitdepth_8", "bitdepth_16"] }
 # Colour management (Firefox's): ICC profiles and CICP to sRGB
 qcms = { version = "=0.3.0", default-features = false, features = ["iccv4-enabled"] }
+# WOFF2 web fonts (src/woff2.rs): Dropbox's Brotli decompressor, safe Rust (bounds checks kept: no "unsafe" feature)
+brotli-decompressor = { version = "=6.1.0", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+# tests only: outlines of decoded WOFF2 fonts compared with the same fonts served as TrueType (already a dependency of resvg)
+skrifa = "=0.44.0"
 
 [profile.release]
 opt-level = 3

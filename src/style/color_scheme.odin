@@ -302,13 +302,17 @@ apply_color :: proc(cx: ^Cx, vs: []css.Value) -> bool {
 		c.color = scheme_pick(c.color_pair, c.used_scheme)
 		return true
 	}
+	// currentcolor inside a function (color-mix(in oklab, currentcolor 50%, transparent)) is the inherited color
+	inherited := cx.parent != nil ? cx.parent.color_pair : cx.initial.color_pair
 	env := cx.cenv
 	env.dark = false
+	env.current, env.has_current = inherited.light, true
 	light, ok := css.parse_color(vs, &env)
 	if !ok || light.kind != .Rgba { return false }
 	pair := Scheme_Color{light.rgba, light.rgba}
-	if scheme_sensitive(vs) {
+	if scheme_sensitive(vs) || inherited.light != inherited.dark {
 		env.dark = true
+		env.current = inherited.dark
 		if dark, ok2 := css.parse_color(vs, &env); ok2 && dark.kind == .Rgba { pair.dark = dark.rgba }
 	}
 	c.color_pair = pair

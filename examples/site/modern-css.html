@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modern CSS: what real sites use</title>
+<style>
+/* Everything here is what Tailwind v4 and current sites write; each card says what it shows and how it should look. */
+@layer reset, theme, components, utilities;
+
+@font-face {
+  font-family: "Fira Code Demo";
+  src: url(fonts/firacode-latin.woff2) format("woff2") tech(variations), url(fonts/roboto.ttf) format("truetype");
+  font-weight: 300 700;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+2190-21FF;
+}
+
+@property --angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@property --pad { syntax: "<length>"; inherits: false; initial-value: 4px; }
+@property --tint { syntax: "<color>"; inherits: true; initial-value: oklch(62.8% 0.2577 29.23); }
+
+@layer reset {
+  *, ::after, ::before, ::backdrop, ::file-selector-button { box-sizing: border-box; margin: 0; padding: 0; border: 0 solid; }
+  html, :host { line-height: 1.5; font-family: var(--font-sans, system-ui, sans-serif); }
+  [hidden]:where(:not([hidden='until-found'])) { display: none !important; }
+}
+
+@layer theme {
+  :root, :host {
+    --font-sans: "Fira Code Demo", ui-monospace, monospace;
+    --spacing: 0.25rem;
+    --color-bg: oklch(98.5% 0.003 250);
+    --color-fg: oklch(21% 0.034 264.665);
+    --color-accent: oklch(54.6% 0.245 262.881);
+    --radius: calc(infinity * 1px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --color-bg: oklch(20.5% 0 0); --color-fg: oklch(97% 0 0); }
+  }
+}
+
+@layer components {
+  body { background: var(--color-bg); color: var(--color-fg); padding: calc(var(--spacing) * 6); }
+  h1 { font-size: clamp(1.5rem, 1rem + 2vw, 2.5rem); font-weight: 700; margin-block-end: 1rlh; text-wrap: balance; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: calc(var(--spacing) * 4); }
+  .card {
+    container: card / inline-size;
+    border: 1px solid color-mix(in oklab, var(--color-fg) 15%, transparent);
+    border-start-start-radius: 12px; border-end-end-radius: 12px;
+    padding-block: calc(var(--spacing) * 3); padding-inline: calc(var(--spacing) * 4);
+    & h2 { font-size: 1rem; font-weight: 600; margin-block-end: 0.5lh; color: var(--color-accent); }
+    & p { font-size: 0.875rem; }
+    &:hover { border-color: var(--color-accent); }
+    .expect { opacity: 0.7; font-size: 0.75rem; margin-block-start: 0.5rem; }
+  }
+  .swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 8px; }
+  .swatches > span { inline-size: 2.5rem; aspect-ratio: 1; border-radius: 6px; }
+}
+
+@layer utilities {
+  .pill { border-radius: var(--radius); background: var(--color-accent); color: white; padding: 2px 10px; display: inline-block; }
+  .muted { color: color-mix(in oklab, currentcolor 55%, transparent); }
+}
+
+/* unlayered: beats every layer */
+.unlayered-wins { color: rgb(from var(--color-accent) r g b / 80%); }
+
+/* container queries: the card's own width decides */
+.cq-box { padding: 6px; background: oklch(90% 0.05 140); color: oklch(30% 0.1 140); font-size: max(10px, 4cqi); }
+@container card (width < 400px) { .cq-box::after { content: " (narrow card)"; } }
+@container card (width >= 400px) { .cq-box::after { content: " (wide card)"; } }
+
+/* @supports: what the engine really does */
+.sup span { display: none; }
+@supports (color: oklch(0 0 0)) and selector(:has(a)) { .sup .yes1 { display: inline; } }
+@supports font-format(woff2) { .sup .yes2 { display: inline; } }
+@supports not (background-clip: text) { .sup .fallback { display: inline; } }
+@supports (background-clip: text) { .sup .clip { display: inline; } }
+
+/* animation of a registered custom property */
+@keyframes spin { to { --angle: 360deg; } }
+@keyframes breathe { 50% { --pad: 18px; } }
+.spinner { width: 3rem; aspect-ratio: 1; border-radius: 50%; background: conic-gradient(from var(--angle), var(--tint), oklch(80% 0.15 200), var(--tint)); animation: spin 3s linear infinite; }
+.breathing { padding-inline: var(--pad); background: oklch(92% 0.04 80); display: inline-block; animation: breathe 2s ease-in-out infinite; }
+
+/* :is / :where / :not / :has */
+.sel li:is(.a, .b):not(:where(.skip)) { color: var(--color-accent); }
+.sel ul:has(> li.c) { border-inline-start: 3px solid var(--color-accent); padding-inline-start: 8px; }
+
+/* revert-layer */
+@layer components { .rl { font-style: italic; } }
+.rl { font-style: revert-layer; text-decoration: underline wavy; }
+
+/* scroll bars */
+.scroller { max-block-size: 4rem; overflow: auto; scrollbar-width: thin; scrollbar-gutter: stable; border: 1px dashed currentcolor; }
+.scroller.none { scrollbar-width: none; }
+
+details { margin-block-start: 6px; }
+</style>
+</head>
+<body>
+<h1>Modern CSS, as sites write it today</h1>
+<div class="grid">
+
+  <section class="card">
+    <h2>Web font: WOFF2, variable</h2>
+    <p style="font-weight: 300">Light 300: Fira Code → ligatures != =&gt; ===</p>
+    <p style="font-weight: 700">Bold 700: Fira Code → 0123456789</p>
+    <p class="expect">Expected: both lines in Fira Code (a monospace with ligatures), thin then bold. Times New Roman means the WOFF2 file failed.</p>
+  </section>
+
+  <section class="card">
+    <h2>Colors: Color 4 and 5</h2>
+    <div class="swatches">
+      <span style="background: oklch(62.8% 0.2577 29.23)" title="oklch red"></span>
+      <span style="background: color(display-p3 0 1 0)" title="display-p3 green, clipped"></span>
+      <span style="background: lab(54.29 80.82 69.91)" title="lab red"></span>
+      <span style="background: color-mix(in oklch longer hue, red, blue)" title="mix, longer hue"></span>
+      <span style="background: oklch(from var(--color-accent) calc(l + 0.2) c h)" title="relative, lighter accent"></span>
+      <span style="background: hwb(from var(--color-accent) calc(h + 180) w b)" title="relative, opposite hue"></span>
+    </div>
+    <p class="unlayered-wins">Unlayered rgb(from …) at 80 %</p>
+    <p class="muted">color-mix(in oklab, currentcolor 55%, transparent)</p>
+    <p class="expect">Expected: red, green, red, a green-ish mix, light blue, orange; the second line dimmed.</p>
+  </section>
+
+  <section class="card">
+    <h2>Container queries</h2>
+    <div class="cq-box">This box reads its card's width</div>
+    <p class="expect">Expected: “(narrow card)” or “(wide card)” after the text, and a font size of 4 % of the card's width.</p>
+  </section>
+
+  <section class="card">
+    <h2>@property animations</h2>
+    <div class="spinner"></div>
+    <p><span class="breathing">padding animated through --pad</span></p>
+    <p class="expect">Expected: the conic gradient turns; the padding of the second box swells and shrinks.</p>
+  </section>
+
+  <section class="card sel">
+    <h2>Selectors</h2>
+    <ul><li class="a">.a (accent)</li><li class="b skip">.b.skip (plain)</li><li class="c">.c (the list has a bar: :has)</li></ul>
+    <p class="rl">revert-layer: not italic, wavy underline</p>
+    <p class="expect">Expected: first item in the accent color, the list with a bar on its left.</p>
+  </section>
+
+  <section class="card sup">
+    <h2>@supports</h2>
+    <p><span class="yes1">✓ oklch and selector(:has())</span></p>
+    <p><span class="yes2">✓ font-format(woff2)</span></p>
+    <p><span class="fallback">✓ background-clip: text not claimed (the painter cannot clip to glyphs yet)</span><span class="clip">✓ background-clip: text</span></p>
+    <p class="expect">Expected: three check marks.</p>
+  </section>
+
+  <section class="card">
+    <h2>Math and units</h2>
+    <p style="inline-size: round(down, 50%, 40px); background: oklch(90% 0.05 250)">round(down, 50%, 40px)</p>
+    <p style="margin-inline-start: calc(sin(30deg) * 4rem); border-inline-start: 2px solid">margin: sin(30deg) × 4rem = 2rem</p>
+    <p style="block-size: 2lh; background: oklch(93% 0.03 30)">2lh tall</p>
+    <p><span class="pill">calc(infinity * 1px) radius</span></p>
+    <p class="expect">Expected: a bar snapped to 40px steps, a 2rem indent, a box two lines tall, a pill.</p>
+  </section>
+
+  <section class="card">
+    <h2>Details, scroll bars</h2>
+    <details><summary>closed: the list below stays hidden</summary><ul><li>hidden item</li></ul></details>
+    <details open><summary>open</summary><p>shown</p></details>
+    <div class="scroller"><p>thin scroll bar</p><p>2</p><p>3</p><p>4</p></div>
+    <div class="scroller none"><p>no scroll bar, still scrolls</p><p>2</p><p>3</p><p>4</p></div>
+  </section>
+
+</div>
+</body>
+</html>

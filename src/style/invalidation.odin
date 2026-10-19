@@ -236,6 +236,7 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 			if !in_has { append(&ix.has_anchors, Has_Anchor{compound = comp, reach = total}) }
 			analyze_list(ix, s.list, total, true, depth)
 		case .Link, .Any_Link: attr_dep(ix, "href", total, in_has)
+		case .Open: attr_dep(ix, "open", total, in_has)
 		case .Target: attr_dep(ix, "id", total, in_has)
 		case .Lang:
 			attr_dep(ix, "lang", subtree, in_has)

@@ -661,12 +661,14 @@ ensure_frames :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, ea: ^Elemen
 	parent: ^Computed
 	if n := dom.get(doc, ea.node); n != nil && n.parent != base.NIL_HANDLE { parent = base_style_of(s, n.parent) }
 	frames := make([]Frame_Value, len(set.frames), a)
+	props := set.props
 	for &block, i in set.frames {
-		c := compute_keyframe(tl.engine, &block, ea.base, parent, s.initial, s.root_font_size, a)
-		frames[i] = Frame_Value{offset = f64(block.offset), c = c, props = block.props, easing = clone_easing(block.easing, a), has_easing = block.has_easing}
+		c, extra := compute_keyframe(tl.engine, &block, ea.base, parent, s.initial, s.root_font_size, a)
+		frames[i] = Frame_Value{offset = f64(block.offset), c = c, props = ps_union(block.props, extra), easing = clone_easing(block.easing, a), has_easing = block.has_easing}
+		props = ps_union(props, extra)
 	}
 	r.frames = frames
-	r.props = set.props
+	r.props = props
 }
 
 // Writes the animation's values into dst (the element's overlay). `scratch` is a temporary for underlying values.

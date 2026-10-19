@@ -499,7 +499,7 @@ font_faces :: proc(t: ^testing.T) {
 	ff := faces[0]
 	testing.expect(t, ff.family == "My Font" && ff.weight == {300, 700} && ff.style == .Italic && ff.display == .Swap)
 	testing.expect_value(t, len(ff.sources), 4)
-	testing.expect(t, ff.sources[0].kind == .Local && ff.sources[1].format == .Woff2 && !ff.sources[1].supported && ff.sources[2].supported)
+	testing.expect(t, ff.sources[0].kind == .Local && ff.sources[1].format == .Woff2 && ff.sources[1].supported && ff.sources[2].supported)
 	testing.expect(t, len(ff.unicode_range) == 3 && ff.unicode_range[1] == {0xE00, 0xE7F} && ff.unicode_range[2] == {0x400, 0x4FF})
 	testing.expect(t, face_covers(&faces[0], 'é') && !face_covers(&faces[0], 'Ա') && face_covers(&faces[0], 'Ѐ'))
 	testing.expect(t, faces[1].family == "Other Name" && faces[1].sources[0].format == .Opentype)

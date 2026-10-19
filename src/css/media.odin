@@ -14,6 +14,9 @@ Media_Feature :: enum u8 {
 	Prefers_Color_Scheme, Prefers_Reduced_Motion, Prefers_Contrast, Prefers_Reduced_Data,
 	Hover, Any_Hover, Pointer, Any_Pointer,
 	Display_Mode, Scripting, Update, Forced_Colors,
+	Color_Gamut, Inverted_Colors, Dynamic_Range, Prefers_Reduced_Transparency, Grid, Overflow_Block, Overflow_Inline,
+	Device_Width, Device_Height, Device_Aspect_Ratio,
+	Inline_Size, Block_Size,   // container queries only (unknown in a media query)
 }
 
 Compare :: enum u8 { Equal, Less, Less_Eq, Greater, Greater_Eq }
@@ -175,9 +178,14 @@ has_colon :: proc(vs: []Value) -> bool {
 feature_of :: proc(name: string) -> (Media_Feature, i8) {
 	n := strings.to_lower(name, context.temp_allocator)
 	mm: i8
+	webkit := strings.has_prefix(n, "-webkit-")
+	if webkit { n = n[8:] }
 	switch {
 	case strings.has_prefix(n, "min-"): mm, n = -1, n[4:]
 	case strings.has_prefix(n, "max-"): mm, n = 1, n[4:]
+	}
+	if webkit {   // only -webkit-device-pixel-ratio is a feature (Blink, WebKit, Gecko): the resolution in dppx
+		return n == "device-pixel-ratio" ? .Resolution : .Unknown, mm
 	}
 	f: Media_Feature
 	switch n {
@@ -200,6 +208,19 @@ feature_of :: proc(name: string) -> (Media_Feature, i8) {
 	case "scripting": f = .Scripting
 	case "update": f = .Update
 	case "forced-colors": f = .Forced_Colors
+	case "color-gamut": f = .Color_Gamut
+	case "inverted-colors": f = .Inverted_Colors
+	case "dynamic-range", "video-dynamic-range": f = .Dynamic_Range
+	case "prefers-reduced-transparency": f = .Prefers_Reduced_Transparency
+	case "grid": f = .Grid
+	case "overflow-block": f = .Overflow_Block
+	case "overflow-inline": f = .Overflow_Inline
+	case "device-width": f = .Device_Width
+	case "device-height": f = .Device_Height
+	case "device-aspect-ratio": f = .Device_Aspect_Ratio
+	case "inline-size": f = .Inline_Size
+	case "block-size": f = .Block_Size
+	case "color-index": f = .Monochrome   // no palette: 0, like monochrome
 	}
 	return f, mm
 }
@@ -324,7 +345,6 @@ parse_media_feature :: proc(inner: []Value, a: Arena_Alloc) -> (c: Media_Conditi
 ////////////////////////////////
 // Evaluation. Three-valued logic: true, false, unknown (an unknown feature never matches, even negated).
 
-@(private)
 Tri :: enum u8 { False, True, Unknown }
 
 media_matches :: proc(list: Media_Query_List, env: Media_Env) -> bool {
@@ -425,8 +445,29 @@ eval_feature :: proc(c: Media_Condition, env: Media_Env) -> Tri {
 	case .Update:
 		return c.ident == "fast" || c.boolean ? .True : .False
 	case .Forced_Colors:
-		return c.ident == "none" || !c.boolean ? .True : .False
-	case .Unknown:
+		if c.boolean { return .False }   // no forced colors mode: (forced-colors) is false
+		return c.ident == "none" ? .True : .False
+	// the surface is an sRGB, standard dynamic range, non-inverted, bitmap, scrolling screen
+	case .Color_Gamut:
+		if c.boolean { return .True }
+		return c.ident == "srgb" ? .True : .False
+	case .Inverted_Colors:
+		if c.boolean { return .False }
+		return c.ident == "none" ? .True : .False
+	case .Dynamic_Range:
+		if c.boolean { return .True }
+		return c.ident == "standard" ? .True : .False
+	case .Prefers_Reduced_Transparency:
+		if c.boolean { return .False }
+		return c.ident == "no-preference" ? .True : .False
+	case .Overflow_Block, .Overflow_Inline:
+		if c.boolean { return .True }
+		return c.ident == "scroll" ? .True : .False
+	case .Grid: numeric, is_num = 0, true
+	case .Device_Width: numeric, is_num = env.width, true      // the screen is not reported: the viewport stands for it
+	case .Device_Height: numeric, is_num = env.height, true
+	case .Device_Aspect_Ratio: numeric, is_num = env.height > 0 ? env.width / env.height : 0, true
+	case .Inline_Size, .Block_Size, .Unknown:
 		return .Unknown
 	}
 	if !is_num { return .Unknown }

@@ -37,6 +37,7 @@ Rule :: struct {
 	origin:  Origin,
 	layer:   u32,
 	order:   u32,
+	cq:      ^Cq_Cond,   // @container conditions around the rule (container.odin); nil: none
 }
 
 // Dynamic state that a rule can depend on. Which of them appear in the active rules decides what a change of state costs.
@@ -97,6 +98,10 @@ Engine :: struct {
 	faces:     [dynamic]Font_Face,        // ... parsed (fontface.odin); strings in `alloc`
 	keyframes: [dynamic]Keyframes_Ref,    // @keyframes rules in force
 	keyframe_sets: map[string]^Keyframes_Set,   // the winning rule of each name, compiled (keyframes.odin)
+	registered: map[string]^Registered_Prop,    // @property registrations in force (property.odin); values in `alloc`
+	registered_noninherited: int,               // how many of them do not inherit
+	container_sizes: map[base.Handle][2]f32,    // content boxes of query containers from the last layout (container.odin)
+	container_dependent: bool,                  // some @container rule or cq unit is in force
 	rebuilds:  u64,                       // counts rebuilds: compiled keyframes and faces are stale after one
 	cur_base_url: string,                 // while flattening: the URL of the sheet being read
 	kf_order:  u32,
@@ -160,6 +165,8 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.faces)
 	delete(e.keyframes)
 	delete(e.keyframe_sets)
+	delete(e.registered)
+	delete(e.container_sizes)
 	delete(e.state_entries)
 	inv_free(&e.inv)
 	if e.has_spare { virtual.arena_destroy(&e.spare) }
@@ -377,7 +384,7 @@ resolve_import :: proc(e: ^Engine, parent: ^Sheet, slot: ^Import_Slot, sheet: ^c
 ////////////////////////////////
 // Compiling rules
 
-LayerCtx :: struct { path: string, rank: u32 }
+LayerCtx :: struct { path: string, rank: u32, cq: ^Cq_Cond }   // cq: the @container conditions around (container.odin)
 
 @(private)
 layer_rank :: proc(e: ^Engine, path: string) -> u32 {
@@ -430,13 +437,30 @@ css_wide_keyword :: proc(vs: []css.Value) -> string {
 // What compiling declarations finds out about the engine's rules. A style pass running on several threads collects it
 // per thread and merges it afterwards (`stats_merge`), so the engine is only read meanwhile.
 Compile_Stats :: struct {
-	viewport_units: bool,
-	ignored:        int,
+	viewport_units:  bool,
+	container_units: bool,
+	ignored:         int,
 }
 
 stats_merge :: proc(e: ^Engine, s: Compile_Stats) {
 	if s.viewport_units { e.viewport_units = true }
+	if s.container_units { e.container_dependent = true }
 	e.ignored_properties += s.ignored
+}
+
+@(private)
+uses_container_units :: proc(vs: []css.Value) -> bool {
+	for v in vs {
+		switch v.kind {
+		case .Token:
+			if v.tok.kind == .Dimension {
+				if u, ok := css.relative_unit(v.tok.text); ok && (u == .Cqw || u == .Cqh || u == .Cqmin || u == .Cqmax) { return true }
+			}
+		case .Function, .Block:
+			if uses_container_units(v.children) { return true }
+		}
+	}
+	return false
 }
 
 compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Allocator, stats: ^Compile_Stats = nil) -> (out: []Pre_Decl, customs: []Custom_Decl) {
@@ -452,6 +476,7 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 	}
 	for d in decls {
 		if !st.viewport_units && !e.viewport_units && uses_viewport_units(d.value) { st.viewport_units = true }
+		if !st.container_units && !e.container_dependent && uses_container_units(d.value) { st.container_units = true }
 		if strings.has_prefix(d.name, "--") {
 			append(&cus, Custom_Decl{name = d.name, value = d.value, important = d.important})
 			continue
@@ -531,7 +556,7 @@ compile_style_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCt
 		e.rule_count += 1
 		e.order += 1
 		rule := new(Rule, e.alloc)
-		rule.decls, rule.customs, rule.origin, rule.layer, rule.order = decls, customs, origin, lc.rank, e.order
+		rule.decls, rule.customs, rule.origin, rule.layer, rule.order, rule.cq = decls, customs, origin, lc.rank, e.order, lc.cq
 		for i in 0 ..< len(r.selectors) {
 			c := &r.selectors[i]
 			if len(c.compounds) > e.settings.max_selector_compounds { continue }
@@ -554,7 +579,15 @@ flatten_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCtx) {
 		path := r.layer
 		if path == "" { e.anon_layers += 1; path = fmt.tprintf("\x00anon%d", e.anon_layers) }
 		if lc.path != "" { path = strings.concatenate({lc.path, ".", path}, context.temp_allocator) }
-		sub := LayerCtx{path = path, rank = layer_rank(e, path)}
+		sub := LayerCtx{path = path, rank = layer_rank(e, path), cq = lc.cq}
+		for n in r.rules { flatten_rule(e, n, origin, sub) }
+	case .Container:
+		if r.container == nil { return }
+		e.container_dependent = true
+		cond := new(Cq_Cond, e.alloc)
+		cond^ = Cq_Cond{query = r.container, next = lc.cq}
+		sub := lc
+		sub.cq = cond
 		for n in r.rules { flatten_rule(e, n, origin, sub) }
 	case .Layer_Statement:
 		for name in r.layer_names {
@@ -565,7 +598,8 @@ flatten_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCtx) {
 	case .Keyframes:
 		e.kf_order += 1
 		append(&e.keyframes, Keyframes_Ref{rule = r, layer = lc.rank, order = e.kf_order, origin = origin})
-	case .Import, .Namespace, .Page, .Container, .Unknown:
+	case .Property: register_property(e, r)
+	case .Import, .Namespace, .Page, .Unknown:
 	}
 }
 
@@ -626,6 +660,9 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	clear(&e.faces)
 	clear(&e.keyframes)
 	clear(&e.keyframe_sets)
+	clear(&e.registered)
+	e.registered_noninherited = 0
+	e.container_dependent = false
 	e.order, e.rule_count, e.media_dependent, e.anon_layers, e.kf_order = 0, 0, false, 0, 0
 
 	if doc != nil {
@@ -721,6 +758,15 @@ supports_condition :: proc(e: ^Engine, vs_in: []css.Value) -> bool {
 		case v.kind == .Function && strings.equal_fold(v.tok.text, "selector"):
 			_, ok := css.parse_selector_list(css.trim_values(v.children), context.temp_allocator, nil)
 			val = ok
+		case v.kind == .Function && strings.equal_fold(v.tok.text, "font-format"):
+			args := css.trim_values(v.children)
+			val = len(args) == 1 && args[0].kind == .Token && (args[0].tok.kind == .Ident || args[0].tok.kind == .String) &&
+			      font_format_supported(face_format(args[0].tok.text))
+		case v.kind == .Function && strings.equal_fold(v.tok.text, "font-tech"):
+			args := css.trim_values(v.children)
+			val = len(args) == 1 && args[0].kind == .Token && args[0].tok.kind == .Ident && font_tech_supported(args[0].tok.text)
+		case v.kind == .Function:
+			val = false   // <general-enclosed>: unknown functions are false, the rest of the condition still counts
 		case v.kind == .Block && v.tok.kind == .Open_Paren:
 			val = supports_block(e, v.children)
 		case: return false

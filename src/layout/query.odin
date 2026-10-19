@@ -398,8 +398,18 @@ box_of :: proc(l: ^Layout, node: base.Handle, viewport: Vec2, doc_scroll: f32) -
 // The page's own scroll bar (viewport coordinates), when the page is taller than the viewport.
 doc_scrollbar :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32) -> (track, thumb: Rect, ok: bool) {
 	if !l.valid || !l.settings.document_scrollbar || l.height <= viewport.y + 0.5 { return }
+	// the viewport's bar follows the root element's scrollbar-width
+	thin := false
+	if len(l.boxes) > 0 {
+		if r := l.boxes[0].first; r != NONE && l.boxes[r].cs != nil {
+			#partial switch l.boxes[r].cs.scrollbar_width {
+			case .None: return
+			case .Thin: thin = true
+			}
+		}
+	}
 	s := l.scale
-	w := l.settings.scrollbar_width * s
+	w := l.settings.scrollbar_width * s * (thin ? 0.5 : 1)
 	m := l.settings.scrollbar_margin * s
 	track = Rect{{viewport.x - w - m, m}, {viewport.x - m, viewport.y - m}}
 	th := max((track.max.y - track.min.y) * viewport.y / l.height, l.settings.scrollbar_min_thumb * s)

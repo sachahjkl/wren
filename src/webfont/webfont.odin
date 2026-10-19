@@ -1,8 +1,9 @@
 // Package webfont: turns the bytes of a downloaded font into an sfnt (TrueType / OpenType) file a font engine can load.
 // TrueType and OpenType files are checked and copied; WOFF 1.0 files (W3C WOFF File Format 1.0) are unpacked: every
 // table is inflated (zlib, with the output bounded by the caller's limit) and the sfnt table directory is rebuilt. WOFF2
-// needs Brotli, which neither the platform nor Odin's core library provides: it is refused with Unsupported_Woff2, so a
-// page's src list falls through to its next source.
+// files are decoded by the built-in native library (native\media\src\woff2.rs: Brotli, then the glyf / loca / hmtx
+// transforms reversed, every size checked against the same limit). A collection (.ttc, or a WOFF2 of one) gives its
+// first face, as other browsers do, rebuilt as a standalone sfnt.
 package webfont
 
 import "base:runtime"
@@ -10,6 +11,33 @@ import "core:bytes"
 import "core:compress"
 import "core:compress/zlib"
 import "core:slice"
+
+foreign import wren_media {
+	"../../build/media/wren_media.lib",
+	"system:ws2_32.lib",
+	"system:advapi32.lib",
+	"system:userenv.lib",
+	"system:ntdll.lib",
+	"system:kernel32.lib",
+	"system:bcrypt.lib",
+	"system:msvcrt.lib",
+	"system:ucrt.lib",
+	"system:vcruntime.lib",
+}
+
+@(private)
+Wm_Bytes_Proc :: #type proc "c" (user: rawptr, len: uint) -> [^]u8
+
+@(private)
+Wm_Byte_Sink :: struct {
+	user:  rawptr,
+	alloc: Wm_Bytes_Proc,
+}
+
+@(private, default_calling_convention = "c")
+foreign wren_media {
+	wm_woff2_decode :: proc(data: [^]u8, len: uint, max_bytes: u64, sink: ^Wm_Byte_Sink) -> i32 ---
+}
 
 Format :: enum u8 { Unknown, Truetype, Opentype, Collection, Woff, Woff2, Eot }
 
@@ -67,8 +95,12 @@ decode :: proc(data: []byte, max_bytes: int, allocator := context.allocator) -> 
 	case .Woff:
 		sfnt, err = unwoff(data, max_bytes, allocator)
 		return
-	case .Woff2: return nil, format, .Unsupported_Woff2
-	case .Collection: return nil, format, .Unsupported_Collection
+	case .Woff2:
+		sfnt, err = unwoff2(data, max_bytes, allocator)
+		return
+	case .Collection:
+		sfnt, err = collection_face(data, 0, allocator)
+		return
 	case .Eot: return nil, format, .Unsupported_Eot
 	case .Unknown:
 	}
@@ -172,6 +204,90 @@ unwoff :: proc(data: []byte, max_bytes: int, allocator: runtime.Allocator) -> ([
 			return nil, .Decompression_Failed
 		}
 		pos += align4(int(e.orig))
+	}
+	if e := validate_sfnt(out); e != .None {
+		delete(out, allocator)
+		return nil, e
+	}
+	return out, .None
+}
+
+////////////////////////////////
+// WOFF2
+
+@(private)
+unwoff2 :: proc(data: []byte, max_bytes: int, allocator: runtime.Allocator) -> ([]byte, Error) {
+	State :: struct {
+		out:       []byte,
+		allocator: runtime.Allocator,
+		ctx:       runtime.Context,
+		max:       int,
+	}
+	st := State{allocator = allocator, ctx = context, max = max_bytes}
+	give :: proc "c" (user: rawptr, n: uint) -> [^]u8 {
+		s := (^State)(user)
+		context = s.ctx
+		if n == 0 || n > uint(s.max) || s.out != nil { return nil }
+		buf, err := make([]byte, int(n), s.allocator)
+		if err != nil { return nil }
+		s.out = buf
+		return raw_data(buf)
+	}
+	sink := Wm_Byte_Sink{user = &st, alloc = give}
+	rc := wm_woff2_decode(raw_data(data), uint(len(data)), u64(max(max_bytes, 0)), &sink)
+	if rc != 0 {
+		if st.out != nil { delete(st.out, allocator) }
+		switch rc {
+		case 3: return nil, .Unsupported_Woff2      // a transform the format does not define
+		case 9: return nil, .Too_Large
+		case 10: return nil, .Malformed
+		}
+		return nil, .Decompression_Failed
+	}
+	out := st.out
+	if sniff(out) == .Collection {
+		face, err := collection_face(out, 0, allocator)
+		delete(out, allocator)
+		return face, err
+	}
+	if e := validate_sfnt(out); e != .None {
+		delete(out, allocator)
+		return nil, e
+	}
+	return out, .None
+}
+
+////////////////////////////////
+// Collections
+
+// Face `index` of a TrueType Collection, as a standalone sfnt (its tables copied after a new directory).
+collection_face :: proc(ttc: []byte, index: int, allocator := context.allocator) -> ([]byte, Error) {
+	if len(ttc) < 12 || be32(ttc, 0) != TAG_TTCF { return nil, .Malformed }
+	n := int(be32(ttc, 8))
+	if n == 0 || n > 65536 || 12 + 4 * n > len(ttc) { return nil, .Malformed }
+	if index < 0 || index >= n { return nil, .Malformed }
+	off := int(be32(ttc, 12 + 4 * index))
+	if off + 12 > len(ttc) { return nil, .Malformed }
+	count := int(be16(ttc, off + 4))
+	if count == 0 || count > 4096 || off + 12 + 16 * count > len(ttc) { return nil, .Malformed }
+	total := 12 + 16 * count
+	for i in 0 ..< count {
+		rec := off + 12 + 16 * i
+		t_off, t_len := u64(be32(ttc, rec + 8)), u64(be32(ttc, rec + 12))
+		if t_off + t_len > u64(len(ttc)) { return nil, .Malformed }
+		total += align4(int(t_len))
+	}
+	out := make([]byte, total, allocator)
+	copy(out[:12], ttc[off:off + 12])
+	pos := 12 + 16 * count
+	for i in 0 ..< count {
+		rec := off + 12 + 16 * i
+		dst := 12 + 16 * i
+		copy(out[dst:dst + 16], ttc[rec:rec + 16])
+		t_off, t_len := int(be32(ttc, rec + 8)), int(be32(ttc, rec + 12))
+		put32(out, dst + 8, u32(pos))
+		copy(out[pos:pos + t_len], ttc[t_off:t_off + t_len])
+		pos += align4(t_len)
 	}
 	if e := validate_sfnt(out); e != .None {
 		delete(out, allocator)

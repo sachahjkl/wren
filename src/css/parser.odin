@@ -22,7 +22,7 @@ Declaration :: struct {
 	raw:       string,    // @font-face descriptors only: the value as written (unicode-range needs the token representation)
 }
 
-Rule_Kind :: enum u8 { Style, Media, Supports, Import, Font_Face, Keyframes, Layer_Block, Layer_Statement, Namespace, Page, Container, Unknown }
+Rule_Kind :: enum u8 { Style, Media, Supports, Import, Font_Face, Keyframes, Layer_Block, Layer_Statement, Namespace, Page, Container, Property, Unknown }
 
 Rule :: struct {
 	kind:         Rule_Kind,
@@ -34,6 +34,7 @@ Rule :: struct {
 	rules:        []^Rule,
 	media:        Media_Query_List,
 	supports:     []Value,      // Supports: the condition, evaluated by the style system (it knows the property table)
+	container:    ^Container_Query,   // Container: the parsed prelude
 	layer:        string,       // Layer_Block: the layer name ("" = anonymous); Import: layer(...) argument
 	layer_names:  []string,     // Layer_Statement: @layer a, b;
 	// Import
@@ -248,7 +249,13 @@ finish_style_rule :: proc(p: ^Parser, prelude, body: []Value, parent: ^Rule) -> 
 	r.kind = .Style
 	sel, ok := parse_selector_list(trim_values(prelude), p.a, parent != nil ? &parent.selectors : nil)
 	if !ok {
-		perr(p, "invalid selector: rule dropped")
+		text := serialize_values(trim_values(prelude), context.temp_allocator)
+		if len(text) > 200 {
+			n := 200
+			for n > 0 && text[n] & 0xC0 == 0x80 { n -= 1 }
+			text = text[:n]
+		}
+		perr(p, strings.concatenate({"invalid selector, rule dropped: ", text}, context.temp_allocator))
 		return nil
 	}
 	r.selectors = sel
@@ -440,6 +447,11 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		if !has_block { return nil }
 		r.kind = .Container
 		r.prelude = prelude
+		r.container = parse_container_query(prelude, p.a)
+		if r.container == nil {
+			perr(p, "invalid @container condition: rule dropped")
+			return nil
+		}
 		r.rules = parse_rules_in_block_or_nested(p, blk, parent)
 	case "import":
 		r.kind = .Import
@@ -487,6 +499,12 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		r.kind = .Font_Face
 		r.declarations, _ = parse_block_contents(p, blk.children, r)
 		for &d in r.declarations { d.raw = raw_value(p, d.value) }
+	case "property":
+		// @property --name { syntax; inherits; initial-value }: the style system validates the descriptors
+		if !has_block || len(prelude) != 1 || prelude[0].kind != .Token || prelude[0].tok.kind != .Ident || !strings.has_prefix(prelude[0].tok.text, "--") { return nil }
+		r.kind = .Property
+		r.name = prelude[0].tok.text
+		r.declarations, _ = parse_block_contents(p, blk.children, r)
 	case "page":
 		if !has_block { return nil }
 		r.kind = .Page

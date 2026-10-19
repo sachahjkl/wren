@@ -274,7 +274,16 @@ Computed :: struct {
 	grid_auto_flow:    Grid_Auto_Flow,
 	grid_row_start, grid_row_end, grid_column_start, grid_column_end: Grid_Line,
 	justify_items, justify_self: Content_Align,
+	// --- container queries (container.odin) ---
+	container_type:    Container_Type,
+	container_name:    []string,
+	// --- scroll bars (container.odin; the bars are overlays: scrollbar-gutter is kept but reserves nothing) ---
+	scrollbar_width:   Scrollbar_Width,
+	scrollbar_color:   Scrollbar_Colors,
+	scrollbar_gutter:  Scrollbar_Gutter,
 	// --- bookkeeping ---
+	containers: ^Container_Ctx, // the query containers this element's children see (nearest first)
+	anim_vars:  []Pre_Decl,     // an animated element: its declarations that use var(), copied (registered custom properties animate through them)
 	inherits:   Prop_Set,       // inherited properties whose value came from the parent (not set by a declaration)
 	custom:     ^Custom_Props,
 	before, after: ^Computed,   // generated boxes (nil when `content` is none/normal)
@@ -317,6 +326,7 @@ Prop :: enum u8 {
 	Caret_Color, Accent_Color, Appearance, Resize, Column_Count, Column_Width,
 	Grid_Template_Columns, Grid_Template_Rows, Grid_Template_Areas, Grid_Auto_Columns, Grid_Auto_Rows, Grid_Auto_Flow,
 	Grid_Row_Start, Grid_Row_End, Grid_Column_Start, Grid_Column_End, Justify_Items, Justify_Self,
+	Container_Type, Container_Name, Scrollbar_Width, Scrollbar_Color, Scrollbar_Gutter,
 }
 
 // A set of properties. Wider than a bit_set can be (there are more than 128 longhands), hence the procedures in props.odin:
@@ -330,7 +340,7 @@ INHERITED_PROPS :: [?]Prop{
 	.Letter_Spacing, .Word_Spacing, .Text_Align, .Text_Transform, .Text_Indent, .White_Space_Collapse, .Text_Wrap_Mode,
 	.Text_Wrap_Style, .Word_Break, .Overflow_Wrap, .Hyphens, .Tab_Size, .Direction, .Text_Shadow, .Text_Underline_Offset,
 	.Visibility, .List_Style_Type, .List_Style_Position, .Cursor, .Pointer_Events, .Border_Collapse, .Border_Spacing,
-	.Quotes, .Caret_Color, .Accent_Color,
+	.Quotes, .Caret_Color, .Accent_Color, .Scrollbar_Color,
 	.Font_Feature_Settings, .Font_Variation_Settings, .Font_Kerning, .Font_Variant_Ligatures, .Font_Variant_Numeric,
 	.Font_Variant_East_Asian, .Font_Variant_Position,
 }
@@ -344,4 +354,6 @@ Short :: enum u8 {
 	Margin_Block, Margin_Inline, Padding_Block, Padding_Inline, Inset_Block, Inset_Inline,
 	White_Space, Text_Wrap, Font_Variant, Transition, Animation, Overscroll_Behavior, Columns,
 	Grid_Template, Grid, Grid_Row, Grid_Column, Grid_Area,
+	Container, Border_Block, Border_Inline, Border_Block_Width, Border_Block_Style, Border_Block_Color,
+	Border_Inline_Width, Border_Inline_Style, Border_Inline_Color,
 }
