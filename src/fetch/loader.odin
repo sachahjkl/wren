@@ -665,10 +665,13 @@ handle_redirect :: proc(t: ^Task, location: string) {
 		// the caller wants to see the redirect itself
 		resp := Response{type = .Opaque_Redirect, status = 0, url = t.target.href, headers = http.headers_make(context.temp_allocator)}
 		ev := Event{kind = .Response, response = &resp}
-		deliver(t, &ev)
-		done := Event{kind = .Done}
 		h := t.self
-		deliver(t, &done)
+		deliver(t, &ev)
+		// the Response callback may have cancelled the task, and another task may have taken its slot: by handle
+		cur := base.pool_get(&l.tasks, h)
+		if cur == nil { return }
+		done := Event{kind = .Done}
+		deliver(cur, &done)
 		release(l, h)
 		return
 	case .Follow:

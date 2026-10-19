@@ -150,7 +150,6 @@ main :: proc() {
 	page.storage_manager_init(&storage, &loop, &blocking, PROFILE_DIR)
 	process = base.scope_make("process")
 
-	if selected("dbg") && len(os.args) > 1 { run("dbg") }
 	if selected("core") { run("core") }
 	if selected("url") { run("url") }
 	if selected("abort") { run("abort") }

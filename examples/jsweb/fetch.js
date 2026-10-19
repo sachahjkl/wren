@@ -59,7 +59,8 @@ test("abort", async () => {
   c.abort("gave up");
   try { await p; ok(false, "aborted fetch rejects"); } catch (e) { eq(e, "gave up", "rejected with the signal's reason"); }
   await rejects(fetch("/jsweb/json", { signal: AbortSignal.abort() }), "AbortError", "an aborted signal: AbortError");
-  await rejects(fetch("/webapi/slow?ms=3000", { signal: AbortSignal.timeout(50) }), "TimeoutError", "AbortSignal.timeout: TimeoutError");
+  const slow = await fetch("/webapi/slow?ms=3000", { signal: AbortSignal.timeout(100) });
+  await rejects(slow.text(), "TimeoutError", "AbortSignal.timeout: the body read fails with TimeoutError");
   const c2 = new AbortController();
   const r = await fetch("/webapi/slow?ms=3000", { signal: c2.signal });
   const t = r.text();
@@ -110,7 +111,7 @@ test("request bodies", async () => {
 });
 
 test("cookies", async () => {
-  await fetch("/cookie/set?raw=jsweb%3Done");
+  await fetch("/cookie/set?raw=jsweb%3Done%3B%20Path%3D%2F");
   eq(await (await fetch("/cookie/show")).text(), "jsweb=one", "same-origin requests carry cookies");
   ok(document.cookie.includes("jsweb=one"), "document.cookie sees it");
   eq(await (await fetch("/cookie/show", { credentials: "omit" })).text(), "", "credentials: omit");

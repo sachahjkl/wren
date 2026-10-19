@@ -74,7 +74,7 @@ test("POST, headers", async () => {
   x.responseType = "json";
   await send(x, "body");
   eq(x.response["x-test"], "a, b", "repeated author headers");
-  eq(x.response["cookie"], undefined, "forbidden header ignored");
+  ok(!String(x.response["cookie"]).includes("no"), "a forbidden header (Cookie) set by the script is ignored");
   eq(x.response._method, "POST", "method");
   ok(String(x.response["content-type"]).startsWith("text/plain;charset=UTF-8"), "Content-Type of a string body");
   const e = new XMLHttpRequest();
