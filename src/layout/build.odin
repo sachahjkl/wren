@@ -731,7 +731,7 @@ visit_text :: proc(c: ^Ctx, f: Frame, n: ^dom.Node) {
 	text := text_transform(c, n.text, cs.text_transform, &prev)
 	ib := c.l.boxes[g.parent].kind == .Inline ? g.parent : NONE
 	src := owner == base.NIL_HANDLE ? Item_Src.Initial : Item_Src.Element
-	add_item(c, Inline_Item{kind = .Text, src = src, box = ib, ifc = g.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = g.deco, deco_color = g.deco_color, deco_box = g.deco_box})
+	add_item(c, Inline_Item{kind = .Text, src = src, box = ib, ifc = g.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, source = f.node, deco = g.deco, deco_color = g.deco_color, deco_box = g.deco_box})
 }
 
 @(private)

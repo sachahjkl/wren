@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Interactions</title>
+<style>
+body { font-family: "Segoe UI", sans-serif; font-size: 16px; margin: 24px 32px; color: #222; line-height: 1.45; }
+h1 { font-size: 26px; margin: 0 0 12px; }
+.cols { display: flex; gap: 24px; }
+.cols > div { flex: 1; }
+table { border-collapse: collapse; margin: 12px 0; }
+td, th { border: 1px solid #bbb; padding: 4px 10px; }
+.box { overflow: auto; height: 80px; border: 1px solid #999; padding: 4px 8px; }
+.noselect { user-select: none; color: #777; }
+.all { user-select: all; background: #eef; padding: 0 4px; }
+.pink::selection { background: #ff4fa3; color: white; }
+a:focus-visible { outline: 3px solid #e67700; outline-offset: 2px; }
+.rot { display: inline-block; transform: rotate(-4deg); background: #ffe; padding: 2px 6px; }
+</style>
+</head>
+<body>
+<h1>Selection, menus and keyboard</h1>
+<p id="p1">The first paragraph has <b>bold words</b>, an <a href="layout.html">ordinary link</a> and <i>some italics</i>. Double click a word,
+triple click a paragraph, drag across several paragraphs, Shift+click to extend.</p>
+<p id="p2" class="pink">This paragraph paints its selection in pink (::selection). <span class="all">user-select: all</span> selects as one unit;
+<span class="noselect">this text cannot be selected</span>.</p>
+<div class="cols">
+  <div><p>Left column: the gutter between the columns stays in the column you start in.</p></div>
+  <div><p>Right column, with an image <img src="images/effects-photo.png" alt="photo" width="80" height="54"> inside the text.</p></div>
+</div>
+<table>
+  <tr><th>Name</th><th>Value</th></tr>
+  <tr><td>alpha</td><td>1</td></tr>
+  <tr><td>beta</td><td>2</td></tr>
+</table>
+<ul><li>first item</li><li>second item</li></ul>
+<div class="box">A scroll box: line one<br>line two<br>line three<br>line four<br>line five<br>line six<br>line seven</div>
+<p><span class="rot">rotated text is selectable too</span> and <a href="forms.html" id="l2">another link</a>.</p>
+<p><label>A field: <input id="f" value="editable text"></label> <button>Button</button> <a href="images.html" tabindex="0">third link</a></p>
+<p>Searching finds words like interaction, selection and menus. Interaction again: interaction.</p>
+</body>
+</html>

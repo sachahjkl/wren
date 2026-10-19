@@ -97,6 +97,7 @@ Comp_Chunk :: struct {
 @(private)
 Comp :: struct {
 	seen_passes, seen_refresh, seen_restyled: u64,
+	sel_key:    u64,   // selection_paint_key when the pictures were recorded
 	items_len:  int,
 	chunk_items: int,
 	direct:     bool,                    // too many chunks: drawn item by item
@@ -684,6 +685,11 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 		check_paint_values(c, l)
 	}
 	if c.direct { return false }
+	// the selection and find highlights are recorded with the text: a change records the chunks again (lazily, as they show)
+	if k := selection_paint_key(); k != c.sel_key {
+		c.sel_key = k
+		for &ch in c.chunks { if !ch.immediate { ch.recorded = false } }
+	}
 	v := lay.view_make(l, size, scroll, cull = false)
 	screen := lay.Rect{origin, origin + size}
 	shift := lay.Matrix{1, 0, 0, 1, origin.x, origin.y}

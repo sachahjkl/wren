@@ -279,7 +279,7 @@ Pass :: struct {
 	opt:      css.Parse_Options,
 	ws:       [Prop]Cand,      // winners of the element being styled; only `touched` entries are reset between elements
 	touched:  [dynamic]Prop,
-	lists:    [3][dynamic]Entry,   // matched entries: the element, ::before, ::after
+	lists:    [4][dynamic]Entry,   // matched entries: the element, ::before, ::after, ::selection
 	compare:  bool,            // partial restyle: keep the old computed style when nothing changed
 	changed:  bool,            // ... and report whether some element really changed
 	layout_changed: bool,      // ... in a way that is not paint-only (paint_change.odin)
@@ -320,6 +320,7 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 			case .None: slot = 0
 			case .Before: slot = 1
 			case .After: slot = 2
+			case .Selection: slot = 3
 			case: continue
 			}
 			rejected := false
@@ -328,7 +329,7 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 			if matches_complex(&p.mc, el, ent.complex) { append(&p.lists[slot], ent) }
 		}
 	}
-	for i in 0 ..< 3 { clear(&p.lists[i]) }
+	for i in 0 ..< 4 { clear(&p.lists[i]) }
 	ix := &p.e.index
 	if id, ok := attr(n, "id"); ok && id != "" {
 		if l, found := ix.by_id[id]; found { check(p, el, l[:], ancestors) }
@@ -522,9 +523,10 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 		}
 	}
 	// the element's own lists are consumed before ::before / ::after reuse the buffers
-	before_entries, after_entries: [dynamic]Entry
+	before_entries, after_entries, selection_entries: [dynamic]Entry
 	if len(p.lists[1]) > 0 { before_entries = make([dynamic]Entry, context.temp_allocator); append(&before_entries, ..p.lists[1][:]) }
 	if len(p.lists[2]) > 0 { after_entries = make([dynamic]Entry, context.temp_allocator); append(&after_entries, ..p.lists[2][:]) }
+	if len(p.lists[3]) > 0 { selection_entries = make([dynamic]Entry, context.temp_allocator); append(&selection_entries, ..p.lists[3][:]) }
 	c := build_style(p, h, parent, p.lists[0][:], inline_rule)
 
 	for i in 1 ..< 3 {
@@ -534,6 +536,8 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 		if pc.display == .None || pc.content.kind != .Items { continue }
 		if i == 1 { c.before = pc } else { c.after = pc }
 	}
+	// ::selection: only its colors are used (the painter looks for the nearest element that has one)
+	if len(selection_entries) > 0 { c.selection = build_style(p, h, c, selection_entries[:], nil) }
 	return c
 }
 
@@ -544,7 +548,7 @@ pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^
 	p.alloc = s.alloc
 	match_ctx_init(&p.mc, doc, state)
 	p.touched = make([dynamic]Prop)
-	for i in 0 ..< 3 { p.lists[i] = make([dynamic]Entry) }
+	for i in 0 ..< 4 { p.lists[i] = make([dynamic]Entry) }
 	return p
 }
 
@@ -553,7 +557,7 @@ pass_destroy :: proc(p: ^Pass) {
 	stats_merge(p.e, p.stats)
 	match_ctx_destroy(&p.mc)
 	delete(p.touched)
-	for i in 0 ..< 3 { delete(p.lists[i]) }
+	for i in 0 ..< 4 { delete(p.lists[i]) }
 	free(p)
 }
 
@@ -725,14 +729,14 @@ update_canvas :: proc(s: ^Styled, doc: ^dom.Document) {
 // Partial restyle after a change of dynamic state
 
 state_equal :: proc(a, b: State) -> bool {
-	return a.hover == b.hover && a.active == b.active && a.focus == b.focus && a.target_id == b.target_id
+	return a.hover == b.hover && a.active == b.active && a.focus == b.focus && a.focus_visible == b.focus_visible && a.target_id == b.target_id
 }
 
 @(private)
 changed_kinds :: proc(old, new: State) -> (k: State_Kinds) {
 	if old.hover != new.hover { k += {.Hover} }
 	if old.active != new.active { k += {.Active} }
-	if old.focus != new.focus { k += {.Focus} }
+	if old.focus != new.focus || old.focus_visible != new.focus_visible { k += {.Focus} }
 	if old.target_id != new.target_id { k += {.Target} }
 	return
 }

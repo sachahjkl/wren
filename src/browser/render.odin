@@ -151,6 +151,8 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size
 // One display item at `r` (its rect moved by `off`, the offset of its space plus the page origin; both zero when a
 // picture is recorded in layout coordinates).
 paint_item :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, v: ^lay.View, it: ^lay.Display_Item, r: draw.Rect, off, origin: draw.Vec2) {
+	selection_paint_under(l, dc, it, r)
+	defer selection_paint_over(l, dc, it, r)
 	switch it.kind {
 	case .Box:
 		if page_render.bare != nil && page_render.bare(page_render.content_user, d, it.node) { return }

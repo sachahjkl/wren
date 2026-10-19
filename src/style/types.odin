@@ -269,6 +269,7 @@ Computed :: struct {
 	inherits:   Prop_Set,       // inherited properties whose value came from the parent (not set by a declaration)
 	custom:     ^Custom_Props,
 	before, after: ^Computed,   // generated boxes (nil when `content` is none/normal)
+	selection:  ^Computed,      // ::selection rules of the element (nil: none; colors only are used)
 }
 
 // Longhand properties. Order matters: values that others depend on (color-scheme for every color, font-size for em,

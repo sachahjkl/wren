@@ -8,8 +8,11 @@ import "core:math"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:font"
+import "toolkit:platform"
 import "toolkit:ui"
+import "wb:base"
 import "wb:cookies"
+import "wb:fetch"
 import "wb:url"
 
 // Icon-font glyphs used by the chrome (the toolkit's icon font maps them to ASCII letters).
@@ -135,17 +138,66 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	res := ui.line_edit("###address", &app.address, "Search or enter an address")
 	if app.focus_address {
 		app.focus_address = false
-		if b := ui.prev_box("###address"); b != nil { ui.set_focus(b.key) }
+		if b := ui.prev_box("###address"); b != nil {
+			ui.set_focus(b.key)
+			ui.field_select_all(&app.address)
+			forms_page_blur()
+		}
 	}
+	if res.focused { forms_page_blur() }
 	if res.committed && t != nil {
 		address := strings.clone(strings.trim_space(ui.field_string(&app.address)), context.temp_allocator)
-		if address != "" { navigate(app, t, address) }
+		if address != "" {
+			navigate(app, t, address_or_search(address))
+			ui.set_focus(0)
+			forms_focus_from_chrome(app, t, 1)   // the page has the keyboard after a navigation from the address bar
+		}
+	}
+	if res.cancelled && t != nil { ui.field_set(&app.address, t.url) }   // Escape restores the address of the page
+	if res.right_clicked { address_context_menu(app, ui.mouse_pos()) }
+	if res.focused && (ui.key_press(.Menu) || ui.key_press(.F10, {.Shift})) {
+		address_context_menu(app, {res.box.rect.min.x + em, res.box.rect.max.y}, keyboard = true)
+	}
+
+	// page zoom, when not 100 %: click to reset
+	if t != nil && zoom_percent(t) != 100 {
+		ui.spacer(ui.px(em * 0.3))
+		ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 1.8)), radius = em * 0.4})
+		if ui.tags("ghost_button") {
+			z := ui.button(fmt.aprintf("%d %%###zoom_chip", zoom_percent(t), allocator = ui.frame_allocator()))
+			tip(z, "Page zoom: click to reset (Ctrl+0)")
+			if z.clicked { zoom_set(app, t, 1) }
+		}
 	}
 
 	ui.spacer(ui.px(em * 0.4))
 	main_menu_button(app, t)
 	ui.spacer(ui.px(em * 0.5))
 }
+
+// Makes tab `i` the current one.
+tab_select :: proc(app: ^App, i: int) {
+	if i < 0 || i >= len(app.tabs) || i == app.current { return }
+	app.current = i
+	ui.field_set(&app.address, app.tabs[i].url)
+	app.frames_requested = max(app.frames_requested, 2)
+}
+
+// The page area is a Tab stop of the chrome: Tab from the address bar gives the page the keyboard (its first focusable
+// element, or its last one with Shift+Tab); Shift+Tab past the page's first element comes back to the chrome.
+page_area_focus :: proc(app: ^App, t: ^Tab, pb: ^ui.Box) {
+	if page_focus_leave_backward {
+		page_focus_leave_backward = false
+		ui.focus_step(&app.ui_state, pb.key, -1)
+		return
+	}
+	if ui.focus_key() != pb.key { return }
+	ui.set_focus(0)
+	forms_focus_from_chrome(app, t, ui.tab_direction(&app.ui_state) < 0 ? -1 : 1)
+}
+
+// Set by the page's context menu: open the page information popup of the security chip.
+page_info_request: bool
 
 ////////////////////////////////
 // Security chip and page information
@@ -183,6 +235,7 @@ security_chip :: proc(app: ^App, t: ^Tab) {
 			ui.label(fmt.aprintf("%s###sec_label", sec.label, allocator = ui.frame_allocator()))
 		}
 		ui.spacer(ui.px(em * 0.65))
+		if page_info_request { page_info_request = false; sig.clicked = !ui.ctx_menu_is_open(ui.key_from_string(ui.parent_box().parent.key, "###page_info")) }
 		if sig.clicked {
 			key := ui.key_from_string(ui.parent_box().parent.key, "###page_info")
 			if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else {
@@ -362,47 +415,105 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 	key := ui.key_from_string(b.parent.key, "###main_menu")
 	if sig.clicked {
 		if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else {
-			ui.ctx_menu_open(key, {b.rect.max.x - em * 17, b.rect.max.y + 6}, b.key)
+			ui.ctx_menu_open_rect(key, b.rect, b.key)
 		}
 	}
 	tip(sig, "Menu")
 
-	w := em * 17
-	if ui.ctx_menu(key, w) {
+	if ui.ctx_menu(key) {
 		can_back := t != nil && t.hist > 0
 		can_forward := t != nil && t.hist + 1 < len(t.history)
-		ui.spacer(ui.px(em * 0.3))
+		web := t != nil && t.kind == .Web
 		if ui.menu_item("New tab", "Ctrl+T", icon = GLYPH_ADD).clicked { tab_open(app) ; return }
+		if ui.menu_item("Reopen closed tab", "Ctrl+Shift+T", enabled = len(closed_tabs) > 0).clicked { reopen_closed_tab(app); return }
 		if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close(app, app.current); return }
-		ui.hline(ui.px(w))
-		if ui.disabled(!can_back) { if ui.menu_item("Back", "Alt+Left", icon = GLYPH_BACK).clicked { go_history(app, t, -1) } }
-		if ui.disabled(!can_forward) { if ui.menu_item("Forward", "Alt+Right", icon = GLYPH_FORWARD).clicked { go_history(app, t, +1) } }
+		ui.menu_separator()
+		if ui.menu_item("Back", "Alt+Left", icon = GLYPH_BACK, enabled = can_back).clicked { go_history(app, t, -1) }
+		if ui.menu_item("Forward", "Alt+Right", icon = GLYPH_FORWARD, enabled = can_forward).clicked { go_history(app, t, +1) }
 		if ui.menu_item("Reload", "F5", icon = GLYPH_RELOAD).clicked && t != nil { reload(app, t) }
-		if ui.menu_item("Home", icon = GLYPH_HOME).clicked && t != nil { navigate(app, t, HOME_URL) }
-		ui.hline(ui.px(w))
+		if ui.menu_item("Home", "Alt+Home", icon = GLYPH_HOME).clicked && t != nil { navigate(app, t, app.cfg.homepage) }
+		ui.menu_separator()
+		if ui.menu_submenu(fmt.tprintf("Zoom (%d %%)###zoom_sub", zoom_percent(t)), enabled = web) {
+			if ui.menu_item("Zoom in", "Ctrl+Plus").clicked { zoom_step(app, t, 1) }
+			if ui.menu_item("Zoom out", "Ctrl+Minus").clicked { zoom_step(app, t, -1) }
+			if ui.menu_item("Actual size", "Ctrl+0", enabled = zoom_percent(t) != 100).clicked { zoom_set(app, t, 1) }
+		}
+		if ui.menu_item("Find in page...", "Ctrl+F", enabled = web).clicked { find_open(app) }
+		if ui.menu_item("Save page as...", "Ctrl+S", enabled = web && t.page != nil).clicked { save_page(app, t) }
+		if ui.menu_item("View page source", "Ctrl+U", enabled = web && !strings.has_prefix(t.url, VIEW_SOURCE)).clicked { view_source(app, t) }
+		ui.menu_separator()
 		if ui.menu_item("Show console", checked = app.show_console).clicked { app.show_console = !app.show_console }
 		if ui.menu_item("Settings", icon = GLYPH_GEAR).clicked && t != nil { navigate(app, t, "about:config") }
-		ui.hline(ui.px(w))
-		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.8))})
+		ui.menu_separator()
+		ui.next({width = ui.px(em * 14), height = ui.px(ui.dense(em * 1.8))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))
 			if ui.tags("weak") { ui.label(fmt.aprintf("%s %s###about", APP_NAME, APP_VERSION, allocator = ui.frame_allocator())) }
 		}
-		ui.spacer(ui.px(em * 0.2))
 	}
 }
 
 ////////////////////////////////
 // Keyboard shortcuts of the chrome
 
+// The keys the page did not use (forms_shell.odin routes them to the page first; the browser's own shortcuts are never
+// the page's: route_key lets them through).
 chrome_shortcuts :: proc(app: ^App) {
 	t := current_tab(app)
+	n := len(app.tabs)
+	ctrl, cs := platform.Modifiers{.Ctrl}, platform.Modifiers{.Ctrl, .Shift}
 	switch {
-	case ui.key_press(.T, {.Ctrl}): tab_open(app)
-	case ui.key_press(.W, {.Ctrl}): tab_close(app, app.current)
-	case ui.key_press(.L, {.Ctrl}): app.focus_address = true
-	case ui.key_press(.F5), ui.key_press(.R, {.Ctrl}): if t != nil { reload(app, t) }
+	case ui.key_press(.T, ctrl): tab_open(app)
+	case ui.key_press(.T, cs): reopen_closed_tab(app)
+	case ui.key_press(.W, ctrl), ui.key_press(.F4, ctrl): tab_close(app, app.current)
+	case ui.key_press(.L, ctrl), ui.key_press(.D, {.Alt}): app.focus_address = true
+	case ui.key_press(.F6), ui.key_press(.F6, {.Shift}):
+		// address bar <-> page
+		if ui.focus_key() != 0 && ui.focused_name() == "address" { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { app.focus_address = true }
+	case ui.key_press(.F5), ui.key_press(.R, ctrl): if t != nil { reload(app, t) }
+	case ui.key_press(.F5, ctrl), ui.key_press(.R, cs): if t != nil { reload(app, t) }   // no HTTP cache yet: the same reload
 	case ui.key_press(.Left, {.Alt}): if t != nil { go_history(app, t, -1) }
 	case ui.key_press(.Right, {.Alt}): if t != nil { go_history(app, t, +1) }
+	case ui.key_press(.Home, {.Alt}): if t != nil { navigate(app, t, app.cfg.homepage) }
+	case ui.key_press(.Tab, ctrl), ui.key_press(.Page_Down, ctrl): if n > 0 { tab_select(app, (app.current + 1) % n) }
+	case ui.key_press(.Tab, cs), ui.key_press(.Page_Up, ctrl): if n > 0 { tab_select(app, (app.current + n - 1) % n) }
+	case ui.key_press(.F, ctrl), ui.key_press(.F3):
+		if t != nil && t.kind == .Config { app.config_view.focus_search = true } else if t != nil && t.kind == .Web { if find.open { find.focus = true } else { find_open(app) } }
+	case ui.key_press(.U, ctrl): view_source(app, t)
+	case ui.key_press(.S, ctrl): if t != nil { save_page(app, t) }
+	case ui.key_press(.Equal, ctrl), ui.key_press(.Num_Add, ctrl), ui.key_press(.Equal, cs): zoom_step(app, t, 1)
+	case ui.key_press(.Minus, ctrl), ui.key_press(.Num_Subtract, ctrl): zoom_step(app, t, -1)
+	case ui.key_press(.N0, ctrl): zoom_set(app, t, 1)
+	case t != nil && t.load != nil && t.load.task != base.NIL_HANDLE && ui.focus_key() == 0 && ui.key_press(.Escape):
+		// stops a load in progress (the document's request, and the modules still downloading)
+		stop_loading(app, t)
+	case ui.key_press(.Menu), ui.key_press(.F10, {.Shift}):
+		// the menu of what has the keyboard: a tab of the strip, else the page (the address bar handles its own)
+		name := ui.focused_name()
+		if strings.has_prefix(name, "tabs_") {
+			if b := ui.box_from_key(ui.focus_key()); b != nil {
+				index := 0
+				for c in name[len("tabs_"):] { index = index * 10 + int(c - '0') }
+				tab_context_menu(app, index, {b.rect.min.x, b.rect.max.y}, keyboard = true)
+			}
+		} else if t != nil && t.kind == .Web && page_has_keyboard(app) {
+			page_context_menu_keyboard(app, t)
+		}
 	}
+	for k in platform.Key.N1 ..= platform.Key.N8 {
+		if ui.key_press(k, ctrl) { tab_select(app, min(int(k) - int(platform.Key.N1), n - 1)) }
+	}
+	if ui.key_press(.N9, ctrl) { tab_select(app, n - 1) }
+}
+
+// Escape while loading: the requests of the document stop (what arrived stays).
+stop_loading :: proc(app: ^App, t: ^Tab) {
+	load := t.load
+	if load == nil { return }
+	stopped := false
+	if load.task != base.NIL_HANDLE { fetch.cancel(&app.loader, load.task); load.task = base.NIL_HANDLE; stopped = true }
+	for s in load.slots { if s.state == .Pending { s.state = .Failed; stopped = true } }
+	if stopped { set_status(t, "stopped") }
+	if load.page == nil { t.load = nil }   // nothing arrived: the tab is no longer loading (the scope still owns the load)
+	app.frames_requested = max(app.frames_requested, 2)
 }

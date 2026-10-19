@@ -10,6 +10,7 @@ import "wb:dom"
 
 State :: struct {
 	hover, active, focus: base.Handle,
+	focus_visible:        bool,         // the focus should be visible (:focus-visible): it came from the keyboard, or is in a text field
 	target_id:            string,       // the fragment of the document URL, for :target
 	controls:             Control_Provider,
 }
@@ -390,7 +391,8 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 	case .Has: return matches_has(m, el, s.list^)
 	case .Hover: return m.state.hover != base.NIL_HANDLE && dom.is_ancestor_or_self(m.doc, el, m.state.hover)
 	case .Active: return m.state.active != base.NIL_HANDLE && dom.is_ancestor_or_self(m.doc, el, m.state.active)
-	case .Focus, .Focus_Visible: return m.state.focus == el
+	case .Focus: return m.state.focus == el
+	case .Focus_Visible: return m.state.focus == el && m.state.focus_visible
 	case .Focus_Within: return m.state.focus != base.NIL_HANDLE && dom.is_ancestor_or_self(m.doc, el, m.state.focus)
 	case .Link, .Any_Link:
 		if n.name != "a" && n.name != "area" { return false }
