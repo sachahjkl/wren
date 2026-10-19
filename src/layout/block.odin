@@ -196,7 +196,8 @@ Result :: struct {
 
 @(private)
 collapses_top :: proc(b: ^Box) -> bool {
-	return b.kind == .Block && .Bfc not_in b.flags && b.border[0] == 0 && b.padding[0] == 0 && .Block_In_Inline not_in b.flags
+	// (a block-in-inline collapses only when it starts its context: block_in_inline gives it the open margins then)
+	return b.kind == .Block && .Bfc not_in b.flags && b.border[0] == 0 && b.padding[0] == 0
 }
 
 @(private)

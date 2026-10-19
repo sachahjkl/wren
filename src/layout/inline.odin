@@ -1025,7 +1025,8 @@ block_in_inline :: proc(lb: ^Line_Builder, k: i32) {
 	top := lb.y + kb.margin[0]
 	// first in its context: it sits in an anonymous block whose top collapses with the context's, so its top margin
 	// joins the margins still open above (CSS 2.1 §9.2.1.1, §8.3.1)
-	if lb.y == 0 && !lb.any_line && len(lb.lines) == 0 && lb.fc != nil && lb.fc.open != nil {
+	leading := lb.y == 0 && !lb.any_line && len(lb.lines) == 0 && lb.fc != nil && lb.fc.open != nil
+	if leading {
 		strut_add(lb.fc.open, kb.margin[0])
 		top = 0
 	}
@@ -1034,12 +1035,17 @@ block_in_inline :: proc(lb: ^Line_Builder, k: i32) {
 		res = layout_contents(c, k, w, -1, -1, nil)
 	} else {
 		cfc := Flow_Ctx{bfc = lb.fc.bfc, x = lb.fc.x + kb.margin[3] + content_x(kb), y = content_top(lb.fc) + top + content_y(kb)}
+		// ... and its own first child's margins too, when nothing separates them
+		if leading && collapses_top(kb) { cfc.y, cfc.open = lb.fc.y, lb.fc.open }
 		res = layout_contents(c, k, w, -1, -1, &cfc)
 	}
 	kb = &c.l.boxes[k]
 	kb.pos = {lb.cx + kb.margin[3], lb.cy + top + kb.pre_h}
-	lb.y = top + kb.pre_h + res.h + kb.margin[2]
-	lb.block_margin, lb.block_end = kb.margin[2], lb.y
+	// its bottom margin with its last child's (when they collapse, layout_contents leaves the child's out of res.h)
+	bottom := res.end
+	strut_add(&bottom, kb.margin[2])
+	lb.y = top + kb.pre_h + res.h + strut_value(bottom)
+	lb.block_margin, lb.block_end = strut_value(bottom), lb.y
 	lb.first = false
 	lb.any_line = true
 	start_line(lb)
