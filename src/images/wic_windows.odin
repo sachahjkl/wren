@@ -92,7 +92,7 @@ IWICImagingFactory_Vtbl :: struct {
 	CreateBitmapClipper:        rawptr,
 	CreateBitmapFlipRotator:    rawptr,
 	CreateStream:               proc "system" (this: ^IWICImagingFactory, out: ^^IWICStream) -> HRESULT,
-	CreateColorContext:         rawptr,
+	CreateColorContext:         proc "system" (this: ^IWICImagingFactory, out: ^^IWICColorContext) -> HRESULT,
 	CreateColorTransformer:     rawptr,
 	CreateBitmap:               rawptr,
 	CreateBitmapFromSource:     rawptr,
@@ -151,7 +151,7 @@ IWICBitmapFrameDecode :: struct { using vt: ^IWICBitmapFrameDecode_Vtbl }
 IWICBitmapFrameDecode_Vtbl :: struct {
 	using source: Bitmap_Source_Vtbl,
 	GetMetadataQueryReader: proc "system" (this: ^IWICBitmapFrameDecode, out: ^^IWICMetadataQueryReader) -> HRESULT,
-	GetColorContexts:       rawptr,
+	GetColorContexts:       proc "system" (this: ^IWICBitmapFrameDecode, count: u32, contexts: [^]^IWICColorContext, actual: ^u32) -> HRESULT,
 	GetThumbnail:           rawptr,
 }
 
@@ -166,6 +166,21 @@ IWICBitmapScaler :: struct { using vt: ^IWICBitmapScaler_Vtbl }
 IWICBitmapScaler_Vtbl :: struct {
 	using source: Bitmap_Source_Vtbl,
 	Initialize: proc "system" (this: ^IWICBitmapScaler, src: rawptr, w, h: u32, mode: u32) -> HRESULT,
+}
+
+WICColorContextUninitialized :: u32(0)
+WICColorContextProfile :: u32(1)
+WICColorContextExifColorSpace :: u32(2)
+
+IWICColorContext :: struct { using vt: ^IWICColorContext_Vtbl }
+IWICColorContext_Vtbl :: struct {
+	using unknown: Unknown_Vtbl,
+	InitializeFromFilename:       rawptr,
+	InitializeFromMemory:         rawptr,
+	InitializeFromExifColorSpace: rawptr,
+	GetType:           proc "system" (this: ^IWICColorContext, type: ^u32) -> HRESULT,
+	GetProfileBytes:   proc "system" (this: ^IWICColorContext, size: u32, buffer: [^]u8, actual: ^u32) -> HRESULT,
+	GetExifColorSpace: proc "system" (this: ^IWICColorContext, value: ^u32) -> HRESULT,
 }
 
 IWICMetadataQueryReader :: struct { using vt: ^IWICMetadataQueryReader_Vtbl }

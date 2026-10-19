@@ -58,7 +58,7 @@ level_of :: proc(d: style.Display) -> Level {
 @(private)
 is_replaced_element :: proc(n: ^dom.Node) -> bool {
 	switch len(n.name) {
-	case 3: return n.name == "img"
+	case 3: return n.name == "img" || n.name == "svg"   // an <svg> in HTML: its subtree is drawn as one picture
 	case 5: return n.name == "input" || n.name == "embed" || n.name == "video" || n.name == "audio" || n.name == "meter"
 	case 6: return n.name == "select" || n.name == "iframe" || n.name == "canvas" || n.name == "object"
 	case 8: return n.name == "textarea" || n.name == "progress"

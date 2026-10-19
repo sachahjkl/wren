@@ -160,11 +160,24 @@ natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 	fi := b.fi >= 0 ? b.fi : font_info(c, b.cs)
 	f := c.l.fonts[fi]
 	char_w := measure(c, fi, "0")
+	// a natural ratio without a natural size comes back as (ratio, 1) with neither dimension known (replaced_size)
+	ratio_only :: proc(c: ^Ctx, node: base.Handle) -> (f32, f32, bool, bool, bool) {
+		if c.replaced.ratio == nil { return 0, 0, false, false, false }
+		r := c.replaced.ratio(c.replaced.user, node)
+		return r, 1, false, false, r > 0
+	}
 	switch n.name {
+	case "svg":
+		if c.replaced.intrinsic != nil {
+			if iw, ih, ok := c.replaced.intrinsic(c.replaced.user, h_node); ok { return iw * s, ih * s, true, true }
+		}
+		if rw, rh, hw, hh, ok := ratio_only(c, h_node); ok { return rw, rh, hw, hh }
+		return 300 * s, 150 * s, true, true
 	case "img":
 		if c.replaced.intrinsic != nil {
 			if iw, ih, ok := c.replaced.intrinsic(c.replaced.user, h_node); ok { return iw * s, ih * s, true, true }
 		}
+		if rw, rh, hw, hh, ok := ratio_only(c, h_node); ok { return rw, rh, hw, hh }
 		aw, okw := attr_px(c, h_node, "width")
 		ah, okh := attr_px(c, h_node, "height")
 		if okw || okh { return aw * s, ah * s, okw, okh }
@@ -252,6 +265,9 @@ replaced_size :: proc(c: ^Ctx, bi: i32, cb_w, cb_h: f32) -> Vec2 {
 	// only real replaced content (images, video, canvas...) has a natural aspect ratio: a text field given a width keeps
 	// its natural height instead of growing in proportion
 	if ratio <= 0 && has_w && has_h && nh > 0 && nw > 0 && .Control not_in b.flags { ratio = nw / nh }
+	// a natural ratio and no natural size (natural_size_of): stretched to the containing block, 300 px when it has none
+	stretch := !has_w && !has_h && nw > 0 && nh > 0
+	if stretch && ratio <= 0 { ratio = nw / nh }
 	sw, okw := definite(c, cs.width, cb_w)
 	sh, okh := definite(c, cs.height, cb_h)
 	if okw && bb { sw = max(sw - pbw, 0) }
@@ -261,6 +277,11 @@ replaced_size :: proc(c: ^Ctx, bi: i32, cb_w, cb_h: f32) -> Vec2 {
 	case okw && okh: w, h = sw, sh
 	case okw: w = sw; h = ratio > 0 ? sw / ratio : (has_h ? nh : 0)
 	case okh: h = sh; w = ratio > 0 ? sh * ratio : (has_w ? nw : 0)
+	case stretch:
+		ml := cs.margin[.Left].kind == .Auto ? 0 : px_of(c, cs.margin[.Left], base)
+		mr := cs.margin[.Right].kind == .Auto ? 0 : px_of(c, cs.margin[.Right], base)
+		w = cb_w > 0 ? max(cb_w - pbw - ml - mr, 0) : 300 * c.scale
+		h = w / ratio
 	case:
 		w = has_w ? nw : (ratio > 0 && has_h ? nh * ratio : 0)
 		h = has_h ? nh : (ratio > 0 && has_w ? nw / ratio : 0)

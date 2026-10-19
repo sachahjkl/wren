@@ -50,9 +50,12 @@ Text_Api :: struct {
 }
 
 // Natural size, in CSS px, of the content of a replaced element (a decoded image...). ok = false: not known (yet).
+// `ratio` (optional): the natural ratio (width / height) of content that has one but no natural size (an SVG with only
+// a viewBox, an inline <svg>); such a box is as wide as its containing block (CSS 2.1 §10.3.2).
 Replaced_Api :: struct {
 	user:      rawptr,
 	intrinsic: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool),
+	ratio:     proc(user: rawptr, node: base.Handle) -> f32,
 }
 
 Input :: struct {

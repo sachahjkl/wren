@@ -370,7 +370,8 @@ default_accept :: proc(d: Destination) -> string {
 	case .Document: return "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 	case .Script, .Worker: return "application/wasm,*/*;q=0.8"
 	case .Style:    return "text/css,*/*;q=0.1"
-	case .Image:    return "image/avif,image/webp,image/png,image/svg+xml,image/*;q=0.8,*/*;q=0.5"
+	// the formats package images decodes whatever the system has installed (built-in AVIF, WebP and SVG decoders)
+	case .Image:    return "image/avif,image/webp,image/svg+xml,image/*,*/*;q=0.8"
 	case .Empty, .Font, .Audio, .Video, .Manifest, .Report: return "*/*"
 	}
 	return "*/*"

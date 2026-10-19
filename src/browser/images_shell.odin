@@ -90,7 +90,17 @@ images_shell_init :: proc(app: ^App) {
 	shell.textures = make(map[u64]^Shell_Texture)
 	shell.evicted = make([dynamic]u64)
 	shell.next_ms = -1
-	set_replaced_sizes(lay.Replaced_Api{user = app, intrinsic = shell_intrinsic})
+	set_replaced_sizes(lay.Replaced_Api{user = app, intrinsic = shell_intrinsic, ratio = shell_ratio})
+}
+
+// The natural ratio of a replaced element that has no natural size (an SVG image or inline <svg> with only a viewBox).
+@(private = "file")
+shell_ratio :: proc(user: rawptr, node: base.Handle) -> f32 {
+	p := shell.page
+	if p == nil { return 0 }
+	if n := dom.get(p.doc, node); n != nil && n.name == "svg" { return page.inline_svg_ratio(p, node) }
+	v := page.image_view(p, node)
+	return v.state == .Ready && v.ratio_only ? v.ratio : 0
 }
 
 // The size layout gives an image element (CSS px): its natural size, with the width / height attributes applied as
@@ -101,6 +111,7 @@ shell_intrinsic :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool
 	p := shell.page
 	if p == nil { return 0, 0, false }
 	d := p.doc
+	if n := dom.get(d, node); n != nil && n.name == "svg" { return page.inline_svg_intrinsic(p, node) }
 	attr :: proc(d: ^dom.Document, h: base.Handle, name: string) -> (f32, bool) {
 		v, ok := dom.get_attribute(d, h, name)
 		if !ok { return 0, false }
@@ -115,6 +126,8 @@ shell_intrinsic :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool
 	ah, has_h := attr(d, node, "height")
 	v := page.image_view(p, node)
 	if v.state == .Ready {
+		// an SVG with a ratio and no size: the layout stretches it to its containing block (shell_ratio)
+		if v.ratio_only && !has_w && !has_h { return 0, 0, false }
 		nw, nh := v.natural[0], v.natural[1]
 		switch {
 		case has_w && has_h: return aw, ah, true
@@ -355,6 +368,10 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 	if p == nil || d == nil || p.doc != d { return false }
 	n := dom.get(d, node)
 	if n == nil || n.kind != .Element { return false }
+	if n.name == "svg" {
+		paint_inline_svg(dc, node, content, scale)
+		return true
+	}
 	if n.name != "img" {
 		if n.name != "input" { return false }
 		t, _ := dom.get_attribute(d, node, "type")
@@ -374,7 +391,7 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 		fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, 1000)   // on screen: before anything prefetched
 		if !fp.ok { draw_placeholder(dc, content, .Loading); return true }
 		note_next(fp)
-		tex, ok := texture_for(v.id, fp)
+		tex, ok := texture_for(fp.texture, fp)
 		if !ok { draw_placeholder(dc, content, .Broken); return true }
 		clip := dst.min.x < content.min.x || dst.min.y < content.min.y || dst.max.x > content.max.x || dst.max.y > content.max.y
 		if clip { draw.push_clip(dc, content) }
@@ -382,6 +399,23 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 		if clip { draw.pop_clip(dc) }
 	}
 	return true
+}
+
+// An inline <svg>: its markup rendered at the content box's device size (nothing while it is being rendered, nothing
+// when it cannot be: an inline SVG has no broken-image icon).
+@(private = "file")
+paint_inline_svg :: proc(dc: ^draw.Context, node: base.Handle, content: draw.Rect, scale: f32) {
+	s := max(scale, 0.01)
+	cw, ch := content.max.x - content.min.x, content.max.y - content.min.y
+	if cw < 0.5 || ch < 0.5 { return }
+	v := page.inline_svg_view(shell.page, node, cw / s, ch / s)
+	if v.state != .Ready { return }
+	ww, wh := want_size(content)
+	fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, 1000)
+	if !fp.ok { return }
+	tex, ok := texture_for(fp.texture, fp)
+	if !ok { return }
+	shell.api.draw(shell.api.user, dc, tex, content, {}, WHITE_TINT, {})
 }
 
 // A broken image: a thin frame when the box is larger than the icon, the icon at the top left, the alt text after it.
@@ -452,6 +486,14 @@ images_paint_backgrounds :: proc(dc: ^draw.Context, cs: ^style.Computed, border:
 		sz := layer.size
 		switch sz.kind {
 		case .Auto:
+			// CSS Images 3 §5.2 default sizing: an SVG with a ratio and no size is contained in the area, one with
+			// neither fills it
+			if v.svg && v.ratio_only {
+				k := min(aw / nw, ah / nh)
+				tw, th = nw * k, nh * k
+			} else if v.svg && !v.has_size[0] && !v.has_size[1] {
+				tw, th = aw, ah
+			}
 		case .Cover, .Contain:
 			k := sz.kind == .Contain ? min(aw / nw, ah / nh) : max(aw / nw, ah / nh)
 			tw, th = nw * k, nh * k
@@ -480,7 +522,7 @@ images_paint_backgrounds :: proc(dc: ^draw.Context, cs: ^style.Computed, border:
 		fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, 500)
 		if !fp.ok { continue }
 		note_next(fp)
-		tex, ok := texture_for(v.id, fp)
+		tex, ok := texture_for(fp.texture, fp)
 		if !ok { continue }
 		draw.push_clip(dc, clip_area)   // (rounded corners do not clip background images yet)
 		if (rep_x || rep_y) && shell.api.draw_tiled != nil {

@@ -1,17 +1,19 @@
-// Package images: image files into pixels. Decoding is done by the platform, Windows Imaging Component (WIC), on
-// threads of this package (pool.odin) that each join the COM multithreaded apartment; nothing here runs on the UI thread
-// unless a caller asks for the synchronous entry points (tests, tools).
+// Package images: image files into pixels, on threads of this package (pool.odin), never on the UI thread unless a
+// caller asks for the synchronous entry points (tests, tools). Two decoders:
+//
+//   * the platform, Windows Imaging Component (decode_windows.odin; each decoding thread joins the COM multithreaded
+//     apartment): PNG (first frame: WIC does not animate APNG), JPEG (EXIF orientation applied, reduced decoding in
+//     the DCT), GIF (every frame of an animation composed onto the logical screen with its delay and disposal method,
+//     plus the loop count), BMP, ICO / CUR (the best size), TIFF (first page), HEIF when the Windows codec is there;
+//   * the built-in decoders (native.odin: a Rust static library, native\media), always available whatever Windows
+//     has installed, and memory-safe for these complex formats: WebP (lossy, lossless, alpha, animation), AVIF (8 / 10
+//     / 12 bits, alpha, grids, image sequences, nclx / ICC colour, irot / imir / clap) and SVG (rasterised by resvg at
+//     the size it is shown, in the secure static mode of SVG images: no external resource, no script, no animation).
 //
 // What comes out is always RGBA8 with straight (non-premultiplied) alpha, in sRGB, rows top-down, `stride` bytes apart:
-// the byte order R, G, B, A. That is the layout the graphics toolkit uploads (render.update_texture_rgba). Embedded
-// colour profiles are not applied: pixels are taken as sRGB, as most browsers do for untagged images.
-//
-// Formats: PNG (first frame: WIC does not animate APNG), JPEG (EXIF orientation applied), GIF (every frame of an
-// animation composed onto the logical screen with its delay and disposal method, plus the loop count), BMP, ICO / CUR
-// (the best size), TIFF (first page), and WebP, AVIF, HEIF when the Windows codecs are installed (Microsoft Store: "WebP
-// Image Extensions", "AV1 Video Extension", "HEIF Image Extensions"); without them those fail with Codec_Missing. SVG is
-// recognised and refused with Unsupported_Format: it is a document, not a raster format, and this browser has no SVG
-// renderer yet.
+// the byte order R, G, B, A. That is the layout the graphics toolkit uploads (render.update_texture_rgba). Colour
+// management (images.color_management): an embedded ICC profile (JPEG, PNG, TIFF, WebP, AVIF), AVIF's CICP (nclx) code
+// points and EXIF's Adobe RGB are converted to sRGB with qcms; untagged images are sRGB.
 //
 // The type is found from the bytes (MIME Sniffing §6.1 image patterns), never trusted from the Content-Type, except that
 // an XML type (image/svg+xml) means SVG, and with `X-Content-Type-Options: nosniff` a non-image type is refused.
@@ -40,6 +42,8 @@ Error :: enum u8 {
 	Corrupt,              // the decoder refused the data: truncated, malformed
 	Platform,             // COM or WIC could not be used on this thread
 	Cancelled,
+	Too_Complex,          // SVG: nodes, depth, entity or <use> expansion, or rendering cost over the images.svg.* limits
+	Internal,             // the decoder failed (a bug caught at its boundary): the image is broken, nothing else
 }
 
 error_message :: proc(e: Error) -> string {
@@ -47,7 +51,7 @@ error_message :: proc(e: Error) -> string {
 	case .None: return "no error"
 	case .Empty: return "empty file"
 	case .Unknown_Format: return "not an image (unrecognised format)"
-	case .Unsupported_Format: return "unsupported image format (SVG is not supported)"
+	case .Unsupported_Format: return "unsupported image format"
 	case .Codec_Missing: return "no decoder installed for this format (Windows codec extension missing)"
 	case .Too_Many_Bytes: return "image file too large (images.max_encoded_bytes)"
 	case .Too_Large_Dimension: return "image too wide or too tall (images.max_dimension)"
@@ -57,6 +61,8 @@ error_message :: proc(e: Error) -> string {
 	case .Corrupt: return "image data is corrupt or truncated"
 	case .Platform: return "the imaging component of the system is unavailable"
 	case .Cancelled: return "cancelled"
+	case .Too_Complex: return "SVG document too complex (images.svg.* limits)"
+	case .Internal: return "the image decoder failed"
 	}
 	return "error"
 }
@@ -87,11 +93,28 @@ Limits :: struct {
 	max_image_bytes:   i64,   // decoded size of one image, every frame included
 	min_delay_ms:      int,   // animation frames shorter than this get default_delay_ms (what browsers do with 0 / 10 ms)
 	default_delay_ms:  int,
+	color_manage:      bool,  // convert tagged images (ICC, CICP, EXIF Adobe RGB) to sRGB
+	svg:               Svg_Limits,
+}
+
+// What an SVG document may cost (images.svg.*): checked before usvg builds its tree, and before rendering.
+Svg_Limits :: struct {
+	enabled:         bool,
+	max_nodes:       int,    // XML nodes, and nodes once <use> and markers are expanded
+	max_depth:       int,    // element nesting (and <use> chains): bounds the renderer's recursion
+	max_expansion:   i64,    // bytes the DTD's internal entities may add
+	max_render_cost: i64,    // pixels the drawing may touch (every node's box, layers, filters) at the shown size
+	text:            bool,   // <text> with the system's fonts
+	data_images:     bool,   // <image href="data:..."> (other URLs are never loaded)
+}
+
+SVG_LIMITS_DEFAULT :: Svg_Limits{
+	enabled = true, max_nodes = 200_000, max_depth = 256, max_expansion = 1 << 20, max_render_cost = 4_000_000_000, text = true, data_images = true,
 }
 
 LIMITS_DEFAULT :: Limits{
 	max_encoded_bytes = 64 << 20, max_dimension = 32768, max_pixels = 64_000_000, max_frames = 2000,
-	max_image_bytes = 512 << 20, min_delay_ms = 11, default_delay_ms = 100,
+	max_image_bytes = 512 << 20, min_delay_ms = 11, default_delay_ms = 100, color_manage = true, svg = SVG_LIMITS_DEFAULT,
 }
 
 // What the headers say, known before (or without) decoding the pixels.
@@ -103,6 +126,18 @@ Info :: struct {
 	animated:    bool,    // more than one frame to show in turn (GIF only)
 	orientation: u8,      // EXIF orientation 1..8 (1 = as stored)
 	plays:       int,     // animated: how many times the animation runs, 0 = forever
+	color:       Color_Tag,
+	svg:         Svg_Size,   // SVG: what the document says of its size (width / height above: a default for those who need one)
+}
+
+Color_Tag :: enum u8 { Untagged, Icc, Cicp, Adobe_Rgb }
+
+// The natural size of an SVG document (CSS Images 3 §4.1): width / height of its root when absolute, the ratio of its
+// viewBox (else of width / height). A side that is missing comes from the ratio, or the default object size (300 x 150).
+Svg_Size :: struct {
+	has_w, has_h: bool,
+	w, h:         f32,   // CSS px
+	ratio:        f32,   // width / height; 0 = none
 }
 
 // One frame of an image, full size: animation frames are already composed (disposal applied), ready to show as is.
@@ -196,10 +231,13 @@ sniff_signature :: proc(data: []byte) -> Format {
 
 @(private)
 looks_like_svg :: proc(data: []byte) -> bool {
-	s := string(data[:min(len(data), 1024)])
+	s := string(data[:min(len(data), 4096)])
 	s = strings.trim_prefix(s, "\xef\xbb\xbf")
 	s = strings.trim_left_space(s)
-	return strings.has_prefix(s, "<svg") || (strings.has_prefix(s, "<?xml") && strings.contains(s, "<svg"))
+	// an XML declaration, comments (editors' banners) or a DOCTYPE may come first
+	if strings.has_prefix(s, "<svg") { return true }
+	prolog := strings.has_prefix(s, "<?xml") || strings.has_prefix(s, "<!--") || strings.has_prefix(s, "<!DOCTYPE svg")
+	return prolog && strings.contains(s, "<svg")
 }
 
 ////////////////////////////////
