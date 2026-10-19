@@ -28,19 +28,16 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Build (release)
-        run: |
-          cmd /c build.bat
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+        shell: cmd
+        run: call build.bat
 
       - name: Tests (tools\test_all.ps1 -CI)
-        run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+        shell: cmd
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI
 
       - name: Package (smoke test of tools\package.ps1)
-        run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+        shell: cmd
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1
 
       - uses: actions/upload-artifact@v4
         with:

@@ -34,21 +34,18 @@ jobs:
           "version=$v" >> $env:GITHUB_OUTPUT
 
       - name: Build (release)
-        run: |
-          cmd /c build.bat
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+        shell: cmd
+        run: call build.bat
 
       - name: Tests (tools\test_all.ps1 -CI)
-        run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+        shell: cmd
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI
 
       - name: Package
+        shell: cmd
         run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1 -Version ${{ steps.version.outputs.version }}
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-          powershell -NoProfile -ExecutionPolicy Bypass -File tools\release_notes.ps1 -Tag ${{ github.ref_name }} -Out build\dist\NOTES.md
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+          powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1 -Version ${{ steps.version.outputs.version }} || exit /b 1
+          powershell -NoProfile -ExecutionPolicy Bypass -File tools\release_notes.ps1 -Tag ${{ github.ref_name }} -Out build\dist\NOTES.md || exit /b 1
 
       - name: Publish the release
         env:

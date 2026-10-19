@@ -1,0 +1,5 @@
+# Files are checked out byte for byte as committed, whatever core.autocrlf says: generated files (bindgen -check
+# compares bytes), test fixtures and pages with deliberate line endings stay identical on every machine.
+* -text
+# cmd.exe wants CRLF batch files
+*.bat text eol=crlf

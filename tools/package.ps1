@@ -39,10 +39,13 @@ New-Item -ItemType Directory -Force "$out\examples" | Out-Null
 Copy-Item -Recurse examples\site "$out\examples\site"
 
 # vcruntime140.dll from the Visual C++ redistributable of the installed toolset
-$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-$vs = & $vswhere -latest -products * -property installationPath
-$crt = Get-ChildItem "$vs\VC\Redist\MSVC" -Recurse -Filter vcruntime140.dll |
-    Where-Object { $_.FullName -match '\\MSVC\\[\d.]+\\x64\\Microsoft\.VC\d+\.CRT\\' } | Sort-Object FullName -Descending | Select-Object -First 1
+$redist = $env:VCToolsRedistDir   # set in a developer prompt: the redistributable of the toolset that linked the exe
+if (-not $redist) {
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    $redist = Join-Path (& $vswhere -latest -products * -property installationPath) 'VC\Redist\MSVC'
+}
+$crt = Get-ChildItem $redist -Recurse -Filter vcruntime140.dll |
+    Where-Object { $_.FullName -match '\\[\d.]+\\x64\\Microsoft\.VC\d+\.CRT\\' } | Sort-Object FullName -Descending | Select-Object -First 1
 if (-not $crt) { throw 'vcruntime140.dll (x64) not found in the Visual Studio redistributable' }
 Copy-Item $crt.FullName "$out\vcruntime140.dll"
 

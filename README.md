@@ -144,13 +144,13 @@ Ctrl+B status bar, Ctrl+Shift+B frame statistics.
 
 ## Building from source
 
-Requirements (exact versions used by CI):
+Requirements (CI installs the same: [.github/actions/setup](.github/actions/setup/action.yml)):
 
 | Tool | Version | Used for |
 |---|---|---|
 | Windows | 10 or 11, x64 | the only platform |
 | [Odin](https://github.com/odin-lang/Odin/releases/tag/dev-2026-10) | **`dev-2026-10`** (`dev-2026-10-nightly:84bc3fc`) | the browser and its tools |
-| Visual Studio 2022 (or Build Tools) | "Desktop development with C++": MSVC x64 and a Windows SDK | Odin's linker, Lexbor and the C shims |
+| Visual Studio 2022 or later (or its Build Tools) | "Desktop development with C++": MSVC x64 and a Windows SDK (CI: the runner's Visual Studio) | Odin's linker, Lexbor and the C shims |
 | [Rust](https://rustup.rs) | stable ≥ 1.93, `x86_64-pc-windows-msvc` | the built-in image and font decoders (`native/media`) |
 | [Go](https://go.dev/dl/) | ≥ 1.25.6 | only the test server (`tools/testserver`) |
 | Git | any | submodules, the commit shown in About |
