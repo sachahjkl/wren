@@ -158,8 +158,9 @@ security_chip :: proc(app: ^App, t: ^Tab) {
 
 	next := ui.Style_Mod{width = ui.children_sum(), height = ui.px(ui.dense(em * 2)), radius = em * 0.5}
 	if sec.tone != .Weak {
-		next.bg = draw.Color{var_tone.r, var_tone.g, var_tone.b, 0.14}
-		next.border = draw.Color{var_tone.r, var_tone.g, var_tone.b, 0.45}
+		// tints tuned for linear light: ui.tuned keeps their look in an sRGB frame (render.blend_space)
+		next.bg = ui.tuned(draw.Color{var_tone.r, var_tone.g, var_tone.b, 0.14})
+		next.border = ui.tuned(draw.Color{var_tone.r, var_tone.g, var_tone.b, 0.45})
 	}
 	ui.next(next)
 	b: ^ui.Box

@@ -856,7 +856,7 @@ frame :: proc(app: ^App) {
 	dt := clamp(f32(time.duration_seconds(time.tick_diff(app.last_tick, now))), 0.0005, 0.1)
 	app.last_tick = now
 
-	ui.apply_palette(&app.theme, ui.PALETTE_MIDNIGHT)
+	ui.apply_palette(&app.theme, ui.PALETTE_MIDNIGHT, render.blend_space(&app.r))
 	platform.set_dark_title(app.win, true)
 	base_style := ui.Style{
 		pref = {.X = ui.text_size(), .Y = ui.px(36)},
