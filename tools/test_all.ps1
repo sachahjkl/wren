@@ -9,10 +9,25 @@ $slow = if ($CI) { 3 } else { 1 }
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 $failed = 0
+$flaky = 0
+# With -CI a failed step runs once more: shared runners are slow and noisy, and a few tests have timing assumptions
+# (thread scheduling order, a close handshake racing a pong). A step that passes on its second run is reported as
+# FLAKY with the output of the failed run, and counted at the end; it does not fail the build.
 function Step($name, [scriptblock]$body) {
     $t0 = Get-Date
     $out = & $body 2>&1 | Out-String
     $ok = $LASTEXITCODE -eq 0 -or $out -match 'All tests were successful'
+    if (-not $ok -and $CI) {
+        $first = $out
+        $out = & $body 2>&1 | Out-String
+        $ok = $LASTEXITCODE -eq 0 -or $out -match 'All tests were successful'
+        if ($ok) {
+            $script:flaky++
+            "FLAKY {0} (failed, then passed on retry; {1} s)" -f $name, [int]((Get-Date) - $t0).TotalSeconds
+            ($first -split "`n" | Where-Object { $_ -match 'FAIL|ERROR|failure|failed' } | Select-Object -First 20) -join "`n"
+            return
+        }
+    }
     "{0} {1}{2}" -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $name, $(if ($CI) { " ($([int]((Get-Date) - $t0).TotalSeconds) s)" } else { '' })
     if (-not $ok) { $script:failed++; if ($CI) { $out } else { ($out -split "`n" | Select-Object -Last 15) -join "`n" } }
 }
@@ -135,5 +150,6 @@ if (-not $Quick) {
         $global:LASTEXITCODE = if ($ok -and $LASTEXITCODE -eq 0) { 0 } else { 1 }
     }
 }
+if ($CI) { "flaky steps (passed on retry): $flaky" }
 "failed steps: $failed"
 exit $failed

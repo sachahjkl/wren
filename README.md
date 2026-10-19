@@ -197,8 +197,10 @@ offscreen WARP renderer, and end-to-end tests that drive real pages and Wasm gue
 (network policy, DOM and events, web platform APIs, forms, workers, EventSource and WebSocket, style animations,
 images and image formats). None of them opens a window or needs the internet.
 
-`-CI` is `-Quick` for machines without a display: [GitHub Actions](.github/workflows/ci.yml) runs it on
-`windows-2025` for every push and pull request.
+`-CI` is `-Quick` for shared build machines: end-to-end timeouts are tripled, a failed step's whole output is
+shown, and a step that fails is run once more (one that then passes is reported as `FLAKY` and counted, without
+failing the run). [GitHub Actions](.github/workflows/ci.yml) runs it on `windows-2025` for every push and pull
+request.
 
 ## Writing a page module
 
