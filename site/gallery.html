@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Gallery — Wren</title>
+  <meta name="description" content="Screenshots of Wren, a Windows browser where WebAssembly is the only engine.">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/logo-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="img/logo-64.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><img src="img/logo-64.png" alt="" width="32" height="32">Wren</a>
+    <ul class="nav">
+      <li><a href="index.html#features">Features</a></li>
+      <li><a href="gallery.html" aria-current="page">Gallery</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="index.html#write">Write a page</a></li>
+      <li><a href="https://github.com/sachahjkl/wren">GitHub</a></li>
+    </ul>
+  </div>
+</header>
+
+<main id="main">
+<div class="page-head">
+  <div class="wrap">
+    <h1>Gallery</h1>
+    <p class="intro">Unedited captures of Wren 0.1.0 on Windows 11, at 175% display scaling. The demonstration pages are in <a href="https://github.com/sachahjkl/wren/tree/main/examples/site"><code>examples/site</code></a>.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The browser</h2>
+    <ul class="gallery large">
+      <li><figure>
+        <div class="frame" id="home" style="aspect-ratio: 1580 / 990"><img src="img/home.webp" alt="Wren&#39;s start page, with the tabs drawn in the window&#39;s title bar" width="1580" height="990" loading="lazy"></div>
+        <figcaption>The start page. Tabs live in the title bar, next to the window buttons.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="tabs" style="aspect-ratio: 1580 / 990"><img src="img/tabs.webp" alt="Three tabs open in the title bar: webassembly.org, sacha.house and about:demos" width="1580" height="990" loading="lazy"></div>
+        <figcaption>Tabs in the title bar; the window keeps Snap Layouts on its maximize button.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="demos" style="aspect-ratio: 1580 / 990"><img src="img/demos.webp" alt="about:demos, the index of every demo and test page that comes with the browser" width="1580" height="990" loading="lazy"></div>
+        <figcaption><code>about:demos</code>: every demo and test page, by theme.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="frame-statistics" style="aspect-ratio: 1580 / 990"><img src="img/frame-statistics.webp" alt="The frame statistics panel open over a page of rotated cards" width="1580" height="990" loading="lazy"></div>
+        <figcaption>Frame statistics: phases, GPU steps, compositor, display, memory, build.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="about-config" style="aspect-ratio: 1580 / 990"><img src="img/about-config.webp" alt="about:config: every preference with its description, default and bounds" width="1580" height="990" loading="lazy"></div>
+        <figcaption><code>about:config</code>: every setting, searchable, with its description.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="find" style="aspect-ratio: 1580 / 990"><img src="img/find.webp" alt="Find in page on a CV: the first of nine matches highlighted" width="1580" height="990" loading="lazy"></div>
+        <figcaption>Find in page (Ctrl+F) with a match count.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="context-menu" style="aspect-ratio: 1580 / 990"><img src="img/context-menu.webp" alt="A word selected in a paragraph and the selection&#39;s context menu" width="1580" height="990" loading="lazy"></div>
+        <figcaption>Text selection and its context menu.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="daylight" style="aspect-ratio: 1580 / 990"><img src="img/daylight.webp" alt="The browser in its Daylight palette, showing a light page" width="1580" height="990" loading="lazy"></div>
+        <figcaption>The Daylight palette of the interface.</figcaption>
+      </figure></li>
+    </ul>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <h2>Engine demos</h2>
+    <ul class="gallery large">
+      <li><figure>
+        <div class="frame" id="css-effects" style="aspect-ratio: 1580 / 990"><img src="img/css-effects.webp" alt="Filters, backdrop-filter, mix-blend-mode and clip-path on the effects demo page" width="1580" height="990" loading="lazy"></div>
+        <figcaption><code>filter</code>, <code>backdrop-filter</code>, <code>mix-blend-mode</code>, <code>clip-path</code>, drawn on the GPU.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="css-transforms" style="aspect-ratio: 1580 / 990"><img src="img/css-transforms.webp" alt="Rotated text, nested rounded clips, a rotated scroller and form, group opacity, animated cards" width="1580" height="990" loading="lazy"></div>
+        <figcaption>2D transforms, rounded clips, group opacity, 500 animated cards.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="css-grid" style="aspect-ratio: 1580 / 990"><img src="img/css-grid.webp" alt="A CSS Grid demo: auto-fill gallery, dense packing, alignment" width="1580" height="990" loading="lazy"></div>
+        <figcaption>CSS Grid: auto-fill, dense packing, alignment, subgrid.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="css-gradients" style="aspect-ratio: 1580 / 990"><img src="img/css-gradients.webp" alt="Linear, radial, conic and repeating gradients in several colour spaces" width="1580" height="990" loading="lazy"></div>
+        <figcaption>Gradients computed per pixel, in several colour spaces.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="masks-and-color-glyphs" style="aspect-ratio: 1580 / 990"><img src="img/masks-and-color-glyphs.webp" alt="Masks, background-clip text, fieldset legends and colour glyphs" width="1580" height="990" loading="lazy"></div>
+        <figcaption>Masks, <code>background-clip: text</code>, legends, colour glyphs.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="text" style="aspect-ratio: 1580 / 990"><img src="img/text.webp" alt="A text test page: font fallback, colour emoji, ligatures, OpenType features, many scripts" width="1580" height="990" loading="lazy"></div>
+        <figcaption>DirectWrite text: fallback, emoji, ligatures, OpenType features, bidi.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="wasm-counter" style="aspect-ratio: 1580 / 990"><img src="img/wasm-counter.webp" alt="A page whose behaviour is a WebAssembly module" width="1580" height="990" loading="lazy"></div>
+        <figcaption>A page whose behaviour is a Wasm module: no JavaScript.</figcaption>
+      </figure></li>
+    </ul>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Real sites</h2>
+    <ul class="gallery large">
+      <li><figure>
+        <div class="frame" id="sacha-house" style="aspect-ratio: 1580 / 990"><img src="img/sacha-house.webp" alt="sacha.house: a dark monospace site with a fire-gradient ASCII logo and emoji" width="1580" height="990" loading="lazy"></div>
+        <figcaption>sacha.house: Tailwind CSS, <code>background-clip: text</code>, a fieldset legend, COLRv1 emoji.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="webassembly-org" style="aspect-ratio: 1580 / 990"><img src="img/webassembly-org.webp" alt="webassembly.org in its dark theme" width="1580" height="990" loading="lazy"></div>
+        <figcaption>webassembly.org: dark stylesheet from <code>prefers-color-scheme</code>, SVG icons, an AVIF image.</figcaption>
+      </figure></li>
+      <li><figure>
+        <div class="frame" id="odin-lang-org" style="aspect-ratio: 1580 / 990"><img src="img/odin-lang-org.webp" alt="odin-lang.org in Wren" width="1580" height="990" loading="lazy"></div>
+        <figcaption>odin-lang.org.</figcaption>
+      </figure></li>
+    </ul>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>Wren · a browser where WebAssembly is the only engine</span>
+    <span><a href="https://github.com/sachahjkl/wren/releases/latest">Download for Windows</a></span>
+  </div>
+</footer>
+</body>
+</html>

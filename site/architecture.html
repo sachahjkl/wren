@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Architecture — Wren</title>
+  <meta name="description" content="How Wren is built: ownership, the WebAssembly boundary generated from Web IDL, the Fetch policy layer, the GPU compositor and frame pacing.">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/logo-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="img/logo-64.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><img src="img/logo-64.png" alt="" width="32" height="32">Wren</a>
+    <ul class="nav">
+      <li><a href="index.html#features">Features</a></li>
+      <li><a href="gallery.html">Gallery</a></li>
+      <li><a href="architecture.html" aria-current="page">Architecture</a></li>
+      <li><a href="index.html#write">Write a page</a></li>
+      <li><a href="https://github.com/sachahjkl/wren">GitHub</a></li>
+    </ul>
+  </div>
+</header>
+
+<main id="main">
+<div class="page-head">
+  <div class="wrap">
+    <h1>Architecture</h1>
+    <p class="intro">Wren is one executable, written in Odin, with a handful of statically linked libraries. This page
+      walks through the parts and the rules that hold them together. The source is the reference:
+      <a href="https://github.com/sachahjkl/wren">github.com/sachahjkl/wren</a>.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The packages</h2>
+    <div class="table-box">
+      <table>
+        <thead><tr><th>Package</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td class="n">base</td><td>Scopes (an ownership tree with cleanups) and generational handles with stable pointers.</td></tr>
+          <tr><td class="n">host</td><td>The event loop: thread-safe posts with coalesced wake-ups, timers, a pool for blocking work.</td></tr>
+          <tr><td class="n">net</td><td>Transport only: HTTP(S) on asynchronous WinHTTP, per-host and global queues, back-pressure, cancellation.</td></tr>
+          <tr><td class="n">fetch</td><td>The policy layer of the Fetch Standard: modes, CORS and preflights, credentials, redirects, HSTS, referrer policy, mixed content, MIME checks.</td></tr>
+          <tr><td class="n">url · cookies · csp · http</td><td>WHATWG URLs and the Public Suffix List, the cookie jar (RFC 6265bis), Content Security Policy 3, headers and MIME types.</td></tr>
+          <tr><td class="n">html · dom</td><td>HTML parsing with Lexbor, charset sniffing; the document tree and event dispatch (capture, target, bubble).</td></tr>
+          <tr><td class="n">css · style</td><td>Tokenizer, parser, selectors, media and container queries; the cascade with layers, <code>var()</code>, a rule index, a Bloom filter and partial restyles.</td></tr>
+          <tr><td class="n">layout</td><td>Block, inline, flex, grid and tables, bidi and line breaking, incremental relayout, display lists cut into paint chunks.</td></tr>
+          <tr><td class="n">wasm</td><td>Wasmtime: instances, imports defined on the linker with address checks, deadlines, limits, compiled-code caches.</td></tr>
+          <tr><td class="n">page</td><td>One document: its DOM, Wasm instances, requests, timers, origin and CSP; the implementations behind the generated imports.</td></tr>
+          <tr><td class="n">images · webfont</td><td>Image decoding on threads (WIC, and Rust decoders for SVG, WebP and AVIF), WOFF and WOFF2.</td></tr>
+          <tr><td class="n">browser</td><td>The shell: window, tabs, navigation, address bar, painter and compositor, about:config, status bar, profiling.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <h2>Rules that keep it from breaking</h2>
+    <ol class="rules">
+      <li><b>One ownership tree.</b> Process, tab, navigation, page, then the page's instances, DOM, requests and timers.
+        Closing a tab or navigating closes a scope; cleanups run newest first, children before parents, so nothing
+        outlives what it points to.</li>
+      <li><b>Handles, never pointers, cross boundaries.</b> A handle is a generation and an index. A destroyed or
+        recycled slot fails to resolve: late network events and callbacks for dead objects are dropped.</li>
+      <li><b>One UI thread, everything else posts.</b> WinHTTP's threads, the blocking pool, image decoders and the
+        colour glyph renderer only post results back. The DOM and the Wasm instances of a page live on the UI thread;
+        text measurement runs in parallel on layout threads.</li>
+      <li><b>Mechanism and policy are separate.</b> <code>net</code> moves bytes and never follows a redirect or
+        stores a cookie. <code>fetch</code> decides, per hop, with the document's environment in hand. A module, a
+        module load and a navigation all go through the same code.</li>
+      <li><b>Everything is bounded, each bound with a reason.</b> Six requests per host and 64 in total, at most 20
+        redirects, cookies per site and in total, the bytes a page may hold, the memory of a module, the duration of
+        every call into it. The limits a user may want to change are preferences in <code>about:config</code>.</li>
+      <li><b>A module cannot reach browser memory.</b> Every address and length an import receives is checked against
+        the module's own memory before the browser reads or writes it.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The WebAssembly boundary</h2>
+    <p class="intro">Every import is described once, in a dialect of Web IDL (<code>api/*.widl</code>: modules,
+      functions, typed handles, enums, flags, structs, callbacks, errors, availability in windows and workers).
+      A generator, <code>bindgen</code>, writes everything else.</p>
+    <div class="cards">
+      <div class="card"><h3>Host trampolines</h3><p>One per import, defined directly on the Wasmtime linker. It checks
+        addresses, validates UTF-8, looks up handles by kind, range-checks enums, then calls the implementation with
+        ordinary Odin values. A missing or mistyped implementation does not compile.</p></div>
+      <div class="card"><h3>The Odin SDK</h3><p><code>sdk/odin/web</code>: distinct handle types, strings and slices,
+        <code>(T, Error)</code> results. Modules whose memory is 64-bit get the same imports with 64-bit
+        addresses.</p></div>
+      <div class="card"><h3>Documentation</h3><p><a href="https://github.com/sachahjkl/wren/tree/main/docs/api"><code>docs/api</code></a>:
+        every function of the 21 modules, with the ABI, so that SDKs for other languages can follow.</p></div>
+      <div class="card"><h3>Conformance tests</h3><p>470 generated cases over 261 functions: addresses out of bounds,
+        invalid UTF-8, dead handles, enums out of range, buffers too small. A pointer outside the memory is a trap,
+        a bad argument is an error or a trap, never undefined behaviour.</p></div>
+    </div>
+    <p class="intro" style="margin-top: 28px">Modules are compiled by Cranelift. Compiled code is kept in memory
+      (keyed by the SHA-256 of the module) and on disk in the profile, authenticated with an HMAC whose key is
+      protected by Windows DPAPI. Interruption uses Wasmtime's epochs, advanced by a thread that only runs while a
+      call is in progress: an idle browser wakes nothing.</p>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <h2>Rendering</h2>
+    <div class="cards">
+      <div class="card"><h3>Retained compositor</h3><p>The display list is cut into paint chunks, recorded once as GPU
+        pictures and replayed. Scrolling, sticky offsets and transform animations change a matrix or a slot; nothing
+        is re-recorded. Only chunks whose content changed are recorded again.</p></div>
+      <div class="card"><h3>Effects kept between frames</h3><p>Filtered layers, backdrops and blended pixels are cached
+        on the GPU while their content is unchanged; colour matrices are folded into the composition. Animating
+        opacity or a blend runs no extra pass.</p></div>
+      <div class="card"><h3>Colours like the web</h3><p>Blending happens on sRGB values as other browsers do, gradients
+        and box shadows are computed exactly in the shader, and text uses grayscale anti-aliasing with contrast tuned
+        like Chromium's.</p></div>
+      <div class="card"><h3>Frame pacing</h3><p>The refresh rate is read from the display path, frames are stamped with
+        the vblank they start on, and animations, <code>requestAnimationFrame</code> and smooth scrolling advance in
+        whole periods. Nothing is drawn when nothing changes.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Measurements</h2>
+    <p class="intro">Medians or percentiles from the repository's tools (<code>wasmbench</code>, <code>perf.ps1</code>,
+      <code>cfg_bench.ps1</code>), on the development machine (RTX 4070 SUPER). Frame budgets are those of a
+      180&nbsp;Hz display: 5.56&nbsp;ms.</p>
+    <div class="table-box">
+      <table>
+        <thead><tr><th>Measure</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Call from a module into the browser, no arguments</td><td class="n">7.3 ns</td></tr>
+          <tr><td>Call with an address and a length</td><td class="n">8.4 ns</td></tr>
+          <tr><td>Call with a 64-byte string, UTF-8 checked</td><td class="n">12.1 ns</td></tr>
+          <tr><td>Instantiating a module already compiled (memory cache)</td><td class="n">0.03 ms</td></tr>
+          <tr><td>Loading the same module from the disk cache after a restart</td><td class="n">0.52 ms</td></tr>
+          <tr><td>Numeric loop, 50 M iterations: Cranelift, against the interpreter Wren used before</td><td class="n">124 ms vs 3146 ms</td></tr>
+          <tr><td>Wheel scrolling 10,000 paragraphs, CPU / GPU per frame, 99th percentile</td><td class="n">1.41 / 2.28 ms</td></tr>
+          <tr><td>Painting while scrolling over content already seen (median)</td><td class="n">0.013 ms</td></tr>
+          <tr><td>The effects page (blurs, backdrops, 18 blend modes), GPU per frame, 99th percentile</td><td class="n">3.2–3.6 → 1.2–1.3 ms</td></tr>
+          <tr><td>about:config, building the interface per frame while scrolling</td><td class="n">34.4 → 0.29 ms</td></tr>
+          <tr><td>Resizing the window: layout of one step on 10,000 paragraphs</td><td class="n">7.1 → 2.5 ms</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="fine" style="margin-top: 12px">Arrows show a measured improvement, before and after the change that made it.</p>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>Wren · a browser where WebAssembly is the only engine</span>
+    <span><a href="https://github.com/sachahjkl/wren/releases/latest">Download for Windows</a></span>
+  </div>
+</footer>
+</body>
+</html>

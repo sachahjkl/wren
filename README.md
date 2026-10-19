@@ -55,9 +55,17 @@ TLS, WIC for images, DirectWrite for text, BCrypt for crypto).
 | **odin-lang.org**, a real site over HTTPS (its scripts do not run) | **webassembly.org**, in its dark color scheme |
 | ![Frame statistics panel](docs/screenshots/frame-statistics.png) | ![about:config](docs/screenshots/about-config.png) |
 | **Frame statistics** (Ctrl+Shift+B): phases per frame, display pacing, compositor, Wasm and memory counters | **about:config**: every setting of the browser, documented, searchable and editable |
+| ![Tabs in the title bar](docs/screenshots/tabs.png) | ![about:demos](docs/screenshots/demos.png) |
+| **Tabs in the title bar**, next to the window buttons (Snap Layouts kept) | **about:demos**: every demo and test page that comes with the browser, by theme |
+| ![Text: fallback, emoji, OpenType, scripts](docs/screenshots/text.png) | ![sacha.house in Wren](docs/screenshots/sacha-house.png) |
+| **Text** on DirectWrite: per-character fallback, color emoji, ligatures and OpenType features, bidi | **sacha.house**: a Tailwind stylesheet, `background-clip: text`, a fieldset legend, COLRv1 emoji from a web font |
+| ![Find in page](docs/screenshots/find.png) | ![Selection and its context menu](docs/screenshots/context-menu.png) |
+| **Find in page** (Ctrl+F) with a match count | **Text selection** and context menus |
+| ![The Daylight palette](docs/screenshots/daylight.png) | |
+| The **Daylight** palette of the interface (`browser.ui.theme`) | |
 
-The demo pages are in [`examples/site`](examples/site) (served by the test server, see [Try it](#try-it)).
-Screenshots are taken with `tools\screenshot.ps1`.
+The demo pages are in [`examples/site`](examples/site); `about:demos` lists them all (see [Try it](#try-it)).
+Screenshots show the whole window and are all taken in one pass by `tools\shots.ps1` (README and site).
 
 ## Features
 
@@ -129,9 +137,10 @@ Everything below exists in the code today and is covered by the tests of [`tools
 Download `wren-<version>-windows-x64.zip` from the [latest release](https://github.com/sachahjkl/wren/releases/latest),
 unzip it anywhere and run `wren.exe`. It needs Windows 10 or 11 (x64) with a Direct3D 11 GPU; nothing else to install.
 
-The cards of the start page and the screenshots above use the demo pages of `examples/site`, served by a small local
-test server that is in the zip too: run `demo.bat` (it starts `testserver.exe` on 127.0.0.1:8765 and opens Wren on the
-demo page), or start them yourself:
+The start page links to `about:demos`, the index of every demo and test page. They come in the zip, in `demos\` next to
+`wren.exe`, and most open straight from disk. The few that need a server (network images, forms, CSP, workers) are
+marked; the small local test server is in the zip too: run `demo.bat` (it starts `testserver.exe` on 127.0.0.1:8765 and
+opens `about:demos`), or start them yourself:
 
     testserver.exe                                   # http://127.0.0.1:8765, https://127.0.0.1:8766 (self-signed)
     wren.exe http://127.0.0.1:8765/site/effects.html
@@ -140,7 +149,8 @@ Useful command-line options: `--profile DIR` (another profile directory; the def
 `--pref name=value` (any preference of `about:config`), `--policy FILE`.
 
 Keys: Ctrl+T / Ctrl+W tabs, Ctrl+L address bar, Ctrl+F find, Ctrl+Plus / Minus / 0 zoom, Ctrl+U view source,
-Ctrl+B status bar, Ctrl+Shift+B frame statistics.
+Ctrl+B status bar, Ctrl+Shift+B frame statistics, F11 full screen. The tabs sit in the title bar
+(`browser.window.integrated_titlebar = false` brings back the Windows one).
 
 ## Building from source
 
