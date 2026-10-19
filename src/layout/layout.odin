@@ -83,7 +83,6 @@ run_full :: proc(l: ^Layout, input: Input) {
 	reserve_lines(l)
 	t1 := time.tick_now()
 	pre_run(&c, layout_root)
-	c.pre_boxes = nil
 	t2 := time.tick_now()
 	finish(&c)
 	t3 := time.tick_now()

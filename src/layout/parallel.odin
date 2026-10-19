@@ -158,13 +158,15 @@ pre_model :: #force_inline proc(c: ^Ctx, ch: i32, k: ^Box) -> bool {
 Pre_Predict :: struct {
 	c:      ^Ctx,
 	boxes:  []Pre_Box,
+	plain:  []bool,
 	chunks: int,
 }
 
 @(private)
 pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box {
 	l := c.l
-	pp := Pre_Predict{c = c, boxes = make([]Pre_Box, len(l.boxes), context.temp_allocator)}
+	pp := Pre_Predict{c = c, boxes = make([]Pre_Box, len(l.boxes), context.temp_allocator), plain = make([]bool, len(l.boxes), context.temp_allocator)}
+	c.plain = pp.plain
 	pp.chunks = clamp(len(l.boxes) / 1024, 1, host.thread_pool_size(pool) * 4)
 	host.parallel_for(pool, pp.chunks, proc(data: rawptr, k: int) {
 		pp := (^Pre_Predict)(data)
@@ -181,6 +183,10 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 			x.parent = p
 			// dead boxes (partial rebuilds) may point at styles freed since
 			if p == NONE || .Dead in b.flags { continue }
+			if cs := b.cs; cs != nil {
+				pp.plain[i] = cs.width.kind == .Auto && cs.min_width.kind == .Auto && cs.max_width.kind == .None &&
+					cs.height.kind == .Auto && cs.min_height.kind == .Auto && cs.max_height.kind == .None && cs.aspect_ratio <= 0
+			}
 			if .Ifc in b.flags {
 				x.simple = pre_simple(l, b)
 				if x.simple && c.inc != nil { x.old_cw = pre_stale(b) ? -1 : b.cache_in[0] - pb_w(b) }
@@ -261,6 +267,7 @@ pre_simple :: proc(l: ^Layout, b: ^Box) -> bool {
 pre_run :: proc(c: ^Ctx, walk: proc(c: ^Ctx)) {
 	l := c.l
 	l.pre_counts = {}
+	defer c.pre_boxes, c.plain = nil, nil   // found for this block layout only
 	pool, pre := pre_layout(c)
 	if pre == nil { walk(c); return }
 	defer par_release()

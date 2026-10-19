@@ -422,7 +422,6 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	l.passes[.Incremental] += 1
 	t1 := time.tick_now()
 	pre_run(&c, layout_root)
-	c.pre_boxes = nil
 	l.inc.last_laid = len(pass.laid)
 	t2 := time.tick_now()
 	t3, t4: time.Tick

@@ -113,6 +113,15 @@ shrink_to_fit :: proc(c: ^Ctx, bi: i32, avail: f32) -> f32 {
 @(private)
 block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 	b := &c.l.boxes[bi]
+	if b.kind == .Block && .Block_In_Inline not_in b.flags && is_plain(c, bi) {
+		// width, min-width, max-width auto / none: what the general case below finds, without the style
+		ml := b.auto_l ? 0 : b.margin[3]
+		mr := b.auto_r ? 0 : b.margin[1]
+		if b.auto_l { b.margin[3] = 0 }
+		if b.auto_r { b.margin[1] = 0 }
+		b.size.x = max(avail - ml - mr, pb_w(b))
+		return
+	}
 	cs := b.cs
 	w: f32
 	if b.kind == .Replaced {
@@ -181,8 +190,9 @@ collapses_top :: proc(b: ^Box) -> bool {
 
 @(private)
 collapses_bottom :: proc(c: ^Ctx, b: ^Box) -> bool {
-	return b.kind == .Block && .Bfc not_in b.flags && b.border[2] == 0 && b.padding[2] == 0 && b.cs.height.kind == .Auto &&
-		(b.cs.min_height.kind == .Auto || px_of(c, b.cs.min_height, -1) <= 0)
+	if b.kind != .Block || .Bfc in b.flags || b.border[2] != 0 || b.padding[2] != 0 { return false }
+	if is_plain(c, b_index(c, b)) { return true }   // height and min-height auto
+	return b.cs.height.kind == .Auto && (b.cs.min_height.kind == .Auto || px_of(c, b.cs.min_height, -1) <= 0)
 }
 
 // Height a box would use from its `height` property, as a border-box height; ok = false: auto (content-based).
@@ -236,9 +246,12 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_C
 	}
 	if !stack_ok(c) { b.size = {w, 0}; return Result{h = pb_h(b)} }
 	cs := b.cs
-	spec_h, has_h := specified_height(c, b, cb_h)
+	plain := is_plain(c, bi)   // height, its bounds, aspect-ratio: auto (the style is not read for them)
+	spec_h: f32
+	has_h := false
+	if !plain { spec_h, has_h = specified_height(c, b, cb_h) }
 	if forced_h >= 0 { spec_h, has_h = forced_h, true }
-	if !has_h && cs.aspect_ratio > 0 && b.kind != .Replaced && b.kind != .Inline {
+	if !has_h && !plain && cs.aspect_ratio > 0 && b.kind != .Replaced && b.kind != .Inline {
 		spec_h, has_h = (w - pb_w(b)) / cs.aspect_ratio + pb_h(b), true
 	}
 	if has_h && forced_h < 0 { spec_h = clamp_h(c, b, spec_h, cb_h) }
@@ -294,7 +307,14 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_C
 		content_h = 0
 	}
 	b = &c.l.boxes[bi]
-	h := has_h ? spec_h : clamp_h(c, b, content_h + pb_h(b), cb_h)
+	h: f32
+	if has_h {
+		h = spec_h
+	} else if plain {
+		h = max(content_h + pb_h(b), pb_h(b))   // clamp_h with no bounds
+	} else {
+		h = clamp_h(c, b, content_h + pb_h(b), cb_h)
+	}
 	if b.kind == .Table { h = content_h }
 	if .Root in b.flags { h = max(h, c.vp.y) }
 	b.size = {w, h}
@@ -330,7 +350,7 @@ flow_blocks :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse_t
 	local: Strut
 	open := collapse_top && fc.open != nil
 	through = true
-	for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next { prefetch_fields(c.l.boxes[ch].cs, LAYOUT_FIELDS) }
+	for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next { if !is_plain(c, ch) { prefetch_fields(c.l.boxes[ch].cs, LAYOUT_FIELDS) } }
 	for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next {
 		k := &c.l.boxes[ch]
 		strut := open ? fc.open : &local

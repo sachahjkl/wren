@@ -44,6 +44,15 @@ Ctx :: struct {
 	sums:     []Style_Sum,              // building the box tree: summaries of the styles (style_sum.odin), nil: none
 	pre_boxes: []Pre_Box,               // per box, what the layout threads found ahead (parallel.odin), nil: none
 	segs_out: ^[dynamic]Seg,            // a layout thread: segments measured by an incremental pass go here (not kept)
+	// per box, found on the layout threads (parallel.odin): its sizes are all auto (width, height, their minimums and
+	// maximums, no aspect ratio), so the block layout needs not read them from the style. nil: not known
+	plain:    []bool,
+}
+
+// The box's width and height properties are all auto (Ctx.plain).
+@(private)
+is_plain :: #force_inline proc(c: ^Ctx, bi: i32) -> bool {
+	return c.plain != nil && int(bi) < len(c.plain) && c.plain[bi]
 }
 
 @(private)
