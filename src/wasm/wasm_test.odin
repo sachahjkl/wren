@@ -219,6 +219,7 @@ traps_reentrance_and_imports :: proc(t: ^testing.T) {
 		testing.expectf(t, res == .Trapped, "%v an import the browser lacks traps when called (%s)", engine, inst.last_error)
 		_, res = call_i32(inst, "unreachable")
 		testing.expectf(t, res == .Trapped && strings.contains(inst.last_error, "unreachable"), "%v unreachable: %q", engine, inst.last_error)
+		if engine == .Wasmtime { testing.expectf(t, strings.contains(inst.last_error, "\n    at "), "the wasm stack follows the reason: %q", inst.last_error) }
 		_, res = call_i32(inst, "deep", 0)
 		testing.expectf(t, res == .Trapped, "%v endless recursion traps (%s)", engine, inst.last_error)
 		argv := [1]u32{5}

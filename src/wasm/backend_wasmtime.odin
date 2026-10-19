@@ -443,9 +443,20 @@ tidy_error :: proc(text: string) -> string {
 	head := strings.split_lines(strings.trim_right_space(text[:at]), context.temp_allocator)
 	for line, i in head {
 		if i == 0 && strings.has_suffix(line, "backtrace:") { continue }
-		if strings.trim_space(line) == "" { continue }
-		strings.write_string(&b, "\n    ")
-		strings.write_string(&b, strings.trim_space(line))
+		l := strings.trim_space(line)
+		if l == "" { continue }
+		// "3:   0x4e - <unknown>!<wasm function 1>" -> "at <wasm function 1> (0x4e)"
+		colon := strings.index_byte(l, ':')
+		dash := strings.index(l, " - ")
+		if colon > 0 && dash > colon {
+			offset := strings.trim_space(l[colon + 1:dash])
+			fn := l[dash + 3:]
+			if bang := strings.index_byte(fn, '!'); bang >= 0 && strings.has_prefix(fn, "<unknown>") { fn = fn[bang + 1:] }
+			fmt.sbprintf(&b, "\n    at %s (%s)", fn, offset)
+		} else {
+			strings.write_string(&b, "\n    ")
+			strings.write_string(&b, l)
+		}
 	}
 	delete(text)
 	return strings.to_string(b)
