@@ -1,0 +1,30 @@
+/// Events as JavaScript sees them: Event objects the script created (dispatched with their engine identifier, so the
+/// listeners receive the very same object), the interface and state of the browser's own events, and EventTarget
+/// objects with nothing behind them (new EventTarget()).
+partial module events {
+  /// target.dispatchEvent(event) for an Event the engine owns: like EventTarget_dispatchEvent, with the engine's
+  /// identifier of the object (Event_engineId gives it back to the listeners) and its timeStamp. Returns false when a
+  /// listener cancelled it. The event is not trusted (isTrusted is false).
+  bool EventTarget_dispatchEngineEvent(EventTarget target, string type, EventInit init, i64 engine_id, f64 time_stamp) raises;
+  /// The engine's identifier given to EventTarget_dispatchEngineEvent (0 for an event the browser made).
+  i64 Event_engineId(Event event);
+  /// The interface of the wrapper of an event the browser made (MouseEvent, KeyboardEvent...): an index into the
+  /// engine's interface table.
+  u32 Event_interface(Event event);
+  /// Whether the event is still being dispatched (its handle is live).
+  bool Event_isLive(u64 event);
+  /// event.bubbles
+  bool Event_bubbles(Event event);
+  /// event.cancelable
+  bool Event_cancelable(Event event);
+  /// event.eventPhase: 0 none, 1 capturing, 2 at target, 3 bubbling.
+  i32 Event_eventPhase(Event event);
+  /// event.timeStamp, on the performance.now() timeline of the page.
+  f64 Event_timeStamp(Event event);
+  /// event.isTrusted
+  bool Event_isTrusted(Event event);
+  /// Whether stopPropagation was called.
+  bool Event_propagationStopped(Event event);
+  /// new EventTarget(): a host object with nothing but listeners.
+  Object EventTarget_create();
+}

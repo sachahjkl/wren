@@ -28,6 +28,7 @@ Options :: struct {
 	max_tables:         i64,
 	max_memories:       i64,
 	stop:               ^b32,  // optional atomic flag: once true, running code is interrupted and new calls refused
+	soft_call_ms:       i64,   // with Instance.soft_flag: past this, the flag is raised and the call goes on (-1/0 = none)
 }
 
 Instance :: struct {
@@ -47,6 +48,14 @@ Instance :: struct {
 	memory64:          bool,     // memory 0 is 64-bit: imports take i64 addresses
 	exception_code:    i32,      // the last error a host function raised to this instance
 	exception_message: string,
+	// Cooperative interruption: a word in the module's memory that its own code polls (the JavaScript engine's
+	// interrupt handler). Cleared when an outermost call starts, set to 1 once the call runs past opt.soft_call_ms;
+	// the module then unwinds by itself, consistent, before the hard deadline (opt.max_call_ms) would trap it.
+	soft_flag:         ^i32,
+	soft_fired:        int,     // calls interrupted this way
+	// Argument errors of host functions that do not raise (a dead handle...) give the zero result and an exception
+	// record instead of a trap: a module whose own state a trap would corrupt (the JavaScript engine) checks instead.
+	lenient:           bool,
 	wt:                Wt_State,
 }
 

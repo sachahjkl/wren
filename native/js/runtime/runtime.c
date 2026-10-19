@@ -1,0 +1,34 @@
+/* runtime.c: the hand-written parts of the realm that are not members of one interface: what pre-initialization adds
+ * after the generated interfaces, and what each realm sets up when it starts. */
+#include <string.h>
+#include "wj.h"
+#include "qjs_internal.h"
+
+bool wj_start_expose_unimplemented;
+
+void wj_install_console(JSContext *ctx, JSValueConst global);
+
+/* Engine-only globals the bindings do not describe. */
+int wj_runtime_preinit(JSContext *ctx)
+{
+    wj_realm *r = &wj_the_realm;
+    if (wj_interface_find("console") < 0) { wj_install_console(ctx, r->global); }
+    return 0;
+}
+
+int wj_runtime_start(JSContext *ctx, int kind)
+{
+    wj_realm *r = &wj_the_realm;
+    /* window / self / globalThis name the global object itself in every realm */
+    JSAtom names[] = { JS_NewAtom(ctx, "self") };
+    for (size_t i = 0; i < sizeof names / sizeof names[0]; i++) {
+        JSValue cur = JS_GetProperty(ctx, r->global, names[i]);
+        if (JS_IsUndefined(cur)) { JS_DefinePropertyValue(ctx, r->global, names[i], JS_DupValue(ctx, r->global), JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE); }
+        JS_FreeValue(ctx, cur);
+        JS_FreeAtom(ctx, names[i]);
+    }
+    WJ_UNUSED(kind);
+    return 0;
+}
+
+__attribute__((weak)) void wj_listeners_free(JSRuntime *rt, wj_obj *o) { WJ_UNUSED(rt); WJ_UNUSED(o); }

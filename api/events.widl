@@ -18,7 +18,12 @@ module events {
   }
 
   /// What dispatchEvent creates.
-  flags EventInit : u32 { Bubbles, Cancelable }
+  flags EventInit : u32 {
+    Bubbles,
+    Cancelable,
+    /// The event crosses shadow roots (no effect yet: there are none).
+    Composed,
+  }
 
   /// A listener: `user` is the value given to addEventListener.
   callback EventListener(i32 user, Event event);

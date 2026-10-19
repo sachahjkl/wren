@@ -1,0 +1,12 @@
+/// The DOM Standard's tree as JavaScript reaches it (Node, Element, Document...): the members the bindings bind by
+/// name (Interface_member, Interface_set_member; see src/tools/bindgen/jsgen).
+partial module dom {
+  /// element.id
+  string Element_id(Element element);
+  /// element.id = value
+  void Element_set_id(Element element, string value) raises;
+  /// element.className
+  string Element_className(Element element);
+  /// element.className = value
+  void Element_set_className(Element element, string value) raises;
+}

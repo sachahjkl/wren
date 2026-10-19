@@ -467,6 +467,7 @@ document_parsed :: proc(p: ^page.Page, user: rawptr, d: ^page.Parsed_Document) {
 	}
 	set_status(t, fmt.tprintf("HTTP %d, %d bytes (%s), %d nodes", load.status, load.bytes, d.encoding, r.nodes))
 	start_scripts(app, load)
+	page.scripts_start(p)   // JavaScript (js_scripts.odin)
 }
 
 show_text :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
@@ -1021,6 +1022,7 @@ main :: proc() {
 		wasm.runtime_settings_destroy(&rs)
 	}
 	if !page.register_imports() { fmt.eprintln("wasm runtime init failed"); return }
+	page.js_startup(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")
 	app.process = base.scope_make("process")
 	app.config_view.rows = make(map[string]^Row_State)
 	app.show_console = true
@@ -1100,6 +1102,7 @@ main :: proc() {
 	pacer_destroy(app)
 	font.set_color_ready_callback(&app.fonts, nil, nil)   // the color glyph thread no longer posts to the loop
 	host.loop_destroy(&app.loop)
+	page.js_shutdown()
 	wasm.runtime_destroy()
 	measure_destroy(&app.measure)
 	forms_shell_destroy()

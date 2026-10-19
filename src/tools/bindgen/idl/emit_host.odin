@@ -193,6 +193,7 @@ emit_host :: proc(api: ^Api, cfg: Host_Config) -> string {
 		}
 	}
 	emit_host_validators(api, &o)
+	lenient_available = api.error_enum != nil
 	if api.error_enum != nil { emit_host_failures(cfg, &o) }
 	for d in api.callbacks { emit_host_invoker(cfg, &o, d) }
 	for d in api.exports { emit_host_export(cfg, &o, d) }
@@ -285,7 +286,20 @@ emit_host_failures :: proc(cfg: Host_Config, o: ^Out) {
 	wl(o, "\treturn nil")
 	wl(o, "}")
 	wl(o, "")
+	wl(o, "// An argument error of a function that does not raise, for a lenient instance: the zero result (an empty string,")
+	wl(o, "// null, 0, false) and the error in the instance's exception record, no trap.")
+	wl(o, "@(private = \"file\")")
+	wl(o, "_fail_lenient :: proc(c: ^%s, a: [^]wasm.Raw, code: %sError, message: string) -> wasm.Trap {{", cfg.call_type, PREFIX)
+	wl(o, "\t%s(c, code, message)", cfg.raise)
+	wl(o, "\ta[0] = {{}}")
+	wl(o, "\treturn nil")
+	wl(o, "}")
+	wl(o, "")
 }
+
+// Whether the target has an Error enum (the lenient failure path needs it).
+@(private)
+lenient_available: bool
 
 // cells of a callback / export argument
 @(private)
@@ -393,7 +407,11 @@ Fail_Mode :: enum { Trap, Status, Size }
 @(private)
 fail :: proc(o: ^Out, mode: Fail_Mode, indent: string, code: string, msg: string) {
 	switch mode {
-	case .Trap:   wl(o, "%sreturn wasm.trap_new(%s)", indent, msg)
+	case .Trap:
+		// a lenient instance (the JavaScript engine: a trap would leave it inconsistent) gets the zero result and the
+		// error in its exception record
+		if lenient_available { wl(o, "%sif f.inst.lenient {{ return _fail_lenient(&c, a, .%s, %s) }}", indent, code, msg) }
+		wl(o, "%sreturn wasm.trap_new(%s)", indent, msg)
 	case .Status: wl(o, "%sreturn _fail_status(&c, a, .%s, %s)", indent, code, msg)
 	case .Size:   wl(o, "%sreturn _fail_size(&c, &f, a, .%s, %s)", indent, code, msg)
 	}

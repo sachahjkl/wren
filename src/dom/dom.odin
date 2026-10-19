@@ -46,6 +46,8 @@ Node :: struct {
 	attrs:       [dynamic]Attr,
 	listeners:   [dynamic]Listener,
 	generation_of_layout: u32,   // bumped on any change that needs re-layout (see `dirty`)
+	pins:        u32,      // JavaScript wrappers referring to this node (pins.odin)
+	pins_below:  u32,      // pins of this node and its whole subtree: a detached tree with none can be freed
 }
 
 Document :: struct {
@@ -161,6 +163,7 @@ is_ancestor_or_self :: proc(d: ^Document, maybe_ancestor, node: base.Handle) -> 
 detach :: proc(d: ^Document, h: base.Handle) {
 	n := get(d, h)
 	if n == nil || n.parent == base.NIL_HANDLE { return }
+	if n.pins_below > 0 { pins_adjust(d, n.parent, -i64(n.pins_below)) }
 	p := get(d, n.parent)
 	if n.prev != base.NIL_HANDLE { get(d, n.prev).next = n.next } else { p.first_child = n.next }
 	if n.next != base.NIL_HANDLE { get(d, n.next).prev = n.prev } else { p.last_child = n.prev }
@@ -198,6 +201,7 @@ insert_before :: proc(d: ^Document, parent, child, ref: base.Handle) -> Error {
 		if r.prev != base.NIL_HANDLE { get(d, r.prev).next = child } else { p.first_child = child }
 		r.prev = child
 	}
+	if c.pins_below > 0 { pins_adjust(d, parent, i64(c.pins_below)) }
 	touch(d)
 	journal_record(d, .Insert, child, parent)
 	return .None
@@ -220,7 +224,7 @@ release :: proc(d: ^Document, h: base.Handle) -> Error {
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
 	if n.parent != base.NIL_HANDLE || h == d.root { return .Attached }
-	destroy_subtree(d, h)
+	destroy_unpinned(d, h)
 	return .None
 }
 
@@ -307,7 +311,7 @@ set_text_content :: proc(d: ^Document, h: base.Handle, text: string) -> Error {
 		for n.first_child != base.NIL_HANDLE {
 			c := n.first_child
 			detach(d, c)
-			destroy_subtree(d, c)
+			destroy_unpinned(d, c)
 			n = get(d, h)
 		}
 		if text != "" {

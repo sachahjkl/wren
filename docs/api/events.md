@@ -37,6 +37,7 @@ What dispatchEvent creates.
 |---|---:|---|
 | `Bubbles` | 0 |  |%!(EXTRA false)
 | `Cancelable` | 1 |  |%!(EXTRA false)
+| `Composed` | 2 | The event crosses shadow roots (no effect yet: there are none). |%!(EXTRA false)
 
 ### callback `EventListener`
 
@@ -234,4 +235,119 @@ i32 KeyboardEvent_keyCode(Event event)
 KeyboardEvent.keyCode
 
 Host: `KeyboardEvent_keyCode :: proc(c: ^Call, event: Api_Event) -> i32`
+
+### `EventTarget_dispatchEngineEvent`
+
+```
+bool EventTarget_dispatchEngineEvent(EventTarget target, string type, EventInit init, i64 engine_id, f64 time_stamp) raises
+```
+
+target.dispatchEvent(event) for an Event the engine owns: like EventTarget_dispatchEvent, with the engine's
+identifier of the object (Event_engineId gives it back to the listeners) and its timeStamp. Returns false when a
+listener cancelled it. The event is not trusted (isTrusted is false).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, init: Api_EventInit, engine_id: i64, time_stamp: f64) -> (bool, Api_Error)`
+
+### `Event_engineId`
+
+```
+i64 Event_engineId(Event event)
+```
+
+The engine's identifier given to EventTarget_dispatchEngineEvent (0 for an event the browser made).
+
+Host: `Event_engineId :: proc(c: ^Call, event: Api_Event) -> i64`
+
+### `Event_interface`
+
+```
+u32 Event_interface(Event event)
+```
+
+The interface of the wrapper of an event the browser made (MouseEvent, KeyboardEvent...): an index into the
+engine's interface table.
+
+Host: `Event_interface :: proc(c: ^Call, event: Api_Event) -> u32`
+
+### `Event_isLive`
+
+```
+bool Event_isLive(u64 event)
+```
+
+Whether the event is still being dispatched (its handle is live).
+
+Host: `Event_isLive :: proc(c: ^Call, event: u64) -> bool`
+
+### `Event_bubbles`
+
+```
+bool Event_bubbles(Event event)
+```
+
+event.bubbles
+
+Host: `Event_bubbles :: proc(c: ^Call, event: Api_Event) -> bool`
+
+### `Event_cancelable`
+
+```
+bool Event_cancelable(Event event)
+```
+
+event.cancelable
+
+Host: `Event_cancelable :: proc(c: ^Call, event: Api_Event) -> bool`
+
+### `Event_eventPhase`
+
+```
+i32 Event_eventPhase(Event event)
+```
+
+event.eventPhase: 0 none, 1 capturing, 2 at target, 3 bubbling.
+
+Host: `Event_eventPhase :: proc(c: ^Call, event: Api_Event) -> i32`
+
+### `Event_timeStamp`
+
+```
+f64 Event_timeStamp(Event event)
+```
+
+event.timeStamp, on the performance.now() timeline of the page.
+
+Host: `Event_timeStamp :: proc(c: ^Call, event: Api_Event) -> f64`
+
+### `Event_isTrusted`
+
+```
+bool Event_isTrusted(Event event)
+```
+
+event.isTrusted
+
+Host: `Event_isTrusted :: proc(c: ^Call, event: Api_Event) -> bool`
+
+### `Event_propagationStopped`
+
+```
+bool Event_propagationStopped(Event event)
+```
+
+Whether stopPropagation was called.
+
+Host: `Event_propagationStopped :: proc(c: ^Call, event: Api_Event) -> bool`
+
+### `EventTarget_create`
+
+```
+Object EventTarget_create()
+```
+
+new EventTarget(): a host object with nothing but listeners.
+
+Host: `EventTarget_create :: proc(c: ^Call) -> u64`
 

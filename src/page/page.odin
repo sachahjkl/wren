@@ -100,6 +100,8 @@ Page :: struct {
 	images:       Page_Images,          // <img>, CSS images, Image_decode (images.odin)
 	render:       Render_Block,         // what the first paint waits for (render_blocking.odin)
 	selection:    Page_Selection,       // the document's selection (selection.odin)
+	js:           ^Js_Realm,            // the JavaScript realm, created on first use (js_realm.odin)
+	scripts:      ^Page_Scripts,        // the document's <script> elements (js_scripts.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives

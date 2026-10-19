@@ -1,0 +1,69 @@
+diff --git a/quickjs.c b/quickjs.c
+index 6ca030b..ba6df2a 100644
+--- a/quickjs.c
++++ b/quickjs.c
+@@ -380,6 +380,8 @@ struct JSRuntime {
+     struct JSStackFrame *current_stack_frame;
+ 
+     JSInterruptHandler *interrupt_handler;
++    void (*gc_prologue)(JSRuntime *rt, void *opaque); /* WREN: called before each collection */
++    void *gc_prologue_opaque;
+     void *interrupt_opaque;
+ 
+     JSPromiseHook *promise_hook;
+@@ -7480,8 +7482,26 @@ static void gc_free_cycles(JSRuntime *rt)
+     init_list_head(&rt->gc_zero_ref_count_list);
+ }
+ 
++void JS_SetGCPrologue(JSRuntime *rt, void (*cb)(JSRuntime *rt, void *opaque), void *opaque)
++{
++    rt->gc_prologue = cb;
++    rt->gc_prologue_opaque = opaque;
++}
++
++void JS_SetRandomState(JSContext *ctx, uint64_t state)
++{
++    ctx->random_state = state ? state : 1;
++}
++
++bool JS_AtomGetArrayIndex(JSContext *ctx, uint32_t *pidx, JSAtom atom)
++{
++    return JS_AtomIsArrayIndex(ctx, pidx, atom);
++}
++
+ void JS_RunGC(JSRuntime *rt)
+ {
++    if (rt->gc_prologue)
++        rt->gc_prologue(rt, rt->gc_prologue_opaque);
+     /* decrement the reference of the children of each object. mark =
+        1 after this pass. */
+     gc_decref(rt);
+@@ -49128,7 +49148,10 @@ static const JSCFunctionListEntry js_math_obj[] = {
+ /* OS dependent. d = argv[0] is in ms from 1970. Return the difference
+    between UTC time and local time 'd' in minutes */
+ static int getTimezoneOffset(int64_t time) {
+-#if defined(_WIN32)
++#if defined(WREN_JS)
++    extern int wren_js_timezone_offset(int64_t time_ms);
++    return wren_js_timezone_offset(time);
++#elif defined(_WIN32)
+     DWORD r;
+     TIME_ZONE_INFORMATION t;
+     r = GetTimeZoneInformation(&t);
+diff --git a/quickjs.h b/quickjs.h
+index b5e5576..0e47877 100644
+--- a/quickjs.h
++++ b/quickjs.h
+@@ -529,6 +529,12 @@ typedef void JS_MarkFunc(JSRuntime *rt, JSGCObjectHeader *gp);
+ JS_EXTERN void JS_MarkValue(JSRuntime *rt, JSValueConst val,
+                             JS_MarkFunc *mark_func);
+ JS_EXTERN void JS_RunGC(JSRuntime *rt);
++/* WREN: cb runs at the start of every collection (before any object is marked). */
++JS_EXTERN void JS_SetGCPrologue(JSRuntime *rt, void (*cb)(JSRuntime *rt, void *opaque), void *opaque);
++/* WREN: reseeds Math.random (a pre-initialized engine would otherwise share one state). */
++JS_EXTERN void JS_SetRandomState(JSContext *ctx, uint64_t state);
++/* WREN: whether tom is an array index (legacy platform objects with an indexed getter), and which. */
++JS_EXTERN bool JS_AtomGetArrayIndex(JSContext *ctx, uint32_t *pidx, JSAtom atom);
+ JS_EXTERN bool JS_IsLiveObject(JSRuntime *rt, JSValueConst obj);
+ 
+ JS_EXTERN JSContext *JS_NewContext(JSRuntime *rt);

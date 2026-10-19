@@ -46,6 +46,7 @@ Wt_State :: struct {
 	has_memory:   bool,
 	has_table:    bool,
 	deadline:     time.Tick,  // of the outermost call in progress; zero = none
+	soft_deadline: time.Tick, // when Instance.soft_flag is raised; zero = none (or raised already)
 	stopped:      bool,       // the epoch callback ended the call because of the stop flag
 	timed_out:    bool,
 	pending_trap: string,     // set by `trap` from a host function
@@ -252,6 +253,11 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 		inst.wt.stopped = true
 		return wasmtime_error_new("interrupted: the module is being stopped")
 	}
+	if inst.wt.soft_deadline != {} && inst.soft_flag != nil && time.tick_diff(inst.wt.soft_deadline, time.tick_now()) >= 0 {
+		sync.atomic_store(inst.soft_flag, 1)
+		inst.wt.soft_deadline = {}
+		inst.soft_fired += 1
+	}
 	if inst.wt.deadline != {} && time.tick_diff(inst.wt.deadline, time.tick_now()) >= 0 {
 		inst.wt.timed_out = true
 		return wasmtime_error_new("interrupted: the call ran longer than wasm.max_call_ms")
@@ -398,6 +404,11 @@ wt_enter :: proc(inst: ^Instance) -> bool {
 		s.stopped, s.timed_out = false, false
 		s.deadline = {}
 		if inst.opt.max_call_ms > 0 { s.deadline = time.tick_add(time.tick_now(), time.Duration(inst.opt.max_call_ms) * time.Millisecond) }
+		s.soft_deadline = {}
+		if inst.soft_flag != nil {
+			sync.atomic_store(inst.soft_flag, 0)
+			if inst.opt.soft_call_ms > 0 { s.soft_deadline = time.tick_add(time.tick_now(), time.Duration(inst.opt.soft_call_ms) * time.Millisecond) }
+		}
 		if wt.rs.fuel {
 			fuel := inst.budget < 0 ? max(u64) : u64(inst.budget)
 			if e := wasmtime_context_set_fuel(s.ctx, fuel); e != nil { wasmtime_error_delete(e) }

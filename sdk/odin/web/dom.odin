@@ -38,6 +38,14 @@ foreign _m_dom {
 	@(link_name = "Element_setAttribute") _Element_setAttribute :: proc(element: u64, name: [^]u8, name_len: u32, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "Element_getAttribute") _Element_getAttribute :: proc(element: u64, name: [^]u8, name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Element_removeAttribute") _Element_removeAttribute :: proc(element: u64, name: [^]u8, name_len: u32) -> Error ---
+	@(link_name = "Document_readyState") _Document_readyState :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_currentScript") _Document_currentScript :: proc() -> Element ---
+	@(link_name = "Window_document") _Window_document :: proc() -> Node ---
+	@(link_name = "Document_resolveURL") _Document_resolveURL :: proc(url: [^]u8, url_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_id") _Element_id :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_set_id") _Element_set_id :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "Element_className") _Element_className :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_set_className") _Element_set_className :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
 }
 
 // document.documentElement (null in a worker).
@@ -222,5 +230,142 @@ Element_getAttribute_alloc :: proc(element: $T_element, name: string, allocator:
 // element.removeAttribute(name)
 Element_removeAttribute :: proc "contextless" (element: $T_element, name: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
 	return _Element_removeAttribute(u64(element), raw_data(name), u32(len(name)))
+}
+
+// document.readyState: "loading", "interactive" or "complete".
+Document_readyState :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Document_readyState(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_readyState's result.
+Document_readyState_len :: proc "contextless" () -> (int, Error) {
+	n := _Document_readyState(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_readyState's result in a buffer allocated to fit.
+Document_readyState_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_readyState(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.currentScript: the classic script element running, null otherwise.
+Document_currentScript :: proc "contextless" () -> Element {
+	return _Document_currentScript()
+}
+
+// window.document: the document node (null in a worker).
+Window_document :: proc "contextless" () -> Node {
+	return _Window_document()
+}
+
+// `url` parsed against the document's base URL, serialized: Syntax when it is not a valid URL (reflected URL
+// attributes then give the attribute's value as is).
+Document_resolveURL :: proc "contextless" (url: string, buf: []u8) -> (string, Error) {
+	n := _Document_resolveURL(raw_data(url), u32(len(url)), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_resolveURL's result.
+Document_resolveURL_len :: proc "contextless" (url: string) -> (int, Error) {
+	n := _Document_resolveURL(raw_data(url), u32(len(url)), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_resolveURL's result in a buffer allocated to fit.
+Document_resolveURL_alloc :: proc(url: string, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_resolveURL(raw_data(url), u32(len(url)), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.id
+Element_id :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_id(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_id's result.
+Element_id_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_id(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_id's result in a buffer allocated to fit.
+Element_id_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_id(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.id = value
+Element_set_id :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_set_id(u64(element), raw_data(value), u32(len(value)))
+}
+
+// element.className
+Element_className :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_className(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_className's result.
+Element_className_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_className(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_className's result in a buffer allocated to fit.
+Element_className_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_className(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.className = value
+Element_set_className :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_set_className(u64(element), raw_data(value), u32(len(value)))
 }
 

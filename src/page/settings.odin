@@ -3,6 +3,7 @@ package page
 import "wb:config"
 import "wb:forms"
 import "wb:html"
+import "wb:js"
 import img "wb:images"
 import "wb:style"
 import "wb:wasm"
@@ -21,6 +22,7 @@ Settings :: struct {
 	workers:         Worker_Settings,     // worker_settings.odin
 	threads:         Thread_Settings,     // offthread.odin
 	images:          img.Settings,        // images.odin
+	js:              js.Settings,         // JavaScript (package js, js_realm.odin)
 }
 
 PREFS := [?]config.Def{
@@ -42,6 +44,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, WEBSOCKET_PREFS[:])
 	forms.register_prefs(p)
 	img.register_prefs(p)
+	js.register_prefs(p)
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -58,6 +61,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		workers = worker_settings_from_prefs(p),
 		threads = thread_settings_from_prefs(p),
 		images = img.settings_from_prefs(p),
+		js = js.settings_from_prefs(p),
 	}
 }
 
@@ -71,4 +75,5 @@ settings_destroy :: proc(s: ^Settings) {
 	html.options_destroy(&s.html)
 	style.settings_destroy(&s.style)
 	forms.settings_destroy(&s.forms)
+	js.settings_destroy(&s.js)
 }

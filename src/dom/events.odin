@@ -25,6 +25,11 @@ Event :: struct {
 	object:          u64,
 	code:            i64,
 	text:            string,    // owned: a second string (origin of a message, reason of a close, key text...)
+	// an Event object of the JavaScript engine being dispatched (its identifier; 0 for events the browser makes), which
+	// is then not trusted, and its timeStamp (0: the time of the dispatch)
+	engine_id:       i64,
+	untrusted:       bool,
+	time_stamp:      f64,
 }
 
 // What the embedder does to run a listener (the page calls into the Wasm instance). Returns false to stop dispatching

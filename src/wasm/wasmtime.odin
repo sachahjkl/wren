@@ -257,6 +257,7 @@ foreign wasmtime_lib {
 	wasmtime_table_get :: proc(ctx: wt_context, t: ^wt_table, index: u64, out: ^wt_val) -> bool ---
 	wasmtime_memory_data :: proc(ctx: wt_context, m: ^wt_memory) -> [^]u8 ---
 	wasmtime_memory_data_size :: proc(ctx: wt_context, m: ^wt_memory) -> uint ---
+	wasmtime_global_get :: proc(ctx: wt_context, g: rawptr, out: ^wt_val) ---
 
 	wasmtime_wat2wasm :: proc(wat: [^]u8, len: uint, out: ^wt_byte_vec) -> wt_error ---
 }

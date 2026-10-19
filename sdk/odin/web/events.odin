@@ -27,6 +27,8 @@ ListenerOptions :: bit_set[ListenerOptions_Flag; u32]
 EventInit_Flag :: enum u32 {
 	Bubbles = 0,
 	Cancelable = 1,
+	// The event crosses shadow roots (no effect yet: there are none).
+	Composed = 2,
 }
 EventInit :: bit_set[EventInit_Flag; u32]
 
@@ -55,6 +57,17 @@ foreign _m_events {
 	@(link_name = "MouseEvent_clientY") _MouseEvent_clientY :: proc(event: Event) -> f64 ---
 	@(link_name = "MouseEvent_button") _MouseEvent_button :: proc(event: Event) -> i32 ---
 	@(link_name = "KeyboardEvent_keyCode") _KeyboardEvent_keyCode :: proc(event: Event) -> i32 ---
+	@(link_name = "EventTarget_dispatchEngineEvent") _EventTarget_dispatchEngineEvent :: proc(target: u64, type: [^]u8, type_len: u32, init: u32, engine_id: i64, time_stamp: f64, _ret: ^bool) -> Error ---
+	@(link_name = "Event_engineId") _Event_engineId :: proc(event: Event) -> i64 ---
+	@(link_name = "Event_interface") _Event_interface :: proc(event: Event) -> u32 ---
+	@(link_name = "Event_isLive") _Event_isLive :: proc(event: u64) -> i32 ---
+	@(link_name = "Event_bubbles") _Event_bubbles :: proc(event: Event) -> i32 ---
+	@(link_name = "Event_cancelable") _Event_cancelable :: proc(event: Event) -> i32 ---
+	@(link_name = "Event_eventPhase") _Event_eventPhase :: proc(event: Event) -> i32 ---
+	@(link_name = "Event_timeStamp") _Event_timeStamp :: proc(event: Event) -> f64 ---
+	@(link_name = "Event_isTrusted") _Event_isTrusted :: proc(event: Event) -> i32 ---
+	@(link_name = "Event_propagationStopped") _Event_propagationStopped :: proc(event: Event) -> i32 ---
+	@(link_name = "EventTarget_create") _EventTarget_create :: proc() -> Object ---
 }
 
 // target.addEventListener(type, listener, options). Returns the listener's id (for removeEventListener); adding the
@@ -220,5 +233,64 @@ MouseEvent_button :: proc "contextless" (event: Event) -> i32 {
 // KeyboardEvent.keyCode
 KeyboardEvent_keyCode :: proc "contextless" (event: Event) -> i32 {
 	return _KeyboardEvent_keyCode(event)
+}
+
+// target.dispatchEvent(event) for an Event the engine owns: like EventTarget_dispatchEvent, with the engine's
+// identifier of the object (Event_engineId gives it back to the listeners) and its timeStamp. Returns false when a
+// listener cancelled it. The event is not trusted (isTrusted is false).
+EventTarget_dispatchEngineEvent :: proc "contextless" (target: $T_target, type: string, init: EventInit, engine_id: i64, time_stamp: f64) -> (result: bool, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_target)) && size_of(T_target) == 8 {
+	err = _EventTarget_dispatchEngineEvent(u64(target), raw_data(type), u32(len(type)), transmute(u32)init, engine_id, time_stamp, &result)
+	return
+}
+
+// The engine's identifier given to EventTarget_dispatchEngineEvent (0 for an event the browser made).
+Event_engineId :: proc "contextless" (event: Event) -> i64 {
+	return _Event_engineId(event)
+}
+
+// The interface of the wrapper of an event the browser made (MouseEvent, KeyboardEvent...): an index into the
+// engine's interface table.
+Event_interface :: proc "contextless" (event: Event) -> u32 {
+	return _Event_interface(event)
+}
+
+// Whether the event is still being dispatched (its handle is live).
+Event_isLive :: proc "contextless" (event: u64) -> bool {
+	return _Event_isLive(event) != 0
+}
+
+// event.bubbles
+Event_bubbles :: proc "contextless" (event: Event) -> bool {
+	return _Event_bubbles(event) != 0
+}
+
+// event.cancelable
+Event_cancelable :: proc "contextless" (event: Event) -> bool {
+	return _Event_cancelable(event) != 0
+}
+
+// event.eventPhase: 0 none, 1 capturing, 2 at target, 3 bubbling.
+Event_eventPhase :: proc "contextless" (event: Event) -> i32 {
+	return _Event_eventPhase(event)
+}
+
+// event.timeStamp, on the performance.now() timeline of the page.
+Event_timeStamp :: proc "contextless" (event: Event) -> f64 {
+	return _Event_timeStamp(event)
+}
+
+// event.isTrusted
+Event_isTrusted :: proc "contextless" (event: Event) -> bool {
+	return _Event_isTrusted(event) != 0
+}
+
+// Whether stopPropagation was called.
+Event_propagationStopped :: proc "contextless" (event: Event) -> bool {
+	return _Event_propagationStopped(event) != 0
+}
+
+// new EventTarget(): a host object with nothing but listeners.
+EventTarget_create :: proc "contextless" () -> Object {
+	return _EventTarget_create()
 }
 

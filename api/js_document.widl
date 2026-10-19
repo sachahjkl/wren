@@ -1,0 +1,12 @@
+/// The document's life cycle as scripts see it (HTML "the current document readiness", "currentScript").
+partial module dom {
+  /// document.readyState: "loading", "interactive" or "complete".
+  string Document_readyState();
+  /// document.currentScript: the classic script element running, null otherwise.
+  Element Document_currentScript();
+  /// window.document: the document node (null in a worker).
+  Node Window_document();
+  /// `url` parsed against the document's base URL, serialized: Syntax when it is not a valid URL (reflected URL
+  /// attributes then give the attribute's value as is).
+  string Document_resolveURL(string url) raises;
+}

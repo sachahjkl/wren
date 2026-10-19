@@ -206,7 +206,8 @@ microtask_checkpoint :: proc(p: ^Page) {
 	defer p.objects.draining = false
 	ran := 0
 	limit := p.settings.max_microtasks
-	for len(p.objects.microtasks) > 0 {
+	// the browser's microtasks, then the JavaScript realm's jobs, until neither has any left
+	for len(p.objects.microtasks) > 0 || (p.js != nil && js_checkpoint(p) && len(p.objects.microtasks) > 0) {
 		if realm_halted(p) { return }   // a terminated worker runs nothing more
 		if ran >= limit {
 			log(p, .Warn, fmt.tprintf("more than %d microtasks in one checkpoint: the rest runs later", limit))

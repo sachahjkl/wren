@@ -263,3 +263,90 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Element_removeAttribute :: proc(c: ^Call, element: Api_Element, name: string) -> Api_Error`
 
+### `Document_readyState`
+
+```
+string Document_readyState()
+```
+
+document.readyState: "loading", "interactive" or "complete".
+
+Host: `Document_readyState :: proc(c: ^Call) -> string`
+
+### `Document_currentScript`
+
+```
+Element Document_currentScript()
+```
+
+document.currentScript: the classic script element running, null otherwise.
+
+Host: `Document_currentScript :: proc(c: ^Call) -> u64`
+
+### `Window_document`
+
+```
+Node Window_document()
+```
+
+window.document: the document node (null in a worker).
+
+Host: `Window_document :: proc(c: ^Call) -> u64`
+
+### `Document_resolveURL`
+
+```
+string Document_resolveURL(string url) raises
+```
+
+`url` parsed against the document's base URL, serialized: Syntax when it is not a valid URL (reflected URL
+attributes then give the attribute's value as is).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_resolveURL :: proc(c: ^Call, url: string) -> (string, Api_Error)`
+
+### `Element_id`
+
+```
+string Element_id(Element element)
+```
+
+element.id
+
+Host: `Element_id :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `Element_set_id`
+
+```
+void Element_set_id(Element element, string value) raises
+```
+
+element.id = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_set_id :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `Element_className`
+
+```
+string Element_className(Element element)
+```
+
+element.className
+
+Host: `Element_className :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `Element_set_className`
+
+```
+void Element_set_className(Element element, string value) raises
+```
+
+element.className = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_set_className :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
