@@ -159,8 +159,8 @@ PREFS := [?]config.Def{
 		description = "Diagnostic: after every partial restyle, compute all styles again and report the first difference in the console. As slow as a full restyle."},
 	{name = "style.incremental.journal_entries", kind = .Int, default = {i = 65536}, bounded = true, min = 256, max = 16 << 20,
 		description = "Mutations of a document remembered between two restyles; more at once make the next restyle a full one."},
-	{name = "style.background_clip_text.enabled", kind = .Bool, default = {b = false},
-		description = "Accept `background-clip: text` (gradient or image text). Turn on only with a painter that clips backgrounds to glyphs: when off, the value is invalid, so pages that test @supports (background-clip: text) keep their plain-text fallback instead of showing a filled box."},
+	{name = "style.background_clip_text.enabled", kind = .Bool, default = {b = true},
+		description = "Accept `background-clip: text` (gradient or image text: the backgrounds are painted through the glyphs of the element and of its descendants). When off, the value is invalid, so pages that test @supports (background-clip: text) keep their plain-text fallback."},
 	{name = "style.container_queries.max_rounds", kind = .Int, default = {i = 3}, bounded = true, min = 0, max = 16,
 		description = "Container queries (@container, cq units) depend on sizes only layout knows: after a layout that changes the size of a query container, styles and layout are computed again, at most this many times per frame (the rest waits for the next frame). 0 = sizes are never fed back: queries stay unknown and cq units use the viewport."},
 }

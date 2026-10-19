@@ -47,10 +47,10 @@ contains_fixed :: proc(cs: ^style.Computed) -> bool {
 // CSS Transforms, Compositing, Masking, Filter Effects 2 and Will Change).
 @(private)
 stacking_effect :: proc(cs: ^style.Computed) -> bool {
-	if len(cs.filter) > 0 || len(cs.backdrop_filter) > 0 || cs.clip_path != nil || cs.isolation == .Isolate || cs.mix_blend_mode != .Normal { return true }
+	if len(cs.filter) > 0 || len(cs.backdrop_filter) > 0 || cs.clip_path != nil || cs.isolation == .Isolate || cs.mix_blend_mode != .Normal || style.has_mask(cs) { return true }
 	for w in cs.will_change {
 		switch w {
-		case "transform", "translate", "rotate", "scale", "opacity", "filter", "backdrop-filter", "clip-path", "isolation", "mix-blend-mode": return true
+		case "transform", "translate", "rotate", "scale", "opacity", "filter", "backdrop-filter", "clip-path", "isolation", "mix-blend-mode", "mask", "mask-image": return true
 		}
 	}
 	return false

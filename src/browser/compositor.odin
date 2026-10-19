@@ -173,7 +173,7 @@ RASTER_PROPS :: [?]style.Prop{
 	.Border_Top_Left_Radius, .Border_Top_Right_Radius, .Border_Bottom_Right_Radius, .Border_Bottom_Left_Radius,
 	.Background_Color, .Background_Image, .Background_Repeat, .Background_Position, .Background_Size,
 	.Background_Origin, .Background_Clip, .Background_Attachment, .Box_Shadow,
-	.Outline_Width, .Outline_Style, .Outline_Color, .Outline_Offset, .List_Style_Type,
+	.Outline_Width, .Outline_Style, .Outline_Color, .Outline_Offset, .List_Style_Type, .Text_Fill_Color,
 }
 
 @(private = "file")
@@ -246,6 +246,7 @@ raster_hash :: proc(cs: ^style.Computed, cache: ^map[^style.Computed]u64) -> u64
 	if cache != nil { if h, ok := cache[cs]; ok { return h } }
 	h: u64 = 0xcbf29ce484222325
 	h = hash_of(h, cs.color)
+	h = hash_of(h, cs.text_fill_color)
 	h = hash_shadows(h, cs.text_shadow)
 	h = hash_of(h, cs.text_decoration)
 	h = hash_of(h, cs.text_decoration_color)
@@ -332,9 +333,10 @@ immediate_item :: proc(user: rawptr, l: ^Layout, it: ^lay.Display_Item) -> bool 
 	case .Replaced, .Control, .Scrollbar: return true
 	case .Box:
 		if page_render.bare != nil && page_render.bare(page_render.content_user, c.doc, it.node) { return true }
-		if it.cs != nil && background_has_url(it.cs) && .No_Background not_in it.flags { return true }
+		if it.cs != nil && (background_has_url(it.cs) || background_clips_text(it.cs)) && .No_Background not_in it.flags { return true }
 	case .Inline_Box:
-		if it.cs != nil && background_has_url(it.cs) { return true }
+		// background-clip: text draws the text of other items (maybe of other chunks) into a mask: directly
+		if it.cs != nil && (background_has_url(it.cs) || background_clips_text(it.cs)) { return true }
 	case .Text:
 		if it.cs != nil && effects_settings.exact_shadows {
 			for s in it.cs.text_shadow { if s.blur > 0 && s.color.a > 0 { return true } }
@@ -361,6 +363,10 @@ item_hash :: proc(c: ^Comp, l: ^Layout, it: ^lay.Display_Item, cache: ^map[^styl
 	h = hash_bytes(h, &deco, size_of(deco))
 	h = hash_bytes(h, &it.deco_color, size_of(it.deco_color))
 	h = mix(h, raster_hash(it.cs, cache))
+	// a fieldset's border follows its legend
+	if it.kind == .Box {
+		if shift, gap, ok := lay.fieldset_border(l, it.box); ok { h = hash_of(h, [3]f32{shift, gap[0], gap[1]}) }
+	}
 	k := lay.space_key(l, it.space)
 	h = hash_bytes(h, &k, size_of(k))
 	for ci in local_clips(c, l, it, chain) {

@@ -368,6 +368,15 @@ fit_rect :: proc(content: draw.Rect, natural: [2]f32, cs: ^style.Computed, scale
 	return {{x, y}, {x + w, y + h}}
 }
 
+// The corner radii of the content box of a replaced element (draw corner order), from its border-radius.
+content_radii :: proc(cs: ^style.Computed, border, content: draw.Rect, scale: f32) -> [4]f32 {
+	if cs == nil { return {} }
+	outer := lay.border_radii(cs, border.max.x - border.min.x, border.max.y - border.min.y, scale)
+	if outer == {} { return {} }
+	// insets top, right, bottom, left: the border and the padding together
+	return padding_radii(outer, {content.min.y - border.min.y, border.max.x - content.max.x, border.max.y - content.max.y, content.min.x - border.min.x})
+}
+
 // The content of an image element; false for other replaced elements (the next painter takes them).
 images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, fid: font.Font_Id, font_size, scale: f32) -> bool {
 	p := shell.page
@@ -399,8 +408,11 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 		note_next(fp)
 		tex, ok := texture_for(fp.texture, fp)
 		if !ok { draw_placeholder(dc, content, .Broken); return true }
-		clip := dst.min.x < content.min.x || dst.min.y < content.min.y || dst.max.x > content.max.x || dst.max.y > content.max.y
-		if clip { draw.push_clip(dc, content) }
+		// border-radius rounds the picture with the content box (CSS Backgrounds §5.3: the inner radii); object-fit may
+		// put it past the box, which then clips it
+		radii := content_radii(cs, border, content, scale)
+		clip := dst.min.x < content.min.x || dst.min.y < content.min.y || dst.max.x > content.max.x || dst.max.y > content.max.y || radii != {}
+		if clip { draw.push_clip_rounded(dc, content, radii) }
 		shell.api.draw(shell.api.user, dc, tex, dst, {}, WHITE_TINT, {})
 		if clip { draw.pop_clip(dc) }
 	}

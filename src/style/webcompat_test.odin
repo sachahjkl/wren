@@ -335,9 +335,9 @@ supports_conditions :: proc(t: ^testing.T) {
 	defer close_doc(&d)
 	a := el(&d, "a")
 	testing.expect(t, a.padding[.Left].v == 1 && a.padding[.Right].v == 0 && a.padding[.Top].v == 1 && a.padding[.Bottom].v == 1, "font-format, font-tech, selector")
-	testing.expect(t, a.margin[.Left].v == 0, "background-clip: text is not claimed while the painter cannot do it")
+	testing.expect(t, a.margin[.Left].v == 1, "background-clip: text is painted (through the glyphs)")
 	testing.expect(t, a.margin[.Right].v == 1 && a.margin[.Top].v == 1 && a.margin[.Bottom].v == 1, "nested not / or, container-type, media features")
-	d2 := open_doc(`<style>@supports (background-clip: text) { #a { margin-left: 1px } }</style><p id=a></p>`, proc(s: ^Settings) { s.background_clip_text = true })
+	d2 := open_doc(`<style>@supports (background-clip: text) { #a { margin-left: 1px } }</style><p id=a></p>`, proc(s: ^Settings) { s.background_clip_text = false })
 	defer close_doc(&d2)
-	testing.expect(t, el(&d2, "a").margin[.Left].v == 1, "style.background_clip_text.enabled")
+	testing.expect(t, el(&d2, "a").margin[.Left].v == 0, "style.background_clip_text.enabled off")
 }

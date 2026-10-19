@@ -324,7 +324,23 @@ strut_merge :: proc(s: ^Strut, o: Strut) {
 @(private)
 flow_blocks :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse_top, collapse_bottom: bool) -> (h: f32, end: Strut, through: bool) {
 	b := &c.l.boxes[bi]
-	cx, cy := content_x(b), content_y(b)
+	// a fieldset's rendered legend sits on its top border; the content starts below it
+	if .Fieldset in b.flags {
+		if lg := fieldset_legend(c.l, bi); lg != NONE {
+			legend_h := place_legend(c, bi, lg, cw)
+			h, end, through = flow_children(c, bi, cw, ch_def, fc, collapse_top, collapse_bottom, legend_h, lg)
+			return h + legend_h, end, through
+		}
+	}
+	return flow_children(c, bi, cw, ch_def, fc, collapse_top, collapse_bottom, 0, NONE)
+}
+
+// flow_blocks with the children's content starting `shift` below the content box top, child `skip` (a rendered legend,
+// laid out apart) left out.
+@(private)
+flow_children :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse_top, collapse_bottom: bool, shift: f32, skip: i32) -> (h: f32, end: Strut, through: bool) {
+	b := &c.l.boxes[bi]
+	cx, cy := content_x(b), content_y(b) + shift
 	y: f32 = 0
 	local: Strut
 	open := collapse_top && fc.open != nil
@@ -333,6 +349,7 @@ flow_blocks :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse_t
 	for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next {
 		k := &c.l.boxes[ch]
 		strut := open ? fc.open : &local
+		if ch == skip { continue }
 		if .Abs in k.flags {
 			k.static_ref = bi
 			k.static_pos = {cx, cy + y + (open ? 0 : strut_value(local))}

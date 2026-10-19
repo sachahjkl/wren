@@ -1168,10 +1168,13 @@ css_images_sync :: proc(p: ^Page) {
 	used := make(map[string]bool, 16, context.temp_allocator)
 	seen := make(map[rawptr]bool, 16, context.temp_allocator)
 	note :: proc(c: ^style.Computed, used: ^map[string]bool, seen: ^map[rawptr]bool) {
-		if c == nil || c.display == .None || len(c.background_images) == 0 { return }
-		if raw_data(c.background_images) in seen { return }
-		seen[raw_data(c.background_images)] = true
-		for im in c.background_images { if im.kind == .Url && im.url != "" { used[im.url] = true } }
+		if c == nil || c.display == .None { return }
+		// background and mask layers (mask-image: MDN's icons)
+		for list in ([2][]style.Image{c.background_images, c.mask_images}) {
+			if len(list) == 0 || raw_data(list) in seen { continue }
+			seen[raw_data(list)] = true
+			for im in list { if im.kind == .Url && im.url != "" { used[im.url] = true } }
+		}
 	}
 	for c in p.styled.by_node {
 		if c == nil || c.display == .None { continue }

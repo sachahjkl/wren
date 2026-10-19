@@ -29,7 +29,7 @@ Web_Face :: struct {
 	ranges:  []font.Range,       // owned; empty: every character
 	id:      font.Font_Id,
 	owner:   rawptr,
-	wght, wdth: bool,            // variable axes of the face
+	wght, wdth, ital, slnt: bool,   // variable axes of the face
 }
 
 Page_Fonts :: struct {
@@ -119,6 +119,8 @@ register_web_face :: proc(pf: ^Page_Fonts, owner: rawptr, f: ^page.Web_Font) -> 
 		switch string(tag[:]) {
 		case "wght": w.wght = true
 		case "wdth": w.wdth = true
+		case "ital": w.ital = true
+		case "slnt": w.slnt = true
 		}
 	}
 	append(&pf.web, w)
@@ -272,10 +274,16 @@ web_entries :: proc(pf: ^Page_Fonts, name: string, req: ^lay.Font_Request, out: 
 		if w.family != name || (w.owner != pf.scope && w.owner != nil) { continue }
 		if w.weight != b.weight || w.style != b.style || w.stretch != b.stretch { continue }
 		id := w.id
-		// variable axes from font-weight / font-stretch, then font-variation-settings
+		// variable axes (CSS Fonts 4 §6.3): font-weight and font-stretch clamped to the face's descriptors, italic and
+		// oblique on ital / slnt (the default oblique angle, 14deg, leans right: slnt -14), then
+		// font-variation-settings
 		vars := make([dynamic]font.Axis_Value, 0, 4, context.temp_allocator)
-		if w.wght && w.weight[0] != w.weight[1] { append(&vars, font.Axis_Value{{'w', 'g', 'h', 't'}, f32(clamp(req.weight, w.weight[0], w.weight[1]))}) }
-		if w.wdth && w.stretch[0] != w.stretch[1] { append(&vars, font.Axis_Value{{'w', 'd', 't', 'h'}, clamp(req.stretch, w.stretch[0], w.stretch[1])}) }
+		if w.wght { append(&vars, font.Axis_Value{{'w', 'g', 'h', 't'}, f32(clamp(req.weight, w.weight[0], w.weight[1]))}) }
+		if w.wdth { append(&vars, font.Axis_Value{{'w', 'd', 't', 'h'}, clamp(req.stretch, w.stretch[0], w.stretch[1])}) }
+		slanted := false
+		if req.style != .Normal && w.style == .Normal {
+			if req.style == .Italic && w.ital { append(&vars, font.Axis_Value{{'i', 't', 'a', 'l'}, 1}); slanted = true } else if w.slnt { append(&vars, font.Axis_Value{{'s', 'l', 'n', 't'}, -14}); slanted = true }
+		}
 		for v in req.variations { append(&vars, font.Axis_Value{v.tag, v.value}) }
 		if len(vars) > 0 {
 			vid := font.with_variations(pf.state, id, vars[:])
@@ -283,12 +291,15 @@ web_entries :: proc(pf: ^Page_Fonts, name: string, req: ^lay.Font_Request, out: 
 		}
 		// synthesis (CSS font-synthesis: weight and style, allowed): bold for 600 and above when the face is lighter,
 		// a slant when italic or oblique is asked of an upright face
-		bold := req.weight >= 600 && w.weight[1] < 600 && !w.wght
-		slant := req.style != .Normal && w.style == .Normal
+		bold := req.weight >= 600 && w.weight[1] < 600
+		slant := req.style != .Normal && w.style == .Normal && !slanted
 		if bold || slant {
 			sid := font.with_simulations(pf.state, id, bold, slant)
 			if sid != id { own(pf, w.owner, sid); id = sid }
 		}
+		// a color font whose color format this system cannot draw (COLR v1 before Windows 11 22H2): its characters come
+		// from the next faces and the system fallback (the system emoji font) rather than as outlines
+		if !font.color_renderable(pf.state, id) { continue }
 		append(out, font.Cascade_Entry{font = id, ranges = w.ranges})
 	}
 	return true

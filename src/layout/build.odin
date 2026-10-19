@@ -638,6 +638,7 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 		if v, ok := dom.get_attribute(c.d, h, "rowspan"); ok { b.rowspan = i32(clamp(parse_int(v, 1), 0, 65534)) }
 	}
 	if display == .List_Item && !pseudo { b.flags += {.List_Item} }
+	if !pseudo { fieldset_flags(c, bi, n, g.parent) }
 
 	// content
 	if kind == .Replaced { return }

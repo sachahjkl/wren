@@ -177,6 +177,91 @@ compositor_matches_direct_drawing :: proc(t: ^testing.T) {
 	transforms_move_slots(t)
 	recording_follows_changes(t)
 	multilingual_text(t)
+	masks_clip_text_fieldset(t)
+}
+
+MASK_PAGE :: `<!doctype html><html><head><style>
+html, body { margin: 0; background: #fff; font-size: 13px; color: #111 }
+.row { display: flex; gap: 8px; padding: 6px }
+.b { width: 60px; height: 40px; background: linear-gradient(90deg, #e03131, #1c7ed6) }
+#fade { mask-image: linear-gradient(to right, black, transparent) }
+#dot { background: #2b8a3e; -webkit-mask: radial-gradient(circle, black 49%, transparent 51%) center / 30px 30px no-repeat }
+#lum { mask-image: linear-gradient(white, black); mask-mode: luminance }
+#xor { mask-image: linear-gradient(black, black), linear-gradient(90deg, black 50%, transparent 50%); mask-size: 100% 50%, 100% 100%; mask-repeat: no-repeat; mask-composite: exclude }
+#op { opacity: .5; mask-image: linear-gradient(black, transparent) }
+.ct { font: bold 30px sans-serif; background: linear-gradient(90deg, #f00, #00f); -webkit-background-clip: text; background-clip: text; color: transparent; padding: 0 4px; display: inline-block }
+fieldset { margin: 6px; border: 3px solid #364fc7; padding: 4px 10px; width: 200px }
+legend { margin-left: 12px; padding: 0 6px; font-size: 16px }
+.long { height: 500px }
+</style></head><body>
+<div class="row"><div class="b" id="fade"></div><div class="b" id="dot"></div><div class="b" id="lum"></div><div class="b" id="xor"></div><div class="b" id="op"></div></div>
+<div class="ct" id="ct">Fire <span>text</span></div>
+<fieldset id="fs"><legend id="lg">Navigation</legend>content of the fieldset</fieldset>
+<div class="long"></div>
+</body></html>`
+
+// Masks (gradients, luminance, composition, under opacity), background-clip: text and a fieldset's legend: the
+// compositor draws what direct drawing draws, and what it draws is masked.
+@(private = "file")
+masks_clip_text_fieldset :: proc(t: ^testing.T) {
+	f := new(Cx)
+	defer free(f)
+	if !cx_open(f, MASK_PAGE) { testing.fail_now(t, "no D3D11 device (WARP) or font") }
+	defer cx_close(f)
+	cx_paint(f, false)
+	cx_same(t, f, "masks, clip text, fieldset")
+	again := cx_same(t, f, "masks scrolled", 9)
+	testing.expectf(t, again == 0, "scrolling masked content records nothing (%d)", again)
+	img := cx_paint(f, false)
+	px :: proc(img: []u8, x, y: f32) -> [3]int {
+		o := (int(y) * COMP_SIZE.x + int(x)) * 4
+		return {int(img[o]), int(img[o + 1]), int(img[o + 2])}
+	}
+	rect :: proc(f: ^Cx, id: string) -> lay.Rect {
+		r, _ := lay.box_of(&f.l, dom.find_by_id(f.doc, id), {f32(COMP_SIZE.x), f32(COMP_SIZE.y)}, 0)
+		return r.border
+	}
+	// fade: opaque red on the left, white on the right
+	fr := rect(f, "fade")
+	l, r := px(img, fr.min.x + 2, fr.min.y + 20), px(img, fr.max.x - 1, fr.min.y + 20)
+	testing.expectf(t, l[0] > 200 && l[1] < 70, "masked start %v", l)
+	testing.expectf(t, r[0] > 240 && r[1] > 240 && r[2] > 240, "masked end %v", r)
+	// a 30 px disc in the middle of the green box: green at its center, white in the corners
+	dr := rect(f, "dot")
+	cpx := px(img, (dr.min.x + dr.max.x) * 0.5, (dr.min.y + dr.max.y) * 0.5)
+	corner := px(img, dr.min.x + 3, dr.min.y + 3)
+	testing.expectf(t, cpx[1] > 100 && cpx[0] < 80, "disc center %v", cpx)
+	testing.expectf(t, corner == {255, 255, 255}, "outside the disc %v", corner)
+	// luminance: the top shows, the bottom does not
+	lr := rect(f, "lum")
+	top, bottom := px(img, lr.min.x + 30, lr.min.y + 2), px(img, lr.min.x + 30, lr.max.y - 2)
+	testing.expectf(t, top[1] < 120 && bottom[0] > 235 && bottom[1] > 235, "luminance mask top %v bottom %v", top, bottom)
+	// exclude: the top half minus its left half, plus the bottom-left quarter
+	xr := rect(f, "xor")
+	tl, tr := px(img, xr.min.x + 10, xr.min.y + 10), px(img, xr.max.x - 10, xr.min.y + 10)
+	bl, br := px(img, xr.min.x + 10, xr.max.y - 10), px(img, xr.max.x - 10, xr.max.y - 10)
+	testing.expectf(t, tl == {255, 255, 255} && tr != {255, 255, 255} && bl != {255, 255, 255} && br == {255, 255, 255}, "exclude: %v %v %v %v", tl, tr, bl, br)
+	// clip text: the gradient through the glyphs, the box itself white, no gray of the text color
+	cr := rect(f, "ct")
+	colored, gray := 0, 0
+	for y := cr.min.y; y < cr.max.y; y += 1 {
+		for x := cr.min.x; x < cr.max.x; x += 1 {
+			p := px(img, x, y)
+			if p[1] < 60 && (p[0] > 150 || p[2] > 150) { colored += 1 }
+			if abs(p[0] - p[1]) < 12 && abs(p[1] - p[2]) < 12 && p[0] < 180 { gray += 1 }
+		}
+	}
+	testing.expectf(t, colored > 150 && gray < 5, "background-clip: text: %d gradient pixels, %d gray", colored, gray)
+	testing.expectf(t, px(img, cr.max.x - 2, cr.min.y + 2) == {255, 255, 255}, "around the glyphs the box shows nothing")
+	// the fieldset's top border runs through the legend's middle, interrupted behind it
+	fs, lg := rect(f, "fs"), rect(f, "lg")
+	mid := (lg.min.y + lg.max.y) * 0.5
+	testing.expectf(t, lg.min.y < fs.min.y + 2 && lg.min.x > fs.min.x + 20, "the legend is on the top border (%v in %v)", lg, fs)
+	border := px(img, fs.min.x + 6, mid)
+	testing.expectf(t, border[2] > 150 && border[0] < 90, "top border at the legend's middle %v", border)
+	testing.expectf(t, px(img, lg.min.x + 1, mid) == {255, 255, 255}, "the border stops at the legend's border box %v", px(img, lg.min.x + 1, mid))
+	above := px(img, fs.min.x + 6, fs.min.y + 1)
+	testing.expectf(t, above == {255, 255, 255}, "above the moved border: nothing %v", above)
 }
 
 @(private = "file")

@@ -281,6 +281,16 @@ Computed :: struct {
 	scrollbar_width:   Scrollbar_Width,
 	scrollbar_color:   Scrollbar_Colors,
 	scrollbar_gutter:  Scrollbar_Gutter,
+	// --- masks (masks.odin; every layer, see `mask_layers`) and -webkit-text-fill-color ---
+	mask_images:       []Image,
+	mask_modes:        []Mask_Mode,
+	mask_repeats:      [][2]Repeat,
+	mask_positions:    [][2]Length,
+	mask_sizes:        []Bg_Size,
+	mask_origins:      []Mask_Box,
+	mask_clips:        []Mask_Box,
+	mask_composites:   []Mask_Composite,
+	text_fill_color:   Auto_Color,          // auto = currentcolor
 	// --- bookkeeping ---
 	containers: ^Container_Ctx, // the query containers this element's children see (nearest first)
 	anim_vars:  []Pre_Decl,     // an animated element: its declarations that use var(), copied (registered custom properties animate through them)
@@ -327,6 +337,7 @@ Prop :: enum u8 {
 	Grid_Template_Columns, Grid_Template_Rows, Grid_Template_Areas, Grid_Auto_Columns, Grid_Auto_Rows, Grid_Auto_Flow,
 	Grid_Row_Start, Grid_Row_End, Grid_Column_Start, Grid_Column_End, Justify_Items, Justify_Self,
 	Container_Type, Container_Name, Scrollbar_Width, Scrollbar_Color, Scrollbar_Gutter,
+	Mask_Image, Mask_Mode, Mask_Repeat, Mask_Position, Mask_Size, Mask_Origin, Mask_Clip, Mask_Composite, Text_Fill_Color,
 }
 
 // A set of properties. Wider than a bit_set can be (there are more than 128 longhands), hence the procedures in props.odin:
@@ -342,7 +353,7 @@ INHERITED_PROPS :: [?]Prop{
 	.Visibility, .List_Style_Type, .List_Style_Position, .Cursor, .Pointer_Events, .Border_Collapse, .Border_Spacing,
 	.Quotes, .Caret_Color, .Accent_Color, .Scrollbar_Color,
 	.Font_Feature_Settings, .Font_Variation_Settings, .Font_Kerning, .Font_Variant_Ligatures, .Font_Variant_Numeric,
-	.Font_Variant_East_Asian, .Font_Variant_Position,
+	.Font_Variant_East_Asian, .Font_Variant_Position, .Text_Fill_Color,
 }
 
 // Shorthands: expanded to longhands when a stylesheet is compiled.
@@ -356,4 +367,5 @@ Short :: enum u8 {
 	Grid_Template, Grid, Grid_Row, Grid_Column, Grid_Area,
 	Container, Border_Block, Border_Inline, Border_Block_Width, Border_Block_Style, Border_Block_Color,
 	Border_Inline_Width, Border_Inline_Style, Border_Inline_Color,
+	Mask,
 }
