@@ -116,7 +116,8 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 			p, q := a.lines[x.lines[0] + i], b.lines[y.lines[0] + i]
 			if !feq(p.y, q.y) || !feq(p.h, q.h) || !feq(p.baseline, q.baseline) || !feq(p.left, q.left) || !feq(p.width, q.width) ||
 			   p.frags[1] - p.frags[0] != q.frags[1] - q.frags[0] {
-				fail(&m, "%s: line %d: y %v h %v (%d frags) / y %v h %v (%d frags)", at, i, p.y, p.h, p.frags[1] - p.frags[0], q.y, q.h, q.frags[1] - q.frags[0])
+				fail(&m, "%s: line %d: y %v h %v baseline %v left %v width %v (%d frags) / y %v h %v baseline %v left %v width %v (%d frags)", at, i,
+					p.y, p.h, p.baseline, p.left, p.width, p.frags[1] - p.frags[0], q.y, q.h, q.baseline, q.left, q.width, q.frags[1] - q.frags[0])
 				break
 			}
 			for j in 0 ..< p.frags[1] - p.frags[0] {

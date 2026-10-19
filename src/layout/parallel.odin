@@ -5,23 +5,32 @@ import "core:sync"
 import "wb:host"
 import "wb:style"
 
-// Parallel pre-layout of inline formatting contexts, for full passes over large documents (a page load). Line building
-// (words, measuring, breaking, vertical alignment) is most of a full pass, and the lines of a paragraph depend only on
-// its content, its content width and the floats around it. Before the block layout, the content width of every block
-// in normal flow whose width follows from its ancestors' (auto widths down from the viewport) is predicted, and the
+// Parallel pre-layout of inline formatting contexts, for full passes over large documents (a page load) and for
+// incremental passes that lay many paragraphs out again (a change of the viewport width: a window being resized). Line
+// building (words, measuring, breaking, vertical alignment) is most of such a pass, and the lines of a paragraph depend
+// only on its content, its content width and the floats around it. Before the block layout, the content width of every
+// block in normal flow whose width follows from its ancestors' (auto widths down from the viewport) is predicted, and the
 // paragraphs with simple content (text, inline boxes, forced breaks) are laid out on the layout threads at that width,
 // as if no float reached them. The block layout then takes such a result as is when it asks for the same width, with the
 // same border and padding, and no float in the formatting context; anything else is laid out as usual. The result is the
 // same as without threads (layout.threads = 0); a wrong prediction only costs the work done in advance.
 //
-// What a worker touches: its own copy of the pass state, the boxes of its contexts (the root's box model, the inline
-// boxes' edges and scratch), and output arrays of its own. Everything else (items, fonts, styles, the document) is only
-// read, and the UI thread waits meanwhile. Measuring text from several threads needs `Text_Api.concurrent`.
+// An incremental pass only lays out ahead the paragraphs its block layout will not take from their cache: those
+// invalidated, and those whose predicted width is not the one they were last laid out at (a column that reached its
+// max-width keeps its paragraphs, and they are not touched). Their measured segments are reused as on the UI thread;
+// segments measured on a thread are kept only when the result is taken.
+//
+// What a worker touches: its own copy of the pass state, scratch fields of the inline boxes of its contexts (left as
+// it found them otherwise: box models are put back, and resolved again when the result is taken), and output arrays of
+// its own. Everything else (items, fonts, styles, the document, the caches of the boxes) is only read, and the UI thread
+// waits meanwhile. Measuring text from several threads needs `Text_Api.concurrent`.
 
 // Lines and fragments laid out ahead of time by one share of the work (kept by the layout to reuse their storage).
 Pre_Chunk :: struct {
 	frags: [dynamic]Frag,
 	lines: [dynamic]Line,
+	segs:  [dynamic]Seg,   // incremental passes: segments measured on the thread (Pre_Result.segs)
+	models: [dynamic]Box_Model_Save,   // inline boxes' edges (Pre_Result.models)
 	// display list (steps 3 and 5 of a share of the walk)
 	items3, items5:         [dynamic]Display_Item,
 	outlines3, outlines5:   [dynamic]i32,
@@ -38,6 +47,8 @@ Pre_Result :: struct {
 	empty:        bool,
 	chunk:        i32,
 	frags, lines: [2]i32,      // in the chunk's arrays; lines refer to fragments from frags[0]
+	segs:         [2]i32,      // in the chunk's segs: measured there, to keep (empty: none)
+	models:       [2]i32,      // in the chunk's models: the edges of its inline boxes
 	glines:       [2]i32,      // in Layout.lines (pre_place)
 	taken:        bool,
 }
@@ -104,7 +115,9 @@ shutdown_threads :: proc() {
 Pre_Box :: struct {
 	follows:     bool,   // a block in flow with an auto width, in a block container
 	relative:    bool,   // some margin or padding is a percentage or calc(): resolved against the parent's width
-	simple:      bool,   // an inline formatting context pre_simple accepts
+	simple:      bool,   // a live inline formatting context with a parent, that pre_simple accepts
+	parent:      i32,
+	old_cw:      f32,    // incremental passes, a simple context: the content width it was last laid out at (-1: lay it out)
 	ml, mr, pbw: f32,
 	// a child flow_blocks lays out whose margins and padding do not depend on the width: its box model, resolved here,
 	// copied by flow_blocks instead of resolve_box_model (pre_model)
@@ -148,9 +161,14 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 			if i + AHEAD < hi { prefetch_fields(l.boxes[i + AHEAD].cs, LAYOUT_FIELDS) }
 			b := &l.boxes[i]
 			x := &pp.boxes[i]
-			if .Ifc in b.flags { x.simple = pre_simple(l, b) }
 			p := b.parent
-			if p == NONE { continue }
+			x.parent = p
+			// dead boxes (partial rebuilds) may point at styles freed since
+			if p == NONE || .Dead in b.flags { continue }
+			if .Ifc in b.flags {
+				x.simple = pre_simple(l, b)
+				if x.simple && c.inc != nil { x.old_cw = pre_stale(b) ? -1 : b.cache_in[0] - pb_w(b) }
+			}
 			pb := &l.boxes[p]
 			if pb.kind != .Block || .Ifc in pb.flags || b.cs == nil { continue }
 			cs := b.cs
@@ -183,7 +201,10 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 		pred[i] = -1
 		x := &pp.boxes[i]
 		if !x.follows { continue }
-		pcw := pred[l.boxes[i].parent]
+		// parents come first, except after partial rebuilds (new boxes go at the end): not known then
+		p := x.parent
+		if int(p) >= i { continue }
+		pcw := pred[p]
 		if pcw < 0 { continue }
 		ml, mr, pbw := x.ml, x.mr, x.pbw
 		if x.relative { ml, mr, pbw = pre_edges(c, l.boxes[i].cs, pcw) }
@@ -217,14 +238,20 @@ pre_simple :: proc(l: ^Layout, b: ^Box) -> bool {
 	return true
 }
 
-// Lays out ahead of time, on the layout threads, the contexts that qualify (full passes only). Sets c.pre.
+// Lays out ahead of time, on the layout threads, the contexts that qualify. Sets c.pre.
 @(private)
 pre_layout :: proc(c: ^Ctx) {
 	l := c.l
 	l.pre_counts = {}
-	if !c.text.concurrent || par_threads(l.settings.threads) <= 0 || c.inc != nil { return }
+	if !c.text.concurrent || par_threads(l.settings.threads) <= 0 { return }
+	// an incremental pass: worth a look only when much may be laid out again (run_incremental sets `wide`)
+	if c.inc != nil && (!l.settings.threads_incremental || !c.inc.wide) { return }
 	n_ifc := 0
-	for &b in l.boxes { if .Ifc in b.flags { n_ifc += 1 } }
+	if c.inc == nil {
+		for &b in l.boxes { if .Ifc in b.flags { n_ifc += 1 } }
+	} else {
+		n_ifc = len(l.boxes)   // at most (the boxes are read on the threads; the contexts are counted below)
+	}
 	if n_ifc == 0 || n_ifc < l.settings.threads_min_contexts { return }
 	pool := par_acquire(l.settings.threads)
 	if pool == nil { return }
@@ -238,11 +265,13 @@ pre_layout :: proc(c: ^Ctx) {
 	slot := make([]i32, len(l.boxes), context.temp_allocator)
 	for i in 0 ..< len(l.boxes) {
 		slot[i] = NONE
-		b := &l.boxes[i]
-		if .Ifc not_in b.flags || pred[i] < 0 || b.parent == NONE || !info[i].simple { continue }
+		x := &info[i]
+		if !x.simple || pred[i] < 0 { continue }
+		// an incremental pass: only what its block layout will lay out again
+		if c.inc != nil && x.old_cw == pred[i] { continue }
 		slot[i] = i32(len(roots))
 		append(&roots, i32(i))
-		append(&results, Pre_Result{pcw = pred[b.parent], cw = pred[i], chunk = NONE})
+		append(&results, Pre_Result{pcw = pred[x.parent], cw = pred[i], chunk = NONE})
 	}
 	if len(roots) == 0 || len(roots) < l.settings.threads_min_contexts { return }
 
@@ -268,6 +297,12 @@ pre_layout :: proc(c: ^Ctx) {
 	c.pre = pre
 	l.pre_counts[0] = len(roots)
 }
+
+// Incremental passes: context `b` misses its layout cache whatever its width (else: when the width differs from the
+// one it was laid out at). A guess: a context laid out ahead and not taken is lost work, one not laid out ahead is laid
+// out on the UI thread.
+@(private)
+pre_stale :: proc(b: ^Box) -> bool { return !b.cache_ok || b.inc != {} }
 
 @(private)
 pre_place :: proc(data: rawptr, k: int) {
@@ -314,6 +349,9 @@ pre_chunk :: proc(data: rawptr, k: int) {
 	ch := &l.pre_chunks[k]
 	clear(&ch.frags)
 	clear(&ch.lines)
+	clear(&ch.segs)
+	clear(&ch.models)
+	if wc.inc != nil { wc.segs_out = &ch.segs }
 	n := len(pre.roots)
 	fc: Flow_Ctx   // no formatting context: no float reaches the lines
 	// about a fragment per item and a line per two (as reserve_lines)
@@ -328,15 +366,62 @@ pre_chunk :: proc(data: rawptr, k: int) {
 		bi := pre.roots[ri]
 		r := &pre.results[ri]
 		b := &l.boxes[bi]
+		// the box models it resolves are put back: an incremental pass may take this box (or its inline boxes) from
+		// their caches; pre_adopt resolves them again when it takes the result
+		saved := Box_Model_Save{}
+		model_save(&saved, b)
 		resolve_box_model(&wc, b, r.pcw)
 		r.cx, r.cy = content_x(b), content_y(b)
+		inl := make([dynamic]Box_Model_Save, 0, 8, context.temp_allocator)
+		for i in b.items[0] ..< b.items[1] {
+			if it := &l.inline_items[i]; it.kind == .Open {
+				s: Box_Model_Save
+				model_save(&s, &l.boxes[it.box], it.box)
+				append(&inl, s)
+			}
+		}
+		s0 := len(ch.segs)
 		out, lines, h, empty := ifc_build(&wc, bi, r.cw, &fc)
 		r.frags = {i32(len(ch.frags)), i32(len(ch.frags) + len(out))}
 		r.lines = {i32(len(ch.lines)), i32(len(ch.lines) + len(lines))}
+		r.segs = {i32(s0), i32(len(ch.segs))}
 		append(&ch.frags, ..out)
 		append(&ch.lines, ..lines)
 		r.h, r.empty, r.chunk = h, empty, i32(k)
+		model_restore(&l.boxes[bi], saved)
+		// the edges the inline boxes were laid out with go to the result (pre_adopt), what they had goes back
+		r.models[0] = i32(len(ch.models))
+		for &s in inl {
+			ib := &l.boxes[s.box]
+			used: Box_Model_Save
+			model_save(&used, ib, s.box)
+			append(&ch.models, used)
+			model_restore(ib, s)
+		}
+		r.models[1] = i32(len(ch.models))
+		clear(&inl)
 	}
+}
+
+// What resolve_box_model sets, for box `box`.
+@(private)
+Box_Model_Save :: struct {
+	margin, border, padding: [4]f32,
+	auto: [4]bool,
+	box:  i32,
+}
+
+@(private)
+model_save :: #force_inline proc(s: ^Box_Model_Save, b: ^Box, bi: i32 = NONE) {
+	s.margin, s.border, s.padding = b.margin, b.border, b.padding
+	s.auto = {b.auto_t, b.auto_r, b.auto_b, b.auto_l}
+	s.box = bi
+}
+
+@(private)
+model_restore :: #force_inline proc(b: ^Box, s: Box_Model_Save) {
+	b.margin, b.border, b.padding = s.margin, s.border, s.padding
+	b.auto_t, b.auto_r, b.auto_b, b.auto_l = s.auto[0], s.auto[1], s.auto[2], s.auto[3]
 }
 
 // The context laid out ahead, when the block layout asks for what it was laid out with.
@@ -351,6 +436,9 @@ pre_adopt :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (h: f32, empty: b
 	if fc != nil && fc.bfc != nil && len(fc.bfc.floats) > 0 { return }
 	b := &c.l.boxes[bi]
 	if content_x(b) != r.cx || content_y(b) != r.cy { return }
+	ch := &c.l.pre_chunks[r.chunk]
+	for &s in ch.models[r.models[0]:r.models[1]] { model_restore(&c.l.boxes[s.box], s) }
+	if r.segs[1] > r.segs[0] { keep_segs(c, bi, ch.segs[r.segs[0]:r.segs[1]]) }
 	ifc_settle(c, bi, r.glines)
 	if !r.taken { c.l.pre_counts[1] += 1 }
 	r.taken = true
@@ -360,7 +448,7 @@ pre_adopt :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (h: f32, empty: b
 @(private)
 pre_destroy :: proc(l: ^Layout) {
 	for &ch in l.pre_chunks {
-		delete(ch.frags); delete(ch.lines)
+		delete(ch.frags); delete(ch.lines); delete(ch.segs); delete(ch.models)
 		delete(ch.items3); delete(ch.items5)
 		delete(ch.outlines3); delete(ch.outlines5); delete(ch.scrollers3); delete(ch.scrollers5); delete(ch.fix5)
 	}

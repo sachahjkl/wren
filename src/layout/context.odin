@@ -42,7 +42,8 @@ Ctx :: struct {
 	dl_fix:   ^[dynamic]i32,
 	dl_par:   bool,                     // the document is large enough to share the display list out
 	sums:     []Style_Sum,              // building the box tree: summaries of the styles (style_sum.odin), nil: none
-	pre_boxes: []Pre_Box,               // full pass: per box, what the layout threads found ahead (parallel.odin), nil: none
+	pre_boxes: []Pre_Box,               // per box, what the layout threads found ahead (parallel.odin), nil: none
+	segs_out: ^[dynamic]Seg,            // a layout thread: segments measured by an incremental pass go here (not kept)
 }
 
 @(private)
