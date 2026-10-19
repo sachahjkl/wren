@@ -76,6 +76,8 @@ Styled :: struct {
 	serial:         u64,     // unique per pass: lets layout notice that styles changed even if nothing else did
 	layout_serial:  u64,     // the serial of the last change that was not paint-only (paint_change.odin)
 	line_height_normal: f32, // what `line-height: normal` means (a multiple of the font size), from the preferences
+	quirks:         bool,    // the document is in quirks mode and its quirks apply (style.quirks_mode.enabled): layout's
+	                         // quirks follow it
 	canvas:         css.Color,   // the color painted behind the whole page (root or body background, else Canvas)
 	canvas_default: css.Color,   // Canvas of the root element's used color scheme
 	canvas_schemes: [Scheme]css.Color,   // Canvas of each scheme (the preferences)
@@ -831,6 +833,7 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	s.layout_serial = s.serial
 	s.pass_id = s.serial
 	s.line_height_normal = e.settings.line_height_normal
+	s.quirks = e.settings.quirks_rules && doc.mode == .Quirks
 	for sc in Scheme { s.canvas_schemes[sc] = e.settings.colors[sc][.Canvas] }
 	s.root_scheme = used_scheme({}, e.env.prefers_dark)
 	s.canvas = s.canvas_schemes[s.root_scheme]

@@ -136,6 +136,22 @@ table_column_kinds :: proc(t: ^testing.T) {
 	})
 }
 
+// Quirks mode (no doctype): the body fills the window, and a percentage height looks past auto-height blocks up to the
+// body (old pages' <table height=100%>). Standards mode: neither.
+@(test)
+quirks_mode_layout :: proc(t: ^testing.T) {
+	SRC :: `<body style="margin:8px"><div><table id=t height="100%" style="border-spacing:0"><tr><td>x</td></tr></table></div></body>`
+	with_layout(t, SRC, proc(t: ^testing.T, l: ^Layout, doc: ^dom.Document) {
+		testing.expectf(t, math.abs(size_of_el(l, doc, "t").y - 584) < 0.6, "quirks: table height=100%% fills the body (%v)", size_of_el(l, doc, "t"))
+		body := dom.find_first_by_tag(doc, "body")
+		r, _ := box_of(l, body, {800, 600}, 0)
+		testing.expectf(t, math.abs(r.border.max.y - r.border.min.y - 584) < 0.6, "quirks: the body fills the window (%v)", r.border)
+	})
+	with_layout(t, `<!doctype html>` + SRC, proc(t: ^testing.T, l: ^Layout, doc: ^dom.Document) {
+		testing.expectf(t, size_of_el(l, doc, "t").y < 100, "standards: the percentage of an auto height is auto (%v)", size_of_el(l, doc, "t"))
+	})
+}
+
 // An image's width / height attributes are CSS width / height of the lowest priority plus aspect-ratio: auto w / h
 // (HTML §15.4.1): the page's `height: auto` gives the decoded image its own ratio (a portrait photo given square
 // attributes stays a portrait), and the attributes' ratio holds the place until it is decoded. Values as Blink lays out.
