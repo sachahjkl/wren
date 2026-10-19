@@ -98,6 +98,14 @@ try {
         $o = Get-Content build\stt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
+    Step 'image formats end-to-end test (AVIF, WebP, SVG images and backgrounds, inline <svg>, Accept, <picture>)' {
+        odin build src/tools/mediatest -collection:wb=src -vet -out:build/mediatest.exe
+        if ($LASTEXITCODE -ne 0) { return }
+        $p = Start-Process .\build\mediatest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\mdt.txt
+        if (-not $p.WaitForExit(90000)) { $p.Kill(); Get-Content build\mdt.txt; $global:LASTEXITCODE = 1; return }
+        $o = Get-Content build\mdt.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
+    }
     Step 'images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)' {
         odin build examples/imagestest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/imagestest.wasm -o:size
         if ($LASTEXITCODE -ne 0) { return }

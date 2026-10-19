@@ -4,6 +4,8 @@
 :: Dependencies are pinned git submodules, imported through Odin collections:
 ::   ext\gui_toolkit -> "toolkit:<package>"     ext\wamr -> build\wamr\wamr.lib (tools\build_wamr.bat, built once)
 :: and the Wasmtime C API, a pinned release checked by SHA-256 -> build\wasmtime (tools\fetch_wasmtime.ps1, fetched once).
+:: The built-in image decoders (native\media, Rust: resvg, image-webp, zenavif-parse, rav1d, qcms; crates pinned by Cargo.lock,
+:: NASM by SHA-256) -> build\media\wren_media.lib (tools\build_media.ps1, rebuilt only when its sources change).
 setlocal
 cd /D "%~dp0"
 if exist ext\gui_toolkit\ui goto have_toolkit
@@ -18,6 +20,7 @@ echo building the Wasm interpreter (WAMR)...
 call tools\build_wamr.bat || exit /b 1
 :have_wamr
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\fetch_wasmtime.ps1 >nul || (echo fetching Wasmtime failed & exit /b 1)
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_media.ps1 >nul || (echo building the image decoders failed: run tools\build_media.ps1 & exit /b 1)
 if not exist build mkdir build
 :: host-call thunks for the import signatures of the sources (rewrites src\wasm\thunks_generated.odin only on change)
 odin run src/tools/wasmthunks -collection:wb=src -vet -out:build/wasmthunks.exe || exit /b 1

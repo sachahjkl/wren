@@ -156,8 +156,8 @@ main :: proc() {
 	cur = p
 	inst, ok, merr := page.load_module(p, image, "imagestest")
 	check(ok, fmt.tprintf("guest runs %s", merr))
-	expected_load := []string{"simple", "sized", "dup1", "dup2", "jpeg", "ico", "tiff", "anim", "fit", "srcset", "wdesc", "pic", "nocors", "cors"}
-	expected_error := []string{"broken", "missing", "empty", "bomb", "svg", "trunc", "corsfail"}
+	expected_load := []string{"simple", "sized", "dup1", "dup2", "jpeg", "ico", "tiff", "anim", "fit", "srcset", "wdesc", "pic", "nocors", "cors", "svg"}
+	expected_error := []string{"broken", "missing", "empty", "bomb", "trunc", "corsfail"}
 	pump_until("load and error events", proc() -> bool {
 		ev := attr("data-events")
 		for id in IDS[:21] { if !strings.contains(ev, fmt.tprintf("%s:", id)) { return false } }
@@ -179,7 +179,7 @@ main :: proc() {
 	Size :: struct { id: string, w, h: i32 }
 	sizes := []Size{
 		{"simple", 8, 6}, {"sized", 8, 6}, {"dup1", 5, 3}, {"jpeg", 10, 20}, {"ico", 32, 32}, {"tiff", 3, 2}, {"anim", 10, 10},
-		{"srcset", 20, 10}, {"wdesc", 20, 10}, {"pic", 32, 32}, {"nocors", 16, 8}, {"cors", 4, 4}, {"broken", 0, 0}, {"empty", 0, 0},
+		{"srcset", 20, 10}, {"wdesc", 20, 10}, {"pic", 32, 32}, {"nocors", 16, 8}, {"cors", 4, 4}, {"broken", 0, 0}, {"empty", 0, 0}, {"svg", 10, 10},
 	}
 	for s in sizes {
 		i := id_index(s.id)

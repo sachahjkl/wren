@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="utf-8"><title>external links, dark theme</title><style>
+body { font-family: system-ui, 'Segoe UI', sans-serif; background: #1e1e1e; color: #ddd; margin: 20px; font-size: 18px }
+a { color: #8ab4f8; text-decoration: none }
+a[href^='http']::after { content: ''; display: inline-block; vertical-align: middle; width: 1rem; height: 1rem;
+  margin-inline-start: 0.1rem; background-image: url(/media/f/wasm-external.svg) }
+.inv a[href^='http']::after { filter: invert(0.8) }
+</style></head><body>
+<p>No filter: <a href="https://webassembly.org/">webassembly.org</a> (black icon on a dark page).</p>
+<p class="inv">filter: invert(0.8): <a href="https://webassembly.org/">webassembly.org</a> and <a href="https://github.com/">GitHub</a>.</p>
+<p style="background:#fff;color:#222;padding:6px">On white: <a href="https://webassembly.org/">webassembly.org</a></p>
+</body></html>

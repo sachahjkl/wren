@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Image formats: AVIF, WebP, SVG</title>
+<style>
+  body { font-family: "Segoe UI", Arial, sans-serif; margin: 16px; color: #222; background: #fafafa }
+  h1 { font-size: 22px; margin: 0 0 8px }
+  h2 { font-size: 15px; margin: 14px 0 6px; color: #555 }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end }
+  figure { margin: 0; padding: 6px; background: #fff; border: 1px solid #ddd; border-radius: 6px; text-align: center; font-size: 11px }
+  figure img { display: block; margin: 0 auto 4px }
+  .checker { background-color: #fff; background-image: url(/media/f/pattern.svg); background-size: 16px 16px }
+  .px img { width: 96px; height: 48px; image-rendering: auto }
+  .bg { width: 240px; height: 80px; border-radius: 6px; background: url(/media/f/pattern.svg) 0 0 / 24px 24px repeat, #fff }
+  .bg2 { width: 240px; height: 80px; background: url(/media/f/shapes.svg) center / contain no-repeat, #fff; border: 1px solid #ddd }
+  .narrow { width: 240px }
+  .icons svg { width: 32px; height: 32px }
+  .blue { color: #1565c0 } .red { color: #c62828 } .green { color: #2e7d32 }
+  a[href^='http']::after { content: ''; display: inline-block; width: 1rem; height: 1rem; margin-left: 2px;
+    background-image: url(/media/f/external.svg); background-size: contain; vertical-align: -2px }
+</style>
+</head>
+<body>
+<h1>Built-in image decoders</h1>
+<p>Links to <a href="https://webassembly.org/">webassembly.org</a> and <a href="https://github.com/linebender/resvg">resvg</a>
+get an external-link icon (an SVG background image in a <code>::after</code>), as on webassembly.org.</p>
+
+<h2>AVIF (rav1d): 8 bits + alpha, 10 bits + alpha, 4:4:4, irot, imir, irot + imir, Display P3, animation</h2>
+<div class="row px">
+  <figure class="checker"><img id="avif8" src="/media/f/quad8a.avif">8-bit alpha</figure>
+  <figure class="checker"><img id="avif10" src="/media/f/quad10a.avif">10-bit alpha</figure>
+  <figure><img id="avif444" src="/media/f/quad444.avif">4:4:4</figure>
+  <figure><img id="rot90" src="/media/f/rot90.avif" style="width:48px;height:96px">irot</figure>
+  <figure><img id="mirror" src="/media/f/mirror.avif">imir</figure>
+  <figure><img id="transverse" src="/media/f/transverse.avif" style="width:48px;height:96px">irot+imir</figure>
+  <figure><img id="p3" src="/media/f/p3.avif" style="width:48px;height:48px">P3</figure>
+  <figure><img id="avifanim" src="/media/f/anim.avif" style="width:48px;height:48px">animated</figure>
+</div>
+
+<h2>WebP (image-webp): lossy, lossless + alpha, lossy + alpha, animation</h2>
+<div class="row px">
+  <figure><img id="webplossy" src="/media/f/quad-lossy.webp">lossy</figure>
+  <figure class="checker"><img id="webplossless" src="/media/f/quad-lossless.webp">lossless</figure>
+  <figure class="checker"><img id="webpalpha" src="/media/f/quad-lossy-alpha.webp">lossy alpha</figure>
+  <figure><img id="webpanim" src="/media/f/anim.webp" style="width:48px;height:48px">animated</figure>
+  <figure><img id="adobe" src="/media/f/adobe.jpg" style="width:48px;height:48px">JPEG Adobe RGB</figure>
+</div>
+
+<h2>&lt;picture&gt;: AVIF first, then WebP, then PNG; content negotiation on Accept</h2>
+<div class="row px">
+  <figure><picture>
+    <source type="image/avif" srcset="/media/f/quad8a.avif">
+    <source type="image/webp" srcset="/media/f/quad-lossy.webp">
+    <img id="pic" src="/images/f/red.png">
+  </picture>picture</figure>
+  <figure><img id="neg" src="/media/neg">/media/neg</figure>
+</div>
+
+<h2>SVG as an image: natural size, scaled 3x (rasterised again), viewBox only (as wide as its container), CSS backgrounds</h2>
+<div class="row">
+  <figure><img id="svg1" src="/media/f/shapes.svg">120 x 60</figure>
+  <figure><img id="svg3" src="/media/f/shapes.svg" width="360">width=360</figure>
+</div>
+<div class="row" style="margin-top:8px">
+  <figure class="narrow"><img id="svgratio" src="/media/f/ratio.svg">viewBox only</figure>
+  <figure><div id="bg" class="bg"></div>background (repeated)</figure>
+  <figure><div id="bg2" class="bg2"></div>background contain</figure>
+</div>
+
+<h2>Inline &lt;svg&gt;: currentColor, font, sprite with &lt;use&gt;</h2>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-star" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21l2-7.5L2 9h7z"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path fill="currentColor" d="M12 21s-7-4.6-9.5-9C.8 8.6 3 5 6.5 5c2 0 3.5 1.2 5.5 3.5C14 6.2 15.5 5 17.5 5 21 5 23.2 8.6 21.5 12 19 16.4 12 21 12 21z"/></symbol>
+</svg>
+<div class="row icons">
+  <span class="blue"><svg id="inl1" viewBox="0 0 24 24"><use href="#i-star"/></svg></span>
+  <span class="red"><svg id="inl2" viewBox="0 0 24 24"><use href="#i-heart"/></svg></span>
+  <span class="green"><svg id="inl3" viewBox="0 0 24 24"><use xlink:href="#i-star"/></svg></span>
+  <svg id="inl4" width="140" height="32" style="width:140px; height:32px; color:#6a1b9a; font-size:20px">
+    <defs><linearGradient id="lg"><stop offset="0" stop-color="#ff7043"/><stop offset="1" stop-color="#ab47bc"/></linearGradient></defs>
+    <rect width="140" height="32" rx="6" fill="url(#lg)"/>
+    <text x="70" y="22" text-anchor="middle" fill="white" font-family="Segoe UI">inline text</text>
+  </svg>
+  <svg id="inl5" viewBox="0 0 10 10" style="width:32px;height:32px;color:rgb(0,255,0)"><rect width="10" height="10" fill="currentColor"/></svg>
+</div>
+</body>
+</html>

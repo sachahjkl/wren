@@ -63,7 +63,21 @@ Cache_Entry :: struct {
 	last_shown: u64,              // paint epoch it was last drawn in
 	anim_start: f64,              // loop ms when its animation started (first shown); < 0 = not started
 	accounted:  int,              // bytes counted in the cache's total
+	// SVG: no decoded image, rasters at the sizes it is shown at instead (each its own texture), made one at a time
+	rasters:    [dynamic]Svg_Raster,
+	raster_job: ^images.Job,
+	raster_w, raster_h: int,
 }
+
+Svg_Raster :: struct {
+	id:         u64,              // never reused: the painter's texture key
+	w, h:       int,              // device pixels
+	image:      ^images.Image,
+	last_shown: u64,
+}
+
+@(private)
+entry_is_svg :: proc(e: ^Cache_Entry) -> bool { return e.state == .Ready && e.info.format == .Svg }
 
 Image_Cache :: struct {
 	ready:     bool,
@@ -87,11 +101,7 @@ cache_init :: proc(p: ^Page) -> bool {
 	if cache.ready { return true }
 	if p.worker != nil { return false }
 	s := &p.settings.images
-	if !images.decoder_running() {
-		n := s.decode_threads
-		if n < 0 { n = clamp(host.processor_count() / 2, 1, 4) }
-		images.decoder_start(n)
-	}
+	decoder_ensure(s)
 	cache.loop = p.loop
 	cache.port = images.port_open(p.loop, cache_job_done, nil)
 	if cache.port == 0 { return false }
@@ -101,6 +111,14 @@ cache_init :: proc(p: ^Page) -> bool {
 	cache.settings, cache.limit = p.settings.images, p.settings.images.cache_max_bytes
 	cache.ready = true
 	return true
+}
+
+@(private)
+decoder_ensure :: proc(s: ^images.Settings) {
+	if images.decoder_running() { return }
+	n := s.decode_threads
+	if n < 0 { n = clamp(host.processor_count() / 2, 1, 4) }
+	images.decoder_start(n, s.decode_stack_bytes > 0 ? s.decode_stack_bytes : images.DECODER_STACK_DEFAULT)
 }
 
 // Frees the process cache and stops the decoding threads. Call once every page is closed, before exiting.
@@ -120,6 +138,9 @@ images_shutdown :: proc() {
 entry_free :: proc(e: ^Cache_Entry) {
 	if e.probe != nil { images.job_cancel(e.probe) }
 	if e.decode != nil { images.job_cancel(e.decode) }
+	if e.raster_job != nil { images.job_cancel(e.raster_job) }
+	for r in e.rasters { images.image_destroy(r.image) }
+	delete(e.rasters)
 	images.blob_release(e.blob)
 	images.image_destroy(e.image)
 	delete(e.key); delete(e.url); delete(e.final_url); delete(e.mime)
@@ -132,6 +153,7 @@ entry_bytes :: proc(e: ^Cache_Entry) -> int {
 	n := 0
 	if e.blob != nil { n += len(e.blob.bytes) }
 	if e.image != nil { n += e.image.bytes }
+	for r in e.rasters { n += r.image.bytes }
 	return n
 }
 
@@ -170,6 +192,7 @@ entry_destroy :: proc(e: ^Cache_Entry) {
 	cache.bytes -= e.accounted
 	delete_key(&cache.by_id, e.id)
 	append(&cache.evicted, e.id)
+	for r in e.rasters { append(&cache.evicted, r.id) }
 	entry_free(e)
 }
 
@@ -182,6 +205,7 @@ cache_enforce :: proc() {
 	slice.sort_by(list[:], proc(a, b: ^Cache_Entry) -> bool { return a.last_shown < b.last_shown })
 	for e in list {
 		if cache.bytes <= cache.limit { return }
+		if len(e.rasters) > 0 { svg_drop_rasters(e, true) }
 		if e.image == nil || e.last_shown == cache.epoch || e.decode != nil { continue }
 		images.image_destroy(e.image)
 		e.image = nil
@@ -206,6 +230,11 @@ cache_job_done :: proc(user: rawptr, j: ^images.Job) {
 		e.info, e.err = j.info, j.err
 		e.state = j.err == .None ? .Ready : .Broken
 		entry_notify(e, true)
+		return
+	}
+	if j == e.raster_job {
+		e.raster_job = nil
+		svg_raster_done(e, j)
 		return
 	}
 	e.decode = nil
@@ -348,6 +377,9 @@ Page_Images :: struct {
 	guest:      [dynamic]Guest_Decode,
 	started:    int,                    // downloads started (statistics, tests)
 	shared:     int,                    // entries taken from the cache
+	svgs:       map[base.Handle]^Inline_Svg,   // inline <svg> elements drawn so far (inline_svg.odin)
+	svg_ids:    map[string]base.Handle, // id -> element, for the references of inline <svg> (rebuilt on mutation)
+	svg_ids_at: u64,
 }
 
 // A process-unique counter, so that generations of different pages never compare equal by accident.
@@ -378,6 +410,7 @@ images_destroy :: proc(p: ^Page) {
 	if !pi.ready { return }
 	if pi.port != 0 { images.port_close(pi.port) }   // disposes of the guest decodes still running
 	delete(pi.guest)
+	inline_svgs_destroy(p)
 	// every request is in `requests`: elements and CSS uses only point at them
 	for _, el in pi.elements { element_free(p, el, false) }
 	delete(pi.elements)
@@ -543,32 +576,39 @@ image_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		defer images_pump(p)
 		if r.bad_status { request_fail(r, fmt.tprintf("HTTP %d", r.status)); return }
 		if len(ev.data) == 0 { request_fail(r, "empty response"); return }
-		e := new(Cache_Entry)
-		e.anim_start = -1
-		e.final_url, e.redirected, e.opaque, e.mime, e.nosniff = strings.clone(r.final_url), r.redirected, r.opaque, strings.clone(r.mime), r.nosniff
-		cache.next_id += 1
-		e.id = cache.next_id
-		e.key, e.url = strings.clone(r.key), strings.clone(r.url)
-		e.blob = images.blob_make(slice.clone(ev.data))
-		e.state = .Probing
-		cache.settings = p.settings.images
-		cache.limit = p.settings.images.cache_max_bytes
-		if old, ok := cache.entries[e.key]; ok { entry_unmap(old); if len(old.requests) == 0 { entry_destroy(old) } }
-		cache.entries[e.key] = e
-		cache.by_id[e.id] = e
-		e.in_map = true
-		append(&e.requests, r)
-		r.entry = e
-		r.state = .Probing
-		entry_account(e)
-		e.probe = images.job_make(.Probe, e.blob, decode_options(&cache.settings, e), 1 << 20, e)
-		if !images.submit(cache.port, e.probe) {
-			e.probe = nil
-			e.state, e.err = .Broken, .Platform
-			entry_notify(e, true)
-		}
-		cache_enforce()
+		entry_start(p, r, ev.data)
 	}
+}
+
+// A cache entry for the encoded bytes of `r` (copied; the response's metadata from `r`), replacing the entry of the
+// same key; its header is probed on a decoding thread.
+@(private)
+entry_start :: proc(p: ^Page, r: ^Img_Request, data: []byte) {
+	e := new(Cache_Entry)
+	e.anim_start = -1
+	e.final_url, e.redirected, e.opaque, e.mime, e.nosniff = strings.clone(r.final_url), r.redirected, r.opaque, strings.clone(r.mime), r.nosniff
+	cache.next_id += 1
+	e.id = cache.next_id
+	e.key, e.url = strings.clone(r.key), strings.clone(r.url)
+	e.blob = images.blob_make(slice.clone(data))
+	e.state = .Probing
+	cache.settings = p.settings.images
+	cache.limit = p.settings.images.cache_max_bytes
+	if old, ok := cache.entries[e.key]; ok { entry_unmap(old); if len(old.requests) == 0 { entry_destroy(old) } }
+	cache.entries[e.key] = e
+	cache.by_id[e.id] = e
+	e.in_map = true
+	append(&e.requests, r)
+	r.entry = e
+	r.state = .Probing
+	entry_account(e)
+	e.probe = images.job_make(.Probe, e.blob, decode_options(&cache.settings, e), 1 << 20, e)
+	if !images.submit(cache.port, e.probe) {
+		e.probe = nil
+		e.state, e.err = .Broken, .Platform
+		entry_notify(e, true)
+	}
+	cache_enforce()
 }
 
 @(private)
@@ -648,6 +688,7 @@ images_adopt_document :: proc(p: ^Page) {
 	clear(&pi.css_urls)
 	for ev in pi.events { delete(ev.type) }
 	clear(&pi.events)
+	inline_svgs_reset(p)
 	pi.doc = p.doc
 	pi.mutations = 0
 	pi.css_serial = 0
@@ -696,6 +737,7 @@ images_sync :: proc(p: ^Page) {
 			delete_key(&pi.elements, h)
 			element_free(p, el, true)
 		}
+		inline_svgs_prune(p)
 	}
 	css_images_sync(p)
 	images_pump(p)
@@ -1125,11 +1167,18 @@ css_images_sync :: proc(p: ^Page) {
 	pi.css_serial = p.styled.serial
 	used := make(map[string]bool, 16, context.temp_allocator)
 	seen := make(map[rawptr]bool, 16, context.temp_allocator)
-	for c in p.styled.by_node {
-		if c == nil || c.display == .None || len(c.background_images) == 0 { continue }
-		if raw_data(c.background_images) in seen { continue }
+	note :: proc(c: ^style.Computed, used: ^map[string]bool, seen: ^map[rawptr]bool) {
+		if c == nil || c.display == .None || len(c.background_images) == 0 { return }
+		if raw_data(c.background_images) in seen { return }
 		seen[raw_data(c.background_images)] = true
 		for im in c.background_images { if im.kind == .Url && im.url != "" { used[im.url] = true } }
+	}
+	for c in p.styled.by_node {
+		if c == nil || c.display == .None { continue }
+		note(c, &used, &seen)
+		// ::before / ::after boxes (an icon after every external link)
+		note(c.before, &used, &seen)
+		note(c.after, &used, &seen)
 	}
 	stale := make([dynamic]string, 0, 4, context.temp_allocator)
 	for k in pi.css_urls { if k not_in used { append(&stale, k) } }
@@ -1158,11 +1207,7 @@ css_images_sync :: proc(p: ^Page) {
 guest_decode_start :: proc(p: ^Page, bytes: []byte, owner: u32) -> u64 {
 	pr := promise_create(p, owner)
 	images_init(p)
-	if !images.decoder_running() {
-		n := p.settings.images.decode_threads
-		if n < 0 { n = clamp(host.processor_count() / 2, 1, 4) }
-		images.decoder_start(n)
-	}
+	decoder_ensure(&p.settings.images)
 	if p.images.port == 0 { p.images.port = images.port_open(p.loop, guest_decode_done, p) }
 	if p.images.port == 0 { promise_reject(p, pr, WEB_ERR_NOT_SUPPORTED, "the image decoder is unavailable"); return pr }
 	s := &p.settings.images
@@ -1201,6 +1246,98 @@ guest_decode_done :: proc(user: rawptr, j: ^images.Job) {
 }
 
 ////////////////////////////////
+// SVG rasters: an SVG image is drawn at each size it is shown at (device pixels: CSS size times the screen's scale), so
+// it is never a small picture scaled up. Rasters are made on the decoding threads, one at a time per image, from the
+// document parsed once (images.Blob); images.svg.max_rasters of them are kept, the least recently shown going first.
+
+// The raster of e for a picture w x h device pixels large: the exact one when it exists, else the nearest (the
+// painter scales it meanwhile) and a raster of that size is asked for.
+@(private)
+svg_raster_for :: proc(e: ^Cache_Entry, want_w, want_h: int, priority: i32) -> ^Svg_Raster {
+	w, h := max(want_w, 1), max(want_h, 1)
+	best: ^Svg_Raster
+	best_d := max(int)
+	for &r in e.rasters {
+		if r.w == w && r.h == h { r.last_shown = cache.epoch; return &r }
+		// nearest by area, a larger one preferred to a smaller one
+		d := abs(r.w * r.h - w * h) * (r.w * r.h >= w * h ? 1 : 4)
+		if d < best_d { best, best_d = &r, d }
+	}
+	if e.raster_job != nil {
+		if e.raster_w == w && e.raster_h == h {
+			images.job_set_priority(e.raster_job, priority)
+		}
+		// another size is being made: this one is asked for at the next paint after it
+	} else if e.blob != nil {
+		o := decode_options(&cache.settings, e)
+		o.target_w, o.target_h = w, h
+		j := images.job_make(.Decode, e.blob, o, priority, e)
+		e.raster_job, e.raster_w, e.raster_h = j, w, h
+		if !images.submit(cache.port, j) { e.raster_job = nil }
+	}
+	if best != nil { best.last_shown = cache.epoch }
+	return best
+}
+
+@(private)
+svg_raster_done :: proc(e: ^Cache_Entry, j: ^images.Job) {
+	if j.err != .None || j.image == nil {
+		// a raster that cannot be made (rendering cost over the limit...): the image is broken
+		if len(e.rasters) == 0 {
+			e.err = j.err != .None ? j.err : .Internal
+			e.state = .Broken
+			entry_notify(e, true)
+		}
+		return
+	}
+	cache.next_id += 1
+	append(&e.rasters, Svg_Raster{id = cache.next_id, w = j.image.width, h = j.image.height, image = j.image, last_shown = cache.epoch})
+	j.image = nil
+	keep := max(cache.settings.svg_max_rasters, 1)
+	for len(e.rasters) > keep {
+		oldest := 0
+		for r, i in e.rasters { if r.last_shown < e.rasters[oldest].last_shown { oldest = i } }
+		append(&cache.evicted, e.rasters[oldest].id)
+		images.image_destroy(e.rasters[oldest].image)
+		ordered_remove(&e.rasters, oldest)
+	}
+	e.generation += 1
+	entry_account(e)
+	entry_notify(e, false)
+	cache_enforce()
+}
+
+// Drops rasters (those not shown in the current paint epoch when unshown_only).
+@(private)
+svg_drop_rasters :: proc(e: ^Cache_Entry, unshown_only: bool) {
+	for i := 0; i < len(e.rasters); {
+		r := e.rasters[i]
+		if unshown_only && r.last_shown == cache.epoch { i += 1; continue }
+		append(&cache.evicted, r.id)
+		images.image_destroy(r.image)
+		ordered_remove(&e.rasters, i)
+	}
+	entry_account(e)
+}
+
+// Natural size of an SVG image (CSS Images 3 §5.2, default sizing with the default object size 300 x 150): what the
+// document gives, a missing side from the ratio; atio_only: a ratio and no size at all (the layout stretches it).
+@(private)
+svg_natural :: proc(s: images.Svg_Size) -> (w, h: f32, ratio_only: bool) {
+	r := s.ratio
+	switch {
+	case s.has_w && s.has_h: return s.w, s.h, false
+	case s.has_w: return s.w, r > 0 ? s.w / r : 150, false
+	case s.has_h: return r > 0 ? s.h * r : 300, s.h, false
+	case r > 0:
+		// contained in 300 x 150 for those who need a size
+		if r >= 2 { return 300, 300 / r, true }
+		return 150 * r, 150, true
+	}
+	return 300, 150, false
+}
+
+////////////////////////////////
 // Shell: layout, painting, invalidation
 
 Image_State :: enum u8 { None, Loading, Ready, Broken }
@@ -1213,6 +1350,10 @@ Image_View :: struct {
 	pixel_size:  [2]int,     // image pixels (orientation applied)
 	animated:    bool,
 	error:       string,     // Broken: why (valid until the next change)
+	svg:         bool,       // vector: drawn at any size; `natural` follows CSS default sizing
+	ratio_only:  bool,       // SVG with a natural ratio and no natural size: `natural` is only a fallback
+	ratio:       f32,        // natural ratio (width / height), 0 = none
+	has_size:    [2]bool,    // SVG: which natural dimensions the document gives
 }
 
 @(private)
@@ -1232,6 +1373,15 @@ view_of :: proc(r: ^Img_Request, density: f32) -> Image_View {
 	d := density > 0 ? density : 1
 	v.natural = {f32(e.info.width) / d, f32(e.info.height) / d}
 	v.animated = e.info.animated && cache.settings.animate
+	if e.info.format == .Svg {
+		w, h, ratio_only := svg_natural(e.info.svg)
+		v.svg, v.ratio_only, v.ratio = true, ratio_only, e.info.svg.ratio
+		v.has_size = {e.info.svg.has_w || (e.info.svg.has_h && e.info.svg.ratio > 0), e.info.svg.has_h || (e.info.svg.has_w && e.info.svg.ratio > 0)}
+		v.natural = {w / d, h / d}
+	} else if v.natural[1] > 0 {
+		v.ratio = v.natural[0] / v.natural[1]
+		v.has_size = {true, true}
+	}
 	return v
 }
 
@@ -1271,6 +1421,7 @@ images_pixels_generation :: proc(p: ^Page) -> u64 { return p.images.ready ? p.im
 Frame_Pixels :: struct {
 	pixels:     []u8,     // RGBA8 straight alpha, sRGB; valid until the next call into this package
 	width, height, stride: int,
+	texture:    u64,      // the painter's texture key: the entry id, or an SVG raster's (one texture per size shown)
 	generation: u64,      // changes when the decoded image changes (new size, new decode)
 	frame:      int,      // animation frame index
 	next_ms:    f64,      // loop ms of the next frame change; < 0 = none (still, ended, or animations off)
@@ -1288,10 +1439,18 @@ frame_pixels :: proc(id: u64, now_ms: f64, want_w, want_h: int, priority: i32 = 
 	e, ok := cache.by_id[id]
 	if !ok { return {} }
 	e.last_shown = cache.epoch
+	if entry_is_svg(e) {
+		r := svg_raster_for(e, want_w, want_h, priority)
+		if r == nil || r.image == nil || len(r.image.frames) == 0 { return {} }
+		return Frame_Pixels{
+			pixels = r.image.frames[0].pixels, width = r.image.width, height = r.image.height, stride = r.image.stride,
+			texture = r.id, generation = r.id, ok = true, next_ms = -1,
+		}
+	}
 	entry_want_pixels(e, want_w, want_h, priority)
 	img := e.image
 	if img == nil || len(img.frames) == 0 { return {} }
-	fp := Frame_Pixels{width = img.width, height = img.height, stride = img.stride, generation = e.generation, reduced = img.reduced, ok = true, next_ms = -1}
+	fp := Frame_Pixels{width = img.width, height = img.height, stride = img.stride, texture = e.id, generation = e.generation, reduced = img.reduced, ok = true, next_ms = -1}
 	if img.info.animated && cache.settings.animate && len(img.frames) > 1 {
 		if e.anim_start < 0 { e.anim_start = now_ms }
 		idx, next := images.animation_frame_at(img, now_ms - e.anim_start)

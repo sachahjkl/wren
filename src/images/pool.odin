@@ -137,13 +137,6 @@ codec_supported :: proc(f: Format) -> bool {
 	return false
 }
 
-// The Accept header of image requests (Fetch §4.5: the "image" destination's value, with the formats really decodable
-// here first), and of `<picture>` / `<source type>`'s choice. HEIF is announced only where the system can decode it.
-accept_header :: proc() -> string {
-	if codecs.heif { return "image/avif,image/webp,image/svg+xml,image/heic,image/*,*/*;q=0.8" }
-	return "image/avif,image/webp,image/svg+xml,image/*,*/*;q=0.8"
-}
-
 // The format a MIME type names (for <source type>), Unknown when it is not an image type this browser knows.
 format_of_mime :: proc(mime: string) -> Format {
 	switch mime {
