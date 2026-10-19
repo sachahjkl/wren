@@ -1,6 +1,6 @@
 package wasm
 
-// The Wasmtime back-end.
+// The engine.
 //   * One Engine for the process (thread-safe), configured once from Runtime_Settings; one Linker holding every host
 //     function (registered once, shared by all stores); one Store per Instance (its own thread, limits, deadline).
 //   * Compiled modules: module_cache.odin (memory + authenticated disk cache). Each cached module carries an
@@ -142,9 +142,10 @@ wt_start :: proc(rs: Runtime_Settings) -> bool {
 	text := config_text(rs)
 	wt.fingerprint, _ = sha256(transmute([]byte)text)
 	wt.linker = wasmtime_linker_new(wt.engine)
-	for m in registry {
-		if !wt_define_module(wt.linker, m) { return false }
+	for im in registry {
+		if !define_import(wt.linker, im, false) { return false }
 	}
+	wt.linker_gen += 1
 	sync.atomic_store(&wt.ticker_stop, false)
 	wt.ticker = thread.create_and_start_with_data(nil, wt_ticker_main)
 	cache_start(wt.rs)
@@ -183,102 +184,8 @@ wt_ticker_main :: proc(_: rawptr) {
 	}
 }
 
-@(private)
-bound_functype :: proc(b: ^Bound) -> wt_functype {
-	params: [MAX_PARAMS]rawptr
-	for k, i in b.params { params[i] = rawptr(wasm_valtype_new(wasm_param_kind(k))) }
-	pv, rv: wt_ptr_vec
-	wasm_valtype_vec_new(&pv, uint(len(b.params)), &params[0])
-	if rk, has := wasm_result_kind(b.result); has {
-		r := [1]rawptr{rawptr(wasm_valtype_new(rk))}
-		wasm_valtype_vec_new(&rv, 1, &r[0])
-	} else {
-		wasm_valtype_vec_new_empty(&rv)
-	}
-	return wasm_functype_new(&pv, &rv)
-}
-
-@(private)
-wt_define_module :: proc(l: wt_linker, m: ^Bound_Module) -> bool {
-	ok := true
-	for b in m.symbols {
-		ty := bound_functype(b)
-		err := wasmtime_linker_define_func_unchecked(l, raw_data(m.name), len(m.name), raw_data(b.name), len(b.name), ty, wt_host_call, b, nil)
-		wasm_functype_delete(ty)
-		if err != nil {
-			fmt.eprintfln("wasm: cannot define %s.%s: %s", m.name, b.name, wt_error_text(err, context.temp_allocator))
-			wasmtime_error_delete(err)
-			ok = false
-		}
-	}
-	wt.linker_gen += 1
-	return ok
-}
-
-// Every import of every module ends here: validate and translate the pointers, then the thunk.
-@(private)
-wt_host_call :: proc "c" (env: rawptr, caller: wt_caller, args: [^]wt_val_raw, n: uint) -> wt_trap {
-	b := (^Bound)(env)
-	ctx := wasmtime_caller_context(caller)
-	inst := (^Instance)(wasmtime_context_get_data(ctx))
-	base: [^]u8
-	size: u64
-	if inst.wt.has_memory {
-		base = wasmtime_memory_data(ctx, &inst.wt.memory)
-		size = u64(wasmtime_memory_data_size(ctx, &inst.wt.memory))
-	}
-	a: [MAX_PARAMS]u64
-	for k, i in b.params {
-		v := args[i]
-		switch k {
-		case .I32, .Len: a[i] = u64(u32(v.i32))
-		case .I64:       a[i] = u64(v.i64)
-		case .F32:       a[i] = u64(transmute(u32)v.f32)
-		case .F64:       a[i] = transmute(u64)v.f64
-		case .Ptr_Len, .Ptr1:
-			off := u64(u32(v.i32))
-			length := k == .Ptr1 ? 1 : u64(u32(args[i + 1].i32))
-			if base == nil || off + length > size { return wt_bad_pointer(b, inst, off, length, size) }
-			a[i] = u64(uintptr(base)) + off
-		case .Str:
-			off := u64(u32(v.i32))
-			if base == nil || off >= size { return wt_bad_pointer(b, inst, off, 1, size) }
-			found := false
-			for j := off; j < size; j += 1 { if base[j] == 0 { found = true; break } }
-			if !found { return wt_bad_pointer(b, inst, off, size - off, size) }
-			a[i] = u64(uintptr(base)) + off
-		}
-	}
-	r := b.thunk(b.fn, Exec_Env(inst), &a[0])
-	if inst.wt.pending_trap != "" {
-		context = runtime.default_context()
-		msg := inst.wt.pending_trap
-		inst.wt.pending_trap = ""
-		t := wasmtime_trap_new(raw_data(msg), len(msg))
-		delete(msg)
-		return t
-	}
-	switch b.result {
-	case .None:
-	case .I32: args[0] = {}; args[0].i32 = i32(u32(r))
-	case .I64: args[0] = {}; args[0].i64 = i64(r)
-	case .F32: args[0] = {}; args[0].f32 = transmute(f32)u32(r)
-	case .F64: args[0] = {}; args[0].f64 = transmute(f64)r
-	}
-	return nil
-}
-
-@(private)
-wt_bad_pointer :: proc "contextless" (b: ^Bound, inst: ^Instance, off, length, size: u64) -> wt_trap {
-	context = runtime.default_context()
-	msg := fmt.tprintf("out of bounds memory access: %s.%s was given bytes [%d, %d) outside the module's memory (%d bytes)", b.module, b.name, off, off + length, size)
-	t := wasmtime_trap_new(raw_data(msg), len(msg))
-	free_all(context.temp_allocator)
-	return t
-}
-
-// A function import the browser cannot satisfy (unknown name, or known with another type) traps when called, as with
-// WAMR: the module still runs as long as it does not call it.
+// A function import the browser cannot satisfy (unknown name, or known with another type) traps when called: the
+// module still runs as long as it does not call it.
 @(private)
 Stub :: struct { message: string }
 
@@ -391,6 +298,9 @@ wt_instantiate :: proc(inst: ^Instance, image: []byte, filter: Import_Filter) ->
 	if c.memory_export != "" && wasmtime_instance_export_get(s.ctx, &s.instance, raw_data(c.memory_export), len(c.memory_export), &ext) && ext.kind == WT_EXTERN_MEMORY {
 		s.memory = ext.of.memory
 		s.has_memory = true
+		inst.mem_base = wasmtime_memory_data(s.ctx, &s.memory)
+		inst.mem_size = u64(wasmtime_memory_data_size(s.ctx, &s.memory))
+		inst.memory64 = c.memory64
 	}
 	if c.table_export != "" && wasmtime_instance_export_get(s.ctx, &s.instance, raw_data(c.table_export), len(c.table_export), &ext) && ext.kind == WT_EXTERN_TABLE {
 		s.table = ext.of.table

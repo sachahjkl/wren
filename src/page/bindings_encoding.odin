@@ -12,8 +12,6 @@ package page
 
 import "core:strings"
 import "core:unicode/utf8"
-import "wb:dom"
-import "wb:wasm"
 
 foreign import lexbor_enc {
 	"../../build/lexbor/lexbor.lib",
@@ -97,18 +95,16 @@ utf8_scrub :: proc(s: string, allocator := context.allocator) -> string {
 ////////////////////////////////
 // Imports
 
-// new TextEncoder().encode(s): a buffer with the UTF-8 bytes.
-n_TextEncoder_encode :: proc "c" (env: wasm.Exec_Env, s: [^]u8, n: i32) -> u64 {
-	context = ctx()
-	t := utf8_scrub(str(s, n), context.temp_allocator)
-	return buffer_create(page_of(env), transmute([]byte)t, inst_of(env).index)
+// new TextEncoder().encode(s): a buffer with the UTF-8 bytes (`text` is scrubbed by the binding: USVString).
+TextEncoder_encode :: proc(c: ^Call, text: string) -> (u64, Api_Error) {
+	b := buffer_create(c.page, transmute([]byte)text, c.owner)
+	if b == 0 { return 0, fail(c, .Quota, "QuotaExceededError: page memory limit") }
+	return b, .None
 }
 
-// encodeInto(s, dst): whole characters only. Returns read << 32 | written (read in bytes of the source).
-n_TextEncoder_encodeInto :: proc "c" (env: wasm.Exec_Env, s: [^]u8, n: i32, dst: [^]u8, cap: i32) -> i64 {
-	context = ctx()
-	src := str(s, n)
-	room := int(max(cap, 0))
+// encodeInto(source, destination): whole characters only; invalid bytes of the source count as U+FFFD.
+TextEncoder_encodeInto :: proc(c: ^Call, source: []u8, destination: []u8) -> Api_EncodeIntoResult {
+	src := string(source)
 	read, written := 0, 0
 	for read < len(src) {
 		r, w := utf8.decode_rune_in_string(src[read:])
@@ -121,47 +117,42 @@ n_TextEncoder_encodeInto :: proc "c" (env: wasm.Exec_Env, s: [^]u8, n: i32, dst:
 		} else {
 			bytes = transmute([]u8)src[read:][:w]
 		}
-		if written + len(bytes) > room { break }
-		copy(dst[written:][:len(bytes)], bytes)
+		if written + len(bytes) > len(destination) { break }
+		copy(destination[written:], bytes)
 		written += len(bytes)
 		read += w
 	}
-	return i64(read) << 32 | i64(written)
+	return Api_EncodeIntoResult{read = u64(read), written = u64(written)}
 }
 
-// new TextDecoder(label, {fatal, ignoreBOM}): flags bit 0 fatal, bit 1 ignoreBOM. 0 = RangeError (unknown label).
-n_TextDecoder_create :: proc "c" (env: wasm.Exec_Env, label: [^]u8, ll: i32, flags: i32) -> u64 {
-	context = ctx()
-	l := str(label, ll)
+// new TextDecoder(label, {fatal, ignoreBOM}): RangeError for an unknown label.
+TextDecoder_create :: proc(c: ^Call, label: string, options: Api_TextDecoderOptions) -> (u64, Api_Error) {
+	l := label
 	if l == "" { l = "utf-8" }
-	dec, ok := decoder_make(l, flags & 1 != 0, flags & 2 != 0)
-	if !ok { return 0 }
+	fatal, ignore_bom := .Fatal in options, .Ignore_BOM in options
+	dec, ok := decoder_make(l, fatal, ignore_bom)
+	if !ok { return 0, fail(c, .Range, "RangeError: unknown encoding label") }
 	d := new(Text_Decoder)
-	d.dec, d.fatal, d.ignore_bom = dec, flags & 1 != 0, flags & 2 != 0
+	d.dec, d.fatal, d.ignore_bom = dec, fatal, ignore_bom
 	d.name = decoder_name(dec)
-	return object_create(page_of(env), &text_decoder_vt, d, inst_of(env).index)
+	return object_create(c.page, &text_decoder_vt, d, c.owner), .None
 }
 
 @(private)
 decoder_get :: proc(p: ^Page, h: u64) -> ^Text_Decoder { return (^Text_Decoder)(object_data(p, h, &text_decoder_vt)) }
 
-n_TextDecoder_encoding :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	d := decoder_get(page_of(env), h)
-	if d == nil { return i32(dom.Error.Invalid_Handle) }
-	return out_string(d.name, buf, cap)
-}
+TextDecoder_encoding :: proc(c: ^Call, decoder: Api_TextDecoder) -> string { return decoder.data.name }
 
-// bit 0 fatal, bit 1 ignoreBOM
-n_TextDecoder_flags :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	d := decoder_get(page_of(env), h)
-	if d == nil { return i32(dom.Error.Invalid_Handle) }
-	return (d.fatal ? 1 : 0) | (d.ignore_bom ? 2 : 0)
+TextDecoder_flags :: proc(c: ^Call, decoder: Api_TextDecoder) -> Api_TextDecoderOptions {
+	o: Api_TextDecoderOptions
+	if decoder.data.fatal { o += {.Fatal} }
+	if decoder.data.ignore_bom { o += {.Ignore_BOM} }
+	return o
 }
 
 @(private)
-decode_into :: proc(p: ^Page, d: ^Text_Decoder, input: []byte, stream: bool, dst: [^]u8, cap: i32) -> i32 {
+decode_into :: proc(c: ^Call, d: ^Text_Decoder, input: []byte, stream: bool) -> (string, Api_Error) {
+	p := c.page
 	p.held -= len(d.output)
 	clear(&d.output)
 	out: [^]u8
@@ -172,53 +163,26 @@ decode_into :: proc(p: ^Page, d: ^Text_Decoder, input: []byte, stream: bool, dst
 	rc := wb_decoder_decode(d.dec, ptr, uint(len(input)), stream ? 0 : 1, &out, &n)
 	switch rc {
 	case 0:
-	case 1: return WEB_ERR_TYPE
-	case: return WEB_ERR_ENCODING
+	case 1: return "", fail(c, .Type, "TypeError: the input is not valid in this encoding (fatal mode)")
+	case: return "", .Encoding
 	}
 	defer wb_free_enc(out)
-	if int(n) > int(max(i32)) || p.held + int(n) > p.settings.max_fetch_bytes { return WEB_ERR_QUOTA }
+	if int(n) > int(max(i32)) || p.held + int(n) > p.settings.max_fetch_bytes { return "", fail(c, .Quota, "QuotaExceededError: page memory limit") }
 	append(&d.output, ..out[:n])
 	p.held += int(n)
-	return out_string(string(d.output[:]), dst, cap)
+	return string(d.output[:]), .None
 }
 
-// decode(bytes, {stream}): copies the UTF-8 result into dst, returns its full length (TextDecoder_output gets all of
-// it); WEB_ERR_TYPE for a fatal-mode error.
-n_TextDecoder_decode :: proc "c" (env: wasm.Exec_Env, h: u64, src: [^]u8, n: i32, stream: i32, dst: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	d := decoder_get(p, h)
-	if d == nil { return i32(dom.Error.Invalid_Handle) }
-	return decode_into(p, d, src[:max(n, 0)], stream != 0, dst, cap)
+// decode(bytes, {stream}): the UTF-8 result (TextDecoder_output gives all of it again).
+TextDecoder_decode :: proc(c: ^Call, decoder: Api_TextDecoder, input: []u8, stream: bool) -> (string, Api_Error) {
+	return decode_into(c, decoder.data, input, stream)
 }
 
 // Same, from a buffer object (a fetch body, a stream chunk).
-n_TextDecoder_decodeBuffer :: proc "c" (env: wasm.Exec_Env, h: u64, buffer: u64, stream: i32, dst: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	d := decoder_get(p, h)
-	if d == nil { return i32(dom.Error.Invalid_Handle) }
-	b := buffer_get(p, buffer)
-	if b == nil { return i32(dom.Error.Invalid_Handle) }
-	input := make([]byte, len(b.bytes), context.temp_allocator)   // the decoder must not alias a buffer it may outlive
-	copy(input, b.bytes[:])
-	return decode_into(p, d, input, stream != 0, dst, cap)
+TextDecoder_decodeBuffer :: proc(c: ^Call, decoder: Api_TextDecoder, input: Api_Buffer, stream: bool) -> (string, Api_Error) {
+	copy_of := make([]byte, len(input.data.bytes), context.temp_allocator)   // the decoder must not alias a buffer it may outlive
+	copy(copy_of, input.data.bytes[:])
+	return decode_into(c, decoder.data, copy_of, stream)
 }
 
-n_TextDecoder_output :: proc "c" (env: wasm.Exec_Env, h: u64, dst: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	d := decoder_get(page_of(env), h)
-	if d == nil { return i32(dom.Error.Invalid_Handle) }
-	return out_string(string(d.output[:]), dst, cap)
-}
-
-encoding_symbols := [?]wasm.Native_Symbol{
-	{"TextEncoder_encode", rawptr(n_TextEncoder_encode), "(*~)I", nil},
-	{"TextEncoder_encodeInto", rawptr(n_TextEncoder_encodeInto), "(*~*~)I", nil},
-	{"TextDecoder_create", rawptr(n_TextDecoder_create), "(*~i)I", nil},
-	{"TextDecoder_encoding", rawptr(n_TextDecoder_encoding), "(I*~)i", nil},
-	{"TextDecoder_flags", rawptr(n_TextDecoder_flags), "(I)i", nil},
-	{"TextDecoder_decode", rawptr(n_TextDecoder_decode), "(I*~i*~)i", nil},
-	{"TextDecoder_decodeBuffer", rawptr(n_TextDecoder_decodeBuffer), "(IIi*~)i", nil},
-	{"TextDecoder_output", rawptr(n_TextDecoder_output), "(I*~)i", nil},
-}
+TextDecoder_output :: proc(c: ^Call, decoder: Api_TextDecoder) -> string { return string(decoder.data.output[:]) }

@@ -1,0 +1,13 @@
+/// Web Crypto: random values, UUIDs and digests (SHA-1, SHA-256, SHA-384, SHA-512 through BCrypt; large inputs are
+/// hashed on a worker thread).
+[Exposed=Window]
+module crypto {
+  /// crypto.getRandomValues(destination). Quota past crypto.max_random_bytes.
+  void Crypto_getRandomValues(out bytes destination) raises;
+  /// crypto.randomUUID()
+  [Effects] string Crypto_randomUUID() raises;
+  /// crypto.subtle.digest(algorithm, data): settles with a buffer; rejected with Not_Supported for an unknown algorithm.
+  Promise<Buffer> SubtleCrypto_digest(string algorithm, bytes data);
+  /// The same over a buffer.
+  Promise<Buffer> SubtleCrypto_digestBuffer(string algorithm, Buffer data);
+}

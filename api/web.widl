@@ -1,0 +1,57 @@
+/// What every other module shares: the error codes (Web IDL exceptions and DOMException names), the exception record
+/// of the calling module, and the entry point of a page module.
+[Exposed=(Window,Worker)]
+module web {
+  /// The status of a function that raises: 0, or what went wrong. Promise rejections use the same codes.
+  enum Error : i32 {
+    None = 0,
+    /// A handle that is not live, or not of the kind the function takes.
+    Invalid_Handle = -1,
+    /// HierarchyRequestError: the node cannot go there.
+    Hierarchy = -2,
+    /// NotFoundError, or a null result ("no such attribute", "no such entry").
+    Not_Found = -3,
+    /// An argument out of its range (an enum, an index, a size).
+    Invalid_Argument = -4,
+    /// A node that is still in the tree cannot be released.
+    Attached = -5,
+    /// TypeError.
+    Type = -10,
+    /// RangeError.
+    Range = -11,
+    /// SecurityError.
+    Security = -12,
+    /// QuotaExceededError.
+    Quota = -13,
+    /// NotSupportedError.
+    Not_Supported = -14,
+    /// SyntaxError.
+    Syntax = -15,
+    /// AbortError.
+    Abort = -16,
+    /// TimeoutError.
+    Timeout = -17,
+    /// InvalidStateError.
+    Invalid_State = -18,
+    /// DataCloneError.
+    Data_Clone = -19,
+    /// NetworkError (fetch failures; the message says why).
+    Network = -20,
+    /// EncodingError.
+    Encoding = -21,
+    /// IndexSizeError.
+    Index_Size = -22,
+    /// NotAllowedError.
+    Not_Allowed = -23,
+    /// InvalidAccessError.
+    Invalid_Access = -24,
+  }
+
+  /// The code of the last error a function raised to this module instance (0 when none did yet).
+  Error Exception_code();
+  /// The message of that error ("" when it has none): what a DOMException's message would say.
+  string Exception_message();
+
+  /// Called once the module is instantiated in a page (after the document is parsed), if the module exports it.
+  export void wb_main();
+}

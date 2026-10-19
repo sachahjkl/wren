@@ -1,0 +1,28 @@
+/// WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object.
+[Exposed=Window]
+module websocket {
+  handle WebSocket : Object = Web_Socket via lookup_WebSocket;
+
+  /// new WebSocket(url, protocols): `protocols` is a comma-separated list ("" = none). Syntax for an invalid URL or
+  /// protocol list.
+  WebSocket WebSocket_create(string url, string protocols = "") raises;
+  /// readyState: 0 connecting, 1 open, 2 closing, 3 closed.
+  i32 WebSocket_readyState(WebSocket socket);
+  string WebSocket_url(WebSocket socket);
+  string WebSocket_protocol(WebSocket socket);
+  string WebSocket_extensions(WebSocket socket);
+  i64 WebSocket_bufferedAmount(WebSocket socket);
+  /// 0 = "arraybuffer" (buffer handles), the only binary type of this platform.
+  i32 WebSocket_binaryType(WebSocket socket);
+  /// Not_Supported for anything but 0.
+  void WebSocket_setBinaryType(WebSocket socket, i32 binary_type) raises;
+  /// socket.send(text). Invalid_State while connecting.
+  void WebSocket_send(WebSocket socket, usvstring text) raises;
+  /// socket.send(buffer): a binary message.
+  void WebSocket_sendBuffer(WebSocket socket, Buffer data) raises;
+  /// socket.close(code, reason): code < 0 means absent. Invalid_Access for a code that is not 1000 or 3000-4999,
+  /// Syntax for a reason over 123 bytes.
+  void WebSocket_close(WebSocket socket, i32 code = -1, string reason = "") raises;
+  /// CloseEvent.wasClean
+  bool CloseEvent_wasClean(Event event);
+}

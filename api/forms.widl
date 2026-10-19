@@ -1,0 +1,160 @@
+/// Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and
+/// FormData. Members shared by several interfaces are one function imported under each interface's name
+/// (HTMLInputElement_value, HTMLTextAreaElement_value...): it accepts any control and does what HTML says for its kind.
+///   * selection positions are UTF-16 code units, as in JavaScript; -1 means null (the API does not apply);
+///   * valueAsDate is milliseconds since the epoch, NaN for null;
+///   * events: InputEvent.data is Event_data, inputType Event_text; SubmitEvent.submitter, FocusEvent.relatedTarget and
+///     FormDataEvent.formData are Event_object.
+[Exposed=Window]
+module forms {
+  handle FormData : Object = Form_Data via lookup_FormData;
+
+  /// ValidityState: every flag that is set (none = valid).
+  flags ValidityState : u32 { Value_Missing, Type_Mismatch, Pattern_Mismatch, Too_Long, Too_Short, Range_Underflow, Range_Overflow, Step_Mismatch, Bad_Input, Custom_Error }
+  enum SelectionDirection : i32 { None, Forward, Backward }
+  /// setRangeText's selectMode.
+  enum SelectionMode : i32 { Preserve, Select, Start, End }
+  /// How a FormData body is encoded.
+  enum FormEnctype : i32 { Multipart, Urlencoded, Text_Plain }
+
+  /// control.value
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLOptionElement, HTMLOutputElement)]
+  string value(Element control);
+  /// control.value = value: Invalid_State for a file input given anything but "".
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLOptionElement, HTMLOutputElement)]
+  void setValue(Element control, string value) raises;
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLOutputElement)]
+  string defaultValue(Element control);
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLOutputElement)]
+  void setDefaultValue(Element control, string value) raises;
+  [On=(HTMLInputElement)] bool checked(Element control);
+  [On=(HTMLInputElement)] void setChecked(Element control, bool checked) raises;
+  [On=(HTMLInputElement)] bool defaultChecked(Element control);
+  [On=(HTMLInputElement)] void setDefaultChecked(Element control, bool checked);
+  [On=(HTMLInputElement)] bool indeterminate(Element control);
+  [On=(HTMLInputElement)] void setIndeterminate(Element control, bool indeterminate);
+  /// control.type
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLOutputElement, HTMLFieldSetElement, HTMLObjectElement)]
+  string type(Element control);
+  /// control.name
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLOutputElement, HTMLFieldSetElement, HTMLObjectElement)]
+  string name(Element control);
+  /// The form owner (null when none).
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLOutputElement, HTMLFieldSetElement, HTMLObjectElement, HTMLOptionElement, HTMLLabelElement, HTMLLegendElement)]
+  Element form(Element control);
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLFieldSetElement, HTMLOptionElement, HTMLOptGroupElement)]
+  bool disabled(Element control);
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLFieldSetElement, HTMLOptionElement, HTMLOptGroupElement)]
+  void setDisabled(Element control, bool disabled);
+  [On=(HTMLInputElement, HTMLTextAreaElement)] bool readOnly(Element control);
+  [On=(HTMLInputElement, HTMLTextAreaElement)] void setReadOnly(Element control, bool read_only);
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement)] bool required(Element control);
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement)] void setRequired(Element control, bool required);
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLOutputElement, HTMLFieldSetElement, HTMLObjectElement)]
+  bool willValidate(Element control);
+  /// control.validity
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLOutputElement, HTMLFieldSetElement, HTMLObjectElement)]
+  ValidityState validity(Element control);
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLOutputElement, HTMLFieldSetElement, HTMLObjectElement)]
+  string validationMessage(Element control);
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLOutputElement, HTMLFieldSetElement, HTMLObjectElement)]
+  void setCustomValidity(Element control, string message);
+  /// checkValidity(): fires "invalid" when it is not valid.
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLOutputElement, HTMLFieldSetElement, HTMLObjectElement, HTMLFormElement)]
+  bool checkValidity(Element control);
+  /// reportValidity(): also shows the problem to the user.
+  [On=(HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLButtonElement, HTMLOutputElement, HTMLFieldSetElement, HTMLObjectElement, HTMLFormElement)]
+  bool reportValidity(Element control);
+  [On=(HTMLInputElement, HTMLTextAreaElement)] void select(Element control) raises;
+  [On=(HTMLInputElement, HTMLTextAreaElement)] i32 selectionStart(Element control);
+  [On=(HTMLInputElement, HTMLTextAreaElement)] i32 selectionEnd(Element control);
+  /// "forward", "backward" or "none". Invalid_State when the control has no selection.
+  [On=(HTMLInputElement, HTMLTextAreaElement)] string selectionDirection(Element control) raises;
+  [On=(HTMLInputElement, HTMLTextAreaElement)] void setSelectionRange(Element control, i32 start, i32 end, SelectionDirection direction = None) raises;
+  /// setRangeText(text, start, end, mode): start / end < 0 use the selection.
+  [On=(HTMLInputElement, HTMLTextAreaElement)] void setRangeText(Element control, string text, i32 start = -1, i32 end = -1, SelectionMode mode = Preserve) raises;
+  [On=(HTMLInputElement, HTMLTextAreaElement)] i32 maxLength(Element control);
+  [On=(HTMLInputElement, HTMLTextAreaElement)] i32 minLength(Element control);
+  [On=(HTMLInputElement)] void stepUp(Element control, i32 count = 1) raises;
+  [On=(HTMLInputElement)] void stepDown(Element control, i32 count = 1) raises;
+  [On=(HTMLInputElement)] f64 valueAsNumber(Element control);
+  [On=(HTMLInputElement)] void setValueAsNumber(Element control, f64 value) raises;
+  /// NaN for null.
+  [On=(HTMLInputElement)] f64 valueAsDate(Element control);
+  /// NaN sets null.
+  [On=(HTMLInputElement)] void setValueAsDate(Element control, f64 ms) raises;
+  /// input.files.length
+  [On=(HTMLInputElement)] i32 files_length(Element control);
+  [On=(HTMLInputElement)] string fileName(Element control, i32 index) raises;
+  /// -1 past the end.
+  [On=(HTMLInputElement)] i64 fileSize(Element control, i32 index);
+  [On=(HTMLInputElement)] string fileType(Element control, i32 index) raises;
+
+  i32 HTMLSelectElement_selectedIndex(Element select);
+  /// Invalid_Handle when it is not a select.
+  void HTMLSelectElement_setSelectedIndex(Element select, i32 index) raises;
+  i32 HTMLSelectElement_length(Element select);
+  /// select.item(index): null past the end.
+  Element HTMLSelectElement_item(Element select, i32 index);
+  i32 HTMLSelectElement_selectedOptions_length(Element select);
+  Element HTMLSelectElement_selectedOptions_item(Element select, i32 index);
+  bool HTMLOptionElement_selected(Element option);
+  void HTMLOptionElement_setSelected(Element option, bool selected) raises;
+  bool HTMLOptionElement_defaultSelected(Element option);
+  void HTMLOptionElement_setDefaultSelected(Element option, bool selected) raises;
+  i32 HTMLOptionElement_index(Element option);
+  string HTMLOptionElement_text(Element option);
+  string HTMLOptionElement_label(Element option);
+  /// form.submit(): no submit event, no validation.
+  void HTMLFormElement_submit(Element form) raises;
+  /// form.requestSubmit(submitter)
+  void HTMLFormElement_requestSubmit(Element form, optional Element submitter) raises;
+  void HTMLFormElement_reset(Element form) raises;
+  i32 HTMLFormElement_length(Element form);
+  /// form.elements[index]: null past the end.
+  Element HTMLFormElement_elements(Element form, i32 index);
+  /// form.elements.namedItem(name): the first owned element whose id or name is `name` (null when none).
+  Element HTMLFormElement_namedItem(Element form, string name);
+  /// label.control (null when none).
+  Element HTMLLabelElement_control(Element label);
+  /// element.focus(): whether it got the focus.
+  bool HTMLElement_focus(Element element);
+  void HTMLElement_blur(Element element);
+  /// element.click(): false when the click was cancelled.
+  bool HTMLElement_click(Element element);
+  /// document.activeElement (the body when nothing has the focus).
+  Element Document_activeElement();
+  string HTMLDialogElement_returnValue(Element dialog);
+
+  /// new FormData(form, submitter): both optional. Invalid_Handle when form is not a form or submitter not one of its
+  /// submit buttons, Invalid_State while the form is constructing its entry list.
+  FormData FormData_create(optional Element form, optional Element submitter) raises;
+  /// Invalid_Argument past forms.max_entries.
+  void FormData_append(FormData data, usvstring name, usvstring value) raises;
+  /// append(name, blob, filename): the bytes of a buffer as a file entry ("blob" when no file name is given).
+  void FormData_appendBlob(FormData data, usvstring name, Buffer blob, usvstring filename = "", string mime = "") raises;
+  /// set(name, value): replaces the first entry of that name and removes the others.
+  void FormData_set(FormData data, usvstring name, usvstring value) raises;
+  void FormData_delete(FormData data, string name);
+  bool FormData_has(FormData data, string name);
+  /// getAll(name).length
+  i32 FormData_count(FormData data, string name);
+  /// get(name): the value (a file entry gives its file name). Not_Found when absent.
+  string FormData_get(FormData data, string name) raises;
+  /// getAll(name)[index]
+  string FormData_getAt(FormData data, string name, i32 index) raises;
+  /// The number of entries.
+  i32 FormData_size(FormData data);
+  string FormData_nameAt(FormData data, i32 index) raises;
+  string FormData_valueAt(FormData data, i32 index) raises;
+  bool FormData_isFileAt(FormData data, i32 index) raises;
+  /// -1 for a non-file entry or past the end.
+  i64 FormData_fileSizeAt(FormData data, i32 index);
+  string FormData_fileTypeAt(FormData data, i32 index) raises;
+}
+
+partial module fetch {
+  /// fetch with a FormData body: the Content-Type (with its boundary) is set unless `headers` name one. Same callback
+  /// and options as Fetch_start.
+  Fetch Fetch_startFormData(string url, FormData data, FetchCallback callback, i32 user = 0, string method = "POST", string headers = "", FormEnctype enctype = Multipart, FetchOptions options = none);
+}

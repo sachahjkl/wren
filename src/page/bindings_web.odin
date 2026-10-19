@@ -1,29 +1,17 @@
 package page
 
-// timers, network and document-level imports.
+// Modules "net" (fetch with a callback) and "document" (URL, origin, cookies).
 //
 // Fetch from a guest is the Fetch Standard through package fetch: the request carries the document's Environment, so
-// origin, CORS, cookies, referrer, CSP and mixed-content rules are applied by the browser, never by the guest. Options are
-// packed in one i32 (zero is the Fetch API default for every field):
-//
-//   bits 0-1  mode            0 cors, 1 same-origin, 2 no-cors
-//   bits 2-3  credentials     0 same-origin, 1 omit, 2 include
-//   bits 4-5  redirect        0 follow, 1 error, 2 manual
-//   bits 6-9  referrer policy 0 default, then fetch.Referrer_Policy order
-//   bit  10   no referrer
+// origin, CORS, cookies, referrer, CSP and mixed-content rules are applied by the browser, never by the guest. The
+// guest's FetchOptions travel packed in a u32 (fetch_options_pack), the form a worker's request is relayed in.
 
-import "base:runtime"
 import "core:strings"
 import "wb:base"
 import "wb:cookies"
-import "wb:dom"
 import "wb:fetch"
 import "wb:http"
 import "wb:url"
-import "wb:wasm"
-
-////////////////////////////////
-// timers: see bindings_timers.odin
 
 ////////////////////////////////
 // net
@@ -130,15 +118,23 @@ parse_header_lines :: proc(s: string, out: ^[dynamic]fetch.Header_Pair) {
 	}
 }
 
-n_Fetch_start :: proc "c" (env: wasm.Exec_Env, target: [^]u8, tl: i32, method: [^]u8, ml: i32, headers: [^]u8, hl: i32, body: [^]u8, bl: i32, options, callback, user: i32) -> u64 {
-	context = ctx()
-	return fetch_begin(page_of(env), inst_of(env).index, str(target, tl), str(method, ml), str(headers, hl), body[:max(bl, 0)], options, u32(callback), u32(user), nil)
+Fetch_start :: proc(c: ^Call, url: string, callback: u32, user: i32, method: string, headers: string, body: Maybe([]u8), options: Api_FetchOptions) -> u64 {
+	return fetch_begin(c.page, c.owner, url, method, headers, body.? or_else nil, fetch_options_pack(options), callback, u32(user), nil)
+}
+
+// The options as the request code keeps them (bits 0-1 mode, 2-3 credentials, 4-5 redirect, 6-9 referrer policy,
+// 10 no referrer): what a worker's request relays to the UI thread.
+@(private)
+fetch_options_pack :: proc(o: Api_FetchOptions) -> u32 {
+	v := u32(o.mode) | u32(o.credentials) << 2 | u32(o.redirect) << 4 | u32(o.referrer_policy) << 6
+	if o.no_referrer { v |= 1 << 10 }
+	return v
 }
 
 // Starts a fetch for a guest. `ext` (promise, stream, abort signal) is owned by the record from here on. In a worker the
 // request is relayed to the UI thread, where the loader lives (worker.odin); the extended forms are page-only.
 @(private)
-fetch_begin :: proc(p: ^Page, owner: u32, target, method, headers: string, body: []byte, options: i32, callback, user: u32, ext: ^Fetch_Ext) -> u64 {
+fetch_begin :: proc(p: ^Page, owner: u32, target, method, headers: string, body: []byte, options: u32, callback, user: u32, ext: ^Fetch_Ext) -> u64 {
 	h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = owner, callback = callback, user = user, ext = ext})
 	f.self = h
 	if ext != nil && !fetch_ext_attach(p, f) { return u64(h) }   // its signal is already aborted: the failure is on its way
@@ -148,11 +144,11 @@ fetch_begin :: proc(p: ^Page, owner: u32, target, method, headers: string, body:
 	if u, ok := url.parse(abs, &p.env.location, context.temp_allocator); ok { abs = u.href }
 
 	if p.worker != nil {
-		worker_fetch_start(p, f, abs, method, headers, body, u32(options))
+		worker_fetch_start(p, f, abs, method, headers, body, options)
 		return u64(h)
 	}
 	f.task = fetch.start(p.loader, {
-		request = guest_request(abs, method, headers, body, u32(options), &p.env),
+		request = guest_request(abs, method, headers, body, options, &p.env),
 		on_event = fetch_event, user = f, scope = p.scope, collect = false,
 	})
 	return u64(h)
@@ -179,142 +175,70 @@ guest_request :: proc(abs, method, headers: string, body: []byte, o: u32, initia
 	}
 }
 
-@(private)
-get_fetch :: proc "contextless" (env: wasm.Exec_Env, h: u64) -> ^Fetch {
-	context = ctx()
-	return base.pool_get(&page_of(env).fetches, H(h))
+Fetch_state :: proc(c: ^Call, request: Api_Fetch) -> Api_FetchState { return Api_FetchState(request.data.state) }
+Fetch_status :: proc(c: ^Call, request: Api_Fetch) -> i32 { return i32(request.data.status) }
+// 0 basic, 1 cors, 2 opaque, 3 opaque-redirect
+Fetch_type :: proc(c: ^Call, request: Api_Fetch) -> Api_ResponseType { return Api_ResponseType(request.data.type) }
+Fetch_redirected :: proc(c: ^Call, request: Api_Fetch) -> bool { return request.data.redirected }
+Fetch_headers :: proc(c: ^Call, request: Api_Fetch) -> string { return request.data.headers }
+Fetch_url :: proc(c: ^Call, request: Api_Fetch) -> string { return request.data.final_url }
+Fetch_error :: proc(c: ^Call, request: Api_Fetch) -> string { return request.data.error }
+Fetch_errorKind :: proc(c: ^Call, request: Api_Fetch) -> i32 { return i32(request.data.error_kind) }
+Fetch_bodyLength :: proc(c: ^Call, request: Api_Fetch) -> u64 { return u64(len(request.data.body)) }
+
+// Copies what fits from `offset`; returns the number copied.
+Fetch_readBody :: proc(c: ^Call, request: Api_Fetch, offset: u64, buffer: []u8) -> i32 {
+	f := request.data
+	if offset >= u64(len(f.body)) { return 0 }
+	return i32(copy(buffer, f.body[offset:]))
 }
 
-n_Fetch_state :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	if f := get_fetch(env, h); f != nil { return f.state }
-	return -1
-}
-n_Fetch_status :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	if f := get_fetch(env, h); f != nil { return i32(f.status) }
-	return -1
-}
-// 0 basic, 1 cors, 2 opaque, 3 opaque-redirect
-n_Fetch_type :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	if f := get_fetch(env, h); f != nil { return i32(f.type) }
-	return -1
-}
-n_Fetch_redirected :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	if f := get_fetch(env, h); f != nil { return f.redirected ? 1 : 0 }
-	return -1
-}
-n_Fetch_headers :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	if f := get_fetch(env, h); f != nil { return out_string(f.headers, buf, cap) }
-	return -1
-}
-n_Fetch_url :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	if f := get_fetch(env, h); f != nil { return out_string(f.final_url, buf, cap) }
-	return -1
-}
-n_Fetch_error :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	if f := get_fetch(env, h); f != nil { return out_string(f.error, buf, cap) }
-	return -1
-}
-n_Fetch_errorKind :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	if f := get_fetch(env, h); f != nil { return i32(f.error_kind) }
-	return -1
-}
-n_Fetch_bodyLength :: proc "c" (env: wasm.Exec_Env, h: u64) -> u64 {
-	if f := get_fetch(env, h); f != nil { return u64(len(f.body)) }
-	return 0
-}
-// Copies up to `cap` bytes starting at `offset`; returns the number copied.
-n_Fetch_readBody :: proc "c" (env: wasm.Exec_Env, h: u64, offset: u64, buf: [^]u8, cap: i32) -> i32 {
-	f := get_fetch(env, h)
-	if f == nil || offset >= u64(len(f.body)) { return 0 }
-	n := min(int(max(cap, 0)), len(f.body) - int(offset))
-	copy(buf[:n], f.body[offset:][:n])
-	return i32(n)
-}
-n_Fetch_release :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	fp := base.pool_get(&p.fetches, H(h))
-	if fp == nil { return i32(dom.Error.Invalid_Handle) }
-	fetch_abort(p, fp)
-	f, _ := base.pool_remove(&p.fetches, H(h))
+Fetch_release :: proc(c: ^Call, request: Api_Fetch) -> Api_Error {
+	p := c.page
+	fetch_abort(p, request.data)
+	f, _ := base.pool_remove(&p.fetches, H(request.handle))
 	p.held -= len(f.body)
 	free_fetch(&f)
-	return 0
-}
-
-net_symbols := [?]wasm.Native_Symbol{
-	{"Fetch_start", rawptr(n_Fetch_start), "(*~*~*~*~iii)I", nil},
-	{"Fetch_state", rawptr(n_Fetch_state), "(I)i", nil},
-	{"Fetch_status", rawptr(n_Fetch_status), "(I)i", nil},
-	{"Fetch_type", rawptr(n_Fetch_type), "(I)i", nil},
-	{"Fetch_redirected", rawptr(n_Fetch_redirected), "(I)i", nil},
-	{"Fetch_headers", rawptr(n_Fetch_headers), "(I*~)i", nil},
-	{"Fetch_url", rawptr(n_Fetch_url), "(I*~)i", nil},
-	{"Fetch_error", rawptr(n_Fetch_error), "(I*~)i", nil},
-	{"Fetch_errorKind", rawptr(n_Fetch_errorKind), "(I)i", nil},
-	{"Fetch_bodyLength", rawptr(n_Fetch_bodyLength), "(I)I", nil},
-	{"Fetch_readBody", rawptr(n_Fetch_readBody), "(II*~)i", nil},
-	{"Fetch_release", rawptr(n_Fetch_release), "(I)i", nil},
+	return .None
 }
 
 ////////////////////////////////
 // document: location, origin, cookies
 
-n_Document_URL :: proc "c" (env: wasm.Exec_Env, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	if p.worker != nil { return i32(dom.Error.Invalid_Handle) }   // no document in a worker (see WorkerGlobalScope_location)
-	return out_string(p.env.location.href, buf, cap)
+Document_URL :: proc(c: ^Call) -> (string, Api_Error) {
+	p := c.page
+	if p.worker != nil { return "", fail(c, .Invalid_Handle, "no document in a worker (see WorkerGlobalScope_location)") }
+	return p.env.location.href, .None
 }
 
 // Window_origin and Window_isSecureContext belong to WindowOrWorkerGlobalScope: in a worker they describe the worker.
 
-n_Window_origin :: proc "c" (env: wasm.Exec_Env, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	return out_string(url.origin_serialize(page_of(env).env.origin, context.temp_allocator), buf, cap)
-}
+Window_origin :: proc(c: ^Call) -> string { return url.origin_serialize(c.page.env.origin, context.temp_allocator) }
+Window_isSecureContext :: proc(c: ^Call) -> bool { return c.page.env.secure_context }
 
-n_Window_isSecureContext :: proc "c" (env: wasm.Exec_Env) -> i32 {
-	context = ctx()
-	return page_of(env).env.secure_context ? 1 : 0
-}
-
-// Cookies are only for documents with a tuple origin on http(s): opaque origins (file:, data:) get -1 (SecurityError).
+// Cookies are only for documents with a tuple origin on http(s): opaque origins (file:, data:) get a SecurityError.
 @(private)
-cookie_context :: proc(p: ^Page) -> (c: cookies.Context, ok: bool) {
+cookie_context :: proc(p: ^Page) -> (cc: cookies.Context, ok: bool) {
 	if p.worker != nil || p.env.origin.opaque || (p.env.location.scheme != "http" && p.env.location.scheme != "https") { return {}, false }
 	return cookies.Context{url = p.env.location, site_context = .Same_Site, http_api = false, now_ms = fetch.now_ms()}, true
 }
 
 // document.cookie getter: the non-HttpOnly cookies of this document, "name=value; ...".
-n_Document_cookie_get :: proc "c" (env: wasm.Exec_Env, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	c, ok := cookie_context(p)
-	if !ok { return -1 }
-	return out_string(cookies.header_for(&p.loader.profile.jar, c, context.temp_allocator), buf, cap)
+Document_cookie_get :: proc(c: ^Call) -> (string, Api_Error) {
+	p := c.page
+	cc, ok := cookie_context(p)
+	if !ok { return "", fail(c, .Security, "SecurityError: this document cannot use cookies") }
+	return cookies.header_for(&p.loader.profile.jar, cc, context.temp_allocator), .None
 }
 
-// document.cookie setter: one cookie string. Returns 0 when applied, -1 for a SecurityError, or 1 + the cookies.Store_Result
-// when the cookie was refused (so scripts can tell why).
-n_Document_cookie_set :: proc "c" (env: wasm.Exec_Env, s: [^]u8, n: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	c, ok := cookie_context(p)
-	if !ok { return -1 }
-	r := cookies.store(&p.loader.profile.jar, str(s, n), c)
+// document.cookie setter: 0 when applied, else 1 + the cookies.Store_Result that refused it.
+Document_cookie_set :: proc(c: ^Call, cookie: string) -> (i32, Api_Error) {
+	p := c.page
+	cc, ok := cookie_context(p)
+	if !ok { return 0, fail(c, .Security, "SecurityError: this document cannot use cookies") }
+	r := cookies.store(&p.loader.profile.jar, cookie, cc)
 	#partial switch r {
-	case .Stored, .Replaced, .Deleted: return 0
+	case .Stored, .Replaced, .Deleted: return 0, .None
 	}
-	return 1 + i32(r)
+	return 1 + i32(r), .None
 }
-
-document_symbols := [?]wasm.Native_Symbol{
-	{"Document_URL", rawptr(n_Document_URL), "(*~)i", nil},
-	{"Window_origin", rawptr(n_Window_origin), "(*~)i", nil},
-	{"Window_isSecureContext", rawptr(n_Window_isSecureContext), "()i", nil},
-	{"Document_cookie_get", rawptr(n_Document_cookie_get), "(*~)i", nil},
-	{"Document_cookie_set", rawptr(n_Document_cookie_set), "(*~)i", nil},
-}
-
-_ :: runtime

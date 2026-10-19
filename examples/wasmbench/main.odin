@@ -1,13 +1,6 @@
-// Guest of src/tools/wasmbench: compute kernels and host-call loops, the same code for every engine.
+// Guest of src/tools/wasmbench: compute kernels and host-call loops (the imports are bench_generated.odin, from
+// src/tools/wasmbench/bench.widl).
 package wasmbench
-
-foreign import bench "bench"
-
-@(default_calling_convention = "contextless")
-foreign bench {
-	nop :: proc() ---
-	touch :: proc(p: [^]u8, n: i32) -> i32 ---
-}
 
 N_MAX :: 1 << 20
 
@@ -92,7 +85,15 @@ calls_nop :: proc "contextless" (n: i32) {
 @(export)
 calls_bytes :: proc "contextless" (n: i32) -> i32 {
 	s: i32
-	for _ in 0 ..< n { s += touch(&bytes[0], len(bytes)) }
+	for _ in 0 ..< n { s += touch(bytes[:]) }
+	return s
+}
+
+@(export)
+calls_string :: proc "contextless" (n: i32) -> i32 {
+	s: i32
+	text := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	for _ in 0 ..< n { s += touch_string(text) }
 	return s
 }
 

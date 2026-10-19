@@ -1,145 +1,65 @@
 package page
 
-// The web platform as Wasm imports. No JavaScript, no glue, no marshalling of types:
-//   * handles are i64 (generation << 32 | index): opaque to the guest, validated by the host on every call
-//   * strings are (ptr, len) UTF-8 into the guest's linear memory; the runtime checks the range before we run
-//   * a string returned to the guest is written into a (ptr, cap) buffer the guest provides; the result is the
-//     length needed, so the guest can retry with a bigger buffer (no host allocation inside guest memory)
-//   * callbacks are plain function pointers (table indices) plus an i32 user value
-//   * errors: negative i32 (dom.Error); functions returning a handle return 0 on failure
-//
-// Import module names follow the specification area (dom, events, timers, net, console); member names follow
-// "Interface_member" from Web IDL, so a generator can produce guest-side bindings for any language.
+// The web platform as Wasm imports: implementations of modules "dom" and "events" (api/dom.widl, api/events.widl).
+// Every import is described in api/*.widl; src/tools/bindgen generates its trampoline (api_generated.odin), which
+// checks the guest's pointers, strings, handles and enums, and calls the implementation here with Odin values. The
+// other modules live in bindings_<area>.odin. Conventions, beyond the generated ABI (docs/api/README.md):
+//   * handles are generation << 32 | index: opaque to the guest, checked on every call; host objects carry OBJECT_TAG
+//   * callbacks are function table indices plus a user value; they run through call_guest (microtask checkpoint)
+//   * import names follow "Interface_member" from Web IDL
 
-import "base:runtime"
-import "wb:base"
 import "wb:dom"
-import "wb:wasm"
-
-@(private)
-ctx :: proc "contextless" () -> runtime.Context { return runtime.default_context() }
-
-@(private)
-page_of :: #force_inline proc "c" (env: wasm.Exec_Env) -> ^Page {
-	return (^Page)(wasm.owner(env).user)
-}
-
-@(private)
-inst_of :: #force_inline proc "c" (env: wasm.Exec_Env) -> ^wasm.Instance { return wasm.owner(env) }
-
-// The document the calling module may touch; nil in a worker, which has none (the dom imports then fail with
-// NO_DOCUMENT, or return 0 for those returning a handle).
-@(private)
-doc_of :: #force_inline proc "contextless" (env: wasm.Exec_Env) -> ^dom.Document {
-	p := page_of(env)
-	return p.worker == nil ? p.doc : nil
-}
-
-@(private)
-NO_DOCUMENT :: i32(dom.Error.Invalid_Handle)
-
-@(private)
-H :: #force_inline proc "contextless" (v: u64) -> base.Handle { return base.Handle(v) }
-
-@(private)
-str :: #force_inline proc "contextless" (p: [^]u8, n: i32) -> string { return string(p[:max(n, 0)]) }
-
-// Copies `s` into the guest buffer, returns the full length.
-@(private)
-out_string :: proc "contextless" (s: string, buf: [^]u8, cap: i32) -> i32 {
-	n := min(len(s), int(max(cap, 0)))
-	if n > 0 { copy(buf[:n], s[:n]) }
-	return i32(len(s))
-}
 
 ////////////////////////////////
 // dom
 
-n_Document_documentElement :: proc "c" (env: wasm.Exec_Env) -> u64 { return u64(page_of(env).doc_el) }
-n_Document_head :: proc "c" (env: wasm.Exec_Env) -> u64 { return u64(page_of(env).head) }
-n_Document_body :: proc "c" (env: wasm.Exec_Env) -> u64 { return u64(page_of(env).body) }
+Document_documentElement :: proc(c: ^Call) -> u64 { return u64(c.page.doc_el) }
+Document_head :: proc(c: ^Call) -> u64 { return u64(c.page.head) }
+Document_body :: proc(c: ^Call) -> u64 { return u64(c.page.body) }
 
-n_Document_createElement :: proc "c" (env: wasm.Exec_Env, tag: [^]u8, n: i32) -> u64 {
-	context = ctx()
-	d := doc_of(env)
+Document_createElement :: proc(c: ^Call, tag: string) -> (u64, Api_Error) {
+	d := call_doc(c)
+	if d == nil { return 0, fail(c, .Invalid_Handle, "no document in a worker") }
+	if tag == "" { return 0, fail(c, .Invalid_Argument, "createElement: empty tag name") }
+	return u64(dom.create_element(d, tag)), .None
+}
+
+Document_createTextNode :: proc(c: ^Call, text: string) -> (u64, Api_Error) {
+	d := call_doc(c)
+	if d == nil { return 0, fail(c, .Invalid_Handle, "no document in a worker") }
+	return u64(dom.create_text(d, text)), .None
+}
+
+Document_getElementById :: proc(c: ^Call, id: string) -> u64 {
+	d := call_doc(c)
 	if d == nil { return 0 }
-	t := str(tag, n)
-	if t == "" { return 0 }
-	return u64(dom.create_element(d, t))
+	return u64(dom.find_by_id(d, id))
 }
 
-n_Document_createTextNode :: proc "c" (env: wasm.Exec_Env, text: [^]u8, n: i32) -> u64 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return 0 }
-	return u64(dom.create_text(d, str(text, n)))
+Node_appendChild :: proc(c: ^Call, parent, child: Api_Node) -> Api_Error {
+	return dom_error(dom.append_child(c.page.doc, H(parent.handle), H(child.handle)))
 }
 
-n_Document_getElementById :: proc "c" (env: wasm.Exec_Env, id: [^]u8, n: i32) -> u64 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return 0 }
-	return u64(dom.find_by_id(d, str(id, n)))
+Node_insertBefore :: proc(c: ^Call, parent, child, ref: Api_Node) -> Api_Error {
+	return dom_error(dom.insert_before(c.page.doc, H(parent.handle), H(child.handle), H(ref.handle)))
 }
 
-n_Node_appendChild :: proc "c" (env: wasm.Exec_Env, parent, child: u64) -> i32 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return NO_DOCUMENT }
-	return i32(dom.append_child(d, H(parent), H(child)))
+Node_removeChild :: proc(c: ^Call, parent, child: Api_Node) -> Api_Error {
+	return dom_error(dom.remove_child(c.page.doc, H(parent.handle), H(child.handle)))
 }
 
-n_Node_insertBefore :: proc "c" (env: wasm.Exec_Env, parent, child, ref: u64) -> i32 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return NO_DOCUMENT }
-	return i32(dom.insert_before(d, H(parent), H(child), H(ref)))
+Node_release :: proc(c: ^Call, node: Api_Node) -> Api_Error {
+	return dom_error(dom.release(c.page.doc, H(node.handle)))
 }
 
-n_Node_removeChild :: proc "c" (env: wasm.Exec_Env, parent, child: u64) -> i32 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return NO_DOCUMENT }
-	return i32(dom.remove_child(d, H(parent), H(child)))
-}
+Node_parentNode :: proc(c: ^Call, node: Api_Node) -> u64 { return u64(node.data.parent) }
+Node_firstChild :: proc(c: ^Call, node: Api_Node) -> u64 { return u64(node.data.first_child) }
+Node_lastChild :: proc(c: ^Call, node: Api_Node) -> u64 { return u64(node.data.last_child) }
+Node_previousSibling :: proc(c: ^Call, node: Api_Node) -> u64 { return u64(node.data.prev) }
+Node_nextSibling :: proc(c: ^Call, node: Api_Node) -> u64 { return u64(node.data.next) }
 
-n_Node_release :: proc "c" (env: wasm.Exec_Env, node: u64) -> i32 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return NO_DOCUMENT }
-	return i32(dom.release(d, H(node)))
-}
-
-@(private)
-relation :: proc "contextless" (env: wasm.Exec_Env, node: u64, which: int) -> u64 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return 0 }
-	n := dom.get(d, H(node))
-	if n == nil { return 0 }
-	switch which {
-	case 0: return u64(n.parent)
-	case 1: return u64(n.first_child)
-	case 2: return u64(n.last_child)
-	case 3: return u64(n.prev)
-	case 4: return u64(n.next)
-	}
-	return 0
-}
-
-n_Node_parentNode :: proc "c" (env: wasm.Exec_Env, node: u64) -> u64 { return relation(env, node, 0) }
-n_Node_firstChild :: proc "c" (env: wasm.Exec_Env, node: u64) -> u64 { return relation(env, node, 1) }
-n_Node_lastChild :: proc "c" (env: wasm.Exec_Env, node: u64) -> u64 { return relation(env, node, 2) }
-n_Node_previousSibling :: proc "c" (env: wasm.Exec_Env, node: u64) -> u64 { return relation(env, node, 3) }
-n_Node_nextSibling :: proc "c" (env: wasm.Exec_Env, node: u64) -> u64 { return relation(env, node, 4) }
-
-n_Node_nodeType :: proc "c" (env: wasm.Exec_Env, node: u64) -> i32 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return 0 }
-	n := dom.get(d, H(node))
-	if n == nil { return 0 }
-	switch n.kind {
+Node_nodeType :: proc(c: ^Call, node: Api_Node) -> i32 {
+	switch node.data.kind {
 	case .Element: return 1
 	case .Text: return 3
 	case .Comment: return 8
@@ -148,268 +68,75 @@ n_Node_nodeType :: proc "c" (env: wasm.Exec_Env, node: u64) -> i32 {
 	return 0
 }
 
-n_Node_setTextContent :: proc "c" (env: wasm.Exec_Env, node: u64, text: [^]u8, n: i32) -> i32 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return NO_DOCUMENT }
-	return i32(dom.set_text_content(d, H(node), str(text, n)))
+Node_setTextContent :: proc(c: ^Call, node: Api_Node, text: string) -> Api_Error {
+	return dom_error(dom.set_text_content(c.page.doc, H(node.handle), text))
 }
 
-n_Node_getTextContent :: proc "c" (env: wasm.Exec_Env, node: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return NO_DOCUMENT }
-	if dom.get(d, H(node)) == nil { return i32(dom.Error.Invalid_Handle) }
-	return out_string(dom.text_content(d, H(node)), buf, cap)
+Node_getTextContent :: proc(c: ^Call, node: Api_Node) -> string { return dom.text_content(c.page.doc, H(node.handle)) }
+
+Element_tagName :: proc(c: ^Call, element: Api_Element) -> string { return element.data.name }
+
+Element_setAttribute :: proc(c: ^Call, element: Api_Element, name, value: string) -> Api_Error {
+	return dom_error(dom.set_attribute(c.page.doc, H(element.handle), name, value))
 }
 
-n_Element_tagName :: proc "c" (env: wasm.Exec_Env, node: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return NO_DOCUMENT }
-	n := dom.get(d, H(node))
-	if n == nil || n.kind != .Element { return i32(dom.Error.Invalid_Handle) }
-	return out_string(n.name, buf, cap)
+Element_getAttribute :: proc(c: ^Call, element: Api_Element, name: string) -> (string, Api_Error) {
+	v, ok := dom.get_attribute(c.page.doc, H(element.handle), name)
+	if !ok { return "", .Not_Found }
+	return v, .None
 }
 
-n_Element_setAttribute :: proc "c" (env: wasm.Exec_Env, node: u64, name: [^]u8, nl: i32, value: [^]u8, vl: i32) -> i32 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return NO_DOCUMENT }
-	return i32(dom.set_attribute(d, H(node), str(name, nl), str(value, vl)))
-}
-
-// Returns the value length, or a negative error (Not_Found = attribute absent).
-n_Element_getAttribute :: proc "c" (env: wasm.Exec_Env, node: u64, name: [^]u8, nl: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return NO_DOCUMENT }
-	if dom.get(d, H(node)) == nil { return i32(dom.Error.Invalid_Handle) }
-	v, ok := dom.get_attribute(d, H(node), str(name, nl))
-	if !ok { return i32(dom.Error.Not_Found) }
-	return out_string(v, buf, cap)
-}
-
-n_Element_removeAttribute :: proc "c" (env: wasm.Exec_Env, node: u64, name: [^]u8, nl: i32) -> i32 {
-	context = ctx()
-	d := doc_of(env)
-	if d == nil { return NO_DOCUMENT }
-	return i32(dom.remove_attribute(d, H(node), str(name, nl)))
-}
-
-dom_symbols := [?]wasm.Native_Symbol{
-	{"Document_documentElement", rawptr(n_Document_documentElement), "()I", nil},
-	{"Document_head", rawptr(n_Document_head), "()I", nil},
-	{"Document_body", rawptr(n_Document_body), "()I", nil},
-	{"Document_createElement", rawptr(n_Document_createElement), "(*~)I", nil},
-	{"Document_createTextNode", rawptr(n_Document_createTextNode), "(*~)I", nil},
-	{"Document_getElementById", rawptr(n_Document_getElementById), "(*~)I", nil},
-	{"Node_appendChild", rawptr(n_Node_appendChild), "(II)i", nil},
-	{"Node_insertBefore", rawptr(n_Node_insertBefore), "(III)i", nil},
-	{"Node_removeChild", rawptr(n_Node_removeChild), "(II)i", nil},
-	{"Node_release", rawptr(n_Node_release), "(I)i", nil},
-	{"Node_parentNode", rawptr(n_Node_parentNode), "(I)I", nil},
-	{"Node_firstChild", rawptr(n_Node_firstChild), "(I)I", nil},
-	{"Node_lastChild", rawptr(n_Node_lastChild), "(I)I", nil},
-	{"Node_previousSibling", rawptr(n_Node_previousSibling), "(I)I", nil},
-	{"Node_nextSibling", rawptr(n_Node_nextSibling), "(I)I", nil},
-	{"Node_nodeType", rawptr(n_Node_nodeType), "(I)i", nil},
-	{"Node_setTextContent", rawptr(n_Node_setTextContent), "(I*~)i", nil},
-	{"Node_getTextContent", rawptr(n_Node_getTextContent), "(I*~)i", nil},
-	{"Element_tagName", rawptr(n_Element_tagName), "(I*~)i", nil},
-	{"Element_setAttribute", rawptr(n_Element_setAttribute), "(I*~*~)i", nil},
-	{"Element_getAttribute", rawptr(n_Element_getAttribute), "(I*~*~)i", nil},
-	{"Element_removeAttribute", rawptr(n_Element_removeAttribute), "(I*~)i", nil},
+Element_removeAttribute :: proc(c: ^Call, element: Api_Element, name: string) -> Api_Error {
+	return dom_error(dom.remove_attribute(c.page.doc, H(element.handle), name))
 }
 
 ////////////////////////////////
 // events
 
-n_EventTarget_addEventListener :: proc "c" (env: wasm.Exec_Env, target: u64, type: [^]u8, tl: i32, callback, user, flags: i32) -> i32 {
-	context = ctx()
+EventTarget_addEventListener :: proc(c: ^Call, target: u64, type: string, callback: u32, user: i32, options: Api_ListenerOptions) -> (i32, Api_Error) {
 	if is_object(target) {
-		oid, oerr := object_add_listener(page_of(env), target, str(type, tl), u32(callback), u32(user), flags & 2 != 0, inst_of(env).index)
-		if oerr != .None { return i32(oerr) }
-		return i32(oid)
+		id, err := object_add_listener(c.page, target, type, callback, u32(user), .Once in options, c.owner)
+		if err != .None { return 0, dom_error(err) }
+		return i32(id), .None
 	}
-	if doc_of(env) == nil { return NO_DOCUMENT }
-	id, err := dom.add_listener(page_of(env).doc, H(target), str(type, tl), u32(callback), u32(user),
-		capture = flags & 1 != 0, once = flags & 2 != 0, passive = flags & 4 != 0, owner = inst_of(env).index)
-	if err != .None { return i32(err) }
-	return i32(id)
+	d := call_doc(c)
+	if d == nil { return 0, fail(c, .Invalid_Handle, "no document in a worker") }
+	id, err := dom.add_listener(d, H(target), type, callback, u32(user),
+		capture = .Capture in options, once = .Once in options, passive = .Passive in options, owner = c.owner)
+	if err != .None { return 0, dom_error(err) }
+	return i32(id), .None
 }
 
-n_EventTarget_removeEventListener :: proc "c" (env: wasm.Exec_Env, target: u64, id: i32) -> i32 {
-	context = ctx()
-	if is_object(target) { return i32(object_remove_listener(page_of(env), target, dom.Listener_Id(id))) }
-	if doc_of(env) == nil { return NO_DOCUMENT }
-	return i32(dom.remove_listener(page_of(env).doc, H(target), dom.Listener_Id(id)))
+EventTarget_removeEventListener :: proc(c: ^Call, target: u64, id: i32) -> Api_Error {
+	if is_object(target) { return dom_error(object_remove_listener(c.page, target, dom.Listener_Id(id))) }
+	d := call_doc(c)
+	if d == nil { return fail(c, .Invalid_Handle, "no document in a worker") }
+	return dom_error(dom.remove_listener(d, H(target), dom.Listener_Id(id)))
 }
 
-n_EventTarget_dispatchEvent :: proc "c" (env: wasm.Exec_Env, target: u64, type: [^]u8, tl: i32, flags: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
+EventTarget_dispatchEvent :: proc(c: ^Call, target: u64, type: string, init: Api_EventInit) -> (bool, Api_Error) {
+	p := c.page
 	if is_object(target) {
-		if object_get(p, target) == nil { return i32(dom.Error.Invalid_Handle) }
-		return object_dispatch(p, target, dom.Event{type = str(type, tl), cancelable = flags & 2 != 0}) ? 1 : 0
+		if object_get(p, target) == nil { return false, .Invalid_Handle }
+		return object_dispatch(p, target, dom.Event{type = type, cancelable = .Cancelable in init}), .None
 	}
-	if p.worker != nil || dom.get(p.doc, H(target)) == nil { return i32(dom.Error.Invalid_Handle) }
-	ok := dispatch_event(p, H(target), dom.Event{type = str(type, tl), bubbles = flags & 1 != 0, cancelable = flags & 2 != 0})
-	return ok ? 1 : 0
+	if p.worker != nil || dom.get(p.doc, H(target)) == nil { return false, .Invalid_Handle }
+	return dispatch_event(p, H(target), dom.Event{type = type, bubbles = .Bubbles in init, cancelable = .Cancelable in init}), .None
 }
 
-@(private)
-with_event :: proc(env: wasm.Exec_Env, ev: u64) -> ^dom.Event {
-	return base.pool_get(&page_of(env).dp.events, H(ev))
-}
-
-n_Event_preventDefault :: proc "c" (env: wasm.Exec_Env, ev: u64) {
-	context = ctx()
-	if e := with_event(env, ev); e != nil && e.cancelable { e.default_prevented = true }
-}
-n_Event_stopPropagation :: proc "c" (env: wasm.Exec_Env, ev: u64) {
-	context = ctx()
-	if e := with_event(env, ev); e != nil { e.stop = true }
-}
-n_Event_stopImmediatePropagation :: proc "c" (env: wasm.Exec_Env, ev: u64) {
-	context = ctx()
-	if e := with_event(env, ev); e != nil { e.stop = true; e.stop_immediate = true }
-}
-n_Event_target :: proc "c" (env: wasm.Exec_Env, ev: u64) -> u64 {
-	context = ctx()
-	if e := with_event(env, ev); e != nil { return u64(e.target) }
-	return 0
-}
-n_Event_currentTarget :: proc "c" (env: wasm.Exec_Env, ev: u64) -> u64 {
-	context = ctx()
-	if e := with_event(env, ev); e != nil { return u64(e.current_target) }
-	return 0
-}
-n_Event_type :: proc "c" (env: wasm.Exec_Env, ev: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	e := with_event(env, ev)
-	if e == nil { return i32(dom.Error.Invalid_Handle) }
-	return out_string(e.type, buf, cap)
-}
-n_MouseEvent_clientX :: proc "c" (env: wasm.Exec_Env, ev: u64) -> f64 {
-	context = ctx()
-	if e := with_event(env, ev); e != nil { return e.x }
-	return 0
-}
-n_MouseEvent_clientY :: proc "c" (env: wasm.Exec_Env, ev: u64) -> f64 {
-	context = ctx()
-	if e := with_event(env, ev); e != nil { return e.y }
-	return 0
-}
-n_MouseEvent_button :: proc "c" (env: wasm.Exec_Env, ev: u64) -> i32 {
-	context = ctx()
-	if e := with_event(env, ev); e != nil { return e.button }
-	return 0
-}
+Event_preventDefault :: proc(c: ^Call, event: Api_Event) { if event.data.cancelable { event.data.default_prevented = true } }
+Event_stopPropagation :: proc(c: ^Call, event: Api_Event) { event.data.stop = true }
+Event_stopImmediatePropagation :: proc(c: ^Call, event: Api_Event) { event.data.stop = true; event.data.stop_immediate = true }
+Event_target :: proc(c: ^Call, event: Api_Event) -> u64 { return u64(event.data.target) }
+Event_currentTarget :: proc(c: ^Call, event: Api_Event) -> u64 { return u64(event.data.current_target) }
+Event_type :: proc(c: ^Call, event: Api_Event) -> string { return event.data.type }
+Event_defaultPrevented :: proc(c: ^Call, event: Api_Event) -> bool { return event.data.default_prevented }
 // Payload of non-UI events (MessageEvent.data, CloseEvent.reason, ErrorEvent.message...): see dom.Event.
-n_Event_data :: proc "c" (env: wasm.Exec_Env, ev: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	e := with_event(env, ev)
-	if e == nil { return i32(dom.Error.Invalid_Handle) }
-	return out_string(e.data, buf, cap)
-}
-n_Event_text :: proc "c" (env: wasm.Exec_Env, ev: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	e := with_event(env, ev)
-	if e == nil { return i32(dom.Error.Invalid_Handle) }
-	return out_string(e.text, buf, cap)
-}
-n_Event_code :: proc "c" (env: wasm.Exec_Env, ev: u64) -> i64 {
-	context = ctx()
-	if e := with_event(env, ev); e != nil { return e.code }
-	return 0
-}
-n_Event_object :: proc "c" (env: wasm.Exec_Env, ev: u64) -> u64 {
-	context = ctx()
-	if e := with_event(env, ev); e != nil { return e.object }
-	return 0
-}
-n_Event_defaultPrevented :: proc "c" (env: wasm.Exec_Env, ev: u64) -> i32 {
-	context = ctx()
-	if e := with_event(env, ev); e != nil { return e.default_prevented ? 1 : 0 }
-	return 0
-}
-
-n_KeyboardEvent_keyCode :: proc "c" (env: wasm.Exec_Env, ev: u64) -> i32 {
-	context = ctx()
-	if e := with_event(env, ev); e != nil { return i32(e.key) }
-	return 0
-}
-
-events_symbols := [?]wasm.Native_Symbol{
-	{"EventTarget_addEventListener", rawptr(n_EventTarget_addEventListener), "(I*~iii)i", nil},
-	{"EventTarget_removeEventListener", rawptr(n_EventTarget_removeEventListener), "(Ii)i", nil},
-	{"EventTarget_dispatchEvent", rawptr(n_EventTarget_dispatchEvent), "(I*~i)i", nil},
-	{"Event_preventDefault", rawptr(n_Event_preventDefault), "(I)", nil},
-	{"Event_stopPropagation", rawptr(n_Event_stopPropagation), "(I)", nil},
-	{"Event_stopImmediatePropagation", rawptr(n_Event_stopImmediatePropagation), "(I)", nil},
-	{"Event_target", rawptr(n_Event_target), "(I)I", nil},
-	{"Event_currentTarget", rawptr(n_Event_currentTarget), "(I)I", nil},
-	{"Event_type", rawptr(n_Event_type), "(I*~)i", nil},
-	{"MouseEvent_clientX", rawptr(n_MouseEvent_clientX), "(I)F", nil},
-	{"MouseEvent_clientY", rawptr(n_MouseEvent_clientY), "(I)F", nil},
-	{"MouseEvent_button", rawptr(n_MouseEvent_button), "(I)i", nil},
-	{"KeyboardEvent_keyCode", rawptr(n_KeyboardEvent_keyCode), "(I)i", nil},
-	{"Event_data", rawptr(n_Event_data), "(I*~)i", nil},
-	{"Event_text", rawptr(n_Event_text), "(I*~)i", nil},
-	{"Event_code", rawptr(n_Event_code), "(I)I", nil},
-	{"Event_object", rawptr(n_Event_object), "(I)I", nil},
-	{"Event_defaultPrevented", rawptr(n_Event_defaultPrevented), "(I)i", nil},
-}
-
-////////////////////////////////
-////////////////////////////////
-// console
-
-@(private)
-console_write :: proc(env: wasm.Exec_Env, level: Log_Level, p: [^]u8, n: i32) {
-	pg := page_of(env)
-	log(pg, level, str(p, n))
-}
-n_console_log :: proc "c" (env: wasm.Exec_Env, p: [^]u8, n: i32) { context = ctx(); console_write(env, .Log, p, n) }
-n_console_warn :: proc "c" (env: wasm.Exec_Env, p: [^]u8, n: i32) { context = ctx(); console_write(env, .Warn, p, n) }
-n_console_error :: proc "c" (env: wasm.Exec_Env, p: [^]u8, n: i32) { context = ctx(); console_write(env, .Error, p, n) }
-
-console_symbols := [?]wasm.Native_Symbol{
-	{"log", rawptr(n_console_log), "(*~)", nil},
-	{"warn", rawptr(n_console_warn), "(*~)", nil},
-	{"error", rawptr(n_console_error), "(*~)", nil},
-}
-
-////////////////////////////////
-
-// Registers every import module. Call once, after wasm.runtime_init.
-register_imports :: proc() -> bool {
-	if !wasm.runtime_init() { return false }
-	ok := true
-	ok &&= wasm.register("dom", dom_symbols[:])
-	ok &&= wasm.register("events", events_symbols[:])
-	ok &&= wasm.register("timers", timers_symbols[:])
-	ok &&= wasm.register("net", net_symbols[:])
-	ok &&= wasm.register("document", document_symbols[:])
-	ok &&= wasm.register("console", console_symbols[:])
-	ok &&= wasm.register("async", async_symbols[:])
-	ok &&= wasm.register("eventsource", eventsource_symbols[:])
-	ok &&= wasm.register("websocket", websocket_symbols[:])
-	ok &&= wasm.register("abort", abort_symbols[:])
-	ok &&= wasm.register("fetch", fetch_symbols[:])
-	ok &&= wasm.register("encoding", encoding_symbols[:])
-	ok &&= wasm.register("crypto", crypto_symbols[:])
-	ok &&= wasm.register("storage", storage_symbols[:])
-	ok &&= wasm.register("url", url_symbols[:])
-	ok &&= wasm.register("performance", performance_symbols[:])
-	ok &&= wasm.register("history", history_symbols[:])
-	ok &&= wasm.register("forms", build_forms_symbols())
-	ok &&= wasm.register("workers", workers_symbols[:])
-	ok &&= wasm.register("images", images_symbols[:])
-	// modules whose host functions only touch the realm itself (no document, loader, blocking pool or other page): usable
-	// from a worker's thread. Network-backed modules (fetch promises, abort, sockets, storage, crypto digests) are not yet.
-	for m in ([]string{"encoding", "url", "performance", "images"}) { worker_allow_module(m) }
-	return ok
-}
-
+Event_data :: proc(c: ^Call, event: Api_Event) -> string { return event.data.data }
+Event_text :: proc(c: ^Call, event: Api_Event) -> string { return event.data.text }
+Event_code :: proc(c: ^Call, event: Api_Event) -> i64 { return event.data.code }
+Event_object :: proc(c: ^Call, event: Api_Event) -> u64 { return event.data.object }
+MouseEvent_clientX :: proc(c: ^Call, event: Api_Event) -> f64 { return event.data.x }
+MouseEvent_clientY :: proc(c: ^Call, event: Api_Event) -> f64 { return event.data.y }
+MouseEvent_button :: proc(c: ^Call, event: Api_Event) -> i32 { return event.data.button }
+KeyboardEvent_keyCode :: proc(c: ^Call, event: Api_Event) -> i32 { return i32(event.data.key) }

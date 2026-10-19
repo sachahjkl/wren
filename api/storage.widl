@@ -1,0 +1,25 @@
+/// localStorage and sessionStorage (Web Storage). Security for an opaque origin or disabled storage, Quota for a write
+/// past the quota, Not_Found for a null result.
+[Exposed=Window]
+module storage {
+  enum StorageArea : i32 { Local, Session }
+  /// A field of a StorageEvent.
+  enum StorageEventField : i32 { Key, Old_Value, New_Value, Url }
+
+  /// storage.length
+  i32 Storage_length(StorageArea area) raises;
+  /// storage.key(index)
+  string Storage_key(StorageArea area, i32 index) raises;
+  /// storage.getItem(key)
+  string Storage_getItem(StorageArea area, string key) raises;
+  /// storage.setItem(key, value)
+  void Storage_setItem(StorageArea area, usvstring key, usvstring value) raises;
+  /// storage.removeItem(key)
+  void Storage_removeItem(StorageArea area, string key) raises;
+  /// storage.clear()
+  void Storage_clear(StorageArea area) raises;
+  /// A field of a "storage" event: Not_Found when null, Invalid_Handle for another event.
+  string StorageEvent_get(Event event, StorageEventField field) raises;
+  /// StorageEvent.storageArea
+  StorageArea StorageEvent_storageArea(Event event) raises;
+}

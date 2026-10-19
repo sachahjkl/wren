@@ -79,7 +79,7 @@ pump_until :: proc(cond: proc() -> bool, seconds := 10.0) -> bool {
 // Writes `s` into the page module's command buffer; returns its length.
 put_cmd :: proc(inst: ^wasm.Instance, s: string) -> u32 {
 	ptr, _ := wasm.call_i32(inst, "cmd_ptr")
-	dst := wasm.guest_bytes(inst, u32(ptr), u32(len(s)))
+	dst := wasm.guest_bytes(inst, u64(u32(ptr)), u64(len(s)))
 	copy(dst, s)
 	return u32(len(s))
 }

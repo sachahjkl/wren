@@ -6,8 +6,6 @@ package page
 
 import "core:math"
 import "core:strings"
-import "wb:dom"
-import "wb:wasm"
 
 Perf_Kind :: enum u8 { Mark, Measure }
 
@@ -72,121 +70,74 @@ perf_find :: proc(p: ^Page, name: string, type: i32, index: i32) -> ^Perf_Entry 
 ////////////////////////////////
 // Imports
 
-n_Performance_now :: proc "c" (env: wasm.Exec_Env) -> f64 {
-	context = ctx()
-	return page_now_ms(page_of(env))
-}
-
-n_Performance_timeOrigin :: proc "c" (env: wasm.Exec_Env) -> f64 {
-	context = ctx()
-	return page_of(env).web.origin_unix_ms
-}
+Performance_now :: proc(c: ^Call) -> f64 { return page_now_ms(c.page) }
+Performance_timeOrigin :: proc(c: ^Call) -> f64 { return c.page.web.origin_unix_ms }
 
 // performance.mark(name, {startTime}): start < 0 or NaN = now.
-n_Performance_mark :: proc "c" (env: wasm.Exec_Env, name: [^]u8, nl: i32, start: f64) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	n := str(name, nl)
-	if n == "" { return WEB_ERR_SYNTAX }
-	t := start
+Performance_mark :: proc(c: ^Call, name: string, start_time: f64) -> Api_Error {
+	p := c.page
+	if name == "" { return fail(c, .Syntax, "SyntaxError: empty mark name") }
+	t := start_time
 	if math.is_nan(t) || t < 0 { t = page_now_ms(p) }
-	perf_add(p, Perf_Entry{name = n, kind = .Mark, start = t})
-	return 0
+	perf_add(p, Perf_Entry{name = name, kind = .Mark, start = t})
+	return .None
 }
 
-// performance.measure(name, startMark, endMark): an empty start is the time origin, an empty end is now. A missing
-// mark is a SyntaxError. Returns 0; the duration is in the entry.
-n_Performance_measure :: proc "c" (env: wasm.Exec_Env, name: [^]u8, nl: i32, start_mark: [^]u8, sl: i32, end_mark: [^]u8, el: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	n := str(name, nl)
-	if n == "" { return WEB_ERR_SYNTAX }
+// performance.measure(name, startMark, endMark): an empty start is the time origin, an empty end is now.
+Performance_measure :: proc(c: ^Call, name: string, start_mark: string, end_mark: string) -> Api_Error {
+	p := c.page
+	if name == "" { return fail(c, .Syntax, "SyntaxError: empty measure name") }
 	start, end := 0.0, page_now_ms(p)
-	if s := str(start_mark, sl); s != "" {
+	if start_mark != "" {
 		ok: bool
-		if start, ok = perf_mark_time(p, s); !ok { return WEB_ERR_SYNTAX }
+		if start, ok = perf_mark_time(p, start_mark); !ok { return fail(c, .Syntax, "SyntaxError: no such mark") }
 	}
-	if e := str(end_mark, el); e != "" {
+	if end_mark != "" {
 		ok: bool
-		if end, ok = perf_mark_time(p, e); !ok { return WEB_ERR_SYNTAX }
+		if end, ok = perf_mark_time(p, end_mark); !ok { return fail(c, .Syntax, "SyntaxError: no such mark") }
 	}
-	perf_add(p, Perf_Entry{name = n, kind = .Measure, start = start, duration = end - start})
-	return 0
+	perf_add(p, Perf_Entry{name = name, kind = .Measure, start = start, duration = end - start})
+	return .None
 }
 
 // measure with explicit times (the {start, end} options form).
-n_Performance_measureTimes :: proc "c" (env: wasm.Exec_Env, name: [^]u8, nl: i32, start, end: f64) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	n := str(name, nl)
-	if n == "" || math.is_nan(start) || math.is_nan(end) { return WEB_ERR_SYNTAX }
-	perf_add(p, Perf_Entry{name = n, kind = .Measure, start = start, duration = end - start})
-	return 0
+Performance_measureTimes :: proc(c: ^Call, name: string, start, end: f64) -> Api_Error {
+	if name == "" || math.is_nan(start) || math.is_nan(end) { return fail(c, .Syntax, "SyntaxError: empty name or NaN time") }
+	perf_add(c.page, Perf_Entry{name = name, kind = .Measure, start = start, duration = end - start})
+	return .None
 }
 
-// getEntriesByName(name, type) / getEntriesByType(type) / getEntries(): name "" matches any, type 0 any, 1 "mark",
-// 2 "measure". Returns how many entries match; read them with Performance_entry*.
-n_Performance_entryCount :: proc "c" (env: wasm.Exec_Env, name: [^]u8, nl: i32, type: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	n := str(name, nl)
+Performance_entryCount :: proc(c: ^Call, name: string, entry_type: Api_PerformanceEntryType) -> i32 {
 	k: i32 = 0
-	for e in p.web.perf {
-		if n != "" && e.name != n { continue }
-		if type != 0 && i32(e.kind) + 1 != type { continue }
+	for e in c.page.web.perf {
+		if name != "" && e.name != name { continue }
+		if entry_type != .Any && i32(e.kind) + 1 != i32(entry_type) { continue }
 		k += 1
 	}
 	return k
 }
 
-n_Performance_entryStartTime :: proc "c" (env: wasm.Exec_Env, name: [^]u8, nl: i32, type: i32, index: i32) -> f64 {
-	context = ctx()
-	if e := perf_find(page_of(env), str(name, nl), type, index); e != nil { return e.start }
+Performance_entryStartTime :: proc(c: ^Call, name: string, entry_type: Api_PerformanceEntryType, index: i32) -> f64 {
+	if e := perf_find(c.page, name, i32(entry_type), index); e != nil { return e.start }
 	return math.nan_f64()
 }
 
-n_Performance_entryDuration :: proc "c" (env: wasm.Exec_Env, name: [^]u8, nl: i32, type: i32, index: i32) -> f64 {
-	context = ctx()
-	if e := perf_find(page_of(env), str(name, nl), type, index); e != nil { return e.duration }
+Performance_entryDuration :: proc(c: ^Call, name: string, entry_type: Api_PerformanceEntryType, index: i32) -> f64 {
+	if e := perf_find(c.page, name, i32(entry_type), index); e != nil { return e.duration }
 	return math.nan_f64()
 }
 
-// The entry's name (length needed), Not_Found when there is no such entry.
-n_Performance_entryName :: proc "c" (env: wasm.Exec_Env, name: [^]u8, nl: i32, type: i32, index: i32, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	e := perf_find(page_of(env), str(name, nl), type, index)
-	if e == nil { return i32(dom.Error.Not_Found) }
-	return out_string(e.name, buf, cap)
+Performance_entryName :: proc(c: ^Call, name: string, entry_type: Api_PerformanceEntryType, index: i32) -> (string, Api_Error) {
+	e := perf_find(c.page, name, i32(entry_type), index)
+	if e == nil { return "", .Not_Found }
+	return e.name, .None
 }
 
-n_Performance_entryType :: proc "c" (env: wasm.Exec_Env, name: [^]u8, nl: i32, type: i32, index: i32) -> i32 {
-	context = ctx()
-	e := perf_find(page_of(env), str(name, nl), type, index)
-	if e == nil { return i32(dom.Error.Not_Found) }
-	return i32(e.kind) + 1
+Performance_entryType :: proc(c: ^Call, name: string, entry_type: Api_PerformanceEntryType, index: i32) -> (Api_PerformanceEntryType, Api_Error) {
+	e := perf_find(c.page, name, i32(entry_type), index)
+	if e == nil { return .Any, .Not_Found }
+	return e.kind == .Mark ? .Mark : .Measure, .None
 }
 
-n_Performance_clearMarks :: proc "c" (env: wasm.Exec_Env, name: [^]u8, nl: i32) {
-	context = ctx()
-	perf_clear(page_of(env), str(name, nl), .Mark)
-}
-
-n_Performance_clearMeasures :: proc "c" (env: wasm.Exec_Env, name: [^]u8, nl: i32) {
-	context = ctx()
-	perf_clear(page_of(env), str(name, nl), .Measure)
-}
-
-performance_symbols := [?]wasm.Native_Symbol{
-	{"Performance_now", rawptr(n_Performance_now), "()F", nil},
-	{"Performance_timeOrigin", rawptr(n_Performance_timeOrigin), "()F", nil},
-	{"Performance_mark", rawptr(n_Performance_mark), "(*~F)i", nil},
-	{"Performance_measure", rawptr(n_Performance_measure), "(*~*~*~)i", nil},
-	{"Performance_measureTimes", rawptr(n_Performance_measureTimes), "(*~FF)i", nil},
-	{"Performance_entryCount", rawptr(n_Performance_entryCount), "(*~i)i", nil},
-	{"Performance_entryStartTime", rawptr(n_Performance_entryStartTime), "(*~ii)F", nil},
-	{"Performance_entryDuration", rawptr(n_Performance_entryDuration), "(*~ii)F", nil},
-	{"Performance_entryName", rawptr(n_Performance_entryName), "(*~ii*~)i", nil},
-	{"Performance_entryType", rawptr(n_Performance_entryType), "(*~ii)i", nil},
-	{"Performance_clearMarks", rawptr(n_Performance_clearMarks), "(*~)", nil},
-	{"Performance_clearMeasures", rawptr(n_Performance_clearMeasures), "(*~)", nil},
-}
+Performance_clearMarks :: proc(c: ^Call, name: string) { perf_clear(c.page, name, .Mark) }
+Performance_clearMeasures :: proc(c: ^Call, name: string) { perf_clear(c.page, name, .Measure) }

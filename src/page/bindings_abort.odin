@@ -13,7 +13,6 @@ import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
-import "wb:wasm"
 
 Abort_Algorithm :: struct {
 	fn:   proc(p: ^Page, data: u64, signal: u64),
@@ -134,102 +133,65 @@ signal_timeout_fired :: proc(data: rawptr) {
 ////////////////////////////////
 // Imports
 
-n_AbortController_create :: proc "c" (env: wasm.Exec_Env) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	owner := inst_of(env).index
-	c := new(Abort_Controller)
-	c.signal = signal_create(p, owner)
-	return object_create(p, &abort_controller_vt, c, owner)
+AbortController_create :: proc(c: ^Call) -> u64 {
+	ac := new(Abort_Controller)
+	ac.signal = signal_create(c.page, c.owner)
+	return object_create(c.page, &abort_controller_vt, ac, c.owner)
 }
 
-n_AbortController_signal :: proc "c" (env: wasm.Exec_Env, h: u64) -> u64 {
-	context = ctx()
-	c := (^Abort_Controller)(object_data(page_of(env), h, &abort_controller_vt))
-	return c.signal if c != nil else 0
-}
+AbortController_signal :: proc(c: ^Call, controller: Api_AbortController) -> u64 { return controller.data.signal }
 
 // abort(reason): an empty reason with code 0 is the default AbortError.
-n_AbortController_abort :: proc "c" (env: wasm.Exec_Env, h: u64, code: i64, reason: [^]u8, rl: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	c := (^Abort_Controller)(object_data(p, h, &abort_controller_vt))
-	if c == nil { return i32(dom.Error.Invalid_Handle) }
-	r := str(reason, rl)
-	cd := code
+AbortController_abort :: proc(c: ^Call, controller: Api_AbortController, code: i64, reason: string) {
+	cd, r := code, reason
 	if cd == 0 && r == "" { cd, r = WEB_ERR_ABORT, ABORT_REASON }
-	signal_abort(p, c.signal, cd, r)
-	return 0
+	signal_abort(c.page, controller.data.signal, cd, r)
 }
 
-n_AbortSignal_aborted :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	s := signal_get(page_of(env), h)
-	if s == nil { return i32(dom.Error.Invalid_Handle) }
-	return s.aborted ? 1 : 0
-}
-
-n_AbortSignal_reasonCode :: proc "c" (env: wasm.Exec_Env, h: u64) -> i64 {
-	context = ctx()
-	s := signal_get(page_of(env), h)
-	return s.reason_code if s != nil else 0
-}
-
-n_AbortSignal_reason :: proc "c" (env: wasm.Exec_Env, h: u64, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	s := signal_get(page_of(env), h)
-	if s == nil { return i32(dom.Error.Invalid_Handle) }
-	return out_string(s.reason, buf, cap)
-}
+AbortSignal_aborted :: proc(c: ^Call, signal: Api_AbortSignal) -> bool { return signal.data.aborted }
+AbortSignal_reasonCode :: proc(c: ^Call, signal: Api_AbortSignal) -> i64 { return signal.data.reason_code }
+AbortSignal_reason :: proc(c: ^Call, signal: Api_AbortSignal) -> string { return signal.data.reason }
 
 // throwIfAborted(): 0, or the reason's code.
-n_AbortSignal_throwIfAborted :: proc "c" (env: wasm.Exec_Env, h: u64) -> i64 {
-	context = ctx()
-	s := signal_get(page_of(env), h)
-	if s == nil { return i64(dom.Error.Invalid_Handle) }
+AbortSignal_throwIfAborted :: proc(c: ^Call, signal: Api_AbortSignal) -> i64 {
+	s := signal.data
 	return s.reason_code if s.aborted else 0
 }
 
 // AbortSignal.abort(reason): a signal that is already aborted.
-n_AbortSignal_abort :: proc "c" (env: wasm.Exec_Env, code: i64, reason: [^]u8, rl: i32) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	h := signal_create(p, inst_of(env).index)
+AbortSignal_abort :: proc(c: ^Call, code: i64, reason: string) -> u64 {
+	p := c.page
+	h := signal_create(p, c.owner)
 	s := signal_get(p, h)
-	r := str(reason, rl)
-	cd := code
+	cd, r := code, reason
 	if cd == 0 && r == "" { cd, r = WEB_ERR_ABORT, ABORT_REASON }
 	s.aborted, s.reason_code, s.reason = true, cd, strings.clone(r)
 	return h
 }
 
 // AbortSignal.timeout(ms): aborted with TimeoutError after `ms`.
-n_AbortSignal_timeout :: proc "c" (env: wasm.Exec_Env, ms: f64) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	if math.is_nan(ms) || ms < 0 { return 0 }
-	h := signal_create(p, inst_of(env).index)
+AbortSignal_timeout :: proc(c: ^Call, ms: f64) -> (u64, Api_Error) {
+	p := c.page
+	if math.is_nan(ms) || ms < 0 { return 0, fail(c, .Range, "RangeError: the delay is negative or NaN") }
+	h := signal_create(p, c.owner)
 	s := signal_get(p, h)
 	s.timer = host.set_timer(p.loop, min(ms, 1e12), 0, signal_timeout_fired, s, p.scope)
-	return h
+	return h, .None
 }
 
-// AbortSignal.any(signals): `list` holds `bytes / 8` signal handles.
-n_AbortSignal_any :: proc "c" (env: wasm.Exec_Env, list_bytes: [^]u8, bytes: i32) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	n := int(max(bytes, 0)) / 8
-	if n > p.settings.web.max_signal_sources { return 0 }
-	list := ([^]u64)(list_bytes)
-	for i in 0 ..< n { if signal_get(p, list[i]) == nil { return 0 } }
-	h := signal_create(p, inst_of(env).index)
+// AbortSignal.any(signals)
+AbortSignal_any :: proc(c: ^Call, signals: []u64) -> (u64, Api_Error) {
+	p := c.page
+	if len(signals) > p.settings.web.max_signal_sources { return 0, fail(c, .Range, "RangeError: too many signals (abort.max_signal_sources)") }
+	for sh in signals { if signal_get(p, sh) == nil { return 0, fail(c, .Invalid_Handle, "AbortSignal.any: not an AbortSignal") } }
+	h := signal_create(p, c.owner)
 	res := signal_get(p, h)
 	// already aborted source: the result is aborted with its reason, and follows nothing
-	for i in 0 ..< n {
-		src := signal_get(p, list[i])
+	for sh in signals {
+		src := signal_get(p, sh)
 		if src.aborted {
 			res.aborted, res.reason_code, res.reason = true, src.reason_code, strings.clone(src.reason)
-			return h
+			return h, .None
 		}
 	}
 	res.dependent = true
@@ -238,27 +200,14 @@ n_AbortSignal_any :: proc "c" (env: wasm.Exec_Env, list_bytes: [^]u8, bytes: i32
 		append(&res.sources, src_h)
 		if src := signal_get(p, src_h); src != nil { append(&src.dependents, h) }
 	}
-	for i in 0 ..< n {
-		src := signal_get(p, list[i])
+	for sh in signals {
+		src := signal_get(p, sh)
 		if !src.dependent {
-			add_source(p, res, h, list[i])
+			add_source(p, res, h, sh)
 		} else {
 			// a dependent source contributes its own sources
 			for ss in src.sources { if signal_get(p, ss) != nil { add_source(p, res, h, ss) } }
 		}
 	}
-	return h
-}
-
-abort_symbols := [?]wasm.Native_Symbol{
-	{"AbortController_create", rawptr(n_AbortController_create), "()I", nil},
-	{"AbortController_signal", rawptr(n_AbortController_signal), "(I)I", nil},
-	{"AbortController_abort", rawptr(n_AbortController_abort), "(II*~)i", nil},
-	{"AbortSignal_aborted", rawptr(n_AbortSignal_aborted), "(I)i", nil},
-	{"AbortSignal_reasonCode", rawptr(n_AbortSignal_reasonCode), "(I)I", nil},
-	{"AbortSignal_reason", rawptr(n_AbortSignal_reason), "(I*~)i", nil},
-	{"AbortSignal_throwIfAborted", rawptr(n_AbortSignal_throwIfAborted), "(I)I", nil},
-	{"AbortSignal_abort", rawptr(n_AbortSignal_abort), "(I*~)I", nil},
-	{"AbortSignal_timeout", rawptr(n_AbortSignal_timeout), "(F)I", nil},
-	{"AbortSignal_any", rawptr(n_AbortSignal_any), "(*~)I", nil},
+	return h, .None
 }

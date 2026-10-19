@@ -1,0 +1,58 @@
+/// Promises, microtasks, buffers and host objects: the asynchronous core every other module builds on.
+///
+/// A promise's value is an i64 (a number, or the handle of a buffer or another object) plus a string (an error message,
+/// a text result). Reactions run as microtasks once it settles. There are no closures in Wasm, so `then` does not
+/// create a chained promise: a reaction that passes a result on resolves a promise of its own.
+///
+/// A buffer is the ArrayBuffer of this platform: bytes owned by the browser, passed between APIs without copies into
+/// the module's memory (fetch bodies, messages, socket frames), counted against page.max_fetch_bytes.
+[Exposed=(Window,Worker)]
+module async {
+  /// Any host object (not a node). Released with Object_release; freed with the page in any case.
+  handle Object : EventTarget = Object via lookup_Object;
+  handle Promise : Object = Promise via lookup_Promise;
+  /// An ArrayBuffer.
+  handle Buffer : Object = Buffer via lookup_Buffer;
+
+  enum PromiseState : i32 { Pending, Fulfilled, Rejected }
+
+  callback MicrotaskCallback(i32 user);
+  /// A reaction: read the result with Promise_value / Promise_text.
+  callback PromiseReaction(i32 user, Promise promise, PromiseState state);
+
+  /// queueMicrotask(callback)
+  void queueMicrotask(MicrotaskCallback callback, i32 user = 0);
+  /// A pending promise the module settles itself.
+  Promise Promise_create();
+  /// Fulfils a pending promise. Invalid_Argument when it is settled already.
+  void Promise_resolve(Promise promise, i64 value = 0, string text = "") raises;
+  /// Rejects a pending promise with an Error code (or any value) and a message. Invalid_Argument when settled already.
+  void Promise_reject(Promise promise, i64 code, string message = "") raises;
+  /// Adds a reaction; queued at once when the promise is settled already.
+  void Promise_then(Promise promise, PromiseReaction callback, i32 user = 0);
+  PromiseState Promise_state(Promise promise);
+  /// The value (fulfilled) or the code (rejected).
+  i64 Promise_value(Promise promise);
+  /// The text result (fulfilled) or the message (rejected).
+  string Promise_text(Promise promise);
+  /// Promise.all: fulfilled (value = the count) when every one is, rejected with the first rejection's value and text.
+  Promise Promise_all(Promise[] promises);
+
+  /// Releases a host object of any kind.
+  void Object_release(Object object) raises;
+  /// The interface name of an object ("Promise", "ArrayBuffer"...).
+  string Object_kind(Object object);
+
+  /// A buffer holding a copy of `data`. Quota past the page's memory limit.
+  Buffer Buffer_create(bytes data) raises;
+  /// A zero-filled buffer of `length` bytes. Quota past the page's memory limit, Range for a negative length.
+  Buffer Buffer_alloc(i64 length) raises;
+  /// byteLength (0 once detached by a transfer).
+  i64 Buffer_length(Buffer buffer);
+  /// Copies bytes from `offset` into `destination`; returns how many.
+  i32 Buffer_read(Buffer buffer, i64 offset, out bytes destination);
+  /// Copies `source` into the buffer at `offset` (what fits); returns how many bytes were written.
+  i32 Buffer_write(Buffer buffer, i64 offset, bytes source);
+  /// buffer.slice(start, end): a copy; negative positions count from the end. Quota past the page's memory limit.
+  Buffer Buffer_slice(Buffer buffer, i64 start, i64 end) raises;
+}

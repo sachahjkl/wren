@@ -1,0 +1,30 @@
+/// Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in
+/// Event_code and the first one in Event_object; the buffers belong to the receiver. Invalid_Argument for a handle that
+/// is not a transferable buffer or appears twice, a message over workers.max_message_bytes, a receiver with too much
+/// waiting, or a function of the other side (a page calling a worker function or the reverse).
+[Exposed=(Window,Worker)]
+module workers {
+  /// A Worker object (EventTarget: message, messageerror, error).
+  handle Worker : Object;
+  /// The global scope of a worker (EventTarget: message, messageerror).
+  handle WorkerGlobalScope : Object;
+
+  /// new Worker(url, {name}). Not_Allowed when the browser refuses it (the console says why).
+  Worker Worker_create(string url, string name = "") raises;
+  /// worker.postMessage(message, transfer)
+  void Worker_postMessage(Worker worker, string message, Buffer[] transfer) raises;
+  /// worker.terminate()
+  void Worker_terminate(Worker worker) raises;
+  /// self, in a worker (null in a page).
+  WorkerGlobalScope DedicatedWorkerGlobalScope_self();
+  /// postMessage(message, transfer), in a worker.
+  void DedicatedWorkerGlobalScope_postMessage(string message, Buffer[] transfer) raises;
+  /// close(), in a worker.
+  void DedicatedWorkerGlobalScope_close() raises;
+  /// self.name, in a worker.
+  string DedicatedWorkerGlobalScope_name() raises;
+  /// location.href, in a worker: the script's URL.
+  string WorkerGlobalScope_location() raises;
+  /// The index-th buffer that came with a message event (null when none).
+  Buffer MessageEvent_transfer(Event event, i32 index);
+}

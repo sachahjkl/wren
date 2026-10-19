@@ -1,0 +1,59 @@
+/// Fetch with a callback (Fetch Standard through the browser's loader: origin, CORS, cookies, referrer, CSP and mixed
+/// content are the browser's business, never the module's). The callback learns each step; the response is read from
+/// the request record until Fetch_release. A Response (module fetch) is the same record.
+[Exposed=(Window,Worker)]
+module net {
+  /// A request and, once it arrived, its response.
+  handle Fetch = Fetch via lookup_Fetch;
+  /// The response of a fetch (what Fetch_promise settles with): the same record as its Fetch.
+  handle Response : Fetch;
+
+  /// Where a request is.
+  enum FetchState : i32 { Pending, Response, Done, Failed }
+  /// Response.type
+  enum ResponseType : i32 { Basic, Cors, Opaque, Opaque_Redirect }
+  /// RequestInit.mode
+  enum FetchMode : u32 { Cors, Same_Origin, No_Cors }
+  /// RequestInit.credentials
+  enum Credentials : u32 { Same_Origin, Omit, Include }
+  /// RequestInit.redirect
+  enum RedirectMode : u32 { Follow, Error, Manual }
+  /// RequestInit.referrerPolicy (Default: the document's policy).
+  enum ReferrerPolicy : u32 { Default, No_Referrer, No_Referrer_When_Downgrade, Same_Origin, Origin, Strict_Origin, Origin_When_Cross_Origin, Strict_Origin_When_Cross_Origin, Unsafe_Url }
+
+  /// RequestInit beyond method, headers and body. The zero value is the Fetch API default.
+  struct FetchOptions {
+    FetchMode mode;
+    Credentials credentials;
+    RedirectMode redirect;
+    ReferrerPolicy referrer_policy;
+    /// referrer: "" (send none).
+    bool no_referrer;
+  }
+
+  /// Called when the response arrives (Response), when the body is complete (Done) or on failure (Failed).
+  callback FetchCallback(i32 user, Fetch request, FetchState state);
+
+  /// fetch(url, {method, headers, body, ...}) with a callback. `headers` are "Name: value" lines (CR LF or LF). A
+  /// relative URL resolves against the document (or the worker's script).
+  Fetch Fetch_start(string url, FetchCallback callback, i32 user = 0, string method = "GET", string headers = "", optional bytes body, FetchOptions options = none);
+  FetchState Fetch_state(Fetch request);
+  /// The HTTP status (0 for an opaque response).
+  i32 Fetch_status(Fetch request);
+  ResponseType Fetch_type(Fetch request);
+  bool Fetch_redirected(Fetch request);
+  /// The response headers the module may see: "Name: value" lines, CR LF terminated.
+  string Fetch_headers(Fetch request);
+  /// The final URL (after redirects).
+  string Fetch_url(Fetch request);
+  /// Why it failed ("" before a failure).
+  string Fetch_error(Fetch request);
+  /// The fetch.Error_Kind of a failure (0 none, then Bad_URL, Bad_Scheme... in the browser's order).
+  i32 Fetch_errorKind(Fetch request);
+  /// The bytes of the body received so far.
+  u64 Fetch_bodyLength(Fetch request);
+  /// Copies the body from `offset` into `buffer`; returns how many bytes were copied.
+  i32 Fetch_readBody(Fetch request, u64 offset, out bytes buffer);
+  /// Cancels the request if needed and frees the record.
+  void Fetch_release(Fetch request) raises;
+}

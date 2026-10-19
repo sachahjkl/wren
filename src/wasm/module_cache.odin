@@ -49,6 +49,7 @@ Cached :: struct {
 	link_error:    string,    // an import the browser cannot provide and that cannot be stubbed (not a function)
 	memory_export: string,
 	table_export:  string,
+	memory64:      bool,      // memory 0 is 64-bit
 	code_bytes:    int,
 	users:         int,
 	last_use:      u64,
@@ -218,6 +219,7 @@ cache_acquire :: proc(image: []byte) -> (c: ^Cached, err: string) {
 	c.module = module
 	c.memory_export = strings.clone(info.memory_export)
 	c.table_export = strings.clone(info.table_export)
+	c.memory64 = info.memory64
 	start, end: rawptr
 	wasmtime_module_image_range(module, &start, &end)
 	c.code_bytes = int(uintptr(end) - uintptr(start))
@@ -291,21 +293,9 @@ read_imports :: proc(c: ^Cached) {
 	c.imports = list
 }
 
-@(private)
-same_types :: proc(ty: wt_functype, b: ^Bound) -> bool {
-	ps := wasm_functype_params(ty)
-	rs := wasm_functype_results(ty)
-	if int(ps.size) != len(b.params) { return false }
-	for k, i in b.params {
-		if wasm_valtype_kind(wt_valtype(ps.data[i])) != wasm_param_kind(k) { return false }
-	}
-	rk, has := wasm_result_kind(b.result)
-	if !has { return rs.size == 0 }
-	return rs.size == 1 && wasm_valtype_kind(wt_valtype(rs.data[0])) == rk
-}
-
-// Under cache.lock. Resolves the imports against the host functions: one the browser lacks, or has with another type,
-// becomes a function that traps when called (as with WAMR); a missing import of another kind is an error.
+// Under cache.lock. Resolves the imports against the host functions. A memory64 module gets the 64-bit shape of every
+// import that has addresses (shadowing the 32-bit one on a clone of the Linker). An import the browser lacks, or has
+// with another type, becomes a function that traps when called; a missing import of another kind is an error.
 @(private)
 ensure_pre :: proc(c: ^Cached) {
 	if c.pre != nil && c.pre_gen == wt.linker_gen { return }
@@ -320,6 +310,12 @@ ensure_pre :: proc(c: ^Cached) {
 	defer wasm_importtype_vec_delete(&v)
 	l := wt.linker
 	clone: wt_linker
+	shadow :: proc(clone: ^wt_linker, l: ^wt_linker) {
+		if clone^ != nil { return }
+		clone^ = wasmtime_linker_clone(wt.linker)
+		wasmtime_linker_allow_shadowing(clone^, true)
+		l^ = clone^
+	}
 	for i in 0 ..< int(v.size) {
 		it := wt_importtype(v.data[i])
 		m := wasm_importtype_module(it)
@@ -327,24 +323,30 @@ ensure_pre :: proc(c: ^Cached) {
 		mod, name := string(m.data[:m.size]), string(n.data[:n.size])
 		et := wasm_importtype_type(it)
 		kind := wasm_externtype_kind(et)
-		b := kind == WT_EXTERN_FUNC ? registry_find(mod, name) : nil
 		if kind != WT_EXTERN_FUNC {
 			what := kind == WT_EXTERN_MEMORY ? "memory" : kind == WT_EXTERN_TABLE ? "table" : kind == WT_EXTERN_GLOBAL ? "global" : "item"
 			c.link_error = fmt.aprintf("imports the %s %s.%s, which the browser does not provide", what, mod, name)
 			return
 		}
+		im := registry_find(mod, name)
 		ty := wasm_externtype_as_functype_const(et)
-		if b != nil && same_types(ty, b) { continue }
-		if clone == nil {
-			clone = wasmtime_linker_clone(wt.linker)
-			wasmtime_linker_allow_shadowing(clone, true)
-			l = clone
+		wide := c.memory64 && im != nil && im.wide_params != nil
+		if im != nil && import_matches(ty, im, wide) {
+			if !wide { continue }
+			shadow(&clone, &l)
+			if !define_import(clone, im, true) {
+				c.link_error = fmt.aprintf("cannot link %s.%s with 64-bit addresses", mod, name)
+				wasmtime_linker_delete(clone)
+				return
+			}
+			continue
 		}
+		shadow(&clone, &l)
 		s := new(Stub)
-		if b == nil {
+		if im == nil {
 			s.message = fmt.aprintf("call to the import %s.%s, which the browser does not provide", mod, name)
 		} else {
-			s.message = fmt.aprintf("call to the import %s.%s with a type that does not match the browser's (%s)", mod, name, b.signature)
+			s.message = fmt.aprintf("call to the import %s.%s with a type that does not match the browser's%s", mod, name, wide ? " (64-bit addresses for a memory64 module)" : "")
 		}
 		if e := wasmtime_linker_define_func_unchecked(clone, raw_data(mod), len(mod), raw_data(name), len(name), ty, wt_stub_call, s, wt_stub_free); e != nil {
 			c.link_error = fmt.aprintf("cannot link %s.%s: %s", mod, name, wt_error_text(e, context.temp_allocator))

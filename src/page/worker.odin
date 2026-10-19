@@ -8,19 +8,17 @@ package page
 //     host fetches the module (same origin or data:, application/wasm, CSP worker-src), starts the thread, makes the
 //     worker's requests (the loader lives on this thread) with the worker's own Environment, and relays its console.
 //   * Worker thread: a Page without a document (the realm: objects, promises, microtasks, timers, buffers, console,
-//     fetch records), its own host.Loop and its own WAMR instance. `page_of(env)` gives that Page to every import, so
+//     fetch records), its own host.Loop and its own Wasm instance. Every import gets that Page as its Call's page, so
 //     the asynchronous core works unchanged; imports that need a document answer with an error. A worker module may
-//     only import modules known to be safe off the UI thread (`worker_allow_module`), since host functions are
-//     registered once for the whole process.
+//     only import what the API description exposes to workers ([Exposed=Worker] in api/*.widl), since host functions
+//     are registered once for the whole process.
 //
 // Between them, a Worker_Link (heap, reference counted: the host and the thread each hold one, and so does every drain
 // task posted on the UI loop) with two queues guarded by a mutex. The page side is woken with host.post, the worker side
 // with host.signal on its loop. Nothing on one thread ever points into the other's memory.
 //
-// Termination: a stop flag checked before every task, callback and microtask of the worker. With wasmtime the same flag
-// interrupts a task already running (epoch interruption, within wasm.wasmtime.epoch_tick_ms). With wamr the
-// interpreter cannot be interrupted from outside (it is built without its thread manager): the instruction budget
-// (preference workers.instruction_budget) ends a task already running, so a busy worker stops at most one budget later. Closing a
+// Termination: a stop flag checked before every task, callback and microtask of the worker. The same flag interrupts a
+// task already running (epoch interruption, within wasm.wasmtime.epoch_tick_ms). Closing a
 // page stops every worker and joins its thread; `Worker_terminate` and releasing the Worker object do not block the UI:
 // the thread is joined when it reports its exit.
 
@@ -34,7 +32,6 @@ import "wb:fetch"
 import "wb:host"
 import "wb:http"
 import "wb:url"
-import "wb:wasm"
 
 ////////////////////////////////
 // Messages between the two threads
@@ -626,15 +623,9 @@ worker_main :: proc(data: rawptr) {
 		worker_global_free(g)
 		link_release(l)
 	}
-	if !wasm.thread_env_init() {
-		worker_send_error(g, "Worker: the Wasm runtime could not set up this thread")
-		return
-	}
-	defer wasm.thread_env_destroy()
-
 	p := worker_realm_create(g)
 	g.page = p
-	g.settings.wasm.stop = &l.stop   // terminate interrupts the module's running task (wasmtime)
+	g.settings.wasm.stop = &l.stop   // terminate interrupts the module's running task
 	_, ok, err := instantiate(p, g.image, g.url, g.settings.wasm, worker_import_filter)
 	delete(g.image)
 	g.image = nil
@@ -769,28 +760,4 @@ worker_fetch_event :: proc(p: ^Page, m: ^Worker_Msg) {
 	case .Data, .Done:
 	}
 	fetch_update(f, u)
-}
-
-////////////////////////////////
-// What a worker's module may import
-
-@(private)
-worker_modules := [dynamic]string{}
-
-@(private)
-WORKER_BUILTIN_MODULES :: [?]string{"console", "timers", "async", "events", "net", "workers", "dom", "document"}
-
-// Declares an import module safe to use from a worker thread (its functions only touch the calling realm, reached
-// through `page_of(env)`, and never the document, the loader or other UI-thread state). Call at start-up, after
-// `register_imports` and before any worker starts.
-worker_allow_module :: proc(name: string) {
-	for m in worker_modules { if m == name { return } }
-	append(&worker_modules, name)
-}
-
-@(private)
-worker_import_filter :: proc(module_name, field: string) -> bool {
-	for m in WORKER_BUILTIN_MODULES { if m == module_name { return true } }
-	for m in worker_modules { if m == module_name { return true } }
-	return false
 }

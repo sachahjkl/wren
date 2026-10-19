@@ -1,7 +1,7 @@
 package wasm
 
 // Just enough of the binary format to find table 0 and memory 0 of a module and make sure they are exported.
-// WAMR reaches them internally; the Wasmtime C API only through exports, and the host needs both (memory 0 for the
+// The Wasmtime C API reaches them only through exports, and the host needs both (memory 0 for the
 // pointers of host functions, table 0 for call_indirect). A module that does not export them gets an export section
 // entry added under a name of our own before compilation: nothing else of the module changes.
 
@@ -11,6 +11,7 @@ import "core:strings"
 Image_Info :: struct {
 	has_memory:    bool,
 	has_table:     bool,
+	memory64:      bool,     // memory 0 is 64-bit (its addresses are i64)
 	memory_export: string,   // name under which memory 0 is exported (in the image, or ours to add); "" = no memory
 	table_export:  string,
 	add_memory:    bool,     // the name is ours: the export must be added
@@ -64,13 +65,14 @@ rd_name :: proc(r: ^Reader) -> string {
 }
 
 @(private)
-rd_limits :: proc(r: ^Reader) {
-	flags := rd_byte(r)
+rd_limits :: proc(r: ^Reader) -> (flags: u8) {
+	flags = rd_byte(r)
 	wide := flags & 0x04 != 0
 	bits: uint = wide ? 64 : 32
 	rd_leb(r, bits)
 	if flags & 0x01 != 0 { rd_leb(r, bits) }
 	if flags & 0x08 != 0 { rd_leb(r, 32) }   // custom page size (log2)
+	return
 }
 
 @(private)
@@ -131,14 +133,19 @@ analyze_image :: proc(image: []byte) -> (info: Image_Info, err: string) {
 				switch kind {
 				case 0: rd_leb(&body, 32)
 				case 1: rd_reftype(&body); rd_limits(&body); tables += 1
-				case 2: rd_limits(&body); memories += 1
+				case 2:
+					if rd_limits(&body) & 0x04 != 0 && memories == 0 { info.memory64 = true }
+					memories += 1
 				case 3: rd_byte(&body); if body.pos < len(body.b) && (body.b[body.pos - 1] == 0x63 || body.b[body.pos - 1] == 0x64) { rd_leb(&body, 33) }; rd_byte(&body)
 				case 4: rd_byte(&body); rd_leb(&body, 32)
 				case: body.bad = true
 				}
 			}
 		case 4: tables += int(rd_leb(&body, 32))
-		case 5: memories += int(rd_leb(&body, 32))
+		case 5:
+			n := int(rd_leb(&body, 32))
+			if n > 0 && memories == 0 && rd_limits(&body) & 0x04 != 0 { info.memory64 = true }
+			memories += n
 		case 7:
 			info.export_start, info.export_end = start, end
 			n := rd_leb(&body, 32)

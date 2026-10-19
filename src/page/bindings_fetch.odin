@@ -14,10 +14,8 @@ package page
 
 import "core:strings"
 import "wb:base"
-import "wb:dom"
 import "wb:fetch"
 import "wb:url"
-import "wb:wasm"
 
 Body_Kind :: enum u8 { None, Text, Buffer }
 
@@ -321,49 +319,35 @@ stream_fail :: proc(p: ^Page, s: ^Body_Stream, code: i64, msg: string) {
 ////////////////////////////////
 // Imports
 
-// The body of a request: bytes in guest memory, or a buffer (`body_buffer` != 0). False for a stale buffer handle.
+// The body of a request: the bytes of `body_buffer` when given, else `body`.
 @(private)
-request_body :: proc(p: ^Page, inline: []byte, body_buffer: u64) -> ([]byte, bool) {
-	if body_buffer == 0 { return inline, true }
-	b := buffer_get(p, body_buffer)
-	if b == nil { return nil, false }
-	return b.bytes[:], true
+request_body :: proc(body: Maybe([]u8), body_buffer: Api_Buffer) -> []byte {
+	if body_buffer.data != nil { return body_buffer.data.bytes[:] }
+	return body.? or_else nil
 }
 
-n_Fetch_promise :: proc "c" (env: wasm.Exec_Env, target: [^]u8, tl: i32, method: [^]u8, ml: i32, headers: [^]u8, hl: i32, body: [^]u8, bl: i32, body_buffer: u64, options: i32, signal: u64) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	owner := inst_of(env).index
-	pr := promise_create(p, owner)
-	b, ok := request_body(p, body[:max(bl, 0)], body_buffer)
-	if !ok { promise_reject(p, pr, WEB_ERR_TYPE, "TypeError: the body is not a buffer"); return pr }
-	if signal != 0 && signal_get(p, signal) == nil { promise_reject(p, pr, WEB_ERR_TYPE, "TypeError: not an AbortSignal"); return pr }
+Fetch_promise :: proc(c: ^Call, url: string, method: string, headers: string, body: Maybe([]u8), body_buffer: Api_Buffer, signal: Api_AbortSignal, options: Api_FetchOptions) -> (u64, Api_Error) {
+	p := c.page
+	pr := promise_create(p, c.owner)
 	e := new(Fetch_Ext)
-	e^ = Fetch_Ext{promise_mode = true, response = pr, signal = signal}
-	fetch_begin(p, owner, str(target, tl), str(method, ml), str(headers, hl), b, options, 0, 0, e)
-	return pr
+	e^ = Fetch_Ext{promise_mode = true, response = pr, signal = signal.handle}
+	fetch_begin(p, c.owner, url, method, headers, request_body(body, body_buffer), fetch_options_pack(options), 0, 0, e)
+	return pr, .None
 }
 
-// The callback API with an abort signal (0 = none) and an optional buffer body.
-n_Fetch_startWithSignal :: proc "c" (env: wasm.Exec_Env, target: [^]u8, tl: i32, method: [^]u8, ml: i32, headers: [^]u8, hl: i32, body: [^]u8, bl: i32, body_buffer: u64, options, callback, user: i32, signal: u64) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	b, ok := request_body(p, body[:max(bl, 0)], body_buffer)
-	if !ok { return 0 }
-	if signal != 0 && signal_get(p, signal) == nil { return 0 }
+// The callback API with an abort signal and an optional buffer body.
+Fetch_startWithSignal :: proc(c: ^Call, url: string, callback: u32, user: i32, method: string, headers: string, body: Maybe([]u8), body_buffer: Api_Buffer, signal: Api_AbortSignal, options: Api_FetchOptions) -> (u64, Api_Error) {
 	e := new(Fetch_Ext)
-	e^ = Fetch_Ext{signal = signal}
-	return fetch_begin(p, inst_of(env).index, str(target, tl), str(method, ml), str(headers, hl), b, options, u32(callback), u32(user), e)
+	e^ = Fetch_Ext{signal = signal.handle}
+	return fetch_begin(c.page, c.owner, url, method, headers, request_body(body, body_buffer), fetch_options_pack(options), callback, u32(user), e), .None
 }
 
 // Starts consuming the body. Plain callback fetches can be consumed once they are done.
 @(private)
-consume_body :: proc(env: wasm.Exec_Env, h: u64, kind: Body_Kind) -> u64 {
-	p := page_of(env)
-	owner := inst_of(env).index
-	pr := promise_create(p, owner)
-	f := base.pool_get(&p.fetches, H(h))
-	if f == nil { promise_reject(p, pr, i64(dom.Error.Invalid_Handle), "TypeError: not a response"); return pr }
+consume_body :: proc(c: ^Call, r: Api_Fetch, kind: Body_Kind) -> u64 {
+	p := c.page
+	pr := promise_create(p, c.owner)
+	f := r.data
 	if f.ext == nil {
 		if f.state < 2 { promise_reject(p, pr, WEB_ERR_INVALID_STATE, "InvalidStateError: the body is still loading (use Fetch_promise)"); return pr }
 		f.ext = new(Fetch_Ext)
@@ -373,68 +357,53 @@ consume_body :: proc(env: wasm.Exec_Env, h: u64, kind: Body_Kind) -> u64 {
 	if e.body_used || e.body_promise != 0 { promise_reject(p, pr, WEB_ERR_TYPE, "TypeError: body already used"); return pr }
 	e.body_used = true
 	if f.state == 3 { promise_reject(p, pr, f.error_kind == .Aborted ? WEB_ERR_ABORT : WEB_ERR_NETWORK, f.error); return pr }
-	e.body_kind, e.body_promise, e.body_owner = kind, pr, owner
+	e.body_kind, e.body_promise, e.body_owner = kind, pr, c.owner
 	fetch_settle_body(p, f)
 	return pr
 }
 
-n_Response_text :: proc "c" (env: wasm.Exec_Env, h: u64) -> u64 {
-	context = ctx()
-	return consume_body(env, h, .Text)
+Response_text :: proc(c: ^Call, response: Api_Fetch) -> u64 { return consume_body(c, response, .Text) }
+Response_arrayBuffer :: proc(c: ^Call, response: Api_Fetch) -> u64 { return consume_body(c, response, .Buffer) }
+Response_bytes :: proc(c: ^Call, response: Api_Fetch) -> u64 { return consume_body(c, response, .Buffer) }
+
+Response_bodyUsed :: proc(c: ^Call, response: Api_Fetch) -> bool {
+	f := response.data
+	return f.ext != nil && f.ext.body_used
 }
 
-n_Response_arrayBuffer :: proc "c" (env: wasm.Exec_Env, h: u64) -> u64 {
-	context = ctx()
-	return consume_body(env, h, .Buffer)
-}
-
-n_Response_bodyUsed :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	f := base.pool_get(&page_of(env).fetches, H(h))
-	if f == nil { return i32(dom.Error.Invalid_Handle) }
-	return 1 if f.ext != nil && f.ext.body_used else 0
-}
-
-// The body as a stream; 0 when the body was already used or the handle is stale.
-n_Response_body :: proc "c" (env: wasm.Exec_Env, h: u64) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	f := base.pool_get(&p.fetches, H(h))
-	if f == nil { return 0 }
+// The body as a stream.
+Response_body :: proc(c: ^Call, response: Api_Fetch) -> (u64, Api_Error) {
+	p := c.page
+	f := response.data
 	if f.ext == nil {
 		f.ext = new(Fetch_Ext)
 		f.ext.promise_mode = true
 	}
 	e := f.ext
-	if e.body_used { return 0 }
+	if e.body_used { return 0, fail(c, .Type, "TypeError: body already used") }
 	e.body_used = true
 	s := new(Body_Stream)
-	s.page, s.fetch, s.owner = p, f.self, inst_of(env).index
+	s.page, s.fetch, s.owner = p, f.self, c.owner
 	s.pending = f.body       // what arrived already is the first chunk
 	f.body = {}
 	s.ended = f.state == 2
 	if f.state == 3 { s.failed, s.code, s.error = true, f.error_kind == .Aborted ? WEB_ERR_ABORT : WEB_ERR_NETWORK, strings.clone(f.error) }
 	e.stream = object_create(p, &body_stream_vt, s, s.owner)
-	return e.stream
+	return e.stream, .None
 }
 
-n_Stream_read :: proc "c" (env: wasm.Exec_Env, h: u64) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	pr := promise_create(p, inst_of(env).index)
-	s := stream_get(p, h)
-	if s == nil { promise_reject(p, pr, i64(dom.Error.Invalid_Handle), "TypeError: not a stream"); return pr }
-	append(&s.reads, pr)
-	stream_pump(p, s)
+Stream_read :: proc(c: ^Call, stream: Api_ReadableStream) -> u64 {
+	p := c.page
+	pr := promise_create(p, c.owner)
+	append(&stream.data.reads, pr)
+	stream_pump(p, stream.data)
 	return pr
 }
 
 // reader.cancel(): the download stops, waiting reads finish with "done".
-n_Stream_cancel :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	s := stream_get(p, h)
-	if s == nil { return i32(dom.Error.Invalid_Handle) }
+Stream_cancel :: proc(c: ^Call, stream: Api_ReadableStream) {
+	p := c.page
+	s := stream.data
 	if f := base.pool_get(&p.fetches, s.fetch); f != nil && f.state < 2 {
 		if f.task != base.NIL_HANDLE { fetch.cancel(p.loader, f.task); f.task = base.NIL_HANDLE }
 		f.state = 2
@@ -445,17 +414,4 @@ n_Stream_cancel :: proc "c" (env: wasm.Exec_Env, h: u64) -> i32 {
 	s.pending = {}
 	s.ended = true
 	stream_pump(p, s)
-	return 0
-}
-
-fetch_symbols := [?]wasm.Native_Symbol{
-	{"Fetch_promise", rawptr(n_Fetch_promise), "(*~*~*~*~IiI)I", nil},
-	{"Fetch_startWithSignal", rawptr(n_Fetch_startWithSignal), "(*~*~*~*~IiiiI)I", nil},
-	{"Response_text", rawptr(n_Response_text), "(I)I", nil},
-	{"Response_arrayBuffer", rawptr(n_Response_arrayBuffer), "(I)I", nil},
-	{"Response_bytes", rawptr(n_Response_arrayBuffer), "(I)I", nil},
-	{"Response_bodyUsed", rawptr(n_Response_bodyUsed), "(I)i", nil},
-	{"Response_body", rawptr(n_Response_body), "(I)I", nil},
-	{"Stream_read", rawptr(n_Stream_read), "(I)I", nil},
-	{"Stream_cancel", rawptr(n_Stream_cancel), "(I)i", nil},
 }

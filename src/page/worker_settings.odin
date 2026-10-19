@@ -36,14 +36,12 @@ WORKER_PREFS := [?]config.Def{
 		description = "Native stack reserved for each worker thread. Bounds how deep calls between the module and the browser may nest."},
 	{name = "workers.thread_priority", kind = .String, default = {s = "below_normal"}, choices = {"normal", "below_normal", "lowest"},
 		description = "Scheduling priority of worker threads. Below the interface thread, the window stays responsive even when workers keep every core busy."},
-	{name = "workers.stack_bytes", kind = .Int, default = {i = 256 << 10}, bounded = true, min = 16 << 10, max = 256 << 20, bytes = true, unit = "bytes",
-		description = "Value stack of the interpreter for a worker's module (bounds recursion depth)."},
 	{name = "workers.max_memory_pages", kind = .Int, default = {i = 16384}, bounded = true, min = 1, max = 65536, unit = "pages of 64 KiB",
 		description = "Most linear memory a worker's module may grow to (16384 = 1 GiB). A smaller maximum declared by the module itself still applies."},
 	{name = "workers.instruction_budget", kind = .Int, default = {i = 50_000_000}, bounded = true, min = -1, max = 1 << 40, unit = "instructions",
-		description = "Instructions a worker may run in one task (a message, a timer, a callback). A task that exceeds it is stopped and reported as an error; the worker stays usable. It also bounds how long terminating a busy worker takes (about 700 million instructions per second). -1 = unlimited: a worker stuck in an endless task can then only be stopped with its page."},
+		description = "Instructions a worker may run in one task (a message, a timer, a callback) when wasm.wasmtime.fuel is on. A task that exceeds it is stopped and reported as an error; the worker stays usable. -1 = unlimited."},
 	{name = "workers.max_call_ms", kind = .Int, default = {i = -1}, bounded = true, min = -1, max = 3_600_000, unit = "ms",
-		description = "Wall-clock time one task of a worker may take with the wasmtime engine; past it the task traps and is reported as an error, the worker stays usable. -1 = unlimited (a worker is a background thread: terminating it still interrupts it at once)."},
+		description = "Wall-clock time one task of a worker may take; past it the task traps and is reported as an error, the worker stays usable. -1 = unlimited (a worker is a background thread: terminating it still interrupts it at once)."},
 	{name = "workers.max_message_bytes", kind = .Int, default = {i = 256 << 20}, bounded = true, min = 1 << 10, max = 1 << 40, bytes = true, unit = "bytes",
 		description = "Largest message (text plus transferred buffers) a page and a worker may send each other. Larger ones are refused."},
 	{name = "workers.max_pending_bytes", kind = .Int, default = {i = 1 << 30}, bounded = true, min = 1 << 10, max = 1 << 42, bytes = true, unit = "bytes",
@@ -52,7 +50,6 @@ WORKER_PREFS := [?]config.Def{
 
 worker_settings_from_prefs :: proc(p: ^config.Prefs) -> Worker_Settings {
 	opt := wasm.options_from_prefs(p)   // tables, memories...: the page's; the worker's own limits below
-	opt.stack_size = u32(config.int_of(p, "workers.stack_bytes"))
 	opt.max_pages = u32(config.int_of(p, "workers.max_memory_pages"))
 	opt.budget = i32(min(config.int_of(p, "workers.instruction_budget"), i64(max(i32))))
 	opt.max_call_ms = config.int_of(p, "workers.max_call_ms")

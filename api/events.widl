@@ -1,0 +1,64 @@
+/// Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a
+/// promise, a socket, a worker, an abort signal...) is an EventTarget. An Event handle is valid while its listeners run.
+[Exposed=(Window,Worker)]
+module events {
+  /// A node or a host object: whatever can have listeners. Checked by the functions that take it.
+  handle EventTarget;
+  /// The event being dispatched.
+  handle Event = dom.Event via lookup_Event;
+
+  /// addEventListener options.
+  flags ListenerOptions : u32 {
+    /// Run in the capture phase.
+    Capture,
+    /// Remove the listener after its first call.
+    Once,
+    /// The listener will not call preventDefault.
+    Passive,
+  }
+
+  /// What dispatchEvent creates.
+  flags EventInit : u32 { Bubbles, Cancelable }
+
+  /// A listener: `user` is the value given to addEventListener.
+  callback EventListener(i32 user, Event event);
+
+  /// target.addEventListener(type, listener, options). Returns the listener's id (for removeEventListener); adding the
+  /// same (type, callback, user) again returns the existing id.
+  i32 EventTarget_addEventListener(EventTarget target, string type, EventListener callback, i32 user = 0, ListenerOptions options = none) raises;
+  /// target.removeEventListener(id). Not_Found when there is no such listener.
+  void EventTarget_removeEventListener(EventTarget target, i32 id) raises;
+  /// target.dispatchEvent(new Event(type, init)): false when a listener cancelled it.
+  bool EventTarget_dispatchEvent(EventTarget target, string type, EventInit init = none) raises;
+
+  /// event.preventDefault() (ignored when the event is not cancelable).
+  void Event_preventDefault(Event event);
+  /// event.stopPropagation()
+  void Event_stopPropagation(Event event);
+  /// event.stopImmediatePropagation()
+  void Event_stopImmediatePropagation(Event event);
+  /// event.target
+  EventTarget Event_target(Event event);
+  /// event.currentTarget
+  EventTarget Event_currentTarget(Event event);
+  /// event.type
+  string Event_type(Event event);
+  /// event.defaultPrevented
+  bool Event_defaultPrevented(Event event);
+  /// The main string payload of a non-UI event: MessageEvent.data, InputEvent.data, ErrorEvent.message...
+  string Event_data(Event event);
+  /// The second string payload: CloseEvent.reason, InputEvent.inputType, MessageEvent.lastEventId, the reason of an abort...
+  string Event_text(Event event);
+  /// The numeric payload: CloseEvent.code, an abort reason's code, the number of buffers of a message...
+  i64 Event_code(Event event);
+  /// The object payload: a buffer, SubmitEvent.submitter, FocusEvent.relatedTarget, FormDataEvent.formData...
+  EventTarget Event_object(Event event);
+  /// MouseEvent.clientX
+  f64 MouseEvent_clientX(Event event);
+  /// MouseEvent.clientY
+  f64 MouseEvent_clientY(Event event);
+  /// MouseEvent.button
+  i32 MouseEvent_button(Event event);
+  /// KeyboardEvent.keyCode
+  i32 KeyboardEvent_keyCode(Event event);
+}

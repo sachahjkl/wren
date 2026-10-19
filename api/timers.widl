@@ -1,0 +1,43 @@
+/// Timers and the rendering-related scheduling of HTML: setTimeout / setInterval (with the HTML nesting clamp and
+/// background throttling), requestAnimationFrame, requestIdleCallback, and the page's visibility. Timestamps given to
+/// callbacks are on the performance.now() timeline of the page.
+[Exposed=(Window,Worker)]
+module timers {
+  /// A pending timeout or interval.
+  handle Timer = Timer via lookup_Timer;
+
+  callback TimerHandler(i32 user);
+  /// A timer callback with a 64-bit user value.
+  callback TimerHandler64(i64 user);
+  /// An animation frame callback: `time` is the frame's time on the page's performance timeline.
+  callback FrameRequestCallback(i32 user, f64 time);
+  /// An idle callback: run before `deadline` (performance timeline), or late because its timeout expired.
+  callback IdleRequestCallback(i32 user, f64 deadline, bool did_timeout);
+
+  /// Whether the page is shown.
+  enum VisibilityState : i32 { Visible, Hidden }
+
+  /// setTimeout(callback, delay_ms)
+  Timer Timers_setTimeout(TimerHandler callback, i32 user, f64 delay_ms = 0);
+  /// setInterval(callback, delay_ms)
+  Timer Timers_setInterval(TimerHandler callback, i32 user, f64 delay_ms = 0);
+  /// setTimeout with a 64-bit user value.
+  Timer Timers_setTimeout64(TimerHandler64 callback, i64 user, f64 delay_ms = 0);
+  /// setInterval with a 64-bit user value.
+  Timer Timers_setInterval64(TimerHandler64 callback, i64 user, f64 delay_ms = 0);
+  /// clearTimeout / clearInterval. Invalid_Handle when the timer already fired or was cleared.
+  void Timers_clear(Timer timer) raises;
+  /// The browser's monotonic clock in ms (performance.now() is the page's own timeline).
+  f64 Timers_now();
+
+  /// requestAnimationFrame(callback): an id, 0 when too many callbacks wait (timers.max_frame_callbacks).
+  u64 requestAnimationFrame(FrameRequestCallback callback, i32 user = 0);
+  /// cancelAnimationFrame(id). Not_Found when it ran or was cancelled already.
+  void cancelAnimationFrame(u64 id) raises;
+  /// requestIdleCallback(callback, {timeout}): an id, 0 when too many wait. timeout_ms <= 0 means none.
+  u64 requestIdleCallback(IdleRequestCallback callback, i32 user = 0, f64 timeout_ms = 0);
+  /// cancelIdleCallback(id). Not_Found when it ran or was cancelled already.
+  void cancelIdleCallback(u64 id) raises;
+  /// document.visibilityState
+  VisibilityState Document_visibilityState();
+}

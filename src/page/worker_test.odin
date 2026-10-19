@@ -247,11 +247,12 @@ closing_a_page_joins_its_active_workers :: proc(t: ^testing.T) {
 worker_modules_may_only_import_what_is_safe_off_the_ui_thread :: proc(t: ^testing.T) {
 	sync.mutex_lock(&worker_tests)
 	defer sync.mutex_unlock(&worker_tests)
+	testing.expect(t, register_imports(), "register_imports")
 	testing.expect(t, worker_import_filter("timers", "Timers_setTimeout"))
 	testing.expect(t, worker_import_filter("workers", "DedicatedWorkerGlobalScope_postMessage"))
+	testing.expect(t, worker_import_filter("url", "URL_parse"), "[Exposed=(Window,Worker)] module")
+	testing.expect(t, !worker_import_filter("fetch", "Fetch_promise"), "[Exposed=Window] module")
+	testing.expect(t, !worker_import_filter("forms", "HTMLInputElement_value"), "forms are for documents")
 	testing.expect(t, !worker_import_filter("canvas", "Canvas_fill"), "an unknown module is refused")
-	worker_allow_module("test_safe")
-	testing.expect(t, worker_import_filter("test_safe", "f"))
-	delete(worker_modules)
-	worker_modules = nil
+	testing.expect(t, !worker_import_filter("url", "URL_nope"), "an unknown function is refused")
 }

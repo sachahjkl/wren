@@ -8,9 +8,7 @@ package page
 
 import "core:strings"
 import win "core:sys/windows"
-import "wb:dom"
 import "wb:host"
-import "wb:wasm"
 
 foreign import bcrypt_lib "system:Bcrypt.lib"
 
@@ -102,20 +100,17 @@ random_uuid :: proc(out: ^[36]u8) -> bool {
 ////////////////////////////////
 // Imports
 
-// getRandomValues(dst): fills guest memory. WEB_ERR_QUOTA past crypto.max_random_bytes, as the specification requires.
-n_Crypto_getRandomValues :: proc "c" (env: wasm.Exec_Env, dst: [^]u8, n: i32) -> i32 {
-	context = ctx()
-	p := page_of(env)
-	if int(n) > p.settings.web.max_random_bytes { return WEB_ERR_QUOTA }
-	if n <= 0 { return 0 }
-	return random_bytes(dst[:n]) ? n : WEB_ERR_NOT_SUPPORTED
+// getRandomValues(dst): fills guest memory. Quota past crypto.max_random_bytes, as the specification requires.
+Crypto_getRandomValues :: proc(c: ^Call, destination: []u8) -> Api_Error {
+	if len(destination) > c.page.settings.web.max_random_bytes { return fail(c, .Quota, "QuotaExceededError: more than crypto.max_random_bytes") }
+	if len(destination) == 0 { return .None }
+	return random_bytes(destination) ? .None : .Not_Supported
 }
 
-n_Crypto_randomUUID :: proc "c" (env: wasm.Exec_Env, buf: [^]u8, cap: i32) -> i32 {
-	context = ctx()
-	u: [36]u8
-	if !random_uuid(&u) { return WEB_ERR_NOT_SUPPORTED }
-	return out_string(string(u[:]), buf, cap)
+Crypto_randomUUID :: proc(c: ^Call) -> (string, Api_Error) {
+	u := new([36]u8, context.temp_allocator)
+	if !random_uuid(u) { return "", .Not_Supported }
+	return string(u[:]), .None
 }
 
 @(private)
@@ -184,26 +179,8 @@ resolve_digest_later :: proc(p: ^Page, pr: u64, owner: u32, d: []byte) {
 }
 
 // crypto.subtle.digest(algorithm, data): a promise fulfilled with a buffer holding the digest.
-n_SubtleCrypto_digest :: proc "c" (env: wasm.Exec_Env, alg: [^]u8, al: i32, data: [^]u8, n: i32) -> u64 {
-	context = ctx()
-	return digest_start(page_of(env), inst_of(env).index, str(alg, al), data[:max(n, 0)])
-}
+SubtleCrypto_digest :: proc(c: ^Call, algorithm: string, data: []u8) -> u64 { return digest_start(c.page, c.owner, algorithm, data) }
 
-n_SubtleCrypto_digestBuffer :: proc "c" (env: wasm.Exec_Env, alg: [^]u8, al: i32, buffer: u64) -> u64 {
-	context = ctx()
-	p := page_of(env)
-	b := buffer_get(p, buffer)
-	if b == nil {
-		pr := promise_create(p, inst_of(env).index)
-		promise_reject(p, pr, i64(dom.Error.Invalid_Handle), "TypeError: not a buffer")
-		return pr
-	}
-	return digest_start(p, inst_of(env).index, str(alg, al), b.bytes[:])
-}
-
-crypto_symbols := [?]wasm.Native_Symbol{
-	{"Crypto_getRandomValues", rawptr(n_Crypto_getRandomValues), "(*~)i", nil},
-	{"Crypto_randomUUID", rawptr(n_Crypto_randomUUID), "(*~)i", nil},
-	{"SubtleCrypto_digest", rawptr(n_SubtleCrypto_digest), "(*~*~)I", nil},
-	{"SubtleCrypto_digestBuffer", rawptr(n_SubtleCrypto_digestBuffer), "(*~I)I", nil},
+SubtleCrypto_digestBuffer :: proc(c: ^Call, algorithm: string, data: Api_Buffer) -> u64 {
+	return digest_start(c.page, c.owner, algorithm, data.data.bytes[:])
 }
