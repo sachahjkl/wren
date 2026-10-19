@@ -93,6 +93,7 @@ JSValue wjr_Document_createEvent(JSContext *ctx, JSValueConst this_val, int argc
 JSValue wjr_Document_createNodeIterator(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_createRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_createTreeWalker(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_elementsFromPoint(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_getElementsByClassName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_getElementsByName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_getElementsByTagName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -106,15 +107,18 @@ JSValue wjr_Document_get_documentElement(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_embeds(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_forms(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_head(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_hidden(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_images(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_implementation(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_links(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_location(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_plugins(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_scripts(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_visibilityState(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_importNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_set_body(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_ElementCSSInlineStyle_get_style(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Element_checkVisibility(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_getAttributeNames(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_getAttributeNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_getAttributeNodeNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -123,9 +127,12 @@ JSValue wjr_Element_getClientRects(JSContext *ctx, JSValueConst this_val, int ar
 JSValue wjr_Element_getElementsByClassName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_getElementsByTagName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_getElementsByTagNameNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_getHTML(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_get_attributes(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Element_get_classList(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Element_get_tagName(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Element_hasPointerCapture(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_releasePointerCapture(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_removeAttributeNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_scroll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_scrollBy(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -134,6 +141,8 @@ JSValue wjr_Element_scrollTo(JSContext *ctx, JSValueConst this_val, int argc, JS
 JSValue wjr_Element_setAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_setAttributeNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_setAttributeNodeNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_setHTMLUnsafe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_setPointerCapture(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_set_innerHTML(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Element_set_outerHTML(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Element_toggleAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -164,8 +173,22 @@ JSValue wjr_Event_stopImmediatePropagation(JSContext *ctx, JSValueConst this_val
 JSValue wjr_Event_stopPropagation(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_FocusEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_FocusEvent_get_relatedTarget(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLAnchorElement_get_referrerPolicy(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLAnchorElement_get_relList(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLAnchorElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLAreaElement_get_referrerPolicy(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLAreaElement_get_relList(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLAreaElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLBaseElement_get_href(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLBaseElement_set_href(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLButtonElement_get_formAction(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLButtonElement_get_formEnctype(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLButtonElement_get_formMethod(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLButtonElement_get_labels(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLButtonElement_get_validity(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLButtonElement_set_formAction(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLButtonElement_set_formEnctype(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLButtonElement_set_formMethod(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLCollection_get_length(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLCollection_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
 JSValue wjr_HTMLCollection_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -175,19 +198,89 @@ JSValue wjr_HTMLCollection_named_get(JSContext *ctx, JSValueConst obj, const cha
 JSValue wjr_HTMLDataListElement_get_options(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLElement_get_hidden(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLElement_set_hidden(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLFieldSetElement_get_elements(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLFieldSetElement_get_validity(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLFormControlsCollection_namedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLFormElement_get_action(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLFormElement_get_autocomplete(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLFormElement_get_elements(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLFormElement_get_encoding(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLFormElement_get_enctype(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLFormElement_get_method(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLFormElement_get_relList(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLFormElement_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
 uint32_t wjr_HTMLFormElement_length_hook(JSContext *ctx, JSValueConst obj);
 JSValue wjr_HTMLFormElement_named_get(JSContext *ctx, JSValueConst obj, const char *name, size_t len, bool *found);
+JSValue wjr_HTMLFormElement_set_action(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLFormElement_set_autocomplete(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLFormElement_set_encoding(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLFormElement_set_enctype(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLFormElement_set_method(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLIFrameElement_get_loading(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLIFrameElement_get_referrerPolicy(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLIFrameElement_get_sandbox(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLIFrameElement_set_loading(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLIFrameElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLImageElement_get_crossOrigin(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLImageElement_get_decoding(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLImageElement_get_fetchPriority(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLImageElement_get_height(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLImageElement_get_loading(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLImageElement_get_referrerPolicy(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLImageElement_get_width(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLImageElement_set_crossOrigin(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLImageElement_set_decoding(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLImageElement_set_fetchPriority(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLImageElement_set_height(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLImageElement_set_loading(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLImageElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLImageElement_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLInputElement_get_autocomplete(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLInputElement_get_formAction(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLInputElement_get_formEnctype(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLInputElement_get_formMethod(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLInputElement_get_height(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLInputElement_get_labels(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLInputElement_get_validity(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLInputElement_get_valueAsDate(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLInputElement_get_width(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLInputElement_setRangeText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLInputElement_setSelectionRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLInputElement_set_autocomplete(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLInputElement_set_formAction(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLInputElement_set_formEnctype(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLInputElement_set_formMethod(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLInputElement_set_height(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLInputElement_set_selectionDirection(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLInputElement_set_selectionEnd(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLInputElement_set_selectionStart(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLInputElement_set_valueAsDate(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLInputElement_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLLinkElement_get_as(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLLinkElement_get_crossOrigin(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLLinkElement_get_fetchPriority(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLLinkElement_get_referrerPolicy(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLLinkElement_get_relList(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLLinkElement_get_sizes(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLLinkElement_set_as(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLLinkElement_set_crossOrigin(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLLinkElement_set_fetchPriority(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLLinkElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMapElement_get_areas(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMeterElement_get_high(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMeterElement_get_labels(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMeterElement_get_low(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMeterElement_get_max(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMeterElement_get_min(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMeterElement_get_optimum(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMeterElement_get_value(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMeterElement_set_high(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMeterElement_set_low(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMeterElement_set_max(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMeterElement_set_min(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMeterElement_set_optimum(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMeterElement_set_value(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLObjectElement_get_validity(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLOptionsCollection_add(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLOptionsCollection_get_length(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLOptionsCollection_get_selectedIndex(JSContext *ctx, JSValueConst this_val);
@@ -197,17 +290,60 @@ JSValue wjr_HTMLOptionsCollection_set_selectedIndex(JSContext *ctx, JSValueConst
 JSValue wjr_HTMLOrSVGOrMathMLElement_focus(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLOrSVGOrMathMLElement_get_dataset(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLOutputElement_get_htmlFor(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLOutputElement_get_labels(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLOutputElement_get_validity(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLProgressElement_get_labels(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLProgressElement_get_max(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLProgressElement_get_position(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLProgressElement_get_value(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLProgressElement_set_max(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLProgressElement_set_value(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_get_async(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_crossOrigin(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_fetchPriority(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_innerText(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_referrerPolicy(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_src(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_textContent(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_set_async(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_crossOrigin(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_fetchPriority(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_innerText(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_textContent(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_static_supports(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLSelectElement_add(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLSelectElement_get_autocomplete(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLSelectElement_get_labels(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLSelectElement_get_options(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLSelectElement_get_selectedOptions(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLSelectElement_get_validity(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLSelectElement_namedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLSelectElement_remove(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLSelectElement_set_autocomplete(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLTableCellElement_get_scope(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTableCellElement_set_scope(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLTableElement_get_rows(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTableElement_get_tBodies(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTableRowElement_get_cells(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTableSectionElement_get_rows(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTextAreaElement_get_autocomplete(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTextAreaElement_get_cols(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTextAreaElement_get_labels(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTextAreaElement_get_rows(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTextAreaElement_get_textLength(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTextAreaElement_get_validity(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTextAreaElement_setRangeText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLTextAreaElement_setSelectionRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLTextAreaElement_set_autocomplete(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLTextAreaElement_set_cols(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLTextAreaElement_set_rows(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLTextAreaElement_set_selectionDirection(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLTextAreaElement_set_selectionEnd(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLTextAreaElement_set_selectionStart(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLTrackElement_get_kind(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTrackElement_set_kind(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_InputEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_InputEvent_get_data(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_InputEvent_get_dataTransfer(JSContext *ctx, JSValueConst this_val);
@@ -386,6 +522,17 @@ JSValue wjr_UIEvent_get_detail(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_UIEvent_get_view(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_UIEvent_get_which(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_UIEvent_initUIEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ValidityState_get_badInput(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ValidityState_get_customError(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ValidityState_get_patternMismatch(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ValidityState_get_rangeOverflow(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ValidityState_get_rangeUnderflow(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ValidityState_get_stepMismatch(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ValidityState_get_tooLong(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ValidityState_get_tooShort(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ValidityState_get_typeMismatch(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ValidityState_get_valid(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ValidityState_get_valueMissing(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WheelEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WheelEvent_get_deltaMode(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WheelEvent_get_deltaX(JSContext *ctx, JSValueConst this_val);
@@ -3703,10 +3850,56 @@ static JSValue wjg_HTMLDialogElement_get_returnValue(JSContext *ctx, JSValueCons
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
 }
 
+/* HTMLDialogElement.show() -> dom.HTMLDialogElement_show */
+static JSValue wjg_HTMLDialogElement_show(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 246);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLDialogElement_show(self->handle);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLDialogElement.show"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLDialogElement.showModal() -> dom.HTMLDialogElement_showModal */
+static JSValue wjg_HTMLDialogElement_showModal(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 246);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLDialogElement_showModal(self->handle);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLDialogElement.showModal"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLDialogElement.close() -> dom.HTMLDialogElement_close */
+static JSValue wjg_HTMLDialogElement_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 246);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_OPTIONAL, "")) { return JS_EXCEPTION; }
+    wr_HTMLDialogElement_close(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* HTMLDialogElement.requestClose() -> dom.HTMLDialogElement_requestClose */
+static JSValue wjg_HTMLDialogElement_requestClose(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 246);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_OPTIONAL, "")) { return JS_EXCEPTION; }
+    wr_HTMLDialogElement_requestClose(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLDirectoryElement_get_compact(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 247, "compact", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLDirectoryElement_set_compact(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 247, "compact", WJ_REFLECT_BOOL, v, 0, 0, 0); }
 static JSValue wjg_HTMLDivElement_get_align(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 248, "align", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLDivElement_set_align(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 248, "align", WJ_REFLECT_STRING, v, 0, 0, 0); }
+static JSValue wjg_HTMLEmbedElement_get_src(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 249, "src", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLEmbedElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 249, "src", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLEmbedElement_get_type(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 249, "type", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLEmbedElement_set_type(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 249, "type", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLEmbedElement_get_width(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 249, "width", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -3872,8 +4065,12 @@ static JSValue wjg_HTMLFrameElement_get_name(JSContext *ctx, JSValueConst this_v
 static JSValue wjg_HTMLFrameElement_set_name(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 253, "name", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLFrameElement_get_scrolling(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 253, "scrolling", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLFrameElement_set_scrolling(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 253, "scrolling", WJ_REFLECT_STRING, v, 0, 0, 0); }
+static JSValue wjg_HTMLFrameElement_get_src(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 253, "src", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLFrameElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 253, "src", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLFrameElement_get_frameBorder(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 253, "frameborder", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLFrameElement_set_frameBorder(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 253, "frameborder", WJ_REFLECT_STRING, v, 0, 0, 0); }
+static JSValue wjg_HTMLFrameElement_get_longDesc(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 253, "longdesc", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLFrameElement_set_longDesc(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 253, "longdesc", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLFrameElement_get_noResize(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 253, "noresize", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLFrameElement_set_noResize(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 253, "noresize", WJ_REFLECT_BOOL, v, 0, 0, 0); }
 static JSValue wjg_HTMLFrameElement_get_marginHeight(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 253, "marginheight", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -3938,6 +4135,8 @@ static JSValue wjg_HTMLHeadingElement_get_align(JSContext *ctx, JSValueConst thi
 static JSValue wjg_HTMLHeadingElement_set_align(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 257, "align", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLHtmlElement_get_version(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 258, "version", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLHtmlElement_set_version(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 258, "version", WJ_REFLECT_STRING, v, 0, 0, 0); }
+static JSValue wjg_HTMLIFrameElement_get_src(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 259, "src", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLIFrameElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 259, "src", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_get_name(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 259, "name", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_set_name(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 259, "name", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_set_sandbox(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "sandbox", "value", v); }
@@ -3955,12 +4154,16 @@ static JSValue wjg_HTMLIFrameElement_get_scrolling(JSContext *ctx, JSValueConst 
 static JSValue wjg_HTMLIFrameElement_set_scrolling(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 259, "scrolling", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_get_frameBorder(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 259, "frameborder", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_set_frameBorder(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 259, "frameborder", WJ_REFLECT_STRING, v, 0, 0, 0); }
+static JSValue wjg_HTMLIFrameElement_get_longDesc(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 259, "longdesc", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLIFrameElement_set_longDesc(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 259, "longdesc", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_get_marginHeight(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 259, "marginheight", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_set_marginHeight(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 259, "marginheight", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_get_marginWidth(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 259, "marginwidth", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_set_marginWidth(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 259, "marginwidth", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_get_alt(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 260, "alt", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_set_alt(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 260, "alt", WJ_REFLECT_STRING, v, 0, 0, 0); }
+static JSValue wjg_HTMLImageElement_get_src(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 260, "src", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLImageElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 260, "src", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_get_srcset(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 260, "srcset", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_set_srcset(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 260, "srcset", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_get_sizes(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 260, "sizes", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -4011,12 +4214,16 @@ static JSValue wjg_HTMLImageElement_get_currentSrc(JSContext *ctx, JSValueConst 
 
 static JSValue wjg_HTMLImageElement_get_name(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 260, "name", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_set_name(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 260, "name", WJ_REFLECT_STRING, v, 0, 0, 0); }
+static JSValue wjg_HTMLImageElement_get_lowsrc(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 260, "lowsrc", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLImageElement_set_lowsrc(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 260, "lowsrc", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_get_align(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 260, "align", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_set_align(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 260, "align", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_get_hspace(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 260, "hspace", WJ_REFLECT_ULONG, 0, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_set_hspace(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 260, "hspace", WJ_REFLECT_ULONG, v, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_get_vspace(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 260, "vspace", WJ_REFLECT_ULONG, 0, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_set_vspace(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 260, "vspace", WJ_REFLECT_ULONG, v, 0, 0, 0); }
+static JSValue wjg_HTMLImageElement_get_longDesc(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 260, "longdesc", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLImageElement_set_longDesc(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 260, "longdesc", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_get_border(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 260, "border", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLImageElement_set_border(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 260, "border", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLInputElement_get_accept(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 261, "accept", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -4089,6 +4296,15 @@ static JSValue wjg_HTMLInputElement_set_indeterminate(JSContext *ctx, JSValueCon
     return JS_UNDEFINED;
 }
 
+/* HTMLInputElement.list -> dom.HTMLInputElement_list */
+static JSValue wjg_HTMLInputElement_get_list(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 261);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLInputElement_list(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
 static JSValue wjg_HTMLInputElement_get_max(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 261, "max", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLInputElement_set_max(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 261, "max", WJ_REFLECT_STRING, v, 0, 0, 0); }
 /* HTMLInputElement.maxLength -> forms.HTMLInputElement_maxLength */
@@ -4153,6 +4369,8 @@ static JSValue wjg_HTMLInputElement_get_required(JSContext *ctx, JSValueConst th
 static JSValue wjg_HTMLInputElement_set_required(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 261, "required", WJ_REFLECT_BOOL, v, 0, 0, 0); }
 static JSValue wjg_HTMLInputElement_get_size(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 261, "size", WJ_REFLECT_ULONG, 0, 0, 0, 0); }
 static JSValue wjg_HTMLInputElement_set_size(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 261, "size", WJ_REFLECT_ULONG, v, 0, 0, 0); }
+static JSValue wjg_HTMLInputElement_get_src(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 261, "src", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLInputElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 261, "src", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLInputElement_get_step(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 261, "step", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLInputElement_set_step(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 261, "step", WJ_REFLECT_STRING, v, 0, 0, 0); }
 /* HTMLInputElement.type -> forms.HTMLInputElement_type */
@@ -4386,6 +4604,8 @@ static JSValue wjg_HTMLLegendElement_get_form(JSContext *ctx, JSValueConst this_
 
 static JSValue wjg_HTMLLegendElement_get_align(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 264, "align", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLLegendElement_set_align(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 264, "align", WJ_REFLECT_STRING, v, 0, 0, 0); }
+static JSValue wjg_HTMLLinkElement_get_href(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 265, "href", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLLinkElement_set_href(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 265, "href", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLLinkElement_get_rel(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 265, "rel", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLLinkElement_set_rel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 265, "rel", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLLinkElement_set_relList(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "relList", "value", v); }
@@ -4433,6 +4653,8 @@ static JSValue wjg_HTMLMarqueeElement_get_vspace(JSContext *ctx, JSValueConst th
 static JSValue wjg_HTMLMarqueeElement_set_vspace(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 267, "vspace", WJ_REFLECT_ULONG, v, 0, 0, 0); }
 static JSValue wjg_HTMLMarqueeElement_get_width(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 267, "width", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLMarqueeElement_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 267, "width", WJ_REFLECT_STRING, v, 0, 0, 0); }
+static JSValue wjg_HTMLMediaElement_get_src(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 268, "src", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLMediaElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 268, "src", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLMediaElement_get_autoplay(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 268, "autoplay", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLMediaElement_set_autoplay(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 268, "autoplay", WJ_REFLECT_BOOL, v, 0, 0, 0); }
 static JSValue wjg_HTMLMediaElement_get_loop(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 268, "loop", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
@@ -4445,6 +4667,8 @@ static JSValue wjg_HTMLVideoElement_get_width(JSContext *ctx, JSValueConst this_
 static JSValue wjg_HTMLVideoElement_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 270, "width", WJ_REFLECT_ULONG, v, 0, 0, 0); }
 static JSValue wjg_HTMLVideoElement_get_height(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 270, "height", WJ_REFLECT_ULONG, 0, 0, 0, 0); }
 static JSValue wjg_HTMLVideoElement_set_height(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 270, "height", WJ_REFLECT_ULONG, v, 0, 0, 0); }
+static JSValue wjg_HTMLVideoElement_get_poster(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 270, "poster", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLVideoElement_set_poster(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 270, "poster", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLVideoElement_get_playsInline(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 270, "playsinline", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLVideoElement_set_playsInline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 270, "playsinline", WJ_REFLECT_BOOL, v, 0, 0, 0); }
 static JSValue wjg_HTMLMenuElement_get_compact(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 271, "compact", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
@@ -4459,6 +4683,8 @@ static JSValue wjg_HTMLMetaElement_get_media(JSContext *ctx, JSValueConst this_v
 static JSValue wjg_HTMLMetaElement_set_media(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 272, "media", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLMetaElement_get_scheme(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 272, "scheme", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLMetaElement_set_scheme(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 272, "scheme", WJ_REFLECT_STRING, v, 0, 0, 0); }
+static JSValue wjg_HTMLModElement_get_cite(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 274, "cite", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLModElement_set_cite(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 274, "cite", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLModElement_get_dateTime(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 274, "datetime", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLModElement_set_dateTime(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 274, "datetime", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLOListElement_get_reversed(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 275, "reversed", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
@@ -4469,6 +4695,8 @@ static JSValue wjg_HTMLOListElement_get_type(JSContext *ctx, JSValueConst this_v
 static JSValue wjg_HTMLOListElement_set_type(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 275, "type", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLOListElement_get_compact(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 275, "compact", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLOListElement_set_compact(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 275, "compact", WJ_REFLECT_BOOL, v, 0, 0, 0); }
+static JSValue wjg_HTMLObjectElement_get_data(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 276, "data", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLObjectElement_set_data(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 276, "data", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLObjectElement_get_type(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 276, "type", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLObjectElement_set_type(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 276, "type", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLObjectElement_get_name(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 276, "name", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -4551,6 +4779,8 @@ static JSValue wjg_HTMLObjectElement_get_standby(JSContext *ctx, JSValueConst th
 static JSValue wjg_HTMLObjectElement_set_standby(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 276, "standby", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLObjectElement_get_vspace(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 276, "vspace", WJ_REFLECT_ULONG, 0, 0, 0, 0); }
 static JSValue wjg_HTMLObjectElement_set_vspace(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 276, "vspace", WJ_REFLECT_ULONG, v, 0, 0, 0); }
+static JSValue wjg_HTMLObjectElement_get_codeBase(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 276, "codebase", WJ_REFLECT_STRING, 0, 0, 0, 0); }
+static JSValue wjg_HTMLObjectElement_set_codeBase(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 276, "codebase", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLObjectElement_get_codeType(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 276, "codetype", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLObjectElement_set_codeType(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 276, "codetype", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLObjectElement_get_useMap(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 276, "usemap", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -4794,6 +5024,8 @@ static JSValue wjg_HTMLParamElement_get_valueType(JSContext *ctx, JSValueConst t
 static JSValue wjg_HTMLParamElement_set_valueType(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 281, "valuetype", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLPreElement_get_width(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 283, "width", WJ_REFLECT_LONG, 0, 0, 0, 0); }
 static JSValue wjg_HTMLPreElement_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 283, "width", WJ_REFLECT_LONG, v, 0, 0, 0); }
+static JSValue wjg_HTMLQuoteElement_get_cite(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 285, "cite", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLQuoteElement_set_cite(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 285, "cite", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLScriptElement_get_type(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 286, "type", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLScriptElement_set_type(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 286, "type", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLScriptElement_get_noModule(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 286, "nomodule", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
@@ -4803,6 +5035,32 @@ static JSValue wjg_HTMLScriptElement_set_defer(JSContext *ctx, JSValueConst this
 static JSValue wjg_HTMLScriptElement_set_blocking(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "blocking", "value", v); }
 static JSValue wjg_HTMLScriptElement_get_integrity(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 286, "integrity", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLScriptElement_set_integrity(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 286, "integrity", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLScriptElement.text -> dom.HTMLScriptElement_text */
+static JSValue wjg_HTMLScriptElement_get_text(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 286);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLScriptElement_text(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLScriptElement.text"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLScriptElement.text = v -> dom.HTMLScriptElement_set_text */
+static JSValue wjg_HTMLScriptElement_set_text(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 286);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLScriptElement_set_text(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLScriptElement.text"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLScriptElement_get_charset(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 286, "charset", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLScriptElement_set_charset(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 286, "charset", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLScriptElement_get_event(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 286, "event", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -4962,6 +5220,8 @@ static JSValue wjg_HTMLSelectElement_setCustomValidity(JSContext *ctx, JSValueCo
 
 static JSValue wjg_HTMLSlotElement_get_name(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 289, "name", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLSlotElement_set_name(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 289, "name", WJ_REFLECT_STRING, v, 0, 0, 0); }
+static JSValue wjg_HTMLSourceElement_get_src(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 290, "src", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLSourceElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 290, "src", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLSourceElement_get_type(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 290, "type", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLSourceElement_set_type(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 290, "type", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLSourceElement_get_srcset(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 290, "srcset", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -4987,6 +5247,15 @@ static JSValue wjg_HTMLTableCellElement_get_rowSpan(JSContext *ctx, JSValueConst
 static JSValue wjg_HTMLTableCellElement_set_rowSpan(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 294, "rowspan", WJ_REFLECT_ULONG, v, 4, 0, 65534); }
 static JSValue wjg_HTMLTableCellElement_get_headers(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 294, "headers", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLTableCellElement_set_headers(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 294, "headers", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLTableCellElement.cellIndex -> dom.HTMLTableCellElement_cellIndex */
+static JSValue wjg_HTMLTableCellElement_get_cellIndex(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 294);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLTableCellElement_cellIndex(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
 static JSValue wjg_HTMLTableCellElement_get_abbr(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 294, "abbr", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLTableCellElement_set_abbr(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 294, "abbr", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLTableCellElement_get_align(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 294, "align", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -5019,6 +5288,164 @@ static JSValue wjg_HTMLTableColElement_get_vAlign(JSContext *ctx, JSValueConst t
 static JSValue wjg_HTMLTableColElement_set_vAlign(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 295, "valign", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLTableColElement_get_width(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 295, "width", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLTableColElement_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 295, "width", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLTableElement.caption -> dom.HTMLTableElement_caption */
+static JSValue wjg_HTMLTableElement_get_caption(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLTableElement_caption(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* HTMLTableElement.caption = v -> dom.HTMLTableElement_set_caption */
+static JSValue wjg_HTMLTableElement_set_caption(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t a0 = 0;
+    if (!wj_to_handle(ctx, argv[0], 293, true, &a0, "HTMLTableElement.caption: argument 1 is not of type 'HTMLTableCaptionElement'")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLTableElement_set_caption(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLTableElement.caption"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLTableElement.createCaption() -> dom.HTMLTableElement_createCaption */
+static JSValue wjg_HTMLTableElement_createCaption(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLTableElement_createCaption(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* HTMLTableElement.deleteCaption() -> dom.HTMLTableElement_deleteCaption */
+static JSValue wjg_HTMLTableElement_deleteCaption(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    wr_HTMLTableElement_deleteCaption(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* HTMLTableElement.tHead -> dom.HTMLTableElement_tHead */
+static JSValue wjg_HTMLTableElement_get_tHead(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLTableElement_tHead(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* HTMLTableElement.tHead = v -> dom.HTMLTableElement_set_tHead */
+static JSValue wjg_HTMLTableElement_set_tHead(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t a0 = 0;
+    if (!wj_to_handle(ctx, argv[0], 298, true, &a0, "HTMLTableElement.tHead: argument 1 is not of type 'HTMLTableSectionElement'")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLTableElement_set_tHead(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLTableElement.tHead"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLTableElement.createTHead() -> dom.HTMLTableElement_createTHead */
+static JSValue wjg_HTMLTableElement_createTHead(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLTableElement_createTHead(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* HTMLTableElement.deleteTHead() -> dom.HTMLTableElement_deleteTHead */
+static JSValue wjg_HTMLTableElement_deleteTHead(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    wr_HTMLTableElement_deleteTHead(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* HTMLTableElement.tFoot -> dom.HTMLTableElement_tFoot */
+static JSValue wjg_HTMLTableElement_get_tFoot(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLTableElement_tFoot(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* HTMLTableElement.tFoot = v -> dom.HTMLTableElement_set_tFoot */
+static JSValue wjg_HTMLTableElement_set_tFoot(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t a0 = 0;
+    if (!wj_to_handle(ctx, argv[0], 298, true, &a0, "HTMLTableElement.tFoot: argument 1 is not of type 'HTMLTableSectionElement'")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLTableElement_set_tFoot(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLTableElement.tFoot"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLTableElement.createTFoot() -> dom.HTMLTableElement_createTFoot */
+static JSValue wjg_HTMLTableElement_createTFoot(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLTableElement_createTFoot(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* HTMLTableElement.deleteTFoot() -> dom.HTMLTableElement_deleteTFoot */
+static JSValue wjg_HTMLTableElement_deleteTFoot(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    wr_HTMLTableElement_deleteTFoot(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* HTMLTableElement.createTBody() -> dom.HTMLTableElement_createTBody */
+static JSValue wjg_HTMLTableElement_createTBody(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLTableElement_createTBody(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* HTMLTableElement.insertRow() -> dom.HTMLTableElement_insertRow */
+static JSValue wjg_HTMLTableElement_insertRow(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t a0 = -1;
+    if (!JS_IsUndefined(wj_arg(argc, argv, 0)) && !wj_to_int32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_HTMLTableElement_insertRow(self->handle, a0, (void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLTableElement.insertRow"); }
+    return wj_wrap_node(ctx, r);
+}
+
+/* HTMLTableElement.deleteRow() -> dom.HTMLTableElement_deleteRow */
+static JSValue wjg_HTMLTableElement_deleteRow(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 296);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "HTMLTableElement.deleteRow", 1, argc); }
+    int32_t a0 = 0;
+    if (!wj_to_int32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLTableElement_deleteRow(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLTableElement.deleteRow"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLTableElement_get_align(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 296, "align", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLTableElement_set_align(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 296, "align", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLTableElement_get_border(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 296, "border", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -5037,6 +5464,50 @@ static JSValue wjg_HTMLTableElement_get_cellPadding(JSContext *ctx, JSValueConst
 static JSValue wjg_HTMLTableElement_set_cellPadding(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 296, "cellpadding", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLTableElement_get_cellSpacing(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 296, "cellspacing", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLTableElement_set_cellSpacing(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 296, "cellspacing", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLTableRowElement.rowIndex -> dom.HTMLTableRowElement_rowIndex */
+static JSValue wjg_HTMLTableRowElement_get_rowIndex(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 297);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLTableRowElement_rowIndex(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+/* HTMLTableRowElement.sectionRowIndex -> dom.HTMLTableRowElement_sectionRowIndex */
+static JSValue wjg_HTMLTableRowElement_get_sectionRowIndex(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 297);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLTableRowElement_sectionRowIndex(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+/* HTMLTableRowElement.insertCell() -> dom.HTMLTableRowElement_insertCell */
+static JSValue wjg_HTMLTableRowElement_insertCell(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 297);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t a0 = -1;
+    if (!JS_IsUndefined(wj_arg(argc, argv, 0)) && !wj_to_int32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_HTMLTableRowElement_insertCell(self->handle, a0, (void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLTableRowElement.insertCell"); }
+    return wj_wrap_node(ctx, r);
+}
+
+/* HTMLTableRowElement.deleteCell() -> dom.HTMLTableRowElement_deleteCell */
+static JSValue wjg_HTMLTableRowElement_deleteCell(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 297);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "HTMLTableRowElement.deleteCell", 1, argc); }
+    int32_t a0 = 0;
+    if (!wj_to_int32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLTableRowElement_deleteCell(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLTableRowElement.deleteCell"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLTableRowElement_get_align(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 297, "align", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLTableRowElement_set_align(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 297, "align", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLTableRowElement_get_ch(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 297, "char", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -5047,6 +5518,32 @@ static JSValue wjg_HTMLTableRowElement_get_vAlign(JSContext *ctx, JSValueConst t
 static JSValue wjg_HTMLTableRowElement_set_vAlign(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 297, "valign", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLTableRowElement_get_bgColor(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 297, "bgcolor", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLTableRowElement_set_bgColor(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 297, "bgcolor", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLTableSectionElement.insertRow() -> dom.HTMLTableSectionElement_insertRow */
+static JSValue wjg_HTMLTableSectionElement_insertRow(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 298);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t a0 = -1;
+    if (!JS_IsUndefined(wj_arg(argc, argv, 0)) && !wj_to_int32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_HTMLTableSectionElement_insertRow(self->handle, a0, (void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLTableSectionElement.insertRow"); }
+    return wj_wrap_node(ctx, r);
+}
+
+/* HTMLTableSectionElement.deleteRow() -> dom.HTMLTableSectionElement_deleteRow */
+static JSValue wjg_HTMLTableSectionElement_deleteRow(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 298);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "HTMLTableSectionElement.deleteRow", 1, argc); }
+    int32_t a0 = 0;
+    if (!wj_to_int32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLTableSectionElement_deleteRow(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLTableSectionElement.deleteRow"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLTableSectionElement_get_align(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 298, "align", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLTableSectionElement_set_align(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 298, "align", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLTableSectionElement_get_ch(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 298, "char", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -5298,6 +5795,34 @@ static JSValue wjg_HTMLTextAreaElement_get_selectionDirection(JSContext *ctx, JS
 
 static JSValue wjg_HTMLTimeElement_get_dateTime(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 301, "datetime", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLTimeElement_set_dateTime(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 301, "datetime", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLTitleElement.text -> dom.HTMLTitleElement_text */
+static JSValue wjg_HTMLTitleElement_get_text(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 302);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLTitleElement_text(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLTitleElement.text"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLTitleElement.text = v -> dom.HTMLTitleElement_set_text */
+static JSValue wjg_HTMLTitleElement_set_text(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 302);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLTitleElement_set_text(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLTitleElement.text"); }
+    return JS_UNDEFINED;
+}
+
+static JSValue wjg_HTMLTrackElement_get_src(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 303, "src", WJ_REFLECT_URL, 0, 0, 0, 0); }
+static JSValue wjg_HTMLTrackElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 303, "src", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLTrackElement_get_srclang(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 303, "srclang", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLTrackElement_set_srclang(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 303, "srclang", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLTrackElement_get_label(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 303, "label", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -9100,7 +9625,7 @@ static const wj_member wj_m_Document[] = {
     { "startViewTransition", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "activeViewTransition", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "elementFromPoint", WJ_M_METHOD, 0, 2, wjg_Document_elementFromPoint, NULL, NULL, 0 },
-    { "elementsFromPoint", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "elementsFromPoint", WJ_M_METHOD, 0, 2, wjr_Document_elementsFromPoint, NULL, NULL, 0 },
     { "caretPositionFromPoint", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "scrollingElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_scrollingElement, NULL, 0 },
     { "implementation", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 36, NULL, wjr_Document_get_implementation, NULL, 0 },
@@ -9169,8 +9694,8 @@ static const wj_member wj_m_Document[] = {
     { "queryCommandState", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "queryCommandSupported", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "queryCommandValue", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "hidden", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "visibilityState", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "hidden", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_hidden, NULL, 0 },
+    { "visibilityState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_visibilityState, NULL, 0 },
     { "onreadystatechange", WJ_M_ATTRIBUTE, WJ_F_LENIENT_THIS, 0, NULL, wjg_Document_get_onreadystatechange, wjg_Document_set_onreadystatechange, 0 },
     { "onvisibilitychange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onvisibilitychange, wjg_Document_set_onvisibilitychange, 0 },
     { "fgColor", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -9377,7 +9902,7 @@ static const wj_member wj_m_Element[] = {
     { "activeViewTransition", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "getClientRects", WJ_M_METHOD, 0, 0, wjr_Element_getClientRects, NULL, NULL, 0 },
     { "getBoundingClientRect", WJ_M_METHOD, 0, 0, wjr_Element_getBoundingClientRect, NULL, NULL, 0 },
-    { "checkVisibility", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "checkVisibility", WJ_M_METHOD, 0, 0, wjr_Element_checkVisibility, NULL, NULL, 0 },
     { "scrollIntoView", WJ_M_METHOD, 0, 0, wjr_Element_scrollIntoView, NULL, NULL, 0 },
     { "scroll", WJ_M_METHOD, 0, 0, wjr_Element_scroll, NULL, NULL, 0 },
     { "scrollTo", WJ_M_METHOD, 0, 0, wjr_Element_scrollTo, NULL, NULL, 0 },
@@ -9433,16 +9958,16 @@ static const wj_member wj_m_Element[] = {
     { "setHTML", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "appendHTML", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "prependHTML", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setHTMLUnsafe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "setHTMLUnsafe", WJ_M_METHOD, 0, 1, wjr_Element_setHTMLUnsafe, NULL, NULL, 0 },
     { "appendHTMLUnsafe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "prependHTMLUnsafe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getHTML", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "getHTML", WJ_M_METHOD, 0, 0, wjr_Element_getHTML, NULL, NULL, 0 },
     { "innerHTML", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_innerHTML, wjr_Element_set_innerHTML, 0 },
     { "outerHTML", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_outerHTML, wjr_Element_set_outerHTML, 0 },
     { "insertAdjacentHTML", WJ_M_METHOD, 0, 2, wjg_Element_insertAdjacentHTML, NULL, NULL, 0 },
-    { "setPointerCapture", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "releasePointerCapture", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "hasPointerCapture", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "setPointerCapture", WJ_M_METHOD, 0, 1, wjr_Element_setPointerCapture, NULL, NULL, 0 },
+    { "releasePointerCapture", WJ_M_METHOD, 0, 1, wjr_Element_releasePointerCapture, NULL, NULL, 0 },
+    { "hasPointerCapture", WJ_M_METHOD, 0, 1, wjr_Element_hasPointerCapture, NULL, NULL, 0 },
     { "getBoxQuads", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "convertQuadFromNode", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "convertRectFromNode", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
@@ -9676,7 +10201,7 @@ static const wj_member wj_m_HTMLAnchorElement[] = {
     { "rel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_rel, wjg_HTMLAnchorElement_set_rel, 0 },
     { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 57, NULL, wjr_HTMLAnchorElement_get_relList, wjg_HTMLAnchorElement_set_relList, 0 },
     { "text", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_text, wjg_HTMLAnchorElement_set_text, 0 },
-    { "referrerPolicy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "referrerPolicy", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLAnchorElement_get_referrerPolicy, wjr_HTMLAnchorElement_set_referrerPolicy, 0 },
     { "coords", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_coords, wjg_HTMLAnchorElement_set_coords, 0 },
     { "charset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_charset, wjg_HTMLAnchorElement_set_charset, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_name, wjg_HTMLAnchorElement_set_name, 0 },
@@ -9706,7 +10231,7 @@ static const wj_member wj_m_HTMLAreaElement[] = {
     { "ping", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_ping, wjg_HTMLAreaElement_set_ping, 0 },
     { "rel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_rel, wjg_HTMLAreaElement_set_rel, 0 },
     { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 58, NULL, wjr_HTMLAreaElement_get_relList, wjg_HTMLAreaElement_set_relList, 0 },
-    { "referrerPolicy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "referrerPolicy", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLAreaElement_get_referrerPolicy, wjr_HTMLAreaElement_set_referrerPolicy, 0 },
     { "noHref", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_noHref, wjg_HTMLAreaElement_set_noHref, 0 },
     { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_origin, NULL, 0 },
     { "protocol", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_protocol, wjg_HTMLAreaElement_set_protocol, 0 },
@@ -9728,7 +10253,7 @@ static const wj_member wj_m_HTMLBRElement[] = {
     { "clear", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBRElement_get_clear, wjg_HTMLBRElement_set_clear, 0 },
 };
 static const wj_member wj_m_HTMLBaseElement[] = {
-    { "href", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "href", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLBaseElement_get_href, wjr_HTMLBaseElement_set_href, 0 },
     { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLBaseElement_get_target, wjg_HTMLBaseElement_set_target, 0 },
 };
 static const wj_member wj_m_HTMLBodyElement[] = {
@@ -9764,21 +10289,21 @@ static const wj_member wj_m_HTMLButtonElement[] = {
     { "commandForElement", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "disabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLButtonElement_get_disabled, wjg_HTMLButtonElement_set_disabled, 0 },
     { "form", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLButtonElement_get_form, NULL, 0 },
-    { "formAction", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "formEnctype", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "formMethod", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "formAction", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLButtonElement_get_formAction, wjr_HTMLButtonElement_set_formAction, 0 },
+    { "formEnctype", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLButtonElement_get_formEnctype, wjr_HTMLButtonElement_set_formEnctype, 0 },
+    { "formMethod", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLButtonElement_get_formMethod, wjr_HTMLButtonElement_set_formMethod, 0 },
     { "formNoValidate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLButtonElement_get_formNoValidate, wjg_HTMLButtonElement_set_formNoValidate, 0 },
     { "formTarget", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLButtonElement_get_formTarget, wjg_HTMLButtonElement_set_formTarget, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLButtonElement_get_name, wjg_HTMLButtonElement_set_name, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLButtonElement_get_type, wjg_HTMLButtonElement_set_type, 0 },
     { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLButtonElement_get_value, wjg_HTMLButtonElement_set_value, 0 },
     { "willValidate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLButtonElement_get_willValidate, NULL, 0 },
-    { "validity", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "validity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLButtonElement_get_validity, NULL, 0 },
     { "validationMessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLButtonElement_get_validationMessage, NULL, 0 },
     { "checkValidity", WJ_M_METHOD, 0, 0, wjg_HTMLButtonElement_checkValidity, NULL, NULL, 0 },
     { "reportValidity", WJ_M_METHOD, 0, 0, wjg_HTMLButtonElement_reportValidity, NULL, NULL, 0 },
     { "setCustomValidity", WJ_M_METHOD, 0, 1, wjg_HTMLButtonElement_setCustomValidity, NULL, NULL, 0 },
-    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLButtonElement_get_labels, NULL, 0 },
     { "popoverTargetElement", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "popoverTargetAction", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
 };
@@ -9807,10 +10332,10 @@ static const wj_member wj_m_HTMLDialogElement[] = {
     { "open", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLDialogElement_get_open, wjg_HTMLDialogElement_set_open, 0 },
     { "returnValue", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLDialogElement_get_returnValue, NULL, 0 },
     { "closedBy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "show", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "showModal", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "close", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "requestClose", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "show", WJ_M_METHOD, 0, 0, wjg_HTMLDialogElement_show, NULL, NULL, 0 },
+    { "showModal", WJ_M_METHOD, 0, 0, wjg_HTMLDialogElement_showModal, NULL, NULL, 0 },
+    { "close", WJ_M_METHOD, 0, 0, wjg_HTMLDialogElement_close, NULL, NULL, 0 },
+    { "requestClose", WJ_M_METHOD, 0, 0, wjg_HTMLDialogElement_requestClose, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLDirectoryElement[] = {
     { "compact", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLDirectoryElement_get_compact, wjg_HTMLDirectoryElement_set_compact, 0 },
@@ -9819,7 +10344,7 @@ static const wj_member wj_m_HTMLDivElement[] = {
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLDivElement_get_align, wjg_HTMLDivElement_set_align, 0 },
 };
 static const wj_member wj_m_HTMLEmbedElement[] = {
-    { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLEmbedElement_get_src, wjg_HTMLEmbedElement_set_src, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLEmbedElement_get_type, wjg_HTMLEmbedElement_set_type, 0 },
     { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLEmbedElement_get_width, wjg_HTMLEmbedElement_set_width, 0 },
     { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLEmbedElement_get_height, wjg_HTMLEmbedElement_set_height, 0 },
@@ -9832,9 +10357,9 @@ static const wj_member wj_m_HTMLFieldSetElement[] = {
     { "form", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFieldSetElement_get_form, NULL, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFieldSetElement_get_name, wjg_HTMLFieldSetElement_set_name, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFieldSetElement_get_type, NULL, 0 },
-    { "elements", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 60, NULL, NULL, NULL, 0 },
+    { "elements", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 60, NULL, wjr_HTMLFieldSetElement_get_elements, NULL, 0 },
     { "willValidate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFieldSetElement_get_willValidate, NULL, 0 },
-    { "validity", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 61, NULL, NULL, NULL, 0 },
+    { "validity", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 61, NULL, wjr_HTMLFieldSetElement_get_validity, NULL, 0 },
     { "validationMessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFieldSetElement_get_validationMessage, NULL, 0 },
     { "checkValidity", WJ_M_METHOD, 0, 0, wjg_HTMLFieldSetElement_checkValidity, NULL, NULL, 0 },
     { "reportValidity", WJ_M_METHOD, 0, 0, wjg_HTMLFieldSetElement_reportValidity, NULL, NULL, 0 },
@@ -9847,11 +10372,11 @@ static const wj_member wj_m_HTMLFontElement[] = {
 };
 static const wj_member wj_m_HTMLFormElement[] = {
     { "acceptCharset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFormElement_get_acceptCharset, wjg_HTMLFormElement_set_acceptCharset, 0 },
-    { "action", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "autocomplete", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "enctype", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "encoding", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "method", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "action", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLFormElement_get_action, wjr_HTMLFormElement_set_action, 0 },
+    { "autocomplete", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLFormElement_get_autocomplete, wjr_HTMLFormElement_set_autocomplete, 0 },
+    { "enctype", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLFormElement_get_enctype, wjr_HTMLFormElement_set_enctype, 0 },
+    { "encoding", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLFormElement_get_encoding, wjr_HTMLFormElement_set_encoding, 0 },
+    { "method", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLFormElement_get_method, wjr_HTMLFormElement_set_method, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFormElement_get_name, wjg_HTMLFormElement_set_name, 0 },
     { "noValidate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFormElement_get_noValidate, wjg_HTMLFormElement_set_noValidate, 0 },
     { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFormElement_get_target, wjg_HTMLFormElement_set_target, 0 },
@@ -9868,9 +10393,9 @@ static const wj_member wj_m_HTMLFormElement[] = {
 static const wj_member wj_m_HTMLFrameElement[] = {
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameElement_get_name, wjg_HTMLFrameElement_set_name, 0 },
     { "scrolling", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameElement_get_scrolling, wjg_HTMLFrameElement_set_scrolling, 0 },
-    { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameElement_get_src, wjg_HTMLFrameElement_set_src, 0 },
     { "frameBorder", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameElement_get_frameBorder, wjg_HTMLFrameElement_set_frameBorder, 0 },
-    { "longDesc", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "longDesc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameElement_get_longDesc, wjg_HTMLFrameElement_set_longDesc, 0 },
     { "noResize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameElement_get_noResize, wjg_HTMLFrameElement_set_noResize, 0 },
     { "contentDocument", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "contentWindow", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -9918,7 +10443,7 @@ static const wj_member wj_m_HTMLHtmlElement[] = {
     { "version", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLHtmlElement_get_version, wjg_HTMLHtmlElement_set_version, 0 },
 };
 static const wj_member wj_m_HTMLIFrameElement[] = {
-    { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_src, wjg_HTMLIFrameElement_set_src, 0 },
     { "srcdoc", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_name, wjg_HTMLIFrameElement_set_name, 0 },
     { "sandbox", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 64, NULL, wjr_HTMLIFrameElement_get_sandbox, wjg_HTMLIFrameElement_set_sandbox, 0 },
@@ -9926,15 +10451,15 @@ static const wj_member wj_m_HTMLIFrameElement[] = {
     { "allowFullscreen", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_allowFullscreen, wjg_HTMLIFrameElement_set_allowFullscreen, 0 },
     { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_width, wjg_HTMLIFrameElement_set_width, 0 },
     { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_height, wjg_HTMLIFrameElement_set_height, 0 },
-    { "referrerPolicy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "loading", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "referrerPolicy", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLIFrameElement_get_referrerPolicy, wjr_HTMLIFrameElement_set_referrerPolicy, 0 },
+    { "loading", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLIFrameElement_get_loading, wjr_HTMLIFrameElement_set_loading, 0 },
     { "contentDocument", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "contentWindow", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "getSVGDocument", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_align, wjg_HTMLIFrameElement_set_align, 0 },
     { "scrolling", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_scrolling, wjg_HTMLIFrameElement_set_scrolling, 0 },
     { "frameBorder", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_frameBorder, wjg_HTMLIFrameElement_set_frameBorder, 0 },
-    { "longDesc", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "longDesc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_longDesc, wjg_HTMLIFrameElement_set_longDesc, 0 },
     { "marginHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_marginHeight, wjg_HTMLIFrameElement_set_marginHeight, 0 },
     { "marginWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_marginWidth, wjg_HTMLIFrameElement_set_marginWidth, 0 },
 };
@@ -9942,30 +10467,30 @@ static const wj_member wj_m_HTMLImageElement[] = {
     { "x", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "y", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "alt", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_alt, wjg_HTMLImageElement_set_alt, 0 },
-    { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_src, wjg_HTMLImageElement_set_src, 0 },
     { "srcset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_srcset, wjg_HTMLImageElement_set_srcset, 0 },
     { "sizes", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_sizes, wjg_HTMLImageElement_set_sizes, 0 },
-    { "crossOrigin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "crossOrigin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLImageElement_get_crossOrigin, wjr_HTMLImageElement_set_crossOrigin, 0 },
     { "useMap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_useMap, wjg_HTMLImageElement_set_useMap, 0 },
     { "isMap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_isMap, wjg_HTMLImageElement_set_isMap, 0 },
     { "controls", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_controls, wjg_HTMLImageElement_set_controls, 0 },
-    { "width", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "height", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLImageElement_get_width, wjr_HTMLImageElement_set_width, 0 },
+    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLImageElement_get_height, wjr_HTMLImageElement_set_height, 0 },
     { "naturalWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_naturalWidth, NULL, 0 },
     { "naturalHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_naturalHeight, NULL, 0 },
     { "complete", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_complete, NULL, 0 },
     { "currentSrc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_currentSrc, NULL, 0 },
-    { "referrerPolicy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "decoding", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "loading", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "fetchPriority", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "referrerPolicy", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLImageElement_get_referrerPolicy, wjr_HTMLImageElement_set_referrerPolicy, 0 },
+    { "decoding", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLImageElement_get_decoding, wjr_HTMLImageElement_set_decoding, 0 },
+    { "loading", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLImageElement_get_loading, wjr_HTMLImageElement_set_loading, 0 },
+    { "fetchPriority", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLImageElement_get_fetchPriority, wjr_HTMLImageElement_set_fetchPriority, 0 },
     { "decode", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_name, wjg_HTMLImageElement_set_name, 0 },
-    { "lowsrc", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "lowsrc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_lowsrc, wjg_HTMLImageElement_set_lowsrc, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_align, wjg_HTMLImageElement_set_align, 0 },
     { "hspace", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_hspace, wjg_HTMLImageElement_set_hspace, 0 },
     { "vspace", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_vspace, wjg_HTMLImageElement_set_vspace, 0 },
-    { "longDesc", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "longDesc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_longDesc, wjg_HTMLImageElement_set_longDesc, 0 },
     { "border", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_border, wjg_HTMLImageElement_set_border, 0 },
 };
 static const wj_member wj_m_HTMLInputElement[] = {
@@ -9975,7 +10500,7 @@ static const wj_member wj_m_HTMLInputElement[] = {
     { "accept", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_accept, wjg_HTMLInputElement_set_accept, 0 },
     { "alpha", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_alpha, wjg_HTMLInputElement_set_alpha, 0 },
     { "alt", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_alt, wjg_HTMLInputElement_set_alt, 0 },
-    { "autocomplete", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "autocomplete", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_autocomplete, wjr_HTMLInputElement_set_autocomplete, 0 },
     { "defaultChecked", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_defaultChecked, wjg_HTMLInputElement_set_defaultChecked, 0 },
     { "checked", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_checked, wjg_HTMLInputElement_set_checked, 0 },
     { "colorSpace", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -9983,14 +10508,14 @@ static const wj_member wj_m_HTMLInputElement[] = {
     { "disabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_disabled, wjg_HTMLInputElement_set_disabled, 0 },
     { "form", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_form, NULL, 0 },
     { "files", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "formAction", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "formEnctype", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "formMethod", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "formAction", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_formAction, wjr_HTMLInputElement_set_formAction, 0 },
+    { "formEnctype", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_formEnctype, wjr_HTMLInputElement_set_formEnctype, 0 },
+    { "formMethod", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_formMethod, wjr_HTMLInputElement_set_formMethod, 0 },
     { "formNoValidate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_formNoValidate, wjg_HTMLInputElement_set_formNoValidate, 0 },
     { "formTarget", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_formTarget, wjg_HTMLInputElement_set_formTarget, 0 },
-    { "height", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_height, wjr_HTMLInputElement_set_height, 0 },
     { "indeterminate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_indeterminate, wjg_HTMLInputElement_set_indeterminate, 0 },
-    { "list", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "list", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_list, NULL, 0 },
     { "max", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_max, wjg_HTMLInputElement_set_max, 0 },
     { "maxLength", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_maxLength, wjg_HTMLInputElement_set_maxLength, 0 },
     { "min", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_min, wjg_HTMLInputElement_set_min, 0 },
@@ -10002,28 +10527,28 @@ static const wj_member wj_m_HTMLInputElement[] = {
     { "readOnly", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_readOnly, wjg_HTMLInputElement_set_readOnly, 0 },
     { "required", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_required, wjg_HTMLInputElement_set_required, 0 },
     { "size", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_size, wjg_HTMLInputElement_set_size, 0 },
-    { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_src, wjg_HTMLInputElement_set_src, 0 },
     { "step", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_step, wjg_HTMLInputElement_set_step, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_type, wjg_HTMLInputElement_set_type, 0 },
     { "defaultValue", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_defaultValue, wjg_HTMLInputElement_set_defaultValue, 0 },
     { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_value, wjg_HTMLInputElement_set_value, 0 },
-    { "valueAsDate", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "valueAsDate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_valueAsDate, wjr_HTMLInputElement_set_valueAsDate, 0 },
     { "valueAsNumber", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_valueAsNumber, wjg_HTMLInputElement_set_valueAsNumber, 0 },
-    { "width", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_width, wjr_HTMLInputElement_set_width, 0 },
     { "stepUp", WJ_M_METHOD, 0, 0, wjg_HTMLInputElement_stepUp, NULL, NULL, 0 },
     { "stepDown", WJ_M_METHOD, 0, 0, wjg_HTMLInputElement_stepDown, NULL, NULL, 0 },
     { "willValidate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_willValidate, NULL, 0 },
-    { "validity", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "validity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_validity, NULL, 0 },
     { "validationMessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_validationMessage, NULL, 0 },
     { "checkValidity", WJ_M_METHOD, 0, 0, wjg_HTMLInputElement_checkValidity, NULL, NULL, 0 },
     { "reportValidity", WJ_M_METHOD, 0, 0, wjg_HTMLInputElement_reportValidity, NULL, NULL, 0 },
     { "setCustomValidity", WJ_M_METHOD, 0, 1, wjg_HTMLInputElement_setCustomValidity, NULL, NULL, 0 },
-    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_labels, NULL, 0 },
     { "select", WJ_M_METHOD, 0, 0, wjg_HTMLInputElement_select, NULL, NULL, 0 },
     { "selectionStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_selectionStart, wjr_HTMLInputElement_set_selectionStart, 0 },
     { "selectionEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_selectionEnd, wjr_HTMLInputElement_set_selectionEnd, 0 },
     { "selectionDirection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_selectionDirection, wjr_HTMLInputElement_set_selectionDirection, 0 },
-    { "setRangeText", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "setRangeText", WJ_M_METHOD, 0, 1, wjr_HTMLInputElement_setRangeText, NULL, NULL, 0 },
     { "setSelectionRange", WJ_M_METHOD, 0, 2, wjr_HTMLInputElement_setSelectionRange, NULL, NULL, 0 },
     { "showPicker", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_align, wjg_HTMLInputElement_set_align, 0 },
@@ -10045,10 +10570,10 @@ static const wj_member wj_m_HTMLLegendElement[] = {
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLegendElement_get_align, wjg_HTMLLegendElement_set_align, 0 },
 };
 static const wj_member wj_m_HTMLLinkElement[] = {
-    { "href", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "crossOrigin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "href", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_href, wjg_HTMLLinkElement_set_href, 0 },
+    { "crossOrigin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLLinkElement_get_crossOrigin, wjr_HTMLLinkElement_set_crossOrigin, 0 },
     { "rel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_rel, wjg_HTMLLinkElement_set_rel, 0 },
-    { "as", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "as", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLLinkElement_get_as, wjr_HTMLLinkElement_set_as, 0 },
     { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 65, NULL, wjr_HTMLLinkElement_get_relList, wjg_HTMLLinkElement_set_relList, 0 },
     { "media", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_media, wjg_HTMLLinkElement_set_media, 0 },
     { "integrity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_integrity, wjg_HTMLLinkElement_set_integrity, 0 },
@@ -10057,10 +10582,10 @@ static const wj_member wj_m_HTMLLinkElement[] = {
     { "sizes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 66, NULL, wjr_HTMLLinkElement_get_sizes, wjg_HTMLLinkElement_set_sizes, 0 },
     { "imageSrcset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_imageSrcset, wjg_HTMLLinkElement_set_imageSrcset, 0 },
     { "imageSizes", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_imageSizes, wjg_HTMLLinkElement_set_imageSizes, 0 },
-    { "referrerPolicy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "referrerPolicy", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLLinkElement_get_referrerPolicy, wjr_HTMLLinkElement_set_referrerPolicy, 0 },
     { "blocking", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 67, NULL, NULL, wjg_HTMLLinkElement_set_blocking, 0 },
     { "disabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_disabled, wjg_HTMLLinkElement_set_disabled, 0 },
-    { "fetchPriority", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "fetchPriority", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLLinkElement_get_fetchPriority, wjr_HTMLLinkElement_set_fetchPriority, 0 },
     { "charset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_charset, wjg_HTMLLinkElement_set_charset, 0 },
     { "rev", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_rev, wjg_HTMLLinkElement_set_rev, 0 },
     { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_target, wjg_HTMLLinkElement_set_target, 0 },
@@ -10068,7 +10593,7 @@ static const wj_member wj_m_HTMLLinkElement[] = {
 };
 static const wj_member wj_m_HTMLMapElement[] = {
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMapElement_get_name, wjg_HTMLMapElement_set_name, 0 },
-    { "areas", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 68, NULL, NULL, NULL, 0 },
+    { "areas", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 68, NULL, wjr_HTMLMapElement_get_areas, NULL, 0 },
 };
 static const wj_member wj_m_HTMLMarqueeElement[] = {
     { "behavior", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMarqueeElement_get_behavior, wjg_HTMLMarqueeElement_set_behavior, 0 },
@@ -10087,7 +10612,7 @@ static const wj_member wj_m_HTMLMarqueeElement[] = {
 };
 static const wj_member wj_m_HTMLMediaElement[] = {
     { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_src, wjg_HTMLMediaElement_set_src, 0 },
     { "srcObject", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "currentSrc", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "crossOrigin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -10140,7 +10665,7 @@ static const wj_member wj_m_HTMLVideoElement[] = {
     { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_height, wjg_HTMLVideoElement_set_height, 0 },
     { "videoWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "videoHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "poster", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "poster", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_poster, wjg_HTMLVideoElement_set_poster, 0 },
     { "playsInline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_playsInline, wjg_HTMLVideoElement_set_playsInline, 0 },
 };
 static const wj_member wj_m_HTMLMenuElement[] = {
@@ -10154,16 +10679,16 @@ static const wj_member wj_m_HTMLMetaElement[] = {
     { "scheme", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMetaElement_get_scheme, wjg_HTMLMetaElement_set_scheme, 0 },
 };
 static const wj_member wj_m_HTMLMeterElement[] = {
-    { "value", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "min", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "max", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "low", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "high", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "optimum", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMeterElement_get_value, wjr_HTMLMeterElement_set_value, 0 },
+    { "min", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMeterElement_get_min, wjr_HTMLMeterElement_set_min, 0 },
+    { "max", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMeterElement_get_max, wjr_HTMLMeterElement_set_max, 0 },
+    { "low", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMeterElement_get_low, wjr_HTMLMeterElement_set_low, 0 },
+    { "high", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMeterElement_get_high, wjr_HTMLMeterElement_set_high, 0 },
+    { "optimum", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMeterElement_get_optimum, wjr_HTMLMeterElement_set_optimum, 0 },
+    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMeterElement_get_labels, NULL, 0 },
 };
 static const wj_member wj_m_HTMLModElement[] = {
-    { "cite", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "cite", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLModElement_get_cite, wjg_HTMLModElement_set_cite, 0 },
     { "dateTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLModElement_get_dateTime, wjg_HTMLModElement_set_dateTime, 0 },
 };
 static const wj_member wj_m_HTMLOListElement[] = {
@@ -10173,7 +10698,7 @@ static const wj_member wj_m_HTMLOListElement[] = {
     { "compact", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOListElement_get_compact, wjg_HTMLOListElement_set_compact, 0 },
 };
 static const wj_member wj_m_HTMLObjectElement[] = {
-    { "data", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_data, wjg_HTMLObjectElement_set_data, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_type, wjg_HTMLObjectElement_set_type, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_name, wjg_HTMLObjectElement_set_name, 0 },
     { "form", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_form, NULL, 0 },
@@ -10183,7 +10708,7 @@ static const wj_member wj_m_HTMLObjectElement[] = {
     { "contentWindow", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "getSVGDocument", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "willValidate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_willValidate, NULL, 0 },
-    { "validity", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "validity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLObjectElement_get_validity, NULL, 0 },
     { "validationMessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_validationMessage, NULL, 0 },
     { "checkValidity", WJ_M_METHOD, 0, 0, wjg_HTMLObjectElement_checkValidity, NULL, NULL, 0 },
     { "reportValidity", WJ_M_METHOD, 0, 0, wjg_HTMLObjectElement_reportValidity, NULL, NULL, 0 },
@@ -10195,7 +10720,7 @@ static const wj_member wj_m_HTMLObjectElement[] = {
     { "hspace", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_hspace, wjg_HTMLObjectElement_set_hspace, 0 },
     { "standby", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_standby, wjg_HTMLObjectElement_set_standby, 0 },
     { "vspace", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_vspace, wjg_HTMLObjectElement_set_vspace, 0 },
-    { "codeBase", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "codeBase", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_codeBase, wjg_HTMLObjectElement_set_codeBase, 0 },
     { "codeType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_codeType, wjg_HTMLObjectElement_set_codeType, 0 },
     { "useMap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_useMap, wjg_HTMLObjectElement_set_useMap, 0 },
     { "border", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLObjectElement_get_border, wjg_HTMLObjectElement_set_border, 0 },
@@ -10222,12 +10747,12 @@ static const wj_member wj_m_HTMLOutputElement[] = {
     { "defaultValue", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOutputElement_get_defaultValue, wjg_HTMLOutputElement_set_defaultValue, 0 },
     { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOutputElement_get_value, wjg_HTMLOutputElement_set_value, 0 },
     { "willValidate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOutputElement_get_willValidate, NULL, 0 },
-    { "validity", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "validity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLOutputElement_get_validity, NULL, 0 },
     { "validationMessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOutputElement_get_validationMessage, NULL, 0 },
     { "checkValidity", WJ_M_METHOD, 0, 0, wjg_HTMLOutputElement_checkValidity, NULL, NULL, 0 },
     { "reportValidity", WJ_M_METHOD, 0, 0, wjg_HTMLOutputElement_reportValidity, NULL, NULL, 0 },
     { "setCustomValidity", WJ_M_METHOD, 0, 1, wjg_HTMLOutputElement_setCustomValidity, NULL, NULL, 0 },
-    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLOutputElement_get_labels, NULL, 0 },
 };
 static const wj_member wj_m_HTMLParagraphElement[] = {
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLParagraphElement_get_align, wjg_HTMLParagraphElement_set_align, 0 },
@@ -10245,35 +10770,35 @@ static const wj_member wj_m_HTMLPreElement[] = {
     { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLPreElement_get_width, wjg_HTMLPreElement_set_width, 0 },
 };
 static const wj_member wj_m_HTMLProgressElement[] = {
-    { "value", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "max", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "position", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLProgressElement_get_value, wjr_HTMLProgressElement_set_value, 0 },
+    { "max", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLProgressElement_get_max, wjr_HTMLProgressElement_set_max, 0 },
+    { "position", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLProgressElement_get_position, NULL, 0 },
+    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLProgressElement_get_labels, NULL, 0 },
 };
 static const wj_member wj_m_HTMLQuoteElement[] = {
-    { "cite", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "cite", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLQuoteElement_get_cite, wjg_HTMLQuoteElement_set_cite, 0 },
 };
 static const wj_member wj_m_HTMLScriptElement[] = {
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_type, wjg_HTMLScriptElement_set_type, 0 },
-    { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_src, wjr_HTMLScriptElement_set_src, 0 },
     { "noModule", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_noModule, wjg_HTMLScriptElement_set_noModule, 0 },
-    { "async", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "async", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_async, wjr_HTMLScriptElement_set_async, 0 },
     { "defer", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_defer, wjg_HTMLScriptElement_set_defer, 0 },
     { "blocking", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 73, NULL, NULL, wjg_HTMLScriptElement_set_blocking, 0 },
-    { "crossOrigin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "referrerPolicy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "crossOrigin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_crossOrigin, wjr_HTMLScriptElement_set_crossOrigin, 0 },
+    { "referrerPolicy", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_referrerPolicy, wjr_HTMLScriptElement_set_referrerPolicy, 0 },
     { "integrity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_integrity, wjg_HTMLScriptElement_set_integrity, 0 },
-    { "fetchPriority", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "innerText", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "textContent", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "text", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "supports", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "fetchPriority", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_fetchPriority, wjr_HTMLScriptElement_set_fetchPriority, 0 },
+    { "innerText", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_innerText, wjr_HTMLScriptElement_set_innerText, 0 },
+    { "textContent", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_textContent, wjr_HTMLScriptElement_set_textContent, 0 },
+    { "text", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_text, wjg_HTMLScriptElement_set_text, 0 },
+    { "supports", WJ_M_STATIC_METHOD, 0, 1, wjr_HTMLScriptElement_static_supports, NULL, NULL, 0 },
     { "charset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_charset, wjg_HTMLScriptElement_set_charset, 0 },
     { "event", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_event, wjg_HTMLScriptElement_set_event, 0 },
     { "htmlFor", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_htmlFor, wjg_HTMLScriptElement_set_htmlFor, 0 },
 };
 static const wj_member wj_m_HTMLSelectElement[] = {
-    { "autocomplete", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "autocomplete", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLSelectElement_get_autocomplete, wjr_HTMLSelectElement_set_autocomplete, 0 },
     { "disabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSelectElement_get_disabled, wjg_HTMLSelectElement_set_disabled, 0 },
     { "form", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSelectElement_get_form, NULL, 0 },
     { "multiple", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSelectElement_get_multiple, wjg_HTMLSelectElement_set_multiple, 0 },
@@ -10284,20 +10809,20 @@ static const wj_member wj_m_HTMLSelectElement[] = {
     { "options", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 74, NULL, wjr_HTMLSelectElement_get_options, NULL, 0 },
     { "length", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_HTMLSelectElement_get_length, NULL, 0 },
     { "item", WJ_M_METHOD, 0, 1, wjg_HTMLSelectElement_item, NULL, NULL, 0 },
-    { "namedItem", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "namedItem", WJ_M_METHOD, 0, 1, wjr_HTMLSelectElement_namedItem, NULL, NULL, 0 },
     { "add", WJ_M_METHOD, 0, 1, wjr_HTMLSelectElement_add, NULL, NULL, 0 },
     { "remove", WJ_M_METHOD, 0, 0, wjr_HTMLSelectElement_remove, NULL, NULL, 0 },
-    { "selectedOptions", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 75, NULL, NULL, NULL, 0 },
+    { "selectedOptions", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 75, NULL, wjr_HTMLSelectElement_get_selectedOptions, NULL, 0 },
     { "selectedIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSelectElement_get_selectedIndex, wjg_HTMLSelectElement_set_selectedIndex, 0 },
     { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSelectElement_get_value, wjg_HTMLSelectElement_set_value, 0 },
     { "willValidate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSelectElement_get_willValidate, NULL, 0 },
-    { "validity", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "validity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLSelectElement_get_validity, NULL, 0 },
     { "validationMessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSelectElement_get_validationMessage, NULL, 0 },
     { "checkValidity", WJ_M_METHOD, 0, 0, wjg_HTMLSelectElement_checkValidity, NULL, NULL, 0 },
     { "reportValidity", WJ_M_METHOD, 0, 0, wjg_HTMLSelectElement_reportValidity, NULL, NULL, 0 },
     { "setCustomValidity", WJ_M_METHOD, 0, 1, wjg_HTMLSelectElement_setCustomValidity, NULL, NULL, 0 },
     { "showPicker", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLSelectElement_get_labels, NULL, 0 },
 };
 static const wj_member wj_m_HTMLSelectedContentElement[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
@@ -10309,7 +10834,7 @@ static const wj_member wj_m_HTMLSlotElement[] = {
     { "assign", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLSourceElement[] = {
-    { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSourceElement_get_src, wjg_HTMLSourceElement_set_src, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSourceElement_get_type, wjg_HTMLSourceElement_set_type, 0 },
     { "srcset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSourceElement_get_srcset, wjg_HTMLSourceElement_set_srcset, 0 },
     { "sizes", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLSourceElement_get_sizes, wjg_HTMLSourceElement_set_sizes, 0 },
@@ -10334,8 +10859,8 @@ static const wj_member wj_m_HTMLTableCellElement[] = {
     { "colSpan", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableCellElement_get_colSpan, wjg_HTMLTableCellElement_set_colSpan, 0 },
     { "rowSpan", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableCellElement_get_rowSpan, wjg_HTMLTableCellElement_set_rowSpan, 0 },
     { "headers", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableCellElement_get_headers, wjg_HTMLTableCellElement_set_headers, 0 },
-    { "cellIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "scope", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "cellIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableCellElement_get_cellIndex, NULL, 0 },
+    { "scope", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLTableCellElement_get_scope, wjr_HTMLTableCellElement_set_scope, 0 },
     { "abbr", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableCellElement_get_abbr, wjg_HTMLTableCellElement_set_abbr, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableCellElement_get_align, wjg_HTMLTableCellElement_set_align, 0 },
     { "axis", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableCellElement_get_axis, wjg_HTMLTableCellElement_set_axis, 0 },
@@ -10356,20 +10881,20 @@ static const wj_member wj_m_HTMLTableColElement[] = {
     { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableColElement_get_width, wjg_HTMLTableColElement_set_width, 0 },
 };
 static const wj_member wj_m_HTMLTableElement[] = {
-    { "caption", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "createCaption", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "deleteCaption", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "tHead", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "createTHead", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "deleteTHead", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "tFoot", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "createTFoot", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "deleteTFoot", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "caption", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableElement_get_caption, wjg_HTMLTableElement_set_caption, 0 },
+    { "createCaption", WJ_M_METHOD, 0, 0, wjg_HTMLTableElement_createCaption, NULL, NULL, 0 },
+    { "deleteCaption", WJ_M_METHOD, 0, 0, wjg_HTMLTableElement_deleteCaption, NULL, NULL, 0 },
+    { "tHead", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableElement_get_tHead, wjg_HTMLTableElement_set_tHead, 0 },
+    { "createTHead", WJ_M_METHOD, 0, 0, wjg_HTMLTableElement_createTHead, NULL, NULL, 0 },
+    { "deleteTHead", WJ_M_METHOD, 0, 0, wjg_HTMLTableElement_deleteTHead, NULL, NULL, 0 },
+    { "tFoot", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableElement_get_tFoot, wjg_HTMLTableElement_set_tFoot, 0 },
+    { "createTFoot", WJ_M_METHOD, 0, 0, wjg_HTMLTableElement_createTFoot, NULL, NULL, 0 },
+    { "deleteTFoot", WJ_M_METHOD, 0, 0, wjg_HTMLTableElement_deleteTFoot, NULL, NULL, 0 },
     { "tBodies", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 77, NULL, wjr_HTMLTableElement_get_tBodies, NULL, 0 },
-    { "createTBody", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "createTBody", WJ_M_METHOD, 0, 0, wjg_HTMLTableElement_createTBody, NULL, NULL, 0 },
     { "rows", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 78, NULL, wjr_HTMLTableElement_get_rows, NULL, 0 },
-    { "insertRow", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "deleteRow", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "insertRow", WJ_M_METHOD, 0, 0, wjg_HTMLTableElement_insertRow, NULL, NULL, 0 },
+    { "deleteRow", WJ_M_METHOD, 0, 1, wjg_HTMLTableElement_deleteRow, NULL, NULL, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableElement_get_align, wjg_HTMLTableElement_set_align, 0 },
     { "border", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableElement_get_border, wjg_HTMLTableElement_set_border, 0 },
     { "frame", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableElement_get_frame, wjg_HTMLTableElement_set_frame, 0 },
@@ -10381,11 +10906,11 @@ static const wj_member wj_m_HTMLTableElement[] = {
     { "cellSpacing", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableElement_get_cellSpacing, wjg_HTMLTableElement_set_cellSpacing, 0 },
 };
 static const wj_member wj_m_HTMLTableRowElement[] = {
-    { "rowIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "sectionRowIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "rowIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableRowElement_get_rowIndex, NULL, 0 },
+    { "sectionRowIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableRowElement_get_sectionRowIndex, NULL, 0 },
     { "cells", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 79, NULL, wjr_HTMLTableRowElement_get_cells, NULL, 0 },
-    { "insertCell", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "deleteCell", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "insertCell", WJ_M_METHOD, 0, 0, wjg_HTMLTableRowElement_insertCell, NULL, NULL, 0 },
+    { "deleteCell", WJ_M_METHOD, 0, 1, wjg_HTMLTableRowElement_deleteCell, NULL, NULL, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableRowElement_get_align, wjg_HTMLTableRowElement_set_align, 0 },
     { "ch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableRowElement_get_ch, wjg_HTMLTableRowElement_set_ch, 0 },
     { "chOff", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableRowElement_get_chOff, wjg_HTMLTableRowElement_set_chOff, 0 },
@@ -10394,8 +10919,8 @@ static const wj_member wj_m_HTMLTableRowElement[] = {
 };
 static const wj_member wj_m_HTMLTableSectionElement[] = {
     { "rows", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 80, NULL, wjr_HTMLTableSectionElement_get_rows, NULL, 0 },
-    { "insertRow", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "deleteRow", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "insertRow", WJ_M_METHOD, 0, 0, wjg_HTMLTableSectionElement_insertRow, NULL, NULL, 0 },
+    { "deleteRow", WJ_M_METHOD, 0, 1, wjg_HTMLTableSectionElement_deleteRow, NULL, NULL, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableSectionElement_get_align, wjg_HTMLTableSectionElement_set_align, 0 },
     { "ch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableSectionElement_get_ch, wjg_HTMLTableSectionElement_set_ch, 0 },
     { "chOff", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableSectionElement_get_chOff, wjg_HTMLTableSectionElement_set_chOff, 0 },
@@ -10412,8 +10937,8 @@ static const wj_member wj_m_HTMLTemplateElement[] = {
     { "shadowRootCustomElementRegistry", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTemplateElement_get_shadowRootCustomElementRegistry, wjg_HTMLTemplateElement_set_shadowRootCustomElementRegistry, 0 },
 };
 static const wj_member wj_m_HTMLTextAreaElement[] = {
-    { "autocomplete", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "cols", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "autocomplete", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLTextAreaElement_get_autocomplete, wjr_HTMLTextAreaElement_set_autocomplete, 0 },
+    { "cols", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLTextAreaElement_get_cols, wjr_HTMLTextAreaElement_set_cols, 0 },
     { "dirName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_dirName, wjg_HTMLTextAreaElement_set_dirName, 0 },
     { "disabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_disabled, wjg_HTMLTextAreaElement_set_disabled, 0 },
     { "form", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_form, NULL, 0 },
@@ -10423,35 +10948,35 @@ static const wj_member wj_m_HTMLTextAreaElement[] = {
     { "placeholder", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_placeholder, wjg_HTMLTextAreaElement_set_placeholder, 0 },
     { "readOnly", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_readOnly, wjg_HTMLTextAreaElement_set_readOnly, 0 },
     { "required", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_required, wjg_HTMLTextAreaElement_set_required, 0 },
-    { "rows", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "rows", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLTextAreaElement_get_rows, wjr_HTMLTextAreaElement_set_rows, 0 },
     { "wrap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_wrap, wjg_HTMLTextAreaElement_set_wrap, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_type, NULL, 0 },
     { "defaultValue", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_defaultValue, wjg_HTMLTextAreaElement_set_defaultValue, 0 },
     { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_value, wjg_HTMLTextAreaElement_set_value, 0 },
-    { "textLength", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "textLength", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLTextAreaElement_get_textLength, NULL, 0 },
     { "willValidate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_willValidate, NULL, 0 },
-    { "validity", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "validity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLTextAreaElement_get_validity, NULL, 0 },
     { "validationMessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_validationMessage, NULL, 0 },
     { "checkValidity", WJ_M_METHOD, 0, 0, wjg_HTMLTextAreaElement_checkValidity, NULL, NULL, 0 },
     { "reportValidity", WJ_M_METHOD, 0, 0, wjg_HTMLTextAreaElement_reportValidity, NULL, NULL, 0 },
     { "setCustomValidity", WJ_M_METHOD, 0, 1, wjg_HTMLTextAreaElement_setCustomValidity, NULL, NULL, 0 },
-    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLTextAreaElement_get_labels, NULL, 0 },
     { "select", WJ_M_METHOD, 0, 0, wjg_HTMLTextAreaElement_select, NULL, NULL, 0 },
     { "selectionStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_selectionStart, wjr_HTMLTextAreaElement_set_selectionStart, 0 },
     { "selectionEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_selectionEnd, wjr_HTMLTextAreaElement_set_selectionEnd, 0 },
     { "selectionDirection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTextAreaElement_get_selectionDirection, wjr_HTMLTextAreaElement_set_selectionDirection, 0 },
-    { "setRangeText", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "setRangeText", WJ_M_METHOD, 0, 1, wjr_HTMLTextAreaElement_setRangeText, NULL, NULL, 0 },
     { "setSelectionRange", WJ_M_METHOD, 0, 2, wjr_HTMLTextAreaElement_setSelectionRange, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLTimeElement[] = {
     { "dateTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTimeElement_get_dateTime, wjg_HTMLTimeElement_set_dateTime, 0 },
 };
 static const wj_member wj_m_HTMLTitleElement[] = {
-    { "text", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "text", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTitleElement_get_text, wjg_HTMLTitleElement_set_text, 0 },
 };
 static const wj_member wj_m_HTMLTrackElement[] = {
-    { "kind", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "kind", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLTrackElement_get_kind, wjr_HTMLTrackElement_set_kind, 0 },
+    { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTrackElement_get_src, wjg_HTMLTrackElement_set_src, 0 },
     { "srclang", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTrackElement_get_srclang, wjg_HTMLTrackElement_set_srclang, 0 },
     { "label", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTrackElement_get_label, wjg_HTMLTrackElement_set_label, 0 },
     { "default", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTrackElement_get_default, wjg_HTMLTrackElement_set_default, 0 },
@@ -12931,17 +13456,17 @@ static const wj_member wj_m_UserActivation[] = {
     { "isActive", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ValidityState[] = {
-    { "valueMissing", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "typeMismatch", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "patternMismatch", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "tooLong", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "tooShort", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "rangeUnderflow", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "rangeOverflow", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "stepMismatch", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "badInput", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "customError", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "valid", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "valueMissing", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_valueMissing, NULL, 0 },
+    { "typeMismatch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_typeMismatch, NULL, 0 },
+    { "patternMismatch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_patternMismatch, NULL, 0 },
+    { "tooLong", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_tooLong, NULL, 0 },
+    { "tooShort", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_tooShort, NULL, 0 },
+    { "rangeUnderflow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_rangeUnderflow, NULL, 0 },
+    { "rangeOverflow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_rangeOverflow, NULL, 0 },
+    { "stepMismatch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_stepMismatch, NULL, 0 },
+    { "badInput", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_badInput, NULL, 0 },
+    { "customError", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_customError, NULL, 0 },
+    { "valid", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_valid, NULL, 0 },
 };
 static const wj_member wj_m_VideoTrack[] = {
     { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -15250,7 +15775,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_UserActivation, .n_members = 2, .subtree_end = 539,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ValidityState", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "ValidityState", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_ValidityState, .n_members = 11, .subtree_end = 540,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

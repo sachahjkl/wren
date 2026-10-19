@@ -297,6 +297,10 @@ emit_event_handler :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, g
 @(private)
 emit_reflect :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) -> (getter, setter: string, ok: bool) {
 	a, has := webidl.attr_get(mb.attrs, "Reflect")
+	if !has {
+		// [ReflectURL] alone reflects the attribute of the same name (img.src, link.href, q.cite...)
+		if u, has_url := webidl.attr_get(mb.attrs, "ReflectURL"); has_url { a, has = u, true }
+	}
 	setter_only := false
 	if !has {
 		if !webidl.attr_has(mb.attrs, "ReflectSetter") { return }

@@ -166,6 +166,8 @@ typedef struct wr_UiEventData {
 /* module dom (partial): types */
 
 /* module dom (partial): types */
+
+/* module dom (partial): types */
 // A rectangle (DOMRect).
 typedef struct wr_DomRect {
     double x;
@@ -720,6 +722,68 @@ WR_IMPORT("dom", "HTMLTextAreaElement_set_maxLength") int32_t wr_HTMLTextAreaEle
 WR_IMPORT("dom", "HTMLTextAreaElement_set_minLength") int32_t wr_HTMLTextAreaElement_set_minLength(uint64_t element, int32_t value);
 // option.text = value: its children replaced by one Text node.
 WR_IMPORT("dom", "HTMLOptionElement_set_text") int32_t wr_HTMLOptionElement_set_text(uint64_t element, const uint8_t *value, uint32_t value_len);
+// table.caption: its first caption child.
+WR_IMPORT("dom", "HTMLTableElement_caption") uint64_t wr_HTMLTableElement_caption(uint64_t table);
+// table.caption = value: the first caption child removed, the value (if any) inserted first. Type for another element.
+WR_IMPORT("dom", "HTMLTableElement_set_caption") int32_t wr_HTMLTableElement_set_caption(uint64_t table, uint64_t value);
+// table.createCaption(): the first caption child, or a new one inserted first.
+WR_IMPORT("dom", "HTMLTableElement_createCaption") uint64_t wr_HTMLTableElement_createCaption(uint64_t table);
+// table.deleteCaption()
+WR_IMPORT("dom", "HTMLTableElement_deleteCaption") void wr_HTMLTableElement_deleteCaption(uint64_t table);
+// table.tHead: its first thead child.
+WR_IMPORT("dom", "HTMLTableElement_tHead") uint64_t wr_HTMLTableElement_tHead(uint64_t table);
+// table.tHead = value: Hierarchy for an element that is not a thead.
+WR_IMPORT("dom", "HTMLTableElement_set_tHead") int32_t wr_HTMLTableElement_set_tHead(uint64_t table, uint64_t value);
+// table.createTHead(): inserted before the first child that is neither a caption nor a colgroup.
+WR_IMPORT("dom", "HTMLTableElement_createTHead") uint64_t wr_HTMLTableElement_createTHead(uint64_t table);
+// table.deleteTHead()
+WR_IMPORT("dom", "HTMLTableElement_deleteTHead") void wr_HTMLTableElement_deleteTHead(uint64_t table);
+// table.tFoot: its first tfoot child.
+WR_IMPORT("dom", "HTMLTableElement_tFoot") uint64_t wr_HTMLTableElement_tFoot(uint64_t table);
+// table.tFoot = value: Hierarchy for an element that is not a tfoot.
+WR_IMPORT("dom", "HTMLTableElement_set_tFoot") int32_t wr_HTMLTableElement_set_tFoot(uint64_t table, uint64_t value);
+// table.createTFoot(): appended.
+WR_IMPORT("dom", "HTMLTableElement_createTFoot") uint64_t wr_HTMLTableElement_createTFoot(uint64_t table);
+// table.deleteTFoot()
+WR_IMPORT("dom", "HTMLTableElement_deleteTFoot") void wr_HTMLTableElement_deleteTFoot(uint64_t table);
+// table.createTBody(): after the last tbody child.
+WR_IMPORT("dom", "HTMLTableElement_createTBody") uint64_t wr_HTMLTableElement_createTBody(uint64_t table);
+// table.insertRow(index): Index_Size outside -1 ..= rows.length.
+WR_IMPORT("dom", "HTMLTableElement_insertRow") int32_t wr_HTMLTableElement_insertRow(uint64_t table, int32_t index, uint64_t *_ret);
+// table.deleteRow(index): Index_Size outside -1 ..< rows.length.
+WR_IMPORT("dom", "HTMLTableElement_deleteRow") int32_t wr_HTMLTableElement_deleteRow(uint64_t table, int32_t index);
+// section.insertRow(index)
+WR_IMPORT("dom", "HTMLTableSectionElement_insertRow") int32_t wr_HTMLTableSectionElement_insertRow(uint64_t section, int32_t index, uint64_t *_ret);
+// section.deleteRow(index)
+WR_IMPORT("dom", "HTMLTableSectionElement_deleteRow") int32_t wr_HTMLTableSectionElement_deleteRow(uint64_t section, int32_t index);
+// row.insertCell(index): a new td.
+WR_IMPORT("dom", "HTMLTableRowElement_insertCell") int32_t wr_HTMLTableRowElement_insertCell(uint64_t row, int32_t index, uint64_t *_ret);
+// row.deleteCell(index)
+WR_IMPORT("dom", "HTMLTableRowElement_deleteCell") int32_t wr_HTMLTableRowElement_deleteCell(uint64_t row, int32_t index);
+// row.rowIndex (-1 outside a table)
+WR_IMPORT("dom", "HTMLTableRowElement_rowIndex") int32_t wr_HTMLTableRowElement_rowIndex(uint64_t row);
+// row.sectionRowIndex
+WR_IMPORT("dom", "HTMLTableRowElement_sectionRowIndex") int32_t wr_HTMLTableRowElement_sectionRowIndex(uint64_t row);
+// cell.cellIndex
+WR_IMPORT("dom", "HTMLTableCellElement_cellIndex") int32_t wr_HTMLTableCellElement_cellIndex(uint64_t cell);
+// title.text: its child text content.
+WR_IMPORT("dom", "HTMLTitleElement_text") int32_t wr_HTMLTitleElement_text(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// title.text = value
+WR_IMPORT("dom", "HTMLTitleElement_set_text") int32_t wr_HTMLTitleElement_set_text(uint64_t element, const uint8_t *value, uint32_t value_len);
+// script.text: its child text content.
+WR_IMPORT("dom", "HTMLScriptElement_text") int32_t wr_HTMLScriptElement_text(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// script.text = value
+WR_IMPORT("dom", "HTMLScriptElement_set_text") int32_t wr_HTMLScriptElement_set_text(uint64_t element, const uint8_t *value, uint32_t value_len);
+// input.list: the datalist of the id its `list` attribute gives.
+WR_IMPORT("dom", "HTMLInputElement_list") uint64_t wr_HTMLInputElement_list(uint64_t input);
+// dialog.show()
+WR_IMPORT("dom", "HTMLDialogElement_show") int32_t wr_HTMLDialogElement_show(uint64_t dialog);
+// dialog.showModal(): Invalid_State when it is not connected (no top layer: the dialog stays where it is).
+WR_IMPORT("dom", "HTMLDialogElement_showModal") int32_t wr_HTMLDialogElement_showModal(uint64_t dialog);
+// dialog.close(result)
+WR_IMPORT("dom", "HTMLDialogElement_close") void wr_HTMLDialogElement_close(uint64_t dialog, const uint8_t *result, uint32_t result_len);
+// dialog.requestClose(result): "cancel" fired first.
+WR_IMPORT("dom", "HTMLDialogElement_requestClose") void wr_HTMLDialogElement_requestClose(uint64_t dialog, const uint8_t *result, uint32_t result_len);
 // element.getBoundingClientRect(): the border box as drawn (transforms applied), in viewport coordinates.
 WR_IMPORT("dom", "Element_boundingRect") void wr_Element_boundingRect(uint64_t element, wr_DomRect *_ret);
 // element.getClientRects(): per box fragment, 32 bytes each (x, y, width, height as f64).

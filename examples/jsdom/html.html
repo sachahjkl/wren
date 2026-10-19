@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en"><head><title> The  title </title></head>
+<body>
+<table id="tbl"><caption>cap</caption><colgroup></colgroup><thead><tr id="h0"><th>h</th></tr></thead>
+<tbody><tr id="b0"><td id="c0">a</td><td id="c1">b</td></tr><tr id="b1"><td>c</td></tr></tbody>
+<tfoot><tr id="f0"><td>f</td></tr></tfoot></table>
+<form id="f" action="" method="POST"><fieldset id="fs"><input id="in1" name="a"><input type="image" id="ib"><output id="out"></output></fieldset>
+<label for="in1" id="l1">A</label><label id="l2">B <input id="in2" type="checkbox"></label><input type="hidden" id="hid">
+<select id="sel" multiple><option id="o1" name="one">1</option><option selected>2</option><option selected id="o3">3</option></select>
+<textarea id="ta">hello</textarea><button id="btn" formaction="/x" formmethod="PoSt">b</button>
+<input id="req" required><input id="dt" type="date" value="2020-01-02"><input id="li" list="dl"><datalist id="dl"></datalist></form>
+<progress id="p1"></progress><progress id="p2" value="3" max="2"></progress>
+<meter id="m1" min="2" max="1" value="5" low="-1" high="9" optimum="7"></meter>
+<map id="mp"><area id="ar1"><p><area id="ar2"></p></map>
+<img id="im" src="pic.png" crossorigin referrerpolicy="NO-REFERRER" loading="bogus">
+<script id="scr" src="a.js" async>/* code */</script>
+<dialog id="dlg"><p>hi</p></dialog>
+<script>
+section("table model", () => {
+  const tbl = document.getElementById("tbl");
+  eq("caption", tbl.caption.textContent, "cap");
+  eq("tHead", tbl.tHead.rows[0].id, "h0");
+  eq("tFoot", tbl.tFoot.rows[0].id, "f0");
+  eq("rows in thead, tbody, tfoot order", Array.from(tbl.rows, r => r.id).join(), "h0,b0,b1,f0");
+  eq("rowIndex", document.getElementById("b1").rowIndex, 2);
+  eq("sectionRowIndex", document.getElementById("b1").sectionRowIndex, 1);
+  eq("cellIndex", document.getElementById("c1").cellIndex, 1);
+  eq("cellIndex outside a row", document.createElement("td").cellIndex, -1);
+  eq("rowIndex outside a table", document.createElement("tr").rowIndex, -1);
+  const r = tbl.insertRow(2);
+  eq("insertRow before the index-th row", r.previousElementSibling.id + "|" + r.parentNode.localName, "b0|tbody");
+  eq("rows after insertRow", tbl.rows.length, 5);
+  const last = tbl.insertRow();
+  eq("insertRow() appends to the last row's parent", last.parentNode.localName, "tfoot");
+  throws("insertRow out of range", () => tbl.insertRow(99), "IndexSizeError");
+  tbl.deleteRow(-1);
+  eq("deleteRow(-1) removes the last row", tbl.rows.length, 5);
+  throws("deleteRow out of range", () => tbl.deleteRow(5), "IndexSizeError");
+  tbl.deleteRow(2);
+  eq("deleteRow(index)", Array.from(tbl.rows, x => x.id).join(), "h0,b0,b1,f0");
+  const cell = r.insertCell ? document.getElementById("b0").insertCell(0) : null;
+  t("insertCell(0) is a td first", cell instanceof HTMLTableCellElement && cell.localName === "td" && cell.cellIndex === 0);
+  document.getElementById("b0").deleteCell(0);
+  eq("deleteCell", document.getElementById("b0").cells.length, 2);
+  throws("insertCell out of range", () => document.getElementById("b0").insertCell(5), "IndexSizeError");
+  const body = tbl.tBodies[0];
+  const br = body.insertRow(0);
+  eq("section insertRow(0)", body.rows[0], br);
+  body.deleteRow(0);
+  eq("section deleteRow", body.rows[0].id, "b0");
+
+  tbl.deleteCaption();
+  eq("deleteCaption", tbl.caption, null);
+  const cap = tbl.createCaption();
+  t("createCaption inserts first", tbl.firstChild === cap && tbl.createCaption() === cap);
+  tbl.deleteTHead();
+  eq("deleteTHead", tbl.tHead, null);
+  const th = tbl.createTHead();
+  eq("createTHead after caption and colgroup", th.previousElementSibling.localName, "colgroup");
+  throws("tHead = tbody", () => { tbl.tHead = document.createElement("tbody"); }, "HierarchyRequestError");
+  throws("caption = div", () => { tbl.caption = document.createElement("div"); }, "TypeError");
+  const tf = document.createElement("tfoot");
+  tbl.tFoot = tf;
+  t("tFoot setter replaces and appends", tbl.tFoot === tf && tbl.lastChild === tf && tbl.querySelectorAll("tfoot").length === 1);
+  tbl.tFoot = null;
+  eq("tFoot = null", tbl.tFoot, null);
+  const nb = tbl.createTBody();
+  eq("createTBody after the last tbody", nb.previousElementSibling, tbl.tBodies[0]);
+  const empty = document.createElement("table");
+  const er = empty.insertRow();
+  eq("insertRow in an empty table makes a tbody", er.parentNode.localName + "|" + empty.firstChild.localName, "tbody|tbody");
+  const sc = document.createElement("th");
+  eq("scope missing", sc.scope, "");
+  sc.setAttribute("scope", "ROW");
+  eq("scope keyword", sc.scope, "row");
+});
+
+section("title and script text", () => {
+  const title = document.querySelector("title");
+  eq("title.text is the raw text", title.text, " The  title ");
+  title.text = "New";
+  eq("title.text setter", document.title, "New");
+  const s = document.getElementById("scr");
+  eq("script.text", s.text, "/* code */");
+  eq("script.textContent", s.textContent, "/* code */");
+  t("script.innerText", typeof s.innerText === "string");
+  const s2 = document.createElement("script");
+  s2.text = "1+1";
+  eq("script.text setter", s2.textContent, "1+1");
+  s2.textContent = "2+2";
+  eq("script.textContent setter", s2.text, "2+2");
+  t("script.src resolved", s.src.endsWith("/a.js") && s.src.indexOf("://") > 0);
+  t("script.async", s.async === true && s2.async === false);
+  t("HTMLScriptElement.supports", HTMLScriptElement.supports("module") && HTMLScriptElement.supports("classic") && !HTMLScriptElement.supports("x"));
+});
+
+section("URL and enumerated reflection", () => {
+  const im = document.getElementById("im");
+  t("img.src resolved ([ReflectURL])", im.src.endsWith("/pic.png") && im.src.indexOf("://") > 0);
+  eq("crossOrigin empty is anonymous", im.crossOrigin, "anonymous");
+  eq("crossOrigin missing is null", document.createElement("img").crossOrigin, null);
+  im.crossOrigin = null;
+  t("crossOrigin = null removes", !im.hasAttribute("crossorigin"));
+  im.crossOrigin = "USE-credentials";
+  eq("crossOrigin keyword is canonical", im.crossOrigin, "use-credentials");
+  eq("referrerPolicy is lower-cased", im.referrerPolicy, "no-referrer");
+  eq("loading invalid -> eager", im.loading, "eager");
+  eq("decoding default", im.decoding, "auto");
+  eq("fetchPriority default", im.fetchPriority, "auto");
+  const f = document.getElementById("f");
+  eq("form.method", f.method, "post");
+  eq("form.enctype default", f.enctype, "application/x-www-form-urlencoded");
+  eq("form.encoding is enctype", f.encoding, f.enctype);
+  eq("form.action empty is the document's URL", f.action, document.URL);
+  f.action = "/go";
+  t("form.action resolved", f.action.endsWith("/go") && f.action.indexOf("://") > 0);
+  eq("form.autocomplete default", f.autocomplete, "on");
+  const btn = document.getElementById("btn");
+  eq("button.formMethod", btn.formMethod, "post");
+  eq("button.formEnctype missing", btn.formEnctype, "");
+  t("button.formAction", btn.formAction.endsWith("/x"));
+  const q = document.createElement("q");
+  q.cite = "c.html";
+  t("q.cite resolved", q.cite.endsWith("/c.html"));
+  const tr = document.createElement("track");
+  eq("track.kind missing", tr.kind, "subtitles");
+  tr.kind = "bogus";
+  eq("track.kind invalid", tr.kind, "metadata");
+  const img = document.createElement("img");
+  img.setAttribute("width", "40");
+  eq("img.width from the attribute", img.width, 40);
+  eq("img.height without attribute or image", img.height, 0);
+});
+
+section("form controls", () => {
+  const fs = document.getElementById("fs");
+  eq("fieldset.elements (image inputs too)", Array.from(fs.elements, e => e.id).join(), "in1,ib,out");
+  t("fieldset.elements is the same object", fs.elements === fs.elements);
+  const in1 = document.getElementById("in1");
+  eq("labels by for=", Array.from(in1.labels, l => l.id).join(), "l1");
+  eq("labels by nesting", document.getElementById("in2").labels[0].id, "l2");
+  eq("hidden input has no labels", document.getElementById("hid").labels, null);
+  const sel = document.getElementById("sel");
+  const so = sel.selectedOptions;
+  eq("selectedOptions", so.length, 2);
+  document.getElementById("o1").selected = true;
+  eq("selectedOptions follows the selectedness", so.length, 3);
+  eq("select.namedItem by name", sel.namedItem("one"), document.getElementById("o1"));
+  eq("select.namedItem by id", sel.namedItem("o3"), document.getElementById("o3"));
+  const ta = document.getElementById("ta");
+  eq("textarea.cols default", ta.cols, 20);
+  eq("textarea.rows default", ta.rows, 2);
+  ta.cols = 0;
+  eq("textarea.cols = 0 -> default", ta.cols, 20);
+  ta.rows = 5;
+  eq("textarea.rows", ta.getAttribute("rows"), "5");
+  eq("textarea.textLength", ta.textLength, 5);
+  ta.setRangeText("J", 0, 1);
+  eq("setRangeText(text, start, end)", ta.value, "Jello");
+  ta.setSelectionRange(5, 5);
+  ta.setRangeText("!");
+  eq("setRangeText(text) at the selection", ta.value, "Jello!");
+  ta.setRangeText("X", 0, 1, "select");
+  eq("setRangeText select mode", ta.selectionStart + "," + ta.selectionEnd, "0,1");
+  throws("setRangeText start > end", () => ta.setRangeText("x", 3, 1), "IndexSizeError");
+  throws("setRangeText bad mode", () => ta.setRangeText("x", 0, 1, "bogus"), "TypeError");
+  const req = document.getElementById("req");
+  const v = req.validity;
+  t("validity is a ValidityState", v instanceof ValidityState);
+  t("valueMissing", v.valueMissing && !v.valid);
+  req.value = "x";
+  t("validity is live", !v.valueMissing && v.valid);
+  req.setCustomValidity("no");
+  t("customError", v.customError && !v.valid);
+  const dt = document.getElementById("dt");
+  t("valueAsDate is a Date", dt.valueAsDate instanceof Date && dt.valueAsDate.getTime() === Date.UTC(2020, 0, 2));
+  dt.valueAsDate = new Date(Date.UTC(2021, 5, 7));
+  eq("valueAsDate setter", dt.value, "2021-06-07");
+  dt.valueAsDate = null;
+  eq("valueAsDate = null", dt.value, "");
+  throws("valueAsDate = number", () => { dt.valueAsDate = 5; }, "TypeError");
+  eq("input.list", document.getElementById("li").list, document.getElementById("dl"));
+  eq("input.list without datalist", in1.list, null);
+});
+
+section("progress and meter", () => {
+  const p1 = document.getElementById("p1"), p2 = document.getElementById("p2");
+  eq("indeterminate position", p1.position, -1);
+  eq("indeterminate value", p1.value, 0);
+  eq("max default", p1.max, 1);
+  eq("value clamped to max", p2.value, 2);
+  eq("position", p2.position, 1);
+  p2.max = -1;
+  eq("max <= 0 ignored", p2.getAttribute("max"), "2");
+  p2.value = 0.5;
+  eq("value setter", p2.getAttribute("value"), "0.5");
+  const m = document.getElementById("m1");
+  eq("meter max < min -> min", m.max, 2);
+  eq("meter value clamped", m.value, 2);
+  eq("meter low clamped", m.low, 2);
+  eq("meter high clamped", m.high, 2);
+  eq("meter optimum clamped", m.optimum, 2);
+  m.max = 10;
+  eq("meter after max = 10", [m.value, m.low, m.high, m.optimum].join(), "5,2,9,7");
+});
+
+section("map, dialog, document, element", () => {
+  eq("map.areas", Array.from(document.getElementById("mp").areas, a => a.id).join(), "ar1,ar2");
+  const d = document.getElementById("dlg");
+  let closes = 0, cancels = 0;
+  d.addEventListener("close", () => closes++);
+  d.addEventListener("cancel", e => { cancels++; if (cancels === 1) e.preventDefault(); });
+  d.show();
+  t("show opens", d.open && d.hasAttribute("open"));
+  d.close("done");
+  t("close", !d.open && d.returnValue === "done" && closes === 1);
+  d.showModal();
+  d.requestClose("r1");
+  t("requestClose cancelled", d.open && cancels === 1);
+  d.requestClose("r2");
+  t("requestClose closes", !d.open && d.returnValue === "r2" && cancels === 2);
+  throws("showModal on a detached dialog", () => document.createElement("dialog").showModal(), "InvalidStateError");
+  eq("document.hidden", typeof document.hidden, "boolean");
+  t("document.visibilityState", document.visibilityState === "visible" || document.visibilityState === "hidden");
+  const el = document.createElement("div");
+  el.setHTMLUnsafe("<b>x</b><i>y</i>");
+  eq("setHTMLUnsafe / getHTML", el.getHTML(), "<b>x</b><i>y</i>");
+  t("checkVisibility of a detached element", el.checkVisibility() === false);
+  t("elementsFromPoint returns an array", Array.isArray(document.elementsFromPoint(1, 1)));
+  throws("setPointerCapture with an unknown pointer", () => document.body.setPointerCapture(42), "NotFoundError");
+  document.body.setPointerCapture(1);
+  t("hasPointerCapture", document.body.hasPointerCapture(1));
+  document.body.releasePointerCapture(1);
+  t("releasePointerCapture", !document.body.hasPointerCapture(1));
+  const hc = document.createElement("div");
+  hc.innerHTML = "<span name='n1'></span><b id='i1'></b>";
+  eq("HTMLCollection.namedItem by name of any HTML element", hc.children.namedItem("n1"), hc.firstChild);
+  t("HTMLCollection named property", hc.children.n1 === hc.firstChild && hc.children.i1 === hc.lastChild);
+});
+
+done();
+</script>
+</body>
+</html>

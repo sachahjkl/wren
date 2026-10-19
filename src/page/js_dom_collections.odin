@@ -16,6 +16,7 @@ import "core:strings"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
+import "wb:forms"
 import "wb:style"
 
 // The page's state of the DOM bindings (created on first use, freed with the page).
@@ -204,7 +205,7 @@ Element_closest :: proc(c: ^Call, element: Api_Element, selectors: string) -> (u
 
 Collection_Kind :: enum i32 {
 	Child_Nodes, Children, Tag_Name, Class_Names, Name, Forms, Images, Links, Scripts, Embeds, Anchors, Tag_Name_NS,
-	All, Options, Table_Rows, Row_Cells, Table_Bodies, Form_Elements,
+	All, Options, Table_Rows, Row_Cells, Table_Bodies, Form_Elements, Selected_Options, Fieldset_Elements, Map_Areas, Labels,
 }
 
 @(private)
@@ -234,7 +235,7 @@ collection_vt := Object_VTable{name = "DOMCollection", destroy = proc(p: ^Page, 
 @(private)
 uses_attributes :: proc(k: Collection_Kind) -> bool {
 	#partial switch k {
-	case .Class_Names, .Name, .Links, .Anchors: return true
+	case .Class_Names, .Name, .Links, .Anchors, .Form_Elements, .Labels: return true
 	}
 	return false
 }
@@ -352,6 +353,13 @@ collection_accepts :: proc(p: ^Page, col: ^Dom_Collection, h: base.Handle, n: ^d
 			t, _ := attr_of(n, "type")
 			return !strings.equal_fold(t, "image")
 		}
+	case .Fieldset_Elements:
+		if !html { return false }
+		switch n.name {
+		case "button", "fieldset", "input", "object", "output", "select", "textarea": return true
+		}
+	case .Map_Areas: return html && n.name == "area"
+	case .Selected_Options, .Labels: return false   // collection_refresh
 	}
 	return false
 }
@@ -360,7 +368,8 @@ collection_accepts :: proc(p: ^Page, col: ^Dom_Collection, h: base.Handle, n: ^d
 @(private)
 collection_refresh :: proc(p: ^Page, col: ^Dom_Collection) {
 	d := p.doc
-	if col.valid && col.tree_v == d.tree_version && (!uses_attributes(col.kind) || col.attr_v == d.attr_version) { return }
+	// the options' selectedness is the forms model's state, which the versions do not follow
+	if col.valid && col.kind != .Selected_Options && col.tree_v == d.tree_version && (!uses_attributes(col.kind) || col.attr_v == d.attr_version) { return }
 	clear(&col.items)
 	col.valid, col.tree_v, col.attr_v = true, d.tree_version, d.attr_version
 	root := dom.get(d, col.root)
@@ -393,7 +402,18 @@ collection_refresh :: proc(p: ^Page, col: ^Dom_Collection) {
 				if rn := dom.get(d, ch); rn.kind == .Element && rn.name == "tr" { append(&col.items, ch) }
 			}
 		}
-	case .Tag_Name, .Tag_Name_NS, .Class_Names, .Name, .Forms, .Images, .Links, .Scripts, .Embeds, .Anchors, .All, .Options, .Form_Elements:
+	case .Selected_Options:
+		f := page_forms(p)
+		for o in forms.select_options_synced(f, col.root) { if forms.option_selected(f, o) { append(&col.items, o) } }
+	case .Labels:
+		// the label elements of the control's tree whose labeled control it is
+		f := page_forms(p)
+		top := dom.tree_root(d, col.root)
+		for cur := dom.next_in_tree(d, top, top); cur != base.NIL_HANDLE; cur = dom.next_in_tree(d, cur, top) {
+			n := dom.get(d, cur)
+			if n.kind == .Element && n.ns == .HTML && n.name == "label" && forms.labeled_control(f, cur) == col.root { append(&col.items, cur) }
+		}
+	case .Tag_Name, .Tag_Name_NS, .Class_Names, .Name, .Forms, .Images, .Links, .Scripts, .Embeds, .Anchors, .All, .Options, .Form_Elements, .Fieldset_Elements, .Map_Areas:
 		for cur := dom.next_in_tree(d, col.root, col.root); cur != base.NIL_HANDLE; cur = dom.next_in_tree(d, cur, col.root) {
 			if collection_accepts(p, col, cur, dom.get(d, cur)) { append(&col.items, cur) }
 		}
@@ -420,15 +440,9 @@ Collection_item :: proc(c: ^Call, collection: u64, index: u32) -> u64 {
 	return int(index) < len(col.items) ? u64(col.items[index]) : 0
 }
 
-// Elements that have a name for HTMLCollection's named properties (HTML §2.7.2.1).
+// Elements a name attribute names in an HTMLCollection (DOM §4.2.10.2): those of the HTML namespace.
 @(private)
-named_by_name :: proc(n: ^dom.Node) -> bool {
-	if n.ns != .HTML { return false }
-	switch n.name {
-	case "a", "applet", "area", "embed", "form", "frame", "frameset", "iframe", "img", "object": return true
-	}
-	return false
-}
+named_by_name :: #force_inline proc(n: ^dom.Node) -> bool { return n.ns == .HTML }
 
 Collection_namedItem :: proc(c: ^Call, collection: u64, name: string) -> u64 {
 	col := collection_of(c, collection)
@@ -439,7 +453,7 @@ Collection_namedItem :: proc(c: ^Call, collection: u64, name: string) -> u64 {
 		n := dom.get(d, h)
 		if n == nil || n.kind != .Element { continue }
 		if v, ok := attr_of(n, "id"); ok && v == name { return u64(h) }
-		if named_by_name(n) || col.kind == .Form_Elements { if v, ok := attr_of(n, "name"); ok && v == name { return u64(h) } }
+		if named_by_name(n) { if v, ok := attr_of(n, "name"); ok && v == name { return u64(h) } }
 	}
 	return 0
 }
@@ -475,7 +489,7 @@ Collection_names :: proc(c: ^Call, collection: u64) -> string {
 		n := dom.get(d, h)
 		if n == nil || n.kind != .Element { continue }
 		if v, ok := attr_of(n, "id"); ok { add(&b, &seen, v) }
-		if named_by_name(n) || col.kind == .Form_Elements { if v, ok := attr_of(n, "name"); ok { add(&b, &seen, v) } }
+		if named_by_name(n) { if v, ok := attr_of(n, "name"); ok { add(&b, &seen, v) } }
 	}
 	return strings.to_string(b)
 }

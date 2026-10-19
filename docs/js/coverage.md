@@ -13,9 +13,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | | count |
 |---|---:|
 | interfaces, namespaces in the table | 556 |
-| exposed by default | 174 |
+| exposed by default | 175 |
 | members | 4991 |
-| members implemented | 2036 (40.8 %) |
+| members implemented | 2177 (43.6 %) |
 
 ## By specification
 
@@ -39,7 +39,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (0) | 4 / 28 |
 | `cssom.idl` | 16 (2) | 20 / 149 |
-| `dom.idl` | 35 (31) | 534 / 699 |
+| `dom.idl` | 35 (31) | 543 / 699 |
 | `encoding.idl` | 4 (1) | 1 / 19 |
 | `entries-api.idl` | 5 (0) | 0 / 13 |
 | `event-timing.idl` | 2 (0) | 0 / 8 |
@@ -47,7 +47,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (3) | 19 / 126 |
 | `hr-time.idl` | 1 (1) | 5 / 17 |
-| `html.idl` | 160 (81) | 843 / 1819 |
+| `html.idl` | 160 (82) | 975 / 1819 |
 | `intersection-observer.idl` | 2 (0) | 0 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -612,13 +612,13 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Document : Node
 
-170 / 225 members.
+173 / 225 members.
 
 - `readonly rootElement`: not supported
 - `startViewTransition()`: not supported
 - `readonly activeViewTransition`: not supported
 - `elementFromPoint()`: import `dom.Document_elementFromPoint`
-- `elementsFromPoint()`: not supported
+- `elementsFromPoint()`: C `wjr_Document_elementsFromPoint`
 - `caretPositionFromPoint()`: not supported
 - `readonly scrollingElement`: import `dom.Document_scrollingElement`
 - `constructor()`: not supported
@@ -689,8 +689,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `queryCommandState()`: not supported
 - `queryCommandSupported()`: not supported
 - `queryCommandValue()`: not supported
-- `readonly hidden`: not supported
-- `readonly visibilityState`: not supported
+- `readonly hidden`: C `wjr_Document_get_hidden`
+- `readonly visibilityState`: C `wjr_Document_get_visibilityState`
 - `onreadystatechange`: generic (event handler)
 - `onvisibilitychange`: generic (event handler)
 - `fgColor`: not supported
@@ -902,14 +902,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Element : Node
 
-116 / 156 members.
+122 / 156 members.
 
 - `computedStyleMap()`: not supported
 - `startViewTransition()`: not supported
 - `readonly activeViewTransition`: not supported
 - `getClientRects()`: C `wjr_Element_getClientRects`
 - `getBoundingClientRect()`: C `wjr_Element_getBoundingClientRect`
-- `checkVisibility()`: not supported
+- `checkVisibility()`: C `wjr_Element_checkVisibility`
 - `scrollIntoView()`: C `wjr_Element_scrollIntoView`
 - `scroll()`: C `wjr_Element_scroll`
 - `scroll()`: C `wjr_Element_scroll`
@@ -968,16 +968,16 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `setHTML()`: not supported
 - `appendHTML()`: not supported
 - `prependHTML()`: not supported
-- `setHTMLUnsafe()`: not supported
+- `setHTMLUnsafe()`: C `wjr_Element_setHTMLUnsafe`
 - `appendHTMLUnsafe()`: not supported
 - `prependHTMLUnsafe()`: not supported
-- `getHTML()`: not supported
+- `getHTML()`: C `wjr_Element_getHTML`
 - `innerHTML`: import `dom.Element_innerHTML`
 - `outerHTML`: import `dom.Element_outerHTML`
 - `insertAdjacentHTML()`: import `dom.Element_insertAdjacentHTML`
-- `setPointerCapture()`: not supported
-- `releasePointerCapture()`: not supported
-- `hasPointerCapture()`: not supported
+- `setPointerCapture()`: C `wjr_Element_setPointerCapture`
+- `releasePointerCapture()`: C `wjr_Element_releasePointerCapture`
+- `hasPointerCapture()`: C `wjr_Element_hasPointerCapture`
 - `getBoxQuads()` (GeometryUtils): not supported
 - `convertQuadFromNode()` (GeometryUtils): not supported
 - `convertRectFromNode()` (GeometryUtils): not supported
@@ -1211,7 +1211,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLAnchorElement : HTMLElement
 
-24 / 26 members.
+25 / 26 members.
 
 - `constructor()`: not supported
 - `download`: generic (reflects a content attribute)
@@ -1219,7 +1219,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `rel`: generic (reflects a content attribute)
 - `readonly relList`: C `wjr_HTMLAnchorElement_get_relList`
 - `text`: import `dom.HTMLAnchorElement_text`
-- `referrerPolicy`: not supported
+- `referrerPolicy`: C `wjr_HTMLAnchorElement_get_referrerPolicy`
 - `coords`: generic (reflects a content attribute)
 - `charset`: generic (reflects a content attribute)
 - `name`: generic (reflects a content attribute)
@@ -1242,7 +1242,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLAreaElement : HTMLElement
 
-22 / 24 members.
+23 / 24 members.
 
 - `constructor()`: not supported
 - `alt`: generic (reflects a content attribute)
@@ -1252,7 +1252,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `ping`: generic (reflects a content attribute)
 - `rel`: generic (reflects a content attribute)
 - `readonly relList`: C `wjr_HTMLAreaElement_get_relList`
-- `referrerPolicy`: not supported
+- `referrerPolicy`: C `wjr_HTMLAreaElement_get_referrerPolicy`
 - `noHref`: generic (reflects a content attribute)
 - `readonly origin` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_origin`
 - `protocol` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_protocol`
@@ -1278,10 +1278,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLBaseElement : HTMLElement
 
-1 / 3 members.
+2 / 3 members.
 
 - `constructor()`: not supported
-- `href`: not supported
+- `href`: C `wjr_HTMLBaseElement_get_href`
 - `target`: generic (reflects a content attribute)
 
 ### HTMLBodyElement : HTMLElement
@@ -1318,28 +1318,28 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLButtonElement : HTMLElement
 
-12 / 22 members.
+17 / 22 members.
 
 - `constructor()`: not supported
 - `command`: not supported
 - `commandForElement`: not supported
 - `disabled`: generic (reflects a content attribute)
 - `readonly form`: import `forms.HTMLButtonElement_form`
-- `formAction`: not supported
-- `formEnctype`: not supported
-- `formMethod`: not supported
+- `formAction`: C `wjr_HTMLButtonElement_get_formAction`
+- `formEnctype`: C `wjr_HTMLButtonElement_get_formEnctype`
+- `formMethod`: C `wjr_HTMLButtonElement_get_formMethod`
 - `formNoValidate`: generic (reflects a content attribute)
 - `formTarget`: generic (reflects a content attribute)
 - `name`: generic (reflects a content attribute)
 - `type`: generic (reflects a content attribute)
 - `value`: generic (reflects a content attribute)
 - `readonly willValidate`: import `forms.HTMLButtonElement_willValidate`
-- `readonly validity`: not supported
+- `readonly validity`: C `wjr_HTMLButtonElement_get_validity`
 - `readonly validationMessage`: import `forms.HTMLButtonElement_validationMessage`
 - `checkValidity()`: import `forms.HTMLButtonElement_checkValidity`
 - `reportValidity()`: import `forms.HTMLButtonElement_reportValidity`
 - `setCustomValidity()`: import `forms.HTMLButtonElement_setCustomValidity`
-- `readonly labels`: not supported
+- `readonly labels`: C `wjr_HTMLButtonElement_get_labels`
 - `popoverTargetElement` (PopoverTargetAttributes): not supported
 - `popoverTargetAction` (PopoverTargetAttributes): not supported
 
@@ -1386,16 +1386,16 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLDialogElement : HTMLElement
 
-2 / 8 members.
+6 / 8 members.
 
 - `constructor()`: not supported
 - `open`: generic (reflects a content attribute)
 - `returnValue`: import `forms.HTMLDialogElement_returnValue (setter not supported)`
 - `closedBy`: not supported
-- `show()`: not supported
-- `showModal()`: not supported
-- `close()`: not supported
-- `requestClose()`: not supported
+- `show()`: import `dom.HTMLDialogElement_show`
+- `showModal()`: import `dom.HTMLDialogElement_showModal`
+- `close()`: import `dom.HTMLDialogElement_close`
+- `requestClose()`: import `dom.HTMLDialogElement_requestClose`
 
 ### HTMLDirectoryElement : HTMLElement
 
@@ -1413,10 +1413,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLEmbedElement : HTMLElement
 
-5 / 8 members.
+6 / 8 members.
 
 - `constructor()`: not supported
-- `src`: not supported
+- `src`: generic (reflects a content attribute)
 - `type`: generic (reflects a content attribute)
 - `width`: generic (reflects a content attribute)
 - `height`: generic (reflects a content attribute)
@@ -1426,16 +1426,16 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLFieldSetElement : HTMLElement
 
-9 / 12 members.
+11 / 12 members.
 
 - `constructor()`: not supported
 - `disabled`: generic (reflects a content attribute)
 - `readonly form`: import `forms.HTMLFieldSetElement_form`
 - `name`: generic (reflects a content attribute)
 - `readonly type`: import `forms.HTMLFieldSetElement_type`
-- `readonly elements`: not supported
+- `readonly elements`: C `wjr_HTMLFieldSetElement_get_elements`
 - `readonly willValidate`: import `forms.HTMLFieldSetElement_willValidate`
-- `readonly validity`: not supported
+- `readonly validity`: C `wjr_HTMLFieldSetElement_get_validity`
 - `readonly validationMessage`: import `forms.HTMLFieldSetElement_validationMessage`
 - `checkValidity()`: import `forms.HTMLFieldSetElement_checkValidity`
 - `reportValidity()`: import `forms.HTMLFieldSetElement_reportValidity`
@@ -1452,15 +1452,15 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLFormElement : HTMLElement
 
-13 / 19 members.
+18 / 19 members.
 
 - `constructor()`: not supported
 - `acceptCharset`: generic (reflects a content attribute)
-- `action`: not supported
-- `autocomplete`: not supported
-- `enctype`: not supported
-- `encoding`: not supported
-- `method`: not supported
+- `action`: C `wjr_HTMLFormElement_get_action`
+- `autocomplete`: C `wjr_HTMLFormElement_get_autocomplete`
+- `enctype`: C `wjr_HTMLFormElement_get_enctype`
+- `encoding`: C `wjr_HTMLFormElement_get_encoding`
+- `method`: C `wjr_HTMLFormElement_get_method`
 - `name`: generic (reflects a content attribute)
 - `noValidate`: generic (reflects a content attribute)
 - `target`: generic (reflects a content attribute)
@@ -1476,14 +1476,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLFrameElement : HTMLElement
 
-6 / 11 members.
+8 / 11 members.
 
 - `constructor()`: not supported
 - `name`: generic (reflects a content attribute)
 - `scrolling`: generic (reflects a content attribute)
-- `src`: not supported
+- `src`: generic (reflects a content attribute)
 - `frameBorder`: generic (reflects a content attribute)
-- `longDesc`: not supported
+- `longDesc`: generic (reflects a content attribute)
 - `noResize`: generic (reflects a content attribute)
 - `readonly contentDocument`: not supported
 - `readonly contentWindow`: not supported
@@ -1551,10 +1551,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLIFrameElement : HTMLElement
 
-11 / 20 members.
+15 / 20 members.
 
 - `constructor()`: not supported
-- `src`: not supported
+- `src`: generic (reflects a content attribute)
 - `srcdoc`: not supported
 - `name`: generic (reflects a content attribute)
 - `readonly sandbox`: C `wjr_HTMLIFrameElement_get_sandbox`
@@ -1562,55 +1562,55 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `allowFullscreen`: generic (reflects a content attribute)
 - `width`: generic (reflects a content attribute)
 - `height`: generic (reflects a content attribute)
-- `referrerPolicy`: not supported
-- `loading`: not supported
+- `referrerPolicy`: C `wjr_HTMLIFrameElement_get_referrerPolicy`
+- `loading`: C `wjr_HTMLIFrameElement_get_loading`
 - `readonly contentDocument`: not supported
 - `readonly contentWindow`: not supported
 - `getSVGDocument()`: not supported
 - `align`: generic (reflects a content attribute)
 - `scrolling`: generic (reflects a content attribute)
 - `frameBorder`: generic (reflects a content attribute)
-- `longDesc`: not supported
+- `longDesc`: generic (reflects a content attribute)
 - `marginHeight`: generic (reflects a content attribute)
 - `marginWidth`: generic (reflects a content attribute)
 
 ### HTMLImageElement : HTMLElement
 
-15 / 29 members.
+25 / 29 members.
 
 - `readonly x`: not supported
 - `readonly y`: not supported
 - `constructor()`: not supported
 - `alt`: generic (reflects a content attribute)
-- `src`: not supported
+- `src`: generic (reflects a content attribute)
 - `srcset`: generic (reflects a content attribute)
 - `sizes`: generic (reflects a content attribute)
-- `crossOrigin`: not supported
+- `crossOrigin`: C `wjr_HTMLImageElement_get_crossOrigin`
 - `useMap`: generic (reflects a content attribute)
 - `isMap`: generic (reflects a content attribute)
 - `controls`: generic (reflects a content attribute)
-- `width`: not supported
-- `height`: not supported
+- `width`: C `wjr_HTMLImageElement_get_width`
+- `height`: C `wjr_HTMLImageElement_get_height`
 - `readonly naturalWidth`: import `images.HTMLImageElement_naturalWidth`
 - `readonly naturalHeight`: import `images.HTMLImageElement_naturalHeight`
 - `readonly complete`: import `images.HTMLImageElement_complete`
 - `readonly currentSrc`: import `images.HTMLImageElement_currentSrc`
-- `referrerPolicy`: not supported
-- `decoding`: not supported
-- `loading`: not supported
-- `fetchPriority`: not supported
+- `referrerPolicy`: C `wjr_HTMLImageElement_get_referrerPolicy`
+- `decoding`: C `wjr_HTMLImageElement_get_decoding`
+- `loading`: C `wjr_HTMLImageElement_get_loading`
+- `fetchPriority`: C `wjr_HTMLImageElement_get_fetchPriority`
 - `decode()`: not supported
 - `name`: generic (reflects a content attribute)
-- `lowsrc`: not supported
+- `lowsrc`: generic (reflects a content attribute)
 - `align`: generic (reflects a content attribute)
 - `hspace`: generic (reflects a content attribute)
 - `vspace`: generic (reflects a content attribute)
-- `longDesc`: not supported
+- `longDesc`: generic (reflects a content attribute)
 - `border`: generic (reflects a content attribute)
 
 ### HTMLInputElement : HTMLElement
 
-41 / 63 members.
+54 / 63 members.
 
 - `webkitdirectory`: not supported
 - `readonly webkitEntries`: not supported
@@ -1619,7 +1619,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `accept`: generic (reflects a content attribute)
 - `alpha`: generic (reflects a content attribute)
 - `alt`: generic (reflects a content attribute)
-- `autocomplete`: not supported
+- `autocomplete`: C `wjr_HTMLInputElement_get_autocomplete`
 - `defaultChecked`: generic (reflects a content attribute)
 - `checked`: import `forms.HTMLInputElement_checked`
 - `colorSpace`: not supported
@@ -1627,14 +1627,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `disabled`: generic (reflects a content attribute)
 - `readonly form`: import `forms.HTMLInputElement_form`
 - `files`: not supported
-- `formAction`: not supported
-- `formEnctype`: not supported
-- `formMethod`: not supported
+- `formAction`: C `wjr_HTMLInputElement_get_formAction`
+- `formEnctype`: C `wjr_HTMLInputElement_get_formEnctype`
+- `formMethod`: C `wjr_HTMLInputElement_get_formMethod`
 - `formNoValidate`: generic (reflects a content attribute)
 - `formTarget`: generic (reflects a content attribute)
-- `height`: not supported
+- `height`: C `wjr_HTMLInputElement_get_height`
 - `indeterminate`: import `forms.HTMLInputElement_indeterminate`
-- `readonly list`: not supported
+- `readonly list`: import `dom.HTMLInputElement_list`
 - `max`: generic (reflects a content attribute)
 - `maxLength`: import `forms.HTMLInputElement_maxLength`
 - `min`: generic (reflects a content attribute)
@@ -1646,29 +1646,29 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readOnly`: generic (reflects a content attribute)
 - `required`: generic (reflects a content attribute)
 - `size`: generic (reflects a content attribute)
-- `src`: not supported
+- `src`: generic (reflects a content attribute)
 - `step`: generic (reflects a content attribute)
 - `type`: import `forms.HTMLInputElement_type`
 - `defaultValue`: generic (reflects a content attribute)
 - `value`: import `forms.HTMLInputElement_value`
-- `valueAsDate`: not supported
+- `valueAsDate`: C `wjr_HTMLInputElement_get_valueAsDate`
 - `valueAsNumber`: import `forms.HTMLInputElement_valueAsNumber`
-- `width`: not supported
+- `width`: C `wjr_HTMLInputElement_get_width`
 - `stepUp()`: import `forms.HTMLInputElement_stepUp`
 - `stepDown()`: import `forms.HTMLInputElement_stepDown`
 - `readonly willValidate`: import `forms.HTMLInputElement_willValidate`
-- `readonly validity`: not supported
+- `readonly validity`: C `wjr_HTMLInputElement_get_validity`
 - `readonly validationMessage`: import `forms.HTMLInputElement_validationMessage`
 - `checkValidity()`: import `forms.HTMLInputElement_checkValidity`
 - `reportValidity()`: import `forms.HTMLInputElement_reportValidity`
 - `setCustomValidity()`: import `forms.HTMLInputElement_setCustomValidity`
-- `readonly labels`: not supported
+- `readonly labels`: C `wjr_HTMLInputElement_get_labels`
 - `select()`: import `forms.HTMLInputElement_select`
 - `selectionStart`: import `forms.HTMLInputElement_selectionStart`
 - `selectionEnd`: import `forms.HTMLInputElement_selectionEnd`
 - `selectionDirection`: import `forms.HTMLInputElement_selectionDirection`
-- `setRangeText()`: not supported
-- `setRangeText()`: not supported
+- `setRangeText()`: C `wjr_HTMLInputElement_setRangeText`
+- `setRangeText()`: C `wjr_HTMLInputElement_setRangeText`
 - `setSelectionRange()`: C `wjr_HTMLInputElement_setSelectionRange`
 - `showPicker()`: not supported
 - `align`: generic (reflects a content attribute)
@@ -1703,13 +1703,13 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLLinkElement : HTMLElement
 
-13 / 21 members.
+18 / 21 members.
 
 - `constructor()`: not supported
-- `href`: not supported
-- `crossOrigin`: not supported
+- `href`: generic (reflects a content attribute)
+- `crossOrigin`: C `wjr_HTMLLinkElement_get_crossOrigin`
 - `rel`: generic (reflects a content attribute)
-- `as`: not supported
+- `as`: C `wjr_HTMLLinkElement_get_as`
 - `readonly relList`: C `wjr_HTMLLinkElement_get_relList`
 - `media`: generic (reflects a content attribute)
 - `integrity`: generic (reflects a content attribute)
@@ -1718,10 +1718,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly sizes`: C `wjr_HTMLLinkElement_get_sizes`
 - `imageSrcset`: generic (reflects a content attribute)
 - `imageSizes`: generic (reflects a content attribute)
-- `referrerPolicy`: not supported
+- `referrerPolicy`: C `wjr_HTMLLinkElement_get_referrerPolicy`
 - `readonly blocking`: not supported
 - `disabled`: generic (reflects a content attribute)
-- `fetchPriority`: not supported
+- `fetchPriority`: C `wjr_HTMLLinkElement_get_fetchPriority`
 - `charset`: generic (reflects a content attribute)
 - `rev`: generic (reflects a content attribute)
 - `target`: generic (reflects a content attribute)
@@ -1729,11 +1729,11 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLMapElement : HTMLElement
 
-1 / 3 members.
+2 / 3 members.
 
 - `constructor()`: not supported
 - `name`: generic (reflects a content attribute)
-- `readonly areas`: not supported
+- `readonly areas`: C `wjr_HTMLMapElement_get_areas`
 
 ### HTMLMarqueeElement : HTMLElement
 
@@ -1756,10 +1756,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLMediaElement : HTMLElement
 
-13 / 45 members.
+14 / 45 members.
 
 - `readonly error`: not supported
-- `src`: not supported
+- `src`: generic (reflects a content attribute)
 - `srcObject`: not supported
 - `readonly currentSrc`: not supported
 - `crossOrigin`: not supported
@@ -1812,14 +1812,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLVideoElement : HTMLMediaElement
 
-3 / 7 members.
+4 / 7 members.
 
 - `constructor()`: not supported
 - `width`: generic (reflects a content attribute)
 - `height`: generic (reflects a content attribute)
 - `readonly videoWidth`: not supported
 - `readonly videoHeight`: not supported
-- `poster`: not supported
+- `poster`: generic (reflects a content attribute)
 - `playsInline`: generic (reflects a content attribute)
 
 ### HTMLMenuElement : HTMLElement
@@ -1842,23 +1842,23 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLMeterElement : HTMLElement
 
-0 / 8 members.
+7 / 8 members.
 
 - `constructor()`: not supported
-- `value`: not supported
-- `min`: not supported
-- `max`: not supported
-- `low`: not supported
-- `high`: not supported
-- `optimum`: not supported
-- `readonly labels`: not supported
+- `value`: C `wjr_HTMLMeterElement_get_value`
+- `min`: C `wjr_HTMLMeterElement_get_min`
+- `max`: C `wjr_HTMLMeterElement_get_max`
+- `low`: C `wjr_HTMLMeterElement_get_low`
+- `high`: C `wjr_HTMLMeterElement_get_high`
+- `optimum`: C `wjr_HTMLMeterElement_get_optimum`
+- `readonly labels`: C `wjr_HTMLMeterElement_get_labels`
 
 ### HTMLModElement : HTMLElement
 
-1 / 3 members.
+2 / 3 members.
 
 - `constructor()`: not supported
-- `cite`: not supported
+- `cite`: generic (reflects a content attribute)
 - `dateTime`: generic (reflects a content attribute)
 
 ### HTMLOListElement : HTMLElement
@@ -1873,10 +1873,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLObjectElement : HTMLElement
 
-20 / 27 members.
+23 / 27 members.
 
 - `constructor()`: not supported
-- `data`: not supported
+- `data`: generic (reflects a content attribute)
 - `type`: generic (reflects a content attribute)
 - `name`: generic (reflects a content attribute)
 - `readonly form`: import `forms.HTMLObjectElement_form`
@@ -1886,7 +1886,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly contentWindow`: not supported
 - `getSVGDocument()`: not supported
 - `readonly willValidate`: import `forms.HTMLObjectElement_willValidate`
-- `readonly validity`: not supported
+- `readonly validity`: C `wjr_HTMLObjectElement_get_validity`
 - `readonly validationMessage`: import `forms.HTMLObjectElement_validationMessage`
 - `checkValidity()`: import `forms.HTMLObjectElement_checkValidity`
 - `reportValidity()`: import `forms.HTMLObjectElement_reportValidity`
@@ -1898,7 +1898,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `hspace`: generic (reflects a content attribute)
 - `standby`: generic (reflects a content attribute)
 - `vspace`: generic (reflects a content attribute)
-- `codeBase`: not supported
+- `codeBase`: generic (reflects a content attribute)
 - `codeType`: generic (reflects a content attribute)
 - `useMap`: generic (reflects a content attribute)
 - `border`: generic (reflects a content attribute)
@@ -1927,7 +1927,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLOutputElement : HTMLElement
 
-11 / 14 members.
+13 / 14 members.
 
 - `constructor()`: not supported
 - `readonly htmlFor`: C `wjr_HTMLOutputElement_get_htmlFor`
@@ -1937,12 +1937,12 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `defaultValue`: import `forms.HTMLOutputElement_defaultValue`
 - `value`: import `forms.HTMLOutputElement_value`
 - `readonly willValidate`: import `forms.HTMLOutputElement_willValidate`
-- `readonly validity`: not supported
+- `readonly validity`: C `wjr_HTMLOutputElement_get_validity`
 - `readonly validationMessage`: import `forms.HTMLOutputElement_validationMessage`
 - `checkValidity()`: import `forms.HTMLOutputElement_checkValidity`
 - `reportValidity()`: import `forms.HTMLOutputElement_reportValidity`
 - `setCustomValidity()`: import `forms.HTMLOutputElement_setCustomValidity`
-- `readonly labels`: not supported
+- `readonly labels`: C `wjr_HTMLOutputElement_get_labels`
 
 ### HTMLParagraphElement : HTMLElement
 
@@ -1976,50 +1976,50 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLProgressElement : HTMLElement
 
-0 / 5 members.
+4 / 5 members.
 
 - `constructor()`: not supported
-- `value`: not supported
-- `max`: not supported
-- `readonly position`: not supported
-- `readonly labels`: not supported
+- `value`: C `wjr_HTMLProgressElement_get_value`
+- `max`: C `wjr_HTMLProgressElement_get_max`
+- `readonly position`: C `wjr_HTMLProgressElement_get_position`
+- `readonly labels`: C `wjr_HTMLProgressElement_get_labels`
 
 ### HTMLQuoteElement : HTMLElement
 
-0 / 2 members.
+1 / 2 members.
 
 - `constructor()`: not supported
-- `cite`: not supported
+- `cite`: generic (reflects a content attribute)
 
 ### HTMLScriptElement : HTMLElement
 
-7 / 18 members.
+16 / 18 members.
 
 - `constructor()`: not supported
 - `type`: generic (reflects a content attribute)
-- `src`: not supported
+- `src`: C `wjr_HTMLScriptElement_get_src`
 - `noModule`: generic (reflects a content attribute)
-- `async`: not supported
+- `async`: C `wjr_HTMLScriptElement_get_async`
 - `defer`: generic (reflects a content attribute)
 - `readonly blocking`: not supported
-- `crossOrigin`: not supported
-- `referrerPolicy`: not supported
+- `crossOrigin`: C `wjr_HTMLScriptElement_get_crossOrigin`
+- `referrerPolicy`: C `wjr_HTMLScriptElement_get_referrerPolicy`
 - `integrity`: generic (reflects a content attribute)
-- `fetchPriority`: not supported
-- `innerText`: not supported
-- `textContent`: not supported
-- `text`: not supported
-- `static supports()`: not supported
+- `fetchPriority`: C `wjr_HTMLScriptElement_get_fetchPriority`
+- `innerText`: C `wjr_HTMLScriptElement_get_innerText`
+- `textContent`: C `wjr_HTMLScriptElement_get_textContent`
+- `text`: import `dom.HTMLScriptElement_text`
+- `static supports()`: C `wjr_HTMLScriptElement_static_supports`
 - `charset`: generic (reflects a content attribute)
 - `event`: generic (reflects a content attribute)
 - `htmlFor`: generic (reflects a content attribute)
 
 ### HTMLSelectElement : HTMLElement
 
-20 / 27 members.
+25 / 27 members.
 
 - `constructor()`: not supported
-- `autocomplete`: not supported
+- `autocomplete`: C `wjr_HTMLSelectElement_get_autocomplete`
 - `disabled`: generic (reflects a content attribute)
 - `readonly form`: import `forms.HTMLSelectElement_form`
 - `multiple`: generic (reflects a content attribute)
@@ -2030,21 +2030,21 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly options`: C `wjr_HTMLSelectElement_get_options`
 - `length`: import `forms.HTMLSelectElement_length (setter not supported)`
 - `item()`: import `forms.HTMLSelectElement_item`
-- `namedItem()`: not supported
+- `namedItem()`: C `wjr_HTMLSelectElement_namedItem`
 - `add()`: C `wjr_HTMLSelectElement_add`
 - `remove()`: C `wjr_HTMLSelectElement_remove`
 - `remove()`: C `wjr_HTMLSelectElement_remove`
-- `readonly selectedOptions`: not supported
+- `readonly selectedOptions`: C `wjr_HTMLSelectElement_get_selectedOptions`
 - `selectedIndex`: import `forms.HTMLSelectElement_selectedIndex`
 - `value`: import `forms.HTMLSelectElement_value`
 - `readonly willValidate`: import `forms.HTMLSelectElement_willValidate`
-- `readonly validity`: not supported
+- `readonly validity`: C `wjr_HTMLSelectElement_get_validity`
 - `readonly validationMessage`: import `forms.HTMLSelectElement_validationMessage`
 - `checkValidity()`: import `forms.HTMLSelectElement_checkValidity`
 - `reportValidity()`: import `forms.HTMLSelectElement_reportValidity`
 - `setCustomValidity()`: import `forms.HTMLSelectElement_setCustomValidity`
 - `showPicker()`: not supported
-- `readonly labels`: not supported
+- `readonly labels`: C `wjr_HTMLSelectElement_get_labels`
 
 ### HTMLSlotElement : HTMLElement
 
@@ -2058,10 +2058,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLSourceElement : HTMLElement
 
-6 / 8 members.
+7 / 8 members.
 
 - `constructor()`: not supported
-- `src`: not supported
+- `src`: generic (reflects a content attribute)
 - `type`: generic (reflects a content attribute)
 - `srcset`: generic (reflects a content attribute)
 - `sizes`: generic (reflects a content attribute)
@@ -2095,14 +2095,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTableCellElement : HTMLElement
 
-13 / 16 members.
+15 / 16 members.
 
 - `constructor()`: not supported
 - `colSpan`: generic (reflects a content attribute)
 - `rowSpan`: generic (reflects a content attribute)
 - `headers`: generic (reflects a content attribute)
-- `readonly cellIndex`: not supported
-- `scope`: not supported
+- `readonly cellIndex`: import `dom.HTMLTableCellElement_cellIndex`
+- `scope`: C `wjr_HTMLTableCellElement_get_scope`
 - `abbr`: generic (reflects a content attribute)
 - `align`: generic (reflects a content attribute)
 - `axis`: generic (reflects a content attribute)
@@ -2128,23 +2128,23 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTableElement : HTMLElement
 
-11 / 24 members.
+23 / 24 members.
 
 - `constructor()`: not supported
-- `caption`: not supported
-- `createCaption()`: not supported
-- `deleteCaption()`: not supported
-- `tHead`: not supported
-- `createTHead()`: not supported
-- `deleteTHead()`: not supported
-- `tFoot`: not supported
-- `createTFoot()`: not supported
-- `deleteTFoot()`: not supported
+- `caption`: import `dom.HTMLTableElement_caption`
+- `createCaption()`: import `dom.HTMLTableElement_createCaption`
+- `deleteCaption()`: import `dom.HTMLTableElement_deleteCaption`
+- `tHead`: import `dom.HTMLTableElement_tHead`
+- `createTHead()`: import `dom.HTMLTableElement_createTHead`
+- `deleteTHead()`: import `dom.HTMLTableElement_deleteTHead`
+- `tFoot`: import `dom.HTMLTableElement_tFoot`
+- `createTFoot()`: import `dom.HTMLTableElement_createTFoot`
+- `deleteTFoot()`: import `dom.HTMLTableElement_deleteTFoot`
 - `readonly tBodies`: C `wjr_HTMLTableElement_get_tBodies`
-- `createTBody()`: not supported
+- `createTBody()`: import `dom.HTMLTableElement_createTBody`
 - `readonly rows`: C `wjr_HTMLTableElement_get_rows`
-- `insertRow()`: not supported
-- `deleteRow()`: not supported
+- `insertRow()`: import `dom.HTMLTableElement_insertRow`
+- `deleteRow()`: import `dom.HTMLTableElement_deleteRow`
 - `align`: generic (reflects a content attribute)
 - `border`: generic (reflects a content attribute)
 - `frame`: generic (reflects a content attribute)
@@ -2157,14 +2157,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTableRowElement : HTMLElement
 
-6 / 11 members.
+10 / 11 members.
 
 - `constructor()`: not supported
-- `readonly rowIndex`: not supported
-- `readonly sectionRowIndex`: not supported
+- `readonly rowIndex`: import `dom.HTMLTableRowElement_rowIndex`
+- `readonly sectionRowIndex`: import `dom.HTMLTableRowElement_sectionRowIndex`
 - `readonly cells`: C `wjr_HTMLTableRowElement_get_cells`
-- `insertCell()`: not supported
-- `deleteCell()`: not supported
+- `insertCell()`: import `dom.HTMLTableRowElement_insertCell`
+- `deleteCell()`: import `dom.HTMLTableRowElement_deleteCell`
 - `align`: generic (reflects a content attribute)
 - `ch`: generic (reflects a content attribute)
 - `chOff`: generic (reflects a content attribute)
@@ -2173,12 +2173,12 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTableSectionElement : HTMLElement
 
-5 / 8 members.
+7 / 8 members.
 
 - `constructor()`: not supported
 - `readonly rows`: C `wjr_HTMLTableSectionElement_get_rows`
-- `insertRow()`: not supported
-- `deleteRow()`: not supported
+- `insertRow()`: import `dom.HTMLTableSectionElement_insertRow`
+- `deleteRow()`: import `dom.HTMLTableSectionElement_deleteRow`
 - `align`: generic (reflects a content attribute)
 - `ch`: generic (reflects a content attribute)
 - `chOff`: generic (reflects a content attribute)
@@ -2200,11 +2200,11 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTextAreaElement : HTMLElement
 
-23 / 32 members.
+31 / 32 members.
 
 - `constructor()`: not supported
-- `autocomplete`: not supported
-- `cols`: not supported
+- `autocomplete`: C `wjr_HTMLTextAreaElement_get_autocomplete`
+- `cols`: C `wjr_HTMLTextAreaElement_get_cols`
 - `dirName`: generic (reflects a content attribute)
 - `disabled`: generic (reflects a content attribute)
 - `readonly form`: import `forms.HTMLTextAreaElement_form`
@@ -2214,25 +2214,25 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `placeholder`: generic (reflects a content attribute)
 - `readOnly`: generic (reflects a content attribute)
 - `required`: generic (reflects a content attribute)
-- `rows`: not supported
+- `rows`: C `wjr_HTMLTextAreaElement_get_rows`
 - `wrap`: generic (reflects a content attribute)
 - `readonly type`: import `forms.HTMLTextAreaElement_type`
 - `defaultValue`: import `forms.HTMLTextAreaElement_defaultValue`
 - `value`: import `forms.HTMLTextAreaElement_value`
-- `readonly textLength`: not supported
+- `readonly textLength`: C `wjr_HTMLTextAreaElement_get_textLength`
 - `readonly willValidate`: import `forms.HTMLTextAreaElement_willValidate`
-- `readonly validity`: not supported
+- `readonly validity`: C `wjr_HTMLTextAreaElement_get_validity`
 - `readonly validationMessage`: import `forms.HTMLTextAreaElement_validationMessage`
 - `checkValidity()`: import `forms.HTMLTextAreaElement_checkValidity`
 - `reportValidity()`: import `forms.HTMLTextAreaElement_reportValidity`
 - `setCustomValidity()`: import `forms.HTMLTextAreaElement_setCustomValidity`
-- `readonly labels`: not supported
+- `readonly labels`: C `wjr_HTMLTextAreaElement_get_labels`
 - `select()`: import `forms.HTMLTextAreaElement_select`
 - `selectionStart`: import `forms.HTMLTextAreaElement_selectionStart`
 - `selectionEnd`: import `forms.HTMLTextAreaElement_selectionEnd`
 - `selectionDirection`: import `forms.HTMLTextAreaElement_selectionDirection`
-- `setRangeText()`: not supported
-- `setRangeText()`: not supported
+- `setRangeText()`: C `wjr_HTMLTextAreaElement_setRangeText`
+- `setRangeText()`: C `wjr_HTMLTextAreaElement_setRangeText`
 - `setSelectionRange()`: C `wjr_HTMLTextAreaElement_setSelectionRange`
 
 ### HTMLTimeElement : HTMLElement
@@ -2244,18 +2244,18 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTitleElement : HTMLElement
 
-0 / 2 members.
+1 / 2 members.
 
 - `constructor()`: not supported
-- `text`: not supported
+- `text`: import `dom.HTMLTitleElement_text`
 
 ### HTMLTrackElement : HTMLElement
 
-7 / 12 members.
+9 / 12 members.
 
 - `constructor()`: not supported
-- `kind`: not supported
-- `src`: not supported
+- `kind`: C `wjr_HTMLTrackElement_get_kind`
+- `src`: generic (reflects a content attribute)
 - `srclang`: generic (reflects a content attribute)
 - `label`: generic (reflects a content attribute)
 - `default`: generic (reflects a content attribute)
@@ -3505,6 +3505,22 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `iterable`: not supported
 - `stringifier`: not supported
 
+### ValidityState
+
+11 / 11 members.
+
+- `readonly valueMissing`: C `wjr_ValidityState_get_valueMissing`
+- `readonly typeMismatch`: C `wjr_ValidityState_get_typeMismatch`
+- `readonly patternMismatch`: C `wjr_ValidityState_get_patternMismatch`
+- `readonly tooLong`: C `wjr_ValidityState_get_tooLong`
+- `readonly tooShort`: C `wjr_ValidityState_get_tooShort`
+- `readonly rangeUnderflow`: C `wjr_ValidityState_get_rangeUnderflow`
+- `readonly rangeOverflow`: C `wjr_ValidityState_get_rangeOverflow`
+- `readonly stepMismatch`: C `wjr_ValidityState_get_stepMismatch`
+- `readonly badInput`: C `wjr_ValidityState_get_badInput`
+- `readonly customError`: C `wjr_ValidityState_get_customError`
+- `readonly valid`: C `wjr_ValidityState_get_valid`
+
 ### console
 
 19 / 19 members.
@@ -3531,7 +3547,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ## Not exposed (nothing implemented)
 
-TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, Blob, File, ByteLengthQueuingStrategy, CSS, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CanvasGradient, CanvasPattern, CanvasRenderingContext2D, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, Credential, FederatedCredential, PasswordCredential, CredentialsContainer, CryptoKey, CustomElementRegistry, CustomStateSet, OverconstrainedError, QuotaExceededError, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMStringList, DOMStringMap, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, ElementInternals, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ErrorEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, HashChangeEvent, IDBVersionChangeEvent, MediaQueryListEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, PageTransitionEvent, PopStateEvent, ProgressEvent, PromiseRejectionEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, StorageEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, DragEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, Clipboard, CloseWatcher, CookieStore, FileReader, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaQueryList, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, MessagePort, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, OffscreenCanvas, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestEventTarget, XMLHttpRequest, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, Headers, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, IdleDeadline, ImageBitmap, ImageBitmapRenderingContext, ImageData, IntersectionObserver, IntersectionObserverEntry, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MessageChannel, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, Navigator, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, OffscreenCanvasRenderingContext2D, Origin, Path2D, PerformanceEntry, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformanceMark, PerformanceMeasure, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceObserver, PerformanceObserverEntryList, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStream, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ReadableStreamDefaultController, ReadableStreamDefaultReader, Request, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, Screen, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, Storage, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheet, CSSStyleSheet, StyleSheetList, SubtleCrypto, TextDecoderStream, TextEncoder, TextEncoderStream, TextMetrics, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, ValidityState, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, WorkerNavigator, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
+TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, Blob, File, ByteLengthQueuingStrategy, CSS, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CanvasGradient, CanvasPattern, CanvasRenderingContext2D, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, Credential, FederatedCredential, PasswordCredential, CredentialsContainer, CryptoKey, CustomElementRegistry, CustomStateSet, OverconstrainedError, QuotaExceededError, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMStringList, DOMStringMap, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, ElementInternals, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ErrorEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, HashChangeEvent, IDBVersionChangeEvent, MediaQueryListEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, PageTransitionEvent, PopStateEvent, ProgressEvent, PromiseRejectionEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, StorageEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, DragEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, Clipboard, CloseWatcher, CookieStore, FileReader, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaQueryList, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, MessagePort, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, OffscreenCanvas, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestEventTarget, XMLHttpRequest, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, Headers, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, IdleDeadline, ImageBitmap, ImageBitmapRenderingContext, ImageData, IntersectionObserver, IntersectionObserverEntry, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MessageChannel, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, Navigator, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, OffscreenCanvasRenderingContext2D, Origin, Path2D, PerformanceEntry, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformanceMark, PerformanceMeasure, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceObserver, PerformanceObserverEntryList, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStream, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ReadableStreamDefaultController, ReadableStreamDefaultReader, Request, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, Screen, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, Storage, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheet, CSSStyleSheet, StyleSheetList, SubtleCrypto, TextDecoderStream, TextEncoder, TextEncoderStream, TextMetrics, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, WorkerNavigator, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
 
 ## Browser functions that could not be bound
 
@@ -3541,17 +3557,7 @@ TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTime
 - AbortSignal.abort: abort.AbortSignal_abort exists but an argument of type any has no conversion
 - AbortSignal.any: abort.AbortSignal_any exists but an argument of type sequence<AbortSignal> has no conversion
 - AbortSignal.reason: abort.AbortSignal_reason exists but the result type any has no conversion
-- Document.visibilityState: timers.Document_visibilityState exists but its result is not a string
-- HTMLButtonElement.validity: forms.HTMLButtonElement_validity exists but its result type does not match
-- HTMLFieldSetElement.validity: forms.HTMLFieldSetElement_validity exists but its result type does not match
 - HTMLImageElement.decode: images.HTMLImageElement_decode exists but the result type Promise<undefined> has no conversion
-- HTMLInputElement.valueAsDate: forms.HTMLInputElement_valueAsDate exists but the result type object? has no conversion
-- HTMLInputElement.valueAsDate (setter): forms.HTMLInputElement_setValueAsDate exists but an argument of type object? has no conversion
-- HTMLInputElement.validity: forms.HTMLInputElement_validity exists but its result type does not match
-- HTMLObjectElement.validity: forms.HTMLObjectElement_validity exists but its result type does not match
-- HTMLOutputElement.validity: forms.HTMLOutputElement_validity exists but its result type does not match
-- HTMLSelectElement.validity: forms.HTMLSelectElement_validity exists but its result type does not match
-- HTMLTextAreaElement.validity: forms.HTMLTextAreaElement_validity exists but its result type does not match
 - Performance.mark: performance.Performance_mark exists but an argument of type PerformanceMarkOptions has no conversion
 - Performance.measure: performance.Performance_measure exists but an argument of type (DOMString or PerformanceMeasureOptions) has no conversion
 - WebSocket.binaryType: websocket.WebSocket_binaryType exists but its result is not a string

@@ -163,6 +163,37 @@ foreign _m_dom {
 	@(link_name = "HTMLTextAreaElement_set_maxLength") _HTMLTextAreaElement_set_maxLength :: proc(element: u64, value: i32) -> Error ---
 	@(link_name = "HTMLTextAreaElement_set_minLength") _HTMLTextAreaElement_set_minLength :: proc(element: u64, value: i32) -> Error ---
 	@(link_name = "HTMLOptionElement_set_text") _HTMLOptionElement_set_text :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HTMLTableElement_caption") _HTMLTableElement_caption :: proc(table: u64) -> Element ---
+	@(link_name = "HTMLTableElement_set_caption") _HTMLTableElement_set_caption :: proc(table: u64, value: u64) -> Error ---
+	@(link_name = "HTMLTableElement_createCaption") _HTMLTableElement_createCaption :: proc(table: u64) -> Element ---
+	@(link_name = "HTMLTableElement_deleteCaption") _HTMLTableElement_deleteCaption :: proc(table: u64) ---
+	@(link_name = "HTMLTableElement_tHead") _HTMLTableElement_tHead :: proc(table: u64) -> Element ---
+	@(link_name = "HTMLTableElement_set_tHead") _HTMLTableElement_set_tHead :: proc(table: u64, value: u64) -> Error ---
+	@(link_name = "HTMLTableElement_createTHead") _HTMLTableElement_createTHead :: proc(table: u64) -> Element ---
+	@(link_name = "HTMLTableElement_deleteTHead") _HTMLTableElement_deleteTHead :: proc(table: u64) ---
+	@(link_name = "HTMLTableElement_tFoot") _HTMLTableElement_tFoot :: proc(table: u64) -> Element ---
+	@(link_name = "HTMLTableElement_set_tFoot") _HTMLTableElement_set_tFoot :: proc(table: u64, value: u64) -> Error ---
+	@(link_name = "HTMLTableElement_createTFoot") _HTMLTableElement_createTFoot :: proc(table: u64) -> Element ---
+	@(link_name = "HTMLTableElement_deleteTFoot") _HTMLTableElement_deleteTFoot :: proc(table: u64) ---
+	@(link_name = "HTMLTableElement_createTBody") _HTMLTableElement_createTBody :: proc(table: u64) -> Element ---
+	@(link_name = "HTMLTableElement_insertRow") _HTMLTableElement_insertRow :: proc(table: u64, index: i32, _ret: ^Element) -> Error ---
+	@(link_name = "HTMLTableElement_deleteRow") _HTMLTableElement_deleteRow :: proc(table: u64, index: i32) -> Error ---
+	@(link_name = "HTMLTableSectionElement_insertRow") _HTMLTableSectionElement_insertRow :: proc(section: u64, index: i32, _ret: ^Element) -> Error ---
+	@(link_name = "HTMLTableSectionElement_deleteRow") _HTMLTableSectionElement_deleteRow :: proc(section: u64, index: i32) -> Error ---
+	@(link_name = "HTMLTableRowElement_insertCell") _HTMLTableRowElement_insertCell :: proc(row: u64, index: i32, _ret: ^Element) -> Error ---
+	@(link_name = "HTMLTableRowElement_deleteCell") _HTMLTableRowElement_deleteCell :: proc(row: u64, index: i32) -> Error ---
+	@(link_name = "HTMLTableRowElement_rowIndex") _HTMLTableRowElement_rowIndex :: proc(row: u64) -> i32 ---
+	@(link_name = "HTMLTableRowElement_sectionRowIndex") _HTMLTableRowElement_sectionRowIndex :: proc(row: u64) -> i32 ---
+	@(link_name = "HTMLTableCellElement_cellIndex") _HTMLTableCellElement_cellIndex :: proc(cell: u64) -> i32 ---
+	@(link_name = "HTMLTitleElement_text") _HTMLTitleElement_text :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLTitleElement_set_text") _HTMLTitleElement_set_text :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HTMLScriptElement_text") _HTMLScriptElement_text :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLScriptElement_set_text") _HTMLScriptElement_set_text :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HTMLInputElement_list") _HTMLInputElement_list :: proc(input: u64) -> Element ---
+	@(link_name = "HTMLDialogElement_show") _HTMLDialogElement_show :: proc(dialog: u64) -> Error ---
+	@(link_name = "HTMLDialogElement_showModal") _HTMLDialogElement_showModal :: proc(dialog: u64) -> Error ---
+	@(link_name = "HTMLDialogElement_close") _HTMLDialogElement_close :: proc(dialog: u64, result: [^]u8, result_len: u32) ---
+	@(link_name = "HTMLDialogElement_requestClose") _HTMLDialogElement_requestClose :: proc(dialog: u64, result: [^]u8, result_len: u32) ---
 	@(link_name = "Element_boundingRect") _Element_boundingRect :: proc(element: u64, _ret: ^DomRect) ---
 	@(link_name = "Element_clientRectsPacked") _Element_clientRectsPacked :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Element_clientTop") _Element_clientTop :: proc(element: u64) -> i32 ---
@@ -1922,6 +1953,218 @@ HTMLTextAreaElement_set_minLength :: proc "contextless" (element: $T_element, va
 // option.text = value: its children replaced by one Text node.
 HTMLOptionElement_set_text :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
 	return _HTMLOptionElement_set_text(u64(element), raw_data(value), u32(len(value)))
+}
+
+// table.caption: its first caption child.
+HTMLTableElement_caption :: proc "contextless" (table: $T_table) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 {
+	return _HTMLTableElement_caption(u64(table))
+}
+
+// table.caption = value: the first caption child removed, the value (if any) inserted first. Type for another element.
+HTMLTableElement_set_caption :: proc "contextless" (table: $T_table, value: $T_value) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_value)) && size_of(T_value) == 8 {
+	return _HTMLTableElement_set_caption(u64(table), u64(value))
+}
+
+// table.createCaption(): the first caption child, or a new one inserted first.
+HTMLTableElement_createCaption :: proc "contextless" (table: $T_table) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 {
+	return _HTMLTableElement_createCaption(u64(table))
+}
+
+// table.deleteCaption()
+HTMLTableElement_deleteCaption :: proc "contextless" (table: $T_table) where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 {
+	_HTMLTableElement_deleteCaption(u64(table))
+}
+
+// table.tHead: its first thead child.
+HTMLTableElement_tHead :: proc "contextless" (table: $T_table) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 {
+	return _HTMLTableElement_tHead(u64(table))
+}
+
+// table.tHead = value: Hierarchy for an element that is not a thead.
+HTMLTableElement_set_tHead :: proc "contextless" (table: $T_table, value: $T_value) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_value)) && size_of(T_value) == 8 {
+	return _HTMLTableElement_set_tHead(u64(table), u64(value))
+}
+
+// table.createTHead(): inserted before the first child that is neither a caption nor a colgroup.
+HTMLTableElement_createTHead :: proc "contextless" (table: $T_table) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 {
+	return _HTMLTableElement_createTHead(u64(table))
+}
+
+// table.deleteTHead()
+HTMLTableElement_deleteTHead :: proc "contextless" (table: $T_table) where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 {
+	_HTMLTableElement_deleteTHead(u64(table))
+}
+
+// table.tFoot: its first tfoot child.
+HTMLTableElement_tFoot :: proc "contextless" (table: $T_table) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 {
+	return _HTMLTableElement_tFoot(u64(table))
+}
+
+// table.tFoot = value: Hierarchy for an element that is not a tfoot.
+HTMLTableElement_set_tFoot :: proc "contextless" (table: $T_table, value: $T_value) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_value)) && size_of(T_value) == 8 {
+	return _HTMLTableElement_set_tFoot(u64(table), u64(value))
+}
+
+// table.createTFoot(): appended.
+HTMLTableElement_createTFoot :: proc "contextless" (table: $T_table) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 {
+	return _HTMLTableElement_createTFoot(u64(table))
+}
+
+// table.deleteTFoot()
+HTMLTableElement_deleteTFoot :: proc "contextless" (table: $T_table) where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 {
+	_HTMLTableElement_deleteTFoot(u64(table))
+}
+
+// table.createTBody(): after the last tbody child.
+HTMLTableElement_createTBody :: proc "contextless" (table: $T_table) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 {
+	return _HTMLTableElement_createTBody(u64(table))
+}
+
+// table.insertRow(index): Index_Size outside -1 ..= rows.length.
+HTMLTableElement_insertRow :: proc "contextless" (table: $T_table, index: i32) -> (result: Element, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 {
+	err = _HTMLTableElement_insertRow(u64(table), index, &result)
+	return
+}
+
+// table.deleteRow(index): Index_Size outside -1 ..< rows.length.
+HTMLTableElement_deleteRow :: proc "contextless" (table: $T_table, index: i32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_table)) && size_of(T_table) == 8 {
+	return _HTMLTableElement_deleteRow(u64(table), index)
+}
+
+// section.insertRow(index)
+HTMLTableSectionElement_insertRow :: proc "contextless" (section: $T_section, index: i32) -> (result: Element, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_section)) && size_of(T_section) == 8 {
+	err = _HTMLTableSectionElement_insertRow(u64(section), index, &result)
+	return
+}
+
+// section.deleteRow(index)
+HTMLTableSectionElement_deleteRow :: proc "contextless" (section: $T_section, index: i32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_section)) && size_of(T_section) == 8 {
+	return _HTMLTableSectionElement_deleteRow(u64(section), index)
+}
+
+// row.insertCell(index): a new td.
+HTMLTableRowElement_insertCell :: proc "contextless" (row: $T_row, index: i32) -> (result: Element, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_row)) && size_of(T_row) == 8 {
+	err = _HTMLTableRowElement_insertCell(u64(row), index, &result)
+	return
+}
+
+// row.deleteCell(index)
+HTMLTableRowElement_deleteCell :: proc "contextless" (row: $T_row, index: i32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_row)) && size_of(T_row) == 8 {
+	return _HTMLTableRowElement_deleteCell(u64(row), index)
+}
+
+// row.rowIndex (-1 outside a table)
+HTMLTableRowElement_rowIndex :: proc "contextless" (row: $T_row) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_row)) && size_of(T_row) == 8 {
+	return _HTMLTableRowElement_rowIndex(u64(row))
+}
+
+// row.sectionRowIndex
+HTMLTableRowElement_sectionRowIndex :: proc "contextless" (row: $T_row) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_row)) && size_of(T_row) == 8 {
+	return _HTMLTableRowElement_sectionRowIndex(u64(row))
+}
+
+// cell.cellIndex
+HTMLTableCellElement_cellIndex :: proc "contextless" (cell: $T_cell) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_cell)) && size_of(T_cell) == 8 {
+	return _HTMLTableCellElement_cellIndex(u64(cell))
+}
+
+// title.text: its child text content.
+HTMLTitleElement_text :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLTitleElement_text(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HTMLTitleElement_text's result.
+HTMLTitleElement_text_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLTitleElement_text(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLTitleElement_text's result in a buffer allocated to fit.
+HTMLTitleElement_text_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLTitleElement_text(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// title.text = value
+HTMLTitleElement_set_text :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLTitleElement_set_text(u64(element), raw_data(value), u32(len(value)))
+}
+
+// script.text: its child text content.
+HTMLScriptElement_text :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLScriptElement_text(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HTMLScriptElement_text's result.
+HTMLScriptElement_text_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLScriptElement_text(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLScriptElement_text's result in a buffer allocated to fit.
+HTMLScriptElement_text_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLScriptElement_text(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// script.text = value
+HTMLScriptElement_set_text :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLScriptElement_set_text(u64(element), raw_data(value), u32(len(value)))
+}
+
+// input.list: the datalist of the id its `list` attribute gives.
+HTMLInputElement_list :: proc "contextless" (input: $T_input) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_input)) && size_of(T_input) == 8 {
+	return _HTMLInputElement_list(u64(input))
+}
+
+// dialog.show()
+HTMLDialogElement_show :: proc "contextless" (dialog: $T_dialog) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_dialog)) && size_of(T_dialog) == 8 {
+	return _HTMLDialogElement_show(u64(dialog))
+}
+
+// dialog.showModal(): Invalid_State when it is not connected (no top layer: the dialog stays where it is).
+HTMLDialogElement_showModal :: proc "contextless" (dialog: $T_dialog) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_dialog)) && size_of(T_dialog) == 8 {
+	return _HTMLDialogElement_showModal(u64(dialog))
+}
+
+// dialog.close(result)
+HTMLDialogElement_close :: proc "contextless" (dialog: $T_dialog, result: Maybe(string) = nil) where intrinsics.type_is_integer(intrinsics.type_core_type(T_dialog)) && size_of(T_dialog) == 8 {
+	_result_p: [^]u8
+	_result_n := max(u32)
+	if v, ok := result.?; ok { _result_p, _result_n = raw_data(v), u32(len(v)) }
+	_HTMLDialogElement_close(u64(dialog), _result_p, _result_n)
+}
+
+// dialog.requestClose(result): "cancel" fired first.
+HTMLDialogElement_requestClose :: proc "contextless" (dialog: $T_dialog, result: Maybe(string) = nil) where intrinsics.type_is_integer(intrinsics.type_core_type(T_dialog)) && size_of(T_dialog) == 8 {
+	_result_p: [^]u8
+	_result_n := max(u32)
+	if v, ok := result.?; ok { _result_p, _result_n = raw_data(v), u32(len(v)) }
+	_HTMLDialogElement_requestClose(u64(dialog), _result_p, _result_n)
 }
 
 // element.getBoundingClientRect(): the border box as drawn (transforms applied), in viewport coordinates.

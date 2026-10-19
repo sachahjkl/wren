@@ -1441,6 +1441,342 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `HTMLOptionElement_set_text :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
 
+### `HTMLTableElement_caption`
+
+```
+Element HTMLTableElement_caption(Element table)
+```
+
+table.caption: its first caption child.
+
+Host: `HTMLTableElement_caption :: proc(c: ^Call, table: Api_Element) -> u64`
+
+### `HTMLTableElement_set_caption`
+
+```
+void HTMLTableElement_set_caption(Element table, optional Element value) raises
+```
+
+table.caption = value: the first caption child removed, the value (if any) inserted first. Type for another element.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLTableElement_set_caption :: proc(c: ^Call, table: Api_Element, value: Api_Element) -> Api_Error`
+
+### `HTMLTableElement_createCaption`
+
+```
+Element HTMLTableElement_createCaption(Element table)
+```
+
+table.createCaption(): the first caption child, or a new one inserted first.
+
+Host: `HTMLTableElement_createCaption :: proc(c: ^Call, table: Api_Element) -> u64`
+
+### `HTMLTableElement_deleteCaption`
+
+```
+void HTMLTableElement_deleteCaption(Element table)
+```
+
+table.deleteCaption()
+
+Host: `HTMLTableElement_deleteCaption :: proc(c: ^Call, table: Api_Element)`
+
+### `HTMLTableElement_tHead`
+
+```
+Element HTMLTableElement_tHead(Element table)
+```
+
+table.tHead: its first thead child.
+
+Host: `HTMLTableElement_tHead :: proc(c: ^Call, table: Api_Element) -> u64`
+
+### `HTMLTableElement_set_tHead`
+
+```
+void HTMLTableElement_set_tHead(Element table, optional Element value) raises
+```
+
+table.tHead = value: Hierarchy for an element that is not a thead.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLTableElement_set_tHead :: proc(c: ^Call, table: Api_Element, value: Api_Element) -> Api_Error`
+
+### `HTMLTableElement_createTHead`
+
+```
+Element HTMLTableElement_createTHead(Element table)
+```
+
+table.createTHead(): inserted before the first child that is neither a caption nor a colgroup.
+
+Host: `HTMLTableElement_createTHead :: proc(c: ^Call, table: Api_Element) -> u64`
+
+### `HTMLTableElement_deleteTHead`
+
+```
+void HTMLTableElement_deleteTHead(Element table)
+```
+
+table.deleteTHead()
+
+Host: `HTMLTableElement_deleteTHead :: proc(c: ^Call, table: Api_Element)`
+
+### `HTMLTableElement_tFoot`
+
+```
+Element HTMLTableElement_tFoot(Element table)
+```
+
+table.tFoot: its first tfoot child.
+
+Host: `HTMLTableElement_tFoot :: proc(c: ^Call, table: Api_Element) -> u64`
+
+### `HTMLTableElement_set_tFoot`
+
+```
+void HTMLTableElement_set_tFoot(Element table, optional Element value) raises
+```
+
+table.tFoot = value: Hierarchy for an element that is not a tfoot.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLTableElement_set_tFoot :: proc(c: ^Call, table: Api_Element, value: Api_Element) -> Api_Error`
+
+### `HTMLTableElement_createTFoot`
+
+```
+Element HTMLTableElement_createTFoot(Element table)
+```
+
+table.createTFoot(): appended.
+
+Host: `HTMLTableElement_createTFoot :: proc(c: ^Call, table: Api_Element) -> u64`
+
+### `HTMLTableElement_deleteTFoot`
+
+```
+void HTMLTableElement_deleteTFoot(Element table)
+```
+
+table.deleteTFoot()
+
+Host: `HTMLTableElement_deleteTFoot :: proc(c: ^Call, table: Api_Element)`
+
+### `HTMLTableElement_createTBody`
+
+```
+Element HTMLTableElement_createTBody(Element table)
+```
+
+table.createTBody(): after the last tbody child.
+
+Host: `HTMLTableElement_createTBody :: proc(c: ^Call, table: Api_Element) -> u64`
+
+### `HTMLTableElement_insertRow`
+
+```
+Element HTMLTableElement_insertRow(Element table, i32 index) raises
+```
+
+table.insertRow(index): Index_Size outside -1 ..= rows.length.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLTableElement_insertRow :: proc(c: ^Call, table: Api_Element, index: i32) -> (u64, Api_Error)`
+
+### `HTMLTableElement_deleteRow`
+
+```
+void HTMLTableElement_deleteRow(Element table, i32 index) raises
+```
+
+table.deleteRow(index): Index_Size outside -1 ..< rows.length.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLTableElement_deleteRow :: proc(c: ^Call, table: Api_Element, index: i32) -> Api_Error`
+
+### `HTMLTableSectionElement_insertRow`
+
+```
+Element HTMLTableSectionElement_insertRow(Element section, i32 index) raises
+```
+
+section.insertRow(index)
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLTableSectionElement_insertRow :: proc(c: ^Call, section: Api_Element, index: i32) -> (u64, Api_Error)`
+
+### `HTMLTableSectionElement_deleteRow`
+
+```
+void HTMLTableSectionElement_deleteRow(Element section, i32 index) raises
+```
+
+section.deleteRow(index)
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLTableSectionElement_deleteRow :: proc(c: ^Call, section: Api_Element, index: i32) -> Api_Error`
+
+### `HTMLTableRowElement_insertCell`
+
+```
+Element HTMLTableRowElement_insertCell(Element row, i32 index) raises
+```
+
+row.insertCell(index): a new td.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLTableRowElement_insertCell :: proc(c: ^Call, row: Api_Element, index: i32) -> (u64, Api_Error)`
+
+### `HTMLTableRowElement_deleteCell`
+
+```
+void HTMLTableRowElement_deleteCell(Element row, i32 index) raises
+```
+
+row.deleteCell(index)
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLTableRowElement_deleteCell :: proc(c: ^Call, row: Api_Element, index: i32) -> Api_Error`
+
+### `HTMLTableRowElement_rowIndex`
+
+```
+i32 HTMLTableRowElement_rowIndex(Element row)
+```
+
+row.rowIndex (-1 outside a table)
+
+Host: `HTMLTableRowElement_rowIndex :: proc(c: ^Call, row: Api_Element) -> i32`
+
+### `HTMLTableRowElement_sectionRowIndex`
+
+```
+i32 HTMLTableRowElement_sectionRowIndex(Element row)
+```
+
+row.sectionRowIndex
+
+Host: `HTMLTableRowElement_sectionRowIndex :: proc(c: ^Call, row: Api_Element) -> i32`
+
+### `HTMLTableCellElement_cellIndex`
+
+```
+i32 HTMLTableCellElement_cellIndex(Element cell)
+```
+
+cell.cellIndex
+
+Host: `HTMLTableCellElement_cellIndex :: proc(c: ^Call, cell: Api_Element) -> i32`
+
+### `HTMLTitleElement_text`
+
+```
+string HTMLTitleElement_text(Element element)
+```
+
+title.text: its child text content.
+
+Host: `HTMLTitleElement_text :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HTMLTitleElement_set_text`
+
+```
+void HTMLTitleElement_set_text(Element element, string value) raises
+```
+
+title.text = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLTitleElement_set_text :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HTMLScriptElement_text`
+
+```
+string HTMLScriptElement_text(Element element)
+```
+
+script.text: its child text content.
+
+Host: `HTMLScriptElement_text :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HTMLScriptElement_set_text`
+
+```
+void HTMLScriptElement_set_text(Element element, string value) raises
+```
+
+script.text = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLScriptElement_set_text :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HTMLInputElement_list`
+
+```
+Element HTMLInputElement_list(Element input)
+```
+
+input.list: the datalist of the id its `list` attribute gives.
+
+Host: `HTMLInputElement_list :: proc(c: ^Call, input: Api_Element) -> u64`
+
+### `HTMLDialogElement_show`
+
+```
+void HTMLDialogElement_show(Element dialog) raises
+```
+
+dialog.show()
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLDialogElement_show :: proc(c: ^Call, dialog: Api_Element) -> Api_Error`
+
+### `HTMLDialogElement_showModal`
+
+```
+void HTMLDialogElement_showModal(Element dialog) raises
+```
+
+dialog.showModal(): Invalid_State when it is not connected (no top layer: the dialog stays where it is).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLDialogElement_showModal :: proc(c: ^Call, dialog: Api_Element) -> Api_Error`
+
+### `HTMLDialogElement_close`
+
+```
+void HTMLDialogElement_close(Element dialog, optional string result)
+```
+
+dialog.close(result)
+
+Host: `HTMLDialogElement_close :: proc(c: ^Call, dialog: Api_Element, result: Maybe(string))`
+
+### `HTMLDialogElement_requestClose`
+
+```
+void HTMLDialogElement_requestClose(Element dialog, optional string result)
+```
+
+dialog.requestClose(result): "cancel" fired first.
+
+Host: `HTMLDialogElement_requestClose :: proc(c: ^Call, dialog: Api_Element, result: Maybe(string))`
+
 ### `Element_boundingRect`
 
 ```

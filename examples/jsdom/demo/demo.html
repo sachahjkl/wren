@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+<title>DOM demo</title>
+<style>
+body { font-family: sans-serif; margin: 16px; background: #f4f5f7; color: #222; }
+h1 { font-size: 22px; margin: 0 0 12px 0; }
+.row { display: flex; gap: 12px; }
+.card { background: white; border: 1px solid #ccd; border-radius: 6px; padding: 10px; flex: 1; }
+.card h2 { font-size: 15px; margin: 0 0 8px 0; color: #345; }
+ul { margin: 0; padding-left: 20px; }
+li.done { color: #888; text-decoration: line-through; }
+li.new { color: #070; font-weight: bold; }
+.log { font-family: monospace; font-size: 12px; white-space: pre; }
+.box { background: #def; border: 2px solid #48c; padding: 6px; margin-top: 6px; }
+table { border-collapse: collapse; font-size: 13px; }
+td, th { border: 1px solid #bbc; padding: 2px 6px; }
+</style>
+</head>
+<body>
+<h1 id="title">DOM demo</h1>
+<div class="row">
+  <div class="card">
+    <h2>Tree and classList</h2>
+    <ul id="todo"></ul>
+    <template id="item"><li><span class="label"></span> <small></small></li></template>
+  </div>
+  <div class="card">
+    <h2>MutationObserver</h2>
+    <div id="log" class="log"></div>
+  </div>
+</div>
+<div class="row">
+  <div class="card">
+    <h2>Geometry</h2>
+    <div id="box" class="box">measured box</div>
+    <table id="geo"></table>
+  </div>
+  <div class="card">
+    <h2>Forms and selectors</h2>
+    <form id="f"><input name="who" value="world"> <select name="color"><option>red</option><option selected>green</option></select></form>
+    <p id="out"></p>
+  </div>
+</div>
+<script>
+const todo = document.getElementById('todo');
+const log = document.getElementById('log');
+const lines = [];
+const mo = new MutationObserver(records => {
+  for (const r of records) {
+    lines.push(r.type + ' ' + (r.target.id || r.target.nodeName.toLowerCase()) +
+      (r.attributeName ? ' @' + r.attributeName : '') +
+      (r.addedNodes.length ? ' +' + r.addedNodes.length : '') +
+      (r.removedNodes.length ? ' -' + r.removedNodes.length : ''));
+  }
+  log.textContent = lines.slice(-8).join('\n');
+});
+mo.observe(todo, { childList: true, attributes: true, subtree: true });
+
+const tpl = document.getElementById('item');
+for (const [label, done] of [['parse HTML', true], ['build the tree', true], ['run scripts', false], ['observe mutations', false]]) {
+  const li = tpl.content.cloneNode(true).firstElementChild;
+  li.querySelector('.label').textContent = label;
+  li.querySelector('small').textContent = '(' + todo.children.length + ')';
+  li.classList.toggle('done', done);
+  todo.append(li);
+}
+const extra = document.createElement('li');
+extra.className = 'new';
+extra.textContent = 'inserted before item 2';
+todo.insertBefore(extra, todo.children[2]);
+todo.lastElementChild.dataset.state = 'last';
+
+const box = document.getElementById('box');
+box.style.width = '180px';
+const r = box.getBoundingClientRect();
+const cs = getComputedStyle(box);
+const rows = [['offsetWidth', box.offsetWidth], ['offsetHeight', box.offsetHeight],
+  ['rect.x', Math.round(r.x)], ['rect.y', Math.round(r.y)],
+  ['background', cs.backgroundColor], ['border-left', cs.borderLeftWidth]];
+const geo = document.getElementById('geo');
+for (const [k, v] of rows) {
+  const tr = geo.insertRow();
+  tr.insertCell().textContent = k;
+  tr.insertCell().textContent = String(v);
+}
+
+const f = document.forms.f;
+const out = document.getElementById('out');
+out.textContent = 'Hello ' + f.elements.who.value + ', select = ' + f.color.value +
+  ', inputs = ' + document.querySelectorAll('form input, form select').length +
+  ', title = ' + document.querySelector('h1:first-of-type').textContent;
+document.title = 'DOM demo: ' + todo.childElementCount + ' items';
+</script>
+</body>
+</html>

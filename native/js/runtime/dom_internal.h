@@ -83,6 +83,11 @@ bool dom_node_arg(JSContext *ctx, JSValueConst v, uint64_t *out, bool nullable, 
 /* JS undefined-or-dictionary member read: undefined when `dict` is not an object */
 JSValue dom_dict_get(JSContext *ctx, JSValueConst dict, const char *name);
 
+/* members of dom_core.c other members reuse */
+JSValue wjr_Node_get_textContent(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Node_set_textContent(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLCollection_namedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+
 /* DOMRect from four values */
 JSValue dom_rect_new(JSContext *ctx, double x, double y, double w, double h, bool read_only);
 /* DOMRectList of rects packed 32 bytes each */
