@@ -123,6 +123,7 @@ App :: struct {
 	page_rect: draw.Rect,   // where the page was painted last frame (physical pixels)
 	frames_requested: int,
 	last_tick:        time.Tick,
+	presented:        bool,   // a frame went to the swap chain: from then on each frame waits for it to take the next
 }
 
 the_app: ^App
@@ -541,6 +542,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		failures := t.layout.inc.verify_failures
 		layout_document(&t.layout, t.page.doc, styled, &app.measure, &app.page_settings.style, size, scale, app.cfg.layout_band_px, t.image_sizes, fonts_gen)
 		prof_end(.Layout)
+		prof_layout(&t.layout)
 		if t.layout.inc.verify_failures != failures {
 			tab_log(t, .Warn, fmt.tprintf("layout.incremental.verify: incremental layout differs from a full one: %s", t.layout.inc.verify_report))
 		}
@@ -823,7 +825,9 @@ on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) { apply_pre
 frame :: proc(app: ^App) {
 	prof_frame_begin()
 	prof_begin(.Wait)
-	render.wait_for_frame(&app.r)
+	// nothing is queued before the first present: the latency object of a swap chain not yet shown is not signaled,
+	// waiting would only run into the timeout (100 ms off the first paint)
+	if app.presented { render.wait_for_frame(&app.r) }
 	prof_end(.Wait)
 	prof_begin(.Events)
 	events := platform.poll_events(app.win, false)
@@ -888,6 +892,7 @@ frame :: proc(app: ^App) {
 	prof_gpu_end(app)
 	prof_begin(.Present)
 	render.frame_end(&app.r)
+	app.presented = true
 	prof_end(.Present)
 	{
 		items, nodes := 0, 0
@@ -910,6 +915,7 @@ extract_flag :: proc(args: []string, flag: string) -> (value: string, rest: [dyn
 }
 
 main :: proc() {
+	prof_mark(.Main)
 	app := new(App)
 	the_app = app
 
@@ -928,23 +934,15 @@ main :: proc() {
 	config.load_file(&app.prefs, policy_file, .Policy)
 	register_all_prefs(&app.prefs)
 	app.cfg = settings_from_prefs(&app.prefs)
+	prof_mark(.Prefs)
 
+	// Start-up order: the renderer's start-up (device, shader compilation) is by far the longest step and needs only the
+	// window. Before it: fonts on a thread of their own (fonts_preload_start), then the network, the page machinery and
+	// the first navigation, whose loads run on their own threads while the renderer starts.
 	font.init(&app.fonts)
+	preload := fonts_preload_start(app)   // the font state is the preload thread's until fonts_preload_finish
 	app.win = platform.open_window(APP_NAME, {1280, 800})
-	if !render.init(&app.r, app.win.hwnd, app.win.size) { fmt.eprintln("renderer init failed"); return }
-	ok: bool
-	app.ui_font, ok, _ = font.load_system_or_embedded(&app.fonts, platform.system_font_path("segoeui.ttf"), font.FALLBACK_UI_DATA)
-	if !ok { fmt.eprintln("cannot load a UI font"); return }
-	app.icons, ok = font.load_embedded(&app.fonts, ui.ICON_FONT_DATA)
-	if !ok { fmt.eprintln("cannot load the icon font"); return }
-	draw.init(&app.dc, &app.r, &app.fonts)
-	ui.init(&app.ui_state, &app.fonts, &app.theme)
-	app.ui_state.icon_font = app.icons
-	page_render_init(app)
-	images_shell_init(app)
-	images_set_texture_api(renderer_texture_api(app))
-	set_content_painter(forms_content_painter, app)
-	page_render.bare = forms_bare_control
+	prof_mark(.Window)
 
 	host.loop_init(&app.loop, wake_window, app.win)
 	ns := net.settings_from_prefs(&app.prefs)
@@ -965,9 +963,25 @@ main :: proc() {
 	arm_autosave(app)
 
 	// the first tab: the address given on the command line, else the homepage
+	prof_mark(.Shell)
 	address := len(rest) > 0 ? rest[0] : ""
+	prof_mark(.Navigation)
 	tab_open(app, address)
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }
+
+	if !render.init(&app.r, app.win.hwnd, app.win.size) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
+	prof_mark(.Renderer)
+	if !fonts_preload_finish(app, preload) { fmt.eprintln("cannot load the UI or icon font"); return }
+	prof_mark(.UI_Fonts)
+	draw.init(&app.dc, &app.r, &app.fonts)
+	ui.init(&app.ui_state, &app.fonts, &app.theme)
+	app.ui_state.icon_font = app.icons
+	page_render_init(app)
+	fonts_preload_adopt(&page_render.fonts, preload)
+	images_shell_init(app)
+	images_set_texture_api(renderer_texture_api(app))
+	set_content_painter(forms_content_painter, app)
+	page_render.bare = forms_bare_control
 
 	prof_init(app)
 	app.last_tick = time.tick_now()
@@ -975,6 +989,7 @@ main :: proc() {
 	app.win.user = app
 	app.win.on_frame = proc(user: rawptr) { frame((^App)(user)) }
 	platform.show_window(app.win)
+	prof_mark(.Loop)
 
 	for !platform.is_closed(app.win) {
 		if app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) {
@@ -994,6 +1009,7 @@ main :: proc() {
 	images_shell_destroy(app)
 	page.storage_manager_destroy(&app.storage)   // writes what is not saved yet
 	page.shutdown_threads()
+	lay.shutdown_threads()
 	page.images_shutdown()   // the image cache and its decoding threads
 	fetch.loader_destroy(&app.loader)
 	host.blocking_destroy(&app.blocking)
