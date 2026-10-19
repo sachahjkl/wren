@@ -167,15 +167,17 @@ security_chip :: proc(app: ^App, t: ^Tab) {
 	if ui.row(.Center, {.Clickable, .Draw_Background, .Draw_Border, .Draw_Hot_Effects}, "###sec_chip") {
 		b = ui.parent_box()
 		sig := ui.signal(b)
-		ui.spacer(ui.px(em * 0.6))
+		ui.spacer(ui.px(em * 0.5))
 		if ui.tags(tone_tag(sec.tone)) {
 			fg: Maybe(draw.Color)
 			if sec.tone != .Weak { fg = var_tone }
-			ui.icon(sec.glyph, em * 1.3, fg)
-			ui.next({width = ui.text_size(em * 0.5), height = ui.pct(1)})
+			// the icon box is as wide as the glyph: the gap to the label is the spacer alone
+			ui.icon(sec.glyph, em * 1.05, fg)
+			ui.spacer(ui.px(em * 0.35))
+			ui.next({width = ui.text_size(0), height = ui.pct(1)})
 			ui.label(fmt.aprintf("%s###sec_label", sec.label, allocator = ui.frame_allocator()))
 		}
-		ui.spacer(ui.px(em * 0.3))
+		ui.spacer(ui.px(em * 0.65))
 		if sig.clicked {
 			key := ui.key_from_string(ui.parent_box().parent.key, "###page_info")
 			if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else {
