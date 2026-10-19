@@ -46,6 +46,10 @@ func selfSigned() tls.Certificate {
 }
 
 func main() {
+	if wptOnly() {
+		serveWPTOnly()
+		return
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
@@ -114,6 +118,7 @@ func main() {
 	registerFirstPaintHandlers(mux)
 	registerJSLoadHandlers(mux)
 	registerJSWebHandlers(mux)
+	registerWPTHandlers(mux)
 
 	go func() {
 		log.Fatal(http.ListenAndServe("127.0.0.1:8767", mux))

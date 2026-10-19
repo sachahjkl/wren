@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>1000 elements animated by script</title>
+<!-- tools\perf.ps1 scenario js_anim1000: every animation frame moves 1000 boxes through style.transform (the cost of the
+     script, of the style changes it makes and of the frames they cause). Falls back to setTimeout without rAF. -->
+<style>
+  body { margin: 0; background: #10131a; overflow: hidden; }
+  #stage { position: relative; width: 100vw; height: 100vh; }
+  .b { position: absolute; left: 0; top: 0; width: 14px; height: 14px; border-radius: 3px; background: #6cf; }
+</style>
+<div id="stage"></div>
+<script>
+(function () {
+  "use strict";
+  var N = 1000, stage = document.getElementById("stage"), boxes = [];
+  for (var i = 0; i < N; i++) {
+    var b = document.createElement("div");
+    b.className = "b";
+    stage.appendChild(b);
+    boxes.push(b);
+  }
+  var w = 1200, h = 700;
+  try { w = stage.clientWidth || w; h = stage.clientHeight || h; } catch (e) {}
+  var frames = 0, t0 = Date.now();
+  var schedule = typeof requestAnimationFrame === "function" ? function (f) { requestAnimationFrame(f); } : function (f) { setTimeout(function () { f(Date.now()); }, 16); };
+  function frame(ts) {
+    var t = (Date.now() - t0) / 1000;
+    for (var i = 0; i < N; i++) {
+      var a = t * (0.5 + (i % 7) * 0.1) + i;
+      var x = (w - 20) * (0.5 + 0.45 * Math.sin(a)), y = (h - 20) * (0.5 + 0.45 * Math.cos(a * 1.3));
+      boxes[i].style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)";
+    }
+    if (++frames % 180 === 0) { console.log("frames", frames, "in", Date.now() - t0, "ms"); }
+    schedule(frame);
+  }
+  try { schedule(frame); } catch (e) { console.error("anim1000: no animation frames or timers:", e && e.message); }
+})();
+</script>

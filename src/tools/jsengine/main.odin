@@ -157,7 +157,7 @@ Realm :: struct {
 image_digest: wasm.Digest
 image_digest_of: rawptr
 
-realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1) -> (r: Realm, ok: bool) {
+realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1, kind := js.Realm_Kind.Window) -> (r: Realm, ok: bool) {
 	opt := wasm.options_default()
 	opt.max_call_ms = call_ms
 	if image_digest_of != raw_data(image) { image_digest, _ = wasm.digest(image); image_digest_of = raw_data(image) }
@@ -170,7 +170,7 @@ realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1) -> (r: Realm, ok:
 	}
 	seed: u64
 	wasm.random_bytes(slice.bytes_from_ptr(&seed, 8))
-	if !js.realm_start(inst, {kind = .Window, seed = seed, max_heap_bytes = 1 << 30, gc_threshold = 8 << 20}) {
+	if !js.realm_start(inst, {kind = kind, seed = seed, max_heap_bytes = 1 << 30, gc_threshold = 8 << 20}) {
 		fmt.eprintln("jsengine: wj_realm_start failed:", inst.last_error)
 		wasm.destroy(inst)
 		return
@@ -271,6 +271,11 @@ BenchmarkSuite.RunSuites({
 });
 `
 
+// The benchmarks measure the engine, not the web API: they run in a worker realm (no document: gbemu's audio probes
+// fall back as in a JavaScript shell) without `performance` (base.js falls back to Date; an attribute the bindings may
+// not implement yet throws) and without setTimeout (the harness then runs the suites synchronously).
+BENCH_PRELUDE :: `delete globalThis.performance; delete globalThis.setTimeout;`
+
 OCTANE_ORDER := [?]string{"richards", "deltablue", "crypto", "raytrace", "earley-boyer", "regexp", "splay", "navier-stokes", "box2d", "code-load", "gbemu", "pdfjs", "typescript", "zlib", "mandreel"}
 
 cmd_bench :: proc(args: []string) {
@@ -295,9 +300,10 @@ cmd_bench :: proc(args: []string) {
 		scores := make([dynamic]f64, context.temp_allocator)
 		times := make([dynamic]f64, context.temp_allocator)
 		for _ in 0 ..< c.iterations {
-			r, ok := realm_new(image, c.raw)
+			r, ok := realm_new(image, c.raw, kind = .Worker)
 			if !ok { os.exit(1) }
 			strings.builder_reset(&console_out)
+			js.eval_script(r.inst, transmute([]byte)string(BENCH_PRELUDE), "prelude.js")
 			js.eval_script(r.inst, base, "base.js")
 			for f in files {
 				src := read_file(filepath.join({dir, f}) or_else "")
@@ -320,7 +326,12 @@ cmd_bench :: proc(args: []string) {
 		}
 		slice.sort(scores[:])
 		slice.sort(times[:])
-		fmt.printfln("%-14s %10d %12d", name, int(scores[len(scores) / 2]), int(times[len(times) / 2]))
+		score := scores[len(scores) / 2]
+		if score < 0 {
+			fmt.printfln("%-14s %10s %12s", name, "error", fmt.tprint(int(times[len(times) / 2])))
+		} else {
+			fmt.printfln("%-14s %10s %12s", name, fmt.tprint(int(score)), fmt.tprint(int(times[len(times) / 2])))
+		}
 	}
 }
 

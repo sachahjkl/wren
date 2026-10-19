@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>querySelectorAll in a loop</title>
+<!-- tools\perf.ps1 scenario js_qsa: a 5 000-element page; every frame runs 50 querySelectorAll of different selectors
+     (class, attribute, descendant, :nth-child) without changing the document (the cost of selector matching from
+     script, and that a page that only reads does not restyle or lay out). Falls back to setTimeout without rAF. -->
+<style>
+  body { margin: 8px; font: 12px sans-serif; }
+  .row { display: flex; gap: 4px; }
+  .cell { width: 20px; height: 8px; background: #dde; }
+</style>
+<p id="status">building</p>
+<div id="grid"></div>
+<script>
+(function () {
+  "use strict";
+  var grid = document.getElementById("grid"), status = document.getElementById("status");
+  for (var r = 0; r < 250; r++) {
+    var row = document.createElement("div");
+    row.className = "row r" + (r % 10);
+    for (var c = 0; c < 19; c++) {
+      var cell = document.createElement("span");
+      cell.className = "cell c" + (c % 5);
+      cell.setAttribute("data-k", String((r * 19 + c) % 13));
+      row.appendChild(cell);
+    }
+    grid.appendChild(row);
+  }
+  var selectors = [".c3", "[data-k='7']", ".r4 .c1", ".row > span:nth-child(3n+1)", "#grid .cell.c2"];
+  var schedule = typeof requestAnimationFrame === "function" ? function (f) { requestAnimationFrame(f); } : function (f) { setTimeout(f, 16); };
+  var frames = 0, found = 0, t0 = Date.now();
+  function frame() {
+    for (var i = 0; i < 50; i++) { found += document.querySelectorAll(selectors[i % selectors.length]).length; }
+    if (++frames % 120 === 0) { status.textContent = frames + " frames, " + found + " matches, " + (Date.now() - t0) + " ms"; console.log(status.textContent); }
+    schedule(frame);
+  }
+  try { schedule(frame); } catch (e) { console.error("qsa_loop: no animation frames or timers:", e && e.message); }
+})();
+</script>

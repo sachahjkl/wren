@@ -1,0 +1,37 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>10 000 nodes made and removed per frame</title>
+<!-- tools\perf.ps1 scenario js_nodes10k: every frame builds 10 000 nodes (a list of 2 500 items: li, span, text, b)
+     in a connected container, then the next frame removes them and builds them again (DOM creation, insertion,
+     removal, and the restyle and layout of the new subtree). Falls back to setTimeout without rAF. -->
+<style>
+  body { margin: 8px; font: 12px sans-serif; }
+  ul { columns: 6; margin: 0; padding: 0 0 0 16px; }
+</style>
+<p id="status">building</p>
+<ul id="list"></ul>
+<script>
+(function () {
+  "use strict";
+  var list = document.getElementById("list"), status = document.getElementById("status");
+  var schedule = typeof requestAnimationFrame === "function" ? function (f) { requestAnimationFrame(f); } : function (f) { setTimeout(f, 16); };
+  var frames = 0, t0 = Date.now();
+  function build() {
+    while (list.lastChild) { list.removeChild(list.lastChild); }
+    for (var i = 0; i < 2500; i++) {
+      var li = document.createElement("li");
+      var s = document.createElement("span");
+      s.appendChild(document.createTextNode("item " + i + " "));
+      li.appendChild(s);
+      li.appendChild(document.createElement("b"));
+      list.appendChild(li);
+    }
+  }
+  function frame() {
+    build();
+    if (++frames % 60 === 0) { status.textContent = frames + " frames in " + (Date.now() - t0) + " ms"; console.log(status.textContent); }
+    schedule(frame);
+  }
+  try { schedule(frame); } catch (e) { console.error("nodes10k: no animation frames or timers:", e && e.message); }
+})();
+</script>

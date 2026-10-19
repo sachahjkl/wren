@@ -3,6 +3,11 @@
 #   powershell -NoProfile -File tools\compare_edge.ps1 -Url https://example.com [-Name example] [-Width 1280] [-Height 720]
 #       [-WaitMs 6000] [-OutDir build\cmp] [-NoWren] [-NoEdge] [-NoScript [-UserAgent <ua>] [-AcceptLanguage <list>]]
 # -Exe: another build of Wren (an older one, to measure a change; default build\browser.exe).
+# -Js compares the two browsers running scripts: Wren with javascript.enabled, Edge as it is (its own User-Agent: each
+# browser gets what its server sends it). Wren's JavaScript errors on that page come from build\jspage.exe (the same
+# engine and bindings without a window), kept as <name>_console.txt and summed up in the JSON line ("js_errors", and
+# "js_apis": the errors grouped by what is missing, see Get-JsErrorClasses). Without -Js, Wren runs with
+# javascript.enabled=false when Edge runs without scripts (-NoScript, -Snapshot), and with its defaults otherwise.
 # -NoScript compares on equal terms with Wren, which runs no JavaScript: Edge runs with scripts disabled and sends Wren's
 # User-Agent and Accept-Language (the defaults of network.user_agent and network.accept_language), so that servers that
 # pick a page by browser (Google serves its plain HTML page to unknown browsers) send both the same document. Edge's DOM
@@ -29,12 +34,15 @@ param(
     [switch]$NoEdge,
     [switch]$NoScript,
     [switch]$Snapshot,
+    [switch]$Js,
+    [int]$JsWaitMs = 8000,
     [string]$UserAgent = 'Wren/0.1',
     [string]$AcceptLanguage = 'en-US,en;q=0.9',
     [string]$Exe = ''
 )
 $ErrorActionPreference = 'Stop'
 if ($Snapshot) { $NoScript = [switch]$true }
+if ($Js -and $NoScript) { throw '-Js compares with scripts: not with -NoScript or -Snapshot' }
 $root = Split-Path $PSScriptRoot -Parent
 if (-not [IO.Path]::IsPathRooted($OutDir)) { $OutDir = Join-Path $root $OutDir }
 New-Item -ItemType Directory -Force $OutDir | Out-Null
@@ -119,6 +127,9 @@ $edgePng = Join-Path $OutDir "${Name}_edge.png"
 
 if (-not $NoWren) {
     $exeArgs = if ($Exe) { @('-Exe', $Exe) } else { @() }
+    # (one string: powershell -File gives an array parameter its value as one argument; the browser gets it split)
+    if ($Js) { $exeArgs += @('-Extra', '--pref javascript.enabled=true') }
+    elseif ($NoScript) { $exeArgs += @('-Extra', '--pref javascript.enabled=false') }
     # calibration: the window's chrome around the viewport, measured once per size (cached in the output folder)
     $calibFile = Join-Path $OutDir "calibration_${physW}x${physH}.txt"
     $shot = Join-Path ([IO.Path]::GetTempPath()) "wren_cmp_$PID.png"
@@ -212,8 +223,43 @@ if (-not $NoEdge) {
     try { [IO.Directory]::Delete($profileDir, $true) } catch { }
 }
 
+# Wren's JavaScript errors on the page (-Js): build\jspage.exe, grouped by what they say is missing
+#   NotSupportedError "X.y is not supported" -> X.y (a member the bindings do not implement yet)
+#   ReferenceError "x is not defined" -> x (a global the realm lacks); TypeError -> its message without the values;
+#   other errors -> their name and the start of their message.
+function Get-JsErrorClasses([string[]]$lines) {
+    $classes = [ordered]@{}
+    foreach ($l in $lines) {
+        if ($l -notmatch '^error: ') { continue }
+        $m = $l.Substring(7)
+        $key = if ($m -match 'NotSupportedError: (\S+?)(\(\))? is not supported') { "$($Matches[1])$($Matches[2])" }
+            elseif ($m -match 'NotSupportedError: (\S+) \(setting it\) is not supported') { "$($Matches[1]) (setter)" }
+            elseif ($m -match 'ReferenceError: ''?([\w$.]+)''? is not defined') { "ReferenceError: $($Matches[1])" }
+            elseif ($m -match '(TypeError: .*)$') { $tm = $Matches[1] -replace '''[^'']*''', '...' -replace '"[^"]*"', '...' -replace '\d+', 'n'; $tm.Substring(0, [Math]::Min(80, $tm.Length)) }
+            elseif ($m -match '(\w*Error)(: .{0,60})?') { "$($Matches[1])$($Matches[2])" }
+            else { $m.Substring(0, [Math]::Min(60, $m.Length)) }
+        if ($classes.Contains($key)) { $classes[$key]++ } else { $classes[$key] = 1 }
+    }
+    return $classes
+}
+$jsErrors = $null; $jsApis = $null
+if ($Js) {
+    $jspage = Join-Path $root 'build\jspage.exe'
+    if (-not (Test-Path $jspage)) {
+        Push-Location $root
+        try { & odin build src/tools/jspage -collection:wb=src -vet -o:speed -out:$jspage "-extra-linker-flags:/STACK:33554432" } finally { Pop-Location }
+    }
+    $ErrorActionPreference = 'Continue'
+    $lines = @(& $jspage -wait $JsWaitMs $Url 2>&1 | ForEach-Object { "$_" })
+    $ErrorActionPreference = 'Stop'
+    [IO.File]::WriteAllText((Join-Path $OutDir "${Name}_console.txt"), ($lines -join "`n") + "`n")
+    $classes = Get-JsErrorClasses $lines
+    $jsErrors = 0; foreach ($v in $classes.Values) { $jsErrors += $v }
+    $jsApis = ($classes.GetEnumerator() | Sort-Object Value -Descending | ForEach-Object { '"' + ($_.Key -replace '\\', '\\' -replace '"', '\"') + '":' + $_.Value }) -join ','
+}
 if ((Test-Path $wrenPng) -and (Test-Path $edgePng)) {
     $m = [Cmp]::Compare($wrenPng, $edgePng, (Join-Path $OutDir "${Name}_side.png"), (Join-Path $OutDir "${Name}_diff.png"), "Wren  $Url", $(if ($NoScript) { "Edge (no script)  $Url" } else { "Edge  $Url" }))
     $inv = [Globalization.CultureInfo]::InvariantCulture
-    '{{"name":"{0}","width":{1},"height":{2},"scale":{3},"diff_pixels":{4},"mean_abs":{5}}}' -f $Name, $Width, $Height, $scale.ToString($inv), $m[0].ToString('0.0000', $inv), $m[1].ToString('0.00', $inv)
+    $jsPart = if ($Js) { ',"js_errors":' + $jsErrors + ',"js_apis":{' + $jsApis + '}' } else { '' }
+    '{{"name":"{0}","width":{1},"height":{2},"scale":{3},"diff_pixels":{4},"mean_abs":{5}{6}}}' -f $Name, $Width, $Height, $scale.ToString($inv), $m[0].ToString('0.0000', $inv), $m[1].ToString('0.00', $inv), $jsPart
 }

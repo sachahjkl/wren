@@ -1,7 +1,11 @@
 name: Set up the Wren toolchain
 description: >-
   Odin (pinned release, SHA-256 checked), Rust stable with llvm-tools, Go, the MSVC environment, and the caches of
-  what build.bat fetches or builds (Wasmtime, Lexbor, the native/media library, NASM, the cargo registry).
+  what build.bat fetches or builds (Wasmtime, Lexbor, the native/media library, NASM, the cargo registry, Zig and the
+  QuickJS-ng source, the JavaScript engine) and of the pinned test suites tools\test_all.ps1 fetches (test262,
+  web-platform-tests). Every download is pinned: by SHA-256 in the script that fetches it (Odin here, Wasmtime, NASM,
+  Zig, QuickJS-ng, test262), by commit and a SHA-256 list of its files (web-platform-tests: wpt/MANIFEST.txt), by
+  Cargo.lock (crates); Rust stable and Go (go.mod's version) come from their installers.
 
 runs:
   using: composite
@@ -65,8 +69,43 @@ runs:
         path: |
           build/media/wren_media.lib
           build/media/STAMP
-          build/tools
+          build/tools/nasm-*
+          !build/tools/nasm-*.zip
         key: media-${{ hashFiles('native/media/src/**', 'native/media/Cargo.toml', 'native/media/Cargo.lock', 'tools/build_media.ps1') }}
+
+    # tools\build_js.ps1: Zig (its clang and wasi-libc) and the QuickJS-ng release source, both pinned in the script
+    - name: Cache Zig and the QuickJS-ng source
+      uses: actions/cache@v4
+      with:
+        path: |
+          build/tools/zig-x86_64-windows-*
+          !build/tools/zig-*.zip
+          build/tools/quickjs-ng-*.tar.gz
+        key: zig-qjs-${{ hashFiles('tools/build_js.ps1') }}
+
+    # the engine and the test image of tools\test262.ps1: rebuilt anyway when build\js*\STAMP does not match the inputs
+    - name: Cache the JavaScript engine
+      uses: actions/cache@v4
+      with:
+        path: |
+          build/js/wren_js.wasm
+          build/js/wren_js_raw.wasm
+          build/js/STAMP
+          build/js-test262/wren_js.wasm
+          build/js-test262/wren_js_raw.wasm
+          build/js-test262/STAMP
+        key: js-${{ hashFiles('native/js/**', 'src/wasm/*.odin', 'src/tools/jsengine/*.odin', 'tools/build_js.ps1') }}
+        restore-keys: js-
+
+    - name: Cache the test suites (test262, web-platform-tests)
+      uses: actions/cache@v4
+      with:
+        path: |
+          build/test262/test262-*.tar.gz
+          build/test262/run/test262
+          build/wpt/wpt
+          build/wpt/CHECKOUT
+        key: suites-${{ hashFiles('tools/test262.ps1', 'tools/wpt.ps1', 'wpt/MANIFEST.txt', 'wpt/suites.txt') }}
 
     - name: Cache cargo registry
       uses: actions/cache@v4
