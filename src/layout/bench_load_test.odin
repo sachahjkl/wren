@@ -182,7 +182,7 @@ bench_text_api :: proc() -> Text_Api {
 	return Text_Api{
 		font = proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return 1 },
 		width = proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(len(text)) },
-		metrics = proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {0.8 * size, 0.2 * size, 0.5 * size} },
+		metrics = proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} },
 		concurrent = true,
 	}
 }

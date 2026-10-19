@@ -18,6 +18,9 @@ param(
     [string]$LockPath = 'S:\wb_wt\shared.lock'
 )
 $ErrorActionPreference = 'Stop'
+# (powershell -File passes "a,b" as one string)
+$Sites = @($Sites | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+$SnapshotSites = @($SnapshotSites | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $root = Split-Path $PSScriptRoot -Parent
 if (-not [IO.Path]::IsPathRooted($OutDir)) { $OutDir = Join-Path $root $OutDir }
 New-Item -ItemType Directory -Force $OutDir | Out-Null
@@ -30,7 +33,9 @@ foreach ($site in $Sites) {
     $lock = $null
     while ($true) { try { $lock = [IO.File]::Open($LockPath, 'OpenOrCreate', 'ReadWrite', 'None'); break } catch { Start-Sleep -Milliseconds 500 } }
     try {
+        $ErrorActionPreference = 'Continue'   # a site that fails is reported, the sweep goes on
         $out = & powershell @cmpArgs 2>&1 | Out-String
+        $ErrorActionPreference = 'Stop'
     } finally { $lock.Close() }
     $json = ($out -split "`n" | Where-Object { $_ -match '^\{"name"' } | Select-Object -Last 1)
     if ($json) {

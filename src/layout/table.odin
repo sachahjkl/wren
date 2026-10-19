@@ -1,5 +1,7 @@
 package layout
 
+import "wb:base"
+import "wb:dom"
 import "wb:style"
 
 // Tables (CSS 2.1 §17, automatic table layout §17.5.2.2): a slot grid with colspan / rowspan, column widths from the
@@ -99,13 +101,33 @@ resolve_cell :: proc(c: ^Ctx, cell: i32, base: f32, collapse: bool) {
 	for i in 0 ..< 4 { k.margin[i] = 0 }
 }
 
+// What the columns ask for: min-content and max-content widths, and the kind of width they were given (by a cell of
+// the column or a <col>): a length (`fixed`, max-content becomes that width) or a percentage of the table (`pct`).
+@(private)
+Column_Extents :: struct {
+	mins, maxs: []f32,
+	fixed:      []bool,
+	pct:        []f32,   // 0..100, their sum at most 100 (later columns lose what is over)
+}
+
 @(private)
 column_extents :: proc(c: ^Ctx, bi: i32, g: ^Table_Grid, base: f32) -> (mins, maxs: []f32) {
+	e := column_info(c, bi, g, base)
+	return e.mins, e.maxs
+}
+
+@(private)
+column_info :: proc(c: ^Ctx, bi: i32, g: ^Table_Grid, base: f32) -> Column_Extents {
 	n := int(g.ncols)
-	mins = make([]f32, n, context.temp_allocator)
-	maxs = make([]f32, n, context.temp_allocator)
+	mins := make([]f32, n, context.temp_allocator)
+	maxs := make([]f32, n, context.temp_allocator)
+	fixed := make([]bool, n, context.temp_allocator)
+	pct := make([]f32, n, context.temp_allocator)
+	spec := make([]f32, n, context.temp_allocator)   // the widest length given to a fixed column (border-box)
 	sh, _ := spacing_of(c, c.l.boxes[bi].cs)
 	collapse := c.l.boxes[bi].cs.border_collapse
+	// <col> / <colgroup> widths (they make no boxes: read from their elements' styles)
+	column_widths(c, bi, n, fixed, pct, spec)
 	for pass in 0 ..< 2 {
 		for &gc in g.cells {
 			if (pass == 0) != (gc.cs == 1) { continue }
@@ -114,6 +136,16 @@ column_extents :: proc(c: ^Ctx, bi: i32, g: ^Table_Grid, base: f32) -> (mins, ma
 			if gc.cs == 1 {
 				mins[gc.col] = max(mins[gc.col], in2[0])
 				maxs[gc.col] = max(maxs[gc.col], in2[1])
+				k := &c.l.boxes[gc.box]
+				#partial switch k.cs.width.kind {
+				case .Px:
+					v := k.cs.width.v * c.scale
+					pb := intrinsic_pb(c, k)
+					fixed[gc.col] = true
+					spec[gc.col] = max(spec[gc.col], k.cs.box_sizing == .Border_Box ? max(v, pb) : v + pb)
+				case .Percent:
+					pct[gc.col] = max(pct[gc.col], k.cs.width.v)
+				}
 				continue
 			}
 			// a spanning cell spreads what the columns lack, in proportion to their maximum widths
@@ -131,8 +163,129 @@ column_extents :: proc(c: ^Ctx, bi: i32, g: ^Table_Grid, base: f32) -> (mins, ma
 				maxs[j] = max(maxs[j], mins[j])
 			}
 		}
+		if pass == 0 {
+			// a column given a length is as wide as that length (never below its content's minimum)
+			for j in 0 ..< n {
+				if fixed[j] && pct[j] == 0 { maxs[j] = max(mins[j], spec[j]) }
+			}
+		}
 	}
-	return
+	room: f32 = 100
+	for &p in pct {
+		p = clamp(p, 0, room)
+		room -= p
+	}
+	for j in 0 ..< n { maxs[j] = max(maxs[j], mins[j]) }
+	return {mins, maxs, fixed, pct}
+}
+
+// Widths given by the table's <col> and <colgroup> elements (a <col span>, a <colgroup span> without <col>).
+@(private)
+column_widths :: proc(c: ^Ctx, bi: i32, n: int, fixed: []bool, pct: []f32, spec: []f32) {
+	tn := dom.get(c.d, c.l.boxes[bi].node)
+	if tn == nil { return }
+	col := 0
+	apply :: proc(c: ^Ctx, h: base.Handle, at, span, n: int, fixed: []bool, pct: []f32, spec: []f32) {
+		cs := style.style_of(c.st, h)
+		if cs == nil || cs.display == .None { return }
+		for j in at ..< min(at + span, n) {
+			#partial switch cs.width.kind {
+			case .Px: fixed[j] = true; spec[j] = max(spec[j], cs.width.v * c.scale)
+			case .Percent: pct[j] = max(pct[j], cs.width.v)
+			}
+		}
+	}
+	span_of :: proc(c: ^Ctx, h: base.Handle) -> int {
+		v, ok := dom.get_attribute(c.d, h, "span")
+		if !ok { return 1 }
+		return clamp(parse_int(v, 1), 1, 1000)
+	}
+	for ch := tn.first_child; ch != base.NIL_HANDLE && col < n; ch = dom.get(c.d, ch).next {
+		cn := dom.get(c.d, ch)
+		if cn.kind != .Element { continue }
+		switch cn.name {
+		case "col":
+			s := span_of(c, ch)
+			apply(c, ch, col, s, n, fixed, pct, spec)
+			col += s
+		case "colgroup":
+			has_cols := false
+			for g := cn.first_child; g != base.NIL_HANDLE && col < n; g = dom.get(c.d, g).next {
+				gn := dom.get(c.d, g)
+				if gn.kind != .Element || gn.name != "col" { continue }
+				has_cols = true
+				s := span_of(c, g)
+				apply(c, g, col, s, n, fixed, pct, spec)
+				col += s
+			}
+			if !has_cols {
+				s := span_of(c, ch)
+				apply(c, ch, col, s, n, fixed, pct, spec)
+				col += s
+			}
+		}
+	}
+}
+
+// Column widths for `avail` (CSS Tables 3 §3.9.4, as browsers do): between the guesses min-content, min-content with
+// percentages, with specified widths, and max-content, linearly; past max-content the excess goes to the automatic
+// columns (by their max-content widths), else to the fixed ones, else to the percentage ones.
+@(private)
+distribute_columns :: proc(e: Column_Extents, avail: f32, widths: []f32) {
+	n := len(widths)
+	guess :: proc(e: Column_Extents, avail: f32, i, stage: int) -> f32 {
+		if e.pct[i] > 0 {
+			if stage == 0 { return e.mins[i] }
+			return max(e.mins[i], e.pct[i] * avail / 100)
+		}
+		switch stage {
+		case 0, 1: return e.mins[i]
+		case 2: return e.fixed[i] ? e.maxs[i] : e.mins[i]
+		}
+		return e.maxs[i]
+	}
+	sums: [4]f32
+	for s in 0 ..< 4 { for i in 0 ..< n { sums[s] += guess(e, avail, i, s) } }
+	if avail <= sums[0] {
+		for i in 0 ..< n { widths[i] = e.mins[i] }
+		return
+	}
+	for s in 1 ..< 4 {
+		if avail <= sums[s] {
+			t := sums[s] > sums[s - 1] ? (avail - sums[s - 1]) / (sums[s] - sums[s - 1]) : 1
+			for i in 0 ..< n {
+				a, b := guess(e, avail, i, s - 1), guess(e, avail, i, s)
+				widths[i] = a + (b - a) * t
+			}
+			return
+		}
+	}
+	for i in 0 ..< n { widths[i] = guess(e, avail, i, 3) }
+	extra := avail - sums[3]
+	// who takes the rest: automatic columns, else fixed ones, else percentage ones, else all
+	pick :: proc(e: Column_Extents, i, kind: int) -> bool {
+		switch kind {
+		case 0: return e.pct[i] == 0 && !e.fixed[i]
+		case 1: return e.pct[i] == 0 && e.fixed[i]
+		case 2: return e.pct[i] > 0
+		}
+		return true
+	}
+	for kind in 0 ..< 4 {
+		weight, count: f32
+		for i in 0 ..< n {
+			if !pick(e, i, kind) { continue }
+			count += 1
+			weight += kind == 2 ? e.pct[i] : widths[i]
+		}
+		if count == 0 { continue }
+		for i in 0 ..< n {
+			if !pick(e, i, kind) { continue }
+			share := weight > 0 ? (kind == 2 ? e.pct[i] : widths[i]) / weight : 1 / count
+			widths[i] += extra * share
+		}
+		return
+	}
 }
 
 @(private)
@@ -140,15 +293,30 @@ table_pb :: proc(c: ^Ctx, b: ^Box) -> f32 { return intrinsic_pb(c, b) }
 
 table_intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 	g := table_grid(c, bi)
-	mins, maxs := column_extents(c, bi, &g, 0)
+	e := column_info(c, bi, &g, 0)
 	b := &c.l.boxes[bi]
 	sh, _ := spacing_of(c, b.cs)
 	pb := table_pb(c, b)
 	if b.cs.border_collapse { pb -= px_of(c, b.cs.padding[.Left], 0) + px_of(c, b.cs.padding[.Right], 0) }
 	mn := pb + sh * f32(g.ncols + 1)
 	mx := mn
-	for v in mins { mn += v }
-	for v in maxs { mx += v }
+	for v in e.mins { mn += v }
+	// max-content: wide enough that percentage columns get their share of the columns' width with their content
+	// whole, and the others theirs (as browsers compute it; capped)
+	TABLE_MAX :: 1_000_000
+	sum_max, non_pct, room: f32 = 0, 0, 100
+	need: f32 = 0
+	for v, i in e.maxs {
+		sum_max += v
+		if e.pct[i] > 0 {
+			need = max(need, v * 100 / e.pct[i])
+			room -= e.pct[i]
+		} else {
+			non_pct += v
+		}
+	}
+	if non_pct > 0 { need = max(need, room > 0.01 ? non_pct * 100 / room : TABLE_MAX) }
+	mx += min(max(sum_max, need), TABLE_MAX * c.scale)
 	for cap in g.captions {
 		in2 := intrinsic(c, cap)
 		mn = max(mn, in2[0])
@@ -221,25 +389,11 @@ layout_table :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32) -> f32 {
 	cx, cy := content_x(b), content_y(b)
 	cw := max(w - pb_w(b), 0)
 	n := int(g.ncols)
-	mins, maxs := column_extents(c, bi, &g, cw)
+	e := column_info(c, bi, &g, cw)
 
 	// column widths
 	widths := make([]f32, n, context.temp_allocator)
-	avail := cw - sh * f32(n + 1)
-	sum_min, sum_max: f32
-	for i in 0 ..< n { sum_min += mins[i]; sum_max += maxs[i] }
-	for i in 0 ..< n {
-		switch {
-		case avail >= sum_max:
-			extra := avail - sum_max
-			widths[i] = maxs[i] + (sum_max > 0 ? extra * maxs[i] / sum_max : extra / f32(n))
-		case avail > sum_min && sum_max > sum_min:
-			t := (avail - sum_min) / (sum_max - sum_min)
-			widths[i] = mins[i] + (maxs[i] - mins[i]) * t
-		case:
-			widths[i] = mins[i]
-		}
-	}
+	distribute_columns(e, cw - sh * f32(n + 1), widths)
 	col_x := make([]f32, n + 1, context.temp_allocator)
 	{
 		x := cx + sh

@@ -51,7 +51,7 @@ bench_text_layout :: proc(t: ^testing.T) {
 	for r in 0 ..< ROUNDS {
 		l: Layout
 		api := page_text_api(&pf, &m, &ss)
-		when BENCH_FAKE_ALL { api = lay.Text_Api{font = proc(user: rawptr, families: []string, weight: u16, italic: bool) -> lay.Font { return 1 }, metrics = proc(user: rawptr, f: lay.Font, size: f32) -> lay.Font_Metrics { return {0.8 * size, 0.2 * size, 0.5 * size} }, width = proc(user: rawptr, f: lay.Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(len(text)) }} }
+		when BENCH_FAKE_ALL { api = lay.Text_Api{font = proc(user: rawptr, families: []string, weight: u16, italic: bool) -> lay.Font { return 1 }, metrics = proc(user: rawptr, f: lay.Font, size: f32) -> lay.Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }, width = proc(user: rawptr, f: lay.Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(len(text)) }} }
 		when BENCH_FAKE_WIDTH { api.width = proc(user: rawptr, f: lay.Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(len(text)) } }
 		t0 := time.tick_now()
 		lay.run(&l, lay.Input{doc = doc, styled = st, settings = &lset,

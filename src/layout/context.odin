@@ -215,7 +215,7 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	for f, i in cs.font_family { info.families[i] = strings.clone(f, c.sa) }
 	info.features, info.variations = font_features(cs, c.sa)
 	switch cs.line_height.kind {
-	case .Normal: info.line_h = info.size * c.st.line_height_normal
+	case .Normal: info.lh_normal = true   // (font_resolve: from the face)
 	case .Number: info.line_h = info.size * cs.line_height.v
 	case .Length: info.line_h = cs.line_height.v * c.scale
 	}
@@ -243,6 +243,15 @@ font_resolve :: proc(c: ^Ctx, info: ^Font_Info) {
 	m := c.text.metrics(c.text.user, info.font, info.size)
 	info.ascent, info.descent, info.x_height = m.ascent, m.descent, m.x_height
 	if info.x_height <= 0 { info.x_height = info.size * 0.5 }
+	// line-height: normal (CSS Inline 3 §4.2): the face's ascent + descent + line gap, as other browsers do, unless
+	// font.line_height.normal sets a multiple of the font size
+	if info.lh_normal {
+		if c.st.line_height_normal > 0 || m.line_height <= 0 {
+			info.line_h = info.size * (c.st.line_height_normal > 0 ? c.st.line_height_normal : 1.2)
+		} else {
+			info.line_h = m.line_height
+		}
+	}
 	info.space = c.text.width(c.text.user, info.font, info.size, " ")
 }
 

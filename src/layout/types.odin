@@ -35,6 +35,7 @@ Font :: distinct u32   // a face chosen by the shell; layout only hands it back
 Font_Metrics :: struct {
 	ascent, descent: f32,   // device px above / below the baseline, both positive
 	x_height:        f32,
+	line_height:     f32,   // optional: ascent + descent + line gap of the face (what line-height: normal is), 0 = unknown
 }
 
 Text_Api :: struct {
@@ -245,6 +246,7 @@ Font_Info :: struct {
 	size:     f32,                  // device px
 	ascent, descent, x_height: f32,
 	line_h:   f32,                  // used line-height
+	lh_normal: bool,                // line-height: normal (line_h follows the face: font_resolve)
 	space:    f32,                  // width of U+0020
 	// what it was made from, to make it again when the faces change (families, features, variations: in the layout's
 	// arena)

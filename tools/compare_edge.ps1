@@ -177,14 +177,37 @@ if (-not $NoEdge) {
         $edgeUrl = 'file:///' + ($snap -replace '\\', '/')
     }
     if (Test-Path $edgePng) { Remove-Item $edgePng }
-    $p = Start-Process $edge -ArgumentList ($edgeArgs + @("--screenshot=$edgePng", $edgeUrl)) -PassThru -WindowStyle Hidden
-    if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Edge did not finish' }
+    # Edge's helper processes may outlive the first one: a new start on a profile still in use would hand the address to
+    # them and exit without doing anything. Waits for them (kills them past the delay).
+    $tag = [IO.Path]::GetFileName($profileDir)
+    $profileProcs = { Get-CimInstance Win32_Process -Filter "name='msedge.exe'" | Where-Object { $_.CommandLine -like "*$tag*" } }
+    $waitFree = {
+        $deadline = (Get-Date).AddSeconds(20)
+        while ((Get-Date) -lt $deadline -and (& $profileProcs)) { Start-Sleep -Milliseconds 300 }
+        & $profileProcs | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    }
+    if ($NoScript) {
+        # without a virtual time budget the capture is taken at the load event, sometimes before web fonts arrive: a
+        # first load fills the profile's cache, the second (the capture) gets them from there
+        $warm = Join-Path $OutDir "${Name}_edge_warmup.png"
+        $p = Start-Process $edge -ArgumentList ($edgeArgs + @("--screenshot=$warm", $edgeUrl)) -PassThru -WindowStyle Hidden
+        if (-not $p.WaitForExit(120000)) { $p.Kill() }
+        Remove-Item $warm -ErrorAction SilentlyContinue
+        & $waitFree
+    }
+    for ($attempt = 0; $attempt -lt 3 -and -not (Test-Path $edgePng); $attempt++) {
+        if ($attempt -gt 0) { & $waitFree }
+        $p = Start-Process $edge -ArgumentList ($edgeArgs + @("--screenshot=$edgePng", $edgeUrl)) -PassThru -WindowStyle Hidden
+        if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Edge did not finish' }
+    }
     if (-not (Test-Path $edgePng)) { throw 'Edge wrote no capture' }
     if ($NoScript) {
+        & $waitFree
         $dom = Join-Path $OutDir "${Name}_edge.html"
         $p = Start-Process $edge -ArgumentList ($edgeArgs + @('--dump-dom', $edgeUrl)) -PassThru -WindowStyle Hidden -RedirectStandardOutput $dom
         # (with scripts off, --dump-dom may never exit: the DOM is written once the page has loaded)
         if (-not $p.WaitForExit(30000)) { $p.Kill() }
+        & $waitFree
     }
     try { [IO.Directory]::Delete($profileDir, $true) } catch { }
 }

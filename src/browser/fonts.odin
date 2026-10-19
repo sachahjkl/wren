@@ -495,7 +495,7 @@ page_text_api :: proc(pf: ^Page_Fonts, m: ^Measure, settings: ^style.Settings) -
 		metrics = proc(user: rawptr, f: lay.Font, size: f32) -> lay.Font_Metrics {
 			t := (^Text_Ctx)(user)
 			m := font.metrics(t.fonts.state, font.Font_Id(f), size)
-			return {ascent = m.ascent, descent = m.descent, x_height = m.x_height}
+			return {ascent = m.ascent, descent = m.descent, x_height = m.x_height, line_height = m.line_height}
 		},
 		bidi = proc(user: rawptr, text: string, rtl: bool, levels: []u8) {
 			t := (^Text_Ctx)(user)

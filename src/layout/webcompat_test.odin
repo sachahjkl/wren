@@ -102,6 +102,40 @@ legacy_alignment_of_blocks :: proc(t: ^testing.T) {
 	})
 }
 
+// Automatic table layout with fixed and percentage columns (CSS Tables 3 §3.9, as browsers): a column given a length
+// stays at it while automatic columns take the rest (Hacker News' header), percentage columns take their share and make
+// an auto-width table wide enough for it (Google's search form: 25% | form | 25%), <col> widths count.
+@(test)
+table_column_kinds :: proc(t: ^testing.T) {
+	with_layout(t, `<!doctype html><body style="margin:0;font-size:10px"><div style="width:1000px">
+		<table id=hn style="width:400px;border-spacing:0"><tr><td id=h1 style="width:18px;padding:0 4px 0 0"><div style="width:20px;height:5px"></div></td><td id=h2 style="padding:0">Hacker</td><td id=h3 style="padding:0">login</td></tr></table>
+		<table id=g style="border-spacing:0"><tr><td id=g1 width="25%" style="padding:0"></td><td id=g2 style="padding:0"><div style="width:400px;height:5px"></div></td><td id=g3 width="25%" style="padding:0">adv</td></tr></table>
+		<table id=c style="width:500px;border-spacing:0"><col width=100><col><tr><td id=c1 style="padding:0">a</td><td id=c2 style="padding:0">b</td></tr></table>
+		<table id=p style="width:500px;border-spacing:0"><tr><td id=p1 style="width:80%;padding:0">a</td><td id=p2 style="width:40%;padding:0">b</td><td id=p3 style="padding:0">c</td></tr></table>
+	</div></body>`, proc(t: ^testing.T, l: ^Layout, doc: ^dom.Document) {
+		rect_of :: proc(l: ^Layout, doc: ^dom.Document, id: string) -> Rect {
+			r, _ := box_of(l, dom.find_by_id(doc, id), {800, 600}, 0)
+			return r.border
+		}
+		near :: proc(a, b: f32) -> bool { return math.abs(a - b) < 0.6 }
+		check :: proc(t: ^testing.T, l: ^Layout, doc: ^dom.Document, id: string, x, w: f32, what: string, loc := #caller_location) {
+			r := rect_of(l, doc, id)
+			testing.expectf(t, near(r.min.x, x) && near(r.max.x - r.min.x, w), "%s: x %v w %v, want x %v w %v", what, r.min.x, r.max.x - r.min.x, x, w, loc = loc)
+		}
+		check(t, l, doc, "h1", 0, 24, "a fixed column keeps its width (content 20 + padding 4)")
+		testing.expectf(t, near(rect_of(l, doc, "h2").min.x, 24), "the automatic columns take the rest (%v)", rect_of(l, doc, "h2").min.x)
+		check(t, l, doc, "g", 0, 800, "percentage columns widen an auto table: 400 / (1 - 50%)")
+		check(t, l, doc, "g1", 0, 200, "25%")
+		check(t, l, doc, "g2", 200, 400, "the form")
+		check(t, l, doc, "g3", 600, 200, "25%")
+		check(t, l, doc, "c1", 0, 100, "<col width=100>")
+		check(t, l, doc, "c2", 100, 400, "the other column takes the rest")
+		p1, p2 := rect_of(l, doc, "p1"), rect_of(l, doc, "p2")
+		testing.expectf(t, p1.max.x - p1.min.x > 390, "80%% (less the room the last column's content needs): %v", p1.max.x - p1.min.x)
+		testing.expectf(t, p2.max.x - p2.min.x < 101, "percentages past 100%% are cut (%v)", p2.max.x - p2.min.x)
+	})
+}
+
 // An image's width / height attributes are CSS width / height of the lowest priority plus aspect-ratio: auto w / h
 // (HTML §15.4.1): the page's `height: auto` gives the decoded image its own ratio (a portrait photo given square
 // attributes stays a portrait), and the attributes' ratio holds the place until it is decoded. Values as Blink lays out.

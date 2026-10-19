@@ -37,7 +37,7 @@ Settings :: struct {
 	// generic family -> concrete family names, used by the painter
 	family_serif, family_sans_serif, family_monospace, family_cursive, family_fantasy, family_system_ui: string,  // owned
 	default_generic:     string,    // owned: the generic family used when a page names none
-	line_height_normal:  f32,       // multiple of font size for `line-height: normal`
+	line_height_normal:  f32,       // multiple of font size for `line-height: normal`; 0: from the font (layout)
 	// transitions and animations (timeline.odin)
 	anim_mode:           Anim_Mode,
 	anim_reduced_max_ms: f32,       // Reduce: longest duration of a transition or of one animation iteration
@@ -120,7 +120,8 @@ PREFS := [?]config.Def{
 	{name = "font.family.cursive", kind = .String, default = {s = "Comic Sans MS"}, description = "Font used for the generic family `cursive`."},
 	{name = "font.family.fantasy", kind = .String, default = {s = "Impact"}, description = "Font used for the generic family `fantasy`."},
 	{name = "font.family.system_ui", kind = .String, default = {s = "Segoe UI"}, description = "Font used for `system-ui`."},
-	{name = "font.line_height.normal", kind = .Float, default = {f = 1.2}, bounded = true, min = 1, max = 3, description = "What `line-height: normal` means, as a multiple of the font size."},
+	{name = "font.line_height.normal", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 3,
+		description = "What `line-height: normal` means, as a multiple of the font size. 0: from the font, its ascent + descent + line gap, as other browsers do (Arial: about 1.15, Verdana 1.22); the lh unit then takes 1.2."},
 	{name = "page.body_margin", kind = .Float, default = {f = 8}, bounded = true, min = 0, max = 200, unit = "px", description = "Margin around the body of a page."},
 	{name = "style.animations.mode", kind = .String, default = {s = "auto"}, choices = {"auto", "normal", "reduce", "off"},
 		description = "CSS transitions and animations. auto: like reduce when style.prefers_reduced_motion is on, else normal. reduce: durations are cut to style.animations.reduced_max_duration_ms and infinite animations run once. off: nothing moves, end values apply at once."},
