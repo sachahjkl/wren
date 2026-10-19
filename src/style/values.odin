@@ -202,6 +202,7 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.object_position = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
 	c.caret_color = Auto_Color{auto = true}
 	c.accent_color = Auto_Color{auto = true}
+	c.scrollbar_color = Scrollbar_Colors{auto = true}
 	c.column_width = auto_length
 	c.transform_box = .View_Box
 	// the list-valued properties keep their initial value as a one-element list, so that a missing list is never an
@@ -799,7 +800,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	     .Grid_Template_Columns, .Grid_Template_Rows, .Grid_Template_Areas, .Grid_Auto_Columns, .Grid_Auto_Rows,
 	     .Grid_Auto_Flow, .Grid_Row_Start, .Grid_Row_End, .Grid_Column_Start, .Grid_Column_End, .Justify_Items, .Justify_Self:
 		return apply_prop_more(cx, p, vs)
-	case .Container_Type, .Container_Name:
+	case .Container_Type, .Container_Name, .Scrollbar_Width, .Scrollbar_Color, .Scrollbar_Gutter:
 		return apply_container_prop(cx, p, vs)
 	}
 	return true

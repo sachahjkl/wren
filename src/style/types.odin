@@ -268,8 +268,13 @@ Computed :: struct {
 	// --- container queries (container.odin) ---
 	container_type:    Container_Type,
 	container_name:    []string,
+	// --- scroll bars (container.odin; the bars are overlays: scrollbar-gutter is kept but reserves nothing) ---
+	scrollbar_width:   Scrollbar_Width,
+	scrollbar_color:   Scrollbar_Colors,
+	scrollbar_gutter:  Scrollbar_Gutter,
 	// --- bookkeeping ---
 	containers: ^Container_Ctx, // the query containers this element's children see (nearest first)
+	anim_vars:  []Pre_Decl,     // an animated element: its declarations that use var(), copied (registered custom properties animate through them)
 	inherits:   Prop_Set,       // inherited properties whose value came from the parent (not set by a declaration)
 	custom:     ^Custom_Props,
 	before, after: ^Computed,   // generated boxes (nil when `content` is none/normal)
@@ -310,7 +315,7 @@ Prop :: enum u8 {
 	Caret_Color, Accent_Color, Appearance, Resize, Column_Count, Column_Width,
 	Grid_Template_Columns, Grid_Template_Rows, Grid_Template_Areas, Grid_Auto_Columns, Grid_Auto_Rows, Grid_Auto_Flow,
 	Grid_Row_Start, Grid_Row_End, Grid_Column_Start, Grid_Column_End, Justify_Items, Justify_Self,
-	Container_Type, Container_Name,
+	Container_Type, Container_Name, Scrollbar_Width, Scrollbar_Color, Scrollbar_Gutter,
 }
 
 // A set of properties. Wider than a bit_set can be (there are more than 128 longhands), hence the procedures in props.odin:
@@ -324,7 +329,7 @@ INHERITED_PROPS :: [?]Prop{
 	.Letter_Spacing, .Word_Spacing, .Text_Align, .Text_Transform, .Text_Indent, .White_Space_Collapse, .Text_Wrap_Mode,
 	.Text_Wrap_Style, .Word_Break, .Overflow_Wrap, .Hyphens, .Tab_Size, .Direction, .Text_Shadow, .Text_Underline_Offset,
 	.Visibility, .List_Style_Type, .List_Style_Position, .Cursor, .Pointer_Events, .Border_Collapse, .Border_Spacing,
-	.Quotes, .Caret_Color, .Accent_Color,
+	.Quotes, .Caret_Color, .Accent_Color, .Scrollbar_Color,
 }
 
 // Shorthands: expanded to longhands when a stylesheet is compiled.

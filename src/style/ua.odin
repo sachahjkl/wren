@@ -95,9 +95,11 @@ tfoot { display: table-footer-group; vertical-align: middle; }
 tr { display: table-row; vertical-align: inherit; }
 td, th { display: table-cell; padding: 1px; vertical-align: inherit; }
 th { font-weight: bold; text-align: center; }
-details > summary { display: block; cursor: default; }
-summary { display: list-item; list-style-type: disclosure-closed; counter-increment: list-item 0; }
-details[open] > summary { list-style-type: disclosure-open; }
+summary { display: block; }
+details > summary:first-of-type { display: list-item; counter-increment: list-item 0; list-style: disclosure-closed inside; cursor: default; }
+details[open] > summary:first-of-type { list-style-type: disclosure-open; }
+/* a closed details element shows its summary only (text directly inside it still shows: no CSS selects text) */
+details:not([open]) > :not(summary:first-of-type) { display: none !important; }
 :focus-visible { outline: 2px solid #4d90fe; }
 ::marker { color: inherit; }
 `

@@ -15,6 +15,13 @@ import "wb:css"
 
 Container_Type :: enum u8 { Normal, Size, Inline_Size }
 
+// CSS Scrollbars 1 and Overflow 3 (scrollbar-gutter). The bars of this browser are overlays: `none` hides them, `thin`
+// narrows them, the colors are for the painter; a gutter is never reserved (overlay bars take no room), so
+// scrollbar-gutter is kept for completeness only.
+Scrollbar_Width :: enum u8 { Auto, Thin, None }
+Scrollbar_Colors :: struct { auto: bool, thumb, track: css.Color }   // auto: the browser's colors (the initial value)
+Scrollbar_Gutter :: enum u8 { Auto, Stable, Stable_Both_Edges }
+
 // One query container, as the descendants of an element see it (a chain to the root, nearest first).
 Container_Ctx :: struct {
 	node:   base.Handle,
@@ -90,6 +97,25 @@ apply_container_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 			names[i] = strings.clone(it.tok.text, cx.alloc)
 		}
 		c.container_name = names
+	case .Scrollbar_Width: return set_enum(vs, &c.scrollbar_width)
+	case .Scrollbar_Color:
+		items := split_items(vs)
+		if len(items) == 1 && ident_lower(items[0]) == "auto" { c.scrollbar_color = {auto = true}; return true }
+		if len(items) != 2 { return false }
+		thumb, ok1 := parse_color(cx, items[0:1])
+		track, ok2 := parse_color(cx, items[1:2])
+		if !ok1 || !ok2 { return false }
+		c.scrollbar_color = {thumb = thumb, track = track}
+	case .Scrollbar_Gutter:
+		items := split_items(vs)
+		switch {
+		case len(items) == 1 && ident_lower(items[0]) == "auto": c.scrollbar_gutter = .Auto
+		case len(items) == 1 && ident_lower(items[0]) == "stable": c.scrollbar_gutter = .Stable
+		case len(items) == 2 && ident_lower(items[0]) == "stable" && ident_lower(items[1]) == "both-edges",
+		     len(items) == 2 && ident_lower(items[1]) == "stable" && ident_lower(items[0]) == "both-edges":
+			c.scrollbar_gutter = .Stable_Both_Edges
+		case: return false
+		}
 	}
 	return true
 }

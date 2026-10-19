@@ -71,6 +71,33 @@ selector_lists_of_other_engines :: proc(t: ^testing.T) {
 }
 
 @(test)
+details_closed_shows_its_summary :: proc(t: ^testing.T) {
+	d := open_doc(`<style>.c ul { display: block } summary { list-style: none }</style>
+	<details class=c><summary id=s1>caches</summary><ul id=u1><li>a</li></ul><summary id=s2>second</summary></details>
+	<details class=c open><summary id=s3>caches</summary><ul id=u2><li>a</li></ul></details>`)
+	defer close_doc(&d)
+	testing.expect(t, el(&d, "s1").display == .List_Item, "the first summary shows (a list item)")
+	testing.expect(t, el(&d, "u1").display == .None && el(&d, "s2").display == .None, "the rest of a closed details is hidden, whatever the page says")
+	testing.expect(t, el(&d, "u2").display == .Block, "an open details shows its content")
+	testing.expect(t, el(&d, "s3").list_style_type == .None, "the page's list-style wins over the disclosure marker")
+}
+
+@(test)
+scrollbar_properties :: proc(t: ^testing.T) {
+	d := open_doc(`<style>
+		#a { scrollbar-width: none; scrollbar-gutter: stable both-edges; scrollbar-color: red blue }
+		#b { scrollbar-width: thin; scrollbar-gutter: stable }
+		#c { scrollbar-color: auto }
+	</style><div id=a><p id=in></p></div><div id=b></div><div id=c></div>`)
+	defer close_doc(&d)
+	a, b := el(&d, "a"), el(&d, "b")
+	testing.expect(t, a.scrollbar_width == .None && a.scrollbar_gutter == .Stable_Both_Edges, "scrollbar-width, scrollbar-gutter")
+	testing.expect(t, !a.scrollbar_color.auto && rgb_near(a.scrollbar_color.thumb, 255, 0, 0) && rgb_near(a.scrollbar_color.track, 0, 0, 255), "scrollbar-color")
+	testing.expect(t, !el(&d, "in").scrollbar_color.auto && el(&d, "in").scrollbar_width == .Auto, "scrollbar-color inherits, scrollbar-width does not")
+	testing.expect(t, b.scrollbar_width == .Thin && b.scrollbar_gutter == .Stable && el(&d, "c").scrollbar_color.auto, "thin, stable, auto")
+}
+
+@(test)
 custom_properties_keywords :: proc(t: ^testing.T) {
 	d := open_doc(`<style>
 		#a { --off: initial; --on: ; --x: 4px; --toggle: var(--off) 1px; --w: var(--toggle, 6px) }
@@ -247,6 +274,50 @@ tailwind_v4_patterns :: proc(t: ^testing.T) {
 	testing.expectf(t, a.border_width[.Top] == 2 && a.border_width[.Bottom] == 2 && a.border_width[.Left] == 3 && a.border_width[.Right] == 4, "border-block / border-inline-width: %v %v", a.border_width, a.border_style)
 	testing.expect(t, el(&d, "i").height.kind == .Px && el(&d, "i").height.v == 100, "unlayered beats layered")
 	testing.expect(t, el(&d, "h").display == .None, "!important in an early layer beats later layers")
+}
+
+@(test)
+revert_and_revert_layer :: proc(t: ^testing.T) {
+	d := open_doc(`<style>
+		@layer a, b;
+		@layer a { p { padding-left: 1px; padding-right: 1px } }
+		@layer b { p { padding-left: 2px; padding-right: 2px } .r { padding-left: revert-layer } }
+		p.r { padding-right: revert-layer }
+		h1 { margin-top: 3px }
+		h1.r { margin-top: revert }
+		@layer a { .imp { padding-top: 5px !important } }
+		@layer b { .imp { padding-top: 6px !important } .imp { padding-top: revert-layer !important } }
+	</style><p id=p class=r></p><h1 id=h class=r></h1><div id=i class=imp></div>`)
+	defer close_doc(&d)
+	p := el(&d, "p")
+	testing.expect(t, p.padding[.Left].v == 1, "revert-layer in layer b: layer a's value")
+	testing.expect(t, p.padding[.Right].v == 2, "revert-layer unlayered: the last layer's value")
+	h := el(&d, "h")
+	testing.expect(t, close_to(h.margin[.Top].v, 0.67 * 32), "revert: the browser's style (h1 margin)")
+	testing.expect(t, el(&d, "i").padding[.Top].v == 5, "revert-layer in an important layer: the weaker important layer")
+}
+
+// A registered custom property animated by @keyframes moves the properties of the element that use it.
+@(test)
+animated_registered_property :: proc(t: ^testing.T) {
+	d := open_doc(`<style>
+		@property --w { syntax: "<length>"; inherits: false; initial-value: 0px }
+		@property --u { syntax: "*"; inherits: false }
+		@keyframes grow { from { --w: 10px; --u: 1px } to { --w: 110px; --u: 9px } }
+		#a { animation: grow 1s linear; padding-left: var(--w); padding-right: var(--u, 2px); margin-left: 3px }
+	</style><div id=a></div>`, proc(s: ^Settings) { s.anim_mode = .Normal })
+	defer close_doc(&d)
+	tl := timeline_make(d.eng)
+	defer timeline_destroy(tl, d.st)
+	timeline_restyled(tl, d.doc, nil, d.st, 0)
+	timeline_tick(tl, d.doc, d.st, 0)
+	testing.expectf(t, close_to(el(&d, "a").padding[.Left].v, 10), "at 0: --w is 10px (%v)", el(&d, "a").padding[.Left].v)
+	timeline_tick(tl, d.doc, d.st, 500)
+	testing.expectf(t, close_to(el(&d, "a").padding[.Left].v, 60, 0.5), "at 50%%: interpolated (%v)", el(&d, "a").padding[.Left].v)
+	testing.expect(t, el(&d, "a").padding[.Right].v == 2, "an unregistered (*) property does not animate what uses it")
+	testing.expect(t, el(&d, "a").margin[.Left].v == 3, "the rest is untouched")
+	timeline_tick(tl, d.doc, d.st, 1500)
+	testing.expect(t, close_to(el(&d, "a").padding[.Left].v, 0), "after the end: the cascaded value (the initial value)")
 }
 
 @(test)

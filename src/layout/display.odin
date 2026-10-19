@@ -268,8 +268,10 @@ paint_stacking :: proc(p: ^Paint_Ctx, bi: i32) {
 emit_scrollbars :: proc(c: ^Ctx, bi: i32) {
 	b := &c.l.boxes[bi]
 	if b.scroll_space == NONE { return }
+	// scrollbar-width: none still scrolls, without a bar; thin is half as wide
+	if b.cs != nil && b.cs.scrollbar_width == .None { return }
 	sp := &c.l.spaces[b.scroll_space]
-	w := c.set.scrollbar_width * c.scale
+	w := c.set.scrollbar_width * c.scale * (b.cs != nil && b.cs.scrollbar_width == .Thin ? 0.5 : 1)
 	m := c.set.scrollbar_margin * c.scale
 	port := sp.port
 	if sp.max_scroll.y > 0 {

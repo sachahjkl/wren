@@ -445,7 +445,8 @@ eval_feature :: proc(c: Media_Condition, env: Media_Env) -> Tri {
 	case .Update:
 		return c.ident == "fast" || c.boolean ? .True : .False
 	case .Forced_Colors:
-		return c.ident == "none" || !c.boolean ? .True : .False
+		if c.boolean { return .False }   // no forced colors mode: (forced-colors) is false
+		return c.ident == "none" ? .True : .False
 	// the surface is an sRGB, standard dynamic range, non-inverted, bitmap, scrolling screen
 	case .Color_Gamut:
 		if c.boolean { return .True }

@@ -460,34 +460,50 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	env.final = c.custom != nil ? c.custom : &empty_props
 	env.pending = nil
 
+	var_decls: [dynamic]^Pre_Decl
 	for pr in p.touched {
 		cand := p.ws[pr]
-		if cand.origin == .Author {
-			if !e.settings.author_colors && is_color_prop(pr) { continue }
-			if !e.settings.author_fonts && (pr == .Font_Family || pr == .Font_Size) { continue }
-		}
-		vals := cand.decl.value
 		if cand.decl.has_var {
-			env.budget = e.settings.max_var_bytes
-			sub, ok := substitute(&env, vals, 0)
-			if !ok { apply_unset(&cx, pr); continue }
-			vals = sub
+			if var_decls == nil { var_decls = make([dynamic]^Pre_Decl, context.temp_allocator) }
+			append(&var_decls, cand.decl)
 		}
-		if cand.decl.short != .None {
-			longs, ok := expand_shorthand(cand.decl.short, vals, a)
-			found := false
-			if ok { for l in longs { if l.prop == pr { vals = l.vals; found = true; break } } }
-			if !found { apply_unset(&cx, pr); continue }
-		}
-		switch css_wide_keyword(vals) {
-		case "inherit":
-			copy_prop(c, parent != nil ? parent : s.initial, pr)
-			ps_add(&cx.explicit, pr)
-			if parent != nil { ps_add(&c.inherits, pr) }
-		case "initial": copy_prop(c, s.initial, pr); ps_remove(&c.inherits, pr)
-		case "unset", "revert", "revert-layer": apply_unset(&cx, pr)
-		case:
-			if apply_prop(&cx, pr, vals) { ps_remove(&c.inherits, pr) } else { apply_unset(&cx, pr) }
+		// `revert` and `revert-layer` go back to the declaration that would have won without the current origin or
+		// layer; a chain of them is followed (bounded: every step leaves a layer or an origin behind)
+		for _ in 0 ..< 64 {
+			if cand.origin == .Author {
+				if !e.settings.author_colors && is_color_prop(pr) { break }
+				if !e.settings.author_fonts && (pr == .Font_Family || pr == .Font_Size) { break }
+			}
+			vals := cand.decl.value
+			if cand.decl.has_var {
+				env.budget = e.settings.max_var_bytes
+				sub, ok := substitute(&env, vals, 0)
+				if !ok { apply_unset(&cx, pr); break }
+				vals = sub
+			}
+			if cand.decl.short != .None {
+				longs, ok := expand_shorthand(cand.decl.short, vals, a)
+				found := false
+				if ok { for l in longs { if l.prop == pr { vals = l.vals; found = true; break } } }
+				if !found { apply_unset(&cx, pr); break }
+			}
+			switch kw := css_wide_keyword(vals); kw {
+			case "inherit":
+				copy_prop(c, parent != nil ? parent : s.initial, pr)
+				ps_add(&cx.explicit, pr)
+				if parent != nil { ps_add(&c.inherits, pr) }
+			case "initial": copy_prop(c, s.initial, pr); ps_remove(&c.inherits, pr)
+			case "unset": apply_unset(&cx, pr)
+			case "revert", "revert-layer":
+				if prev, found := revert_candidate(entries, inline_rule, pr, cand.key, kw == "revert", parent); found {
+					cand = prev
+					continue
+				}
+				apply_unset(&cx, pr)
+			case:
+				if apply_prop(&cx, pr, vals) { ps_remove(&c.inherits, pr) } else { apply_unset(&cx, pr) }
+			}
+			break
 		}
 		if pr == .Color_Scheme || pr == .Color { scheme_settle(&cx, s.page_scheme, e.env.prefers_dark) }
 		if pr == .Font_Size {
@@ -499,11 +515,46 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	}
 	for pr in p.touched { p.ws[pr] = {} }
 	clear(&p.touched)
+	// an animation may set registered custom properties: what depends on them is recomputed per keyframe
+	if len(var_decls) > 0 && len(e.registered) > 0 && has_animations(c) {
+		// copied with their values: the style must not point into rules that a rebuild frees
+		list := make([]Pre_Decl, len(var_decls), a)
+		for d, i in var_decls { list[i] = d^ }
+		deep_clone(&list, type_info_of([]Pre_Decl), a)
+		c.anim_vars = list
+	}
 	finish_style(&cx, h)
 	if e.container_dependent || c.container_type != .Normal || (parent != nil && parent.containers != nil) {
 		c.containers = container_chain(e, c, parent, a)
 	}
 	return c
+}
+
+// The declaration of `pr` that wins once the origin (`revert`) or the cascade layer (`revert-layer`) of `from` is left
+// out: the strongest among those strictly below that boundary.
+@(private)
+revert_candidate :: proc(entries: []Entry, inline_rule: ^Rule, pr: Prop, from: Cascade_Key, whole_origin: bool, parent: ^Computed) -> (best: Cand, found: bool) {
+	below :: proc(k, from: Cascade_Key, whole_origin: bool) -> bool {
+		if whole_origin {
+			// author levels are 2 (normal) and 3 (important); user 1 and 4; UA 0 and 5: leave the origin out entirely
+			origin_of :: proc(level: u8) -> int { switch level { case 0, 5: return 0; case 1, 4: return 1 }; return 2 }
+			return origin_of(k.level) < origin_of(from.level) && k.level < from.level
+		}
+		if k.level != from.level { return k.level < from.level }
+		return k.layer < from.layer
+	}
+	consider_rule :: proc(r: ^Rule, spec: css.Specificity, pr: Prop, from: Cascade_Key, whole_origin: bool, parent: ^Computed, best: ^Cand, found: ^bool) {
+		if r.cq != nil && !container_conditions_hold(r.cq, parent != nil ? parent.containers : nil, parent != nil ? parent.custom : nil) { return }
+		for &d in r.decls {
+			if d.prop != pr { continue }
+			k := make_key(r, d.important, spec)
+			if !below(k, from, whole_origin) { continue }
+			if !found^ || key_ge(k, best.key) { best^ = Cand{&d, k, r.origin, true}; found^ = true }
+		}
+	}
+	for ent in entries { consider_rule(ent.rule, ent.complex.specificity, pr, from, whole_origin, parent, &best, &found) }
+	if inline_rule != nil { consider_rule(inline_rule, css.Specificity{max(u32), 0, 0}, pr, from, whole_origin, parent, &best, &found) }
+	return
 }
 
 @(private)

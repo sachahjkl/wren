@@ -291,6 +291,9 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Justify_Self: return fa(&c.justify_self), NO_FIELD
 	case .Container_Type: return fa(&c.container_type), NO_FIELD
 	case .Container_Name: return fa(&c.container_name), NO_FIELD
+	case .Scrollbar_Width: return fa(&c.scrollbar_width), NO_FIELD
+	case .Scrollbar_Color: return fa(&c.scrollbar_color), NO_FIELD
+	case .Scrollbar_Gutter: return fa(&c.scrollbar_gutter), NO_FIELD
 	}
 	return NO_FIELD, NO_FIELD
 }
