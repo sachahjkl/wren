@@ -40,6 +40,7 @@ Fx_Backdrop_Acc :: struct {
 	anchor: draw.Vec2,
 	h:      u64,
 	done:   bool,          // its group opened: h is final
+	blend:  bool,          // what lies under a blended group (its blended pixels are kept), not under a backdrop
 	ok:     bool,          // nothing uncacheable under it
 }
 
@@ -266,6 +267,12 @@ fx_cache_begin :: proc(x: ^Fx_Cache, c: ^Comp, e: ^Effects, screen: lay.Rect) {
 			if !lay.space_plain(l, b.space) { r = lay.mat_bounds(lay.mat_shifted(e.v.mats[b.space], e.origin), lay.rect_shift(lay.Rect{b.abs, b.abs + b.size}, e.v.offsets[b.space])) }
 			append(&x.bds, Fx_Backdrop_Acc{g = i32(g), region = r, anchor = x.anchor[g], h = salt, ok = true})
 		}
+		if .Blend in gr.effects && effects_settings.blend_modes && e.groups[g].seen {
+			gp := &e.groups[g]
+			o := group_outset(e, i32(g))
+			r := lay.Rect{gp.bounds.min - {o[0], o[1]}, gp.bounds.max + {o[2], o[3]}}
+			append(&x.bds, Fx_Backdrop_Acc{g = i32(g), region = r, anchor = x.anchor[g], h = salt, ok = true, blend = true})
+		}
 	}
 	// what each group's layer receives, in paint order
 	for &ch in c.chunks {
@@ -336,12 +343,20 @@ fx_cache_layer :: proc(e: ^Effects, g: i32, fx: ^draw.Layer_Effects) {
 	x := e.fxc
 	if x == nil || int(g) >= len(x.ok) || !x.ok[g] || !fx_settings.enabled { return }
 	key := x.key[g]
+	under: u64
 	for &b in x.bds {
 		if b.g != g { continue }
+		if b.blend {
+			// what lies under it: its blended pixels can be kept
+			b.done = true
+			if b.ok { under = b.h == 0 ? 1 : b.h }
+			continue
+		}
 		// its backdrop is drawn first in its layer
 		if !b.ok { return }
 		key = fx_mix(key, b.h)
 	}
+	fx.cache_under = under
 	fx.cache_id = group_id(x, e.l, g, 0x6c61796572)
 	fx.cache_key = key
 	fx.cache_anchor = x.anchor[g]
@@ -353,7 +368,7 @@ fx_cache_backdrop :: proc(e: ^Effects, g: i32) -> (id, key: u64, anchor: draw.Ve
 	x := e.fxc
 	if x == nil { return }
 	for &b in x.bds {
-		if b.g != g { continue }
+		if b.g != g || b.blend { continue }
 		b.done = true
 		if !b.ok || !fx_settings.enabled { return }
 		return group_id(x, e.l, g, 0x6264), b.h, b.anchor
