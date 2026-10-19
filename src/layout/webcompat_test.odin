@@ -158,7 +158,7 @@ quirks_mode_layout :: proc(t: ^testing.T) {
 block_in_inline_margins_collapse :: proc(t: ^testing.T) {
 	with_layout(t, `<!doctype html><body style="margin:0;font-size:10px;line-height:10px">
 		<div id=a style="margin-bottom:24px">a</div><span><div id=b style="margin-top:19px;margin-bottom:30px">b</div></span><div id=c style="margin-top:5px">c</div>
-		<div id=d style="margin-bottom:24px">d</div><span><div><div id=e style="margin:19px 0 40px">e</div></div></span><div id=f>f</div>
+		<div id=d style="margin-bottom:24px">d</div><span><div><div id=e style="margin:19px 0 40px">e</div></div><p id=g style="margin:10px 0 0">g</p></span><div id=f>f</div>
 	</body>`, proc(t: ^testing.T, l: ^Layout, doc: ^dom.Document) {
 		y_of :: proc(l: ^Layout, doc: ^dom.Document, id: string) -> f32 {
 			r, _ := box_of(l, dom.find_by_id(doc, id), {800, 600}, 0)
@@ -168,7 +168,8 @@ block_in_inline_margins_collapse :: proc(t: ^testing.T) {
 		testing.expectf(t, math.abs(y_of(l, doc, "c") - 74) < 0.6, "30px and 5px collapse: c at 44 + 30 (%v)", y_of(l, doc, "c"))
 		// d at 84; e's 19px through the wrapping div with d's 24px; e's 40px through it to f
 		testing.expectf(t, math.abs(y_of(l, doc, "e") - 118) < 0.6, "nested: the first child's margin collapses too (%v)", y_of(l, doc, "e"))
-		testing.expectf(t, math.abs(y_of(l, doc, "f") - 168) < 0.6, "nested: the last child's margin is kept (%v)", y_of(l, doc, "f"))
+		testing.expectf(t, math.abs(y_of(l, doc, "g") - 168) < 0.6, "two blocks in a row in the inline: 40px and 10px collapse (%v)", y_of(l, doc, "g"))
+		testing.expectf(t, math.abs(y_of(l, doc, "f") - 178) < 0.6, "f right under g (%v)", y_of(l, doc, "f"))
 	})
 }
 

@@ -251,6 +251,7 @@ Line_Builder :: struct {
 	// the last block-in-inline: its bottom margin and where it ended (nothing after: the margin collapses out of the
 	// context, as an anonymous block's would)
 	block_margin, block_end: f32,
+	lines_at_block: int,     // lines made when it ended (more since: a line separates it from what comes next)
 }
 
 @(private)
@@ -957,7 +958,7 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (out: []Frag, lin
 		if c.segs_out != nil { append(c.segs_out, ..bufs.segs[:]) } else { keep_segs(c, bi, bufs.segs[:]) }
 	}
 	h = lb.y
-	if blocks && lb.block_margin != 0 && lb.block_end == lb.y {
+	if blocks && lb.block_margin != 0 && lb.block_end == lb.y && len(lb.lines) == lb.lines_at_block {
 		h -= lb.block_margin
 		trail = lb.block_margin
 	}
@@ -1029,6 +1030,12 @@ block_in_inline :: proc(lb: ^Line_Builder, k: i32) {
 	if leading {
 		strut_add(lb.fc.open, kb.margin[0])
 		top = 0
+	} else if lb.block_end == lb.y && lb.any_line && len(lb.lines) == lb.lines_at_block {
+		// right after another block-in-inline (no line between): the two margins collapse
+		s: Strut
+		strut_add(&s, lb.block_margin)
+		strut_add(&s, kb.margin[0])
+		top = lb.y - lb.block_margin + strut_value(s)
 	}
 	res: Result
 	if .Bfc in kb.flags {
@@ -1045,7 +1052,7 @@ block_in_inline :: proc(lb: ^Line_Builder, k: i32) {
 	bottom := res.end
 	strut_add(&bottom, kb.margin[2])
 	lb.y = top + kb.pre_h + res.h + strut_value(bottom)
-	lb.block_margin, lb.block_end = strut_value(bottom), lb.y
+	lb.block_margin, lb.block_end, lb.lines_at_block = strut_value(bottom), lb.y, len(lb.lines)
 	lb.first = false
 	lb.any_line = true
 	start_line(lb)
