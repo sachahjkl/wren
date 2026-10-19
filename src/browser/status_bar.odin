@@ -245,7 +245,7 @@ recent_detail :: proc(pick: proc(d: ^Frame_Detail) -> bool) -> ^Frame_Detail {
 	return nil
 }
 
-Panel_Section :: enum u8 { Frames, Display, Phases, Style, Layout, Compositor, Wasm, Memory, Build }
+Panel_Section :: enum u8 { Frames, Display, Phases, Style, Layout, Compositor, Gpu_Steps, Wasm, Memory, Build }
 
 // Columns of label / value rows above the graph, in the status bar's text size: three when the window is wide enough,
 // else two, else one.
@@ -261,9 +261,9 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 		w := col * f32(ncols) + gap * f32(ncols - 1)
 		layout: [][]Panel_Section
 		switch ncols {
-		case 3: layout = {{.Frames, .Display}, {.Phases, .Style, .Layout}, {.Compositor, .Wasm, .Memory, .Build}}
-		case 2: layout = {{.Frames, .Display, .Phases, .Style}, {.Layout, .Compositor, .Wasm, .Memory, .Build}}
-		case:   layout = {{.Frames, .Display, .Phases, .Style, .Layout, .Compositor, .Wasm, .Memory, .Build}}
+		case 3: layout = {{.Frames, .Display, .Gpu_Steps}, {.Phases, .Style, .Layout}, {.Compositor, .Wasm, .Memory, .Build}}
+		case 2: layout = {{.Frames, .Display, .Phases, .Style}, {.Layout, .Compositor, .Gpu_Steps, .Wasm, .Memory, .Build}}
+		case:   layout = {{.Frames, .Display, .Phases, .Style, .Layout, .Compositor, .Gpu_Steps, .Wasm, .Memory, .Build}}
 		}
 		if ui.popover(PANEL_ID, anchor, w, .Above, align_right = true) {
 			ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.1))})
@@ -371,6 +371,7 @@ panel_section :: proc(app: ^App, t: ^Tab, section: Panel_Section, w: f32) {
 		} else {
 			ui.stat_row("cp_none", "Page", "not drawn", w, mono = false)
 		}
+	case .Gpu_Steps: panel_gpu_steps(app, w)
 	case .Wasm:
 		ui.stat_heading("wasm", "WEBASSEMBLY", w)
 		mods := t != nil && t.page != nil ? len(t.page.instances) : 0

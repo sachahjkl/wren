@@ -99,6 +99,7 @@ prof_frame_end :: proc(app: ^App, items, elements: int) {
 		prof_end(.Frame)
 		prof_record(app, items, elements)
 	}
+	gpu_steps_frame(app)
 	hud_frame_end(app)
 }
 
@@ -115,6 +116,7 @@ Frame_Rec :: struct {
 	lay_pass:  lay.Pass_Kind,
 	lay_steps: [5]f32,
 	lay_pre:   [2]i32,
+	gpu_steps: Gpu_Steps_Frame,   // GPU time by step (gpu_steps.odin), when profiled
 }
 
 // Moments of the start-up, in ms since the process was created (prof_mark).
@@ -257,6 +259,7 @@ prof_record :: proc(app: ^App, items, elements: int) {
 			if prof.frames[k].gpu_index == index { prof.frames[k].gpu_ms = ms; break }
 		}
 	}
+	gpu_steps_attach(app, prof.frames[:])
 }
 
 ////////////////////////////////
@@ -309,6 +312,7 @@ prof_report :: proc() {
 	for f in prof.frames { if f.gpu_ms > 0 { append(&gv, f64(f.gpu_ms)) } }
 	gs := stat_of(gv[:])
 	fmt.sbprintf(&sb, "%-12s %7d %8.3f %8.3f %8.3f %8.3f %9.3f\n", "GPU draw", gs.n, gs.mean, gs.p50, gs.p95, gs.p99, gs.max)
+	gpu_steps_report(&sb, prof.frames[:])
 	last: Frame_Rec
 	if len(prof.frames) > 0 { last = prof.frames[len(prof.frames) - 1] }
 	fmt.sbprintf(&sb, "\nlast frame: %d layout items, %d instances, %d batches, %d styled elements\n", last.items, last.insts, last.batches, last.elements)
@@ -323,6 +327,7 @@ prof_report :: proc() {
 	strings.write_string(&csv, "t_ms,budget_ms,gpu_ms,items,insts,batches,elements,ui_boxes")
 	for p in Phase { fmt.sbprintf(&csv, ",%v", p) }
 	strings.write_string(&csv, ",lay_pass,lay_tree,lay_layout,lay_finish,lay_display,lay_bands,lay_ahead,lay_taken")
+	gpu_steps_csv_header(&csv)
 	strings.write_byte(&csv, '\n')
 	for f in prof.frames {
 		fmt.sbprintf(&csv, "%.3f,%.3f,%.3f,%d,%d,%d,%d,%d", f.t_ms, f.budget, f.gpu_ms, f.items, f.insts, f.batches, f.elements, f.ui_boxes)
@@ -330,6 +335,7 @@ prof_report :: proc() {
 		fmt.sbprintf(&csv, ",%v", f.lay_pass)
 		for s in f.lay_steps { fmt.sbprintf(&csv, ",%.3f", s) }
 		fmt.sbprintf(&csv, ",%d,%d", f.lay_pre[0], f.lay_pre[1])
+		gpu_steps_csv_row(&csv, f.gpu_steps)
 		strings.write_byte(&csv, '\n')
 	}
 	_ = os.write_entire_file(strings.concatenate({prof.out, ".csv"}, context.temp_allocator), transmute([]byte)strings.to_string(csv))
