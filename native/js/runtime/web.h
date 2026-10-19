@@ -253,7 +253,7 @@ typedef struct web_extracted { uint8_t *data; size_t len; char *type; JSValue st
 bool web_extract_body(JSContext *ctx, JSValueConst v, web_extracted *out, const char *what);
 void web_extracted_free(JSContext *ctx, web_extracted *e);
 
-/* ---- structured serialization (web_clone.c, weak: clone.c may provide them) ---- */
+/* ---- structured serialization (web_clone.c: runtime/clone.c's when linked, else the engine's serializer) ---- */
 
 /* the serialized bytes (free with web_clone_free), or NULL with a DataCloneError pending */
 uint8_t *web_clone_serialize(JSContext *ctx, JSValueConst v, size_t *len);

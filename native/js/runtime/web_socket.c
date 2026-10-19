@@ -334,11 +334,31 @@ JSValue wjr_EventSource_close(JSContext *ctx, JSValueConst this_val, int argc, J
 
 /* ---- MessageEvent ---- */
 
-/* the data of a worker's message event: runtime/workers.c knows how it is serialized (JS_UNINITIALIZED: not one) */
-__attribute__((weak)) JSValue wj_worker_message_data(JSContext *ctx, JSValueConst ev, uint64_t host)
+/* a worker's message is a structured serialization (runtime/clone.c, when it is linked: weak) */
+__attribute__((weak)) bool wj_clone_is_serialized(const uint8_t *data, size_t len);
+__attribute__((weak)) JSValue wj_clone_deserialize(JSContext *ctx, const uint8_t *data, size_t len);
+
+/* the browser's Event_data of a message: a deserialized value (worker messages) or the text itself */
+static JSValue message_text_or_value(JSContext *ctx, uint64_t h)
 {
-    WJ_UNUSED(ctx); WJ_UNUSED(ev); WJ_UNUSED(host);
-    return JS_UNINITIALIZED;
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Event_data(h, wj_scratch.data, wj_scratch.cap));
+    size_t len = n > 0 ? (size_t)n : 0;
+    if (!wj_clone_is_serialized || !wj_clone_deserialize || !wj_clone_is_serialized(wj_scratch.data, len)) {
+        return JS_NewStringLen(ctx, (const char *)wj_scratch.data, len);
+    }
+    /* the scratch buffer may move while deserializing: a copy */
+    uint8_t *copy = malloc(len ? len : 1);
+    if (!copy) { return JS_ThrowOutOfMemory(ctx); }
+    memcpy(copy, wj_scratch.data, len);
+    JSValue v = wj_clone_deserialize(ctx, copy, len);
+    free(copy);
+    if (JS_IsException(v)) {
+        /* HTML: a message that cannot be deserialized is a messageerror; data is null */
+        JS_FreeValue(ctx, JS_GetException(ctx));
+        v = JS_NULL;
+    }
+    return v;
 }
 
 JSValue wjr_MessageEvent_get_data(JSContext *ctx, JSValueConst this_val)
@@ -358,12 +378,7 @@ JSValue wjr_MessageEvent_get_data(JSContext *ctx, JSValueConst this_val)
     uint64_t h = web_event_host(this_val);
     if (!h) { return JS_NULL; }
     JSValue v = pending_take(ctx, h);
-    if (JS_IsUninitialized(v)) { v = wj_worker_message_data(ctx, this_val, h); }
-    if (JS_IsUninitialized(v)) {
-        int32_t n;
-        WJ_FETCH_STRING(n, wr_Event_data(h, wj_scratch.data, wj_scratch.cap));
-        v = JS_NewStringLen(ctx, (const char *)wj_scratch.data, n > 0 ? (size_t)n : 0);
-    }
+    if (JS_IsUninitialized(v)) { v = message_text_or_value(ctx, h); }
     if (JS_IsException(v)) { return v; }
     web_extra_set(ctx, this_val, "data", JS_DupValue(ctx, v));
     return v;

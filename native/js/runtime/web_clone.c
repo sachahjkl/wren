@@ -1,40 +1,66 @@
-/* web_clone.c: structured serialization (HTML "StructuredSerialize") for history.state, MessagePort, postMessage and
- * structuredClone().
+/* web_clone.c: structured serialization (HTML "StructuredSerialize") for history.state, MessagePort, window.postMessage
+ * and, when nothing better is linked, structuredClone().
  *
- * The engine's own object serializer does the work (JS_WriteObject without bytecode: primitives, plain objects and
- * arrays with shared references and cycles, Date, RegExp, Map, Set, ArrayBuffer and views, boxed primitives); anything
- * else (functions, symbols, platform objects, errors) is a DataCloneError. ArrayBuffers in a transfer list are
- * detached once serialized.
- * The functions here are weak: native/js/runtime/clone.c (structured cloning shared with workers) replaces them when it
- * provides the same names. */
+ * runtime/clone.c (structured cloning shared with workers, HTML's algorithm: errors, wrapper objects and every
+ * DataCloneError case) is used when it is part of the engine (weak references: this file does not need it). Otherwise
+ * the engine's own object serializer does the work (JS_WriteObject without bytecode: primitives, plain objects and
+ * arrays with shared references and cycles, Date, RegExp, Map, Set, ArrayBuffer and views, boxed primitives);
+ * functions and platform objects are a DataCloneError. A tag byte in front says which one wrote the bytes (a state
+ * kept in the session history outlives the build that wrote it). ArrayBuffers in a transfer list are detached once
+ * serialized. */
 #include <stdio.h>
 #include <stdlib.h>
 #include "web.h"
 
-__attribute__((weak)) uint8_t *web_clone_serialize(JSContext *ctx, JSValueConst v, size_t *len)
+__attribute__((weak)) uint8_t *wj_clone_serialize(JSContext *ctx, JSValueConst value, JSValueConst transfer, size_t *len);
+__attribute__((weak)) JSValue wj_clone_deserialize(JSContext *ctx, const uint8_t *data, size_t len);
+
+enum { CLONE_ENGINE = 1, CLONE_SHARED = 2 };
+
+uint8_t *web_clone_serialize(JSContext *ctx, JSValueConst v, size_t *len)
 {
-    uint8_t *p = JS_WriteObject(ctx, len, v, JS_WRITE_OBJ_REFERENCE);
-    if (p) { return p; }
-    JSValue e = JS_GetException(ctx);
-    const char *m = JS_ToCString(ctx, e);
-    char msg[300];
-    snprintf(msg, sizeof msg, "The object could not be cloned (%s).", m ? m : "unsupported value");
-    if (m) { JS_FreeCString(ctx, m); }
-    JS_FreeValue(ctx, e);
-    wj_throw_dom(ctx, "DataCloneError", msg);
-    return NULL;
+    size_t n = 0;
+    uint8_t *p;
+    uint8_t tag;
+    if (wj_clone_serialize) {
+        p = wj_clone_serialize(ctx, v, JS_UNDEFINED, &n);   /* malloc'ed; DataCloneError pending on failure */
+        if (!p) { return NULL; }
+        tag = CLONE_SHARED;
+    } else {
+        p = JS_WriteObject(ctx, &n, v, JS_WRITE_OBJ_REFERENCE);   /* js_malloc'ed */
+        if (!p) {
+            JSValue e = JS_GetException(ctx);
+            const char *m = JS_ToCString(ctx, e);
+            char msg[300];
+            snprintf(msg, sizeof msg, "The object could not be cloned (%s).", m ? m : "unsupported value");
+            if (m) { JS_FreeCString(ctx, m); }
+            JS_FreeValue(ctx, e);
+            wj_throw_dom(ctx, "DataCloneError", msg);
+            return NULL;
+        }
+        tag = CLONE_ENGINE;
+    }
+    uint8_t *q = js_malloc(ctx, n + 1);
+    if (q) {
+        q[0] = tag;
+        memcpy(q + 1, p, n);
+        *len = n + 1;
+    }
+    if (tag == CLONE_SHARED) { free(p); } else { js_free(ctx, p); }
+    return q;
 }
 
-__attribute__((weak)) void web_clone_free(JSContext *ctx, uint8_t *p) { js_free(ctx, p); }
+void web_clone_free(JSContext *ctx, uint8_t *p) { js_free(ctx, p); }
 
-__attribute__((weak)) JSValue web_clone_deserialize(JSContext *ctx, const uint8_t *p, size_t len)
+JSValue web_clone_deserialize(JSContext *ctx, const uint8_t *p, size_t len)
 {
-    JSValue v = JS_ReadObject(ctx, p, len, JS_READ_OBJ_REFERENCE);
-    if (JS_IsException(v)) {
+    if (len >= 1 && p[0] == CLONE_SHARED && wj_clone_deserialize) { return wj_clone_deserialize(ctx, p + 1, len - 1); }
+    if (len >= 1 && p[0] == CLONE_ENGINE) {
+        JSValue v = JS_ReadObject(ctx, p + 1, len - 1, JS_READ_OBJ_REFERENCE);
+        if (!JS_IsException(v)) { return v; }
         JS_FreeValue(ctx, JS_GetException(ctx));
-        return wj_throw_dom(ctx, "DataCloneError", "The data could not be deserialized.");
     }
-    return v;
+    return wj_throw_dom(ctx, "DataCloneError", "The data could not be deserialized.");
 }
 
 typedef struct transfer_list { JSValue list; uint32_t n; } transfer_list;
@@ -79,6 +105,7 @@ void web_transfer_detach(JSContext *ctx, JSValueConst list)
     }
 }
 
+/* structuredClone(value, {transfer}): weak, runtime/clone.c's wins when it is linked */
 __attribute__((weak)) JSValue wjr_WindowOrWorkerGlobalScope_structuredClone(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(this_val);

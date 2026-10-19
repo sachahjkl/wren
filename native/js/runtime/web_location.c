@@ -20,7 +20,8 @@ JSValue wjr_Window_get_location(JSContext *ctx, JSValueConst this_val)
     return web_singleton(ctx, WEB_SINGLE_LOCATION, make_location);
 }
 
-JSValue wjr_Document_get_location(JSContext *ctx, JSValueConst this_val)
+/* weak: the DOM part may define it too (the same object either way) */
+__attribute__((weak)) JSValue wjr_Document_get_location(JSContext *ctx, JSValueConst this_val)
 {
     /* null for a document without a browsing context: here every document of a realm has one */
     if (!wj_this(ctx, this_val, WJ_IFACE_Document)) { return JS_EXCEPTION; }
