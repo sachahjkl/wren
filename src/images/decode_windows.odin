@@ -41,13 +41,18 @@ codec_destroy :: proc(c: ^Codec_Context) {
 
 // Headers only: format, natural size, frames, orientation. Allocates no pixels.
 probe_with :: proc(c: ^Codec_Context, data: []byte, opts: Decode_Options) -> (Info, Error) {
-	_, info, err := run(c, data, opts, true)
+	_, info, err := run(c, nil, data, opts, true)
 	return info, err
 }
 
 // The pixels. The image belongs to the caller (image_destroy), allocated with context.allocator.
 decode_with :: proc(c: ^Codec_Context, data: []byte, opts: Decode_Options) -> (^Image, Info, Error) {
-	return run(c, data, opts, false)
+	return run(c, nil, data, opts, false)
+}
+
+// Probe or decode of a shared blob (the decoding threads): an SVG document is parsed once per blob.
+run_blob :: proc(c: ^Codec_Context, b: ^Blob, opts: Decode_Options, header_only: bool) -> (^Image, Info, Error) {
+	return run(c, b, b.bytes, opts, header_only)
 }
 
 // Synchronous helpers for tools and tests: a codec context made and destroyed around the call, on the calling thread.
@@ -78,14 +83,19 @@ wic_release :: proc(w: ^Wic) {
 }
 
 @(private)
-run :: proc(c: ^Codec_Context, data: []byte, opts: Decode_Options, header_only: bool) -> (img: ^Image, info: Info, err: Error) {
+run :: proc(c: ^Codec_Context, b: ^Blob, data: []byte, opts: Decode_Options, header_only: bool) -> (img: ^Image, info: Info, err: Error) {
 	l := opts.limits
 	if len(data) == 0 { return nil, {}, .Empty }
 	if len(data) > l.max_encoded_bytes || len(data) > int(max(u32)) { return nil, {}, .Too_Many_Bytes }
 	info.format = sniff(data, opts.mime, opts.nosniff)
 	#partial switch info.format {
 	case .Unknown: return nil, info, .Unknown_Format
-	case .Svg: return nil, info, .Unsupported_Format
+	case .Svg: return svg_run(b, data, opts, header_only)
+	case .Webp, .Avif:
+		if hw, hh, known := header_size(data, info.format); known {
+			if e := check_size(hw, hh, l); e != .None { return nil, info, e }
+		}
+		return native_raster(data, info, opts, header_only)
 	}
 	if hw, hh, known := header_size(data, info.format); known {
 		if e := check_size(hw, hh, l); e != .None { return nil, info, e }
@@ -101,9 +111,7 @@ run :: proc(c: ^Codec_Context, data: []byte, opts: Decode_Options, header_only: 
 	hr := f.CreateDecoderFromStream(f, w.stream, nil, WICDecodeMetadataCacheOnDemand, &w.decoder)
 	if !succeeded(hr) {
 		missing := hr == WINCODEC_ERR_COMPONENTNOTFOUND || hr == WINCODEC_ERR_UNKNOWNIMAGEFORMAT || hr == WINCODEC_ERR_COMPONENTINITIALIZEFAILURE
-		#partial switch info.format {
-		case .Webp, .Avif, .Heif: if missing { return nil, info, .Codec_Missing }
-		}
+		if info.format == .Heif && missing { return nil, info, .Codec_Missing }
 		switch hr {
 		case E_OUTOFMEMORY: return nil, info, .Too_Much_Memory
 		case HRESULT_ARITHMETIC_OVERFLOW: return nil, info, .Too_Many_Pixels   // sizes the decoder itself cannot represent
@@ -151,6 +159,7 @@ run :: proc(c: ^Codec_Context, data: []byte, opts: Decode_Options, header_only: 
 	}
 	pixels, perr := copy_rgba(f, src, sw, sh)
 	if perr != .None { return nil, info, perr }
+	if l.color_manage { info.color = manage_color(f, frame, pixels) }
 	img = new(Image)
 	img.allocator = context.allocator
 	img.info = info
@@ -354,4 +363,47 @@ gif_frame_rect :: proc(fr: ^IWICBitmapFrameDecode) -> (x, y, w, h: int) {
 		com_release(q)
 	}
 	return
+}
+
+////////////////////////////////
+// Colour management of what WIC decodes
+
+// The frame's colour contexts (an embedded ICC profile, or EXIF's colour space) applied to `pixels` (RGBA, from the
+// frame): converted to sRGB. A profile of 4 MB at most is read; unusable ones leave the pixels as they are.
+@(private)
+manage_color :: proc(f: ^IWICImagingFactory, frame: ^IWICBitmapFrameDecode, pixels: []u8) -> Color_Tag {
+	MAX_CONTEXTS :: 4
+	MAX_PROFILE :: 4 << 20
+	count: u32
+	if !succeeded(frame.GetColorContexts(frame, 0, nil, &count)) || count == 0 { return .Untagged }
+	count = min(count, MAX_CONTEXTS)
+	ctxs: [MAX_CONTEXTS]^IWICColorContext
+	made := u32(0)
+	defer for i in 0 ..< made { com_release(ctxs[i]) }
+	for i in 0 ..< count {
+		if !succeeded(f.CreateColorContext(f, &ctxs[i])) || ctxs[i] == nil { break }
+		made += 1
+	}
+	if made == 0 { return .Untagged }
+	actual: u32
+	if !succeeded(frame.GetColorContexts(frame, made, &ctxs[0], &actual)) { return .Untagged }
+	// a profile wins over the EXIF colour space (files often carry both: the profile is the precise one)
+	exif := u32(0)
+	for i in 0 ..< min(actual, made) {
+		c := ctxs[i]
+		kind: u32
+		if !succeeded(c.GetType(c, &kind)) { continue }
+		switch kind {
+		case WICColorContextProfile:
+			size: u32
+			if !succeeded(c.GetProfileBytes(c, 0, nil, &size)) || size == 0 || size > MAX_PROFILE { continue }
+			icc := make([]u8, int(size), context.temp_allocator)
+			if !succeeded(c.GetProfileBytes(c, size, raw_data(icc), &size)) { continue }
+			if color_icc_to_srgb(icc[:min(int(size), len(icc))], pixels) { return .Icc }
+		case WICColorContextExifColorSpace:
+			_ = c.GetExifColorSpace(c, &exif)
+		}
+	}
+	if exif == 2 && color_adobe_to_srgb(pixels) { return .Adobe_Rgb }
+	return .Untagged
 }

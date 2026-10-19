@@ -22,7 +22,14 @@ Settings :: struct {
 	gpu_max_bytes:     int,
 	background_tiles:  int,
 	broken_icon_px:    int,
+	decode_stack_bytes: int,
+	svg_max_rasters:   int,     // rasters of one SVG image kept at once (one per size it is shown at)
+	svg_inline_enabled: bool,
+	svg_inline_max_bytes: int,
 }
+
+// Stack reserved per decoding thread (committed as used). SVG rendering recurses per nesting level.
+DECODER_STACK_DEFAULT :: 16 << 20
 
 PREFS := [?]config.Def{
 	{name = "images.enabled", kind = .Bool, default = {b = true},
@@ -38,7 +45,7 @@ PREFS := [?]config.Def{
 	{name = "images.max_image_bytes", kind = .Int, default = {i = 512 << 20}, bounded = true, min = 1 << 16, max = 1 << 36, bytes = true, unit = "bytes",
 		description = "Most memory the decoded pixels of one image may take, every frame of an animation included."},
 	{name = "images.animation.enabled", kind = .Bool, default = {b = true},
-		description = "Play animated images (GIF). Off: their first frame is shown."},
+		description = "Play animated images (GIF, WebP, AVIF). Off: their first frame is shown."},
 	{name = "images.animation.min_delay_ms", kind = .Int, default = {i = 11}, bounded = true, min = 0, max = 10_000, unit = "ms",
 		description = "Animation frames meant to last less than this are shown for images.animation.default_delay_ms instead (files often say 0 or 10 ms where they mean \"as fast as reasonable\")."},
 	{name = "images.animation.default_delay_ms", kind = .Int, default = {i = 100}, bounded = true, min = 1, max = 60_000, unit = "ms",
@@ -69,6 +76,30 @@ PREFS := [?]config.Def{
 		description = "Size of the icon a broken image shows (CSS pixels), followed by its alt text. A broken image without width / height attributes is as large as both."},
 	{name = "images.background.max_tiles", kind = .Int, default = {i = 4096}, bounded = true, min = 1, max = 1 << 24,
 		description = "Most tiles one repeated background image draws in a box; a tiny image repeated over a huge box stops there."},
+	{name = "images.color_management", kind = .Bool, default = {b = true},
+		description = "Convert images tagged with a colour space (an ICC profile such as Display P3 or Adobe RGB, AVIF's CICP code points, EXIF's Adobe RGB) to sRGB, the space pages are composed in. Off: their pixels are taken as sRGB (colours look washed out or too saturated)."},
+	{name = "images.decode.stack_bytes", kind = .Int, default = {i = DECODER_STACK_DEFAULT}, bounded = true, min = 1 << 20, max = 1 << 30, bytes = true, unit = "bytes", restart = true,
+		description = "Stack reserved for each image decoding thread (memory is committed only as used). Rendering an SVG document recurses once per nesting level: keep it large enough for images.svg.max_depth."},
+	{name = "images.svg.enabled", kind = .Bool, default = {b = true},
+		description = "Show SVG images (<img>, CSS images, <picture>) and inline <svg> elements. Off: SVG images are broken and inline <svg> elements are empty."},
+	{name = "images.svg.max_nodes", kind = .Int, default = {i = 200_000}, bounded = true, min = 16, max = 1 << 28, unit = "nodes",
+		description = "Most XML nodes an SVG document may have, also counted once <use> references and markers are expanded (a small file can describe millions of shapes that way). Past it the image is broken."},
+	{name = "images.svg.max_depth", kind = .Int, default = {i = 256}, bounded = true, min = 8, max = 4096, unit = "levels",
+		description = "Deepest nesting of elements (and chains of <use>) an SVG document may have. Rendering recurses per level: see images.decode.stack_bytes."},
+	{name = "images.svg.max_entity_expansion", kind = .Int, default = {i = 1 << 20}, bounded = true, min = 0, max = 1 << 30, bytes = true, unit = "bytes",
+		description = "Bytes the internal entities of an SVG document's DTD may add when expanded (\"billion laughs\" files expand a few bytes into gigabytes)."},
+	{name = "images.svg.max_render_cost", kind = .Int, default = {i = 4_000_000_000}, bounded = true, min = 1 << 20, max = 1 << 50, unit = "pixels",
+		description = "Estimated pixels drawing an SVG document may touch at the size it is shown (every shape's box, layers, filter regions times their effects). Past it the image is broken: this bounds the time one SVG can take on a decoding thread."},
+	{name = "images.svg.text", kind = .Bool, default = {b = true},
+		description = "Draw the text of SVG documents with the system's fonts (loaded once, on the first document with text). Off: SVG text is not drawn."},
+	{name = "images.svg.data_images", kind = .Bool, default = {b = true},
+		description = "Draw the <image> elements of SVG documents whose href is a data: URL (PNG, JPEG, GIF, WebP, and one level of SVG). Other URLs are never loaded from an SVG shown as an image."},
+	{name = "images.svg.max_rasters", kind = .Int, default = {i = 4}, bounded = true, min = 1, max = 64,
+		description = "Rasters of one SVG image kept at once: it is drawn sharp at each size it is shown at (times the screen's scale); the least recently shown size goes first."},
+	{name = "images.svg.inline", kind = .Bool, default = {b = true},
+		description = "Draw inline <svg> elements of HTML documents (rendered like SVG images, with the element's color for currentColor and its font)."},
+	{name = "images.svg.inline_max_bytes", kind = .Int, default = {i = 4 << 20}, bounded = true, min = 1 << 10, max = 1 << 30, bytes = true, unit = "bytes",
+		description = "Largest inline <svg> element (serialised markup, with the symbols it references) that is drawn; larger ones stay empty."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
@@ -84,6 +115,16 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 			max_image_bytes = config.int_of(p, "images.max_image_bytes"),
 			min_delay_ms = int(config.int_of(p, "images.animation.min_delay_ms")),
 			default_delay_ms = int(config.int_of(p, "images.animation.default_delay_ms")),
+			color_manage = config.bool_of(p, "images.color_management"),
+			svg = Svg_Limits{
+				enabled = config.bool_of(p, "images.svg.enabled"),
+				max_nodes = int(config.int_of(p, "images.svg.max_nodes")),
+				max_depth = int(config.int_of(p, "images.svg.max_depth")),
+				max_expansion = config.int_of(p, "images.svg.max_entity_expansion"),
+				max_render_cost = config.int_of(p, "images.svg.max_render_cost"),
+				text = config.bool_of(p, "images.svg.text"),
+				data_images = config.bool_of(p, "images.svg.data_images"),
+			},
 		},
 		animate = config.bool_of(p, "images.animation.enabled"),
 		decode_threads = int(config.int_of(p, "images.decode.threads")),
@@ -99,6 +140,10 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		gpu_max_bytes = int(config.int_of(p, "images.gpu.max_bytes")),
 		background_tiles = int(config.int_of(p, "images.background.max_tiles")),
 		broken_icon_px = int(config.int_of(p, "images.broken.icon_px")),
+		decode_stack_bytes = int(config.int_of(p, "images.decode.stack_bytes")),
+		svg_max_rasters = int(config.int_of(p, "images.svg.max_rasters")),
+		svg_inline_enabled = config.bool_of(p, "images.svg.inline"),
+		svg_inline_max_bytes = int(config.int_of(p, "images.svg.inline_max_bytes")),
 	}
 }
 

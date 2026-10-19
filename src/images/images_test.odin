@@ -52,6 +52,8 @@ sniffing :: proc(t: ^testing.T) {
 	testing.expect_value(t, sniff_signature(transmute([]byte)string("\x00\x00\x00\x18ftypheic\x00\x00\x00\x00mif1heic")), Format.Heif)
 	testing.expect_value(t, sniff_signature(transmute([]byte)string("\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00isommp42")), Format.Unknown)
 	testing.expect_value(t, sniff(transmute([]byte)string("<svg xmlns='x'/>")), Format.Svg)
+	testing.expect_value(t, sniff(transmute([]byte)string("<!-- Generator: x -->\n<svg xmlns='x'/>")), Format.Svg)
+	testing.expect_value(t, sniff(transmute([]byte)string("<html><body><svg></svg>")), Format.Unknown)
 	testing.expect_value(t, sniff(transmute([]byte)string("\x89PNG\r\n\x1a\n"), "image/svg+xml"), Format.Svg)
 	// the content decides, not the label; nosniff refuses a type that is not an image
 	testing.expect_value(t, sniff(transmute([]byte)string("\x89PNG\r\n\x1a\n"), "image/jpeg"), Format.Png)
@@ -187,8 +189,9 @@ hostile_files :: proc(t: ^testing.T) {
 	testing.expect_value(t, e5, Error.Unknown_Format)
 	_, _, e6 := decode_file(t, "text.png")
 	testing.expect_value(t, e6, Error.Unknown_Format)
-	_, _, e7 := decode_file(t, "drawing.svg")
-	testing.expect_value(t, e7, Error.Unsupported_Format)
+	svg, _, e7 := decode_file(t, "drawing.svg")   // SVG is rendered now (media_test.odin)
+	image_destroy(svg)
+	testing.expect_value(t, e7, Error.None)
 	small := LIMITS_DEFAULT
 	small.max_encoded_bytes = 100
 	_, _, e8 := decode_file(t, "noise.png", Decode_Options{limits = small})
@@ -203,10 +206,7 @@ hostile_files :: proc(t: ^testing.T) {
 	testing.expect_value(t, e10, Error.Too_Much_Memory)
 	_, _, e11 := decode_now(nil, opts())
 	testing.expect_value(t, e11, Error.Empty)
-	// a WebP decodes where the Windows codec is installed, and fails cleanly where it is not
-	wimg, winfo, we := decode_file(t, "pixel.webp")
-	defer image_destroy(wimg)
-	testing.expect(t, (we == .None && winfo.width == 1) || we == .Codec_Missing, "WebP: decoded, or Codec_Missing")
+
 }
 
 @(test)

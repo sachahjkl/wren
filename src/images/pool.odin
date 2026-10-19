@@ -21,11 +21,16 @@ import "wb:host"
 
 Port_Id :: distinct u64
 
-// Encoded bytes shared between their owner and the jobs reading them.
+// Encoded bytes shared between their owner and the jobs reading them. An SVG document is parsed once, by the first job
+// that needs it, and kept here for every later raster of it (native.odin).
 Blob :: struct {
 	bytes:     []byte,
 	refs:      i32,   // atomic
 	allocator: runtime.Allocator,
+	svg_doc:   rawptr,        // atomic: the parsed document (library handle), nil until parsed
+	svg_info:  Info,
+	svg_err:   u8,            // atomic: Error of a parse that failed
+	svg_mu:    sync.Mutex,
 }
 
 // Takes ownership of `bytes` (allocated with context.allocator).
@@ -44,6 +49,7 @@ blob_release :: proc(b: ^Blob) {
 	if b == nil { return }
 	if sync.atomic_sub(&b.refs, 1) == 1 {
 		context.allocator = b.allocator
+		svg_doc_free(b)
 		delete(b.bytes)
 		free(b)
 	}
@@ -114,24 +120,28 @@ dec_mu: sync.Mutex   // start / stop
 
 // Optional codecs found on this system (the built-in ones are always there). Probed once, by the first decoding thread.
 @(private)
-codecs: struct { webp, heif, probed: bool }
+codecs: struct { heif, probed: bool }
 @(private)
 codecs_ready: sync.Sema
 
-CLSID_WICWebpDecoder := GUID{0x7693e886, 0x51c9, 0x4070, {0x84, 0x19, 0x9f, 0x70, 0x73, 0x8e, 0xc8, 0xfa}}
 CLSID_WICHeifDecoder := GUID{0xe9a4a80a, 0x44fe, 0x4de4, {0x89, 0x71, 0x71, 0x50, 0xb1, 0x0a, 0x51, 0x99}}
 
-// Can this browser decode `f` here? WebP needs the "WebP Image Extensions", AVIF and HEIF the "HEIF Image Extensions"
-// (AVIF also the "AV1 Video Extension", which cannot be detected without decoding: an AVIF file may still fail with
-// Codec_Missing). Known only once the decoder runs; false before.
+// Can this browser decode `f` here? Everything but HEIF always can (WIC's built-in codecs, and the built-in decoders
+// of WebP, AVIF and SVG); HEIF needs the Store's "HEIF Image Extensions" (and HEVC), known once the decoder runs.
 codec_supported :: proc(f: Format) -> bool {
 	switch f {
-	case .Png, .Jpeg, .Gif, .Bmp, .Ico, .Tiff: return true
-	case .Webp: return codecs.webp
-	case .Avif, .Heif: return codecs.heif
-	case .Unknown, .Svg: return false
+	case .Png, .Jpeg, .Gif, .Bmp, .Ico, .Tiff, .Webp, .Avif, .Svg: return true
+	case .Heif: return codecs.heif
+	case .Unknown: return false
 	}
 	return false
+}
+
+// The Accept header of image requests (Fetch §4.5: the "image" destination's value, with the formats really decodable
+// here first), and of `<picture>` / `<source type>`'s choice. HEIF is announced only where the system can decode it.
+accept_header :: proc() -> string {
+	if codecs.heif { return "image/avif,image/webp,image/svg+xml,image/heic,image/*,*/*;q=0.8" }
+	return "image/avif,image/webp,image/svg+xml,image/*,*/*;q=0.8"
 }
 
 // The format a MIME type names (for <source type>), Unknown when it is not an image type this browser knows.
@@ -154,11 +164,6 @@ format_of_mime :: proc(mime: string) -> Format {
 @(private)
 probe_codecs :: proc() {
 	unk: rawptr
-	if succeeded(win.CoCreateInstance(&CLSID_WICWebpDecoder, nil, win.CLSCTX_INPROC_SERVER, win.IUnknown_UUID, &unk)) && unk != nil {
-		codecs.webp = true
-		com_release(unk)
-	}
-	unk = nil
 	if succeeded(win.CoCreateInstance(&CLSID_WICHeifDecoder, nil, win.CLSCTX_INPROC_SERVER, win.IUnknown_UUID, &unk)) && unk != nil {
 		codecs.heif = true
 		com_release(unk)
@@ -166,8 +171,9 @@ probe_codecs :: proc() {
 	codecs.probed = true
 }
 
-// Starts the decoding threads (`threads` <= 0: one). Idempotent; the threads use the process heap.
-decoder_start :: proc(threads: int, stack_bytes := 0) {
+// Starts the decoding threads (`threads` <= 0: one). Idempotent; the threads use the process heap. `stack_bytes`
+// reserved per thread (committed as used): SVG rendering recurses per nesting level (images.svg.max_depth).
+decoder_start :: proc(threads: int, stack_bytes := DECODER_STACK_DEFAULT) {
 	sync.mutex_lock(&dec_mu)
 	defer sync.mutex_unlock(&dec_mu)
 	if dec != nil { return }
@@ -355,13 +361,8 @@ decoder_thread :: proc(data: rawptr) {
 		start := time.tick_now()
 		{
 			context.allocator = runtime.heap_allocator()
-			if !have_codec {
-				j.err = .Platform
-			} else if j.kind == .Probe {
-				j.info, j.err = probe_with(&codec, j.data.bytes, j.opts)
-			} else {
-				j.image, j.info, j.err = decode_with(&codec, j.data.bytes, j.opts)
-			}
+			// without WIC (no COM on this thread) the built-in formats still decode
+			j.image, j.info, j.err = run_blob(have_codec ? &codec : nil, j.data, j.opts, j.kind == .Probe)
 		}
 		j.ms = time.duration_milliseconds(time.tick_since(start))
 		free_all(context.temp_allocator)
