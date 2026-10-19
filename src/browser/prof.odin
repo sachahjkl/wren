@@ -25,6 +25,7 @@ import "core:sync"
 import "core:thread"
 import win "core:sys/windows"
 import "toolkit:render"
+import "toolkit:ui"
 import lay "wb:layout"
 
 foreign import dbghelp "system:dbghelp.lib"
@@ -108,6 +109,7 @@ Frame_Rec :: struct {
 	gpu_ms: f32,
 	gpu_index: int,   // the renderer's index of the timed submit of this frame (-1: none)
 	items, insts, batches, elements: i32,
+	ui_boxes:  i32,    // boxes of the chrome's UI tree built this frame (ui.boxes_built)
 	// the layout pass of this frame, if any: its kind and its steps (lay.Layout.stats: box tree, layout, finishing,
 	// display list, spatial index), and the paragraphs laid out ahead on the layout threads / taken
 	lay_pass:  lay.Pass_Kind,
@@ -246,6 +248,7 @@ prof_record :: proc(app: ^App, items, elements: int) {
 	for p in Phase { rec.dur[p] = f32(phase_clock.acc[p]) }
 	rec.items, rec.elements = i32(items), i32(elements)
 	rec.insts, rec.batches = i32(len(app.dc.insts)), i32(len(app.dc.batches))
+	rec.ui_boxes = i32(ui.boxes_built(&app.ui_state))
 	if n := render.gpu_next_frame(&app.r); n > prof.gpu_next { rec.gpu_index = n - 1 }
 	prof.gpu_next = render.gpu_next_frame(&app.r)
 	append(&prof.frames, rec)
@@ -317,12 +320,12 @@ prof_report :: proc() {
 	_ = os.write_entire_file(strings.concatenate({prof.out, ".txt"}, context.temp_allocator), transmute([]byte)strings.to_string(sb))
 
 	csv := strings.builder_make(context.temp_allocator)
-	strings.write_string(&csv, "t_ms,budget_ms,gpu_ms,items,insts,batches,elements")
+	strings.write_string(&csv, "t_ms,budget_ms,gpu_ms,items,insts,batches,elements,ui_boxes")
 	for p in Phase { fmt.sbprintf(&csv, ",%v", p) }
 	strings.write_string(&csv, ",lay_pass,lay_tree,lay_layout,lay_finish,lay_display,lay_bands,lay_ahead,lay_taken")
 	strings.write_byte(&csv, '\n')
 	for f in prof.frames {
-		fmt.sbprintf(&csv, "%.3f,%.3f,%.3f,%d,%d,%d,%d", f.t_ms, f.budget, f.gpu_ms, f.items, f.insts, f.batches, f.elements)
+		fmt.sbprintf(&csv, "%.3f,%.3f,%.3f,%d,%d,%d,%d,%d", f.t_ms, f.budget, f.gpu_ms, f.items, f.insts, f.batches, f.elements, f.ui_boxes)
 		for p in Phase { fmt.sbprintf(&csv, ",%.3f", f.dur[p]) }
 		fmt.sbprintf(&csv, ",%v", f.lay_pass)
 		for s in f.lay_steps { fmt.sbprintf(&csv, ",%.3f", s) }

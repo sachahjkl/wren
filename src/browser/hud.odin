@@ -443,6 +443,7 @@ hud_settle_timer :: proc "system" (hwnd: win.HWND, msg: win.UINT, id: win.UINT_P
 		return
 	}
 	hud.settle_skip = true   // the frame this wakes is no sample
+	app.frames_requested = max(app.frames_requested, 1)   // (a wake without anything to do draws no frame)
 	if phase_clock.on { hud_refresh(app, now) }
 }
 
