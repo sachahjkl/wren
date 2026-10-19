@@ -180,7 +180,7 @@ smooth_destroy :: proc(s: ^Smooth_Scroll) {
 @(private = "file")
 smooth_allowed :: proc(app: ^App) -> bool {
 	if !smooth_cfg.enabled { return false }
-	if smooth_cfg.reduced_motion && (app.page_settings.style.reduced_motion || !platform.os_animations_enabled()) { return false }
+	if smooth_cfg.reduced_motion && (app.page_settings.style.reduced_motion || !os_animations_enabled(app)) { return false }
 	return true
 }
 

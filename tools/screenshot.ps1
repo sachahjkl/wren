@@ -3,7 +3,8 @@
 # -Keys: virtual keys posted after the clicks (names: PageUp PageDown End Home Left Up Right Down Space Tab, or a number).
 # -Actions: drags, right / double / triple clicks, keys with modifiers, typed text, captures in between (see below).
 # The cursor is parked outside the window for the first capture. Aborts if another window covers the target.
-param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300, [int]$Width = 0, [int]$Height = 0, [string[]]$Keys = @(), [string[]]$Actions = @())
+# -Extra: more arguments for the browser before the address (e.g. "--pref","browser.ui.theme=daylight").
+param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300, [int]$Width = 0, [int]$Height = 0, [string[]]$Keys = @(), [string[]]$Actions = @(), [string[]]$Extra = @())
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Add-Type @"
@@ -43,7 +44,7 @@ function Grab($h, $path) {
     $bmp.Save($path, [Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
 }
 
-$args2 = if ($Url) { @($Url) } else { @() }
+$args2 = @($Extra | Where-Object { $_ }) + $(if ($Url) { @($Url) } else { @() })
 $p = if ($args2.Count) { Start-Process (Join-Path $root 'build\browser.exe') -ArgumentList $args2 -PassThru } else { Start-Process (Join-Path $root 'build\browser.exe') -PassThru }
 try {
     $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -149,10 +150,27 @@ try {
                 $xy = $arg -split ','
                 $r = New-Object SH+RECT
                 if ([SH]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [SH]::GetWindowRect($h, [ref]$r) | Out-Null }
-                [SH]::SetCursorPos($r.L + [int]$xy[0] - 3, $r.T + [int]$xy[1]) | Out-Null; Start-Sleep -Milliseconds 60
-                [SH]::SetCursorPos($r.L + [int]$xy[0], $r.T + [int]$xy[1]) | Out-Null
+                $x0 = $(if ([int]$xy[0] -lt 0) { $r.R } else { $r.L }) + [int]$xy[0]   # (negative x: from the right edge)
+                [SH]::SetCursorPos($x0 - 3, $r.T + [int]$xy[1]) | Out-Null; Start-Sleep -Milliseconds 60
+                [SH]::SetCursorPos($x0, $r.T + [int]$xy[1]) | Out-Null
             }
             'hovershot' { Start-Sleep -Milliseconds $SettleMs; Grab $h $arg }
+            # the real pointer: mclick / mdclick:x,y click there (window-relative, a negative x counts from the right edge; goes through the system's hit test, so
+            # the window's own title bar, caption buttons and frame react as to a user); max / restore: the window state
+            'mclick' {
+                $xy = $arg -split ','; $r = New-Object SH+RECT
+                if ([SH]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [SH]::GetWindowRect($h, [ref]$r) | Out-Null }
+                [SH]::SetCursorPos($(if ([int]$xy[0] -lt 0) { $r.R } else { $r.L }) + [int]$xy[0], $r.T + [int]$xy[1]) | Out-Null; Start-Sleep -Milliseconds 120
+                [SH]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 50; [SH]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero)
+            }
+            'mdclick' {
+                $xy = $arg -split ','; $r = New-Object SH+RECT
+                if ([SH]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [SH]::GetWindowRect($h, [ref]$r) | Out-Null }
+                [SH]::SetCursorPos($(if ([int]$xy[0] -lt 0) { $r.R } else { $r.L }) + [int]$xy[0], $r.T + [int]$xy[1]) | Out-Null; Start-Sleep -Milliseconds 120
+                for ($i = 0; $i -lt 2; $i++) { [SH]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 30; [SH]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 60 }
+            }
+            'max' { [SH]::PostMessage($h, 0x0112, [IntPtr]0xF030, [IntPtr]::Zero) | Out-Null }       # WM_SYSCOMMAND SC_MAXIMIZE
+            'restore' { [SH]::PostMessage($h, 0x0112, [IntPtr]0xF120, [IntPtr]::Zero) | Out-Null }   # SC_RESTORE
         }
         Start-Sleep -Milliseconds $ClickPauseMs
     }

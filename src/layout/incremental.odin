@@ -1,5 +1,6 @@
 package layout
 
+import "core:slice"
 import "core:time"
 import "wb:base"
 import "wb:css"
@@ -66,6 +67,8 @@ Inc_State :: struct {
 	live_boxes, live_items: int,
 	dead_boxes, dead_items, dead_lines, dead_frags, dead_segs: int,
 	segs:        [dynamic]Seg,     // measured segments of inline formatting contexts (inline.odin, Box_Info.segs)
+	spare_lines: [dynamic]Line,    // compact_lines packs into these, then swaps them with the layout's
+	spare_frags: [dynamic]Frag,
 	arena_base:  uint,
 	fonts_base:  int,
 	// diagnostics
@@ -85,6 +88,7 @@ Inc_Pass :: struct {
 	snapping: bool,                  // the display list may be spliced: record what boxes laid out again move
 	snapped:  []bool,
 	snap:     [dynamic]Snap,
+	wide:     bool,                  // many paragraphs may be laid out again: some on the layout threads (parallel.odin)
 }
 
 @(private)
@@ -99,6 +103,8 @@ inc_reset :: proc(l: ^Layout) {
 inc_destroy :: proc(l: ^Layout) {
 	delete(l.inc.info)
 	delete(l.inc.segs)
+	delete(l.inc.spare_lines)
+	delete(l.inc.spare_frags)
 	delete(l.inc.verify_report)
 }
 
@@ -371,6 +377,8 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	l.last_pass = .Incremental
 	start_items := len(l.inline_items)
 	start_boxes := len(l.boxes)
+	// boxes made again go at the end and dead ones stay: the arrays are no longer in tree order (finish walks the tree)
+	if len(roots) > 0 || len(plans) > 0 { l.tree_order = false; l.tree_gen += 1 }
 	for r in roots { kill_contents(&c, r) }
 	drop_planned(&c, plans[:])
 	// before the styles are re-read: anonymous children follow them
@@ -408,14 +416,14 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	l.inc.live_items += len(l.inline_items) - start_items
 	l.inc.last_rebuilt = len(l.boxes) - start_boxes
 
+	// widths that change everywhere (the viewport's, a font), or many boxes made again or restyled: the paragraphs that
+	// will be laid out again are, ahead, on the layout threads
+	pass.wide = (vp_changed && l.viewport.x != input.viewport.x) || fonts_changed ||
+		l.inc.last_rebuilt + len(dirty) + len(styled_dirty) >= set.threads_min_contexts
 	note_inputs(l, input)
 	l.passes[.Incremental] += 1
 	t1 := time.tick_now()
-	root := &l.boxes[0]
-	root.pos = {0, 0}
-	root.size = input.viewport
-	layout_contents(&c, 0, input.viewport.x, input.viewport.y, -1, nil)
-	l.boxes[0].size = input.viewport
+	pre_run(&c, layout_root)
 	l.inc.last_laid = len(pass.laid)
 	t2 := time.tick_now()
 	t3, t4: time.Tick
@@ -428,7 +436,7 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 		finish(&c)
 		t3 = time.tick_now()
 		build_display_list(&c)
-		note_refresh_inputs(l)
+		note_refresh_inputs(l, same_boxes = len(roots) == 0 && len(plans) == 0)
 		t4 = time.tick_now()
 		build_bands(l, max(input.band_h, 16) * input.scale)
 	}
@@ -659,6 +667,11 @@ cached_segs :: proc(c: ^Ctx, bi: i32) -> [2]i32 {
 
 @(private)
 keep_segs :: proc(c: ^Ctx, bi: i32, segs: []Seg) {
+	if c.pre != nil && c.pre.streaming {
+		// the layout threads read the kept segments meanwhile: Inc_State.segs grows once they are done
+		append(&c.pre.pending_segs, Pending_Segs{bi, slice.clone(segs, context.temp_allocator)})
+		return
+	}
 	s := &c.l.inc
 	inf := &s.info[bi]
 	s.dead_segs += int(inf.segs[1] - inf.segs[0])
@@ -683,23 +696,33 @@ compact_lines :: proc(l: ^Layout) {
 		clear(&s.segs); append(&s.segs, ..segs[:])
 		s.dead_segs = 0
 	}
-	if s.dead_frags * 2 < len(l.frags) && s.dead_lines * 2 < len(l.lines) { return }
-	lines := make([dynamic]Line, 0, len(l.lines) - s.dead_lines, context.temp_allocator)
-	frags := make([dynamic]Frag, 0, len(l.frags) - s.dead_frags, context.temp_allocator)
+	// a resize lays every paragraph out again: as many lines die as live at each pass. Packing then waits until the dead
+	// ones are `inc_line_garbage` times the live ones, and goes to spare arrays that swap with the layout's (one copy)
+	r := f32(l.settings.inc_line_garbage)
+	if f32(s.dead_frags) <= r * f32(len(l.frags) - s.dead_frags) && f32(s.dead_lines) <= r * f32(len(l.lines) - s.dead_lines) { return }
+	lines := &s.spare_lines
+	frags := &s.spare_frags
+	clear(lines); clear(frags)
+	// room for the passes until the next packing: no growth (a copy of everything) in between
+	room :: proc(live: int, r: f32) -> int { return int(f32(live) * (1 + r)) + live / 8 + 64 }
+	reserve(lines, room(len(l.lines) - s.dead_lines, r))
+	reserve(frags, room(len(l.frags) - s.dead_frags, r))
 	for &b in l.boxes {
 		if .Dead in b.flags || b.lines[1] <= b.lines[0] { continue }
 		l0 := i32(len(lines))
+		// a context's fragments are contiguous: one copy, the lines shifted by as much
+		fa, fb := l.lines[b.lines[0]].frags[0], l.lines[b.lines[1] - 1].frags[1]
+		d := i32(len(frags)) - fa
+		append(frags, ..l.frags[fa:fb])
 		for li in b.lines[0] ..< b.lines[1] {
 			ln := l.lines[li]
-			f0 := i32(len(frags))
-			append(&frags, ..l.frags[ln.frags[0]:ln.frags[1]])
-			ln.frags = {f0, i32(len(frags))}
-			append(&lines, ln)
+			ln.frags += d
+			append(lines, ln)
 		}
 		b.lines = {l0, i32(len(lines))}
 	}
-	clear(&l.lines); append(&l.lines, ..lines[:])
-	clear(&l.frags); append(&l.frags, ..frags[:])
+	l.lines, s.spare_lines = s.spare_lines, l.lines
+	l.frags, s.spare_frags = s.spare_frags, l.frags
 	s.dead_lines, s.dead_frags = 0, 0
 }
 

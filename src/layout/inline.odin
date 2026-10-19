@@ -256,7 +256,11 @@ lb_band :: proc(lb: ^Line_Builder) {
 	if fc.bfc == nil || len(fc.bfc.floats) == 0 { lb.left, lb.right = 0, lb.cw; return }
 	ty := content_top(fc) + lb.y
 	l, r := bfc_band(fc.bfc, ty, ty + lb.strut_h, fc.x, fc.x + lb.cw)
-	lb.left, lb.right = l - fc.x, r - fc.x
+	// a side no float narrows is exactly the content box's: lines that no float reaches do not depend on where the
+	// context sits ((x + cw) - x is not always cw in floating point), as when no float is placed at all, so that a
+	// cached result (block.odin) is the one a new layout would make
+	lb.left = l == fc.x ? 0 : l - fc.x
+	lb.right = r == fc.x + lb.cw ? lb.cw : r - fc.x
 }
 
 @(private)
@@ -942,7 +946,10 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (out: []Frag, lin
 	}
 	commit_unit(&lb, false)
 	if !lb.empty || lb.content || len(lb.pending_abs) > 0 || len(lb.pending_floats) > 0 { finish_line(&lb, true, true) }
-	if recording { keep_segs(c, bi, bufs.segs[:]) }
+	if recording {
+		// a layout thread hands them back: kept by the UI thread if the result is taken (pre_adopt)
+		if c.segs_out != nil { append(c.segs_out, ..bufs.segs[:]) } else { keep_segs(c, bi, bufs.segs[:]) }
+	}
 	return lb.out[:], lb.lines[:], lb.y, !lb.any_line && !blocks
 }
 

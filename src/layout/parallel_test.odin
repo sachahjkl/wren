@@ -176,6 +176,102 @@ parallel_full_passes :: proc(t: ^testing.T) {
 	inc_ok(t, &f, &l, &par, {700, 600}, "text")
 }
 
+// Incremental passes with the layout threads (a window being resized: every paragraph at a new width) against the
+// same passes on one thread, step by step, and against full passes. Widths go both ways (segments measured on the
+// threads are kept and reused), heights change, a text and a style change in between.
+@(test)
+parallel_incremental_passes :: proc(t: ^testing.T) {
+	defer shutdown_threads()
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, PT_PAGE)
+	strings.write_string(&sb, `<style>.grid{display:grid;grid-template-columns:1fr 2fr;gap:3px}.cap{max-width:260px;margin:0 auto}
+.pct{padding:0 3%} .pct span{padding:0 2%;border-left:1px solid}</style>
+<div class="sec grid"><p>grid cell text that wraps</p><p>second grid cell with more words in it</p></div>
+<table><tr><td><p>a paragraph inside a table cell</p></td><td>other cell</td></tr></table>
+<div class=cap><p>a column at its max width keeps its lines when the window narrows a little</p></div>
+<p dir=rtl>مرحبا بالعالم with english words <b>mixed</b> in a right to left paragraph</p>
+<p>left to right with עברית inside and more text after it</p>`)
+	for i in 0 ..< 80 {
+		fmt.sbprintf(&sb, "<div class=sec><p class=pct>filler %d with <span>some</span> words to wrap <a href=#>link</a> and <em>more %d</em></p></div>\n", i, i * 3)
+	}
+	f := pt_load(strings.to_string(sb))
+	defer pt_unload(&f)
+	par := settings_default()
+	par.threads, par.threads_min_contexts, par.threads_min_boxes = 3, 0, 0
+	one := settings_default()
+	one.threads = 0
+	lp, ls: Layout
+	defer { destroy(&lp); destroy(&ls) }
+	run(&lp, pt_input(&f, &par, {900, 600}))
+	run(&ls, pt_input(&f, &one, {900, 600}))
+	ahead, taken := 0, 0
+	step :: proc(t: ^testing.T, f: ^Pt, lp, ls: ^Layout, par, one: ^Settings, vp: Vec2, what: string, ahead, taken: ^int) {
+		run(lp, pt_input(f, par, vp))
+		run(ls, pt_input(f, one, vp))
+		ahead^ += lp.pre_counts[0]
+		taken^ += lp.pre_counts[1]
+		testing.expectf(t, lp.last_pass == .Incremental, "%s: %v pass (%s)", what, lp.last_pass, lp.inc.fallback)
+		ok, report := compare_layouts(lp, ls)
+		testing.expectf(t, ok, "%s: threaded incremental pass differs from the one on one thread: %s", what, report)
+		ref: Layout
+		defer destroy(&ref)
+		run_full(&ref, pt_input(f, one, vp))
+		ok, report = compare_layouts(lp, &ref)
+		testing.expectf(t, ok, "%s: threaded incremental pass differs from a full pass: %s", what, report)
+	}
+	for w in ([]f32{880, 850, 700, 333, 334, 1200, 90, 600, 601, 1500, 900}) {
+		step(t, &f, &lp, &ls, &par, &one, {w, 600}, fmt.tprintf("width %v", w), &ahead, &taken)
+	}
+	step(t, &f, &lp, &ls, &par, &one, {900, 500}, "height", &ahead, &taken)
+	// a text changed, then widths again
+	ps := make([dynamic]base.Handle, context.temp_allocator)
+	stack := make([dynamic]base.Handle, context.temp_allocator)
+	append(&stack, f.doc.root)
+	for len(stack) > 0 {
+		h := pop(&stack)
+		n := dom.get(f.doc, h)
+		if n.kind == .Element && n.name == "p" { append(&ps, h) }
+		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(f.doc, ch).next { append(&stack, ch) }
+	}
+	dom.set_text_content(f.doc, ps[len(ps) / 3], "a changed paragraph that is longer than it was and wraps on a few lines at this width")
+	restyle :: proc(f: ^Pt) {
+		old := f.st
+		f.st = style.compute_styles(f.eng, f.doc, {})
+		style.journal_diff(old, f.st)
+		style.styled_destroy(old)
+	}
+	restyle(&f)
+	step(t, &f, &lp, &ls, &par, &one, {900, 500}, "text", &ahead, &taken)
+	step(t, &f, &lp, &ls, &par, &one, {640, 500}, "width after text", &ahead, &taken)
+	// a style for layout (segments measured again on the threads)
+	_ = dom.set_attribute(f.doc, ps[len(ps) / 2], "style", "font-size:13px;padding-left:7%")
+	restyle(&f)
+	step(t, &f, &lp, &ls, &par, &one, {700, 500}, "style and width", &ahead, &taken)
+	step(t, &f, &lp, &ls, &par, &one, {710, 500}, "width after style", &ahead, &taken)
+	testing.expectf(t, taken > 0, "no context laid out ahead was taken (ahead %d)", ahead)
+}
+
+// A column at its max width: a narrower window lays none of its paragraphs out again, ahead or not.
+@(test)
+parallel_incremental_untouched :: proc(t: ^testing.T) {
+	defer shutdown_threads()
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, "<style>body{margin:0;font-size:10px} main{max-width:400px;margin:0 auto}</style><body><main>")
+	for i in 0 ..< 60 { fmt.sbprintf(&sb, "<p>paragraph %d in a column of a fixed width that wraps on lines</p>", i) }
+	strings.write_string(&sb, "</main></body>")
+	f := pt_load(strings.to_string(sb))
+	defer pt_unload(&f)
+	par := settings_default()
+	par.threads, par.threads_min_contexts, par.threads_min_boxes = 3, 0, 0
+	l: Layout
+	defer destroy(&l)
+	run(&l, pt_input(&f, &par, {900, 600}))
+	run(&l, pt_input(&f, &par, {800, 600}))
+	testing.expect_value(t, l.last_pass, Pass_Kind.Incremental)
+	testing.expect_value(t, l.pre_counts[0], 0)
+	testing.expectf(t, l.inc.last_laid < 10, "%d boxes laid out again", l.inc.last_laid)
+}
+
 // A page with no paragraph laid out ahead (every context has an atomic inline or sits in a flex container).
 @(test)
 parallel_nothing_ahead :: proc(t: ^testing.T) {

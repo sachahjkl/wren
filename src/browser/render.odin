@@ -490,8 +490,10 @@ paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw
 		if s.blur > 0 && effects_settings.exact_shadows {
 			// a gaussian of half the blur radius (CSS Backgrounds §7.2), through a layer
 			ink := draw.rect_pad(draw.rect_shift(r, {s.x, s.y} * l.scale), fi.size * 0.5)
-			draw.push_effects(dc, ink, draw.Layer_Effects{alpha = 1, filters = {draw.filter_blur(s.blur * 0.5 * l.scale)}})
-			draw_run(dc, fid, fi.size, pos, col, it.text, opts)
+			id, key, anchor := fx_cache_text_shadow(it, i, fid, fi.size, col, pos, r, opts)   // kept from frame to frame
+			if draw.push_effects(dc, ink, draw.Layer_Effects{alpha = 1, filters = {draw.filter_blur(s.blur * 0.5 * l.scale)}, cache_id = id, cache_key = key, cache_anchor = anchor}) {
+				draw_run(dc, fid, fi.size, pos, col, it.text, opts)
+			}
 			draw.pop_layer(dc)
 			continue
 		}

@@ -139,8 +139,8 @@ relative_offset :: proc(c: ^Ctx, b: ^Box) -> Vec2 {
 finish :: proc(c: ^Ctx) {
 	l := c.l
 	order: []i32
-	if c.inc == nil && l.tree_order {
-		// a full pass made its boxes in tree order: no walk needed
+	if l.tree_order {
+		// a full pass made its boxes in tree order, and no partial rebuild since moved any: no walk needed
 		order = make([]i32, len(l.boxes), context.temp_allocator)
 		for i in 0 ..< len(order) { order[i] = i32(i) }
 	} else {

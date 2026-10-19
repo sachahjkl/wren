@@ -134,7 +134,7 @@ func registerPolicyHandlers(mux *http.ServeMux) {
 		io.WriteString(w, "hsts")
 	})
 	mux.HandleFunc("/wasm", func(w http.ResponseWriter, r *http.Request) {
-		b, err := os.ReadFile("examples/site/counter.wasm")
+		b, err := os.ReadFile(sitePath("counter.wasm"))
 		if err != nil {
 			http.Error(w, "run from the repo root", 500)
 			return
@@ -143,11 +143,11 @@ func registerPolicyHandlers(mux *http.ServeMux) {
 		w.Write(b)
 	})
 	mux.HandleFunc("/wasm-wrong", func(w http.ResponseWriter, r *http.Request) {
-		b, _ := os.ReadFile("examples/site/counter.wasm")
+		b, _ := os.ReadFile(sitePath("counter.wasm"))
 		w.Header().Set("Content-Type", "text/html")
 		w.Write(b)
 	})
-	site := http.FileServer(http.Dir("examples/site"))
+	site := http.FileServer(http.Dir(siteDir))
 	mux.Handle("/site/", http.StripPrefix("/site/", site))
 	// the same site with a Content-Security-Policy: scripts only from other (unreachable) hosts => the module is blocked
 	mux.Handle("/site-csp/", http.StripPrefix("/site-csp/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -113,6 +113,15 @@ shrink_to_fit :: proc(c: ^Ctx, bi: i32, avail: f32) -> f32 {
 @(private)
 block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 	b := &c.l.boxes[bi]
+	if b.kind == .Block && .Block_In_Inline not_in b.flags && is_plain(c, bi) {
+		// width, min-width, max-width auto / none: what the general case below finds, without the style
+		ml := b.auto_l ? 0 : b.margin[3]
+		mr := b.auto_r ? 0 : b.margin[1]
+		if b.auto_l { b.margin[3] = 0 }
+		if b.auto_r { b.margin[1] = 0 }
+		b.size.x = max(avail - ml - mr, pb_w(b))
+		return
+	}
 	cs := b.cs
 	w: f32
 	if b.kind == .Replaced {
@@ -181,8 +190,9 @@ collapses_top :: proc(b: ^Box) -> bool {
 
 @(private)
 collapses_bottom :: proc(c: ^Ctx, b: ^Box) -> bool {
-	return b.kind == .Block && .Bfc not_in b.flags && b.border[2] == 0 && b.padding[2] == 0 && b.cs.height.kind == .Auto &&
-		(b.cs.min_height.kind == .Auto || px_of(c, b.cs.min_height, -1) <= 0)
+	if b.kind != .Block || .Bfc in b.flags || b.border[2] != 0 || b.padding[2] != 0 { return false }
+	if is_plain(c, b_index(c, b)) { return true }   // height and min-height auto
+	return b.cs.height.kind == .Auto && (b.cs.min_height.kind == .Auto || px_of(c, b.cs.min_height, -1) <= 0)
 }
 
 // Height a box would use from its `height` property, as a border-box height; ok = false: auto (content-based).
@@ -204,6 +214,7 @@ specified_height :: proc(c: ^Ctx, b: ^Box, cb_h: f32) -> (f32, bool) {
 // top) are recorded apart and merged, which is the same as adding them in place (a strut is a max / min).
 @(private)
 layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_Ctx) -> Result {
+	if c.pre != nil { pre_wait_box(c, bi) }
 	b := &c.l.boxes[bi]
 	b.size.x = w
 	fc := fc_in
@@ -235,9 +246,12 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_C
 	}
 	if !stack_ok(c) { b.size = {w, 0}; return Result{h = pb_h(b)} }
 	cs := b.cs
-	spec_h, has_h := specified_height(c, b, cb_h)
+	plain := is_plain(c, bi)   // height, its bounds, aspect-ratio: auto (the style is not read for them)
+	spec_h: f32
+	has_h := false
+	if !plain { spec_h, has_h = specified_height(c, b, cb_h) }
 	if forced_h >= 0 { spec_h, has_h = forced_h, true }
-	if !has_h && cs.aspect_ratio > 0 && b.kind != .Replaced && b.kind != .Inline {
+	if !has_h && !plain && cs.aspect_ratio > 0 && b.kind != .Replaced && b.kind != .Inline {
 		spec_h, has_h = (w - pb_w(b)) / cs.aspect_ratio + pb_h(b), true
 	}
 	if has_h && forced_h < 0 { spec_h = clamp_h(c, b, spec_h, cb_h) }
@@ -293,13 +307,20 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_C
 		content_h = 0
 	}
 	b = &c.l.boxes[bi]
-	h := has_h ? spec_h : clamp_h(c, b, content_h + pb_h(b), cb_h)
+	h: f32
+	if has_h {
+		h = spec_h
+	} else if plain {
+		h = max(content_h + pb_h(b), pb_h(b))   // clamp_h with no bounds
+	} else {
+		h = clamp_h(c, b, content_h + pb_h(b), cb_h)
+	}
 	if b.kind == .Table { h = content_h }
 	if .Root in b.flags { h = max(h, c.vp.y) }
 	b.size = {w, h}
 	if .List_Item in b.flags && b.marker_w != 0 { place_marker(c, bi) }
 	if b.abs_first != NONE { if b.kind == .Grid { grid_abs(c, bi) } else { layout_abs_list(c, bi) } }
-	if .Ifc in b.flags { layout_inline_abs(c, bi) }
+	if .Ifc in b.flags && !pre_no_inline_abs(c, bi) { layout_inline_abs(c, bi) }
 	b = &c.l.boxes[bi]
 	res.h = h
 	if outer_open != nil { strut_merge(outer_open, contrib) }
@@ -345,7 +366,7 @@ flow_children :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse
 	local: Strut
 	open := collapse_top && fc.open != nil
 	through = true
-	for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next { prefetch_fields(c.l.boxes[ch].cs, LAYOUT_FIELDS) }
+	for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next { if !is_plain(c, ch) { prefetch_fields(c.l.boxes[ch].cs, LAYOUT_FIELDS) } }
 	for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next {
 		k := &c.l.boxes[ch]
 		strut := open ? fc.open : &local
@@ -356,6 +377,7 @@ flow_children :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse
 			continue
 		}
 		if k.kind == .Inline { continue }
+		if c.pre != nil { pre_wait_box(c, ch) }   // its context may still be in the making on a layout thread
 		ctop := content_top(fc)
 		if .Float in k.flags {
 			place_float(c, ch, bi, cw, fc, ctop + y + (open ? 0 : strut_value(local)))
@@ -371,7 +393,8 @@ flow_children :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse
 		probe := strut^
 		strut_add(&probe, mt)
 		hyp := (open ? fc.y : ctop + y) + strut_value(probe)
-		floor := bfc_clear_floor(fc.bfc, k.cs.clear)
+		floor: f32 = -math.F32_MAX   // (no float: the style is not read)
+		if fc.bfc != nil && len(fc.bfc.floats) > 0 { floor = bfc_clear_floor(fc.bfc, k.cs.clear) }
 		cleared := floor > hyp
 		ky: f32   // border-box top, relative to the content top
 		child_fc: Flow_Ctx

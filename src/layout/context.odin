@@ -42,7 +42,17 @@ Ctx :: struct {
 	dl_fix:   ^[dynamic]i32,
 	dl_par:   bool,                     // the document is large enough to share the display list out
 	sums:     []Style_Sum,              // building the box tree: summaries of the styles (style_sum.odin), nil: none
-	pre_boxes: []Pre_Box,               // full pass: per box, what the layout threads found ahead (parallel.odin), nil: none
+	pre_boxes: []Pre_Box,               // per box, what the layout threads found ahead (parallel.odin), nil: none
+	segs_out: ^[dynamic]Seg,            // a layout thread: segments measured by an incremental pass go here (not kept)
+	// per box, found on the layout threads (parallel.odin): its sizes are all auto (width, height, their minimums and
+	// maximums, no aspect ratio), so the block layout needs not read them from the style. nil: not known
+	plain:    []bool,
+}
+
+// The box's width and height properties are all auto (Ctx.plain).
+@(private)
+is_plain :: #force_inline proc(c: ^Ctx, bi: i32) -> bool {
+	return c.plain != nil && int(bi) < len(c.plain) && c.plain[bi]
 }
 
 @(private)
@@ -210,6 +220,7 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	case .Length: info.line_h = cs.line_height.v * c.scale
 	}
 	font_resolve(c, &info)
+	if c.pre != nil { pre_drain(c) }   // the layout threads read the fonts: no growth while they run
 	fi := i32(len(c.l.fonts))
 	append(&c.l.fonts, info)
 	c.font_cache[key] = fi

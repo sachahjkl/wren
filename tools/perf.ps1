@@ -1,9 +1,11 @@
 # Measures the browser on real pages with real input. Needs build\browser_prof.exe (build.bat profile).
 #   powershell -File tools\perf.ps1 [-Only name,name] [-NoSample] [-Exe browser_prof.exe] [-Tag suffix] [-Prefs '--pref a=b ...']
+# -GpuSteps 1: the GPU time of each step of the frame too (a timestamp per step: totals grow a little; see the report's
+# "GPU steps" table and the gpu_*_ms CSV columns). -GpuSteps 2: every draw call timed, the slowest listed.
 # -Prefs is added to every run (e.g. '--pref wasm.wasmtime.compiler=winch' with -Tag _winch to compare the Wasm compilers).
 # Scenarios ending in _full run with layout.incremental.enabled=false (the reference for incremental layout).
 # Writes build\perf\<run>.txt (per-phase statistics, CPU time, sampling profile) and <run>.csv (one row per frame).
-param([string[]]$Only = @(), [switch]$NoSample, [string]$Exe = 'browser_prof.exe', [string]$Tag = '', [string]$Prefs = '')
+param([string[]]$Only = @(), [switch]$NoSample, [string]$Exe = 'browser_prof.exe', [string]$Tag = '', [string]$Prefs = '', [int]$GpuSteps = 0)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root 'build\perf'
@@ -106,6 +108,7 @@ function Run($name, $url, [scriptblock]$actions, [bool]$sample = $true, [string]
     $prefix = Join-Path $out "$name$Tag"
     $env:WREN_PROF = $prefix
     $env:WREN_SAMPLE = if ($sample -and -not $NoSample) { '1' } else { '0' }
+    $env:WREN_GPU_STEPS = "$GpuSteps"
     $argv = (@($Prefs, $extra, $url) | Where-Object { $_ }) -join ' '
     $p = if ($argv) { Start-Process (Join-Path $root "build\$Exe") -ArgumentList $argv -PassThru } else { Start-Process (Join-Path $root "build\$Exe") -PassThru }
     try {
@@ -197,6 +200,19 @@ function Resize($h, [int]$ms) {
     }
     [PF]::SetWindowPos($h, [IntPtr]::Zero, $r.L, $r.T, $w0, $h0, 0x14) | Out-Null
 }
+function ResizeDrag($h, [int]$ms, [int]$every = 4) {
+    $r = New-Object PF+RECT; [PF]::GetWindowRect($h, [ref]$r) | Out-Null
+    $w0 = $r.R - $r.L; $h0 = $r.B - $r.T; $sw = [Diagnostics.Stopwatch]::StartNew(); $next = 0
+    while ($sw.ElapsedMilliseconds -lt $ms) {
+        if ($sw.ElapsedMilliseconds -ge $next) {
+            $w = [int]($w0 * (0.8 + 0.2 * [Math]::Sin($sw.ElapsedMilliseconds / 400.0)))
+            [PF]::SetWindowPos($h, [IntPtr]::Zero, $r.L, $r.T, $w, $h0, 0x14) | Out-Null
+            $next = $sw.ElapsedMilliseconds + $every
+        }
+        [Threading.Thread]::Yield() | Out-Null
+    }
+    [PF]::SetWindowPos($h, [IntPtr]::Zero, $r.L, $r.T, $w0, $h0, 0x14) | Out-Null
+}
 
 Run 'home_idle'  ''   { param($h) Start-Sleep 8 } $false
 Run 'home_hover' ''   { param($h) Start-Sleep 2; Hover $h 8000 }
@@ -260,6 +276,15 @@ Run 'p10k_keys'      (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; Keys $h 80
 Run 'p10k_hover_fast' (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; HoverFast $h 8000 } $false
 Run 'typing'         (FileUrl $typing) { param($h) Start-Sleep 4; Mark; Typing $h 8000 } $false
 Run 'p10k_resize_pacing' (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; Resize $h 6000 } $false
+# a window edge dragged by a fast mouse: a new width every 4 ms, on a steady clock (Resize sleeps 16 ms, which the timer
+# resolution turns into 16 or 31 ms, and pauses let the compositor settle and record between steps)
+Run 'p10k_resize_drag' (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; ResizeDrag $h 6000 4 } $false
+Run 'p50k_resize_drag' (FileUrl $p50k) { param($h) Start-Sleep 20; Mark; ResizeDrag $h 6000 4 } $false
+# the same page with a media query on the width (as most sites have): every step restyles the whole page
+$p10kmq = Join-Path $out 'p10k_mq.html'
+if (-not (Test-Path $p10kmq)) { [IO.File]::WriteAllText($p10kmq, [IO.File]::ReadAllText($p10k).Replace('</style>', '@media (max-width: 400px) { h3 { font-size: 14px } }</style>')) }
+Run 'p10k_mq_resize_drag' (FileUrl $p10kmq) { param($h) Start-Sleep 5; Mark; ResizeDrag $h 6000 4 } $false
 Run 'anim_pacing'       (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
 Run 'transforms_pacing' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
 Run 'effects_pacing'    (FileUrl (Join-Path $site 'effects.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
+Run 'effects_wheel'     (FileUrl (Join-Path $site 'effects.html')) { param($h) Start-Sleep 3; Mark; WheelStream $h 8000 4 -120 } $false

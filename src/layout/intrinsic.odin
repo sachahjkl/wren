@@ -35,6 +35,7 @@ intrinsic_clamp :: proc(c: ^Ctx, b: ^Box, w, pb: f32) -> f32 {
 }
 
 intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
+	if c.pre != nil { pre_wait_box(c, bi) }   // (its inline boxes' edges are resolved while measuring)
 	b := &c.l.boxes[bi]
 	if b.intr_ok { return b.intr }
 	res := intrinsic_compute(c, bi, false)
@@ -46,6 +47,7 @@ intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 // Min-content width of a box's content, ignoring its own `width` (the content size suggestion of flex items, CSS
 // Flexbox §4.5). Border and padding included.
 intrinsic_content_min :: proc(c: ^Ctx, bi: i32) -> f32 {
+	if c.pre != nil { pre_wait_box(c, bi) }
 	b := &c.l.boxes[bi]
 	if b.cs.width.kind != .Px { return intrinsic(c, bi)[0] }
 	return intrinsic_compute(c, bi, true)[0]

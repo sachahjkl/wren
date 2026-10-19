@@ -53,7 +53,7 @@ func registerMediaHandlers(mux *http.ServeMux) {
 		mediaAccept.Lock()
 		mediaAccept.m[name] = r.Header.Get("Accept")
 		mediaAccept.Unlock()
-		serveMedia(w, filepath.Join("examples/site/media", name))
+		serveMedia(w, sitePath("media", name))
 	})
 	mux.HandleFunc("/media/accept", func(w http.ResponseWriter, r *http.Request) {
 		mediaAccept.Lock()
@@ -67,11 +67,11 @@ func registerMediaHandlers(mux *http.ServeMux) {
 		w.Header().Set("Vary", "Accept")
 		switch {
 		case strings.Contains(accept, "image/avif"):
-			serveMedia(w, "examples/site/media/quad8a.avif")
+			serveMedia(w, sitePath("media", "quad8a.avif"))
 		case strings.Contains(accept, "image/webp"):
-			serveMedia(w, "examples/site/media/quad-lossy.webp")
+			serveMedia(w, sitePath("media", "quad-lossy.webp"))
 		default:
-			serveMedia(w, "examples/site/images/red.png")
+			serveMedia(w, sitePath("images", "red.png"))
 		}
 	})
 }

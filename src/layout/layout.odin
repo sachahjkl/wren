@@ -68,6 +68,7 @@ run_full :: proc(l: ^Layout, input: Input) {
 	note_inputs(l, input)
 	l.last_pass = .Full
 	l.passes[.Full] += 1
+	l.tree_gen += 1
 
 	marker: u8
 	c := ctx_make(l, input, &marker)
@@ -82,12 +83,7 @@ run_full :: proc(l: ^Layout, input: Input) {
 	mark_bfc_floats(&c, 0)
 	reserve_lines(l)
 	t1 := time.tick_now()
-	pre_layout(&c)
-	root := &l.boxes[0]
-	root.pos = {0, 0}
-	root.size = input.viewport
-	layout_contents(&c, 0, input.viewport.x, input.viewport.y, -1, nil)
-	l.boxes[0].size = input.viewport
+	pre_run(&c, layout_root)
 	t2 := time.tick_now()
 	finish(&c)
 	t3 := time.tick_now()
@@ -99,7 +95,17 @@ run_full :: proc(l: ^Layout, input: Input) {
 	t5 := time.tick_now()
 	l.stats = {ms(t0, t1), ms(t1, t2), ms(t2, t3), ms(t3, t4), ms(t4, t5)}
 	inc_note_full(l)
-	pre_garbage(&c)
+}
+
+// The block layout of a pass: the initial containing block at the viewport, and everything in it.
+@(private)
+layout_root :: proc(c: ^Ctx) {
+	l := c.l
+	root := &l.boxes[0]
+	root.pos = {0, 0}
+	root.size = c.vp
+	layout_contents(c, 0, c.vp.x, c.vp.y, -1, nil)
+	l.boxes[0].size = c.vp
 }
 
 @(private)
@@ -139,6 +145,8 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	clear(&l.deco_items)
 	inc_reset(l)
 	pre_destroy(l)
+	dl_walks_destroy(&l.dl_walks)
+	l.tree_gen += 1
 	if l.arena_ready { virtual.arena_free_all(&l.arena) }
 	l.valid = false
 	l.last_pass = .None
@@ -154,6 +162,7 @@ destroy :: proc(l: ^Layout) {
 	delete(l.deco_items)
 	inc_destroy(l)
 	pre_destroy(l)
+	dl_walks_destroy(&l.dl_walks)
 	if l.arena_ready { virtual.arena_destroy(&l.arena) }
 	l^ = {}
 }
