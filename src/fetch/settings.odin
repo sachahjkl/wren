@@ -31,6 +31,7 @@ Settings :: struct {
 	file_access:            File_Access,
 	bad_ports_allowed:      []int,    // owned: ports taken off the built-in blocklist
 	bad_ports_blocked:      []int,    // owned: ports added to it
+	files:                  File_Settings,   // file: folders: index, listing (directory.odin)
 }
 
 PREFS := [?]config.Def{
@@ -64,7 +65,10 @@ PREFS := [?]config.Def{
 	{name = "network.bad_ports.blocked", kind = .String, default = {s = ""}, description = "Comma-separated ports to add to the blocklist."},
 }
 
-register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
+register_prefs :: proc(p: ^config.Prefs) {
+	config.register(p, PREFS[:])
+	config.register(p, FILE_PREFS[:])
+}
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s: Settings
@@ -88,6 +92,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	}
 	s.bad_ports_allowed = parse_port_list(config.string_of(p, "network.bad_ports.allowed"))
 	s.bad_ports_blocked = parse_port_list(config.string_of(p, "network.bad_ports.blocked"))
+	s.files = file_settings_from_prefs(p)
 	return s
 }
 
@@ -101,6 +106,7 @@ settings_destroy :: proc(s: ^Settings) {
 	delete(s.accept_language)
 	delete(s.bad_ports_allowed)
 	delete(s.bad_ports_blocked)
+	file_settings_destroy(&s.files)
 	s^ = {}
 }
 
