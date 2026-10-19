@@ -26,6 +26,8 @@ Js_Dom_State :: struct {
 	observers:   Observers,              // js_dom_observe.odin
 	layout:      Js_Layout,              // js_dom_layout.odin
 	style_names: []string,               // getComputedStyle's property list (built once)
+	style_blocks: Decl_Cache,            // parsed style attributes (js_dom_style.odin)
+	style_probes: Decl_Cache,            // validated setProperty values
 }
 
 @(private)
@@ -48,6 +50,8 @@ js_dom_state :: proc(p: ^Page) -> ^Js_Dom_State {
 		delete(s.selectors)
 		observers_destroy(p, &s.observers)
 		delete(s.style_names)
+		decl_cache_destroy(&s.style_blocks)
+		decl_cache_destroy(&s.style_probes)
 		free(s)
 		p.jsdom = nil
 	}, p)

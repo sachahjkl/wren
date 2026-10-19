@@ -8,6 +8,7 @@ Js_Dom_Settings :: struct {
 	selector_cache_entries: int,    // parsed selector lists kept for querySelector & co
 	max_mutation_records:   int,    // records one MutationObserver may have waiting
 	max_rects:              int,    // getClientRects: rectangles of one element or range
+	style_cache_entries:    int,    // parsed style attributes (and setProperty values) kept for element.style
 }
 
 JS_DOM_PREFS := [?]config.Def{
@@ -19,6 +20,8 @@ JS_DOM_PREFS := [?]config.Def{
 		description = "Most records one MutationObserver may have waiting for delivery. Past it the oldest are dropped (with a warning in the console): a page that mutates without ever yielding cannot grow the queue without bound."},
 	{name = "javascript.dom.max_client_rects", kind = .Int, default = {i = 100_000}, bounded = true, min = 1, max = 10_000_000, unit = "rectangles",
 		description = "Most rectangles getClientRects returns for one element or range."},
+	{name = "javascript.dom.style_cache_entries", kind = .Int, default = {i = 256}, bounded = true, min = 0, max = 100_000, unit = "style attributes",
+		description = "Parsed style attributes, and validated style.setProperty values, kept per page for element.style (each): reading or changing a declaration in a loop does not parse again. 0 parses every time."},
 }
 
 js_dom_settings_from_prefs :: proc(p: ^config.Prefs) -> Js_Dom_Settings {
@@ -27,5 +30,6 @@ js_dom_settings_from_prefs :: proc(p: ^config.Prefs) -> Js_Dom_Settings {
 		selector_cache_entries = int(config.int_of(p, "javascript.dom.selector_cache_entries")),
 		max_mutation_records = int(config.int_of(p, "javascript.dom.max_mutation_records")),
 		max_rects = int(config.int_of(p, "javascript.dom.max_client_rects")),
+		style_cache_entries = int(config.int_of(p, "javascript.dom.style_cache_entries")),
 	}
 }

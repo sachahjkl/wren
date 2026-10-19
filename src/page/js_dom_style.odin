@@ -79,10 +79,84 @@ add_declaration :: proc(p: ^Page, block: ^[dynamic]Style_Decl, d: css.Declaratio
 	return len(pre) > 0 || len(customs) > 0
 }
 
+// Parsed declarations kept by text (javascript.dom.style_cache_entries each): the declarations of style attributes,
+// so that reading or changing element.style in a loop does not parse the attribute again, and the validated
+// declarations of setProperty(name, value) pairs. The key is the text alone (the parse depends on nothing else), shared
+// by every element that has it; the least recently used entry makes room.
+@(private)
+Decl_Cache :: struct {
+	entries: [dynamic]Decl_Entry,
+	index:   map[string]int,   // text -> entry
+	clock:   u64,
+}
+
+@(private)
+Decl_Entry :: struct {
+	text:  string,          // owned
+	decls: []Style_Decl,    // owned, with their strings
+	used:  u64,
+}
+
+@(private)
+decl_entry_free :: proc(e: ^Decl_Entry) {
+	for d in e.decls { delete(d.name); delete(d.value) }
+	delete(e.decls)
+	delete(e.text)
+}
+
+@(private)
+decl_cache_destroy :: proc(dc: ^Decl_Cache) {
+	for &e in dc.entries { decl_entry_free(&e) }
+	delete(dc.entries)
+	delete(dc.index)
+}
+
+// Keeps a copy of the declarations of `text`.
+@(private)
+decl_cache_put :: proc(dc: ^Decl_Cache, cap: int, text: string, block: []Style_Decl) {
+	if cap <= 0 { return }
+	if _, has := dc.index[text]; has { return }
+	dc.clock += 1
+	e := Decl_Entry{text = strings.clone(text), decls = make([]Style_Decl, len(block)), used = dc.clock}
+	for d, i in block { e.decls[i] = Style_Decl{name = strings.clone(d.name), value = strings.clone(d.value), important = d.important} }
+	if len(dc.entries) < cap {
+		append(&dc.entries, e)
+		dc.index[e.text] = len(dc.entries) - 1
+		return
+	}
+	oldest := 0
+	for x, i in dc.entries { if x.used < dc.entries[oldest].used { oldest = i } }
+	delete_key(&dc.index, dc.entries[oldest].text)
+	decl_entry_free(&dc.entries[oldest])
+	dc.entries[oldest] = e
+	dc.index[e.text] = oldest
+}
+
+// The declarations kept for `text`, as a temporary copy the caller may change.
+@(private)
+decl_cache_get :: proc(dc: ^Decl_Cache, text: string) -> (out: [dynamic]Style_Decl, hit: bool) {
+	i := dc.index[text] or_return
+	e := &dc.entries[i]
+	dc.clock += 1
+	e.used = dc.clock
+	out = make([dynamic]Style_Decl, len(e.decls), max(len(e.decls) + 1, 8), context.temp_allocator)
+	for d, k in e.decls { out[k] = Style_Decl{name = strings.clone(d.name, context.temp_allocator), value = strings.clone(d.value, context.temp_allocator), important = d.important} }
+	return out, true
+}
+
+@(private)
+style_cache_put :: proc(p: ^Page, text: string, block: []Style_Decl) {
+	decl_cache_put(&js_dom_state(p).style_blocks, p.settings.dom.style_cache_entries, text, block)
+}
+
+// The declarations of the element's style attribute (a temporary copy the caller may change).
 @(private)
 inline_block :: proc(c: ^Call, element: Api_Element) -> [dynamic]Style_Decl {
 	v, _ := dom.get_attribute(c.page.doc, H(element.handle), "style")
-	return parse_block(c.page, v)
+	if out, hit := decl_cache_get(&js_dom_state(c.page).style_blocks, v); hit { return out }
+	block := parse_block(c.page, v)
+	style_cache_put(c.page, v, block[:])
+	return block
 }
 
 // The value of `name` in a block: a declared longhand or custom property, or a shorthand rebuilt from its longhands
@@ -133,7 +207,11 @@ block_text :: proc(block: []Style_Decl) -> string {
 	for d in block {
 		if d.name in done { continue }
 		name, value, imp := d.name, d.value, d.important
+		// only the longhands of those shorthands start so (a cheap test before looking them up)
+		maybe_member := strings.has_prefix(d.name, "margin-") || strings.has_prefix(d.name, "padding-") || strings.has_prefix(d.name, "border-") ||
+			d.name == "top" || d.name == "right" || d.name == "bottom" || d.name == "left"
 		for sn in SHORTS {
+			if !maybe_member { break }
 			_, sh, _ := style.lookup_property(sn)
 			longs := style.short_longhands(sh)
 			member := false
@@ -158,7 +236,12 @@ block_text :: proc(block: []Style_Decl) -> string {
 
 @(private)
 write_block :: proc(c: ^Call, element: Api_Element, block: []Style_Decl) -> Api_Error {
-	return dom_error(dom.set_attribute(c.page.doc, H(element.handle), "style", block_text(block)))
+	text := block_text(block)
+	if err := dom_error(dom.set_attribute(c.page.doc, H(element.handle), "style", text)); err != .None { return err }
+	// kept when the text parses back to this very block: no longhands put together into a shorthand (which parse again
+	// in their own order)
+	if strings.count(text, ";") == len(block) { style_cache_put(c.page, text, block) }
+	return .None
 }
 
 InlineStyle_getProperty :: proc(c: ^Call, element: Api_Element, name: string) -> string {
@@ -188,21 +271,31 @@ InlineStyle_setProperty :: proc(c: ^Call, element: Api_Element, name: string, va
 	case strings.equal_fold(priority, "important"): important = true
 	case: return .None
 	}
-	// the value alone, as one declaration (a ';' or '!important' inside makes it invalid)
-	opt := style.parse_options(&c.page.settings.style)
-	decls := css.parse_declarations(strings.concatenate({n, ":", value}, context.temp_allocator), opt, context.temp_allocator)
-	if len(decls) != 1 || decls[0].important || decls[0].name != n { return .None }
-	d := decls[0]
-	d.important = important
-	// validated alone first: an invalid value changes nothing
-	probe := make([dynamic]Style_Decl, 0, 4, context.temp_allocator)
-	if !add_declaration(c.page, &probe, d) { return .None }
+	// the value alone, as one declaration (a ';' or '!important' inside makes it invalid), validated alone first: an
+	// invalid value changes nothing (kept by name and value: an invalid one as no declarations)
+	s := js_dom_state(c.page)
+	key := strings.concatenate({n, "\x00", value}, context.temp_allocator)
+	probe, known := decl_cache_get(&s.style_probes, key)
+	if !known {
+		probe = make([dynamic]Style_Decl, 0, 4, context.temp_allocator)
+		opt := style.parse_options(&c.page.settings.style)
+		decls := css.parse_declarations(strings.concatenate({n, ":", value}, context.temp_allocator), opt, context.temp_allocator)
+		if len(decls) == 1 && !decls[0].important && decls[0].name == n { add_declaration(c.page, &probe, decls[0]) }
+		decl_cache_put(&s.style_probes, c.page.settings.dom.style_cache_entries, key, probe[:])
+	}
+	if len(probe) == 0 { return .None }
+	for &x in probe { x.important = important }
 	block := inline_block(c, element)
-	// a shorthand replaces whatever said its longhands before (expanded or kept whole because of var())
+	// a shorthand replaces whatever said its longhands before: expanded, its longhands take their place (CSSOM "set a
+	// CSS declaration": in place, or at the end); kept whole because of var(), it replaces them
 	if !custom {
 		if _, sh, _ := style.lookup_property(n); sh != .None {
-			remove_named(&block, n)
-			for lp in style.short_longhands(sh) { remove_named(&block, style.prop_name(lp)) }
+			whole := len(probe) == 1 && probe[0].name == n
+			if whole {
+				for lp in style.short_longhands(sh) { remove_named(&block, style.prop_name(lp)) }
+			} else {
+				remove_named(&block, n)
+			}
 		}
 	}
 	for x in probe { block_set(&block, x) }

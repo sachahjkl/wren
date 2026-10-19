@@ -79,6 +79,31 @@ section("computed style", () => {
   throws("not an element", () => getComputedStyle(document), "TypeError");
 });
 
+section("parsed declarations kept between calls", () => {
+  const a = document.createElement("div"), b = document.createElement("div");
+  a.style.marginLeft = "1px";
+  a.style.color = "red";
+  a.style.marginTop = "2px";
+  const order = Array.from({ length: a.style.length }, (_, i) => a.style.item(i)).join();
+  eq("declaration order", order, "margin-left,color,margin-top");
+  eq("same answer when read again", Array.from({ length: a.style.length }, (_, i) => a.style.item(i)).join(), order);
+  b.setAttribute("style", a.getAttribute("style"));
+  eq("another element with the same text", b.style.cssText, a.style.cssText);
+  a.style.width = "10px";
+  a.style.width = "bogus";
+  eq("an invalid value changes nothing (twice)", (a.style.width = "bogus", a.style.width), "10px");
+  a.style.setProperty("width", "20px");
+  a.style.setProperty("width", "20px", "important");
+  eq("the same value with a priority", a.style.getPropertyPriority("width"), "important");
+  a.style.setProperty("width", "20px");
+  eq("and without again", a.style.getPropertyPriority("width"), "");
+  a.style.margin = "3px";
+  eq("shorthand after longhands", a.style.cssText, "margin: 3px; color: red; width: 20px;");
+  eq("its longhands", a.style.length, 6);
+  a.setAttribute("style", "padding: 1px 2px");
+  eq("follows the attribute", a.style.paddingRight + "|" + a.style.marginTop, "2px|");
+});
+
 done();
 </script>
 </body></html>
