@@ -1,29 +1,89 @@
 <!doctype html>
+<!-- Made from the DEMOS table of src/browser/demos.odin (demos_index.odin): edit the table, not this file. -->
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Wasm-first demo</title>
-  <script type="application/wasm" src="counter.wasm"></script>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light dark">
+<title>Wren demos and tests</title>
+<style>
+  :root { color-scheme: light dark; }
+  html { background-color: light-dark(#f6f7fb, #0d1017); }
+  body { margin: 0; color: light-dark(#1d2433, #c9d1e3); font-family: system-ui; font-size: 15px; }
+  .head, .main { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+  .head { padding-top: 44px; }
+  h1 { font-size: 36px; margin: 0; color: light-dark(#0f1420, #f1f4fb); }
+  h1 .w { color: light-dark(#c26a00, #ffb84d); }
+  .intro { color: light-dark(#596278, #8993ad); margin: 8px 0 0; line-height: 1.45; }
+  code { background-color: light-dark(#e8ebf2, #1b2132); padding: 0 3px; border-radius: 3px; }
+  nav { margin: 18px 0 0; font-size: 14px; }
+  nav a { margin-right: 14px; }
+  a { color: light-dark(#0b5cad, #74c0fc); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h2 { font-size: 20px; color: light-dark(#c26a00, #ffb84d); margin: 32px 0 6px; }
+  .demo { margin: 10px 0; padding: 11px 16px; background-color: light-dark(#ffffff, #131825); border: 1px solid light-dark(#dde1ea, #232b40); border-radius: 10px; }
+  .demo h3 { margin: 0 0 3px; font-size: 16px; }
+  .demo h3 .off { color: light-dark(#596278, #8993ad); }
+  .demo p { margin: 0; color: light-dark(#4a5368, #8993ad); line-height: 1.4; }
+  .demo .where { color: light-dark(#7a8296, #4f5a78); font-size: 12px; margin-top: 5px; }
+  .badge { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 9px; font-size: 11px; font-weight: normal; vertical-align: middle; }
+  .srv { background-color: light-dark(#fff1d6, #3b2a10); color: light-dark(#8a4b00, #ffb84d); border: 1px solid light-dark(#f0c779, #6b4a14); }
+  .tool { background-color: light-dark(#dcecfb, #1a2a3b); color: light-dark(#0b5cad, #74c0fc); border: 1px solid light-dark(#9cc7ee, #1c4a6e); }
+  .foot { max-width: 800px; margin: 0 auto; padding: 24px 20px 44px; color: light-dark(#7a8296, #4f5a78); font-size: 13px; }
+</style>
 </head>
 <body>
-  <h1>A page with no JavaScript</h1>
-  <p>This document is real HTML, parsed by <b>Lexbor</b>. Its behaviour comes from a
-     <a href="https://webassembly.org">WebAssembly</a> module written in <i>Odin</i>,
-     named by the <code>&lt;script type="application/wasm"&gt;</code> element above.</p>
-
-  <h2>Counter</h2>
-  <p>Value: <b id="count">?</b> &nbsp; ticks: <span id="clock">0</span></p>
-  <p><button id="inc">+1</button> <button id="dec">-1</button> <button id="reset">reset</button></p>
-
-  <h2>Links</h2>
-  <ul>
-    <li><a href="about.html">About this demo</a> (a relative link, followed by the shell)</li>
-    <li>Lists, nested <b>bold <i>and italic</i></b> text and wrapping across elements all go through the placeholder painter.</li>
-  </ul>
-  <pre>pre-formatted
-  text keeps
-    its lines</pre>
-  <hr>
-  <p>The tab title above comes from the document's <code>&lt;title&gt;</code>.</p>
+<div class="head">
+<h1><span class="w">W</span>ren demos and tests</h1>
+<p class="intro">Every page that comes with the browser, by theme, with what it shows. The pages marked <span class="badge srv">test server</span> load from <b>testserver.exe</b> (http://127.0.0.1:8765/): start it first (<code>demo.bat</code> in the release, <code>build\testserver.exe</code> from the repository). The same list is built into the browser: <a href="about:demos">about:demos</a>.</p>
+<nav><a href="#css">CSS engine</a><a href="#layout">Layout</a><a href="#rendering">Rendering and effects</a><a href="#text">Text</a><a href="#images">Images</a><a href="#wasm">WebAssembly APIs and workers</a><a href="#network">Network and security</a><a href="#performance">Performance and stress</a><a href="#tests">End-to-end tests</a></nav>
+</div>
+<div class="main">
+<h2 id="css">CSS engine</h2>
+<div class="demo"><h3><a href="style.html">Style engine</a></h3><p>Selectors and the cascade, <code>@layer</code>, custom properties, <code>:hover</code> on cards, <code>::before</code>, <code>:nth-child</code> lists, a linked sheet with <code>@import</code>, and an <code>@media</code> rule below 600 px.</p></div>
+<div class="demo"><h3><a href="modern-css.html">Modern CSS</a></h3><p>What sites write today: a variable WOFF2 web font, Color 4 and 5 (<code>oklch</code>, relative colors, <code>color-mix</code>), container queries, <code>@property</code> animations, <code>:has()</code> and <code>revert-layer</code>, <code>@supports</code>, math functions and units, <code>&lt;details&gt;</code>. Each section says what to expect.</p></div>
+<div class="demo"><h3><a href="animations.html">Transitions and animations</a></h3><p>CSS only: hover transitions that reverse halfway, endless keyframe animations (spin, pulse, alternate, steps), nested <code>counters()</code>, quotes by depth, gradients, and a web font with <code>font-display: swap</code>. <code>style.animations.mode</code> turns motion down.</p></div>
+<div class="demo"><h3><a href="http://127.0.0.1:8765/site/firstpaint.html">Color schemes</a><span class="badge srv">test server</span></h3><p>A dark theme chosen by <code>prefers-color-scheme</code> from stylesheets in <code>&lt;noscript&gt;</code>, <code>color-scheme</code>, system colors (CanvasText, LinkText, GrayText), <code>light-dark()</code> and form controls in both schemes. Its stylesheets come from the server.</p></div>
+<h2 id="layout">Layout</h2>
+<div class="demo"><h3><a href="layout.html">Layout engine</a></h3><p>Flexbox, floats and clearance, positioning and stacking order, tables, lists, overflow and scroll boxes, borders, preformatted text.</p></div>
+<div class="demo"><h3><a href="grid.html">CSS Grid</a></h3><p>Named areas, <code>repeat(auto-fill, minmax())</code> galleries, dense packing, alignment, nested grids with positioned boxes, and subgrid rows shared by cards.</p></div>
+<h2 id="rendering">Rendering and effects</h2>
+<div class="demo"><h3><a href="effects.html">CSS effects</a></h3><p><code>filter</code> (blur, drop-shadow, color functions), <code>backdrop-filter</code> glass, every <code>mix-blend-mode</code>, animated <code>clip-path</code> shapes and shadows, drawn on the GPU; unchanged results are kept from frame to frame.</p></div>
+<div class="demo"><h3><a href="paint.html">Masks, clipped text, legends, color glyphs</a></h3><p><code>mask-image</code> (gradients, luminance, <code>mask-composite</code>, repetition, under opacity), icons drawn as masks, <code>background-clip: text</code>, fieldset legends on the border, rounded images, <code>scrollbar-color</code>, and COLR v1, sbix, SVG and emoji color glyphs.</p></div>
+<div class="demo"><h3><a href="gradients.html">Gradients and shadows</a></h3><p>Linear, radial, conic and repeating gradients, interpolation color spaces, background layers (size, position, repeat, origin, clip) and <code>box-shadow</code>.</p></div>
+<div class="demo"><h3><a href="transforms.html">Transforms</a></h3><p>Rotated text and blocks, nested rounded clips with a rotated one inside, a form turned by 10 degrees whose clicks land on the right character, group opacity, a transformed scroll box, and 500 cards turning forever over 300 static paragraphs.</p></div>
+<h2 id="text">Text</h2>
+<div class="demo"><h3><a href="text.html">Text: fallback, shaping, bidi</a></h3><p>Per-character font fallback, color emoji, ligatures, kerning and OpenType features, complex scripts, bidirectional text, <code>unicode-range</code> (digits from another font), spacing and justification (the page is in French).</p></div>
+<div class="demo"><h3><a href="interaction.html">Selection, menus and keyboard</a></h3><p>Double and triple click, drag selection across columns, <code>::selection</code>, <code>user-select</code>, a rotated selectable span, context menus, focus rings, find in page (Ctrl+F) and a scroll box.</p></div>
+<h2 id="images">Images</h2>
+<div class="demo"><h3><a href="http://127.0.0.1:8765/site/images.html">Images</a><span class="badge srv">test server</span></h3><p>PNG, BMP, JPEG with EXIF orientation, ICO, TIFF, animated GIF, <code>object-fit</code>, <code>srcset</code> and <code>&lt;picture&gt;</code>, broken, missing, truncated and decompression-bomb files, cross-origin images, CSS backgrounds and lazy loading, all counted by the server.</p></div>
+<div class="demo"><h3><a href="http://127.0.0.1:8765/site/media.html">Built-in image decoders</a><span class="badge srv">test server</span></h3><p>AVIF (8 and 10 bits, alpha, 4:4:4, rotation and mirroring, Display P3, animation), WebP (lossy, lossless, alpha, animation), Adobe RGB JPEG, <code>&lt;picture&gt;</code> and <code>Accept</code> negotiation, SVG as an image and as a background, inline <code>&lt;svg&gt;</code>.</p></div>
+<div class="demo"><h3><a href="http://127.0.0.1:8765/site/media/dark-links.html">External link icons</a><span class="badge srv">test server</span></h3><p>An SVG icon in the <code>::after</code> background of external links, and <code>filter: invert()</code> to show it on a dark page.</p></div>
+<h2 id="wasm">WebAssembly APIs and workers</h2>
+<div class="demo"><h3><a href="counter.html">A page with no JavaScript</a></h3><p>Real HTML whose behaviour is a WebAssembly module (<code>counter.wasm</code>, written in Odin): buttons, a ticking timer, DOM updates, and a relative link.</p></div>
+<div class="demo"><h3><a href="about.html">Page lifetime</a></h3><p>Reached from the counter page: navigating closed the previous page, and freed its Wasm instance, its timer and its DOM with it.</p></div>
+<div class="demo"><h3><a href="http://127.0.0.1:8765/site/forms.html">Form controls</a><span class="badge srv">test server</span></h3><p>Text, email, number, date, range, color, select and file controls, validation pseudo-classes (<code>:user-invalid</code>, <code>:out-of-range</code>), a Wasm module that reads, fills and validates the form, and a multipart POST to the server.</p></div>
+<h2 id="network">Network and security</h2>
+<div class="demo"><h3><a href="http://127.0.0.1:8765/site-csp/counter.html">Content-Security-Policy</a><span class="badge srv">test server</span></h3><p>The counter page served with a policy that allows scripts only from unreachable hosts: its Wasm module is blocked, and the violation is reported.</p></div>
+<div class="demo"><h3><a href="http://127.0.0.1:8765/start">Cookies and redirects</a><span class="badge srv">test server</span></h3><p>Sets a cookie, then redirects to the counter page: the cookie and the redirect show in the page information of the address bar.</p></div>
+<h2 id="performance">Performance and stress</h2>
+<div class="demo"><h3><a href="mutation.html">Mutation every frame</a></h3><p>A module builds about 10 000 elements, then changes one span's text every 16 ms: only that paragraph is laid out again.</p></div>
+<div class="demo"><h3><a href="mutation_class.html">Class toggled every frame</a></h3><p>A class toggled every 16 ms on a section among 10 000 elements: only what its rules reach is restyled and laid out again.</p></div>
+<div class="demo"><h3><a href="http://127.0.0.1:8765/site/images/many.html">200 large images</a><span class="badge srv">test server</span></h3><p>200 images of 1000 x 1000 pixels made by the server, shown at 80 px: decoding never runs on the interface thread.</p></div>
+<div class="demo"><h3><a href="http://127.0.0.1:8765/site/firstpaint-slow.html">Slow stylesheet</a><span class="badge srv">test server</span></h3><p>A stylesheet that takes 1.5 s: the previous page stays on screen until the new one can paint styled (paint holding); a print stylesheet blocks nothing.</p></div>
+<div class="demo"><h3><span class="off">10 000 elements</span></h3><p>The large page of the profiler's scenarios (load, scroll, hover, resize): made by <code>tools\perf.ps1</code> in <code>build\perf\</code>.</p><p class="where">made by <code>tools\perf.ps1</code> in <code>build\perf\</code> of the repository; about:demos links to it once it is there</p></div>
+<div class="demo"><h3><span class="off">50 000 elements</span></h3><p>The largest page of the profiler's scenarios, made by <code>tools\perf.ps1</code> in <code>build\perf\</code>.</p><p class="where">made by <code>tools\perf.ps1</code> in <code>build\perf\</code> of the repository; about:demos links to it once it is there</p></div>
+<h2 id="tests">End-to-end tests</h2>
+<p class="intro">Run without a window by <code>tools\test_all.ps1</code> (from the repository, with the test server it starts itself).</p>
+<div class="demo"><h3><span class="off">Page test</span><span class="badge srv">test server</span><span class="badge tool">pagetest</span></h3><p>Loads the counter page headless and checks its DOM, its module and its timers.</p><p class="where">page: <a href="http://127.0.0.1:8765/site/counter.html">counter.html</a></p></div>
+<div class="demo"><h3><span class="off">Style run-time test</span><span class="badge srv">test server</span><span class="badge tool">styletest</span></h3><p>Web fonts, transitions and animations, checked frame by frame.</p></div>
+<div class="demo"><h3><span class="off">Forms test</span><span class="badge srv">test server</span><span class="badge tool">formstest</span></h3><p>Controls, validation, <code>FormData</code> and submission through the form page.</p><p class="where">page: <a href="http://127.0.0.1:8765/site/forms.html">forms.html</a></p></div>
+<div class="demo"><h3><span class="off">Images test</span><span class="badge srv">test server</span><span class="badge tool">imagestest</span></h3><p>Image events, <code>srcset</code>, <code>&lt;picture&gt;</code>, lazy loading, CSS images, the cache, cancellation, 200 images of 1 Mpx.</p><p class="where">page: <a href="http://127.0.0.1:8765/site/images.html">images.html</a></p></div>
+<div class="demo"><h3><span class="off">Image formats test</span><span class="badge srv">test server</span><span class="badge tool">mediatest</span></h3><p>AVIF, WebP and SVG images and backgrounds, inline <code>&lt;svg&gt;</code>, <code>Accept</code>, <code>&lt;picture&gt;</code>.</p><p class="where">page: <a href="http://127.0.0.1:8765/site/media.html">media.html</a></p></div>
+<div class="demo"><h3><span class="off">Network policy test</span><span class="badge srv">test server</span><span class="badge tool">policytest</span></h3><p>CORS, cookies, redirects, CSP, schemes and local files.</p></div>
+<div class="demo"><h3><span class="off">EventSource and WebSocket test</span><span class="badge srv">test server</span><span class="badge tool">netapitest</span></h3><p>Server-sent events (reconnection, wrong types, statuses) and WebSockets (echo, drops, compression, handshakes).</p></div>
+<div class="demo"><h3><span class="off">Web platform API test</span><span class="badge srv">test server</span><span class="badge tool">webapitest</span></h3><p>Timers, <code>requestAnimationFrame</code>, abort signals, fetch streams, encoding, crypto, storage, URL and history.</p></div>
+<div class="demo"><h3><span class="off">Workers test</span><span class="badge srv">test server</span><span class="badge tool">workerstest</span></h3><p>Dedicated workers: messages, transfers, fetch, termination, 16 in parallel.</p></div>
+</div>
+<p class="foot">Wren &middot; WebAssembly only &middot; a folder opened in Wren shows its <code>index.html</code>, or the list of its files.</p>
 </body>
 </html>

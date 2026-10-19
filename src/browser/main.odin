@@ -209,10 +209,8 @@ title_from_url :: proc(u: string) -> string {
 // What the user typed: a URL, a file path, or a bare host.
 normalize_address :: proc(input: string) -> string {
 	s := strings.trim_space(input)
-	if len(s) > 2 && s[1] == ':' && (s[2] == '\\' || s[2] == '/') {   // C:\dir\page.html
-		fixed, _ := strings.replace_all(s, "\\", "/", context.temp_allocator)
-		return strings.concatenate({"file:///", fixed}, context.temp_allocator)
-	}
+	if u, ok := local_path_url(s); ok { return u }   // C:\dir\page.html, \\server\share, ~ (local_paths.odin)
+	if s == "about:" { return ABOUT_URL }
 	if !strings.contains(s, "://") && !strings.has_prefix(s, "about:") && !strings.has_prefix(s, "data:") && s != "" {
 		return strings.concatenate({"https://", s}, context.temp_allocator)
 	}
@@ -230,6 +228,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if target == "about:config" { hold_release(t); show_config(app, t); return }
 	if target == HOME_URL { hold_release(t); show_home(app, t); return }
 	if target == DEMOS_URL { hold_release(t); show_demos(app, t); return }
+	if target == ABOUT_URL { hold_release(t); show_about_pages(app, t); return }
 	load := new(Doc_Load)
 	load.tab = t
 	shown := target
@@ -1058,6 +1057,7 @@ main :: proc() {
 	pacer_init(app)
 	smooth_init(app)
 	window_chrome_init(app)
+	drop_files_init(app)   // local_paths.odin
 	hud_init(app)
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
@@ -1095,6 +1095,7 @@ main :: proc() {
 	appearance_destroy()
 	hud_destroy(app)
 	smooth_shutdown(app)
+	drop_files_destroy(app)
 	window_chrome_destroy(app)
 	pacer_destroy(app)
 	font.set_color_ready_callback(&app.fonts, nil, nil)   // the color glyph thread no longer posts to the loop

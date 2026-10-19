@@ -1,6 +1,6 @@
 // Headless end-to-end test of the page stack: DOM, events, timers, several modules per document, fetch through the
 // policy layer, cookies, origin. Needs build\testserver.exe running and is run from the repository root.
-//   pagetest.exe build\e2e.wasm examples\site\index.html examples\site\counter.wasm
+//   pagetest.exe build\e2e.wasm examples\site\counter.html examples\site\counter.wasm
 package pagetest
 
 import "core:fmt"
@@ -53,7 +53,7 @@ attr :: proc(h: base.Handle, name: string) -> string {
 }
 
 main :: proc() {
-	if len(os.args) < 4 { fmt.eprintln("usage: pagetest e2e.wasm index.html counter.wasm"); os.exit(2) }
+	if len(os.args) < 4 { fmt.eprintln("usage: pagetest e2e.wasm counter.html counter.wasm"); os.exit(2) }
 	e2e, err := os.read_entire_file(os.args[1], context.allocator)
 	html_bytes, herr := os.read_entire_file(os.args[2], context.allocator)
 	counter, cerr := os.read_entire_file(os.args[3], context.allocator)
@@ -163,7 +163,7 @@ main :: proc() {
 	fmt.println("-- an HTML document with two modules")
 	// the second module is e2e itself: both instances share the DOM; table indices collide on purpose
 	decoded, _ := html.decode_document(html_bytes, "utf-8", settings.html.default_encoding)
-	hp := page.page_create(&loop, &loader, &settings, process, "http://127.0.0.1:8765/site/index.html", console)
+	hp := page.page_create(&loop, &loader, &settings, process, "http://127.0.0.1:8765/site/counter.html", console)
 	the_page = hp
 	rr := page.load_html(hp, decoded.text)
 	check(rr.ok && rr.nodes > 20, "HTML document parsed by Lexbor into the DOM")

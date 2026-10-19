@@ -158,7 +158,7 @@ func registerPolicyHandlers(mux *http.ServeMux) {
 	// sets a cookie, then redirects to the site: shows cookies and redirects in the shell
 	mux.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "visited", Value: "yes", Path: "/", MaxAge: 3600, HttpOnly: false, SameSite: http.SameSiteLaxMode})
-		http.Redirect(w, r, "/site/index.html", http.StatusFound)
+		http.Redirect(w, r, "/site/counter.html", http.StatusFound)
 	})
 	mux.HandleFunc("/headers", func(w http.ResponseWriter, r *http.Request) {
 		for k, v := range r.URL.Query() {

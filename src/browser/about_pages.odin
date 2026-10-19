@@ -1,0 +1,80 @@
+package browser
+
+import "core:strings"
+import "toolkit:ui"
+import "wb:base"
+import "wb:page"
+
+////////////////////////////////
+// about:about (and about: alone): the browser's own pages, as other browsers list theirs.
+
+ABOUT_URL :: "about:about"
+
+About_Page :: struct {
+	url:   string,
+	title: string,
+	about: string,   // HTML
+}
+
+ABOUT_PAGES := [?]About_Page{
+	{HOME_URL, "Start page", "What a new tab shows (<code>browser.homepage</code>): links to the settings and the demos."},
+	{DEMOS_URL, "Demos and tests", "Every demo and test page that comes with Wren, by theme, with what each one shows."},
+	{"about:config", "Configuration", "Every setting of the browser, searchable and editable; nothing is hard-wired."},
+	{ABOUT_URL, "Built-in pages", "This list. <code>about:</code> alone opens it too."},
+	{"about:blank", "Blank page", "An empty document."},
+}
+
+@(private = "file")
+ABOUT_PAGES_STYLE :: `
+  html { background-color: #0d1017; }
+  body { margin: 0; color: #c9d1e3; font-family: system-ui; font-size: 15px; }
+  .main { width: 680px; margin: 0 auto; padding: 48px 20px; }
+  h1 { font-size: 32px; margin: 0 0 6px; color: #f1f4fb; }
+  .intro { color: #8993ad; margin: 0 0 22px; }
+  .page { margin: 10px 0; padding: 12px 18px; background-color: #131825; border: 1px solid #232b40; border-radius: 12px; }
+  .page h3 { margin: 0 0 4px; font-size: 16px; }
+  .page h3 a { color: #ffb84d; text-decoration: none; }
+  .page h3 a:hover { text-decoration: underline; }
+  .page h3 .t { color: #8993ad; font-weight: normal; margin-left: 10px; font-size: 14px; }
+  .page p { margin: 0; color: #8993ad; }
+  code { color: #c9d1e3; background-color: #1b2132; padding: 0 3px; border-radius: 3px; }
+`
+
+about_pages_html :: proc() -> string {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Built-in pages</title>\n<style>")
+	strings.write_string(&sb, ABOUT_PAGES_STYLE)
+	strings.write_string(&sb, "</style>\n</head>\n<body>\n<div class=\"main\">\n<h1>Built-in pages</h1>\n<p class=\"intro\">The pages of the browser itself. <code>view-source:</code> before an address shows a page's source; a path of this computer (<code>C:\\...</code>, <code>\\\\server\\share</code>) opens the file, or the folder's <code>index.html</code>, or its listing.</p>\n")
+	for p in ABOUT_PAGES {
+		strings.write_string(&sb, "<div class=\"page\"><h3><a href=\"")
+		strings.write_string(&sb, p.url)
+		strings.write_string(&sb, "\">")
+		strings.write_string(&sb, p.url)
+		strings.write_string(&sb, "</a><span class=\"t\">")
+		strings.write_string(&sb, p.title)
+		strings.write_string(&sb, "</span></h3><p>")
+		strings.write_string(&sb, p.about)   // (our own HTML)
+		strings.write_string(&sb, "</p></div>\n")
+	}
+	strings.write_string(&sb, "</div>\n</body>\n</html>\n")
+	return strings.to_string(sb)
+}
+
+// An ordinary document, like the start page: its links open as if typed in the address bar.
+show_about_pages :: proc(app: ^App, t: ^Tab) {
+	base.scope_close(t.nav)
+	t.nav = base.scope_make("navigation", t.scope)
+	t.load, t.kind = nil, .Web
+	t.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, ABOUT_URL, console_sink, t)
+	attach_page(app, t, t.page)
+	layout_reset(&t.layout)
+	t.scroll_target = base.NIL_HANDLE
+	t.scroll = 0
+	for l in t.console { delete(l) }
+	clear(&t.console)
+	page.load_html(t.page, transmute([]byte)about_pages_html())
+	delete(t.url); t.url = strings.clone(ABOUT_URL)
+	delete(t.title); t.title = strings.clone("Built-in pages")
+	set_status(t, ABOUT_URL)
+	ui.field_set(&app.address, ABOUT_URL)
+}

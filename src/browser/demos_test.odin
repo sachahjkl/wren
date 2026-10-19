@@ -29,7 +29,10 @@ demos_cover_every_page :: proc(t: ^testing.T) {
 	}
 	walk("examples/site", "", &pages)
 	testing.expect(t, len(pages) >= 20, "the pages of examples/site are found")
-	for p in pages { testing.expectf(t, listed[p], "examples/site/%s is missing from about:demos (demos.odin, DEMOS)", p) }
+	for p in pages {
+		if p == "index.html" { continue }   // the index of them all, made from the table (demos_index.odin)
+		testing.expectf(t, listed[p], "examples/site/%s is missing from about:demos (demos.odin, DEMOS)", p)
+	}
 }
 
 @(test)

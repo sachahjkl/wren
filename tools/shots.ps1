@@ -21,7 +21,7 @@ $shots = @(
     @{ n = 'css-gradients';          u = "$site/gradients.html" }
     @{ n = 'masks-and-color-glyphs'; u = "$site/paint.html" }
     @{ n = 'text';                   u = "$site/text.html" }
-    @{ n = 'wasm-counter';           u = "$site/index.html" }
+    @{ n = 'wasm-counter';           u = "$site/counter.html" }
     @{ n = 'sacha-house';            u = 'https://sacha.house'; w = 7000 }
     @{ n = 'webassembly-org';        u = 'https://webassembly.org/news/2026-01-21-states-of-webassembly/'; w = 7000 }
     @{ n = 'odin-lang-org';          u = 'https://odin-lang.org'; w = 7000 }
