@@ -24,12 +24,18 @@ static JSValue storage_make(JSContext *ctx, int area)
 static JSValue make_local(JSContext *ctx) { return storage_make(ctx, wr_StorageArea_Local); }
 static JSValue make_session(JSContext *ctx) { return storage_make(ctx, wr_StorageArea_Session); }
 
+static bool storage_allowed[2];
+
 static JSValue storage_getter(JSContext *ctx, int area)
 {
-    /* SecurityError when the document may not use this storage */
-    int32_t n = 0;
-    int32_t st = wr_Storage_length(area, &n);
-    if (st < 0) { return wj_throw_status(ctx, st, area == wr_StorageArea_Local ? "localStorage" : "sessionStorage"); }
+    /* SecurityError when the document may not use this storage: asked until it may (then the object is the
+     * document's for good, as in browsers; each call still fails if the storage is disabled meanwhile) */
+    if (!storage_allowed[area]) {
+        int32_t n = 0;
+        int32_t st = wr_Storage_length(area, &n);
+        if (st < 0) { return wj_throw_status(ctx, st, area == wr_StorageArea_Local ? "localStorage" : "sessionStorage"); }
+        storage_allowed[area] = true;
+    }
     return web_singleton(ctx, area == wr_StorageArea_Local ? WEB_SINGLE_LOCAL_STORAGE : WEB_SINGLE_SESSION_STORAGE, area == wr_StorageArea_Local ? make_local : make_session);
 }
 

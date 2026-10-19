@@ -11,8 +11,9 @@ function time(name, n, fn) {
 test("costs", async () => {
   localStorage.clear();
   localStorage.setItem("key", "value of some length");
+  localStorage.setItem("item", "value of some length");
   time("localStorage_getItem", 100000, n => { let x; for (let i = 0; i < n; i++) x = localStorage.getItem("key"); return x; });
-  time("localStorage_named_get", 100000, n => { let x; for (let i = 0; i < n; i++) x = localStorage.key; return x; });
+  time("localStorage_named_get", 100000, n => { let x; for (let i = 0; i < n; i++) x = localStorage.item; return x; });
   time("localStorage_setItem", 20000, n => { for (let i = 0; i < n; i++) localStorage.setItem("key", "v" + (i & 7)); });
   const u = new URL("https://example.com/a/b?c=d#e");
   time("URL_pathname", 100000, n => { let x; for (let i = 0; i < n; i++) x = u.pathname; return x; });
