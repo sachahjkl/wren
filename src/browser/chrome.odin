@@ -139,7 +139,8 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	res: ui.Edit_Result
 	ui.next({width = ui.fill(), height = ui.px(h)})
 	if ui.row(.Center, {}, "###address_bar") {
-		field := ui.Style_Mod{width = ui.pct(1), height = ui.pct(1)}
+		// rounded like the popovers and menus of the chrome (popups: em * 0.5)
+		field := ui.Style_Mod{width = ui.pct(1), height = ui.pct(1), radius = em * 0.5}
 		if chip_w > 0 { field.text_pad = chip_w + inset + em * 0.5 }
 		ui.next(field)
 		res = ui.line_edit("###address", &app.address, "Search or enter an address")
