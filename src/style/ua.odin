@@ -71,7 +71,7 @@ pre, listing, xmp, plaintext { white-space: pre; }
 pre, code, kbd, samp, tt, listing, xmp, plaintext { font-family: monospace; font-size: %vpx; }
 nobr { white-space: nowrap; }
 br { display: inline; }
-center { text-align: center; }
+center { text-align: -webkit-center; }
 img, video, canvas, iframe, embed, object { display: inline-block; }
 img { overflow: clip; }
 iframe { border: 2px inset; }
@@ -85,14 +85,14 @@ textarea { font-family: monospace; white-space: pre-wrap; overflow: auto; }
 fieldset { margin-inline: 2px; padding: 0.35em 0.75em 0.625em; border: 2px groove ThreeDFace; }
 legend { padding-inline: 2px; }
 :disabled { color: GrayText; cursor: default; }
-table { display: table; border-spacing: 2px; border-collapse: separate; text-indent: initial; }
+table { display: table; border-spacing: 2px; border-collapse: separate; text-indent: initial; border-color: gray; }
 caption { display: table-caption; text-align: center; }
 colgroup { display: table-column-group; }
 col { display: table-column; }
-thead { display: table-header-group; vertical-align: middle; }
-tbody { display: table-row-group; vertical-align: middle; }
-tfoot { display: table-footer-group; vertical-align: middle; }
-tr { display: table-row; vertical-align: inherit; }
+thead { display: table-header-group; vertical-align: middle; border-color: inherit; }
+tbody { display: table-row-group; vertical-align: middle; border-color: inherit; }
+tfoot { display: table-footer-group; vertical-align: middle; border-color: inherit; }
+tr { display: table-row; vertical-align: inherit; border-color: inherit; }
 td, th { display: table-cell; padding: 1px; vertical-align: inherit; }
 th { font-weight: bold; text-align: center; }
 summary { display: block; }

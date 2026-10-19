@@ -104,9 +104,9 @@ shell_ratio :: proc(user: rawptr, node: base.Handle) -> f32 {
 	return v.state == .Ready && v.ratio_only ? v.ratio : 0
 }
 
-// The size layout gives an image element (CSS px): its natural size, with the width / height attributes applied as
-// HTML's presentational hints would (CSS width / height still win: layout looks at them first); a broken image is as
-// large as its icon and alt text. ok = false: nothing known (layout uses the attributes or its placeholder size).
+// The natural size of an image element (CSS px), as decoded: its width / height attributes are presentational hints
+// (style, hints.odin: CSS width / height and aspect-ratio: auto w / h), not a natural size; a broken image without them
+// is as large as its icon and alt text. ok = false: nothing known (layout uses its placeholder size).
 @(private = "file")
 shell_intrinsic :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool) {
 	p := shell.page
@@ -123,19 +123,13 @@ shell_intrinsic :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool
 		n, nok := strconv.parse_f32(t[:end])
 		return n, nok && n >= 0
 	}
-	aw, has_w := attr(d, node, "width")
-	ah, has_h := attr(d, node, "height")
+	_, has_w := attr(d, node, "width")
+	_, has_h := attr(d, node, "height")
 	v := page.image_view(p, node)
 	if v.state == .Ready {
 		// an SVG with a ratio and no size: the layout stretches it to its containing block (shell_ratio)
-		if v.ratio_only && !has_w && !has_h { return 0, 0, false }
-		nw, nh := v.natural[0], v.natural[1]
-		switch {
-		case has_w && has_h: return aw, ah, true
-		case has_w: return aw, nw > 0 ? aw * nh / nw : nh, true
-		case has_h: return nh > 0 ? ah * nw / nh : nw, ah, true
-		}
-		return nw, nh, true
+		if v.ratio_only { return 0, 0, false }
+		return v.natural[0], v.natural[1], true
 	}
 	if v.state != .Broken || has_w || has_h { return 0, 0, false }
 	// broken, no dimensions: the icon, then the alt text (alt="" means the image is decoration: nothing at all)

@@ -36,8 +36,15 @@ make_key :: proc(r: ^Rule, important: bool, spec: css.Specificity) -> Cascade_Ke
 	case .UA: k.level = important ? 5 : 0
 	case .User: k.level = important ? 4 : 1
 	case .Author:
+		// layer keys are shifted by one so that presentational hints (key 0) sit below the first cascade layer
 		k.level = important ? 3 : 2
-		k.layer = important ? max(u32) - r.layer : r.layer
+		if r.hint {
+			k.layer = 0
+		} else if important {
+			k.layer = max(u32) - r.layer
+		} else {
+			k.layer = r.layer == UNLAYERED ? UNLAYERED : r.layer + 1
+		}
 	}
 	return k
 }
@@ -635,6 +642,7 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 @(private)
 compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom) -> ^Computed {
 	collect_entries(p, h, n, ancestors)
+	add_hint_entry(p, h, n)
 
 	inline_rule: ^Rule
 	if text, ok := attr(n, "style"); ok && p.e.settings.author_stylesheets && text != "" {

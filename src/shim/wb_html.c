@@ -24,6 +24,7 @@ typedef struct {
     void (*close)(void *user);
     void (*text)(void *user, const uint8_t *s, size_t len);
     void (*comment)(void *user, const uint8_t *s, size_t len);
+    void (*mode)(void *user, int compat_mode);   /* once, before the tree: 0 no-quirks, 1 quirks, 2 limited-quirks */
 } wb_html_sink;
 
 #define WB_MAX_ATTRS 256
@@ -39,6 +40,8 @@ int wb_html_parse(const uint8_t *data, size_t len, const wb_html_sink *sink, voi
         lxb_html_document_destroy(doc);
         return (int) st;
     }
+
+    if (sink->mode != NULL) { sink->mode(user, (int) lxb_dom_interface_document(doc)->compat_mode); }
 
     lxb_dom_node_t *root = lxb_dom_interface_node(doc);
     lxb_dom_node_t *node = root->first_child;

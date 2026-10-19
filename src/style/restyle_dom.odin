@@ -397,6 +397,7 @@ attribute_changed :: proc(m: ^Marker, ch: Attr_Change) {
 	}
 	if r, ok := ix.by_attr[ch.name]; ok { apply(m, h, r) }
 	if ch.name in ix.has_attrs { has_invalidate(m, h, false) }
+	if hint, subtree := hint_attribute(n.name, ch.name); hint || subtree { mark(m, h, subtree) }
 	if ix.uses_controls && is_form_attr(ch.name) {
 		for f in FORM_RELATED {
 			if n.name != f { continue }

@@ -58,7 +58,10 @@ Visibility :: enum u8 { Visible, Hidden, Collapse }
 Overflow :: enum u8 { Visible, Hidden, Clip, Scroll, Auto }
 Border_Style :: enum u8 { None, Hidden, Solid, Dashed, Dotted, Double, Groove, Ridge, Inset, Outset }
 Font_Style :: enum u8 { Normal, Italic, Oblique }
-Text_Align :: enum u8 { Start, End, Left, Right, Center, Justify }
+// Legacy_*: -webkit-left / -webkit-right / -webkit-center, what HTML's align attributes and <center> map to (HTML §15.3.3
+// "align descendants"): text aligned as Left / Right / Center, and block-level children narrower than their parent placed
+// the same way (layout, block_width).
+Text_Align :: enum u8 { Start, End, Left, Right, Center, Justify, Legacy_Left, Legacy_Right, Legacy_Center }
 Text_Transform :: enum u8 { None, Capitalize, Uppercase, Lowercase }
 White_Space :: enum u8 { Normal, Nowrap, Pre, Pre_Wrap, Pre_Line, Break_Spaces }
 Word_Break :: enum u8 { Normal, Break_All, Keep_All, Break_Word }
@@ -134,6 +137,7 @@ Computed :: struct {
 	opacity:    f32,
 	vertical_align: Vertical_Align,
 	aspect_ratio: f32,        // width / height, 0 = auto
+	aspect_ratio_auto: bool,  // `auto && <ratio>`: a replaced element with a natural ratio uses that one instead
 	object_fit: Object_Fit,
 	// --- flex ---
 	flex_direction: Flex_Direction,

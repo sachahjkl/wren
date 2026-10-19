@@ -637,8 +637,8 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 	#partial switch align {
 	case .Start, .Justify: if rtl { shift = free }
 	case .End: if !rtl { shift = free }
-	case .Right: shift = free
-	case .Center: shift = free * 0.5
+	case .Right, .Legacy_Right: shift = free
+	case .Center, .Legacy_Center: shift = free * 0.5
 	}
 	if free < 0 && !rtl { shift = 0 }
 	extra: f32 = justify ? free / f32(opportunities) : 0

@@ -158,8 +158,19 @@ block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 	b.size.x = w
 	// auto margins share what is left (§10.3.3); over-constrained: the end margin gives way
 	free := avail - w - (b.auto_l ? 0 : b.margin[3]) - (b.auto_r ? 0 : b.margin[1])
-	rtl := c.l.boxes[b.parent].cs != nil && is_rtl(c.l.boxes[b.parent].cs)
-	if b.auto_l && b.auto_r {
+	pcs := c.l.boxes[b.parent].cs
+	rtl := pcs != nil && is_rtl(pcs)
+	// HTML's align attributes and <center> (-webkit-* text-align values) place a narrower block-level child whose margins
+	// are not auto as Blink does: its margin box centered, or pushed to one side
+	legacy := pcs != nil && !b.auto_l && !b.auto_r ? pcs.text_align : .Start
+	if legacy == .Legacy_Center {
+		start := max(free * 0.5, 0)
+		if rtl { b.margin[1] += start; b.margin[3] = avail - w - b.margin[1] } else { b.margin[3] += start; b.margin[1] = avail - w - b.margin[3] }
+	} else if legacy == .Legacy_Right && !rtl {
+		b.margin[3] += max(free, 0); b.margin[1] = avail - w - b.margin[3]
+	} else if legacy == .Legacy_Left && rtl {
+		b.margin[1] += max(free, 0); b.margin[3] = avail - w - b.margin[1]
+	} else if b.auto_l && b.auto_r {
 		if free < 0 {
 			if rtl { b.margin[3], b.margin[1] = free, 0 } else { b.margin[3], b.margin[1] = 0, free }
 		} else {
@@ -299,7 +310,9 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_C
 	case .Table:
 		content_h = layout_table(c, bi, w, cb_h, forced_h)
 	case .Replaced:
-		sz := replaced_size(c, bi, -1, cb_h)
+		// the height follows the width already chosen (a percentage width resolved, max-width applied, a flex or grid
+		// stretch): with the ratio when there is one
+		sz := replaced_size(c, bi, -1, cb_h, w)
 		b = &c.l.boxes[bi]
 		content_h = sz.y - pb_h(b)
 		if !has_h { spec_h, has_h = sz.y, true }

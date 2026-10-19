@@ -204,7 +204,7 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Visibility: return fa(&c.visibility), NO_FIELD
 	case .Opacity: return fa(&c.opacity), NO_FIELD
 	case .Vertical_Align: return fa(&c.vertical_align), NO_FIELD
-	case .Aspect_Ratio: return fa(&c.aspect_ratio), NO_FIELD
+	case .Aspect_Ratio: return fa(&c.aspect_ratio), fa(&c.aspect_ratio_auto)
 	case .Object_Fit: return fa(&c.object_fit), NO_FIELD
 	case .Flex_Direction: return fa(&c.flex_direction), NO_FIELD
 	case .Flex_Wrap: return fa(&c.flex_wrap), NO_FIELD

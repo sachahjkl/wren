@@ -31,6 +31,7 @@ Shim_Sink :: struct {
 	close:   proc "c" (user: rawptr),
 	text:    proc "c" (user: rawptr, s: [^]u8, len: uint),
 	comment: proc "c" (user: rawptr, s: [^]u8, len: uint),
+	mode:    proc "c" (user: rawptr, compat_mode: i32),
 }
 
 @(default_calling_convention = "c")
@@ -44,6 +45,17 @@ Builder :: struct {
 	stack:     [dynamic]base.Handle,
 	count:     int,
 	truncated: bool,
+	mode:      dom.Document_Mode,
+}
+
+@(private)
+b_mode :: proc "c" (user: rawptr, compat_mode: i32) {
+	b := (^Builder)(user)
+	switch compat_mode {
+	case 1: b.mode = .Quirks
+	case 2: b.mode = .Limited_Quirks
+	case: b.mode = .No_Quirks
+	}
 }
 
 @(private)
@@ -112,8 +124,10 @@ parse_into :: proc(d: ^dom.Document, parent: base.Handle, data: []byte, max_node
 	b := Builder{doc = d, max_nodes = max_nodes}
 	defer delete(b.stack)
 	append(&b.stack, parent)
-	sink := Shim_Sink{open = b_open, close = b_close, text = b_text, comment = b_comment}
+	sink := Shim_Sink{open = b_open, close = b_close, text = b_text, comment = b_comment, mode = b_mode}
 	status := wb_html_parse(raw_data(data), uint(len(data)), &sink, &b)
+	// a whole document (not a fragment parsed into an element) decides the document's mode
+	if status == 0 && parent == d.root { d.mode = b.mode }
 	return {ok = status == 0, truncated = b.truncated, status = status, nodes = b.count}
 }
 
