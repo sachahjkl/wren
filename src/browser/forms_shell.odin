@@ -158,6 +158,13 @@ forms_shell_frame :: proc(app: ^App) {
 		if forms.run_autofocus(f) { caret_reset(); scroll_into_view(app, t, f.focus) }
 	}
 	if f.serial != fview.last_serial { fview.last_serial = f.serial; caret_reset(); request_frames(app) }
+	// :focus-visible: a focus that came from the keyboard, or a text field's (the heuristic of browsers)
+	if fv := f.focus != base.NIL_HANDLE && (f.focus_by_key || forms.is_text_field(f, f.focus)); p.style_state.focus_visible != fv {
+		st := p.style_state
+		st.focus_visible = fv
+		page.set_style_state(p, st)
+		request_frames(app)
+	}
 	if fview.popup.open && (fview.popup.page_id != f.id || dom.get(p.doc, fview.popup.sel) == nil || forms.is_disabled(f, fview.popup.sel)) { fview.popup.open = false }
 
 	// caret blinking: wake the loop at the next toggle while a text field has the focus
@@ -503,7 +510,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 	f := page.page_forms(p)
 	n := dom.get(p.doc, node)
 	if n == nil { return }
-	scale := ui.scale()
+	scale := page_scale(the_app)
 	size := max(cs.font_size * scale, 1)
 	fg := to_draw(cs.color)
 	xf := draw.current_transform(dc)
@@ -678,7 +685,7 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 	if focused && fview.blink_on && a == b && forms.is_mutable(f, node) {
 		x := math.round(origin.x + cxy.x)
 		y := origin.y + cxy.y
-		cw := max(ui.scale(), 1)
+		cw := max(page_scale(the_app), 1)
 		draw.rect(dc, {{x, y + ft.line_h * 0.1}, {x + cw, y + ft.line_h * 0.9}}, fg)
 	}
 }
@@ -714,7 +721,7 @@ select_rows :: proc(f: ^forms.Forms, sel: base.Handle) -> []Row {
 
 @(private = "file")
 paint_rows :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, rows: []Row, first: int, area: draw.Rect, row_h, size: f32, fg: draw.Color, hover: int, focused: bool) {
-	scale := ui.scale()
+	scale := page_scale(the_app)
 	draw.push_clip(dc, area)
 	defer draw.pop_clip(dc)
 	for i := first; i < len(rows); i += 1 {
@@ -752,7 +759,7 @@ paint_list_box :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: fo
 forms_paint_overlays :: proc(app: ^App, dc: ^draw.Context, page_rect: draw.Rect) {
 	_, p, f := current_page(app)
 	if f == nil { return }
-	scale := ui.scale()
+	scale := page_scale(the_app)
 	fid := app.ui_font
 	if fview.popup.open {
 		pp := &fview.popup
@@ -966,7 +973,29 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 }
 
 @(private = "file")
-keyboard_to_page :: proc(app: ^App) -> bool { return fview.page_focus && ui.focus_key() == 0 }
+keyboard_to_page :: proc(app: ^App) -> bool { return fview.page_focus && ui.focus_key() == 0 && !ui.ctx_menu_any_open() }
+
+// Set when Shift+Tab leaves the page before its first element: the chrome takes the focus back from the page area.
+page_focus_leave_backward: bool
+
+// The page has the keyboard (its own focus, not the chrome's).
+page_has_keyboard :: proc(app: ^App) -> bool { return keyboard_to_page(app) }
+
+// The chrome's Tab order reached the page area: the page takes the keyboard, its first (Tab) or last (Shift+Tab)
+// element the focus (none: the page itself, keyboard scrolling works).
+forms_focus_from_chrome :: proc(app: ^App, t: ^Tab, dir: int) {
+	fview.page_focus = true
+	if t == nil || t.page == nil || t.page.formctl == nil { return }
+	p := t.page
+	f := page.page_forms(p)
+	forms.blur(f)
+	visible :: proc(user: rawptr, h: base.Handle) -> bool { return is_rendered((^page.Page)(user), h) }
+	if forms.focus_next(f, dir < 0 ? -1 : 1, visible, p) { scroll_into_view(app, t, f.focus) }
+	request_frames(app)
+}
+
+// The page gives up the keyboard (a chrome widget took it).
+forms_page_blur :: proc() { fview.page_focus = false }
 
 @(private = "file")
 route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platform.Event) -> bool {
@@ -990,9 +1019,22 @@ route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platfo
 			scroll_into_view(app, t, f.focus)
 			return true
 		}
+		// past the last (or before the first) element: the chrome's Tab order continues, from the address bar onwards
+		// or back from the page area
 		forms.blur(f)
-		fview.page_focus = false   // past the last field: the chrome's Tab order continues
-		return false
+		fview.page_focus = false
+		if shift { page_focus_leave_backward = true } else { app.focus_address = true }
+		return true
+	}
+	if !forms.is_text_field(f, h) && selection_key(app, t, p, ev) { return true }
+	// Enter on a focused link follows it (a click, so the page sees it and may cancel)
+	if ev.key == .Return && !ctrl && !alt && !shift && h != base.NIL_HANDLE && !forms.is_text_field(f, h) {
+		if href, ok := anchor_href(p.doc, h); ok && forms.kind(f, h) == .None {
+			if forms.click(f, h, forms.Click_Info{trusted = true}) && t.page == p {
+				follow_link(app, t, href)
+			}
+			return true
+		}
 	}
 	if forms.is_text_field(f, h) && ctrl && !alt {
 		#partial switch ev.key {
@@ -1092,7 +1134,7 @@ open_popup :: proc(app: ^App, f: ^forms.Forms, sel: base.Handle) {
 	rows := select_rows(f, sel)
 	hover := -1
 	for r, i in rows { if r.option != base.NIL_HANDLE && forms.option_selected(f, r.option) { hover = i } }
-	fview.popup = Popup{open = true, sel = sel, page_id = f.id, hover = hover, anchor = draw.rect_pad(painted_bounds(pt), 3 * ui.scale())}
+	fview.popup = Popup{open = true, sel = sel, page_id = f.id, hover = hover, anchor = draw.rect_pad(painted_bounds(pt), 3 * page_scale(the_app))}
 	fview.popup.first = max(hover - app.page_settings.forms.select_rows / 2, 0)
 	request_frames(app)
 }
@@ -1150,21 +1192,21 @@ focus_target :: proc(f: ^forms.Forms, target: base.Handle) -> base.Handle {
 }
 
 // A press in the page: mousedown, then (unless cancelled) focus, caret placement or selection start, slider, list box,
-// drop-down. Returns true when the press must not go further.
+// drop-down. Returns false when mousedown was cancelled (no default action: no text selection either).
 forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Handle, local: [2]f32) -> bool {
 	p := t.page
-	if p == nil || p.formctl == nil { return false }
+	if p == nil || p.formctl == nil { return true }
 	f := page.page_forms(p)
-	scale := ui.scale()
+	scale := page_scale(the_app)
 	fview.press_target, fview.press_down = target, ev.button == .Left
 	if target == base.NIL_HANDLE {
 		if ev.button == .Left { forms.blur(f) }
-		return false
+		return true
 	}
 	if !page.dispatch_event(p, target, dom.Event{type = "mousedown", bubbles = true, cancelable = true, x = f64(local.x / scale), y = f64(local.y / scale), button = i32(ev.button), mods = dom_mods(ev.mods)}) {
 		return false
 	}
-	if t.page != p || ev.button != .Left { return false }
+	if t.page != p || ev.button != .Left { return true }
 	// click counting (double click selects a word, triple the whole field)
 	now := time.tick_now()
 	if time.duration_milliseconds(time.tick_diff(fview.last_click, now)) <= double_click_ms(app) && abs(ev.pos.x - fview.last_click_pos.x) < 4 * scale && abs(ev.pos.y - fview.last_click_pos.y) < 4 * scale {
@@ -1175,12 +1217,12 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 	fview.last_click, fview.last_click_pos = now, ev.pos
 
 	ft := focus_target(f, target)
-	if ft == base.NIL_HANDLE { forms.blur(f); return false }
+	if ft == base.NIL_HANDLE { forms.blur(f); return true }
 	if forms.kind(f, ft) != .Label { forms.focus(f, ft) }
 	caret_reset()
 	request_frames(app)
 	pt, painted := fview.painted[ft]
-	if !painted { return false }
+	if !painted { return true }
 	switch {
 	case forms.is_text_field(f, ft):
 		ftext, origin := layout_field(app, f, ft, pt)
@@ -1214,7 +1256,7 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 			}
 		}
 	}
-	return false
+	return true
 }
 
 @(private = "file")
@@ -1254,7 +1296,7 @@ pointer_drag :: proc(app: ^App, t: ^Tab, f: ^forms.Forms, pos: [2]f32) {
 forms_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Handle, local: [2]f32) -> (click_target: base.Handle, ok: bool) {
 	p := t.page
 	if p == nil { return }
-	scale := ui.scale()
+	scale := page_scale(the_app)
 	was_down := fview.press_down
 	fview.press_down = false
 	if fview.drag == .Range && p.formctl != nil {
@@ -1282,7 +1324,7 @@ forms_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Ha
 // The click with its activation behaviour (checkbox toggling, buttons submitting, labels...). True when not cancelled.
 forms_click :: proc(app: ^App, t: ^Tab, target: base.Handle, ev: platform.Event, local: [2]f32) -> bool {
 	p := t.page
-	scale := ui.scale()
+	scale := page_scale(the_app)
 	info := forms.Click_Info{x = f64(local.x / scale), y = f64(local.y / scale), button = i32(ev.button), mods = dom_mods(ev.mods), trusted = true}
 	if p.formctl == nil {
 		return page.dispatch_event(p, target, dom.Event{type = "click", bubbles = true, cancelable = true, x = info.x, y = info.y, button = info.button})

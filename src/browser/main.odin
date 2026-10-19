@@ -62,6 +62,8 @@ Doc_Load :: struct {
 	slots:      [dynamic]^Script_Slot,
 	next_run:   int,
 	bytes:      int,                     // size of the document's body
+	view_source: bool,                   // a view-source: navigation: the bytes are shown as source (view_source.odin)
+	task:       base.Handle,             // the document's request (Escape stops it)
 }
 
 Tab_Kind :: enum u8 { Web, Config }
@@ -86,6 +88,7 @@ Tab :: struct {
 	history:  [dynamic]string,   // addresses visited in this tab (mirror of `session`, for the chrome)
 	hist:     int,               // index of the current one
 	session:  Session_History,   // the joint session history: entries, history.state, same-document entries
+	zoom:     f32,               // page zoom (zoom.odin); 1 = 100 %
 }
 
 Session_History :: page.Session_History   // (a field named `page` hides the package in the struct above)
@@ -139,6 +142,7 @@ current_tab :: proc(app: ^App) -> ^Tab { return len(app.tabs) > 0 ? app.tabs[app
 tab_open :: proc(app: ^App, address := "") -> ^Tab {
 	t := new(Tab)
 	t.hist = -1
+	t.zoom = 1
 	t.scope = base.scope_make("tab", app.process)
 	t.title = strings.clone("New tab")
 	append(&app.tabs, t)
@@ -150,6 +154,7 @@ tab_open :: proc(app: ^App, address := "") -> ^Tab {
 
 tab_close :: proc(app: ^App, index: int) {
 	t := app.tabs[index]
+	closed_tabs_push(t.url)
 	ordered_remove(&app.tabs, index)
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone
 	page.storage_drop_session(&app.storage, tab_key(t))
@@ -221,6 +226,11 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	t.kind = .Web
 	load := new(Doc_Load)
 	load.tab = t
+	shown := target
+	if strings.has_prefix(target, VIEW_SOURCE) {
+		load.view_source = true
+		target = strings.clone(normalize_address(target[len(VIEW_SOURCE):]), context.temp_allocator)
+	}
 	if from != nil { load.initiator, load.has_initiator = fetch.environment_clone(from.env), true }
 
 	base.scope_close(t.nav)           // closes the previous page, its modules and every request it still had
@@ -236,13 +246,13 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	for l in t.console { delete(l) }
 	clear(&t.console)
 	delete(t.url)
-	t.url = strings.clone(target)
+	t.url = strings.clone(shown)
 	delete(t.title)
-	t.title = strings.clone(title_from_url(target))
-	ui.field_set(&app.address, target)
+	t.title = strings.clone(title_from_url(shown))
+	ui.field_set(&app.address, shown)
 	set_status(t, "loading...")
 
-	fetch.start(&app.loader, {
+	load.task = fetch.start(&app.loader, {
 		request = {
 			url = target, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = .Document,
 			initiator = load.has_initiator ? &load.initiator : nil, user_activation = user_activation,
@@ -391,13 +401,15 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		rp, _ := http.get_header(r.headers, "referrer-policy")
 		page.apply_response_headers(load.page, csp_h, ro_h, rp)
 		set_status(t, fmt.tprintf("HTTP %d", r.status))
+		shown := load.view_source ? strings.concatenate({VIEW_SOURCE, r.url}, context.temp_allocator) : r.url
 		delete(t.url)
-		t.url = strings.clone(r.url)
-		ui.field_set(&app.address, r.url)
+		t.url = strings.clone(shown)
+		if current_tab(app) == t { ui.field_set(&app.address, shown) }
 	case .Data:
 	case .Done:
 		document_loaded(app, load, ev.data)
 	case .Failed:
+		load.task = base.NIL_HANDLE
 		show_error_page(app, load, "This page could not be loaded", ev.detail)
 	}
 }
@@ -409,6 +421,8 @@ looks_like_wasm :: proc(data: []byte) -> bool {
 document_loaded :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 	t := load.tab
 	p := load.page
+	load.task = base.NIL_HANDLE
+	if load.view_source { show_source(app, load, data); return }
 	if looks_like_wasm(data) || load.mime == "application/wasm" {
 		// the document is a module
 		_, ok, err := page.load_module(p, data, t.url)
@@ -528,7 +542,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		draw.rect(dc, b.rect, draw.hex(0xffffffff))
 		return
 	}
-	scale := ui.scale()
+	scale := page_scale(app)
 	size := draw.rect_size(b.rect)
 	// an incremental layout reads what the style passes changed (layout.incremental.*)
 	ls := &page_render.settings
@@ -555,6 +569,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.push_clip(dc, b.rect)
 	prof_begin(.Paint_Items)
 	images_paint_begin_frame(app)
+	selection_paint_begin(app, t)
 	paint(&t.layout, dc, t.page.doc, b.rect.min, size, t.scroll, b.rect)
 	forms_paint_overlays(app, dc, b.rect)
 	images_after_paint(app)
@@ -646,11 +661,11 @@ build_ui :: proc(app: ^App) {
 				labels := make([]string, len(app.tabs), ui.frame_allocator())
 				for tab, i in app.tabs { labels[i] = fmt.aprintf("%s###tab%d", tab.title, i, allocator = ui.frame_allocator()) }
 				sel := app.current
+				right, middle: int
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
-				if ui.tabs("tabs", labels, nil, &sel) && sel != app.current {
-					app.current = sel
-					ui.field_set(&app.address, app.tabs[sel].url)
-				}
+				if ui.tabs("tabs", labels, nil, &sel, &right, &middle) && sel != app.current { tab_select(app, sel) }
+				if right >= 0 { tab_context_menu(app, right, ui.mouse_pos()) }
+				if middle >= 0 { tab_close(app, middle); return }
 				ui.next({width = ui.px(em * 2.4), height = ui.px(ui.dense(em * 2.2))})
 				add := ui.icon_button("###newtab", GLYPH_ADD)
 				tip(add, "New tab (Ctrl+T)")
@@ -663,12 +678,15 @@ build_ui :: proc(app: ^App) {
 			// navigation, security chip, address, menu
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
 			if ui.row(.Center) { address_row(app, t) }
+			find_bar(app, t)
 			// page
 			ui.next({width = ui.fill(), height = ui.fill()})
 			if t != nil && t.kind == .Config {
 				config_page(&app.config_view, &app.prefs)
 			} else {
-				ui.custom("###page_area", page_draw, nil)
+				// a Tab stop of the chrome: reaching it hands the keyboard to the page (forms_focus_from_chrome)
+				pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
+				page_area_focus(app, t, pb)
 			}
 			// console strip + status
 			if t != nil {
@@ -695,6 +713,8 @@ build_ui :: proc(app: ^App) {
 			}
 		}
 	}
+	context_menus_build(app)
+	ui.toasts_build()
 }
 
 // href of the nearest <a> at or above `h`.
@@ -714,7 +734,7 @@ anchor_href :: proc(d: ^dom.Document, h: base.Handle) -> (string, bool) {
 route_page_input :: proc(app: ^App, events: []platform.Event) {
 	t := current_tab(app)
 	if t == nil || t.page == nil || t.kind != .Web { return }
-	scale := ui.scale()
+	scale := page_scale(app)
 	last_move: platform.Event
 	have_move := false
 	defer if have_move && t.page != nil {
@@ -733,23 +753,34 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		#partial switch ev.kind {
 		case .Mouse_Move:
 			last_move, have_move = ev, true   // only the last position of the frame matters: hit test once, after the loop
+			selection_pointer_move(app, t, ev.pos)
 		case .Scroll:
-			if inside {
+			if inside && .Ctrl in ev.mods {
+				// Ctrl+wheel zooms the page (wheel up = delta.y < 0 = bigger)
+				if ev.delta.y != 0 { zoom_step(app, t, ev.delta.y < 0 ? 1 : -1) }
+			} else if inside {
 				d := ev.delta * app.cfg.scroll_step * scale   // platform convention: +y = towards the end of the content
 				if !page_wheel(&t.layout, ev.pos - app.page_rect.min, d, draw.rect_size(app.page_rect), t.scroll) { t.scroll += d.y }
 			}
 		case .Mouse_Press:
 			if !inside || !t.layout.valid { continue }
+			if ui.ctx_menu_any_open() { continue }   // the press closes the menu (the toolkit's)
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
 			pressed := hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll)
 			t.scroll_target = pressed
-			forms_pointer_down(app, t, ev, pressed, local)
+			allowed := forms_pointer_down(app, t, ev, pressed, local)
+			if t.page == nil { return }
+			if ev.button == .Left { selection_pointer_down(app, t, ev, pressed, allowed) }
+			if ev.button == .Right { page_context_press(app, t, ev.pos) }
 		case .Mouse_Release:
 			if !t.layout.valid { continue }
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
 			released := inside ? hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) : base.NIL_HANDLE
+			dragged := selection_pointer_up(app, t, ev)
 			target, clicked := forms_pointer_up(app, t, ev, released, local)
-			if !clicked || t.page == nil { continue }
+			if t.page == nil { return }
+			if ev.button == .Right && inside { page_context_menu(app, t, released, ev.pos, local, .Shift in ev.mods) }
+			if !clicked || t.page == nil || dragged { continue }
 			not_prevented := forms_click(app, t, target, ev, local)
 			if t.page == nil { return }
 			// default action: following a link, unless a listener called preventDefault
@@ -846,6 +877,7 @@ frame :: proc(app: ^App) {
 	route_page_input(app, events)
 	events = forms_unconsumed_events(events)   // keys the page used do not reach the chrome
 	forms_shell_frame(app)
+	selection_shell_frame(app)
 	prof_end(.Input)
 
 	// page visibility, then the animation frame callbacks of the page about to be painted
@@ -873,6 +905,7 @@ frame :: proc(app: ^App) {
 	ui.begin_build(&app.ui_state, {
 		window_size = size, events = events, dt = dt, animations = platform.os_animations_enabled(),
 		dpi_scale = app.win.dpi_scale, base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
+		disable_zoom = true,   // Ctrl+Plus / Minus / 0 and Ctrl+wheel zoom the page (zoom.odin), not the chrome
 	})
 	build_ui(app)
 	ui.end_build()
@@ -947,6 +980,7 @@ main :: proc() {
 	ui.init(&app.ui_state, &app.fonts, &app.theme)
 	app.ui_state.icon_font = app.icons
 	page_render_init(app)
+	interaction_init(app)
 	images_shell_init(app)
 	images_set_texture_api(renderer_texture_api(app))
 	set_content_painter(forms_content_painter, app)
@@ -1016,5 +1050,8 @@ main :: proc() {
 	forms_shell_destroy()
 	page_render_destroy()
 	config_view_destroy(&app.config_view)
+	interaction_destroy(app)
+	ui.field_destroy(&app.address)
+	ui.destroy(&app.ui_state)
 	config.prefs_destroy(&app.prefs)
 }

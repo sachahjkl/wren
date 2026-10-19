@@ -135,6 +135,8 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: dra
 		if !effects_for(&fx, it) { continue }
 		off := v.offsets[it.space] + origin
 		r := draw.rect_shift(dr(it.rect), off)
+		selection_paint_under(l, dc, it, r)
+		defer selection_paint_over(l, dc, it, r)
 		switch it.kind {
 		case .Box:
 			if page_render.bare != nil && page_render.bare(page_render.content_user, d, it.node) { continue }

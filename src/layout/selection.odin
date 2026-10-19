@@ -178,6 +178,9 @@ select_mode :: proc(d: ^dom.Document, st: ^style.Styled, el: base.Handle, cache:
 	return mode
 }
 
+// Can the text of element `el` be selected (user-select, through the ancestors)?
+is_selectable :: proc(d: ^dom.Document, st: ^style.Styled, el: base.Handle) -> bool { return select_mode(d, st, el, nil) != .None }
+
 // The outermost `user-select: all` element at or above `el` (NIL: none).
 select_all_root :: proc(d: ^dom.Document, st: ^style.Styled, el: base.Handle) -> base.Handle {
 	found := base.NIL_HANDLE
@@ -481,8 +484,11 @@ emit_text :: proc(fb: ^Flat_Builder, text: string, node: base.Handle, lo, hi: in
 
 // The rendered text of [start, end] (innerText rules). `root`: where to walk from (an ancestor of both ends; NIL = the
 // document). Hidden content (display: none, visibility: hidden, unstyled nodes) is left out; generated content and
-// images contribute nothing. Allocated in `allocator` (temp by default).
-range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, root := base.NIL_HANDLE, allocator := context.temp_allocator) -> Flat_Text {
+// images contribute nothing. `selectable_only`: text that cannot be selected (user-select: none) is left out too, as
+// what a selection copies. Allocated in `allocator` (temp by default).
+range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, root := base.NIL_HANDLE, allocator := context.temp_allocator, selectable_only := false) -> Flat_Text {
+	modes: map[base.Handle]Select_Mode
+	if selectable_only { modes = make(map[base.Handle]Select_Mode, 64, context.temp_allocator) }
 	fb := Flat_Builder{sb = strings.builder_make(allocator), runs = make([dynamic]Flat_Run, allocator), at_line_start = true}
 	if pos_compare(d, start, end) >= 0 { return {} }
 	top := root
@@ -518,6 +524,7 @@ range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, ro
 			if pos_compare(d, {s.h, 0}, end) >= 0 { clear(&stack); continue }   // past the end of the range
 			pcs := style.style_of(st, n.parent)
 			if pcs == nil || pcs.visibility != .Visible { continue }
+			if selectable_only && select_mode(d, st, n.parent, &modes) == .None { continue }
 			lo := start.node == s.h ? start.offset : 0
 			hi := end.node == s.h ? end.offset : len(n.text)
 			emit_text(&fb, n.text, s.h, clamp(lo, 0, len(n.text)), clamp(hi, 0, len(n.text)), pcs)

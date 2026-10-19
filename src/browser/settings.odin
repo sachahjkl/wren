@@ -56,6 +56,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_layout_prefs(p)
 	register_effects_prefs(p)
 	register_render_prefs(p)
+	register_interaction_prefs(p)
 	_ = wasm.PREFS
 	_ = html.PREFS
 }
