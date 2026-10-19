@@ -299,7 +299,7 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_C
 	b.size = {w, h}
 	if .List_Item in b.flags && b.marker_w != 0 { place_marker(c, bi) }
 	if b.abs_first != NONE { if b.kind == .Grid { grid_abs(c, bi) } else { layout_abs_list(c, bi) } }
-	if .Ifc in b.flags { layout_inline_abs(c, bi) }
+	if .Ifc in b.flags && !pre_no_inline_abs(c, bi) { layout_inline_abs(c, bi) }
 	b = &c.l.boxes[bi]
 	res.h = h
 	if outer_open != nil { strut_merge(outer_open, contrib) }
@@ -354,7 +354,8 @@ flow_blocks :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse_t
 		probe := strut^
 		strut_add(&probe, mt)
 		hyp := (open ? fc.y : ctop + y) + strut_value(probe)
-		floor := bfc_clear_floor(fc.bfc, k.cs.clear)
+		floor: f32 = -math.F32_MAX   // (no float: the style is not read)
+		if fc.bfc != nil && len(fc.bfc.floats) > 0 { floor = bfc_clear_floor(fc.bfc, k.cs.clear) }
 		cleared := floor > hyp
 		ky: f32   // border-box top, relative to the content top
 		child_fc: Flow_Ctx

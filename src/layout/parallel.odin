@@ -50,6 +50,7 @@ Pre_Result :: struct {
 	segs:         [2]i32,      // in the chunk's segs: measured there, to keep (empty: none)
 	models:       [2]i32,      // in the chunk's models: the edges of its inline boxes (and their fragments' union)
 	settled:      bool,        // models have the unions: pre_adopt needs not read the fragments (ifc_settle)
+	inline_abs:   bool,        // some inline box of the context is the containing block of positioned boxes
 	baseline, last_baseline: f32,
 	glines:       [2]i32,      // in Layout.lines (pre_place)
 	taken:        bool,
@@ -375,11 +376,14 @@ pre_chunk :: proc(data: rawptr, k: int) {
 		resolve_box_model(&wc, b, r.pcw)
 		r.cx, r.cy = content_x(b), content_y(b)
 		inl := make([dynamic]Box_Model_Save, 0, 8, context.temp_allocator)
+		r.inline_abs = false
 		for i in b.items[0] ..< b.items[1] {
 			if it := &l.inline_items[i]; it.kind == .Open {
 				s: Box_Model_Save
-				model_save(&s, &l.boxes[it.box], it.box)
+				ib := &l.boxes[it.box]
+				model_save(&s, ib, it.box)
 				append(&inl, s)
+				if ib.abs_first != NONE { r.inline_abs = true }
 			}
 		}
 		s0 := len(ch.segs)
@@ -480,6 +484,18 @@ pre_adopt :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (h: f32, empty: b
 	return r.h, r.empty, true
 }
 
+// Context `bi` was taken from the threads and none of its inline boxes contains positioned boxes: layout_inline_abs
+// has nothing to do (it would read every item of the context to find out).
+@(private)
+pre_no_inline_abs :: #force_inline proc(c: ^Ctx, bi: i32) -> bool {
+	pre := c.pre
+	if pre == nil || int(bi) >= len(pre.slot) { return false }
+	ri := pre.slot[bi]
+	if ri == NONE { return false }
+	r := &pre.results[ri]
+	return r.taken && !r.inline_abs
+}
+
 @(private)
 pre_destroy :: proc(l: ^Layout) {
 	for &ch in l.pre_chunks {
@@ -511,6 +527,7 @@ paint_content_shared :: proc(p: ^Paint_Ctx, root: i32) -> bool {
 	if int(end - root) < l.settings.threads_min_boxes { return false }
 
 	walk := make([dynamic]i32, 0, int(end - root), context.temp_allocator)
+	floats := make([dynamic]i32, 0, 16, context.temp_allocator)   // step 4, in the same walk's order
 	stack := make([dynamic]i32, 0, 64, context.temp_allocator)
 	push :: proc(l: ^Layout, stack: ^[dynamic]i32, x: i32) {
 		n := len(stack)
@@ -521,7 +538,8 @@ paint_content_shared :: proc(p: ^Paint_Ctx, root: i32) -> bool {
 	for len(stack) > 0 {
 		x := pop(&stack)
 		b := &l.boxes[x]
-		if hoisted(b) || .Float in b.flags || .Atomic in b.flags { continue }
+		if hoisted(b) || .Atomic in b.flags { continue }
+		if .Float in b.flags { append(&floats, x); continue }
 		append(&walk, x)
 		push(l, &stack, x)
 	}
@@ -545,14 +563,7 @@ paint_content_shared :: proc(p: ^Paint_Ctx, root: i32) -> bool {
 		c.dl_out, c.dl_fix = &mid, &mid_fix
 		defer c.dl_out, c.dl_fix = nil, nil
 		mp := Paint_Ctx{c = c, outlines = &mid_outlines, scrollers = &mid_scrollers}
-		push(l, &stack, root)
-		for len(stack) > 0 {
-			x := pop(&stack)
-			b := &l.boxes[x]
-			if hoisted(b) || .Atomic in b.flags { continue }
-			if .Float in b.flags { paint_pseudo(&mp, x); continue }
-			push(l, &stack, x)
-		}
+		for x in floats { paint_pseudo(&mp, x) }
 		rb := &l.boxes[root]
 		if rb.kind == .Inline { emit_lines(&mp, rb.ifc_root, root) } else { emit_own_lines(&mp, root) }
 	}
