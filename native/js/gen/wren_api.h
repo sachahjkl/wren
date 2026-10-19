@@ -579,6 +579,13 @@ WR_IMPORT("forms", "FormData_isFileAt") int32_t wr_FormData_isFileAt(uint64_t da
 // -1 for a non-file entry or past the end.
 WR_IMPORT("forms", "FormData_fileSizeAt") int64_t wr_FormData_fileSizeAt(uint64_t data, int32_t index);
 WR_IMPORT("forms", "FormData_fileTypeAt") int32_t wr_FormData_fileTypeAt(uint64_t data, int32_t index, uint8_t *_buf, uint32_t _cap);
+// The bytes of the index-th entry, a file (a file chosen in an <input type=file> is read now). Not_Found when there
+// is no such entry or it is not a file.
+WR_IMPORT("forms", "FormData_fileAt") int32_t wr_FormData_fileAt(uint64_t data, int32_t index, uint64_t *_ret);
+// set(name, blob, filename): like FormData_set with a file entry.
+WR_IMPORT("forms", "FormData_setBlob") int32_t wr_FormData_setBlob(uint64_t data, const uint8_t *name, uint32_t name_len, uint64_t blob, const uint8_t *filename, uint32_t filename_len, const uint8_t *mime, uint32_t mime_len);
+// The entries as a multipart/form-data body with this boundary (files chosen in an <input type=file> are read now).
+WR_IMPORT("forms", "FormData_encode") int32_t wr_FormData_encode(uint64_t data, const uint8_t *boundary, uint32_t boundary_len, uint64_t *_ret);
 
 /* module fetch (partial) */
 
@@ -663,6 +670,62 @@ WR_IMPORT("js", "Node_treeRoots") void wr_Node_treeRoots(const uint64_t *nodes, 
 /* module dom (partial) */
 
 /* module events (partial) */
+
+/* module navigator */
+// A string member of Navigator.
+enum wr_NavigatorField {
+    // navigator.userAgent: the User-Agent header the browser sends (network.user_agent).
+    wr_NavigatorField_User_Agent = 0,
+    // navigator.appVersion: the user agent without its leading "Mozilla/".
+    wr_NavigatorField_App_Version = 1,
+    // navigator.platform ("Win32").
+    wr_NavigatorField_Platform = 2,
+    // navigator.vendor.
+    wr_NavigatorField_Vendor = 3,
+    // navigator.languages, comma separated, from the Accept-Language preference (network.accept_language), without
+    // quality values.
+    wr_NavigatorField_Languages = 4,
+    // navigator.doNotTrack: "1", or "" for null (privacy.do_not_track).
+    wr_NavigatorField_Do_Not_Track = 5,
+};
+// A string member of Navigator.
+WR_IMPORT("navigator", "Navigator_get") int32_t wr_Navigator_get(int32_t field, uint8_t *_buf, uint32_t _cap);
+// navigator.hardwareConcurrency: the logical processors the page may use.
+WR_IMPORT("navigator", "Navigator_hardwareConcurrency") int32_t wr_Navigator_hardwareConcurrency(void);
+// navigator.onLine: whether the system has a network connection.
+WR_IMPORT("navigator", "Navigator_onLine") int32_t wr_Navigator_onLine(void);
+// navigator.cookieEnabled: whether the document may use cookies.
+WR_IMPORT("navigator", "Navigator_cookieEnabled") int32_t wr_Navigator_cookieEnabled(void);
+// navigator.sendBeacon(url, data): a POST queued with the page's policy (CORS no-cors mode, credentials included),
+// whose response nobody reads; it is not cancelled when the page closes. False when the beacon is refused (too large:
+// navigator.beacon_max_bytes, or an invalid URL). `content_type` "" sends none.
+WR_IMPORT("navigator", "Beacon_send") int32_t wr_Beacon_send(const uint8_t *url, uint32_t url_len, const uint8_t *data, uint32_t data_len, const uint8_t *content_type, uint32_t content_type_len);
+
+/* module media */
+// A media query list evaluated against the page's viewport (CSSOM View matchMedia); an EventTarget whose "change"
+// event is fired when the result changes (after a resize, a zoom, a change of the color scheme), Event_code being
+// the new result.
+typedef uint64_t wr_MediaQueryList;
+// A dimension of the screen (CSS pixels of the monitor showing the page).
+enum wr_ScreenField {
+    wr_ScreenField_Width = 0,
+    wr_ScreenField_Height = 1,
+    wr_ScreenField_Avail_Width = 2,
+    wr_ScreenField_Avail_Height = 3,
+    wr_ScreenField_Avail_Left = 4,
+    wr_ScreenField_Avail_Top = 5,
+    wr_ScreenField_Color_Depth = 6,
+};
+// window.matchMedia(query): an invalid query is "not all" (it never matches).
+WR_IMPORT("media", "MediaQueryList_create") uint64_t wr_MediaQueryList_create(const uint8_t *query, uint32_t query_len);
+// mql.media: the query list serialized.
+WR_IMPORT("media", "MediaQueryList_media") int32_t wr_MediaQueryList_media(uint64_t list, uint8_t *_buf, uint32_t _cap);
+// mql.matches, as of the page's last style computation (or now when it never had one).
+WR_IMPORT("media", "MediaQueryList_matches") int32_t wr_MediaQueryList_matches(uint64_t list);
+// screen.width, screen.availHeight...
+WR_IMPORT("media", "Screen_get") int32_t wr_Screen_get(int32_t field);
+
+/* module forms (partial) */
 
 /* module net */
 // A request and, once it arrived, its response.

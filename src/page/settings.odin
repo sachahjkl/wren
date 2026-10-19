@@ -23,6 +23,7 @@ Settings :: struct {
 	threads:         Thread_Settings,     // offthread.odin
 	images:          img.Settings,        // images.odin
 	js:              js.Settings,         // JavaScript (package js, js_realm.odin)
+	js_web:          Js_Web_Settings,     // web APIs of JavaScript (js_web_settings.odin)
 }
 
 PREFS := [?]config.Def{
@@ -45,6 +46,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	forms.register_prefs(p)
 	img.register_prefs(p)
 	js.register_prefs(p)
+	config.register(p, JS_WEB_PREFS[:])
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -62,6 +64,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		threads = thread_settings_from_prefs(p),
 		images = img.settings_from_prefs(p),
 		js = js.settings_from_prefs(p),
+		js_web = js_web_settings_from_prefs(p),
 	}
 }
 
@@ -76,4 +79,5 @@ settings_destroy :: proc(s: ^Settings) {
 	style.settings_destroy(&s.style)
 	forms.settings_destroy(&s.forms)
 	js.settings_destroy(&s.js)
+	js_web_settings_destroy(&s.js_web)
 }

@@ -13,15 +13,15 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | | count |
 |---|---:|
 | interfaces, namespaces in the table | 556 |
-| exposed by default | 147 |
+| exposed by default | 174 |
 | members | 4991 |
-| members implemented | 1533 (30.7 %) |
+| members implemented | 1838 (36.8 %) |
 
 ## By specification
 
 | IDL file | interfaces (exposed) | members implemented |
 |---|---:|---:|
-| `FileAPI.idl` | 5 (0) | 9 / 38 |
+| `FileAPI.idl` | 5 (3) | 28 / 38 |
 | `IndexedDB.idl` | 12 (0) | 11 / 94 |
 | `SVG.idl` | 60 (35) | 194 / 455 |
 | `clipboard-apis.idl` | 4 (0) | 0 / 14 |
@@ -37,17 +37,17 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-transitions.idl` | 1 (0) | 0 / 4 |
 | `css-typed-om.idl` | 37 (0) | 3 / 126 |
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
-| `cssom-view.idl` | 5 (0) | 4 / 28 |
+| `cssom-view.idl` | 5 (3) | 17 / 28 |
 | `cssom.idl` | 16 (0) | 11 / 149 |
-| `dom.idl` | 35 (18) | 266 / 699 |
-| `encoding.idl` | 4 (1) | 1 / 19 |
+| `dom.idl` | 35 (18) | 272 / 699 |
+| `encoding.idl` | 4 (2) | 9 / 19 |
 | `entries-api.idl` | 5 (0) | 0 / 13 |
 | `event-timing.idl` | 2 (0) | 0 / 8 |
-| `fetch.idl` | 4 (1) | 2 / 57 |
+| `fetch.idl` | 4 (3) | 54 / 57 |
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (0) | 0 / 126 |
-| `hr-time.idl` | 1 (1) | 5 / 17 |
-| `html.idl` | 160 (79) | 754 / 1819 |
+| `hr-time.idl` | 1 (1) | 11 / 17 |
+| `html.idl` | 160 (87) | 856 / 1819 |
 | `intersection-observer.idl` | 2 (0) | 0 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -60,7 +60,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `netinfo.idl` | 1 (0) | 1 / 6 |
 | `notifications.idl` | 1 (0) | 4 / 25 |
 | `paint-timing.idl` | 1 (0) | 0 / 3 |
-| `performance-timeline.idl` | 3 (0) | 0 / 15 |
+| `performance-timeline.idl` | 3 (1) | 7 / 15 |
 | `permissions.idl` | 2 (0) | 1 / 4 |
 | `pointerevents.idl` | 3 (1) | 6 / 47 |
 | `requestidlecallback.idl` | 1 (0) | 0 / 2 |
@@ -73,47 +73,70 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `service-workers.idl` | 6 (0) | 6 / 43 |
 | `speech-api.idl` | 14 (0) | 19 / 85 |
 | `storage.idl` | 1 (0) | 0 / 3 |
-| `streams.idl` | 13 (0) | 0 / 59 |
+| `streams.idl` | 13 (3) | 14 / 59 |
 | `touch-events.idl` | 3 (0) | 0 / 27 |
 | `trusted-types.idl` | 6 (0) | 0 / 20 |
 | `ua-client-hints.idl` | 1 (0) | 0 / 5 |
 | `uievents.idl` | 6 (2) | 5 / 36 |
-| `url.idl` | 2 (2) | 10 / 29 |
-| `user-timing.idl` | 2 (0) | 0 / 3 |
+| `url.idl` | 2 (2) | 29 / 29 |
+| `user-timing.idl` | 2 (2) | 3 / 3 |
 | `web-animations.idl` | 5 (0) | 3 / 32 |
 | `web-locks.idl` | 2 (0) | 0 / 5 |
 | `webaudio.idl` | 37 (0) | 7 / 204 |
-| `webcrypto.idl` | 3 (1) | 1 / 19 |
-| `webidl.idl` | 2 (1) | 25 / 32 |
-| `websockets.idl` | 2 (2) | 15 / 21 |
-| `xhr.idl` | 5 (1) | 15 / 47 |
+| `webcrypto.idl` | 3 (2) | 15 / 19 |
+| `webidl.idl` | 2 (1) | 29 / 32 |
+| `websockets.idl` | 2 (2) | 21 / 21 |
+| `xhr.idl` | 5 (4) | 47 / 47 |
 
 ## By interface
 
 ### AbortController
 
-1 / 3 members.
+3 / 3 members.
 
-- `constructor()`: not supported
-- `readonly signal`: import `abort.AbortController_signal`
-- `abort()`: not supported
+- `constructor()`: C `wjr_AbortController_constructor`
+- `readonly signal`: C `wjr_AbortController_get_signal`
+- `abort()`: C `wjr_AbortController_abort`
+
+### Blob
+
+7 / 9 members.
+
+- `constructor()`: C `wjr_Blob_constructor`
+- `readonly size`: C `wjr_Blob_get_size`
+- `readonly type`: C `wjr_Blob_get_type`
+- `slice()`: C `wjr_Blob_slice`
+- `stream()`: not supported
+- `text()`: C `wjr_Blob_text`
+- `arrayBuffer()`: C `wjr_Blob_arrayBuffer`
+- `textStream()`: not supported
+- `bytes()`: C `wjr_Blob_bytes`
+
+### File : Blob
+
+3 / 4 members.
+
+- `constructor()`: C `wjr_File_constructor`
+- `readonly name`: C `wjr_File_get_name`
+- `readonly lastModified`: C `wjr_File_get_lastModified`
+- `readonly webkitRelativePath`: not supported
 
 ### Crypto
 
-1 / 3 members.
+3 / 3 members.
 
-- `readonly subtle`: not supported
-- `getRandomValues()`: not supported
+- `readonly subtle`: C `wjr_Crypto_get_subtle`
+- `getRandomValues()`: C `wjr_Crypto_getRandomValues`
 - `randomUUID()`: import `crypto.Crypto_randomUUID`
 
 ### DOMException
 
-25 / 29 members.
+29 / 29 members.
 
-- `constructor()`: not supported
-- `readonly name`: not supported
-- `readonly message`: not supported
-- `readonly code`: not supported
+- `constructor()`: C `wjr_DOMException_constructor`
+- `readonly name`: C `wjr_DOMException_get_name`
+- `readonly message`: C `wjr_DOMException_get_message`
+- `readonly code`: C `wjr_DOMException_get_code`
 - `const INDEX_SIZE_ERR`: generic (constant)
 - `const DOMSTRING_SIZE_ERR`: generic (constant)
 - `const HIERARCHY_REQUEST_ERR`: generic (constant)
@@ -170,12 +193,12 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### CloseEvent : Event
 
-1 / 4 members.
+4 / 4 members.
 
-- `constructor()`: not supported
-- `readonly wasClean`: import `websocket.CloseEvent_wasClean`
-- `readonly code`: not supported
-- `readonly reason`: not supported
+- `constructor()`: C `wjr_CloseEvent_constructor`
+- `readonly wasClean`: C `wjr_CloseEvent_get_wasClean`
+- `readonly code`: C `wjr_CloseEvent_get_code`
+- `readonly reason`: C `wjr_CloseEvent_get_reason`
 
 ### CustomEvent : Event
 
@@ -185,17 +208,62 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly detail`: C `wjr_CustomEvent_get_detail`
 - `initCustomEvent()`: C `wjr_CustomEvent_initCustomEvent`
 
+### HashChangeEvent : Event
+
+3 / 3 members.
+
+- `constructor()`: C `wjr_HashChangeEvent_constructor`
+- `readonly oldURL`: C `wjr_HashChangeEvent_get_oldURL`
+- `readonly newURL`: C `wjr_HashChangeEvent_get_newURL`
+
+### MediaQueryListEvent : Event
+
+3 / 3 members.
+
+- `constructor()`: C `wjr_MediaQueryListEvent_constructor`
+- `readonly media`: C `wjr_MediaQueryListEvent_get_media`
+- `readonly matches`: C `wjr_MediaQueryListEvent_get_matches`
+
 ### MessageEvent : Event
 
-2 / 7 members.
+7 / 7 members.
 
-- `constructor()`: not supported
-- `readonly data`: not supported
-- `readonly origin`: import `eventsource.MessageEvent_origin`
-- `readonly lastEventId`: import `eventsource.MessageEvent_lastEventId`
-- `readonly source`: not supported
-- `readonly ports`: not supported
-- `initMessageEvent()`: not supported
+- `constructor()`: C `wjr_MessageEvent_constructor`
+- `readonly data`: C `wjr_MessageEvent_get_data`
+- `readonly origin`: C `wjr_MessageEvent_get_origin`
+- `readonly lastEventId`: C `wjr_MessageEvent_get_lastEventId`
+- `readonly source`: C `wjr_MessageEvent_get_source`
+- `readonly ports`: C `wjr_MessageEvent_get_ports`
+- `initMessageEvent()`: C `wjr_MessageEvent_initMessageEvent`
+
+### PopStateEvent : Event
+
+3 / 3 members.
+
+- `constructor()`: C `wjr_PopStateEvent_constructor`
+- `readonly state`: C `wjr_PopStateEvent_get_state`
+- `readonly hasUAVisualTransition`: C `wjr_PopStateEvent_get_hasUAVisualTransition`
+
+### ProgressEvent : Event
+
+4 / 4 members.
+
+- `constructor()`: C `wjr_ProgressEvent_constructor`
+- `readonly lengthComputable`: C `wjr_ProgressEvent_get_lengthComputable`
+- `readonly loaded`: C `wjr_ProgressEvent_get_loaded`
+- `readonly total`: C `wjr_ProgressEvent_get_total`
+
+### StorageEvent : Event
+
+6 / 7 members.
+
+- `constructor()`: C `wjr_StorageEvent_constructor`
+- `readonly key`: C `wjr_StorageEvent_get_key`
+- `readonly oldValue`: C `wjr_StorageEvent_get_oldValue`
+- `readonly newValue`: C `wjr_StorageEvent_get_newValue`
+- `readonly url`: C `wjr_StorageEvent_get_url`
+- `readonly storageArea`: C `wjr_StorageEvent_get_storageArea`
+- `initStorageEvent()`: not supported
 
 ### UIEvent : Event
 
@@ -268,21 +336,21 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### AbortSignal : EventTarget
 
-4 / 7 members.
+7 / 7 members.
 
-- `static abort()`: not supported
-- `static timeout()`: import `abort.AbortSignal_timeout`
-- `static any()`: not supported
-- `readonly aborted`: import `abort.AbortSignal_aborted`
-- `readonly reason`: not supported
-- `throwIfAborted()`: import `abort.AbortSignal_throwIfAborted`
+- `static abort()`: C `wjr_AbortSignal_static_abort`
+- `static timeout()`: C `wjr_AbortSignal_static_timeout`
+- `static any()`: C `wjr_AbortSignal_static_any`
+- `readonly aborted`: C `wjr_AbortSignal_get_aborted`
+- `readonly reason`: C `wjr_AbortSignal_get_reason`
+- `throwIfAborted()`: C `wjr_AbortSignal_throwIfAborted`
 - `onabort`: generic (event handler)
 
 ### EventSource : EventTarget
 
-10 / 11 members.
+11 / 11 members.
 
-- `constructor()`: not supported
+- `constructor()`: C `wjr_EventSource_constructor`
 - `readonly url`: import `eventsource.EventSource_url`
 - `readonly withCredentials`: import `eventsource.EventSource_withCredentials`
 - `const CONNECTING`: generic (constant)
@@ -292,7 +360,51 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onopen`: generic (event handler)
 - `onmessage`: generic (event handler)
 - `onerror`: generic (event handler)
-- `close()`: import `eventsource.EventSource_close`
+- `close()`: C `wjr_EventSource_close`
+
+### FileReader : EventTarget
+
+18 / 18 members.
+
+- `constructor()`: C `wjr_FileReader_constructor`
+- `readAsArrayBuffer()`: C `wjr_FileReader_readAsArrayBuffer`
+- `readAsBinaryString()`: C `wjr_FileReader_readAsBinaryString`
+- `readAsText()`: C `wjr_FileReader_readAsText`
+- `readAsDataURL()`: C `wjr_FileReader_readAsDataURL`
+- `abort()`: C `wjr_FileReader_abort`
+- `const EMPTY`: generic (constant)
+- `const LOADING`: generic (constant)
+- `const DONE`: generic (constant)
+- `readonly readyState`: C `wjr_FileReader_get_readyState`
+- `readonly result`: C `wjr_FileReader_get_result`
+- `readonly error`: C `wjr_FileReader_get_error`
+- `onloadstart`: generic (event handler)
+- `onprogress`: generic (event handler)
+- `onload`: generic (event handler)
+- `onabort`: generic (event handler)
+- `onerror`: generic (event handler)
+- `onloadend`: generic (event handler)
+
+### MediaQueryList : EventTarget
+
+5 / 5 members.
+
+- `readonly media`: import `media.MediaQueryList_media`
+- `readonly matches`: import `media.MediaQueryList_matches`
+- `addListener()`: C `wjr_MediaQueryList_addListener`
+- `removeListener()`: C `wjr_MediaQueryList_removeListener`
+- `onchange`: generic (event handler)
+
+### MessagePort : EventTarget
+
+6 / 6 members.
+
+- `postMessage()`: C `wjr_MessagePort_postMessage`
+- `postMessage()`: C `wjr_MessagePort_postMessage`
+- `start()`: C `wjr_MessagePort_start`
+- `close()`: C `wjr_MessagePort_close`
+- `onmessage` (MessageEventTarget): generic (event handler)
+- `onmessageerror` (MessageEventTarget): generic (event handler)
 
 ### Node : EventTarget
 
@@ -423,7 +535,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Document : Node
 
-118 / 225 members.
+119 / 225 members.
 
 - `readonly rootElement`: not supported
 - `startViewTransition()`: not supported
@@ -468,7 +580,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onfullscreenerror`: generic (event handler)
 - `static parseHTMLUnsafe()`: not supported
 - `static parseHTML()`: not supported
-- `readonly location`: not supported
+- `readonly location`: C `wjr_Document_get_location`
 - `domain`: not supported
 - `readonly referrer`: not supported
 - `cookie`: import `document.Document_cookie_get`
@@ -2699,31 +2811,31 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Performance : EventTarget
 
-5 / 17 members.
+11 / 17 members.
 
 - `readonly eventCounts`: not supported
 - `readonly interactionCount`: not supported
 - `now()`: import `performance.Performance_now`
 - `readonly timeOrigin`: import `performance.Performance_timeOrigin`
-- `toJSON()`: not supported
+- `toJSON()`: C `wjr_Performance_toJSON`
 - `readonly timing`: not supported
 - `readonly navigation`: not supported
-- `getEntries()`: not supported
-- `getEntriesByType()`: not supported
-- `getEntriesByName()`: not supported
+- `getEntries()`: C `wjr_Performance_getEntries`
+- `getEntriesByType()`: C `wjr_Performance_getEntriesByType`
+- `getEntriesByName()`: C `wjr_Performance_getEntriesByName`
 - `clearResourceTimings()`: not supported
 - `setResourceTimingBufferSize()`: not supported
 - `onresourcetimingbufferfull`: generic (event handler)
-- `mark()`: not supported
-- `clearMarks()`: import `performance.Performance_clearMarks`
-- `measure()`: not supported
-- `clearMeasures()`: import `performance.Performance_clearMeasures`
+- `mark()`: C `wjr_Performance_mark`
+- `clearMarks()`: C `wjr_Performance_clearMarks`
+- `measure()`: C `wjr_Performance_measure`
+- `clearMeasures()`: C `wjr_Performance_clearMeasures`
 
 ### WebSocket : EventTarget
 
-14 / 17 members.
+17 / 17 members.
 
-- `constructor()`: not supported
+- `constructor()`: C `wjr_WebSocket_constructor`
 - `readonly url`: import `websocket.WebSocket_url`
 - `const CONNECTING`: generic (constant)
 - `const OPEN`: generic (constant)
@@ -2736,18 +2848,18 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onclose`: generic (event handler)
 - `readonly extensions`: import `websocket.WebSocket_extensions`
 - `readonly protocol`: import `websocket.WebSocket_protocol`
-- `close()`: import `websocket.WebSocket_close`
+- `close()`: C `wjr_WebSocket_close`
 - `onmessage`: generic (event handler)
-- `binaryType`: not supported
-- `send()`: not supported
+- `binaryType`: C `wjr_WebSocket_get_binaryType`
+- `send()`: C `wjr_WebSocket_send`
 
 ### Window : EventTarget
 
-132 / 220 members.
+148 / 220 members.
 
 - `readonly cookieStore`: not supported
-- `matchMedia()`: not supported
-- `readonly screen`: not supported
+- `matchMedia()`: C `wjr_Window_matchMedia`
+- `readonly screen`: C `wjr_Window_get_screen`
 - `readonly visualViewport`: not supported
 - `moveTo()`: not supported
 - `moveBy()`: not supported
@@ -2779,8 +2891,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly self`: C `wjr_Window_get_self`
 - `readonly document`: import `dom.Window_document`
 - `name`: not supported
-- `readonly location`: not supported
-- `readonly history`: not supported
+- `readonly location`: C `wjr_Window_get_location`
+- `readonly history`: C `wjr_Window_get_history`
 - `readonly navigation`: not supported
 - `readonly customElements`: not supported
 - `readonly locationbar`: not supported
@@ -2802,16 +2914,16 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly parent`: C `wjr_Window_get_parent`
 - `readonly frameElement`: C `wjr_Window_get_frameElement`
 - `open()`: not supported
-- `readonly navigator`: not supported
-- `readonly clientInformation`: not supported
+- `readonly navigator`: C `wjr_Window_get_navigator`
+- `readonly clientInformation`: C `wjr_Window_get_clientInformation`
 - `readonly originAgentCluster`: not supported
 - `alert()`: not supported
 - `alert()`: not supported
 - `confirm()`: not supported
 - `prompt()`: not supported
 - `print()`: not supported
-- `postMessage()`: not supported
-- `postMessage()`: not supported
+- `postMessage()`: C `wjr_Window_postMessage`
+- `postMessage()`: C `wjr_Window_postMessage`
 - `captureEvents()`: not supported
 - `releaseEvents()`: not supported
 - `readonly external`: not supported
@@ -2941,14 +3053,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onunhandledrejection` (WindowEventHandlers): generic (event handler)
 - `onunload` (WindowEventHandlers): generic (event handler)
 - `readonly indexedDB` (WindowOrWorkerGlobalScope): not supported
-- `fetch()` (WindowOrWorkerGlobalScope): not supported
-- `readonly performance` (WindowOrWorkerGlobalScope): not supported
+- `fetch()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_fetch`
+- `readonly performance` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_performance`
 - `readonly origin` (WindowOrWorkerGlobalScope): import `document.Window_origin`
 - `readonly isSecureContext` (WindowOrWorkerGlobalScope): import `document.Window_isSecureContext`
 - `readonly crossOriginIsolated` (WindowOrWorkerGlobalScope): not supported
 - `reportError()` (WindowOrWorkerGlobalScope): not supported
-- `btoa()` (WindowOrWorkerGlobalScope): not supported
-- `atob()` (WindowOrWorkerGlobalScope): not supported
+- `btoa()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_btoa`
+- `atob()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_atob`
 - `setTimeout()` (WindowOrWorkerGlobalScope): not supported
 - `clearTimeout()` (WindowOrWorkerGlobalScope): not supported
 - `setInterval()` (WindowOrWorkerGlobalScope): not supported
@@ -2956,15 +3068,15 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `queueMicrotask()` (WindowOrWorkerGlobalScope): not supported
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): not supported
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): not supported
-- `structuredClone()` (WindowOrWorkerGlobalScope): not supported
+- `structuredClone()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_structuredClone`
 - `readonly scheduler` (WindowOrWorkerGlobalScope): not supported
 - `readonly caches` (WindowOrWorkerGlobalScope): not supported
 - `readonly trustedTypes` (WindowOrWorkerGlobalScope): not supported
-- `readonly crypto` (WindowOrWorkerGlobalScope): not supported
+- `readonly crypto` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_crypto`
 - `requestAnimationFrame()` (AnimationFrameProvider): not supported
 - `cancelAnimationFrame()` (AnimationFrameProvider): not supported
-- `readonly sessionStorage` (WindowSessionStorage): not supported
-- `readonly localStorage` (WindowLocalStorage): not supported
+- `readonly sessionStorage` (WindowSessionStorage): C `wjr_WindowSessionStorage_get_sessionStorage`
+- `readonly localStorage` (WindowLocalStorage): C `wjr_WindowLocalStorage_get_localStorage`
 
 ### Worker : EventTarget
 
@@ -2980,11 +3092,11 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### WorkerGlobalScope : EventTarget
 
-7 / 32 members.
+14 / 32 members.
 
 - `readonly self`: C `wjr_WorkerGlobalScope_get_self`
 - `readonly location`: not supported
-- `readonly navigator`: not supported
+- `readonly navigator`: C `wjr_WorkerGlobalScope_get_navigator`
 - `importScripts()`: not supported
 - `onerror`: generic (event handler)
 - `onlanguagechange`: generic (event handler)
@@ -2994,14 +3106,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onunhandledrejection`: generic (event handler)
 - `readonly fonts` (FontFaceSource): not supported
 - `readonly indexedDB` (WindowOrWorkerGlobalScope): not supported
-- `fetch()` (WindowOrWorkerGlobalScope): not supported
-- `readonly performance` (WindowOrWorkerGlobalScope): not supported
+- `fetch()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_fetch`
+- `readonly performance` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_performance`
 - `readonly origin` (WindowOrWorkerGlobalScope): not supported
 - `readonly isSecureContext` (WindowOrWorkerGlobalScope): not supported
 - `readonly crossOriginIsolated` (WindowOrWorkerGlobalScope): not supported
 - `reportError()` (WindowOrWorkerGlobalScope): not supported
-- `btoa()` (WindowOrWorkerGlobalScope): not supported
-- `atob()` (WindowOrWorkerGlobalScope): not supported
+- `btoa()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_btoa`
+- `atob()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_atob`
 - `setTimeout()` (WindowOrWorkerGlobalScope): not supported
 - `clearTimeout()` (WindowOrWorkerGlobalScope): not supported
 - `setInterval()` (WindowOrWorkerGlobalScope): not supported
@@ -3009,11 +3121,11 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `queueMicrotask()` (WindowOrWorkerGlobalScope): not supported
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): not supported
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): not supported
-- `structuredClone()` (WindowOrWorkerGlobalScope): not supported
+- `structuredClone()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_structuredClone`
 - `readonly scheduler` (WindowOrWorkerGlobalScope): not supported
 - `readonly caches` (WindowOrWorkerGlobalScope): not supported
 - `readonly trustedTypes` (WindowOrWorkerGlobalScope): not supported
-- `readonly crypto` (WindowOrWorkerGlobalScope): not supported
+- `readonly crypto` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_crypto`
 
 ### DedicatedWorkerGlobalScope : WorkerGlobalScope
 
@@ -3028,126 +3140,406 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onmessage` (MessageEventTarget): generic (event handler)
 - `onmessageerror` (MessageEventTarget): generic (event handler)
 
+### XMLHttpRequestEventTarget : EventTarget
+
+7 / 7 members.
+
+- `onloadstart`: generic (event handler)
+- `onprogress`: generic (event handler)
+- `onabort`: generic (event handler)
+- `onerror`: generic (event handler)
+- `onload`: generic (event handler)
+- `ontimeout`: generic (event handler)
+- `onloadend`: generic (event handler)
+
+### XMLHttpRequest : XMLHttpRequestEventTarget
+
+26 / 26 members.
+
+- `constructor()`: C `wjr_XMLHttpRequest_constructor`
+- `onreadystatechange`: generic (event handler)
+- `const UNSENT`: generic (constant)
+- `const OPENED`: generic (constant)
+- `const HEADERS_RECEIVED`: generic (constant)
+- `const LOADING`: generic (constant)
+- `const DONE`: generic (constant)
+- `readonly readyState`: C `wjr_XMLHttpRequest_get_readyState`
+- `open()`: C `wjr_XMLHttpRequest_open`
+- `open()`: C `wjr_XMLHttpRequest_open`
+- `setRequestHeader()`: C `wjr_XMLHttpRequest_setRequestHeader`
+- `timeout`: C `wjr_XMLHttpRequest_get_timeout`
+- `withCredentials`: C `wjr_XMLHttpRequest_get_withCredentials`
+- `readonly upload`: C `wjr_XMLHttpRequest_get_upload`
+- `send()`: C `wjr_XMLHttpRequest_send`
+- `abort()`: C `wjr_XMLHttpRequest_abort`
+- `readonly responseURL`: C `wjr_XMLHttpRequest_get_responseURL`
+- `readonly status`: C `wjr_XMLHttpRequest_get_status`
+- `readonly statusText`: C `wjr_XMLHttpRequest_get_statusText`
+- `getResponseHeader()`: C `wjr_XMLHttpRequest_getResponseHeader`
+- `getAllResponseHeaders()`: C `wjr_XMLHttpRequest_getAllResponseHeaders`
+- `overrideMimeType()`: C `wjr_XMLHttpRequest_overrideMimeType`
+- `responseType`: C `wjr_XMLHttpRequest_get_responseType`
+- `readonly response`: C `wjr_XMLHttpRequest_get_response`
+- `readonly responseText`: C `wjr_XMLHttpRequest_get_responseText`
+- `readonly responseXML`: C `wjr_XMLHttpRequest_get_responseXML`
+
 ### FormData
 
-2 / 10 members.
+10 / 10 members.
 
-- `constructor()`: not supported
-- `append()`: not supported
-- `append()`: not supported
+- `constructor()`: C `wjr_FormData_constructor`
+- `append()`: C `wjr_FormData_append`
+- `append()`: C `wjr_FormData_append`
 - `delete()`: import `forms.FormData_delete`
-- `get()`: not supported
-- `getAll()`: not supported
+- `get()`: C `wjr_FormData_get`
+- `getAll()`: C `wjr_FormData_getAll`
 - `has()`: import `forms.FormData_has`
-- `set()`: not supported
-- `set()`: not supported
-- `iterable`: not supported
+- `set()`: C `wjr_FormData_set`
+- `set()`: C `wjr_FormData_set`
+- `iterable`: C `wjr_*_entries/keys/values/forEach`
+
+### Headers
+
+8 / 8 members.
+
+- `constructor()`: C `wjr_Headers_constructor`
+- `append()`: C `wjr_Headers_append`
+- `delete()`: C `wjr_Headers_delete`
+- `get()`: C `wjr_Headers_get`
+- `getSetCookie()`: C `wjr_Headers_getSetCookie`
+- `has()`: C `wjr_Headers_has`
+- `set()`: C `wjr_Headers_set`
+- `iterable`: C `wjr_*_entries/keys/values/forEach`
 
 ### History
 
-2 / 8 members.
+8 / 8 members.
 
 - `readonly length`: import `history.History_length`
-- `scrollRestoration`: not supported
-- `readonly state`: not supported
+- `scrollRestoration`: C `wjr_History_get_scrollRestoration`
+- `readonly state`: C `wjr_History_get_state`
 - `go()`: import `history.History_go`
-- `back()`: not supported
-- `forward()`: not supported
-- `pushState()`: not supported
-- `replaceState()`: not supported
+- `back()`: C `wjr_History_back`
+- `forward()`: C `wjr_History_forward`
+- `pushState()`: C `wjr_History_pushState`
+- `replaceState()`: C `wjr_History_replaceState`
 
 ### Location
 
-3 / 13 members.
+12 / 13 members.
 
-- `href`: not supported
-- `readonly origin`: not supported
-- `protocol`: not supported
-- `host`: not supported
-- `hostname`: not supported
-- `port`: not supported
-- `pathname`: not supported
-- `search`: not supported
-- `hash`: not supported
-- `assign()`: import `history.Location_assign`
-- `replace()`: import `history.Location_replace`
-- `reload()`: import `history.Location_reload`
+- `href`: C `wjr_Location_get_href`
+- `readonly origin`: C `wjr_Location_get_origin`
+- `protocol`: C `wjr_Location_get_protocol`
+- `host`: C `wjr_Location_get_host`
+- `hostname`: C `wjr_Location_get_hostname`
+- `port`: C `wjr_Location_get_port`
+- `pathname`: C `wjr_Location_get_pathname`
+- `search`: C `wjr_Location_get_search`
+- `hash`: C `wjr_Location_get_hash`
+- `assign()`: C `wjr_Location_assign`
+- `replace()`: C `wjr_Location_replace`
+- `reload()`: C `wjr_Location_reload`
 - `readonly ancestorOrigins`: not supported
+
+### MessageChannel
+
+3 / 3 members.
+
+- `constructor()`: C `wjr_MessageChannel_constructor`
+- `readonly port1`: C `wjr_MessageChannel_get_port1`
+- `readonly port2`: C `wjr_MessageChannel_get_port2`
+
+### Navigator
+
+20 / 43 members.
+
+- `sendBeacon()`: C `wjr_Navigator_sendBeacon`
+- `readonly clipboard`: not supported
+- `readonly credentials`: not supported
+- `getGamepads()`: not supported
+- `readonly userActivation`: not supported
+- `readonly scheduling`: not supported
+- `readonly mediaDevices`: not supported
+- `readonly mediaSession`: not supported
+- `readonly permissions`: not supported
+- `readonly maxTouchPoints`: C `wjr_Navigator_get_maxTouchPoints`
+- `readonly serviceWorker`: not supported
+- `vibrate()`: not supported
+- `share()`: not supported
+- `canShare()`: not supported
+- `setAppBadge()` (NavigatorBadge): not supported
+- `clearAppBadge()` (NavigatorBadge): not supported
+- `readonly deviceMemory` (NavigatorDeviceMemory): not supported
+- `readonly appCodeName` (NavigatorID): C `wjr_NavigatorID_get_appCodeName`
+- `readonly appName` (NavigatorID): C `wjr_NavigatorID_get_appName`
+- `readonly appVersion` (NavigatorID): C `wjr_NavigatorID_get_appVersion`
+- `readonly platform` (NavigatorID): C `wjr_NavigatorID_get_platform`
+- `readonly product` (NavigatorID): C `wjr_NavigatorID_get_product`
+- `readonly productSub` (NavigatorID): C `wjr_NavigatorID_get_productSub`
+- `readonly userAgent` (NavigatorID): C `wjr_NavigatorID_get_userAgent`
+- `readonly vendor` (NavigatorID): C `wjr_NavigatorID_get_vendor`
+- `readonly vendorSub` (NavigatorID): C `wjr_NavigatorID_get_vendorSub`
+- `taintEnabled()` (NavigatorID): not supported
+- `readonly oscpu` (NavigatorID): not supported
+- `readonly language` (NavigatorLanguage): C `wjr_NavigatorLanguage_get_language`
+- `readonly languages` (NavigatorLanguage): C `wjr_NavigatorLanguage_get_languages`
+- `readonly onLine` (NavigatorOnLine): C `wjr_NavigatorOnLine_get_onLine`
+- `registerProtocolHandler()` (NavigatorContentUtils): not supported
+- `unregisterProtocolHandler()` (NavigatorContentUtils): not supported
+- `readonly cookieEnabled` (NavigatorCookies): C `wjr_NavigatorCookies_get_cookieEnabled`
+- `readonly plugins` (NavigatorPlugins): C `wjr_NavigatorPlugins_get_plugins`
+- `readonly mimeTypes` (NavigatorPlugins): C `wjr_NavigatorPlugins_get_mimeTypes`
+- `javaEnabled()` (NavigatorPlugins): C `wjr_NavigatorPlugins_javaEnabled`
+- `readonly pdfViewerEnabled` (NavigatorPlugins): C `wjr_NavigatorPlugins_get_pdfViewerEnabled`
+- `readonly hardwareConcurrency` (NavigatorConcurrentHardware): C `wjr_NavigatorConcurrentHardware_get_hardwareConcurrency`
+- `readonly connection` (NavigatorNetworkInformation): not supported
+- `readonly storage` (NavigatorStorage): not supported
+- `readonly userAgentData` (NavigatorUA): not supported
+- `readonly locks` (NavigatorLocks): not supported
+
+### PerformanceEntry
+
+7 / 7 members.
+
+- `readonly id`: C `wjr_PerformanceEntry_get_id`
+- `readonly name`: C `wjr_PerformanceEntry_get_name`
+- `readonly entryType`: C `wjr_PerformanceEntry_get_entryType`
+- `readonly startTime`: C `wjr_PerformanceEntry_get_startTime`
+- `readonly duration`: C `wjr_PerformanceEntry_get_duration`
+- `readonly navigationId`: C `wjr_PerformanceEntry_get_navigationId`
+- `toJSON()`: C `wjr_PerformanceEntry_toJSON`
+
+### PerformanceMark : PerformanceEntry
+
+2 / 2 members.
+
+- `constructor()`: C `wjr_PerformanceMark_constructor`
+- `readonly detail`: C `wjr_PerformanceMark_get_detail`
+
+### PerformanceMeasure : PerformanceEntry
+
+1 / 1 members.
+
+- `readonly detail`: C `wjr_PerformanceMeasure_get_detail`
+
+### ReadableStream
+
+5 / 9 members.
+
+- `constructor()`: C `wjr_ReadableStream_constructor`
+- `static from()`: not supported
+- `readonly locked`: C `wjr_ReadableStream_get_locked`
+- `cancel()`: C `wjr_ReadableStream_cancel`
+- `getReader()`: C `wjr_ReadableStream_getReader`
+- `pipeThrough()`: not supported
+- `pipeTo()`: not supported
+- `tee()`: C `wjr_ReadableStream_tee`
+- `async iterable`: not supported
+
+### ReadableStreamDefaultController
+
+4 / 4 members.
+
+- `readonly desiredSize`: C `wjr_ReadableStreamDefaultController_get_desiredSize`
+- `close()`: C `wjr_ReadableStreamDefaultController_close`
+- `enqueue()`: C `wjr_ReadableStreamDefaultController_enqueue`
+- `error()`: C `wjr_ReadableStreamDefaultController_error`
+
+### ReadableStreamDefaultReader
+
+5 / 5 members.
+
+- `constructor()`: C `wjr_ReadableStreamDefaultReader_constructor`
+- `read()`: C `wjr_ReadableStreamDefaultReader_read`
+- `releaseLock()`: C `wjr_ReadableStreamDefaultReader_releaseLock`
+- `readonly closed` (ReadableStreamGenericReader): C `wjr_ReadableStreamDefaultReader_get_closed`
+- `cancel()` (ReadableStreamGenericReader): C `wjr_ReadableStreamDefaultReader_cancel`
+
+### Request
+
+26 / 27 members.
+
+- `constructor()`: C `wjr_Request_constructor`
+- `readonly method`: C `wjr_Request_get_method`
+- `readonly url`: C `wjr_Request_get_url`
+- `readonly headers`: C `wjr_Request_get_headers`
+- `readonly destination`: C `wjr_Request_get_destination`
+- `readonly referrer`: C `wjr_Request_get_referrer`
+- `readonly referrerPolicy`: C `wjr_Request_get_referrerPolicy`
+- `readonly mode`: C `wjr_Request_get_mode`
+- `readonly credentials`: C `wjr_Request_get_credentials`
+- `readonly cache`: C `wjr_Request_get_cache`
+- `readonly redirect`: C `wjr_Request_get_redirect`
+- `readonly integrity`: C `wjr_Request_get_integrity`
+- `readonly keepalive`: C `wjr_Request_get_keepalive`
+- `readonly isReloadNavigation`: C `wjr_Request_get_isReloadNavigation`
+- `readonly isHistoryNavigation`: C `wjr_Request_get_isHistoryNavigation`
+- `readonly signal`: C `wjr_Request_get_signal`
+- `readonly duplex`: C `wjr_Request_get_duplex`
+- `clone()`: C `wjr_Request_clone`
+- `readonly body` (Body): C `wjr_Body_get_body`
+- `readonly bodyUsed` (Body): C `wjr_Body_get_bodyUsed`
+- `arrayBuffer()` (Body): C `wjr_Body_arrayBuffer`
+- `blob()` (Body): C `wjr_Body_blob`
+- `bytes()` (Body): C `wjr_Body_bytes`
+- `formData()` (Body): C `wjr_Body_formData`
+- `json()` (Body): C `wjr_Body_json`
+- `text()` (Body): C `wjr_Body_text`
+- `textStream()` (Body): not supported
 
 ### Response
 
-2 / 21 members.
+20 / 21 members.
 
-- `constructor()`: not supported
-- `static error()`: not supported
-- `static redirect()`: not supported
-- `static json()`: not supported
-- `readonly type`: not supported
-- `readonly url`: not supported
-- `readonly redirected`: not supported
-- `readonly status`: not supported
-- `readonly ok`: not supported
-- `readonly statusText`: not supported
-- `readonly headers`: not supported
-- `clone()`: not supported
-- `readonly body` (Body): import `fetch.Response_body`
-- `readonly bodyUsed` (Body): import `fetch.Response_bodyUsed`
-- `arrayBuffer()` (Body): not supported
-- `blob()` (Body): not supported
-- `bytes()` (Body): not supported
-- `formData()` (Body): not supported
-- `json()` (Body): not supported
-- `text()` (Body): not supported
+- `constructor()`: C `wjr_Response_constructor`
+- `static error()`: C `wjr_Response_static_error`
+- `static redirect()`: C `wjr_Response_static_redirect`
+- `static json()`: C `wjr_Response_static_json`
+- `readonly type`: C `wjr_Response_get_type`
+- `readonly url`: C `wjr_Response_get_url`
+- `readonly redirected`: C `wjr_Response_get_redirected`
+- `readonly status`: C `wjr_Response_get_status`
+- `readonly ok`: C `wjr_Response_get_ok`
+- `readonly statusText`: C `wjr_Response_get_statusText`
+- `readonly headers`: C `wjr_Response_get_headers`
+- `clone()`: C `wjr_Response_clone`
+- `readonly body` (Body): C `wjr_Body_get_body`
+- `readonly bodyUsed` (Body): C `wjr_Body_get_bodyUsed`
+- `arrayBuffer()` (Body): C `wjr_Body_arrayBuffer`
+- `blob()` (Body): C `wjr_Body_blob`
+- `bytes()` (Body): C `wjr_Body_bytes`
+- `formData()` (Body): C `wjr_Body_formData`
+- `json()` (Body): C `wjr_Body_json`
+- `text()` (Body): C `wjr_Body_text`
 - `textStream()` (Body): not supported
+
+### Screen
+
+6 / 7 members.
+
+- `readonly availWidth`: C `wjr_Screen_get_availWidth`
+- `readonly availHeight`: C `wjr_Screen_get_availHeight`
+- `readonly width`: C `wjr_Screen_get_width`
+- `readonly height`: C `wjr_Screen_get_height`
+- `readonly colorDepth`: C `wjr_Screen_get_colorDepth`
+- `readonly pixelDepth`: C `wjr_Screen_get_pixelDepth`
+- `readonly orientation`: not supported
+
+### Storage
+
+6 / 6 members.
+
+- `readonly length`: C `wjr_Storage_get_length`
+- `key()`: C `wjr_Storage_key`
+- `getItem()`: C `wjr_Storage_getItem`
+- `setItem()`: C `wjr_Storage_setItem`
+- `removeItem()`: C `wjr_Storage_removeItem`
+- `clear()`: C `wjr_Storage_clear`
+
+### SubtleCrypto
+
+12 / 12 members.
+
+- `encrypt()`: C `wjr_SubtleCrypto_encrypt`
+- `decrypt()`: C `wjr_SubtleCrypto_decrypt`
+- `sign()`: C `wjr_SubtleCrypto_sign`
+- `verify()`: C `wjr_SubtleCrypto_verify`
+- `digest()`: C `wjr_SubtleCrypto_digest`
+- `generateKey()`: C `wjr_SubtleCrypto_generateKey`
+- `deriveKey()`: C `wjr_SubtleCrypto_deriveKey`
+- `deriveBits()`: C `wjr_SubtleCrypto_deriveBits`
+- `importKey()`: C `wjr_SubtleCrypto_importKey`
+- `exportKey()`: C `wjr_SubtleCrypto_exportKey`
+- `wrapKey()`: C `wjr_SubtleCrypto_wrapKey`
+- `unwrapKey()`: C `wjr_SubtleCrypto_unwrapKey`
 
 ### TextDecoder
 
-1 / 5 members.
+5 / 5 members.
 
-- `constructor()`: not supported
-- `decode()`: not supported
+- `constructor()`: C `wjr_TextDecoder_constructor`
+- `decode()`: C `wjr_TextDecoder_decode`
 - `readonly encoding` (TextDecoderCommon): import `encoding.TextDecoder_encoding`
-- `readonly fatal` (TextDecoderCommon): not supported
-- `readonly ignoreBOM` (TextDecoderCommon): not supported
+- `readonly fatal` (TextDecoderCommon): C `wjr_TextDecoder_get_fatal`
+- `readonly ignoreBOM` (TextDecoderCommon): C `wjr_TextDecoder_get_ignoreBOM`
+
+### TextEncoder
+
+4 / 4 members.
+
+- `constructor()`: C `wjr_TextEncoder_constructor`
+- `encode()`: C `wjr_TextEncoder_encode`
+- `encodeInto()`: C `wjr_TextEncoder_encodeInto`
+- `readonly encoding` (TextEncoderCommon): C `wjr_TextEncoder_get_encoding`
 
 ### URL
 
-3 / 18 members.
+18 / 18 members.
 
-- `static createObjectURL()`: not supported
-- `static revokeObjectURL()`: not supported
-- `constructor()`: not supported
-- `static parse()`: import `url.URL_parse`
-- `static canParse()`: import `url.URL_canParse`
-- `href`: not supported
-- `readonly origin`: not supported
-- `protocol`: not supported
-- `username`: not supported
-- `password`: not supported
-- `host`: not supported
-- `hostname`: not supported
-- `port`: not supported
-- `pathname`: not supported
-- `search`: not supported
-- `readonly searchParams`: import `url.URL_searchParams`
-- `hash`: not supported
-- `toJSON()`: not supported
+- `static createObjectURL()`: C `wjr_URL_static_createObjectURL`
+- `static revokeObjectURL()`: C `wjr_URL_static_revokeObjectURL`
+- `constructor()`: C `wjr_URL_constructor`
+- `static parse()`: C `wjr_URL_static_parse`
+- `static canParse()`: C `wjr_URL_static_canParse`
+- `href`: C `wjr_URL_get_href`
+- `readonly origin`: C `wjr_URL_get_origin`
+- `protocol`: C `wjr_URL_get_protocol`
+- `username`: C `wjr_URL_get_username`
+- `password`: C `wjr_URL_get_password`
+- `host`: C `wjr_URL_get_host`
+- `hostname`: C `wjr_URL_get_hostname`
+- `port`: C `wjr_URL_get_port`
+- `pathname`: C `wjr_URL_get_pathname`
+- `search`: C `wjr_URL_get_search`
+- `readonly searchParams`: C `wjr_URL_get_searchParams`
+- `hash`: C `wjr_URL_get_hash`
+- `toJSON()`: C `wjr_URL_toJSON`
 
 ### URLSearchParams
 
-7 / 11 members.
+11 / 11 members.
 
-- `constructor()`: not supported
+- `constructor()`: C `wjr_URLSearchParams_constructor`
 - `readonly size`: import `url.URLSearchParams_size`
 - `append()`: import `url.URLSearchParams_append`
 - `delete()`: import `url.URLSearchParams_delete`
 - `get()`: import `url.URLSearchParams_get`
-- `getAll()`: not supported
+- `getAll()`: C `wjr_URLSearchParams_getAll`
 - `has()`: import `url.URLSearchParams_has`
 - `set()`: import `url.URLSearchParams_set`
 - `sort()`: import `url.URLSearchParams_sort`
-- `iterable`: not supported
-- `stringifier`: not supported
+- `iterable`: C `wjr_*_entries/keys/values/forEach`
+- `stringifier`: C `wjr_URLSearchParams_toString`
+
+### WorkerNavigator
+
+13 / 24 members.
+
+- `readonly permissions`: not supported
+- `readonly serviceWorker`: not supported
+- `setAppBadge()` (NavigatorBadge): not supported
+- `clearAppBadge()` (NavigatorBadge): not supported
+- `readonly deviceMemory` (NavigatorDeviceMemory): not supported
+- `readonly appCodeName` (NavigatorID): C `wjr_NavigatorID_get_appCodeName`
+- `readonly appName` (NavigatorID): C `wjr_NavigatorID_get_appName`
+- `readonly appVersion` (NavigatorID): C `wjr_NavigatorID_get_appVersion`
+- `readonly platform` (NavigatorID): C `wjr_NavigatorID_get_platform`
+- `readonly product` (NavigatorID): C `wjr_NavigatorID_get_product`
+- `readonly productSub` (NavigatorID): C `wjr_NavigatorID_get_productSub`
+- `readonly userAgent` (NavigatorID): C `wjr_NavigatorID_get_userAgent`
+- `readonly vendor` (NavigatorID): C `wjr_NavigatorID_get_vendor`
+- `readonly vendorSub` (NavigatorID): C `wjr_NavigatorID_get_vendorSub`
+- `taintEnabled()` (NavigatorID): not supported
+- `readonly oscpu` (NavigatorID): not supported
+- `readonly language` (NavigatorLanguage): C `wjr_NavigatorLanguage_get_language`
+- `readonly languages` (NavigatorLanguage): C `wjr_NavigatorLanguage_get_languages`
+- `readonly onLine` (NavigatorOnLine): C `wjr_NavigatorOnLine_get_onLine`
+- `readonly hardwareConcurrency` (NavigatorConcurrentHardware): C `wjr_NavigatorConcurrentHardware_get_hardwareConcurrency`
+- `readonly connection` (NavigatorNetworkInformation): not supported
+- `readonly storage` (NavigatorStorage): not supported
+- `readonly userAgentData` (NavigatorUA): not supported
+- `readonly locks` (NavigatorLocks): not supported
 
 ### console
 
@@ -3175,16 +3567,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ## Not exposed (nothing implemented)
 
-TaskController, AbstractRange, Range, StaticRange, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, Blob, File, ByteLengthQueuingStrategy, CSS, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSStyleDeclaration, CSSPageDescriptors, CSSStyleProperties, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CanvasGradient, CanvasPattern, CanvasRenderingContext2D, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, Credential, FederatedCredential, PasswordCredential, CredentialsContainer, CryptoKey, CustomElementRegistry, CustomStateSet, OverconstrainedError, QuotaExceededError, DOMImplementation, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMRectList, DOMRectReadOnly, DOMRect, DOMStringList, DOMStringMap, DOMTokenList, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, ElementInternals, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ErrorEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, HashChangeEvent, IDBVersionChangeEvent, MediaQueryListEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, PageTransitionEvent, PopStateEvent, ProgressEvent, PromiseRejectionEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, StorageEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, CompositionEvent, FocusEvent, InputEvent, DragEvent, PointerEvent, WheelEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, Clipboard, CloseWatcher, CookieStore, FileReader, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaQueryList, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, MessagePort, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, MathMLAnchorElement, Notification, OffscreenCanvas, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestEventTarget, XMLHttpRequest, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, HTMLCollection, HTMLFormControlsCollection, HTMLOptionsCollection, Headers, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, IdleDeadline, ImageBitmap, ImageBitmapRenderingContext, ImageData, IntersectionObserver, IntersectionObserverEntry, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MessageChannel, MimeType, MimeTypeArray, MutationObserver, MutationRecord, NamedNodeMap, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, Navigator, NavigatorUAData, NodeFilter, NodeIterator, NodeList, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, OffscreenCanvasRenderingContext2D, Origin, Path2D, PerformanceEntry, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformanceMark, PerformanceMeasure, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceObserver, PerformanceObserverEntryList, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStream, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ReadableStreamDefaultController, ReadableStreamDefaultReader, Request, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, Screen, Selection, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, Storage, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheet, CSSStyleSheet, StyleSheetList, SubtleCrypto, TextDecoderStream, TextEncoder, TextEncoderStream, TextMetrics, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TreeWalker, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, ValidityState, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, WorkerNavigator, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
+TaskController, AbstractRange, Range, StaticRange, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, ByteLengthQueuingStrategy, CSS, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSStyleDeclaration, CSSPageDescriptors, CSSStyleProperties, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CanvasGradient, CanvasPattern, CanvasRenderingContext2D, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, Credential, FederatedCredential, PasswordCredential, CredentialsContainer, CryptoKey, CustomElementRegistry, CustomStateSet, OverconstrainedError, QuotaExceededError, DOMImplementation, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMRectList, DOMRectReadOnly, DOMRect, DOMStringList, DOMStringMap, DOMTokenList, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, ElementInternals, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ErrorEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, PageTransitionEvent, PromiseRejectionEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, CompositionEvent, FocusEvent, InputEvent, DragEvent, PointerEvent, WheelEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, Clipboard, CloseWatcher, CookieStore, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, MathMLAnchorElement, Notification, OffscreenCanvas, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, HTMLCollection, HTMLFormControlsCollection, HTMLOptionsCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, IdleDeadline, ImageBitmap, ImageBitmapRenderingContext, ImageData, IntersectionObserver, IntersectionObserverEntry, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MimeType, MimeTypeArray, MutationObserver, MutationRecord, NamedNodeMap, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, NavigatorUAData, NodeFilter, NodeIterator, NodeList, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, OffscreenCanvasRenderingContext2D, Origin, Path2D, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceObserver, PerformanceObserverEntryList, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, Selection, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheet, CSSStyleSheet, StyleSheetList, TextDecoderStream, TextEncoderStream, TextMetrics, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TreeWalker, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, ValidityState, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
 
 ## Browser functions that could not be bound
 
-- AbortController.abort: abort.AbortController_abort exists but an argument of type any has no conversion
-- Crypto.getRandomValues: crypto.Crypto_getRandomValues exists but an argument of type ArrayBufferView has no conversion
-- StorageEvent.storageArea: storage.StorageEvent_storageArea exists but its result type does not match
-- AbortSignal.abort: abort.AbortSignal_abort exists but an argument of type any has no conversion
-- AbortSignal.any: abort.AbortSignal_any exists but an argument of type sequence<AbortSignal> has no conversion
-- AbortSignal.reason: abort.AbortSignal_reason exists but the result type any has no conversion
 - Document.visibilityState: timers.Document_visibilityState exists but its result is not a string
 - HTMLElement.focus: forms.HTMLElement_focus exists but an argument of type FocusOptions has no conversion
 - HTMLButtonElement.validity: forms.HTMLButtonElement_validity exists but its result type does not match
@@ -3200,27 +3586,5 @@ TaskController, AbstractRange, Range, StaticRange, AnimationEffect, KeyframeEffe
 - HTMLSelectElement.validity: forms.HTMLSelectElement_validity exists but its result type does not match
 - HTMLTextAreaElement.validity: forms.HTMLTextAreaElement_validity exists but its result type does not match
 - HTMLTextAreaElement.setSelectionRange: forms.HTMLTextAreaElement_setSelectionRange exists but parameter direction does not match DOMString
-- Performance.mark: performance.Performance_mark exists but an argument of type PerformanceMarkOptions has no conversion
-- Performance.measure: performance.Performance_measure exists but an argument of type (DOMString or PerformanceMeasureOptions) has no conversion
-- WebSocket.binaryType: websocket.WebSocket_binaryType exists but its result is not a string
-- WebSocket.binaryType (setter): websocket.WebSocket_setBinaryType exists but parameter binary_type does not match BinaryType
-- WebSocket.send: websocket.WebSocket_send exists but an argument of type (BufferSource or Blob or USVString) has no conversion
 - WorkerGlobalScope.location: workers.WorkerGlobalScope_location exists but its result type does not match
-- FormData.get: forms.FormData_get exists but the result type FormDataEntryValue? has no conversion
-- History.state: history.History_state exists but the result type any has no conversion
-- History.pushState: history.History_pushState exists but an argument of type any has no conversion
-- History.replaceState: history.History_replaceState exists but an argument of type any has no conversion
-- Response.arrayBuffer: fetch.Response_arrayBuffer exists but the result type Promise<ArrayBuffer> has no conversion
-- Response.bytes: fetch.Response_bytes exists but the result type Promise<Uint8Array> has no conversion
-- Response.text: fetch.Response_text exists but the result type Promise<USVString> has no conversion
-- Storage.length: storage.Storage_length exists but its first parameter is not a handle
-- Storage.key: storage.Storage_key exists but its first parameter is not a handle
-- Storage.getItem: storage.Storage_getItem exists but its first parameter is not a handle
-- Storage.setItem: storage.Storage_setItem exists but its first parameter is not a handle
-- Storage.removeItem: storage.Storage_removeItem exists but its first parameter is not a handle
-- Storage.clear: storage.Storage_clear exists but its first parameter is not a handle
-- SubtleCrypto.digest: crypto.SubtleCrypto_digest exists but an argument of type AlgorithmIdentifier has no conversion
-- TextDecoder.decode: encoding.TextDecoder_decode exists but an argument of type AllowSharedBufferSource has no conversion
-- TextEncoder.encode: encoding.TextEncoder_encode exists but the result type Uint8Array has no conversion
-- TextEncoder.encodeInto: encoding.TextEncoder_encodeInto exists but an argument of type Uint8Array has no conversion
 

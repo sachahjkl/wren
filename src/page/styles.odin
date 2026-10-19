@@ -216,6 +216,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	e := p.engine
 	env := style.media_env_from(&e.settings, f64(viewport_w), f64(viewport_h), dppx, style.os_appearance().dark)
 	style.engine_set_environment(e, env)
+	media_queries_update(p, env)   // matchMedia lists (js_web_media.odin)
 
 	now := document_time_ms(p)
 	full := p.styled == nil || p.style_stale || e.dirty || e.restyle_needed

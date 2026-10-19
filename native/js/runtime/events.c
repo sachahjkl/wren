@@ -502,6 +502,10 @@ WJ_EXPORT("wj_cb_listener") void wj_cb_listener(int32_t user, uint64_t event)
     live_prune(ctx);
 }
 
+/* Set around a dispatch of an event the engine fires as the browser's own (XMLHttpRequest, WebSocket...: web.h
+ * web_event_fire): the event is trusted. */
+bool wj_dispatch_trusted;
+
 JSValue wjr_EventTarget_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     wj_obj *o = event_target_this(ctx, this_val);
@@ -518,7 +522,7 @@ JSValue wjr_EventTarget_dispatchEvent(JSContext *ctx, JSValueConst this_val, int
     if (e->bubbles) { init |= wr_EventInit_Bubbles; }
     if (e->cancelable) { init |= wr_EventInit_Cancelable; }
     if (e->composed) { init |= wr_EventInit_Composed; }
-    e->trusted = 0;
+    e->trusted = wj_dispatch_trusted ? 1 : 0;
     e->stop = e->stop_immediate = e->canceled = 0;
     e->dispatching = 1;
     JS_FreeValue(ctx, e->target);

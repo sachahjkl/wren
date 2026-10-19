@@ -58,10 +58,12 @@ function not exposed to workers is not instantiated.
 | [`events`](events.md) | 29 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
 | [`eventsource`](eventsource.md) | 7 | Window | Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as |
 | [`fetch`](fetch.md) | 10 | Window | The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch: |
-| [`forms`](forms.md) | 182 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
+| [`forms`](forms.md) | 185 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
 | [`history`](history.md) | 12 | Window | Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never |
 | [`images`](images.md) | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
 | [`js`](js.md) | 8 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
+| [`navigator`](navigator.md) | 5 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
+| [`media`](media.md) | 4 | Window |  |
 | [`net`](net.md) | 12 | Window, Worker | Fetch with a callback (Fetch Standard through the browser's loader: origin, CORS, cookies, referrer, CSP and mixed |
 | [`performance`](performance.md) | 12 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
 | [`storage`](storage.md) | 8 | Window | localStorage and sessionStorage (Web Storage). Security for an opaque origin or disabled storage, Quota for a write |
@@ -71,4 +73,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 9 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-415 imports in 316 functions.
+427 imports in 328 functions.

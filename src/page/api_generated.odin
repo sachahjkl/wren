@@ -189,6 +189,36 @@ Api_ConsoleLevel :: enum i32 {
 	Debug = 4,
 }
 
+// A string member of Navigator.
+Api_NavigatorField :: enum i32 {
+	User_Agent = 0,
+	App_Version = 1,
+	Platform = 2,
+	Vendor = 3,
+	Languages = 4,
+	Do_Not_Track = 5,
+}
+
+// A media query list evaluated against the page's viewport (CSSOM View matchMedia); an EventTarget whose "change"
+// event is fired when the result changes (after a resize, a zoom, a change of the color scheme), Event_code being
+// the new result.
+// A live MediaQueryList: its handle and what lookup_MediaQueryList found.
+Api_MediaQueryList :: struct {
+	handle: u64,
+	data:   ^Media_Query_List,
+}
+
+// A dimension of the screen (CSS pixels of the monitor showing the page).
+Api_ScreenField :: enum i32 {
+	Width = 0,
+	Height = 1,
+	Avail_Width = 2,
+	Avail_Height = 3,
+	Avail_Left = 4,
+	Avail_Top = 5,
+	Color_Depth = 6,
+}
+
 // A request and, once it arrived, its response.
 // A live Fetch: its handle and what lookup_Fetch found.
 Api_Fetch :: struct {
@@ -383,6 +413,12 @@ _valid_FormEnctype :: #force_inline proc "contextless" (v: i32) -> bool { switch
 
 @(private = "file")
 _valid_ConsoleLevel :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4: return true }; return false }
+
+@(private = "file")
+_valid_NavigatorField :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5: return true }; return false }
+
+@(private = "file")
+_valid_ScreenField :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6: return true }; return false }
 
 @(private = "file")
 _valid_FetchState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3: return true }; return false }
@@ -5590,6 +5626,279 @@ _t_events_EventTarget_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	return nil
 }
 
+// Navigator_get :: proc(c: ^Call, field: Api_NavigatorField) -> string
+@(private = "file")
+_t_navigator_Navigator_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "navigator.Navigator_get", "result buffer") }
+	_e0 := i32(a[0].i32)
+	if !_valid_NavigatorField(_e0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "navigator.Navigator_get: argument field is not a NavigatorField") }
+		return wasm.trap_new("navigator.Navigator_get: argument field is not a NavigatorField")
+	}
+	_p0 := Api_NavigatorField(_e0)
+	_r := Navigator_get(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Navigator_hardwareConcurrency :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_navigator_Navigator_hardwareConcurrency :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Navigator_hardwareConcurrency(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Navigator_onLine :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_navigator_Navigator_onLine :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Navigator_onLine(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Navigator_cookieEnabled :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_navigator_Navigator_cookieEnabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Navigator_cookieEnabled(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Beacon_send :: proc(c: ^Call, url: string, data: Maybe([]u8), content_type: string) -> bool
+@(private = "file")
+_t_navigator_Beacon_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "navigator.Beacon_send", "url") }
+	_absent1 := wasm.is_absent(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), 0 if _absent1 else wasm.addr(&f, a[3]))
+	if !_k1 { return wasm.trap_bounds(&f, "navigator.Beacon_send", "data") }
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "navigator.Beacon_send", "content_type") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "navigator.Beacon_send: argument url is not valid UTF-8") }
+		return wasm.trap_new("navigator.Beacon_send: argument url is not valid UTF-8")
+	}
+	_p1: Maybe([]u8)
+	if !_absent1 { _p1 = _s1[:wasm.addr(&f, a[3])] }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "navigator.Beacon_send: argument content_type is not valid UTF-8") }
+		return wasm.trap_new("navigator.Beacon_send: argument content_type is not valid UTF-8")
+	}
+	_r := Beacon_send(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// MediaQueryList_create :: proc(c: ^Call, query: string) -> u64
+@(private = "file")
+_t_media_MediaQueryList_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "media.MediaQueryList_create", "query") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "media.MediaQueryList_create: argument query is not valid UTF-8") }
+		return wasm.trap_new("media.MediaQueryList_create: argument query is not valid UTF-8")
+	}
+	_r := MediaQueryList_create(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// MediaQueryList_media :: proc(c: ^Call, list: Api_MediaQueryList) -> string
+@(private = "file")
+_t_media_MediaQueryList_media :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "media.MediaQueryList_media", "result buffer") }
+	_p0 := Api_MediaQueryList{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaQueryList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "media.MediaQueryList_media: argument list is not a live MediaQueryList") }
+		return wasm.trap_new("media.MediaQueryList_media: argument list is not a live MediaQueryList")
+	}
+	_r := MediaQueryList_media(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// MediaQueryList_matches :: proc(c: ^Call, list: Api_MediaQueryList) -> bool
+@(private = "file")
+_t_media_MediaQueryList_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_MediaQueryList{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaQueryList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "media.MediaQueryList_matches: argument list is not a live MediaQueryList") }
+		return wasm.trap_new("media.MediaQueryList_matches: argument list is not a live MediaQueryList")
+	}
+	_r := MediaQueryList_matches(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Screen_get :: proc(c: ^Call, field: Api_ScreenField) -> i32
+@(private = "file")
+_t_media_Screen_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_e0 := i32(a[0].i32)
+	if !_valid_ScreenField(_e0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "media.Screen_get: argument field is not a ScreenField") }
+		return wasm.trap_new("media.Screen_get: argument field is not a ScreenField")
+	}
+	_p0 := Api_ScreenField(_e0)
+	_r := Screen_get(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// FormData_fileAt :: proc(c: ^Call, data: Api_FormData, index: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_forms_FormData_fileAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "forms.FormData_fileAt", "result pointer") }
+	_p0 := Api_FormData{handle = u64(a[0].i64)}
+	_p0.data = lookup_FormData(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_fileAt: argument data is not a live FormData")
+	}
+	_p1 := a[1].i32
+	_r, _err := FormData_fileAt(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// FormData_setBlob :: proc(c: ^Call, data: Api_FormData, name: string, blob: Api_Buffer, filename: string, mime: string) -> Api_Error
+@(private = "file")
+_t_forms_FormData_setBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_setBlob", "name") }
+	_n3 := wasm.addr(&f, a[5])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[4]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "forms.FormData_setBlob", "filename") }
+	_n4 := wasm.addr(&f, a[7])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[6]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "forms.FormData_setBlob", "mime") }
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p3 := utf8_scrub(string(_s3[:_n3]), context.temp_allocator)
+	_p4 := string(_s4[:_n4])
+	if !wasm.valid_utf8(_p4) {
+		return _fail_status(&c, a, .Type, "forms.FormData_setBlob: argument mime is not valid UTF-8")
+	}
+	_p0 := Api_FormData{handle = u64(a[0].i64)}
+	_p0.data = lookup_FormData(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_setBlob: argument data is not a live FormData")
+	}
+	_p2 := Api_Buffer{handle = u64(a[3].i64)}
+	_p2.data = lookup_Buffer(&c, _p2.handle)
+	if _p2.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_setBlob: argument blob is not a live Buffer")
+	}
+	_err := FormData_setBlob(&c, _p0, _p1, _p2, _p3, _p4)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// FormData_encode :: proc(c: ^Call, data: Api_FormData, boundary: string) -> (u64, Api_Error)
+@(private = "file")
+_t_forms_FormData_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_encode", "boundary") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "forms.FormData_encode", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "forms.FormData_encode: argument boundary is not valid UTF-8")
+	}
+	_p0 := Api_FormData{handle = u64(a[0].i64)}
+	_p0.data = lookup_FormData(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_encode: argument data is not a live FormData")
+	}
+	_r, _err := FormData_encode(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Fetch_start :: proc(c: ^Call, url: string, callback: u32, user: i32, method: string, headers: string, body: Maybe([]u8), options: Api_FetchOptions) -> u64
 @(private = "file")
 _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -7904,6 +8213,18 @@ api_imports := [?]wasm.Import{
 	{module = "events", name = "Event_isTrusted", fn = _t_events_Event_isTrusted, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_propagationStopped", fn = _t_events_Event_propagationStopped, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "EventTarget_create", fn = _t_events_EventTarget_create, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "navigator", name = "Navigator_get", fn = _t_navigator_Navigator_get, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "navigator", name = "Navigator_hardwareConcurrency", fn = _t_navigator_Navigator_hardwareConcurrency, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "navigator", name = "Navigator_onLine", fn = _t_navigator_Navigator_onLine, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "navigator", name = "Navigator_cookieEnabled", fn = _t_navigator_Navigator_cookieEnabled, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "navigator", name = "Beacon_send", fn = _t_navigator_Beacon_send, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "media", name = "MediaQueryList_create", fn = _t_media_MediaQueryList_create, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "media", name = "MediaQueryList_media", fn = _t_media_MediaQueryList_media, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "media", name = "MediaQueryList_matches", fn = _t_media_MediaQueryList_matches, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "media", name = "Screen_get", fn = _t_media_Screen_get, realms = 1, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "forms", name = "FormData_fileAt", fn = _t_forms_FormData_fileAt, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "forms", name = "FormData_setBlob", fn = _t_forms_FormData_setBlob, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "forms", name = "FormData_encode", fn = _t_forms_FormData_encode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_start", fn = _t_net_Fetch_start, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "net", name = "Fetch_state", fn = _t_net_Fetch_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_status", fn = _t_net_Fetch_status, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
