@@ -315,7 +315,15 @@ resolve_request :: proc(pf: ^Page_Fonts, req: ^lay.Font_Request, settings: ^styl
 	for f in req.families {
 		name := generic_name(pf, strings.to_lower(strings.trim_space(f), context.temp_allocator), settings)
 		if web_entries(pf, name, req, &entries) { web = true; continue }
-		if id := system_face(pf, name, req); id != 0 { append(&entries, font.Cascade_Entry{font = id}) }
+		if id := system_face(pf, name, req); id != 0 {
+			if len(req.variations) > 0 {
+				// a variable system font (Bahnschrift, Segoe UI Variable...): font-variation-settings on its instance
+				vars := make([]font.Axis_Value, len(req.variations), context.temp_allocator)
+				for v, i in req.variations { vars[i] = {v.tag, v.value} }
+				id = font.with_variations(pf.state, id, vars)
+			}
+			append(&entries, font.Cascade_Entry{font = id})
+		}
 	}
 	if settings != nil {
 		if g := style.generic_family(settings, settings.default_generic); g != "" {
