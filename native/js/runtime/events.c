@@ -518,7 +518,8 @@ JSValue wjr_EventTarget_dispatchEvent(JSContext *ctx, JSValueConst this_val, int
     if (e->bubbles) { init |= wr_EventInit_Bubbles; }
     if (e->cancelable) { init |= wr_EventInit_Cancelable; }
     if (e->composed) { init |= wr_EventInit_Composed; }
-    e->trusted = 0;
+    extern bool wj_dispatch_trusted;
+    e->trusted = wj_dispatch_trusted;
     e->stop = e->stop_immediate = e->canceled = 0;
     e->dispatching = 1;
     JS_FreeValue(ctx, e->target);
@@ -790,6 +791,33 @@ __attribute__((weak)) void wj_handler_invoke(JSContext *ctx, JSValueConst target
         if (JS_IsFunction(ctx, pd)) { JSValue x = JS_Call(ctx, pd, ev, 0, NULL); JS_FreeValue(ctx, x); }
         JS_FreeValue(ctx, pd);
     }
+}
+
+/* For hand-written subclasses of Event made by wj_event_construct (ErrorEvent, PromiseRejectionEvent:
+ * runtime/load_errors.c): the value slot they keep their own state in (CustomEvent's detail, unused by the others),
+ * NULL when `obj` is not an Event the engine made; and the trusted flag of the events the realm fires itself. */
+JSValue *wj_event_extra(JSValueConst obj)
+{
+    wj_obj *o = wj_obj_of(obj);
+    if (!o || !o->impl || o->iface < WJ_IFACE_Event || o->iface >= wj_interfaces[WJ_IFACE_Event].subtree_end) { return NULL; }
+    return &((wj_event *)o->impl)->detail;
+}
+
+/* set while the realm dispatches an event of its own (wj_dispatch_own_event): it is trusted */
+bool wj_dispatch_trusted;
+
+/* Dispatches an event the realm made itself (error, unhandledrejection...) at `target`, trusted. 1 not canceled, 0
+ * canceled, -1 with an exception pending. */
+int wj_dispatch_own_event(JSContext *ctx, JSValueConst target, JSValueConst event)
+{
+    bool saved = wj_dispatch_trusted;
+    wj_dispatch_trusted = true;
+    JSValue r = wjr_EventTarget_dispatchEvent(ctx, target, 1, &event);
+    wj_dispatch_trusted = saved;
+    if (JS_IsException(r)) { return -1; }
+    int ok = JS_ToBool(ctx, r);
+    JS_FreeValue(ctx, r);
+    return ok;
 }
 
 /* AbortSignal of addEventListener: removing the listener when it aborts (runtime/abort.c may do better). */

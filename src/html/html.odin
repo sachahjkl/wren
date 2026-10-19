@@ -124,6 +124,9 @@ parse_into :: proc(d: ^dom.Document, parent: base.Handle, data: []byte, max_node
 	b := Builder{doc = d, max_nodes = max_nodes}
 	defer delete(b.stack)
 	append(&b.stack, parent)
+	// the document's mutation hooks see parser-made nodes (scripts of a fragment never run: page/js_load.odin)
+	d.parser_inserting += 1
+	defer d.parser_inserting -= 1
 	sink := Shim_Sink{open = b_open, close = b_close, text = b_text, comment = b_comment, mode = b_mode}
 	status := wb_html_parse(raw_data(data), uint(len(data)), &sink, &b)
 	// a whole document (not a fragment parsed into an element) decides the document's mode

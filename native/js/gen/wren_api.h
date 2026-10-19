@@ -664,6 +664,71 @@ WR_IMPORT("js", "Node_treeRoots") void wr_Node_treeRoots(const uint64_t *nodes, 
 
 /* module events (partial) */
 
+/* module scripts */
+// What a Content-Security-Policy check of inline code is about: a script element's text, an event handler
+// attribute (script-src-attr), a javascript: URL.
+enum wr_InlineScriptKind {
+    wr_InlineScriptKind_Element = 0,
+    wr_InlineScriptKind_Attribute = 1,
+    wr_InlineScriptKind_Navigation = 2,
+};
+// The type of a module (import attributes: `with {type: "json"}`).
+enum wr_ModuleType {
+    wr_ModuleType_JavaScript = 0,
+    wr_ModuleType_Json = 1,
+};
+// The type of a worker's script (`new Worker(url, {type})`).
+enum wr_WorkerType {
+    wr_WorkerType_Classic = 0,
+    wr_WorkerType_Module = 1,
+};
+// document.write(markup) (writeln adds the newline): inserted at the parser's insertion point while the document
+// loads (scripts written run before it returns), else the document is opened again first and replaced. Invalid_State
+// for a document that does not accept it now (a custom element constructor, a parser that would have to be aborted).
+WR_IMPORT("scripts", "Document_writeMarkup") int32_t wr_Document_writeMarkup(const uint8_t *markup, uint32_t markup_len);
+// document.open(): the document is emptied and its parser starts again (does nothing while the parser runs a
+// script). Invalid_State when the document cannot be opened.
+WR_IMPORT("scripts", "Document_openStream") int32_t wr_Document_openStream(void);
+// document.close(): the parser of a document.open() finishes (DOMContentLoaded, then load).
+WR_IMPORT("scripts", "Document_closeStream") int32_t wr_Document_closeStream(void);
+// The "force async" flag of a script element (set when a script creates it: dynamic scripts are async unless
+// their async attribute is set to false).
+WR_IMPORT("scripts", "HTMLScriptElement_forceAsync") int32_t wr_HTMLScriptElement_forceAsync(uint64_t element);
+// script.async = value: the attribute is set or removed by the caller, this clears the flag.
+WR_IMPORT("scripts", "HTMLScriptElement_setForceAsync") void wr_HTMLScriptElement_setForceAsync(uint64_t element, int32_t value);
+// May this inline code run (Content-Security-Policy: 'unsafe-inline', nonces, hashes)? A refusal is reported as a
+// violation. `element` is the element it comes from (0 for a javascript: URL).
+WR_IMPORT("scripts", "Script_allowInline") int32_t wr_Script_allowInline(uint64_t element, int32_t kind, const uint8_t *source, uint32_t source_len);
+// May eval() / new Function / setTimeout(string) compile this ('unsafe-eval')? A refusal is reported.
+WR_IMPORT("scripts", "Script_allowEval") int32_t wr_Script_allowEval(const uint8_t *source, uint32_t source_len);
+// The result of a javascript: URL that was a string: it becomes the document (HTML "navigate to a javascript: URL").
+WR_IMPORT("scripts", "Script_javascriptResult") void wr_Script_javascriptResult(const uint8_t *html, uint32_t html_len);
+// The URL naming code that has no script of its own in stack traces and as the base of import() (handlers,
+// timer strings): the document's (the worker's script in a worker).
+WR_IMPORT("scripts", "Script_baseName") int32_t wr_Script_baseName(uint8_t *_buf, uint32_t _cap);
+// The URL a module specifier stands for, imported from the module (or script) at `base` ("" for the root of a
+// graph, given as a URL already): import maps, then URL parsing. Type: a bare specifier nothing maps, or not a URL.
+WR_IMPORT("scripts", "Module_resolve") int32_t wr_Module_resolve(const uint8_t *specifier, uint32_t specifier_len, const uint8_t *base, uint32_t base_len, uint8_t *_buf, uint32_t _cap);
+// The source of a module of the page's module map. Not_Found when the browser does not have it.
+WR_IMPORT("scripts", "Module_source") int32_t wr_Module_source(const uint8_t *url, uint32_t url_len, uint8_t *_buf, uint32_t _cap);
+// The module at `module_url` imports `specifier`: resolved and fetched if new (part of the module's graph).
+WR_IMPORT("scripts", "Module_request") int32_t wr_Module_request(const uint8_t *module_url, uint32_t module_url_len, const uint8_t *specifier, uint32_t specifier_len, int32_t type);
+// import(specifier) from code at `base`: the browser fetches the graph, then calls the engine's
+// wj_module_import_done(id, ...) from a task of its own. Type: the specifier cannot be resolved.
+WR_IMPORT("scripts", "Module_import") int32_t wr_Module_import(int32_t id, const uint8_t *specifier, uint32_t specifier_len, const uint8_t *base, uint32_t base_len, int32_t type);
+// Unhandled promise rejections are waiting: run the engine's wj_notify_rejections in a task of its own.
+WR_IMPORT("scripts", "Engine_queueRejectionCheck") void wr_Engine_queueRejectionCheck(void);
+// new Worker(url, {name, type}) for a JavaScript worker: the Worker object (a handle of module workers). Syntax for
+// an invalid URL, Not_Allowed when the browser refuses (the console says why).
+WR_IMPORT("scripts", "Worker_createScript") int32_t wr_Worker_createScript(const uint8_t *url, uint32_t url_len, const uint8_t *name, uint32_t name_len, int32_t type, uint64_t *_ret);
+// worker.postMessage(message): the message as structured serialization bytes (native/js/runtime/clone.c).
+WR_IMPORT("scripts", "Worker_postSerialized") int32_t wr_Worker_postSerialized(uint64_t worker, const uint8_t *data, uint32_t data_len);
+// postMessage(message) in a JavaScript worker.
+WR_IMPORT("scripts", "DedicatedWorkerGlobalScope_postSerialized") int32_t wr_DedicatedWorkerGlobalScope_postSerialized(const uint8_t *data, uint32_t data_len);
+// importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is the
+// response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript.
+WR_IMPORT("scripts", "WorkerGlobalScope_importScript") int32_t wr_WorkerGlobalScope_importScript(const uint8_t *url, uint32_t url_len, uint8_t *_buf, uint32_t _cap);
+
 /* module net */
 // A request and, once it arrived, its response.
 typedef uint64_t wr_Fetch;

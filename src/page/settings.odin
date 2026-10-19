@@ -23,6 +23,7 @@ Settings :: struct {
 	threads:         Thread_Settings,     // offthread.odin
 	images:          img.Settings,        // images.odin
 	js:              js.Settings,         // JavaScript (package js, js_realm.odin)
+	js_load:         Js_Load_Settings,    // script loading, the event loop's JavaScript side (js_load_settings.odin)
 }
 
 PREFS := [?]config.Def{
@@ -45,6 +46,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	forms.register_prefs(p)
 	img.register_prefs(p)
 	js.register_prefs(p)
+	config.register(p, JS_LOAD_PREFS[:])
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -62,6 +64,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		threads = thread_settings_from_prefs(p),
 		images = img.settings_from_prefs(p),
 		js = js.settings_from_prefs(p),
+		js_load = js_load_settings_from_prefs(p),
 	}
 }
 

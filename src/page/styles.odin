@@ -32,7 +32,7 @@ Style_Load :: struct {
 
 @(private)
 styles_init :: proc(p: ^Page) {
-	p.engine = style.engine_make(p.settings.style)
+	p.engine = style.engine_make(page_style_settings(p))
 	p.link_loads = make(map[base.Handle]^Style_Load)
 	p.import_loads = make([dynamic]^Style_Load)
 	p.style_stale = true
@@ -63,8 +63,16 @@ styles_destroy :: proc(p: ^Page) {
 
 // Applies a changed configuration (preferences): the engine recompiles with the new limits and defaults.
 configure_styles :: proc(p: ^Page) {
-	style.engine_configure(p.engine, p.settings.style)
+	style.engine_configure(p.engine, page_style_settings(p))
 	p.style_stale = true
+}
+
+// The shell's style settings, with what belongs to this document (scripting: <noscript> is not rendered).
+@(private)
+page_style_settings :: proc(p: ^Page) -> style.Settings {
+	s := p.settings.style
+	s.scripting = p.worker == nil && js_enabled(p)
+	return s
 }
 
 // Asks the style passes of the page to keep a layout journal (style.Layout_Journal) of at most `max_entries` entries,
@@ -110,6 +118,9 @@ start_style_fetch :: proc(p: ^Page, l: ^Style_Load, crossorigin: string, has_cro
 
 // Reads the document's stylesheets and starts what has to be loaded. Safe to call after any mutation.
 sync_styles :: proc(p: ^Page) {
+	// the parser's reveal has the rest of the document detached for now: its stylesheets stay as they are until it
+	// finishes (js_load.odin), instead of being dropped and loaded again
+	if scripts_revealing(p) { return }
 	links := style.sync_document_sheets(p.engine, p.doc, p.env.location.href)
 
 	// links that disappeared
@@ -215,6 +226,7 @@ decode_css :: proc(data: []byte, max_bytes: int) -> []byte {
 styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Styled {
 	e := p.engine
 	env := style.media_env_from(&e.settings, f64(viewport_w), f64(viewport_h), dppx, style.os_appearance().dark)
+	env.scripting = e.settings.scripting   // (scripting: enabled) / (scripting: none)
 	style.engine_set_environment(e, env)
 
 	now := document_time_ms(p)

@@ -717,6 +717,7 @@ build_ui :: proc(app: ^App) {
 						}
 					}
 				}
+				if app.show_console { console_eval_row(app, t, em) }   // "run JavaScript" (console_eval.odin)
 			}
 			status_bar_build(app, t)
 			fullscreen_bars(app, t)
@@ -800,6 +801,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 					resolved, rok := url.parse(href, &t.page.env.location, context.temp_allocator)
 					if !rok { tab_log(t, .Error, fmt.tprintf("invalid link %q", href)); continue }
 					if page.follow_fragment_link(t.page, resolved) { continue }   // same document: page_draw scrolls to the target
+					if page.follow_javascript_url(t.page, resolved) { continue }  // javascript: runs in the page (js_load_realm.odin)
 					navigate(app, t, resolved.href, t.page, user_activation = true)
 					have_move = false
 					return   // the page is gone: the rest of this frame's events belong to the old one
@@ -1101,6 +1103,7 @@ main :: proc() {
 	window_chrome_destroy(app)
 	pacer_destroy(app)
 	font.set_color_ready_callback(&app.fonts, nil, nil)   // the color glyph thread no longer posts to the loop
+	page.compile_shutdown()   // the script compile threads post to the loop: stopped before it goes
 	host.loop_destroy(&app.loop)
 	page.js_shutdown()
 	wasm.runtime_destroy()
@@ -1110,6 +1113,7 @@ main :: proc() {
 	config_view_destroy(&app.config_view)
 	interaction_destroy(app)
 	ui.field_destroy(&app.address)
+	console_eval_destroy()
 	ui.destroy(&app.ui_state)
 	config.prefs_destroy(&app.prefs)
 }

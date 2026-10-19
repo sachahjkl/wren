@@ -31,6 +31,7 @@ import "wb:dom"
 import "wb:fetch"
 import "wb:host"
 import "wb:http"
+import "wb:js"
 import "wb:url"
 
 ////////////////////////////////
@@ -171,6 +172,7 @@ Worker_Host :: struct {
 	terminated: bool,                   // no event reaches the page any more
 	relays:     map[u64]^Relay,         // the worker's requests in flight, by the worker's fetch handle
 	counted:    bool,                   // holds a slot of the process-wide count
+	javascript: bool,                   // its script is JavaScript (js_workers.odin), not a Wasm module
 }
 
 Relay :: struct {
@@ -218,11 +220,12 @@ page_worker_count :: proc(p: ^Page) -> int {
 
 // Starts a dedicated worker running the module at `src` (resolved against the document). Returns the Worker object,
 // or 0 when the browser refuses (workers disabled, too many, invalid or cross-origin URL); the reason is logged.
-worker_create :: proc(p: ^Page, src: string, name: string, owner: u32) -> u64 {
+worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascript := false) -> u64 {
 	ws := &p.settings.workers
 	if p.worker != nil { log(p, .Error, "Worker: nested workers are not supported"); return 0 }
 	if p.loader == nil { log(p, .Error, "Worker: this page cannot load anything"); return 0 }
 	if !ws.enabled { log(p, .Error, "Worker: workers are disabled (workers.enabled)"); return 0 }
+	if javascript && !p.settings.js.workers { log(p, .Error, "Worker: JavaScript workers are disabled (javascript.workers.enabled)"); return 0 }
 	if page_worker_count(p) >= ws.max_per_page {
 		log(p, .Error, fmt.tprintf("Worker: this page already runs %d workers (workers.max_per_page)", ws.max_per_page)); return 0
 	}
@@ -240,7 +243,7 @@ worker_create :: proc(p: ^Page, src: string, name: string, owner: u32) -> u64 {
 	}
 
 	h := new(Worker_Host)
-	h.page, h.owner, h.counted = p, owner, true
+	h.page, h.owner, h.counted, h.javascript = p, owner, true, javascript
 	h.url, h.name = strings.clone(u.href), strings.clone(name)
 	h.link = link_make(p.loop, ws.max_pending_bytes)
 	h.link.host = h
@@ -255,7 +258,8 @@ worker_create :: proc(p: ^Page, src: string, name: string, owner: u32) -> u64 {
 	append(&p.workers.hosts, h)
 	h.self = object_create(p, &worker_vt, h, owner)
 	h.script = fetch.start(p.loader, {
-		request = {url = h.url, mode = .Same_Origin, credentials = .Same_Origin, destination = .Worker, initiator = &p.env},
+		request = {url = h.url, mode = .Same_Origin, credentials = .Same_Origin, destination = .Worker, initiator = &p.env,
+			script = javascript ? .Classic : .Wasm},
 		on_event = worker_script_event, user = h, scope = nil, collect = true,
 	})
 	return h.self
@@ -313,6 +317,9 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	g.settings = p.settings^
 	g.settings.html, g.settings.style = {}, {}   // owned by the shell and changed under its feet: a worker needs neither
 	g.settings.wasm = p.settings.workers.wasm
+	g.javascript = h.javascript
+	// the JavaScript settings' lists are the shell's, changed under the worker's feet: a copy of its own
+	if g.javascript { g.settings.js = js.settings_clone(p.settings.js) } else { g.settings.js = {} }
 	g.url, g.name = strings.clone(h.url), strings.clone(h.name)
 	g.image = make([]byte, len(image))
 	copy(g.image, image)
@@ -414,6 +421,7 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 	case .Exited:
 		if h.thread != nil { host.thread_join(h.thread); h.thread = nil }
 		h.state = .Exited
+		if h.javascript && h.self != 0 { js_worker_gone(p, h.self) }   // its Worker object may be collected now
 		relays_cancel(h)
 		worker_uncount(h)
 		worker_maybe_free(h)
@@ -593,6 +601,7 @@ Worker_Global :: struct {
 	self:     u64,                // the DedicatedWorkerGlobalScope object
 	closing:  bool,
 	inbox:    [dynamic]^Worker_Msg,
+	javascript: bool,             // `image` is a JavaScript classic script (js_workers.odin)
 }
 
 @(private)
@@ -600,6 +609,7 @@ worker_global_vt := Object_VTable{name = "DedicatedWorkerGlobalScope"}
 
 @(private)
 worker_global_free :: proc(g: ^Worker_Global) {
+	if g.javascript { js.settings_destroy(&g.settings.js) }
 	delete(g.url); delete(g.name); delete(g.image)
 	for m in g.inbox { msg_free(m) }
 	delete(g.inbox)
@@ -626,13 +636,20 @@ worker_main :: proc(data: rawptr) {
 	p := worker_realm_create(g)
 	g.page = p
 	g.settings.wasm.stop = &l.stop   // terminate interrupts the module's running task
-	_, ok, err := instantiate(p, g.image, g.url, g.settings.wasm, worker_import_filter)
+	ok: bool
+	if g.javascript {
+		g.settings.workers.wasm.stop = &l.stop
+		ok = js_worker_start(p, g)   // js_workers.odin
+	} else {
+		err: string
+		_, ok, err = instantiate(p, g.image, g.url, g.settings.wasm, worker_import_filter)
+		if err != "" {
+			if !realm_halted(p) { worker_send_error(g, err) }
+			delete(err)
+		}
+	}
 	delete(g.image)
 	g.image = nil
-	if err != "" {
-		if !realm_halted(p) { worker_send_error(g, err) }
-		delete(err)
-	}
 	if ok || len(p.instances) > 0 {
 		// a module whose wb_main trapped keeps running: what it registered before the error still works
 		for !link_stopping(l) {

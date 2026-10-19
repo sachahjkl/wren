@@ -130,6 +130,7 @@ follow_fragment_link :: proc(p: ^Page, target: url.URL) -> bool {
 // location.assign / replace / href setter: a fragment navigation stays in the document, anything else goes to the embedder.
 @(private)
 location_navigate :: proc(p: ^Page, target: url.URL, replace: bool) {
+	if follow_javascript_url(p, target) { return }   // javascript: runs in this document (js_load_realm.odin)
 	cur := p.env.location
 	if target.has_fragment && url.without_fragment(target) == url.without_fragment(cur) {
 		navigate_fragment(p, target, replace)

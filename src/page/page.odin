@@ -125,6 +125,7 @@ page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings
 
 	p.doc = dom.document_create(p.scope)
 	p.dp.invoke = invoke_listener
+	p.dp.outer = window_outer_phase   // the Window ends the path of the document's events (js_load_events.odin)
 	p.dp.user = p
 	styles_init(p)
 	forms_attach(p)

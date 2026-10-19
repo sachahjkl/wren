@@ -1,0 +1,1 @@
+self.libValue = 7;

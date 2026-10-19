@@ -4,10 +4,23 @@
 #include "wj.h"
 #include "bindings.h"
 
+JSValue wjr_AnimationFrameProvider_cancelAnimationFrame(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_AnimationFrameProvider_requestAnimationFrame(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CustomEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CustomEvent_get_detail(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CustomEvent_initCustomEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DedicatedWorkerGlobalScope_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_createElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_open(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_write(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_writeln(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ErrorEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ErrorEvent_get_colno(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ErrorEvent_get_error(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ErrorEvent_get_filename(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ErrorEvent_get_lineno(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ErrorEvent_get_message(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_EventTarget_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_EventTarget_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_EventTarget_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -33,6 +46,32 @@ JSValue wjr_Event_set_cancelBubble(JSContext *ctx, JSValueConst this_val, JSValu
 JSValue wjr_Event_set_returnValue(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Event_stopImmediatePropagation(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Event_stopPropagation(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLScriptElement_get_async(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_crossOrigin(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_referrerPolicy(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_src(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_get_text(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLScriptElement_set_async(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_crossOrigin(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_set_text(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLScriptElement_static_supports(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_IdleDeadline_get_didTimeout(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IdleDeadline_timeRemaining(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MessageEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MessageEvent_get_data(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PromiseRejectionEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PromiseRejectionEvent_get_promise(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PromiseRejectionEvent_get_reason(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowOrWorkerGlobalScope_clearInterval(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_clearTimeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_queueMicrotask(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_reportError(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_setInterval(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_setTimeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_structuredClone(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Window_cancelIdleCallback(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_get_frameElement(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_frames(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_length(JSContext *ctx, JSValueConst this_val);
@@ -41,7 +80,12 @@ JSValue wjr_Window_get_parent(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_self(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_top(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_window(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_requestIdleCallback(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WorkerGlobalScope_get_self(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WorkerGlobalScope_importScripts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Worker_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Worker_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Worker_terminate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_assert(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_clear(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_count(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -4022,16 +4066,6 @@ static JSValue wjg_Window_get_isSecureContext(JSContext *ctx, JSValueConst this_
     return JS_NewBool(ctx, r != 0);
 }
 
-/* Worker.terminate() -> workers.Worker_terminate */
-static JSValue wjg_Worker_terminate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 365);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t st = wr_Worker_terminate(self->handle);
-    if (st < 0) { return wj_throw_status(ctx, st, "Worker.terminate"); }
-    return JS_UNDEFINED;
-}
-
 static JSValue wjg_Worker_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 365, "error"); }
 static JSValue wjg_Worker_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 365, "error", v, 0); }
 static JSValue wjg_Worker_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 365, "message"); }
@@ -5366,11 +5400,11 @@ static const wj_member wj_m_DeviceChangeEvent[] = {
     { "userInsertedDevices", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 24, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ErrorEvent[] = {
-    { "message", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "filename", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "lineno", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "colno", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "message", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ErrorEvent_get_message, NULL, 0 },
+    { "filename", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ErrorEvent_get_filename, NULL, 0 },
+    { "lineno", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ErrorEvent_get_lineno, NULL, 0 },
+    { "colno", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ErrorEvent_get_colno, NULL, 0 },
+    { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ErrorEvent_get_error, NULL, 0 },
 };
 static const wj_member wj_m_FontFaceSetLoadEvent[] = {
     { "fontfaces", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 25, NULL, NULL, NULL, 0 },
@@ -5397,7 +5431,7 @@ static const wj_member wj_m_MediaStreamTrackEvent[] = {
     { "track", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 27, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_MessageEvent[] = {
-    { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MessageEvent_get_data, NULL, 0 },
     { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MessageEvent_get_origin, NULL, 0 },
     { "lastEventId", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MessageEvent_get_lastEventId, NULL, 0 },
     { "source", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -5446,8 +5480,8 @@ static const wj_member wj_m_ProgressEvent[] = {
     { "total", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PromiseRejectionEvent[] = {
-    { "promise", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "reason", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "promise", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PromiseRejectionEvent_get_promise, NULL, 0 },
+    { "reason", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PromiseRejectionEvent_get_reason, NULL, 0 },
 };
 static const wj_member wj_m_SpeechRecognitionErrorEvent[] = {
     { "error", WJ_M_ATTRIBUTE, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
@@ -6218,10 +6252,10 @@ static const wj_member wj_m_Document[] = {
     { "scripts", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 42, NULL, NULL, NULL, 0 },
     { "getElementsByName", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "currentScript", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_currentScript, NULL, 0 },
-    { "open", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "close", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "write", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "writeln", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "open", WJ_M_METHOD, 0, 0, wjr_Document_open, NULL, NULL, 0 },
+    { "close", WJ_M_METHOD, 0, 0, wjr_Document_close, NULL, NULL, 0 },
+    { "write", WJ_M_METHOD, 0, 0, wjr_Document_write, NULL, NULL, 0 },
+    { "writeln", WJ_M_METHOD, 0, 0, wjr_Document_writeln, NULL, NULL, 0 },
     { "defaultView", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "hasFocus", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "designMode", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -7317,19 +7351,19 @@ static const wj_member wj_m_HTMLQuoteElement[] = {
 };
 static const wj_member wj_m_HTMLScriptElement[] = {
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_type, wjg_HTMLScriptElement_set_type, 0 },
-    { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_src, wjr_HTMLScriptElement_set_src, 0 },
     { "noModule", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_noModule, wjg_HTMLScriptElement_set_noModule, 0 },
-    { "async", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "async", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_async, wjr_HTMLScriptElement_set_async, 0 },
     { "defer", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_defer, wjg_HTMLScriptElement_set_defer, 0 },
     { "blocking", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 73, NULL, NULL, wjg_HTMLScriptElement_set_blocking, 0 },
-    { "crossOrigin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "referrerPolicy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "crossOrigin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_crossOrigin, wjr_HTMLScriptElement_set_crossOrigin, 0 },
+    { "referrerPolicy", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_referrerPolicy, wjr_HTMLScriptElement_set_referrerPolicy, 0 },
     { "integrity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_integrity, wjg_HTMLScriptElement_set_integrity, 0 },
     { "fetchPriority", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "innerText", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "textContent", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "text", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "supports", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "text", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLScriptElement_get_text, wjr_HTMLScriptElement_set_text, 0 },
+    { "supports", WJ_M_STATIC_METHOD, 0, 1, wjr_HTMLScriptElement_static_supports, NULL, NULL, 0 },
     { "charset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_charset, wjg_HTMLScriptElement_set_charset, 0 },
     { "event", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_event, wjg_HTMLScriptElement_set_event, 0 },
     { "htmlFor", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLScriptElement_get_htmlFor, wjg_HTMLScriptElement_set_htmlFor, 0 },
@@ -8370,8 +8404,8 @@ static const wj_member wj_m_Window[] = {
     { "captureEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "releaseEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "external", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE | WJ_F_SAME_OBJECT, 200, NULL, NULL, wj_replaceable_setter, 0 },
-    { "requestIdleCallback", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "cancelIdleCallback", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "requestIdleCallback", WJ_M_METHOD, 0, 1, wjr_Window_requestIdleCallback, NULL, NULL, 0 },
+    { "cancelIdleCallback", WJ_M_METHOD, 0, 1, wjr_Window_cancelIdleCallback, NULL, NULL, 0 },
     { "getSelection", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "speechSynthesis", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 201, NULL, NULL, NULL, 0 },
     { "onanimationstart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onanimationstart, wjg_Window_set_onanimationstart, 0 },
@@ -8501,28 +8535,28 @@ static const wj_member wj_m_Window[] = {
     { "origin", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_origin, wj_replaceable_setter, 0 },
     { "isSecureContext", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_isSecureContext, NULL, 0 },
     { "crossOriginIsolated", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "reportError", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "reportError", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_reportError, NULL, NULL, 0 },
     { "btoa", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "atob", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setTimeout", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clearTimeout", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "setInterval", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clearInterval", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "queueMicrotask", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "setTimeout", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setTimeout, NULL, NULL, 0 },
+    { "clearTimeout", WJ_M_METHOD, 0, 0, wjr_WindowOrWorkerGlobalScope_clearTimeout, NULL, NULL, 0 },
+    { "setInterval", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setInterval, NULL, NULL, 0 },
+    { "clearInterval", WJ_M_METHOD, 0, 0, wjr_WindowOrWorkerGlobalScope_clearInterval, NULL, NULL, 0 },
+    { "queueMicrotask", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_queueMicrotask, NULL, NULL, 0 },
     { "createImageBitmap", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "structuredClone", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "structuredClone", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_structuredClone, NULL, NULL, 0 },
     { "scheduler", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "caches", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 203, NULL, NULL, NULL, 0 },
     { "trustedTypes", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "crypto", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 204, NULL, NULL, NULL, 0 },
-    { "requestAnimationFrame", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "cancelAnimationFrame", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "requestAnimationFrame", WJ_M_METHOD, 0, 1, wjr_AnimationFrameProvider_requestAnimationFrame, NULL, NULL, 0 },
+    { "cancelAnimationFrame", WJ_M_METHOD, 0, 1, wjr_AnimationFrameProvider_cancelAnimationFrame, NULL, NULL, 0 },
     { "sessionStorage", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "localStorage", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Worker[] = {
-    { "terminate", WJ_M_METHOD, 0, 0, wjg_Worker_terminate, NULL, NULL, 0 },
-    { "postMessage", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "terminate", WJ_M_METHOD, 0, 0, wjr_Worker_terminate, NULL, NULL, 0 },
+    { "postMessage", WJ_M_METHOD, 0, 1, wjr_Worker_postMessage, NULL, NULL, 0 },
     { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Worker_get_onerror, wjg_Worker_set_onerror, 0 },
     { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Worker_get_onmessage, wjg_Worker_set_onmessage, 0 },
     { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Worker_get_onmessageerror, wjg_Worker_set_onmessageerror, 0 },
@@ -8531,7 +8565,7 @@ static const wj_member wj_m_WorkerGlobalScope[] = {
     { "self", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WorkerGlobalScope_get_self, NULL, 0 },
     { "location", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "navigator", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "importScripts", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "importScripts", WJ_M_METHOD, 0, 0, wjr_WorkerGlobalScope_importScripts, NULL, NULL, 0 },
     { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WorkerGlobalScope_get_onerror, wjg_WorkerGlobalScope_set_onerror, 0 },
     { "onlanguagechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WorkerGlobalScope_get_onlanguagechange, wjg_WorkerGlobalScope_set_onlanguagechange, 0 },
     { "onoffline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WorkerGlobalScope_get_onoffline, wjg_WorkerGlobalScope_set_onoffline, 0 },
@@ -8545,16 +8579,16 @@ static const wj_member wj_m_WorkerGlobalScope[] = {
     { "origin", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "isSecureContext", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "crossOriginIsolated", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "reportError", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "reportError", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_reportError, NULL, NULL, 0 },
     { "btoa", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "atob", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setTimeout", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clearTimeout", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "setInterval", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clearInterval", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "queueMicrotask", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "setTimeout", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setTimeout, NULL, NULL, 0 },
+    { "clearTimeout", WJ_M_METHOD, 0, 0, wjr_WindowOrWorkerGlobalScope_clearTimeout, NULL, NULL, 0 },
+    { "setInterval", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setInterval, NULL, NULL, 0 },
+    { "clearInterval", WJ_M_METHOD, 0, 0, wjr_WindowOrWorkerGlobalScope_clearInterval, NULL, NULL, 0 },
+    { "queueMicrotask", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_queueMicrotask, NULL, NULL, 0 },
     { "createImageBitmap", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "structuredClone", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "structuredClone", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_structuredClone, NULL, NULL, 0 },
     { "scheduler", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "caches", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 206, NULL, NULL, NULL, 0 },
     { "trustedTypes", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -8562,10 +8596,10 @@ static const wj_member wj_m_WorkerGlobalScope[] = {
 };
 static const wj_member wj_m_DedicatedWorkerGlobalScope[] = {
     { "name", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_DedicatedWorkerGlobalScope_get_name, wj_replaceable_setter, 0 },
-    { "postMessage", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "postMessage", WJ_M_METHOD, 0, 1, wjr_DedicatedWorkerGlobalScope_postMessage, NULL, NULL, 0 },
     { "close", WJ_M_METHOD, 0, 0, wjg_DedicatedWorkerGlobalScope_close, NULL, NULL, 0 },
-    { "requestAnimationFrame", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "cancelAnimationFrame", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "requestAnimationFrame", WJ_M_METHOD, 0, 1, wjr_AnimationFrameProvider_requestAnimationFrame, NULL, NULL, 0 },
+    { "cancelAnimationFrame", WJ_M_METHOD, 0, 1, wjr_AnimationFrameProvider_cancelAnimationFrame, NULL, NULL, 0 },
     { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_DedicatedWorkerGlobalScope_get_onmessage, wjg_DedicatedWorkerGlobalScope_set_onmessage, 0 },
     { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_DedicatedWorkerGlobalScope_get_onmessageerror, wjg_DedicatedWorkerGlobalScope_set_onmessageerror, 0 },
 };
@@ -8838,8 +8872,8 @@ static const wj_member wj_m_IDBRecord[] = {
     { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_IdleDeadline[] = {
-    { "timeRemaining", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "didTimeout", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "timeRemaining", WJ_M_METHOD, 0, 0, wjr_IdleDeadline_timeRemaining, NULL, NULL, 0 },
+    { "didTimeout", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IdleDeadline_get_didTimeout, NULL, 0 },
 };
 static const wj_member wj_m_ImageBitmap[] = {
     { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -10660,7 +10694,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_DeviceChangeEvent, .n_members = 2, .subtree_end = 126,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ErrorEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "ErrorEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_ErrorEvent_constructor,
       .members = wj_m_ErrorEvent, .n_members = 5, .subtree_end = 127,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10692,7 +10726,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MediaStreamTrackEvent, .n_members = 1, .subtree_end = 134,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MessageEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "MessageEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_MessageEvent_constructor,
       .members = wj_m_MessageEvent, .n_members = 6, .subtree_end = 135,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10728,7 +10762,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_ProgressEvent, .n_members = 3, .subtree_end = 143,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PromiseRejectionEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = NULL,
+    { .name = "PromiseRejectionEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = wjr_PromiseRejectionEvent_constructor,
       .members = wj_m_PromiseRejectionEvent, .n_members = 2, .subtree_end = 144,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11616,7 +11650,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_Window, .n_members = 214, .subtree_end = 365,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Worker", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "Worker", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_Worker_constructor,
       .members = wj_m_Worker, .n_members = 5, .subtree_end = 366,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11780,7 +11814,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_IDBRecord, .n_members = 3, .subtree_end = 406,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "IdleDeadline", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "IdleDeadline", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_IdleDeadline, .n_members = 2, .subtree_end = 407,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

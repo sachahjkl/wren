@@ -60,6 +60,7 @@ Media_Env :: struct {
 	hover:                bool,    // the primary input can hover
 	pointer_fine:         bool,
 	color_bits:           int,
+	scripting:            bool,    // scripting is enabled for the document (JavaScript runs)
 }
 
 parse_media_query_list :: proc(list: []Value, a: Arena_Alloc) -> Media_Query_List {
@@ -441,7 +442,10 @@ eval_feature :: proc(c: Media_Condition, env: Media_Env) -> Tri {
 	case .Display_Mode:
 		return c.boolean || c.ident == "browser" ? .True : .False
 	case .Scripting:
-		return c.ident == "none" ? .True : .False      // there is no scripting engine
+		// Media Queries 5: "enabled" where scripts run (this browser never runs them only initially), else "none"
+		if c.boolean { return env.scripting ? .True : .False }
+		cur := env.scripting ? "enabled" : "none"
+		return c.ident == cur ? .True : .False
 	case .Update:
 		return c.ident == "fast" || c.boolean ? .True : .False
 	case .Forced_Colors:

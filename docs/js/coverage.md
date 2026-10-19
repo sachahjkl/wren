@@ -13,9 +13,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | | count |
 |---|---:|
 | interfaces, namespaces in the table | 556 |
-| exposed by default | 147 |
+| exposed by default | 150 |
 | members | 4991 |
-| members implemented | 1533 (30.7 %) |
+| members implemented | 1583 (31.7 %) |
 
 ## By specification
 
@@ -39,7 +39,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (0) | 4 / 28 |
 | `cssom.idl` | 16 (0) | 11 / 149 |
-| `dom.idl` | 35 (18) | 266 / 699 |
+| `dom.idl` | 35 (18) | 271 / 699 |
 | `encoding.idl` | 4 (1) | 1 / 19 |
 | `entries-api.idl` | 5 (0) | 0 / 13 |
 | `event-timing.idl` | 2 (0) | 0 / 8 |
@@ -47,7 +47,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (0) | 0 / 126 |
 | `hr-time.idl` | 1 (1) | 5 / 17 |
-| `html.idl` | 160 (79) | 754 / 1819 |
+| `html.idl` | 160 (81) | 797 / 1819 |
 | `intersection-observer.idl` | 2 (0) | 0 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -63,7 +63,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `performance-timeline.idl` | 3 (0) | 0 / 15 |
 | `permissions.idl` | 2 (0) | 1 / 4 |
 | `pointerevents.idl` | 3 (1) | 6 / 47 |
-| `requestidlecallback.idl` | 1 (0) | 0 / 2 |
+| `requestidlecallback.idl` | 1 (1) | 2 / 2 |
 | `resize-observer.idl` | 3 (0) | 0 / 11 |
 | `resource-timing.idl` | 1 (0) | 0 / 29 |
 | `scheduling-apis.idl` | 4 (0) | 1 / 9 |
@@ -185,17 +185,36 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly detail`: C `wjr_CustomEvent_get_detail`
 - `initCustomEvent()`: C `wjr_CustomEvent_initCustomEvent`
 
+### ErrorEvent : Event
+
+6 / 6 members.
+
+- `constructor()`: C `wjr_ErrorEvent_constructor`
+- `readonly message`: C `wjr_ErrorEvent_get_message`
+- `readonly filename`: C `wjr_ErrorEvent_get_filename`
+- `readonly lineno`: C `wjr_ErrorEvent_get_lineno`
+- `readonly colno`: C `wjr_ErrorEvent_get_colno`
+- `readonly error`: C `wjr_ErrorEvent_get_error`
+
 ### MessageEvent : Event
 
-2 / 7 members.
+4 / 7 members.
 
-- `constructor()`: not supported
-- `readonly data`: not supported
+- `constructor()`: C `wjr_MessageEvent_constructor`
+- `readonly data`: C `wjr_MessageEvent_get_data`
 - `readonly origin`: import `eventsource.MessageEvent_origin`
 - `readonly lastEventId`: import `eventsource.MessageEvent_lastEventId`
 - `readonly source`: not supported
 - `readonly ports`: not supported
 - `initMessageEvent()`: not supported
+
+### PromiseRejectionEvent : Event
+
+3 / 3 members.
+
+- `constructor()`: C `wjr_PromiseRejectionEvent_constructor`
+- `readonly promise`: C `wjr_PromiseRejectionEvent_get_promise`
+- `readonly reason`: C `wjr_PromiseRejectionEvent_get_reason`
 
 ### UIEvent : Event
 
@@ -423,7 +442,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Document : Node
 
-118 / 225 members.
+123 / 225 members.
 
 - `readonly rootElement`: not supported
 - `startViewTransition()`: not supported
@@ -486,11 +505,11 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly scripts`: not supported
 - `getElementsByName()`: not supported
 - `readonly currentScript`: import `dom.Document_currentScript`
-- `open()`: not supported
-- `open()`: not supported
-- `close()`: not supported
-- `write()`: not supported
-- `writeln()`: not supported
+- `open()`: C `wjr_Document_open`
+- `open()`: C `wjr_Document_open`
+- `close()`: C `wjr_Document_close`
+- `write()`: C `wjr_Document_write`
+- `writeln()`: C `wjr_Document_writeln`
 - `readonly defaultView`: not supported
 - `hasFocus()`: not supported
 - `designMode`: not supported
@@ -1804,23 +1823,23 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLScriptElement : HTMLElement
 
-7 / 18 members.
+13 / 18 members.
 
 - `constructor()`: not supported
 - `type`: generic (reflects a content attribute)
-- `src`: not supported
+- `src`: C `wjr_HTMLScriptElement_get_src`
 - `noModule`: generic (reflects a content attribute)
-- `async`: not supported
+- `async`: C `wjr_HTMLScriptElement_get_async`
 - `defer`: generic (reflects a content attribute)
 - `readonly blocking`: not supported
-- `crossOrigin`: not supported
-- `referrerPolicy`: not supported
+- `crossOrigin`: C `wjr_HTMLScriptElement_get_crossOrigin`
+- `referrerPolicy`: C `wjr_HTMLScriptElement_get_referrerPolicy`
 - `integrity`: generic (reflects a content attribute)
 - `fetchPriority`: not supported
 - `innerText`: not supported
 - `textContent`: not supported
-- `text`: not supported
-- `static supports()`: not supported
+- `text`: C `wjr_HTMLScriptElement_get_text`
+- `static supports()`: C `wjr_HTMLScriptElement_static_supports`
 - `charset`: generic (reflects a content attribute)
 - `event`: generic (reflects a content attribute)
 - `htmlFor`: generic (reflects a content attribute)
@@ -2743,7 +2762,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Window : EventTarget
 
-132 / 220 members.
+143 / 220 members.
 
 - `readonly cookieStore`: not supported
 - `matchMedia()`: not supported
@@ -2815,8 +2834,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `captureEvents()`: not supported
 - `releaseEvents()`: not supported
 - `readonly external`: not supported
-- `requestIdleCallback()`: not supported
-- `cancelIdleCallback()`: not supported
+- `requestIdleCallback()`: C `wjr_Window_requestIdleCallback`
+- `cancelIdleCallback()`: C `wjr_Window_cancelIdleCallback`
 - `getSelection()`: not supported
 - `readonly speechSynthesis`: not supported
 - `onanimationstart` (GlobalEventHandlers): generic (event handler)
@@ -2946,46 +2965,46 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly origin` (WindowOrWorkerGlobalScope): import `document.Window_origin`
 - `readonly isSecureContext` (WindowOrWorkerGlobalScope): import `document.Window_isSecureContext`
 - `readonly crossOriginIsolated` (WindowOrWorkerGlobalScope): not supported
-- `reportError()` (WindowOrWorkerGlobalScope): not supported
+- `reportError()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_reportError`
 - `btoa()` (WindowOrWorkerGlobalScope): not supported
 - `atob()` (WindowOrWorkerGlobalScope): not supported
-- `setTimeout()` (WindowOrWorkerGlobalScope): not supported
-- `clearTimeout()` (WindowOrWorkerGlobalScope): not supported
-- `setInterval()` (WindowOrWorkerGlobalScope): not supported
-- `clearInterval()` (WindowOrWorkerGlobalScope): not supported
-- `queueMicrotask()` (WindowOrWorkerGlobalScope): not supported
+- `setTimeout()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_setTimeout`
+- `clearTimeout()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_clearTimeout`
+- `setInterval()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_setInterval`
+- `clearInterval()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_clearInterval`
+- `queueMicrotask()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_queueMicrotask`
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): not supported
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): not supported
-- `structuredClone()` (WindowOrWorkerGlobalScope): not supported
+- `structuredClone()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_structuredClone`
 - `readonly scheduler` (WindowOrWorkerGlobalScope): not supported
 - `readonly caches` (WindowOrWorkerGlobalScope): not supported
 - `readonly trustedTypes` (WindowOrWorkerGlobalScope): not supported
 - `readonly crypto` (WindowOrWorkerGlobalScope): not supported
-- `requestAnimationFrame()` (AnimationFrameProvider): not supported
-- `cancelAnimationFrame()` (AnimationFrameProvider): not supported
+- `requestAnimationFrame()` (AnimationFrameProvider): C `wjr_AnimationFrameProvider_requestAnimationFrame`
+- `cancelAnimationFrame()` (AnimationFrameProvider): C `wjr_AnimationFrameProvider_cancelAnimationFrame`
 - `readonly sessionStorage` (WindowSessionStorage): not supported
 - `readonly localStorage` (WindowLocalStorage): not supported
 
 ### Worker : EventTarget
 
-4 / 7 members.
+7 / 7 members.
 
-- `constructor()`: not supported
-- `terminate()`: import `workers.Worker_terminate`
-- `postMessage()`: not supported
-- `postMessage()`: not supported
+- `constructor()`: C `wjr_Worker_constructor`
+- `terminate()`: C `wjr_Worker_terminate`
+- `postMessage()`: C `wjr_Worker_postMessage`
+- `postMessage()`: C `wjr_Worker_postMessage`
 - `onerror` (AbstractWorker): generic (event handler)
 - `onmessage` (MessageEventTarget): generic (event handler)
 - `onmessageerror` (MessageEventTarget): generic (event handler)
 
 ### WorkerGlobalScope : EventTarget
 
-7 / 32 members.
+15 / 32 members.
 
 - `readonly self`: C `wjr_WorkerGlobalScope_get_self`
 - `readonly location`: not supported
 - `readonly navigator`: not supported
-- `importScripts()`: not supported
+- `importScripts()`: C `wjr_WorkerGlobalScope_importScripts`
 - `onerror`: generic (event handler)
 - `onlanguagechange`: generic (event handler)
 - `onoffline`: generic (event handler)
@@ -2999,17 +3018,17 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly origin` (WindowOrWorkerGlobalScope): not supported
 - `readonly isSecureContext` (WindowOrWorkerGlobalScope): not supported
 - `readonly crossOriginIsolated` (WindowOrWorkerGlobalScope): not supported
-- `reportError()` (WindowOrWorkerGlobalScope): not supported
+- `reportError()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_reportError`
 - `btoa()` (WindowOrWorkerGlobalScope): not supported
 - `atob()` (WindowOrWorkerGlobalScope): not supported
-- `setTimeout()` (WindowOrWorkerGlobalScope): not supported
-- `clearTimeout()` (WindowOrWorkerGlobalScope): not supported
-- `setInterval()` (WindowOrWorkerGlobalScope): not supported
-- `clearInterval()` (WindowOrWorkerGlobalScope): not supported
-- `queueMicrotask()` (WindowOrWorkerGlobalScope): not supported
+- `setTimeout()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_setTimeout`
+- `clearTimeout()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_clearTimeout`
+- `setInterval()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_setInterval`
+- `clearInterval()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_clearInterval`
+- `queueMicrotask()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_queueMicrotask`
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): not supported
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): not supported
-- `structuredClone()` (WindowOrWorkerGlobalScope): not supported
+- `structuredClone()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_structuredClone`
 - `readonly scheduler` (WindowOrWorkerGlobalScope): not supported
 - `readonly caches` (WindowOrWorkerGlobalScope): not supported
 - `readonly trustedTypes` (WindowOrWorkerGlobalScope): not supported
@@ -3017,14 +3036,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### DedicatedWorkerGlobalScope : WorkerGlobalScope
 
-4 / 8 members.
+8 / 8 members.
 
 - `readonly name`: import `workers.DedicatedWorkerGlobalScope_name`
-- `postMessage()`: not supported
-- `postMessage()`: not supported
+- `postMessage()`: C `wjr_DedicatedWorkerGlobalScope_postMessage`
+- `postMessage()`: C `wjr_DedicatedWorkerGlobalScope_postMessage`
 - `close()`: import `workers.DedicatedWorkerGlobalScope_close`
-- `requestAnimationFrame()` (AnimationFrameProvider): not supported
-- `cancelAnimationFrame()` (AnimationFrameProvider): not supported
+- `requestAnimationFrame()` (AnimationFrameProvider): C `wjr_AnimationFrameProvider_requestAnimationFrame`
+- `cancelAnimationFrame()` (AnimationFrameProvider): C `wjr_AnimationFrameProvider_cancelAnimationFrame`
 - `onmessage` (MessageEventTarget): generic (event handler)
 - `onmessageerror` (MessageEventTarget): generic (event handler)
 
@@ -3055,6 +3074,13 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `forward()`: not supported
 - `pushState()`: not supported
 - `replaceState()`: not supported
+
+### IdleDeadline
+
+2 / 2 members.
+
+- `timeRemaining()`: C `wjr_IdleDeadline_timeRemaining`
+- `readonly didTimeout`: C `wjr_IdleDeadline_get_didTimeout`
 
 ### Location
 
@@ -3175,7 +3201,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ## Not exposed (nothing implemented)
 
-TaskController, AbstractRange, Range, StaticRange, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, Blob, File, ByteLengthQueuingStrategy, CSS, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSStyleDeclaration, CSSPageDescriptors, CSSStyleProperties, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CanvasGradient, CanvasPattern, CanvasRenderingContext2D, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, Credential, FederatedCredential, PasswordCredential, CredentialsContainer, CryptoKey, CustomElementRegistry, CustomStateSet, OverconstrainedError, QuotaExceededError, DOMImplementation, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMRectList, DOMRectReadOnly, DOMRect, DOMStringList, DOMStringMap, DOMTokenList, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, ElementInternals, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ErrorEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, HashChangeEvent, IDBVersionChangeEvent, MediaQueryListEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, PageTransitionEvent, PopStateEvent, ProgressEvent, PromiseRejectionEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, StorageEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, CompositionEvent, FocusEvent, InputEvent, DragEvent, PointerEvent, WheelEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, Clipboard, CloseWatcher, CookieStore, FileReader, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaQueryList, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, MessagePort, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, MathMLAnchorElement, Notification, OffscreenCanvas, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestEventTarget, XMLHttpRequest, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, HTMLCollection, HTMLFormControlsCollection, HTMLOptionsCollection, Headers, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, IdleDeadline, ImageBitmap, ImageBitmapRenderingContext, ImageData, IntersectionObserver, IntersectionObserverEntry, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MessageChannel, MimeType, MimeTypeArray, MutationObserver, MutationRecord, NamedNodeMap, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, Navigator, NavigatorUAData, NodeFilter, NodeIterator, NodeList, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, OffscreenCanvasRenderingContext2D, Origin, Path2D, PerformanceEntry, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformanceMark, PerformanceMeasure, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceObserver, PerformanceObserverEntryList, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStream, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ReadableStreamDefaultController, ReadableStreamDefaultReader, Request, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, Screen, Selection, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, Storage, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheet, CSSStyleSheet, StyleSheetList, SubtleCrypto, TextDecoderStream, TextEncoder, TextEncoderStream, TextMetrics, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TreeWalker, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, ValidityState, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, WorkerNavigator, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
+TaskController, AbstractRange, Range, StaticRange, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, Blob, File, ByteLengthQueuingStrategy, CSS, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSStyleDeclaration, CSSPageDescriptors, CSSStyleProperties, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CanvasGradient, CanvasPattern, CanvasRenderingContext2D, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, Credential, FederatedCredential, PasswordCredential, CredentialsContainer, CryptoKey, CustomElementRegistry, CustomStateSet, OverconstrainedError, QuotaExceededError, DOMImplementation, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMRectList, DOMRectReadOnly, DOMRect, DOMStringList, DOMStringMap, DOMTokenList, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, ElementInternals, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, HashChangeEvent, IDBVersionChangeEvent, MediaQueryListEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, PageTransitionEvent, PopStateEvent, ProgressEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, StorageEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, CompositionEvent, FocusEvent, InputEvent, DragEvent, PointerEvent, WheelEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, Clipboard, CloseWatcher, CookieStore, FileReader, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaQueryList, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, MessagePort, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, MathMLAnchorElement, Notification, OffscreenCanvas, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestEventTarget, XMLHttpRequest, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, HTMLCollection, HTMLFormControlsCollection, HTMLOptionsCollection, Headers, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmap, ImageBitmapRenderingContext, ImageData, IntersectionObserver, IntersectionObserverEntry, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MessageChannel, MimeType, MimeTypeArray, MutationObserver, MutationRecord, NamedNodeMap, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, Navigator, NavigatorUAData, NodeFilter, NodeIterator, NodeList, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, OffscreenCanvasRenderingContext2D, Origin, Path2D, PerformanceEntry, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformanceMark, PerformanceMeasure, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceObserver, PerformanceObserverEntryList, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStream, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ReadableStreamDefaultController, ReadableStreamDefaultReader, Request, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, Screen, Selection, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, Storage, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheet, CSSStyleSheet, StyleSheetList, SubtleCrypto, TextDecoderStream, TextEncoder, TextEncoderStream, TextMetrics, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TreeWalker, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, ValidityState, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, WorkerNavigator, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
 
 ## Browser functions that could not be bound
 

@@ -87,6 +87,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 			inst.soft_flag = r.interrupt
 		}
 	}
+	js_load_realm_started(p, r)   // rejections, modules, eval policy (js_load_realm.odin)
 	return r
 }
 
@@ -195,6 +196,7 @@ js_startup :: proc(prefs: ^config.Prefs, profile_dir: string) {
 }
 
 js_shutdown :: proc() {
+	compile_shutdown()   // the compile threads first: they store into the cache (js_load_compile.odin)
 	js.cache_stop()
 	delete(js_engine_version)
 	js_engine_version = ""

@@ -59,6 +59,8 @@ Document :: struct {
 	scope:      ^base.Scope,
 	cleanup:    base.Cleanup_Id,
 	mode:       Document_Mode,     // set by the HTML parser from the doctype (HTML §13.2.6.4.1)
+	hooks:      Hooks,             // what the embedder does on insertions and attribute changes (hooks.odin)
+	parser_inserting: int,         // > 0 while an HTML parser builds nodes into this document (fragments: innerHTML...)
 }
 
 // The document's compatibility mode (DOM §4.5): what the rendering's quirks follow.
@@ -109,6 +111,7 @@ free_document :: proc(d: ^Document) {
 	for _, n in base.pool_next(&d.nodes, &it) { free_node_data(n) }
 	base.pool_destroy(&d.nodes)
 	journal_free(d)
+	hooks_free(d)
 	free(d)
 }
 
@@ -204,6 +207,7 @@ insert_before :: proc(d: ^Document, parent, child, ref: base.Handle) -> Error {
 	if c.pins_below > 0 { pins_adjust(d, parent, i64(c.pins_below)) }
 	touch(d)
 	journal_record(d, .Insert, child, parent)
+	notify_inserted(d, child)   // last: it may run scripts (hooks.odin)
 	return .None
 }
 
@@ -263,12 +267,14 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 			touch(d)
 			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, old, true)
 			delete(old)
+			notify_attribute(d, h, lname)
 			return .None
 		}
 	}
 	append(&n.attrs, Attr{heap_str(lname), heap_str(value)})
 	touch(d)
 	journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, "", false)
+	notify_attribute(d, h, lname)
 	return .None
 }
 
@@ -291,6 +297,7 @@ remove_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> Error {
 			touch(d)
 			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, old, true)
 			delete(old_name); delete(old)
+			notify_attribute(d, h, lname)
 			return .None
 		}
 	}

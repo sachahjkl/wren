@@ -189,6 +189,26 @@ Api_ConsoleLevel :: enum i32 {
 	Debug = 4,
 }
 
+// What a Content-Security-Policy check of inline code is about: a script element's text, an event handler
+// attribute (script-src-attr), a javascript: URL.
+Api_InlineScriptKind :: enum i32 {
+	Element = 0,
+	Attribute = 1,
+	Navigation = 2,
+}
+
+// The type of a module (import attributes: `with {type: "json"}`).
+Api_ModuleType :: enum i32 {
+	JavaScript = 0,
+	Json = 1,
+}
+
+// The type of a worker's script (`new Worker(url, {type})`).
+Api_WorkerType :: enum i32 {
+	Classic = 0,
+	Module = 1,
+}
+
 // A request and, once it arrived, its response.
 // A live Fetch: its handle and what lookup_Fetch found.
 Api_Fetch :: struct {
@@ -383,6 +403,15 @@ _valid_FormEnctype :: #force_inline proc "contextless" (v: i32) -> bool { switch
 
 @(private = "file")
 _valid_ConsoleLevel :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4: return true }; return false }
+
+@(private = "file")
+_valid_InlineScriptKind :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
+
+@(private = "file")
+_valid_ModuleType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
+
+@(private = "file")
+_valid_WorkerType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
 
 @(private = "file")
 _valid_FetchState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3: return true }; return false }
@@ -5590,6 +5619,373 @@ _t_events_EventTarget_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	return nil
 }
 
+// Document_writeMarkup :: proc(c: ^Call, markup: string) -> Api_Error
+@(private = "file")
+_t_scripts_Document_writeMarkup :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.Document_writeMarkup", "markup") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_err := Document_writeMarkup(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_openStream :: proc(c: ^Call) -> Api_Error
+@(private = "file")
+_t_scripts_Document_openStream :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_err := Document_openStream(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_closeStream :: proc(c: ^Call) -> Api_Error
+@(private = "file")
+_t_scripts_Document_closeStream :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_err := Document_closeStream(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLScriptElement_forceAsync :: proc(c: ^Call, element: u64) -> bool
+@(private = "file")
+_t_scripts_HTMLScriptElement_forceAsync :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := HTMLScriptElement_forceAsync(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// HTMLScriptElement_setForceAsync :: proc(c: ^Call, element: u64, value: bool)
+@(private = "file")
+_t_scripts_HTMLScriptElement_setForceAsync :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32 != 0
+	HTMLScriptElement_setForceAsync(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Script_allowInline :: proc(c: ^Call, element: u64, kind: Api_InlineScriptKind, source: string) -> bool
+@(private = "file")
+_t_scripts_Script_allowInline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "scripts.Script_allowInline", "source") }
+	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
+	_p0 := u64(a[0].i64)
+	_e1 := i32(a[1].i32)
+	if !_valid_InlineScriptKind(_e1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "scripts.Script_allowInline: argument kind is not a InlineScriptKind") }
+		return wasm.trap_new("scripts.Script_allowInline: argument kind is not a InlineScriptKind")
+	}
+	_p1 := Api_InlineScriptKind(_e1)
+	_r := Script_allowInline(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Script_allowEval :: proc(c: ^Call, source: string) -> bool
+@(private = "file")
+_t_scripts_Script_allowEval :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.Script_allowEval", "source") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_r := Script_allowEval(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Script_javascriptResult :: proc(c: ^Call, html: string)
+@(private = "file")
+_t_scripts_Script_javascriptResult :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.Script_javascriptResult", "html") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	Script_javascriptResult(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Script_baseName :: proc(c: ^Call) -> string
+@(private = "file")
+_t_scripts_Script_baseName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "scripts.Script_baseName", "result buffer") }
+	_r := Script_baseName(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Module_resolve :: proc(c: ^Call, specifier: string, base: string) -> (string, Api_Error)
+@(private = "file")
+_t_scripts_Module_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.Module_resolve", "specifier") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "scripts.Module_resolve", "base") }
+	_on := wasm.addr(&f, a[5])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "scripts.Module_resolve", "result buffer") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_r, _err := Module_resolve(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Module_source :: proc(c: ^Call, url: string) -> (string, Api_Error)
+@(private = "file")
+_t_scripts_Module_source :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.Module_source", "url") }
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "scripts.Module_source", "result buffer") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_r, _err := Module_source(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Module_request :: proc(c: ^Call, module_url: string, specifier: string, type: Api_ModuleType) -> Api_Error
+@(private = "file")
+_t_scripts_Module_request :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.Module_request", "module_url") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "scripts.Module_request", "specifier") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_e2 := i32(a[4].i32)
+	if !_valid_ModuleType(_e2) {
+		return _fail_status(&c, a, .Invalid_Argument, "scripts.Module_request: argument type is not a ModuleType")
+	}
+	_p2 := Api_ModuleType(_e2)
+	_err := Module_request(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Module_import :: proc(c: ^Call, id: i32, specifier: string, base: string, type: Api_ModuleType) -> Api_Error
+@(private = "file")
+_t_scripts_Module_import :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "scripts.Module_import", "specifier") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "scripts.Module_import", "base") }
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
+	_p0 := a[0].i32
+	_e3 := i32(a[5].i32)
+	if !_valid_ModuleType(_e3) {
+		return _fail_status(&c, a, .Invalid_Argument, "scripts.Module_import: argument type is not a ModuleType")
+	}
+	_p3 := Api_ModuleType(_e3)
+	_err := Module_import(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Engine_queueRejectionCheck :: proc(c: ^Call)
+@(private = "file")
+_t_scripts_Engine_queueRejectionCheck :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	Engine_queueRejectionCheck(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Worker_createScript :: proc(c: ^Call, url: string, name: string, type: Api_WorkerType) -> (u64, Api_Error)
+@(private = "file")
+_t_scripts_Worker_createScript :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.Worker_createScript", "url") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "scripts.Worker_createScript", "name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "scripts.Worker_createScript", "result pointer") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_e2 := i32(a[4].i32)
+	if !_valid_WorkerType(_e2) {
+		return _fail_status(&c, a, .Invalid_Argument, "scripts.Worker_createScript: argument type is not a WorkerType")
+	}
+	_p2 := Api_WorkerType(_e2)
+	_r, _err := Worker_createScript(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Worker_postSerialized :: proc(c: ^Call, worker: u64, data: []u8) -> Api_Error
+@(private = "file")
+_t_scripts_Worker_postSerialized :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "scripts.Worker_postSerialized", "data") }
+	_p1 := _s1[:_n1]
+	_p0 := u64(a[0].i64)
+	_err := Worker_postSerialized(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DedicatedWorkerGlobalScope_postSerialized :: proc(c: ^Call, data: []u8) -> Api_Error
+@(private = "file")
+_t_scripts_DedicatedWorkerGlobalScope_postSerialized :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.DedicatedWorkerGlobalScope_postSerialized", "data") }
+	_p0 := _s0[:_n0]
+	_err := DedicatedWorkerGlobalScope_postSerialized(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// WorkerGlobalScope_importScript :: proc(c: ^Call, url: string) -> (string, Api_Error)
+@(private = "file")
+_t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.WorkerGlobalScope_importScript", "url") }
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "scripts.WorkerGlobalScope_importScript", "result buffer") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_r, _err := WorkerGlobalScope_importScript(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
 // Fetch_start :: proc(c: ^Call, url: string, callback: u32, user: i32, method: string, headers: string, body: Maybe([]u8), options: Api_FetchOptions) -> u64
 @(private = "file")
 _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -7904,6 +8300,24 @@ api_imports := [?]wasm.Import{
 	{module = "events", name = "Event_isTrusted", fn = _t_events_Event_isTrusted, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_propagationStopped", fn = _t_events_Event_propagationStopped, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "EventTarget_create", fn = _t_events_EventTarget_create, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "scripts", name = "Document_writeMarkup", fn = _t_scripts_Document_writeMarkup, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "Document_openStream", fn = _t_scripts_Document_openStream, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "Document_closeStream", fn = _t_scripts_Document_closeStream, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "HTMLScriptElement_forceAsync", fn = _t_scripts_HTMLScriptElement_forceAsync, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "HTMLScriptElement_setForceAsync", fn = _t_scripts_HTMLScriptElement_setForceAsync, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "scripts", name = "Script_allowInline", fn = _t_scripts_Script_allowInline, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "Script_allowEval", fn = _t_scripts_Script_allowEval, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "Script_javascriptResult", fn = _t_scripts_Script_javascriptResult, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "scripts", name = "Script_baseName", fn = _t_scripts_Script_baseName, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "scripts", name = "Module_resolve", fn = _t_scripts_Module_resolve, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "scripts", name = "Module_source", fn = _t_scripts_Module_source, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "scripts", name = "Module_request", fn = _t_scripts_Module_request, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "Module_import", fn = _t_scripts_Module_import, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "Engine_queueRejectionCheck", fn = _t_scripts_Engine_queueRejectionCheck, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
+	{module = "scripts", name = "Worker_createScript", fn = _t_scripts_Worker_createScript, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "Worker_postSerialized", fn = _t_scripts_Worker_postSerialized, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "DedicatedWorkerGlobalScope_postSerialized", fn = _t_scripts_DedicatedWorkerGlobalScope_postSerialized, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "WorkerGlobalScope_importScript", fn = _t_scripts_WorkerGlobalScope_importScript, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "net", name = "Fetch_start", fn = _t_net_Fetch_start, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "net", name = "Fetch_state", fn = _t_net_Fetch_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_status", fn = _t_net_Fetch_status, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},

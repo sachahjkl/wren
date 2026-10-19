@@ -1,0 +1,66 @@
+/// Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write /
+/// open / close, the script element's own state, Content-Security-Policy checks of inline code and of eval, ES module
+/// graphs (the browser fetches a whole graph, the engine links and runs it), unhandled promise rejections, javascript:
+/// URLs, workers whose script is JavaScript and their structured-clone messages. Implemented in src/page/js_load*.odin
+/// and js_workers.odin; used by native/js/runtime (load.c, modules.c, handlers.c, load_errors.c, timers.c, workers.c).
+[Exposed=(Window,Worker)]
+module scripts {
+  /// What a Content-Security-Policy check of inline code is about: a script element's text, an event handler
+  /// attribute (script-src-attr), a javascript: URL.
+  enum InlineScriptKind : i32 { Element, Attribute, Navigation }
+  /// The type of a module (import attributes: `with {type: "json"}`).
+  enum ModuleType : i32 { JavaScript, Json }
+  /// The type of a worker's script (`new Worker(url, {type})`).
+  enum WorkerType : i32 { Classic, Module }
+
+  /// document.write(markup) (writeln adds the newline): inserted at the parser's insertion point while the document
+  /// loads (scripts written run before it returns), else the document is opened again first and replaced. Invalid_State
+  /// for a document that does not accept it now (a custom element constructor, a parser that would have to be aborted).
+  void Document_writeMarkup(usvstring markup) raises;
+  /// document.open(): the document is emptied and its parser starts again (does nothing while the parser runs a
+  /// script). Invalid_State when the document cannot be opened.
+  void Document_openStream() raises;
+  /// document.close(): the parser of a document.open() finishes (DOMContentLoaded, then load).
+  void Document_closeStream() raises;
+  /// The "force async" flag of a script element (set when a script creates it: dynamic scripts are async unless
+  /// their async attribute is set to false).
+  bool HTMLScriptElement_forceAsync(u64 element);
+  /// script.async = value: the attribute is set or removed by the caller, this clears the flag.
+  void HTMLScriptElement_setForceAsync(u64 element, bool value);
+
+  /// May this inline code run (Content-Security-Policy: 'unsafe-inline', nonces, hashes)? A refusal is reported as a
+  /// violation. `element` is the element it comes from (0 for a javascript: URL).
+  bool Script_allowInline(u64 element, InlineScriptKind kind, usvstring source);
+  /// May eval() / new Function / setTimeout(string) compile this ('unsafe-eval')? A refusal is reported.
+  bool Script_allowEval(usvstring source);
+  /// The result of a javascript: URL that was a string: it becomes the document (HTML "navigate to a javascript: URL").
+  void Script_javascriptResult(usvstring html);
+  /// The URL naming code that has no script of its own in stack traces and as the base of import() (handlers,
+  /// timer strings): the document's (the worker's script in a worker).
+  string Script_baseName();
+
+  /// The URL a module specifier stands for, imported from the module (or script) at `base` ("" for the root of a
+  /// graph, given as a URL already): import maps, then URL parsing. Type: a bare specifier nothing maps, or not a URL.
+  string Module_resolve(usvstring specifier, usvstring base) raises;
+  /// The source of a module of the page's module map. Not_Found when the browser does not have it.
+  string Module_source(usvstring url) raises;
+  /// The module at `module_url` imports `specifier`: resolved and fetched if new (part of the module's graph).
+  void Module_request(usvstring module_url, usvstring specifier, ModuleType type) raises;
+  /// import(specifier) from code at `base`: the browser fetches the graph, then calls the engine's
+  /// wj_module_import_done(id, ...) from a task of its own. Type: the specifier cannot be resolved.
+  void Module_import(i32 id, usvstring specifier, usvstring base, ModuleType type) raises;
+
+  /// Unhandled promise rejections are waiting: run the engine's wj_notify_rejections in a task of its own.
+  void Engine_queueRejectionCheck();
+
+  /// new Worker(url, {name, type}) for a JavaScript worker: the Worker object (a handle of module workers). Syntax for
+  /// an invalid URL, Not_Allowed when the browser refuses (the console says why).
+  u64 Worker_createScript(usvstring url, usvstring name, WorkerType type) raises;
+  /// worker.postMessage(message): the message as structured serialization bytes (native/js/runtime/clone.c).
+  void Worker_postSerialized(u64 worker, bytes data) raises;
+  /// postMessage(message) in a JavaScript worker.
+  void DedicatedWorkerGlobalScope_postSerialized(bytes data) raises;
+  /// importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is the
+  /// response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript.
+  string WorkerGlobalScope_importScript(usvstring url) raises;
+}
