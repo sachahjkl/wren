@@ -3,7 +3,7 @@
 #   (-Quick skips the long network stress; -CI, for continuous integration runners: -Quick, end-to-end timeouts x3 for
 #   slow shared machines, the whole output of a failed step instead of its last lines. Nothing here opens a window or
 #   reaches the internet: the end-to-end tests use the local test server on 127.0.0.1, the pixel tests WARP.)
-param([switch]$Quick, [switch]$CI)
+param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900)
 if ($CI) { $Quick = $true }
 $slow = if ($CI) { 3 } else { 1 }
 $root = Split-Path $PSScriptRoot -Parent
@@ -13,9 +13,24 @@ $flaky = 0
 # With -CI a failed step runs once more: shared runners are slow and noisy, and a few tests have timing assumptions
 # (thread scheduling order, a close handshake racing a pong). A step that passes on its second run is reported as
 # FLAKY with the output of the failed run, and counted at the end; it does not fail the build.
+# A test executable that runs longer than -StepTimeoutSec is stopped, so a hung suite fails instead of blocking the run
+# (Odin's test runner can hang when several tests hit fatal assertions at once).
+function Start-Watchdog {
+    Start-Job -ArgumentList $StepTimeoutSec -ScriptBlock {
+        param($limit)
+        while ($true) {
+            Start-Sleep -Seconds 5
+            Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like '*_test' -and $_.StartTime -and ((Get-Date) - $_.StartTime).TotalSeconds -gt $limit } | ForEach-Object {
+                "watchdog: stopped $($_.ProcessName) after $limit s"; Stop-Process -Id $_.Id -Force }
+        }
+    }
+}
+
 function Step($name, [scriptblock]$body) {
     $t0 = Get-Date
     $out = & $body 2>&1 | Out-String
+    $killed = Receive-Job $script:watchdog -ErrorAction SilentlyContinue
+    if ($killed) { $out += "`n" + ($killed -join "`n"); $global:LASTEXITCODE = 1 }
     $ok = $LASTEXITCODE -eq 0 -or $out -match 'All tests were successful'
     if (-not $ok -and $CI) {
         $first = $out
@@ -33,6 +48,7 @@ function Step($name, [scriptblock]$body) {
 }
 
 New-Item -ItemType Directory -Force build | Out-Null
+$script:watchdog = Start-Watchdog
 foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'layout', 'forms', 'page', 'browser') {
     Step "unit tests: $pkg" { odin test "src/$pkg" -collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -out:"build/${pkg}_test.exe" 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 }
@@ -152,5 +168,6 @@ if (-not $Quick) {
     }
 }
 if ($CI) { "flaky steps (passed on retry): $flaky" }
+Stop-Job $script:watchdog; Remove-Job $script:watchdog -Force
 "failed steps: $failed"
 exit $failed

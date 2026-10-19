@@ -1,11 +1,12 @@
 # Makes the release package of Wren from a finished build (build.bat): build\dist\wren-<version>-windows-x64.zip and
 # its SHA-256 in build\dist\SHA256SUMS.txt.
 #   powershell -NoProfile -File tools\package.ps1 [-Version 0.1.0]
+# The demo pages go in demos\ next to wren.exe: that is where about:demos looks for them first (src\browser\demos.odin),
+# and where testserver.exe serves /site/ from when it runs outside the repository (tools\testserver\site.go).
 # The version defaults to APP_VERSION of src\browser\about.odin; a release tag vX.Y.Z must match it (release.yml checks).
-# Contents: wren.exe (build\browser.exe; nothing depends on the exe's name), vcruntime140.dll (the one runtime DLL it
-# needs that Windows does not ship; app-local deployment of the Visual C++ redistributable), the demo pages of
-# examples\site with their Wasm modules, testserver.exe and demo.bat to serve them, README.txt, LICENSE,
-# THIRD_PARTY.md and licenses\ (the texts of every component linked in, and the list of Rust crates).
+# Contents: wren.exe (build\browser.exe), vcruntime140.dll, demos\ (examples\site with every Wasm module its pages
+# load, built here), testserver.exe and demo.bat (starts the server and opens about:demos), README.txt, LICENSE,
+# THIRD_PARTY.md and licenses\.
 param([string]$Version = '')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -21,22 +22,29 @@ if (-not (Test-Path build\browser.exe)) { throw 'build\browser.exe is missing: r
 $name = "wren-$Version-windows-x64"
 $dist = Join-Path $root 'build\dist'
 $out = Join-Path $dist $name
-if (Test-Path $out) { [IO.Directory]::Delete($out, $true) }   # build\dist holds only what this script makes
+if (Test-Path $out) { [IO.Directory]::Delete($out, $true) }   # build\dist holds only what this script makes (no junction)
 New-Item -ItemType Directory -Force $out, "$out\licenses" | Out-Null
 
-# the Wasm modules of the demo pages, and the server that serves them
-$guests = @{ counter = 'counter'; formstest = 'formstest'; mutation = 'mutation'; mutation_class = 'mutation_class'; workerstest_worker = 'workerstest_worker' }
-foreach ($g in $guests.Keys) {
-    odin build "examples/$g" -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:"examples/site/$($guests[$g]).wasm" -o:size
+# the Wasm modules the demo pages load (<script type="application/wasm">, workers), and the server for the others
+$guests = 'counter', 'formstest', 'mutation', 'mutation_class', 'workerstest_worker'
+foreach ($g in $guests) {
+    odin build "examples/$g" -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:"examples/site/$g.wasm" -o:size
     if ($LASTEXITCODE -ne 0) { throw "building examples/$g failed" }
+}
+# every module a page names must be there (a page added later with a new guest fails here, not in the user's hands)
+foreach ($page in Get-ChildItem examples\site -Recurse -Filter *.html) {
+    $html = [IO.File]::ReadAllText($page.FullName)
+    foreach ($m in [regex]::Matches($html, 'src="([^"/:]+\.wasm)"')) {
+        $wasm = Join-Path $page.DirectoryName $m.Groups[1].Value
+        if (-not (Test-Path $wasm)) { throw "$($page.Name) loads $($m.Groups[1].Value), which is not built" }
+    }
 }
 Push-Location tools\testserver
 try { go build -trimpath -o ..\..\build\testserver.exe .; if ($LASTEXITCODE -ne 0) { throw 'go build of the test server failed' } } finally { Pop-Location }
 
 Copy-Item build\browser.exe "$out\wren.exe"
 Copy-Item build\testserver.exe "$out\testserver.exe"
-New-Item -ItemType Directory -Force "$out\examples" | Out-Null
-Copy-Item -Recurse examples\site "$out\examples\site"
+Copy-Item -Recurse examples\site "$out\demos"
 
 # vcruntime140.dll from the Visual C++ redistributable of the installed toolset
 $redist = $env:VCToolsRedistDir   # set in a developer prompt: the redistributable of the toolset that linked the exe
@@ -81,13 +89,17 @@ A small web browser that runs WebAssembly, and nothing else.
 https://github.com/sachahjkl/wren
 
   wren.exe [URL]            the browser (needs Windows 10 or 11 x64 and a Direct3D 11 GPU)
-  demo.bat                  starts the demo server and opens the demo pages
-  testserver.exe            the demo server: http://127.0.0.1:8765/site/ (run it from this folder)
-  examples\site\            the demo pages and their Wasm modules
+  demo.bat                  starts the demo server and opens about:demos
+  testserver.exe            the demo server: http://127.0.0.1:8765/site/ (serves demos\)
+  demos\                    the demo and test pages and their Wasm modules (listed by about:demos, linked from the
+                            start page)
+
+about:demos opens the pages of demos\ directly; those marked "test server" need testserver.exe running (images,
+media, form submission, slow stylesheets, CSP). browser.demos.path in about:config points it to another folder.
 
 Options: --profile DIR (default %APPDATA%\Wren), --pref name=value (any setting of about:config), --policy FILE.
 Keys: Ctrl+T / Ctrl+W tabs, Ctrl+L address, Ctrl+F find, Ctrl+U view source, Ctrl+B status bar,
-Ctrl+Shift+B frame statistics, Ctrl+Plus / Minus / 0 zoom.
+Ctrl+Shift+B frame statistics, Ctrl+Plus / Minus / 0 zoom, F11 full screen.
 
 Wren is a prototype: pages' JavaScript never runs. MIT license (LICENSE.txt); the components it is built from are
 listed in THIRD_PARTY.md, their licenses are in licenses\. vcruntime140.dll is the Microsoft Visual C++ runtime.
@@ -95,10 +107,10 @@ listed in THIRD_PARTY.md, their licenses are in licenses\. vcruntime140.dll is t
 [IO.File]::WriteAllText("$out\README.txt", ($readme -replace "`r?`n", "`r`n"))
 $demo = @"
 @echo off
-:: Serves the demo pages (examples\site) on http://127.0.0.1:8765 and opens them in Wren. Close the server window to stop it.
+:: Serves the demo pages (demos\) on http://127.0.0.1:8765 and opens about:demos in Wren. Close the server window to stop it.
 cd /D "%~dp0"
 start "Wren demo server" /min testserver.exe
-start "" wren.exe http://127.0.0.1:8765/site/
+start "" wren.exe about:demos
 "@
 [IO.File]::WriteAllText("$out\demo.bat", ($demo -replace "`r?`n", "`r`n"))
 
