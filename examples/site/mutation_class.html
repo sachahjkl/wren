@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Class toggled every frame</title>
+<script type="application/wasm" src="mutation_class.wasm"></script>
+<style>
+  body { margin: 0; font-size: 15px; color: #223; background: #fafbff }
+  .sec { margin: 8px 16px; padding: 8px; border: 1px solid #ccd }
+  article { padding: 6px; margin: 4px 0; background: #fff }
+  h3 { margin: 0 0 4px; font-size: 16px }
+  p { margin: 2px 0 }
+  .on { background: #fff3bf; border-color: #f59f00 }
+  .on > article { background: #fff9db }
+  .on p span { color: #c92a2a }
+  .on h3 { letter-spacing: 1px }
+  .on + .sec { border-color: #f59f00 }
+  article:nth-child(2n) h3 { color: #1c7ed6 }
+  header { padding: 8px 16px; background: #1c7ed6; color: #fff }
+</style>
+</head>
+<body>
+<header>A module builds about 10 000 elements (17 000 nodes) below, then toggles the class <code>on</code> of the section
+in the middle every 16 ms (examples/mutation_class). Rules reach its descendants, its children and its next sibling:
+only those are restyled (style.incremental.*), and laid out again (layout.incremental.*).</header>
+<main id="root"></main>
+</body>
+</html>
