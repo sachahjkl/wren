@@ -83,6 +83,51 @@ bench_load :: proc(t: ^testing.T) {
 		fmt.printfln("LOADBENCH %s cold %6.2f ms [tree %.2f layout %.2f finish %.2f display %.2f bands %.2f]", name, bench_median(cold), c[0], c[1], c[2], c[3], c[4])
 		fmt.printfln("LOADBENCH %s warm %6.2f ms [tree %.2f layout %.2f finish %.2f display %.2f bands %.2f]", name, bench_median(warm), w[0], w[1], w[2], w[3], w[4])
 
+		// WREN_LOADBENCH_RESIZE=<steps>: incremental passes at a width that changes every pass (a window being resized),
+		// medians of each step; with WREN_LOADBENCH_SAMPLE, those are what is sampled
+		resize_steps := parse_int(os.get_env("WREN_LOADBENCH_RESIZE", context.temp_allocator))
+		if resize_steps > 0 {
+			rl: Layout
+			run(&rl, in_)
+			tot := make([]f64, resize_steps)
+			st5 := make([][5]f32, resize_steps)
+			defer { delete(tot); delete(st5) }
+			ahead, taken := 0, 0
+			// WREN_LOADBENCH_RESIZE_GAP_MS: a pause between passes, as between the frames of a window (threads go idle)
+			gap := parse_int(os.get_env("WREN_LOADBENCH_RESIZE_GAP_MS", context.temp_allocator))
+			for k in 0 ..< resize_steps {
+				if gap > 0 { time.sleep(time.Duration(gap) * time.Millisecond) }
+				ri := in_
+				ri.viewport.x = resize_width(k)
+				t0 := time.tick_now()
+				run(&rl, ri)
+				tot[k], st5[k] = time.duration_milliseconds(time.tick_since(t0)), rl.stats
+				ahead, taken = ahead + rl.pre_counts[0], taken + rl.pre_counts[1]
+				if rl.last_pass != .Incremental { fmt.printfln("RESIZEBENCH %s step %d: %v (%s)", name, k, rl.last_pass, rl.inc.fallback) }
+				free_all(context.temp_allocator)
+			}
+			s := bench_median_stats(st5)
+			fmt.printfln("RESIZEBENCH %s %d steps: median %6.2f ms p95 %6.2f [tree %.2f layout %.2f finish %.2f display %.2f bands %.2f] ahead %d taken %d",
+				name, resize_steps, bench_median(tot), bench_pct(tot, 0.95), s[0], s[1], s[2], s[3], s[4], ahead, taken)
+			if sample_s > 0 && name == names[len(names) - 1] {
+				sampler_start()
+				end := time.tick_now()
+				n := 0
+				for time.duration_seconds(time.tick_since(end)) < f64(sample_s) {
+					ri := in_
+					ri.viewport.x = resize_width(n)
+					run(&rl, ri)
+					free_all(context.temp_allocator)
+					n += 1
+				}
+				sampler_stop()
+				fmt.printfln("SAMPLE %s: %d resize passes", name, n)
+				sampler_report()
+				sample_s = 0
+			}
+			destroy(&rl)
+		}
+
 		if sample_s > 0 && name == names[len(names) - 1] {
 			// WREN_LOADBENCH_WARM=1: passes on a reused layout (no growth of its arrays)
 			warm_only := os.get_env("WREN_LOADBENCH_WARM", context.temp_allocator) != ""
@@ -109,6 +154,20 @@ bench_load :: proc(t: ^testing.T) {
 		}
 		free_all(context.temp_allocator)
 	}
+}
+
+// A window dragged back and forth between 1100 and 1500 px, a few px a step.
+@(private = "file")
+resize_width :: proc(k: int) -> f32 {
+	p := k % 160
+	return p < 80 ? 1500 - f32(p) * 5 : 1100 + f32(p - 80) * 5
+}
+
+@(private = "file")
+bench_pct :: proc(v: []f64, q: f64) -> f64 {
+	s := slice.clone(v, context.temp_allocator)
+	slice.sort(s)
+	return s[min(int(f64(len(s)) * q), len(s) - 1)]
 }
 
 @(private = "file")

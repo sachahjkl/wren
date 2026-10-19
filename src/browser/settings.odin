@@ -66,6 +66,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_frame_prefs(p)    // pacing.odin
 	register_scroll_prefs(p)   // smooth_scroll.odin
 	register_window_prefs(p)   // window_chrome.odin
+	register_os_settings_prefs(p)   // os_settings.odin
 	_ = wasm.PREFS
 	_ = html.PREFS
 }

@@ -40,15 +40,21 @@ bench_passes :: proc(t: ^testing.T) {
 		font = proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return 1 },
 		width = proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(len(text)) },
 		metrics = proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {0.8 * size, 0.2 * size, 0.5 * size} },
+		concurrent = true,
 	}
+	if th := os.get_env("WREN_LAYOUT_BENCH_THREADS", context.temp_allocator); th != "" {
+		set.threads = 0
+		for ch in th { if ch >= '0' && ch <= '9' { set.threads = set.threads * 10 + int(ch - '0') } }
+	}
+	defer shutdown_threads()
 	vp := Vec2{1500, 900}
 	input :: proc(doc: ^dom.Document, st: ^style.Styled, set: ^Settings, api: Text_Api, vp: Vec2) -> Input {
 		return Input{doc = doc, styled = st, settings = set, text = api, viewport = vp, scale = 1.5, band_h = 256}
 	}
 	report :: proc(what: string, l: ^Layout, t0: time.Tick) {
-		fmt.printfln("%-22s %v total %6.2f ms  [tree %.2f layout %.2f finish %.2f display %.2f bands %.2f]  laid %d rebuilt %d spliced %v %s",
+		fmt.printfln("%-22s %v total %6.2f ms  [tree %.2f layout %.2f finish %.2f display %.2f bands %.2f]  laid %d rebuilt %d ahead %d/%d spliced %v %s",
 			what, l.last_pass, time.duration_milliseconds(time.tick_since(t0)), l.stats[0], l.stats[1], l.stats[2], l.stats[3], l.stats[4],
-			l.inc.last_laid, l.inc.last_rebuilt, l.inc.last_spliced, l.inc.fallback)
+			l.inc.last_laid, l.inc.last_rebuilt, l.pre_counts[1], l.pre_counts[0], l.inc.last_spliced, l.inc.fallback)
 	}
 	for round in 0 ..< 3 {
 		l.valid = false

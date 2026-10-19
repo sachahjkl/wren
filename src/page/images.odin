@@ -705,12 +705,15 @@ images_sync :: proc(p: ^Page) {
 	pi := &p.images
 	env := p.engine != nil ? p.engine.env : css.Media_Env{width = 1280, height = 800, dppx = 1}
 	env_changed := env.width != pi.env.width || env.dppx != pi.env.dppx || env.height != pi.env.height
-	if pi.mutations != p.doc.mutations || env_changed {
+	mutated := pi.mutations != p.doc.mutations
+	if mutated || env_changed {
 		pi.mutations = p.doc.mutations
 		pi.env = env
-		pi.pass += 1
+		// the image elements are found again only when the document changed: a new viewport alone (a window being
+		// resized) runs source selection on the known ones, without a walk of the whole document at every step
+		if mutated { pi.pass += 1 }
 		stack := make([dynamic]base.Handle, 0, 64, context.temp_allocator)
-		append(&stack, p.doc.root)
+		if mutated { append(&stack, p.doc.root) }
 		for len(stack) > 0 {
 			h := pop(&stack)
 			n := dom.get(p.doc, h)

@@ -28,6 +28,7 @@ Ix :: struct {
 	web_font: bool,                  // the face of family "web" arrived (wider glyphs)
 	full_styles: bool,               // every mutation restyles the whole document (no style.restyle_dom)
 	partial_styles: int,             // restyles done by style.restyle_dom
+	threads: bool,                   // text measured from several threads: paragraphs laid out ahead (parallel.odin)
 }
 
 @(private = "file")
@@ -55,7 +56,7 @@ ix_intrinsic :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool) {
 
 @(private = "file")
 ix_input :: proc(f: ^Ix) -> Input {
-	return Input{doc = f.doc, styled = f.st, settings = &f.set, text = Text_Api{user = f, font = ix_font, width = ix_width, metrics = ix_metrics},
+	return Input{doc = f.doc, styled = f.st, settings = &f.set, text = Text_Api{user = f, font = ix_font, width = ix_width, metrics = ix_metrics, concurrent = f.threads},
 		replaced = Replaced_Api{user = f, intrinsic = ix_intrinsic}, viewport = f.vp, scale = 1, band_h = 64,
 		images_generation = f.images_gen, fonts_generation = f.fonts_gen}
 }
@@ -462,7 +463,17 @@ inc_disabled_and_garbage :: proc(t: ^testing.T) {
 
 // Random mutations on a generated document: after each one the incremental layout equals a full one.
 @(test)
-inc_random :: proc(t: ^testing.T) {
+inc_random :: proc(t: ^testing.T) { inc_random_run(t, false) }
+
+// The same with the layout threads on every pass (no minimum: every incremental pass lays paragraphs out ahead).
+@(test)
+inc_random_threads :: proc(t: ^testing.T) {
+	defer shutdown_threads()
+	inc_random_run(t, true)
+}
+
+@(private = "file")
+inc_random_run :: proc(t: ^testing.T, threads: bool) {
 	r := rand.create(20261019)
 	gen := rand.default_random_generator(&r)
 	context.random_generator = gen
@@ -484,6 +495,12 @@ td{border:1px solid} .ib{display:inline-block;width:50px} .hid{display:none}</st
 	strings.write_string(&sb, `</body>`)
 	f := ix_load(strings.to_string(sb), 500, 400)
 	defer ix_unload(f)
+	ahead := 0
+	if threads {
+		f.threads = true
+		f.set.threads, f.set.threads_min_contexts, f.set.threads_min_boxes = 3, 0, 0
+		run(&f.l, ix_input(f))
+	}
 
 	all_elements :: proc(f: ^Ix) -> [dynamic]base.Handle {
 		out := make([dynamic]base.Handle, context.temp_allocator)
@@ -564,7 +581,7 @@ td{border:1px solid} .ib{display:inline-block;width:50px} .hid{display:none}</st
 			what = "attribute"
 		}
 		ix_frame(f)
-		if f.l.last_pass == .Incremental { incremental += 1 }
+		if f.l.last_pass == .Incremental { incremental += 1; ahead += f.l.pre_counts[1] }
 		if !ix_check(t, f, .None) {
 			fmt.println("iteration", iter, what)
 			failures += 1
@@ -574,6 +591,7 @@ td{border:1px solid} .ib{display:inline-block;width:50px} .hid{display:none}</st
 	}
 	testing.expectf(t, incremental > 250, "%d of 500 passes incremental", incremental)
 	testing.expectf(t, f.partial_styles > 150, "%d partial restyles", f.partial_styles)
+	if threads { testing.expectf(t, ahead > 0, "no paragraph laid out ahead was taken by an incremental pass") }
 }
 
 // Style and layout both incremental: classes toggled on elements of a page whose rules reach descendants and

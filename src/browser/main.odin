@@ -928,7 +928,7 @@ frame :: proc(app: ^App, idled := false) {
 	window_chrome_frame(app)   // window_chrome.odin
 	prof_begin(.Build_UI)
 	ui.begin_build(&app.ui_state, {
-		window_size = size, events = events, dt = dt, animations = platform.os_animations_enabled(),
+		window_size = size, events = events, dt = dt, animations = os_animations_enabled(app),
 		dpi_scale = app.win.dpi_scale, base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
 		disable_zoom = true,   // Ctrl+Plus / Minus / 0 and Ctrl+wheel zoom the page (zoom.odin), not the chrome
 		window = app.win, frame_ms = pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock

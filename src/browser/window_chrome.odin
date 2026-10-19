@@ -83,7 +83,7 @@ window_chrome_frame :: proc(app: ^App) {
 	sc := smooth_cfg
 	curve: ui.Scroll_Curve = sc.curve == .Ease_Out ? .Ease_Out : .Impulse
 	dur := f32(sc.wheel_ms)
-	if !sc.enabled || (sc.reduced_motion && (app.page_settings.style.reduced_motion || !platform.os_animations_enabled())) { dur = 0 }
+	if !sc.enabled || (sc.reduced_motion && (app.page_settings.style.reduced_motion || !os_animations_enabled(app))) { dur = 0 }
 	ui.set_scroll_settings(&app.ui_state, {curve = curve, impulse = f32(sc.impulse), duration_ms = dur})
 }
 

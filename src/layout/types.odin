@@ -402,6 +402,21 @@ Layout :: struct {
 	pre_chunks:   [dynamic]Pre_Chunk,      // storage of the lines laid out ahead on the layout threads (parallel.odin)
 	pre_counts:   [2]int,                  // last full pass: contexts laid out ahead, and taken (diagnostics, tests)
 	tree_order:   bool,                    // last full pass: the boxes are in tree order (finishing walks them as they are)
+	tree_gen:     u64,                     // bumped whenever boxes are made (full pass, partial rebuild)
+	dl_walks:     Dl_Walks,                // the page's own stacking context: its walks, kept while the boxes and styles stay
+	pre_keep:     Pre_Keep,                // what the layout threads found from the boxes' styles, likewise (parallel.odin)
+}
+
+// What building the display list of the page's stacking context finds by walking the whole box tree: its layers, and
+// the boxes its steps 3 and 5 visit, and its floats. They follow only from the tree and the styles, so they are kept
+// for the next passes that change neither (a window being resized: geometry only).
+@(private)
+Dl_Walks :: struct {
+	key:            [3]u64,             // tree_gen, style serial, style pass (0: nothing kept)
+	neg, pos:       [dynamic]Z_Entry,
+	zero:           [dynamic]i32,
+	walk, floats:   [dynamic]i32,
+	walk_ok:        bool,               // walk / floats were made (paint_content_shared)
 }
 
 DOCUMENT_SPACE :: i32(0)
