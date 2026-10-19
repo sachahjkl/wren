@@ -425,6 +425,7 @@ scrollbar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	case .Mouse_Press:
 		if ev.button != .Left || !draw.rect_contains(app.page_rect, ev.pos) { return false }
 		hit, ok := scrollbar_at(app, t, p)
+		when PACING_DEBUG { fmt.eprintln("scrollbar press", p, ok, hit) }
 		if !ok || hit.limit <= 0 { return false }
 		ax := hit.vertical ? 1 : 0
 		if p[ax] >= hit.thumb.min[ax] && p[ax] < hit.thumb.max[ax] {
@@ -449,6 +450,7 @@ scrollbar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 		if !ok { s.drag = {}; return false }
 		cur[ax] = f * dr.limit
 		scroller_set(t, dr.node, cur)
+		when PACING_DEBUG { fmt.eprintln("scrollbar drag", p, f, cur) }
 		app.frames_requested = max(app.frames_requested, 2)
 		return true
 	case .Mouse_Release:
