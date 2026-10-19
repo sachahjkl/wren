@@ -114,6 +114,10 @@ Box_Flag :: enum u8 {
 	Bfc_Floats,    // some float inside takes part in the block formatting context this box is in (incremental.odin)
 	Neg_Margins,   // some box inside, in the same block formatting context, may have a negative vertical margin
 	Dead,          // left over by a partial rebuild of the box tree: in no tree, read by nothing
+	// set with Stacking when the box is built (a change across these thresholds rebuilds the box, as for Stacking):
+	// passes over every box read the style only for the boxes that have them
+	Effects,       // may make an effect group (opacity, filter, backdrop-filter, mix-blend-mode, clip-path: box_effects)
+	Blends,        // mix-blend-mode other than normal (isolated_contexts)
 }
 Box_Flags :: bit_set[Box_Flag; u32]
 

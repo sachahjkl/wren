@@ -35,6 +35,11 @@ Ctx :: struct {
 	rebuilding: i32,                    // the box whose content a partial rebuild is making again (NONE: none)
 	inc:      ^Inc_Pass,                // an incremental pass: what it tracks while laying out (nil: a full pass)
 	pre:      ^Pre_Pass,                // inline formatting contexts laid out ahead on the layout threads (parallel.odin)
+	// display list made on the layout threads (parallel.odin): a worker's items go to `dl_out` (nil: Layout.items), and
+	// the boxes whose Box_Info.items it set (relative to dl_out) to `dl_fix`
+	dl_out:   ^[dynamic]Display_Item,
+	dl_fix:   ^[dynamic]i32,
+	dl_par:   bool,                     // the document is large enough to share the display list out
 }
 
 @(private)

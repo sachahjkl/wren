@@ -193,7 +193,9 @@ finish :: proc(c: ^Ctx) {
 		}
 		tp := &l.boxes[b.parent]
 		b.group = tp.group
-		if fx := box_effects(b.cs) + (isolate[x] ? Group_Effects{.Isolate} : {}); fx != {} {
+		fx := isolate[x] ? Group_Effects{.Isolate} : {}
+		if .Effects in b.flags { fx += box_effects(b.cs) }
+		if fx != {} {
 			append(&l.groups, Group{parent = b.group, box = x, alpha = max(b.cs.opacity, 0), effects = fx})
 			b.group = i32(len(l.groups) - 1)
 		}

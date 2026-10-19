@@ -173,6 +173,16 @@ foreign dbghelp {
 	SymInitialize :: proc(process: win.HANDLE, search_path: cstring, invade: win.BOOL) -> win.BOOL ---
 	SymSetOptions :: proc(options: u32) -> u32 ---
 	SymFromAddr :: proc(process: win.HANDLE, address: u64, displacement: ^u64, symbol: ^SYMBOL_INFO) -> win.BOOL ---
+	SymGetLineFromAddr64 :: proc(process: win.HANDLE, address: u64, displacement: ^u32, line: ^IMAGEHLP_LINE64) -> win.BOOL ---
+}
+
+@(private = "file")
+IMAGEHLP_LINE64 :: struct {
+	SizeOfStruct: u32,
+	Key:          rawptr,
+	LineNumber:   u32,
+	FileName:     cstring,
+	Address:      u64,
 }
 
 @(private = "file")
@@ -281,4 +291,20 @@ sampler_report :: proc() {
 	}
 	top(self, 45, smp.n, "self")
 	top(incl, 70, smp.n, "inclusive")
+	// WREN_LOADBENCH_LINES=<file.odin>: self samples by source line of that file
+	if want := os.get_env("WREN_LOADBENCH_LINES", context.temp_allocator); want != "" {
+		by_line := make(map[string]int, 256, context.temp_allocator)
+		total := 0
+		for i in 0 ..< smp.n {
+			if smp.depth[i] == 0 { continue }
+			ln := IMAGEHLP_LINE64{SizeOfStruct = size_of(IMAGEHLP_LINE64)}
+			disp: u32
+			if !SymGetLineFromAddr64(ph, smp.frames[i][0], &disp, &ln) { continue }
+			file := string(ln.FileName)
+			if !strings.has_suffix(file, want) { continue }
+			by_line[fmt.tprintf("%s:%d", want, ln.LineNumber)] += 1
+			total += 1
+		}
+		top(by_line, 40, total, fmt.tprintf("self by line in %s", want))
+	}
 }

@@ -126,6 +126,8 @@ box_flags_from_style :: proc(c: ^Ctx, bi: i32, cb, fcb: i32) {
 	}
 	if .Positioned in b.flags && !cs.z_auto { b.flags += {.Stacking} }
 	if cs.opacity < 1 || stacking_effect(cs) { b.flags += {.Stacking} }
+	if box_effects(cs) != {} { b.flags += {.Effects} }
+	if cs.mix_blend_mode != .Normal { b.flags += {.Blends} }
 	if b.kind != .Inline && style.has_transform(cs) { b.flags += {.Transformed, .Stacking} }
 	if cs.float != .None && .Abs not_in b.flags { b.flags += {.Float, .Bfc} }
 	if cs.visibility != .Visible { b.flags += {.Hidden} }
@@ -164,6 +166,7 @@ has_block_child :: proc(c: ^Ctx, h: base.Handle, cs: ^style.Computed, depth: i32
 		if xn == nil { ch = base.NIL_HANDLE; continue }
 		next := xn.next
 		if xn.kind == .Element {
+			prefetch_fields(style_addr(c.st, ch), BUILD_FIELDS)
 			if xs := style.style_of(c.st, ch); xs != nil && xs.display != .None {
 				if xs.display == .Contents {
 					if stack == nil { stack = make([dynamic]base.Handle, 0, 8, context.temp_allocator) }
@@ -192,6 +195,7 @@ push_children :: proc(c: ^Ctx, stack: ^[dynamic]Frame, h: base.Handle, cs: ^styl
 		g := f
 		g.kind, g.node = .Visit, ch
 		append(stack, g)
+		prefetch_fields(style_addr(c.st, ch), BUILD_FIELDS)
 	}
 	if cs != nil && cs.before != nil {
 		g := f

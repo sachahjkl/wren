@@ -133,6 +133,7 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	if !keep_scroll { clear(&l.scroll) }
 	clear(&l.deco_items)
 	inc_reset(l)
+	pre_destroy(l)
 	if l.arena_ready { virtual.arena_free_all(&l.arena) }
 	l.valid = false
 	l.last_pass = .None

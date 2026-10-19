@@ -1,5 +1,6 @@
 package layout
 
+import "base:runtime"
 import "core:sync"
 import "wb:host"
 
@@ -20,6 +21,11 @@ import "wb:host"
 Pre_Chunk :: struct {
 	frags: [dynamic]Frag,
 	lines: [dynamic]Line,
+	// display list (steps 3 and 5 of a share of the walk)
+	items3, items5:         [dynamic]Display_Item,
+	outlines3, outlines5:   [dynamic]i32,
+	scrollers3, scrollers5: [dynamic]i32,
+	fix5:                   [dynamic]i32,
 }
 
 @(private)
@@ -64,6 +70,8 @@ par_acquire :: proc(setting: int) -> ^host.Thread_Pool {
 	if n <= 0 { return nil }
 	if !sync.mutex_try_lock(&par_mu) { return nil }
 	if n != par_pool_size || par_pool == nil {
+		// the threads outlive the caller: they get the process heap, not the caller's allocators (a test's tracker)
+		context = runtime.default_context()
 		host.thread_pool_destroy(par_pool)
 		par_pool = host.thread_pool_make(n)
 		par_pool_size = n
@@ -77,6 +85,7 @@ par_release :: proc() { sync.mutex_unlock(&par_mu) }
 
 // Joins the layout threads. Call once no layout runs any more, before exiting; they are made again if needed.
 shutdown_threads :: proc() {
+	context = runtime.default_context()
 	sync.mutex_lock(&par_mu)
 	host.thread_pool_destroy(par_pool)
 	par_pool, par_pool_size = nil, 0
@@ -89,7 +98,9 @@ shutdown_threads :: proc() {
 pre_predict :: proc(c: ^Ctx, pred: []f32) {
 	l := c.l
 	pred[0] = c.vp.x
+	AHEAD :: 8
 	for i in 1 ..< len(l.boxes) {
+		if i + AHEAD < len(l.boxes) { prefetch_fields(l.boxes[i + AHEAD].cs, LAYOUT_FIELDS) }
 		pred[i] = -1
 		b := &l.boxes[i]
 		p := b.parent
@@ -210,6 +221,142 @@ pre_adopt :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (h: f32, empty: b
 
 @(private)
 pre_destroy :: proc(l: ^Layout) {
-	for &ch in l.pre_chunks { delete(ch.frags); delete(ch.lines) }
+	for &ch in l.pre_chunks {
+		delete(ch.frags); delete(ch.lines)
+		delete(ch.items3); delete(ch.items5)
+		delete(ch.outlines3); delete(ch.outlines5); delete(ch.scrollers3); delete(ch.scrollers5); delete(ch.fix5)
+	}
 	delete(l.pre_chunks)
+	l.pre_chunks = nil
+}
+
+////////////////////////////////
+// Display list
+
+// Steps 3 (block backgrounds) and 5 (lines) of Appendix E walk the same boxes in the same order: every box under the
+// stacking context except floats, atomic inlines and positioned or stacking boxes, and what is inside those. That walk
+// is listed once, cut into shares, and each share makes its items for both steps into arrays of its own (a float or an
+// inline-block met in a line is painted inside its share, as on one thread); they are then joined in order around
+// step 4 (floats), made on the UI thread. Returns false (nothing done) for a small stacking context.
+@(private)
+paint_content_shared :: proc(p: ^Paint_Ctx, root: i32) -> bool {
+	c := p.c
+	l := c.l
+	// boxes are in tree order after a full pass: the subtree is about the boxes up to the next one outside it
+	end := i32(len(l.boxes))
+	for x := root; x != NONE; x = l.boxes[x].parent {
+		if nx := l.boxes[x].next; nx != NONE { end = nx; break }
+	}
+	if int(end - root) < l.settings.threads_min_display_boxes { return false }
+
+	walk := make([dynamic]i32, 0, int(end - root), context.temp_allocator)
+	stack := make([dynamic]i32, 0, 64, context.temp_allocator)
+	push :: proc(l: ^Layout, stack: ^[dynamic]i32, x: i32) {
+		n := len(stack)
+		for ch := l.boxes[x].first; ch != NONE; ch = l.boxes[ch].next { append(stack, ch) }
+		for i, j := n, len(stack) - 1; i < j; i, j = i + 1, j - 1 { stack[i], stack[j] = stack[j], stack[i] }
+	}
+	push(l, &stack, root)
+	for len(stack) > 0 {
+		x := pop(&stack)
+		b := &l.boxes[x]
+		if hoisted(b) || .Float in b.flags || .Atomic in b.flags { continue }
+		append(&walk, x)
+		push(l, &stack, x)
+	}
+	if len(walk) < l.settings.threads_min_display_boxes { return false }
+	pool := par_acquire(l.settings.threads)
+	if pool == nil { return false }
+
+	defer par_release()
+
+	sh := Dl_Share{c = c, walk = walk[:]}
+	sh.chunks = clamp(len(walk) / 512, 1, host.thread_pool_size(pool) * 8)
+	for len(l.pre_chunks) < sh.chunks { append(&l.pre_chunks, Pre_Chunk{}) }
+	host.parallel_for(pool, sh.chunks, dl_chunk, &sh)
+
+	// 4 (floats) and the stacking context's own lines, between the shares' steps 3 and 5, made here aside
+	mid := make([dynamic]Display_Item, 0, 16, context.temp_allocator)
+	mid_fix := make([dynamic]i32, 0, 4, context.temp_allocator)
+	mid_outlines := make([dynamic]i32, 0, 0, context.temp_allocator)
+	mid_scrollers := make([dynamic]i32, 0, 0, context.temp_allocator)
+	{
+		c.dl_out, c.dl_fix = &mid, &mid_fix
+		defer c.dl_out, c.dl_fix = nil, nil
+		mp := Paint_Ctx{c = c, outlines = &mid_outlines, scrollers = &mid_scrollers}
+		push(l, &stack, root)
+		for len(stack) > 0 {
+			x := pop(&stack)
+			b := &l.boxes[x]
+			if hoisted(b) || .Atomic in b.flags { continue }
+			if .Float in b.flags { paint_pseudo(&mp, x); continue }
+			push(l, &stack, x)
+		}
+		rb := &l.boxes[root]
+		if rb.kind == .Inline { emit_lines(&mp, rb.ifc_root, root) } else { emit_own_lines(&mp, root) }
+	}
+
+	// where everything goes: the shares' step 3 in order, the middle, the shares' step 5 in order
+	at := len(l.items)
+	sh.off3 = make([]int, sh.chunks, context.temp_allocator)
+	sh.off5 = make([]int, sh.chunks, context.temp_allocator)
+	for k in 0 ..< sh.chunks { sh.off3[k] = at; at += len(l.pre_chunks[k].items3) }
+	mid_at := at
+	at += len(mid)
+	for k in 0 ..< sh.chunks { sh.off5[k] = at; at += len(l.pre_chunks[k].items5) }
+	non_zero_resize(&l.items, at)
+	host.parallel_for(pool, sh.chunks, dl_copy, &sh)
+	copy(l.items[mid_at:], mid[:])
+	for x in mid_fix { l.inc.info[x].items += i32(mid_at) }
+
+	for k in 0 ..< sh.chunks { append(p.outlines, ..l.pre_chunks[k].outlines3[:]); append(p.scrollers, ..l.pre_chunks[k].scrollers3[:]) }
+	append(p.outlines, ..mid_outlines[:])
+	append(p.scrollers, ..mid_scrollers[:])
+	for k in 0 ..< sh.chunks { append(p.outlines, ..l.pre_chunks[k].outlines5[:]); append(p.scrollers, ..l.pre_chunks[k].scrollers5[:]) }
+	return true
+}
+
+@(private)
+Dl_Share :: struct {
+	c:          ^Ctx,
+	walk:       []i32,
+	chunks:     int,
+	off3, off5: []int,   // where each share's items go in Layout.items
+}
+
+@(private)
+dl_chunk :: proc(data: rawptr, k: int) {
+	sh := (^Dl_Share)(data)
+	marker: u8
+	wc := sh.c^
+	wc.stack_base = uintptr(&marker)
+	l := wc.l
+	ch := &l.pre_chunks[k]
+	clear(&ch.items3); clear(&ch.items5)
+	clear(&ch.outlines3); clear(&ch.outlines5); clear(&ch.scrollers3); clear(&ch.scrollers5); clear(&ch.fix5)
+	n := len(sh.walk)
+	part := sh.walk[k * n / sh.chunks:(k + 1) * n / sh.chunks]
+	// about one background and two lines' worth of items per box
+	reserve(&ch.items3, len(part) + 16)
+	reserve(&ch.items5, 2 * len(part) + 16)
+	wc.dl_out = &ch.items3
+	sub := Paint_Ctx{c = &wc, outlines = &ch.outlines3, scrollers = &ch.scrollers3}
+	AHEAD :: 8
+	for x, i in part {
+		if i + AHEAD < len(part) { prefetch_fields(l.boxes[part[i + AHEAD]].cs, PAINT_FIELDS) }
+		if l.boxes[x].kind != .Inline { emit_box(&sub, x) }
+	}
+	wc.dl_out, wc.dl_fix = &ch.items5, &ch.fix5
+	sub.outlines, sub.scrollers = &ch.outlines5, &ch.scrollers5
+	for x in part { emit_own_lines(&sub, x) }
+}
+
+@(private)
+dl_copy :: proc(data: rawptr, k: int) {
+	sh := (^Dl_Share)(data)
+	l := sh.c.l
+	ch := &l.pre_chunks[k]
+	copy(l.items[sh.off3[k]:], ch.items3[:])
+	copy(l.items[sh.off5[k]:], ch.items5[:])
+	for x in ch.fix5 { l.inc.info[x].items += i32(sh.off5[k]) }
 }
