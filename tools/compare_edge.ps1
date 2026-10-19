@@ -233,6 +233,7 @@ function Get-JsErrorClasses([string[]]$lines) {
         if ($l -notmatch '^error: ') { continue }
         $m = $l.Substring(7)
         $key = if ($m -match 'NotSupportedError: (\S+?)(\(\))? is not supported') { "$($Matches[1])$($Matches[2])" }
+            elseif ($m -match 'NotSupportedError: (\S+) \(setting it\) is not supported') { "$($Matches[1]) (setter)" }
             elseif ($m -match 'ReferenceError: ''?([\w$.]+)''? is not defined') { "ReferenceError: $($Matches[1])" }
             elseif ($m -match '(TypeError: .*)$') { $tm = $Matches[1] -replace '''[^'']*''', '...' -replace '"[^"]*"', '...' -replace '\d+', 'n'; $tm.Substring(0, [Math]::Min(80, $tm.Length)) }
             elseif ($m -match '(\w*Error)(: .{0,60})?') { "$($Matches[1])$($Matches[2])" }

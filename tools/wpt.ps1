@@ -165,6 +165,7 @@ function Run-Edge([string]$server) {
             if ($r.process.HasExited) { & $finish $slot }
             elseif (((Get-Date) - $r.started).TotalSeconds -gt $r.limit) { try { $r.process.Kill() } catch { }; Start-Sleep -Milliseconds 200; & $finish $slot }
         }
+        if ($script:srv -and $script:srv.HasExited) { throw "the WPT server stopped (build\wpt\server.log) after $n tests" }
         for ($slot = 0; $slot -lt $slots -and $next -lt $tests.Count; $slot++) {
             if ($running.ContainsKey($slot)) { continue }
             $t = $tests[$next]; $next++; $n++
@@ -192,7 +193,10 @@ function Run-Edge([string]$server) {
 $srv = $null
 try {
     if (-not $NoServer) {
-        $srv = Start-Process (Join-Path $root 'build\testserver.exe') -ArgumentList '-wpt-only', '-wpt-port', $Port -PassThru -WindowStyle Hidden -WorkingDirectory $root
+        # a copy under its own name: what stops the shared test servers by name (other worktrees' scripts) leaves it alone
+        $wptServer = Join-Path $root 'build\wptserver.exe'
+        Copy-Item (Join-Path $root 'build\testserver.exe') $wptServer -Force
+        $srv = Start-Process $wptServer -ArgumentList '-wpt-only', '-wpt-port', $Port -PassThru -WindowStyle Hidden -WorkingDirectory $root -RedirectStandardError (Join-Path $out 'server.log')
         Start-Sleep -Seconds 1
     }
     Push-Location $root

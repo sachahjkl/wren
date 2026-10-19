@@ -1,6 +1,6 @@
 # Compatibility sweep: Wren against Edge over a panel of sites (tools\compare_edge.ps1), without scripts and with them.
 #   powershell -NoProfile -File tools\compat_sweep.ps1 [-OutDir build\sweep] [-Exe build\browser.exe] [-Sites a,b] [-WaitMs 7000]
-#       [-Modes noscript,js]
+#       [-Modes noscript,js] [-Rebuild]
 # Modes: noscript compares with scripts off on both sides (compare_edge -NoScript: Edge sends Wren's User-Agent; sites
 # in -SnapshotSites are rendered by Edge from the document fetched with Wren's headers, -Snapshot); js compares both
 # browsers running scripts (compare_edge -Js: Wren with javascript.enabled, Edge as it is) and collects Wren's
@@ -10,7 +10,8 @@
 # server ports are shared between agents), taken and released per site and mode.
 # Writes <OutDir>\summary.csv and summary.md (per site: fraction of differing pixels, mean channel difference, the
 # JavaScript errors; then the missing APIs over the panel) and, per site, the captures of compare_edge (<name>_side.png,
-# <name>_diff.png..., <name>_js_*.png and <name>_js_console.txt for the js mode).
+# <name>_diff.png..., <name>_js_*.png and <name>_js_console.txt for the js mode). summary.json keeps every measure:
+# -Rebuild writes the tables again from it, without measuring.
 param(
     [string]$OutDir = 'build\sweep',
     [string]$Exe = '',
@@ -22,6 +23,7 @@ param(
     [string[]]$SnapshotSites = @('https://www.google.com/'),
     [string[]]$Modes = @('noscript'),
     [int]$WaitMs = 7000,
+    [switch]$Rebuild,
     [string]$LockPath = 'S:\wb_wt\shared.lock'
 )
 $ErrorActionPreference = 'Stop'
@@ -35,6 +37,7 @@ if (-not [IO.Path]::IsPathRooted($OutDir)) { $OutDir = Join-Path $root $OutDir }
 New-Item -ItemType Directory -Force $OutDir | Out-Null
 $inv = [Globalization.CultureInfo]::InvariantCulture
 $rows = @()
+if ($Rebuild) { $rows = @((Get-Content (Join-Path $OutDir 'summary.json') -Raw | ConvertFrom-Json) | ForEach-Object { $_ }); $Sites = @() }
 foreach ($site in $Sites) {
     $base = ($site -replace '^[a-z]+://', '' -replace '[^A-Za-z0-9._-]+', '_').Trim('_')
     $row = [ordered]@{ site = $site; name = $base }
@@ -69,11 +72,12 @@ foreach ($site in $Sites) {
     }
     $rows += [pscustomobject]$row
 }
+if (-not $Rebuild) { ConvertTo-Json @($rows) -Depth 5 | Set-Content -Encoding UTF8 (Join-Path $OutDir 'summary.json') }
 $rows | Select-Object * -ExcludeProperty js_apis | Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path $OutDir 'summary.csv')
 
 function Pct($r, $mode) {
     $v = $r."${mode}_diff_pixels"
-    if ($v -ne $null -and "$v" -ne '') { return ('{0:0.0} %' -f ([double]$v * 100)) }
+    if ($v -ne $null -and "$v" -ne '') { return ([double]$v * 100).ToString('0.0', $inv) + ' %' }
     return 'n/a (' + $r."${mode}_error" + ')'
 }
 $head = '| Site |'; $sep = '|---|'
