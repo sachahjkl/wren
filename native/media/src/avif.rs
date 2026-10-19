@@ -283,7 +283,26 @@ fn chroma_taps(n: usize, sub: bool, cn: usize) -> Vec<(usize, usize, f32)> {
         .collect()
 }
 
-/// The picture as RGBA8 into `out` (w x h, alpha 255).
+/// One row of a plane as normalised values: `lut[code]`, every `w` samples.
+fn plane_row(plane: *const u8, stride: isize, y: usize, w: usize, hbd: bool, lut: &[f32], out: &mut [f32]) {
+    // SAFETY: rows and columns stay inside the plane (callers pass its own dimensions).
+    unsafe {
+        let row = plane.offset(y as isize * stride);
+        if hbd {
+            let r = row as *const u16;
+            for (x, o) in out[..w].iter_mut().enumerate() {
+                *o = lut[(*r.add(x) as usize).min(lut.len() - 1)];
+            }
+        } else {
+            for (x, o) in out[..w].iter_mut().enumerate() {
+                *o = lut[*row.add(x) as usize];
+            }
+        }
+    }
+}
+
+/// The picture as RGBA8 into `out` (w x h, alpha 255). Chroma is upsampled bilinearly (sample centres between luma
+/// samples, as libavif's default); normalisation goes through lookup tables, chroma rows are made once and kept.
 fn to_rgba(pic: &Dav1dPicture, cicp: Cicp, out: &mut [u8]) -> Result<(), i32> {
     let w = pic.p.w as usize;
     let h = pic.p.h as usize;
@@ -311,54 +330,71 @@ fn to_rgba(pic: &Dav1dPicture, cicp: Cicp, out: &mut [u8]) -> Result<(), i32> {
     let chh = if sy { (h + 1) / 2 } else { h };
     let max = ((1u32 << bpc) - 1) as f32;
     let shift = (1u32 << (bpc - 8)) as f32;
+    let identity = cicp.matrix == 0;
+    let ycgco = cicp.matrix == 8;
     let (y_off, y_scale, c_off, c_scale) = if cicp.full {
         (0.0, 1.0 / max, (1u32 << (bpc - 1)) as f32, 1.0 / max)
     } else {
         (16.0 * shift, 1.0 / (219.0 * shift), 128.0 * shift, 1.0 / (224.0 * shift))
     };
-    let identity = cicp.matrix == 0;
-    let ycgco = cicp.matrix == 8;
+    let n = 1usize << bpc;
+    let ylut: Vec<f32> = (0..n).map(|c| (c as f32 - y_off) * y_scale).collect();
+    // identity (GBR): the chroma planes hold B and R with the luma range
+    let clut: Vec<f32> = if identity { ylut.clone() } else { (0..n).map(|c| (c as f32 - c_off) * c_scale).collect() };
     let (kr, kb) = kr_kb(cicp.matrix, cicp.primaries);
     let kg = 1.0 - kr - kb;
+    let (cr_r, cb_b) = (2.0 * (1.0 - kr), 2.0 * (1.0 - kb));
+    let (g_r, g_b, inv_kg) = (kr / kg, kb / kg, 1.0 / kg);
     let xt = chroma_taps(w, sx, cw);
     let yt = chroma_taps(h, sy, chh);
+    // chroma rows upsampled horizontally, cached by chroma row index (two are needed at a time)
+    let mut raw = vec![0f32; cw];
+    let mut rows: [(usize, Vec<f32>, Vec<f32>); 2] = [(usize::MAX, vec![0f32; w], vec![0f32; w]), (usize::MAX, vec![0f32; w], vec![0f32; w])];
+    let mut make_row = |cy: usize, slot: &mut (usize, Vec<f32>, Vec<f32>)| {
+        if slot.0 == cy {
+            return;
+        }
+        slot.0 = cy;
+        for (plane, dst) in [(udata, &mut slot.1), (vdata, &mut slot.2)] {
+            plane_row(plane, cs, cy, cw, hbd, &clut, &mut raw);
+            for (x, d) in dst.iter_mut().enumerate() {
+                let (c0, c1, f) = xt[x];
+                *d = raw[c0] + (raw[c1] - raw[c0]) * f;
+            }
+        }
+    };
+    let mut yrow = vec![0f32; w];
     let to8 = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
     for y in 0..h {
-        let (cy0, cy1, fy) = yt[y];
+        plane_row(ydata, ys, y, w, hbd, &ylut, &mut yrow);
         let row = &mut out[y * w * 4..(y + 1) * w * 4];
+        if mono {
+            for (x, &yy) in yrow.iter().enumerate() {
+                let v = to8(yy);
+                row[x * 4..x * 4 + 4].copy_from_slice(&[v, v, v, 255]);
+            }
+            continue;
+        }
+        let (cy0, cy1, fy) = yt[y];
+        // keep the slot of cy0 if either slot has it, the other one for cy1
+        let (a, b) = rows.split_at_mut(1);
+        let (s0, s1) = if b[0].0 == cy0 { (&mut b[0], &mut a[0]) } else { (&mut a[0], &mut b[0]) };
+        make_row(cy0, s0);
+        make_row(cy1, s1);
+        let (u0, v0, u1, v1) = (&s0.1, &s0.2, &s1.1, &s1.2);
         for x in 0..w {
-            let yv = sample(ydata, ys, x, y, hbd);
-            let (u, v) = if mono {
-                (c_off, c_off)
-            } else {
-                let (cx0, cx1, fx) = xt[x];
-                let bil = |p: *const u8| {
-                    let a = sample(p, cs, cx0, cy0, hbd);
-                    let b = sample(p, cs, cx1, cy0, hbd);
-                    let c = sample(p, cs, cx0, cy1, hbd);
-                    let d = sample(p, cs, cx1, cy1, hbd);
-                    let top = a + (b - a) * fx;
-                    let bot = c + (d - c) * fx;
-                    top + (bot - top) * fy
-                };
-                (bil(udata), bil(vdata))
-            };
+            let u = u0[x] + (u1[x] - u0[x]) * fy;
+            let v = v0[x] + (v1[x] - v0[x]) * fy;
+            let yy = yrow[x];
             let (r, g, b) = if identity {
-                // GBR: the planes are G, B, R, each with the luma range
-                ((v - y_off) * y_scale, (yv - y_off) * y_scale, (u - y_off) * y_scale)
+                (v, yy, u)
+            } else if ycgco {
+                let t = yy - u;
+                (t + v, yy + u, t - v)
             } else {
-                let yy = (yv - y_off) * y_scale;
-                let cb = (u - c_off) * c_scale;
-                let cr = (v - c_off) * c_scale;
-                if ycgco {
-                    let t = yy - cb;
-                    (t + cr, yy + cb, t - cr)
-                } else {
-                    let r = yy + 2.0 * (1.0 - kr) * cr;
-                    let b = yy + 2.0 * (1.0 - kb) * cb;
-                    let g = (yy - kr * r - kb * b) / kg;
-                    (r, g, b)
-                }
+                let r = yy + cr_r * v;
+                let b = yy + cb_b * u;
+                (r, yy * inv_kg - g_r * r - g_b * b, b)
             };
             let o = x * 4;
             row[o] = to8(r);
@@ -369,7 +405,6 @@ fn to_rgba(pic: &Dav1dPicture, cicp: Cicp, out: &mut [u8]) -> Result<(), i32> {
     }
     Ok(())
 }
-
 /// The alpha picture's luma into the alpha channel of `out` (same size), then straight alpha if it was premultiplied.
 fn apply_alpha(pic: &Dav1dPicture, out: &mut [u8], w: usize, h: usize, premultiplied: bool) -> Result<(), i32> {
     if pic.p.w as usize != w || pic.p.h as usize != h {

@@ -4,11 +4,12 @@ A browser where WebAssembly is the only execution engine. No JavaScript, no glue
 resolved by the browser itself. Written in Odin on top of [gui_toolkit](https://github.com/sachahjkl/gui_toolkit);
 Windows first, platform services used wherever they exist (WinHTTP for HTTP/TLS, D3D11 for drawing).
 
-    build.bat                      # build\browser.exe  (fetches Wasmtime, builds WAMR and Lexbor on first use)
+    build.bat                      # build\browser.exe  (fetches Wasmtime, builds WAMR, Lexbor and the image decoders on first use)
     build\browser.exe http://127.0.0.1:8765/site/index.html      (run build\testserver.exe first), or a file:/// URL
     powershell -File tools\test_all.ps1 [-Quick]
 
-Needs: Odin (`dev-2026-10`), Visual Studio 2022 (MSVC, for WAMR and Lexbor), Go (only for the test server). Dependencies
+Needs: Odin (`dev-2026-10`), Visual Studio 2022 (MSVC, for WAMR and Lexbor), Rust (rustup, stable >= 1.93, for the image
+decoders; its `llvm-tools` component is added on first build), Go (only for the test server). Dependencies
 are pinned submodules: `ext/gui_toolkit` (tag v0.3.2), `ext/lexbor` (v3.0.1) and `ext/wamr` (a commit after 2.4.5 that has
 the instruction-limit fix for the MSVC build), plus the Wasmtime C API (see *Wasm engines*). The Public Suffix List is
 embedded (`tools/update_psl.ps1` refreshes it).
@@ -31,6 +32,28 @@ per signature shape: `build.bat` runs `src/tools/wasmthunks`, which rewrites `sr
 signatures of the sources change. `src/tools/wasmbench` compares the engines. `test_all.ps1` runs the page, web API
 and workers end-to-end tests once per engine (`-Engines wasmtime,wamr`).
 
+## Image decoders
+
+`src/images` decodes on its own threads, never on the interface thread. PNG, JPEG, GIF, BMP, ICO and TIFF go through the
+platform (WIC; HEIF too when the Store codec is installed). WebP, AVIF and SVG are always available, whatever Windows has
+installed, through a Rust static library built by `tools\build_media.ps1` from `native\media` (rebuilt only when its
+sources change; about 6 MB added to `browser.exe`, 1.5 min the first time):
+
+- **SVG**: resvg 0.48.1 (usvg + tiny-skia; text with the system fonts through fontdb). Rendered at the size it is shown at
+  (device pixels), in the secure static mode of SVG images (no external resource, script or animation); hostile documents
+  are bounded by `images.svg.*` (nodes, depth, entity and `<use>` expansion, rendering cost). Inline `<svg>` elements of
+  HTML documents are drawn by the same renderer (`src/page/inline_svg.odin`).
+- **WebP**: image-webp 0.2.4 (pure safe Rust: lossy, lossless, alpha, animation).
+- **AVIF**: zenavif-parse 0.6.2 (container: alpha, grids, sequences, colr / irot / imir / clap) + rav1d 1.1.0 (the Rust
+  port of dav1d, with dav1d's assembly: NASM 2.16.03 is fetched and checked by SHA-256 by the script).
+- **Colour**: qcms 0.3.0 (Firefox's): ICC profiles of every format, AVIF's CICP code points and EXIF's Adobe RGB to sRGB
+  (`images.color_management`).
+
+Every crate is pinned by exact version in `native\media\Cargo.toml` and by SHA-256 in `Cargo.lock` (`--locked`). Both
+Rust libraries (Wasmtime's and this one) carry a standard library: the script renames the one duplicated unmangled symbol
+(`rust_eh_personality`, unused on MSVC) in ours with `llvm-objcopy`. `tools\gen_media_fixtures.ps1` (ImageMagick, FFmpeg)
+made the AVIF / WebP test files of `examples\site\media`; `src\tools\mediabench` times decodes.
+
 ## Layout
 
 | Path | Role |
@@ -51,7 +74,9 @@ and workers end-to-end tests once per engine (`-Engines wasmtime,wamr`).
 | `src/shim` | C shims over Lexbor (HTML events, URL parser, encodings) |
 | `sdk/odin/web` | guest-side bindings for Odin (`freestanding_wasm32`); other languages get generated ones |
 | `examples/` | guest pages: `hello`, `e2e` (DOM, events, timers, fetch, cookies, origin), `counter` + `site/` (an HTML page that names its module) |
-| `tools/` | Wasmtime fetch, WAMR / Lexbor builds, test server (Go), stress, test, perf and screenshot scripts |
+| `src/images` | image decoding on threads: WIC, and the built-in SVG / WebP / AVIF decoders and colour management (`native/media`, Rust) |
+| `native/media` | the Rust static library of the built-in image decoders (resvg, image-webp, zenavif-parse, rav1d, qcms) |
+| `tools/` | Wasmtime fetch, WAMR / Lexbor / image decoder builds, test server (Go), stress, test, perf and screenshot scripts |
 
 ## The rules that keep it from breaking at scale
 
