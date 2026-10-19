@@ -115,7 +115,8 @@ if ($NoSnapshot) { exit 0 }
 $exe = Join-Path $root 'build\jsengine.exe'
 Push-Location $root
 try {
-    & odin build src/tools/jsengine -collection:wb=src -vet -out:$exe -o:speed
+    # Wasm calls run on the main thread: room for wasm.wasmtime.max_stack_bytes
+    & odin build src/tools/jsengine -collection:wb=src -vet -out:$exe -o:speed "-extra-linker-flags:/STACK:33554432"
     if ($LASTEXITCODE -ne 0) { throw "building src\tools\jsengine failed" }
     & $exe snapshot $raw $final
     if ($LASTEXITCODE -ne 0) { throw "pre-initialization of the engine failed" }

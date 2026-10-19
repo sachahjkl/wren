@@ -157,6 +157,7 @@ foreign wasmtime_lib {
 	wasmtime_config_consume_fuel_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_epoch_interruption_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_max_wasm_stack_set :: proc(c: wt_config, v: uint) ---
+	wasmtime_config_async_stack_size_set :: proc(c: wt_config, v: uint) ---
 	wasmtime_config_wasm_threads_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_shared_memory_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_wasm_tail_call_set :: proc(c: wt_config, v: bool) ---

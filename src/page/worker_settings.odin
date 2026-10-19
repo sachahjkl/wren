@@ -32,7 +32,7 @@ WORKER_PREFS := [?]config.Def{
 		description = "Most workers one page may run at the same time. Creating one more fails."},
 	{name = "workers.max_total", kind = .Int, default = {i = 128}, bounded = true, min = 0, max = 65536,
 		description = "Most workers running at the same time in the whole browser (each one is a thread)."},
-	{name = "workers.thread_stack_bytes", kind = .Int, default = {i = 2 << 20}, bounded = true, min = 256 << 10, max = 256 << 20, bytes = true, unit = "bytes",
+	{name = "workers.thread_stack_bytes", kind = .Int, default = {i = 32 << 20}, bounded = true, min = 256 << 10, max = 256 << 20, bytes = true, unit = "bytes",
 		description = "Native stack reserved for each worker thread. Bounds how deep calls between the module and the browser may nest."},
 	{name = "workers.thread_priority", kind = .String, default = {s = "below_normal"}, choices = {"normal", "below_normal", "lowest"},
 		description = "Scheduling priority of worker threads. Below the interface thread, the window stays responsive even when workers keep every core busy."},

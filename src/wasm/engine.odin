@@ -112,6 +112,8 @@ wt_start :: proc(rs: Runtime_Settings) -> bool {
 	wasmtime_config_cranelift_nan_canonicalization_set(c, rs.nan_canonicalization)
 	wasmtime_config_epoch_interruption_set(c, true)
 	wasmtime_config_consume_fuel_set(c, rs.fuel)
+	// Wasmtime refuses a wasm stack larger than its async stack size (2 MiB by default), even without async calls
+	wasmtime_config_async_stack_size_set(c, uint(max(2 << 20, rs.max_stack_bytes + rs.host_stack_reserve)))
 	wasmtime_config_max_wasm_stack_set(c, uint(rs.max_stack_bytes))
 	wasmtime_config_memory_reservation_set(c, u64(rs.memory_reservation))
 	wasmtime_config_memory_guard_size_set(c, u64(rs.memory_guard))

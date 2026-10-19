@@ -118,6 +118,7 @@ read_file :: proc(path: string) -> []byte {
 
 setup :: proc() {
 	origin_tick = time.tick_now()
+	wasm.configure_from_args(os.args[1:])   // --pref wasm.wasmtime.max_stack_bytes=...
 	if !wasm.runtime_init() { fmt.eprintln("jsengine: the Wasm engine could not start"); os.exit(1) }
 	if !wasm.register_wasi() { fmt.eprintln("jsengine: WASI registration failed"); os.exit(1) }
 	if !wasm.register(IMPORTS[:]) { fmt.eprintln("jsengine: import registration failed"); os.exit(1) }
@@ -197,6 +198,7 @@ parse_common :: proc(args: []string) -> (c: Common) {
 		case "-iterations": i += 1; c.iterations = max(1, int(parse_int(args[i])))
 		case "-n": i += 1; c.count = max(1, int(parse_int(args[i])))
 		case "-q": quiet = true
+		case "--pref": i += 1
 		case: append(&c.rest, a)
 		}
 	}

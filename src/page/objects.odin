@@ -191,6 +191,7 @@ call_export :: proc(p: ^Page, inst: ^wasm.Instance, name: cstring, argv: []u32 =
 // A guest call trapped (exception or instruction budget): the console of a page, the `error` event of a worker.
 @(private)
 guest_failed :: proc(p: ^Page, inst: ^wasm.Instance) {
+	if p.js != nil && p.js.inst == inst { js_trapped(p, inst) }
 	if p.worker != nil { worker_report_error(p, inst.last_error); return }
 	log(p, .Error, inst.last_error)
 }

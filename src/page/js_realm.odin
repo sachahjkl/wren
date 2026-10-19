@@ -92,7 +92,29 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 
 @(private)
 js_call :: proc(user: rawptr, inst: ^wasm.Instance, name: cstring, argv: []u32) -> wasm.Call_Result {
-	return call_export((^Page)(user), inst, name, argv)
+	p := (^Page)(user)
+	res := call_export(p, inst, name, argv)
+	if res == .Trapped { js_realm_lost(p) }
+	return res
+}
+
+// A trap inside the engine (past the hard deadline, out of native stack, out of memory) may have left its heap
+// inconsistent: the realm is not used again (the trap was logged by call_export).
+js_realm_lost :: proc(p: ^Page) {
+	r := p.js
+	if r == nil || r.failed { return }
+	r.failed = true
+	log(p, .Error, "the JavaScript engine of this page was stopped in the middle of its work: scripts no longer run on this page (reload it)")
+}
+
+// A call into the realm trapped. When the trap happened in a nested call (the engine called the browser, which called
+// back into the engine), the outer call must not go on with the engine's state as the trap left it: it traps too when
+// the browser function returns. The instance takes no further calls (instance_by_index skips dead instances).
+@(private)
+js_trapped :: proc(p: ^Page, inst: ^wasm.Instance) {
+	js_realm_lost(p)
+	if inst.depth > 0 { wasm.trap(inst, "the JavaScript engine stopped in a nested call") }
+	inst.dead = true
 }
 
 // After a task of the realm: the slow-script message when the engine had to be interrupted.
