@@ -367,6 +367,7 @@ log("body onload is window's " + (typeof window.onload) + " " + (document.body.o
 	check(logged("after removal null") && !logged("never"), "removeAttribute removes it; unknown on* attributes do nothing")
 	check(logged_contains("SyntaxError"), "a handler that does not compile is reported")
 	check(logged("body onload true load"), "<body onload> is the window's load handler")
+	check(logged("body onload is window's function true"), "document.body.onload is window.onload (window-reflecting body handlers)")
 	page.page_close(p)
 }
 

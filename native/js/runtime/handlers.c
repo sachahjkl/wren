@@ -218,6 +218,79 @@ int32_t wj_content_handler(uint64_t element, int32_t window_owner, int32_t svg, 
     return 1;
 }
 
+/* ---- window-reflecting body element event handlers ---- */
+
+/* HTML: on <body> and <frameset>, onblur, onerror, onfocus, onload, onresize, onscroll and every WindowEventHandlers
+ * member are the window's handlers (document.body.onload === window.onload). Elsewhere they are the target's own. */
+static JSValueConst reflected_target(JSValueConst this_val)
+{
+    wj_obj *o = wj_unwrap(this_val, -1);
+    if (o && (wj_unwrap(this_val, WJ_IFACE_HTMLBodyElement) || wj_unwrap(this_val, WJ_IFACE_HTMLFrameSetElement))) {
+        wj_global_handle();
+        return wj_the_realm.global;
+    }
+    return this_val;
+}
+
+static JSValue reflected_get(JSContext *ctx, JSValueConst this_val, const char *type)
+{
+    return wj_event_handler_get(ctx, reflected_target(this_val), WJ_IFACE_EventTarget, type);
+}
+
+static JSValue reflected_set(JSContext *ctx, JSValueConst this_val, const char *type, JSValueConst v, int special)
+{
+    return wj_event_handler_set(ctx, reflected_target(this_val), WJ_IFACE_EventTarget, type, v, special);
+}
+
+JSValue wjr_GlobalEventHandlers_get_onblur(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "blur"); }
+JSValue wjr_GlobalEventHandlers_set_onblur(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "blur", v, 0); }
+JSValue wjr_GlobalEventHandlers_get_onerror(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "error"); }
+JSValue wjr_GlobalEventHandlers_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "error", v, 1); }
+JSValue wjr_GlobalEventHandlers_get_onfocus(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "focus"); }
+JSValue wjr_GlobalEventHandlers_set_onfocus(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "focus", v, 0); }
+JSValue wjr_GlobalEventHandlers_get_onload(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "load"); }
+JSValue wjr_GlobalEventHandlers_set_onload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "load", v, 0); }
+JSValue wjr_GlobalEventHandlers_get_onresize(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "resize"); }
+JSValue wjr_GlobalEventHandlers_set_onresize(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "resize", v, 0); }
+JSValue wjr_GlobalEventHandlers_get_onscroll(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "scroll"); }
+JSValue wjr_GlobalEventHandlers_set_onscroll(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "scroll", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onafterprint(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "afterprint"); }
+JSValue wjr_WindowEventHandlers_set_onafterprint(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "afterprint", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onbeforeprint(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "beforeprint"); }
+JSValue wjr_WindowEventHandlers_set_onbeforeprint(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "beforeprint", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onbeforeunload(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "beforeunload"); }
+JSValue wjr_WindowEventHandlers_set_onbeforeunload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "beforeunload", v, 2); }
+JSValue wjr_WindowEventHandlers_get_onhashchange(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "hashchange"); }
+JSValue wjr_WindowEventHandlers_set_onhashchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "hashchange", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onlanguagechange(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "languagechange"); }
+JSValue wjr_WindowEventHandlers_set_onlanguagechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "languagechange", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onmessage(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "message"); }
+JSValue wjr_WindowEventHandlers_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "message", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "messageerror"); }
+JSValue wjr_WindowEventHandlers_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "messageerror", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onoffline(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "offline"); }
+JSValue wjr_WindowEventHandlers_set_onoffline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "offline", v, 0); }
+JSValue wjr_WindowEventHandlers_get_ononline(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "online"); }
+JSValue wjr_WindowEventHandlers_set_ononline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "online", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onpagehide(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "pagehide"); }
+JSValue wjr_WindowEventHandlers_set_onpagehide(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "pagehide", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onpagereveal(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "pagereveal"); }
+JSValue wjr_WindowEventHandlers_set_onpagereveal(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "pagereveal", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onpageshow(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "pageshow"); }
+JSValue wjr_WindowEventHandlers_set_onpageshow(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "pageshow", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onpageswap(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "pageswap"); }
+JSValue wjr_WindowEventHandlers_set_onpageswap(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "pageswap", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onpopstate(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "popstate"); }
+JSValue wjr_WindowEventHandlers_set_onpopstate(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "popstate", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onrejectionhandled(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "rejectionhandled"); }
+JSValue wjr_WindowEventHandlers_set_onrejectionhandled(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "rejectionhandled", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onstorage(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "storage"); }
+JSValue wjr_WindowEventHandlers_set_onstorage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "storage", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onunhandledrejection(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "unhandledrejection"); }
+JSValue wjr_WindowEventHandlers_set_onunhandledrejection(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "unhandledrejection", v, 0); }
+JSValue wjr_WindowEventHandlers_get_onunload(JSContext *ctx, JSValueConst this_val) { return reflected_get(ctx, this_val, "unload"); }
+JSValue wjr_WindowEventHandlers_set_onunload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return reflected_set(ctx, this_val, "unload", v, 0); }
+
 /* ---- the event handler processing algorithm ---- */
 
 static wj_listener *listener_holding(wj_obj *o, JSValueConst value)

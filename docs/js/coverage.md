@@ -580,7 +580,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onbeforeinput` (GlobalEventHandlers): generic (event handler)
 - `onbeforematch` (GlobalEventHandlers): generic (event handler)
 - `onbeforetoggle` (GlobalEventHandlers): generic (event handler)
-- `onblur` (GlobalEventHandlers): generic (event handler)
+- `onblur` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onblur`
 - `oncancel` (GlobalEventHandlers): generic (event handler)
 - `oncanplay` (GlobalEventHandlers): generic (event handler)
 - `oncanplaythrough` (GlobalEventHandlers): generic (event handler)
@@ -605,15 +605,15 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `ondurationchange` (GlobalEventHandlers): generic (event handler)
 - `onemptied` (GlobalEventHandlers): generic (event handler)
 - `onended` (GlobalEventHandlers): generic (event handler)
-- `onerror` (GlobalEventHandlers): generic (event handler)
-- `onfocus` (GlobalEventHandlers): generic (event handler)
+- `onerror` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onerror`
+- `onfocus` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onfocus`
 - `onformdata` (GlobalEventHandlers): generic (event handler)
 - `oninput` (GlobalEventHandlers): generic (event handler)
 - `oninvalid` (GlobalEventHandlers): generic (event handler)
 - `onkeydown` (GlobalEventHandlers): generic (event handler)
 - `onkeypress` (GlobalEventHandlers): generic (event handler)
 - `onkeyup` (GlobalEventHandlers): generic (event handler)
-- `onload` (GlobalEventHandlers): generic (event handler)
+- `onload` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onload`
 - `onloadeddata` (GlobalEventHandlers): generic (event handler)
 - `onloadedmetadata` (GlobalEventHandlers): generic (event handler)
 - `onloadstart` (GlobalEventHandlers): generic (event handler)
@@ -631,8 +631,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onprogress` (GlobalEventHandlers): generic (event handler)
 - `onratechange` (GlobalEventHandlers): generic (event handler)
 - `onreset` (GlobalEventHandlers): generic (event handler)
-- `onresize` (GlobalEventHandlers): generic (event handler)
-- `onscroll` (GlobalEventHandlers): generic (event handler)
+- `onresize` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onresize`
+- `onscroll` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onscroll`
 - `onscrollend` (GlobalEventHandlers): generic (event handler)
 - `onsecuritypolicyviolation` (GlobalEventHandlers): generic (event handler)
 - `onseeked` (GlobalEventHandlers): generic (event handler)
@@ -940,7 +940,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onbeforeinput` (GlobalEventHandlers): generic (event handler)
 - `onbeforematch` (GlobalEventHandlers): generic (event handler)
 - `onbeforetoggle` (GlobalEventHandlers): generic (event handler)
-- `onblur` (GlobalEventHandlers): generic (event handler)
+- `onblur` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onblur`
 - `oncancel` (GlobalEventHandlers): generic (event handler)
 - `oncanplay` (GlobalEventHandlers): generic (event handler)
 - `oncanplaythrough` (GlobalEventHandlers): generic (event handler)
@@ -965,15 +965,15 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `ondurationchange` (GlobalEventHandlers): generic (event handler)
 - `onemptied` (GlobalEventHandlers): generic (event handler)
 - `onended` (GlobalEventHandlers): generic (event handler)
-- `onerror` (GlobalEventHandlers): generic (event handler)
-- `onfocus` (GlobalEventHandlers): generic (event handler)
+- `onerror` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onerror`
+- `onfocus` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onfocus`
 - `onformdata` (GlobalEventHandlers): generic (event handler)
 - `oninput` (GlobalEventHandlers): generic (event handler)
 - `oninvalid` (GlobalEventHandlers): generic (event handler)
 - `onkeydown` (GlobalEventHandlers): generic (event handler)
 - `onkeypress` (GlobalEventHandlers): generic (event handler)
 - `onkeyup` (GlobalEventHandlers): generic (event handler)
-- `onload` (GlobalEventHandlers): generic (event handler)
+- `onload` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onload`
 - `onloadeddata` (GlobalEventHandlers): generic (event handler)
 - `onloadedmetadata` (GlobalEventHandlers): generic (event handler)
 - `onloadstart` (GlobalEventHandlers): generic (event handler)
@@ -991,8 +991,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onprogress` (GlobalEventHandlers): generic (event handler)
 - `onratechange` (GlobalEventHandlers): generic (event handler)
 - `onreset` (GlobalEventHandlers): generic (event handler)
-- `onresize` (GlobalEventHandlers): generic (event handler)
-- `onscroll` (GlobalEventHandlers): generic (event handler)
+- `onresize` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onresize`
+- `onscroll` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onscroll`
 - `onscrollend` (GlobalEventHandlers): generic (event handler)
 - `onsecuritypolicyviolation` (GlobalEventHandlers): generic (event handler)
 - `onseeked` (GlobalEventHandlers): generic (event handler)
@@ -1127,24 +1127,24 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `background`: generic (reflects a content attribute)
 - `ongamepadconnected` (WindowEventHandlers): generic (event handler)
 - `ongamepaddisconnected` (WindowEventHandlers): generic (event handler)
-- `onafterprint` (WindowEventHandlers): generic (event handler)
-- `onbeforeprint` (WindowEventHandlers): generic (event handler)
-- `onbeforeunload` (WindowEventHandlers): generic (event handler)
-- `onhashchange` (WindowEventHandlers): generic (event handler)
-- `onlanguagechange` (WindowEventHandlers): generic (event handler)
-- `onmessage` (WindowEventHandlers): generic (event handler)
-- `onmessageerror` (WindowEventHandlers): generic (event handler)
-- `onoffline` (WindowEventHandlers): generic (event handler)
-- `ononline` (WindowEventHandlers): generic (event handler)
-- `onpagehide` (WindowEventHandlers): generic (event handler)
-- `onpagereveal` (WindowEventHandlers): generic (event handler)
-- `onpageshow` (WindowEventHandlers): generic (event handler)
-- `onpageswap` (WindowEventHandlers): generic (event handler)
-- `onpopstate` (WindowEventHandlers): generic (event handler)
-- `onrejectionhandled` (WindowEventHandlers): generic (event handler)
-- `onstorage` (WindowEventHandlers): generic (event handler)
-- `onunhandledrejection` (WindowEventHandlers): generic (event handler)
-- `onunload` (WindowEventHandlers): generic (event handler)
+- `onafterprint` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onafterprint`
+- `onbeforeprint` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onbeforeprint`
+- `onbeforeunload` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onbeforeunload`
+- `onhashchange` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onhashchange`
+- `onlanguagechange` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onlanguagechange`
+- `onmessage` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onmessage`
+- `onmessageerror` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onmessageerror`
+- `onoffline` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onoffline`
+- `ononline` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_ononline`
+- `onpagehide` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpagehide`
+- `onpagereveal` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpagereveal`
+- `onpageshow` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpageshow`
+- `onpageswap` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpageswap`
+- `onpopstate` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpopstate`
+- `onrejectionhandled` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onrejectionhandled`
+- `onstorage` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onstorage`
+- `onunhandledrejection` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onunhandledrejection`
+- `onunload` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onunload`
 
 ### HTMLButtonElement : HTMLElement
 
@@ -1329,24 +1329,24 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `rows`: generic (reflects a content attribute)
 - `ongamepadconnected` (WindowEventHandlers): generic (event handler)
 - `ongamepaddisconnected` (WindowEventHandlers): generic (event handler)
-- `onafterprint` (WindowEventHandlers): generic (event handler)
-- `onbeforeprint` (WindowEventHandlers): generic (event handler)
-- `onbeforeunload` (WindowEventHandlers): generic (event handler)
-- `onhashchange` (WindowEventHandlers): generic (event handler)
-- `onlanguagechange` (WindowEventHandlers): generic (event handler)
-- `onmessage` (WindowEventHandlers): generic (event handler)
-- `onmessageerror` (WindowEventHandlers): generic (event handler)
-- `onoffline` (WindowEventHandlers): generic (event handler)
-- `ononline` (WindowEventHandlers): generic (event handler)
-- `onpagehide` (WindowEventHandlers): generic (event handler)
-- `onpagereveal` (WindowEventHandlers): generic (event handler)
-- `onpageshow` (WindowEventHandlers): generic (event handler)
-- `onpageswap` (WindowEventHandlers): generic (event handler)
-- `onpopstate` (WindowEventHandlers): generic (event handler)
-- `onrejectionhandled` (WindowEventHandlers): generic (event handler)
-- `onstorage` (WindowEventHandlers): generic (event handler)
-- `onunhandledrejection` (WindowEventHandlers): generic (event handler)
-- `onunload` (WindowEventHandlers): generic (event handler)
+- `onafterprint` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onafterprint`
+- `onbeforeprint` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onbeforeprint`
+- `onbeforeunload` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onbeforeunload`
+- `onhashchange` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onhashchange`
+- `onlanguagechange` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onlanguagechange`
+- `onmessage` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onmessage`
+- `onmessageerror` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onmessageerror`
+- `onoffline` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onoffline`
+- `ononline` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_ononline`
+- `onpagehide` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpagehide`
+- `onpagereveal` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpagereveal`
+- `onpageshow` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpageshow`
+- `onpageswap` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpageswap`
+- `onpopstate` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpopstate`
+- `onrejectionhandled` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onrejectionhandled`
+- `onstorage` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onstorage`
+- `onunhandledrejection` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onunhandledrejection`
+- `onunload` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onunload`
 
 ### HTMLHRElement : HTMLElement
 
@@ -2128,7 +2128,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onbeforeinput` (GlobalEventHandlers): generic (event handler)
 - `onbeforematch` (GlobalEventHandlers): generic (event handler)
 - `onbeforetoggle` (GlobalEventHandlers): generic (event handler)
-- `onblur` (GlobalEventHandlers): generic (event handler)
+- `onblur` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onblur`
 - `oncancel` (GlobalEventHandlers): generic (event handler)
 - `oncanplay` (GlobalEventHandlers): generic (event handler)
 - `oncanplaythrough` (GlobalEventHandlers): generic (event handler)
@@ -2153,15 +2153,15 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `ondurationchange` (GlobalEventHandlers): generic (event handler)
 - `onemptied` (GlobalEventHandlers): generic (event handler)
 - `onended` (GlobalEventHandlers): generic (event handler)
-- `onerror` (GlobalEventHandlers): generic (event handler)
-- `onfocus` (GlobalEventHandlers): generic (event handler)
+- `onerror` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onerror`
+- `onfocus` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onfocus`
 - `onformdata` (GlobalEventHandlers): generic (event handler)
 - `oninput` (GlobalEventHandlers): generic (event handler)
 - `oninvalid` (GlobalEventHandlers): generic (event handler)
 - `onkeydown` (GlobalEventHandlers): generic (event handler)
 - `onkeypress` (GlobalEventHandlers): generic (event handler)
 - `onkeyup` (GlobalEventHandlers): generic (event handler)
-- `onload` (GlobalEventHandlers): generic (event handler)
+- `onload` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onload`
 - `onloadeddata` (GlobalEventHandlers): generic (event handler)
 - `onloadedmetadata` (GlobalEventHandlers): generic (event handler)
 - `onloadstart` (GlobalEventHandlers): generic (event handler)
@@ -2179,8 +2179,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onprogress` (GlobalEventHandlers): generic (event handler)
 - `onratechange` (GlobalEventHandlers): generic (event handler)
 - `onreset` (GlobalEventHandlers): generic (event handler)
-- `onresize` (GlobalEventHandlers): generic (event handler)
-- `onscroll` (GlobalEventHandlers): generic (event handler)
+- `onresize` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onresize`
+- `onscroll` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onscroll`
 - `onscrollend` (GlobalEventHandlers): generic (event handler)
 - `onsecuritypolicyviolation` (GlobalEventHandlers): generic (event handler)
 - `onseeked` (GlobalEventHandlers): generic (event handler)
@@ -2243,7 +2243,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onbeforeinput` (GlobalEventHandlers): generic (event handler)
 - `onbeforematch` (GlobalEventHandlers): generic (event handler)
 - `onbeforetoggle` (GlobalEventHandlers): generic (event handler)
-- `onblur` (GlobalEventHandlers): generic (event handler)
+- `onblur` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onblur`
 - `oncancel` (GlobalEventHandlers): generic (event handler)
 - `oncanplay` (GlobalEventHandlers): generic (event handler)
 - `oncanplaythrough` (GlobalEventHandlers): generic (event handler)
@@ -2268,15 +2268,15 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `ondurationchange` (GlobalEventHandlers): generic (event handler)
 - `onemptied` (GlobalEventHandlers): generic (event handler)
 - `onended` (GlobalEventHandlers): generic (event handler)
-- `onerror` (GlobalEventHandlers): generic (event handler)
-- `onfocus` (GlobalEventHandlers): generic (event handler)
+- `onerror` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onerror`
+- `onfocus` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onfocus`
 - `onformdata` (GlobalEventHandlers): generic (event handler)
 - `oninput` (GlobalEventHandlers): generic (event handler)
 - `oninvalid` (GlobalEventHandlers): generic (event handler)
 - `onkeydown` (GlobalEventHandlers): generic (event handler)
 - `onkeypress` (GlobalEventHandlers): generic (event handler)
 - `onkeyup` (GlobalEventHandlers): generic (event handler)
-- `onload` (GlobalEventHandlers): generic (event handler)
+- `onload` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onload`
 - `onloadeddata` (GlobalEventHandlers): generic (event handler)
 - `onloadedmetadata` (GlobalEventHandlers): generic (event handler)
 - `onloadstart` (GlobalEventHandlers): generic (event handler)
@@ -2294,8 +2294,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onprogress` (GlobalEventHandlers): generic (event handler)
 - `onratechange` (GlobalEventHandlers): generic (event handler)
 - `onreset` (GlobalEventHandlers): generic (event handler)
-- `onresize` (GlobalEventHandlers): generic (event handler)
-- `onscroll` (GlobalEventHandlers): generic (event handler)
+- `onresize` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onresize`
+- `onscroll` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onscroll`
 - `onscrollend` (GlobalEventHandlers): generic (event handler)
 - `onsecuritypolicyviolation` (GlobalEventHandlers): generic (event handler)
 - `onseeked` (GlobalEventHandlers): generic (event handler)
@@ -2537,24 +2537,24 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly preserveAspectRatio` (SVGFitToViewBox): not supported
 - `ongamepadconnected` (WindowEventHandlers): generic (event handler)
 - `ongamepaddisconnected` (WindowEventHandlers): generic (event handler)
-- `onafterprint` (WindowEventHandlers): generic (event handler)
-- `onbeforeprint` (WindowEventHandlers): generic (event handler)
-- `onbeforeunload` (WindowEventHandlers): generic (event handler)
-- `onhashchange` (WindowEventHandlers): generic (event handler)
-- `onlanguagechange` (WindowEventHandlers): generic (event handler)
-- `onmessage` (WindowEventHandlers): generic (event handler)
-- `onmessageerror` (WindowEventHandlers): generic (event handler)
-- `onoffline` (WindowEventHandlers): generic (event handler)
-- `ononline` (WindowEventHandlers): generic (event handler)
-- `onpagehide` (WindowEventHandlers): generic (event handler)
-- `onpagereveal` (WindowEventHandlers): generic (event handler)
-- `onpageshow` (WindowEventHandlers): generic (event handler)
-- `onpageswap` (WindowEventHandlers): generic (event handler)
-- `onpopstate` (WindowEventHandlers): generic (event handler)
-- `onrejectionhandled` (WindowEventHandlers): generic (event handler)
-- `onstorage` (WindowEventHandlers): generic (event handler)
-- `onunhandledrejection` (WindowEventHandlers): generic (event handler)
-- `onunload` (WindowEventHandlers): generic (event handler)
+- `onafterprint` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onafterprint`
+- `onbeforeprint` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onbeforeprint`
+- `onbeforeunload` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onbeforeunload`
+- `onhashchange` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onhashchange`
+- `onlanguagechange` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onlanguagechange`
+- `onmessage` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onmessage`
+- `onmessageerror` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onmessageerror`
+- `onoffline` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onoffline`
+- `ononline` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_ononline`
+- `onpagehide` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpagehide`
+- `onpagereveal` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpagereveal`
+- `onpageshow` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpageshow`
+- `onpageswap` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpageswap`
+- `onpopstate` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpopstate`
+- `onrejectionhandled` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onrejectionhandled`
+- `onstorage` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onstorage`
+- `onunhandledrejection` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onunhandledrejection`
+- `onunload` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onunload`
 
 ### SVGSwitchElement : SVGGraphicsElement
 
@@ -2851,7 +2851,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onbeforeinput` (GlobalEventHandlers): generic (event handler)
 - `onbeforematch` (GlobalEventHandlers): generic (event handler)
 - `onbeforetoggle` (GlobalEventHandlers): generic (event handler)
-- `onblur` (GlobalEventHandlers): generic (event handler)
+- `onblur` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onblur`
 - `oncancel` (GlobalEventHandlers): generic (event handler)
 - `oncanplay` (GlobalEventHandlers): generic (event handler)
 - `oncanplaythrough` (GlobalEventHandlers): generic (event handler)
@@ -2876,15 +2876,15 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `ondurationchange` (GlobalEventHandlers): generic (event handler)
 - `onemptied` (GlobalEventHandlers): generic (event handler)
 - `onended` (GlobalEventHandlers): generic (event handler)
-- `onerror` (GlobalEventHandlers): generic (event handler)
-- `onfocus` (GlobalEventHandlers): generic (event handler)
+- `onerror` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onerror`
+- `onfocus` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onfocus`
 - `onformdata` (GlobalEventHandlers): generic (event handler)
 - `oninput` (GlobalEventHandlers): generic (event handler)
 - `oninvalid` (GlobalEventHandlers): generic (event handler)
 - `onkeydown` (GlobalEventHandlers): generic (event handler)
 - `onkeypress` (GlobalEventHandlers): generic (event handler)
 - `onkeyup` (GlobalEventHandlers): generic (event handler)
-- `onload` (GlobalEventHandlers): generic (event handler)
+- `onload` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onload`
 - `onloadeddata` (GlobalEventHandlers): generic (event handler)
 - `onloadedmetadata` (GlobalEventHandlers): generic (event handler)
 - `onloadstart` (GlobalEventHandlers): generic (event handler)
@@ -2902,8 +2902,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onprogress` (GlobalEventHandlers): generic (event handler)
 - `onratechange` (GlobalEventHandlers): generic (event handler)
 - `onreset` (GlobalEventHandlers): generic (event handler)
-- `onresize` (GlobalEventHandlers): generic (event handler)
-- `onscroll` (GlobalEventHandlers): generic (event handler)
+- `onresize` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onresize`
+- `onscroll` (GlobalEventHandlers): C `wjr_GlobalEventHandlers_get_onscroll`
 - `onscrollend` (GlobalEventHandlers): generic (event handler)
 - `onsecuritypolicyviolation` (GlobalEventHandlers): generic (event handler)
 - `onseeked` (GlobalEventHandlers): generic (event handler)
@@ -2941,24 +2941,24 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `ontouchcancel` (GlobalEventHandlers): generic (event handler)
 - `ongamepadconnected` (WindowEventHandlers): generic (event handler)
 - `ongamepaddisconnected` (WindowEventHandlers): generic (event handler)
-- `onafterprint` (WindowEventHandlers): generic (event handler)
-- `onbeforeprint` (WindowEventHandlers): generic (event handler)
-- `onbeforeunload` (WindowEventHandlers): generic (event handler)
-- `onhashchange` (WindowEventHandlers): generic (event handler)
-- `onlanguagechange` (WindowEventHandlers): generic (event handler)
-- `onmessage` (WindowEventHandlers): generic (event handler)
-- `onmessageerror` (WindowEventHandlers): generic (event handler)
-- `onoffline` (WindowEventHandlers): generic (event handler)
-- `ononline` (WindowEventHandlers): generic (event handler)
-- `onpagehide` (WindowEventHandlers): generic (event handler)
-- `onpagereveal` (WindowEventHandlers): generic (event handler)
-- `onpageshow` (WindowEventHandlers): generic (event handler)
-- `onpageswap` (WindowEventHandlers): generic (event handler)
-- `onpopstate` (WindowEventHandlers): generic (event handler)
-- `onrejectionhandled` (WindowEventHandlers): generic (event handler)
-- `onstorage` (WindowEventHandlers): generic (event handler)
-- `onunhandledrejection` (WindowEventHandlers): generic (event handler)
-- `onunload` (WindowEventHandlers): generic (event handler)
+- `onafterprint` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onafterprint`
+- `onbeforeprint` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onbeforeprint`
+- `onbeforeunload` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onbeforeunload`
+- `onhashchange` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onhashchange`
+- `onlanguagechange` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onlanguagechange`
+- `onmessage` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onmessage`
+- `onmessageerror` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onmessageerror`
+- `onoffline` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onoffline`
+- `ononline` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_ononline`
+- `onpagehide` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpagehide`
+- `onpagereveal` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpagereveal`
+- `onpageshow` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpageshow`
+- `onpageswap` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpageswap`
+- `onpopstate` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onpopstate`
+- `onrejectionhandled` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onrejectionhandled`
+- `onstorage` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onstorage`
+- `onunhandledrejection` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onunhandledrejection`
+- `onunload` (WindowEventHandlers): C `wjr_WindowEventHandlers_get_onunload`
 - `readonly indexedDB` (WindowOrWorkerGlobalScope): not supported
 - `fetch()` (WindowOrWorkerGlobalScope): not supported
 - `readonly performance` (WindowOrWorkerGlobalScope): not supported
