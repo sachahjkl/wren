@@ -81,6 +81,7 @@ show_home :: proc(app: ^App, t: ^Tab) {
 	t.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, HOME_URL, console_sink, t)
 	attach_page(app, t, t.page)   // links and location work from the start page too
 	layout_reset(&t.layout)
+	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0
 	for l in t.console { delete(l) }
 	clear(&t.console)

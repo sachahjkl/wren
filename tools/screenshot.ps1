@@ -1,7 +1,8 @@
 # Starts the browser, optionally clicks at window-relative pixel positions, saves a capture of the window frame.
-#   powershell -File tools\screenshot.ps1 -Url file:///S:/wasm_browser/build/e2e.wasm -Out shot.png [-Click 120,230] [-WaitMs 1500]
+#   powershell -File tools\screenshot.ps1 -Url file:///S:/wasm_browser/build/e2e.wasm -Out shot.png [-Click 120,230] [-Keys PageDown,Down,End] [-WaitMs 1500]
+# -Keys: virtual keys posted after the clicks (names: PageUp PageDown End Home Left Up Right Down Space Tab, or a number).
 # The cursor is parked outside the window for the first capture. Aborts if another window covers the target.
-param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300, [int]$Width = 0, [int]$Height = 0)
+param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300, [int]$Width = 0, [int]$Height = 0, [string[]]$Keys = @())
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Add-Type @"
@@ -65,7 +66,15 @@ try {
         [SH]::PostMessage($h, 0x0202, [IntPtr]::Zero, $lp) | Out-Null   # WM_LBUTTONUP
         Start-Sleep -Milliseconds $ClickPauseMs
     }
-    if ($Click.Count -gt 0) {
+    $vk = @{ PageUp = 0x21; PageDown = 0x22; End = 0x23; Home = 0x24; Left = 0x25; Up = 0x26; Right = 0x27; Down = 0x28; Space = 0x20; Tab = 0x09 }
+    foreach ($k in (($Keys -join ',') -split ',' | Where-Object { $_ })) {
+        $code = if ($vk.ContainsKey($k)) { $vk[$k] } else { [int]$k }
+        [SH]::PostMessage($h, 0x0100, [IntPtr]$code, [IntPtr]1) | Out-Null            # WM_KEYDOWN
+        Start-Sleep -Milliseconds 60
+        [SH]::PostMessage($h, 0x0101, [IntPtr]$code, [IntPtr]0xC0000001) | Out-Null   # WM_KEYUP
+        Start-Sleep -Milliseconds $ClickPauseMs
+    }
+    if ($Click.Count -gt 0 -or $Keys.Count -gt 0) {
         [SH]::SetCursorPos($r0.R + 15, $r0.T + 200) | Out-Null
         Start-Sleep -Milliseconds $SettleMs
         Grab $h $(if ($Out2) { $Out2 } else { $Out -replace '\.png$', '_after.png' })

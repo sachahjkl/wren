@@ -1050,12 +1050,13 @@ route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platfo
 		return true
 	}
 	k := forms_key_of(ev.key)
-	if k == .None { return false }
-	if forms.key_down(f, k, mods_of(ev.mods)) {
+	if k != .None && forms.key_down(f, k, mods_of(ev.mods)) {
 		if t.page == p && f.focus != base.NIL_HANDLE { ensure_list_scroll(f, f.focus) }
 		return true
 	}
-	return false
+	// default action: keyboard scrolling, never while typing in a text field
+	if t.page != p || forms.is_text_field(f, h) { return false }
+	return keyboard_scroll(app, t, h != base.NIL_HANDLE ? h : t.scroll_target, key_scroll_of(ev))
 }
 
 @(private = "file")

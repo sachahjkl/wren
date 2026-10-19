@@ -78,6 +78,7 @@ Tab :: struct {
 	console:  [dynamic]string,
 	layout:   Layout,
 	scroll:   f32,
+	scroll_target: base.Handle, // what keyboard scrolling moves: the last element pressed in the page (its scroll container)
 	fragment_seen: string,       // the document URL whose fragment the view last scrolled to (owned)
 	web_fonts: int,              // faces of the page's @font-face already handed to the font registry
 	web_font_page: rawptr,       // the page those faces came from (a new page starts over)
@@ -228,7 +229,10 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	t.page = nil
 	t.load = load
 	layout_reset(&t.layout)
+	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0
+	delete(t.fragment_seen)
+	t.fragment_seen = ""   // a new document scrolls to its fragment again
 	for l in t.console { delete(l) }
 	clear(&t.console)
 	delete(t.url)
@@ -255,7 +259,6 @@ history_push :: proc(t: ^Tab, target: string) {
 
 // The chrome's view of the session history (back / forward buttons).
 sync_history :: proc(t: ^Tab) {
-	delete(t.fragment_seen)
 	for h in t.history { delete(h) }
 	clear(&t.history)
 	for e in t.session.entries { append(&t.history, strings.clone(e.url)) }
@@ -333,6 +336,7 @@ show_config :: proc(app: ^App, t: ^Tab) {
 	t.nav = base.scope_make("navigation", t.scope)
 	t.page, t.load, t.kind = nil, nil, .Config
 	layout_reset(&t.layout)
+	t.scroll_target = base.NIL_HANDLE
 	for l in t.console { delete(l) }
 	clear(&t.console)
 	delete(t.url); t.url = strings.clone("about:config")
@@ -737,7 +741,9 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		case .Mouse_Press:
 			if !inside || !t.layout.valid { continue }
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
-			forms_pointer_down(app, t, ev, hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll), local)
+			pressed := hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll)
+			t.scroll_target = pressed
+			forms_pointer_down(app, t, ev, pressed, local)
 		case .Mouse_Release:
 			if !t.layout.valid { continue }
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
