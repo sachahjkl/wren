@@ -17,9 +17,10 @@ package page
 // task posted on the UI loop) with two queues guarded by a mutex. The page side is woken with host.post, the worker side
 // with host.signal on its loop. Nothing on one thread ever points into the other's memory.
 //
-// Termination: a stop flag checked before every task, callback and microtask of the worker, plus the instruction budget
-// (preference workers.instruction_budget) that ends a task already running. The interpreter cannot be interrupted
-// from outside (WAMR is built without its thread manager), so a busy worker stops at most one budget later. Closing a
+// Termination: a stop flag checked before every task, callback and microtask of the worker. With wasmtime the same flag
+// interrupts a task already running (epoch interruption, within wasm.wasmtime.epoch_tick_ms). With wamr the
+// interpreter cannot be interrupted from outside (it is built without its thread manager): the instruction budget
+// (preference workers.instruction_budget) ends a task already running, so a busy worker stops at most one budget later. Closing a
 // page stops every worker and joins its thread; `Worker_terminate` and releasing the Worker object do not block the UI:
 // the thread is joined when it reports its exit.
 
@@ -633,6 +634,7 @@ worker_main :: proc(data: rawptr) {
 
 	p := worker_realm_create(g)
 	g.page = p
+	g.settings.wasm.stop = &l.stop   // terminate interrupts the module's running task (wasmtime)
 	_, ok, err := instantiate(p, g.image, g.url, g.settings.wasm, worker_import_filter)
 	delete(g.image)
 	g.image = nil

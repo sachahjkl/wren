@@ -151,6 +151,19 @@ signature_supported :: proc(sig: string) -> bool {
 // name): on any error nothing of the set is registered, the reason goes to stderr, and the result is false.
 register :: proc(module: cstring, symbols: []Native_Symbol) -> bool {
 	context.allocator = runtime.default_allocator()
+	// registering the same table again (several embedders or tests in one process) is a no-op
+	for other in registry {
+		if other.name != string(module) { continue }
+		same := len(other.symbols) == len(symbols)
+		for s, i in symbols {
+			if !same { break }
+			b := other.symbols[i]
+			same = b.name == string(s.symbol) && b.fn == s.func_ptr && b.signature == string(s.signature)
+		}
+		if same { return true }
+		fmt.eprintfln("wasm: import module %q registered twice with different functions", other.name)
+		return false
+	}
 	m := new(Bound_Module)
 	m.name = strings.clone(string(module))
 	list := make([dynamic]^Bound, 0, len(symbols))
@@ -182,12 +195,6 @@ register :: proc(module: cstring, symbols: []Native_Symbol) -> bool {
 		b := new(Bound)
 		b^ = Bound{module = m.name, name = strings.clone(name), signature = strings.clone(sig), fn = s.func_ptr, params = params, result = result, thunk = th}
 		append(&list, b)
-	}
-	for other in registry {
-		if other.name == m.name {
-			fmt.eprintfln("wasm: import module %q registered twice", m.name)
-			ok = false
-		}
 	}
 	m.symbols = list[:]
 	if !ok {

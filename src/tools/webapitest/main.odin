@@ -101,6 +101,7 @@ main :: proc() {
 	settings = page.settings_default()
 	settings.web.storage_quota = 2000
 	settings.web.background_align_ms = 200
+	wasm.configure_from_args(os.args[1:])   // --pref wasm.engine=wamr ...
 	if !page.register_imports() { fmt.eprintln("register failed"); os.exit(2) }
 	os.remove_all(PROFILE_DIR)
 	page.storage_manager_init(&storage, &loop, &blocking, PROFILE_DIR)
