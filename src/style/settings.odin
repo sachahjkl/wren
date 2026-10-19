@@ -55,6 +55,12 @@ Settings :: struct {
 	webfont_max_parallel: int,
 	webfont_max_faces:   int,
 	webfont_load_unused: bool,
+	// restyle after DOM mutations (restyle_dom.odin)
+	inc_enabled:         bool,
+	inc_max_ratio:       f32,       // part of the document's nodes past which a full pass is done instead
+	inc_parallel_min:    int,       // elements restyled at least before forced subtrees go to the style threads
+	inc_verify:          bool,      // diagnostic: compare with a full pass after every partial one
+	inc_journal:         int,       // entries of the document's mutation journal
 }
 
 // Auto: Reduce when prefers-reduced-motion is reported, else Normal. Reduce: transitions and iterations are cut to
@@ -138,6 +144,16 @@ PREFS := [?]config.Def{
 		description = "Most @font-face rules one page may load fonts for."},
 	{name = "style.webfonts.load_unused", kind = .Bool, default = {b = false},
 		description = "Download every @font-face of a page, even those no element uses (off: only families some element asks for)."},
+	{name = "style.incremental.enabled", kind = .Bool, default = {b = true},
+		description = "After DOM changes, restyle only the elements the changes can affect (found from the selectors of the page). Off: every change restyles the whole document (same result)."},
+	{name = "style.incremental.max_ratio", kind = .Float, default = {f = 0.3}, bounded = true, min = 0, max = 1,
+		description = "Part of the document's nodes a DOM change may restyle partially; past it the whole document is restyled (on the style threads)."},
+	{name = "style.incremental.parallel_min", kind = .Int, default = {i = 2048}, bounded = true, min = 1, max = 1 << 40, unit = "elements",
+		description = "A partial restyle of at least this many elements shares the subtrees it restyles whole between the style threads; smaller ones stay on the page's thread."},
+	{name = "style.incremental.verify", kind = .Bool, default = {b = false},
+		description = "Diagnostic: after every partial restyle, compute all styles again and report the first difference in the console. As slow as a full restyle."},
+	{name = "style.incremental.journal_entries", kind = .Int, default = {i = 65536}, bounded = true, min = 256, max = 16 << 20,
+		description = "Mutations of a document remembered between two restyles; more at once make the next restyle a full one."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
@@ -210,6 +226,11 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.webfont_max_parallel = int(config.int_of(p, "style.webfonts.max_parallel"))
 	s.webfont_max_faces = int(config.int_of(p, "style.webfonts.max_faces"))
 	s.webfont_load_unused = config.bool_of(p, "style.webfonts.load_unused")
+	s.inc_enabled = config.bool_of(p, "style.incremental.enabled")
+	s.inc_max_ratio = f32(config.float_of(p, "style.incremental.max_ratio"))
+	s.inc_parallel_min = int(config.int_of(p, "style.incremental.parallel_min"))
+	s.inc_verify = config.bool_of(p, "style.incremental.verify")
+	s.inc_journal = int(config.int_of(p, "style.incremental.journal_entries"))
 	return s
 }
 

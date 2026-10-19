@@ -80,6 +80,12 @@ Styled :: struct {
 	counters_used:  bool,                  // counters or quotes appear: partial restyles must keep their values right
 	motion:         bool,                  // some element has a transition or an animation
 	journal:        Layout_Journal,        // what changed for layout since an earlier pass (journal.odin)
+	pass_id:        u64,                   // unique per full pass, kept by partial restyles (the identity of the records' owner)
+	// restyle_dom (restyle_dom.odin), for the timeline: elements shown again (display: none before), elements removed
+	shown:          [dynamic]base.Handle,
+	removed_any:    bool,
+	forms_scan:     u8,                    // restyle_dom: 0 not looked, 1 no form element in the document, 2 some
+	partial_bytes:  int,                   // memory of the threads of parallel partial restyles (counted as waste)
 }
 
 // A computed style replaced by a partial restyle: `old` is what was in effect (animated values included), `new` the
@@ -98,6 +104,7 @@ styled_destroy :: proc(s: ^Styled) {
 	delete(s.thread_arenas)
 	delete(s.overlaid)
 	delete(s.changes)
+	delete(s.shown)
 	journal_destroy(s)
 	virtual.arena_destroy(&s.arena)
 	free(s)
@@ -119,7 +126,10 @@ styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 	delete(s.by_node)
 	delete(s.overlaid)
 	delete(s.changes)
+	delete(s.shown)
 	journal_destroy(s)
+	for a in s.thread_arenas { virtual.arena_destroy(a); free(a) }
+	delete(s.thread_arenas)
 	virtual.arena_free_all(&s.arena)
 	e.spare = s.arena
 	e.has_spare = true
@@ -590,8 +600,9 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 				p.changed = true
 				if !p.layout_changed && !layout_equal(old_base, c) { p.layout_changed = true }
 				if s.track_changes { append(&s.changes, Style_Change{node = f.h, old = old, new = c}) }
-				journal_add(s, f.h, layout_level(old, c))
+				journal_add(s, f.h, max(layout_level(old, c), Change_Level.Paint))   // a new record: readers re-point
 				delete_key(&s.overlaid, f.h)   // the animation layer is rebuilt on top of the new style
+				if old_base != nil && old_base.display == .None && c.display != .None { append(&s.shown, f.h) }
 				s.by_node[idx] = c
 			}
 		} else {
@@ -689,6 +700,7 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	styled_serial += 1
 	s.serial = styled_serial
 	s.layout_serial = s.serial
+	s.pass_id = s.serial
 	s.line_height_normal = e.settings.line_height_normal
 	s.canvas = e.settings.background_color
 	s.canvas_default = s.canvas

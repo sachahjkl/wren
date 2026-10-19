@@ -305,6 +305,39 @@ timeline_restyled_partial :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled,
 	clear(&s.changes)
 }
 
+// After partial restyles (restyle_dom, restyle_state): the changes they recorded, the animations of elements that
+// left the document, and those of elements inside subtrees shown again (their own style may not have changed).
+timeline_restyled_dom :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f64) {
+	timeline_restyled_partial(tl, doc, s, wall_ms)
+	if s.removed_any && len(tl.elements) > 0 {
+		gone := make([dynamic]base.Handle, context.temp_allocator)
+		for h in tl.elements { if !connected(doc, h) || style_of(s, h) == nil { append(&gone, h) } }
+		for h in gone { drop_element(tl, doc, h) }
+	}
+	s.removed_any = false
+	if len(s.shown) > 0 && s.motion && mode_of(tl) != .Off {
+		stack := make([dynamic]base.Handle, context.temp_allocator)
+		for r in s.shown {
+			if hidden_in(s, doc, r) { continue }
+			clear(&stack)
+			append(&stack, r)
+			for len(stack) > 0 {
+				h := pop(&stack)
+				n := dom.get(doc, h)
+				if n == nil || n.kind != .Element { continue }
+				c := base_style_of(s, h)
+				if c == nil || c.display == .None { continue }
+				if h != r && h not_in tl.elements && (has_transitions(c) || has_animations(c)) {
+					update_element(tl, doc, s, h, nil, c, false)
+					tl.dirty = true
+				}
+				for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+			}
+		}
+	}
+	clear(&s.shown)
+}
+
 @(private)
 is_inside :: proc(doc: ^dom.Document, h, ancestor: base.Handle) -> bool {
 	for cur := h; cur != base.NIL_HANDLE; {
@@ -871,13 +904,13 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 			append(&stale, h)
 			crossed := ov.sig != structure_sig(style_of(s, h))
 			if crossed { layout = true }
-			journal_add(s, h, crossed ? .Box : level)
+			journal_add(s, h, crossed ? .Box : max(level, Change_Level.Paint))   // back to its cascaded record
 			continue
 		}
 		sig := structure_sig(&ov.c)
 		crossed := sig != ov.sig
 		if crossed { layout = true; ov.sig = sig }
-		journal_add(s, h, crossed ? .Box : level)
+		journal_add(s, h, crossed ? .Box : max(level, Change_Level.Paint))   // the overlay record (and its pseudo-elements')
 	}
 	for h in stale {
 		overlay_free(tl.overlays[h])

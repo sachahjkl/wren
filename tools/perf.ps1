@@ -167,6 +167,18 @@ if ($Only.Count -eq 0 -or $Only -contains 'mutation' -or $Only -contains 'mutati
     }
 }
 Run 'mutation'   (FileUrl (Join-Path $site 'mutation.html')) { param($h) Start-Sleep 12 } $false
+# a module toggles a class on the section in the middle of the same page every 16 ms, with rules that reach its
+# descendants, children and next sibling (examples/mutation_class): incremental restyle
+if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'mutation_class*' })) {
+    $wasm = Join-Path $site 'mutation_class.wasm'
+    if (-not (Test-Path $wasm)) {
+        & odin build (Join-Path $root 'examples\mutation_class') -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator "-collection:web=$(Join-Path $root 'sdk\odin')" "-out:$wasm" -o:size
+    }
+}
+Run 'mutation_class' (FileUrl (Join-Path $site 'mutation_class.html')) { param($h) Start-Sleep 12 } $false
+# the same with the partial restyle off (every mutation restyles the whole page): the reference
+Run 'mutation_class_fullstyle' (FileUrl (Join-Path $site 'mutation_class.html')) { param($h) Start-Sleep 12 } $false '--pref style.incremental.enabled=false'
+Run 'mutation_fullstyle' (FileUrl (Join-Path $site 'mutation.html')) { param($h) Start-Sleep 12 } $false '--pref style.incremental.enabled=false'
 # the same with incremental layout off (every mutation lays the whole page out): the reference
 $env:WREN_EXTRA_ARGS = ''
 Run 'mutation_full' (FileUrl (Join-Path $site 'mutation.html')) { param($h) Start-Sleep 12 } $false '--pref layout.incremental.enabled=false'

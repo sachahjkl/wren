@@ -588,18 +588,50 @@ subtree_feeds_counters :: proc(s: ^Styled, doc: ^dom.Document, h: base.Handle, o
 		if cs := base_style_of(s, x); cs != nil && escapes(cs, contained, false) { return true }
 		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
 	}
-	// the root's resets reach its following siblings: one that uses such a counter without its own reset sees the change
+	// the root's resets are scoped to its parent: they reach its following siblings with their subtrees, and the
+	// parent's ::after (resolved when the walk leaves the parent)
 	if len(contained) > 0 {
-		for sib := dom.get(doc, h).next; sib != base.NIL_HANDLE; sib = dom.get(doc, sib).next {
+		root := dom.get(doc, h)
+		if pc := base_style_of(s, root.parent); pc != nil && pc.after != nil && content_needs_state(pc.after.content.parts) { return true }
+		// does `cs` change or show one of `names`?
+		uses :: proc(cs: ^Computed, names: map[string]bool) -> bool {
+			shows :: proc(parts: []Content_Part, names: map[string]bool) -> bool {
+				for p in parts { if (p.kind == .Counter || p.kind == .Counters) && p.text in names { return true } }
+				return false
+			}
+			for name in names {
+				if mentions(cs.counter_increment, name) || mentions(cs.counter_set, name) { return true }
+			}
+			if "list-item" in names && cs.display == .List_Item { return true }
+			if shows(cs.content.parts, names) { return true }
+			for pc in ([2]^Computed{cs.before, cs.after}) {
+				if pc == nil { continue }
+				if shows(pc.content.parts, names) { return true }
+				for name in names { if mentions(pc.counter_increment, name) || mentions(pc.counter_set, name) { return true } }
+			}
+			return false
+		}
+		names := make(map[string]bool, len(contained), context.temp_allocator)
+		for k in contained { names[k] = true }
+		for sib := root.next; sib != base.NIL_HANDLE && len(names) > 0; sib = dom.get(doc, sib).next {
 			sn := dom.get(doc, sib)
 			if sn == nil || sn.kind != .Element { continue }
 			cs := base_style_of(s, sib)
-			if cs == nil { continue }
-			resets := make(map[string]bool, context.temp_allocator)
-			for op in cs.counter_reset { resets[op.name] = true }
-			for name in contained {
-				if name in resets { continue }
-				if mentions(cs.counter_increment, name) || mentions(cs.counter_set, name) || (name == "list-item" && cs.display == .List_Item) { return true }
+			if cs == nil || cs.display == .None { continue }
+			// a sibling's own reset replaces the instance (same scope): it and what follows see that one
+			for op in cs.counter_reset { delete_key(&names, op.name) }
+			if len(names) == 0 { break }
+			if uses(cs, names) { return true }
+			clear(&stack)
+			for ch := sn.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+			for len(stack) > 0 {
+				x := pop(&stack)
+				n := dom.get(doc, x)
+				if n == nil || n.kind != .Element { continue }
+				xs := base_style_of(s, x)
+				if xs == nil || xs.display == .None { continue }
+				if uses(xs, names) { return true }
+				for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
 			}
 		}
 	}

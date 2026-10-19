@@ -41,6 +41,7 @@ note_inputs :: proc(l: ^Layout, input: Input) {
 	l.layout_serial = input.styled.layout_serial
 	l.canvas = input.styled.canvas
 	l.styled = input.styled
+	l.styled_pass = input.styled.pass_id
 	l.viewport = input.viewport
 	l.scale = input.scale
 	l.settings = input.settings^

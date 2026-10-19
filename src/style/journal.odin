@@ -14,7 +14,9 @@ import "wb:host"
 
 Journal_Entry :: struct {
 	node:   base.Handle,
-	level:  Change_Level,   // Layout or Box (paint-only changes are not recorded: readers re-read every value)
+	// Layout or Box; Paint: only paint-only values changed, but the element's record was replaced (readers that keep
+	// pointers to records re-point them). Full passes record no Paint entries: every record of theirs is new.
+	level:  Change_Level,
 	serial: u64,            // the Styled.serial this change belongs to (0 while the change is being made)
 }
 
@@ -47,7 +49,7 @@ journal_destroy :: proc(s: ^Styled) {
 
 journal_add :: proc(s: ^Styled, h: base.Handle, level: Change_Level) {
 	j := &s.journal
-	if !j.on || level < .Layout { return }
+	if !j.on || level < .Paint { return }
 	if len(j.entries) >= j.max {
 		// too much at once: forget the history; only readers that come after this change can trust the journal
 		clear(&j.entries)
