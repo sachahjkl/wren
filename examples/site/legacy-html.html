@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wren - presentational HTML</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .card { border: 1px solid #8884; padding: 12px; border-radius: 8px; }
+  .card h2 { margin-top: 0; font-size: 1.05em; }
+  .tw img { max-width: 100%; height: auto; }   /* the reset of Tailwind and most frameworks */
+  .note { opacity: .75; font-size: .9em; }
+</style>
+</head>
+<body>
+<h1>Presentational HTML</h1>
+<p>Old attributes such as <code>align</code>, <code>bgcolor</code>, <code>cellpadding</code>, <code>&lt;font&gt;</code> and
+an image's <code>width</code> / <code>height</code> are mapped to CSS as the HTML Standard's rendering section says: author
+styles of the lowest priority, which any rule of the page overrides (preference
+<code>style.presentational_hints.enabled</code>).</p>
+
+<div class="grid">
+<div class="card">
+  <h2>&lt;center&gt; and a table</h2>
+  <center>
+    <table cellpadding="4" cellspacing="0" border="1" bgcolor="#eef6ff" width="80%">
+      <tr valign="top"><td width="25%" bgcolor="lightyellow">25%</td><td align="center" nowrap>centered, nowrap</td><td align="right">right</td></tr>
+      <tr><td colspan="3" align="center"><font color="#c00000" size="+1" face="Georgia, serif">&lt;font size=+1&gt;</font></td></tr>
+    </table>
+  </center>
+  <p class="note">The table is centered by <code>&lt;center&gt;</code> (text-align: -webkit-center), cells get
+  <code>cellpadding</code>, the bordered table's cells an inset 1px border.</p>
+</div>
+
+<div class="card">
+  <h2>align on blocks</h2>
+  <div align="right"><div style="width: 120px; background: #cde">align=right</div></div>
+  <div align="center"><div style="width: 120px; background: #dec">align=center</div></div>
+  <div style="text-align: center"><div style="width: 120px; background: #edc">text-align only</div></div>
+  <p class="note">A narrower block inside <code>align=center</code> moves; with CSS <code>text-align: center</code> only
+  its text would.</p>
+</div>
+
+<div class="card tw">
+  <h2>An image's width and height</h2>
+  <img src="images/effects-photo.png" width="200" height="200" alt="photo">
+  <p class="note">The attributes say 200 x 200; the page's <code>height: auto</code> keeps the photo's own ratio once
+  it is decoded (320 x 200: the image is not square). Before that, the attributes' ratio holds its place.</p>
+</div>
+
+<div class="card">
+  <h2>Lists, rules, images</h2>
+  <ol type="A"><li>type=A</li><li type="i">type=i</li></ol>
+  <hr size="1" noshade width="50%" align="left">
+  <hr size="6" color="#3a7">
+  <p><img src="images/effects-photo.png" width="64" height="40" align="left" hspace="8" alt="">An image with
+  <code>align=left hspace=8</code> floats beside this text, as in pages of the 1990s.</p>
+</div>
+</div>
+</body>
+</html>

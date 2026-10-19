@@ -4,7 +4,8 @@
 # -Actions: drags, right / double / triple clicks, keys with modifiers, typed text, captures in between (see below).
 # The cursor is parked outside the window for the first capture. Aborts if another window covers the target.
 # -Extra: more arguments for the browser before the address (e.g. "--pref","browser.ui.theme=daylight").
-param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300, [int]$Width = 0, [int]$Height = 0, [string[]]$Keys = @(), [string[]]$Actions = @(), [string[]]$Extra = @())
+# -Exe: another build of the browser (default build\browser.exe).
+param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300, [int]$Width = 0, [int]$Height = 0, [string[]]$Keys = @(), [string[]]$Actions = @(), [string[]]$Extra = @(), [string]$Exe = "")
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Add-Type @"
@@ -45,7 +46,8 @@ function Grab($h, $path) {
 }
 
 $args2 = @($Extra | Where-Object { $_ }) + $(if ($Url) { @($Url) } else { @() })
-$p = if ($args2.Count) { Start-Process (Join-Path $root 'build\browser.exe') -ArgumentList $args2 -PassThru } else { Start-Process (Join-Path $root 'build\browser.exe') -PassThru }
+$exePath = if ($Exe) { $Exe } else { Join-Path $root 'build\browser.exe' }
+$p = if ($args2.Count) { Start-Process $exePath -ArgumentList $args2 -PassThru } else { Start-Process $exePath -PassThru }
 try {
     $sw = [Diagnostics.Stopwatch]::StartNew()
     while (-not $p.HasExited -and $p.MainWindowHandle -eq 0 -and $sw.ElapsedMilliseconds -lt 10000) { Start-Sleep -Milliseconds 20; $p.Refresh() }

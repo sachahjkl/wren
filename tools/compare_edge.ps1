@@ -2,6 +2,7 @@
 # side-by-side image, a difference image and a measure of the difference.
 #   powershell -NoProfile -File tools\compare_edge.ps1 -Url https://example.com [-Name example] [-Width 1280] [-Height 720]
 #       [-WaitMs 6000] [-OutDir build\cmp] [-NoWren] [-NoEdge] [-NoScript [-UserAgent <ua>] [-AcceptLanguage <list>]]
+# -Exe: another build of Wren (an older one, to measure a change; default build\browser.exe).
 # -NoScript compares on equal terms with Wren, which runs no JavaScript: Edge runs with scripts disabled and sends Wren's
 # User-Agent and Accept-Language (the defaults of network.user_agent and network.accept_language), so that servers that
 # pick a page by browser (Google serves its plain HTML page to unknown browsers) send both the same document. Edge's DOM
@@ -29,7 +30,8 @@ param(
     [switch]$NoScript,
     [switch]$Snapshot,
     [string]$UserAgent = 'Wren/0.1',
-    [string]$AcceptLanguage = 'en-US,en;q=0.9'
+    [string]$AcceptLanguage = 'en-US,en;q=0.9',
+    [string]$Exe = ''
 )
 $ErrorActionPreference = 'Stop'
 if ($Snapshot) { $NoScript = [switch]$true }
@@ -116,6 +118,7 @@ $wrenPng = Join-Path $OutDir "${Name}_wren.png"
 $edgePng = Join-Path $OutDir "${Name}_edge.png"
 
 if (-not $NoWren) {
+    $exeArgs = if ($Exe) { @('-Exe', $Exe) } else { @() }
     # calibration: the window's chrome around the viewport, measured once per size (cached in the output folder)
     $calibFile = Join-Path $OutDir "calibration_${physW}x${physH}.txt"
     $shot = Join-Path ([IO.Path]::GetTempPath()) "wren_cmp_$PID.png"
@@ -126,17 +129,17 @@ if (-not $NoWren) {
         # a first window at an estimated size, then the exact one
         $outerW = $physW + 40; $outerH = $physH + [int](220 * $scale)
         for ($pass = 0; $pass -lt 2; $pass++) {
-            & powershell -NoProfile -File (Join-Path $PSScriptRoot 'screenshot.ps1') -Url $pageUrl -Out $shot -WaitMs 2500 -Width $outerW -Height $outerH | Out-Null
+            & powershell -NoProfile -File (Join-Path $PSScriptRoot 'screenshot.ps1') -Url $pageUrl -Out $shot -WaitMs 2500 -Width $outerW -Height $outerH @exeArgs | Out-Null
             $r = [Cmp]::FindColor($shot, 0xFF00FF, 8)
             if ($r[2] -eq 0) { throw 'calibration: the viewport was not found in the capture' }
             $outerW += $physW - $r[2]; $outerH += $physH - $r[3]
         }
-        & powershell -NoProfile -File (Join-Path $PSScriptRoot 'screenshot.ps1') -Url $pageUrl -Out $shot -WaitMs 2500 -Width $outerW -Height $outerH | Out-Null
+        & powershell -NoProfile -File (Join-Path $PSScriptRoot 'screenshot.ps1') -Url $pageUrl -Out $shot -WaitMs 2500 -Width $outerW -Height $outerH @exeArgs | Out-Null
         $r = [Cmp]::FindColor($shot, 0xFF00FF, 8)
         [IO.File]::WriteAllText($calibFile, "$outerW $outerH $($r[0]) $($r[1]) $($r[2]) $($r[3])")
     }
     $c = (Get-Content $calibFile -Raw).Trim() -split ' ' | ForEach-Object { [int]$_ }
-    & powershell -NoProfile -File (Join-Path $PSScriptRoot 'screenshot.ps1') -Url $Url -Out $shot -WaitMs $WaitMs -Width $c[0] -Height $c[1] | Out-Null
+    & powershell -NoProfile -File (Join-Path $PSScriptRoot 'screenshot.ps1') -Url $Url -Out $shot -WaitMs $WaitMs -Width $c[0] -Height $c[1] @exeArgs | Out-Null
     [Cmp]::Crop($shot, $wrenPng, $c[2], $c[3], $c[4], $c[5])
     Remove-Item $shot -ErrorAction SilentlyContinue
 }
