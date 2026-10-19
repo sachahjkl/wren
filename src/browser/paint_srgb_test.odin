@@ -64,7 +64,7 @@ pf_open :: proc(f: ^Paint_Fx, src: string) -> bool {
 
 @(private = "file")
 pf_close :: proc(f: ^Paint_Fx) {
-	lay.destroy(&f.l)
+	layout_destroy(&f.l)   // with its retained pictures
 	style.styled_destroy(f.st)
 	style.engine_destroy(f.eng)
 	dom.document_destroy(f.doc)

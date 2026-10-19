@@ -79,6 +79,8 @@ Styled :: struct {
 	thread_arenas:  [dynamic]^virtual.Arena,   // a parallel pass: the computed styles of each thread (parallel.odin)
 	// animations (timeline.odin): a node whose `by_node` entry is an animated copy maps here to its cascaded style
 	overlaid:       map[base.Handle]^Computed,
+	animated:       Prop_Set,              // properties the last tick of the timeline may have changed in overlay records
+	                                       // (rewritten in place: a painter that keeps paint values checks these)
 	track_changes:  bool,                  // record in `changes` what partial restyles change
 	changes:        [dynamic]Style_Change,
 	counters_used:  bool,                  // counters or quotes appear: partial restyles must keep their values right

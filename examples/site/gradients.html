@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gradients and shadows</title>
+<style>
+  body { margin: 16px; font-family: sans-serif; font-size: 13px; color: #1d2433; background: #f4f6fb; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  h2 { font-size: 14px; margin: 14px 0 6px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .g { width: 120px; height: 80px; border-radius: 8px; border: 1px solid #c9d1e0; position: relative; }
+  .g span { position: absolute; left: 4px; bottom: 3px; font-size: 10px; background: rgba(255,255,255,.8); padding: 0 3px; border-radius: 3px; }
+
+  /* linear */
+  .l1 { background: linear-gradient(red, blue); }
+  .l2 { background: linear-gradient(90deg, #ff6b6b, #ffd43b 30%, #51cf66 60%, #339af0); }
+  .l3 { background: linear-gradient(to top right, #845ef7, #f783ac); }
+  .l4 { background: linear-gradient(135deg, #222 0 25%, #eee 25% 50%, #222 50% 75%, #eee 75%); }
+  .l5 { background: linear-gradient(to right, #fa5252, 20%, #4c6ef5); }
+  .l6 { background: linear-gradient(to right, red, transparent); }
+  .l7 { background: linear-gradient(to right, #f8f9fa 0px, #343a40 120px); }
+  .l8 { background: linear-gradient(200deg, rgba(0,0,0,.6), transparent 70%), linear-gradient(90deg, #20c997, #fab005); }
+
+  /* radial */
+  .r1 { background: radial-gradient(#fff, #1c7ed6); }
+  .r2 { background: radial-gradient(circle, #ffe066, #f76707 50%, #862e9c); }
+  .r3 { background: radial-gradient(circle closest-side at 30% 40%, #fff, #e64980 70%, #5f3dc4); }
+  .r4 { background: radial-gradient(ellipse farthest-side at 70% 30%, #c3fae8, #099268); }
+  .r5 { background: radial-gradient(40px 20px at 50% 50%, #ffd43b, #e03131 60%, #212529 61%); }
+  .r6 { background: radial-gradient(circle farthest-corner at 0 0, #74c0fc, #1864ab 50%, #0b2948); }
+  .r7 { background: radial-gradient(closest-corner at 25% 75%, #fff, #b2f2bb 40%, #2b8a3e); }
+  .r8 { background: radial-gradient(circle at 50% 50%, #ff8787 0 30%, #ffe8cc 30% 60%, #4dabf7 60%); }
+
+  /* conic */
+  .c1 { background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red); border-radius: 50%; width: 80px; }
+  .c2 { background: conic-gradient(from 90deg, #212529, #f8f9fa); }
+  .c3 { background: conic-gradient(at 30% 70%, #f03e3e, #fcc419, #37b24d, #f03e3e); }
+  .c4 { background: conic-gradient(#ff6b6b 0 25%, #fcc419 25% 45%, #51cf66 45% 70%, #339af0 70%); border-radius: 50%; width: 80px; }
+  .c5 { background: conic-gradient(from 45deg at 50% 50%, #e599f7 0deg 90deg, #3bc9db 90deg 180deg, #e599f7 180deg 270deg, #3bc9db 270deg); }
+
+  /* repeating */
+  .p1 { background: repeating-linear-gradient(45deg, #1c7ed6 0 8px, #d0ebff 8px 16px); }
+  .p2 { background: repeating-radial-gradient(circle, #e8590c 0 6px, #fff4e6 6px 12px); }
+  .p3 { background: repeating-conic-gradient(#343a40 0 15deg, #f1f3f5 15deg 30deg); }
+  .p4 { background: repeating-linear-gradient(90deg, red, blue 20px); }
+
+  /* interpolation spaces: the same red to blue */
+  .s { width: 248px; height: 26px; border-radius: 4px; position: relative; }
+  .s span { position: absolute; left: 4px; top: 5px; font-size: 10px; color: #fff; text-shadow: 0 1px 1px #000; }
+  .s1 { background: linear-gradient(to right, red, blue); }
+  .s2 { background: linear-gradient(to right in srgb-linear, red, blue); }
+  .s3 { background: linear-gradient(to right in oklab, red, blue); }
+  .s4 { background: linear-gradient(to right in oklch, red, blue); }
+  .s5 { background: linear-gradient(to right in oklch longer hue, red, blue); }
+  .s6 { background: linear-gradient(to right in hsl, red, blue); }
+  .s7 { background: linear-gradient(to right in lab, red, blue); }
+  .s8 { background: linear-gradient(to right in lch, red, blue); }
+
+  /* layers, sizes, repeats */
+  .b1 { background: linear-gradient(45deg, #ced4da 25%, transparent 25% 75%, #ced4da 75%), linear-gradient(45deg, #ced4da 25%, #fff 25% 75%, #ced4da 75%);
+        background-size: 20px 20px; background-position: 0 0, 10px 10px; }
+  .b2 { background: radial-gradient(circle, #f06595 30%, transparent 32%) 0 0 / 20px 20px, #fff0f6; }
+  .b3 { background: linear-gradient(#4dabf7, #1864ab) center / 50% 50% no-repeat, #e7f5ff; }
+  .b4 { background: radial-gradient(#ffd43b 40%, transparent 42%) 0 0 / 24px 24px space, #fff9db; }
+  .b5 { background: linear-gradient(#fff, #fff) padding-box, linear-gradient(90deg, #f03e3e, #7048e8) border-box; border: 6px solid transparent; }
+  .b6 { background: linear-gradient(to bottom, #12b886, #0b7285) content-box, #e6fcf5; padding: 12px; }
+
+  /* box shadows */
+  .shadows { display: flex; flex-wrap: wrap; gap: 26px; padding: 14px; }
+  .sh { width: 100px; height: 64px; background: #fff; border-radius: 12px; }
+  .sh1 { box-shadow: 0 4px 12px rgba(0,0,0,.35); }
+  .sh2 { box-shadow: 0 0 0 4px #4c6ef5, 0 10px 24px -6px rgba(28,126,214,.8); }
+  .sh3 { box-shadow: 8px 8px 0 #212529; border-radius: 0; }
+  .sh4 { box-shadow: 0 18px 30px -12px rgba(0,0,0,.6); border-radius: 30px 4px 30px 4px; }
+  .sh5 { box-shadow: inset 0 3px 8px rgba(0,0,0,.45); background: #f1f3f5; }
+  .sh6 { box-shadow: inset 0 0 0 3px #f59f00, inset 0 0 18px 6px rgba(245,159,0,.5); }
+  .sh7 { box-shadow: 0 0 30px 10px rgba(255,107,107,.7); border-radius: 50%; width: 64px; }
+  .sh8 { box-shadow: 6px 6px 10px rgba(0,0,0,.4); background: rgba(255,255,255,.4); border: 1px solid #adb5bd; }
+</style>
+</head>
+<body>
+<h1>Gradients and shadows</h1>
+<h2>linear-gradient</h2>
+<div class="grid">
+  <div class="g l1"><span>red, blue</span></div><div class="g l2"><span>4 stops at positions</span></div>
+  <div class="g l3"><span>to top right</span></div><div class="g l4"><span>hard stops</span></div>
+  <div class="g l5"><span>hint at 20%</span></div><div class="g l6"><span>to transparent</span></div>
+  <div class="g l7"><span>px positions</span></div><div class="g l8"><span>two layers</span></div>
+</div>
+<h2>radial-gradient</h2>
+<div class="grid">
+  <div class="g r1"><span>ellipse</span></div><div class="g r2"><span>circle</span></div>
+  <div class="g r3"><span>closest-side at</span></div><div class="g r4"><span>farthest-side</span></div>
+  <div class="g r5"><span>40px 20px</span></div><div class="g r6"><span>farthest-corner at 0 0</span></div>
+  <div class="g r7"><span>closest-corner</span></div><div class="g r8"><span>rings</span></div>
+</div>
+<h2>conic-gradient</h2>
+<div class="grid">
+  <div class="g c1"></div><div class="g c2"><span>from 90deg</span></div><div class="g c3"><span>at 30% 70%</span></div>
+  <div class="g c4"></div><div class="g c5"><span>quadrants</span></div>
+</div>
+<h2>repeating-*</h2>
+<div class="grid">
+  <div class="g p1"><span>stripes</span></div><div class="g p2"><span>rings</span></div>
+  <div class="g p3"><span>sunburst</span></div><div class="g p4"><span>20px period</span></div>
+</div>
+<h2 id="spaces">Interpolation color spaces (red to blue)</h2>
+<div class="grid">
+  <div class="s s1"><span>srgb (default)</span></div><div class="s s2"><span>srgb-linear</span></div>
+  <div class="s s3"><span>oklab</span></div><div class="s s4"><span>oklch</span></div>
+  <div class="s s5"><span>oklch longer hue</span></div><div class="s s6"><span>hsl</span></div>
+  <div class="s s7"><span>lab</span></div><div class="s s8"><span>lch</span></div>
+</div>
+<h2>Layers, background-size, position, repeat, origin and clip</h2>
+<div class="grid">
+  <div class="g b1"><span>checkerboard</span></div><div class="g b2"><span>dots 20px</span></div>
+  <div class="g b3"><span>no-repeat 50%</span></div><div class="g b4"><span>space</span></div>
+  <div class="g b5"><span>gradient border</span></div><div class="g b6"><span>content-box</span></div>
+</div>
+<h2>box-shadow</h2>
+<div class="shadows">
+  <div class="sh sh1"></div><div class="sh sh2"></div><div class="sh sh3"></div><div class="sh sh4"></div>
+  <div class="sh sh5"></div><div class="sh sh6"></div><div class="sh sh7"></div><div class="sh sh8"></div>
+</div>
+</body>
+</html>

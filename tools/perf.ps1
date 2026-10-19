@@ -185,3 +185,7 @@ $env:WREN_EXTRA_ARGS = ''
 Run 'mutation_full' (FileUrl (Join-Path $site 'mutation.html')) { param($h) Start-Sleep 12 } $false '--pref layout.incremental.enabled=false'
 Run 'p10k_resize_full' (FileUrl $p10k) { param($h) Start-Sleep 5; Resize $h 6000 } $true '--pref layout.incremental.enabled=false'
 Run 'anim_full' (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-Sleep 10 } $false '--pref layout.incremental.enabled=false'
+# the same pages drawn item by item (no retained pictures): the reference for the compositor
+Run 'transforms_nocomp' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 10 } $false '--pref render.compositor.enabled=false'
+Run 'p10k_scroll_nocomp' (FileUrl $p10k) { param($h) Start-Sleep 5; Scroll $h 8000 } $true '--pref render.compositor.enabled=false'
+Run 'gradients' (FileUrl (Join-Path $site 'gradients.html')) { param($h) Start-Sleep 8 } $false

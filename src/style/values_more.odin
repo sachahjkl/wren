@@ -303,7 +303,7 @@ parse_image :: proc(cx: ^Cx, input: []css.Value) -> (Image, bool) {
 }
 
 @(private)
-parse_color_space :: proc(items: []css.Value, i: ^int) -> (Color_Space, bool) {
+parse_color_space :: proc(items: []css.Value, i: ^int, hue: ^Hue_Method = nil) -> (Color_Space, bool) {
 	// `in <space> [<hue-method> hue]?`
 	if i^ >= len(items) || ident_lower(items[i^]) != "in" { return .Default, true }
 	i^ += 1
@@ -319,8 +319,18 @@ parse_color_space :: proc(items: []css.Value, i: ^int) -> (Color_Space, bool) {
 	}
 	i^ += 1
 	if i^ + 1 < len(items) && ident_lower(items[i^ + 1]) == "hue" {
+		m: Hue_Method
+		known := true
 		switch ident_lower(items[i^]) {
-		case "shorter", "longer", "increasing", "decreasing": i^ += 2
+		case "shorter": m = .Shorter
+		case "longer": m = .Longer
+		case "increasing": m = .Increasing
+		case "decreasing": m = .Decreasing
+		case: known = false
+		}
+		if known {
+			i^ += 2
+			if hue != nil { hue^ = m }
 		}
 	}
 	return sp, true
@@ -490,7 +500,7 @@ parse_gradient_head :: proc(cx: ^Cx, g: ^Gradient, items: []css.Value, legacy: b
 		g.position = pos
 		i = k
 	}
-	sp, good := parse_color_space(items, &i)
+	sp, good := parse_color_space(items, &i, &g.hue)
 	if !good { return false, false }
 	g.space = sp
 	if i == 0 { return false, true }   // nothing recognised: the first part is a color stop

@@ -1,8 +1,8 @@
 // Document painter: draws the display list of package layout with toolkit:draw. Layout decides what goes where and in
 // which order (CSS 2.1 Appendix E), under which clip, scroll offset, sticky shift, transform and opacity group; the
 // effects section below maps those onto draw's transform / clip / layer stacks; the rest of this file turns each item
-// into rectangles and glyphs: backgrounds (colors, linear gradients), borders of every style with rounded corners,
-// box shadows, outlines, text with decorations, spacing and shadows, list markers, scroll bars, and the content of form
+// into rectangles and glyphs: backgrounds and box shadows (paint_backgrounds.odin), borders of every style with rounded
+// corners, outlines, text with decorations, spacing and shadows, list markers, scroll bars, and the content of form
 // controls and replaced elements (through a hook other parts of the browser install).
 package browser
 
@@ -32,7 +32,6 @@ Page_Render :: struct {
 	content_user: rawptr,
 	bare:       proc(user: rawptr, doc: ^dom.Document, node: base.Handle) -> bool,   // controls drawn entirely by `content` (no box)
 	replaced:   lay.Replaced_Api,   // natural sizes of images / videos, from whoever decodes them
-	gradients:  map[string]^Gradient,
 	watch_layout, watch_font: int,
 }
 
@@ -42,7 +41,6 @@ page_render: Page_Render
 page_render_init :: proc(app: ^App) {
 	page_fonts_init(&page_render.fonts, &app.fonts, app.ui_font)
 	page_render.settings = lay.settings_from_prefs(&app.prefs)
-	page_render.gradients = make(map[string]^Gradient)
 	render_settings_init(app)
 	effects_init(app)
 	page_render.watch_layout = config.watch(&app.prefs, "layout.", proc(user: rawptr, name: string, p: ^config.Prefs) {
@@ -56,8 +54,6 @@ page_render_init :: proc(app: ^App) {
 
 page_render_destroy :: proc() {
 	page_fonts_destroy(&page_render.fonts)
-	for k, g in page_render.gradients { delete(k); delete(g.stops); free(g) }
-	delete(page_render.gradients)
 }
 
 // Installs the painter of form controls / replaced content (forms, images).
@@ -71,8 +67,8 @@ set_replaced_sizes :: proc(api: lay.Replaced_Api) { page_render.replaced = api }
 
 register_layout_prefs :: proc(p: ^config.Prefs) { lay.register_prefs(p) }
 
-layout_reset :: proc(l: ^Layout) { lay.reset(l) }
-layout_destroy :: proc(l: ^Layout) { lay.destroy(l) }
+layout_reset :: proc(l: ^Layout) { composite_forget(l); lay.reset(l) }
+layout_destroy :: proc(l: ^Layout) { composite_forget(l); lay.destroy(l) }
 
 // `viewport`: size of the page area in physical pixels; `scale`: physical pixels per CSS px. `images_gen` /
 // `fonts_gen`: change counters of the natural sizes of images and of the page's web fonts (lay.Input).
@@ -120,44 +116,56 @@ dr :: #force_inline proc(r: lay.Rect) -> draw.Rect { return draw.Rect{r.min, r.m
 ////////////////////////////////
 // Painting
 
-paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: draw.Vec2, scroll: f32, clip: draw.Rect) {
+// Paints the page: through the compositor (retained pictures replayed, render.compositor.enabled) or item by item.
+// The page origin and the scroll offset are snapped to device pixels, as browsers do: text stays on the pixel grid and
+// a retained picture lands exactly where direct drawing would.
+paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size: draw.Vec2, page_scroll: f32, clip: draw.Rect) {
 	if !l.valid { return }
-	v := lay.view_make(l, size, scroll)
+	origin := draw.Vec2{math.round(page_origin.x), math.round(page_origin.y)}
+	scroll := math.round(page_scroll)
 	// CSS border-radius draws circular arcs, not the squircle of the browser's own UI
 	circular := draw.set_circular_corners(dc, true)
 	defer draw.set_circular_corners(dc, circular)
-	// gradients interpolate on sRGB values whatever the blend space (CSS: `in srgb` is the default)
+	// corner colors interpolate on sRGB values whatever the blend space (CSS: `in srgb` is the default)
 	interp := draw.set_interpolation(dc, .Srgb)
 	defer draw.set_interpolation(dc, interp)
-	fx := effects_make(l, &v, dc, origin)
-	for idx in v.visible {
-		it := &l.items[idx]
-		if !effects_for(&fx, it) { continue }
-		off := v.offsets[it.space] + origin
-		r := draw.rect_shift(dr(it.rect), off)
-		switch it.kind {
-		case .Box:
-			if page_render.bare != nil && page_render.bare(page_render.content_user, d, it.node) { continue }
-			paint_box(l, dc, it, r)
-		case .Inline_Box: paint_inline_box(l, dc, it, r)
-		case .Text: paint_text(l, dc, it, r, off)
-		case .Marker: paint_marker(l, dc, it, r, off)
-		case .Replaced, .Control: paint_content(l, dc, d, it, r, off)
-		case .Outline: paint_outline(l, dc, it, r)
-		case .Scrollbar:
-			track := r
-			thumb_c, track_c := scrollbar_colors(it.cs != nil ? it.cs.used_scheme : .Light, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
-			if track_c.a > 0 { draw.rect(dc, track, to_draw(track_c), min(track.max.x - track.min.x, track.max.y - track.min.y) * 0.5) }
-			th := draw.rect_shift(dr(lay.scrollbar_thumb(l, &v, it)), origin)
-			draw.rect(dc, th, to_draw(thumb_c), min(th.max.x - th.min.x, th.max.y - th.min.y) * 0.5)
+	if !(compositor_settings.enabled && composite_paint(l, dc, d, origin, size, scroll)) {
+		v := lay.view_make(l, size, scroll)
+		fx := effects_make(l, &v, dc, origin)
+		for idx in v.visible {
+			it := &l.items[idx]
+			if !effects_for(&fx, it) { continue }
+			off := v.offsets[it.space] + origin
+			paint_item(l, dc, d, &v, it, draw.rect_shift(dr(it.rect), off), off, origin)
 		}
+		effects_end(&fx)
 	}
-	effects_end(&fx)
 	if track, thumb, ok := lay.doc_scrollbar(l, size, scroll); ok {
 		root := l.styled != nil ? (^style.Styled)(l.styled).root_scheme : style.Scheme.Light   // alive while the layout is painted
 		thumb_c, track_c := scrollbar_colors(root, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
 		if track_c.a > 0 { draw.rect(dc, draw.rect_shift(dr(track), origin), to_draw(track_c), (track.max.x - track.min.x) * 0.5) }
 		draw.rect(dc, draw.rect_shift(dr(thumb), origin), to_draw(thumb_c), (thumb.max.x - thumb.min.x) * 0.5)
+	}
+}
+
+// One display item at `r` (its rect moved by `off`, the offset of its space plus the page origin; both zero when a
+// picture is recorded in layout coordinates).
+paint_item :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, v: ^lay.View, it: ^lay.Display_Item, r: draw.Rect, off, origin: draw.Vec2) {
+	switch it.kind {
+	case .Box:
+		if page_render.bare != nil && page_render.bare(page_render.content_user, d, it.node) { return }
+		paint_box(l, dc, it, r)
+	case .Inline_Box: paint_inline_box(l, dc, it, r)
+	case .Text: paint_text(l, dc, it, r, off)
+	case .Marker: paint_marker(l, dc, it, r, off)
+	case .Replaced, .Control: paint_content(l, dc, d, it, r, off)
+	case .Outline: paint_outline(l, dc, it, r)
+	case .Scrollbar:
+		track := r
+		thumb_c, track_c := scrollbar_colors(it.cs != nil ? it.cs.used_scheme : .Light, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
+		if track_c.a > 0 { draw.rect(dc, track, to_draw(track_c), min(track.max.x - track.min.x, track.max.y - track.min.y) * 0.5) }
+		th := draw.rect_shift(dr(lay.scrollbar_thumb(l, v, it)), origin)
+		draw.rect(dc, th, to_draw(thumb_c), min(th.max.x - th.min.x, th.max.y - th.min.y) * 0.5)
 	}
 }
 
@@ -172,53 +180,16 @@ corner_radii :: proc(cs: ^style.Computed, r: draw.Rect, scale: f32) -> [4]f32 {
 no_radius :: proc(r: [4]f32) -> bool { return r == {0, 0, 0, 0} }
 
 @(private = "file")
-paint_shadows :: proc(dc: ^draw.Context, cs: ^style.Computed, r: draw.Rect, radii: [4]f32, scale: f32, inset: bool) {
-	for i := len(cs.box_shadow) - 1; i >= 0; i -= 1 {
-		s := cs.box_shadow[i]
-		if s.inset != inset || s.color.a <= 0 { continue }
-		col := to_draw(s.color)
-		blur := s.blur * scale
-		spread := s.spread * scale
-		off := draw.Vec2{s.x, s.y} * scale
-		rad := max(radii[0], radii[1], radii[2], radii[3])
-		if !inset {
-			sr := draw.rect_shift(draw.rect_pad(r, spread), off)
-			if blur > 2 {
-				draw.rect(dc, draw.rect_pad(sr, blur * 0.5), col, rad + spread + blur * 0.5, 0, blur * 0.5)
-			} else {
-				draw.rect_corners(dc, sr, {col, col, col, col}, radii + spread, 0)
-			}
-		} else if effects_settings.exact_shadows {
-			paint_inset_shadow(dc, col, r, radii, off, spread, blur)
-		} else {
-			// inside the padding edge: a soft ring (approximation of the inner shadow's falloff)
-			w := max(spread + blur * 0.5, 1)
-			ir := draw.rect_shift(r, off)
-			draw.rect(dc, ir, col, rad, w)
-		}
-	}
-}
-
-@(private = "file")
 paint_box :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
 	cs := it.cs
 	if cs == nil { return }
 	b := &l.boxes[it.box]
 	radii := corner_radii(cs, r, l.scale)
-	if len(cs.box_shadow) > 0 { paint_shadows(dc, cs, r, radii, l.scale, false) }
-	if .No_Background not_in it.flags {
-		if cs.background_color.a > 0 {
-			col := to_draw(cs.background_color)
-			draw.rect_corners(dc, r, {col, col, col, col}, radii)
-		}
-		if cs.background_image.kind == .Gradient { paint_gradient(dc, cs.background_image.gradient, r, radii, l.scale) }
-		images_paint_backgrounds(dc, cs, r, b.border, b.padding, radii, l.scale)
-	}
-	if len(cs.box_shadow) > 0 {
-		pr := draw.Rect{r.min + {b.border[3], b.border[0]}, r.max - {b.border[1], b.border[2]}}
-		paint_shadows(dc, cs, pr, padding_radii(radii, b.border), l.scale, true)
-	}
 	widths := [4]f32{b.border[0], b.border[1], b.border[2], b.border[3]}
+	boxes := bg_boxes(r, radii, widths, b.padding)
+	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, false) }
+	if .No_Background not_in it.flags { paint_backgrounds(dc, cs, &boxes, l.scale) }
+	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, true) }
 	if widths != {} { paint_borders(dc, r, widths, cs.border_style, cs.border_color, radii) }
 }
 
@@ -231,13 +202,12 @@ paint_inline_box :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r
 	// a box split over lines keeps its rounded corners only where it starts and ends
 	if .Left_Edge not_in it.flags { radii[0], radii[1] = 0, 0 }
 	if .Right_Edge not_in it.flags { radii[2], radii[3] = 0, 0 }
-	if len(cs.box_shadow) > 0 { paint_shadows(dc, cs, r, radii, l.scale, false) }
-	if cs.background_color.a > 0 {
-		col := to_draw(cs.background_color)
-		draw.rect_corners(dc, r, {col, col, col, col}, radii)
-	}
-	if cs.background_image.kind == .Gradient { paint_gradient(dc, cs.background_image.gradient, r, radii, l.scale) }
 	widths := [4]f32{b.border[0], .Right_Edge in it.flags ? b.border[1] : 0, b.border[2], .Left_Edge in it.flags ? b.border[3] : 0}
+	pad := [4]f32{b.padding[0], .Right_Edge in it.flags ? b.padding[1] : 0, b.padding[2], .Left_Edge in it.flags ? b.padding[3] : 0}
+	boxes := bg_boxes(r, radii, widths, pad)
+	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, false) }
+	paint_backgrounds(dc, cs, &boxes, l.scale)
+	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, true) }
 	if widths != {} { paint_borders(dc, r, widths, cs.border_style, cs.border_color, radii) }
 }
 
@@ -603,197 +573,5 @@ default_control :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^la
 		draw.rect(dc, {{cx - a, cy - a * 0.35}, {cx + a, cy + a * 0.35}}, col, a * 0.35)
 	case "meter", "progress":
 		draw.rect(dc, r, draw.mix(col, {1, 1, 1, col.a}, 0.8), (r.max.y - r.min.y) * 0.5)
-	}
-}
-
-////////////////////////////////
-// Gradients (CSS Images §3): linear gradients are drawn as quads with per-corner colors (exact along an axis or with two
-// stops); radial and conic gradients, which draw cannot express, show the average of their stops.
-
-Gradient_Kind :: enum u8 { Linear, Radial, Conic }
-
-Gradient_Stop :: struct { color: css.Color, pos: f32, px: bool, auto: bool }
-
-Gradient :: struct {
-	kind:   Gradient_Kind,
-	dir:    draw.Vec2,     // unit direction, when not a corner
-	corner: draw.Vec2,     // "to top right": signs of the corner (0 = by angle)
-	stops:  [dynamic]Gradient_Stop,
-	ok:     bool,
-}
-
-@(private = "file")
-gradient_of :: proc(text: string) -> ^Gradient {
-	if g, ok := page_render.gradients[text]; ok { return g }
-	if len(page_render.gradients) > 4096 {
-		for k, g in page_render.gradients { delete(k); delete(g.stops); free(g) }
-		clear(&page_render.gradients)
-	}
-	g := new(Gradient)
-	g.dir = {0, 1}
-	page_render.gradients[strings.clone(text)] = g
-	decls := css.parse_declarations(strings.concatenate({"x:", text}, context.temp_allocator), css.Parse_Options{max_nesting_depth = 64, max_rules = 4}, context.temp_allocator)
-	if len(decls) != 1 { return g }
-	vs := css.trim_values(decls[0].value)
-	if len(vs) != 1 || vs[0].kind != .Function { return g }
-	name := strings.to_lower(vs[0].tok.text, context.temp_allocator)
-	switch {
-	case strings.contains(name, "radial"): g.kind = .Radial
-	case strings.contains(name, "conic"): g.kind = .Conic
-	}
-	args := css.split_commas(vs[0].children, context.temp_allocator)
-	first := 0
-	if len(args) > 0 && g.kind == .Linear {
-		a := css.trim_values(args[0])
-		if len(a) > 0 && a[0].kind == .Token && a[0].tok.kind == .Ident && strings.equal_fold(a[0].tok.text, "to") {
-			first = 1
-			v: draw.Vec2
-			for x in a[1:] {
-				if x.kind != .Token || x.tok.kind != .Ident { continue }
-				switch strings.to_lower(x.tok.text, context.temp_allocator) {
-				case "top": v.y = -1
-				case "bottom": v.y = 1
-				case "left": v.x = -1
-				case "right": v.x = 1
-				}
-			}
-			if v.x != 0 && v.y != 0 { g.corner = v } else if v != {} { g.dir = v }
-		} else if len(a) == 1 && a[0].kind == .Token && a[0].tok.kind == .Dimension {
-			deg: f64
-			switch strings.to_lower(a[0].tok.text, context.temp_allocator) {
-			case "deg": deg = a[0].tok.num
-			case "turn": deg = a[0].tok.num * 360
-			case "rad": deg = a[0].tok.num * 180 / math.PI
-			case "grad": deg = a[0].tok.num * 0.9
-			}
-			rad := f32(deg * math.PI / 180)
-			g.dir = {math.sin(rad), -math.cos(rad)}
-			first = 1
-		}
-	} else if g.kind != .Linear && len(args) > 0 {
-		// the shape / position / angle prelude: skipped when it is not a color
-		a := css.trim_values(args[0])
-		if len(a) == 0 {
-			first = 1
-		} else if _, ok := css.parse_color(a[:1], nil); !ok {
-			first = 1
-		}
-	}
-	for arg in args[first:] {
-		items := make([dynamic]css.Value, context.temp_allocator)
-		for x in arg { if !css.is_ws_value(x) { append(&items, x) } }
-		if len(items) == 0 { continue }
-		cv, ok := css.parse_color(items[:1], nil)
-		if !ok || cv.kind != .Rgba { continue }
-		st := Gradient_Stop{color = cv.rgba, auto = true}
-		if len(items) > 1 && items[1].kind == .Token {
-			#partial switch items[1].tok.kind {
-			case .Percentage: st.pos, st.auto = f32(items[1].tok.num / 100), false
-			case .Dimension:
-				if p, pok := css.length_unit_to_px(items[1].tok.num, items[1].tok.text, 0); pok { st.pos, st.px, st.auto = f32(p), true, false }
-			case .Number: if items[1].tok.num == 0 { st.pos, st.auto = 0, false }
-			}
-		}
-		append(&g.stops, st)
-	}
-	g.ok = len(g.stops) > 0
-	return g
-}
-
-@(private = "file")
-paint_gradient :: proc(dc: ^draw.Context, text: string, r: draw.Rect, radii: [4]f32, scale: f32) {
-	g := gradient_of(text)
-	if !g.ok { return }
-	w, h := r.max.x - r.min.x, r.max.y - r.min.y
-	if w <= 0 || h <= 0 { return }
-	if g.kind != .Linear || len(g.stops) == 1 {
-		// premultiplied average of the stops
-		avg: css.Color
-		for s in g.stops { avg += css.Color{s.color.r * s.color.a, s.color.g * s.color.a, s.color.b * s.color.a, s.color.a} }
-		avg /= f32(len(g.stops))
-		if avg.a > 0 { avg.r, avg.g, avg.b = avg.r / avg.a, avg.g / avg.a, avg.b / avg.a }
-		col := to_draw(avg)
-		draw.rect_corners(dc, r, {col, col, col, col}, radii)
-		return
-	}
-	dir := g.dir
-	if g.corner != {} {
-		// "to top right": perpendicular to the diagonal through the two other corners
-		dir = {g.corner.x * h, g.corner.y * w}
-		n := math.sqrt(dir.x * dir.x + dir.y * dir.y)
-		dir /= n
-	}
-	length := abs(w * dir.x) + abs(h * dir.y)
-	if length <= 0 { return }
-	// stop positions along the gradient line, 0..1, with auto positions spread and positions never going back
-	n := len(g.stops)
-	pos := make([]f32, n, context.temp_allocator)
-	for s, i in g.stops {
-		switch {
-		case !s.auto: pos[i] = s.px ? s.pos * scale / length : s.pos
-		case i == 0: pos[i] = 0
-		case i == n - 1: pos[i] = 1
-		case: pos[i] = -1
-		}
-	}
-	for i := 1; i < n; i += 1 {
-		if pos[i] >= 0 { continue }
-		j := i
-		for j < n && pos[j] < 0 { j += 1 }
-		for k in i ..< j { pos[k] = pos[i - 1] + (pos[j] - pos[i - 1]) * f32(k - i + 1) / f32(j - i + 1) }
-	}
-	for i in 1 ..< n { pos[i] = max(pos[i], pos[i - 1]) }
-	color_at :: proc(g: ^Gradient, pos: []f32, t: f32) -> draw.Color {
-		n := len(g.stops)
-		if t <= pos[0] { return to_draw(g.stops[0].color) }
-		if t >= pos[n - 1] { return to_draw(g.stops[n - 1].color) }
-		for i in 1 ..< n {
-			if t <= pos[i] {
-				span := pos[i] - pos[i - 1]
-				f := span > 0 ? (t - pos[i - 1]) / span : 1
-				return mix_css(g.stops[i - 1].color, g.stops[i].color, f)
-			}
-		}
-		return to_draw(g.stops[n - 1].color)
-	}
-	axis := abs(dir.x) < 0.001 || abs(dir.y) < 0.001
-	if !axis {
-		c := (r.min + r.max) * 0.5
-		t_of :: proc(p, c, dir: draw.Vec2, length: f32) -> f32 { return ((p.x - c.x) * dir.x + (p.y - c.y) * dir.y) / length + 0.5 }
-		cols := [4]draw.Color{
-			color_at(g, pos, t_of(r.min, c, dir, length)), color_at(g, pos, t_of({r.min.x, r.max.y}, c, dir, length)),
-			color_at(g, pos, t_of({r.max.x, r.min.y}, c, dir, length)), color_at(g, pos, t_of(r.max, c, dir, length)),
-		}
-		draw.rect_corners(dc, r, cols, radii)
-		return
-	}
-	// along an axis: one strip per stop interval (plus the flat ends)
-	vertical := abs(dir.y) > abs(dir.x)
-	reverse := vertical ? dir.y < 0 : dir.x < 0
-	edges := make([dynamic]f32, 0, n + 2, context.temp_allocator)
-	append(&edges, 0)
-	for p in pos { if p > 0 && p < 1 { append(&edges, p) } }
-	append(&edges, 1)
-	for i in 0 ..< len(edges) - 1 {
-		t0, t1 := edges[i], edges[i + 1]
-		if t1 <= t0 { continue }
-		c0, c1 := color_at(g, pos, t0 + 0.0001), color_at(g, pos, t1 - 0.0001)
-		a0, a1 := t0, t1
-		if reverse { a0, a1 = 1 - t1, 1 - t0; c0, c1 = c1, c0 }
-		piece: draw.Rect
-		cols: [4]draw.Color
-		rad: [4]f32
-		if vertical {
-			piece = {{r.min.x, r.min.y + h * a0}, {r.max.x, r.min.y + h * a1}}
-			cols = {c0, c1, c0, c1}
-			if a0 <= 0 { rad[0], rad[2] = radii[0], radii[2] }
-			if a1 >= 1 { rad[1], rad[3] = radii[1], radii[3] }
-		} else {
-			piece = {{r.min.x + w * a0, r.min.y}, {r.min.x + w * a1, r.max.y}}
-			cols = {c0, c0, c1, c1}
-			if a0 <= 0 { rad[0], rad[1] = radii[0], radii[1] }
-			if a1 >= 1 { rad[2], rad[3] = radii[2], radii[3] }
-		}
-		draw.rect_corners(dc, piece, cols, rad)
 	}
 }
