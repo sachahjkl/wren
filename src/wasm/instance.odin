@@ -106,8 +106,10 @@ runtime_destroy :: proc() {
 Import_Filter :: #type proc(module_name, field: string) -> bool
 
 // Loads and instantiates `image`. The instance dies with `scope` (may be nil: then call `destroy`).
-// With `filter`, a module importing anything the filter refuses is not instantiated.
-instance_create :: proc(image: []byte, user: rawptr, scope: ^base.Scope, opt: Options, name := "module", filter: Import_Filter = nil) -> (inst: ^Instance, err: string) {
+// With `filter`, a module importing anything the filter refuses is not instantiated. `digest`: the image's SHA-256 when
+// the caller knows it already (an embedded image instantiated many times: hashing megabytes costs more than
+// instantiating them).
+instance_create :: proc(image: []byte, user: rawptr, scope: ^base.Scope, opt: Options, name := "module", filter: Import_Filter = nil, digest: ^Digest = nil) -> (inst: ^Instance, err: string) {
 	if !runtime_init() { return nil, fmt.aprintf("%s: the Wasm engine could not start", name) }
 	limit := settings.max_instances
 	if n := sync.atomic_add(&live_instances, 1); limit > 0 && n >= limit {
@@ -121,7 +123,7 @@ instance_create :: proc(image: []byte, user: rawptr, scope: ^base.Scope, opt: Op
 	inst.opt = opt
 	inst.budget = opt.budget
 	ok: bool
-	ok, err = wt_instantiate(inst, image, filter)
+	ok, err = wt_instantiate(inst, image, filter, digest)
 	if !ok {
 		instance_free(inst)
 		return nil, err

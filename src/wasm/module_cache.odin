@@ -171,11 +171,17 @@ cached_free :: proc(c: ^Cached) {
 // The compiled module of `image`, ready to instantiate (`pre`), or an error message (allocated). Pair with
 // cache_release.
 @(private)
-cache_acquire :: proc(image: []byte) -> (c: ^Cached, err: string) {
+cache_acquire :: proc(image: []byte, known: ^Digest = nil) -> (c: ^Cached, err: string) {
 	caller := context.allocator
 	context.allocator = runtime.default_allocator()
-	key, hashed := sha256(image)
-	if !hashed { return nil, strings.clone("cannot hash the module", caller) }
+	key: Digest
+	if known != nil {
+		key = known^
+	} else {
+		hashed: bool
+		key, hashed = sha256(image)
+		if !hashed { return nil, strings.clone("cannot hash the module", caller) }
+	}
 
 	sync.mutex_lock(&cache.lock)
 	if found, ok := cache.entries[key]; ok {

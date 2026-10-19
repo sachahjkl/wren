@@ -130,10 +130,14 @@ Realm :: struct {
 }
 
 // A realm from `image` (pre-initialized, or raw: then its initialization runs here).
+image_digest: wasm.Digest
+image_digest_of: rawptr
+
 realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1) -> (r: Realm, ok: bool) {
 	opt := wasm.options_default()
 	opt.max_call_ms = call_ms
-	inst, err := wasm.instance_create(image, nil, nil, opt, "jsengine")
+	if image_digest_of != raw_data(image) { image_digest, _ = wasm.digest(image); image_digest_of = raw_data(image) }
+	inst, err := wasm.instance_create(image, nil, nil, opt, "jsengine", nil, &image_digest)
 	if inst == nil { fmt.eprintln("jsengine:", err); return }
 	if raw {
 		if wasm.call_raw(inst, "_initialize") != .Ok { fmt.eprintln("jsengine: _initialize:", inst.last_error); wasm.destroy(inst); return }
@@ -342,9 +346,16 @@ cmd_startup :: proc(args: []string) {
 	realms := make([dynamic]Realm, context.temp_allocator)
 	append(&realms, r0)
 	times := make([dynamic]f64, context.temp_allocator)
+	inst_times := make([dynamic]f64, context.temp_allocator)
 	before := private_bytes()
 	for _ in 0 ..< c.count {
 		t0 := time.tick_now()
+		// the instantiation alone, for comparison
+		opt := wasm.options_default()
+		probe, _ := wasm.instance_create(image, nil, nil, opt, "probe")
+		append(&inst_times, time.duration_milliseconds(time.tick_since(t0)))
+		wasm.destroy(probe)
+		t0 = time.tick_now()
 		r, ok := realm_new(image, c.raw)
 		if !ok { os.exit(1) }
 		append(&times, time.duration_milliseconds(time.tick_since(t0)))
@@ -354,7 +365,9 @@ cmd_startup :: proc(args: []string) {
 	after := private_bytes()
 	heap := js.heap_bytes(r0.inst)
 	slice.sort(times[:])
+	slice.sort(inst_times[:])
 	fmt.printfln("image: %s (%d KiB)%s", c.image, len(image) / 1024, c.raw ? " (raw: initialization runs per realm)" : "")
+	fmt.printfln("instantiation alone: median %.3f ms", inst_times[len(inst_times) / 2])
 	fmt.printfln("first realm (compile or disk cache): %.2f ms", first)
 	fmt.printfln("realm creation: median %.3f ms, min %.3f ms, max %.3f ms over %d", times[len(times) / 2], times[0], times[len(times) - 1], len(times))
 	fmt.printfln("private memory per realm: %.0f KiB; JS heap of a fresh realm: %.0f KiB", f64(after - before) / f64(c.count) / 1024, heap / 1024)

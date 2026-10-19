@@ -56,12 +56,18 @@ Start_Options :: struct {
 	seed:           u64,
 	max_heap_bytes: i64,
 	gc_threshold:   i64,
+	expose_unimplemented: bool,   // interfaces with nothing implemented are on the global anyway
+	unimplemented_throw:  bool,   // unimplemented members exist and throw NotSupportedError (else absent)
 }
 
 // Starts a realm on a fresh instance of the engine (pre-initialized or not). False when the engine refused.
 realm_start :: proc(inst: ^wasm.Instance, o: Start_Options) -> bool {
 	argv: [8]u32
 	argv[0] = u32(o.kind)
+	flags: u32
+	if o.expose_unimplemented { flags |= 1 }
+	if o.unimplemented_throw { flags |= 2 }
+	argv[7] = flags
 	argv[1] = u32(o.seed)
 	argv[2] = u32(o.seed >> 32)
 	heap := f64(o.max_heap_bytes)

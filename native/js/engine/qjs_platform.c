@@ -677,6 +677,23 @@ static JSValue wj_unsupported_fn(JSContext *ctx, const char *name, int length, c
     return f;
 }
 
+/* Whether a member has no implementation at all (its accessor or operation would only throw NotSupportedError). */
+static bool wj_member_unimplemented(const wj_member *mb)
+{
+    switch (mb->kind) {
+    case WJ_M_METHOD:
+    case WJ_M_STATIC_METHOD: return mb->fn == NULL;
+    case WJ_M_ATTRIBUTE:
+    case WJ_M_STATIC_ATTRIBUTE: return mb->get == NULL;
+    }
+    return false;
+}
+
+/* Which members to define: implemented ones (pre-initialization), unimplemented ones (javascript.bindings.unimplemented
+ * = throw, at realm start), or both. */
+enum { WJ_DEFINE_IMPLEMENTED = 1, WJ_DEFINE_UNIMPLEMENTED = 2 };
+static int wj_define_which = WJ_DEFINE_IMPLEMENTED;
+
 /* Defines the members of interface `i` of kind `kinds` (bit per WJ_M_*) on `target`. */
 static int wj_define_members(JSContext *ctx, JSValueConst target, int i, unsigned kinds, bool unforgeable_only)
 {
@@ -685,6 +702,7 @@ static int wj_define_members(JSContext *ctx, JSValueConst target, int i, unsigne
         const wj_member *mb = &it->members[m];
         if (!mb->name || !(kinds & (1u << mb->kind))) { continue; }
         if (unforgeable_only != !!(mb->flags & WJ_F_UNFORGEABLE)) { continue; }
+        if (!(wj_define_which & (wj_member_unimplemented(mb) ? WJ_DEFINE_UNIMPLEMENTED : WJ_DEFINE_IMPLEMENTED))) { continue; }
         int enumerable = (mb->flags & WJ_F_NOT_ENUMERABLE) ? 0 : JS_PROP_ENUMERABLE;
         int configurable = (mb->flags & WJ_F_UNFORGEABLE) ? 0 : JS_PROP_CONFIGURABLE;
         JSAtom atom = JS_NewAtom(ctx, mb->name);
@@ -754,6 +772,22 @@ int wj_define_unforgeables(JSContext *ctx, JSValueConst obj, int iface)
     return 0;
 }
 
+/* The members of interface `i` where Web IDL puts them: the namespace object, or the prototype (regular members,
+ * constants; not those of a [Global] interface, which go on the global object at start) and the interface object
+ * (static members, constants). Which ones: wj_define_which. */
+static int wj_place_members(JSContext *ctx, int i)
+{
+    wj_realm *r = &wj_the_realm;
+    const wj_interface *it = &wj_interfaces[i];
+    if (it->flags & (WJ_I_NAMESPACE | WJ_I_CALLBACK)) {
+        return wj_define_members(ctx, r->ctors[i], i, (1u << WJ_M_STATIC_METHOD) | (1u << WJ_M_STATIC_ATTRIBUTE) | (1u << WJ_M_METHOD) |
+                                 (1u << WJ_M_ATTRIBUTE) | (1u << WJ_M_CONSTANT), false);
+    }
+    unsigned kinds = (it->flags & WJ_I_GLOBAL) ? (1u << WJ_M_CONSTANT) : (1u << WJ_M_ATTRIBUTE) | (1u << WJ_M_METHOD) | (1u << WJ_M_CONSTANT);
+    if (wj_define_members(ctx, r->protos[i], i, kinds, false) < 0) { return -1; }
+    return wj_define_members(ctx, r->ctors[i], i, (1u << WJ_M_STATIC_METHOD) | (1u << WJ_M_STATIC_ATTRIBUTE) | (1u << WJ_M_CONSTANT), false);
+}
+
 int wj_platform_preinit(JSContext *ctx)
 {
     JSRuntime *rt = JS_GetRuntime(ctx);
@@ -794,23 +828,16 @@ int wj_platform_preinit(JSContext *ctx)
         r->ctors[i] = JS_UNDEFINED;
         if (it->flags & (WJ_I_NAMESPACE | WJ_I_CALLBACK)) {
             JSValue ns = JS_NewObjectProto(ctx, op);
-            if (wj_define_members(ctx, ns, i, (1u << WJ_M_STATIC_METHOD) | (1u << WJ_M_STATIC_ATTRIBUTE) | (1u << WJ_M_METHOD) |
-                                  (1u << WJ_M_ATTRIBUTE) | (1u << WJ_M_CONSTANT), false) < 0) { return -1; }
+            r->ctors[i] = ns;
+            if (wj_place_members(ctx, i) < 0) { return -1; }
             if (it->flags & WJ_I_NAMESPACE) {
                 JS_DefinePropertyValue(ctx, ns, tag_atom, JS_NewString(ctx, it->name), JS_PROP_CONFIGURABLE);
             }
-            r->ctors[i] = ns;
             continue;
         }
         JSValue parent_proto = it->parent >= 0 ? r->protos[it->parent] : op;
         JSValue proto = JS_NewObjectProto(ctx, parent_proto);
         if (JS_IsException(proto)) { return -1; }
-        unsigned kinds = (1u << WJ_M_ATTRIBUTE) | (1u << WJ_M_METHOD) | (1u << WJ_M_CONSTANT);
-        if (!(it->flags & WJ_I_GLOBAL)) {
-            if (wj_define_members(ctx, proto, i, kinds, false) < 0) { return -1; }
-        } else {
-            if (wj_define_members(ctx, proto, i, 1u << WJ_M_CONSTANT, false) < 0) { return -1; }
-        }
         JS_DefinePropertyValue(ctx, proto, tag_atom, JS_NewString(ctx, it->name), JS_PROP_CONFIGURABLE);
         JSValue parent_ctor = it->parent >= 0 ? r->ctors[it->parent] : fp;
         JSCFunction *cf = (JSCFunction *)(void *)(it->ctor ? it->ctor : (it->flags & WJ_I_CTOR_UNSUPPORTED) ? wj_unsupported_constructor : wj_illegal_constructor);
@@ -820,7 +847,9 @@ int wj_platform_preinit(JSContext *ctx)
         JS_SetConstructor(ctx, ctor, proto);
         /* Web IDL: the interface object's prototype property is not writable, enumerable or configurable */
         JS_DefinePropertyValueStr(ctx, ctor, "prototype", JS_DupValue(ctx, proto), 0);
-        if (wj_define_members(ctx, ctor, i, (1u << WJ_M_STATIC_METHOD) | (1u << WJ_M_STATIC_ATTRIBUTE) | (1u << WJ_M_CONSTANT), false) < 0) { return -1; }
+        r->protos[i] = proto;
+        r->ctors[i] = ctor;
+        if (wj_place_members(ctx, i) < 0) { return -1; }
         if (it->flags & WJ_I_ARRAY_ITERATOR) {
             /* Web IDL: a value iterator of an indexed collection uses %Array.prototype%'s own functions */
             JSValue array = JS_GetPropertyStr(ctx, r->global, "Array");
@@ -839,8 +868,6 @@ int wj_platform_preinit(JSContext *ctx)
             JS_FreeValue(ctx, ap);
             JS_FreeValue(ctx, array);
         }
-        r->protos[i] = proto;
-        r->ctors[i] = ctor;
     }
     JS_FreeAtom(ctx, tag_atom);
     JS_FreeValue(ctx, op);
@@ -852,8 +879,18 @@ int wj_platform_preinit(JSContext *ctx)
 int wj_platform_start(JSContext *ctx, int kind)
 {
     wj_realm *r = &wj_the_realm;
-    extern bool wj_start_expose_unimplemented;
+    extern bool wj_start_expose_unimplemented, wj_start_unimplemented_throw;
     wj_expose_unimplemented = wj_start_expose_unimplemented;
+    /* unimplemented members are absent (feature detection sees the truth) unless javascript.bindings.unimplemented
+     * says they throw NotSupportedError: then they are added now (the image has only the implemented ones) */
+    if (wj_start_unimplemented_throw) {
+        wj_define_which = WJ_DEFINE_UNIMPLEMENTED;
+        for (int i = 0; i < wj_interface_count; i++) {
+            if (JS_IsUndefined(r->ctors[i]) || !(wj_interfaces[i].exposed & kind)) { continue; }
+            if (wj_place_members(ctx, i) < 0) { return -1; }
+        }
+        wj_define_which = WJ_DEFINE_IMPLEMENTED | WJ_DEFINE_UNIMPLEMENTED;
+    }
     /* the global object: its interface (Window or a worker scope), its members on itself, its prototype chain */
     int global_iface = -1;
     for (int i = 0; i < wj_interface_count; i++) {

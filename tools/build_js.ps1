@@ -8,12 +8,15 @@
 # Pinned inputs: Zig (its clang and wasi-libc) and the QuickJS-ng release source by version and SHA-256 below, fetched
 # once into build\tools and build\js\src; native\js\patches\*.patch applied to the source; the generated headers and
 # bindings in native\js\gen (bindgen). The script does nothing when build\js\STAMP matches the hash of every input.
-param([switch]$Force, [string]$Opt = 'O3', [switch]$NoLto, [string]$Out = '', [switch]$NoSnapshot, [string[]]$ExtraFlags = @())
+param([switch]$Force, [string]$Opt = 'O3', [switch]$NoLto, [string]$Out = '', [switch]$NoSnapshot, [string[]]$ExtraFlags = @(),
+      [ValidateSet('dlmalloc', 'mimalloc')][string]$Allocator = 'dlmalloc')
 $ErrorActionPreference = 'Stop'
 $ZigVersion = '0.15.2'
 $ZigSha256 = '3a0ed1e8799a2f8ce2a6e6290a9ff22e6906f8227865911fb7ddedc3cc14cb0c'
 $QjsVersion = '0.17.0'
 $QjsSha256 = '559bc4c420475e55c7ab4510adbc562f55d7524d75e8e89d79ce4bb02f5687d9'
+$MimallocVersion = '3.5.3'
+$MimallocSha256 = '3b4a15153a59905995f7070296ed604bb5ccc00cabb8b93446931aff77224d47'
 
 $root = Split-Path $PSScriptRoot -Parent
 $native = Join-Path $root 'native\js'
@@ -44,7 +47,7 @@ foreach ($f in ($inputs | Sort-Object FullName)) {
     $all.Write($name, 0, $name.Length)
     $b = [IO.File]::ReadAllBytes($f.FullName); $all.Write($b, 0, $b.Length)
 }
-$flagText = [Text.Encoding]::UTF8.GetBytes("$ZigVersion|$QjsVersion|$Opt|$NoLto|$($ExtraFlags -join ' ')")
+$flagText = [Text.Encoding]::UTF8.GetBytes("$ZigVersion|$QjsVersion|$Opt|$NoLto|$($ExtraFlags -join ' ')|$Allocator")
 $all.Write($flagText, 0, $flagText.Length)
 $stamp = ([BitConverter]::ToString($sha.ComputeHash($all.ToArray())) -replace '-', '').ToLower()
 if (-not $Force -and (Test-Path $final) -and (Test-Path $stampFile) -and ((Get-Content $stampFile -Raw).Trim() -eq $stamp)) {
@@ -98,6 +101,15 @@ if (-not $NoLto) { $cflags += '-flto' }
 $cflags += $ExtraFlags
 $sources = @('quickjs.c', 'libregexp.c', 'libunicode.c', 'dtoa.c') | ForEach-Object { Join-Path $qjs $_ }
 $sources += @(Get-ChildItem (Join-Path $native 'engine'), (Join-Path $native 'runtime'), (Join-Path $native 'gen') -Recurse -Filter *.c -ErrorAction SilentlyContinue | ForEach-Object FullName)
+if ($Allocator -eq 'mimalloc') {
+    # the engine's heap through mimalloc (pinned), the C library's own through wasi-libc's dlmalloc
+    $mi = Join-Path $srcRoot "mimalloc-$MimallocVersion"
+    $mtar = Join-Path $tools "mimalloc-v$MimallocVersion.tar.gz"
+    Get-Pinned "https://github.com/microsoft/mimalloc/archive/refs/tags/v$MimallocVersion.tar.gz" $mtar $MimallocSha256
+    if (-not (Test-Path $mi)) { & tar -xzf $mtar -C $srcRoot; if ($LASTEXITCODE -ne 0) { throw "tar failed ($LASTEXITCODE)" } }
+    $sources += (Join-Path $mi 'src\static.c')
+    $cflags += @('-DWJ_MIMALLOC=1', '-I', (Join-Path $mi 'include'), '-DMI_STAT=0', '-DMI_SECURE=0', '-DMI_DEBUG=0')
+}
 $ldflags = @(
     '-lwasi-emulated-signal',
     # the C stack (in linear memory): JavaScript recursion depth is bounded by JS_SetMaxStackSize below this

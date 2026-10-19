@@ -270,9 +270,9 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 }
 
 @(private)
-wt_instantiate :: proc(inst: ^Instance, image: []byte, filter: Import_Filter) -> (ok: bool, err: string) {
+wt_instantiate :: proc(inst: ^Instance, image: []byte, filter: Import_Filter, digest: ^Digest = nil) -> (ok: bool, err: string) {
 	name := inst.name
-	c, cerr := cache_acquire(image)
+	c, cerr := cache_acquire(image, digest)
 	defer delete(cerr)
 	if c == nil { return false, fmt.aprintf("%s: %s", name, cerr) }
 	defer cache_release(c)

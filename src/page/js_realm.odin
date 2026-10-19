@@ -34,11 +34,25 @@ Js_Realm :: struct {
 
 @(private)
 js_engine_version: string
+@(private)
+js_engine_digest: wasm.Digest
+@(private)
+js_engine_digest_known: bool
 
 // The engine version of cache keys (the image's digest), computed once.
 js_version :: proc() -> string {
 	if js_engine_version == "" { js_engine_version = js.image_version(js_image.IMAGE, context.allocator) }
 	return js_engine_version
+}
+
+// The image's SHA-256, computed once: the module cache would hash its megabytes at each realm otherwise.
+@(private)
+js_image_digest :: proc() -> ^wasm.Digest {
+	if !js_engine_digest_known {
+		js_engine_digest, js_engine_digest_known = wasm.digest(js_image.IMAGE)
+		if !js_engine_digest_known { return nil }
+	}
+	return &js_engine_digest
 }
 
 // Whether this page runs scripts (javascript.enabled, per site).
@@ -61,7 +75,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		// the hard stop comes after the engine had time to unwind (or never, when wasm.max_call_ms says so)
 		if opt.max_call_ms > 0 && opt.max_call_ms < slow * 2 { opt.max_call_ms = slow * 2 }
 	}
-	inst, err := wasm.instance_create(js_image.IMAGE, p, p.scope, opt, "javascript", nil)
+	inst, err := wasm.instance_create(js_image.IMAGE, p, p.scope, opt, "javascript", nil, js_image_digest())
 	if inst == nil {
 		r.failed = true
 		log(p, .Error, fmt.tprintf("JavaScript could not start: %s", err))
@@ -76,7 +90,11 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 	seed: u64
 	wasm.random_bytes(([^]u8)(&seed)[:8])
 	kind := p.worker != nil ? js.Realm_Kind.Worker : js.Realm_Kind.Window
-	if !js.realm_start(inst, {kind = kind, seed = seed, max_heap_bytes = p.settings.js.max_heap_bytes, gc_threshold = p.settings.js.gc_threshold_bytes}) {
+	start := js.Start_Options{
+		kind = kind, seed = seed, max_heap_bytes = p.settings.js.max_heap_bytes, gc_threshold = p.settings.js.gc_threshold_bytes,
+		expose_unimplemented = p.settings.js.expose_unimplemented, unimplemented_throw = p.settings.js.unimplemented_throw,
+	}
+	if !js.realm_start(inst, start) {
 		r.failed = true
 		log(p, .Error, fmt.tprintf("JavaScript could not start: %s", inst.last_error))
 		return nil

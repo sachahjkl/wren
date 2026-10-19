@@ -340,11 +340,25 @@ WJ_EXPORT("wj_heap_bytes") double wj_heap_bytes(void)
 extern int wj_platform_preinit(JSContext *ctx);
 extern int wj_platform_start(JSContext *ctx, int kind);
 
+#if defined(WJ_MIMALLOC)
+#include "mimalloc.h"
+static void *wj_mi_calloc(void *o, size_t n, size_t s) { WJ_UNUSED(o); return mi_calloc(n, s); }
+static void *wj_mi_malloc(void *o, size_t s) { WJ_UNUSED(o); return mi_malloc(s); }
+static void wj_mi_free(void *o, void *p) { WJ_UNUSED(o); mi_free(p); }
+static void *wj_mi_realloc(void *o, void *p, size_t s) { WJ_UNUSED(o); return mi_realloc(p, s); }
+static size_t wj_mi_usable(const void *p) { return mi_usable_size(p); }
+static const JSMallocFunctions wj_mi_functions = { wj_mi_calloc, wj_mi_malloc, wj_mi_free, wj_mi_realloc, wj_mi_usable };
+#endif
+
 /* Build time: everything that does not depend on the realm. 0 ok. */
 WJ_EXPORT("wj_preinit") int32_t wj_preinit(void)
 {
     if (wj_the_realm.ctx) { return 0; }
+#if defined(WJ_MIMALLOC)
+    JSRuntime *rt = JS_NewRuntime2(&wj_mi_functions, NULL);
+#else
     JSRuntime *rt = JS_NewRuntime();
+#endif
     if (!rt) { return -1; }
     /* below the C stack the module reserves (build_js.ps1: -z stack-size), keeping room for the host calls */
     JS_SetMaxStackSize(rt, 900 * 1024);
@@ -359,9 +373,13 @@ WJ_EXPORT("wj_preinit") int32_t wj_preinit(void)
     return 0;
 }
 
-/* Run time, once per realm: kind 1 = Window, 2 = Worker. `seed` reseeds Math.random. 0 ok. */
-WJ_EXPORT("wj_realm_start") int32_t wj_realm_start(int32_t kind, int64_t seed, double memory_limit, double gc_threshold)
+/* Run time, once per realm: kind 1 = Window, 2 = Worker. `seed` reseeds Math.random. flags: WJ_START_*. 0 ok. */
+enum { WJ_START_EXPOSE_UNIMPLEMENTED = 1, WJ_START_UNIMPLEMENTED_THROW = 2 };
+WJ_EXPORT("wj_realm_start") int32_t wj_realm_start(int32_t kind, int64_t seed, double memory_limit, double gc_threshold, int32_t flags)
 {
+    extern bool wj_start_expose_unimplemented, wj_start_unimplemented_throw;
+    wj_start_expose_unimplemented = (flags & WJ_START_EXPOSE_UNIMPLEMENTED) != 0;
+    wj_start_unimplemented_throw = (flags & WJ_START_UNIMPLEMENTED_THROW) != 0;
     if (!wj_the_realm.ctx && wj_preinit() != 0) { return -1; }
     if (wj_the_realm.started) { return 0; }
     JSContext *ctx = wj_the_realm.ctx;

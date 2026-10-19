@@ -14,6 +14,7 @@ Settings :: struct {
 	max_heap_bytes:       i64,
 	gc_threshold_bytes:   i64,
 	expose_unimplemented: bool,
+	unimplemented_throw:  bool,       // javascript.bindings.unimplemented = throw
 	console_eval:         bool,
 	workers:              bool,
 	offthread_min_bytes:  int,        // scripts at least this large are compiled on a background thread
@@ -35,6 +36,8 @@ PREFS := [?]config.Def{
 		description = "Heap growth that triggers the first cycle collection of a realm (then 1.5 times the heap after each one). Larger: fewer pauses, more memory."},
 	{name = "javascript.bindings.expose_unimplemented", kind = .Bool, default = {b = false},
 		description = "Also expose the interfaces of the web platform this browser does not implement at all (their members throw NotSupportedError). Off, they are absent, so feature detection (\"IntersectionObserver\" in window) sees the truth."},
+	{name = "javascript.bindings.unimplemented", kind = .String, default = {s = "absent"}, choices = {"absent", "throw"},
+		description = "Members of the web platform this browser does not implement on interfaces it does: absent (scripts that test for them, if (\"x\" in el), take their fallback) or present and throwing NotSupportedError when used (what the bindings' coverage says, visible to scripts)."},
 	{name = "javascript.console_eval", kind = .Bool, default = {b = true},
 		description = "Let the tab's console run JavaScript typed by the user in the page's realm."},
 	{name = "javascript.workers.enabled", kind = .Bool, default = {b = true},
@@ -62,6 +65,7 @@ settings_from_prefs :: proc(p: ^config.Prefs, profile_dir := "") -> Settings {
 		max_heap_bytes = config.int_of(p, "javascript.max_heap_bytes"),
 		gc_threshold_bytes = config.int_of(p, "javascript.gc_threshold_bytes"),
 		expose_unimplemented = config.bool_of(p, "javascript.bindings.expose_unimplemented"),
+		unimplemented_throw = config.string_of(p, "javascript.bindings.unimplemented") == "throw",
 		console_eval = config.bool_of(p, "javascript.console_eval"),
 		workers = config.bool_of(p, "javascript.workers.enabled"),
 		offthread_min_bytes = int(config.int_of(p, "javascript.compile.offthread_min_bytes")),
