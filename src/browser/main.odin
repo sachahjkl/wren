@@ -1031,7 +1031,7 @@ main :: proc() {
 
 	// the first tab: the address given on the command line, else the homepage
 	prof_mark(.Shell)
-	address := len(rest) > 0 ? rest[0] : ""
+	address := len(rest) > 0 ? command_line_address(rest[0]) : ""   // (a relative path of a file or folder: local_paths.odin)
 	prof_mark(.Navigation)
 	tab_open(app, address)
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }

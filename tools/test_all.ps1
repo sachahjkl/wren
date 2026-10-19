@@ -84,7 +84,7 @@ Step 'file: folders end-to-end test (index file, listing, redirect to /, errors,
     $o = .\build\filetest.exe | Out-String; $o
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
 }
-Step 'build testserver' { Push-Location tools\testserver; go build -o ..\..\build\testserver.exe .; Pop-Location }
+Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe . }; Pop-Location }
 
 $srv = Start-Process (Join-Path $root 'build\testserver.exe') -PassThru -WindowStyle Hidden
 Start-Sleep -Seconds 1

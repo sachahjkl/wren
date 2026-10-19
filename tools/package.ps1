@@ -31,6 +31,7 @@ foreach ($g in $guests) {
     odin build "examples/$g" -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:"examples/site/$g.wasm" -o:size
     if ($LASTEXITCODE -ne 0) { throw "building examples/$g failed" }
 }
+if (-not (Select-String -Path examples\site\index.html -Pattern 'Made from the DEMOS table' -Quiet)) { throw 'examples\site\index.html is not the demos index (src\browser\demos_index.odin)' }
 # every module a page names must be there (a page added later with a new guest fails here, not in the user's hands)
 foreach ($page in Get-ChildItem examples\site -Recurse -Filter *.html) {
     $html = [IO.File]::ReadAllText($page.FullName)
@@ -91,11 +92,13 @@ https://github.com/sachahjkl/wren
   wren.exe [URL]            the browser (needs Windows 10 or 11 x64 and a Direct3D 11 GPU)
   demo.bat                  starts the demo server and opens about:demos
   testserver.exe            the demo server: http://127.0.0.1:8765/site/ (serves demos\)
-  demos\                    the demo and test pages and their Wasm modules (listed by about:demos, linked from the
-                            start page)
+  demos\                    the demo and test pages and their Wasm modules; demos\index.html lists them (so does
+                            about:demos, linked from the start page)
 
-about:demos opens the pages of demos\ directly; those marked "test server" need testserver.exe running (images,
-media, form submission, slow stylesheets, CSP). browser.demos.path in about:config points it to another folder.
+about:demos and demos\index.html open the pages of demos\ directly; those marked "test server" need testserver.exe
+running (images, media, form submission, slow stylesheets, CSP). browser.demos.path in about:config points about:demos
+to another folder. The address bar takes paths (C:\..., \\server\share) as well as URLs; a folder opens its
+index.html, else the list of its files; files and folders dropped on the window open.
 
 Options: --profile DIR (default %APPDATA%\Wren), --pref name=value (any setting of about:config), --policy FILE.
 Keys: Ctrl+T / Ctrl+W tabs, Ctrl+L address, Ctrl+F find, Ctrl+U view source, Ctrl+B status bar,

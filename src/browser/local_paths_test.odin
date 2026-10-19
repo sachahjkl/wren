@@ -49,6 +49,18 @@ address_bar_rules :: proc(t: ^testing.T) {
 	testing.expect_value(t, normalize_address("example.com"), "https://example.com")
 }
 
+// (run from the repository root, as the test suite does)
+@(test)
+command_line_relative_paths :: proc(t: ^testing.T) {
+	u := command_line_address("examples")
+	testing.expectf(t, strings.has_prefix(u, "file:///") && strings.has_suffix(u, "/examples"), "an existing folder: %s", u)
+	u = command_line_address(`examples\site\counter.html`)
+	testing.expectf(t, strings.has_suffix(u, "/examples/site/counter.html"), "an existing file: %s", u)
+	testing.expect_value(t, command_line_address("no_such_thing_here.test"), "no_such_thing_here.test")
+	testing.expect_value(t, command_line_address("https://a.test/"), "https://a.test/")
+	testing.expect_value(t, command_line_address("about:demos"), "about:demos")
+}
+
 @(test)
 about_about_lists_the_builtin_pages :: proc(t: ^testing.T) {
 	html := about_pages_html()

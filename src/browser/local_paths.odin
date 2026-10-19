@@ -45,6 +45,21 @@ local_path_url :: proc(input: string, allocator := context.temp_allocator) -> (a
 	return fetch.file_url_from_path(s, directory, allocator), true
 }
 
+// The address given on the command line: a relative path that names an existing file or folder (`wren.exe demos`,
+// `wren.exe page.html`) is taken from the current folder, as other browsers do; anything else is an address.
+command_line_address :: proc(arg: string) -> string {
+	s := strings.trim_space(arg)
+	if s == "" || strings.contains(s, ":") { return s }   // a URL, about:, a drive path (local_path_url takes those)
+	ws := win.utf8_to_wstring(s)
+	if win.GetFileAttributesW(ws) == win.INVALID_FILE_ATTRIBUTES { return s }
+	buf: [1024]u16
+	n := win.GetFullPathNameW(ws, u32(len(buf)), cstring16(raw_data(buf[:])), nil)
+	if n == 0 || int(n) >= len(buf) { return s }
+	full, err := win.utf16_to_utf8(buf[:n], context.temp_allocator)
+	if err != nil { return s }
+	return fetch.file_url_from_path(full, false, context.temp_allocator)
+}
+
 // %USERPROFILE%, without a final separator ("" when unknown).
 @(private = "file")
 user_home :: proc() -> string {

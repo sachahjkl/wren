@@ -147,7 +147,7 @@ func registerPolicyHandlers(mux *http.ServeMux) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write(b)
 	})
-	site := http.FileServer(http.Dir(siteDir))
+	site := siteHandler(siteDir) // index.html, folder listings, /site/grid -> grid.html (site.go)
 	mux.Handle("/site/", http.StripPrefix("/site/", site))
 	// the same site with a Content-Security-Policy: scripts only from other (unreachable) hosts => the module is blocked
 	mux.Handle("/site-csp/", http.StripPrefix("/site-csp/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
