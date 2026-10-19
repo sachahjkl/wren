@@ -76,7 +76,9 @@ img, video, canvas, iframe, embed, object { display: inline-block; }
 img { overflow: clip; }
 iframe { border: 2px inset; }
 button, input, select, textarea, meter, progress { display: inline-block; }
-input, select, textarea, button { font-family: system-ui; font-size: 13.333px; text-align: start; box-sizing: border-box; margin: 0; }
+input, select, textarea, button { font-family: system-ui; font-size: 13.333px; text-align: start; margin: 0; }
+/* text fields keep content-box sizing, as in other browsers (quirks mode makes them border-box: hints.odin) */
+select, button, input[type=button i], input[type=submit i], input[type=reset i], input[type=checkbox i], input[type=radio i], input[type=color i], input[type=file i] { box-sizing: border-box; }
 input, textarea, select { background-color: Field; color: FieldText; border: 2px inset light-dark(#767676, #858585); padding: 1px 2px; }
 button, input[type=button], input[type=submit], input[type=reset] { background-color: ButtonFace; color: ButtonText; border: 2px outset ButtonBorder; padding: 1px 6px; text-align: center; cursor: default; }
 input[type=checkbox], input[type=radio] { width: 13px; height: 13px; padding: 0; margin: 3px 3px 3px 4px; }

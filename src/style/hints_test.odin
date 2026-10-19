@@ -174,7 +174,7 @@ hints_map_html_attributes :: proc(t: ^testing.T) {
 
 @(test)
 quirks_mode_rules :: proc(t: ^testing.T) {
-	SRC :: `<body style="font-size: 10px; white-space: nowrap"><table id=t><tr><td id=c>x</td></tr></table><form id=f></form></body>`
+	SRC :: `<body style="font-size: 10px; white-space: nowrap"><table id=t><tr><td id=c>x</td></tr></table><form id=f><input id=i><button id=bt>b</button></form></body>`
 	q := open_doc(SRC)
 	defer close_doc(&q)
 	testing.expect_value(t, q.doc.mode, dom.Document_Mode.Quirks)
@@ -185,6 +185,8 @@ quirks_mode_rules :: proc(t: ^testing.T) {
 	defer close_doc(&s)
 	testing.expect_value(t, s.doc.mode, dom.Document_Mode.No_Quirks)
 	testing.expect(t, el(&s, "t").font_size == 10, "standards mode: tables inherit")
+	testing.expect(t, el(&s, "i").box_sizing == .Content_Box && el(&s, "bt").box_sizing == .Border_Box, "standards: text fields content-box, buttons border-box")
+	testing.expect(t, el(&q, "i").box_sizing == .Border_Box, "quirks: text fields border-box")
 	l := open_doc(`<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">` + SRC)
 	defer close_doc(&l)
 	testing.expect_value(t, l.doc.mode, dom.Document_Mode.Limited_Quirks)
