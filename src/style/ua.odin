@@ -2,25 +2,17 @@ package style
 
 import "core:fmt"
 import "core:strings"
-import "wb:css"
 
 // The browser's default stylesheet. It is text, generated from the settings, so colors, margins and font sizes that are
 // "the browser's choice" are preferences and not constants. It follows the HTML Standard's rendering section in spirit; it
 // is a starting point that real pages override.
 
-@(private)
-css_color :: proc(c: css.Color) -> string {
-	return fmt.tprintf("rgba(%d, %d, %d, %.3f)", int(c.r * 255 + 0.5), int(c.g * 255 + 0.5), int(c.b * 255 + 0.5), c.a)
-}
-
 ua_stylesheet_text :: proc(s: ^Settings, allocator := context.allocator) -> string {
-	// fmt would read the braces of CSS as format directives: the template holds `%v` placeholders filled in order
-	// the background preference is the canvas color (Styled.canvas), not a background of the root element: a root
-	// background would stop the body's from propagating to the canvas (CSS Backgrounds 3 §2.11.2)
-	values := [?]string{
-		css_color(s.text_color), fmt.tprintf("%g", s.body_margin),
-		css_color(s.link_color), css_color(s.visited_color), css_color(s.active_link_color), fmt.tprintf("%g", s.monospace_font_size),
-	}
+	// fmt would read the braces of CSS as format directives: the template holds `%v` placeholders filled in order.
+	// Colors are system colors (color_scheme.odin): each element shows those of its used color scheme, and their values
+	// are preferences. Canvas is the canvas color (Styled.canvas), not a background of the root element: a root
+	// background would stop the body's from propagating to the canvas (CSS Backgrounds 3 §2.11.2).
+	values := [?]string{fmt.tprintf("%g", s.body_margin), fmt.tprintf("%g", s.monospace_font_size)}
 	sb := strings.builder_make(allocator)
 	rest := UA_TEMPLATE
 	n := 0
@@ -36,8 +28,8 @@ ua_stylesheet_text :: proc(s: ^Settings, allocator := context.allocator) -> stri
 	return strings.to_string(sb)
 }
 
-UA_TEMPLATE :: `html { display: block; color: %v; }
-head, link, meta, script, style, title, base, template, noscript, area, datalist, param, source, track, rp { display: none; }
+UA_TEMPLATE :: `html { display: block; color: CanvasText; }
+head, link, meta, script, style, title, base, template, area, datalist, param, source, track, rp { display: none; }
 [hidden] { display: none; }
 address, blockquote, center, dialog, div, figure, figcaption, footer, form, header, hr, legend, listing, main, p, plaintext, pre, search, xmp,
 article, aside, h1, h2, h3, h4, h5, h6, hgroup, nav, section, dir, dd, dl, dt, menu, ol, ul, details, summary, fieldset, optgroup, body { display: block; }
@@ -60,9 +52,9 @@ ul ul, ol ul { list-style-type: circle; }
 ul ul ul, ol ul ul, ul ol ul, ol ol ul { list-style-type: square; }
 ul ul, ul ol, ol ul, ol ol { margin-block: 0; }
 hr { color: gray; border-style: inset; border-width: 1px; margin: 0.5em auto; overflow: hidden; }
-a:link { color: %v; text-decoration: underline; cursor: pointer; }
-a:visited { color: %v; text-decoration: underline; cursor: pointer; }
-a:link:active, a:visited:active { color: %v; }
+a:link { color: LinkText; text-decoration: underline; cursor: pointer; }
+a:visited { color: VisitedText; text-decoration: underline; cursor: pointer; }
+a:link:active, a:visited:active { color: ActiveText; }
 b, strong { font-weight: bolder; }
 i, cite, em, var, dfn, address { font-style: italic; }
 u, ins { text-decoration: underline; }
@@ -71,7 +63,7 @@ small { font-size: smaller; }
 big { font-size: larger; }
 sub { vertical-align: sub; font-size: smaller; }
 sup { vertical-align: super; font-size: smaller; }
-mark { background-color: yellow; color: black; }
+mark { background-color: Mark; color: MarkText; }
 abbr[title], acronym[title] { text-decoration: underline dotted; }
 q::before { content: open-quote; }
 q::after { content: close-quote; }
@@ -85,14 +77,14 @@ img { overflow: clip; }
 iframe { border: 2px inset; }
 button, input, select, textarea, meter, progress { display: inline-block; }
 input, select, textarea, button { font-family: system-ui; font-size: 13.333px; text-align: start; box-sizing: border-box; margin: 0; }
-input, textarea, select { background-color: white; color: black; border: 2px inset gray; padding: 1px 2px; }
-button, input[type=button], input[type=submit], input[type=reset] { background-color: #efefef; color: black; border: 2px outset #767676; padding: 1px 6px; text-align: center; cursor: default; }
+input, textarea, select { background-color: Field; color: FieldText; border: 2px inset light-dark(#767676, #858585); padding: 1px 2px; }
+button, input[type=button], input[type=submit], input[type=reset] { background-color: ButtonFace; color: ButtonText; border: 2px outset ButtonBorder; padding: 1px 6px; text-align: center; cursor: default; }
 input[type=checkbox], input[type=radio] { width: 13px; height: 13px; padding: 0; margin: 3px 3px 3px 4px; }
 input[type=hidden] { display: none; }
 textarea { font-family: monospace; white-space: pre-wrap; overflow: auto; }
-fieldset { margin-inline: 2px; padding: 0.35em 0.75em 0.625em; border: 2px groove gray; }
+fieldset { margin-inline: 2px; padding: 0.35em 0.75em 0.625em; border: 2px groove ThreeDFace; }
 legend { padding-inline: 2px; }
-:disabled { color: gray; cursor: default; }
+:disabled { color: GrayText; cursor: default; }
 table { display: table; border-spacing: 2px; border-collapse: separate; text-indent: initial; }
 caption { display: table-caption; text-align: center; }
 colgroup { display: table-column-group; }

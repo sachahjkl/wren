@@ -112,7 +112,7 @@ compute_keyframe :: proc(e: ^Engine, block: ^Keyframe_Block, base, parent, initi
 	c := new(Computed, alloc)
 	c^ = base^
 	cx := Cx{settings = &e.settings, parent = parent, initial = initial, c = c, alloc = alloc}
-	cx.cenv = css.Color_Env{dark = e.env.prefers_dark, system = system_color, user = &e.settings}
+	cx.cenv = css.Color_Env{dark = base.used_scheme == .Dark, system = system_color, user = &e.settings}
 	cx.lc = css.Length_Context{
 		font_size = f64(c.font_size), root_font_size = f64(root_font_size > 0 ? root_font_size : e.settings.default_font_size),
 		x_height = f64(c.font_size) * 0.5, ch = f64(c.font_size) * 0.5, vw = e.env.width, vh = e.env.height,

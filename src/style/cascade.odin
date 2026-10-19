@@ -68,8 +68,12 @@ Styled :: struct {
 	serial:         u64,     // unique per pass: lets layout notice that styles changed even if nothing else did
 	layout_serial:  u64,     // the serial of the last change that was not paint-only (paint_change.odin)
 	line_height_normal: f32, // what `line-height: normal` means (a multiple of the font size), from the preferences
-	canvas:         css.Color,   // the color painted behind the whole page (root or body background, else the preference)
-	canvas_default: css.Color,   // the preference
+	canvas:         css.Color,   // the color painted behind the whole page (root or body background, else Canvas)
+	canvas_default: css.Color,   // Canvas of the root element's used color scheme
+	canvas_schemes: [Scheme]css.Color,   // Canvas of each scheme (the preferences)
+	root_scheme:    Scheme,              // the used color scheme of the root element (canvas, document scroll bar)
+	page_scheme:    Color_Scheme_Value,  // <meta name="color-scheme"> of the document ({} = none or normal)
+	scheme_metas:   [dynamic]base.Handle,   // every <meta name="color-scheme" content> of the document
 	state:          State,       // the dynamic state these styles were computed for (target_id owned by `alloc`)
 	base_used:      uint,        // arena use right after the full pass: what partial restyles add on top is waste
 	thread_arenas:  [dynamic]^virtual.Arena,   // a parallel pass: the computed styles of each thread (parallel.odin)
@@ -105,6 +109,7 @@ styled_destroy :: proc(s: ^Styled) {
 	delete(s.overlaid)
 	delete(s.changes)
 	delete(s.shown)
+	delete(s.scheme_metas)
 	journal_destroy(s)
 	virtual.arena_destroy(&s.arena)
 	free(s)
@@ -127,6 +132,7 @@ styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 	delete(s.overlaid)
 	delete(s.changes)
 	delete(s.shown)
+	delete(s.scheme_metas)
 	journal_destroy(s)
 	for a in s.thread_arenas { virtual.arena_destroy(a); free(a) }
 	delete(s.thread_arenas)
@@ -158,25 +164,6 @@ style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
 	c := s.by_node[i]
 	if c != nil && c.node != h { return nil }   // a recycled slot
 	return c
-}
-
-@(private)
-system_color :: proc(user: rawptr, name: string) -> (css.Color, bool) {
-	s := (^Settings)(user)
-	switch name {
-	case "canvas": return s.background_color, true
-	case "canvastext", "windowtext", "fieldtext", "buttontext", "marktext", "highlighttext_": return s.text_color, true
-	case "linktext": return s.link_color, true
-	case "visitedtext": return s.visited_color, true
-	case "activetext": return s.active_link_color, true
-	case "buttonface", "buttonborder", "threedface": return css.color_from_u32(0xefefef), true
-	case "field", "window": return css.color_from_u32(0xffffff), true
-	case "graytext": return css.color_from_u32(0x6d6d6d), true
-	case "highlight", "accentcolor": return css.color_from_u32(0x0067c0), true
-	case "highlighttext", "accentcolortext": return css.color_from_u32(0xffffff), true
-	case "mark": return css.color_from_u32(0xffff00), true
-	}
-	return {}, false
 }
 
 ////////////////////////////////
@@ -370,7 +357,7 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 @(private)
 is_color_prop :: proc(pr: Prop) -> bool {
 	#partial switch pr {
-	case .Color, .Background_Color, .Background_Image, .Text_Decoration_Color, .Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color, .Outline_Color, .Box_Shadow, .Text_Shadow, .Caret_Color, .Accent_Color:
+	case .Color_Scheme, .Color, .Background_Color, .Background_Image, .Text_Decoration_Color, .Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color, .Outline_Color, .Box_Shadow, .Text_Shadow, .Caret_Color, .Accent_Color:
 		return true
 	}
 	return false
@@ -396,7 +383,8 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		c.inherits = inherited_set
 	}
 	cx := Cx{settings = &e.settings, parent = parent, initial = s.initial, c = c, alloc = a}
-	cx.cenv = css.Color_Env{dark = e.env.prefers_dark, system = system_color, user = &e.settings}
+	cx.cenv = css.Color_Env{system = system_color, user = &e.settings}
+	scheme_settle(&cx, s.page_scheme, e.env.prefers_dark)
 	cx.lc = css.Length_Context{
 		font_size = f64(c.font_size), root_font_size = f64(s.root_font_size > 0 ? s.root_font_size : e.settings.default_font_size),
 		x_height = f64(c.font_size) * 0.5, ch = f64(c.font_size) * 0.5, vw = e.env.width, vh = e.env.height,
@@ -452,6 +440,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		case:
 			if apply_prop(&cx, pr, vals) { ps_remove(&c.inherits, pr) } else { apply_unset(&cx, pr) }
 		}
+		if pr == .Color_Scheme || pr == .Color { scheme_settle(&cx, s.page_scheme, e.env.prefers_dark) }
 		if pr == .Font_Size {
 			cx.lc.font_size = f64(c.font_size)
 			cx.lc.x_height = f64(c.font_size) * 0.5
@@ -702,8 +691,11 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	s.layout_serial = s.serial
 	s.pass_id = s.serial
 	s.line_height_normal = e.settings.line_height_normal
-	s.canvas = e.settings.background_color
+	for sc in Scheme { s.canvas_schemes[sc] = e.settings.colors[sc][.Canvas] }
+	s.root_scheme = used_scheme({}, e.env.prefers_dark)
+	s.canvas = s.canvas_schemes[s.root_scheme]
 	s.canvas_default = s.canvas
+	s.page_scheme, _ = page_color_scheme(doc, &s.scheme_metas)
 	journal_init(e, s)
 	return s
 }
@@ -711,6 +703,12 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 // The canvas takes the root element's background, else the body's (CSS Backgrounds 3 §2.11.2), else the preference.
 @(private)
 update_canvas :: proc(s: ^Styled, doc: ^dom.Document) {
+	if r := dom.get(doc, doc.root); r != nil {
+		for ch := r.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next {
+			if rc := style_of(s, ch); rc != nil { s.root_scheme = rc.used_scheme; break }
+		}
+	}
+	s.canvas_default = s.canvas_schemes[s.root_scheme]
 	s.canvas = s.canvas_default
 	if root_el := dom.find_first_by_tag(doc, "html"); root_el != base.NIL_HANDLE {
 		if rc := style_of(s, root_el); rc != nil && rc.background_color.a > 0 {

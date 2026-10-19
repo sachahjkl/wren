@@ -143,6 +143,10 @@ Computed :: struct {
 	justify_content, align_items, align_self, align_content: Content_Align,
 	order:          i32,
 	row_gap, column_gap: Length,
+	// --- color schemes (color_scheme.odin) ---
+	color_scheme: Color_Scheme_Value,
+	used_scheme:  Scheme,         // light or dark: the system colors and light-dark() branch this element uses
+	color_pair:   Scheme_Color,   // `color` resolved in both schemes (children with another scheme pick the other)
 	// --- text ---
 	color:      css.Color,
 	font_family: []string,
@@ -267,9 +271,10 @@ Computed :: struct {
 	before, after: ^Computed,   // generated boxes (nil when `content` is none/normal)
 }
 
-// Longhand properties. Order matters: values that others depend on (font-size for em, color for currentcolor) come first.
+// Longhand properties. Order matters: values that others depend on (color-scheme for every color, font-size for em,
+// color for currentcolor) come first.
 Prop :: enum u8 {
-	Font_Size, Color,
+	Color_Scheme, Font_Size, Color,
 	Font_Family, Font_Weight, Font_Style, Font_Stretch, Font_Variant_Caps, Line_Height, Letter_Spacing, Word_Spacing, Text_Align,
 	Text_Decoration_Line, Text_Decoration_Color, Text_Decoration_Style, Text_Decoration_Thickness, Text_Underline_Offset,
 	Text_Transform, Text_Indent, Text_Overflow, White_Space_Collapse, Text_Wrap_Mode, Text_Wrap_Style, Word_Break,
@@ -309,7 +314,7 @@ Prop_Set :: struct { bits: [(PROP_COUNT + 63) / 64]u64 }
 
 // Inherited properties (CSS: "Inherited: yes"). See `is_inherited`.
 INHERITED_PROPS :: [?]Prop{
-	.Font_Size, .Color, .Font_Family, .Font_Weight, .Font_Style, .Font_Stretch, .Font_Variant_Caps, .Line_Height,
+	.Color_Scheme, .Font_Size, .Color, .Font_Family, .Font_Weight, .Font_Style, .Font_Stretch, .Font_Variant_Caps, .Line_Height,
 	.Letter_Spacing, .Word_Spacing, .Text_Align, .Text_Transform, .Text_Indent, .White_Space_Collapse, .Text_Wrap_Mode,
 	.Text_Wrap_Style, .Word_Break, .Overflow_Wrap, .Hyphens, .Tab_Size, .Direction, .Text_Shadow, .Text_Underline_Offset,
 	.Visibility, .List_Style_Type, .List_Style_Position, .Cursor, .Pointer_Events, .Border_Collapse, .Border_Spacing,

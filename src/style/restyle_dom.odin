@@ -714,6 +714,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	if e.dirty { return fail(e, "rules changed") }
 	entries, jok := dom.journal_since(doc, s.mutations)
 	if !jok { return fail(e, "mutation journal incomplete") }
+	if meta_scheme_changed(doc, s, entries) { return fail(e, "page color scheme changed") }   // the root's color-scheme, then everything
 	if int(s.arena.total_used) - int(s.base_used) + s.partial_bytes > e.settings.restyle_waste_bytes { return fail(e, "memory left by partial restyles") }
 	ix := inv_index(e)
 	if ix.give_up { return fail(e, "selectors nested too deep") }

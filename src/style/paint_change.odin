@@ -21,7 +21,7 @@ Prop_Tier :: enum u8 {
 }
 
 PAINT_PROPS :: [?]Prop{
-	.Color, .Text_Shadow, .Text_Decoration_Color,
+	.Color_Scheme, .Color, .Text_Shadow, .Text_Decoration_Color,
 	.Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color,
 	.Border_Top_Left_Radius, .Border_Top_Right_Radius, .Border_Bottom_Right_Radius, .Border_Bottom_Left_Radius,
 	.Opacity,

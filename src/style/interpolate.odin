@@ -513,9 +513,9 @@ add_prop :: proc(dst, underlying, value: ^Computed, p: Prop, ctx: ^Interp_Ctx) -
 	da, db := prop_fields(dst, p)
 	ua, ub := prop_fields(underlying, p)
 	va, vb := prop_fields(value, p)
-	if db.data != nil { return false }
-	_ = ub; _ = vb
+	if db.data != nil && p != .Color { return false }   // `color` adds in both color schemes
 	if !add_values(da.data, ua.data, va.data, type_info_of(da.id), ctx) { return false }
+	if db.data != nil && !add_values(db.data, ub.data, vb.data, type_info_of(db.id), ctx) { return false }
 	clamp_prop(dst, p)
 	return true
 }
