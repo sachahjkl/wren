@@ -147,7 +147,7 @@ func registerPolicyHandlers(mux *http.ServeMux) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write(b)
 	})
-	site := http.FileServer(http.Dir(siteDir))
+	site := siteHandler(siteDir) // index.html, folder listings, /site/grid -> grid.html (site.go)
 	mux.Handle("/site/", http.StripPrefix("/site/", site))
 	// the same site with a Content-Security-Policy: scripts only from other (unreachable) hosts => the module is blocked
 	mux.Handle("/site-csp/", http.StripPrefix("/site-csp/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -158,7 +158,7 @@ func registerPolicyHandlers(mux *http.ServeMux) {
 	// sets a cookie, then redirects to the site: shows cookies and redirects in the shell
 	mux.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "visited", Value: "yes", Path: "/", MaxAge: 3600, HttpOnly: false, SameSite: http.SameSiteLaxMode})
-		http.Redirect(w, r, "/site/index.html", http.StatusFound)
+		http.Redirect(w, r, "/site/counter.html", http.StatusFound)
 	})
 	mux.HandleFunc("/headers", func(w http.ResponseWriter, r *http.Request) {
 		for k, v := range r.URL.Query() {

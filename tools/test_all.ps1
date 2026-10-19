@@ -78,7 +78,13 @@ Step 'build pagetest' { odin build src/tools/pagetest -collection:wb=src -vet -o
 Step 'build policytest' { odin build src/tools/policytest -collection:wb=src -vet -out:build/policytest.exe }
 Step 'build web API test (guest + tool)' { odin build examples/webapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/webapitest.wasm -o:size; if ($LASTEXITCODE -eq 0) { odin build src/tools/webapitest -collection:wb=src -vet -out:build/webapitest.exe } }
 Step 'build fetch' { odin build src/tools/fetch -collection:wb=src -vet -out:build/fetch.exe }
-Step 'build testserver' { Push-Location tools\testserver; go build -o ..\..\build\testserver.exe .; Pop-Location }
+Step 'file: folders end-to-end test (index file, listing, redirect to /, errors, who may open what; no server)' {
+    odin build src/tools/filetest -collection:wb=src -vet -out:build/filetest.exe
+    if ($LASTEXITCODE -ne 0) { return }
+    $o = .\build\filetest.exe | Out-String; $o
+    $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
+}
+Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe . }; Pop-Location }
 
 $srv = Start-Process (Join-Path $root 'build\testserver.exe') -PassThru -WindowStyle Hidden
 Start-Sleep -Seconds 1
@@ -90,7 +96,7 @@ try {
         $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'end-to-end page test' {
-        $p = Start-Process .\build\pagetest.exe -ArgumentList 'build\e2e.wasm','examples\site\index.html','examples\site\counter.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\pt.txt
+        $p = Start-Process .\build\pagetest.exe -ArgumentList 'build\e2e.wasm','examples\site\counter.html','examples\site\counter.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\pt.txt
         if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\pt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\pt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }

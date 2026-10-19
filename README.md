@@ -138,12 +138,18 @@ Download `wren-<version>-windows-x64.zip` from the [latest release](https://gith
 unzip it anywhere and run `wren.exe`. It needs Windows 10 or 11 (x64) with a Direct3D 11 GPU; nothing else to install.
 
 The start page links to `about:demos`, the index of every demo and test page. They come in the zip, in `demos\` next to
-`wren.exe`, and most open straight from disk. The few that need a server (network images, forms, CSP, workers) are
-marked; the small local test server is in the zip too: run `demo.bat` (it starts `testserver.exe` on 127.0.0.1:8765 and
-opens `about:demos`), or start them yourself:
+`wren.exe`, and most open straight from disk: `demos\index.html` is the same index as a page (opening the folder shows
+it). The few that need a server (network images, forms, CSP, workers) are marked; the small local test server is in
+the zip too: run `demo.bat` (it starts `testserver.exe` on 127.0.0.1:8765 and opens `about:demos`), or start them
+yourself:
 
     testserver.exe                                   # http://127.0.0.1:8765, https://127.0.0.1:8766 (self-signed)
     wren.exe http://127.0.0.1:8765/site/effects.html
+    wren.exe demos                                   # a folder: its index.html, else the list of its files
+
+The address bar takes Windows paths as well as URLs (`C:\pages\a.html`, `S:/site`, `\\server\share`, `~\Documents`),
+and files or folders dropped on the window open. A folder opens its `index.html` (`file.directory.index`), else a list
+of its files (`file.directory.*` in `about:config`); `about:about` lists the built-in pages.
 
 Useful command-line options: `--profile DIR` (another profile directory; the default is `%APPDATA%\Wren`),
 `--pref name=value` (any preference of `about:config`), `--policy FILE`.

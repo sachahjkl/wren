@@ -753,6 +753,9 @@ data_hop :: proc(t: ^Task) {
 }
 
 @(private)
+File_Outcome :: enum u8 { File, Redirect, Index, Listing }
+
+@(private)
 File_Job :: struct {
 	loader: ^Loader,
 	task:   base.Handle,
@@ -761,6 +764,23 @@ File_Job :: struct {
 	data:   []byte,
 	err:    string,
 	size_exceeded: bool,
+	// folders (directory.odin)
+	document:   bool,            // a navigation: a folder shows its index or its listing
+	slash:      bool,            // the URL's path ends with '/'
+	files:      File_Settings,   // a copy: the preferences may change while the job runs
+	sort:       Listing_Sort,
+	descending: bool,
+	outcome:    File_Outcome,
+	index:      string,          // the index file shown
+}
+
+// A navigation may open a file outside the initiator's tree: the browser UI (nil) opens anything, and so does a file:
+// document (a listing's links, a local page linking to its neighbours), unless file: documents may read nothing at all.
+// A web page never does: it can neither open nor list the disk.
+file_navigation_allowed :: proc(env: ^Environment, policy: File_Access) -> bool {
+	if env == nil { return true }
+	if policy == .None { return false }
+	return env.location.scheme == "file"
 }
 
 @(private)
@@ -769,16 +789,22 @@ file_hop :: proc(t: ^Task) {
 	path, ok := file_path_from_url(t.target)
 	if !ok { fail(t, .Bad_URL, "invalid file URL"); return }
 	defer delete(path)
-	if !file_access_allowed(t.initiator, path, l.profile.settings.file_access) {
+	document := t.mode == .Navigate && t.destination == .Document
+	if !file_access_allowed(t.initiator, path, l.profile.settings.file_access) && !(document && file_navigation_allowed(t.initiator, l.profile.settings.file_access)) {
 		fail(t, .Blocked_File, fmt.tprintf("a document may only read files in its own directory tree (%s)", path)); return
 	}
 	t.taint = .Basic
 	t.stage = .Local
-	job := new(File_Job, runtime.heap_allocator())
+	a := runtime.heap_allocator()
+	job := new(File_Job, a)
 	job.loader = l
 	job.task = t.self
-	job.path = strings.clone(path, runtime.heap_allocator())
+	job.path = strings.clone(path, a)
 	job.max = t.max_body > 0 ? t.max_body : l.net.settings.max_body
+	job.document = document
+	job.slash = strings.has_suffix(t.target.path, "/")
+	job.files = file_settings_clone(l.profile.settings.files, a)
+	job.sort, job.descending = listing_order(t.target.query, &l.profile.settings.files)
 	host.run_blocking(l.blocking, file_work, file_done, job)
 }
 
@@ -786,29 +812,76 @@ file_hop :: proc(t: ^Task) {
 file_work :: proc(data: rawptr) {
 	j := (^File_Job)(data)
 	context.allocator = runtime.heap_allocator()
-	info, serr := os.stat(j.path, context.allocator)
-	if serr != nil { j.err = "file not found"; return }
-	defer os.file_info_delete(info, context.allocator)
-	if info.type == .Directory { j.err = "is a directory"; return }
-	if int(info.size) > j.max { j.size_exceeded = true; j.err = "file too large"; return }
-	bytes, rerr := os.read_entire_file(j.path, context.allocator)
-	if rerr != nil { j.err = "cannot read file"; return }
+	attrs, st := file_attributes(j.path)
+	if st != .Ok { j.err = strings.clone(file_status_text(st, j.path)); return }
+	if attrs.folder {
+		if !j.document { j.err = strings.clone(fmt.tprintf("%s is a folder", j.path)); return }
+		if !j.slash { j.outcome = .Redirect; return }
+		dir := strings.trim_right(j.path, "\\")
+		for name in j.files.index_names {
+			p := strings.concatenate({dir, "\\", name}, context.temp_allocator)
+			ia, ist := file_attributes(p)
+			if ist != .Ok || ia.folder { continue }
+			if read_file_into(j, p, ia.size) { j.outcome = .Index; j.index = strings.clone(name) }
+			return
+		}
+		if !j.files.listing { j.err = strings.clone(fmt.tprintf("%s is a folder without an index file, and folder listings are off (file.directory.listing)", j.path)); return }
+		l, lst := read_directory(j.path, &j.files)
+		defer dir_listing_destroy(&l)
+		if lst != .Ok { j.err = strings.clone(file_status_text(lst, j.path)); return }
+		sort_listing(&l, j.sort, j.descending, j.files.folders_first)
+		j.data = transmute([]byte)directory_listing_html(j.path, &l, j.sort, j.descending)
+		j.outcome = .Listing
+		return
+	}
+	read_file_into(j, j.path, attrs.size)
+}
+
+@(private)
+read_file_into :: proc(j: ^File_Job, path: string, size: i64) -> bool {
+	if size > i64(j.max) { j.size_exceeded = true; j.err = strings.clone(fmt.tprintf("%s is too large (%d bytes)", path, size)); return false }
+	bytes, rerr := os.read_entire_file(path, context.allocator)
+	if rerr != nil { j.err = strings.clone(fmt.tprintf("%s: cannot be read", path)); return false }
 	j.data = bytes
+	return true
 }
 
 @(private)
 file_done :: proc(data: rawptr) {
 	j := (^File_Job)(data)
 	a := runtime.heap_allocator()
-	defer { delete(j.path, a); delete(j.data, a); free(j, a) }
+	defer {
+		delete(j.path, a); delete(j.data, a); delete(j.err, a); delete(j.index, a)
+		file_settings_destroy(&j.files, a)
+		free(j, a)
+	}
 	t := base.pool_get(&j.loader.tasks, j.task)
 	if t == nil { return }
 	if j.err != "" {
 		fail(t, j.size_exceeded ? .Body_Too_Large : .Transport, j.err)
 		return
 	}
-	path, _ := file_path_from_url(t.target, context.temp_allocator)
-	synthetic(t, 200, mime_for_extension(path), j.data)
+	switch j.outcome {
+	case .Redirect:
+		// a folder's URL ends with '/', as http servers and browsers make it: its relative links resolve inside it
+		if t.redirect_count >= t.loader.profile.settings.max_redirects { fail(t, .Redirect_Loop, "too many redirects"); return }
+		u := t.target
+		href := directory_redirect_href(u.scheme, u.host, u.path, u.query, u.fragment, u.has_query, u.has_fragment, context.temp_allocator)
+		next, ok := url.parse_absolute(href)
+		if !ok { fail(t, .Bad_Redirect, fmt.tprintf("invalid folder URL %q", href)); return }
+		url.destroy(&t.target)
+		t.target = next
+		t.redirect_count += 1
+		t.redirected = true
+		run_hop(t)
+	case .Index:
+		synthetic(t, 200, mime_for_extension(j.index), j.data)
+	case .Listing:
+		synthetic(t, 200, "text/html;charset=utf-8", j.data)
+	case .File:
+		path, _ := file_path_from_url(t.target, context.temp_allocator)
+		synthetic(t, 200, mime_for_extension(path), j.data)
+	}
 }
 
 ////////////////////////////////

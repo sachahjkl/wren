@@ -6,6 +6,7 @@ import win "core:sys/windows"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
+import "wb:fetch"
 import "wb:page"
 
 ////////////////////////////////
@@ -30,7 +31,7 @@ register_demos_prefs :: proc(p: ^config.Prefs) { config.register(p, DEMOS_PREFS[
 
 Demo_Theme :: enum u8 { Css, Layout, Rendering, Text, Images, Wasm, Network, Performance, E2e }
 
-@(private = "file")
+@(private)
 DEMO_THEME_TITLES := [Demo_Theme]string{
 	.Css         = "CSS engine",
 	.Layout      = "Layout",
@@ -92,14 +93,14 @@ DEMOS := [?]Demo{
 	{.Images, "External link icons", "media/dark-links.html",
 		"An SVG icon in the <code>::after</code> background of external links, and <code>filter: invert()</code> to show it on a dark page.", true, "", false},
 
-	{.Wasm, "A page with no JavaScript", "index.html",
+	{.Wasm, "A page with no JavaScript", "counter.html",
 		"Real HTML whose behaviour is a WebAssembly module (<code>counter.wasm</code>, written in Odin): buttons, a ticking timer, DOM updates, and a relative link.", false, "", false},
 	{.Wasm, "Page lifetime", "about.html",
 		"Reached from the counter page: navigating closed the previous page, and freed its Wasm instance, its timer and its DOM with it.", false, "", false},
 	{.Wasm, "Form controls", "forms.html",
 		"Text, email, number, date, range, color, select and file controls, validation pseudo-classes (<code>:user-invalid</code>, <code>:out-of-range</code>), a Wasm module that reads, fills and validates the form, and a multipart POST to the server.", true, "", false},
 
-	{.Network, "Content-Security-Policy", "/site-csp/index.html",
+	{.Network, "Content-Security-Policy", "/site-csp/counter.html",
 		"The counter page served with a policy that allows scripts only from unreachable hosts: its Wasm module is blocked, and the violation is reported.", true, "", false},
 	{.Network, "Cookies and redirects", "/start",
 		"Sets a cookie, then redirects to the counter page: the cookie and the redirect show in the page information of the address bar.", true, "", false},
@@ -117,7 +118,7 @@ DEMOS := [?]Demo{
 	{.Performance, "50 000 elements", "p50k.html",
 		"The largest page of the profiler's scenarios, made by <code>tools\\perf.ps1</code> in <code>build\\perf\\</code>.", false, "", true},
 
-	{.E2e, "Page test", "index.html",
+	{.E2e, "Page test", "counter.html",
 		"Loads the counter page headless and checks its DOM, its module and its timers.", true, "pagetest", false},
 	{.E2e, "Style run-time test", "",
 		"Web fonts, transitions and animations, checked frame by frame.", true, "styletest", false},
@@ -204,22 +205,7 @@ is_file :: proc(path: string) -> bool {
 // "C:\dir\my demos" -> "file:///C:/dir/my%20demos/" ("\\host\share\d" -> "file://host/share/d/"): bytes other than
 // unreserved characters, '/' and ':' are percent-encoded (UTF-8).
 file_url_of_dir :: proc(dir: string, allocator := context.temp_allocator) -> string {
-	p, _ := strings.replace_all(strings.trim_right(dir, "\\/"), "\\", "/", context.temp_allocator)
-	sb := strings.builder_make(allocator)
-	if strings.has_prefix(p, "//") {
-		strings.write_string(&sb, "file:")
-	} else {
-		strings.write_string(&sb, "file:///")
-	}
-	for i in 0 ..< len(p) {
-		c := p[i]
-		switch c {
-		case 'a' ..= 'z', 'A' ..= 'Z', '0' ..= '9', '-', '.', '_', '~', '/', ':': strings.write_byte(&sb, c)
-		case: fmt.sbprintf(&sb, "%%%02X", c)
-		}
-	}
-	strings.write_byte(&sb, '/')
-	return strings.to_string(sb)
+	return fetch.file_url_from_path(dir, directory = true, allocator = allocator)
 }
 
 @(private = "file")
@@ -371,5 +357,5 @@ show_demos :: proc(app: ^App, t: ^Tab) {
 builtin_document :: proc(p: ^page.Page) -> bool {
 	if p == nil { return false }
 	h := p.env.location.href
-	return h == HOME_URL || h == DEMOS_URL
+	return h == HOME_URL || h == DEMOS_URL || h == ABOUT_URL
 }

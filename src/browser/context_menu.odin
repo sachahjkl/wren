@@ -316,9 +316,11 @@ address_menu_items :: proc(app: ^App) {
 // What the address bar does with words that are not an address: a search.
 address_or_search :: proc(input: string) -> string {
 	s := strings.trim_space(input)
+	if u, ok := local_path_url(s); ok { return u }   // C:\..., \\server\share, ~ (local_paths.odin)
 	looks_like_url := strings.contains(s, "://") || strings.has_prefix(s, "about:") || strings.has_prefix(s, "data:") ||
-		strings.has_prefix(s, "view-source:") || strings.has_prefix(s, "file:") || (len(s) > 2 && s[1] == ':')
-	if !looks_like_url && (strings.contains(s, " ") || !strings.contains(s, ".")) && !strings.has_prefix(s, "localhost") {
+		strings.has_prefix(s, "view-source:") || strings.has_prefix(s, "file:")
+	// a relative path (docs\a.html) names no folder for sure: words to search for
+	if !looks_like_url && (strings.contains(s, " ") || !strings.contains(s, ".") || strings.contains(s, "\\")) && !strings.has_prefix(s, "localhost") {
 		return search_url(&ix, s)
 	}
 	return s
