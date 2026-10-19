@@ -773,6 +773,12 @@ make_marker :: proc(c: ^Ctx, bi: i32, h: base.Handle, cf: Frame) {
 	ordinal := c.rebuilding == bi ? c.l.inc.info[bi].ordinal : list_ordinal(c, h)
 	c.l.inc.info[bi].ordinal = ordinal
 	text := marker_string(c, cs.list_style_type, ordinal)
+	// counter styles the legacy enum only approximates (disclosure triangles of <summary>, strings, the other
+	// alphabets): the marker the style engine resolved, without its trailing space
+	#partial switch cs.list_style.style {
+	case .Disclosure_Open, .Disclosure_Closed, .String:
+		if t := strings.trim_right_space(cs.marker_text); t != "" { text = t }
+	}
 	if cs.list_style_position == .Inside && cf.mode == .Inline {
 		s := text
 		if s == "" {
