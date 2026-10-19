@@ -288,3 +288,16 @@ Run 'anim_pacing'       (FileUrl (Join-Path $site 'animations.html')) { param($h
 Run 'transforms_pacing' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
 Run 'effects_pacing'    (FileUrl (Join-Path $site 'effects.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
 Run 'effects_wheel'     (FileUrl (Join-Path $site 'effects.html')) { param($h) Start-Sleep 3; Mark; WheelStream $h 8000 4 -120 } $false
+# JavaScript (examples/jsbench): pages driven by their scripts, at 180 Hz (frames are what the script costs, plus the
+# restyle and layout it causes): 1000 boxes moved through style.transform each frame, 10 000 nodes built and removed
+# each frame, 50 querySelectorAll per frame without a mutation
+$jsb = Join-Path $root 'examples\jsbench'
+Run 'js_anim1000' (FileUrl (Join-Path $jsb 'anim1000.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false '--pref browser.frame.target_hz=180'
+Run 'js_nodes10k' (FileUrl (Join-Path $jsb 'nodes10k.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false '--pref browser.frame.target_hz=180'
+Run 'js_qsa'      (FileUrl (Join-Path $jsb 'qsa_loop.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false '--pref browser.frame.target_hz=180'
+Run 'js_anim1000_sample' (FileUrl (Join-Path $jsb 'anim1000.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $true '--pref browser.frame.target_hz=180'
+# JavaScript off: pages without scripts must cost what they cost before the engine existed. Compare these with the same
+# scenarios of a build without JavaScript (-Exe <that build> -Tag _main): load, hover, scroll, an animation
+Run 'nojs_p10k_load'   (FileUrl $p10k) { param($h) Start-Sleep 8 } $true '--pref javascript.enabled=false'
+Run 'nojs_p10k_scroll' (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; Scroll $h 8000 } $false '--pref javascript.enabled=false'
+Run 'nojs_anim'        (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false '--pref javascript.enabled=false'
