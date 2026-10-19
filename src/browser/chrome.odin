@@ -454,7 +454,17 @@ chrome_shortcuts :: proc(app: ^App) {
 		// stops a load in progress (the document's request, and the modules still downloading)
 		stop_loading(app, t)
 	case ui.key_press(.Menu), ui.key_press(.F10, {.Shift}):
-		if t != nil && t.kind == .Web && page_has_keyboard(app) { page_context_menu_keyboard(app, t) }
+		// the menu of what has the keyboard: a tab of the strip, else the page (the address bar handles its own)
+		name := ui.focused_name()
+		if strings.has_prefix(name, "tabs_") {
+			if b := ui.box_from_key(ui.focus_key()); b != nil {
+				index := 0
+				for c in name[len("tabs_"):] { index = index * 10 + int(c - '0') }
+				tab_context_menu(app, index, {b.rect.min.x, b.rect.max.y}, keyboard = true)
+			}
+		} else if t != nil && t.kind == .Web && page_has_keyboard(app) {
+			page_context_menu_keyboard(app, t)
+		}
 	}
 	for k in platform.Key.N1 ..= platform.Key.N8 {
 		if ui.key_press(k, ctrl) { tab_select(app, min(int(k) - int(platform.Key.N1), n - 1)) }

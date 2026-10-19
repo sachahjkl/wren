@@ -392,6 +392,7 @@ Save_Job :: struct {
 	suggested: string,   // owned
 	path:      string,   // owned: where to write (set by the dialog)
 	task:      base.Handle,
+	cleanup:   base.Cleanup_Id,   // the process scope frees the job if the browser closes during the download
 	bytes:     []byte,   // owned: what was downloaded
 	ok:        bool,
 	message:   string,   // owned
@@ -487,11 +488,13 @@ save_dialog_done :: proc(data: rawptr) {
 		request = {url = job.url, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = .Empty},
 		on_event = save_fetch_event, user = job, scope = app.process, collect = true,
 	})
+	job.cleanup = base.on_close(app.process, proc(data: rawptr) { save_job_free((^Save_Job)(data)) }, job)
 }
 
 @(private = "file")
 save_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	job := (^Save_Job)(user)
+	if ev.kind == .Done || ev.kind == .Failed { base.forget_cleanup(job.app.process, job.cleanup) }
 	#partial switch ev.kind {
 	case .Done:
 		job.bytes = make([]byte, len(ev.data))

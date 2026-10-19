@@ -134,6 +134,12 @@ try {
                 [SH]::keybd_event([byte]$code, 0, 2, [IntPtr]::Zero)
                 foreach ($m in $mods) { [SH]::keybd_event([byte]$m, 0, 2, [IntPtr]::Zero) }
             }
+            'vkey' {
+                # a posted key (no modifiers, the window need not be in the foreground)
+                $code = if ($named.ContainsKey($arg)) { $named[$arg] } elseif ($arg -match '^F(\d+)$') { 0x6F + [int]$Matches[1] } elseif ($arg.Length -eq 1) { [int][char]$arg.ToUpper() } else { [int]$arg }
+                [SH]::PostMessage($h, 0x0100, [IntPtr]$code, [IntPtr]1) | Out-Null; Start-Sleep -Milliseconds 40
+                [SH]::PostMessage($h, 0x0101, [IntPtr]$code, [IntPtr]0xC0000001) | Out-Null
+            }
             'type' { foreach ($ch in $arg.ToCharArray()) { [SH]::PostMessage($h, 0x0102, [IntPtr][int]$ch, [IntPtr]1) | Out-Null; Start-Sleep -Milliseconds 20 } }
             'wait' { Start-Sleep -Milliseconds ([int]$arg) }
             'shot' { [SH]::SetCursorPos($r0.R + 15, $r0.T + 200) | Out-Null; Start-Sleep -Milliseconds $SettleMs; Grab $h $arg }

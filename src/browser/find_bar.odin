@@ -267,6 +267,7 @@ find_reveal :: proc(t: ^Tab) {
 			rect = {rect.min - got, rect.max - got}
 		case .Document:
 			if rect.min.y < t.scroll || rect.max.y > t.scroll + view.y { t.scroll = max(rect.min.y - margin, 0) }
+			the_app.frames_requested = max(the_app.frames_requested, 2)
 			return
 		case .Fixed:
 			return
