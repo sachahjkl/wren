@@ -289,6 +289,8 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Grid_Column_End: return fa(&c.grid_column_end), NO_FIELD
 	case .Justify_Items: return fa(&c.justify_items), NO_FIELD
 	case .Justify_Self: return fa(&c.justify_self), NO_FIELD
+	case .Container_Type: return fa(&c.container_type), NO_FIELD
+	case .Container_Name: return fa(&c.container_name), NO_FIELD
 	}
 	return NO_FIELD, NO_FIELD
 }

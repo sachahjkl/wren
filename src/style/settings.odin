@@ -61,6 +61,8 @@ Settings :: struct {
 	inc_parallel_min:    int,       // elements restyled at least before forced subtrees go to the style threads
 	inc_verify:          bool,      // diagnostic: compare with a full pass after every partial one
 	inc_journal:         int,       // entries of the document's mutation journal
+	background_clip_text: bool,     // the painter clips backgrounds to text: `background-clip: text` is accepted
+	cq_max_rounds:       int,       // container queries: style + layout rounds per frame once container sizes change
 }
 
 // Auto: Reduce when prefers-reduced-motion is reported, else Normal. Reduce: transitions and iterations are cut to
@@ -157,6 +159,10 @@ PREFS := [?]config.Def{
 		description = "Diagnostic: after every partial restyle, compute all styles again and report the first difference in the console. As slow as a full restyle."},
 	{name = "style.incremental.journal_entries", kind = .Int, default = {i = 65536}, bounded = true, min = 256, max = 16 << 20,
 		description = "Mutations of a document remembered between two restyles; more at once make the next restyle a full one."},
+	{name = "style.background_clip_text.enabled", kind = .Bool, default = {b = false},
+		description = "Accept `background-clip: text` (gradient or image text). Turn on only with a painter that clips backgrounds to glyphs: when off, the value is invalid, so pages that test @supports (background-clip: text) keep their plain-text fallback instead of showing a filled box."},
+	{name = "style.container_queries.max_rounds", kind = .Int, default = {i = 3}, bounded = true, min = 0, max = 16,
+		description = "Container queries (@container, cq units) depend on sizes only layout knows: after a layout that changes the size of a query container, styles and layout are computed again, at most this many times per frame (the rest waits for the next frame). 0 = sizes are never fed back: queries stay unknown and cq units use the viewport."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) {
@@ -226,6 +232,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.inc_parallel_min = int(config.int_of(p, "style.incremental.parallel_min"))
 	s.inc_verify = config.bool_of(p, "style.incremental.verify")
 	s.inc_journal = int(config.int_of(p, "style.incremental.journal_entries"))
+	s.background_clip_text = config.bool_of(p, "style.background_clip_text.enabled")
+	s.cq_max_rounds = int(config.int_of(p, "style.container_queries.max_rounds"))
 	return s
 }
 

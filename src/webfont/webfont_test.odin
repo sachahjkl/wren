@@ -187,11 +187,100 @@ woff_is_unpacked :: proc(t: ^testing.T) {
 	testing.expect(t, e5 != .None, "corrupted compressed data is refused")
 }
 
+@(private = "file")
+FIXTURES :: "native/media/tests/fonts/"
+
+// Fonts as Google Fonts serves them: WOFF2 to current browsers, TrueType to old ones (same glyph subset). The native
+// tests compare every outline; here: the decoded file is a valid sfnt with the same tables, and hostile input fails.
+@(test)
+woff2_real_fonts :: proc(t: ^testing.T) {
+	for name in ([?]string{"firacode-var", "roboto", "notosansjp"}) {
+		w2, e1 := os.read_entire_file(string_concat(FIXTURES, name, ".woff2"), context.allocator)
+		tt, e2 := os.read_entire_file(string_concat(FIXTURES, name, ".ttf"), context.allocator)
+		if e1 != nil || e2 != nil { testing.fail_now(t, "fixture missing") }
+		defer delete(w2)
+		defer delete(tt)
+		testing.expect_value(t, sniff(w2), Format.Woff2)
+		out, format, e := decode(w2, 1 << 26)
+		defer delete(out)
+		testing.expectf(t, e == .None && format == .Woff2, "%s: %v", name, e)
+		if e != .None { continue }
+		testing.expect_value(t, validate_sfnt(out), Error.None)
+		a, _ := read_tables(out)
+		b, _ := read_tables(tt)
+		// tables of the TrueType (a variable font is served as its default instance: the WOFF2 has more)
+		for tb in b {
+			found := false
+			for ta in a { if ta.tag == tb.tag { found = true } }
+			testing.expectf(t, found, "%s: table %x", name, tb.tag)
+		}
+		_, _, e3 := decode(w2, 2048)
+		testing.expect_value(t, e3, Error.Too_Large)
+		_, _, e4 := decode(w2[:len(w2) / 2], 1 << 26)
+		testing.expect(t, e4 == .Malformed || e4 == .Too_Large, "a truncated file is refused")
+		// many corruptions: always an error or a valid font, never a crash
+		bad := make([]byte, len(w2), context.temp_allocator)
+		seed := u32(0x9e3779b9)
+		for _ in 0 ..< 300 {
+			copy(bad, w2)
+			for _ in 0 ..< 3 {
+				seed ~= seed << 13; seed ~= seed >> 17; seed ~= seed << 5
+				bad[int(seed % u32(len(bad)))] = u8(seed >> 24)
+			}
+			if o, _, err := decode(bad, 1 << 22); err == .None { delete(o) }
+		}
+	}
+}
+
+// A TrueType Collection gives its first face.
+@(test)
+collection_first_face :: proc(t: ^testing.T) {
+	ttf, err := os.read_entire_file(FONT_PATH, context.allocator)
+	if err != nil { testing.fail_now(t, "test font missing") }
+	defer delete(ttf)
+	// a collection of the same font twice, its tables shared
+	n := int(be16(ttf, 4))
+	head := 12 + 8
+	ttc := make([]byte, head + 2 * (12 + 16 * n) + len(ttf), context.temp_allocator)
+	put32(ttc, 0, TAG_TTCF); put32(ttc, 4, 0x00010000); put32(ttc, 8, 2)
+	data := head + 2 * (12 + 16 * n)
+	copy(ttc[data:], ttf)
+	for f in 0 ..< 2 {
+		off := head + f * (12 + 16 * n)
+		put32(ttc, 12 + 4 * f, u32(off))
+		copy(ttc[off:off + 12 + 16 * n], ttf[:12 + 16 * n])
+		for i in 0 ..< n { put32(ttc, off + 12 + 16 * i + 8, be32(ttf, 12 + 16 * i + 8) + u32(data)) }
+	}
+	testing.expect_value(t, sniff(ttc), Format.Collection)
+	out, format, e := decode(ttc, 1 << 26)
+	defer delete(out)
+	testing.expect(t, e == .None && format == .Collection)
+	a, _ := read_tables(ttf)
+	b, _ := read_tables(out)
+	testing.expect_value(t, len(b), len(a))
+	for i in 0 ..< min(len(a), len(b)) {
+		testing.expect(t, a[i].tag == b[i].tag && string(ttf[a[i].offset:][:a[i].length]) == string(out[b[i].offset:][:b[i].length]))
+	}
+	put32(ttc, 12, u32(len(ttc)))   // the face's directory past the end
+	_, _, e2 := decode(ttc, 1 << 26)
+	testing.expect_value(t, e2, Error.Malformed)
+}
+
+@(private = "file")
+string_concat :: proc(parts: ..string) -> string {
+	n := 0
+	for p in parts { n += len(p) }
+	b := make([]byte, n, context.temp_allocator)
+	i := 0
+	for p in parts { copy(b[i:], p); i += len(p) }
+	return string(b)
+}
+
 @(test)
 other_formats_are_refused :: proc(t: ^testing.T) {
 	woff2 := []byte{'w', 'O', 'F', '2', 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	_, f, e := decode(woff2, 1 << 20)
-	testing.expect(t, f == .Woff2 && e == .Unsupported_Woff2)
+	testing.expect(t, f == .Woff2 && e == .Malformed)
 	_, _, e2 := decode([]byte{1, 2, 3}, 1 << 20)
 	testing.expect_value(t, e2, Error.Too_Small)
 	_, _, e3 := decode([]byte{'<', 'h', 't', 'm', 'l', '>', 0, 0, 0, 0, 0, 0, 0, 0}, 1 << 20)

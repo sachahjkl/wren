@@ -108,6 +108,10 @@ intrinsic_compute :: proc(c: ^Ctx, bi: i32, ignore_width: bool) -> [2]f32 {
 		}
 	}
 	b = &c.l.boxes[bi]
+	// size containment in the inline axis (contain: size / inline-size, container-type): sized as if it had no content
+	if !fixed && b.kind != .Replaced && b.kind != .Inline && (.Size in cs.contain || .Inline_Size in cs.contain) {
+		res = {pb, pb}
+	}
 	if b.kind != .Table {
 		res[0] = intrinsic_clamp(c, b, res[0], pb)
 		res[1] = intrinsic_clamp(c, b, res[1], pb)
@@ -286,16 +290,44 @@ replaced_size :: proc(c: ^Ctx, bi: i32, cb_w, cb_h: f32) -> Vec2 {
 		w = has_w ? nw : (ratio > 0 && has_h ? nh * ratio : 0)
 		h = has_h ? nh : (ratio > 0 && has_w ? nw / ratio : 0)
 	}
-	// min / max (CSS 2.1 §10.4 table, simplified: each dimension on its own)
-	clamp_dim :: proc(c: ^Ctx, v: f32, mn, mx: style.Length, base, pb: f32, bb: bool) -> f32 {
-		r := v
+	// min / max content sizes (border-box values of the properties turned into content-box ones)
+	limits :: proc(c: ^Ctx, mn, mx: style.Length, base, pb: f32, bb: bool) -> (lo, hi: f32) {
+		hi = max(f32)
 		if mx.kind != .None {
-			if m, ok := definite(c, mx, base); ok { r = min(r, bb ? max(m - pb, 0) : m) }
+			if m, ok := definite(c, mx, base); ok { hi = bb ? max(m - pb, 0) : m }
 		}
-		if m, ok := definite(c, mn, base); ok { r = max(r, bb ? max(m - pb, 0) : m) }
-		return max(r, 0)
+		if m, ok := definite(c, mn, base); ok { lo = bb ? max(m - pb, 0) : m }
+		return lo, max(hi, lo)
 	}
-	w = clamp_dim(c, w, cs.min_width, cs.max_width, cb_w, pbw, bb)
-	h = clamp_dim(c, h, cs.min_height, cs.max_height, cb_h, pbh, bb)
-	return {w + pbw, h + pbh}
+	min_w, max_w := limits(c, cs.min_width, cs.max_width, cb_w, pbw, bb)
+	min_h, max_h := limits(c, cs.min_height, cs.max_height, cb_h, pbh, bb)
+	if ratio > 0 && !(okw && okh) && w > 0 && h > 0 {
+		if okw {
+			// a width that is given: clamped first, the height follows the ratio, then its own limits
+			w = clamp(w, min_w, max_w)
+			h = clamp(w / ratio, min_h, max_h)
+		} else if okh {
+			h = clamp(h, min_h, max_h)
+			w = clamp(h * ratio, min_w, max_w)
+		} else {
+			// both automatic: the table of CSS 2.1 §10.4, which keeps the ratio while it can
+			ww, hh := w, h
+			switch {
+			case ww > max_w && hh > max_h:
+				if max_w / ww <= max_h / hh { w, h = max_w, max(min_h, max_w * hh / ww) } else { w, h = max(min_w, max_h * ww / hh), max_h }
+			case ww < min_w && hh < min_h:
+				if min_w / ww <= min_h / hh { w, h = min(max_w, min_h * ww / hh), min_h } else { w, h = min_w, min(max_h, min_w * hh / ww) }
+			case ww < min_w && hh > max_h: w, h = min_w, max_h
+			case ww > max_w && hh < min_h: w, h = max_w, min_h
+			case ww > max_w: w, h = max_w, max(max_w * hh / ww, min_h)
+			case ww < min_w: w, h = min_w, min(min_w * hh / ww, max_h)
+			case hh > max_h: w, h = max(max_h * ww / hh, min_w), max_h
+			case hh < min_h: w, h = min(min_h * ww / hh, max_w), min_h
+			}
+		}
+	} else {
+		w = clamp(w, min_w, max_w)
+		h = clamp(h, min_h, max_h)
+	}
+	return {max(w, 0) + pbw, max(h, 0) + pbh}
 }

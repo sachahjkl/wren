@@ -1,0 +1,214 @@
+package style
+
+import "core:strings"
+import "wb:base"
+import "wb:css"
+
+// Container queries (CSS Containment 3): container-type / container-name, @container rules and cq units.
+//
+// A query depends on the size of an ancestor's box, which only layout knows. The engine keeps the content-box sizes the
+// embedder measured after the last layout (`engine_set_container_sizes`); a change marks the styles for a full pass,
+// and the embedder lays out again (src/browser/container_queries.odin bounds that loop). On the first pass no size is
+// known yet: size queries are unknown (false) and cq units use the small viewport, as with no container at all.
+// Elements with container-type get size containment in the inline axis (and in both for `size`), which is what makes
+// one round enough: their size does not depend on what the queries change inside them.
+
+Container_Type :: enum u8 { Normal, Size, Inline_Size }
+
+// One query container, as the descendants of an element see it (a chain to the root, nearest first).
+Container_Ctx :: struct {
+	node:   base.Handle,
+	type:   Container_Type,
+	names:  []string,
+	size:   css.Container_Size,
+	parent: ^Container_Ctx,
+}
+
+// Conditions of the @container rules around a style rule (nested ones form a chain).
+Cq_Cond :: struct {
+	query: ^css.Container_Query,
+	next:  ^Cq_Cond,
+}
+
+// Records the content-box sizes (CSS px) of the elements that are query containers. Returns true when a query or a cq
+// unit may now resolve differently: the caller restyles (the engine has set `restyle_needed`) and lays out again.
+engine_set_container_sizes :: proc(e: ^Engine, sizes: map[base.Handle][2]f32) -> bool {
+	same := len(sizes) == len(e.container_sizes)
+	if same {
+		for h, s in sizes {
+			old, ok := e.container_sizes[h]
+			if !ok || abs(old.x - s.x) > 0.01 || abs(old.y - s.y) > 0.01 { same = false; break }
+		}
+	}
+	if same { return false }
+	clear(&e.container_sizes)
+	for h, s in sizes { e.container_sizes[h] = s }
+	if !e.container_dependent { return false }
+	e.restyle_needed = true
+	return true
+}
+
+// Some rule or value of the documents depends on container sizes.
+engine_uses_container_queries :: proc(e: ^Engine) -> bool { return e.container_dependent }
+
+// The query containers of a computed style pass: the elements whose container-type is not normal.
+styled_containers :: proc(s: ^Styled, allocator := context.temp_allocator) -> []base.Handle {
+	out := make([dynamic]base.Handle, allocator)
+	for c in s.by_node { if c != nil && c.container_type != .Normal && c.display != .None { append(&out, c.node) } }
+	return out[:]
+}
+
+@(private)
+apply_container_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
+	c := cx.c
+	#partial switch p {
+	case .Container_Type:
+		items := split_items(vs)
+		// `scroll-state` (alone or with a size type) is accepted for the size part: scroll-state() queries stay unknown
+		t := Container_Type.Normal
+		seen := false
+		for it in items {
+			switch ident_lower(it) {
+			case "normal": if len(items) != 1 { return false }
+			case "size": if seen { return false }; t, seen = .Size, true
+			case "inline-size": if seen { return false }; t, seen = .Inline_Size, true
+			case "scroll-state":
+			case: return false
+			}
+		}
+		if len(items) == 0 { return false }
+		c.container_type = t
+	case .Container_Name:
+		items := split_items(vs)
+		if len(items) == 1 && ident_lower(items[0]) == "none" { c.container_name = nil; return true }
+		names := make([]string, len(items), cx.alloc)
+		for it, i in items {
+			if !tok_is(it, .Ident) { return false }
+			switch ident_lower(it) {
+			case "none", "and", "or", "not", "initial", "inherit", "unset", "revert", "revert-layer", "default": return false
+			}
+			names[i] = strings.clone(it.tok.text, cx.alloc)
+		}
+		c.container_name = names
+	}
+	return true
+}
+
+// The context this element's children see: its own container (with the measured size) in front of its parent's.
+@(private)
+container_chain :: proc(e: ^Engine, c: ^Computed, parent: ^Computed, a := context.allocator) -> ^Container_Ctx {
+	up := parent != nil ? parent.containers : nil
+	if c.container_type == .Normal || c.display == .None { return up }
+	ctx := new(Container_Ctx, a)
+	ctx^ = Container_Ctx{node = c.node, type = c.container_type, names = c.container_name, parent = up}
+	if s, ok := e.container_sizes[c.node]; ok {
+		ctx.size.w, ctx.size.has_w = f64(s.x), true
+		if c.container_type == .Size { ctx.size.h, ctx.size.has_h = f64(s.y), true }
+	}
+	return ctx
+}
+
+// cq units of an element: its nearest ancestor containers for each axis.
+@(private)
+container_units :: proc(lc: ^css.Length_Context, chain: ^Container_Ctx) {
+	lc.has_cq_w, lc.has_cq_h = false, false
+	for k := chain; k != nil; k = k.parent {
+		if !lc.has_cq_w && k.size.has_w { lc.cq_w, lc.has_cq_w = k.size.w, true }
+		if !lc.has_cq_h && k.size.has_h { lc.cq_h, lc.has_cq_h = k.size.h, true }
+		if lc.has_cq_w && lc.has_cq_h { break }
+	}
+}
+
+// Every @container condition around a rule holds for an element whose ancestors' containers are `chain` and whose
+// parent's custom properties are `parent_custom` (style() queries without a name ask the parent).
+@(private)
+container_conditions_hold :: proc(conds: ^Cq_Cond, chain: ^Container_Ctx, parent_custom: ^Custom_Props) -> bool {
+	for k := conds; k != nil; k = k.next {
+		if !container_query_holds(k.query, chain, parent_custom) { return false }
+	}
+	return true
+}
+
+@(private)
+container_query_holds :: proc(q: ^css.Container_Query, chain: ^Container_Ctx, parent_custom: ^Custom_Props) -> bool {
+	// the query container: the nearest ancestor container with the name, and of a type the size features need
+	needs_size := q.cond != nil && cq_needs_size(q.cond)
+	target: ^Container_Ctx
+	for k := chain; k != nil; k = k.parent {
+		if q.name != "" {
+			named := false
+			for n in k.names { if n == q.name { named = true; break } }
+			if !named { continue }
+		}
+		if needs_size && k.type == .Normal { continue }
+		target = k
+		break
+	}
+	if q.cond == nil { return target != nil }
+	if target == nil && (needs_size || q.name != "") { return false }
+	size := target != nil ? target.size : css.Container_Size{}
+	return eval_cq(q.cond, size, parent_custom) == .True
+}
+
+@(private)
+cq_needs_size :: proc(n: ^css.Cq_Node) -> bool {
+	if n.kind == .Size { return true }
+	for k in n.kids { if cq_needs_size(k) { return true } }
+	return false
+}
+
+@(private)
+eval_cq :: proc(n: ^css.Cq_Node, size: css.Container_Size, custom: ^Custom_Props) -> css.Tri {
+	switch n.kind {
+	case .Size: return css.cq_eval_size(n.size, size)
+	case .Style:
+		have := ""
+		ok := false
+		if custom != nil { have, ok = custom.values[n.style_name] }
+		if n.style_value == nil { return ok ? .True : .False }
+		if !ok { return .False }
+		want := css.serialize_values(n.style_value, context.temp_allocator)
+		return normalize_ws(have) == normalize_ws(want) ? .True : .False
+	case .Not:
+		switch eval_cq(n.kids[0], size, custom) {
+		case .True: return .False
+		case .False: return .True
+		case .Unknown: return .Unknown
+		}
+	case .And:
+		r := css.Tri.True
+		for k in n.kids {
+			switch eval_cq(k, size, custom) {
+			case .False: return .False
+			case .Unknown: r = .Unknown
+			case .True:
+			}
+		}
+		return r
+	case .Or:
+		r := css.Tri.False
+		for k in n.kids {
+			switch eval_cq(k, size, custom) {
+			case .True: return .True
+			case .Unknown: r = .Unknown
+			case .False:
+			}
+		}
+		return r
+	case .Unknown: return .Unknown
+	}
+	return .Unknown
+}
+
+// Whitespace runs collapsed and trimmed: custom property values compare as token sequences.
+@(private)
+normalize_ws :: proc(s: string) -> string {
+	sb := strings.builder_make(context.temp_allocator)
+	space := false
+	for ch in strings.trim_space(s) {
+		if ch == ' ' || ch == '\t' || ch == '\n' { space = true; continue }
+		if space { strings.write_byte(&sb, ' '); space = false }
+		strings.write_rune(&sb, ch)
+	}
+	return strings.to_string(sb)
+}

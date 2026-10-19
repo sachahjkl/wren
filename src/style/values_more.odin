@@ -987,7 +987,9 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		if !ok { return false }
 		c.background_origins = l
 	case .Background_Clip:
-		l, ok := parse_box_list(cx, vs, true)
+		// `text` only where the painter clips backgrounds to glyphs: a page that tests @supports (background-clip: text)
+		// then keeps its readable fallback
+		l, ok := parse_box_list(cx, vs, cx.settings.background_clip_text)
 		if !ok { return false }
 		c.background_clips = l
 	case .Background_Attachment:

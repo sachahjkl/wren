@@ -23,7 +23,7 @@ Font_Source :: struct {
 	url:       string,          // Url: as written
 	name:      string,          // Local: the full font name
 	format:    Font_Format,     // Unspecified: the downloaded bytes say
-	supported: bool,            // a format this browser can decode (TrueType/OpenType, WOFF 1; not WOFF2: no Brotli)
+	supported: bool,            // a format this browser can decode (TrueType/OpenType, WOFF, WOFF2, collections)
 }
 
 Font_Display :: enum u8 { Auto, Block, Swap, Fallback, Optional }
@@ -142,13 +142,12 @@ face_family :: proc(vs: []css.Value, a := context.allocator) -> (string, bool) {
 	return name, true
 }
 
-@(private)
 face_format :: proc(name: string) -> Font_Format {
 	switch strings.to_lower(name, context.temp_allocator) {
-	case "woff": return .Woff
-	case "woff2": return .Woff2
-	case "truetype", "ttf": return .Truetype
-	case "opentype", "otf": return .Opentype
+	case "woff", "woff-variations": return .Woff
+	case "woff2", "woff2-variations": return .Woff2
+	case "truetype", "ttf", "truetype-variations": return .Truetype
+	case "opentype", "otf", "opentype-variations": return .Opentype
 	case "collection": return .Collection
 	case "embedded-opentype": return .Embedded_Opentype
 	case "svg": return .Svg
@@ -186,24 +185,37 @@ face_sources :: proc(vs: []css.Value, a := context.allocator) -> ([]Font_Source,
 				src.format = face_format(name)
 			case "tech":
 				for t in split_items(it.children) {
-					switch ident_lower(t) {
-					case "variations", "features-opentype", "features-aat", "palettes", "incremental": 
-					case: valid = false   // color fonts, graphite...: a technology this browser does not render
-					}
+					if tok_is(t, .Comma) { continue }
+					// color fonts, graphite...: a technology this browser does not render
+					if !font_tech_supported(ident_lower(t)) { valid = false }
 				}
 			case: valid = false
 			}
 		}
 		if !valid { continue }
-		switch src.format {
-		case .Unspecified, .Woff, .Truetype, .Opentype: src.supported = true
-		case .Woff2, .Collection, .Embedded_Opentype, .Svg, .Other: src.supported = false
-		}
+		src.supported = font_format_supported(src.format)
 		if src.kind == .Local { src.supported = true }
 		append(&out, src)
 	}
 	if len(out) == 0 { return nil, false }
 	return out[:], true
+}
+
+// Formats package webfont decodes (WOFF2 through the native library; a collection gives its first face).
+font_format_supported :: proc(f: Font_Format) -> bool {
+	switch f {
+	case .Unspecified, .Woff, .Woff2, .Truetype, .Opentype, .Collection: return true
+	case .Embedded_Opentype, .Svg, .Other: return false
+	}
+	return false
+}
+
+// Font technologies (CSS Fonts 4 §11.1, tech()) the font engine renders.
+font_tech_supported :: proc(name: string) -> bool {
+	switch strings.to_lower(name, context.temp_allocator) {
+	case "variations", "features-opentype", "features-aat", "palettes", "incremental": return true
+	}
+	return false
 }
 
 @(private)

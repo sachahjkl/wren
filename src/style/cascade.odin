@@ -326,7 +326,8 @@ Pass :: struct {
 }
 
 @(private)
-consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css.Specificity) {
+consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css.Specificity, parent: ^Computed) {
+	if rule.cq != nil && !container_conditions_hold(rule.cq, parent != nil ? parent.containers : nil, parent != nil ? parent.custom : nil) { return }
 	for &d in rule.decls {
 		k := make_key(rule, d.important, spec)
 		cand := &p.ws[d.prop]
@@ -408,8 +409,8 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	e := p.e
 	a := p.alloc
 	cust: map[string]Custom_Cand
-	for ent in entries { consider(p, &cust, ent.rule, ent.complex.specificity) }
-	if inline_rule != nil { consider(p, &cust, inline_rule, css.Specificity{max(u32), 0, 0}) }
+	for ent in entries { consider(p, &cust, ent.rule, ent.complex.specificity, parent) }
+	if inline_rule != nil { consider(p, &cust, inline_rule, css.Specificity{max(u32), 0, 0}, parent) }
 	slice.sort(p.touched[:])   // enum order = dependency order (font-size and color first)
 
 	c := new(Computed, a)
@@ -429,6 +430,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		x_height = f64(c.font_size) * css.X_HEIGHT_EM, ch = f64(c.font_size) * css.CH_EM, vw = e.env.width, vh = e.env.height,
 		line_height = f64(used_line_height(c, s.line_height_normal)), root_line_height = f64(s.root_line_height),
 	}
+	container_units(&cx.lc, parent != nil ? parent.containers : nil)
 
 	// custom properties (the maps exist only for elements that declare some)
 	env := Var_Env{engine = e, alloc = a, budget = e.settings.max_var_bytes, cx = &cx}
@@ -498,6 +500,9 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	for pr in p.touched { p.ws[pr] = {} }
 	clear(&p.touched)
 	finish_style(&cx, h)
+	if e.container_dependent || c.container_type != .Normal || (parent != nil && parent.containers != nil) {
+		c.containers = container_chain(e, c, parent, a)
+	}
 	return c
 }
 
@@ -564,6 +569,12 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	if !ps_has(cx.explicit, .Outline_Color) { c.outline_color = c.color }
 	if !ps_has(cx.explicit, .Text_Decoration_Color) { c.text_decoration_color = c.color }
 	derive_fields(c)
+	// a query container has size containment in the axes it measures, layout and style containment (CSS Contain 3 §6.2)
+	switch c.container_type {
+	case .Normal:
+	case .Size: c.contain += {.Size, .Layout, .Style}
+	case .Inline_Size: c.contain += {.Inline_Size, .Layout, .Style}
+	}
 	if c.position == .Absolute || c.position == .Fixed || c.float != .None { c.display = blockify(c.display) }
 	if (c.overflow_x == .Visible) != (c.overflow_y == .Visible) {
 		if c.overflow_x == .Visible { c.overflow_x = .Auto } else { c.overflow_y = .Auto }

@@ -281,7 +281,7 @@ parse_color_function :: proc(f: Value, env: ^Color_Env) -> (cv: Color_Value, ok:
 ////////////////////////////////
 // Lengths, numbers and calc()
 
-Unit :: enum u8 { Px, Em, Rem, Ex, Ch, Lh, Vw, Vh, Vmin, Vmax, Percent, Ms, Deg, Rlh, Cap, Ic, Rex, Rch, Ric, Rcap }   // Ms, Deg: canonical time and angle
+Unit :: enum u8 { Px, Em, Rem, Ex, Ch, Lh, Vw, Vh, Vmin, Vmax, Percent, Ms, Deg, Rlh, Cap, Ic, Rex, Rch, Ric, Rcap, Cqw, Cqh, Cqmin, Cqmax }   // Ms, Deg: canonical time and angle
 
 // <time> in milliseconds and <angle> in degrees, from a unit as written.
 time_unit_to_ms :: proc(n: f64, unit: string) -> (f64, bool) {
@@ -330,13 +330,16 @@ relative_unit :: proc(unit: string) -> (Unit, bool) {
 	case "rch": return .Rch, true
 	case "ric": return .Ric, true
 	case "rcap": return .Rcap, true
-	// the viewport never has collapsing browser bars here: small, large and dynamic viewports are the same. Container
-	// query units resolve against the small viewport when no container applies (CSS Contain 3 §6.1), which is always
-	// the case in this engine (container queries are not implemented).
-	case "vw", "svw", "lvw", "dvw", "vi", "svi", "lvi", "dvi", "cqw", "cqi": return .Vw, true
-	case "vh", "svh", "lvh", "dvh", "vb", "svb", "lvb", "dvb", "cqh", "cqb": return .Vh, true
-	case "vmin", "svmin", "lvmin", "dvmin", "cqmin": return .Vmin, true
-	case "vmax", "svmax", "lvmax", "dvmax", "cqmax": return .Vmax, true
+	// the viewport never has collapsing browser bars here: small, large and dynamic viewports are the same
+	case "vw", "svw", "lvw", "dvw", "vi", "svi", "lvi", "dvi": return .Vw, true
+	case "vh", "svh", "lvh", "dvh", "vb", "svb", "lvb", "dvb": return .Vh, true
+	case "vmin", "svmin", "lvmin", "dvmin": return .Vmin, true
+	case "vmax", "svmax", "lvmax", "dvmax": return .Vmax, true
+	// container query units (horizontal writing: inline = width)
+	case "cqw", "cqi": return .Cqw, true
+	case "cqh", "cqb": return .Cqh, true
+	case "cqmin": return .Cqmin, true
+	case "cqmax": return .Cqmax, true
 	}
 	return .Px, false
 }
@@ -351,6 +354,9 @@ Length_Context :: struct {
 	root_line_height: f64,   // rlh
 	vw, vh:      f64,    // viewport size in px
 	percent_base: f64,   // what 100% means here
+	// the query container's content box for cq units (CSS Contain 3 §6.1); without one, the small viewport
+	cq_w, cq_h:  f64,
+	has_cq_w, has_cq_h: bool,
 }
 
 // Font-relative units this engine resolves without the font's metrics, as fractions of the em (CSS Values 4 gives these
@@ -374,6 +380,10 @@ resolve_unit :: proc(n: f64, u: Unit, c: Length_Context) -> f64 {
 	case .Rch: return n * c.root_font_size * CH_EM
 	case .Ric: return n * c.root_font_size
 	case .Rcap: return n * c.root_font_size * CAP_EM
+	case .Cqw: return n * (c.has_cq_w ? c.cq_w : c.vw) / 100
+	case .Cqh: return n * (c.has_cq_h ? c.cq_h : c.vh) / 100
+	case .Cqmin: return n * min(c.has_cq_w ? c.cq_w : c.vw, c.has_cq_h ? c.cq_h : c.vh) / 100
+	case .Cqmax: return n * max(c.has_cq_w ? c.cq_w : c.vw, c.has_cq_h ? c.cq_h : c.vh) / 100
 	case .Vw: return n * c.vw / 100
 	case .Vh: return n * c.vh / 100
 	case .Vmin: return n * min(c.vw, c.vh) / 100
@@ -450,6 +460,16 @@ calc_has_angle :: proc(n: ^Calc) -> bool {
 	case .Sin, .Cos, .Tan: return false             // their result is a number
 	}
 	return calc_has_angle(n.a) || calc_has_angle(n.b) || calc_has_angle(n.c)
+}
+
+// A function that parse_calc reads (a <length>, <number>... written as a math function).
+is_math_function :: proc(name: string) -> bool {
+	switch strings.to_lower(name, context.temp_allocator) {
+	case "calc", "-webkit-calc", "-moz-calc", "min", "max", "clamp", "abs", "sign", "round", "mod", "rem", "pow", "sqrt",
+	     "hypot", "log", "exp", "sin", "cos", "tan", "asin", "acos", "atan", "atan2":
+		return true
+	}
+	return false
 }
 
 // Parses calc() and the math functions: min(), max(), clamp(), abs(), sign(), round(), mod(), rem(), pow(), sqrt(),
@@ -720,6 +740,62 @@ finite :: proc(x: f64) -> f64 {
 	return x
 }
 
+// The type of a calc() result (CSS Values 4 §10.8): numbers, lengths, percentages (that become lengths where the
+// property takes <length-percentage>), angles, times. Invalid: mixed types that cannot combine (10px + 2, 1s * 2px).
+Calc_Type :: enum u8 { Invalid, Number, Length, Percent, Length_Percent, Angle, Time }
+
+calc_type :: proc(n: ^Calc) -> Calc_Type {
+	if n == nil { return .Invalid }
+	same :: proc(a, b: Calc_Type) -> Calc_Type {
+		if a == .Invalid || b == .Invalid { return .Invalid }
+		if a == b { return a }
+		lp := proc(t: Calc_Type) -> bool { return t == .Length || t == .Percent || t == .Length_Percent }
+		if lp(a) && lp(b) { return .Length_Percent }
+		return .Invalid
+	}
+	switch n.op {
+	case .Number: return .Number
+	case .Dimension:
+		#partial switch n.unit {
+		case .Percent: return .Percent
+		case .Ms: return .Time
+		case .Deg: return .Angle
+		}
+		return .Length
+	case .Add, .Sub, .Min, .Max, .Mod, .Rem, .Round, .Hypot: return same(calc_type(n.a), calc_type(n.b))
+	case .Clamp: return same(same(calc_type(n.a), calc_type(n.b)), calc_type(n.c))
+	case .Mul:
+		a, b := calc_type(n.a), calc_type(n.b)
+		if a == .Number { return b }
+		if b == .Number { return a }
+		return .Invalid
+	case .Div:
+		if calc_type(n.b) != .Number { return .Invalid }
+		return calc_type(n.a)
+	case .Abs, .Neg: return calc_type(n.a)
+	case .Sign: return calc_type(n.a) == .Invalid ? .Invalid : .Number
+	case .Pow, .Sqrt, .Exp, .Log:
+		for x in ([3]^Calc{n.a, n.b, n.c}) { if x != nil && calc_type(x) != .Number { return .Invalid } }
+		return .Number
+	case .Sin, .Cos, .Tan:
+		// an angle argument was multiplied by a number when parsed: angle or number in, number out
+		t := calc_type(n.a)
+		return t == .Number || t == .Angle ? .Number : .Invalid
+	case .Asin, .Acos, .Atan: return calc_type(n.a) == .Number ? .Angle : .Invalid
+	case .Atan2:
+		t := same(calc_type(n.a), calc_type(n.b))
+		return t == .Invalid ? .Invalid : .Angle
+	}
+	return .Invalid
+}
+
+// A calc() of numbers (color components, numbers). Lengths, times and angles are refused.
+eval_number_calc :: proc(f: Value) -> (f64, bool) {
+	n := parse_calc(f, context.temp_allocator)
+	if n == nil || calc_type(n) != .Number { return 0, false }
+	return eval_calc(n, Length_Context{font_size = 16, root_font_size = 16}), true
+}
+
 // A calc() made only of numbers and absolute lengths (media queries, color components).
 eval_simple_calc :: proc(f: Value) -> (f64, bool) {
 	tmp := context.temp_allocator
@@ -733,13 +809,18 @@ parse_number :: proc(input: []Value) -> (f64, bool) {
 	vs := trim_values(input)
 	if len(vs) != 1 { return 0, false }
 	if vs[0].kind == .Token && vs[0].tok.kind == .Number { return vs[0].tok.num, true }
-	if vs[0].kind == .Function { return eval_simple_calc(vs[0]) }
+	if vs[0].kind == .Function { return eval_number_calc(vs[0]) }
 	return 0, false
 }
 
 parse_integer :: proc(input: []Value) -> (int, bool) {
 	vs := trim_values(input)
 	if len(vs) == 1 && vs[0].kind == .Token && vs[0].tok.kind == .Number && vs[0].tok.is_int { return int(vs[0].tok.num), true }
+	if len(vs) == 1 && vs[0].kind == .Function {   // calc() of numbers, rounded to the nearest integer
+		n, ok := eval_number_calc(vs[0])
+		if !ok { return 0, false }
+		return int(clamp(math.round(n), -2_147_483_647, 2_147_483_647)), true
+	}
 	return 0, false
 }
 

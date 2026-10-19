@@ -34,6 +34,7 @@ Rule :: struct {
 	rules:        []^Rule,
 	media:        Media_Query_List,
 	supports:     []Value,      // Supports: the condition, evaluated by the style system (it knows the property table)
+	container:    ^Container_Query,   // Container: the parsed prelude
 	layer:        string,       // Layer_Block: the layer name ("" = anonymous); Import: layer(...) argument
 	layer_names:  []string,     // Layer_Statement: @layer a, b;
 	// Import
@@ -446,6 +447,11 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		if !has_block { return nil }
 		r.kind = .Container
 		r.prelude = prelude
+		r.container = parse_container_query(prelude, p.a)
+		if r.container == nil {
+			perr(p, "invalid @container condition: rule dropped")
+			return nil
+		}
 		r.rules = parse_rules_in_block_or_nested(p, blk, parent)
 	case "import":
 		r.kind = .Import

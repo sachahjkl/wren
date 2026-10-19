@@ -20,6 +20,7 @@ mod color;
 mod scale;
 mod svg;
 mod webp;
+mod woff2;
 
 /// Status codes, the same numbers as `images.Error` on the Odin side.
 pub const OK: i32 = 0;
@@ -278,8 +279,47 @@ pub unsafe extern "C" fn wm_color_adobe_to_srgb(pixels: *mut u8, n: usize) -> i3
     guard(|| color::adobe_to_srgb(std::slice::from_raw_parts_mut(pixels, n * 4)))
 }
 
+////////////////////////////////
+// Fonts
+
+/// Hands out a buffer of `len` bytes for a decoded font, or null to give up (out of memory).
+pub type BytesFn = extern "C" fn(user: *mut c_void, len: usize) -> *mut u8;
+
+#[repr(C)]
+pub struct ByteSink {
+    pub user: *mut c_void,
+    pub alloc: BytesFn,
+}
+
+/// Decodes a WOFF2 file into an sfnt (or a TrueType Collection, for a WOFF2 of a collection), at most `max_bytes` bytes
+/// of decompressed tables and of output. The result is copied into one buffer from `sink`.
+/// # Safety
+/// `data` points at `len` readable bytes; `sink` is valid.
+#[no_mangle]
+pub unsafe extern "C" fn wm_woff2_decode(data: *const u8, len: usize, max_bytes: u64, sink: *const ByteSink) -> i32 {
+    if sink.is_null() {
+        return ERR_INTERNAL;
+    }
+    guard(|| {
+        if data.is_null() || len == 0 {
+            return Err(ERR_EMPTY);
+        }
+        let bytes = std::slice::from_raw_parts(data, len);
+        let max = usize::try_from(max_bytes).unwrap_or(usize::MAX);
+        let font = woff2::decode(bytes, max)?;
+        let sink = &*sink;
+        let p = (sink.alloc)(sink.user, font.len());
+        if p.is_null() {
+            return Err(ERR_TOO_MUCH_MEMORY);
+        }
+        // SAFETY: the callback contract: a buffer of exactly font.len() bytes, owned by the caller.
+        std::ptr::copy_nonoverlapping(font.as_ptr(), p, font.len());
+        Ok(())
+    })
+}
+
 /// Versions of the libraries, for about: pages ("resvg 0.48.1, ..."), NUL-terminated, static.
 #[no_mangle]
 pub extern "C" fn wm_versions() -> *const u8 {
-    b"resvg 0.48.1, image-webp 0.2.4, zenavif-parse 0.6.2, rav1d 1.1.0, qcms 0.3.0\0".as_ptr()
+    b"resvg 0.48.1, image-webp 0.2.4, zenavif-parse 0.6.2, rav1d 1.1.0, qcms 0.3.0, brotli-decompressor 6.1.0\0".as_ptr()
 }

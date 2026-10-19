@@ -118,7 +118,12 @@ parse_length :: proc(cx: ^Cx, input: []css.Value, flags: Len_Flags) -> (Length, 
 		}
 	case .Function:
 		tree := css.parse_calc(v, cx.alloc)
-		if tree == nil || calc_has_unit(tree, .Ms) || calc_has_unit(tree, .Deg) { return {}, false }
+		if tree == nil { return {}, false }
+		#partial switch css.calc_type(tree) {
+		case .Length, .Length_Percent:
+		case .Percent: if .Percent not_in flags { return {}, false }
+		case: return {}, false   // a number, an angle, a time, or types that do not combine
+		}
 		calc_resolve_units(tree, cx.lc)
 		if !calc_has_percent(tree) || .Percent not_in flags {
 			if calc_has_percent(tree) { return {}, false }
@@ -386,10 +391,9 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 			c.line_height = Line_Height{kind = .Normal}
 			return true
 		}
-		items := css.trim_values(vs)
-		if len(items) == 1 && items[0].kind == .Token && items[0].tok.kind == .Number {
-			if items[0].tok.num < 0 { return false }
-			c.line_height = Line_Height{kind = .Number, v = f32(items[0].tok.num)}
+		if n, ok := css.parse_number(vs); ok {   // a number, also calc(1.75 / 1.25)
+			if n < 0 { return false }
+			c.line_height = Line_Height{kind = .Number, v = f32(n)}
 			return true
 		}
 		l, ok := parse_length(cx, vs, {.Percent})
@@ -795,6 +799,8 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	     .Grid_Template_Columns, .Grid_Template_Rows, .Grid_Template_Areas, .Grid_Auto_Columns, .Grid_Auto_Rows,
 	     .Grid_Auto_Flow, .Grid_Row_Start, .Grid_Row_End, .Grid_Column_Start, .Grid_Column_End, .Justify_Items, .Justify_Self:
 		return apply_prop_more(cx, p, vs)
+	case .Container_Type, .Container_Name:
+		return apply_container_prop(cx, p, vs)
 	}
 	return true
 }

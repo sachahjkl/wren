@@ -265,7 +265,11 @@ Computed :: struct {
 	grid_auto_flow:    Grid_Auto_Flow,
 	grid_row_start, grid_row_end, grid_column_start, grid_column_end: Grid_Line,
 	justify_items, justify_self: Content_Align,
+	// --- container queries (container.odin) ---
+	container_type:    Container_Type,
+	container_name:    []string,
 	// --- bookkeeping ---
+	containers: ^Container_Ctx, // the query containers this element's children see (nearest first)
 	inherits:   Prop_Set,       // inherited properties whose value came from the parent (not set by a declaration)
 	custom:     ^Custom_Props,
 	before, after: ^Computed,   // generated boxes (nil when `content` is none/normal)
@@ -306,6 +310,7 @@ Prop :: enum u8 {
 	Caret_Color, Accent_Color, Appearance, Resize, Column_Count, Column_Width,
 	Grid_Template_Columns, Grid_Template_Rows, Grid_Template_Areas, Grid_Auto_Columns, Grid_Auto_Rows, Grid_Auto_Flow,
 	Grid_Row_Start, Grid_Row_End, Grid_Column_Start, Grid_Column_End, Justify_Items, Justify_Self,
+	Container_Type, Container_Name,
 }
 
 // A set of properties. Wider than a bit_set can be (there are more than 128 longhands), hence the procedures in props.odin:
@@ -331,4 +336,6 @@ Short :: enum u8 {
 	Margin_Block, Margin_Inline, Padding_Block, Padding_Inline, Inset_Block, Inset_Inline,
 	White_Space, Text_Wrap, Font_Variant, Transition, Animation, Overscroll_Behavior, Columns,
 	Grid_Template, Grid, Grid_Row, Grid_Column, Grid_Area,
+	Container, Border_Block, Border_Inline, Border_Block_Width, Border_Block_Style, Border_Block_Color,
+	Border_Inline_Width, Border_Inline_Style, Border_Inline_Color,
 }
