@@ -35,6 +35,44 @@ EventInit :: bit_set[EventInit_Flag; u32]
 // A listener: `user` is the value given to addEventListener.
 EventListener :: #type proc "contextless" (user: i32, event: Event)
 
+// The numeric details of a UI event.
+UiEventData :: struct {
+	// clientX / clientY (CSS px, viewport)
+	client_x: f64,
+	client_y: f64,
+	// screenX / screenY
+	screen_x: f64,
+	screen_y: f64,
+	// pageX / pageY (the document's scroll offsets added)
+	page_x: f64,
+	page_y: f64,
+	// offsetX / offsetY (from the target's padding edge)
+	offset_x: f64,
+	offset_y: f64,
+	// deltaX / deltaY / deltaZ (WheelEvent)
+	delta_x: f64,
+	delta_y: f64,
+	delta_z: f64,
+	// relatedTarget (a node), 0 = null
+	related: u64,
+	// modifier bits: 1 ctrl, 2 shift, 4 alt, 8 meta
+	mods: u32,
+	// MouseEvent.button
+	button: i32,
+	// MouseEvent.buttons
+	buttons: u32,
+	// UIEvent.detail
+	detail: i32,
+	// KeyboardEvent.keyCode (and which, charCode for keypress)
+	key_code: u32,
+	// KeyboardEvent.location
+	location: u32,
+	// KeyboardEvent.repeat
+	repeat: u32,
+	// WheelEvent.deltaMode
+	delta_mode: u32,
+}
+
 foreign import _m_events "events"
 
 @(private = "file", default_calling_convention = "contextless")
@@ -57,6 +95,9 @@ foreign _m_events {
 	@(link_name = "MouseEvent_clientY") _MouseEvent_clientY :: proc(event: Event) -> f64 ---
 	@(link_name = "MouseEvent_button") _MouseEvent_button :: proc(event: Event) -> i32 ---
 	@(link_name = "KeyboardEvent_keyCode") _KeyboardEvent_keyCode :: proc(event: Event) -> i32 ---
+	@(link_name = "Event_uiData") _Event_uiData :: proc(event: Event, _ret: ^UiEventData) ---
+	@(link_name = "UiEvent_key") _UiEvent_key :: proc(event: Event, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "UiEvent_code") _UiEvent_code :: proc(event: Event, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "EventTarget_dispatchEngineEvent") _EventTarget_dispatchEngineEvent :: proc(target: u64, type: [^]u8, type_len: u32, init: u32, engine_id: i64, time_stamp: f64, _ret: ^bool) -> Error ---
 	@(link_name = "Event_engineId") _Event_engineId :: proc(event: Event) -> i64 ---
 	@(link_name = "Event_interface") _Event_interface :: proc(event: Event) -> u32 ---
@@ -233,6 +274,70 @@ MouseEvent_button :: proc "contextless" (event: Event) -> i32 {
 // KeyboardEvent.keyCode
 KeyboardEvent_keyCode :: proc "contextless" (event: Event) -> i32 {
 	return _KeyboardEvent_keyCode(event)
+}
+
+// The details of a UI event being dispatched.
+Event_uiData :: proc "contextless" (event: Event) -> (result: UiEventData) {
+	_Event_uiData(event, &result)
+	return
+}
+
+// KeyboardEvent.key ("Enter", "a"...): "Unidentified" when unknown.
+UiEvent_key :: proc "contextless" (event: Event, buf: []u8) -> (string, Error) {
+	n := _UiEvent_key(event, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of UiEvent_key's result.
+UiEvent_key_len :: proc "contextless" (event: Event) -> (int, Error) {
+	n := _UiEvent_key(event, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// UiEvent_key's result in a buffer allocated to fit.
+UiEvent_key_alloc :: proc(event: Event, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _UiEvent_key(event, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// KeyboardEvent.code ("KeyA", "Enter"...): "" when unknown.
+UiEvent_code :: proc "contextless" (event: Event, buf: []u8) -> (string, Error) {
+	n := _UiEvent_code(event, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of UiEvent_code's result.
+UiEvent_code_len :: proc "contextless" (event: Event) -> (int, Error) {
+	n := _UiEvent_code(event, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// UiEvent_code's result in a buffer allocated to fit.
+UiEvent_code_alloc :: proc(event: Event, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _UiEvent_code(event, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
 }
 
 // target.dispatchEvent(event) for an Event the engine owns: like EventTarget_dispatchEvent, with the engine's

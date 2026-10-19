@@ -79,4 +79,5 @@ NODE_INTERFACES := [?]string{
 // Interfaces present whatever is implemented of them: the global objects and what the engine needs to exist.
 ALWAYS := [?]string{
 	"Window", "WorkerGlobalScope", "DedicatedWorkerGlobalScope", "EventTarget", "Event", "DOMException", "console",
+	"NodeFilter",   // a callback interface of constants only: nothing to implement, scripts use NodeFilter.SHOW_*
 }

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en"><head><title>Elements</title></head>
+<body>
+<div id="host" class="a b" data-user-id="7" data-x="y" title="tip"><span class="b">s</span><em class="a b c">e</em></div>
+<form name="f1" id="form1"><input name="q" value="v"></form>
+<img id="img1" src="i.png" name="pic"><a id="lnk" href="/path/page.html?x=1#frag" name="anch">link</a><area href="z">
+<svg id="svg" viewBox="0 0 10 10"><circle r="1"/><foreignObject><p>in</p></foreignObject></svg>
+<template id="tpl"><li class="item">tpl</li></template>
+<script>
+section("names and namespaces", () => {
+  const host = document.getElementById("host");
+  eq("tagName upper case", host.tagName, "DIV");
+  eq("localName", host.localName, "div");
+  eq("namespaceURI html", host.namespaceURI, "http://www.w3.org/1999/xhtml");
+  eq("prefix", host.prefix, null);
+  const svg = document.getElementById("svg");
+  eq("svg namespace from the parser", svg.namespaceURI, "http://www.w3.org/2000/svg");
+  eq("svg tagName keeps its case", svg.tagName, "svg");
+  t("svg interface", svg instanceof SVGSVGElement && svg.querySelector("circle") instanceof SVGElement);
+  eq("foreignObject local name", svg.querySelector("foreignObject").localName, "foreignObject");
+  t("html inside foreignObject", svg.querySelector("p") instanceof HTMLParagraphElement);
+  const ns = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  t("createElementNS svg", ns instanceof SVGElement && ns.namespaceURI === "http://www.w3.org/2000/svg");
+  const pre = document.createElementNS("urn:x", "x:thing");
+  eq("createElementNS prefix and local name", pre.prefix + "|" + pre.localName + "|" + pre.tagName + "|" + pre.namespaceURI, "x|thing|x:thing|urn:x");
+  throws("createElement with an invalid name", () => document.createElement("a b"), "InvalidCharacterError");
+  throws("createElement with an empty name", () => document.createElement(""), "InvalidCharacterError");
+  throws("createElementNS prefix without namespace", () => document.createElementNS(null, "x:y"), "NamespaceError");
+  t("createElement('svg') is HTML", !(document.createElement("svg") instanceof SVGElement));
+  t("HTMLUnknownElement", document.createElement("foo") instanceof HTMLUnknownElement);
+  t("custom element names are HTMLElement", document.createElement("my-thing") instanceof HTMLElement);
+});
+
+section("attributes", () => {
+  const host = document.getElementById("host");
+  eq("getAttribute", host.getAttribute("title"), "tip");
+  eq("getAttribute is case-insensitive in HTML", host.getAttribute("TITLE"), "tip");
+  eq("getAttribute missing", host.getAttribute("nope"), null);
+  t("hasAttribute", host.hasAttribute("title") && !host.hasAttribute("nope"));
+  t("hasAttributes", host.hasAttributes() && !document.createElement("p").hasAttributes());
+  eq("getAttributeNames", host.getAttributeNames().join(","), "id,class,data-user-id,data-x,title");
+  host.setAttribute("Data-New", "1");
+  eq("setAttribute lower-cases", host.getAttribute("data-new"), "1");
+  throws("setAttribute with an invalid name", () => host.setAttribute("a b", "x"), "InvalidCharacterError");
+  host.removeAttribute("data-new");
+  eq("removeAttribute", host.hasAttribute("data-new"), false);
+  eq("toggleAttribute adds", host.toggleAttribute("hidden"), true);
+  eq("toggleAttribute removes", host.toggleAttribute("hidden"), false);
+  eq("toggleAttribute force true", host.toggleAttribute("hidden", true) && host.hasAttribute("hidden"), true);
+  eq("toggleAttribute force false", host.toggleAttribute("hidden", false), false);
+  const attrs = host.attributes;
+  t("attributes is [SameObject]", host.attributes === attrs);
+  eq("attributes.length", attrs.length, 5);
+  eq("attributes[0].name", attrs[0].name, "id");
+  eq("attributes.title.value", attrs.getNamedItem("title").value, "tip");
+  t("one Attr per attribute", attrs.getNamedItem("title") === host.getAttributeNode("title"));
+  const at = host.getAttributeNode("title");
+  eq("Attr basics", at.nodeType + "|" + at.nodeName + "|" + at.localName + "|" + (at.ownerElement === host), "2|title|title|true");
+  at.value = "changed";
+  eq("Attr.value writes the attribute", host.getAttribute("title"), "changed");
+  const na = document.createAttribute("data-made");
+  na.value = "m";
+  host.setAttributeNode(na);
+  eq("setAttributeNode", host.getAttribute("data-made"), "m");
+  eq("ownerElement", na.ownerElement, host);
+  throws("an Attr of another element", () => document.body.setAttributeNode(na), "InUseAttributeError");
+  host.removeAttributeNode(na);
+  eq("removeAttributeNode", host.hasAttribute("data-made") + "|" + na.value + "|" + na.ownerElement, "false|m|null");
+  const svg = document.getElementById("svg");
+  eq("SVG attribute names keep their case", svg.getAttributeNames()[1], "viewBox");
+  const x = document.createElement("x");
+  x.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#a");
+  eq("setAttributeNS / getAttributeNS", x.getAttributeNS("http://www.w3.org/1999/xlink", "href"), "#a");
+  t("hasAttributeNS", x.hasAttributeNS("http://www.w3.org/1999/xlink", "href"));
+  x.removeAttributeNS("http://www.w3.org/1999/xlink", "href");
+  eq("removeAttributeNS", x.hasAttribute("xlink:href"), false);
+});
+
+section("id, className, classList", () => {
+  const host = document.getElementById("host");
+  eq("id", host.id, "host");
+  eq("className", host.className, "a b");
+  const cl = host.classList;
+  t("classList is [SameObject]", host.classList === cl);
+  eq("classList.length", cl.length, 2);
+  eq("classList[1]", cl[1], "b");
+  t("contains", cl.contains("a") && !cl.contains("z"));
+  cl.add("c", "d");
+  eq("add", host.className, "a b c d");
+  cl.remove("a", "c");
+  eq("remove", host.className, "b d");
+  eq("toggle on", cl.toggle("x"), true);
+  eq("toggle off", cl.toggle("x"), false);
+  eq("toggle force", cl.toggle("b", true), true);
+  eq("replace", cl.replace("b", "q") + "|" + host.className, "true|q d");
+  eq("value", cl.value, "q d");
+  cl.value = "m n";
+  eq("value setter", host.className, "m n");
+  eq("toString", String(cl), "m n");
+  throws("an empty token", () => cl.add(""), "SyntaxError");
+  throws("a token with spaces", () => cl.add("a b"), "InvalidCharacterError");
+  eq("iteration", [...cl].join("-"), "m-n");
+  host.className = "a b";
+  t("relList", document.getElementById("lnk").relList instanceof DOMTokenList);
+  t("relList.supports", document.getElementById("lnk").relList.supports("stylesheet"));
+  const p = document.createElement("p");
+  p.classList.remove("nothing");
+  eq("no attribute made for an empty set", p.hasAttribute("class"), false);
+});
+
+section("dataset", () => {
+  const host = document.getElementById("host");
+  const ds = host.dataset;
+  t("dataset is [SameObject]", host.dataset === ds);
+  eq("camel case", ds.userId, "7");
+  eq("missing", ds.nope, undefined);
+  ds.newThing = "n";
+  eq("set", host.getAttribute("data-new-thing"), "n");
+  t("in", "newThing" in ds && !("nope" in ds));
+  eq("keys", Object.keys(ds).join(","), "userId,x,newThing");
+  delete ds.newThing;
+  eq("delete", host.hasAttribute("data-new-thing"), false);
+  throws("dash then lower case letter", () => { ds["a-b"] = 1; }, "SyntaxError");
+});
+
+section("selectors", () => {
+  const host = document.getElementById("host");
+  eq("querySelector", document.querySelector("#host > em").tagName, "EM");
+  eq("querySelector none", document.querySelector(".nothing"), null);
+  const all = document.querySelectorAll(".b");
+  eq("querySelectorAll", all.length, 3);
+  t("querySelectorAll is static", (() => { const x = document.createElement("i"); x.className = "b"; document.body.appendChild(x); const r = all.length === 3; x.remove(); return r; })());
+  eq("querySelectorAll from an element", host.querySelectorAll(".b").length, 2);
+  eq(":scope", host.querySelectorAll(":scope > .a").length, 1);
+  t("matches", host.matches("div.a[data-x=y]") && !host.matches("span"));
+  t("webkitMatchesSelector", host.webkitMatchesSelector("#host"));
+  eq("closest", host.querySelector("em").closest("div").id, "host");
+  eq("closest itself", host.closest("#host"), host);
+  eq("closest none", host.closest("table"), null);
+  throws("invalid selector", () => document.querySelector("!!"), "SyntaxError");
+  throws("invalid selector in matches", () => host.matches("a[]"), "SyntaxError");
+  eq("pseudo-elements match nothing", document.querySelectorAll("p::before").length, 0);
+  eq(":not and :is", document.querySelectorAll("#host :is(em, span):not(.c)").length, 1);
+  eq(":has", document.querySelectorAll("div:has(> em)").length, 1);
+  eq("attribute selector", document.querySelectorAll("[data-user-id='7']").length, 1);
+  eq(":nth-child", host.querySelector(":nth-child(2)").tagName, "EM");
+});
+
+section("live collections", () => {
+  const byTag = document.getElementsByTagName("p");
+  const n0 = byTag.length;
+  const p = document.createElement("p");
+  document.body.appendChild(p);
+  eq("getElementsByTagName is live", byTag.length, n0 + 1);
+  p.remove();
+  eq("getElementsByTagName after removal", byTag.length, n0);
+  const byClass = document.getElementsByClassName("a b");
+  eq("getElementsByClassName (all classes)", byClass.length, 2);
+  document.getElementById("host").className = "b";
+  eq("getElementsByClassName follows class changes", byClass.length, 1);
+  document.getElementById("host").className = "a b";
+  eq("element.getElementsByClassName", document.getElementById("host").getElementsByClassName("b").length, 2);
+  eq("getElementsByTagName('*')", document.getElementById("host").getElementsByTagName("*").length, 2);
+  eq("getElementsByTagNameNS svg", document.getElementsByTagNameNS("http://www.w3.org/2000/svg", "circle").length, 1);
+  eq("getElementsByName", document.getElementsByName("q")[0].value, "v");
+  eq("document.forms", document.forms.length + ":" + document.forms[0].id, "1:form1");
+  eq("document.forms by name", document.forms.namedItem("f1").id, "form1");
+  eq("document.images", document.images[0].id, "img1");
+  eq("document.links", document.links.length, 2);
+  eq("document.scripts", document.scripts.length >= 1, true);
+  eq("document.anchors", document.anchors.length, 1);
+});
+
+section("markup", () => {
+  const d = document.createElement("div");
+  d.innerHTML = '<p class="x">a &amp; b</p><br><img alt="q&quot;">text<!--com-->';
+  eq("innerHTML round trip", d.innerHTML, '<p class="x">a &amp; b</p><br><img alt="q&quot;">text<!--com-->');
+  eq("childNodes made by innerHTML", d.childNodes.length, 5);
+  d.innerHTML = "<table><tr><td>cell</td></tr></table>";
+  eq("innerHTML follows the HTML parser (tbody)", d.innerHTML, "<table><tbody><tr><td>cell</td></tr></tbody></table>");
+  d.innerHTML = "<script>x<y<\/script><style>a>b{}</style>";
+  eq("raw text is not escaped", d.innerHTML, "<script>x<y<\/script><style>a>b{}</style>");
+  d.textContent = "a<b>&\u00a0c";
+  eq("text escaping", d.innerHTML, "a&lt;b&gt;&amp;&nbsp;c");
+  eq("outerHTML", d.outerHTML, "<div>a&lt;b&gt;&amp;&nbsp;c</div>");
+  const tr = document.createElement("tr");
+  tr.innerHTML = "<td>1</td><td>2</td>";
+  eq("fragment parsing in the context (tr)", tr.children.length + ":" + tr.firstChild.tagName, "2:TD");
+  const host = document.createElement("section");
+  document.body.appendChild(host);
+  host.innerHTML = "<b>1</b>";
+  host.firstChild.outerHTML = "<i>2</i><u>3</u>";
+  eq("outerHTML setter", host.innerHTML, "<i>2</i><u>3</u>");
+  host.insertAdjacentHTML("afterbegin", "<s>0</s>");
+  host.insertAdjacentHTML("beforeend", "<s>4</s>");
+  host.insertAdjacentHTML("beforebegin", "<hr>");
+  eq("insertAdjacentHTML", host.innerHTML + "|" + host.previousSibling.tagName, "<s>0</s><i>2</i><u>3</u><s>4</s>|HR");
+  host.insertAdjacentText("beforeend", "<t>");
+  eq("insertAdjacentText", host.lastChild.data, "<t>");
+  const ins = document.createElement("q");
+  eq("insertAdjacentElement", host.insertAdjacentElement("afterend", ins), ins);
+  eq("insertAdjacentElement afterend", host.nextSibling, ins);
+  throws("insertAdjacentHTML bad position", () => host.insertAdjacentHTML("middle", "x"), "SyntaxError");
+  throws("outerHTML on the root element", () => { document.documentElement.outerHTML = "<html></html>"; }, "NoModificationAllowedError");
+  host.previousSibling.remove(); ins.remove(); host.remove();
+  const svg = document.getElementById("svg");
+  eq("SVG serialization keeps the case", svg.outerHTML.slice(0, 26), '<svg id="svg" viewBox="0 0');
+  d.innerHTML = "<p>x";
+  d.innerHTML = null;
+  eq("innerHTML = null empties", d.innerHTML, "");
+});
+
+section("template", () => {
+  const tpl = document.getElementById("tpl");
+  const content = tpl.content;
+  t("content is a DocumentFragment", content instanceof DocumentFragment && tpl.content === content);
+  eq("parsed contents", content.firstChild.className, "item");
+  eq("template children are not in the document", tpl.childNodes.length + ":" + document.querySelectorAll("li.item").length, "0:0");
+  eq("template innerHTML", tpl.innerHTML, '<li class="item">tpl</li>');
+  const clone = content.cloneNode(true);
+  document.body.appendChild(clone);
+  eq("cloned contents inserted", document.querySelectorAll("li.item").length, 1);
+  document.querySelector("li.item").remove();
+  const t2 = document.createElement("template");
+  t2.innerHTML = "<b>x</b>";
+  eq("template innerHTML setter fills the contents", t2.content.firstChild.tagName + ":" + t2.childNodes.length, "B:0");
+  const t3 = t2.cloneNode(true);
+  eq("cloning a template clones its contents", t3.content.firstChild.tagName, "B");
+});
+
+section("HTMLElement members", () => {
+  const host = document.getElementById("host");
+  eq("title (reflected)", host.title, "changed");
+  eq("lang", document.documentElement.lang, "en");
+  eq("hidden default", host.hidden, false);
+  host.hidden = true;
+  eq("hidden set", host.getAttribute("hidden"), "");
+  host.hidden = "until-found";
+  eq("hidden until-found", host.hidden, "until-found");
+  host.hidden = false;
+  eq("hidden removed", host.hasAttribute("hidden"), false);
+  eq("dir", host.dir, "");
+  host.dir = "RTL";
+  eq("dir enumerated", host.dir, "rtl");
+  host.removeAttribute("dir");
+  eq("tabIndex of a div", host.tabIndex, -1);
+  eq("tabIndex of a link", document.getElementById("lnk").tabIndex, 0);
+  host.tabIndex = 3;
+  eq("tabIndex set", host.getAttribute("tabindex"), "3");
+  host.removeAttribute("tabindex");
+  eq("translate", host.translate, true);
+  eq("draggable of an image", document.getElementById("img1").draggable, true);
+  eq("spellcheck", host.spellcheck, true);
+  eq("contentEditable", host.contentEditable, "inherit");
+  host.contentEditable = "true";
+  t("isContentEditable", host.isContentEditable && host.querySelector("em").isContentEditable);
+  host.contentEditable = "inherit";
+  throws("contentEditable bad value", () => { host.contentEditable = "maybe"; }, "SyntaxError");
+  eq("innerText of a detached element", (() => { const x = document.createElement("div"); x.innerHTML = "a<b>b</b>"; return x.innerText; })(), "ab");
+  const it = document.createElement("div");
+  it.innerText = "l1\nl2";
+  eq("innerText setter makes <br>", it.innerHTML, "l1<br>l2");
+  t("focus() and blur() exist", typeof host.focus === "function" && typeof host.blur === "function");
+});
+
+section("form controls", () => {
+  const f = document.getElementById("form1");
+  eq("form.elements", f.elements.length + ":" + f.elements[0].name, "1:q");
+  t("form.elements is an HTMLFormControlsCollection", f.elements instanceof HTMLFormControlsCollection && f.elements === f.elements);
+  eq("form.elements.namedItem", f.elements.namedItem("q").value, "v");
+  eq("named properties of collections", document.forms.f1 === f && f.elements.q === f.elements[0], true);
+  eq("indexed and named properties of a form", f[0] === f.elements[0] && f.q === f[0] && f.length === 1, true);
+  eq("a name does not hide the prototype", typeof document.forms.item, "function");
+  const inp = f.elements[0];
+  inp.type = "password";
+  eq("input.type setter", inp.type + "|" + inp.getAttribute("type"), "password|password");
+  inp.type = "text";
+  inp.value = "hello";
+  inp.setSelectionRange(1, 3, "backward");
+  eq("setSelectionRange", inp.selectionStart + "," + inp.selectionEnd + "," + inp.selectionDirection, "1,3,backward");
+  inp.selectionStart = 2;
+  eq("selectionStart setter", inp.selectionStart + "," + inp.selectionEnd, "2,3");
+  inp.maxLength = 5;
+  eq("maxLength setter", inp.getAttribute("maxlength"), "5");
+  throws("a negative maxLength", () => { inp.maxLength = -1; }, "IndexSizeError");
+  const sel = document.createElement("select");
+  sel.innerHTML = "<option>a</option><option selected>b</option>";
+  f.appendChild(sel);
+  eq("select.options", sel.options.length + ":" + sel.options[1].text, "2:b");
+  const c = document.createElement("option");
+  c.text = "c";
+  sel.options.add(c);
+  eq("options.add / option.text setter", sel.options.length + ":" + sel.lastChild.textContent, "3:c");
+  sel.options.length = 1;
+  eq("options.length setter", sel.children.length, 1);
+  sel.options.remove(0);
+  eq("options.remove", sel.options.length, 0);
+  sel.add(document.createElement("option"));
+  sel.remove(0);
+  eq("select.add / select.remove(index)", sel.options.length, 0);
+  sel.remove();
+  eq("select.remove()", sel.parentNode, null);
+});
+
+section("hyperlinks", () => {
+  const a = document.getElementById("lnk");
+  eq("href resolved", a.href, "http://127.0.0.1:8765/path/page.html?x=1#frag");
+  eq("components", [a.protocol, a.host, a.hostname, a.port, a.pathname, a.search, a.hash, a.origin].join(" "), "http: 127.0.0.1:8765 127.0.0.1 8765 /path/page.html ?x=1 #frag http://127.0.0.1:8765");
+  a.hash = "other";
+  eq("hash setter", a.getAttribute("href"), "http://127.0.0.1:8765/path/page.html?x=1#other");
+  a.pathname = "/p2";
+  eq("pathname setter", a.pathname, "/p2");
+  eq("text", a.text, "link");
+  const b = document.createElement("a");
+  eq("href without attribute", b.href, "");
+});
+
+done();
+</script>
+</body></html>

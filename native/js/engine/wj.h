@@ -74,6 +74,7 @@ enum {
     WJ_I_SECURE              = 1 << 7,   /* [SecureContext] */
     WJ_I_ARRAY_ITERATOR      = 1 << 8,   /* value iterator of an indexed collection: Array.prototype's iterators */
     WJ_I_CTOR_UNSUPPORTED    = 1 << 9,   /* has a constructor the browser does not implement (NotSupportedError) */
+    WJ_I_INDEXED_ITERATOR    = 1 << 10,  /* indexed getter and length, no iterable declaration: @@iterator is Array's values (Web IDL §3.7.6) */
 };
 
 /* How instances of an interface answer property lookups beyond their prototype (Web IDL "legacy platform objects"). */

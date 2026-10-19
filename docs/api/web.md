@@ -36,6 +36,13 @@ The status of a function that raises: 0, or what went wrong. Promise rejections 
 | `Index_Size` | -22 | IndexSizeError. |%!(EXTRA false)
 | `Not_Allowed` | -23 | NotAllowedError. |%!(EXTRA false)
 | `Invalid_Access` | -24 | InvalidAccessError. |%!(EXTRA false)
+| `Invalid_Character` | -40 | InvalidCharacterError (a name that is not a valid XML name, a token with spaces...). |%!(EXTRA false)
+| `Namespace` | -41 | NamespaceError. |%!(EXTRA false)
+| `In_Use_Attribute` | -42 | InUseAttributeError. |%!(EXTRA false)
+| `Wrong_Document` | -43 | WrongDocumentError. |%!(EXTRA false)
+| `Invalid_Node_Type` | -44 | InvalidNodeTypeError. |%!(EXTRA false)
+| `Invalid_Modification` | -45 | InvalidModificationError. |%!(EXTRA false)
+| `No_Modification_Allowed` | -46 | NoModificationAllowedError. |%!(EXTRA false)
 
 ### export `wb_main`
 

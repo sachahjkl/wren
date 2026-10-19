@@ -1,0 +1,109 @@
+<!doctype html>
+<html><head><title>Style</title>
+<style>
+#box { color: rgb(10, 20, 30); display: block; width: 120px; margin: 4px 6px; font-size: 16px; }
+#box::before { content: "B"; }
+#box.hidden { display: none; }
+</style></head>
+<body style="margin: 0">
+<div id="box" style="background-color: red; padding-top: 3px">box</div>
+<span id="inl">inline</span>
+<script>
+section("inline style", () => {
+  const box = document.getElementById("box");
+  const s = box.style;
+  t("style is [SameObject]", box.style === s);
+  t("CSSStyleDeclaration", s instanceof CSSStyleDeclaration);
+  eq("getPropertyValue", s.getPropertyValue("background-color"), "red");
+  eq("camel-cased attribute", s.backgroundColor, "red");
+  eq("dashed attribute", s["padding-top"], "3px");
+  eq("length", s.length, 2);
+  eq("item", s.item(0) + "," + s[1], "background-color,padding-top");
+  s.color = "blue";
+  eq("set through an attribute", box.getAttribute("style"), "background-color: red; padding-top: 3px; color: blue;");
+  s.setProperty("margin-left", "5px", "important");
+  eq("setProperty with priority", s.getPropertyPriority("margin-left") + "|" + s.marginLeft, "important|5px");
+  s.color = "not-a-color";
+  eq("an invalid value changes nothing", s.color, "blue");
+  s.setProperty("unknown-prop", "1");
+  eq("an unknown property changes nothing", s.getPropertyValue("unknown-prop"), "");
+  eq("removeProperty returns the old value", s.removeProperty("color"), "blue");
+  eq("removed", s.color, "");
+  s.margin = "1px 2px";
+  eq("shorthand expands into longhands", s.marginTop + " " + s.marginRight + " " + s.marginBottom + " " + s.marginLeft, "1px 2px 1px 2px");
+  eq("shorthand rebuilt", s.margin, "1px 2px");
+  s.color = "red; display: none";
+  eq("a value with ';' is refused", s.display, "");
+  s.cssText = "width: 10px; height: 20px";
+  eq("cssText setter", s.width + "," + s.height + "," + s.length, "10px,20px,2");
+  eq("cssText getter", s.cssText, "width: 10px; height: 20px;");
+  s.cssFloat = "left";
+  eq("cssFloat", s.cssFloat + "|" + s.getPropertyValue("float"), "left|left");
+  s.setProperty("--my-var", " 12px ");
+  eq("custom property", s.getPropertyValue("--my-var"), "12px");
+  s.webkitTransform = "none";
+  eq("webkit alias", s.getPropertyValue("-webkit-transform") !== undefined, true);
+  s.cssText = "";
+  eq("empty cssText", s.length, 0);
+  s.color = null;
+  eq("null clears", s.color, "");
+  box.style = "color: green";
+  eq("style = string forwards to cssText", box.style.color, "green");
+  box.setAttribute("style", "background-color: red; padding-top: 3px");
+});
+
+section("computed style", () => {
+  const box = document.getElementById("box");
+  const cs = getComputedStyle(box);
+  t("CSSStyleDeclaration", cs instanceof CSSStyleDeclaration);
+  eq("color", cs.color, "rgb(10, 20, 30)");
+  eq("display", cs.display, "block");
+  eq("background-color from the style attribute", cs.backgroundColor, "rgb(255, 0, 0)");
+  eq("width (used value)", cs.width, "120px");
+  eq("margin-left", cs.marginLeft, "6px");
+  eq("padding-top", cs.getPropertyValue("padding-top"), "3px");
+  eq("font-size", cs.fontSize, "16px");
+  eq("position", cs.position, "static");
+  eq("opacity", cs.opacity, "1");
+  t("length lists properties", cs.length > 50 && typeof cs[0] === "string");
+  throws("read-only", () => cs.setProperty("color", "red"), "NoModificationAllowedError");
+  eq("::before content", getComputedStyle(box, "::before").content, '"B"');
+  eq("display of an inline element", getComputedStyle(document.getElementById("inl")).display, "inline");
+  box.classList.add("hidden");
+  eq("follows a class change", cs.display, "none");
+  box.classList.remove("hidden");
+  box.style.color = "rgb(1, 2, 3)";
+  eq("follows an inline style change", cs.color, "rgb(1, 2, 3)");
+  box.style.removeProperty("color");
+  eq("rgba", (() => { box.style.color = "rgba(0, 0, 0, 0.5)"; const v = getComputedStyle(box).color; box.style.removeProperty("color"); return v; })(), "rgba(0, 0, 0, 0.5)");
+  throws("not an element", () => getComputedStyle(document), "TypeError");
+});
+
+section("parsed declarations kept between calls", () => {
+  const a = document.createElement("div"), b = document.createElement("div");
+  a.style.marginLeft = "1px";
+  a.style.color = "red";
+  a.style.marginTop = "2px";
+  const order = Array.from({ length: a.style.length }, (_, i) => a.style.item(i)).join();
+  eq("declaration order", order, "margin-left,color,margin-top");
+  eq("same answer when read again", Array.from({ length: a.style.length }, (_, i) => a.style.item(i)).join(), order);
+  b.setAttribute("style", a.getAttribute("style"));
+  eq("another element with the same text", b.style.cssText, a.style.cssText);
+  a.style.width = "10px";
+  a.style.width = "bogus";
+  eq("an invalid value changes nothing (twice)", (a.style.width = "bogus", a.style.width), "10px");
+  a.style.setProperty("width", "20px");
+  a.style.setProperty("width", "20px", "important");
+  eq("the same value with a priority", a.style.getPropertyPriority("width"), "important");
+  a.style.setProperty("width", "20px");
+  eq("and without again", a.style.getPropertyPriority("width"), "");
+  a.style.margin = "3px";
+  eq("shorthand after longhands", a.style.cssText, "margin: 3px; color: red; width: 20px;");
+  eq("its longhands", a.style.length, 6);
+  a.setAttribute("style", "padding: 1px 2px");
+  eq("follows the attribute", a.style.paddingRight + "|" + a.style.marginTop, "2px|");
+});
+
+done();
+</script>
+</body></html>

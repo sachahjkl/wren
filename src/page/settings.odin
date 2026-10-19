@@ -25,6 +25,7 @@ Settings :: struct {
 	js:              js.Settings,         // JavaScript (package js, js_realm.odin)
 	js_load:         Js_Load_Settings,    // script loading, the event loop's JavaScript side (js_load_settings.odin)
 	js_web:          Js_Web_Settings,     // web APIs of JavaScript (js_web_settings.odin)
+	dom:             Js_Dom_Settings,     // the DOM for JavaScript (js_dom_settings.odin)
 }
 
 PREFS := [?]config.Def{
@@ -49,6 +50,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	js.register_prefs(p)
 	config.register(p, JS_LOAD_PREFS[:])
 	config.register(p, JS_WEB_PREFS[:])
+	config.register(p, JS_DOM_PREFS[:])
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -68,6 +70,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		js = js.settings_from_prefs(p),
 		js_load = js_load_settings_from_prefs(p),
 		js_web = js_web_settings_from_prefs(p),
+		dom = js_dom_settings_from_prefs(p),
 	}
 }
 

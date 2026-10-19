@@ -300,6 +300,10 @@ emit_event_handler :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, g
 @(private)
 emit_reflect :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) -> (getter, setter: string, ok: bool) {
 	a, has := webidl.attr_get(mb.attrs, "Reflect")
+	if !has {
+		// [ReflectURL] alone reflects the attribute of the same name (img.src, link.href, q.cite...)
+		if u, has_url := webidl.attr_get(mb.attrs, "ReflectURL"); has_url { a, has = u, true }
+	}
 	setter_only := false
 	if !has {
 		if !webidl.attr_has(mb.attrs, "ReflectSetter") { return }
@@ -947,7 +951,14 @@ emit_c :: proc(g: ^Gen, impls: [][]Member_Impl) {
 		for mb in it.members { if webidl.attr_has(mb.attrs, "LegacyUnforgeable") { unforgeable = true } }
 		if unforgeable { append(&flags, "WJ_I_HAS_UNFORGEABLE") }
 		indexed := has_indexed_getter(it)
-		for mb in it.members { if mb.kind == .Iterable && mb.key_type == nil && indexed { append(&flags, "WJ_I_ARRAY_ITERATOR"); break } }
+		iterable := false
+		for mb in it.members { if mb.kind == .Iterable && mb.key_type == nil && indexed { append(&flags, "WJ_I_ARRAY_ITERATOR"); iterable = true; break } }
+		// Web IDL §3.7.6: supporting indexed properties (declared here, not inherited) makes an interface iterable
+		if indexed && !iterable && it.kind == .Interface {
+			own := false
+			for mb in it.members { if mb.kind == .Operation && mb.special == .Getter && len(mb.args) == 1 { own = true; break } }
+			if own { append(&flags, "WJ_I_INDEXED_ITERATOR") }
+		}
 		class_kind := "WJ_CLASS_PLAIN"
 		if indexed { class_kind = "WJ_CLASS_INDEXED" } else if has_named_getter(it) { class_kind = "WJ_CLASS_NAMED" }
 		ctor := "NULL"

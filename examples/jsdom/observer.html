@@ -1,0 +1,122 @@
+<!doctype html>
+<html><head><title>MutationObserver</title></head>
+<body><div id="root"><p id="a" class="k">text</p></div>
+<script>
+(async () => {
+  const root = document.getElementById("root");
+  const a = document.getElementById("a");
+  const log = [];
+  const mo = new MutationObserver((records, observer) => {
+    log.push({records, observer});
+  });
+  t("MutationObserver", mo instanceof MutationObserver);
+  throws("callback required", () => new MutationObserver(1), "TypeError");
+  throws("observe without any kind", () => mo.observe(root, {}), "TypeError");
+  throws("attributeOldValue with attributes false", () => mo.observe(root, {attributes: false, attributeOldValue: true}), "TypeError");
+
+  mo.observe(root, {childList: true, attributes: true, characterData: true, subtree: true, attributeOldValue: true, characterDataOldValue: true});
+  const s = document.createElement("span");
+  root.appendChild(s);
+  eq("nothing delivered synchronously", log.length, 0);
+  let order = [];
+  Promise.resolve().then(() => order.push("promise"));
+  await later();
+  eq("one notification", log.length, 1);
+  const r0 = log[0].records[0];
+  t("MutationRecord", r0 instanceof MutationRecord && log[0].observer === mo);
+  eq("childList record", [r0.type, r0.target === root, r0.addedNodes.length, r0.addedNodes[0] === s, r0.removedNodes.length, r0.previousSibling === a, String(r0.nextSibling)].join(","), "childList,true,1,true,0,true,null");
+
+  log.length = 0;
+  a.setAttribute("class", "k2");
+  a.firstChild.data = "changed";
+  s.remove();
+  const taken = mo.takeRecords();
+  eq("takeRecords", taken.map(r => r.type).join(","), "attributes,characterData,childList");
+  eq("attribute record", [taken[0].attributeName, taken[0].oldValue, taken[0].target === a, String(taken[0].attributeNamespace)].join(","), "class,k,true,null");
+  eq("characterData record (subtree)", taken[1].oldValue + "," + (taken[1].target === a.firstChild), "text,true");
+  eq("removal record", taken[2].removedNodes[0] === s && taken[2].previousSibling === a, true);
+  await later();
+  eq("taken records are not delivered again", log.length, 0);
+
+  // one record for one operation
+  root.innerHTML = "<b>1</b><i>2</i>";
+  await later();
+  const rs = log.length ? log[0].records : [];
+  eq("innerHTML: one record", rs.length, 1);
+  eq("innerHTML record", rs.length && [rs[0].addedNodes.length, rs[0].removedNodes.length].join(","), "2,1");
+  log.length = 0;
+  const frag = document.createDocumentFragment();
+  frag.append(document.createElement("u"), document.createElement("s"));
+  root.appendChild(frag);
+  root.replaceChildren("x");
+  await later();
+  const rs2 = log.length ? log[0].records : [];
+  eq("fragment insertion and replaceChildren: two records", rs2.length, 2);
+  eq("fragment insertion record", rs2.length && rs2[0].addedNodes.length, 2);
+  eq("replaceChildren record", rs2.length > 1 && rs2[1].removedNodes.length + "," + rs2[1].addedNodes.length, "4,1");
+
+  // attribute filter, no old value
+  log.length = 0;
+  mo.disconnect();
+  mo.observe(root, {attributeFilter: ["data-a"]});
+  root.setAttribute("data-b", "1");
+  root.setAttribute("data-a", "1");
+  root.appendChild(document.createElement("hr"));
+  await later();
+  eq("attributeFilter", log.length && log[0].records.map(r => r.attributeName + ":" + r.oldValue).join(","), "data-a:null");
+
+  // disconnect stops everything, queued records included
+  log.length = 0;
+  root.setAttribute("data-a", "2");
+  mo.disconnect();
+  await later();
+  eq("disconnect drops queued records", log.length, 0);
+
+  // subtree off: mutations below are not seen; transient registrations follow a removed subtree
+  const mo2 = new MutationObserver(rs => log.push({records: rs}));
+  const deep = document.createElement("div");
+  deep.innerHTML = "<p><b>x</b></p>";
+  root.appendChild(deep);
+  mo2.observe(root, {attributes: true});
+  deep.firstChild.setAttribute("x", "1");
+  await later();
+  eq("without subtree, descendants are not observed", log.length, 0);
+  mo2.disconnect();
+  mo2.observe(root, {childList: true, subtree: true});
+  const p = deep.firstChild;
+  deep.remove();
+  p.appendChild(document.createElement("em"));
+  await later();
+  const kinds = log.length ? log[0].records.map(r => r.target === p ? "p" : r.target === root ? "root" : "?").join(",") : "";
+  eq("a removed subtree stays observed until the notification", kinds, "root,p");
+  log.length = 0;
+  p.appendChild(document.createElement("em"));
+  await later();
+  eq("then no longer", log.length, 0);
+
+  // two observers, in creation order; an observer registered twice on one path gives one record
+  const seq = [];
+  const m1 = new MutationObserver(() => seq.push(1));
+  const m2 = new MutationObserver(() => seq.push(2));
+  m2.observe(root, {attributes: true});
+  m1.observe(root, {attributes: true});
+  m1.observe(document.body, {attributes: true, subtree: true});
+  root.setAttribute("z", "1");
+  await later();
+  eq("observers notified in creation order", seq.join(","), "1,2");
+  m1.disconnect(); m2.disconnect(); mo2.disconnect();
+
+  // characterData through textContent of a text node, nodeValue, CharacterData methods
+  const tn = document.createTextNode("abc");
+  root.appendChild(tn);
+  const mo3 = new MutationObserver(() => {});
+  mo3.observe(tn, {characterData: true, characterDataOldValue: true});
+  tn.appendData("d");
+  tn.nodeValue = "z";
+  const r3 = mo3.takeRecords();
+  eq("characterData old values", r3.map(r => r.oldValue).join(","), "abc,abcd");
+  mo3.disconnect();
+  done();
+})().catch(e => { t("observer page", false, e.name + ": " + e.message + " " + e.stack); done(); });
+</script>
+</body></html>

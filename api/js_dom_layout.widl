@@ -1,0 +1,69 @@
+/// Geometry for JavaScript (CSSOM View; src/page/js_dom_layout.odin). The layout belongs to the embedder (the shell
+/// lays the document out for its viewport): a reading brings it up to date first through the page's layout hook
+/// (set_layout_embedder), which does nothing when no mutation, style change or viewport change happened since. Without
+/// an embedder (a page nobody shows) boxes are empty and the viewport is 0 x 0. Values are CSS pixels.
+partial module dom {
+  /// A rectangle (DOMRect).
+  struct DomRect {
+    f64 x;
+    f64 y;
+    f64 width;
+    f64 height;
+  }
+
+  /// element.getBoundingClientRect(): the border box as drawn (transforms applied), in viewport coordinates.
+  DomRect Element_boundingRect(Element element);
+  /// element.getClientRects(): per box fragment, 32 bytes each (x, y, width, height as f64).
+  bytes Element_clientRectsPacked(Element element);
+  /// element.clientTop, clientLeft, clientWidth, clientHeight (the viewport's size for the root element).
+  i32 Element_clientTop(Element element);
+  i32 Element_clientLeft(Element element);
+  i32 Element_clientWidth(Element element);
+  i32 Element_clientHeight(Element element);
+  /// element.scrollTop / scrollLeft (the document's scroll offsets for the scrolling element).
+  f64 Element_scrollTop(Element element);
+  void Element_set_scrollTop(Element element, f64 value);
+  f64 Element_scrollLeft(Element element);
+  void Element_set_scrollLeft(Element element, f64 value);
+  /// element.scrollWidth / scrollHeight
+  i32 Element_scrollWidth(Element element);
+  i32 Element_scrollHeight(Element element);
+  /// element.scrollTo(x, y) / scrollBy (relative): NaN keeps that axis.
+  void Element_scrollToXY(Element element, f64 x, f64 y, bool relative);
+  /// element.scrollIntoView(options): block and inline 0 start, 1 center, 2 end, 3 nearest.
+  void Element_scrollIntoViewAt(Element element, i32 block, i32 inline_pos);
+  /// htmlElement.offsetParent, offsetTop, offsetLeft, offsetWidth, offsetHeight
+  Element HTMLElement_offsetParent(Element element);
+  i32 HTMLElement_offsetTop(Element element);
+  i32 HTMLElement_offsetLeft(Element element);
+  i32 HTMLElement_offsetWidth(Element element);
+  i32 HTMLElement_offsetHeight(Element element);
+  /// document.elementFromPoint(x, y) (viewport coordinates)
+  Element Document_elementFromPoint(f64 x, f64 y);
+
+  /// window.innerWidth / innerHeight
+  i32 Window_innerWidth();
+  i32 Window_innerHeight();
+  /// window.outerWidth / outerHeight (the viewport's: the shell's window is not the page's business)
+  i32 Window_outerWidth();
+  i32 Window_outerHeight();
+  /// window.scrollX / scrollY and their aliases
+  f64 Window_scrollX();
+  f64 Window_scrollY();
+  f64 Window_pageXOffset();
+  f64 Window_pageYOffset();
+  /// window.devicePixelRatio
+  f64 Window_devicePixelRatio();
+  /// window.screenX / screenY / screenLeft / screenTop (0: the page does not learn where the window is)
+  i32 Window_screenX();
+  i32 Window_screenY();
+  i32 Window_screenLeft();
+  i32 Window_screenTop();
+  /// window.scrollTo(x, y) / scrollBy (relative): NaN keeps that axis; `smooth` asks for a smooth scroll.
+  void Window_scrollToXY(f64 x, f64 y, bool relative, bool smooth);
+
+  /// The bounding box of a range's contents (Range.getBoundingClientRect), as Element_boundingRect.
+  DomRect Range_boundingRect(Node start, u32 start_offset, Node end, u32 end_offset);
+  /// Range.getClientRects(), packed as Element_clientRectsPacked.
+  bytes Range_clientRectsPacked(Node start, u32 start_offset, Node end, u32 end_offset);
+}

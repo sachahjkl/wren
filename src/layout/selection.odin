@@ -552,7 +552,7 @@ range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, ro
 		}
 		switch n.kind {
 		case .Document:
-		case .Comment: continue
+		case .Comment, .Doctype, .Fragment: continue
 		case .Text:
 			if pos_compare(d, {s.h, len(n.text)}, start) <= 0 { continue }
 			if pos_compare(d, {s.h, 0}, end) >= 0 { clear(&stack); continue }   // past the end of the range
@@ -759,7 +759,7 @@ range_html :: proc(d: ^dom.Document, start, end: Text_Pos, allocator := context.
 		if pos_compare(d, pos_after(d, s.h), start) <= 0 { continue }
 		if pos_compare(d, pos_before(d, s.h), end) >= 0 { continue }
 		switch n.kind {
-		case .Document, .Comment:
+		case .Document, .Comment, .Doctype, .Fragment:
 		case .Text:
 			lo := start.node == s.h ? start.offset : 0
 			hi := end.node == s.h ? end.offset : len(n.text)

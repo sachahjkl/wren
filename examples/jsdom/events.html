@@ -1,0 +1,95 @@
+<!doctype html>
+<html><head><title>Events</title><style>body { margin: 0 } #b { position: absolute; left: 10px; top: 20px; width: 100px; height: 50px; }</style></head>
+<body><div id="outer"><button id="b">b</button></div>
+<script>
+section("the Window in the propagation path", () => {
+  const b = document.getElementById("b");
+  const order = [];
+  const wc = e => order.push("win-capture:" + (e.currentTarget === window) + ":" + e.eventPhase);
+  const wb = e => order.push("win-bubble:" + (e.currentTarget === window) + ":" + e.eventPhase);
+  const dc = () => order.push("doc-capture");
+  const db = () => order.push("doc-bubble");
+  window.addEventListener("x", wc, true);
+  window.addEventListener("x", wb);
+  document.addEventListener("x", dc, true);
+  document.addEventListener("x", db);
+  b.addEventListener("x", () => order.push("target"));
+  b.dispatchEvent(new Event("x", {bubbles: true}));
+  eq("capture from the window, bubble to the window", order.join(","), "win-capture:true:1,doc-capture,target,doc-bubble,win-bubble:true:3");
+  order.length = 0;
+  b.dispatchEvent(new Event("x"));
+  eq("a non-bubbling event: the window's capture listeners only", order.join(","), "win-capture:true:1,doc-capture,target");
+  order.length = 0;
+  window.removeEventListener("x", wc, true);
+  window.addEventListener("x", e => { e.stopPropagation(); order.push("stopped"); }, true);
+  b.dispatchEvent(new Event("x", {bubbles: true}));
+  eq("stopPropagation at the window", order.join(","), "stopped");
+  window.removeEventListener("x", wb);
+  let path = null;
+  b.addEventListener("y", e => { path = e.composedPath(); });
+  b.dispatchEvent(new Event("y", {bubbles: true}));
+  eq("composedPath ends with the window", path[path.length - 1], window);
+});
+
+section("UI event constructors", () => {
+  const m = new MouseEvent("click", {clientX: 1, clientY: 2, screenX: 3, bubbles: true, ctrlKey: true, button: 2, buttons: 3, detail: 5});
+  t("MouseEvent", m instanceof MouseEvent && m instanceof UIEvent && m instanceof Event);
+  eq("clientX / clientY / x / y", [m.clientX, m.clientY, m.x, m.y].join(","), "1,2,1,2");
+  eq("screenX / pageX", m.screenX + "," + m.pageX, "3,1");
+  eq("modifiers", [m.ctrlKey, m.shiftKey, m.altKey, m.metaKey].join(","), "true,false,false,false");
+  t("getModifierState", m.getModifierState("Control") && !m.getModifierState("Shift"));
+  eq("button / buttons", m.button + "," + m.buttons, "2,3");
+  eq("detail / view", m.detail + "," + m.view, "5,null");
+  eq("which", m.which, 3);
+  eq("bubbles", m.bubbles, true);
+  eq("relatedTarget", m.relatedTarget, null);
+  const k = new KeyboardEvent("keydown", {key: "a", code: "KeyA", repeat: true, location: 1, shiftKey: true});
+  eq("KeyboardEvent", [k.key, k.code, k.repeat, k.location, k.shiftKey, k.isComposing].join(","), "a,KeyA,true,1,true,false");
+  eq("KeyboardEvent constants", KeyboardEvent.DOM_KEY_LOCATION_LEFT, 1);
+  const w = new WheelEvent("wheel", {deltaY: 120, deltaMode: 1});
+  eq("WheelEvent", w.deltaY + "," + w.deltaMode + "," + w.deltaX, "120,1,0");
+  const p = new PointerEvent("pointerdown", {pointerId: 7, pointerType: "pen", isPrimary: true, pressure: 0.5});
+  eq("PointerEvent", [p.pointerId, p.pointerType, p.isPrimary, p.pressure, p.width].join(","), "7,pen,true,0.5,1");
+  const f = new FocusEvent("focus", {relatedTarget: document.body});
+  eq("FocusEvent.relatedTarget", f.relatedTarget, document.body);
+  const i = new InputEvent("input", {data: "x", inputType: "insertText"});
+  eq("InputEvent", i.data + "," + i.inputType, "x,insertText");
+  eq("UIEvent with a view", new UIEvent("u", {view: window, detail: 2}).view, window);
+  throws("a view that is not an object", () => new UIEvent("u", {view: 3}), "TypeError");
+  throws("without new", () => MouseEvent("click"), "TypeError");
+  const c = new CompositionEvent("compositionend", {data: "é"});
+  eq("CompositionEvent", c.data, "é");
+});
+
+section("createEvent", () => {
+  const e = document.createEvent("Event");
+  throws("not initialized", () => document.body.dispatchEvent(e), "InvalidStateError");
+  e.initEvent("custom", true, true);
+  let got = null;
+  document.body.addEventListener("custom", ev => { got = ev; });
+  document.body.dispatchEvent(e);
+  eq("initEvent then dispatch", got, e);
+  const me = document.createEvent("MouseEvents");
+  me.initMouseEvent("click", true, true, window, 1, 10, 20, 30, 40, false, false, true, false, 0, null);
+  eq("initMouseEvent", [me.type, me.clientX, me.clientY, me.shiftKey, me.detail].join(","), "click,30,40,true,1");
+  const ce = document.createEvent("CustomEvent");
+  ce.initCustomEvent("cc", false, false, {v: 1});
+  eq("initCustomEvent", ce.detail.v, 1);
+  throws("unknown interface", () => document.createEvent("NoSuchEvent"), "NotSupportedError");
+});
+
+section("browser events (recorded for the tool)", () => {
+  const b = document.getElementById("b");
+  window.seen = {};
+  b.addEventListener("click", e => {
+    window.seen.click = [e.isTrusted, e instanceof MouseEvent, e.clientX, e.clientY, e.pageX, e.offsetX, e.offsetY, e.button, e.buttons, e.ctrlKey, e.detail, e.view === window].join(",");
+    window.seen.clickEvent = e;
+  });
+  window.addEventListener("keydown", e => {
+    window.seen.key = [e instanceof KeyboardEvent, e.key, e.code, e.keyCode, e.which, e.shiftKey].join(",");
+  });
+});
+
+done();
+</script>
+</body></html>

@@ -189,6 +189,47 @@ Api_ConsoleLevel :: enum i32 {
 	Debug = 4,
 }
 
+// The numeric details of a UI event.
+Api_UiEventData :: struct {
+	client_x: f64,
+	client_y: f64,
+	screen_x: f64,
+	screen_y: f64,
+	page_x: f64,
+	page_y: f64,
+	offset_x: f64,
+	offset_y: f64,
+	delta_x: f64,
+	delta_y: f64,
+	delta_z: f64,
+	related: u64,
+	mods: u32,
+	button: i32,
+	buttons: u32,
+	detail: i32,
+	key_code: u32,
+	location: u32,
+	repeat: u32,
+	delta_mode: u32,
+}
+
+// A rectangle (DOMRect).
+Api_DomRect :: struct {
+	x: f64,
+	y: f64,
+	width: f64,
+	height: f64,
+}
+
+// The document's selection.
+Api_SelectionState :: struct {
+	anchor: u64,
+	anchor_offset: u32,
+	focus: u64,
+	focus_offset: u32,
+	kind: u32,
+}
+
 // What a Content-Security-Policy check of inline code is about: a script element's text, an event handler
 // attribute (script-src-attr), a javascript: URL.
 Api_InlineScriptKind :: enum i32 {
@@ -388,6 +429,13 @@ Api_Error :: enum i32 {
 	Index_Size = -22,
 	Not_Allowed = -23,
 	Invalid_Access = -24,
+	Invalid_Character = -40,
+	Namespace = -41,
+	In_Use_Attribute = -42,
+	Wrong_Document = -43,
+	Invalid_Node_Type = -44,
+	Invalid_Modification = -45,
+	No_Modification_Allowed = -46,
 }
 
 // A live WebSocket: its handle and what lookup_WebSocket found.
@@ -483,7 +531,7 @@ _valid_VisibilityState :: #force_inline proc "contextless" (v: i32) -> bool { sw
 _valid_URLComponent :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10: return true }; return false }
 
 @(private = "file")
-_valid_Error :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, -1, -2, -3, -4, -5, -10, -11, -12, -13, -14, -15, -16, -17, -18, -19, -20, -21, -22, -23, -24: return true }; return false }
+_valid_Error :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, -1, -2, -3, -4, -5, -10, -11, -12, -13, -14, -15, -16, -17, -18, -19, -20, -21, -22, -23, -24, -40, -41, -42, -43, -44, -45, -46: return true }; return false }
 
 @(private = "file")
 _valid_WebSocketState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3: return true }; return false }
@@ -5474,6 +5522,6174 @@ _t_dom_Element_set_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	return nil
 }
 
+// Collection_create :: proc(c: ^Call, root: Api_Node, kind: i32, arg: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Collection_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Collection_create", "arg") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Collection_create", "result pointer") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.Collection_create: argument arg is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Collection_create: argument root is not a live Node")
+	}
+	_p1 := a[1].i32
+	_r, _err := Collection_create(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Collection_length :: proc(c: ^Call, collection: u64) -> u32
+@(private = "file")
+_t_dom_Collection_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := Collection_length(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// Collection_item :: proc(c: ^Call, collection: u64, index: u32) -> u64
+@(private = "file")
+_t_dom_Collection_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := u32(a[1].i32)
+	_r := Collection_item(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Collection_namedItem :: proc(c: ^Call, collection: u64, name: string) -> u64
+@(private = "file")
+_t_dom_Collection_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Collection_namedItem", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Collection_namedItem: argument name is not valid UTF-8") }
+		return wasm.trap_new("dom.Collection_namedItem: argument name is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_r := Collection_namedItem(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Collection_names :: proc(c: ^Call, collection: u64) -> string
+@(private = "file")
+_t_dom_Collection_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Collection_names", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := Collection_names(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ParentNode_querySelectorAllPacked :: proc(c: ^Call, node: Api_Node, selectors: string) -> ([]u8, Api_Error)
+@(private = "file")
+_t_dom_ParentNode_querySelectorAllPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.ParentNode_querySelectorAllPacked", "selectors") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.ParentNode_querySelectorAllPacked", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "dom.ParentNode_querySelectorAllPacked: argument selectors is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.ParentNode_querySelectorAllPacked: argument node is not a live Node")
+	}
+	_r, _err := ParentNode_querySelectorAllPacked(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLFormElement_namedControl :: proc(c: ^Call, form: Api_Element, name: string) -> u64
+@(private = "file")
+_t_dom_HTMLFormElement_namedControl :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLFormElement_namedControl", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.HTMLFormElement_namedControl: argument name is not valid UTF-8") }
+		return wasm.trap_new("dom.HTMLFormElement_namedControl: argument name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLFormElement_namedControl: argument form is not a live Element") }
+		return wasm.trap_new("dom.HTMLFormElement_namedControl: argument form is not a live Element")
+	}
+	_r := HTMLFormElement_namedControl(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ParentNode_querySelector :: proc(c: ^Call, node: Api_Node, selectors: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_ParentNode_querySelector :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.ParentNode_querySelector", "selectors") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.ParentNode_querySelector", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.ParentNode_querySelector: argument selectors is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.ParentNode_querySelector: argument node is not a live Node")
+	}
+	_r, _err := ParentNode_querySelector(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// TokenList_length :: proc(c: ^Call, element: Api_Element, attr: string) -> u32
+@(private = "file")
+_t_dom_TokenList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_length", "attr") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.TokenList_length: argument attr is not valid UTF-8") }
+		return wasm.trap_new("dom.TokenList_length: argument attr is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.TokenList_length: argument element is not a live Element") }
+		return wasm.trap_new("dom.TokenList_length: argument element is not a live Element")
+	}
+	_r := TokenList_length(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// TokenList_item :: proc(c: ^Call, element: Api_Element, attr: string, index: u32) -> (string, Api_Error)
+@(private = "file")
+_t_dom_TokenList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_item", "attr") }
+	_on := wasm.addr(&f, a[5])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.TokenList_item", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "dom.TokenList_item: argument attr is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.TokenList_item: argument element is not a live Element")
+	}
+	_p2 := u32(a[3].i32)
+	_r, _err := TokenList_item(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// TokenList_contains :: proc(c: ^Call, element: Api_Element, attr: string, token: string) -> bool
+@(private = "file")
+_t_dom_TokenList_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_contains", "attr") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.TokenList_contains", "token") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.TokenList_contains: argument attr is not valid UTF-8") }
+		return wasm.trap_new("dom.TokenList_contains: argument attr is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.TokenList_contains: argument token is not valid UTF-8") }
+		return wasm.trap_new("dom.TokenList_contains: argument token is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.TokenList_contains: argument element is not a live Element") }
+		return wasm.trap_new("dom.TokenList_contains: argument element is not a live Element")
+	}
+	_r := TokenList_contains(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// TokenList_add :: proc(c: ^Call, element: Api_Element, attr: string, tokens: string) -> Api_Error
+@(private = "file")
+_t_dom_TokenList_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_add", "attr") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.TokenList_add", "tokens") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.TokenList_add: argument attr is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.TokenList_add: argument tokens is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.TokenList_add: argument element is not a live Element")
+	}
+	_err := TokenList_add(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// TokenList_remove :: proc(c: ^Call, element: Api_Element, attr: string, tokens: string) -> Api_Error
+@(private = "file")
+_t_dom_TokenList_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_remove", "attr") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.TokenList_remove", "tokens") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.TokenList_remove: argument attr is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.TokenList_remove: argument tokens is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.TokenList_remove: argument element is not a live Element")
+	}
+	_err := TokenList_remove(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// TokenList_toggle :: proc(c: ^Call, element: Api_Element, attr: string, token: string, force: i32) -> (bool, Api_Error)
+@(private = "file")
+_t_dom_TokenList_toggle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_toggle", "attr") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.TokenList_toggle", "token") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 1)
+	if !_rk { return wasm.trap_bounds(&f, "dom.TokenList_toggle", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.TokenList_toggle: argument attr is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.TokenList_toggle: argument token is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.TokenList_toggle: argument element is not a live Element")
+	}
+	_p3 := a[5].i32
+	_r, _err := TokenList_toggle(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u8)(_rs), u8(1 if _r else 0))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// TokenList_replace :: proc(c: ^Call, element: Api_Element, attr: string, token: string, new_token: string) -> (bool, Api_Error)
+@(private = "file")
+_t_dom_TokenList_replace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_replace", "attr") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.TokenList_replace", "token") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "dom.TokenList_replace", "new_token") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[7]), 1)
+	if !_rk { return wasm.trap_bounds(&f, "dom.TokenList_replace", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.TokenList_replace: argument attr is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.TokenList_replace: argument token is not valid UTF-8")
+	}
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		return _fail_status(&c, a, .Type, "dom.TokenList_replace: argument new_token is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.TokenList_replace: argument element is not a live Element")
+	}
+	_r, _err := TokenList_replace(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u8)(_rs), u8(1 if _r else 0))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// TokenList_supports :: proc(c: ^Call, element: Api_Element, attr: string, token: string) -> (bool, Api_Error)
+@(private = "file")
+_t_dom_TokenList_supports :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_supports", "attr") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.TokenList_supports", "token") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 1)
+	if !_rk { return wasm.trap_bounds(&f, "dom.TokenList_supports", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.TokenList_supports: argument attr is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.TokenList_supports: argument token is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.TokenList_supports: argument element is not a live Element")
+	}
+	_r, _err := TokenList_supports(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u8)(_rs), u8(1 if _r else 0))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Dataset_get :: proc(c: ^Call, element: Api_Element, name: string) -> (string, Api_Error)
+@(private = "file")
+_t_dom_Dataset_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Dataset_get", "name") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Dataset_get", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "dom.Dataset_get: argument name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Dataset_get: argument element is not a live Element")
+	}
+	_r, _err := Dataset_get(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Dataset_set :: proc(c: ^Call, element: Api_Element, name: string, value: string) -> Api_Error
+@(private = "file")
+_t_dom_Dataset_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Dataset_set", "name") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Dataset_set", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Dataset_set: argument name is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.Dataset_set: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Dataset_set: argument element is not a live Element")
+	}
+	_err := Dataset_set(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Dataset_delete :: proc(c: ^Call, element: Api_Element, name: string) -> bool
+@(private = "file")
+_t_dom_Dataset_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Dataset_delete", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Dataset_delete: argument name is not valid UTF-8") }
+		return wasm.trap_new("dom.Dataset_delete: argument name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Dataset_delete: argument element is not a live Element") }
+		return wasm.trap_new("dom.Dataset_delete: argument element is not a live Element")
+	}
+	_r := Dataset_delete(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Dataset_names :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_Dataset_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Dataset_names", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Dataset_names: argument element is not a live Element") }
+		return wasm.trap_new("dom.Dataset_names: argument element is not a live Element")
+	}
+	_r := Dataset_names(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_namespaceURI :: proc(c: ^Call, element: Api_Element) -> (string, Api_Error)
+@(private = "file")
+_t_dom_Element_namespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Element_namespaceURI", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Element_namespaceURI: argument element is not a live Element")
+	}
+	_r, _err := Element_namespaceURI(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_prefix :: proc(c: ^Call, element: Api_Element) -> (string, Api_Error)
+@(private = "file")
+_t_dom_Element_prefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Element_prefix", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Element_prefix: argument element is not a live Element")
+	}
+	_r, _err := Element_prefix(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_localName :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_Element_localName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Element_localName", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_localName: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_localName: argument element is not a live Element")
+	}
+	_r := Element_localName(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_qualifiedTagName :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_Element_qualifiedTagName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Element_qualifiedTagName", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_qualifiedTagName: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_qualifiedTagName: argument element is not a live Element")
+	}
+	_r := Element_qualifiedTagName(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_slot :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_Element_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Element_slot", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_slot: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_slot: argument element is not a live Element")
+	}
+	_r := Element_slot(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_set_slot :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_Element_set_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_set_slot", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Element_set_slot: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_set_slot: argument element is not a live Element")
+	}
+	_err := Element_set_slot(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_hasAttributes :: proc(c: ^Call, element: Api_Element) -> bool
+@(private = "file")
+_t_dom_Element_hasAttributes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_hasAttributes: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_hasAttributes: argument element is not a live Element")
+	}
+	_r := Element_hasAttributes(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Element_attributeNames :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_Element_attributeNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Element_attributeNames", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_attributeNames: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_attributeNames: argument element is not a live Element")
+	}
+	_r := Element_attributeNames(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_attributeCount :: proc(c: ^Call, element: Api_Element) -> u32
+@(private = "file")
+_t_dom_Element_attributeCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_attributeCount: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_attributeCount: argument element is not a live Element")
+	}
+	_r := Element_attributeCount(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// Element_attributeNameAt :: proc(c: ^Call, element: Api_Element, index: u32) -> (string, Api_Error)
+@(private = "file")
+_t_dom_Element_attributeNameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Element_attributeNameAt", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Element_attributeNameAt: argument element is not a live Element")
+	}
+	_p1 := u32(a[1].i32)
+	_r, _err := Element_attributeNameAt(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_getAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) -> (string, Api_Error)
+@(private = "file")
+_t_dom_Element_getAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_getAttributeNS", "namespace") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Element_getAttributeNS", "local_name") }
+	_on := wasm.addr(&f, a[6])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[5]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Element_getAttributeNS", "result buffer") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			return _fail_size(&c, &f, a, .Type, "dom.Element_getAttributeNS: argument namespace is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_size(&c, &f, a, .Type, "dom.Element_getAttributeNS: argument local_name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Element_getAttributeNS: argument element is not a live Element")
+	}
+	_r, _err := Element_getAttributeNS(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_setAttributeChecked :: proc(c: ^Call, element: Api_Element, name: string, value: string) -> Api_Error
+@(private = "file")
+_t_dom_Element_setAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_setAttributeChecked", "name") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Element_setAttributeChecked", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Element_setAttributeChecked: argument name is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.Element_setAttributeChecked: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_setAttributeChecked: argument element is not a live Element")
+	}
+	_err := Element_setAttributeChecked(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_setAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), qualified_name: string, value: string) -> Api_Error
+@(private = "file")
+_t_dom_Element_setAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_setAttributeNS", "namespace") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Element_setAttributeNS", "qualified_name") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "dom.Element_setAttributeNS", "value") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			return _fail_status(&c, a, .Type, "dom.Element_setAttributeNS: argument namespace is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.Element_setAttributeNS: argument qualified_name is not valid UTF-8")
+	}
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		return _fail_status(&c, a, .Type, "dom.Element_setAttributeNS: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_setAttributeNS: argument element is not a live Element")
+	}
+	_err := Element_setAttributeNS(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_removeAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string)
+@(private = "file")
+_t_dom_Element_removeAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_removeAttributeNS", "namespace") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Element_removeAttributeNS", "local_name") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_removeAttributeNS: argument namespace is not valid UTF-8") }
+			return wasm.trap_new("dom.Element_removeAttributeNS: argument namespace is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_removeAttributeNS: argument local_name is not valid UTF-8") }
+		return wasm.trap_new("dom.Element_removeAttributeNS: argument local_name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_removeAttributeNS: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_removeAttributeNS: argument element is not a live Element")
+	}
+	Element_removeAttributeNS(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Element_toggleAttributeChecked :: proc(c: ^Call, element: Api_Element, name: string, force: i32) -> (bool, Api_Error)
+@(private = "file")
+_t_dom_Element_toggleAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_toggleAttributeChecked", "name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 1)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Element_toggleAttributeChecked", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Element_toggleAttributeChecked: argument name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_toggleAttributeChecked: argument element is not a live Element")
+	}
+	_p2 := a[3].i32
+	_r, _err := Element_toggleAttributeChecked(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u8)(_rs), u8(1 if _r else 0))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_hasAttribute :: proc(c: ^Call, element: Api_Element, name: string) -> bool
+@(private = "file")
+_t_dom_Element_hasAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_hasAttribute", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_hasAttribute: argument name is not valid UTF-8") }
+		return wasm.trap_new("dom.Element_hasAttribute: argument name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_hasAttribute: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_hasAttribute: argument element is not a live Element")
+	}
+	_r := Element_hasAttribute(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Element_hasAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) -> bool
+@(private = "file")
+_t_dom_Element_hasAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_hasAttributeNS", "namespace") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Element_hasAttributeNS", "local_name") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_hasAttributeNS: argument namespace is not valid UTF-8") }
+			return wasm.trap_new("dom.Element_hasAttributeNS: argument namespace is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_hasAttributeNS: argument local_name is not valid UTF-8") }
+		return wasm.trap_new("dom.Element_hasAttributeNS: argument local_name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_hasAttributeNS: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_hasAttributeNS: argument element is not a live Element")
+	}
+	_r := Element_hasAttributeNS(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Element_closest :: proc(c: ^Call, element: Api_Element, selectors: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Element_closest :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_closest", "selectors") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Element_closest", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Element_closest: argument selectors is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_closest: argument element is not a live Element")
+	}
+	_r, _err := Element_closest(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_matches :: proc(c: ^Call, element: Api_Element, selectors: string) -> (bool, Api_Error)
+@(private = "file")
+_t_dom_Element_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_matches", "selectors") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 1)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Element_matches", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Element_matches: argument selectors is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_matches: argument element is not a live Element")
+	}
+	_r, _err := Element_matches(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u8)(_rs), u8(1 if _r else 0))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_webkitMatchesSelector :: proc(c: ^Call, element: Api_Element, selectors: string) -> (bool, Api_Error)
+@(private = "file")
+_t_dom_Element_webkitMatchesSelector :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_webkitMatchesSelector", "selectors") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 1)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Element_webkitMatchesSelector", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Element_webkitMatchesSelector: argument selectors is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_webkitMatchesSelector: argument element is not a live Element")
+	}
+	_r, _err := Element_webkitMatchesSelector(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u8)(_rs), u8(1 if _r else 0))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_insertAdjacentElement :: proc(c: ^Call, element: Api_Element, position: string, other: Api_Element) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Element_insertAdjacentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_insertAdjacentElement", "position") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Element_insertAdjacentElement", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Element_insertAdjacentElement: argument position is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_insertAdjacentElement: argument element is not a live Element")
+	}
+	_p2 := Api_Element{handle = u64(a[3].i64)}
+	_p2.data = lookup_Element(&c, _p2.handle)
+	if _p2.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_insertAdjacentElement: argument other is not a live Element")
+	}
+	_r, _err := Element_insertAdjacentElement(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_insertAdjacentText :: proc(c: ^Call, element: Api_Element, position: string, data: string) -> Api_Error
+@(private = "file")
+_t_dom_Element_insertAdjacentText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_insertAdjacentText", "position") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Element_insertAdjacentText", "data") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Element_insertAdjacentText: argument position is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.Element_insertAdjacentText: argument data is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_insertAdjacentText: argument element is not a live Element")
+	}
+	_err := Element_insertAdjacentText(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_insertAdjacentHTML :: proc(c: ^Call, element: Api_Element, position: string, text: string) -> Api_Error
+@(private = "file")
+_t_dom_Element_insertAdjacentHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_insertAdjacentHTML", "position") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Element_insertAdjacentHTML", "text") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Element_insertAdjacentHTML: argument position is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.Element_insertAdjacentHTML: argument text is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_insertAdjacentHTML: argument element is not a live Element")
+	}
+	_err := Element_insertAdjacentHTML(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_innerHTML :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_Element_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Element_innerHTML", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_innerHTML: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_innerHTML: argument element is not a live Element")
+	}
+	_r := Element_innerHTML(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_set_innerHTML :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_Element_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_set_innerHTML", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Element_set_innerHTML: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_set_innerHTML: argument element is not a live Element")
+	}
+	_err := Element_set_innerHTML(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_outerHTML :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_Element_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Element_outerHTML", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_outerHTML: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_outerHTML: argument element is not a live Element")
+	}
+	_r := Element_outerHTML(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_set_outerHTML :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_Element_set_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_set_outerHTML", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Element_set_outerHTML: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_set_outerHTML: argument element is not a live Element")
+	}
+	_err := Element_set_outerHTML(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_shadowRoot :: proc(c: ^Call, element: Api_Element) -> u64
+@(private = "file")
+_t_dom_Element_shadowRoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_shadowRoot: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_shadowRoot: argument element is not a live Element")
+	}
+	_r := Element_shadowRoot(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLElement_hiddenState :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_dom_HTMLElement_hiddenState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_hiddenState: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_hiddenState: argument element is not a live Element")
+	}
+	_r := HTMLElement_hiddenState(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// HTMLElement_dir :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HTMLElement_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLElement_dir", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_dir: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_dir: argument element is not a live Element")
+	}
+	_r := HTMLElement_dir(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLElement_set_dir :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HTMLElement_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLElement_set_dir", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HTMLElement_set_dir: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLElement_set_dir: argument element is not a live Element")
+	}
+	_err := HTMLElement_set_dir(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLElement_translate :: proc(c: ^Call, element: Api_Element) -> bool
+@(private = "file")
+_t_dom_HTMLElement_translate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_translate: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_translate: argument element is not a live Element")
+	}
+	_r := HTMLElement_translate(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// HTMLElement_set_translate :: proc(c: ^Call, element: Api_Element, value: bool) -> Api_Error
+@(private = "file")
+_t_dom_HTMLElement_set_translate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLElement_set_translate: argument element is not a live Element")
+	}
+	_p1 := a[1].i32 != 0
+	_err := HTMLElement_set_translate(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLElement_draggable :: proc(c: ^Call, element: Api_Element) -> bool
+@(private = "file")
+_t_dom_HTMLElement_draggable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_draggable: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_draggable: argument element is not a live Element")
+	}
+	_r := HTMLElement_draggable(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// HTMLElement_set_draggable :: proc(c: ^Call, element: Api_Element, value: bool) -> Api_Error
+@(private = "file")
+_t_dom_HTMLElement_set_draggable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLElement_set_draggable: argument element is not a live Element")
+	}
+	_p1 := a[1].i32 != 0
+	_err := HTMLElement_set_draggable(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLElement_spellcheck :: proc(c: ^Call, element: Api_Element) -> bool
+@(private = "file")
+_t_dom_HTMLElement_spellcheck :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_spellcheck: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_spellcheck: argument element is not a live Element")
+	}
+	_r := HTMLElement_spellcheck(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// HTMLElement_set_spellcheck :: proc(c: ^Call, element: Api_Element, value: bool) -> Api_Error
+@(private = "file")
+_t_dom_HTMLElement_set_spellcheck :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLElement_set_spellcheck: argument element is not a live Element")
+	}
+	_p1 := a[1].i32 != 0
+	_err := HTMLElement_set_spellcheck(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLElement_innerText :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HTMLElement_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLElement_innerText", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_innerText: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_innerText: argument element is not a live Element")
+	}
+	_r := HTMLElement_innerText(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLElement_set_innerText :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HTMLElement_set_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLElement_set_innerText", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HTMLElement_set_innerText: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLElement_set_innerText: argument element is not a live Element")
+	}
+	_err := HTMLElement_set_innerText(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLElement_outerText :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HTMLElement_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLElement_outerText", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_outerText: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_outerText: argument element is not a live Element")
+	}
+	_r := HTMLElement_outerText(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLElement_set_outerText :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HTMLElement_set_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLElement_set_outerText", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HTMLElement_set_outerText: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLElement_set_outerText: argument element is not a live Element")
+	}
+	_err := HTMLElement_set_outerText(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLElement_accessKeyLabel :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HTMLElement_accessKeyLabel :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLElement_accessKeyLabel", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_accessKeyLabel: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_accessKeyLabel: argument element is not a live Element")
+	}
+	_r := HTMLElement_accessKeyLabel(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLOrSVGOrMathMLElement_tabIndex :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_dom_HTMLOrSVGOrMathMLElement_tabIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLOrSVGOrMathMLElement_tabIndex: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLOrSVGOrMathMLElement_tabIndex: argument element is not a live Element")
+	}
+	_r := HTMLOrSVGOrMathMLElement_tabIndex(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// HTMLOrSVGOrMathMLElement_set_tabIndex :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error
+@(private = "file")
+_t_dom_HTMLOrSVGOrMathMLElement_set_tabIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLOrSVGOrMathMLElement_set_tabIndex: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := HTMLOrSVGOrMathMLElement_set_tabIndex(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLOrSVGOrMathMLElement_nonce :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HTMLOrSVGOrMathMLElement_nonce :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLOrSVGOrMathMLElement_nonce", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLOrSVGOrMathMLElement_nonce: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLOrSVGOrMathMLElement_nonce: argument element is not a live Element")
+	}
+	_r := HTMLOrSVGOrMathMLElement_nonce(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLOrSVGOrMathMLElement_set_nonce :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HTMLOrSVGOrMathMLElement_set_nonce :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLOrSVGOrMathMLElement_set_nonce", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HTMLOrSVGOrMathMLElement_set_nonce: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLOrSVGOrMathMLElement_set_nonce: argument element is not a live Element")
+	}
+	_err := HTMLOrSVGOrMathMLElement_set_nonce(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ElementContentEditable_contentEditable :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_ElementContentEditable_contentEditable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.ElementContentEditable_contentEditable", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ElementContentEditable_contentEditable: argument element is not a live Element") }
+		return wasm.trap_new("dom.ElementContentEditable_contentEditable: argument element is not a live Element")
+	}
+	_r := ElementContentEditable_contentEditable(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ElementContentEditable_set_contentEditable :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_ElementContentEditable_set_contentEditable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.ElementContentEditable_set_contentEditable", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.ElementContentEditable_set_contentEditable: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.ElementContentEditable_set_contentEditable: argument element is not a live Element")
+	}
+	_err := ElementContentEditable_set_contentEditable(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ElementContentEditable_isContentEditable :: proc(c: ^Call, element: Api_Element) -> bool
+@(private = "file")
+_t_dom_ElementContentEditable_isContentEditable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ElementContentEditable_isContentEditable: argument element is not a live Element") }
+		return wasm.trap_new("dom.ElementContentEditable_isContentEditable: argument element is not a live Element")
+	}
+	_r := ElementContentEditable_isContentEditable(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// HTMLHyperlinkElementUtils_href :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HTMLHyperlinkElementUtils_href :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLHyperlinkElementUtils_href", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLHyperlinkElementUtils_href: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLHyperlinkElementUtils_href: argument element is not a live Element")
+	}
+	_r := HTMLHyperlinkElementUtils_href(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLHyperlinkElementUtils_set_href :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HTMLHyperlinkElementUtils_set_href :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLHyperlinkElementUtils_set_href", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HTMLHyperlinkElementUtils_set_href: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLHyperlinkElementUtils_set_href: argument element is not a live Element")
+	}
+	_err := HTMLHyperlinkElementUtils_set_href(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HyperlinkElementUtils_origin :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HyperlinkElementUtils_origin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_origin", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_origin: argument element is not a live Element") }
+		return wasm.trap_new("dom.HyperlinkElementUtils_origin: argument element is not a live Element")
+	}
+	_r := HyperlinkElementUtils_origin(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HyperlinkElementUtils_protocol :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HyperlinkElementUtils_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_protocol", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_protocol: argument element is not a live Element") }
+		return wasm.trap_new("dom.HyperlinkElementUtils_protocol: argument element is not a live Element")
+	}
+	_r := HyperlinkElementUtils_protocol(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HyperlinkElementUtils_set_protocol :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HyperlinkElementUtils_set_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_protocol", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_protocol: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_protocol: argument element is not a live Element")
+	}
+	_err := HyperlinkElementUtils_set_protocol(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HyperlinkElementUtils_username :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HyperlinkElementUtils_username :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_username", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_username: argument element is not a live Element") }
+		return wasm.trap_new("dom.HyperlinkElementUtils_username: argument element is not a live Element")
+	}
+	_r := HyperlinkElementUtils_username(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HyperlinkElementUtils_set_username :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HyperlinkElementUtils_set_username :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_username", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_username: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_username: argument element is not a live Element")
+	}
+	_err := HyperlinkElementUtils_set_username(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HyperlinkElementUtils_password :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HyperlinkElementUtils_password :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_password", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_password: argument element is not a live Element") }
+		return wasm.trap_new("dom.HyperlinkElementUtils_password: argument element is not a live Element")
+	}
+	_r := HyperlinkElementUtils_password(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HyperlinkElementUtils_set_password :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HyperlinkElementUtils_set_password :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_password", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_password: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_password: argument element is not a live Element")
+	}
+	_err := HyperlinkElementUtils_set_password(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HyperlinkElementUtils_host :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HyperlinkElementUtils_host :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_host", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_host: argument element is not a live Element") }
+		return wasm.trap_new("dom.HyperlinkElementUtils_host: argument element is not a live Element")
+	}
+	_r := HyperlinkElementUtils_host(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HyperlinkElementUtils_set_host :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HyperlinkElementUtils_set_host :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_host", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_host: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_host: argument element is not a live Element")
+	}
+	_err := HyperlinkElementUtils_set_host(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HyperlinkElementUtils_hostname :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HyperlinkElementUtils_hostname :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_hostname", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_hostname: argument element is not a live Element") }
+		return wasm.trap_new("dom.HyperlinkElementUtils_hostname: argument element is not a live Element")
+	}
+	_r := HyperlinkElementUtils_hostname(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HyperlinkElementUtils_set_hostname :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HyperlinkElementUtils_set_hostname :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_hostname", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_hostname: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_hostname: argument element is not a live Element")
+	}
+	_err := HyperlinkElementUtils_set_hostname(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HyperlinkElementUtils_port :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HyperlinkElementUtils_port :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_port", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_port: argument element is not a live Element") }
+		return wasm.trap_new("dom.HyperlinkElementUtils_port: argument element is not a live Element")
+	}
+	_r := HyperlinkElementUtils_port(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HyperlinkElementUtils_set_port :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HyperlinkElementUtils_set_port :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_port", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_port: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_port: argument element is not a live Element")
+	}
+	_err := HyperlinkElementUtils_set_port(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HyperlinkElementUtils_pathname :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HyperlinkElementUtils_pathname :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_pathname", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_pathname: argument element is not a live Element") }
+		return wasm.trap_new("dom.HyperlinkElementUtils_pathname: argument element is not a live Element")
+	}
+	_r := HyperlinkElementUtils_pathname(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HyperlinkElementUtils_set_pathname :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HyperlinkElementUtils_set_pathname :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_pathname", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_pathname: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_pathname: argument element is not a live Element")
+	}
+	_err := HyperlinkElementUtils_set_pathname(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HyperlinkElementUtils_search :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HyperlinkElementUtils_search :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_search", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_search: argument element is not a live Element") }
+		return wasm.trap_new("dom.HyperlinkElementUtils_search: argument element is not a live Element")
+	}
+	_r := HyperlinkElementUtils_search(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HyperlinkElementUtils_set_search :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HyperlinkElementUtils_set_search :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_search", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_search: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_search: argument element is not a live Element")
+	}
+	_err := HyperlinkElementUtils_set_search(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HyperlinkElementUtils_hash :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HyperlinkElementUtils_hash :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_hash", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_hash: argument element is not a live Element") }
+		return wasm.trap_new("dom.HyperlinkElementUtils_hash: argument element is not a live Element")
+	}
+	_r := HyperlinkElementUtils_hash(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HyperlinkElementUtils_set_hash :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HyperlinkElementUtils_set_hash :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_hash", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_hash: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_hash: argument element is not a live Element")
+	}
+	_err := HyperlinkElementUtils_set_hash(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLAnchorElement_text :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HTMLAnchorElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLAnchorElement_text", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLAnchorElement_text: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLAnchorElement_text: argument element is not a live Element")
+	}
+	_r := HTMLAnchorElement_text(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLAnchorElement_set_text :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HTMLAnchorElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLAnchorElement_set_text", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HTMLAnchorElement_set_text: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLAnchorElement_set_text: argument element is not a live Element")
+	}
+	_err := HTMLAnchorElement_set_text(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTemplateElement_content :: proc(c: ^Call, element: Api_Element) -> u64
+@(private = "file")
+_t_dom_HTMLTemplateElement_content :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTemplateElement_content: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLTemplateElement_content: argument element is not a live Element")
+	}
+	_r := HTMLTemplateElement_content(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Event_uiData :: proc(c: ^Call, event: Api_Event) -> Api_UiEventData
+@(private = "file")
+_t_events_Event_uiData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 128)
+	if !_rk { return wasm.trap_bounds(&f, "events.Event_uiData", "result pointer") }
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.Event_uiData: argument event is not a live Event") }
+		return wasm.trap_new("events.Event_uiData: argument event is not a live Event")
+	}
+	_r := Event_uiData(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	intrinsics.unaligned_store((^f64)(&_rs[0]), _r.client_x)
+	intrinsics.unaligned_store((^f64)(&_rs[8]), _r.client_y)
+	intrinsics.unaligned_store((^f64)(&_rs[16]), _r.screen_x)
+	intrinsics.unaligned_store((^f64)(&_rs[24]), _r.screen_y)
+	intrinsics.unaligned_store((^f64)(&_rs[32]), _r.page_x)
+	intrinsics.unaligned_store((^f64)(&_rs[40]), _r.page_y)
+	intrinsics.unaligned_store((^f64)(&_rs[48]), _r.offset_x)
+	intrinsics.unaligned_store((^f64)(&_rs[56]), _r.offset_y)
+	intrinsics.unaligned_store((^f64)(&_rs[64]), _r.delta_x)
+	intrinsics.unaligned_store((^f64)(&_rs[72]), _r.delta_y)
+	intrinsics.unaligned_store((^f64)(&_rs[80]), _r.delta_z)
+	intrinsics.unaligned_store((^u64)(&_rs[88]), _r.related)
+	intrinsics.unaligned_store((^u32)(&_rs[96]), _r.mods)
+	intrinsics.unaligned_store((^i32)(&_rs[100]), _r.button)
+	intrinsics.unaligned_store((^u32)(&_rs[104]), _r.buttons)
+	intrinsics.unaligned_store((^i32)(&_rs[108]), _r.detail)
+	intrinsics.unaligned_store((^u32)(&_rs[112]), _r.key_code)
+	intrinsics.unaligned_store((^u32)(&_rs[116]), _r.location)
+	intrinsics.unaligned_store((^u32)(&_rs[120]), _r.repeat)
+	intrinsics.unaligned_store((^u32)(&_rs[124]), _r.delta_mode)
+	return nil
+}
+
+// UiEvent_key :: proc(c: ^Call, event: Api_Event) -> string
+@(private = "file")
+_t_events_UiEvent_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "events.UiEvent_key", "result buffer") }
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.UiEvent_key: argument event is not a live Event") }
+		return wasm.trap_new("events.UiEvent_key: argument event is not a live Event")
+	}
+	_r := UiEvent_key(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// UiEvent_code :: proc(c: ^Call, event: Api_Event) -> string
+@(private = "file")
+_t_events_UiEvent_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "events.UiEvent_code", "result buffer") }
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.UiEvent_code: argument event is not a live Event") }
+		return wasm.trap_new("events.UiEvent_code: argument event is not a live Event")
+	}
+	_r := UiEvent_code(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLInputElement_set_type :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HTMLInputElement_set_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLInputElement_set_type", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HTMLInputElement_set_type: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLInputElement_set_type: argument element is not a live Element")
+	}
+	_err := HTMLInputElement_set_type(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLInputElement_set_maxLength :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error
+@(private = "file")
+_t_dom_HTMLInputElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLInputElement_set_maxLength: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := HTMLInputElement_set_maxLength(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLInputElement_set_minLength :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error
+@(private = "file")
+_t_dom_HTMLInputElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLInputElement_set_minLength: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := HTMLInputElement_set_minLength(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTextAreaElement_set_maxLength :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error
+@(private = "file")
+_t_dom_HTMLTextAreaElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTextAreaElement_set_maxLength: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := HTMLTextAreaElement_set_maxLength(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTextAreaElement_set_minLength :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error
+@(private = "file")
+_t_dom_HTMLTextAreaElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTextAreaElement_set_minLength: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := HTMLTextAreaElement_set_minLength(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLOptionElement_set_text :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HTMLOptionElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLOptionElement_set_text", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HTMLOptionElement_set_text: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLOptionElement_set_text: argument element is not a live Element")
+	}
+	_err := HTMLOptionElement_set_text(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTableElement_caption :: proc(c: ^Call, table: Api_Element) -> u64
+@(private = "file")
+_t_dom_HTMLTableElement_caption :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableElement_caption: argument table is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableElement_caption: argument table is not a live Element")
+	}
+	_r := HTMLTableElement_caption(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLTableElement_set_caption :: proc(c: ^Call, table: Api_Element, value: Api_Element) -> Api_Error
+@(private = "file")
+_t_dom_HTMLTableElement_set_caption :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_set_caption: argument table is not a live Element")
+	}
+	_p1 := Api_Element{handle = u64(a[1].i64)}
+	if _p1.handle != 0 { _p1.data = lookup_Element(&c, _p1.handle) }
+	if _p1.handle != 0 && _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_set_caption: argument value is not a live Element")
+	}
+	_err := HTMLTableElement_set_caption(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTableElement_createCaption :: proc(c: ^Call, table: Api_Element) -> u64
+@(private = "file")
+_t_dom_HTMLTableElement_createCaption :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableElement_createCaption: argument table is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableElement_createCaption: argument table is not a live Element")
+	}
+	_r := HTMLTableElement_createCaption(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLTableElement_deleteCaption :: proc(c: ^Call, table: Api_Element)
+@(private = "file")
+_t_dom_HTMLTableElement_deleteCaption :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableElement_deleteCaption: argument table is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableElement_deleteCaption: argument table is not a live Element")
+	}
+	HTMLTableElement_deleteCaption(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLTableElement_tHead :: proc(c: ^Call, table: Api_Element) -> u64
+@(private = "file")
+_t_dom_HTMLTableElement_tHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableElement_tHead: argument table is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableElement_tHead: argument table is not a live Element")
+	}
+	_r := HTMLTableElement_tHead(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLTableElement_set_tHead :: proc(c: ^Call, table: Api_Element, value: Api_Element) -> Api_Error
+@(private = "file")
+_t_dom_HTMLTableElement_set_tHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_set_tHead: argument table is not a live Element")
+	}
+	_p1 := Api_Element{handle = u64(a[1].i64)}
+	if _p1.handle != 0 { _p1.data = lookup_Element(&c, _p1.handle) }
+	if _p1.handle != 0 && _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_set_tHead: argument value is not a live Element")
+	}
+	_err := HTMLTableElement_set_tHead(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTableElement_createTHead :: proc(c: ^Call, table: Api_Element) -> u64
+@(private = "file")
+_t_dom_HTMLTableElement_createTHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableElement_createTHead: argument table is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableElement_createTHead: argument table is not a live Element")
+	}
+	_r := HTMLTableElement_createTHead(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLTableElement_deleteTHead :: proc(c: ^Call, table: Api_Element)
+@(private = "file")
+_t_dom_HTMLTableElement_deleteTHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableElement_deleteTHead: argument table is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableElement_deleteTHead: argument table is not a live Element")
+	}
+	HTMLTableElement_deleteTHead(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLTableElement_tFoot :: proc(c: ^Call, table: Api_Element) -> u64
+@(private = "file")
+_t_dom_HTMLTableElement_tFoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableElement_tFoot: argument table is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableElement_tFoot: argument table is not a live Element")
+	}
+	_r := HTMLTableElement_tFoot(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLTableElement_set_tFoot :: proc(c: ^Call, table: Api_Element, value: Api_Element) -> Api_Error
+@(private = "file")
+_t_dom_HTMLTableElement_set_tFoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_set_tFoot: argument table is not a live Element")
+	}
+	_p1 := Api_Element{handle = u64(a[1].i64)}
+	if _p1.handle != 0 { _p1.data = lookup_Element(&c, _p1.handle) }
+	if _p1.handle != 0 && _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_set_tFoot: argument value is not a live Element")
+	}
+	_err := HTMLTableElement_set_tFoot(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTableElement_createTFoot :: proc(c: ^Call, table: Api_Element) -> u64
+@(private = "file")
+_t_dom_HTMLTableElement_createTFoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableElement_createTFoot: argument table is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableElement_createTFoot: argument table is not a live Element")
+	}
+	_r := HTMLTableElement_createTFoot(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLTableElement_deleteTFoot :: proc(c: ^Call, table: Api_Element)
+@(private = "file")
+_t_dom_HTMLTableElement_deleteTFoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableElement_deleteTFoot: argument table is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableElement_deleteTFoot: argument table is not a live Element")
+	}
+	HTMLTableElement_deleteTFoot(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLTableElement_createTBody :: proc(c: ^Call, table: Api_Element) -> u64
+@(private = "file")
+_t_dom_HTMLTableElement_createTBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableElement_createTBody: argument table is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableElement_createTBody: argument table is not a live Element")
+	}
+	_r := HTMLTableElement_createTBody(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLTableElement_insertRow :: proc(c: ^Call, table: Api_Element, index: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_HTMLTableElement_insertRow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.HTMLTableElement_insertRow", "result pointer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_insertRow: argument table is not a live Element")
+	}
+	_p1 := a[1].i32
+	_r, _err := HTMLTableElement_insertRow(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTableElement_deleteRow :: proc(c: ^Call, table: Api_Element, index: i32) -> Api_Error
+@(private = "file")
+_t_dom_HTMLTableElement_deleteRow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_deleteRow: argument table is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := HTMLTableElement_deleteRow(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTableSectionElement_insertRow :: proc(c: ^Call, section: Api_Element, index: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_HTMLTableSectionElement_insertRow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.HTMLTableSectionElement_insertRow", "result pointer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableSectionElement_insertRow: argument section is not a live Element")
+	}
+	_p1 := a[1].i32
+	_r, _err := HTMLTableSectionElement_insertRow(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTableSectionElement_deleteRow :: proc(c: ^Call, section: Api_Element, index: i32) -> Api_Error
+@(private = "file")
+_t_dom_HTMLTableSectionElement_deleteRow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableSectionElement_deleteRow: argument section is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := HTMLTableSectionElement_deleteRow(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTableRowElement_insertCell :: proc(c: ^Call, row: Api_Element, index: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_HTMLTableRowElement_insertCell :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.HTMLTableRowElement_insertCell", "result pointer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableRowElement_insertCell: argument row is not a live Element")
+	}
+	_p1 := a[1].i32
+	_r, _err := HTMLTableRowElement_insertCell(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTableRowElement_deleteCell :: proc(c: ^Call, row: Api_Element, index: i32) -> Api_Error
+@(private = "file")
+_t_dom_HTMLTableRowElement_deleteCell :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableRowElement_deleteCell: argument row is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := HTMLTableRowElement_deleteCell(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLTableRowElement_rowIndex :: proc(c: ^Call, row: Api_Element) -> i32
+@(private = "file")
+_t_dom_HTMLTableRowElement_rowIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableRowElement_rowIndex: argument row is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableRowElement_rowIndex: argument row is not a live Element")
+	}
+	_r := HTMLTableRowElement_rowIndex(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// HTMLTableRowElement_sectionRowIndex :: proc(c: ^Call, row: Api_Element) -> i32
+@(private = "file")
+_t_dom_HTMLTableRowElement_sectionRowIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableRowElement_sectionRowIndex: argument row is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableRowElement_sectionRowIndex: argument row is not a live Element")
+	}
+	_r := HTMLTableRowElement_sectionRowIndex(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// HTMLTableCellElement_cellIndex :: proc(c: ^Call, cell: Api_Element) -> i32
+@(private = "file")
+_t_dom_HTMLTableCellElement_cellIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTableCellElement_cellIndex: argument cell is not a live Element") }
+		return wasm.trap_new("dom.HTMLTableCellElement_cellIndex: argument cell is not a live Element")
+	}
+	_r := HTMLTableCellElement_cellIndex(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// HTMLTitleElement_text :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HTMLTitleElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLTitleElement_text", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLTitleElement_text: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLTitleElement_text: argument element is not a live Element")
+	}
+	_r := HTMLTitleElement_text(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLTitleElement_set_text :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HTMLTitleElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLTitleElement_set_text", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HTMLTitleElement_set_text: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTitleElement_set_text: argument element is not a live Element")
+	}
+	_err := HTMLTitleElement_set_text(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLScriptElement_text :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_HTMLScriptElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLScriptElement_text", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLScriptElement_text: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLScriptElement_text: argument element is not a live Element")
+	}
+	_r := HTMLScriptElement_text(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLScriptElement_set_text :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error
+@(private = "file")
+_t_dom_HTMLScriptElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLScriptElement_set_text", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.HTMLScriptElement_set_text: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLScriptElement_set_text: argument element is not a live Element")
+	}
+	_err := HTMLScriptElement_set_text(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLInputElement_list :: proc(c: ^Call, input: Api_Element) -> u64
+@(private = "file")
+_t_dom_HTMLInputElement_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLInputElement_list: argument input is not a live Element") }
+		return wasm.trap_new("dom.HTMLInputElement_list: argument input is not a live Element")
+	}
+	_r := HTMLInputElement_list(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLDialogElement_show :: proc(c: ^Call, dialog: Api_Element) -> Api_Error
+@(private = "file")
+_t_dom_HTMLDialogElement_show :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLDialogElement_show: argument dialog is not a live Element")
+	}
+	_err := HTMLDialogElement_show(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLDialogElement_showModal :: proc(c: ^Call, dialog: Api_Element) -> Api_Error
+@(private = "file")
+_t_dom_HTMLDialogElement_showModal :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLDialogElement_showModal: argument dialog is not a live Element")
+	}
+	_err := HTMLDialogElement_showModal(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLDialogElement_close :: proc(c: ^Call, dialog: Api_Element, result: Maybe(string))
+@(private = "file")
+_t_dom_HTMLDialogElement_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLDialogElement_close", "result") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.HTMLDialogElement_close: argument result is not valid UTF-8") }
+			return wasm.trap_new("dom.HTMLDialogElement_close: argument result is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLDialogElement_close: argument dialog is not a live Element") }
+		return wasm.trap_new("dom.HTMLDialogElement_close: argument dialog is not a live Element")
+	}
+	HTMLDialogElement_close(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLDialogElement_requestClose :: proc(c: ^Call, dialog: Api_Element, result: Maybe(string))
+@(private = "file")
+_t_dom_HTMLDialogElement_requestClose :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLDialogElement_requestClose", "result") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.HTMLDialogElement_requestClose: argument result is not valid UTF-8") }
+			return wasm.trap_new("dom.HTMLDialogElement_requestClose: argument result is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLDialogElement_requestClose: argument dialog is not a live Element") }
+		return wasm.trap_new("dom.HTMLDialogElement_requestClose: argument dialog is not a live Element")
+	}
+	HTMLDialogElement_requestClose(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Element_boundingRect :: proc(c: ^Call, element: Api_Element) -> Api_DomRect
+@(private = "file")
+_t_dom_Element_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 32)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Element_boundingRect", "result pointer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_boundingRect: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_boundingRect: argument element is not a live Element")
+	}
+	_r := Element_boundingRect(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	intrinsics.unaligned_store((^f64)(&_rs[0]), _r.x)
+	intrinsics.unaligned_store((^f64)(&_rs[8]), _r.y)
+	intrinsics.unaligned_store((^f64)(&_rs[16]), _r.width)
+	intrinsics.unaligned_store((^f64)(&_rs[24]), _r.height)
+	return nil
+}
+
+// Element_clientRectsPacked :: proc(c: ^Call, element: Api_Element) -> []u8
+@(private = "file")
+_t_dom_Element_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Element_clientRectsPacked", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_clientRectsPacked: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_clientRectsPacked: argument element is not a live Element")
+	}
+	_r := Element_clientRectsPacked(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_clientTop :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_dom_Element_clientTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_clientTop: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_clientTop: argument element is not a live Element")
+	}
+	_r := Element_clientTop(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Element_clientLeft :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_dom_Element_clientLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_clientLeft: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_clientLeft: argument element is not a live Element")
+	}
+	_r := Element_clientLeft(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Element_clientWidth :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_dom_Element_clientWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_clientWidth: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_clientWidth: argument element is not a live Element")
+	}
+	_r := Element_clientWidth(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Element_clientHeight :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_dom_Element_clientHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_clientHeight: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_clientHeight: argument element is not a live Element")
+	}
+	_r := Element_clientHeight(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Element_scrollTop :: proc(c: ^Call, element: Api_Element) -> f64
+@(private = "file")
+_t_dom_Element_scrollTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_scrollTop: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_scrollTop: argument element is not a live Element")
+	}
+	_r := Element_scrollTop(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Element_set_scrollTop :: proc(c: ^Call, element: Api_Element, value: f64)
+@(private = "file")
+_t_dom_Element_set_scrollTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_set_scrollTop: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_set_scrollTop: argument element is not a live Element")
+	}
+	_p1 := a[1].f64
+	Element_set_scrollTop(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Element_scrollLeft :: proc(c: ^Call, element: Api_Element) -> f64
+@(private = "file")
+_t_dom_Element_scrollLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_scrollLeft: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_scrollLeft: argument element is not a live Element")
+	}
+	_r := Element_scrollLeft(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Element_set_scrollLeft :: proc(c: ^Call, element: Api_Element, value: f64)
+@(private = "file")
+_t_dom_Element_set_scrollLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_set_scrollLeft: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_set_scrollLeft: argument element is not a live Element")
+	}
+	_p1 := a[1].f64
+	Element_set_scrollLeft(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Element_scrollWidth :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_dom_Element_scrollWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_scrollWidth: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_scrollWidth: argument element is not a live Element")
+	}
+	_r := Element_scrollWidth(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Element_scrollHeight :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_dom_Element_scrollHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_scrollHeight: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_scrollHeight: argument element is not a live Element")
+	}
+	_r := Element_scrollHeight(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Element_scrollToXY :: proc(c: ^Call, element: Api_Element, x: f64, y: f64, relative: bool)
+@(private = "file")
+_t_dom_Element_scrollToXY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_scrollToXY: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_scrollToXY: argument element is not a live Element")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].i32 != 0
+	Element_scrollToXY(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Element_scrollIntoViewAt :: proc(c: ^Call, element: Api_Element, block: i32, inline_pos: i32)
+@(private = "file")
+_t_dom_Element_scrollIntoViewAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_scrollIntoViewAt: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_scrollIntoViewAt: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	Element_scrollIntoViewAt(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLElement_offsetParent :: proc(c: ^Call, element: Api_Element) -> u64
+@(private = "file")
+_t_dom_HTMLElement_offsetParent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_offsetParent: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_offsetParent: argument element is not a live Element")
+	}
+	_r := HTMLElement_offsetParent(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLElement_offsetTop :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_dom_HTMLElement_offsetTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_offsetTop: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_offsetTop: argument element is not a live Element")
+	}
+	_r := HTMLElement_offsetTop(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// HTMLElement_offsetLeft :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_dom_HTMLElement_offsetLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_offsetLeft: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_offsetLeft: argument element is not a live Element")
+	}
+	_r := HTMLElement_offsetLeft(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// HTMLElement_offsetWidth :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_dom_HTMLElement_offsetWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_offsetWidth: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_offsetWidth: argument element is not a live Element")
+	}
+	_r := HTMLElement_offsetWidth(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// HTMLElement_offsetHeight :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_dom_HTMLElement_offsetHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLElement_offsetHeight: argument element is not a live Element") }
+		return wasm.trap_new("dom.HTMLElement_offsetHeight: argument element is not a live Element")
+	}
+	_r := HTMLElement_offsetHeight(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Document_elementFromPoint :: proc(c: ^Call, x: f64, y: f64) -> u64
+@(private = "file")
+_t_dom_Document_elementFromPoint :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].f64
+	_p1 := a[1].f64
+	_r := Document_elementFromPoint(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Window_innerWidth :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_dom_Window_innerWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_innerWidth(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Window_innerHeight :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_dom_Window_innerHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_innerHeight(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Window_outerWidth :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_dom_Window_outerWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_outerWidth(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Window_outerHeight :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_dom_Window_outerHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_outerHeight(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Window_scrollX :: proc(c: ^Call) -> f64
+@(private = "file")
+_t_dom_Window_scrollX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_scrollX(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Window_scrollY :: proc(c: ^Call) -> f64
+@(private = "file")
+_t_dom_Window_scrollY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_scrollY(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Window_pageXOffset :: proc(c: ^Call) -> f64
+@(private = "file")
+_t_dom_Window_pageXOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_pageXOffset(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Window_pageYOffset :: proc(c: ^Call) -> f64
+@(private = "file")
+_t_dom_Window_pageYOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_pageYOffset(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Window_devicePixelRatio :: proc(c: ^Call) -> f64
+@(private = "file")
+_t_dom_Window_devicePixelRatio :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_devicePixelRatio(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Window_screenX :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_dom_Window_screenX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_screenX(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Window_screenY :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_dom_Window_screenY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_screenY(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Window_screenLeft :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_dom_Window_screenLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_screenLeft(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Window_screenTop :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_dom_Window_screenTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Window_screenTop(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Window_scrollToXY :: proc(c: ^Call, x: f64, y: f64, relative: bool, smooth: bool)
+@(private = "file")
+_t_dom_Window_scrollToXY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].f64
+	_p1 := a[1].f64
+	_p2 := a[2].i32 != 0
+	_p3 := a[3].i32 != 0
+	Window_scrollToXY(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Range_boundingRect :: proc(c: ^Call, start: Api_Node, start_offset: u32, end: Api_Node, end_offset: u32) -> Api_DomRect
+@(private = "file")
+_t_dom_Range_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 32)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Range_boundingRect", "result pointer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Range_boundingRect: argument start is not a live Node") }
+		return wasm.trap_new("dom.Range_boundingRect: argument start is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := Api_Node{handle = u64(a[2].i64)}
+	_p2.data = lookup_Node(&c, _p2.handle)
+	if _p2.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Range_boundingRect: argument end is not a live Node") }
+		return wasm.trap_new("dom.Range_boundingRect: argument end is not a live Node")
+	}
+	_p3 := u32(a[3].i32)
+	_r := Range_boundingRect(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	intrinsics.unaligned_store((^f64)(&_rs[0]), _r.x)
+	intrinsics.unaligned_store((^f64)(&_rs[8]), _r.y)
+	intrinsics.unaligned_store((^f64)(&_rs[16]), _r.width)
+	intrinsics.unaligned_store((^f64)(&_rs[24]), _r.height)
+	return nil
+}
+
+// Range_clientRectsPacked :: proc(c: ^Call, start: Api_Node, start_offset: u32, end: Api_Node, end_offset: u32) -> []u8
+@(private = "file")
+_t_dom_Range_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[5])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Range_clientRectsPacked", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Range_clientRectsPacked: argument start is not a live Node") }
+		return wasm.trap_new("dom.Range_clientRectsPacked: argument start is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := Api_Node{handle = u64(a[2].i64)}
+	_p2.data = lookup_Node(&c, _p2.handle)
+	if _p2.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Range_clientRectsPacked: argument end is not a live Node") }
+		return wasm.trap_new("dom.Range_clientRectsPacked: argument end is not a live Node")
+	}
+	_p3 := u32(a[3].i32)
+	_r := Range_clientRectsPacked(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// MutationObserver_create :: proc(c: ^Call, notify: u32, user: i32) -> u64
+@(private = "file")
+_t_dom_MutationObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u32(a[0].i32)
+	_p1 := a[1].i32
+	_r := MutationObserver_create(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// MutationObserver_observe :: proc(c: ^Call, observer: u64, target: Api_Node, options: u32, filter: string) -> Api_Error
+@(private = "file")
+_t_dom_MutationObserver_observe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n3 := wasm.addr(&f, a[4])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "dom.MutationObserver_observe", "filter") }
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		return _fail_status(&c, a, .Type, "dom.MutationObserver_observe: argument filter is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_p1 := Api_Node{handle = u64(a[1].i64)}
+	_p1.data = lookup_Node(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.MutationObserver_observe: argument target is not a live Node")
+	}
+	_p2 := u32(a[2].i32)
+	_err := MutationObserver_observe(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// MutationObserver_disconnect :: proc(c: ^Call, observer: u64)
+@(private = "file")
+_t_dom_MutationObserver_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	MutationObserver_disconnect(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// MutationObserver_takeRecords :: proc(c: ^Call, observer: u64) -> []u8
+@(private = "file")
+_t_dom_MutationObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.MutationObserver_takeRecords", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := MutationObserver_takeRecords(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// MutationObserver_release :: proc(c: ^Call, observer: u64)
+@(private = "file")
+_t_dom_MutationObserver_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	MutationObserver_release(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// MutationObserver_live :: proc(c: ^Call, observer: u64) -> bool
+@(private = "file")
+_t_dom_MutationObserver_live :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := MutationObserver_live(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Range_comparePoints :: proc(c: ^Call, first: Api_Node, first_offset: u32, second: Api_Node, second_offset: u32) -> i32
+@(private = "file")
+_t_dom_Range_comparePoints :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Range_comparePoints: argument first is not a live Node") }
+		return wasm.trap_new("dom.Range_comparePoints: argument first is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := Api_Node{handle = u64(a[2].i64)}
+	_p2.data = lookup_Node(&c, _p2.handle)
+	if _p2.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Range_comparePoints: argument second is not a live Node") }
+		return wasm.trap_new("dom.Range_comparePoints: argument second is not a live Node")
+	}
+	_p3 := u32(a[3].i32)
+	_r := Range_comparePoints(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Range_text :: proc(c: ^Call, start: Api_Node, start_offset: u32, end: Api_Node, end_offset: u32) -> string
+@(private = "file")
+_t_dom_Range_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[5])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Range_text", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Range_text: argument start is not a live Node") }
+		return wasm.trap_new("dom.Range_text: argument start is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := Api_Node{handle = u64(a[2].i64)}
+	_p2.data = lookup_Node(&c, _p2.handle)
+	if _p2.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Range_text: argument end is not a live Node") }
+		return wasm.trap_new("dom.Range_text: argument end is not a live Node")
+	}
+	_p3 := u32(a[3].i32)
+	_r := Range_text(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Range_contents :: proc(c: ^Call, start: Api_Node, start_offset: u32, end: Api_Node, end_offset: u32, mode: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Range_contents :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Range_contents", "result pointer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Range_contents: argument start is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := Api_Node{handle = u64(a[2].i64)}
+	_p2.data = lookup_Node(&c, _p2.handle)
+	if _p2.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Range_contents: argument end is not a live Node")
+	}
+	_p3 := u32(a[3].i32)
+	_p4 := a[4].i32
+	_r, _err := Range_contents(&c, _p0, _p1, _p2, _p3, _p4)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Selection_state :: proc(c: ^Call) -> Api_SelectionState
+@(private = "file")
+_t_dom_Selection_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 32)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Selection_state", "result pointer") }
+	_r := Selection_state(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	intrinsics.unaligned_store((^u64)(&_rs[0]), _r.anchor)
+	intrinsics.unaligned_store((^u32)(&_rs[8]), _r.anchor_offset)
+	intrinsics.unaligned_store((^u64)(&_rs[16]), _r.focus)
+	intrinsics.unaligned_store((^u32)(&_rs[24]), _r.focus_offset)
+	intrinsics.unaligned_store((^u32)(&_rs[28]), _r.kind)
+	return nil
+}
+
+// Selection_setRange :: proc(c: ^Call, anchor: Api_Node, anchor_offset: u32, focus: Api_Node, focus_offset: u32) -> Api_Error
+@(private = "file")
+_t_dom_Selection_setRange :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Selection_setRange: argument anchor is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := Api_Node{handle = u64(a[2].i64)}
+	_p2.data = lookup_Node(&c, _p2.handle)
+	if _p2.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Selection_setRange: argument focus is not a live Node")
+	}
+	_p3 := u32(a[3].i32)
+	_err := Selection_setRange(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Selection_clear :: proc(c: ^Call)
+@(private = "file")
+_t_dom_Selection_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	Selection_clear(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Selection_text :: proc(c: ^Call) -> string
+@(private = "file")
+_t_dom_Selection_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Selection_text", "result buffer") }
+	_r := Selection_text(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// InlineStyle_getProperty :: proc(c: ^Call, element: Api_Element, name: string) -> string
+@(private = "file")
+_t_dom_InlineStyle_getProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.InlineStyle_getProperty", "name") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.InlineStyle_getProperty", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.InlineStyle_getProperty: argument name is not valid UTF-8") }
+		return wasm.trap_new("dom.InlineStyle_getProperty: argument name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.InlineStyle_getProperty: argument element is not a live Element") }
+		return wasm.trap_new("dom.InlineStyle_getProperty: argument element is not a live Element")
+	}
+	_r := InlineStyle_getProperty(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// InlineStyle_priority :: proc(c: ^Call, element: Api_Element, name: string) -> string
+@(private = "file")
+_t_dom_InlineStyle_priority :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.InlineStyle_priority", "name") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.InlineStyle_priority", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.InlineStyle_priority: argument name is not valid UTF-8") }
+		return wasm.trap_new("dom.InlineStyle_priority: argument name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.InlineStyle_priority: argument element is not a live Element") }
+		return wasm.trap_new("dom.InlineStyle_priority: argument element is not a live Element")
+	}
+	_r := InlineStyle_priority(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// InlineStyle_setProperty :: proc(c: ^Call, element: Api_Element, name: string, value: string, priority: string) -> Api_Error
+@(private = "file")
+_t_dom_InlineStyle_setProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.InlineStyle_setProperty", "name") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.InlineStyle_setProperty", "value") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "dom.InlineStyle_setProperty", "priority") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.InlineStyle_setProperty: argument name is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.InlineStyle_setProperty: argument value is not valid UTF-8")
+	}
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		return _fail_status(&c, a, .Type, "dom.InlineStyle_setProperty: argument priority is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.InlineStyle_setProperty: argument element is not a live Element")
+	}
+	_err := InlineStyle_setProperty(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// InlineStyle_removeProperty :: proc(c: ^Call, element: Api_Element, name: string) -> (string, Api_Error)
+@(private = "file")
+_t_dom_InlineStyle_removeProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.InlineStyle_removeProperty", "name") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.InlineStyle_removeProperty", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "dom.InlineStyle_removeProperty: argument name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.InlineStyle_removeProperty: argument element is not a live Element")
+	}
+	_r, _err := InlineStyle_removeProperty(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// InlineStyle_cssText :: proc(c: ^Call, element: Api_Element) -> string
+@(private = "file")
+_t_dom_InlineStyle_cssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.InlineStyle_cssText", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.InlineStyle_cssText: argument element is not a live Element") }
+		return wasm.trap_new("dom.InlineStyle_cssText: argument element is not a live Element")
+	}
+	_r := InlineStyle_cssText(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// InlineStyle_setCssText :: proc(c: ^Call, element: Api_Element, text: string) -> Api_Error
+@(private = "file")
+_t_dom_InlineStyle_setCssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.InlineStyle_setCssText", "text") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.InlineStyle_setCssText: argument text is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.InlineStyle_setCssText: argument element is not a live Element")
+	}
+	_err := InlineStyle_setCssText(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// InlineStyle_length :: proc(c: ^Call, element: Api_Element) -> u32
+@(private = "file")
+_t_dom_InlineStyle_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.InlineStyle_length: argument element is not a live Element") }
+		return wasm.trap_new("dom.InlineStyle_length: argument element is not a live Element")
+	}
+	_r := InlineStyle_length(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// InlineStyle_item :: proc(c: ^Call, element: Api_Element, index: u32) -> string
+@(private = "file")
+_t_dom_InlineStyle_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.InlineStyle_item", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.InlineStyle_item: argument element is not a live Element") }
+		return wasm.trap_new("dom.InlineStyle_item: argument element is not a live Element")
+	}
+	_p1 := u32(a[1].i32)
+	_r := InlineStyle_item(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ComputedStyle_get :: proc(c: ^Call, element: Api_Element, pseudo: string, name: string) -> string
+@(private = "file")
+_t_dom_ComputedStyle_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.ComputedStyle_get", "pseudo") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.ComputedStyle_get", "name") }
+	_on := wasm.addr(&f, a[6])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[5]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.ComputedStyle_get", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.ComputedStyle_get: argument pseudo is not valid UTF-8") }
+		return wasm.trap_new("dom.ComputedStyle_get: argument pseudo is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.ComputedStyle_get: argument name is not valid UTF-8") }
+		return wasm.trap_new("dom.ComputedStyle_get: argument name is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ComputedStyle_get: argument element is not a live Element") }
+		return wasm.trap_new("dom.ComputedStyle_get: argument element is not a live Element")
+	}
+	_r := ComputedStyle_get(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ComputedStyle_count :: proc(c: ^Call) -> u32
+@(private = "file")
+_t_dom_ComputedStyle_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := ComputedStyle_count(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// ComputedStyle_name :: proc(c: ^Call, index: u32) -> string
+@(private = "file")
+_t_dom_ComputedStyle_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.ComputedStyle_name", "result buffer") }
+	_p0 := u32(a[0].i32)
+	_r := ComputedStyle_name(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Node_nodeName :: proc(c: ^Call, node: Api_Node) -> string
+@(private = "file")
+_t_dom_Node_nodeName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Node_nodeName", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_nodeName: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_nodeName: argument node is not a live Node")
+	}
+	_r := Node_nodeName(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Node_baseURI :: proc(c: ^Call, node: Api_Node) -> string
+@(private = "file")
+_t_dom_Node_baseURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Node_baseURI", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_baseURI: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_baseURI: argument node is not a live Node")
+	}
+	_r := Node_baseURI(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Node_isConnected :: proc(c: ^Call, node: Api_Node) -> bool
+@(private = "file")
+_t_dom_Node_isConnected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_isConnected: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_isConnected: argument node is not a live Node")
+	}
+	_r := Node_isConnected(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Node_ownerDocument :: proc(c: ^Call, node: Api_Node) -> u64
+@(private = "file")
+_t_dom_Node_ownerDocument :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_ownerDocument: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_ownerDocument: argument node is not a live Node")
+	}
+	_r := Node_ownerDocument(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Node_parentElement :: proc(c: ^Call, node: Api_Node) -> u64
+@(private = "file")
+_t_dom_Node_parentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_parentElement: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_parentElement: argument node is not a live Node")
+	}
+	_r := Node_parentElement(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Node_hasChildNodes :: proc(c: ^Call, node: Api_Node) -> bool
+@(private = "file")
+_t_dom_Node_hasChildNodes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_hasChildNodes: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_hasChildNodes: argument node is not a live Node")
+	}
+	_r := Node_hasChildNodes(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Node_nodeValue :: proc(c: ^Call, node: Api_Node) -> (string, Api_Error)
+@(private = "file")
+_t_dom_Node_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Node_nodeValue", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Node_nodeValue: argument node is not a live Node")
+	}
+	_r, _err := Node_nodeValue(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Node_set_nodeValue :: proc(c: ^Call, node: Api_Node, value: string) -> Api_Error
+@(private = "file")
+_t_dom_Node_set_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_set_nodeValue", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Node_set_nodeValue: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_set_nodeValue: argument node is not a live Node")
+	}
+	_err := Node_set_nodeValue(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Node_textContent :: proc(c: ^Call, node: Api_Node) -> (string, Api_Error)
+@(private = "file")
+_t_dom_Node_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Node_textContent", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Node_textContent: argument node is not a live Node")
+	}
+	_r, _err := Node_textContent(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Node_set_textContent :: proc(c: ^Call, node: Api_Node, value: string) -> Api_Error
+@(private = "file")
+_t_dom_Node_set_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_set_textContent", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Node_set_textContent: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_set_textContent: argument node is not a live Node")
+	}
+	_err := Node_set_textContent(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Node_normalize :: proc(c: ^Call, node: Api_Node)
+@(private = "file")
+_t_dom_Node_normalize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_normalize: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_normalize: argument node is not a live Node")
+	}
+	Node_normalize(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Node_cloneNode :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Node_cloneNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Node_cloneNode", "result pointer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_cloneNode: argument node is not a live Node")
+	}
+	_p1 := a[1].i32 != 0
+	_r, _err := Node_cloneNode(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Node_isEqualNode :: proc(c: ^Call, node: Api_Node, other: Api_Node) -> bool
+@(private = "file")
+_t_dom_Node_isEqualNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_isEqualNode: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_isEqualNode: argument node is not a live Node")
+	}
+	_p1 := Api_Node{handle = u64(a[1].i64)}
+	if _p1.handle != 0 { _p1.data = lookup_Node(&c, _p1.handle) }
+	if _p1.handle != 0 && _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_isEqualNode: argument other is not a live Node") }
+		return wasm.trap_new("dom.Node_isEqualNode: argument other is not a live Node")
+	}
+	_r := Node_isEqualNode(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Node_isSameNode :: proc(c: ^Call, node: Api_Node, other: Api_Node) -> bool
+@(private = "file")
+_t_dom_Node_isSameNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_isSameNode: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_isSameNode: argument node is not a live Node")
+	}
+	_p1 := Api_Node{handle = u64(a[1].i64)}
+	if _p1.handle != 0 { _p1.data = lookup_Node(&c, _p1.handle) }
+	if _p1.handle != 0 && _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_isSameNode: argument other is not a live Node") }
+		return wasm.trap_new("dom.Node_isSameNode: argument other is not a live Node")
+	}
+	_r := Node_isSameNode(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Node_compareDocumentPosition :: proc(c: ^Call, node: Api_Node, other: Api_Node) -> u32
+@(private = "file")
+_t_dom_Node_compareDocumentPosition :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_compareDocumentPosition: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_compareDocumentPosition: argument node is not a live Node")
+	}
+	_p1 := Api_Node{handle = u64(a[1].i64)}
+	_p1.data = lookup_Node(&c, _p1.handle)
+	if _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_compareDocumentPosition: argument other is not a live Node") }
+		return wasm.trap_new("dom.Node_compareDocumentPosition: argument other is not a live Node")
+	}
+	_r := Node_compareDocumentPosition(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// Node_contains :: proc(c: ^Call, node: Api_Node, other: Api_Node) -> bool
+@(private = "file")
+_t_dom_Node_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_contains: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_contains: argument node is not a live Node")
+	}
+	_p1 := Api_Node{handle = u64(a[1].i64)}
+	if _p1.handle != 0 { _p1.data = lookup_Node(&c, _p1.handle) }
+	if _p1.handle != 0 && _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_contains: argument other is not a live Node") }
+		return wasm.trap_new("dom.Node_contains: argument other is not a live Node")
+	}
+	_r := Node_contains(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Node_lookupPrefix :: proc(c: ^Call, node: Api_Node, namespace: Maybe(string)) -> (string, Api_Error)
+@(private = "file")
+_t_dom_Node_lookupPrefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_lookupPrefix", "namespace") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Node_lookupPrefix", "result buffer") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			return _fail_size(&c, &f, a, .Type, "dom.Node_lookupPrefix: argument namespace is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Node_lookupPrefix: argument node is not a live Node")
+	}
+	_r, _err := Node_lookupPrefix(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Node_lookupNamespaceURI :: proc(c: ^Call, node: Api_Node, prefix: Maybe(string)) -> (string, Api_Error)
+@(private = "file")
+_t_dom_Node_lookupNamespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_lookupNamespaceURI", "prefix") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Node_lookupNamespaceURI", "result buffer") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			return _fail_size(&c, &f, a, .Type, "dom.Node_lookupNamespaceURI: argument prefix is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Node_lookupNamespaceURI: argument node is not a live Node")
+	}
+	_r, _err := Node_lookupNamespaceURI(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Node_isDefaultNamespace :: proc(c: ^Call, node: Api_Node, namespace: Maybe(string)) -> bool
+@(private = "file")
+_t_dom_Node_isDefaultNamespace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_isDefaultNamespace", "namespace") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Node_isDefaultNamespace: argument namespace is not valid UTF-8") }
+			return wasm.trap_new("dom.Node_isDefaultNamespace: argument namespace is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_isDefaultNamespace: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_isDefaultNamespace: argument node is not a live Node")
+	}
+	_r := Node_isDefaultNamespace(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Node_rootNode :: proc(c: ^Call, node: Api_Node) -> u64
+@(private = "file")
+_t_dom_Node_rootNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_rootNode: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_rootNode: argument node is not a live Node")
+	}
+	_r := Node_rootNode(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Node_length :: proc(c: ^Call, node: Api_Node) -> u32
+@(private = "file")
+_t_dom_Node_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_length: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_length: argument node is not a live Node")
+	}
+	_r := Node_length(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// Node_preInsert :: proc(c: ^Call, parent: Api_Node, node: Api_Node, child: Api_Node) -> Api_Error
+@(private = "file")
+_t_dom_Node_preInsert :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_preInsert: argument parent is not a live Node")
+	}
+	_p1 := Api_Node{handle = u64(a[1].i64)}
+	_p1.data = lookup_Node(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_preInsert: argument node is not a live Node")
+	}
+	_p2 := Api_Node{handle = u64(a[2].i64)}
+	if _p2.handle != 0 { _p2.data = lookup_Node(&c, _p2.handle) }
+	if _p2.handle != 0 && _p2.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_preInsert: argument child is not a live Node")
+	}
+	_err := Node_preInsert(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Node_replaceChildChecked :: proc(c: ^Call, parent: Api_Node, node: Api_Node, child: Api_Node) -> Api_Error
+@(private = "file")
+_t_dom_Node_replaceChildChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_replaceChildChecked: argument parent is not a live Node")
+	}
+	_p1 := Api_Node{handle = u64(a[1].i64)}
+	_p1.data = lookup_Node(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_replaceChildChecked: argument node is not a live Node")
+	}
+	_p2 := Api_Node{handle = u64(a[2].i64)}
+	_p2.data = lookup_Node(&c, _p2.handle)
+	if _p2.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_replaceChildChecked: argument child is not a live Node")
+	}
+	_err := Node_replaceChildChecked(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Node_preRemove :: proc(c: ^Call, parent: Api_Node, child: Api_Node) -> Api_Error
+@(private = "file")
+_t_dom_Node_preRemove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_preRemove: argument parent is not a live Node")
+	}
+	_p1 := Api_Node{handle = u64(a[1].i64)}
+	_p1.data = lookup_Node(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_preRemove: argument child is not a live Node")
+	}
+	_err := Node_preRemove(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Node_insertItems :: proc(c: ^Call, node: Api_Node, mode: i32, items: []u8) -> Api_Error
+@(private = "file")
+_t_dom_Node_insertItems :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Node_insertItems", "items") }
+	_p2 := _s2[:_n2]
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_insertItems: argument node is not a live Node")
+	}
+	_p1 := a[1].i32
+	_err := Node_insertItems(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Node_pinAll :: proc(c: ^Call, nodes: []u64)
+@(private = "file")
+_t_dom_Node_pinAll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Node_pinAll", "nodes") }
+	_p0 := ([^]u64)(_s0)[:_n0]
+	Node_pinAll(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Node_unpinAll :: proc(c: ^Call, nodes: []u64)
+@(private = "file")
+_t_dom_Node_unpinAll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Node_unpinAll", "nodes") }
+	_p0 := ([^]u64)(_s0)[:_n0]
+	Node_unpinAll(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// ParentNode_firstElementChild :: proc(c: ^Call, node: Api_Node) -> u64
+@(private = "file")
+_t_dom_ParentNode_firstElementChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ParentNode_firstElementChild: argument node is not a live Node") }
+		return wasm.trap_new("dom.ParentNode_firstElementChild: argument node is not a live Node")
+	}
+	_r := ParentNode_firstElementChild(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ParentNode_lastElementChild :: proc(c: ^Call, node: Api_Node) -> u64
+@(private = "file")
+_t_dom_ParentNode_lastElementChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ParentNode_lastElementChild: argument node is not a live Node") }
+		return wasm.trap_new("dom.ParentNode_lastElementChild: argument node is not a live Node")
+	}
+	_r := ParentNode_lastElementChild(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ParentNode_childElementCount :: proc(c: ^Call, node: Api_Node) -> u32
+@(private = "file")
+_t_dom_ParentNode_childElementCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ParentNode_childElementCount: argument node is not a live Node") }
+		return wasm.trap_new("dom.ParentNode_childElementCount: argument node is not a live Node")
+	}
+	_r := ParentNode_childElementCount(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// ChildNode_remove :: proc(c: ^Call, node: Api_Node)
+@(private = "file")
+_t_dom_ChildNode_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ChildNode_remove: argument node is not a live Node") }
+		return wasm.trap_new("dom.ChildNode_remove: argument node is not a live Node")
+	}
+	ChildNode_remove(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// NonDocumentTypeChildNode_previousElementSibling :: proc(c: ^Call, node: Api_Node) -> u64
+@(private = "file")
+_t_dom_NonDocumentTypeChildNode_previousElementSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.NonDocumentTypeChildNode_previousElementSibling: argument node is not a live Node") }
+		return wasm.trap_new("dom.NonDocumentTypeChildNode_previousElementSibling: argument node is not a live Node")
+	}
+	_r := NonDocumentTypeChildNode_previousElementSibling(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// NonDocumentTypeChildNode_nextElementSibling :: proc(c: ^Call, node: Api_Node) -> u64
+@(private = "file")
+_t_dom_NonDocumentTypeChildNode_nextElementSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.NonDocumentTypeChildNode_nextElementSibling: argument node is not a live Node") }
+		return wasm.trap_new("dom.NonDocumentTypeChildNode_nextElementSibling: argument node is not a live Node")
+	}
+	_r := NonDocumentTypeChildNode_nextElementSibling(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// NonElementParentNode_getElementById :: proc(c: ^Call, node: Api_Node, id: string) -> u64
+@(private = "file")
+_t_dom_NonElementParentNode_getElementById :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.NonElementParentNode_getElementById", "id") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.NonElementParentNode_getElementById: argument id is not valid UTF-8") }
+		return wasm.trap_new("dom.NonElementParentNode_getElementById: argument id is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.NonElementParentNode_getElementById: argument node is not a live Node") }
+		return wasm.trap_new("dom.NonElementParentNode_getElementById: argument node is not a live Node")
+	}
+	_r := NonElementParentNode_getElementById(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CharacterData_data :: proc(c: ^Call, node: Api_Node) -> string
+@(private = "file")
+_t_dom_CharacterData_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.CharacterData_data", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.CharacterData_data: argument node is not a live Node") }
+		return wasm.trap_new("dom.CharacterData_data: argument node is not a live Node")
+	}
+	_r := CharacterData_data(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CharacterData_set_data :: proc(c: ^Call, node: Api_Node, value: string)
+@(private = "file")
+_t_dom_CharacterData_set_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.CharacterData_set_data", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CharacterData_set_data: argument value is not valid UTF-8") }
+		return wasm.trap_new("dom.CharacterData_set_data: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.CharacterData_set_data: argument node is not a live Node") }
+		return wasm.trap_new("dom.CharacterData_set_data: argument node is not a live Node")
+	}
+	CharacterData_set_data(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CharacterData_length :: proc(c: ^Call, node: Api_Node) -> u32
+@(private = "file")
+_t_dom_CharacterData_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.CharacterData_length: argument node is not a live Node") }
+		return wasm.trap_new("dom.CharacterData_length: argument node is not a live Node")
+	}
+	_r := CharacterData_length(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// CharacterData_substringData :: proc(c: ^Call, node: Api_Node, offset: u32, count: u32) -> (string, Api_Error)
+@(private = "file")
+_t_dom_CharacterData_substringData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.CharacterData_substringData", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.CharacterData_substringData: argument node is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := u32(a[2].i32)
+	_r, _err := CharacterData_substringData(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CharacterData_appendData :: proc(c: ^Call, node: Api_Node, data: string)
+@(private = "file")
+_t_dom_CharacterData_appendData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.CharacterData_appendData", "data") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CharacterData_appendData: argument data is not valid UTF-8") }
+		return wasm.trap_new("dom.CharacterData_appendData: argument data is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.CharacterData_appendData: argument node is not a live Node") }
+		return wasm.trap_new("dom.CharacterData_appendData: argument node is not a live Node")
+	}
+	CharacterData_appendData(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CharacterData_insertData :: proc(c: ^Call, node: Api_Node, offset: u32, data: string) -> Api_Error
+@(private = "file")
+_t_dom_CharacterData_insertData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.CharacterData_insertData", "data") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.CharacterData_insertData: argument data is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.CharacterData_insertData: argument node is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	_err := CharacterData_insertData(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CharacterData_deleteData :: proc(c: ^Call, node: Api_Node, offset: u32, count: u32) -> Api_Error
+@(private = "file")
+_t_dom_CharacterData_deleteData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.CharacterData_deleteData: argument node is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := u32(a[2].i32)
+	_err := CharacterData_deleteData(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CharacterData_replaceData :: proc(c: ^Call, node: Api_Node, offset: u32, count: u32, data: string) -> Api_Error
+@(private = "file")
+_t_dom_CharacterData_replaceData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n3 := wasm.addr(&f, a[4])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "dom.CharacterData_replaceData", "data") }
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		return _fail_status(&c, a, .Type, "dom.CharacterData_replaceData: argument data is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.CharacterData_replaceData: argument node is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := u32(a[2].i32)
+	_err := CharacterData_replaceData(&c, _p0, _p1, _p2, _p3)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Text_splitText :: proc(c: ^Call, node: Api_Node, offset: u32) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Text_splitText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Text_splitText", "result pointer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Text_splitText: argument node is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	_r, _err := Text_splitText(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Text_wholeText :: proc(c: ^Call, node: Api_Node) -> string
+@(private = "file")
+_t_dom_Text_wholeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Text_wholeText", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Text_wholeText: argument node is not a live Node") }
+		return wasm.trap_new("dom.Text_wholeText: argument node is not a live Node")
+	}
+	_r := Text_wholeText(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DocumentType_name :: proc(c: ^Call, node: Api_Node) -> string
+@(private = "file")
+_t_dom_DocumentType_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.DocumentType_name", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.DocumentType_name: argument node is not a live Node") }
+		return wasm.trap_new("dom.DocumentType_name: argument node is not a live Node")
+	}
+	_r := DocumentType_name(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DocumentType_publicId :: proc(c: ^Call, node: Api_Node) -> string
+@(private = "file")
+_t_dom_DocumentType_publicId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.DocumentType_publicId", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.DocumentType_publicId: argument node is not a live Node") }
+		return wasm.trap_new("dom.DocumentType_publicId: argument node is not a live Node")
+	}
+	_r := DocumentType_publicId(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DocumentType_systemId :: proc(c: ^Call, node: Api_Node) -> string
+@(private = "file")
+_t_dom_DocumentType_systemId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.DocumentType_systemId", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.DocumentType_systemId: argument node is not a live Node") }
+		return wasm.trap_new("dom.DocumentType_systemId: argument node is not a live Node")
+	}
+	_r := DocumentType_systemId(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Document_createElementChecked :: proc(c: ^Call, local_name: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_createElementChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createElementChecked", "local_name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_createElementChecked", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "dom.Document_createElementChecked: argument local_name is not valid UTF-8")
+	}
+	_r, _err := Document_createElementChecked(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_createElementNSChecked :: proc(c: ^Call, namespace: Maybe(string), qualified_name: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_createElementNSChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_absent0 := wasm.is_absent(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createElementNSChecked", "namespace") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Document_createElementNSChecked", "qualified_name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_createElementNSChecked", "result pointer") }
+	_p0: Maybe(string)
+	if !_absent0 {
+		_v0 := string(_s0[:wasm.addr(&f, a[1])])
+		if !wasm.valid_utf8(_v0) {
+			return _fail_status(&c, a, .Type, "dom.Document_createElementNSChecked: argument namespace is not valid UTF-8")
+		}
+		_p0 = _v0
+	}
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Document_createElementNSChecked: argument qualified_name is not valid UTF-8")
+	}
+	_r, _err := Document_createElementNSChecked(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_createDocumentFragment :: proc(c: ^Call) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_createDocumentFragment :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_createDocumentFragment", "result pointer") }
+	_r, _err := Document_createDocumentFragment(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_createComment :: proc(c: ^Call, data: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_createComment :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createComment", "data") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_createComment", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "dom.Document_createComment: argument data is not valid UTF-8")
+	}
+	_r, _err := Document_createComment(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_createCDATASection :: proc(c: ^Call, data: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_createCDATASection :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createCDATASection", "data") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_createCDATASection", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "dom.Document_createCDATASection: argument data is not valid UTF-8")
+	}
+	_r, _err := Document_createCDATASection(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_adoptNode :: proc(c: ^Call, node: Api_Node) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_adoptNode", "result pointer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Document_adoptNode: argument node is not a live Node")
+	}
+	_r, _err := Document_adoptNode(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_documentURI :: proc(c: ^Call) -> string
+@(private = "file")
+_t_dom_Document_documentURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Document_documentURI", "result buffer") }
+	_r := Document_documentURI(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Document_compatMode :: proc(c: ^Call) -> string
+@(private = "file")
+_t_dom_Document_compatMode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Document_compatMode", "result buffer") }
+	_r := Document_compatMode(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Document_characterSet :: proc(c: ^Call) -> string
+@(private = "file")
+_t_dom_Document_characterSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Document_characterSet", "result buffer") }
+	_r := Document_characterSet(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Document_charset :: proc(c: ^Call) -> string
+@(private = "file")
+_t_dom_Document_charset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Document_charset", "result buffer") }
+	_r := Document_charset(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Document_inputEncoding :: proc(c: ^Call) -> string
+@(private = "file")
+_t_dom_Document_inputEncoding :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Document_inputEncoding", "result buffer") }
+	_r := Document_inputEncoding(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Document_contentType :: proc(c: ^Call) -> string
+@(private = "file")
+_t_dom_Document_contentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Document_contentType", "result buffer") }
+	_r := Document_contentType(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Document_doctype :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_dom_Document_doctype :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Document_doctype(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Document_title :: proc(c: ^Call) -> string
+@(private = "file")
+_t_dom_Document_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Document_title", "result buffer") }
+	_r := Document_title(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Document_set_title :: proc(c: ^Call, value: string)
+@(private = "file")
+_t_dom_Document_set_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_set_title", "value") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Document_set_title: argument value is not valid UTF-8") }
+		return wasm.trap_new("dom.Document_set_title: argument value is not valid UTF-8")
+	}
+	Document_set_title(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Document_dir :: proc(c: ^Call) -> string
+@(private = "file")
+_t_dom_Document_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Document_dir", "result buffer") }
+	_r := Document_dir(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Document_set_dir :: proc(c: ^Call, value: string)
+@(private = "file")
+_t_dom_Document_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_set_dir", "value") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Document_set_dir: argument value is not valid UTF-8") }
+		return wasm.trap_new("dom.Document_set_dir: argument value is not valid UTF-8")
+	}
+	Document_set_dir(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Document_hasFocus :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_dom_Document_hasFocus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Document_hasFocus(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Document_referrer :: proc(c: ^Call) -> string
+@(private = "file")
+_t_dom_Document_referrer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Document_referrer", "result buffer") }
+	_r := Document_referrer(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Document_lastModified :: proc(c: ^Call) -> string
+@(private = "file")
+_t_dom_Document_lastModified :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Document_lastModified", "result buffer") }
+	_r := Document_lastModified(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Document_domain :: proc(c: ^Call) -> string
+@(private = "file")
+_t_dom_Document_domain :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Document_domain", "result buffer") }
+	_r := Document_domain(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Document_scrollingElement :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_dom_Document_scrollingElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := Document_scrollingElement(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Document_set_body :: proc(c: ^Call, body: Api_Element) -> Api_Error
+@(private = "file")
+_t_dom_Document_set_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	if _p0.handle != 0 { _p0.data = lookup_Element(&c, _p0.handle) }
+	if _p0.handle != 0 && _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Document_set_body: argument body is not a live Element")
+	}
+	_err := Document_set_body(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DOMImplementation_createHTMLDocument :: proc(c: ^Call, title: Maybe(string)) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_DOMImplementation_createHTMLDocument :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_absent0 := wasm.is_absent(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
+	if !_k0 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createHTMLDocument", "title") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.DOMImplementation_createHTMLDocument", "result pointer") }
+	_p0: Maybe(string)
+	if !_absent0 {
+		_v0 := string(_s0[:wasm.addr(&f, a[1])])
+		if !wasm.valid_utf8(_v0) {
+			return _fail_status(&c, a, .Type, "dom.DOMImplementation_createHTMLDocument: argument title is not valid UTF-8")
+		}
+		_p0 = _v0
+	}
+	_r, _err := DOMImplementation_createHTMLDocument(&c, _p0)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DOMImplementation_createDocumentType :: proc(c: ^Call, name: string, public_id: string, system_id: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_DOMImplementation_createDocumentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocumentType", "name") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocumentType", "public_id") }
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocumentType", "system_id") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocumentType", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "dom.DOMImplementation_createDocumentType: argument name is not valid UTF-8")
+	}
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.DOMImplementation_createDocumentType: argument public_id is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.DOMImplementation_createDocumentType: argument system_id is not valid UTF-8")
+	}
+	_r, _err := DOMImplementation_createDocumentType(&c, _p0, _p1, _p2)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_partOf :: proc(c: ^Call, document: Api_Node, which: i32) -> u64
+@(private = "file")
+_t_dom_Document_partOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Document_partOf: argument document is not a live Node") }
+		return wasm.trap_new("dom.Document_partOf: argument document is not a live Node")
+	}
+	_p1 := a[1].i32
+	_r := Document_partOf(&c, _p0, _p1)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, init: Api_EventInit, engine_id: i64, time_stamp: f64) -> (bool, Api_Error)
 @(private = "file")
 _t_events_EventTarget_dispatchEngineEvent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -8632,6 +14848,272 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "Element_set_id", fn = _t_dom_Element_set_id, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Element_className", fn = _t_dom_Element_className, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Element_set_className", fn = _t_dom_Element_set_className, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Collection_create", fn = _t_dom_Collection_create, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Collection_length", fn = _t_dom_Collection_length, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Collection_item", fn = _t_dom_Collection_item, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Collection_namedItem", fn = _t_dom_Collection_namedItem, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Collection_names", fn = _t_dom_Collection_names, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ParentNode_querySelectorAllPacked", fn = _t_dom_ParentNode_querySelectorAllPacked, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLFormElement_namedControl", fn = _t_dom_HTMLFormElement_namedControl, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ParentNode_querySelector", fn = _t_dom_ParentNode_querySelector, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "TokenList_length", fn = _t_dom_TokenList_length, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "TokenList_item", fn = _t_dom_TokenList_item, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "TokenList_contains", fn = _t_dom_TokenList_contains, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "TokenList_add", fn = _t_dom_TokenList_add, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "TokenList_remove", fn = _t_dom_TokenList_remove, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "TokenList_toggle", fn = _t_dom_TokenList_toggle, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "TokenList_replace", fn = _t_dom_TokenList_replace, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "TokenList_supports", fn = _t_dom_TokenList_supports, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Dataset_get", fn = _t_dom_Dataset_get, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Dataset_set", fn = _t_dom_Dataset_set, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Dataset_delete", fn = _t_dom_Dataset_delete, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Dataset_names", fn = _t_dom_Dataset_names, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_namespaceURI", fn = _t_dom_Element_namespaceURI, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_prefix", fn = _t_dom_Element_prefix, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_localName", fn = _t_dom_Element_localName, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_qualifiedTagName", fn = _t_dom_Element_qualifiedTagName, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_slot", fn = _t_dom_Element_slot, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_set_slot", fn = _t_dom_Element_set_slot, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_hasAttributes", fn = _t_dom_Element_hasAttributes, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_attributeNames", fn = _t_dom_Element_attributeNames, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_attributeCount", fn = _t_dom_Element_attributeCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_attributeNameAt", fn = _t_dom_Element_attributeNameAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_getAttributeNS", fn = _t_dom_Element_getAttributeNS, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_setAttributeChecked", fn = _t_dom_Element_setAttributeChecked, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_setAttributeNS", fn = _t_dom_Element_setAttributeNS, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_removeAttributeNS", fn = _t_dom_Element_removeAttributeNS, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Element_toggleAttributeChecked", fn = _t_dom_Element_toggleAttributeChecked, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_hasAttribute", fn = _t_dom_Element_hasAttribute, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_hasAttributeNS", fn = _t_dom_Element_hasAttributeNS, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_closest", fn = _t_dom_Element_closest, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_matches", fn = _t_dom_Element_matches, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_webkitMatchesSelector", fn = _t_dom_Element_webkitMatchesSelector, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_insertAdjacentElement", fn = _t_dom_Element_insertAdjacentElement, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_insertAdjacentText", fn = _t_dom_Element_insertAdjacentText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_insertAdjacentHTML", fn = _t_dom_Element_insertAdjacentHTML, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_innerHTML", fn = _t_dom_Element_innerHTML, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_set_innerHTML", fn = _t_dom_Element_set_innerHTML, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_outerHTML", fn = _t_dom_Element_outerHTML, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_set_outerHTML", fn = _t_dom_Element_set_outerHTML, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_shadowRoot", fn = _t_dom_Element_shadowRoot, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLElement_hiddenState", fn = _t_dom_HTMLElement_hiddenState, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_dir", fn = _t_dom_HTMLElement_dir, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLElement_set_dir", fn = _t_dom_HTMLElement_set_dir, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_translate", fn = _t_dom_HTMLElement_translate, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_set_translate", fn = _t_dom_HTMLElement_set_translate, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_draggable", fn = _t_dom_HTMLElement_draggable, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_set_draggable", fn = _t_dom_HTMLElement_set_draggable, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_spellcheck", fn = _t_dom_HTMLElement_spellcheck, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_set_spellcheck", fn = _t_dom_HTMLElement_set_spellcheck, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_innerText", fn = _t_dom_HTMLElement_innerText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLElement_set_innerText", fn = _t_dom_HTMLElement_set_innerText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_outerText", fn = _t_dom_HTMLElement_outerText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLElement_set_outerText", fn = _t_dom_HTMLElement_set_outerText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_accessKeyLabel", fn = _t_dom_HTMLElement_accessKeyLabel, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLOrSVGOrMathMLElement_tabIndex", fn = _t_dom_HTMLOrSVGOrMathMLElement_tabIndex, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLOrSVGOrMathMLElement_set_tabIndex", fn = _t_dom_HTMLOrSVGOrMathMLElement_set_tabIndex, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLOrSVGOrMathMLElement_nonce", fn = _t_dom_HTMLOrSVGOrMathMLElement_nonce, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLOrSVGOrMathMLElement_set_nonce", fn = _t_dom_HTMLOrSVGOrMathMLElement_set_nonce, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "ElementContentEditable_contentEditable", fn = _t_dom_ElementContentEditable_contentEditable, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ElementContentEditable_set_contentEditable", fn = _t_dom_ElementContentEditable_set_contentEditable, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "ElementContentEditable_isContentEditable", fn = _t_dom_ElementContentEditable_isContentEditable, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLHyperlinkElementUtils_href", fn = _t_dom_HTMLHyperlinkElementUtils_href, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLHyperlinkElementUtils_set_href", fn = _t_dom_HTMLHyperlinkElementUtils_set_href, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HyperlinkElementUtils_origin", fn = _t_dom_HyperlinkElementUtils_origin, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HyperlinkElementUtils_protocol", fn = _t_dom_HyperlinkElementUtils_protocol, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HyperlinkElementUtils_set_protocol", fn = _t_dom_HyperlinkElementUtils_set_protocol, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HyperlinkElementUtils_username", fn = _t_dom_HyperlinkElementUtils_username, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HyperlinkElementUtils_set_username", fn = _t_dom_HyperlinkElementUtils_set_username, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HyperlinkElementUtils_password", fn = _t_dom_HyperlinkElementUtils_password, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HyperlinkElementUtils_set_password", fn = _t_dom_HyperlinkElementUtils_set_password, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HyperlinkElementUtils_host", fn = _t_dom_HyperlinkElementUtils_host, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HyperlinkElementUtils_set_host", fn = _t_dom_HyperlinkElementUtils_set_host, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HyperlinkElementUtils_hostname", fn = _t_dom_HyperlinkElementUtils_hostname, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HyperlinkElementUtils_set_hostname", fn = _t_dom_HyperlinkElementUtils_set_hostname, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HyperlinkElementUtils_port", fn = _t_dom_HyperlinkElementUtils_port, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HyperlinkElementUtils_set_port", fn = _t_dom_HyperlinkElementUtils_set_port, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HyperlinkElementUtils_pathname", fn = _t_dom_HyperlinkElementUtils_pathname, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HyperlinkElementUtils_set_pathname", fn = _t_dom_HyperlinkElementUtils_set_pathname, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HyperlinkElementUtils_search", fn = _t_dom_HyperlinkElementUtils_search, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HyperlinkElementUtils_set_search", fn = _t_dom_HyperlinkElementUtils_set_search, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HyperlinkElementUtils_hash", fn = _t_dom_HyperlinkElementUtils_hash, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HyperlinkElementUtils_set_hash", fn = _t_dom_HyperlinkElementUtils_set_hash, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLAnchorElement_text", fn = _t_dom_HTMLAnchorElement_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLAnchorElement_set_text", fn = _t_dom_HTMLAnchorElement_set_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTemplateElement_content", fn = _t_dom_HTMLTemplateElement_content, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "events", name = "Event_uiData", fn = _t_events_Event_uiData, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "events", name = "UiEvent_key", fn = _t_events_UiEvent_key, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "events", name = "UiEvent_code", fn = _t_events_UiEvent_code, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLInputElement_set_type", fn = _t_dom_HTMLInputElement_set_type, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLInputElement_set_maxLength", fn = _t_dom_HTMLInputElement_set_maxLength, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLInputElement_set_minLength", fn = _t_dom_HTMLInputElement_set_minLength, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTextAreaElement_set_maxLength", fn = _t_dom_HTMLTextAreaElement_set_maxLength, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTextAreaElement_set_minLength", fn = _t_dom_HTMLTextAreaElement_set_minLength, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLOptionElement_set_text", fn = _t_dom_HTMLOptionElement_set_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTableElement_caption", fn = _t_dom_HTMLTableElement_caption, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLTableElement_set_caption", fn = _t_dom_HTMLTableElement_set_caption, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTableElement_createCaption", fn = _t_dom_HTMLTableElement_createCaption, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLTableElement_deleteCaption", fn = _t_dom_HTMLTableElement_deleteCaption, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "HTMLTableElement_tHead", fn = _t_dom_HTMLTableElement_tHead, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLTableElement_set_tHead", fn = _t_dom_HTMLTableElement_set_tHead, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTableElement_createTHead", fn = _t_dom_HTMLTableElement_createTHead, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLTableElement_deleteTHead", fn = _t_dom_HTMLTableElement_deleteTHead, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "HTMLTableElement_tFoot", fn = _t_dom_HTMLTableElement_tFoot, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLTableElement_set_tFoot", fn = _t_dom_HTMLTableElement_set_tFoot, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTableElement_createTFoot", fn = _t_dom_HTMLTableElement_createTFoot, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLTableElement_deleteTFoot", fn = _t_dom_HTMLTableElement_deleteTFoot, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "HTMLTableElement_createTBody", fn = _t_dom_HTMLTableElement_createTBody, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLTableElement_insertRow", fn = _t_dom_HTMLTableElement_insertRow, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTableElement_deleteRow", fn = _t_dom_HTMLTableElement_deleteRow, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTableSectionElement_insertRow", fn = _t_dom_HTMLTableSectionElement_insertRow, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTableSectionElement_deleteRow", fn = _t_dom_HTMLTableSectionElement_deleteRow, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTableRowElement_insertCell", fn = _t_dom_HTMLTableRowElement_insertCell, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTableRowElement_deleteCell", fn = _t_dom_HTMLTableRowElement_deleteCell, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTableRowElement_rowIndex", fn = _t_dom_HTMLTableRowElement_rowIndex, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTableRowElement_sectionRowIndex", fn = _t_dom_HTMLTableRowElement_sectionRowIndex, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTableCellElement_cellIndex", fn = _t_dom_HTMLTableCellElement_cellIndex, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLTitleElement_text", fn = _t_dom_HTMLTitleElement_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLTitleElement_set_text", fn = _t_dom_HTMLTitleElement_set_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLScriptElement_text", fn = _t_dom_HTMLScriptElement_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLScriptElement_set_text", fn = _t_dom_HTMLScriptElement_set_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLInputElement_list", fn = _t_dom_HTMLInputElement_list, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLDialogElement_show", fn = _t_dom_HTMLDialogElement_show, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLDialogElement_showModal", fn = _t_dom_HTMLDialogElement_showModal, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLDialogElement_close", fn = _t_dom_HTMLDialogElement_close, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "HTMLDialogElement_requestClose", fn = _t_dom_HTMLDialogElement_requestClose, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Element_boundingRect", fn = _t_dom_Element_boundingRect, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Element_clientRectsPacked", fn = _t_dom_Element_clientRectsPacked, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_clientTop", fn = _t_dom_Element_clientTop, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_clientLeft", fn = _t_dom_Element_clientLeft, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_clientWidth", fn = _t_dom_Element_clientWidth, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_clientHeight", fn = _t_dom_Element_clientHeight, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_scrollTop", fn = _t_dom_Element_scrollTop, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "dom", name = "Element_set_scrollTop", fn = _t_dom_Element_set_scrollTop, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Element_scrollLeft", fn = _t_dom_Element_scrollLeft, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "dom", name = "Element_set_scrollLeft", fn = _t_dom_Element_set_scrollLeft, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Element_scrollWidth", fn = _t_dom_Element_scrollWidth, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_scrollHeight", fn = _t_dom_Element_scrollHeight, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_scrollToXY", fn = _t_dom_Element_scrollToXY, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Element_scrollIntoViewAt", fn = _t_dom_Element_scrollIntoViewAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "HTMLElement_offsetParent", fn = _t_dom_HTMLElement_offsetParent, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLElement_offsetTop", fn = _t_dom_HTMLElement_offsetTop, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_offsetLeft", fn = _t_dom_HTMLElement_offsetLeft, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_offsetWidth", fn = _t_dom_HTMLElement_offsetWidth, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "HTMLElement_offsetHeight", fn = _t_dom_HTMLElement_offsetHeight, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_elementFromPoint", fn = _t_dom_Document_elementFromPoint, realms = 3, params = []wasm.Val_Kind{.F64, .F64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Window_innerWidth", fn = _t_dom_Window_innerWidth, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Window_innerHeight", fn = _t_dom_Window_innerHeight, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Window_outerWidth", fn = _t_dom_Window_outerWidth, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Window_outerHeight", fn = _t_dom_Window_outerHeight, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Window_scrollX", fn = _t_dom_Window_scrollX, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
+	{module = "dom", name = "Window_scrollY", fn = _t_dom_Window_scrollY, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
+	{module = "dom", name = "Window_pageXOffset", fn = _t_dom_Window_pageXOffset, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
+	{module = "dom", name = "Window_pageYOffset", fn = _t_dom_Window_pageYOffset, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
+	{module = "dom", name = "Window_devicePixelRatio", fn = _t_dom_Window_devicePixelRatio, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
+	{module = "dom", name = "Window_screenX", fn = _t_dom_Window_screenX, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Window_screenY", fn = _t_dom_Window_screenY, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Window_screenLeft", fn = _t_dom_Window_screenLeft, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Window_screenTop", fn = _t_dom_Window_screenTop, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Window_scrollToXY", fn = _t_dom_Window_scrollToXY, realms = 3, params = []wasm.Val_Kind{.F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Range_boundingRect", fn = _t_dom_Range_boundingRect, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Range_clientRectsPacked", fn = _t_dom_Range_clientRectsPacked, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "MutationObserver_create", fn = _t_dom_MutationObserver_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "MutationObserver_observe", fn = _t_dom_MutationObserver_observe, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "MutationObserver_disconnect", fn = _t_dom_MutationObserver_disconnect, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "MutationObserver_takeRecords", fn = _t_dom_MutationObserver_takeRecords, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "MutationObserver_release", fn = _t_dom_MutationObserver_release, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "MutationObserver_live", fn = _t_dom_MutationObserver_live, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Range_comparePoints", fn = _t_dom_Range_comparePoints, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Range_text", fn = _t_dom_Range_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Range_contents", fn = _t_dom_Range_contents, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Selection_state", fn = _t_dom_Selection_state, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Selection_setRange", fn = _t_dom_Selection_setRange, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Selection_clear", fn = _t_dom_Selection_clear, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Selection_text", fn = _t_dom_Selection_text, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "InlineStyle_getProperty", fn = _t_dom_InlineStyle_getProperty, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "InlineStyle_priority", fn = _t_dom_InlineStyle_priority, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "InlineStyle_setProperty", fn = _t_dom_InlineStyle_setProperty, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "InlineStyle_removeProperty", fn = _t_dom_InlineStyle_removeProperty, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "InlineStyle_cssText", fn = _t_dom_InlineStyle_cssText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "InlineStyle_setCssText", fn = _t_dom_InlineStyle_setCssText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "InlineStyle_length", fn = _t_dom_InlineStyle_length, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "InlineStyle_item", fn = _t_dom_InlineStyle_item, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ComputedStyle_get", fn = _t_dom_ComputedStyle_get, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ComputedStyle_count", fn = _t_dom_ComputedStyle_count, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "ComputedStyle_name", fn = _t_dom_ComputedStyle_name, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Node_nodeName", fn = _t_dom_Node_nodeName, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Node_baseURI", fn = _t_dom_Node_baseURI, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Node_isConnected", fn = _t_dom_Node_isConnected, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_ownerDocument", fn = _t_dom_Node_ownerDocument, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Node_parentElement", fn = _t_dom_Node_parentElement, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Node_hasChildNodes", fn = _t_dom_Node_hasChildNodes, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_nodeValue", fn = _t_dom_Node_nodeValue, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Node_set_nodeValue", fn = _t_dom_Node_set_nodeValue, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_textContent", fn = _t_dom_Node_textContent, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Node_set_textContent", fn = _t_dom_Node_set_textContent, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_normalize", fn = _t_dom_Node_normalize, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Node_cloneNode", fn = _t_dom_Node_cloneNode, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_isEqualNode", fn = _t_dom_Node_isEqualNode, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_isSameNode", fn = _t_dom_Node_isSameNode, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_compareDocumentPosition", fn = _t_dom_Node_compareDocumentPosition, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_contains", fn = _t_dom_Node_contains, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_lookupPrefix", fn = _t_dom_Node_lookupPrefix, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Node_lookupNamespaceURI", fn = _t_dom_Node_lookupNamespaceURI, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Node_isDefaultNamespace", fn = _t_dom_Node_isDefaultNamespace, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_rootNode", fn = _t_dom_Node_rootNode, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Node_length", fn = _t_dom_Node_length, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_preInsert", fn = _t_dom_Node_preInsert, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_replaceChildChecked", fn = _t_dom_Node_replaceChildChecked, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_preRemove", fn = _t_dom_Node_preRemove, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_insertItems", fn = _t_dom_Node_insertItems, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_pinAll", fn = _t_dom_Node_pinAll, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Node_unpinAll", fn = _t_dom_Node_unpinAll, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "ParentNode_firstElementChild", fn = _t_dom_ParentNode_firstElementChild, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ParentNode_lastElementChild", fn = _t_dom_ParentNode_lastElementChild, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ParentNode_childElementCount", fn = _t_dom_ParentNode_childElementCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "ChildNode_remove", fn = _t_dom_ChildNode_remove, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "NonDocumentTypeChildNode_previousElementSibling", fn = _t_dom_NonDocumentTypeChildNode_previousElementSibling, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "NonDocumentTypeChildNode_nextElementSibling", fn = _t_dom_NonDocumentTypeChildNode_nextElementSibling, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "NonElementParentNode_getElementById", fn = _t_dom_NonElementParentNode_getElementById, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CharacterData_data", fn = _t_dom_CharacterData_data, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CharacterData_set_data", fn = _t_dom_CharacterData_set_data, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "CharacterData_length", fn = _t_dom_CharacterData_length, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CharacterData_substringData", fn = _t_dom_CharacterData_substringData, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CharacterData_appendData", fn = _t_dom_CharacterData_appendData, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "CharacterData_insertData", fn = _t_dom_CharacterData_insertData, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CharacterData_deleteData", fn = _t_dom_CharacterData_deleteData, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CharacterData_replaceData", fn = _t_dom_CharacterData_replaceData, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Text_splitText", fn = _t_dom_Text_splitText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Text_wholeText", fn = _t_dom_Text_wholeText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "DocumentType_name", fn = _t_dom_DocumentType_name, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "DocumentType_publicId", fn = _t_dom_DocumentType_publicId, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "DocumentType_systemId", fn = _t_dom_DocumentType_systemId, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_createElementChecked", fn = _t_dom_Document_createElementChecked, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_createElementNSChecked", fn = _t_dom_Document_createElementNSChecked, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_createDocumentFragment", fn = _t_dom_Document_createDocumentFragment, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_createComment", fn = _t_dom_Document_createComment, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_createCDATASection", fn = _t_dom_Document_createCDATASection, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_adoptNode", fn = _t_dom_Document_adoptNode, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_documentURI", fn = _t_dom_Document_documentURI, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_compatMode", fn = _t_dom_Document_compatMode, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_characterSet", fn = _t_dom_Document_characterSet, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_charset", fn = _t_dom_Document_charset, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_inputEncoding", fn = _t_dom_Document_inputEncoding, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_contentType", fn = _t_dom_Document_contentType, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_doctype", fn = _t_dom_Document_doctype, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_title", fn = _t_dom_Document_title, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_set_title", fn = _t_dom_Document_set_title, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Document_dir", fn = _t_dom_Document_dir, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_set_dir", fn = _t_dom_Document_set_dir, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Document_hasFocus", fn = _t_dom_Document_hasFocus, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_referrer", fn = _t_dom_Document_referrer, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_lastModified", fn = _t_dom_Document_lastModified, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_domain", fn = _t_dom_Document_domain, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_scrollingElement", fn = _t_dom_Document_scrollingElement, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_set_body", fn = _t_dom_Document_set_body, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "DOMImplementation_createHTMLDocument", fn = _t_dom_DOMImplementation_createHTMLDocument, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "DOMImplementation_createDocumentType", fn = _t_dom_DOMImplementation_createDocumentType, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_partOf", fn = _t_dom_Document_partOf, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "EventTarget_dispatchEngineEvent", fn = _t_events_EventTarget_dispatchEngineEvent, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I64, .F64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I64, .F64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_engineId", fn = _t_events_Event_engineId, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "Event_interface", fn = _t_events_Event_interface, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},

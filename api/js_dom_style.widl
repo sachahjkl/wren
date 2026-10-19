@@ -1,0 +1,31 @@
+/// CSSOM for JavaScript (src/page/js_dom_style.odin): element.style, a CSSStyleDeclaration over the `style` attribute
+/// (parsed and validated by the style engine's own parser, written back serialized), and getComputedStyle, read-only
+/// over the computed values (the used values of layout for the box sizes, as CSSOM says). Property names are CSS names
+/// ("margin-top", "--custom").
+partial module dom {
+  /// style.getPropertyValue(name): a longhand, a shorthand rebuilt from its longhands, or a custom property.
+  string InlineStyle_getProperty(Element element, string name);
+  /// style.getPropertyPriority(name): "important" or "".
+  string InlineStyle_priority(Element element, string name);
+  /// style.setProperty(name, value, priority): an empty value removes it; an unknown property or an invalid value
+  /// changes nothing (as CSSOM says).
+  void InlineStyle_setProperty(Element element, string name, string value, string priority) raises;
+  /// style.removeProperty(name): the value it had.
+  [Effects] string InlineStyle_removeProperty(Element element, string name) raises;
+  /// style.cssText
+  string InlineStyle_cssText(Element element);
+  /// style.cssText = text
+  void InlineStyle_setCssText(Element element, string text) raises;
+  /// style.length: the longhands declared (shorthands count as theirs).
+  u32 InlineStyle_length(Element element);
+  /// style.item(index) ("" past the end).
+  string InlineStyle_item(Element element, u32 index);
+
+  /// getComputedStyle(element, pseudo).getPropertyValue(name): "" for a property the browser does not compute.
+  /// `pseudo`: "", "::before", "::after" (":before" too).
+  string ComputedStyle_get(Element element, string pseudo, string name);
+  /// The number of properties getComputedStyle lists.
+  u32 ComputedStyle_count();
+  /// The name of the listed property at `index` ("" past the end).
+  string ComputedStyle_name(u32 index);
+}

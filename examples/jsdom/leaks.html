@@ -1,0 +1,45 @@
+<!doctype html>
+<html><head><title>Leaks</title></head>
+<body><div id="root"></div>
+<script>
+// Makes garbage on both heaps and drops it; the tool collects and counts what is left (src/tools/jsdomtest).
+section("garbage", () => {
+  const root = document.getElementById("root");
+  for (let i = 0; i < 3000; i++) {
+    const d = document.createElement("div");
+    d.innerHTML = "<span>a</span><b>b</b>";
+    d.classList.add("x");
+    d.dataset.n = i;
+    void d.childNodes.length;
+    void d.children[0];
+    void d.style.color;
+    void d.attributes.length;
+  }
+  for (let i = 0; i < 200; i++) {
+    const mo = new MutationObserver(() => {});
+    const d = document.createElement("p");
+    mo.observe(d, {childList: true});
+    d.appendChild(document.createElement("i"));
+    void document.querySelectorAll("p");
+    void document.getElementsByTagName("p").length;
+  }
+  // records waiting for a callback that never comes: dropped with their observer
+  const mo = new MutationObserver(() => {});
+  mo.observe(root, {childList: true});
+  for (let i = 0; i < 100; i++) { root.appendChild(document.createElement("hr")); }
+  root.textContent = "";
+  mo.disconnect();
+  // kept: a detached tree and a live list
+  window.keep = document.createElement("ul");
+  window.keep.innerHTML = "<li>1</li><li>2</li><li>3</li>";
+  window.keepList = window.keep.getElementsByTagName("li");
+  window.keep.lastChild.remove();
+  window.keep.appendChild(document.createElement("li"));
+  window.keep.firstChild.remove();
+  window.keep.appendChild(document.createElement("li"));
+  window.keepList = [...window.keep.children].slice(0, 2);
+  t("made garbage", true);
+});
+done();
+</script>
+</body></html>

@@ -265,6 +265,7 @@ typedef struct wj_event {
     JSValue  type;            /* string */
     JSValue  detail;          /* CustomEvent.detail */
     JSValue  target;          /* last known (kept after the dispatch) */
+    JSValue  ext;             /* the fields of a subclass (UIEvent, MouseEvent...): a plain object (runtime/dom_events.c) */
     double   time_stamp;
     uint8_t  bubbles, cancelable, composed, trusted;
     uint8_t  canceled, stop, stop_immediate, initialized, dispatching;
@@ -277,6 +278,7 @@ static void event_free(void *p)
     JS_FreeValueRT(rt, e->type);
     JS_FreeValueRT(rt, e->detail);
     JS_FreeValueRT(rt, e->target);
+    JS_FreeValueRT(rt, e->ext);
     free(e);
 }
 
@@ -286,6 +288,7 @@ static void event_mark(void *rt, void *p, void *mark_func)
     wj_mark(rt, e->type, mark_func);
     wj_mark(rt, e->detail, mark_func);
     wj_mark(rt, e->target, mark_func);
+    wj_mark(rt, e->ext, mark_func);
 }
 
 static wj_event *event_of(JSContext *ctx, JSValueConst this_val)
@@ -305,7 +308,52 @@ static wj_event *event_new(void)
     e->type = JS_UNDEFINED;
     e->detail = JS_NULL;
     e->target = JS_NULL;
+    e->ext = JS_UNDEFINED;
     return e;
+}
+
+/* For the subclasses' members (runtime/dom_events.c): the extension object of an event (not counted; undefined when
+ * none), set it (takes `ext`), the browser's event while dispatching (0 otherwise). */
+JSValue wj_event_ext(JSValueConst obj)
+{
+    wj_obj *o = wj_unwrap(obj, WJ_IFACE_Event);
+    return o && o->impl ? ((wj_event *)o->impl)->ext : JS_UNDEFINED;
+}
+
+void wj_event_set_ext(JSContext *ctx, JSValueConst obj, JSValue ext)
+{
+    wj_obj *o = wj_unwrap(obj, WJ_IFACE_Event);
+    if (!o || !o->impl) { JS_FreeValue(ctx, ext); return; }
+    wj_event *e = o->impl;
+    JS_FreeValue(ctx, e->ext);
+    e->ext = ext;
+}
+
+uint64_t wj_event_host(JSValueConst obj)
+{
+    wj_obj *o = wj_unwrap(obj, WJ_IFACE_Event);
+    return o && o->impl ? ((wj_event *)o->impl)->host : 0;
+}
+
+static void obj_set_impl(JSValueConst obj, wj_event *e);
+
+/* document.createEvent(): an event of `iface` that initEvent must initialize before it can be dispatched. */
+JSValue wj_event_new_uninitialized(JSContext *ctx, int iface)
+{
+    wj_event *e = event_new();
+    if (!e) { return JS_ThrowOutOfMemory(ctx); }
+    e->type = JS_NewString(ctx, "");
+    e->time_stamp = now_ms();
+    JSValue obj = wj_new_object(ctx, iface, NULL, NULL);
+    if (JS_IsException(obj)) { event_free(e); return obj; }
+    obj_set_impl(obj, e);
+    return obj;
+}
+
+/* A browser event got its wrapper: runtime/dom_events.c copies the details of UI events. */
+__attribute__((weak)) void wj_event_wrapped(JSContext *ctx, JSValueConst obj, uint64_t host, int iface)
+{
+    WJ_UNUSED(ctx); WJ_UNUSED(obj); WJ_UNUSED(host); WJ_UNUSED(iface);
 }
 
 /* EventInit (and its subclasses' common part) */
@@ -393,6 +441,8 @@ static void live_prune(JSContext *ctx)
     live_n = w;
 }
 
+JSValue wj_wrap_target(JSContext *ctx, uint64_t h);
+
 static JSValue event_for_host(JSContext *ctx, uint64_t h)
 {
     int64_t id = wr_Event_engineId(h);
@@ -430,6 +480,10 @@ static JSValue event_for_host(JSContext *ctx, uint64_t h)
     if (JS_IsException(obj)) { event_free(e); return obj; }
     obj_set_impl(obj, e);
     wj_obj_of(obj)->handle = h;
+    /* the target stays readable after the dispatch (the browser's event is gone then) */
+    JSValue target = wj_wrap_target(ctx, wr_Event_target(h));
+    if (JS_IsException(target)) { JS_FreeValue(ctx, JS_GetException(ctx)); } else { JS_FreeValue(ctx, e->target); e->target = target; }
+    wj_event_wrapped(ctx, obj, h, (int)iface);
     if (live_n == live_cap) {
         uint32_t cap = live_cap ? live_cap * 2 : 8;
         live_event *nl = realloc(live, cap * sizeof *nl);

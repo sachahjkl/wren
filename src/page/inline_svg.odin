@@ -214,7 +214,7 @@ inline_request :: proc(p: ^Page, hv: u64, markup: string) -> ^Img_Request {
 ////////////////////////////////
 // Serialisation
 
-@(private = "file")
+@(private)
 SVG_ELEMENTS := [?][2]string{
 	{"altglyph", "altGlyph"}, {"altglyphdef", "altGlyphDef"}, {"altglyphitem", "altGlyphItem"}, {"animatecolor", "animateColor"},
 	{"animatemotion", "animateMotion"}, {"animatetransform", "animateTransform"}, {"clippath", "clipPath"}, {"feblend", "feBlend"},
@@ -228,7 +228,7 @@ SVG_ELEMENTS := [?][2]string{
 	{"radialgradient", "radialGradient"}, {"textpath", "textPath"},
 }
 
-@(private = "file")
+@(private)
 SVG_ATTRIBUTES := [?][2]string{
 	{"attributename", "attributeName"}, {"attributetype", "attributeType"}, {"basefrequency", "baseFrequency"}, {"baseprofile", "baseProfile"},
 	{"calcmode", "calcMode"}, {"clippathunits", "clipPathUnits"}, {"diffuseconstant", "diffuseConstant"}, {"edgemode", "edgeMode"},
@@ -249,7 +249,7 @@ SVG_ATTRIBUTES := [?][2]string{
 }
 
 // The mixed-case SVG name of a lower-case one (HTML §13.2.6.5 "adjust SVG" tables).
-@(private = "file")
+@(private)
 svg_case :: proc(table: [][2]string, name: string) -> string {
 	for e in table { if e[0] == name { return e[1] } }
 	return name
@@ -320,7 +320,7 @@ write_tree :: proc(s: ^Serializer, top: base.Handle, root_extra: string, skip_si
 		case .Text:
 			write_escaped(&s.b, n.text, false)
 			continue
-		case .Comment, .Document:
+		case .Comment, .Document, .Doctype, .Fragment:
 			continue
 		case .Element:
 		}

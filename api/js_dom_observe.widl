@@ -1,0 +1,50 @@
+/// MutationObserver, Range and Selection for JavaScript (src/page/js_dom_observe.odin, js_dom_range.odin).
+///
+/// MutationObserver: the browser sees every mutation as it happens (the mutation hook of the document's journal,
+/// src/dom/journal.odin) and queues records for the observers registered on the node or, with `subtree`, on an
+/// ancestor (transient registrations included), then a microtask (`notify`, with the observer's `user`) that delivers
+/// them. The nodes of queued records are pinned until the engine took them.
+partial module dom {
+  /// new MutationObserver: `notify(user)` runs as a microtask when records are queued.
+  Object MutationObserver_create(MicrotaskCallback notify, i32 user);
+  /// observer.observe(target, options): bits 1 childList, 2 attributes, 4 characterData, 8 subtree,
+  /// 16 attributeOldValue, 32 characterDataOldValue, 64 an attributeFilter (`filter`, names NUL-separated).
+  /// Type when no kind of mutation is asked for (as DOM says, after the implied ones).
+  void MutationObserver_observe(u64 observer, Node target, u32 options, string filter) raises;
+  /// observer.disconnect(): no more registrations, the queue emptied.
+  void MutationObserver_disconnect(u64 observer);
+  /// observer.takeRecords(): the records waiting, packed (src/page/js_dom_observe.odin, records_pack). Nothing
+  /// changes until MutationObserver_release, so a call that did not fit can be made again.
+  bytes MutationObserver_takeRecords(u64 observer);
+  /// The engine wrapped the nodes of the records it took: they leave the queue (and their pins go), the transient
+  /// registrations end (DOM "notify mutation observers").
+  void MutationObserver_release(u64 observer);
+  /// Whether some node the observer is registered on is still alive (the engine lets an observer go otherwise).
+  bool MutationObserver_live(u64 observer);
+
+  /// A boundary point compared with another: -1 before, 0 equal, 1 after (DOM "position of a boundary point").
+  i32 Range_comparePoints(Node first, u32 first_offset, Node second, u32 second_offset);
+  /// range.toString(): the text of the Text nodes in the range.
+  string Range_text(Node start, u32 start_offset, Node end, u32 end_offset);
+  /// The contents of a range: mode 0 cloneContents (a new fragment), 1 extractContents (a fragment, the contents
+  /// removed), 2 deleteContents (returns 0). Hierarchy when a doctype is in the range.
+  Node Range_contents(Node start, u32 start_offset, Node end, u32 end_offset, i32 mode) raises;
+
+  /// The document's selection.
+  struct SelectionState {
+    u64 anchor;
+    u32 anchor_offset;
+    u64 focus;
+    u32 focus_offset;
+    /// 0 none, 1 caret (collapsed), 2 range
+    u32 kind;
+  }
+  /// The selection (offsets in UTF-16 code units for Text nodes).
+  SelectionState Selection_state();
+  /// setBaseAndExtent: Index_Size for an offset past a node's length, Invalid_Handle for a node outside the document.
+  void Selection_setRange(Node anchor, u32 anchor_offset, Node focus, u32 focus_offset) raises;
+  /// removeAllRanges()
+  void Selection_clear();
+  /// selection.toString()
+  string Selection_text();
+}

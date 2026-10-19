@@ -45,6 +45,20 @@ module web {
     Not_Allowed = -23,
     /// InvalidAccessError.
     Invalid_Access = -24,
+    /// InvalidCharacterError (a name that is not a valid XML name, a token with spaces...).
+    Invalid_Character = -40,
+    /// NamespaceError.
+    Namespace = -41,
+    /// InUseAttributeError.
+    In_Use_Attribute = -42,
+    /// WrongDocumentError.
+    Wrong_Document = -43,
+    /// InvalidNodeTypeError.
+    Invalid_Node_Type = -44,
+    /// InvalidModificationError.
+    Invalid_Modification = -45,
+    /// NoModificationAllowedError.
+    No_Modification_Allowed = -46,
   }
 
   /// The code of the last error a function raised to this module instance (0 when none did yet).

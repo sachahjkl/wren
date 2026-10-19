@@ -331,6 +331,7 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 // Connects a document to its tab: navigation hook, session history, storage.
 attach_page :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
 	page.set_embedder(p, {navigate = page_navigate, user = t, session = &t.session, tab_key = tab_key(t), storage = &app.storage})
+	attach_js_layout(app, t, p)   // geometry for scripts (js_layout_shell.odin)
 }
 
 reload :: proc(app: ^App, t: ^Tab) {

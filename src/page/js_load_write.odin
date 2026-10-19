@@ -15,7 +15,6 @@ package page
 // that ends at document.close), unless it runs from an external script (ignored, as in browsers).
 
 import "core:fmt"
-import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:html"
@@ -40,74 +39,7 @@ noscript_as_text :: proc(d: ^dom.Document) {
 		n := dom.get(d, el)
 		if n == nil || n.first_child == base.NIL_HANDLE { continue }
 		if n.first_child == n.last_child && dom.get(d, n.first_child).kind == .Text { continue }
-		sb := strings.builder_make(context.temp_allocator)
-		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next { serialize_node(d, ch, &sb, false) }
-		dom.set_text_content(d, el, strings.to_string(sb))
-	}
-}
-
-@(private)
-VOID_ELEMENTS := [?]string{"area", "base", "basefont", "bgsound", "br", "col", "embed", "frame", "hr", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr"}
-
-@(private)
-RAW_TEXT_ELEMENTS := [?]string{"style", "script", "xmp", "iframe", "noembed", "noframes", "plaintext"}
-
-// HTML's fragment serialization of one node (iterative: deep trees do not use the native stack).
-serialize_node :: proc(d: ^dom.Document, h: base.Handle, sb: ^strings.Builder, scripting: bool) {
-	Frame :: struct { node: base.Handle, closing: bool }
-	stack := make([dynamic]Frame, context.temp_allocator)
-	append(&stack, Frame{h, false})
-	for len(stack) > 0 {
-		f := pop(&stack)
-		n := dom.get(d, f.node)
-		if n == nil { continue }
-		if f.closing { fmt.sbprintf(sb, "</%s>", n.name); continue }
-		switch n.kind {
-		case .Document:
-			for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(&stack, Frame{ch, false}) }
-		case .Comment:
-			strings.write_string(sb, "<!--")
-			strings.write_string(sb, n.text)
-			strings.write_string(sb, "-->")
-		case .Text:
-			raw := false
-			if parent := dom.get(d, n.parent); parent != nil && parent.kind == .Element {
-				for r in RAW_TEXT_ELEMENTS { if parent.name == r { raw = true } }
-				if scripting && parent.name == "noscript" { raw = true }
-			}
-			if raw { strings.write_string(sb, n.text) } else { escape_markup(sb, n.text, false) }
-		case .Element:
-			strings.write_byte(sb, '<')
-			strings.write_string(sb, n.name)
-			for a in n.attrs {
-				strings.write_byte(sb, ' ')
-				strings.write_string(sb, a.name)
-				strings.write_string(sb, "=\"")
-				escape_markup(sb, a.value, true)
-				strings.write_byte(sb, '"')
-			}
-			strings.write_byte(sb, '>')
-			void := false
-			for v in VOID_ELEMENTS { if n.name == v { void = true } }
-			if void { continue }
-			append(&stack, Frame{f.node, true})
-			for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(&stack, Frame{ch, false}) }
-		}
-	}
-}
-
-@(private)
-escape_markup :: proc(sb: ^strings.Builder, s: string, attribute: bool) {
-	for i := 0; i < len(s); i += 1 {
-		c := s[i]
-		switch {
-		case c == '&': strings.write_string(sb, "&amp;")
-		case c == 0xC2 && i + 1 < len(s) && s[i + 1] == 0xA0: strings.write_string(sb, "&nbsp;"); i += 1
-		case c == '"' && attribute: strings.write_string(sb, "&quot;")
-		case c == '<': strings.write_string(sb, "&lt;")
-		case c == '>': strings.write_string(sb, "&gt;")
-		case: strings.write_byte(sb, c)
-		}
+		dom.set_text_content(d, el, serialize_html(d, el, false))
 	}
 }
 
@@ -148,11 +80,19 @@ markup_items :: proc(p: ^Page, markup: string, target, body_target: base.Handle,
 		h: base.Handle
 		switch n.kind {
 		case .Element:
-			h = dom.create_element(d, n.name)
+			extra := tmp.ns_extra[c.src]
+			h = dom.create_element_ns(d, n.name, n.ns, extra.uri, extra.prefix)
 			for a in n.attrs { dom.set_attribute(d, h, a.name, a.value) }
 		case .Text: h = dom.create_text(d, n.text)
 		case .Comment: h = dom.create_comment(d, n.text)
-		case .Document: continue
+		case .Doctype:
+			if c.parent != d.root { continue }
+			public_id, system_id: string
+			for a in n.attrs {
+				if a.name == "publicId" { public_id = a.value } else if a.name == "systemId" { system_id = a.value }
+			}
+			h = dom.create_doctype(d, n.name, public_id, system_id)
+		case .Document, .Fragment: continue
 		}
 		append(&items, Reveal_Item{h, c.parent})
 		// children pushed in reverse: popped in order

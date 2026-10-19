@@ -93,7 +93,7 @@ object_release :: proc(p: ^Page, h: u64) -> bool {
 ////////////////////////////////
 // Events on objects
 
-// `capture` matters for the Window only (the outer part of a document event's path: js_load_events.odin).
+// `capture` matters for the Window only (the one object in a propagation path, js_dom_events.odin).
 object_add_listener :: proc(p: ^Page, h: u64, type: string, callback, user: u32, once: bool, owner: u32, capture := false) -> (dom.Listener_Id, dom.Error) {
 	o := object_get(p, h)
 	if o == nil { return 0, .Invalid_Handle }

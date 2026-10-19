@@ -1,0 +1,56 @@
+<!doctype html>
+<html><head><title>Bench</title><style>body { margin: 0 } .box { width: 50px; height: 10px; }</style></head>
+<body><div id="root"></div><div id="list"></div>
+<script>
+// Micro-benchmarks of the DOM bindings: "BENCH name ns" per operation (src/tools/jsdomtest prints them).
+const now = (() => { try { if (typeof performance.now === "function") { return () => performance.now(); } } catch (e) {} return () => Date.now(); })();
+function bench(name, n, fn) {
+  fn(Math.min(n, 100));   // warm up
+  const t0 = now();
+  const r = fn(n);
+  const ns = (now() - t0) * 1e6 / n;
+  console.log("BENCH " + name.padEnd(48) + ns.toFixed(1).padStart(10) + " ns   (" + n + " x)");
+  return r;
+}
+section("benchmarks", () => {
+  const root = document.getElementById("root");
+  bench("create + appendChild (10 000 nodes)", 10000, n => {
+    root.textContent = "";
+    for (let i = 0; i < n; i++) { const d = document.createElement("div"); d.className = "box"; root.appendChild(d); }
+  });
+  t("10 000 nodes made", root.childNodes.length === 10000);
+  const kids = root.childNodes;
+  bench("childNodes[i] (live list, no mutation)", 10000, n => { let s = 0; for (let i = 0; i < n; i++) { if (kids[i]) { s++; } } return s; });
+  bench("children.length", 100000, n => { let s = 0; const c = root.children; for (let i = 0; i < n; i++) { s += c.length; } return s; });
+  bench("firstChild / nextSibling walk", 10000, n => { let s = 0; for (let c = root.firstChild; c && s < n; c = c.nextSibling) { s++; } return s; });
+  const el = root.firstChild;
+  el.setAttribute("data-k", "v");
+  // calibration: what the engine costs without the browser
+  bench("(calibration) empty loop iteration", 1000000, n => { let s = 0; for (let i = 0; i < n; i++) { s += i; } return s; });
+  const ev = new Event("x", {bubbles: true});
+  bench("(calibration) engine-only getter (Event.bubbles)", 200000, n => { let s = 0; for (let i = 0; i < n; i++) { if (ev.bubbles) { s++; } } return s; });
+  const o = {get v() { return 1; }};
+  bench("(calibration) JS getter", 200000, n => { let s = 0; for (let i = 0; i < n; i++) { s += o.v; } return s; });
+  bench("getAttribute", 200000, n => { let s = 0; for (let i = 0; i < n; i++) { s += el.getAttribute("data-k").length; } return s; });
+  bench("id getter", 200000, n => { let s = 0; for (let i = 0; i < n; i++) { s += el.id.length; } return s; });
+  bench("nodeType getter", 200000, n => { let s = 0; for (let i = 0; i < n; i++) { s += el.nodeType; } return s; });
+  bench("parentNode getter", 200000, n => { let s = 0; for (let i = 0; i < n; i++) { if (el.parentNode) { s++; } } return s; });
+  bench("classList.toggle", 100000, n => { for (let i = 0; i < n; i++) { el.classList.toggle("on"); } });
+  bench("classList.contains", 100000, n => { let s = 0; for (let i = 0; i < n; i++) { if (el.classList.contains("box")) { s++; } } return s; });
+  const p = document.createElement("p");
+  bench("textContent set + get", 50000, n => { let s = 0; for (let i = 0; i < n; i++) { p.textContent = "x" + (i & 7); s += p.textContent.length; } return s; });
+  bench("style.width set", 50000, n => { for (let i = 0; i < n; i++) { p.style.width = (i & 15) + "px"; } });
+  bench("getElementById", 100000, n => { let s = 0; for (let i = 0; i < n; i++) { if (document.getElementById("list")) { s++; } } return s; });
+  bench("querySelector('#list')", 20000, n => { let s = 0; for (let i = 0; i < n; i++) { if (document.querySelector("#list")) { s++; } } return s; });
+  bench("querySelectorAll('.box') over 10 000", 50, n => { let s = 0; for (let i = 0; i < n; i++) { s += document.querySelectorAll(".box").length; } return s; });
+  bench("matches('div.box')", 100000, n => { let s = 0; for (let i = 0; i < n; i++) { if (el.matches("div.box")) { s++; } } return s; });
+  bench("offsetWidth (no mutation in between)", 100000, n => { let s = 0; for (let i = 0; i < n; i++) { s += el.offsetWidth; } return s; });
+  bench("getBoundingClientRect (no mutation)", 50000, n => { let s = 0; for (let i = 0; i < n; i++) { s += el.getBoundingClientRect().width; } return s; });
+  bench("innerHTML set (100 elements)", 200, n => { const l = document.getElementById("list"); const html = "<li class=x>item</li>".repeat(100); for (let i = 0; i < n; i++) { l.innerHTML = html; } });
+  bench("innerHTML get (100 elements)", 2000, n => { const l = document.getElementById("list"); let s = 0; for (let i = 0; i < n; i++) { s += l.innerHTML.length; } return s; });
+  bench("remove all (10 000 children)", 1, () => { root.textContent = ""; });
+  t("benchmarks ran", true);
+});
+done();
+</script>
+</body></html>

@@ -279,11 +279,15 @@ static void wj_obj_mark(JSRuntime *rt, JSValueConst val, JS_MarkFunc *mark_func)
 
 /* -- legacy platform objects: indexed -- */
 
+static int wj_named_get_own(JSContext *ctx, JSPropertyDescriptor *desc, JSValueConst obj, JSAtom prop);
+
 static int wj_indexed_get_own(JSContext *ctx, JSPropertyDescriptor *desc, JSValueConst obj, JSAtom prop)
 {
     wj_obj *o = wj_obj_of(obj);
     uint32_t idx;
-    if (!o || !JS_AtomGetArrayIndex(ctx, &idx, prop)) { return 0; }
+    if (!o) { return 0; }
+    /* an interface with indexed and named properties (HTMLCollection): a name that is not an index is looked up */
+    if (!JS_AtomGetArrayIndex(ctx, &idx, prop)) { return wj_named_get_own(ctx, desc, obj, prop); }
     const wj_interface *it = &wj_interfaces[o->iface];
     for (int i = o->iface; i >= 0 && !it->index_get; i = wj_interfaces[i].parent) { it = &wj_interfaces[i]; }
     if (!it->index_get) { return 0; }
@@ -850,6 +854,20 @@ int wj_platform_preinit(JSContext *ctx)
         r->protos[i] = proto;
         r->ctors[i] = ctor;
         if (wj_place_members(ctx, i) < 0) { return -1; }
+        if (it->flags & WJ_I_INDEXED_ITERATOR) {
+            /* an interface that supports indexed properties is iterable by them (HTMLCollection, NamedNodeMap...) */
+            JSValue array = JS_GetPropertyStr(ctx, r->global, "Array");
+            JSValue ap = JS_GetPropertyStr(ctx, array, "prototype");
+            JSValue sym = JS_GetPropertyStr(ctx, r->global, "Symbol");
+            JSValue iter = JS_GetPropertyStr(ctx, sym, "iterator");
+            JSAtom ia = JS_ValueToAtom(ctx, iter);
+            JS_DefinePropertyValue(ctx, proto, ia, JS_GetPropertyStr(ctx, ap, "values"), JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE);
+            JS_FreeAtom(ctx, ia);
+            JS_FreeValue(ctx, iter);
+            JS_FreeValue(ctx, sym);
+            JS_FreeValue(ctx, ap);
+            JS_FreeValue(ctx, array);
+        }
         if (it->flags & WJ_I_ARRAY_ITERATOR) {
             /* Web IDL: a value iterator of an indexed collection uses %Array.prototype%'s own functions */
             JSValue array = JS_GetPropertyStr(ctx, r->global, "Array");

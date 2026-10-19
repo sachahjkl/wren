@@ -8,9 +8,437 @@
 #define WR_IMPORT(m, n) __attribute__((import_module(m), import_name(n)))
 #define WR_ABSENT UINT32_MAX
 
-/* module abort */
+/* module abort: types */
 typedef uint64_t wr_AbortController;
 typedef uint64_t wr_AbortSignal;
+
+/* module async: types */
+// Any host object (not a node). Released with Object_release; freed with the page in any case.
+typedef uint64_t wr_Object;
+typedef uint64_t wr_Promise;
+// An ArrayBuffer.
+typedef uint64_t wr_Buffer;
+enum wr_PromiseState {
+    wr_PromiseState_Pending = 0,
+    wr_PromiseState_Fulfilled = 1,
+    wr_PromiseState_Rejected = 2,
+};
+typedef void (*wr_MicrotaskCallback)(int32_t user);
+// A reaction: read the result with Promise_value / Promise_text.
+typedef void (*wr_PromiseReaction)(int32_t user, uint64_t promise, int32_t state);
+
+/* module console: types */
+
+/* module crypto: types */
+
+/* module document: types */
+
+/* module dom: types */
+// A node of the document. A node created by the module and never inserted lives until Node_release.
+typedef uint64_t wr_Node;
+// A node that is an element.
+typedef uint64_t wr_Element;
+
+/* module encoding: types */
+typedef uint64_t wr_TextDecoder;
+// TextDecoderOptions
+#define wr_TextDecoderOptions_Fatal (1u << 0)
+#define wr_TextDecoderOptions_Ignore_BOM (1u << 1)
+// What TextEncoder.encodeInto did, in bytes.
+typedef struct wr_EncodeIntoResult {
+    uint64_t read;
+    uint64_t written;
+} wr_EncodeIntoResult;
+
+/* module events: types */
+// A node or a host object: whatever can have listeners. Checked by the functions that take it.
+typedef uint64_t wr_EventTarget;
+// The event being dispatched.
+typedef uint64_t wr_Event;
+// addEventListener options.
+#define wr_ListenerOptions_Capture (1u << 0)
+#define wr_ListenerOptions_Once (1u << 1)
+#define wr_ListenerOptions_Passive (1u << 2)
+// What dispatchEvent creates.
+#define wr_EventInit_Bubbles (1u << 0)
+#define wr_EventInit_Cancelable (1u << 1)
+#define wr_EventInit_Composed (1u << 2)
+// A listener: `user` is the value given to addEventListener.
+typedef void (*wr_EventListener)(int32_t user, uint64_t event);
+
+/* module eventsource: types */
+typedef uint64_t wr_EventSource;
+// EventSource.readyState
+enum wr_EventSourceState {
+    wr_EventSourceState_Connecting = 0,
+    wr_EventSourceState_Open = 1,
+    wr_EventSourceState_Closed = 2,
+};
+
+/* module fetch: types */
+// The body of a response being read in chunks.
+typedef uint64_t wr_ReadableStream;
+
+/* module forms: types */
+typedef uint64_t wr_FormData;
+// ValidityState: every flag that is set (none = valid).
+#define wr_ValidityState_Value_Missing (1u << 0)
+#define wr_ValidityState_Type_Mismatch (1u << 1)
+#define wr_ValidityState_Pattern_Mismatch (1u << 2)
+#define wr_ValidityState_Too_Long (1u << 3)
+#define wr_ValidityState_Too_Short (1u << 4)
+#define wr_ValidityState_Range_Underflow (1u << 5)
+#define wr_ValidityState_Range_Overflow (1u << 6)
+#define wr_ValidityState_Step_Mismatch (1u << 7)
+#define wr_ValidityState_Bad_Input (1u << 8)
+#define wr_ValidityState_Custom_Error (1u << 9)
+enum wr_SelectionDirection {
+    wr_SelectionDirection_None = 0,
+    wr_SelectionDirection_Forward = 1,
+    wr_SelectionDirection_Backward = 2,
+};
+// setRangeText's selectMode.
+enum wr_SelectionMode {
+    wr_SelectionMode_Preserve = 0,
+    wr_SelectionMode_Select = 1,
+    wr_SelectionMode_Start = 2,
+    wr_SelectionMode_End = 3,
+};
+// How a FormData body is encoded.
+enum wr_FormEnctype {
+    wr_FormEnctype_Multipart = 0,
+    wr_FormEnctype_Urlencoded = 1,
+    wr_FormEnctype_Text_Plain = 2,
+};
+
+/* module fetch (partial): types */
+
+/* module history: types */
+// The Window object (an EventTarget: popstate, hashchange, storage...).
+typedef uint64_t wr_Window;
+
+/* module images: types */
+typedef uint64_t wr_HTMLImageElement;
+
+/* module js: types */
+// The level of a console message.
+enum wr_ConsoleLevel {
+    wr_ConsoleLevel_Log = 0,
+    wr_ConsoleLevel_Info = 1,
+    wr_ConsoleLevel_Warn = 2,
+    wr_ConsoleLevel_Error = 3,
+    wr_ConsoleLevel_Debug = 4,
+};
+
+/* module dom (partial): types */
+
+/* module dom (partial): types */
+
+/* module dom (partial): types */
+
+/* module dom (partial): types */
+
+/* module events (partial): types */
+// The numeric details of a UI event.
+typedef struct wr_UiEventData {
+    double client_x;
+    double client_y;
+    double screen_x;
+    double screen_y;
+    double page_x;
+    double page_y;
+    double offset_x;
+    double offset_y;
+    double delta_x;
+    double delta_y;
+    double delta_z;
+    uint64_t related;
+    uint32_t mods;
+    int32_t button;
+    uint32_t buttons;
+    int32_t detail;
+    uint32_t key_code;
+    uint32_t location;
+    uint32_t repeat;
+    uint32_t delta_mode;
+} wr_UiEventData;
+
+/* module dom (partial): types */
+
+/* module dom (partial): types */
+
+/* module dom (partial): types */
+// A rectangle (DOMRect).
+typedef struct wr_DomRect {
+    double x;
+    double y;
+    double width;
+    double height;
+} wr_DomRect;
+
+/* module dom (partial): types */
+// The document's selection.
+typedef struct wr_SelectionState {
+    uint64_t anchor;
+    uint32_t anchor_offset;
+    uint64_t focus;
+    uint32_t focus_offset;
+    uint32_t kind;
+} wr_SelectionState;
+
+/* module dom (partial): types */
+
+/* module dom (partial): types */
+
+/* module events (partial): types */
+
+/* module scripts: types */
+// What a Content-Security-Policy check of inline code is about: a script element's text, an event handler
+// attribute (script-src-attr), a javascript: URL.
+enum wr_InlineScriptKind {
+    wr_InlineScriptKind_Element = 0,
+    wr_InlineScriptKind_Attribute = 1,
+    wr_InlineScriptKind_Navigation = 2,
+};
+// The type of a module (import attributes: `with {type: "json"}`).
+enum wr_ModuleType {
+    wr_ModuleType_JavaScript = 0,
+    wr_ModuleType_Json = 1,
+};
+// The type of a worker's script (`new Worker(url, {type})`).
+enum wr_WorkerType {
+    wr_WorkerType_Classic = 0,
+    wr_WorkerType_Module = 1,
+};
+
+/* module navigator: types */
+// A string member of Navigator.
+enum wr_NavigatorField {
+    // navigator.userAgent: the User-Agent header the browser sends (network.user_agent).
+    wr_NavigatorField_User_Agent = 0,
+    // navigator.appVersion: the user agent without its leading "Mozilla/".
+    wr_NavigatorField_App_Version = 1,
+    // navigator.platform ("Win32").
+    wr_NavigatorField_Platform = 2,
+    // navigator.vendor.
+    wr_NavigatorField_Vendor = 3,
+    // navigator.languages, comma separated, from the Accept-Language preference (network.accept_language), without
+    // quality values.
+    wr_NavigatorField_Languages = 4,
+    // navigator.doNotTrack: "1", or "" for null (privacy.do_not_track).
+    wr_NavigatorField_Do_Not_Track = 5,
+};
+
+/* module media: types */
+// A media query list evaluated against the page's viewport (CSSOM View matchMedia); an EventTarget whose "change"
+// event is fired when the result changes (after a resize, a zoom, a change of the color scheme), Event_code being
+// the new result.
+typedef uint64_t wr_MediaQueryList;
+// A dimension of the screen (CSS pixels of the monitor showing the page).
+enum wr_ScreenField {
+    wr_ScreenField_Width = 0,
+    wr_ScreenField_Height = 1,
+    wr_ScreenField_Avail_Width = 2,
+    wr_ScreenField_Avail_Height = 3,
+    wr_ScreenField_Avail_Left = 4,
+    wr_ScreenField_Avail_Top = 5,
+    wr_ScreenField_Color_Depth = 6,
+};
+
+/* module forms (partial): types */
+
+/* module net: types */
+// A request and, once it arrived, its response.
+typedef uint64_t wr_Fetch;
+// The response of a fetch (what Fetch_promise settles with): the same record as its Fetch.
+typedef uint64_t wr_Response;
+// Where a request is.
+enum wr_FetchState {
+    wr_FetchState_Pending = 0,
+    wr_FetchState_Response = 1,
+    wr_FetchState_Done = 2,
+    wr_FetchState_Failed = 3,
+};
+// Response.type
+enum wr_ResponseType {
+    wr_ResponseType_Basic = 0,
+    wr_ResponseType_Cors = 1,
+    wr_ResponseType_Opaque = 2,
+    wr_ResponseType_Opaque_Redirect = 3,
+};
+// RequestInit.mode
+enum wr_FetchMode {
+    wr_FetchMode_Cors = 0,
+    wr_FetchMode_Same_Origin = 1,
+    wr_FetchMode_No_Cors = 2,
+};
+// RequestInit.credentials
+enum wr_Credentials {
+    wr_Credentials_Same_Origin = 0,
+    wr_Credentials_Omit = 1,
+    wr_Credentials_Include = 2,
+};
+// RequestInit.redirect
+enum wr_RedirectMode {
+    wr_RedirectMode_Follow = 0,
+    wr_RedirectMode_Error = 1,
+    wr_RedirectMode_Manual = 2,
+};
+// RequestInit.referrerPolicy (Default: the document's policy).
+enum wr_ReferrerPolicy {
+    wr_ReferrerPolicy_Default = 0,
+    wr_ReferrerPolicy_No_Referrer = 1,
+    wr_ReferrerPolicy_No_Referrer_When_Downgrade = 2,
+    wr_ReferrerPolicy_Same_Origin = 3,
+    wr_ReferrerPolicy_Origin = 4,
+    wr_ReferrerPolicy_Strict_Origin = 5,
+    wr_ReferrerPolicy_Origin_When_Cross_Origin = 6,
+    wr_ReferrerPolicy_Strict_Origin_When_Cross_Origin = 7,
+    wr_ReferrerPolicy_Unsafe_Url = 8,
+};
+// RequestInit beyond method, headers and body. The zero value is the Fetch API default.
+typedef struct wr_FetchOptions {
+    uint32_t mode;
+    uint32_t credentials;
+    uint32_t redirect;
+    uint32_t referrer_policy;
+    uint8_t no_referrer;
+} wr_FetchOptions;
+// Called when the response arrives (Response), when the body is complete (Done) or on failure (Failed).
+typedef void (*wr_FetchCallback)(int32_t user, uint64_t request, int32_t state);
+
+/* module performance: types */
+// The entries a query matches (Any: both).
+enum wr_PerformanceEntryType {
+    wr_PerformanceEntryType_Any = 0,
+    wr_PerformanceEntryType_Mark = 1,
+    wr_PerformanceEntryType_Measure = 2,
+};
+
+/* module storage: types */
+enum wr_StorageArea {
+    wr_StorageArea_Local = 0,
+    wr_StorageArea_Session = 1,
+};
+// A field of a StorageEvent.
+enum wr_StorageEventField {
+    wr_StorageEventField_Key = 0,
+    wr_StorageEventField_Old_Value = 1,
+    wr_StorageEventField_New_Value = 2,
+    wr_StorageEventField_Url = 3,
+};
+
+/* module timers: types */
+// A pending timeout or interval.
+typedef uint64_t wr_Timer;
+typedef void (*wr_TimerHandler)(int32_t user);
+// A timer callback with a 64-bit user value.
+typedef void (*wr_TimerHandler64)(int64_t user);
+// An animation frame callback: `time` is the frame's time on the page's performance timeline.
+typedef void (*wr_FrameRequestCallback)(int32_t user, double time);
+// An idle callback: run before `deadline` (performance timeline), or late because its timeout expired.
+typedef void (*wr_IdleRequestCallback)(int32_t user, double deadline, int32_t did_timeout);
+// Whether the page is shown.
+enum wr_VisibilityState {
+    wr_VisibilityState_Visible = 0,
+    wr_VisibilityState_Hidden = 1,
+};
+
+/* module url: types */
+typedef uint64_t wr_URL;
+typedef uint64_t wr_URLSearchParams;
+// A component of a URL (also used by Location).
+enum wr_URLComponent {
+    wr_URLComponent_Href = 0,
+    wr_URLComponent_Protocol = 1,
+    wr_URLComponent_Username = 2,
+    wr_URLComponent_Password = 3,
+    wr_URLComponent_Host = 4,
+    wr_URLComponent_Hostname = 5,
+    wr_URLComponent_Port = 6,
+    wr_URLComponent_Pathname = 7,
+    wr_URLComponent_Search = 8,
+    wr_URLComponent_Hash = 9,
+    wr_URLComponent_Origin = 10,
+};
+
+/* module web: types */
+// The status of a function that raises: 0, or what went wrong. Promise rejections use the same codes.
+enum wr_Error {
+    wr_Error_None = 0,
+    // A handle that is not live, or not of the kind the function takes.
+    wr_Error_Invalid_Handle = -1,
+    // HierarchyRequestError: the node cannot go there.
+    wr_Error_Hierarchy = -2,
+    // NotFoundError, or a null result ("no such attribute", "no such entry").
+    wr_Error_Not_Found = -3,
+    // An argument out of its range (an enum, an index, a size).
+    wr_Error_Invalid_Argument = -4,
+    // A node that is still in the tree cannot be released.
+    wr_Error_Attached = -5,
+    // TypeError.
+    wr_Error_Type = -10,
+    // RangeError.
+    wr_Error_Range = -11,
+    // SecurityError.
+    wr_Error_Security = -12,
+    // QuotaExceededError.
+    wr_Error_Quota = -13,
+    // NotSupportedError.
+    wr_Error_Not_Supported = -14,
+    // SyntaxError.
+    wr_Error_Syntax = -15,
+    // AbortError.
+    wr_Error_Abort = -16,
+    // TimeoutError.
+    wr_Error_Timeout = -17,
+    // InvalidStateError.
+    wr_Error_Invalid_State = -18,
+    // DataCloneError.
+    wr_Error_Data_Clone = -19,
+    // NetworkError (fetch failures; the message says why).
+    wr_Error_Network = -20,
+    // EncodingError.
+    wr_Error_Encoding = -21,
+    // IndexSizeError.
+    wr_Error_Index_Size = -22,
+    // NotAllowedError.
+    wr_Error_Not_Allowed = -23,
+    // InvalidAccessError.
+    wr_Error_Invalid_Access = -24,
+    // InvalidCharacterError (a name that is not a valid XML name, a token with spaces...).
+    wr_Error_Invalid_Character = -40,
+    // NamespaceError.
+    wr_Error_Namespace = -41,
+    // InUseAttributeError.
+    wr_Error_In_Use_Attribute = -42,
+    // WrongDocumentError.
+    wr_Error_Wrong_Document = -43,
+    // InvalidNodeTypeError.
+    wr_Error_Invalid_Node_Type = -44,
+    // InvalidModificationError.
+    wr_Error_Invalid_Modification = -45,
+    // NoModificationAllowedError.
+    wr_Error_No_Modification_Allowed = -46,
+};
+
+/* module websocket: types */
+typedef uint64_t wr_WebSocket;
+// WebSocket.readyState
+enum wr_WebSocketState {
+    wr_WebSocketState_Connecting = 0,
+    wr_WebSocketState_Open = 1,
+    wr_WebSocketState_Closing = 2,
+    wr_WebSocketState_Closed = 3,
+};
+
+/* module workers: types */
+// A Worker object (EventTarget: message, messageerror, error).
+typedef uint64_t wr_Worker;
+// The global scope of a worker (EventTarget: message, messageerror).
+typedef uint64_t wr_WorkerGlobalScope;
+
+/* module abort */
 // new AbortController()
 WR_IMPORT("abort", "AbortController_create") uint64_t wr_AbortController_create(void);
 // controller.signal
@@ -33,19 +461,6 @@ WR_IMPORT("abort", "AbortSignal_timeout") int32_t wr_AbortSignal_timeout(double 
 WR_IMPORT("abort", "AbortSignal_any") int32_t wr_AbortSignal_any(const uint64_t *signals, uint32_t signals_len, uint64_t *_ret);
 
 /* module async */
-// Any host object (not a node). Released with Object_release; freed with the page in any case.
-typedef uint64_t wr_Object;
-typedef uint64_t wr_Promise;
-// An ArrayBuffer.
-typedef uint64_t wr_Buffer;
-enum wr_PromiseState {
-    wr_PromiseState_Pending = 0,
-    wr_PromiseState_Fulfilled = 1,
-    wr_PromiseState_Rejected = 2,
-};
-typedef void (*wr_MicrotaskCallback)(int32_t user);
-// A reaction: read the result with Promise_value / Promise_text.
-typedef void (*wr_PromiseReaction)(int32_t user, uint64_t promise, int32_t state);
 // queueMicrotask(callback)
 WR_IMPORT("async", "queueMicrotask") void wr_queueMicrotask(uint32_t callback, int32_t user);
 // A pending promise the module settles itself.
@@ -113,10 +528,6 @@ WR_IMPORT("document", "Document_cookie_get") int32_t wr_Document_cookie_get(uint
 WR_IMPORT("document", "Document_cookie_set") int32_t wr_Document_cookie_set(const uint8_t *cookie, uint32_t cookie_len, int32_t *_ret);
 
 /* module dom */
-// A node of the document. A node created by the module and never inserted lives until Node_release.
-typedef uint64_t wr_Node;
-// A node that is an element.
-typedef uint64_t wr_Element;
 // document.documentElement (null in a worker).
 WR_IMPORT("dom", "Document_documentElement") uint64_t wr_Document_documentElement(void);
 // document.head (null in a worker).
@@ -178,17 +589,517 @@ WR_IMPORT("dom", "Element_set_id") int32_t wr_Element_set_id(uint64_t element, c
 WR_IMPORT("dom", "Element_className") int32_t wr_Element_className(uint64_t element, uint8_t *_buf, uint32_t _cap);
 // element.className = value
 WR_IMPORT("dom", "Element_set_className") int32_t wr_Element_set_className(uint64_t element, const uint8_t *value, uint32_t value_len);
+// A live collection. Kinds: 0 child nodes, 1 child elements, 2 elements by qualified name (arg; "*" all), 3 by
+// class names (arg), 4 by name attribute (arg), 5 forms, 6 images, 7 links (a and area with href), 8 scripts,
+// 9 embeds, 10 anchors (a with name), 11 elements by namespace and local name (arg: namespace, NUL, local name;
+// "*" any), 12 all elements, 13 the select's / datalist's options, 14 a table's rows, 15 a row's cells, 16 a table's
+// tBodies, 17 a form's elements. Invalid_Argument for an unknown kind.
+WR_IMPORT("dom", "Collection_create") int32_t wr_Collection_create(uint64_t root, int32_t kind, const uint8_t *arg, uint32_t arg_len, uint64_t *_ret);
+// The number of nodes (0 for a dead collection).
+WR_IMPORT("dom", "Collection_length") uint32_t wr_Collection_length(uint64_t collection);
+// The node at `index`, 0 past the end.
+WR_IMPORT("dom", "Collection_item") uint64_t wr_Collection_item(uint64_t collection, uint32_t index);
+// HTMLCollection.namedItem(name): the first element whose id or name (for the elements that have one) is `name`.
+WR_IMPORT("dom", "Collection_namedItem") uint64_t wr_Collection_namedItem(uint64_t collection, const uint8_t *name, uint32_t name_len);
+// The supported property names of an HTMLCollection, each followed by a NUL byte.
+WR_IMPORT("dom", "Collection_names") int32_t wr_Collection_names(uint64_t collection, uint8_t *_buf, uint32_t _cap);
+// node.querySelectorAll(selectors): the elements in tree order, 8 bytes (a handle, little endian) each. Syntax for
+// an invalid selector list.
+WR_IMPORT("dom", "ParentNode_querySelectorAllPacked") int32_t wr_ParentNode_querySelectorAllPacked(uint64_t node, const uint8_t *selectors, uint32_t selectors_len, uint8_t *_buf, uint32_t _cap);
+// form[name]: the first of the form's controls whose id or name is `name` (0 when none; the form's named
+// properties shadow its prototype's, [LegacyOverrideBuiltIns], so this answers for every property read).
+WR_IMPORT("dom", "HTMLFormElement_namedControl") uint64_t wr_HTMLFormElement_namedControl(uint64_t form, const uint8_t *name, uint32_t name_len);
+// node.querySelector(selectors)
+WR_IMPORT("dom", "ParentNode_querySelector") int32_t wr_ParentNode_querySelector(uint64_t node, const uint8_t *selectors, uint32_t selectors_len, uint64_t *_ret);
+// DOMTokenList over the content attribute `attr` of an element: its tokens (ordered set, ASCII whitespace split).
+WR_IMPORT("dom", "TokenList_length") uint32_t wr_TokenList_length(uint64_t element, const uint8_t *attr, uint32_t attr_len);
+// The token at `index` (Not_Found: null).
+WR_IMPORT("dom", "TokenList_item") int32_t wr_TokenList_item(uint64_t element, const uint8_t *attr, uint32_t attr_len, uint32_t index, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "TokenList_contains") int32_t wr_TokenList_contains(uint64_t element, const uint8_t *attr, uint32_t attr_len, const uint8_t *token, uint32_t token_len);
+// add(tokens...): `tokens` NUL-separated. Syntax for an empty token, Invalid_Character for one with whitespace.
+WR_IMPORT("dom", "TokenList_add") int32_t wr_TokenList_add(uint64_t element, const uint8_t *attr, uint32_t attr_len, const uint8_t *tokens, uint32_t tokens_len);
+// remove(tokens...): as add.
+WR_IMPORT("dom", "TokenList_remove") int32_t wr_TokenList_remove(uint64_t element, const uint8_t *attr, uint32_t attr_len, const uint8_t *tokens, uint32_t tokens_len);
+// toggle(token, force): force -1 absent, 0 false, 1 true. Returns whether the token is there afterwards.
+WR_IMPORT("dom", "TokenList_toggle") int32_t wr_TokenList_toggle(uint64_t element, const uint8_t *attr, uint32_t attr_len, const uint8_t *token, uint32_t token_len, int32_t force, uint8_t *_ret);
+// replace(token, newToken): whether it was there.
+WR_IMPORT("dom", "TokenList_replace") int32_t wr_TokenList_replace(uint64_t element, const uint8_t *attr, uint32_t attr_len, const uint8_t *token, uint32_t token_len, const uint8_t *new_token, uint32_t new_token_len, uint8_t *_ret);
+// supports(token): for rel lists, whether the browser knows the link type. Type for lists without supported tokens.
+WR_IMPORT("dom", "TokenList_supports") int32_t wr_TokenList_supports(uint64_t element, const uint8_t *attr, uint32_t attr_len, const uint8_t *token, uint32_t token_len, uint8_t *_ret);
+// dataset[name]: the data-* attribute of a camel-cased name (Not_Found: absent).
+WR_IMPORT("dom", "Dataset_get") int32_t wr_Dataset_get(uint64_t element, const uint8_t *name, uint32_t name_len, uint8_t *_buf, uint32_t _cap);
+// dataset[name] = value: Syntax for a name with "-" followed by a lower-case letter, Invalid_Character for a name
+// that does not make a valid attribute name.
+WR_IMPORT("dom", "Dataset_set") int32_t wr_Dataset_set(uint64_t element, const uint8_t *name, uint32_t name_len, const uint8_t *value, uint32_t value_len);
+// delete dataset[name]: whether there was one.
+WR_IMPORT("dom", "Dataset_delete") int32_t wr_Dataset_delete(uint64_t element, const uint8_t *name, uint32_t name_len);
+// The camel-cased names of the data-* attributes, each followed by a NUL byte.
+WR_IMPORT("dom", "Dataset_names") int32_t wr_Dataset_names(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.namespaceURI (Not_Found: null).
+WR_IMPORT("dom", "Element_namespaceURI") int32_t wr_Element_namespaceURI(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.prefix (Not_Found: null).
+WR_IMPORT("dom", "Element_prefix") int32_t wr_Element_prefix(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.localName (SVG names with their case).
+WR_IMPORT("dom", "Element_localName") int32_t wr_Element_localName(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.tagName: the qualified name, upper case for HTML elements.
+WR_IMPORT("dom", "Element_qualifiedTagName") int32_t wr_Element_qualifiedTagName(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.slot
+WR_IMPORT("dom", "Element_slot") int32_t wr_Element_slot(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.slot = value
+WR_IMPORT("dom", "Element_set_slot") int32_t wr_Element_set_slot(uint64_t element, const uint8_t *value, uint32_t value_len);
+// element.hasAttributes()
+WR_IMPORT("dom", "Element_hasAttributes") int32_t wr_Element_hasAttributes(uint64_t element);
+// The attributes' names in order, each followed by a NUL byte.
+WR_IMPORT("dom", "Element_attributeNames") int32_t wr_Element_attributeNames(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// The number of attributes.
+WR_IMPORT("dom", "Element_attributeCount") uint32_t wr_Element_attributeCount(uint64_t element);
+// The name of the attribute at `index` (Not_Found past the end).
+WR_IMPORT("dom", "Element_attributeNameAt") int32_t wr_Element_attributeNameAt(uint64_t element, uint32_t index, uint8_t *_buf, uint32_t _cap);
+// element.getAttributeNS(namespace, localName) (Not_Found: null).
+WR_IMPORT("dom", "Element_getAttributeNS") int32_t wr_Element_getAttributeNS(uint64_t element, const uint8_t *namespace, uint32_t namespace_len, const uint8_t *local_name, uint32_t local_name_len, uint8_t *_buf, uint32_t _cap);
+// element.setAttribute(name, value): Invalid_Character for a name that is not a valid attribute name.
+WR_IMPORT("dom", "Element_setAttributeChecked") int32_t wr_Element_setAttributeChecked(uint64_t element, const uint8_t *name, uint32_t name_len, const uint8_t *value, uint32_t value_len);
+// element.setAttributeNS(namespace, qualifiedName, value): Invalid_Character, Namespace.
+WR_IMPORT("dom", "Element_setAttributeNS") int32_t wr_Element_setAttributeNS(uint64_t element, const uint8_t *namespace, uint32_t namespace_len, const uint8_t *qualified_name, uint32_t qualified_name_len, const uint8_t *value, uint32_t value_len);
+// element.removeAttributeNS(namespace, localName)
+WR_IMPORT("dom", "Element_removeAttributeNS") void wr_Element_removeAttributeNS(uint64_t element, const uint8_t *namespace, uint32_t namespace_len, const uint8_t *local_name, uint32_t local_name_len);
+// element.toggleAttribute(name, force): force -1 absent, 0 false, 1 true. Invalid_Character.
+WR_IMPORT("dom", "Element_toggleAttributeChecked") int32_t wr_Element_toggleAttributeChecked(uint64_t element, const uint8_t *name, uint32_t name_len, int32_t force, uint8_t *_ret);
+// element.hasAttribute(name)
+WR_IMPORT("dom", "Element_hasAttribute") int32_t wr_Element_hasAttribute(uint64_t element, const uint8_t *name, uint32_t name_len);
+// element.hasAttributeNS(namespace, localName)
+WR_IMPORT("dom", "Element_hasAttributeNS") int32_t wr_Element_hasAttributeNS(uint64_t element, const uint8_t *namespace, uint32_t namespace_len, const uint8_t *local_name, uint32_t local_name_len);
+// element.closest(selectors): Syntax for an invalid selector list.
+WR_IMPORT("dom", "Element_closest") int32_t wr_Element_closest(uint64_t element, const uint8_t *selectors, uint32_t selectors_len, uint64_t *_ret);
+// element.matches(selectors): Syntax for an invalid selector list.
+WR_IMPORT("dom", "Element_matches") int32_t wr_Element_matches(uint64_t element, const uint8_t *selectors, uint32_t selectors_len, uint8_t *_ret);
+// element.webkitMatchesSelector(selectors)
+WR_IMPORT("dom", "Element_webkitMatchesSelector") int32_t wr_Element_webkitMatchesSelector(uint64_t element, const uint8_t *selectors, uint32_t selectors_len, uint8_t *_ret);
+// element.insertAdjacentElement(where, element): Syntax for a bad position, the tree errors of insertBefore.
+WR_IMPORT("dom", "Element_insertAdjacentElement") int32_t wr_Element_insertAdjacentElement(uint64_t element, const uint8_t *position, uint32_t position_len, uint64_t other, uint64_t *_ret);
+// element.insertAdjacentText(where, data)
+WR_IMPORT("dom", "Element_insertAdjacentText") int32_t wr_Element_insertAdjacentText(uint64_t element, const uint8_t *position, uint32_t position_len, const uint8_t *data, uint32_t data_len);
+// element.insertAdjacentHTML(position, text): No_Modification_Allowed beside the document element.
+WR_IMPORT("dom", "Element_insertAdjacentHTML") int32_t wr_Element_insertAdjacentHTML(uint64_t element, const uint8_t *position, uint32_t position_len, const uint8_t *text, uint32_t text_len);
+// element.innerHTML: the HTML fragment serialization of its children (a template's: its contents').
+WR_IMPORT("dom", "Element_innerHTML") int32_t wr_Element_innerHTML(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.innerHTML = markup: parsed as a fragment in the element's context, one mutation replacing the children.
+WR_IMPORT("dom", "Element_set_innerHTML") int32_t wr_Element_set_innerHTML(uint64_t element, const uint8_t *value, uint32_t value_len);
+// element.outerHTML
+WR_IMPORT("dom", "Element_outerHTML") int32_t wr_Element_outerHTML(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.outerHTML = markup: No_Modification_Allowed when the parent is the document.
+WR_IMPORT("dom", "Element_set_outerHTML") int32_t wr_Element_set_outerHTML(uint64_t element, const uint8_t *value, uint32_t value_len);
+// element.shadowRoot: null (no shadow trees).
+WR_IMPORT("dom", "Element_shadowRoot") uint64_t wr_Element_shadowRoot(uint64_t element);
+// The `hidden` content attribute as HTMLElement.hidden reads it: 0 absent, 1 present, 2 "until-found".
+WR_IMPORT("dom", "HTMLElement_hiddenState") int32_t wr_HTMLElement_hiddenState(uint64_t element);
+// htmlElement.dir: "ltr", "rtl", "auto" or "".
+WR_IMPORT("dom", "HTMLElement_dir") int32_t wr_HTMLElement_dir(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// htmlElement.dir = value
+WR_IMPORT("dom", "HTMLElement_set_dir") int32_t wr_HTMLElement_set_dir(uint64_t element, const uint8_t *value, uint32_t value_len);
+// htmlElement.translate
+WR_IMPORT("dom", "HTMLElement_translate") int32_t wr_HTMLElement_translate(uint64_t element);
+// htmlElement.translate = value
+WR_IMPORT("dom", "HTMLElement_set_translate") int32_t wr_HTMLElement_set_translate(uint64_t element, int32_t value);
+// htmlElement.draggable
+WR_IMPORT("dom", "HTMLElement_draggable") int32_t wr_HTMLElement_draggable(uint64_t element);
+// htmlElement.draggable = value
+WR_IMPORT("dom", "HTMLElement_set_draggable") int32_t wr_HTMLElement_set_draggable(uint64_t element, int32_t value);
+// htmlElement.spellcheck
+WR_IMPORT("dom", "HTMLElement_spellcheck") int32_t wr_HTMLElement_spellcheck(uint64_t element);
+// htmlElement.spellcheck = value
+WR_IMPORT("dom", "HTMLElement_set_spellcheck") int32_t wr_HTMLElement_set_spellcheck(uint64_t element, int32_t value);
+// htmlElement.innerText: the rendered text (from the layout's text when the element is rendered, else
+// textContent).
+WR_IMPORT("dom", "HTMLElement_innerText") int32_t wr_HTMLElement_innerText(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// htmlElement.innerText = value: text nodes and <br> for line feeds.
+WR_IMPORT("dom", "HTMLElement_set_innerText") int32_t wr_HTMLElement_set_innerText(uint64_t element, const uint8_t *value, uint32_t value_len);
+// htmlElement.outerText
+WR_IMPORT("dom", "HTMLElement_outerText") int32_t wr_HTMLElement_outerText(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// htmlElement.outerText = value: No_Modification_Allowed without a parent.
+WR_IMPORT("dom", "HTMLElement_set_outerText") int32_t wr_HTMLElement_set_outerText(uint64_t element, const uint8_t *value, uint32_t value_len);
+// htmlElement.accessKeyLabel ("": no access keys)
+WR_IMPORT("dom", "HTMLElement_accessKeyLabel") int32_t wr_HTMLElement_accessKeyLabel(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.tabIndex: the attribute, else 0 for focusable elements and -1 for the others.
+WR_IMPORT("dom", "HTMLOrSVGOrMathMLElement_tabIndex") int32_t wr_HTMLOrSVGOrMathMLElement_tabIndex(uint64_t element);
+// element.tabIndex = value
+WR_IMPORT("dom", "HTMLOrSVGOrMathMLElement_set_tabIndex") int32_t wr_HTMLOrSVGOrMathMLElement_set_tabIndex(uint64_t element, int32_t value);
+// element.nonce
+WR_IMPORT("dom", "HTMLOrSVGOrMathMLElement_nonce") int32_t wr_HTMLOrSVGOrMathMLElement_nonce(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.nonce = value
+WR_IMPORT("dom", "HTMLOrSVGOrMathMLElement_set_nonce") int32_t wr_HTMLOrSVGOrMathMLElement_set_nonce(uint64_t element, const uint8_t *value, uint32_t value_len);
+// element.contentEditable: "true", "false", "plaintext-only" or "inherit".
+WR_IMPORT("dom", "ElementContentEditable_contentEditable") int32_t wr_ElementContentEditable_contentEditable(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.contentEditable = value: Syntax for anything else.
+WR_IMPORT("dom", "ElementContentEditable_set_contentEditable") int32_t wr_ElementContentEditable_set_contentEditable(uint64_t element, const uint8_t *value, uint32_t value_len);
+// element.isContentEditable
+WR_IMPORT("dom", "ElementContentEditable_isContentEditable") int32_t wr_ElementContentEditable_isContentEditable(uint64_t element);
+// a.href / area.href: the URL resolved, or the attribute as is when it does not parse.
+WR_IMPORT("dom", "HTMLHyperlinkElementUtils_href") int32_t wr_HTMLHyperlinkElementUtils_href(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// a.href = value
+WR_IMPORT("dom", "HTMLHyperlinkElementUtils_set_href") int32_t wr_HTMLHyperlinkElementUtils_set_href(uint64_t element, const uint8_t *value, uint32_t value_len);
+// a.origin
+WR_IMPORT("dom", "HyperlinkElementUtils_origin") int32_t wr_HyperlinkElementUtils_origin(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// a.protocol and the other components (URL Standard setters; nothing for a URL that does not parse)
+WR_IMPORT("dom", "HyperlinkElementUtils_protocol") int32_t wr_HyperlinkElementUtils_protocol(uint64_t element, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "HyperlinkElementUtils_set_protocol") int32_t wr_HyperlinkElementUtils_set_protocol(uint64_t element, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("dom", "HyperlinkElementUtils_username") int32_t wr_HyperlinkElementUtils_username(uint64_t element, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "HyperlinkElementUtils_set_username") int32_t wr_HyperlinkElementUtils_set_username(uint64_t element, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("dom", "HyperlinkElementUtils_password") int32_t wr_HyperlinkElementUtils_password(uint64_t element, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "HyperlinkElementUtils_set_password") int32_t wr_HyperlinkElementUtils_set_password(uint64_t element, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("dom", "HyperlinkElementUtils_host") int32_t wr_HyperlinkElementUtils_host(uint64_t element, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "HyperlinkElementUtils_set_host") int32_t wr_HyperlinkElementUtils_set_host(uint64_t element, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("dom", "HyperlinkElementUtils_hostname") int32_t wr_HyperlinkElementUtils_hostname(uint64_t element, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "HyperlinkElementUtils_set_hostname") int32_t wr_HyperlinkElementUtils_set_hostname(uint64_t element, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("dom", "HyperlinkElementUtils_port") int32_t wr_HyperlinkElementUtils_port(uint64_t element, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "HyperlinkElementUtils_set_port") int32_t wr_HyperlinkElementUtils_set_port(uint64_t element, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("dom", "HyperlinkElementUtils_pathname") int32_t wr_HyperlinkElementUtils_pathname(uint64_t element, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "HyperlinkElementUtils_set_pathname") int32_t wr_HyperlinkElementUtils_set_pathname(uint64_t element, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("dom", "HyperlinkElementUtils_search") int32_t wr_HyperlinkElementUtils_search(uint64_t element, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "HyperlinkElementUtils_set_search") int32_t wr_HyperlinkElementUtils_set_search(uint64_t element, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("dom", "HyperlinkElementUtils_hash") int32_t wr_HyperlinkElementUtils_hash(uint64_t element, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "HyperlinkElementUtils_set_hash") int32_t wr_HyperlinkElementUtils_set_hash(uint64_t element, const uint8_t *value, uint32_t value_len);
+// a.text: its textContent.
+WR_IMPORT("dom", "HTMLAnchorElement_text") int32_t wr_HTMLAnchorElement_text(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// a.text = value
+WR_IMPORT("dom", "HTMLAnchorElement_set_text") int32_t wr_HTMLAnchorElement_set_text(uint64_t element, const uint8_t *value, uint32_t value_len);
+// template.content
+WR_IMPORT("dom", "HTMLTemplateElement_content") uint64_t wr_HTMLTemplateElement_content(uint64_t element);
+// input.type = value
+WR_IMPORT("dom", "HTMLInputElement_set_type") int32_t wr_HTMLInputElement_set_type(uint64_t element, const uint8_t *value, uint32_t value_len);
+// input.maxLength = value: Index_Size for a negative value.
+WR_IMPORT("dom", "HTMLInputElement_set_maxLength") int32_t wr_HTMLInputElement_set_maxLength(uint64_t element, int32_t value);
+// input.minLength = value: Index_Size for a negative value.
+WR_IMPORT("dom", "HTMLInputElement_set_minLength") int32_t wr_HTMLInputElement_set_minLength(uint64_t element, int32_t value);
+// textarea.maxLength = value: Index_Size for a negative value.
+WR_IMPORT("dom", "HTMLTextAreaElement_set_maxLength") int32_t wr_HTMLTextAreaElement_set_maxLength(uint64_t element, int32_t value);
+// textarea.minLength = value: Index_Size for a negative value.
+WR_IMPORT("dom", "HTMLTextAreaElement_set_minLength") int32_t wr_HTMLTextAreaElement_set_minLength(uint64_t element, int32_t value);
+// option.text = value: its children replaced by one Text node.
+WR_IMPORT("dom", "HTMLOptionElement_set_text") int32_t wr_HTMLOptionElement_set_text(uint64_t element, const uint8_t *value, uint32_t value_len);
+// table.caption: its first caption child.
+WR_IMPORT("dom", "HTMLTableElement_caption") uint64_t wr_HTMLTableElement_caption(uint64_t table);
+// table.caption = value: the first caption child removed, the value (if any) inserted first. Type for another element.
+WR_IMPORT("dom", "HTMLTableElement_set_caption") int32_t wr_HTMLTableElement_set_caption(uint64_t table, uint64_t value);
+// table.createCaption(): the first caption child, or a new one inserted first.
+WR_IMPORT("dom", "HTMLTableElement_createCaption") uint64_t wr_HTMLTableElement_createCaption(uint64_t table);
+// table.deleteCaption()
+WR_IMPORT("dom", "HTMLTableElement_deleteCaption") void wr_HTMLTableElement_deleteCaption(uint64_t table);
+// table.tHead: its first thead child.
+WR_IMPORT("dom", "HTMLTableElement_tHead") uint64_t wr_HTMLTableElement_tHead(uint64_t table);
+// table.tHead = value: Hierarchy for an element that is not a thead.
+WR_IMPORT("dom", "HTMLTableElement_set_tHead") int32_t wr_HTMLTableElement_set_tHead(uint64_t table, uint64_t value);
+// table.createTHead(): inserted before the first child that is neither a caption nor a colgroup.
+WR_IMPORT("dom", "HTMLTableElement_createTHead") uint64_t wr_HTMLTableElement_createTHead(uint64_t table);
+// table.deleteTHead()
+WR_IMPORT("dom", "HTMLTableElement_deleteTHead") void wr_HTMLTableElement_deleteTHead(uint64_t table);
+// table.tFoot: its first tfoot child.
+WR_IMPORT("dom", "HTMLTableElement_tFoot") uint64_t wr_HTMLTableElement_tFoot(uint64_t table);
+// table.tFoot = value: Hierarchy for an element that is not a tfoot.
+WR_IMPORT("dom", "HTMLTableElement_set_tFoot") int32_t wr_HTMLTableElement_set_tFoot(uint64_t table, uint64_t value);
+// table.createTFoot(): appended.
+WR_IMPORT("dom", "HTMLTableElement_createTFoot") uint64_t wr_HTMLTableElement_createTFoot(uint64_t table);
+// table.deleteTFoot()
+WR_IMPORT("dom", "HTMLTableElement_deleteTFoot") void wr_HTMLTableElement_deleteTFoot(uint64_t table);
+// table.createTBody(): after the last tbody child.
+WR_IMPORT("dom", "HTMLTableElement_createTBody") uint64_t wr_HTMLTableElement_createTBody(uint64_t table);
+// table.insertRow(index): Index_Size outside -1 ..= rows.length.
+WR_IMPORT("dom", "HTMLTableElement_insertRow") int32_t wr_HTMLTableElement_insertRow(uint64_t table, int32_t index, uint64_t *_ret);
+// table.deleteRow(index): Index_Size outside -1 ..< rows.length.
+WR_IMPORT("dom", "HTMLTableElement_deleteRow") int32_t wr_HTMLTableElement_deleteRow(uint64_t table, int32_t index);
+// section.insertRow(index)
+WR_IMPORT("dom", "HTMLTableSectionElement_insertRow") int32_t wr_HTMLTableSectionElement_insertRow(uint64_t section, int32_t index, uint64_t *_ret);
+// section.deleteRow(index)
+WR_IMPORT("dom", "HTMLTableSectionElement_deleteRow") int32_t wr_HTMLTableSectionElement_deleteRow(uint64_t section, int32_t index);
+// row.insertCell(index): a new td.
+WR_IMPORT("dom", "HTMLTableRowElement_insertCell") int32_t wr_HTMLTableRowElement_insertCell(uint64_t row, int32_t index, uint64_t *_ret);
+// row.deleteCell(index)
+WR_IMPORT("dom", "HTMLTableRowElement_deleteCell") int32_t wr_HTMLTableRowElement_deleteCell(uint64_t row, int32_t index);
+// row.rowIndex (-1 outside a table)
+WR_IMPORT("dom", "HTMLTableRowElement_rowIndex") int32_t wr_HTMLTableRowElement_rowIndex(uint64_t row);
+// row.sectionRowIndex
+WR_IMPORT("dom", "HTMLTableRowElement_sectionRowIndex") int32_t wr_HTMLTableRowElement_sectionRowIndex(uint64_t row);
+// cell.cellIndex
+WR_IMPORT("dom", "HTMLTableCellElement_cellIndex") int32_t wr_HTMLTableCellElement_cellIndex(uint64_t cell);
+// title.text: its child text content.
+WR_IMPORT("dom", "HTMLTitleElement_text") int32_t wr_HTMLTitleElement_text(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// title.text = value
+WR_IMPORT("dom", "HTMLTitleElement_set_text") int32_t wr_HTMLTitleElement_set_text(uint64_t element, const uint8_t *value, uint32_t value_len);
+// script.text: its child text content.
+WR_IMPORT("dom", "HTMLScriptElement_text") int32_t wr_HTMLScriptElement_text(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// script.text = value
+WR_IMPORT("dom", "HTMLScriptElement_set_text") int32_t wr_HTMLScriptElement_set_text(uint64_t element, const uint8_t *value, uint32_t value_len);
+// input.list: the datalist of the id its `list` attribute gives.
+WR_IMPORT("dom", "HTMLInputElement_list") uint64_t wr_HTMLInputElement_list(uint64_t input);
+// dialog.show()
+WR_IMPORT("dom", "HTMLDialogElement_show") int32_t wr_HTMLDialogElement_show(uint64_t dialog);
+// dialog.showModal(): Invalid_State when it is not connected (no top layer: the dialog stays where it is).
+WR_IMPORT("dom", "HTMLDialogElement_showModal") int32_t wr_HTMLDialogElement_showModal(uint64_t dialog);
+// dialog.close(result)
+WR_IMPORT("dom", "HTMLDialogElement_close") void wr_HTMLDialogElement_close(uint64_t dialog, const uint8_t *result, uint32_t result_len);
+// dialog.requestClose(result): "cancel" fired first.
+WR_IMPORT("dom", "HTMLDialogElement_requestClose") void wr_HTMLDialogElement_requestClose(uint64_t dialog, const uint8_t *result, uint32_t result_len);
+// element.getBoundingClientRect(): the border box as drawn (transforms applied), in viewport coordinates.
+WR_IMPORT("dom", "Element_boundingRect") void wr_Element_boundingRect(uint64_t element, wr_DomRect *_ret);
+// element.getClientRects(): per box fragment, 32 bytes each (x, y, width, height as f64).
+WR_IMPORT("dom", "Element_clientRectsPacked") int32_t wr_Element_clientRectsPacked(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.clientTop, clientLeft, clientWidth, clientHeight (the viewport's size for the root element).
+WR_IMPORT("dom", "Element_clientTop") int32_t wr_Element_clientTop(uint64_t element);
+WR_IMPORT("dom", "Element_clientLeft") int32_t wr_Element_clientLeft(uint64_t element);
+WR_IMPORT("dom", "Element_clientWidth") int32_t wr_Element_clientWidth(uint64_t element);
+WR_IMPORT("dom", "Element_clientHeight") int32_t wr_Element_clientHeight(uint64_t element);
+// element.scrollTop / scrollLeft (the document's scroll offsets for the scrolling element).
+WR_IMPORT("dom", "Element_scrollTop") double wr_Element_scrollTop(uint64_t element);
+WR_IMPORT("dom", "Element_set_scrollTop") void wr_Element_set_scrollTop(uint64_t element, double value);
+WR_IMPORT("dom", "Element_scrollLeft") double wr_Element_scrollLeft(uint64_t element);
+WR_IMPORT("dom", "Element_set_scrollLeft") void wr_Element_set_scrollLeft(uint64_t element, double value);
+// element.scrollWidth / scrollHeight
+WR_IMPORT("dom", "Element_scrollWidth") int32_t wr_Element_scrollWidth(uint64_t element);
+WR_IMPORT("dom", "Element_scrollHeight") int32_t wr_Element_scrollHeight(uint64_t element);
+// element.scrollTo(x, y) / scrollBy (relative): NaN keeps that axis.
+WR_IMPORT("dom", "Element_scrollToXY") void wr_Element_scrollToXY(uint64_t element, double x, double y, int32_t relative);
+// element.scrollIntoView(options): block and inline 0 start, 1 center, 2 end, 3 nearest.
+WR_IMPORT("dom", "Element_scrollIntoViewAt") void wr_Element_scrollIntoViewAt(uint64_t element, int32_t block, int32_t inline_pos);
+// htmlElement.offsetParent, offsetTop, offsetLeft, offsetWidth, offsetHeight
+WR_IMPORT("dom", "HTMLElement_offsetParent") uint64_t wr_HTMLElement_offsetParent(uint64_t element);
+WR_IMPORT("dom", "HTMLElement_offsetTop") int32_t wr_HTMLElement_offsetTop(uint64_t element);
+WR_IMPORT("dom", "HTMLElement_offsetLeft") int32_t wr_HTMLElement_offsetLeft(uint64_t element);
+WR_IMPORT("dom", "HTMLElement_offsetWidth") int32_t wr_HTMLElement_offsetWidth(uint64_t element);
+WR_IMPORT("dom", "HTMLElement_offsetHeight") int32_t wr_HTMLElement_offsetHeight(uint64_t element);
+// document.elementFromPoint(x, y) (viewport coordinates)
+WR_IMPORT("dom", "Document_elementFromPoint") uint64_t wr_Document_elementFromPoint(double x, double y);
+// window.innerWidth / innerHeight
+WR_IMPORT("dom", "Window_innerWidth") int32_t wr_Window_innerWidth(void);
+WR_IMPORT("dom", "Window_innerHeight") int32_t wr_Window_innerHeight(void);
+// window.outerWidth / outerHeight (the viewport's: the shell's window is not the page's business)
+WR_IMPORT("dom", "Window_outerWidth") int32_t wr_Window_outerWidth(void);
+WR_IMPORT("dom", "Window_outerHeight") int32_t wr_Window_outerHeight(void);
+// window.scrollX / scrollY and their aliases
+WR_IMPORT("dom", "Window_scrollX") double wr_Window_scrollX(void);
+WR_IMPORT("dom", "Window_scrollY") double wr_Window_scrollY(void);
+WR_IMPORT("dom", "Window_pageXOffset") double wr_Window_pageXOffset(void);
+WR_IMPORT("dom", "Window_pageYOffset") double wr_Window_pageYOffset(void);
+// window.devicePixelRatio
+WR_IMPORT("dom", "Window_devicePixelRatio") double wr_Window_devicePixelRatio(void);
+// window.screenX / screenY / screenLeft / screenTop (0: the page does not learn where the window is)
+WR_IMPORT("dom", "Window_screenX") int32_t wr_Window_screenX(void);
+WR_IMPORT("dom", "Window_screenY") int32_t wr_Window_screenY(void);
+WR_IMPORT("dom", "Window_screenLeft") int32_t wr_Window_screenLeft(void);
+WR_IMPORT("dom", "Window_screenTop") int32_t wr_Window_screenTop(void);
+// window.scrollTo(x, y) / scrollBy (relative): NaN keeps that axis; `smooth` asks for a smooth scroll.
+WR_IMPORT("dom", "Window_scrollToXY") void wr_Window_scrollToXY(double x, double y, int32_t relative, int32_t smooth);
+// The bounding box of a range's contents (Range.getBoundingClientRect), as Element_boundingRect.
+WR_IMPORT("dom", "Range_boundingRect") void wr_Range_boundingRect(uint64_t start, uint32_t start_offset, uint64_t end, uint32_t end_offset, wr_DomRect *_ret);
+// Range.getClientRects(), packed as Element_clientRectsPacked.
+WR_IMPORT("dom", "Range_clientRectsPacked") int32_t wr_Range_clientRectsPacked(uint64_t start, uint32_t start_offset, uint64_t end, uint32_t end_offset, uint8_t *_buf, uint32_t _cap);
+// new MutationObserver: `notify(user)` runs as a microtask when records are queued.
+WR_IMPORT("dom", "MutationObserver_create") uint64_t wr_MutationObserver_create(uint32_t notify, int32_t user);
+// observer.observe(target, options): bits 1 childList, 2 attributes, 4 characterData, 8 subtree,
+// 16 attributeOldValue, 32 characterDataOldValue, 64 an attributeFilter (`filter`, names NUL-separated).
+// Type when no kind of mutation is asked for (as DOM says, after the implied ones).
+WR_IMPORT("dom", "MutationObserver_observe") int32_t wr_MutationObserver_observe(uint64_t observer, uint64_t target, uint32_t options, const uint8_t *filter, uint32_t filter_len);
+// observer.disconnect(): no more registrations, the queue emptied.
+WR_IMPORT("dom", "MutationObserver_disconnect") void wr_MutationObserver_disconnect(uint64_t observer);
+// observer.takeRecords(): the records waiting, packed (src/page/js_dom_observe.odin, records_pack). Nothing
+// changes until MutationObserver_release, so a call that did not fit can be made again.
+WR_IMPORT("dom", "MutationObserver_takeRecords") int32_t wr_MutationObserver_takeRecords(uint64_t observer, uint8_t *_buf, uint32_t _cap);
+// The engine wrapped the nodes of the records it took: they leave the queue (and their pins go), the transient
+// registrations end (DOM "notify mutation observers").
+WR_IMPORT("dom", "MutationObserver_release") void wr_MutationObserver_release(uint64_t observer);
+// Whether some node the observer is registered on is still alive (the engine lets an observer go otherwise).
+WR_IMPORT("dom", "MutationObserver_live") int32_t wr_MutationObserver_live(uint64_t observer);
+// A boundary point compared with another: -1 before, 0 equal, 1 after (DOM "position of a boundary point").
+WR_IMPORT("dom", "Range_comparePoints") int32_t wr_Range_comparePoints(uint64_t first, uint32_t first_offset, uint64_t second, uint32_t second_offset);
+// range.toString(): the text of the Text nodes in the range.
+WR_IMPORT("dom", "Range_text") int32_t wr_Range_text(uint64_t start, uint32_t start_offset, uint64_t end, uint32_t end_offset, uint8_t *_buf, uint32_t _cap);
+// The contents of a range: mode 0 cloneContents (a new fragment), 1 extractContents (a fragment, the contents
+// removed), 2 deleteContents (returns 0). Hierarchy when a doctype is in the range.
+WR_IMPORT("dom", "Range_contents") int32_t wr_Range_contents(uint64_t start, uint32_t start_offset, uint64_t end, uint32_t end_offset, int32_t mode, uint64_t *_ret);
+// The selection (offsets in UTF-16 code units for Text nodes).
+WR_IMPORT("dom", "Selection_state") void wr_Selection_state(wr_SelectionState *_ret);
+// setBaseAndExtent: Index_Size for an offset past a node's length, Invalid_Handle for a node outside the document.
+WR_IMPORT("dom", "Selection_setRange") int32_t wr_Selection_setRange(uint64_t anchor, uint32_t anchor_offset, uint64_t focus, uint32_t focus_offset);
+// removeAllRanges()
+WR_IMPORT("dom", "Selection_clear") void wr_Selection_clear(void);
+// selection.toString()
+WR_IMPORT("dom", "Selection_text") int32_t wr_Selection_text(uint8_t *_buf, uint32_t _cap);
+// style.getPropertyValue(name): a longhand, a shorthand rebuilt from its longhands, or a custom property.
+WR_IMPORT("dom", "InlineStyle_getProperty") int32_t wr_InlineStyle_getProperty(uint64_t element, const uint8_t *name, uint32_t name_len, uint8_t *_buf, uint32_t _cap);
+// style.getPropertyPriority(name): "important" or "".
+WR_IMPORT("dom", "InlineStyle_priority") int32_t wr_InlineStyle_priority(uint64_t element, const uint8_t *name, uint32_t name_len, uint8_t *_buf, uint32_t _cap);
+// style.setProperty(name, value, priority): an empty value removes it; an unknown property or an invalid value
+// changes nothing (as CSSOM says).
+WR_IMPORT("dom", "InlineStyle_setProperty") int32_t wr_InlineStyle_setProperty(uint64_t element, const uint8_t *name, uint32_t name_len, const uint8_t *value, uint32_t value_len, const uint8_t *priority, uint32_t priority_len);
+// style.removeProperty(name): the value it had.
+WR_IMPORT("dom", "InlineStyle_removeProperty") int32_t wr_InlineStyle_removeProperty(uint64_t element, const uint8_t *name, uint32_t name_len, uint8_t *_buf, uint32_t _cap);
+// style.cssText
+WR_IMPORT("dom", "InlineStyle_cssText") int32_t wr_InlineStyle_cssText(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// style.cssText = text
+WR_IMPORT("dom", "InlineStyle_setCssText") int32_t wr_InlineStyle_setCssText(uint64_t element, const uint8_t *text, uint32_t text_len);
+// style.length: the longhands declared (shorthands count as theirs).
+WR_IMPORT("dom", "InlineStyle_length") uint32_t wr_InlineStyle_length(uint64_t element);
+// style.item(index) ("" past the end).
+WR_IMPORT("dom", "InlineStyle_item") int32_t wr_InlineStyle_item(uint64_t element, uint32_t index, uint8_t *_buf, uint32_t _cap);
+// getComputedStyle(element, pseudo).getPropertyValue(name): "" for a property the browser does not compute.
+// `pseudo`: "", "::before", "::after" (":before" too).
+WR_IMPORT("dom", "ComputedStyle_get") int32_t wr_ComputedStyle_get(uint64_t element, const uint8_t *pseudo, uint32_t pseudo_len, const uint8_t *name, uint32_t name_len, uint8_t *_buf, uint32_t _cap);
+// The number of properties getComputedStyle lists.
+WR_IMPORT("dom", "ComputedStyle_count") uint32_t wr_ComputedStyle_count(void);
+// The name of the listed property at `index` ("" past the end).
+WR_IMPORT("dom", "ComputedStyle_name") int32_t wr_ComputedStyle_name(uint32_t index, uint8_t *_buf, uint32_t _cap);
+// node.nodeName ("#text", "DIV", "#document"...).
+WR_IMPORT("dom", "Node_nodeName") int32_t wr_Node_nodeName(uint64_t node, uint8_t *_buf, uint32_t _cap);
+// node.baseURI: the document's base URL.
+WR_IMPORT("dom", "Node_baseURI") int32_t wr_Node_baseURI(uint64_t node, uint8_t *_buf, uint32_t _cap);
+// node.isConnected
+WR_IMPORT("dom", "Node_isConnected") int32_t wr_Node_isConnected(uint64_t node);
+// node.ownerDocument (null for the document itself).
+WR_IMPORT("dom", "Node_ownerDocument") uint64_t wr_Node_ownerDocument(uint64_t node);
+// node.parentElement
+WR_IMPORT("dom", "Node_parentElement") uint64_t wr_Node_parentElement(uint64_t node);
+// node.hasChildNodes()
+WR_IMPORT("dom", "Node_hasChildNodes") int32_t wr_Node_hasChildNodes(uint64_t node);
+// node.nodeValue: the data of a Text or Comment node, Not_Found (null) for the others.
+WR_IMPORT("dom", "Node_nodeValue") int32_t wr_Node_nodeValue(uint64_t node, uint8_t *_buf, uint32_t _cap);
+// node.nodeValue = value (nothing for nodes without data).
+WR_IMPORT("dom", "Node_set_nodeValue") int32_t wr_Node_set_nodeValue(uint64_t node, const uint8_t *value, uint32_t value_len);
+// node.textContent (Not_Found: null, for the document and a doctype).
+WR_IMPORT("dom", "Node_textContent") int32_t wr_Node_textContent(uint64_t node, uint8_t *_buf, uint32_t _cap);
+// node.textContent = value: one mutation replacing every child by a Text node (none for "").
+WR_IMPORT("dom", "Node_set_textContent") int32_t wr_Node_set_textContent(uint64_t node, const uint8_t *value, uint32_t value_len);
+// node.normalize()
+WR_IMPORT("dom", "Node_normalize") void wr_Node_normalize(uint64_t node);
+// node.cloneNode(deep). Not_Supported for the document (one document per page).
+WR_IMPORT("dom", "Node_cloneNode") int32_t wr_Node_cloneNode(uint64_t node, int32_t deep, uint64_t *_ret);
+// node.isEqualNode(other)
+WR_IMPORT("dom", "Node_isEqualNode") int32_t wr_Node_isEqualNode(uint64_t node, uint64_t other);
+// node.isSameNode(other)
+WR_IMPORT("dom", "Node_isSameNode") int32_t wr_Node_isSameNode(uint64_t node, uint64_t other);
+// node.compareDocumentPosition(other): DOCUMENT_POSITION_* bits.
+WR_IMPORT("dom", "Node_compareDocumentPosition") uint32_t wr_Node_compareDocumentPosition(uint64_t node, uint64_t other);
+// node.contains(other)
+WR_IMPORT("dom", "Node_contains") int32_t wr_Node_contains(uint64_t node, uint64_t other);
+// node.lookupPrefix(namespace) (Not_Found: null).
+WR_IMPORT("dom", "Node_lookupPrefix") int32_t wr_Node_lookupPrefix(uint64_t node, const uint8_t *namespace, uint32_t namespace_len, uint8_t *_buf, uint32_t _cap);
+// node.lookupNamespaceURI(prefix) (Not_Found: null).
+WR_IMPORT("dom", "Node_lookupNamespaceURI") int32_t wr_Node_lookupNamespaceURI(uint64_t node, const uint8_t *prefix, uint32_t prefix_len, uint8_t *_buf, uint32_t _cap);
+// node.isDefaultNamespace(namespace)
+WR_IMPORT("dom", "Node_isDefaultNamespace") int32_t wr_Node_isDefaultNamespace(uint64_t node, const uint8_t *namespace, uint32_t namespace_len);
+// node.getRootNode() (no shadow trees: the root of its tree).
+WR_IMPORT("dom", "Node_rootNode") uint64_t wr_Node_rootNode(uint64_t node);
+// The length of a node (DOM "length"): UTF-16 code units of a Text or Comment node, else its number of children.
+WR_IMPORT("dom", "Node_length") uint32_t wr_Node_length(uint64_t node);
+// parent.insertBefore(node, child) / appendChild (child absent): DOM "pre-insert", every check (Hierarchy,
+// Not_Found), a DocumentFragment's children inserted as one mutation.
+WR_IMPORT("dom", "Node_preInsert") int32_t wr_Node_preInsert(uint64_t parent, uint64_t node, uint64_t child);
+// parent.replaceChild(node, child): DOM "replace a child".
+WR_IMPORT("dom", "Node_replaceChildChecked") int32_t wr_Node_replaceChildChecked(uint64_t parent, uint64_t node, uint64_t child);
+// parent.removeChild(child): Not_Found when child is not a child of parent.
+WR_IMPORT("dom", "Node_preRemove") int32_t wr_Node_preRemove(uint64_t parent, uint64_t child);
+// prepend / append / replaceChildren (mode 0, 1, 2) of ParentNode, before / after / replaceWith (3, 4, 5) of
+// ChildNode, with their (Node or DOMString) arguments packed in `items`: per item one byte 0 then a node handle (8
+// bytes, little endian), or one byte 1 then a length (4 bytes) and UTF-8 text.
+WR_IMPORT("dom", "Node_insertItems") int32_t wr_Node_insertItems(uint64_t node, int32_t mode, const uint8_t *items, uint32_t items_len);
+// The node handles of `nodes` stay alive while pinned (a static NodeList, a mutation record).
+WR_IMPORT("dom", "Node_pinAll") void wr_Node_pinAll(const uint64_t *nodes, uint32_t nodes_len);
+// Drops the pins of Node_pinAll (dead handles are ignored).
+WR_IMPORT("dom", "Node_unpinAll") void wr_Node_unpinAll(const uint64_t *nodes, uint32_t nodes_len);
+// node.firstElementChild
+WR_IMPORT("dom", "ParentNode_firstElementChild") uint64_t wr_ParentNode_firstElementChild(uint64_t node);
+// node.lastElementChild
+WR_IMPORT("dom", "ParentNode_lastElementChild") uint64_t wr_ParentNode_lastElementChild(uint64_t node);
+// node.childElementCount
+WR_IMPORT("dom", "ParentNode_childElementCount") uint32_t wr_ParentNode_childElementCount(uint64_t node);
+// node.remove()
+WR_IMPORT("dom", "ChildNode_remove") void wr_ChildNode_remove(uint64_t node);
+// node.previousElementSibling
+WR_IMPORT("dom", "NonDocumentTypeChildNode_previousElementSibling") uint64_t wr_NonDocumentTypeChildNode_previousElementSibling(uint64_t node);
+// node.nextElementSibling
+WR_IMPORT("dom", "NonDocumentTypeChildNode_nextElementSibling") uint64_t wr_NonDocumentTypeChildNode_nextElementSibling(uint64_t node);
+// fragment.getElementById(id) (the document has its own)
+WR_IMPORT("dom", "NonElementParentNode_getElementById") uint64_t wr_NonElementParentNode_getElementById(uint64_t node, const uint8_t *id, uint32_t id_len);
+// characterData.data
+WR_IMPORT("dom", "CharacterData_data") int32_t wr_CharacterData_data(uint64_t node, uint8_t *_buf, uint32_t _cap);
+// characterData.data = value
+WR_IMPORT("dom", "CharacterData_set_data") void wr_CharacterData_set_data(uint64_t node, const uint8_t *value, uint32_t value_len);
+// characterData.length (UTF-16 code units)
+WR_IMPORT("dom", "CharacterData_length") uint32_t wr_CharacterData_length(uint64_t node);
+// substringData(offset, count): Index_Size past the end.
+WR_IMPORT("dom", "CharacterData_substringData") int32_t wr_CharacterData_substringData(uint64_t node, uint32_t offset, uint32_t count, uint8_t *_buf, uint32_t _cap);
+// appendData(data)
+WR_IMPORT("dom", "CharacterData_appendData") void wr_CharacterData_appendData(uint64_t node, const uint8_t *data, uint32_t data_len);
+// insertData(offset, data): Index_Size past the end.
+WR_IMPORT("dom", "CharacterData_insertData") int32_t wr_CharacterData_insertData(uint64_t node, uint32_t offset, const uint8_t *data, uint32_t data_len);
+// deleteData(offset, count): Index_Size past the end.
+WR_IMPORT("dom", "CharacterData_deleteData") int32_t wr_CharacterData_deleteData(uint64_t node, uint32_t offset, uint32_t count);
+// replaceData(offset, count, data): Index_Size past the end.
+WR_IMPORT("dom", "CharacterData_replaceData") int32_t wr_CharacterData_replaceData(uint64_t node, uint32_t offset, uint32_t count, const uint8_t *data, uint32_t data_len);
+// text.splitText(offset): the new Text node (inserted after it when it has a parent). Index_Size past the end.
+WR_IMPORT("dom", "Text_splitText") int32_t wr_Text_splitText(uint64_t node, uint32_t offset, uint64_t *_ret);
+// text.wholeText
+WR_IMPORT("dom", "Text_wholeText") int32_t wr_Text_wholeText(uint64_t node, uint8_t *_buf, uint32_t _cap);
+// doctype.name
+WR_IMPORT("dom", "DocumentType_name") int32_t wr_DocumentType_name(uint64_t node, uint8_t *_buf, uint32_t _cap);
+// doctype.publicId
+WR_IMPORT("dom", "DocumentType_publicId") int32_t wr_DocumentType_publicId(uint64_t node, uint8_t *_buf, uint32_t _cap);
+// doctype.systemId
+WR_IMPORT("dom", "DocumentType_systemId") int32_t wr_DocumentType_systemId(uint64_t node, uint8_t *_buf, uint32_t _cap);
+// document.createElement(localName): Invalid_Character for a name that is not a valid element name.
+WR_IMPORT("dom", "Document_createElementChecked") int32_t wr_Document_createElementChecked(const uint8_t *local_name, uint32_t local_name_len, uint64_t *_ret);
+// document.createElementNS(namespace, qualifiedName): Invalid_Character, Namespace as DOM "validate and extract".
+WR_IMPORT("dom", "Document_createElementNSChecked") int32_t wr_Document_createElementNSChecked(const uint8_t *namespace, uint32_t namespace_len, const uint8_t *qualified_name, uint32_t qualified_name_len, uint64_t *_ret);
+// document.createDocumentFragment()
+WR_IMPORT("dom", "Document_createDocumentFragment") int32_t wr_Document_createDocumentFragment(uint64_t *_ret);
+// document.createComment(data)
+WR_IMPORT("dom", "Document_createComment") int32_t wr_Document_createComment(const uint8_t *data, uint32_t data_len, uint64_t *_ret);
+// document.createCDATASection(data): Not_Supported (an HTML document).
+WR_IMPORT("dom", "Document_createCDATASection") int32_t wr_Document_createCDATASection(const uint8_t *data, uint32_t data_len, uint64_t *_ret);
+// document.adoptNode(node): removed from its parent (one document per page). Not_Supported for the document.
+WR_IMPORT("dom", "Document_adoptNode") int32_t wr_Document_adoptNode(uint64_t node, uint64_t *_ret);
+// document.documentURI
+WR_IMPORT("dom", "Document_documentURI") int32_t wr_Document_documentURI(uint8_t *_buf, uint32_t _cap);
+// document.compatMode: "CSS1Compat" or "BackCompat".
+WR_IMPORT("dom", "Document_compatMode") int32_t wr_Document_compatMode(uint8_t *_buf, uint32_t _cap);
+// document.characterSet
+WR_IMPORT("dom", "Document_characterSet") int32_t wr_Document_characterSet(uint8_t *_buf, uint32_t _cap);
+// document.charset
+WR_IMPORT("dom", "Document_charset") int32_t wr_Document_charset(uint8_t *_buf, uint32_t _cap);
+// document.inputEncoding
+WR_IMPORT("dom", "Document_inputEncoding") int32_t wr_Document_inputEncoding(uint8_t *_buf, uint32_t _cap);
+// document.contentType
+WR_IMPORT("dom", "Document_contentType") int32_t wr_Document_contentType(uint8_t *_buf, uint32_t _cap);
+// document.doctype
+WR_IMPORT("dom", "Document_doctype") uint64_t wr_Document_doctype(void);
+// document.title: the <title> text, whitespace collapsed (the <svg> root's title in an SVG document).
+WR_IMPORT("dom", "Document_title") int32_t wr_Document_title(uint8_t *_buf, uint32_t _cap);
+// document.title = value: the first <title> (made in <head> when missing).
+WR_IMPORT("dom", "Document_set_title") void wr_Document_set_title(const uint8_t *value, uint32_t value_len);
+// document.dir
+WR_IMPORT("dom", "Document_dir") int32_t wr_Document_dir(uint8_t *_buf, uint32_t _cap);
+// document.dir = value
+WR_IMPORT("dom", "Document_set_dir") void wr_Document_set_dir(const uint8_t *value, uint32_t value_len);
+// document.hasFocus()
+WR_IMPORT("dom", "Document_hasFocus") int32_t wr_Document_hasFocus(void);
+// document.referrer
+WR_IMPORT("dom", "Document_referrer") int32_t wr_Document_referrer(uint8_t *_buf, uint32_t _cap);
+// document.lastModified ("MM/DD/YYYY hh:mm:ss")
+WR_IMPORT("dom", "Document_lastModified") int32_t wr_Document_lastModified(uint8_t *_buf, uint32_t _cap);
+// document.domain (getter)
+WR_IMPORT("dom", "Document_domain") int32_t wr_Document_domain(uint8_t *_buf, uint32_t _cap);
+// document.scrollingElement
+WR_IMPORT("dom", "Document_scrollingElement") uint64_t wr_Document_scrollingElement(void);
+// document.body = element: Hierarchy when not a <body> or <frameset>, or without a document element.
+WR_IMPORT("dom", "Document_set_body") int32_t wr_Document_set_body(uint64_t body);
+// document.implementation.createHTMLDocument(title): an inert document of its own (nothing loads or runs in it),
+// made of the page's nodes: a doctype, <html>, <head> (with <title> when given) and <body>.
+WR_IMPORT("dom", "DOMImplementation_createHTMLDocument") int32_t wr_DOMImplementation_createHTMLDocument(const uint8_t *title, uint32_t title_len, uint64_t *_ret);
+// document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.
+WR_IMPORT("dom", "DOMImplementation_createDocumentType") int32_t wr_DOMImplementation_createDocumentType(const uint8_t *name, uint32_t name_len, const uint8_t *public_id, uint32_t public_id_len, const uint8_t *system_id, uint32_t system_id_len, uint64_t *_ret);
+// A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,
+// 3 doctype. 0 when there is none.
+WR_IMPORT("dom", "Document_partOf") uint64_t wr_Document_partOf(uint64_t document, int32_t which);
 
 /* module encoding */
-typedef uint64_t wr_TextDecoder;
-// TextDecoderOptions
-#define wr_TextDecoderOptions_Fatal (1u << 0)
-#define wr_TextDecoderOptions_Ignore_BOM (1u << 1)
-// What TextEncoder.encodeInto did, in bytes.
-typedef struct wr_EncodeIntoResult {
-    uint64_t read;
-    uint64_t written;
-} wr_EncodeIntoResult;
 // new TextEncoder().encode(text): a buffer of UTF-8. Quota past the page's memory limit.
 WR_IMPORT("encoding", "TextEncoder_encode") int32_t wr_TextEncoder_encode(const uint8_t *text, uint32_t text_len, uint64_t *_ret);
 // encoder.encodeInto(source, destination): invalid UTF-8 in the source counts as U+FFFD (3 bytes).
@@ -208,20 +1119,6 @@ WR_IMPORT("encoding", "TextDecoder_decodeBuffer") int32_t wr_TextDecoder_decodeB
 WR_IMPORT("encoding", "TextDecoder_output") int32_t wr_TextDecoder_output(uint64_t decoder, uint8_t *_buf, uint32_t _cap);
 
 /* module events */
-// A node or a host object: whatever can have listeners. Checked by the functions that take it.
-typedef uint64_t wr_EventTarget;
-// The event being dispatched.
-typedef uint64_t wr_Event;
-// addEventListener options.
-#define wr_ListenerOptions_Capture (1u << 0)
-#define wr_ListenerOptions_Once (1u << 1)
-#define wr_ListenerOptions_Passive (1u << 2)
-// What dispatchEvent creates.
-#define wr_EventInit_Bubbles (1u << 0)
-#define wr_EventInit_Cancelable (1u << 1)
-#define wr_EventInit_Composed (1u << 2)
-// A listener: `user` is the value given to addEventListener.
-typedef void (*wr_EventListener)(int32_t user, uint64_t event);
 // target.addEventListener(type, listener, options). Returns the listener's id (for removeEventListener); adding the
 // same (type, callback, user) again returns the existing id.
 WR_IMPORT("events", "EventTarget_addEventListener") int32_t wr_EventTarget_addEventListener(uint64_t target, const uint8_t *type, uint32_t type_len, uint32_t callback, int32_t user, uint32_t options, int32_t *_ret);
@@ -259,6 +1156,12 @@ WR_IMPORT("events", "MouseEvent_clientY") double wr_MouseEvent_clientY(uint64_t 
 WR_IMPORT("events", "MouseEvent_button") int32_t wr_MouseEvent_button(uint64_t event);
 // KeyboardEvent.keyCode
 WR_IMPORT("events", "KeyboardEvent_keyCode") int32_t wr_KeyboardEvent_keyCode(uint64_t event);
+// The details of a UI event being dispatched.
+WR_IMPORT("events", "Event_uiData") void wr_Event_uiData(uint64_t event, wr_UiEventData *_ret);
+// KeyboardEvent.key ("Enter", "a"...): "Unidentified" when unknown.
+WR_IMPORT("events", "UiEvent_key") int32_t wr_UiEvent_key(uint64_t event, uint8_t *_buf, uint32_t _cap);
+// KeyboardEvent.code ("KeyA", "Enter"...): "" when unknown.
+WR_IMPORT("events", "UiEvent_code") int32_t wr_UiEvent_code(uint64_t event, uint8_t *_buf, uint32_t _cap);
 // target.dispatchEvent(event) for an Event the engine owns: like EventTarget_dispatchEvent, with the engine's
 // identifier of the object (Event_engineId gives it back to the listeners) and its timeStamp. Returns false when a
 // listener cancelled it. The event is not trusted (isTrusted is false).
@@ -286,13 +1189,6 @@ WR_IMPORT("events", "Event_propagationStopped") int32_t wr_Event_propagationStop
 WR_IMPORT("events", "EventTarget_create") uint64_t wr_EventTarget_create(void);
 
 /* module eventsource */
-typedef uint64_t wr_EventSource;
-// EventSource.readyState
-enum wr_EventSourceState {
-    wr_EventSourceState_Connecting = 0,
-    wr_EventSourceState_Open = 1,
-    wr_EventSourceState_Closed = 2,
-};
 // new EventSource(url, {withCredentials}). Syntax for an invalid URL.
 WR_IMPORT("eventsource", "EventSource_create") int32_t wr_EventSource_create(const uint8_t *url, uint32_t url_len, int32_t with_credentials, uint64_t *_ret);
 WR_IMPORT("eventsource", "EventSource_readyState") int32_t wr_EventSource_readyState(uint64_t source);
@@ -306,8 +1202,6 @@ WR_IMPORT("eventsource", "MessageEvent_origin") int32_t wr_MessageEvent_origin(u
 WR_IMPORT("eventsource", "MessageEvent_lastEventId") int32_t wr_MessageEvent_lastEventId(uint64_t event, uint8_t *_buf, uint32_t _cap);
 
 /* module fetch */
-// The body of a response being read in chunks.
-typedef uint64_t wr_ReadableStream;
 // fetch(url, init): the body is `body`, or the bytes of `body_buffer` when given. Type when the signal is not an
 // AbortSignal or the buffer not a buffer.
 WR_IMPORT("fetch", "Fetch_promise") int32_t wr_Fetch_promise(const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint64_t body_buffer, uint64_t signal, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint64_t *_ret);
@@ -333,36 +1227,6 @@ WR_IMPORT("fetch", "Stream_cancel") void wr_Stream_cancel(uint64_t stream);
 WR_IMPORT("fetch", "Fetch_startFormData") uint64_t wr_Fetch_startFormData(const uint8_t *url, uint32_t url_len, uint64_t data, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, int32_t enctype, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer);
 
 /* module forms */
-typedef uint64_t wr_FormData;
-// ValidityState: every flag that is set (none = valid).
-#define wr_ValidityState_Value_Missing (1u << 0)
-#define wr_ValidityState_Type_Mismatch (1u << 1)
-#define wr_ValidityState_Pattern_Mismatch (1u << 2)
-#define wr_ValidityState_Too_Long (1u << 3)
-#define wr_ValidityState_Too_Short (1u << 4)
-#define wr_ValidityState_Range_Underflow (1u << 5)
-#define wr_ValidityState_Range_Overflow (1u << 6)
-#define wr_ValidityState_Step_Mismatch (1u << 7)
-#define wr_ValidityState_Bad_Input (1u << 8)
-#define wr_ValidityState_Custom_Error (1u << 9)
-enum wr_SelectionDirection {
-    wr_SelectionDirection_None = 0,
-    wr_SelectionDirection_Forward = 1,
-    wr_SelectionDirection_Backward = 2,
-};
-// setRangeText's selectMode.
-enum wr_SelectionMode {
-    wr_SelectionMode_Preserve = 0,
-    wr_SelectionMode_Select = 1,
-    wr_SelectionMode_Start = 2,
-    wr_SelectionMode_End = 3,
-};
-// How a FormData body is encoded.
-enum wr_FormEnctype {
-    wr_FormEnctype_Multipart = 0,
-    wr_FormEnctype_Urlencoded = 1,
-    wr_FormEnctype_Text_Plain = 2,
-};
 // control.value
 WR_IMPORT("forms", "HTMLInputElement_value") int32_t wr_HTMLInputElement_value(uint64_t control, uint8_t *_buf, uint32_t _cap);
 WR_IMPORT("forms", "HTMLTextAreaElement_value") int32_t wr_HTMLTextAreaElement_value(uint64_t control, uint8_t *_buf, uint32_t _cap);
@@ -587,11 +1451,7 @@ WR_IMPORT("forms", "FormData_setBlob") int32_t wr_FormData_setBlob(uint64_t data
 // The entries as a multipart/form-data body with this boundary (files chosen in an <input type=file> are read now).
 WR_IMPORT("forms", "FormData_encode") int32_t wr_FormData_encode(uint64_t data, const uint8_t *boundary, uint32_t boundary_len, uint64_t *_ret);
 
-/* module fetch (partial) */
-
 /* module history */
-// The Window object (an EventTarget: popstate, hashchange, storage...).
-typedef uint64_t wr_Window;
 // window (the same object every time).
 WR_IMPORT("history", "Window_self") uint64_t wr_Window_self(void);
 // document, as a node (target of visibilitychange, readystatechange...).
@@ -619,7 +1479,6 @@ WR_IMPORT("history", "History_replaceState") int32_t wr_History_replaceState(con
 WR_IMPORT("history", "History_go") void wr_History_go(int32_t delta);
 
 /* module images */
-typedef uint64_t wr_HTMLImageElement;
 WR_IMPORT("images", "HTMLImageElement_naturalWidth") int32_t wr_HTMLImageElement_naturalWidth(uint64_t image);
 WR_IMPORT("images", "HTMLImageElement_naturalHeight") int32_t wr_HTMLImageElement_naturalHeight(uint64_t image);
 WR_IMPORT("images", "HTMLImageElement_complete") int32_t wr_HTMLImageElement_complete(uint64_t image);
@@ -634,14 +1493,6 @@ WR_IMPORT("images", "HTMLImageElement_decode") uint64_t wr_HTMLImageElement_deco
 WR_IMPORT("images", "Image_decode") uint64_t wr_Image_decode(uint64_t data);
 
 /* module js */
-// The level of a console message.
-enum wr_ConsoleLevel {
-    wr_ConsoleLevel_Log = 0,
-    wr_ConsoleLevel_Info = 1,
-    wr_ConsoleLevel_Warn = 2,
-    wr_ConsoleLevel_Error = 3,
-    wr_ConsoleLevel_Debug = 4,
-};
 // console.log / info / warn / error / debug..., the arguments already formatted.
 WR_IMPORT("js", "Engine_console") void wr_Engine_console(int32_t level, const uint8_t *text, uint32_t text_len);
 // An exception nothing caught (after the error event, when no handler cancelled it): message, stack, and where it
@@ -669,30 +1520,7 @@ WR_IMPORT("js", "Node_unpin") void wr_Node_unpin(uint64_t node);
 // wrappers of one tree alive together.
 WR_IMPORT("js", "Node_treeRoots") void wr_Node_treeRoots(const uint64_t *nodes, uint32_t nodes_len, uint8_t *roots, uint32_t roots_cap);
 
-/* module dom (partial) */
-
-/* module dom (partial) */
-
-/* module events (partial) */
-
 /* module scripts */
-// What a Content-Security-Policy check of inline code is about: a script element's text, an event handler
-// attribute (script-src-attr), a javascript: URL.
-enum wr_InlineScriptKind {
-    wr_InlineScriptKind_Element = 0,
-    wr_InlineScriptKind_Attribute = 1,
-    wr_InlineScriptKind_Navigation = 2,
-};
-// The type of a module (import attributes: `with {type: "json"}`).
-enum wr_ModuleType {
-    wr_ModuleType_JavaScript = 0,
-    wr_ModuleType_Json = 1,
-};
-// The type of a worker's script (`new Worker(url, {type})`).
-enum wr_WorkerType {
-    wr_WorkerType_Classic = 0,
-    wr_WorkerType_Module = 1,
-};
 // document.write(markup) (writeln adds the newline): inserted at the parser's insertion point while the document
 // loads (scripts written run before it returns), else the document is opened again first and replaced. Invalid_State
 // for a document that does not accept it now (a custom element constructor, a parser that would have to be aborted).
@@ -742,22 +1570,6 @@ WR_IMPORT("scripts", "WorkerGlobalScope_importScript") int32_t wr_WorkerGlobalSc
 
 /* module navigator */
 // A string member of Navigator.
-enum wr_NavigatorField {
-    // navigator.userAgent: the User-Agent header the browser sends (network.user_agent).
-    wr_NavigatorField_User_Agent = 0,
-    // navigator.appVersion: the user agent without its leading "Mozilla/".
-    wr_NavigatorField_App_Version = 1,
-    // navigator.platform ("Win32").
-    wr_NavigatorField_Platform = 2,
-    // navigator.vendor.
-    wr_NavigatorField_Vendor = 3,
-    // navigator.languages, comma separated, from the Accept-Language preference (network.accept_language), without
-    // quality values.
-    wr_NavigatorField_Languages = 4,
-    // navigator.doNotTrack: "1", or "" for null (privacy.do_not_track).
-    wr_NavigatorField_Do_Not_Track = 5,
-};
-// A string member of Navigator.
 WR_IMPORT("navigator", "Navigator_get") int32_t wr_Navigator_get(int32_t field, uint8_t *_buf, uint32_t _cap);
 // navigator.hardwareConcurrency: the logical processors the page may use.
 WR_IMPORT("navigator", "Navigator_hardwareConcurrency") int32_t wr_Navigator_hardwareConcurrency(void);
@@ -771,20 +1583,6 @@ WR_IMPORT("navigator", "Navigator_cookieEnabled") int32_t wr_Navigator_cookieEna
 WR_IMPORT("navigator", "Beacon_send") int32_t wr_Beacon_send(const uint8_t *url, uint32_t url_len, const uint8_t *data, uint32_t data_len, const uint8_t *content_type, uint32_t content_type_len);
 
 /* module media */
-// A media query list evaluated against the page's viewport (CSSOM View matchMedia); an EventTarget whose "change"
-// event is fired when the result changes (after a resize, a zoom, a change of the color scheme), Event_code being
-// the new result.
-typedef uint64_t wr_MediaQueryList;
-// A dimension of the screen (CSS pixels of the monitor showing the page).
-enum wr_ScreenField {
-    wr_ScreenField_Width = 0,
-    wr_ScreenField_Height = 1,
-    wr_ScreenField_Avail_Width = 2,
-    wr_ScreenField_Avail_Height = 3,
-    wr_ScreenField_Avail_Left = 4,
-    wr_ScreenField_Avail_Top = 5,
-    wr_ScreenField_Color_Depth = 6,
-};
 // window.matchMedia(query): an invalid query is "not all" (it never matches).
 WR_IMPORT("media", "MediaQueryList_create") uint64_t wr_MediaQueryList_create(const uint8_t *query, uint32_t query_len);
 // mql.media: the query list serialized.
@@ -794,67 +1592,7 @@ WR_IMPORT("media", "MediaQueryList_matches") int32_t wr_MediaQueryList_matches(u
 // screen.width, screen.availHeight...
 WR_IMPORT("media", "Screen_get") int32_t wr_Screen_get(int32_t field);
 
-/* module forms (partial) */
-
 /* module net */
-// A request and, once it arrived, its response.
-typedef uint64_t wr_Fetch;
-// The response of a fetch (what Fetch_promise settles with): the same record as its Fetch.
-typedef uint64_t wr_Response;
-// Where a request is.
-enum wr_FetchState {
-    wr_FetchState_Pending = 0,
-    wr_FetchState_Response = 1,
-    wr_FetchState_Done = 2,
-    wr_FetchState_Failed = 3,
-};
-// Response.type
-enum wr_ResponseType {
-    wr_ResponseType_Basic = 0,
-    wr_ResponseType_Cors = 1,
-    wr_ResponseType_Opaque = 2,
-    wr_ResponseType_Opaque_Redirect = 3,
-};
-// RequestInit.mode
-enum wr_FetchMode {
-    wr_FetchMode_Cors = 0,
-    wr_FetchMode_Same_Origin = 1,
-    wr_FetchMode_No_Cors = 2,
-};
-// RequestInit.credentials
-enum wr_Credentials {
-    wr_Credentials_Same_Origin = 0,
-    wr_Credentials_Omit = 1,
-    wr_Credentials_Include = 2,
-};
-// RequestInit.redirect
-enum wr_RedirectMode {
-    wr_RedirectMode_Follow = 0,
-    wr_RedirectMode_Error = 1,
-    wr_RedirectMode_Manual = 2,
-};
-// RequestInit.referrerPolicy (Default: the document's policy).
-enum wr_ReferrerPolicy {
-    wr_ReferrerPolicy_Default = 0,
-    wr_ReferrerPolicy_No_Referrer = 1,
-    wr_ReferrerPolicy_No_Referrer_When_Downgrade = 2,
-    wr_ReferrerPolicy_Same_Origin = 3,
-    wr_ReferrerPolicy_Origin = 4,
-    wr_ReferrerPolicy_Strict_Origin = 5,
-    wr_ReferrerPolicy_Origin_When_Cross_Origin = 6,
-    wr_ReferrerPolicy_Strict_Origin_When_Cross_Origin = 7,
-    wr_ReferrerPolicy_Unsafe_Url = 8,
-};
-// RequestInit beyond method, headers and body. The zero value is the Fetch API default.
-typedef struct wr_FetchOptions {
-    uint32_t mode;
-    uint32_t credentials;
-    uint32_t redirect;
-    uint32_t referrer_policy;
-    uint8_t no_referrer;
-} wr_FetchOptions;
-// Called when the response arrives (Response), when the body is complete (Done) or on failure (Failed).
-typedef void (*wr_FetchCallback)(int32_t user, uint64_t request, int32_t state);
 // fetch(url, {method, headers, body, ...}) with a callback. `headers` are "Name: value" lines (CR LF or LF). A
 // relative URL resolves against the document (or the worker's script).
 WR_IMPORT("net", "Fetch_start") uint64_t wr_Fetch_start(const uint8_t *url, uint32_t url_len, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer);
@@ -879,12 +1617,6 @@ WR_IMPORT("net", "Fetch_readBody") int32_t wr_Fetch_readBody(uint64_t request, u
 WR_IMPORT("net", "Fetch_release") int32_t wr_Fetch_release(uint64_t request);
 
 /* module performance */
-// The entries a query matches (Any: both).
-enum wr_PerformanceEntryType {
-    wr_PerformanceEntryType_Any = 0,
-    wr_PerformanceEntryType_Mark = 1,
-    wr_PerformanceEntryType_Measure = 2,
-};
 // performance.now()
 WR_IMPORT("performance", "Performance_now") double wr_Performance_now(void);
 // performance.timeOrigin (ms since the Unix epoch).
@@ -912,17 +1644,6 @@ WR_IMPORT("performance", "Performance_clearMarks") void wr_Performance_clearMark
 WR_IMPORT("performance", "Performance_clearMeasures") void wr_Performance_clearMeasures(const uint8_t *name, uint32_t name_len);
 
 /* module storage */
-enum wr_StorageArea {
-    wr_StorageArea_Local = 0,
-    wr_StorageArea_Session = 1,
-};
-// A field of a StorageEvent.
-enum wr_StorageEventField {
-    wr_StorageEventField_Key = 0,
-    wr_StorageEventField_Old_Value = 1,
-    wr_StorageEventField_New_Value = 2,
-    wr_StorageEventField_Url = 3,
-};
 // storage.length
 WR_IMPORT("storage", "Storage_length") int32_t wr_Storage_length(int32_t area, int32_t *_ret);
 // storage.key(index)
@@ -941,20 +1662,6 @@ WR_IMPORT("storage", "StorageEvent_get") int32_t wr_StorageEvent_get(uint64_t ev
 WR_IMPORT("storage", "StorageEvent_storageArea") int32_t wr_StorageEvent_storageArea(uint64_t event, int32_t *_ret);
 
 /* module timers */
-// A pending timeout or interval.
-typedef uint64_t wr_Timer;
-typedef void (*wr_TimerHandler)(int32_t user);
-// A timer callback with a 64-bit user value.
-typedef void (*wr_TimerHandler64)(int64_t user);
-// An animation frame callback: `time` is the frame's time on the page's performance timeline.
-typedef void (*wr_FrameRequestCallback)(int32_t user, double time);
-// An idle callback: run before `deadline` (performance timeline), or late because its timeout expired.
-typedef void (*wr_IdleRequestCallback)(int32_t user, double deadline, int32_t did_timeout);
-// Whether the page is shown.
-enum wr_VisibilityState {
-    wr_VisibilityState_Visible = 0,
-    wr_VisibilityState_Hidden = 1,
-};
 // setTimeout(callback, delay_ms)
 WR_IMPORT("timers", "Timers_setTimeout") uint64_t wr_Timers_setTimeout(uint32_t callback, int32_t user, double delay_ms);
 // setInterval(callback, delay_ms)
@@ -979,22 +1686,6 @@ WR_IMPORT("timers", "cancelIdleCallback") int32_t wr_cancelIdleCallback(uint64_t
 WR_IMPORT("timers", "Document_visibilityState") int32_t wr_Document_visibilityState(void);
 
 /* module url */
-typedef uint64_t wr_URL;
-typedef uint64_t wr_URLSearchParams;
-// A component of a URL (also used by Location).
-enum wr_URLComponent {
-    wr_URLComponent_Href = 0,
-    wr_URLComponent_Protocol = 1,
-    wr_URLComponent_Username = 2,
-    wr_URLComponent_Password = 3,
-    wr_URLComponent_Host = 4,
-    wr_URLComponent_Hostname = 5,
-    wr_URLComponent_Port = 6,
-    wr_URLComponent_Pathname = 7,
-    wr_URLComponent_Search = 8,
-    wr_URLComponent_Hash = 9,
-    wr_URLComponent_Origin = 10,
-};
 // new URL(input, base): Type when the input (or the base) is not a valid URL or too long (web.url_max_length).
 WR_IMPORT("url", "URL_parse") int32_t wr_URL_parse(const uint8_t *input, uint32_t input_len, const uint8_t *base, uint32_t base_len, uint64_t *_ret);
 // URL.canParse(input, base)
@@ -1034,64 +1725,12 @@ WR_IMPORT("url", "URLSearchParams_nameAt") int32_t wr_URLSearchParams_nameAt(uin
 WR_IMPORT("url", "URLSearchParams_valueAt") int32_t wr_URLSearchParams_valueAt(uint64_t params, int32_t index, uint8_t *_buf, uint32_t _cap);
 
 /* module web */
-// The status of a function that raises: 0, or what went wrong. Promise rejections use the same codes.
-enum wr_Error {
-    wr_Error_None = 0,
-    // A handle that is not live, or not of the kind the function takes.
-    wr_Error_Invalid_Handle = -1,
-    // HierarchyRequestError: the node cannot go there.
-    wr_Error_Hierarchy = -2,
-    // NotFoundError, or a null result ("no such attribute", "no such entry").
-    wr_Error_Not_Found = -3,
-    // An argument out of its range (an enum, an index, a size).
-    wr_Error_Invalid_Argument = -4,
-    // A node that is still in the tree cannot be released.
-    wr_Error_Attached = -5,
-    // TypeError.
-    wr_Error_Type = -10,
-    // RangeError.
-    wr_Error_Range = -11,
-    // SecurityError.
-    wr_Error_Security = -12,
-    // QuotaExceededError.
-    wr_Error_Quota = -13,
-    // NotSupportedError.
-    wr_Error_Not_Supported = -14,
-    // SyntaxError.
-    wr_Error_Syntax = -15,
-    // AbortError.
-    wr_Error_Abort = -16,
-    // TimeoutError.
-    wr_Error_Timeout = -17,
-    // InvalidStateError.
-    wr_Error_Invalid_State = -18,
-    // DataCloneError.
-    wr_Error_Data_Clone = -19,
-    // NetworkError (fetch failures; the message says why).
-    wr_Error_Network = -20,
-    // EncodingError.
-    wr_Error_Encoding = -21,
-    // IndexSizeError.
-    wr_Error_Index_Size = -22,
-    // NotAllowedError.
-    wr_Error_Not_Allowed = -23,
-    // InvalidAccessError.
-    wr_Error_Invalid_Access = -24,
-};
 // The code of the last error a function raised to this module instance (0 when none did yet).
 WR_IMPORT("web", "Exception_code") int32_t wr_Exception_code(void);
 // The message of that error ("" when it has none): what a DOMException's message would say.
 WR_IMPORT("web", "Exception_message") int32_t wr_Exception_message(uint8_t *_buf, uint32_t _cap);
 
 /* module websocket */
-typedef uint64_t wr_WebSocket;
-// WebSocket.readyState
-enum wr_WebSocketState {
-    wr_WebSocketState_Connecting = 0,
-    wr_WebSocketState_Open = 1,
-    wr_WebSocketState_Closing = 2,
-    wr_WebSocketState_Closed = 3,
-};
 // new WebSocket(url, protocols): `protocols` is a comma-separated list ("" = none). Syntax for an invalid URL or
 // protocol list.
 WR_IMPORT("websocket", "WebSocket_create") int32_t wr_WebSocket_create(const uint8_t *url, uint32_t url_len, const uint8_t *protocols, uint32_t protocols_len, uint64_t *_ret);
@@ -1115,10 +1754,6 @@ WR_IMPORT("websocket", "WebSocket_close") int32_t wr_WebSocket_close(uint64_t so
 WR_IMPORT("websocket", "CloseEvent_wasClean") int32_t wr_CloseEvent_wasClean(uint64_t event);
 
 /* module workers */
-// A Worker object (EventTarget: message, messageerror, error).
-typedef uint64_t wr_Worker;
-// The global scope of a worker (EventTarget: message, messageerror).
-typedef uint64_t wr_WorkerGlobalScope;
 // new Worker(url, {name}). Not_Allowed when the browser refuses it (the console says why).
 WR_IMPORT("workers", "Worker_create") int32_t wr_Worker_create(const uint8_t *url, uint32_t url_len, const uint8_t *name, uint32_t name_len, uint64_t *_ret);
 // worker.postMessage(message, transfer)

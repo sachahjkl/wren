@@ -1,0 +1,132 @@
+<!doctype html>
+<html><head><title>Traversal</title></head>
+<body><div id="root"><p id="p1">one <b id="b">bold</b> two</p><!--c--><p id="p2">three</p></div>
+<script>
+section("NodeFilter", () => {
+  eq("constants", [NodeFilter.FILTER_ACCEPT, NodeFilter.FILTER_REJECT, NodeFilter.FILTER_SKIP, NodeFilter.SHOW_ELEMENT, NodeFilter.SHOW_TEXT].join(","), "1,2,3,1,4");
+});
+
+section("TreeWalker", () => {
+  const root = document.getElementById("root");
+  const tw = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+  t("TreeWalker", tw instanceof TreeWalker && tw.root === root && tw.currentNode === root && tw.whatToShow === 1);
+  const seen = [];
+  while (tw.nextNode()) { seen.push(tw.currentNode.id || tw.currentNode.tagName); }
+  eq("nextNode (elements)", seen.join(","), "p1,b,p2");
+  const back = [];
+  while (tw.previousNode()) { back.push(tw.currentNode.id || tw.currentNode.tagName); }
+  eq("previousNode back to the root", back.join(","), "b,p1,root");
+  tw.currentNode = root;
+  eq("firstChild", tw.firstChild().id, "p1");
+  eq("nextSibling skips the comment", tw.nextSibling().id, "p2");
+  eq("previousSibling", tw.previousSibling().id, "p1");
+  eq("lastChild of p1", tw.lastChild().id, "b");
+  eq("parentNode", tw.parentNode().id, "p1");
+  const texts = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const tx = [];
+  while (texts.nextNode()) { tx.push(texts.currentNode.data); }
+  eq("text nodes", tx.join("|"), "one |bold| two|three");
+  const skip = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {acceptNode: n => n.tagName === "P" ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_ACCEPT});
+  eq("FILTER_SKIP enters children", skip.nextNode().id, "b");
+  const reject = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, n => n.id === "p1" ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT);
+  eq("FILTER_REJECT skips the subtree", reject.nextNode().id, "p2");
+  const nested = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, () => { nested.nextNode(); return 1; });
+  throws("a filter that calls the walker", () => nested.nextNode(), "InvalidStateError");
+});
+
+section("NodeIterator", () => {
+  const root = document.getElementById("root");
+  const it = document.createNodeIterator(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT);
+  t("NodeIterator", it instanceof NodeIterator && it.referenceNode === root && it.pointerBeforeReferenceNode === true);
+  const seen = [];
+  for (let n; (n = it.nextNode());) { seen.push(n.nodeType === 8 ? "#c" : n.id || n.tagName); }
+  eq("nextNode", seen.join(","), "root,p1,b,#c,p2");
+  eq("previousNode", it.previousNode().id, "p2");
+  eq("previousNode again", it.previousNode().nodeType, 8);
+  it.detach();
+});
+
+section("Range", () => {
+  const p1 = document.getElementById("p1"), p2 = document.getElementById("p2");
+  const r = document.createRange();
+  t("Range", r instanceof Range && r.collapsed && r.startContainer === document);
+  r.selectNodeContents(p1);
+  eq("selectNodeContents", [r.startContainer === p1, r.startOffset, r.endOffset].join(","), "true,0,3");
+  eq("toString", r.toString(), "one bold two");
+  r.setStart(p1.firstChild, 2);
+  r.setEnd(p2.firstChild, 3);
+  eq("toString across elements", r.toString(), "e bold twothr");
+  eq("commonAncestorContainer", r.commonAncestorContainer.id, "root");
+  t("isPointInRange", r.isPointInRange(document.getElementById("b"), 0) && !r.isPointInRange(p2.firstChild, 4));
+  eq("comparePoint", r.comparePoint(p1.firstChild, 0) + "," + r.comparePoint(p2.firstChild, 5), "-1,1");
+  t("intersectsNode", r.intersectsNode(document.getElementById("b")) && !r.intersectsNode(document.body.lastElementChild));
+  throws("setStart past the length", () => r.setStart(p1, 99), "IndexSizeError");
+  throws("setStart in a doctype", () => r.setStart(document.doctype, 0), "InvalidNodeTypeError");
+  const c = r.cloneContents();
+  eq("cloneContents", c.childNodes.length + ":" + c.textContent, "3:e bold twothr");
+  eq("cloneContents keeps the document", p1.textContent + "|" + p2.textContent, "one bold two|three");
+  const r2 = r.cloneRange();
+  r2.collapse(true);
+  t("cloneRange / collapse", r2.collapsed && r2.startOffset === 2 && !r.collapsed);
+  eq("compareBoundaryPoints", r.compareBoundaryPoints(Range.START_TO_START, r2), 0);
+  const host = document.createElement("div");
+  host.innerHTML = "<i>abc</i><u>def</u><s>ghi</s>";
+  document.body.appendChild(host);
+  const r3 = document.createRange();
+  r3.setStart(host.firstChild.firstChild, 1);
+  r3.setEnd(host.lastChild.firstChild, 2);
+  const ex = r3.extractContents();
+  eq("extractContents", host.innerHTML + "|" + ex.textContent, "<i>a</i><s>i</s>|bcdefgh");
+  t("collapsed after extract", r3.collapsed);
+  const r4 = document.createRange();
+  r4.selectNodeContents(host);
+  r4.deleteContents();
+  eq("deleteContents", host.childNodes.length, 0);
+  host.textContent = "0123";
+  const r5 = document.createRange();
+  r5.setStart(host.firstChild, 2);
+  r5.collapse(true);
+  r5.insertNode(document.createElement("hr"));
+  eq("insertNode splits text", host.innerHTML, "01<hr>23");
+  const r6 = document.createRange();
+  r6.selectNode(host.querySelector("hr"));
+  r6.surroundContents(document.createElement("em"));
+  eq("surroundContents", host.innerHTML, "01<em><hr></em>23");
+  const frag = r6.createContextualFragment("<b>x</b>y");
+  eq("createContextualFragment", frag.childNodes.length + ":" + frag.firstChild.tagName, "2:B");
+  t("getBoundingClientRect", r.getBoundingClientRect() instanceof DOMRect && r.getClientRects() instanceof DOMRectList);
+  const sr = new StaticRange({startContainer: p1, startOffset: 0, endContainer: p1, endOffset: 1});
+  eq("StaticRange", sr.startContainer.id + "," + sr.endOffset + "," + sr.collapsed, "p1,1,false");
+  host.remove();
+});
+
+section("Selection", () => {
+  const sel = getSelection();
+  t("getSelection", sel instanceof Selection && document.getSelection() === sel);
+  sel.removeAllRanges();
+  eq("empty", sel.rangeCount + "," + sel.type + "," + sel.anchorNode, "0,None,null");
+  const p1 = document.getElementById("p1");
+  sel.setBaseAndExtent(p1.firstChild, 1, p1.lastChild, 2);
+  eq("setBaseAndExtent", [sel.rangeCount, sel.type, sel.anchorOffset, sel.focusOffset, sel.isCollapsed].join(","), "1,Range,1,2,false");
+  eq("toString", sel.toString(), "ne bold t");
+  const r = sel.getRangeAt(0);
+  eq("getRangeAt", r.startContainer === p1.firstChild && r.endOffset === 2, true);
+  sel.collapse(p1, 1);
+  eq("collapse", sel.type + "," + sel.anchorNode.id + "," + sel.anchorOffset, "Caret,p1,1");
+  sel.extend(p1, 2);
+  eq("extend", sel.focusOffset + "," + sel.direction, "2,forward");
+  sel.selectAllChildren(document.getElementById("p2"));
+  eq("selectAllChildren", sel.toString(), "three");
+  t("containsNode", sel.containsNode(document.getElementById("p2").firstChild));
+  sel.removeAllRanges();
+  throws("getRangeAt without a range", () => sel.getRangeAt(0), "IndexSizeError");
+  const rr = document.createRange();
+  rr.selectNodeContents(document.getElementById("b"));
+  sel.addRange(rr);
+  eq("addRange", sel.toString(), "bold");
+  sel.removeAllRanges();
+});
+
+done();
+</script>
+</body></html>

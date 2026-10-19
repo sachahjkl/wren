@@ -74,10 +74,11 @@ emit_c_header :: proc(api: ^Api, guard: string) -> string {
 	wl(&o, "#define WR_ABSENT UINT32_MAX")
 	wl(&o, "")
 
+	// every type first: a function of a module may use a type declared in a partial module of it that comes later
 	for m in api.modules {
 		decls := m.decls[:]
 		if len(decls) == 0 { continue }
-		wl(&o, "/* module %s%s */", m.name, m.partial ? " (partial)" : "")
+		wl(&o, "/* module %s%s: types */", m.name, m.partial ? " (partial)" : "")
 		for d in decls {
 			#partial switch d.kind {
 			case .Handle:
@@ -109,6 +110,13 @@ emit_c_header :: proc(api: ^Api, guard: string) -> string {
 				wl(&o, ");")
 			}
 		}
+		wl(&o, "")
+	}
+	for m in api.modules {
+		has := false
+		for d in api.functions { if d.module == m { has = true; break } }
+		if !has { continue }
+		wl(&o, "/* module %s%s */", m.name, m.partial ? " (partial)" : "")
 		for d in api.functions {
 			if d.module != m { continue }
 			write_doc(&o, d.doc, "", "// ")

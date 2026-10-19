@@ -1,0 +1,49 @@
+/// UI Events for JavaScript (src/page/js_dom_events.odin): what MouseEvent, PointerEvent, WheelEvent, KeyboardEvent,
+/// InputEvent and FocusEvent read from an event the browser dispatches. The engine copies them when it first wraps the
+/// event, so they stay readable after the dispatch.
+partial module events {
+  /// The numeric details of a UI event.
+  struct UiEventData {
+    /// clientX / clientY (CSS px, viewport)
+    f64 client_x;
+    f64 client_y;
+    /// screenX / screenY
+    f64 screen_x;
+    f64 screen_y;
+    /// pageX / pageY (the document's scroll offsets added)
+    f64 page_x;
+    f64 page_y;
+    /// offsetX / offsetY (from the target's padding edge)
+    f64 offset_x;
+    f64 offset_y;
+    /// deltaX / deltaY / deltaZ (WheelEvent)
+    f64 delta_x;
+    f64 delta_y;
+    f64 delta_z;
+    /// relatedTarget (a node), 0 = null
+    u64 related;
+    /// modifier bits: 1 ctrl, 2 shift, 4 alt, 8 meta
+    u32 mods;
+    /// MouseEvent.button
+    i32 button;
+    /// MouseEvent.buttons
+    u32 buttons;
+    /// UIEvent.detail
+    i32 detail;
+    /// KeyboardEvent.keyCode (and which, charCode for keypress)
+    u32 key_code;
+    /// KeyboardEvent.location
+    u32 location;
+    /// KeyboardEvent.repeat
+    u32 repeat;
+    /// WheelEvent.deltaMode
+    u32 delta_mode;
+  }
+
+  /// The details of a UI event being dispatched.
+  UiEventData Event_uiData(Event event);
+  /// KeyboardEvent.key ("Enter", "a"...): "Unidentified" when unknown.
+  string UiEvent_key(Event event);
+  /// KeyboardEvent.code ("KeyA", "Enter"...): "" when unknown.
+  string UiEvent_code(Event event);
+}
