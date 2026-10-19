@@ -596,7 +596,6 @@ fmt_count :: proc(n: int) -> string {
 	return strings.to_string(b)
 }
 
-@(private = "file")
 decimal_comma :: proc(s: string) -> string {
 	out, _ := strings.replace_all(s, ".", ",", context.temp_allocator)
 	return out

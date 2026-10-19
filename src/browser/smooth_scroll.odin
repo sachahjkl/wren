@@ -14,8 +14,11 @@ package browser
 //   * Anything else that moves a scroller (find in page, focus, a script) wins: the animation of that scroller stops.
 // Scroll bars: dragging a thumb moves the scroller with the pointer, at once; a press in the track pages towards it.
 
+import "core:fmt"
 import "core:math"
 import "toolkit:draw"
+
+_ :: fmt   // PACING_DEBUG only
 import "toolkit:platform"
 import "wb:base"
 import "wb:config"
@@ -285,7 +288,12 @@ smooth_tick :: proc(app: ^App, t: ^Tab) -> bool {
 		a := &s.anims[i]
 		cur, limit, ok := scroller_state(app, t, a.node)
 		// gone, or moved by someone else: that wins
-		if !ok || abs(cur.x - a.applied.x) > 0.5 || abs(cur.y - a.applied.y) > 0.5 { unordered_remove(&s.anims, i); continue }
+		if !ok || abs(cur.x - a.applied.x) > 0.5 || abs(cur.y - a.applied.y) > 0.5 {
+			when PACING_DEBUG { fmt.eprintln("smooth: dropped", ok, cur, a.applied) }
+			unordered_remove(&s.anims, i)
+			continue
+		}
+		when PACING_DEBUG { fmt.eprintln("smooth: tick", now, cur, a.axis[1]) }
 		next := cur
 		busy := false
 		for k in 0 ..< 2 {

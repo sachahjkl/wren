@@ -21,6 +21,7 @@ package browser
 // chain's frame statistics give: requestAnimationFrame timestamps, the CSS animation clock and smooth scrolling all
 // advance by whole refresh periods, whatever the jitter of the thread waking up.
 
+import "core:fmt"
 import "core:math"
 import "core:strconv"
 import "core:strings"
@@ -29,6 +30,10 @@ import win "core:sys/windows"
 import "toolkit:platform"
 import "toolkit:render"
 import "wb:config"
+
+// PACING_DEBUG: every wait for the screen and every smooth scrolling step on stderr (build with -subsystem:console).
+PACING_DEBUG :: #config(PACING_DEBUG, false)
+_ :: fmt   // PACING_DEBUG only
 
 FRAME_PREFS := [?]config.Def{
 	{name = "browser.frame.target_hz", kind = .String, default = {s = "auto"},
@@ -187,7 +192,9 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	// nothing is queued before the first present: the latency object of a swap chain not yet shown is not signaled,
 	// waiting would only run into the timeout
 	if app.presented {
-		if !platform.wait_handle(app.win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms) { pacer.missed_timeouts += 1 }
+		ok := platform.wait_handle(app.win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms)
+		if !ok { pacer.missed_timeouts += 1 }
+		when PACING_DEBUG { fmt.eprintln("wait", ok, idled, time.duration_milliseconds(time.tick_since(t0)), app.frames_requested) }
 	}
 }
 

@@ -928,9 +928,10 @@ frame :: proc(app: ^App, idled := false) {
 		prof_begin(.Animation)
 		page.run_animation_frames(t.page, pacer.frame_ms)
 		prof_end(.Animation)
-		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 1) }
+		// (the loop counts this frame off after it: 2 = this one and the next)
+		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
 	}
-	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 1) }   // smooth_scroll.odin
+	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }   // smooth_scroll.odin
 
 	render.resize(&app.r, app.win.size)
 	size := draw.Vec2{f32(app.win.size.x), f32(app.win.size.y)}

@@ -301,17 +301,19 @@ panel_section :: proc(app: ^App, t: ^Tab, section: Panel_Section, w: f32) {
 	switch section {
 	case .Frames:
 		budget := n.budget > 0 ? n.budget : hud_budget()
-		ui.stat_heading("frames", "FRAMES: MEAN / P95 / P99 / MAX", w)
+		ui.stat_heading("frames", "FRAMES: MEAN / P95 / P99", w)
 		ui.stat_row("fps", "Per second", fmt.tprintf("%.0f of %s", n.fps, fmt_hz(pacer.hz, c)), w)
-		ui.stat_row("budget", "Budget", fmt.tprintf("%s ms", fmt_ms(budget, c)), w)
-		ui.stat_row("cpu", "CPU ms", n.frames > 0 ? fmt.tprintf("%s / %s / %s / %s", fmt_ms(n.cpu_mean, c), fmt_ms(n.cpu_p95, c), fmt_ms(n.cpu_p99, c), fmt_ms(n.cpu_max, c)) : "--", w,
+		bt := fmt.tprintf("%.2f", budget)
+		ui.stat_row("budget", "Budget ms", c ? decimal_comma(bt) : bt, w)
+		ui.stat_row("cpu", "CPU ms", n.frames > 0 ? fmt.tprintf("%s / %s / %s", fmt_ms(n.cpu_mean, c), fmt_ms(n.cpu_p95, c), fmt_ms(n.cpu_p99, c)) : "--", w,
 			tone = n.frames > 0 && n.cpu_p99 > budget ? "warn" : "")
 		gpu := "not measured"
-		if render.gpu_timing_enabled(&app.r) { gpu = n.gpu_n > 0 ? fmt.tprintf("%s / %s / %s / %s", fmt_ms(n.gpu_mean, c), fmt_ms(n.gpu_p95, c), fmt_ms(n.gpu_p99, c), fmt_ms(n.gpu_max, c)) : "--" }
+		if render.gpu_timing_enabled(&app.r) { gpu = n.gpu_n > 0 ? fmt.tprintf("%s / %s / %s", fmt_ms(n.gpu_mean, c), fmt_ms(n.gpu_p95, c), fmt_ms(n.gpu_p99, c)) : "--" }
 		ui.stat_row("gpu", "GPU ms", gpu, w, tone = n.gpu_n > 0 && n.gpu_p99 > budget ? "warn" : "")
-		ui.stat_row("over", "Over budget, CPU / GPU", fmt.tprintf("%d / %d of %d", n.over, n.gpu_over, n.frames), w, tone = n.over + n.gpu_over > 0 ? "warn" : "")
-		ui.stat_row("missed", "Missed refreshes", n.shown > 0 ? fmt.tprintf("%d (%d shown)", n.missed, n.shown) : "--", w, tone = n.missed > 0 ? "bad" : "")
-		ui.stat_row("lat", "Input to screen ms", n.lat_n > 0 ? fmt.tprintf("%s / %s / -- / %s", fmt_ms(n.lat_mean, c), fmt_ms(n.lat_p95, c), fmt_ms(n.lat_max, c)) : "--", w)
+		ui.stat_row("max", "Longest, CPU / GPU", n.frames > 0 ? fmt.tprintf("%s / %s", fmt_ms(n.cpu_max, c), n.gpu_n > 0 ? fmt_ms(n.gpu_max, c) : "--") : "--", w)
+		ui.stat_row("over", "Over budget", fmt.tprintf("%d + %d of %d", n.over, n.gpu_over, n.frames), w, tone = n.over + n.gpu_over > 0 ? "warn" : "")
+		ui.stat_row("missed", "Missed refreshes", n.shown > 0 ? fmt.tprintf("%d of %d", n.missed, n.shown) : "--", w, tone = n.missed > 0 ? "bad" : "")
+		ui.stat_row("lat", "Input to screen", n.lat_n > 0 ? fmt.tprintf("%s / %s ms", fmt_ms(n.lat_mean, c), fmt_ms(n.lat_p95, c)) : "--", w)
 	case .Display:
 		ui.stat_heading("display", "DISPLAY", w)
 		d := pacer.display
