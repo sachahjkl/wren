@@ -44,6 +44,9 @@ Text_Api :: struct {
 	// Advance width of one line of text at `size` device px.
 	width:   proc(user: rawptr, f: Font, size: f32, text: string) -> f32,
 	metrics: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics,
+	// `width` may be called from several threads at once (`font` and `metrics` never are): lines of independent
+	// paragraphs are then built on the layout threads (parallel.odin)
+	concurrent: bool,
 }
 
 // Natural size, in CSS px, of the content of a replaced element (a decoded image...). ok = false: not known (yet).
@@ -335,6 +338,8 @@ Layout :: struct {
 	arena_ready:  bool,
 	scratch:      [dynamic]u32,
 	inc:          Inc_State,               // what incremental passes need between runs (incremental.odin)
+	pre_chunks:   [dynamic]Pre_Chunk,      // storage of the lines laid out ahead on the layout threads (parallel.odin)
+	pre_counts:   [2]int,                  // last full pass: contexts laid out ahead, and taken (diagnostics, tests)
 }
 
 DOCUMENT_SPACE :: i32(0)

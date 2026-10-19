@@ -34,6 +34,7 @@ Ctx :: struct {
 	grid:     ^Grid_Pass,               // grid layout state of the pass (grid.odin), made on first use
 	rebuilding: i32,                    // the box whose content a partial rebuild is making again (NONE: none)
 	inc:      ^Inc_Pass,                // an incremental pass: what it tracks while laying out (nil: a full pass)
+	pre:      ^Pre_Pass,                // inline formatting contexts laid out ahead on the layout threads (parallel.odin)
 }
 
 @(private)

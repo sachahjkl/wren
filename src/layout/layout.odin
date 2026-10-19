@@ -78,6 +78,7 @@ run_full :: proc(l: ^Layout, input: Input) {
 	mark_bfc_floats(&c, 0)
 	reserve_lines(l)
 	t1 := time.tick_now()
+	pre_layout(&c)
 	root := &l.boxes[0]
 	root.pos = {0, 0}
 	root.size = input.viewport
@@ -146,6 +147,7 @@ destroy :: proc(l: ^Layout) {
 	delete(l.scratch)
 	delete(l.deco_items)
 	inc_destroy(l)
+	pre_destroy(l)
 	if l.arena_ready { virtual.arena_destroy(&l.arena) }
 	l^ = {}
 }

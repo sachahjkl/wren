@@ -24,6 +24,7 @@ import "wb:style"
 @(test)
 bench_load :: proc(t: ^testing.T) {
 	if os.get_env("WREN_LOADBENCH", context.temp_allocator) == "" { return }
+	defer shutdown_threads()
 	// the browser's allocators, not the test runner's
 	context.allocator = runtime.heap_allocator()
 	temp: runtime.Arena
@@ -52,6 +53,7 @@ bench_load :: proc(t: ^testing.T) {
 		st := style.compute_styles(eng, doc, {})
 		defer style.styled_destroy(st)
 		set := settings_default()
+		if th := os.get_env("WREN_LOADBENCH_THREADS", context.temp_allocator); th != "" { set.threads = parse_int(th) }
 		in_ := Input{doc = doc, styled = st, settings = &set, text = bench_text_api(), viewport = {1500, 900}, scale = 1.5, band_h = 256}
 
 		cold := make([]f64, rounds, context.temp_allocator)
@@ -69,12 +71,14 @@ bench_load :: proc(t: ^testing.T) {
 			run(&l, in_)
 			warm[r], ws[r] = time.duration_milliseconds(time.tick_since(t1)), l.stats
 			nb, ni = len(l.boxes), len(l.items)
+			if r == 0 { fmt.printfln("LOADBENCH %s contexts ahead %d taken %d", name, l.pre_counts[0], l.pre_counts[1]) }
 			if r == 0 { fmt.printfln("LOADBENCH %s nodes %d (used %d) inline_items %d lines %d frags %d fonts %d", name, doc.nodes.count, doc.nodes.used, len(l.inline_items), len(l.lines), len(l.frags), len(l.fonts)) }
 			destroy(&l)
 		}
 		c, w := bench_median_stats(cs), bench_median_stats(ws)
 		fmt.printfln("LOADBENCH %s (%d boxes, %d items) size_of Box %d Box_Info %d Inline_Item %d Line %d Frag %d Display_Item %d", name, nb, ni,
 			size_of(Box), size_of(Box_Info), size_of(Inline_Item), size_of(Line), size_of(Frag), size_of(Display_Item))
+		fmt.printfln("LOADBENCH size_of Computed %d, Node %d", size_of(style.Computed), size_of(dom.Node))
 		fmt.printfln("LOADBENCH %s cold %6.2f ms [tree %.2f layout %.2f finish %.2f display %.2f bands %.2f]", name, bench_median(cold), c[0], c[1], c[2], c[3], c[4])
 		fmt.printfln("LOADBENCH %s warm %6.2f ms [tree %.2f layout %.2f finish %.2f display %.2f bands %.2f]", name, bench_median(warm), w[0], w[1], w[2], w[3], w[4])
 
@@ -119,6 +123,7 @@ bench_text_api :: proc() -> Text_Api {
 		font = proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return 1 },
 		width = proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(len(text)) },
 		metrics = proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {0.8 * size, 0.2 * size, 0.5 * size} },
+		concurrent = true,
 	}
 }
 

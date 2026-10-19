@@ -805,7 +805,19 @@ layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool) {
 	b.lines = {}
 	b.baseline, b.last_baseline = -1, -1
 	if b.items[1] <= b.items[0] { return 0, true }
+	if c.pre != nil {
+		if h, empty, ok := pre_adopt(c, bi, cw, fc); ok { return h, empty }
+	}
+	out, lines, h, empty := ifc_build(c, bi, cw, fc)
+	ifc_publish(c, bi, out, lines)
+	return h, empty
+}
 
+// Line building of the inline formatting context `bi` at content width `cw`: its fragments (lines refer to them from 0)
+// and lines, in buffers of the pass that stay valid until the next context of the same nesting level is built.
+@(private)
+ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (out: []Frag, lines: []Line, h: f32, empty: bool) {
+	b := &c.l.boxes[bi]
 	// working buffers, one set per nesting level of inline formatting contexts, reused for the whole pass
 	if c.lb_depth >= len(c.lb_bufs) {
 		nb := new(LB_Buffers, context.temp_allocator)
@@ -897,15 +909,21 @@ layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool) {
 	commit_unit(&lb, false)
 	if !lb.empty || lb.content || len(lb.pending_abs) > 0 || len(lb.pending_floats) > 0 { finish_line(&lb, true, true) }
 	if recording { keep_segs(c, bi, bufs.segs[:]) }
+	return lb.out[:], lb.lines[:], lb.y, !lb.any_line && !blocks
+}
 
-	// publish: lines and fragments of this context are contiguous
-	b = &c.l.boxes[bi]
+// The lines and fragments of context `bi` join the layout's (contiguous); its inline boxes take the union of their
+// fragments. `out` and `lines` are left as they are (a pre-built context may be published again).
+@(private)
+ifc_publish :: proc(c: ^Ctx, bi: i32, out: []Frag, lines: []Line) {
+	b := &c.l.boxes[bi]
 	base := i32(len(c.l.frags))
-	append(&c.l.frags, ..lb.out[:])
+	append(&c.l.frags, ..out)
 	l0 := i32(len(c.l.lines))
-	for &ln in lb.lines {
-		ln.frags += base
-		append(&c.l.lines, ln)
+	for ln in lines {
+		ln2 := ln
+		ln2.frags += base
+		append(&c.l.lines, ln2)
 	}
 	b.lines = {l0, i32(len(c.l.lines))}
 	if b.lines[1] > b.lines[0] {
@@ -932,7 +950,6 @@ layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool) {
 		f := &c.l.frags[i]
 		if f.kind == .Box { c.l.boxes[f.box].tmp_al = -1 }
 	}
-	return lb.y, !lb.any_line && !blocks
 }
 
 // A block-level box inside an inline box (CSS 2.1 §9.2.1.1): it takes a line of its own, the full width.
