@@ -79,6 +79,28 @@ engine_tz :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint
 	return nil
 }
 
+// a string result: copied to (buf, cap), the full length returned
+@(private)
+put_string :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, s: string) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	if p, ok := wasm.span(&f, u64(u32(a[0].i32)), u64(u32(a[1].i32))); ok {
+		n := min(len(s), int(u32(a[1].i32)))
+		for i in 0 ..< n { p[i] = s[i] }
+	}
+	a[0] = {}
+	a[0].i32 = i32(len(s))
+	return nil
+}
+
+engine_time_zone :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	context = runtime.default_context()
+	return put_string(env, caller, a, js.timezone_name())
+}
+
+engine_locale :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	return put_string(env, caller, a, "en-US")
+}
+
 exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	a[0] = {}
 	return nil
@@ -98,6 +120,8 @@ IMPORTS := [?]wasm.Import{
 	{module = "js", name = "Engine_reportException", fn = engine_report, params = {.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}},
 	{module = "js", name = "Engine_storeBytecode", fn = engine_store, params = {.I32, .I32}},
 	{module = "js", name = "Engine_timezoneOffset", fn = engine_tz, params = {.F64}, results = {.I32}},
+	{module = "js", name = "Engine_timeZone", fn = engine_time_zone, params = {.I32, .I32}, results = {.I32}},
+	{module = "js", name = "Engine_locale", fn = engine_locale, params = {.I32, .I32}, results = {.I32}},
 	{module = "web", name = "Exception_message", fn = exception_message, params = {.I32, .I32}, results = {.I32}},
 	{module = "performance", name = "Performance_now", fn = performance_now, params = {}, results = {.F64}},
 }

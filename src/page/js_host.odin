@@ -40,6 +40,16 @@ Engine_storeBytecode :: proc(c: ^Call, code: []u8) {
 
 Engine_timezoneOffset :: proc(c: ^Call, time_ms: f64) -> i32 { return js.timezone_offset(time_ms) }
 
+Engine_timeZone :: proc(c: ^Call) -> string { return js.timezone_name() }
+
+// The first language of network.accept_language (what navigator.language says too).
+Engine_locale :: proc(c: ^Call) -> string {
+	l := c.page.loader.profile.settings.accept_language
+	if i := strings.index_any(l, ",;"); i >= 0 { l = l[:i] }
+	l = strings.trim_space(l)
+	return l == "" ? "en-US" : l
+}
+
 Node_interface :: proc(c: ^Call, node: Api_Node) -> u32 { return js_node_interface(c.page, node.data) }
 
 Node_pin :: proc(c: ^Call, node: Api_Node) { dom.pin(c.page.doc, H(node.handle)) }

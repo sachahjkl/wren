@@ -17,6 +17,10 @@ module js {
   void Engine_storeBytecode(bytes code);
   /// Minutes to add to local time to get UTC at `time_ms` (ms since the Unix epoch), as Date.prototype.getTimezoneOffset.
   i32 Engine_timezoneOffset(f64 time_ms);
+  /// The IANA name of the local time zone ("Europe/Paris"; "UTC" when unknown), for Intl.
+  string Engine_timeZone();
+  /// The language of the user interface ("en-US"), for Intl.
+  string Engine_locale();
 
   /// The interface of a node's wrapper: an index into the engine's interface table (gen/bindings.c), chosen from the
   /// node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...).

@@ -67,6 +67,26 @@ Minutes to add to local time to get UTC at `time_ms` (ms since the Unix epoch), 
 
 Host: `Engine_timezoneOffset :: proc(c: ^Call, time_ms: f64) -> i32`
 
+### `Engine_timeZone`
+
+```
+string Engine_timeZone()
+```
+
+The IANA name of the local time zone ("Europe/Paris"; "UTC" when unknown), for Intl.
+
+Host: `Engine_timeZone :: proc(c: ^Call) -> string`
+
+### `Engine_locale`
+
+```
+string Engine_locale()
+```
+
+The language of the user interface ("en-US"), for Intl.
+
+Host: `Engine_locale :: proc(c: ^Call) -> string`
+
 ### `Node_interface`
 
 ```

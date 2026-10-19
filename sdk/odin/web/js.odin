@@ -5,6 +5,7 @@
 // "pinned": it is not freed when it leaves the tree, and a detached tree is freed once nothing pins it any more).
 package web
 
+import "base:runtime"
 import "base:intrinsics"
 
 // The level of a console message.
@@ -24,6 +25,8 @@ foreign _m_js {
 	@(link_name = "Engine_reportException") _Engine_reportException :: proc(message: [^]u8, message_len: u32, stack: [^]u8, stack_len: u32, source: [^]u8, source_len: u32, line: i32, column: i32) ---
 	@(link_name = "Engine_storeBytecode") _Engine_storeBytecode :: proc(code: [^]u8, code_len: u32) ---
 	@(link_name = "Engine_timezoneOffset") _Engine_timezoneOffset :: proc(time_ms: f64) -> i32 ---
+	@(link_name = "Engine_timeZone") _Engine_timeZone :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Engine_locale") _Engine_locale :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Node_interface") _Node_interface :: proc(node: u64) -> u32 ---
 	@(link_name = "Node_pin") _Node_pin :: proc(node: u64) ---
 	@(link_name = "Node_unpin") _Node_unpin :: proc(node: u64) ---
@@ -50,6 +53,64 @@ Engine_storeBytecode :: proc "contextless" (code: []u8) {
 // Minutes to add to local time to get UTC at `time_ms` (ms since the Unix epoch), as Date.prototype.getTimezoneOffset.
 Engine_timezoneOffset :: proc "contextless" (time_ms: f64) -> i32 {
 	return _Engine_timezoneOffset(time_ms)
+}
+
+// The IANA name of the local time zone ("Europe/Paris"; "UTC" when unknown), for Intl.
+Engine_timeZone :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Engine_timeZone(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Engine_timeZone's result.
+Engine_timeZone_len :: proc "contextless" () -> (int, Error) {
+	n := _Engine_timeZone(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Engine_timeZone's result in a buffer allocated to fit.
+Engine_timeZone_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Engine_timeZone(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The language of the user interface ("en-US"), for Intl.
+Engine_locale :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Engine_locale(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Engine_locale's result.
+Engine_locale_len :: proc "contextless" () -> (int, Error) {
+	n := _Engine_locale(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Engine_locale's result in a buffer allocated to fit.
+Engine_locale_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Engine_locale(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
 }
 
 // The interface of a node's wrapper: an index into the engine's interface table (gen/bindings.c), chosen from the

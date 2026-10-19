@@ -5142,6 +5142,38 @@ _t_js_Engine_timezoneOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	return nil
 }
 
+// Engine_timeZone :: proc(c: ^Call) -> string
+@(private = "file")
+_t_js_Engine_timeZone :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "js.Engine_timeZone", "result buffer") }
+	_r := Engine_timeZone(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Engine_locale :: proc(c: ^Call) -> string
+@(private = "file")
+_t_js_Engine_locale :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "js.Engine_locale", "result buffer") }
+	_r := Engine_locale(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
 // Node_interface :: proc(c: ^Call, node: Api_Node) -> u32
 @(private = "file")
 _t_js_Node_interface :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -7881,6 +7913,8 @@ api_imports := [?]wasm.Import{
 	{module = "js", name = "Engine_reportException", fn = _t_js_Engine_reportException, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32}, wide_results = []wasm.Val_Kind{}},
 	{module = "js", name = "Engine_storeBytecode", fn = _t_js_Engine_storeBytecode, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "js", name = "Engine_timezoneOffset", fn = _t_js_Engine_timezoneOffset, realms = 3, params = []wasm.Val_Kind{.F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "js", name = "Engine_timeZone", fn = _t_js_Engine_timeZone, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "js", name = "Engine_locale", fn = _t_js_Engine_locale, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "js", name = "Node_interface", fn = _t_js_Node_interface, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Node_pin", fn = _t_js_Node_pin, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "js", name = "Node_unpin", fn = _t_js_Node_unpin, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},

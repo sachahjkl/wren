@@ -645,6 +645,10 @@ WR_IMPORT("js", "Engine_reportException") void wr_Engine_reportException(const u
 WR_IMPORT("js", "Engine_storeBytecode") void wr_Engine_storeBytecode(const uint8_t *code, uint32_t code_len);
 // Minutes to add to local time to get UTC at `time_ms` (ms since the Unix epoch), as Date.prototype.getTimezoneOffset.
 WR_IMPORT("js", "Engine_timezoneOffset") int32_t wr_Engine_timezoneOffset(double time_ms);
+// The IANA name of the local time zone ("Europe/Paris"; "UTC" when unknown), for Intl.
+WR_IMPORT("js", "Engine_timeZone") int32_t wr_Engine_timeZone(uint8_t *_buf, uint32_t _cap);
+// The language of the user interface ("en-US"), for Intl.
+WR_IMPORT("js", "Engine_locale") int32_t wr_Engine_locale(uint8_t *_buf, uint32_t _cap);
 // The interface of a node's wrapper: an index into the engine's interface table (gen/bindings.c), chosen from the
 // node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...).
 WR_IMPORT("js", "Node_interface") uint32_t wr_Node_interface(uint64_t node);

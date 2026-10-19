@@ -13,7 +13,8 @@ int wj_runtime_preinit(JSContext *ctx)
 {
     wj_realm *r = &wj_the_realm;
     if (wj_interface_find("console") < 0) { wj_install_console(ctx, r->global); }
-    return 0;
+    extern int wj_run_preludes(JSContext *ctx);
+    return wj_run_preludes(ctx);
 }
 
 int wj_runtime_start(JSContext *ctx, int kind)
