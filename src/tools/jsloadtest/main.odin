@@ -17,6 +17,7 @@ import "wb:base"
 import "wb:dom"
 import "wb:fetch"
 import "wb:host"
+import "wb:html"
 import "wb:js"
 import "wb:net"
 import "wb:page"
@@ -292,6 +293,12 @@ log("supports " + HTMLScriptElement.supports("module") + " " + HTMLScriptElement
 	check(logged("text inserted later ran"), "text inserted into a connected script that had none runs it")
 	check(logged("src set later ran"), "src set on a connected script that had none fetches and runs it")
 	check(logged("supports true false"), "HTMLScriptElement.supports")
+	// what innerHTML does: the fragment parser builds nodes in the document; its scripts never run, its handlers work
+	html.parse_into(p.doc, p.body, transmute([]byte)string(`<script>log("fragment script ran")</script><b id=fb onclick="log('fragment handler ran')">x</b>`), 1000)
+	run_js(p, `document.getElementById("fb").dispatchEvent(new Event("click")); log("fragment checked")`)
+	pump(30)
+	check(logged("fragment checked") && !logged("fragment script ran"), "scripts made by a fragment parser never run")
+	check(logged("fragment handler ran"), "the handlers of a fragment's elements are registered")
 	page.page_close(p)
 }
 
@@ -548,12 +555,14 @@ w.onmessage = (e) => {
     return;
   }
   if (e.data === "closing") { log("worker closing"); return; }
+  if (typeof e.data === "string") { log(e.data); if (e.data === "worker timer fired") w.postMessage("close"); return; }
   const v = e.data;
   const g = v.got;
   log("echo " + (g.d instanceof Date) + " " + g.d.getTime() + " " + g.m.get(1) + " " + g.s.has(2) + " " + g.r.flags + " " + new Uint8Array(g.buf)[2] + " " + (g.cyc.self === g.cyc) + " lib " + v.lib + " name " + v.name + " " + v.isWorker);
   w.postMessage("throw");
 };
-w.onerror = (e) => { log("worker error " + (e instanceof ErrorEvent) + " " + e.message.includes("worker boom")); e.preventDefault(); w.postMessage("close"); };
+w.onerror = (e) => { log("worker error " + (e instanceof ErrorEvent) + " " + e.message.includes("worker boom")); e.preventDefault(); w.postMessage("timer"); };
+const t = new Worker("/jsload/files/worker.js"); t.onmessage = () => log("terminated worker spoke"); t.terminate();
 try { new Worker("http://other.example/x.js"); } catch (e) { log("cross-origin worker " + e.name); }
 try { w.postMessage(() => 1); } catch (e) { log("function not cloneable " + e.name); }
 </script></body>`}, context.temp_allocator)
@@ -563,6 +572,8 @@ try { w.postMessage(() => 1); } catch (e) { log("function not cloneable " + e.na
 	check(logged("transferred detaches 0"), "a transferred ArrayBuffer is detached")
 	check(logged("echo true 5 a true gi 3 true lib 7 name w1 true"), "structured clone both ways (Date, Map, Set, RegExp, ArrayBuffer, cycles); importScripts; name")
 	check(logged("worker error true true"), "an uncaught error of the worker is an ErrorEvent at the Worker")
+	check(logged("worker timer fired") && logged("worker rejection w"), "timers and unhandledrejection in the worker")
+	check(!logged("terminated worker spoke"), "a terminated worker sends nothing")
 	check(logged("cross-origin worker SecurityError"), "a cross-origin worker is refused")
 	check(logged("function not cloneable DataCloneError"), "a function is not cloneable")
 	page.page_close(p)

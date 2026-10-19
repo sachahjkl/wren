@@ -563,9 +563,10 @@ script_execute :: proc(p: ^Page, sc: ^Page_Script) {
 	sc.state = .Done
 	if failed {
 		dispatch_event(p, sc.element, dom.Event{type = "error"})
+		if !p.closed { script_retire(p, sc) }
 		return
 	}
-	if !js_enabled(p) { return }
+	if !js_enabled(p) { script_retire(p, sc); return }
 	external := sc.external || sc.kind == .Module
 	if external { s.ignore_destructive_writes += 1 }
 	defer if external { s.ignore_destructive_writes -= 1 }
@@ -592,6 +593,25 @@ script_execute :: proc(p: ^Page, sc: ^Page_Script) {
 	delete(sc.source)
 	sc.source = nil
 	if sc.external { dispatch_event(p, sc.element, dom.Event{type = "load"}) }
+	if !p.closed { script_retire(p, sc) }
+}
+
+// A script that ran (or failed) is forgotten with what it alone used: a page inserting scripts for its whole life
+// (JSONP, analytics) keeps no record of them. Nothing refers to it any more: it left every list before running.
+@(private)
+script_retire :: proc(p: ^Page, sc: ^Page_Script) {
+	s := p.scripts
+	if s == nil { return }
+	for x, i in s.scripts { if x == sc { unordered_remove(&s.scripts, i); break } }
+	if f := sc.download; f != nil {
+		for x, i in s.fetches { if x == f { unordered_remove(&s.fetches, i); break } }
+		script_fetch_free(p, f)
+	}
+	if g := sc.graph; g != nil && s.modules != nil {
+		for x, i in s.modules.graphs { if x == g { ordered_remove(&s.modules.graphs, i); break } }
+		graph_free(g)
+	}
+	script_free(sc)
 }
 
 ////////////////////////////////
