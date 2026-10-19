@@ -471,7 +471,7 @@ visit :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame) {
 	n := dom.get(c.d, f.node)
 	if n == nil { return }
 	switch n.kind {
-	case .Document, .Comment: return
+	case .Document, .Comment, .Doctype, .Fragment: return
 	case .Text: visit_text(c, f, n); return
 	case .Element:
 	}

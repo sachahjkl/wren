@@ -1,0 +1,51 @@
+/// Collections of nodes for JavaScript (src/page/js_dom_collections.odin): live NodeLists and HTMLCollections over the
+/// tree (childNodes, children, getElementsBy*, document.forms...), kept by the browser with a cache that the
+/// document's change counters invalidate, so that walking one by index is linear; static lists (querySelectorAll);
+/// DOMTokenList (classList, relList...) and DOMStringMap (dataset) over content attributes.
+partial module dom {
+  /// A live collection. Kinds: 0 child nodes, 1 child elements, 2 elements by qualified name (arg; "*" all), 3 by
+  /// class names (arg), 4 by name attribute (arg), 5 forms, 6 images, 7 links (a and area with href), 8 scripts,
+  /// 9 embeds, 10 anchors (a with name), 11 elements by namespace and local name (arg: namespace, NUL, local name;
+  /// "*" any), 12 all elements, 13 the select's / datalist's options, 14 a table's rows, 15 a row's cells, 16 a table's
+  /// tBodies, 17 a form's elements. Invalid_Argument for an unknown kind.
+  Object Collection_create(Node root, i32 kind, string arg) raises;
+  /// The number of nodes (0 for a dead collection).
+  u32 Collection_length(u64 collection);
+  /// The node at `index`, 0 past the end.
+  u64 Collection_item(u64 collection, u32 index);
+  /// HTMLCollection.namedItem(name): the first element whose id or name (for the elements that have one) is `name`.
+  u64 Collection_namedItem(u64 collection, string name);
+  /// The supported property names of an HTMLCollection, each followed by a NUL byte.
+  string Collection_names(u64 collection);
+  /// node.querySelectorAll(selectors): the elements in tree order, 8 bytes (a handle, little endian) each. Syntax for
+  /// an invalid selector list.
+  bytes ParentNode_querySelectorAllPacked(Node node, string selectors) raises;
+  /// node.querySelector(selectors)
+  Element ParentNode_querySelector(Node node, string selectors) raises;
+
+  /// DOMTokenList over the content attribute `attr` of an element: its tokens (ordered set, ASCII whitespace split).
+  u32 TokenList_length(Element element, string attr);
+  /// The token at `index` (Not_Found: null).
+  string TokenList_item(Element element, string attr, u32 index) raises;
+  bool TokenList_contains(Element element, string attr, string token);
+  /// add(tokens...): `tokens` NUL-separated. Syntax for an empty token, Invalid_Character for one with whitespace.
+  void TokenList_add(Element element, string attr, string tokens) raises;
+  /// remove(tokens...): as add.
+  void TokenList_remove(Element element, string attr, string tokens) raises;
+  /// toggle(token, force): force -1 absent, 0 false, 1 true. Returns whether the token is there afterwards.
+  bool TokenList_toggle(Element element, string attr, string token, i32 force) raises;
+  /// replace(token, newToken): whether it was there.
+  bool TokenList_replace(Element element, string attr, string token, string new_token) raises;
+  /// supports(token): for rel lists, whether the browser knows the link type. Type for lists without supported tokens.
+  bool TokenList_supports(Element element, string attr, string token) raises;
+
+  /// dataset[name]: the data-* attribute of a camel-cased name (Not_Found: absent).
+  string Dataset_get(Element element, string name) raises;
+  /// dataset[name] = value: Syntax for a name with "-" followed by a lower-case letter, Invalid_Character for a name
+  /// that does not make a valid attribute name.
+  void Dataset_set(Element element, string name, string value) raises;
+  /// delete dataset[name]: whether there was one.
+  bool Dataset_delete(Element element, string name);
+  /// The camel-cased names of the data-* attributes, each followed by a NUL byte.
+  string Dataset_names(Element element);
+}

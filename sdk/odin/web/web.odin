@@ -48,6 +48,20 @@ Error :: enum i32 {
 	Not_Allowed = -23,
 	// InvalidAccessError.
 	Invalid_Access = -24,
+	// InvalidCharacterError (a name that is not a valid XML name, a token with spaces...).
+	Invalid_Character = -40,
+	// NamespaceError.
+	Namespace = -41,
+	// InUseAttributeError.
+	In_Use_Attribute = -42,
+	// WrongDocumentError.
+	Wrong_Document = -43,
+	// InvalidNodeTypeError.
+	Invalid_Node_Type = -44,
+	// InvalidModificationError.
+	Invalid_Modification = -45,
+	// NoModificationAllowedError.
+	No_Modification_Allowed = -46,
 	// guest side only: a result did not fit in the buffer given (the part that fit was returned)
 	Truncated = -1000,
 }

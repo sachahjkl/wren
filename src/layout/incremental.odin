@@ -200,7 +200,7 @@ add_target :: proc(c: ^Ctx, h: base.Handle, roots, dirty: ^[dynamic]i32) -> bool
 		if n == nil { return true }   // destroyed: its removal is in the journal too
 		switch n.kind {
 		case .Document: return false
-		case .Text, .Comment:
+		case .Text, .Comment, .Doctype, .Fragment:
 		case .Element:
 			if bi := live_box(l, cur); bi != NONE {
 				b := &l.boxes[bi]

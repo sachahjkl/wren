@@ -26,7 +26,7 @@ dump :: proc(d: ^dom.Document, h: base.Handle, sb: ^strings.Builder) {
 			append(&stack, Item{it.h, true})
 		case .Text: strings.write_string(sb, n.text)
 		case .Comment: fmt.sbprintf(sb, "<!--%s-->", n.text)
-		case .Document:
+		case .Document, .Doctype, .Fragment:
 		}
 		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(&stack, Item{ch, false}) }
 	}

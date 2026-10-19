@@ -227,7 +227,7 @@ box_before :: proc(c: ^Ctx, h: base.Handle, p: i32, planned: map[base.Handle]boo
 	for s := dom.get(c.d, h).prev; s != base.NIL_HANDLE; s = dom.get(c.d, s).prev {
 		n := dom.get(c.d, s)
 		switch n.kind {
-		case .Document, .Comment: continue
+		case .Document, .Comment, .Doctype, .Fragment: continue
 		case .Text:
 			cs, _ := text_owner_cs(c, s)
 			if collapsible_ws_only(n.text, cs.white_space) || len(n.text) == 0 { continue }

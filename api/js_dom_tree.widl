@@ -1,0 +1,152 @@
+/// The DOM Standard's tree for JavaScript: Node, the ParentNode / ChildNode mixins, CharacterData, Text, DocumentType,
+/// the creation of nodes and the mutation algorithms with every check of "pre-insert validity" (src/page/js_dom_tree.odin).
+/// Offsets and lengths of character data are UTF-16 code units, as in JavaScript. A nullable string result is
+/// Not_Found for null.
+partial module dom {
+  /// node.nodeName ("#text", "DIV", "#document"...).
+  string Node_nodeName(Node node);
+  /// node.baseURI: the document's base URL.
+  string Node_baseURI(Node node);
+  /// node.isConnected
+  bool Node_isConnected(Node node);
+  /// node.ownerDocument (null for the document itself).
+  Node Node_ownerDocument(Node node);
+  /// node.parentElement
+  Element Node_parentElement(Node node);
+  /// node.hasChildNodes()
+  bool Node_hasChildNodes(Node node);
+  /// node.nodeValue: the data of a Text or Comment node, Not_Found (null) for the others.
+  string Node_nodeValue(Node node) raises;
+  /// node.nodeValue = value (nothing for nodes without data).
+  void Node_set_nodeValue(Node node, string value) raises;
+  /// node.textContent (Not_Found: null, for the document and a doctype).
+  string Node_textContent(Node node) raises;
+  /// node.textContent = value: one mutation replacing every child by a Text node (none for "").
+  void Node_set_textContent(Node node, string value) raises;
+  /// node.normalize()
+  void Node_normalize(Node node);
+  /// node.cloneNode(deep). Not_Supported for the document (one document per page).
+  Node Node_cloneNode(Node node, bool deep = false) raises;
+  /// node.isEqualNode(other)
+  bool Node_isEqualNode(Node node, optional Node other);
+  /// node.isSameNode(other)
+  bool Node_isSameNode(Node node, optional Node other);
+  /// node.compareDocumentPosition(other): DOCUMENT_POSITION_* bits.
+  u32 Node_compareDocumentPosition(Node node, Node other);
+  /// node.contains(other)
+  bool Node_contains(Node node, optional Node other);
+  /// node.lookupPrefix(namespace) (Not_Found: null).
+  string Node_lookupPrefix(Node node, optional string namespace) raises;
+  /// node.lookupNamespaceURI(prefix) (Not_Found: null).
+  string Node_lookupNamespaceURI(Node node, optional string prefix) raises;
+  /// node.isDefaultNamespace(namespace)
+  bool Node_isDefaultNamespace(Node node, optional string namespace);
+  /// node.getRootNode() (no shadow trees: the root of its tree).
+  Node Node_rootNode(Node node);
+  /// The length of a node (DOM "length"): UTF-16 code units of a Text or Comment node, else its number of children.
+  u32 Node_length(Node node);
+  /// parent.insertBefore(node, child) / appendChild (child absent): DOM "pre-insert", every check (Hierarchy,
+  /// Not_Found), a DocumentFragment's children inserted as one mutation.
+  void Node_preInsert(Node parent, Node node, optional Node child) raises;
+  /// parent.replaceChild(node, child): DOM "replace a child".
+  void Node_replaceChildChecked(Node parent, Node node, Node child) raises;
+  /// parent.removeChild(child): Not_Found when child is not a child of parent.
+  void Node_preRemove(Node parent, Node child) raises;
+  /// prepend / append / replaceChildren (mode 0, 1, 2) of ParentNode, before / after / replaceWith (3, 4, 5) of
+  /// ChildNode, with their (Node or DOMString) arguments packed in `items`: per item one byte 0 then a node handle (8
+  /// bytes, little endian), or one byte 1 then a length (4 bytes) and UTF-8 text.
+  void Node_insertItems(Node node, i32 mode, bytes items) raises;
+  /// The node handles of `nodes` stay alive while pinned (a static NodeList, a mutation record).
+  void Node_pinAll(u64[] nodes);
+  /// Drops the pins of Node_pinAll (dead handles are ignored).
+  void Node_unpinAll(u64[] nodes);
+
+  /// node.firstElementChild
+  Element ParentNode_firstElementChild(Node node);
+  /// node.lastElementChild
+  Element ParentNode_lastElementChild(Node node);
+  /// node.childElementCount
+  u32 ParentNode_childElementCount(Node node);
+  /// node.remove()
+  void ChildNode_remove(Node node);
+  /// node.previousElementSibling
+  Element NonDocumentTypeChildNode_previousElementSibling(Node node);
+  /// node.nextElementSibling
+  Element NonDocumentTypeChildNode_nextElementSibling(Node node);
+  /// fragment.getElementById(id) (the document has its own)
+  Element NonElementParentNode_getElementById(Node node, string id);
+
+  /// characterData.data
+  string CharacterData_data(Node node);
+  /// characterData.data = value
+  void CharacterData_set_data(Node node, string value);
+  /// characterData.length (UTF-16 code units)
+  u32 CharacterData_length(Node node);
+  /// substringData(offset, count): Index_Size past the end.
+  string CharacterData_substringData(Node node, u32 offset, u32 count) raises;
+  /// appendData(data)
+  void CharacterData_appendData(Node node, string data);
+  /// insertData(offset, data): Index_Size past the end.
+  void CharacterData_insertData(Node node, u32 offset, string data) raises;
+  /// deleteData(offset, count): Index_Size past the end.
+  void CharacterData_deleteData(Node node, u32 offset, u32 count) raises;
+  /// replaceData(offset, count, data): Index_Size past the end.
+  void CharacterData_replaceData(Node node, u32 offset, u32 count, string data) raises;
+  /// text.splitText(offset): the new Text node (inserted after it when it has a parent). Index_Size past the end.
+  Node Text_splitText(Node node, u32 offset) raises;
+  /// text.wholeText
+  string Text_wholeText(Node node);
+  /// doctype.name
+  string DocumentType_name(Node node);
+  /// doctype.publicId
+  string DocumentType_publicId(Node node);
+  /// doctype.systemId
+  string DocumentType_systemId(Node node);
+
+  /// document.createElement(localName): Invalid_Character for a name that is not a valid element name.
+  Element Document_createElementChecked(string local_name) raises;
+  /// document.createElementNS(namespace, qualifiedName): Invalid_Character, Namespace as DOM "validate and extract".
+  Element Document_createElementNSChecked(optional string namespace, string qualified_name) raises;
+  /// document.createDocumentFragment()
+  Node Document_createDocumentFragment() raises;
+  /// document.createComment(data)
+  Node Document_createComment(string data) raises;
+  /// document.createCDATASection(data): Not_Supported (an HTML document).
+  Node Document_createCDATASection(string data) raises;
+  /// document.adoptNode(node): removed from its parent (one document per page). Not_Supported for the document.
+  Node Document_adoptNode(Node node) raises;
+  /// document.documentURI
+  string Document_documentURI();
+  /// document.compatMode: "CSS1Compat" or "BackCompat".
+  string Document_compatMode();
+  /// document.characterSet
+  string Document_characterSet();
+  /// document.charset
+  string Document_charset();
+  /// document.inputEncoding
+  string Document_inputEncoding();
+  /// document.contentType
+  string Document_contentType();
+  /// document.doctype
+  Node Document_doctype();
+  /// document.title: the <title> text, whitespace collapsed (the <svg> root's title in an SVG document).
+  string Document_title();
+  /// document.title = value: the first <title> (made in <head> when missing).
+  void Document_set_title(string value);
+  /// document.dir
+  string Document_dir();
+  /// document.dir = value
+  void Document_set_dir(string value);
+  /// document.hasFocus()
+  bool Document_hasFocus();
+  /// document.referrer
+  string Document_referrer();
+  /// document.lastModified ("MM/DD/YYYY hh:mm:ss")
+  string Document_lastModified();
+  /// document.domain (getter)
+  string Document_domain();
+  /// document.scrollingElement
+  Element Document_scrollingElement();
+  /// document.body = element: Hierarchy when not a <body> or <frameset>, or without a document element.
+  void Document_set_body(optional Element body) raises;
+}

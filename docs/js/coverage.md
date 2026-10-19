@@ -13,9 +13,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | | count |
 |---|---:|
 | interfaces, namespaces in the table | 556 |
-| exposed by default | 147 |
+| exposed by default | 170 |
 | members | 4991 |
-| members implemented | 1533 (30.7 %) |
+| members implemented | 2018 (40.4 %) |
 
 ## By specification
 
@@ -23,7 +23,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 |---|---:|---:|
 | `FileAPI.idl` | 5 (0) | 9 / 38 |
 | `IndexedDB.idl` | 12 (0) | 11 / 94 |
-| `SVG.idl` | 60 (35) | 194 / 455 |
+| `SVG.idl` | 60 (35) | 209 / 455 |
 | `clipboard-apis.idl` | 4 (0) | 0 / 14 |
 | `compression.idl` | 2 (0) | 0 / 6 |
 | `console.idl` | 1 (1) | 19 / 19 |
@@ -38,21 +38,21 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-typed-om.idl` | 37 (0) | 3 / 126 |
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (0) | 4 / 28 |
-| `cssom.idl` | 16 (0) | 11 / 149 |
-| `dom.idl` | 35 (18) | 266 / 699 |
+| `cssom.idl` | 16 (2) | 20 / 149 |
+| `dom.idl` | 35 (29) | 529 / 699 |
 | `encoding.idl` | 4 (1) | 1 / 19 |
 | `entries-api.idl` | 5 (0) | 0 / 13 |
 | `event-timing.idl` | 2 (0) | 0 / 8 |
 | `fetch.idl` | 4 (1) | 2 / 57 |
 | `gamepad.idl` | 4 (0) | 0 / 17 |
-| `geometry.idl` | 8 (0) | 0 / 126 |
+| `geometry.idl` | 8 (3) | 19 / 126 |
 | `hr-time.idl` | 1 (1) | 5 / 17 |
-| `html.idl` | 160 (79) | 754 / 1819 |
+| `html.idl` | 160 (79) | 830 / 1819 |
 | `intersection-observer.idl` | 2 (0) | 0 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
 | `longtasks.idl` | 2 (0) | 0 / 15 |
-| `mathml-core.idl` | 2 (1) | 105 / 123 |
+| `mathml-core.idl` | 2 (2) | 120 / 123 |
 | `media-source.idl` | 7 (0) | 13 / 45 |
 | `mediacapture-streams.idl` | 8 (0) | 6 / 46 |
 | `mediasession.idl` | 3 (0) | 0 / 16 |
@@ -62,14 +62,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `paint-timing.idl` | 1 (0) | 0 / 3 |
 | `performance-timeline.idl` | 3 (0) | 0 / 15 |
 | `permissions.idl` | 2 (0) | 1 / 4 |
-| `pointerevents.idl` | 3 (1) | 6 / 47 |
+| `pointerevents.idl` | 3 (3) | 43 / 47 |
 | `requestidlecallback.idl` | 1 (0) | 0 / 2 |
 | `resize-observer.idl` | 3 (0) | 0 / 11 |
 | `resource-timing.idl` | 1 (0) | 0 / 29 |
 | `scheduling-apis.idl` | 4 (0) | 1 / 9 |
 | `screen-orientation.idl` | 1 (0) | 1 / 5 |
 | `scroll-to-text-fragment.idl` | 1 (0) | 0 / 0 |
-| `selection-api.idl` | 1 (0) | 0 / 25 |
+| `selection-api.idl` | 1 (1) | 24 / 25 |
 | `service-workers.idl` | 6 (0) | 6 / 43 |
 | `speech-api.idl` | 14 (0) | 19 / 85 |
 | `storage.idl` | 1 (0) | 0 / 3 |
@@ -77,7 +77,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `touch-events.idl` | 3 (0) | 0 / 27 |
 | `trusted-types.idl` | 6 (0) | 0 / 20 |
 | `ua-client-hints.idl` | 1 (0) | 0 / 5 |
-| `uievents.idl` | 6 (2) | 5 / 36 |
+| `uievents.idl` | 6 (5) | 32 / 36 |
 | `url.idl` | 2 (2) | 10 / 29 |
 | `user-timing.idl` | 2 (0) | 0 / 3 |
 | `web-animations.idl` | 5 (0) | 3 / 32 |
@@ -97,6 +97,76 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `constructor()`: not supported
 - `readonly signal`: import `abort.AbortController_signal`
 - `abort()`: not supported
+
+### AbstractRange
+
+5 / 5 members.
+
+- `readonly startContainer`: C `wjr_AbstractRange_get_startContainer`
+- `readonly startOffset`: C `wjr_AbstractRange_get_startOffset`
+- `readonly endContainer`: C `wjr_AbstractRange_get_endContainer`
+- `readonly endOffset`: C `wjr_AbstractRange_get_endOffset`
+- `readonly collapsed`: C `wjr_AbstractRange_get_collapsed`
+
+### Range : AbstractRange
+
+30 / 30 members.
+
+- `getClientRects()`: C `wjr_Range_getClientRects`
+- `getBoundingClientRect()`: C `wjr_Range_getBoundingClientRect`
+- `constructor()`: C `wjr_Range_constructor`
+- `readonly commonAncestorContainer`: C `wjr_Range_get_commonAncestorContainer`
+- `setStart()`: C `wjr_Range_setStart`
+- `setEnd()`: C `wjr_Range_setEnd`
+- `setStartBefore()`: C `wjr_Range_setStartBefore`
+- `setStartAfter()`: C `wjr_Range_setStartAfter`
+- `setEndBefore()`: C `wjr_Range_setEndBefore`
+- `setEndAfter()`: C `wjr_Range_setEndAfter`
+- `collapse()`: C `wjr_Range_collapse`
+- `selectNode()`: C `wjr_Range_selectNode`
+- `selectNodeContents()`: C `wjr_Range_selectNodeContents`
+- `const START_TO_START`: generic (constant)
+- `const START_TO_END`: generic (constant)
+- `const END_TO_END`: generic (constant)
+- `const END_TO_START`: generic (constant)
+- `compareBoundaryPoints()`: C `wjr_Range_compareBoundaryPoints`
+- `deleteContents()`: C `wjr_Range_deleteContents`
+- `extractContents()`: C `wjr_Range_extractContents`
+- `cloneContents()`: C `wjr_Range_cloneContents`
+- `insertNode()`: C `wjr_Range_insertNode`
+- `surroundContents()`: C `wjr_Range_surroundContents`
+- `cloneRange()`: C `wjr_Range_cloneRange`
+- `detach()`: C `wjr_Range_detach`
+- `isPointInRange()`: C `wjr_Range_isPointInRange`
+- `comparePoint()`: C `wjr_Range_comparePoint`
+- `intersectsNode()`: C `wjr_Range_intersectsNode`
+- `stringifier`: C `wjr_Range_toString`
+- `createContextualFragment()`: C `wjr_Range_createContextualFragment`
+
+### StaticRange : AbstractRange
+
+1 / 1 members.
+
+- `constructor()`: C `wjr_StaticRange_constructor`
+
+### CSSStyleDeclaration
+
+8 / 8 members.
+
+- `cssText`: C `wjr_CSSStyleDeclaration_get_cssText`
+- `readonly length`: C `wjr_CSSStyleDeclaration_get_length`
+- `item()`: C `wjr_CSSStyleDeclaration_item`
+- `getPropertyValue()`: C `wjr_CSSStyleDeclaration_getPropertyValue`
+- `getPropertyPriority()`: C `wjr_CSSStyleDeclaration_getPropertyPriority`
+- `setProperty()`: C `wjr_CSSStyleDeclaration_setProperty`
+- `removeProperty()`: C `wjr_CSSStyleDeclaration_removeProperty`
+- `readonly parentRule`: C `wjr_CSSStyleDeclaration_get_parentRule`
+
+### CSSStyleProperties : CSSStyleDeclaration
+
+1 / 1 members.
+
+- `cssFloat`: C `wjr_CSSStyleProperties_get_cssFloat`
 
 ### Crypto
 
@@ -139,6 +209,55 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `const TIMEOUT_ERR`: generic (constant)
 - `const INVALID_NODE_TYPE_ERR`: generic (constant)
 - `const DATA_CLONE_ERR`: generic (constant)
+
+### DOMRectList
+
+2 / 2 members.
+
+- `readonly length`: C `wjr_DOMRectList_get_length`
+- `item()`: C `wjr_DOMRectList_item`
+
+### DOMRectReadOnly
+
+11 / 11 members.
+
+- `constructor()`: C `wjr_DOMRectReadOnly_constructor`
+- `static fromRect()`: C `wjr_DOMRectReadOnly_static_fromRect`
+- `readonly x`: C `wjr_DOMRectReadOnly_get_x`
+- `readonly y`: C `wjr_DOMRectReadOnly_get_y`
+- `readonly width`: C `wjr_DOMRectReadOnly_get_width`
+- `readonly height`: C `wjr_DOMRectReadOnly_get_height`
+- `readonly top`: C `wjr_DOMRectReadOnly_get_top`
+- `readonly right`: C `wjr_DOMRectReadOnly_get_right`
+- `readonly bottom`: C `wjr_DOMRectReadOnly_get_bottom`
+- `readonly left`: C `wjr_DOMRectReadOnly_get_left`
+- `toJSON()`: C `wjr_DOMRectReadOnly_toJSON`
+
+### DOMRect : DOMRectReadOnly
+
+6 / 6 members.
+
+- `constructor()`: C `wjr_DOMRect_constructor`
+- `static fromRect()`: C `wjr_DOMRect_static_fromRect`
+- `x`: C `wjr_DOMRect_get_x`
+- `y`: C `wjr_DOMRect_get_y`
+- `width`: C `wjr_DOMRect_get_width`
+- `height`: C `wjr_DOMRect_get_height`
+
+### DOMTokenList
+
+10 / 10 members.
+
+- `readonly length`: C `wjr_DOMTokenList_get_length`
+- `item()`: C `wjr_DOMTokenList_item`
+- `contains()`: C `wjr_DOMTokenList_contains`
+- `add()`: C `wjr_DOMTokenList_add`
+- `remove()`: C `wjr_DOMTokenList_remove`
+- `toggle()`: C `wjr_DOMTokenList_toggle`
+- `replace()`: C `wjr_DOMTokenList_replace`
+- `supports()`: C `wjr_DOMTokenList_supports`
+- `value`: C `wjr_DOMTokenList_get_value`
+- `iterable`: generic (array iterator (indexed getter))
 
 ### Event
 
@@ -199,63 +318,124 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### UIEvent : Event
 
-0 / 5 members.
+5 / 5 members.
 
-- `constructor()`: not supported
-- `readonly view`: not supported
-- `readonly detail`: not supported
-- `initUIEvent()`: not supported
-- `readonly which`: not supported
+- `constructor()`: C `wjr_UIEvent_constructor`
+- `readonly view`: C `wjr_UIEvent_get_view`
+- `readonly detail`: C `wjr_UIEvent_get_detail`
+- `initUIEvent()`: C `wjr_UIEvent_initUIEvent`
+- `readonly which`: C `wjr_UIEvent_get_which`
+
+### CompositionEvent : UIEvent
+
+2 / 3 members.
+
+- `constructor()`: C `wjr_CompositionEvent_constructor`
+- `readonly data`: C `wjr_CompositionEvent_get_data`
+- `initCompositionEvent()`: not supported
+
+### FocusEvent : UIEvent
+
+2 / 2 members.
+
+- `constructor()`: C `wjr_FocusEvent_constructor`
+- `readonly relatedTarget`: C `wjr_FocusEvent_get_relatedTarget`
+
+### InputEvent : UIEvent
+
+5 / 6 members.
+
+- `readonly dataTransfer`: C `wjr_InputEvent_get_dataTransfer`
+- `getTargetRanges()`: not supported
+- `constructor()`: C `wjr_InputEvent_constructor`
+- `readonly data`: C `wjr_InputEvent_get_data`
+- `readonly isComposing`: C `wjr_InputEvent_get_isComposing`
+- `readonly inputType`: C `wjr_InputEvent_get_inputType`
 
 ### KeyboardEvent : UIEvent
 
-5 / 18 members.
+18 / 18 members.
 
-- `constructor()`: not supported
+- `constructor()`: C `wjr_KeyboardEvent_constructor`
 - `const DOM_KEY_LOCATION_STANDARD`: generic (constant)
 - `const DOM_KEY_LOCATION_LEFT`: generic (constant)
 - `const DOM_KEY_LOCATION_RIGHT`: generic (constant)
 - `const DOM_KEY_LOCATION_NUMPAD`: generic (constant)
-- `readonly key`: not supported
-- `readonly code`: not supported
-- `readonly location`: not supported
-- `readonly ctrlKey`: not supported
-- `readonly shiftKey`: not supported
-- `readonly altKey`: not supported
-- `readonly metaKey`: not supported
-- `readonly repeat`: not supported
-- `readonly isComposing`: not supported
-- `getModifierState()`: not supported
-- `initKeyboardEvent()`: not supported
-- `readonly charCode`: not supported
-- `readonly keyCode`: import `events.KeyboardEvent_keyCode`
+- `readonly key`: C `wjr_KeyboardEvent_get_key`
+- `readonly code`: C `wjr_KeyboardEvent_get_code`
+- `readonly location`: C `wjr_KeyboardEvent_get_location`
+- `readonly ctrlKey`: C `wjr_KeyboardEvent_get_ctrlKey`
+- `readonly shiftKey`: C `wjr_KeyboardEvent_get_shiftKey`
+- `readonly altKey`: C `wjr_KeyboardEvent_get_altKey`
+- `readonly metaKey`: C `wjr_KeyboardEvent_get_metaKey`
+- `readonly repeat`: C `wjr_KeyboardEvent_get_repeat`
+- `readonly isComposing`: C `wjr_KeyboardEvent_get_isComposing`
+- `getModifierState()`: C `wjr_KeyboardEvent_getModifierState`
+- `initKeyboardEvent()`: C `wjr_KeyboardEvent_initKeyboardEvent`
+- `readonly charCode`: C `wjr_KeyboardEvent_get_charCode`
+- `readonly keyCode`: C `wjr_KeyboardEvent_get_keyCode`
 
 ### MouseEvent : UIEvent
 
-3 / 22 members.
+22 / 22 members.
 
-- `readonly pageX`: not supported
-- `readonly pageY`: not supported
-- `readonly x`: not supported
-- `readonly y`: not supported
-- `readonly offsetX`: not supported
-- `readonly offsetY`: not supported
-- `constructor()`: not supported
-- `readonly screenX`: not supported
-- `readonly screenY`: not supported
-- `readonly clientX`: import `events.MouseEvent_clientX`
-- `readonly clientY`: import `events.MouseEvent_clientY`
-- `readonly layerX`: not supported
-- `readonly layerY`: not supported
-- `readonly ctrlKey`: not supported
-- `readonly shiftKey`: not supported
-- `readonly altKey`: not supported
-- `readonly metaKey`: not supported
-- `readonly button`: import `events.MouseEvent_button`
-- `readonly buttons`: not supported
-- `readonly relatedTarget`: not supported
-- `getModifierState()`: not supported
-- `initMouseEvent()`: not supported
+- `readonly pageX`: C `wjr_MouseEvent_get_pageX`
+- `readonly pageY`: C `wjr_MouseEvent_get_pageY`
+- `readonly x`: C `wjr_MouseEvent_get_x`
+- `readonly y`: C `wjr_MouseEvent_get_y`
+- `readonly offsetX`: C `wjr_MouseEvent_get_offsetX`
+- `readonly offsetY`: C `wjr_MouseEvent_get_offsetY`
+- `constructor()`: C `wjr_MouseEvent_constructor`
+- `readonly screenX`: C `wjr_MouseEvent_get_screenX`
+- `readonly screenY`: C `wjr_MouseEvent_get_screenY`
+- `readonly clientX`: C `wjr_MouseEvent_get_clientX`
+- `readonly clientY`: C `wjr_MouseEvent_get_clientY`
+- `readonly layerX`: C `wjr_MouseEvent_get_layerX`
+- `readonly layerY`: C `wjr_MouseEvent_get_layerY`
+- `readonly ctrlKey`: C `wjr_MouseEvent_get_ctrlKey`
+- `readonly shiftKey`: C `wjr_MouseEvent_get_shiftKey`
+- `readonly altKey`: C `wjr_MouseEvent_get_altKey`
+- `readonly metaKey`: C `wjr_MouseEvent_get_metaKey`
+- `readonly button`: C `wjr_MouseEvent_get_button`
+- `readonly buttons`: C `wjr_MouseEvent_get_buttons`
+- `readonly relatedTarget`: C `wjr_MouseEvent_get_relatedTarget`
+- `getModifierState()`: C `wjr_MouseEvent_getModifierState`
+- `initMouseEvent()`: C `wjr_MouseEvent_initMouseEvent`
+
+### PointerEvent : MouseEvent
+
+13 / 16 members.
+
+- `constructor()`: C `wjr_PointerEvent_constructor`
+- `readonly pointerId`: C `wjr_PointerEvent_get_pointerId`
+- `readonly width`: C `wjr_PointerEvent_get_width`
+- `readonly height`: C `wjr_PointerEvent_get_height`
+- `readonly pressure`: C `wjr_PointerEvent_get_pressure`
+- `readonly tangentialPressure`: C `wjr_PointerEvent_get_tangentialPressure`
+- `readonly tiltX`: C `wjr_PointerEvent_get_tiltX`
+- `readonly tiltY`: C `wjr_PointerEvent_get_tiltY`
+- `readonly twist`: C `wjr_PointerEvent_get_twist`
+- `readonly altitudeAngle`: C `wjr_PointerEvent_get_altitudeAngle`
+- `readonly azimuthAngle`: C `wjr_PointerEvent_get_azimuthAngle`
+- `readonly pointerType`: C `wjr_PointerEvent_get_pointerType`
+- `readonly isPrimary`: C `wjr_PointerEvent_get_isPrimary`
+- `readonly persistentDeviceId`: not supported
+- `getCoalescedEvents()`: not supported
+- `getPredictedEvents()`: not supported
+
+### WheelEvent : MouseEvent
+
+8 / 9 members.
+
+- `constructor()`: C `wjr_WheelEvent_constructor`
+- `const DOM_DELTA_PIXEL`: generic (constant)
+- `const DOM_DELTA_LINE`: generic (constant)
+- `const DOM_DELTA_PAGE`: generic (constant)
+- `readonly deltaX`: C `wjr_WheelEvent_get_deltaX`
+- `readonly deltaY`: C `wjr_WheelEvent_get_deltaY`
+- `readonly deltaZ`: C `wjr_WheelEvent_get_deltaZ`
+- `readonly deltaMode`: C `wjr_WheelEvent_get_deltaMode`
+- `readonly momentum`: not supported
 
 ### EventTarget
 
@@ -296,7 +476,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Node : EventTarget
 
-28 / 47 members.
+47 / 47 members.
 
 - `const ELEMENT_NODE`: generic (constant)
 - `const ATTRIBUTE_NODE`: generic (constant)
@@ -310,83 +490,83 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `const DOCUMENT_TYPE_NODE`: generic (constant)
 - `const DOCUMENT_FRAGMENT_NODE`: generic (constant)
 - `const NOTATION_NODE`: generic (constant)
-- `readonly nodeType`: import `dom.Node_nodeType`
-- `readonly nodeName`: not supported
-- `readonly baseURI`: not supported
-- `readonly isConnected`: not supported
-- `readonly ownerDocument`: not supported
-- `getRootNode()`: not supported
+- `readonly nodeType`: C `wjr_Node_get_nodeType`
+- `readonly nodeName`: C `wjr_Node_get_nodeName`
+- `readonly baseURI`: import `dom.Node_baseURI`
+- `readonly isConnected`: import `dom.Node_isConnected`
+- `readonly ownerDocument`: import `dom.Node_ownerDocument`
+- `getRootNode()`: C `wjr_Node_getRootNode`
 - `readonly parentNode`: import `dom.Node_parentNode`
-- `readonly parentElement`: not supported
-- `hasChildNodes()`: not supported
-- `readonly childNodes`: not supported
+- `readonly parentElement`: import `dom.Node_parentElement`
+- `hasChildNodes()`: import `dom.Node_hasChildNodes`
+- `readonly childNodes`: C `wjr_Node_get_childNodes`
 - `readonly firstChild`: import `dom.Node_firstChild`
 - `readonly lastChild`: import `dom.Node_lastChild`
 - `readonly previousSibling`: import `dom.Node_previousSibling`
 - `readonly nextSibling`: import `dom.Node_nextSibling`
-- `nodeValue`: not supported
-- `textContent`: import `dom.Node_getTextContent`
-- `normalize()`: not supported
-- `cloneNode()`: not supported
-- `isEqualNode()`: not supported
-- `isSameNode()`: not supported
+- `nodeValue`: C `wjr_Node_get_nodeValue`
+- `textContent`: C `wjr_Node_get_textContent`
+- `normalize()`: import `dom.Node_normalize`
+- `cloneNode()`: import `dom.Node_cloneNode`
+- `isEqualNode()`: import `dom.Node_isEqualNode`
+- `isSameNode()`: import `dom.Node_isSameNode`
 - `const DOCUMENT_POSITION_DISCONNECTED`: generic (constant)
 - `const DOCUMENT_POSITION_PRECEDING`: generic (constant)
 - `const DOCUMENT_POSITION_FOLLOWING`: generic (constant)
 - `const DOCUMENT_POSITION_CONTAINS`: generic (constant)
 - `const DOCUMENT_POSITION_CONTAINED_BY`: generic (constant)
 - `const DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC`: generic (constant)
-- `compareDocumentPosition()`: not supported
-- `contains()`: not supported
-- `lookupPrefix()`: not supported
-- `lookupNamespaceURI()`: not supported
-- `isDefaultNamespace()`: not supported
-- `insertBefore()`: import `dom.Node_insertBefore`
-- `appendChild()`: import `dom.Node_appendChild`
-- `replaceChild()`: not supported
-- `removeChild()`: import `dom.Node_removeChild`
+- `compareDocumentPosition()`: import `dom.Node_compareDocumentPosition`
+- `contains()`: import `dom.Node_contains`
+- `lookupPrefix()`: import `dom.Node_lookupPrefix`
+- `lookupNamespaceURI()`: import `dom.Node_lookupNamespaceURI`
+- `isDefaultNamespace()`: import `dom.Node_isDefaultNamespace`
+- `insertBefore()`: C `wjr_Node_insertBefore`
+- `appendChild()`: C `wjr_Node_appendChild`
+- `replaceChild()`: C `wjr_Node_replaceChild`
+- `removeChild()`: C `wjr_Node_removeChild`
 
 ### Attr : Node
 
-0 / 7 members.
+7 / 7 members.
 
-- `readonly namespaceURI`: not supported
-- `readonly prefix`: not supported
-- `readonly localName`: not supported
-- `readonly name`: not supported
-- `value`: not supported
-- `readonly ownerElement`: not supported
-- `readonly specified`: not supported
+- `readonly namespaceURI`: C `wjr_Attr_get_namespaceURI`
+- `readonly prefix`: C `wjr_Attr_get_prefix`
+- `readonly localName`: C `wjr_Attr_get_localName`
+- `readonly name`: C `wjr_Attr_get_name`
+- `value`: C `wjr_Attr_get_value`
+- `readonly ownerElement`: C `wjr_Attr_get_ownerElement`
+- `readonly specified`: C `wjr_Attr_get_specified`
 
 ### CharacterData : Node
 
-0 / 19 members.
+13 / 19 members.
 
-- `data`: not supported
-- `readonly length`: not supported
-- `substringData()`: not supported
-- `appendData()`: not supported
-- `insertData()`: not supported
-- `deleteData()`: not supported
-- `replaceData()`: not supported
-- `readonly previousElementSibling` (NonDocumentTypeChildNode): not supported
-- `readonly nextElementSibling` (NonDocumentTypeChildNode): not supported
+- `data`: import `dom.CharacterData_data`
+- `readonly length`: import `dom.CharacterData_length`
+- `substringData()`: import `dom.CharacterData_substringData`
+- `appendData()`: import `dom.CharacterData_appendData`
+- `insertData()`: import `dom.CharacterData_insertData`
+- `deleteData()`: import `dom.CharacterData_deleteData`
+- `replaceData()`: import `dom.CharacterData_replaceData`
+- `readonly previousElementSibling` (NonDocumentTypeChildNode): import `dom.NonDocumentTypeChildNode_previousElementSibling`
+- `readonly nextElementSibling` (NonDocumentTypeChildNode): import `dom.NonDocumentTypeChildNode_nextElementSibling`
 - `beforeHTML()` (NonDocumentTypeChildNode): not supported
 - `afterHTML()` (NonDocumentTypeChildNode): not supported
 - `replaceWithHTML()` (NonDocumentTypeChildNode): not supported
 - `beforeHTMLUnsafe()` (NonDocumentTypeChildNode): not supported
 - `afterHTMLUnsafe()` (NonDocumentTypeChildNode): not supported
 - `replaceWithHTMLUnsafe()` (NonDocumentTypeChildNode): not supported
-- `before()` (ChildNode): not supported
-- `after()` (ChildNode): not supported
-- `replaceWith()` (ChildNode): not supported
-- `remove()` (ChildNode): not supported
+- `before()` (ChildNode): C `wjr_ChildNode_before`
+- `after()` (ChildNode): C `wjr_ChildNode_after`
+- `replaceWith()` (ChildNode): C `wjr_ChildNode_replaceWith`
+- `remove()` (ChildNode): import `dom.ChildNode_remove`
 
 ### Comment : CharacterData
 
-0 / 1 members.
+1 / 1 members.
 
-- `constructor()`: not supported
+- `constructor()`: C `wjr_Comment_constructor`
 
 ### ProcessingInstruction : CharacterData
 
@@ -405,11 +585,11 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Text : CharacterData
 
-0 / 8 members.
+3 / 8 members.
 
-- `constructor()`: not supported
-- `splitText()`: not supported
-- `readonly wholeText`: not supported
+- `constructor()`: C `wjr_Text_constructor`
+- `splitText()`: import `dom.Text_splitText`
+- `readonly wholeText`: import `dom.Text_wholeText`
 - `getBoxQuads()` (GeometryUtils): not supported
 - `convertQuadFromNode()` (GeometryUtils): not supported
 - `convertRectFromNode()` (GeometryUtils): not supported
@@ -423,44 +603,44 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Document : Node
 
-118 / 225 members.
+169 / 225 members.
 
 - `readonly rootElement`: not supported
 - `startViewTransition()`: not supported
 - `readonly activeViewTransition`: not supported
-- `elementFromPoint()`: not supported
+- `elementFromPoint()`: import `dom.Document_elementFromPoint`
 - `elementsFromPoint()`: not supported
 - `caretPositionFromPoint()`: not supported
-- `readonly scrollingElement`: not supported
+- `readonly scrollingElement`: import `dom.Document_scrollingElement`
 - `constructor()`: not supported
 - `readonly implementation`: not supported
 - `readonly URL`: import `document.Document_URL`
-- `readonly documentURI`: not supported
-- `readonly compatMode`: not supported
-- `readonly characterSet`: not supported
-- `readonly charset`: not supported
-- `readonly inputEncoding`: not supported
-- `readonly contentType`: not supported
-- `readonly doctype`: not supported
+- `readonly documentURI`: import `dom.Document_documentURI`
+- `readonly compatMode`: import `dom.Document_compatMode`
+- `readonly characterSet`: import `dom.Document_characterSet`
+- `readonly charset`: import `dom.Document_charset`
+- `readonly inputEncoding`: import `dom.Document_inputEncoding`
+- `readonly contentType`: import `dom.Document_contentType`
+- `readonly doctype`: import `dom.Document_doctype`
 - `readonly documentElement`: import `dom.Document_documentElement`
-- `getElementsByTagName()`: not supported
-- `getElementsByTagNameNS()`: not supported
-- `getElementsByClassName()`: not supported
+- `getElementsByTagName()`: C `wjr_Document_getElementsByTagName`
+- `getElementsByTagNameNS()`: C `wjr_Document_getElementsByTagNameNS`
+- `getElementsByClassName()`: C `wjr_Document_getElementsByClassName`
 - `createElement()`: C `wjr_Document_createElement`
-- `createElementNS()`: not supported
-- `createDocumentFragment()`: not supported
+- `createElementNS()`: C `wjr_Document_createElementNS`
+- `createDocumentFragment()`: import `dom.Document_createDocumentFragment`
 - `createTextNode()`: import `dom.Document_createTextNode`
-- `createCDATASection()`: not supported
-- `createComment()`: not supported
+- `createCDATASection()`: import `dom.Document_createCDATASection`
+- `createComment()`: import `dom.Document_createComment`
 - `createProcessingInstruction()`: not supported
-- `importNode()`: not supported
-- `adoptNode()`: not supported
-- `createAttribute()`: not supported
-- `createAttributeNS()`: not supported
-- `createEvent()`: not supported
-- `createRange()`: not supported
-- `createNodeIterator()`: not supported
-- `createTreeWalker()`: not supported
+- `importNode()`: C `wjr_Document_importNode`
+- `adoptNode()`: import `dom.Document_adoptNode`
+- `createAttribute()`: C `wjr_Document_createAttribute`
+- `createAttributeNS()`: C `wjr_Document_createAttributeNS`
+- `createEvent()`: C `wjr_Document_createEvent`
+- `createRange()`: C `wjr_Document_createRange`
+- `createNodeIterator()`: C `wjr_Document_createNodeIterator`
+- `createTreeWalker()`: C `wjr_Document_createTreeWalker`
 - `readonly fullscreenEnabled`: not supported
 - `readonly fullscreen`: not supported
 - `exitFullscreen()`: not supported
@@ -468,31 +648,31 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onfullscreenerror`: generic (event handler)
 - `static parseHTMLUnsafe()`: not supported
 - `static parseHTML()`: not supported
-- `readonly location`: not supported
-- `domain`: not supported
-- `readonly referrer`: not supported
+- `readonly location`: C `wjr_Document_get_location`
+- `domain`: import `dom.Document_domain (setter not supported)`
+- `readonly referrer`: import `dom.Document_referrer`
 - `cookie`: import `document.Document_cookie_get`
-- `readonly lastModified`: not supported
+- `readonly lastModified`: import `dom.Document_lastModified`
 - `readonly readyState`: import `dom.Document_readyState`
-- `title`: not supported
-- `dir`: not supported
-- `body`: import `dom.Document_body (setter not supported)`
+- `title`: import `dom.Document_title`
+- `dir`: import `dom.Document_dir`
+- `body`: import `dom.Document_body`
 - `readonly head`: import `dom.Document_head`
-- `readonly images`: not supported
-- `readonly embeds`: not supported
-- `readonly plugins`: not supported
-- `readonly links`: not supported
-- `readonly forms`: not supported
-- `readonly scripts`: not supported
-- `getElementsByName()`: not supported
+- `readonly images`: C `wjr_Document_get_images`
+- `readonly embeds`: C `wjr_Document_get_embeds`
+- `readonly plugins`: C `wjr_Document_get_plugins`
+- `readonly links`: C `wjr_Document_get_links`
+- `readonly forms`: C `wjr_Document_get_forms`
+- `readonly scripts`: C `wjr_Document_get_scripts`
+- `getElementsByName()`: C `wjr_Document_getElementsByName`
 - `readonly currentScript`: import `dom.Document_currentScript`
 - `open()`: not supported
 - `open()`: not supported
 - `close()`: not supported
 - `write()`: not supported
 - `writeln()`: not supported
-- `readonly defaultView`: not supported
-- `hasFocus()`: not supported
+- `readonly defaultView`: C `wjr_Document_get_defaultView`
+- `hasFocus()`: import `dom.Document_hasFocus`
 - `designMode`: not supported
 - `execCommand()`: not supported
 - `queryCommandEnabled()`: not supported
@@ -509,7 +689,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `vlinkColor`: not supported
 - `alinkColor`: not supported
 - `bgColor`: not supported
-- `readonly anchors`: not supported
+- `readonly anchors`: C `wjr_Document_get_anchors`
 - `readonly applets`: not supported
 - `clear()`: not supported
 - `captureEvents()`: not supported
@@ -519,7 +699,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onresume`: generic (event handler)
 - `readonly wasDiscarded`: not supported
 - `readonly fragmentDirective`: not supported
-- `getSelection()`: not supported
+- `getSelection()`: C `wjr_Document_getSelection`
 - `hasStorageAccess()`: not supported
 - `requestStorageAccess()`: not supported
 - `readonly timeline`: not supported
@@ -535,16 +715,16 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly fullscreenElement` (DocumentOrShadowRoot): not supported
 - `readonly activeElement` (DocumentOrShadowRoot): import `forms.Document_activeElement`
 - `getAnimations()` (DocumentOrShadowRoot): not supported
-- `readonly children` (ParentNode): not supported
-- `readonly firstElementChild` (ParentNode): not supported
-- `readonly lastElementChild` (ParentNode): not supported
-- `readonly childElementCount` (ParentNode): not supported
-- `prepend()` (ParentNode): not supported
-- `append()` (ParentNode): not supported
-- `replaceChildren()` (ParentNode): not supported
-- `moveBefore()` (ParentNode): not supported
-- `querySelector()` (ParentNode): not supported
-- `querySelectorAll()` (ParentNode): not supported
+- `readonly children` (ParentNode): C `wjr_ParentNode_get_children`
+- `readonly firstElementChild` (ParentNode): import `dom.ParentNode_firstElementChild`
+- `readonly lastElementChild` (ParentNode): import `dom.ParentNode_lastElementChild`
+- `readonly childElementCount` (ParentNode): import `dom.ParentNode_childElementCount`
+- `prepend()` (ParentNode): C `wjr_ParentNode_prepend`
+- `append()` (ParentNode): C `wjr_ParentNode_append`
+- `replaceChildren()` (ParentNode): C `wjr_ParentNode_replaceChildren`
+- `moveBefore()` (ParentNode): C `wjr_ParentNode_moveBefore`
+- `querySelector()` (ParentNode): import `dom.ParentNode_querySelector`
+- `querySelectorAll()` (ParentNode): C `wjr_ParentNode_querySelectorAll`
 - `createExpression()` (XPathEvaluatorBase): not supported
 - `createNSResolver()` (XPathEvaluatorBase): not supported
 - `evaluate()` (XPathEvaluatorBase): not supported
@@ -658,20 +838,20 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### DocumentFragment : Node
 
-0 / 12 members.
+12 / 12 members.
 
-- `constructor()`: not supported
-- `getElementById()` (NonElementParentNode): not supported
-- `readonly children` (ParentNode): not supported
-- `readonly firstElementChild` (ParentNode): not supported
-- `readonly lastElementChild` (ParentNode): not supported
-- `readonly childElementCount` (ParentNode): not supported
-- `prepend()` (ParentNode): not supported
-- `append()` (ParentNode): not supported
-- `replaceChildren()` (ParentNode): not supported
-- `moveBefore()` (ParentNode): not supported
-- `querySelector()` (ParentNode): not supported
-- `querySelectorAll()` (ParentNode): not supported
+- `constructor()`: C `wjr_DocumentFragment_constructor`
+- `getElementById()` (NonElementParentNode): import `dom.NonElementParentNode_getElementById`
+- `readonly children` (ParentNode): C `wjr_ParentNode_get_children`
+- `readonly firstElementChild` (ParentNode): import `dom.ParentNode_firstElementChild`
+- `readonly lastElementChild` (ParentNode): import `dom.ParentNode_lastElementChild`
+- `readonly childElementCount` (ParentNode): import `dom.ParentNode_childElementCount`
+- `prepend()` (ParentNode): C `wjr_ParentNode_prepend`
+- `append()` (ParentNode): C `wjr_ParentNode_append`
+- `replaceChildren()` (ParentNode): C `wjr_ParentNode_replaceChildren`
+- `moveBefore()` (ParentNode): C `wjr_ParentNode_moveBefore`
+- `querySelector()` (ParentNode): import `dom.ParentNode_querySelector`
+- `querySelectorAll()` (ParentNode): C `wjr_ParentNode_querySelectorAll`
 
 ### ShadowRoot : DocumentFragment
 
@@ -701,78 +881,78 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### DocumentType : Node
 
-0 / 7 members.
+7 / 7 members.
 
-- `readonly name`: not supported
-- `readonly publicId`: not supported
-- `readonly systemId`: not supported
-- `before()` (ChildNode): not supported
-- `after()` (ChildNode): not supported
-- `replaceWith()` (ChildNode): not supported
-- `remove()` (ChildNode): not supported
+- `readonly name`: import `dom.DocumentType_name`
+- `readonly publicId`: import `dom.DocumentType_publicId`
+- `readonly systemId`: import `dom.DocumentType_systemId`
+- `before()` (ChildNode): C `wjr_ChildNode_before`
+- `after()` (ChildNode): C `wjr_ChildNode_after`
+- `replaceWith()` (ChildNode): C `wjr_ChildNode_replaceWith`
+- `remove()` (ChildNode): import `dom.ChildNode_remove`
 
 ### Element : Node
 
-52 / 156 members.
+116 / 156 members.
 
 - `computedStyleMap()`: not supported
 - `startViewTransition()`: not supported
 - `readonly activeViewTransition`: not supported
-- `getClientRects()`: not supported
-- `getBoundingClientRect()`: not supported
+- `getClientRects()`: C `wjr_Element_getClientRects`
+- `getBoundingClientRect()`: C `wjr_Element_getBoundingClientRect`
 - `checkVisibility()`: not supported
-- `scrollIntoView()`: not supported
-- `scroll()`: not supported
-- `scroll()`: not supported
-- `scrollTo()`: not supported
-- `scrollTo()`: not supported
-- `scrollBy()`: not supported
-- `scrollBy()`: not supported
-- `scrollTop`: not supported
-- `scrollLeft`: not supported
-- `readonly scrollWidth`: not supported
-- `readonly scrollHeight`: not supported
-- `readonly clientTop`: not supported
-- `readonly clientLeft`: not supported
-- `readonly clientWidth`: not supported
-- `readonly clientHeight`: not supported
+- `scrollIntoView()`: C `wjr_Element_scrollIntoView`
+- `scroll()`: C `wjr_Element_scroll`
+- `scroll()`: C `wjr_Element_scroll`
+- `scrollTo()`: C `wjr_Element_scrollTo`
+- `scrollTo()`: C `wjr_Element_scrollTo`
+- `scrollBy()`: C `wjr_Element_scrollBy`
+- `scrollBy()`: C `wjr_Element_scrollBy`
+- `scrollTop`: import `dom.Element_scrollTop`
+- `scrollLeft`: import `dom.Element_scrollLeft`
+- `readonly scrollWidth`: import `dom.Element_scrollWidth`
+- `readonly scrollHeight`: import `dom.Element_scrollHeight`
+- `readonly clientTop`: import `dom.Element_clientTop`
+- `readonly clientLeft`: import `dom.Element_clientLeft`
+- `readonly clientWidth`: import `dom.Element_clientWidth`
+- `readonly clientHeight`: import `dom.Element_clientHeight`
 - `readonly currentCSSZoom`: not supported
-- `readonly namespaceURI`: not supported
-- `readonly prefix`: not supported
-- `readonly localName`: not supported
-- `readonly tagName`: import `dom.Element_tagName`
+- `readonly namespaceURI`: import `dom.Element_namespaceURI`
+- `readonly prefix`: import `dom.Element_prefix`
+- `readonly localName`: import `dom.Element_localName`
+- `readonly tagName`: C `wjr_Element_get_tagName`
 - `id`: import `dom.Element_id`
 - `className`: import `dom.Element_className`
-- `readonly classList`: not supported
-- `slot`: not supported
-- `hasAttributes()`: not supported
-- `readonly attributes`: not supported
-- `getAttributeNames()`: not supported
+- `readonly classList`: C `wjr_Element_get_classList`
+- `slot`: import `dom.Element_slot`
+- `hasAttributes()`: import `dom.Element_hasAttributes`
+- `readonly attributes`: C `wjr_Element_get_attributes`
+- `getAttributeNames()`: C `wjr_Element_getAttributeNames`
 - `getAttribute()`: import `dom.Element_getAttribute`
-- `getAttributeNS()`: not supported
-- `setAttribute()`: import `dom.Element_setAttribute`
-- `setAttributeNS()`: not supported
+- `getAttributeNS()`: import `dom.Element_getAttributeNS`
+- `setAttribute()`: C `wjr_Element_setAttribute`
+- `setAttributeNS()`: import `dom.Element_setAttributeNS`
 - `removeAttribute()`: import `dom.Element_removeAttribute`
-- `removeAttributeNS()`: not supported
-- `toggleAttribute()`: not supported
-- `hasAttribute()`: not supported
-- `hasAttributeNS()`: not supported
-- `getAttributeNode()`: not supported
-- `getAttributeNodeNS()`: not supported
-- `setAttributeNode()`: not supported
-- `setAttributeNodeNS()`: not supported
-- `removeAttributeNode()`: not supported
+- `removeAttributeNS()`: import `dom.Element_removeAttributeNS`
+- `toggleAttribute()`: C `wjr_Element_toggleAttribute`
+- `hasAttribute()`: import `dom.Element_hasAttribute`
+- `hasAttributeNS()`: import `dom.Element_hasAttributeNS`
+- `getAttributeNode()`: C `wjr_Element_getAttributeNode`
+- `getAttributeNodeNS()`: C `wjr_Element_getAttributeNodeNS`
+- `setAttributeNode()`: C `wjr_Element_setAttributeNode`
+- `setAttributeNodeNS()`: C `wjr_Element_setAttributeNodeNS`
+- `removeAttributeNode()`: C `wjr_Element_removeAttributeNode`
 - `attachShadow()`: not supported
-- `readonly shadowRoot`: not supported
+- `readonly shadowRoot`: import `dom.Element_shadowRoot`
 - `readonly customElementRegistry`: not supported
-- `closest()`: not supported
-- `matches()`: not supported
-- `webkitMatchesSelector()`: not supported
-- `getElementsByTagName()`: not supported
-- `getElementsByTagNameNS()`: not supported
-- `getElementsByClassName()`: not supported
-- `insertAdjacentElement()`: not supported
-- `insertAdjacentText()`: not supported
+- `closest()`: import `dom.Element_closest`
+- `matches()`: import `dom.Element_matches`
+- `webkitMatchesSelector()`: import `dom.Element_webkitMatchesSelector`
+- `getElementsByTagName()`: C `wjr_Element_getElementsByTagName`
+- `getElementsByTagNameNS()`: C `wjr_Element_getElementsByTagNameNS`
+- `getElementsByClassName()`: C `wjr_Element_getElementsByClassName`
+- `insertAdjacentElement()`: import `dom.Element_insertAdjacentElement`
+- `insertAdjacentText()`: import `dom.Element_insertAdjacentText`
 - `requestFullscreen()`: not supported
 - `onfullscreenchange`: generic (event handler)
 - `onfullscreenerror`: generic (event handler)
@@ -783,9 +963,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `appendHTMLUnsafe()`: not supported
 - `prependHTMLUnsafe()`: not supported
 - `getHTML()`: not supported
-- `innerHTML`: not supported
-- `outerHTML`: not supported
-- `insertAdjacentHTML()`: not supported
+- `innerHTML`: import `dom.Element_innerHTML`
+- `outerHTML`: import `dom.Element_outerHTML`
+- `insertAdjacentHTML()`: import `dom.Element_insertAdjacentHTML`
 - `setPointerCapture()`: not supported
 - `releasePointerCapture()`: not supported
 - `hasPointerCapture()`: not supported
@@ -793,28 +973,28 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `convertQuadFromNode()` (GeometryUtils): not supported
 - `convertRectFromNode()` (GeometryUtils): not supported
 - `convertPointFromNode()` (GeometryUtils): not supported
-- `readonly children` (ParentNode): not supported
-- `readonly firstElementChild` (ParentNode): not supported
-- `readonly lastElementChild` (ParentNode): not supported
-- `readonly childElementCount` (ParentNode): not supported
-- `prepend()` (ParentNode): not supported
-- `append()` (ParentNode): not supported
-- `replaceChildren()` (ParentNode): not supported
-- `moveBefore()` (ParentNode): not supported
-- `querySelector()` (ParentNode): not supported
-- `querySelectorAll()` (ParentNode): not supported
-- `readonly previousElementSibling` (NonDocumentTypeChildNode): not supported
-- `readonly nextElementSibling` (NonDocumentTypeChildNode): not supported
+- `readonly children` (ParentNode): C `wjr_ParentNode_get_children`
+- `readonly firstElementChild` (ParentNode): import `dom.ParentNode_firstElementChild`
+- `readonly lastElementChild` (ParentNode): import `dom.ParentNode_lastElementChild`
+- `readonly childElementCount` (ParentNode): import `dom.ParentNode_childElementCount`
+- `prepend()` (ParentNode): C `wjr_ParentNode_prepend`
+- `append()` (ParentNode): C `wjr_ParentNode_append`
+- `replaceChildren()` (ParentNode): C `wjr_ParentNode_replaceChildren`
+- `moveBefore()` (ParentNode): C `wjr_ParentNode_moveBefore`
+- `querySelector()` (ParentNode): import `dom.ParentNode_querySelector`
+- `querySelectorAll()` (ParentNode): C `wjr_ParentNode_querySelectorAll`
+- `readonly previousElementSibling` (NonDocumentTypeChildNode): import `dom.NonDocumentTypeChildNode_previousElementSibling`
+- `readonly nextElementSibling` (NonDocumentTypeChildNode): import `dom.NonDocumentTypeChildNode_nextElementSibling`
 - `beforeHTML()` (NonDocumentTypeChildNode): not supported
 - `afterHTML()` (NonDocumentTypeChildNode): not supported
 - `replaceWithHTML()` (NonDocumentTypeChildNode): not supported
 - `beforeHTMLUnsafe()` (NonDocumentTypeChildNode): not supported
 - `afterHTMLUnsafe()` (NonDocumentTypeChildNode): not supported
 - `replaceWithHTMLUnsafe()` (NonDocumentTypeChildNode): not supported
-- `before()` (ChildNode): not supported
-- `after()` (ChildNode): not supported
-- `replaceWith()` (ChildNode): not supported
-- `remove()` (ChildNode): not supported
+- `before()` (ChildNode): C `wjr_ChildNode_before`
+- `after()` (ChildNode): C `wjr_ChildNode_after`
+- `replaceWith()` (ChildNode): C `wjr_ChildNode_replaceWith`
+- `remove()` (ChildNode): import `dom.ChildNode_remove`
 - `readonly assignedSlot` (Slottable): not supported
 - `role` (ARIAMixin): generic (reflects a content attribute)
 - `ariaActiveDescendantElement` (ARIAMixin): not supported
@@ -874,31 +1054,31 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLElement : Element
 
-110 / 143 members.
+130 / 143 members.
 
 - `readonly scrollParent`: not supported
-- `readonly offsetParent`: not supported
-- `readonly offsetTop`: not supported
-- `readonly offsetLeft`: not supported
-- `readonly offsetWidth`: not supported
-- `readonly offsetHeight`: not supported
+- `readonly offsetParent`: import `dom.HTMLElement_offsetParent`
+- `readonly offsetTop`: import `dom.HTMLElement_offsetTop`
+- `readonly offsetLeft`: import `dom.HTMLElement_offsetLeft`
+- `readonly offsetWidth`: import `dom.HTMLElement_offsetWidth`
+- `readonly offsetHeight`: import `dom.HTMLElement_offsetHeight`
 - `constructor()`: not supported
 - `title`: generic (reflects a content attribute)
 - `lang`: generic (reflects a content attribute)
-- `translate`: not supported
-- `dir`: not supported
-- `hidden`: not supported
+- `translate`: import `dom.HTMLElement_translate`
+- `dir`: import `dom.HTMLElement_dir`
+- `hidden`: C `wjr_HTMLElement_get_hidden`
 - `inert`: generic (reflects a content attribute)
 - `click()`: import `forms.HTMLElement_click`
 - `accessKey`: generic (reflects a content attribute)
-- `readonly accessKeyLabel`: not supported
-- `draggable`: not supported
-- `spellcheck`: not supported
+- `readonly accessKeyLabel`: import `dom.HTMLElement_accessKeyLabel`
+- `draggable`: import `dom.HTMLElement_draggable`
+- `spellcheck`: import `dom.HTMLElement_spellcheck`
 - `writingSuggestions`: not supported
 - `autocapitalize`: not supported
 - `autocorrect`: not supported
-- `innerText`: not supported
-- `outerText`: not supported
+- `innerText`: import `dom.HTMLElement_innerText`
+- `outerText`: import `dom.HTMLElement_outerText`
 - `attachInternals()`: not supported
 - `showPopover()`: not supported
 - `hidePopover()`: not supported
@@ -907,7 +1087,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `headingOffset`: generic (reflects a content attribute)
 - `headingReset`: generic (reflects a content attribute)
 - `readonly attributeStyleMap` (ElementCSSInlineStyle): not supported
-- `readonly style` (ElementCSSInlineStyle): not supported
+- `readonly style` (ElementCSSInlineStyle): C `wjr_ElementCSSInlineStyle_get_style`
 - `onanimationstart` (GlobalEventHandlers): generic (event handler)
 - `onanimationiteration` (GlobalEventHandlers): generic (event handler)
 - `onanimationend` (GlobalEventHandlers): generic (event handler)
@@ -1009,51 +1189,51 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `ontouchend` (GlobalEventHandlers): generic (event handler)
 - `ontouchmove` (GlobalEventHandlers): generic (event handler)
 - `ontouchcancel` (GlobalEventHandlers): generic (event handler)
-- `contentEditable` (ElementContentEditable): not supported
+- `contentEditable` (ElementContentEditable): import `dom.ElementContentEditable_contentEditable`
 - `enterKeyHint` (ElementContentEditable): not supported
-- `readonly isContentEditable` (ElementContentEditable): not supported
+- `readonly isContentEditable` (ElementContentEditable): import `dom.ElementContentEditable_isContentEditable`
 - `inputMode` (ElementContentEditable): not supported
-- `readonly dataset` (HTMLOrSVGOrMathMLElement): not supported
-- `nonce` (HTMLOrSVGOrMathMLElement): not supported
+- `readonly dataset` (HTMLOrSVGOrMathMLElement): C `wjr_HTMLOrSVGOrMathMLElement_get_dataset`
+- `nonce` (HTMLOrSVGOrMathMLElement): import `dom.HTMLOrSVGOrMathMLElement_nonce`
 - `autofocus` (HTMLOrSVGOrMathMLElement): generic (reflects a content attribute)
-- `tabIndex` (HTMLOrSVGOrMathMLElement): not supported
-- `focus()` (HTMLOrSVGOrMathMLElement): not supported
+- `tabIndex` (HTMLOrSVGOrMathMLElement): generic (reflects a content attribute)
+- `focus()` (HTMLOrSVGOrMathMLElement): C `wjr_HTMLOrSVGOrMathMLElement_focus`
 - `blur()` (HTMLOrSVGOrMathMLElement): import `forms.HTMLElement_blur`
 
 ### HTMLAnchorElement : HTMLElement
 
-11 / 26 members.
+24 / 26 members.
 
 - `constructor()`: not supported
 - `download`: generic (reflects a content attribute)
 - `ping`: generic (reflects a content attribute)
 - `rel`: generic (reflects a content attribute)
-- `readonly relList`: not supported
-- `text`: not supported
+- `readonly relList`: C `wjr_HTMLAnchorElement_get_relList`
+- `text`: import `dom.HTMLAnchorElement_text`
 - `referrerPolicy`: not supported
 - `coords`: generic (reflects a content attribute)
 - `charset`: generic (reflects a content attribute)
 - `name`: generic (reflects a content attribute)
 - `rev`: generic (reflects a content attribute)
 - `shape`: generic (reflects a content attribute)
-- `readonly origin` (HyperlinkElementUtils): not supported
-- `protocol` (HyperlinkElementUtils): not supported
-- `username` (HyperlinkElementUtils): not supported
-- `password` (HyperlinkElementUtils): not supported
-- `host` (HyperlinkElementUtils): not supported
-- `hostname` (HyperlinkElementUtils): not supported
-- `port` (HyperlinkElementUtils): not supported
-- `pathname` (HyperlinkElementUtils): not supported
-- `search` (HyperlinkElementUtils): not supported
-- `hash` (HyperlinkElementUtils): not supported
+- `readonly origin` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_origin`
+- `protocol` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_protocol`
+- `username` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_username`
+- `password` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_password`
+- `host` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_host`
+- `hostname` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_hostname`
+- `port` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_port`
+- `pathname` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_pathname`
+- `search` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_search`
+- `hash` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_hash`
 - `hreflang` (HyperlinkElementUtils): generic (reflects a content attribute)
 - `type` (HyperlinkElementUtils): generic (reflects a content attribute)
-- `href` (HTMLHyperlinkElementUtils): not supported
+- `href` (HTMLHyperlinkElementUtils): generic (reflects a content attribute)
 - `target` (HTMLHyperlinkElementUtils): generic (reflects a content attribute)
 
 ### HTMLAreaElement : HTMLElement
 
-10 / 24 members.
+22 / 24 members.
 
 - `constructor()`: not supported
 - `alt`: generic (reflects a content attribute)
@@ -1062,22 +1242,22 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `download`: generic (reflects a content attribute)
 - `ping`: generic (reflects a content attribute)
 - `rel`: generic (reflects a content attribute)
-- `readonly relList`: not supported
+- `readonly relList`: C `wjr_HTMLAreaElement_get_relList`
 - `referrerPolicy`: not supported
 - `noHref`: generic (reflects a content attribute)
-- `readonly origin` (HyperlinkElementUtils): not supported
-- `protocol` (HyperlinkElementUtils): not supported
-- `username` (HyperlinkElementUtils): not supported
-- `password` (HyperlinkElementUtils): not supported
-- `host` (HyperlinkElementUtils): not supported
-- `hostname` (HyperlinkElementUtils): not supported
-- `port` (HyperlinkElementUtils): not supported
-- `pathname` (HyperlinkElementUtils): not supported
-- `search` (HyperlinkElementUtils): not supported
-- `hash` (HyperlinkElementUtils): not supported
+- `readonly origin` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_origin`
+- `protocol` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_protocol`
+- `username` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_username`
+- `password` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_password`
+- `host` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_host`
+- `hostname` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_hostname`
+- `port` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_port`
+- `pathname` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_pathname`
+- `search` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_search`
+- `hash` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_hash`
 - `hreflang` (HyperlinkElementUtils): generic (reflects a content attribute)
 - `type` (HyperlinkElementUtils): generic (reflects a content attribute)
-- `href` (HTMLHyperlinkElementUtils): not supported
+- `href` (HTMLHyperlinkElementUtils): generic (reflects a content attribute)
 - `target` (HTMLHyperlinkElementUtils): generic (reflects a content attribute)
 
 ### HTMLBRElement : HTMLElement
@@ -1263,7 +1443,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLFormElement : HTMLElement
 
-11 / 19 members.
+12 / 19 members.
 
 - `constructor()`: not supported
 - `acceptCharset`: generic (reflects a content attribute)
@@ -1276,7 +1456,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `noValidate`: generic (reflects a content attribute)
 - `target`: generic (reflects a content attribute)
 - `rel`: generic (reflects a content attribute)
-- `readonly relList`: not supported
+- `readonly relList`: C `wjr_HTMLFormElement_get_relList`
 - `readonly elements`: not supported
 - `readonly length`: import `forms.HTMLFormElement_length`
 - `submit()`: import `forms.HTMLFormElement_submit`
@@ -1362,13 +1542,13 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLIFrameElement : HTMLElement
 
-10 / 20 members.
+11 / 20 members.
 
 - `constructor()`: not supported
 - `src`: not supported
 - `srcdoc`: not supported
 - `name`: generic (reflects a content attribute)
-- `readonly sandbox`: not supported
+- `readonly sandbox`: C `wjr_HTMLIFrameElement_get_sandbox`
 - `allow`: generic (reflects a content attribute)
 - `allowFullscreen`: generic (reflects a content attribute)
 - `width`: generic (reflects a content attribute)
@@ -1514,19 +1694,19 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLLinkElement : HTMLElement
 
-11 / 21 members.
+13 / 21 members.
 
 - `constructor()`: not supported
 - `href`: not supported
 - `crossOrigin`: not supported
 - `rel`: generic (reflects a content attribute)
 - `as`: not supported
-- `readonly relList`: not supported
+- `readonly relList`: C `wjr_HTMLLinkElement_get_relList`
 - `media`: generic (reflects a content attribute)
 - `integrity`: generic (reflects a content attribute)
 - `hreflang`: generic (reflects a content attribute)
 - `type`: generic (reflects a content attribute)
-- `readonly sizes`: not supported
+- `readonly sizes`: C `wjr_HTMLLinkElement_get_sizes`
 - `imageSrcset`: generic (reflects a content attribute)
 - `imageSizes`: generic (reflects a content attribute)
 - `referrerPolicy`: not supported
@@ -1738,10 +1918,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLOutputElement : HTMLElement
 
-10 / 14 members.
+11 / 14 members.
 
 - `constructor()`: not supported
-- `readonly htmlFor`: not supported
+- `readonly htmlFor`: C `wjr_HTMLOutputElement_get_htmlFor`
 - `readonly form`: import `forms.HTMLOutputElement_form`
 - `name`: generic (reflects a content attribute)
 - `readonly type`: import `forms.HTMLOutputElement_type`
@@ -1939,7 +2119,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTableElement : HTMLElement
 
-9 / 24 members.
+11 / 24 members.
 
 - `constructor()`: not supported
 - `caption`: not supported
@@ -1951,9 +2131,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `tFoot`: not supported
 - `createTFoot()`: not supported
 - `deleteTFoot()`: not supported
-- `readonly tBodies`: not supported
+- `readonly tBodies`: C `wjr_HTMLTableElement_get_tBodies`
 - `createTBody()`: not supported
-- `readonly rows`: not supported
+- `readonly rows`: C `wjr_HTMLTableElement_get_rows`
 - `insertRow()`: not supported
 - `deleteRow()`: not supported
 - `align`: generic (reflects a content attribute)
@@ -1968,12 +2148,12 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTableRowElement : HTMLElement
 
-5 / 11 members.
+6 / 11 members.
 
 - `constructor()`: not supported
 - `readonly rowIndex`: not supported
 - `readonly sectionRowIndex`: not supported
-- `readonly cells`: not supported
+- `readonly cells`: C `wjr_HTMLTableRowElement_get_cells`
 - `insertCell()`: not supported
 - `deleteCell()`: not supported
 - `align`: generic (reflects a content attribute)
@@ -1984,10 +2164,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTableSectionElement : HTMLElement
 
-4 / 8 members.
+5 / 8 members.
 
 - `constructor()`: not supported
-- `readonly rows`: not supported
+- `readonly rows`: C `wjr_HTMLTableSectionElement_get_rows`
 - `insertRow()`: not supported
 - `deleteRow()`: not supported
 - `align`: generic (reflects a content attribute)
@@ -1997,10 +2177,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTemplateElement : HTMLElement
 
-5 / 9 members.
+6 / 9 members.
 
 - `constructor()`: not supported
-- `readonly content`: not supported
+- `readonly content`: import `dom.HTMLTemplateElement_content`
 - `htmlFor`: generic (reflects a content attribute)
 - `shadowRootMode`: not supported
 - `shadowRootDelegatesFocus`: generic (reflects a content attribute)
@@ -2092,10 +2272,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### MathMLElement : Element
 
-102 / 109 members.
+107 / 109 members.
 
 - `readonly attributeStyleMap` (ElementCSSInlineStyle): not supported
-- `readonly style` (ElementCSSInlineStyle): not supported
+- `readonly style` (ElementCSSInlineStyle): C `wjr_ElementCSSInlineStyle_get_style`
 - `onanimationstart` (GlobalEventHandlers): generic (event handler)
 - `onanimationiteration` (GlobalEventHandlers): generic (event handler)
 - `onanimationend` (GlobalEventHandlers): generic (event handler)
@@ -2197,16 +2377,35 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `ontouchend` (GlobalEventHandlers): generic (event handler)
 - `ontouchmove` (GlobalEventHandlers): generic (event handler)
 - `ontouchcancel` (GlobalEventHandlers): generic (event handler)
-- `readonly dataset` (HTMLOrSVGOrMathMLElement): not supported
-- `nonce` (HTMLOrSVGOrMathMLElement): not supported
+- `readonly dataset` (HTMLOrSVGOrMathMLElement): C `wjr_HTMLOrSVGOrMathMLElement_get_dataset`
+- `nonce` (HTMLOrSVGOrMathMLElement): import `dom.HTMLOrSVGOrMathMLElement_nonce`
 - `autofocus` (HTMLOrSVGOrMathMLElement): generic (reflects a content attribute)
-- `tabIndex` (HTMLOrSVGOrMathMLElement): not supported
-- `focus()` (HTMLOrSVGOrMathMLElement): not supported
+- `tabIndex` (HTMLOrSVGOrMathMLElement): generic (reflects a content attribute)
+- `focus()` (HTMLOrSVGOrMathMLElement): C `wjr_HTMLOrSVGOrMathMLElement_focus`
 - `blur()` (HTMLOrSVGOrMathMLElement): not supported
+
+### MathMLAnchorElement : MathMLElement
+
+13 / 14 members.
+
+- `href`: not supported
+- `target`: generic (reflects a content attribute)
+- `readonly origin` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_origin`
+- `protocol` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_protocol`
+- `username` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_username`
+- `password` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_password`
+- `host` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_host`
+- `hostname` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_hostname`
+- `port` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_port`
+- `pathname` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_pathname`
+- `search` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_search`
+- `hash` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_hash`
+- `hreflang` (HyperlinkElementUtils): generic (reflects a content attribute)
+- `type` (HyperlinkElementUtils): generic (reflects a content attribute)
 
 ### SVGElement : Element
 
-102 / 112 members.
+107 / 112 members.
 
 - `readonly className`: not supported
 - `readonly ownerSVGElement`: not supported
@@ -2312,14 +2511,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `ontouchend` (GlobalEventHandlers): generic (event handler)
 - `ontouchmove` (GlobalEventHandlers): generic (event handler)
 - `ontouchcancel` (GlobalEventHandlers): generic (event handler)
-- `readonly dataset` (HTMLOrSVGOrMathMLElement): not supported
-- `nonce` (HTMLOrSVGOrMathMLElement): not supported
+- `readonly dataset` (HTMLOrSVGOrMathMLElement): C `wjr_HTMLOrSVGOrMathMLElement_get_dataset`
+- `nonce` (HTMLOrSVGOrMathMLElement): import `dom.HTMLOrSVGOrMathMLElement_nonce`
 - `autofocus` (HTMLOrSVGOrMathMLElement): generic (reflects a content attribute)
-- `tabIndex` (HTMLOrSVGOrMathMLElement): not supported
-- `focus()` (HTMLOrSVGOrMathMLElement): not supported
+- `tabIndex` (HTMLOrSVGOrMathMLElement): generic (reflects a content attribute)
+- `focus()` (HTMLOrSVGOrMathMLElement): C `wjr_HTMLOrSVGOrMathMLElement_focus`
 - `blur()` (HTMLOrSVGOrMathMLElement): not supported
 - `readonly attributeStyleMap` (ElementCSSInlineStyle): not supported
-- `readonly style` (ElementCSSInlineStyle): not supported
+- `readonly style` (ElementCSSInlineStyle): C `wjr_ElementCSSInlineStyle_get_style`
 
 ### SVGDescElement : SVGElement
 
@@ -2372,7 +2571,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### SVGAElement : SVGGraphicsElement
 
-5 / 19 members.
+15 / 19 members.
 
 - `readonly target`: not supported
 - `download`: generic (reflects a content attribute)
@@ -2381,16 +2580,16 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly relList`: not supported
 - `referrerPolicy`: not supported
 - `readonly href` (SVGURIReference): not supported
-- `readonly origin` (HyperlinkElementUtils): not supported
-- `protocol` (HyperlinkElementUtils): not supported
-- `username` (HyperlinkElementUtils): not supported
-- `password` (HyperlinkElementUtils): not supported
-- `host` (HyperlinkElementUtils): not supported
-- `hostname` (HyperlinkElementUtils): not supported
-- `port` (HyperlinkElementUtils): not supported
-- `pathname` (HyperlinkElementUtils): not supported
-- `search` (HyperlinkElementUtils): not supported
-- `hash` (HyperlinkElementUtils): not supported
+- `readonly origin` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_origin`
+- `protocol` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_protocol`
+- `username` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_username`
+- `password` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_password`
+- `host` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_host`
+- `hostname` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_hostname`
+- `port` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_port`
+- `pathname` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_pathname`
+- `search` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_search`
+- `hash` (HyperlinkElementUtils): import `dom.HyperlinkElementUtils_hash`
 - `hreflang` (HyperlinkElementUtils): generic (reflects a content attribute)
 - `type` (HyperlinkElementUtils): generic (reflects a content attribute)
 
@@ -2743,7 +2942,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Window : EventTarget
 
-132 / 220 members.
+153 / 220 members.
 
 - `readonly cookieStore`: not supported
 - `matchMedia()`: not supported
@@ -2753,26 +2952,26 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `moveBy()`: not supported
 - `resizeTo()`: not supported
 - `resizeBy()`: not supported
-- `readonly innerWidth`: not supported
-- `readonly innerHeight`: not supported
-- `readonly scrollX`: not supported
-- `readonly pageXOffset`: not supported
-- `readonly scrollY`: not supported
-- `readonly pageYOffset`: not supported
-- `scroll()`: not supported
-- `scroll()`: not supported
-- `scrollTo()`: not supported
-- `scrollTo()`: not supported
-- `scrollBy()`: not supported
-- `scrollBy()`: not supported
-- `readonly screenX`: not supported
-- `readonly screenLeft`: not supported
-- `readonly screenY`: not supported
-- `readonly screenTop`: not supported
-- `readonly outerWidth`: not supported
-- `readonly outerHeight`: not supported
-- `readonly devicePixelRatio`: not supported
-- `getComputedStyle()`: not supported
+- `readonly innerWidth`: import `dom.Window_innerWidth`
+- `readonly innerHeight`: import `dom.Window_innerHeight`
+- `readonly scrollX`: import `dom.Window_scrollX`
+- `readonly pageXOffset`: import `dom.Window_pageXOffset`
+- `readonly scrollY`: import `dom.Window_scrollY`
+- `readonly pageYOffset`: import `dom.Window_pageYOffset`
+- `scroll()`: C `wjr_Window_scroll`
+- `scroll()`: C `wjr_Window_scroll`
+- `scrollTo()`: C `wjr_Window_scrollTo`
+- `scrollTo()`: C `wjr_Window_scrollTo`
+- `scrollBy()`: C `wjr_Window_scrollBy`
+- `scrollBy()`: C `wjr_Window_scrollBy`
+- `readonly screenX`: import `dom.Window_screenX`
+- `readonly screenLeft`: import `dom.Window_screenLeft`
+- `readonly screenY`: import `dom.Window_screenY`
+- `readonly screenTop`: import `dom.Window_screenTop`
+- `readonly outerWidth`: import `dom.Window_outerWidth`
+- `readonly outerHeight`: import `dom.Window_outerHeight`
+- `readonly devicePixelRatio`: import `dom.Window_devicePixelRatio`
+- `getComputedStyle()`: C `wjr_Window_getComputedStyle`
 - `readonly event`: not supported
 - `fetchLater()`: not supported
 - `readonly window`: C `wjr_Window_get_window`
@@ -2817,7 +3016,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly external`: not supported
 - `requestIdleCallback()`: not supported
 - `cancelIdleCallback()`: not supported
-- `getSelection()`: not supported
+- `getSelection()`: C `wjr_Window_getSelection`
 - `readonly speechSynthesis`: not supported
 - `onanimationstart` (GlobalEventHandlers): generic (event handler)
 - `onanimationiteration` (GlobalEventHandlers): generic (event handler)
@@ -3043,6 +3242,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `set()`: not supported
 - `iterable`: not supported
 
+### HTMLCollection
+
+3 / 3 members.
+
+- `readonly length`: C `wjr_HTMLCollection_get_length`
+- `item()`: C `wjr_HTMLCollection_item`
+- `namedItem()`: C `wjr_HTMLCollection_namedItem`
+
 ### History
 
 2 / 8 members.
@@ -3074,6 +3281,63 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `reload()`: import `history.Location_reload`
 - `readonly ancestorOrigins`: not supported
 
+### MutationObserver
+
+4 / 4 members.
+
+- `constructor()`: C `wjr_MutationObserver_constructor`
+- `observe()`: C `wjr_MutationObserver_observe`
+- `disconnect()`: C `wjr_MutationObserver_disconnect`
+- `takeRecords()`: C `wjr_MutationObserver_takeRecords`
+
+### MutationRecord
+
+9 / 9 members.
+
+- `readonly type`: C `wjr_MutationRecord_get_type`
+- `readonly target`: C `wjr_MutationRecord_get_target`
+- `readonly addedNodes`: C `wjr_MutationRecord_get_addedNodes`
+- `readonly removedNodes`: C `wjr_MutationRecord_get_removedNodes`
+- `readonly previousSibling`: C `wjr_MutationRecord_get_previousSibling`
+- `readonly nextSibling`: C `wjr_MutationRecord_get_nextSibling`
+- `readonly attributeName`: C `wjr_MutationRecord_get_attributeName`
+- `readonly attributeNamespace`: C `wjr_MutationRecord_get_attributeNamespace`
+- `readonly oldValue`: C `wjr_MutationRecord_get_oldValue`
+
+### NamedNodeMap
+
+8 / 8 members.
+
+- `readonly length`: C `wjr_NamedNodeMap_get_length`
+- `item()`: C `wjr_NamedNodeMap_item`
+- `getNamedItem()`: C `wjr_NamedNodeMap_getNamedItem`
+- `getNamedItemNS()`: C `wjr_NamedNodeMap_getNamedItemNS`
+- `setNamedItem()`: C `wjr_NamedNodeMap_setNamedItem`
+- `setNamedItemNS()`: C `wjr_NamedNodeMap_setNamedItemNS`
+- `removeNamedItem()`: C `wjr_NamedNodeMap_removeNamedItem`
+- `removeNamedItemNS()`: C `wjr_NamedNodeMap_removeNamedItemNS`
+
+### NodeIterator
+
+8 / 8 members.
+
+- `readonly root`: C `wjr_NodeIterator_get_root`
+- `readonly referenceNode`: C `wjr_NodeIterator_get_referenceNode`
+- `readonly pointerBeforeReferenceNode`: C `wjr_NodeIterator_get_pointerBeforeReferenceNode`
+- `readonly whatToShow`: C `wjr_NodeIterator_get_whatToShow`
+- `readonly filter`: C `wjr_NodeIterator_get_filter`
+- `nextNode()`: C `wjr_NodeIterator_nextNode`
+- `previousNode()`: C `wjr_NodeIterator_previousNode`
+- `detach()`: C `wjr_NodeIterator_detach`
+
+### NodeList
+
+3 / 3 members.
+
+- `item()`: C `wjr_NodeList_item`
+- `readonly length`: C `wjr_NodeList_get_length`
+- `iterable`: generic (array iterator (indexed getter))
+
 ### Response
 
 2 / 21 members.
@@ -3100,6 +3364,36 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `text()` (Body): not supported
 - `textStream()` (Body): not supported
 
+### Selection
+
+24 / 25 members.
+
+- `readonly anchorNode`: C `wjr_Selection_get_anchorNode`
+- `readonly anchorOffset`: C `wjr_Selection_get_anchorOffset`
+- `readonly focusNode`: C `wjr_Selection_get_focusNode`
+- `readonly focusOffset`: C `wjr_Selection_get_focusOffset`
+- `readonly isCollapsed`: C `wjr_Selection_get_isCollapsed`
+- `readonly rangeCount`: C `wjr_Selection_get_rangeCount`
+- `readonly type`: C `wjr_Selection_get_type`
+- `readonly direction`: C `wjr_Selection_get_direction`
+- `getRangeAt()`: C `wjr_Selection_getRangeAt`
+- `addRange()`: C `wjr_Selection_addRange`
+- `removeRange()`: C `wjr_Selection_removeRange`
+- `removeAllRanges()`: C `wjr_Selection_removeAllRanges`
+- `empty()`: C `wjr_Selection_empty`
+- `getComposedRanges()`: not supported
+- `collapse()`: C `wjr_Selection_collapse`
+- `setPosition()`: C `wjr_Selection_setPosition`
+- `collapseToStart()`: C `wjr_Selection_collapseToStart`
+- `collapseToEnd()`: C `wjr_Selection_collapseToEnd`
+- `extend()`: C `wjr_Selection_extend`
+- `setBaseAndExtent()`: C `wjr_Selection_setBaseAndExtent`
+- `selectAllChildren()`: C `wjr_Selection_selectAllChildren`
+- `modify()`: C `wjr_Selection_modify`
+- `deleteFromDocument()`: C `wjr_Selection_deleteFromDocument`
+- `containsNode()`: C `wjr_Selection_containsNode`
+- `stringifier`: C `wjr_Selection_toString`
+
 ### TextDecoder
 
 1 / 5 members.
@@ -3109,6 +3403,22 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly encoding` (TextDecoderCommon): import `encoding.TextDecoder_encoding`
 - `readonly fatal` (TextDecoderCommon): not supported
 - `readonly ignoreBOM` (TextDecoderCommon): not supported
+
+### TreeWalker
+
+11 / 11 members.
+
+- `readonly root`: C `wjr_TreeWalker_get_root`
+- `readonly whatToShow`: C `wjr_TreeWalker_get_whatToShow`
+- `readonly filter`: C `wjr_TreeWalker_get_filter`
+- `currentNode`: C `wjr_TreeWalker_get_currentNode`
+- `parentNode()`: C `wjr_TreeWalker_parentNode`
+- `firstChild()`: C `wjr_TreeWalker_firstChild`
+- `lastChild()`: C `wjr_TreeWalker_lastChild`
+- `previousSibling()`: C `wjr_TreeWalker_previousSibling`
+- `nextSibling()`: C `wjr_TreeWalker_nextSibling`
+- `previousNode()`: C `wjr_TreeWalker_previousNode`
+- `nextNode()`: C `wjr_TreeWalker_nextNode`
 
 ### URL
 
@@ -3175,7 +3485,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ## Not exposed (nothing implemented)
 
-TaskController, AbstractRange, Range, StaticRange, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, Blob, File, ByteLengthQueuingStrategy, CSS, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSStyleDeclaration, CSSPageDescriptors, CSSStyleProperties, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CanvasGradient, CanvasPattern, CanvasRenderingContext2D, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, Credential, FederatedCredential, PasswordCredential, CredentialsContainer, CryptoKey, CustomElementRegistry, CustomStateSet, OverconstrainedError, QuotaExceededError, DOMImplementation, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMRectList, DOMRectReadOnly, DOMRect, DOMStringList, DOMStringMap, DOMTokenList, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, ElementInternals, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ErrorEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, HashChangeEvent, IDBVersionChangeEvent, MediaQueryListEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, PageTransitionEvent, PopStateEvent, ProgressEvent, PromiseRejectionEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, StorageEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, CompositionEvent, FocusEvent, InputEvent, DragEvent, PointerEvent, WheelEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, Clipboard, CloseWatcher, CookieStore, FileReader, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaQueryList, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, MessagePort, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, MathMLAnchorElement, Notification, OffscreenCanvas, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestEventTarget, XMLHttpRequest, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, HTMLCollection, HTMLFormControlsCollection, HTMLOptionsCollection, Headers, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, IdleDeadline, ImageBitmap, ImageBitmapRenderingContext, ImageData, IntersectionObserver, IntersectionObserverEntry, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MessageChannel, MimeType, MimeTypeArray, MutationObserver, MutationRecord, NamedNodeMap, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, Navigator, NavigatorUAData, NodeFilter, NodeIterator, NodeList, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, OffscreenCanvasRenderingContext2D, Origin, Path2D, PerformanceEntry, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformanceMark, PerformanceMeasure, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceObserver, PerformanceObserverEntryList, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStream, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ReadableStreamDefaultController, ReadableStreamDefaultReader, Request, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, Screen, Selection, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, Storage, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheet, CSSStyleSheet, StyleSheetList, SubtleCrypto, TextDecoderStream, TextEncoder, TextEncoderStream, TextMetrics, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TreeWalker, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, ValidityState, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, WorkerNavigator, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
+TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, Blob, File, ByteLengthQueuingStrategy, CSS, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CanvasGradient, CanvasPattern, CanvasRenderingContext2D, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, Credential, FederatedCredential, PasswordCredential, CredentialsContainer, CryptoKey, CustomElementRegistry, CustomStateSet, OverconstrainedError, QuotaExceededError, DOMImplementation, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMStringList, DOMStringMap, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, ElementInternals, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ErrorEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, HashChangeEvent, IDBVersionChangeEvent, MediaQueryListEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, PageTransitionEvent, PopStateEvent, ProgressEvent, PromiseRejectionEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, StorageEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, DragEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, Clipboard, CloseWatcher, CookieStore, FileReader, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaQueryList, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, MessagePort, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, OffscreenCanvas, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestEventTarget, XMLHttpRequest, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, HTMLFormControlsCollection, HTMLOptionsCollection, Headers, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, IdleDeadline, ImageBitmap, ImageBitmapRenderingContext, ImageData, IntersectionObserver, IntersectionObserverEntry, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MessageChannel, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, Navigator, NavigatorUAData, NodeFilter, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, OffscreenCanvasRenderingContext2D, Origin, Path2D, PerformanceEntry, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformanceMark, PerformanceMeasure, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceObserver, PerformanceObserverEntryList, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStream, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ReadableStreamDefaultController, ReadableStreamDefaultReader, Request, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, Screen, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, Storage, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheet, CSSStyleSheet, StyleSheetList, SubtleCrypto, TextDecoderStream, TextEncoder, TextEncoderStream, TextMetrics, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, ValidityState, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, WorkerNavigator, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
 
 ## Browser functions that could not be bound
 
@@ -3186,7 +3496,6 @@ TaskController, AbstractRange, Range, StaticRange, AnimationEffect, KeyframeEffe
 - AbortSignal.any: abort.AbortSignal_any exists but an argument of type sequence<AbortSignal> has no conversion
 - AbortSignal.reason: abort.AbortSignal_reason exists but the result type any has no conversion
 - Document.visibilityState: timers.Document_visibilityState exists but its result is not a string
-- HTMLElement.focus: forms.HTMLElement_focus exists but an argument of type FocusOptions has no conversion
 - HTMLButtonElement.validity: forms.HTMLButtonElement_validity exists but its result type does not match
 - HTMLFieldSetElement.validity: forms.HTMLFieldSetElement_validity exists but its result type does not match
 - HTMLFormElement.elements: forms.HTMLFormElement_elements exists but it takes 2 parameters for 0 arguments

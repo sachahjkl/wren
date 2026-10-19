@@ -104,6 +104,13 @@ wj_val wj_throw_status(wj_ctx *ctx, int32_t status, const char *what)
     case wr_Error_Index_Size: return wj_throw_dom(ctx, "IndexSizeError", msg);
     case wr_Error_Not_Allowed: return wj_throw_dom(ctx, "NotAllowedError", msg);
     case wr_Error_Invalid_Access: return wj_throw_dom(ctx, "InvalidAccessError", msg);
+    case wr_Error_Invalid_Character: return wj_throw_dom(ctx, "InvalidCharacterError", msg);
+    case wr_Error_Namespace: return wj_throw_dom(ctx, "NamespaceError", msg);
+    case wr_Error_In_Use_Attribute: return wj_throw_dom(ctx, "InUseAttributeError", msg);
+    case wr_Error_Wrong_Document: return wj_throw_dom(ctx, "WrongDocumentError", msg);
+    case wr_Error_Invalid_Node_Type: return wj_throw_dom(ctx, "InvalidNodeTypeError", msg);
+    case wr_Error_Invalid_Modification: return wj_throw_dom(ctx, "InvalidModificationError", msg);
+    case wr_Error_No_Modification_Allowed: return wj_throw_dom(ctx, "NoModificationAllowedError", msg);
     default: return JS_ThrowInternalError(ctx, "%s (error %d)", msg, (int)status);
     }
 }

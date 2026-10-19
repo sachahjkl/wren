@@ -30,7 +30,26 @@ Event :: struct {
 	engine_id:       i64,
 	untrusted:       bool,
 	time_stamp:      f64,
+	// UI Events details the shell may give (zero: unknown, derived from the fields above where UI Events allows)
+	screen_x, screen_y: f64,
+	buttons:         u16,       // MouseEvent.buttons; 0 with a `button` press: derived from it
+	detail:          i32,       // UIEvent.detail (click count...)
+	repeat:          bool,      // KeyboardEvent.repeat
+	location:        u8,        // KeyboardEvent.location
+	delta:           [3]f64,    // WheelEvent deltaX / deltaY / deltaZ
+	delta_mode:      u8,
+	related:         u64,       // relatedTarget (a node handle), 0 = null
 }
+
+// Event.mods bits
+MOD_CTRL :: 1
+MOD_SHIFT :: 2
+MOD_ALT :: 4
+MOD_META :: 8
+
+// Runs the listeners of the Window for the event being dispatched, in one phase (capture or bubble). The Window is
+// not a node: the embedder keeps its listeners (Dispatcher.window). Returns false to stop dispatching altogether.
+Window_Proc :: #type proc(user: rawptr, event: base.Handle, capture: bool) -> bool
 
 // What the embedder does to run a listener (the page calls into the Wasm instance). Returns false to stop dispatching
 // altogether (the instance died).
@@ -40,6 +59,9 @@ Dispatcher :: struct {
 	events:  base.Pool(Event),   // transient: alive only while the dispatch runs
 	invoke:  Invoke_Proc,
 	user:    rawptr,
+	// optional: the Window's listeners. The propagation path of an event whose path reaches the document goes on to
+	// the Window (HTML "get the parent" of a Document), except for `load`.
+	window:  Window_Proc,
 }
 
 dispatcher_destroy :: proc(dp: ^Dispatcher) {
@@ -145,7 +167,15 @@ dispatch :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: Even
 		return e == nil || e.stop || e.stop_immediate
 	}
 
+	// the Window after the document, for everything but `load` (HTML: a Document's parent is its Window then)
+	to_window := dp.window != nil && path[len(path) - 1] == d.root && proto.type != "load"
+
 	phases: {
+		if to_window {
+			if e := alive(dp, eh); e != nil { e.phase = .Capturing }
+			if !dp.window(dp.user, eh, true) { return true }
+			if halted(dp, eh) { break phases }
+		}
 		// capture: root down to the target's parent
 		for i := len(path) - 1; i >= 1; i -= 1 {
 			if !run_node(d, dp, eh, path[i], .Capturing, true) { return true }
@@ -162,6 +192,10 @@ dispatch :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: Even
 			for i in 1 ..< len(path) {
 				if !run_node(d, dp, eh, path[i], .Bubbling, false) { return true }
 				if halted(dp, eh) { break phases }
+			}
+			if to_window {
+				if e2 := alive(dp, eh); e2 != nil { e2.phase = .Bubbling }
+				if !dp.window(dp.user, eh, false) { return true }
 			}
 		}
 	}

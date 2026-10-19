@@ -47,6 +47,33 @@ void EventListener(i32 user, Event event)
 
 A listener: `user` is the value given to addEventListener.
 
+### struct `UiEventData`
+
+The numeric details of a UI event.
+
+| field | type | |
+|---|---|---|
+| `client_x` | `f64` | clientX / clientY (CSS px, viewport) |%!(EXTRA false)
+| `client_y` | `f64` |  |%!(EXTRA false)
+| `screen_x` | `f64` | screenX / screenY |%!(EXTRA false)
+| `screen_y` | `f64` |  |%!(EXTRA false)
+| `page_x` | `f64` | pageX / pageY (the document's scroll offsets added) |%!(EXTRA false)
+| `page_y` | `f64` |  |%!(EXTRA false)
+| `offset_x` | `f64` | offsetX / offsetY (from the target's padding edge) |%!(EXTRA false)
+| `offset_y` | `f64` |  |%!(EXTRA false)
+| `delta_x` | `f64` | deltaX / deltaY / deltaZ (WheelEvent) |%!(EXTRA false)
+| `delta_y` | `f64` |  |%!(EXTRA false)
+| `delta_z` | `f64` |  |%!(EXTRA false)
+| `related` | `u64` | relatedTarget (a node), 0 = null |%!(EXTRA false)
+| `mods` | `u32` | modifier bits: 1 ctrl, 2 shift, 4 alt, 8 meta |%!(EXTRA false)
+| `button` | `i32` | MouseEvent.button |%!(EXTRA false)
+| `buttons` | `u32` | MouseEvent.buttons |%!(EXTRA false)
+| `detail` | `i32` | UIEvent.detail |%!(EXTRA false)
+| `key_code` | `u32` | KeyboardEvent.keyCode (and which, charCode for keypress) |%!(EXTRA false)
+| `location` | `u32` | KeyboardEvent.location |%!(EXTRA false)
+| `repeat` | `u32` | KeyboardEvent.repeat |%!(EXTRA false)
+| `delta_mode` | `u32` | WheelEvent.deltaMode |%!(EXTRA false)
+
 ## Functions
 
 ### `EventTarget_addEventListener`
@@ -235,6 +262,36 @@ i32 KeyboardEvent_keyCode(Event event)
 KeyboardEvent.keyCode
 
 Host: `KeyboardEvent_keyCode :: proc(c: ^Call, event: Api_Event) -> i32`
+
+### `Event_uiData`
+
+```
+UiEventData Event_uiData(Event event)
+```
+
+The details of a UI event being dispatched.
+
+Host: `Event_uiData :: proc(c: ^Call, event: Api_Event) -> Api_UiEventData`
+
+### `UiEvent_key`
+
+```
+string UiEvent_key(Event event)
+```
+
+KeyboardEvent.key ("Enter", "a"...): "Unidentified" when unknown.
+
+Host: `UiEvent_key :: proc(c: ^Call, event: Api_Event) -> string`
+
+### `UiEvent_code`
+
+```
+string UiEvent_code(Event event)
+```
+
+KeyboardEvent.code ("KeyA", "Enter"...): "" when unknown.
+
+Host: `UiEvent_code :: proc(c: ^Call, event: Api_Event) -> string`
 
 ### `EventTarget_dispatchEngineEvent`
 

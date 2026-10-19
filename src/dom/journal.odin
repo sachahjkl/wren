@@ -22,12 +22,20 @@ Journal_Kind :: enum u8 {
 Journal_Entry :: struct {
 	kind:     Journal_Kind,
 	node:     base.Handle,
-	parent:   base.Handle,   // Insert / Remove
+	parent:   base.Handle,   // Insert / Remove; Text: the node's parent
+	prev:     base.Handle,   // Insert / Remove: the node's siblings right after the insertion / before the removal
+	next:     base.Handle,
 	name:     string,        // Attribute: the name, lower case (owned by the journal)
-	old:      string,        // Attribute: the value before the change (owned by the journal), when `had_old`
-	had_old:  bool,          // Attribute: the attribute existed before the change
+	old:      string,        // Attribute: the value before the change (owned by the journal), when `had_old`; Text:
+	                         // the data before, given to the Mutation_Hook only (not kept in the journal)
+	had_old:  bool,          // Attribute: the attribute existed before the change; Text: always
+	batch:    u32,           // entries of one DOM operation share it (Document.batch), 0 = an operation of its own
 	mutation: u64,
 }
+
+// Called for every mutation as it happens, journal on or off (Document.observer). The entry's strings are valid
+// during the call only.
+Mutation_Hook :: #type proc(user: rawptr, d: ^Document, e: ^Journal_Entry)
 
 Journal :: struct {
 	on:      bool,
@@ -75,7 +83,11 @@ journal_since :: proc(d: ^Document, since: u64) -> ([]Journal_Entry, bool) {
 }
 
 @(private)
-journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Handle, name := "", old := "", had_old := false) {
+journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Handle, name := "", old := "", had_old := false, prev := base.NIL_HANDLE, next := base.NIL_HANDLE) {
+	if d.observer != nil {
+		e := Journal_Entry{kind = kind, node = node, parent = parent, prev = prev, next = next, name = name, old = old, had_old = had_old, batch = d.batch, mutation = d.mutations}
+		d.observer(d.observer_user, d, &e)
+	}
 	j := &d.journal
 	if !j.on { return }
 	if len(j.entries) >= j.max {
@@ -104,7 +116,8 @@ journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Hand
 		}
 		nm = strings.clone(name, virtual.arena_allocator(&j.names))
 	}
+	// the old data of a text change is for the hook only: readers of the journal do not need it
 	ov := ""
-	if old != "" { ov = strings.clone(old, virtual.arena_allocator(&j.names)) }
-	append(&j.entries, Journal_Entry{kind = kind, node = node, parent = parent, name = nm, old = ov, had_old = had_old, mutation = d.mutations})
+	if old != "" && kind == .Attribute { ov = strings.clone(old, virtual.arena_allocator(&j.names)) }
+	append(&j.entries, Journal_Entry{kind = kind, node = node, parent = parent, prev = prev, next = next, name = nm, old = ov, had_old = had_old, batch = d.batch, mutation = d.mutations})
 }

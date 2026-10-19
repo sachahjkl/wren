@@ -13,9 +13,10 @@ import "wb:dom"
 ////////////////////////////////
 // dom
 
-Document_documentElement :: proc(c: ^Call) -> u64 { return u64(c.page.doc_el) }
-Document_head :: proc(c: ^Call) -> u64 { return u64(c.page.head) }
-Document_body :: proc(c: ^Call) -> u64 { return u64(c.page.body) }
+// From the tree as it is now (scripts may replace them), as the DOM defines them (js_dom_tree.odin).
+Document_documentElement :: proc(c: ^Call) -> u64 { d := call_doc(c); return d == nil ? 0 : u64(jd_document_element(d)) }
+Document_head :: proc(c: ^Call) -> u64 { d := call_doc(c); return d == nil ? 0 : u64(jd_head(d)) }
+Document_body :: proc(c: ^Call) -> u64 { d := call_doc(c); return d == nil ? 0 : u64(jd_body(d)) }
 
 Document_createElement :: proc(c: ^Call, tag: string) -> (u64, Api_Error) {
 	d := call_doc(c)
@@ -64,6 +65,8 @@ Node_nodeType :: proc(c: ^Call, node: Api_Node) -> i32 {
 	case .Text: return 3
 	case .Comment: return 8
 	case .Document: return 9
+	case .Doctype: return 10
+	case .Fragment: return 11
 	}
 	return 0
 }
@@ -95,7 +98,7 @@ Element_removeAttribute :: proc(c: ^Call, element: Api_Element, name: string) ->
 
 EventTarget_addEventListener :: proc(c: ^Call, target: u64, type: string, callback: u32, user: i32, options: Api_ListenerOptions) -> (i32, Api_Error) {
 	if is_object(target) {
-		id, err := object_add_listener(c.page, target, type, callback, u32(user), .Once in options, c.owner)
+		id, err := object_add_listener(c.page, target, type, callback, u32(user), .Once in options, c.owner, capture = .Capture in options)
 		if err != .None { return 0, dom_error(err) }
 		return i32(id), .None
 	}

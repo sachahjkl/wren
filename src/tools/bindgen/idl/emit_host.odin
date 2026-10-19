@@ -586,7 +586,8 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 	// 5. the result
 	switch {
 	case d.abi.out_string:
-		wl(o, "\tcopy(_os[:_on], transmute([]u8)_r)")
+		// a bytes result is a []u8 already
+		if d.result.kind == .Bytes { wl(o, "\tcopy(_os[:_on], _r)") } else { wl(o, "\tcopy(_os[:_on], transmute([]u8)_r)") }
 		wl(o, "\twasm.put_size(&f, a, i64(len(_r)))")
 	case d.abi.ret_ptr:
 		if d.result.kind == .Struct {

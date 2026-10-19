@@ -93,16 +93,17 @@ object_release :: proc(p: ^Page, h: u64) -> bool {
 ////////////////////////////////
 // Events on objects
 
-object_add_listener :: proc(p: ^Page, h: u64, type: string, callback, user: u32, once: bool, owner: u32) -> (dom.Listener_Id, dom.Error) {
+// `capture` matters for the Window only (the one object in a propagation path, js_dom_events.odin).
+object_add_listener :: proc(p: ^Page, h: u64, type: string, callback, user: u32, once: bool, owner: u32, capture := false) -> (dom.Listener_Id, dom.Error) {
 	o := object_get(p, h)
 	if o == nil { return 0, .Invalid_Handle }
 	if type == "" { return 0, .Invalid_Argument }
 	for l in o.listeners {
-		if !l.removed && l.type == type && l.callback == callback && l.user == user && l.owner == owner { return l.id, .None }
+		if !l.removed && l.type == type && l.callback == callback && l.user == user && l.owner == owner && l.capture == capture { return l.id, .None }
 	}
 	id := p.doc.next_listener
 	p.doc.next_listener += 1
-	append(&o.listeners, dom.Listener{id = id, type = strings.clone(type), callback = callback, user = user, owner = owner, once = once})
+	append(&o.listeners, dom.Listener{id = id, type = strings.clone(type), callback = callback, user = user, owner = owner, once = once, capture = capture})
 	return id, .None
 }
 

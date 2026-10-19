@@ -1,0 +1,137 @@
+/// Elements for JavaScript: names and namespaces, attributes (with their namespaces, as far as the browser keeps
+/// them), selectors, markup (innerHTML / outerHTML / insertAdjacent*), the members of HTMLElement and of the hyperlink
+/// elements (src/page/js_dom_elements.odin, js_dom_markup.odin). A nullable string result is Not_Found for null.
+partial module dom {
+  /// element.namespaceURI (Not_Found: null).
+  string Element_namespaceURI(Element element) raises;
+  /// element.prefix (Not_Found: null).
+  string Element_prefix(Element element) raises;
+  /// element.localName (SVG names with their case).
+  string Element_localName(Element element);
+  /// element.tagName: the qualified name, upper case for HTML elements.
+  string Element_qualifiedTagName(Element element);
+  /// element.slot
+  string Element_slot(Element element);
+  /// element.slot = value
+  void Element_set_slot(Element element, string value) raises;
+  /// element.hasAttributes()
+  bool Element_hasAttributes(Element element);
+  /// The attributes' names in order, each followed by a NUL byte.
+  string Element_attributeNames(Element element);
+  /// The number of attributes.
+  u32 Element_attributeCount(Element element);
+  /// The name of the attribute at `index` (Not_Found past the end).
+  string Element_attributeNameAt(Element element, u32 index) raises;
+  /// element.getAttributeNS(namespace, localName) (Not_Found: null).
+  string Element_getAttributeNS(Element element, optional string namespace, string local_name) raises;
+  /// element.setAttribute(name, value): Invalid_Character for a name that is not a valid attribute name.
+  void Element_setAttributeChecked(Element element, string name, string value) raises;
+  /// element.setAttributeNS(namespace, qualifiedName, value): Invalid_Character, Namespace.
+  void Element_setAttributeNS(Element element, optional string namespace, string qualified_name, string value) raises;
+  /// element.removeAttributeNS(namespace, localName)
+  void Element_removeAttributeNS(Element element, optional string namespace, string local_name);
+  /// element.toggleAttribute(name, force): force -1 absent, 0 false, 1 true. Invalid_Character.
+  bool Element_toggleAttributeChecked(Element element, string name, i32 force) raises;
+  /// element.hasAttribute(name)
+  bool Element_hasAttribute(Element element, string name);
+  /// element.hasAttributeNS(namespace, localName)
+  bool Element_hasAttributeNS(Element element, optional string namespace, string local_name);
+  /// element.closest(selectors): Syntax for an invalid selector list.
+  Element Element_closest(Element element, string selectors) raises;
+  /// element.matches(selectors): Syntax for an invalid selector list.
+  bool Element_matches(Element element, string selectors) raises;
+  /// element.webkitMatchesSelector(selectors)
+  bool Element_webkitMatchesSelector(Element element, string selectors) raises;
+  /// element.insertAdjacentElement(where, element): Syntax for a bad position, the tree errors of insertBefore.
+  Element Element_insertAdjacentElement(Element element, string position, Element other) raises;
+  /// element.insertAdjacentText(where, data)
+  void Element_insertAdjacentText(Element element, string position, string data) raises;
+  /// element.insertAdjacentHTML(position, text): No_Modification_Allowed beside the document element.
+  void Element_insertAdjacentHTML(Element element, string position, string text) raises;
+  /// element.innerHTML: the HTML fragment serialization of its children (a template's: its contents').
+  string Element_innerHTML(Element element);
+  /// element.innerHTML = markup: parsed as a fragment in the element's context, one mutation replacing the children.
+  void Element_set_innerHTML(Element element, string value) raises;
+  /// element.outerHTML
+  string Element_outerHTML(Element element);
+  /// element.outerHTML = markup: No_Modification_Allowed when the parent is the document.
+  void Element_set_outerHTML(Element element, string value) raises;
+  /// element.shadowRoot: null (no shadow trees).
+  Node Element_shadowRoot(Element element);
+
+  /// The `hidden` content attribute as HTMLElement.hidden reads it: 0 absent, 1 present, 2 "until-found".
+  i32 HTMLElement_hiddenState(Element element);
+  /// htmlElement.dir: "ltr", "rtl", "auto" or "".
+  string HTMLElement_dir(Element element);
+  /// htmlElement.dir = value
+  void HTMLElement_set_dir(Element element, string value) raises;
+  /// htmlElement.translate
+  bool HTMLElement_translate(Element element);
+  /// htmlElement.translate = value
+  void HTMLElement_set_translate(Element element, bool value) raises;
+  /// htmlElement.draggable
+  bool HTMLElement_draggable(Element element);
+  /// htmlElement.draggable = value
+  void HTMLElement_set_draggable(Element element, bool value) raises;
+  /// htmlElement.spellcheck
+  bool HTMLElement_spellcheck(Element element);
+  /// htmlElement.spellcheck = value
+  void HTMLElement_set_spellcheck(Element element, bool value) raises;
+  /// htmlElement.innerText: the rendered text (from the layout's text when the element is rendered, else
+  /// textContent).
+  string HTMLElement_innerText(Element element);
+  /// htmlElement.innerText = value: text nodes and <br> for line feeds.
+  void HTMLElement_set_innerText(Element element, string value) raises;
+  /// htmlElement.outerText
+  string HTMLElement_outerText(Element element);
+  /// htmlElement.outerText = value: No_Modification_Allowed without a parent.
+  void HTMLElement_set_outerText(Element element, string value) raises;
+  /// htmlElement.accessKeyLabel ("": no access keys)
+  string HTMLElement_accessKeyLabel(Element element);
+  /// element.tabIndex: the attribute, else 0 for focusable elements and -1 for the others.
+  i32 HTMLOrSVGOrMathMLElement_tabIndex(Element element);
+  /// element.tabIndex = value
+  void HTMLOrSVGOrMathMLElement_set_tabIndex(Element element, i32 value) raises;
+  /// element.nonce
+  string HTMLOrSVGOrMathMLElement_nonce(Element element);
+  /// element.nonce = value
+  void HTMLOrSVGOrMathMLElement_set_nonce(Element element, string value) raises;
+  /// element.contentEditable: "true", "false", "plaintext-only" or "inherit".
+  string ElementContentEditable_contentEditable(Element element);
+  /// element.contentEditable = value: Syntax for anything else.
+  void ElementContentEditable_set_contentEditable(Element element, string value) raises;
+  /// element.isContentEditable
+  bool ElementContentEditable_isContentEditable(Element element);
+
+  /// a.href / area.href: the URL resolved, or the attribute as is when it does not parse.
+  string HTMLHyperlinkElementUtils_href(Element element);
+  /// a.href = value
+  void HTMLHyperlinkElementUtils_set_href(Element element, string value) raises;
+  /// a.origin
+  string HyperlinkElementUtils_origin(Element element);
+  /// a.protocol and the other components (URL Standard setters; nothing for a URL that does not parse)
+  string HyperlinkElementUtils_protocol(Element element);
+  void HyperlinkElementUtils_set_protocol(Element element, string value) raises;
+  string HyperlinkElementUtils_username(Element element);
+  void HyperlinkElementUtils_set_username(Element element, string value) raises;
+  string HyperlinkElementUtils_password(Element element);
+  void HyperlinkElementUtils_set_password(Element element, string value) raises;
+  string HyperlinkElementUtils_host(Element element);
+  void HyperlinkElementUtils_set_host(Element element, string value) raises;
+  string HyperlinkElementUtils_hostname(Element element);
+  void HyperlinkElementUtils_set_hostname(Element element, string value) raises;
+  string HyperlinkElementUtils_port(Element element);
+  void HyperlinkElementUtils_set_port(Element element, string value) raises;
+  string HyperlinkElementUtils_pathname(Element element);
+  void HyperlinkElementUtils_set_pathname(Element element, string value) raises;
+  string HyperlinkElementUtils_search(Element element);
+  void HyperlinkElementUtils_set_search(Element element, string value) raises;
+  string HyperlinkElementUtils_hash(Element element);
+  void HyperlinkElementUtils_set_hash(Element element, string value) raises;
+  /// a.text: its textContent.
+  string HTMLAnchorElement_text(Element element);
+  /// a.text = value
+  void HTMLAnchorElement_set_text(Element element, string value) raises;
+  /// template.content
+  Node HTMLTemplateElement_content(Element element);
+}

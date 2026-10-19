@@ -4,10 +4,127 @@
 #include "wj.h"
 #include "bindings.h"
 
+JSValue wjr_AbstractRange_get_collapsed(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AbstractRange_get_endContainer(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AbstractRange_get_endOffset(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AbstractRange_get_startContainer(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AbstractRange_get_startOffset(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Attr_get_localName(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Attr_get_name(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Attr_get_namespaceURI(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Attr_get_ownerElement(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Attr_get_prefix(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Attr_get_specified(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Attr_get_value(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Attr_set_value(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_CSSStyleDeclaration_getPropertyPriority(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CSSStyleDeclaration_getPropertyValue(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CSSStyleDeclaration_get_cssText(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CSSStyleDeclaration_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CSSStyleDeclaration_get_parentRule(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CSSStyleDeclaration_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+JSValue wjr_CSSStyleDeclaration_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+uint32_t wjr_CSSStyleDeclaration_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_CSSStyleDeclaration_removeProperty(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CSSStyleDeclaration_setProperty(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CSSStyleDeclaration_set_cssText(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_CSSStyleProperties_get_cssFloat(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CSSStyleProperties_set_cssFloat(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_ChildNode_after(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ChildNode_before(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ChildNode_replaceWith(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Comment_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CompositionEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CompositionEvent_get_data(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CustomEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CustomEvent_get_detail(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CustomEvent_initCustomEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMRectList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRectList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+JSValue wjr_DOMRectList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+uint32_t wjr_DOMRectList_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_DOMRectReadOnly_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMRectReadOnly_get_bottom(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRectReadOnly_get_height(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRectReadOnly_get_left(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRectReadOnly_get_right(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRectReadOnly_get_top(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRectReadOnly_get_width(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRectReadOnly_get_x(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRectReadOnly_get_y(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRectReadOnly_static_fromRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMRectReadOnly_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMRect_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMRect_get_height(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRect_get_width(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRect_get_x(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRect_get_y(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMRect_set_height(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMRect_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMRect_set_x(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMRect_set_y(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMRect_static_fromRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+int wjr_DOMStringMap_named_delete(JSContext *ctx, JSValueConst obj, const char *name, size_t len);
+JSValue wjr_DOMStringMap_named_get(JSContext *ctx, JSValueConst obj, const char *name, size_t len, bool *found);
+int wjr_DOMStringMap_named_keys(JSContext *ctx, JSValueConst obj, JSValue array);
+int wjr_DOMStringMap_named_set(JSContext *ctx, JSValueConst obj, const char *name, size_t len, JSValueConst value);
+JSValue wjr_DOMTokenList_add(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMTokenList_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMTokenList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMTokenList_get_value(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMTokenList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+JSValue wjr_DOMTokenList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+uint32_t wjr_DOMTokenList_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_DOMTokenList_remove(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMTokenList_replace(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMTokenList_set_value(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMTokenList_supports(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMTokenList_toggle(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DocumentFragment_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_createAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_createAttributeNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_createElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_createElementNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_createEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_createNodeIterator(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_createRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_createTreeWalker(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_getElementsByClassName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_getElementsByName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_getElementsByTagName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_getElementsByTagNameNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_getSelection(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_get_anchors(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_defaultView(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_embeds(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_forms(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_images(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_links(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_location(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_plugins(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_scripts(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_importNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ElementCSSInlineStyle_get_style(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Element_getAttributeNames(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_getAttributeNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_getAttributeNodeNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_getBoundingClientRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_getClientRects(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_getElementsByClassName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_getElementsByTagName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_getElementsByTagNameNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_get_attributes(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Element_get_classList(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Element_get_tagName(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Element_removeAttributeNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_scroll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_scrollBy(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_scrollIntoView(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_scrollTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_setAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_setAttributeNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_setAttributeNodeNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_toggleAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_EventTarget_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_EventTarget_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_EventTarget_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -33,6 +150,213 @@ JSValue wjr_Event_set_cancelBubble(JSContext *ctx, JSValueConst this_val, JSValu
 JSValue wjr_Event_set_returnValue(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Event_stopImmediatePropagation(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Event_stopPropagation(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FocusEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FocusEvent_get_relatedTarget(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLAnchorElement_get_relList(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLAreaElement_get_relList(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLCollection_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLCollection_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+JSValue wjr_HTMLCollection_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+uint32_t wjr_HTMLCollection_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_HTMLCollection_namedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLElement_get_hidden(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLElement_set_hidden(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLFormElement_get_relList(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLIFrameElement_get_sandbox(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLLinkElement_get_relList(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLLinkElement_get_sizes(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLOrSVGOrMathMLElement_focus(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLOrSVGOrMathMLElement_get_dataset(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLOutputElement_get_htmlFor(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTableElement_get_rows(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTableElement_get_tBodies(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTableRowElement_get_cells(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTableSectionElement_get_rows(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_InputEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_InputEvent_get_data(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_InputEvent_get_dataTransfer(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_InputEvent_get_inputType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_InputEvent_get_isComposing(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_KeyboardEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_KeyboardEvent_getModifierState(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_KeyboardEvent_get_altKey(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_KeyboardEvent_get_charCode(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_KeyboardEvent_get_code(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_KeyboardEvent_get_ctrlKey(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_KeyboardEvent_get_isComposing(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_KeyboardEvent_get_key(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_KeyboardEvent_get_keyCode(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_KeyboardEvent_get_location(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_KeyboardEvent_get_metaKey(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_KeyboardEvent_get_repeat(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_KeyboardEvent_get_shiftKey(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_KeyboardEvent_initKeyboardEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MouseEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MouseEvent_getModifierState(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MouseEvent_get_altKey(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_button(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_buttons(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_clientX(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_clientY(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_ctrlKey(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_layerX(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_layerY(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_metaKey(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_movementX(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_movementY(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_offsetX(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_offsetY(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_pageX(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_pageY(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_relatedTarget(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_screenX(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_screenY(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_shiftKey(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_x(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_get_y(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MouseEvent_initMouseEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MutationObserver_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MutationObserver_disconnect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MutationObserver_observe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MutationObserver_takeRecords(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MutationRecord_get_addedNodes(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MutationRecord_get_attributeName(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MutationRecord_get_attributeNamespace(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MutationRecord_get_nextSibling(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MutationRecord_get_oldValue(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MutationRecord_get_previousSibling(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MutationRecord_get_removedNodes(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MutationRecord_get_target(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MutationRecord_get_type(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NamedNodeMap_getNamedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NamedNodeMap_getNamedItemNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NamedNodeMap_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NamedNodeMap_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+JSValue wjr_NamedNodeMap_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+uint32_t wjr_NamedNodeMap_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_NamedNodeMap_removeNamedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NamedNodeMap_removeNamedItemNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NamedNodeMap_setNamedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NamedNodeMap_setNamedItemNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NodeIterator_detach(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NodeIterator_get_filter(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NodeIterator_get_pointerBeforeReferenceNode(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NodeIterator_get_referenceNode(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NodeIterator_get_root(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NodeIterator_get_whatToShow(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NodeIterator_nextNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NodeIterator_previousNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NodeList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NodeList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+JSValue wjr_NodeList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+uint32_t wjr_NodeList_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_Node_appendChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Node_getRootNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Node_get_childNodes(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Node_get_nodeName(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Node_get_nodeType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Node_get_nodeValue(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Node_get_textContent(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Node_insertBefore(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Node_removeChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Node_replaceChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Node_set_nodeValue(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_Node_set_textContent(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_ParentNode_append(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ParentNode_get_children(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ParentNode_moveBefore(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ParentNode_prepend(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ParentNode_querySelectorAll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ParentNode_replaceChildren(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PointerEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PointerEvent_get_altitudeAngle(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PointerEvent_get_azimuthAngle(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PointerEvent_get_height(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PointerEvent_get_isPrimary(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PointerEvent_get_pointerId(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PointerEvent_get_pointerType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PointerEvent_get_pressure(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PointerEvent_get_tangentialPressure(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PointerEvent_get_tiltX(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PointerEvent_get_tiltY(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PointerEvent_get_twist(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PointerEvent_get_width(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Range_cloneContents(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_cloneRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_collapse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_compareBoundaryPoints(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_comparePoint(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_createContextualFragment(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_deleteContents(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_detach(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_extractContents(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_getBoundingClientRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_getClientRects(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_get_commonAncestorContainer(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Range_insertNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_intersectsNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_isPointInRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_selectNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_selectNodeContents(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_setEnd(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_setEndAfter(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_setEndBefore(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_setStart(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_setStartAfter(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_setStartBefore(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_surroundContents(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Range_toString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_addRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_collapse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_collapseToEnd(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_collapseToStart(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_containsNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_deleteFromDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_empty(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_extend(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_getRangeAt(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_get_anchorNode(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Selection_get_anchorOffset(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Selection_get_direction(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Selection_get_focusNode(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Selection_get_focusOffset(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Selection_get_isCollapsed(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Selection_get_rangeCount(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Selection_get_type(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Selection_modify(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_removeAllRanges(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_removeRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_selectAllChildren(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_setBaseAndExtent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_setPosition(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Selection_toString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_StaticRange_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Text_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TreeWalker_firstChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TreeWalker_get_currentNode(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TreeWalker_get_filter(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TreeWalker_get_root(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TreeWalker_get_whatToShow(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TreeWalker_lastChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TreeWalker_nextNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TreeWalker_nextSibling(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TreeWalker_parentNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TreeWalker_previousNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TreeWalker_previousSibling(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TreeWalker_set_currentNode(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_UIEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_UIEvent_get_detail(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_UIEvent_get_view(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_UIEvent_get_which(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_UIEvent_initUIEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WheelEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WheelEvent_get_deltaMode(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WheelEvent_get_deltaX(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WheelEvent_get_deltaY(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WheelEvent_get_deltaZ(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_getComputedStyle(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Window_getSelection(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_get_frameElement(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_frames(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_length(JSContext *ctx, JSValueConst this_val);
@@ -41,6 +365,9 @@ JSValue wjr_Window_get_parent(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_self(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_top(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_window(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_scroll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Window_scrollBy(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Window_scrollTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WorkerGlobalScope_get_self(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_console_assert(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_clear(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -205,42 +532,6 @@ static JSValue wjg_MessageEvent_get_lastEventId(JSContext *ctx, JSValueConst thi
     WJ_FETCH_STRING(n, wr_MessageEvent_lastEventId(self->handle, wj_scratch.data, wj_scratch.cap));
     if (n < 0) { return wj_throw_status(ctx, n, "MessageEvent.lastEventId"); }
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
-}
-
-/* KeyboardEvent.keyCode -> events.KeyboardEvent_keyCode */
-static JSValue wjg_KeyboardEvent_get_keyCode(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 158);
-    if (!self) { return JS_EXCEPTION; }
-    uint32_t r = wr_KeyboardEvent_keyCode(self->handle);
-    return JS_NewUint32(ctx, r);
-}
-
-/* MouseEvent.clientX -> events.MouseEvent_clientX */
-static JSValue wjg_MouseEvent_get_clientX(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 159);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t r = wr_MouseEvent_clientX(self->handle);
-    return JS_NewInt32(ctx, r);
-}
-
-/* MouseEvent.clientY -> events.MouseEvent_clientY */
-static JSValue wjg_MouseEvent_get_clientY(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 159);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t r = wr_MouseEvent_clientY(self->handle);
-    return JS_NewInt32(ctx, r);
-}
-
-/* MouseEvent.button -> events.MouseEvent_button */
-static JSValue wjg_MouseEvent_get_button(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 159);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t r = wr_MouseEvent_button(self->handle);
-    return JS_NewInt32(ctx, r);
 }
 
 /* AbortSignal.timeout() -> abort.AbortSignal_timeout */
@@ -438,13 +729,33 @@ static JSValue wjg_NavigationHistoryEntry_get_ondispose(JSContext *ctx, JSValueC
 static JSValue wjg_NavigationHistoryEntry_set_ondispose(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 218, "dispose", v, 0); }
 static JSValue wjg_NetworkInformation_get_onchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 219, "change"); }
 static JSValue wjg_NetworkInformation_set_onchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 219, "change", v, 0); }
-/* Node.nodeType -> dom.Node_nodeType */
-static JSValue wjg_Node_get_nodeType(JSContext *ctx, JSValueConst this_val)
+/* Node.baseURI -> dom.Node_baseURI */
+static JSValue wjg_Node_get_baseURI(JSContext *ctx, JSValueConst this_val)
 {
     wj_obj *self = wj_this(ctx, this_val, 220);
     if (!self) { return JS_EXCEPTION; }
-    uint32_t r = wr_Node_nodeType(self->handle);
-    return JS_NewUint32(ctx, r);
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Node_baseURI(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Node.baseURI"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Node.isConnected -> dom.Node_isConnected */
+static JSValue wjg_Node_get_isConnected(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 220);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Node_isConnected(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* Node.ownerDocument -> dom.Node_ownerDocument */
+static JSValue wjg_Node_get_ownerDocument(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 220);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_Node_ownerDocument(self->handle);
+    return wj_wrap_node(ctx, r);
 }
 
 /* Node.parentNode -> dom.Node_parentNode */
@@ -454,6 +765,24 @@ static JSValue wjg_Node_get_parentNode(JSContext *ctx, JSValueConst this_val)
     if (!self) { return JS_EXCEPTION; }
     uint64_t r = wr_Node_parentNode(self->handle);
     return wj_wrap_node(ctx, r);
+}
+
+/* Node.parentElement -> dom.Node_parentElement */
+static JSValue wjg_Node_get_parentElement(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 220);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_Node_parentElement(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* Node.hasChildNodes() -> dom.Node_hasChildNodes */
+static JSValue wjg_Node_hasChildNodes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 220);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Node_hasChildNodes(self->handle);
+    return JS_NewBool(ctx, r != 0);
 }
 
 /* Node.firstChild -> dom.Node_firstChild */
@@ -492,71 +821,306 @@ static JSValue wjg_Node_get_nextSibling(JSContext *ctx, JSValueConst this_val)
     return wj_wrap_node(ctx, r);
 }
 
-/* Node.textContent -> dom.Node_getTextContent */
-static JSValue wjg_Node_get_textContent(JSContext *ctx, JSValueConst this_val)
+/* Node.normalize() -> dom.Node_normalize */
+static JSValue wjg_Node_normalize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     wj_obj *self = wj_this(ctx, this_val, 220);
     if (!self) { return JS_EXCEPTION; }
-    int32_t n;
-    WJ_FETCH_STRING(n, wr_Node_getTextContent(self->handle, wj_scratch.data, wj_scratch.cap));
-    if (n < 0) { return wj_throw_status(ctx, n, "Node.textContent"); }
-    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
-}
-
-/* Node.textContent = v -> dom.Node_setTextContent */
-static JSValue wjg_Node_set_textContent(JSContext *ctx, JSValueConst this_val, JSValueConst v)
-{
-    JSValueConst argv[1] = {v};
-    int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 220);
-    if (!self) { return JS_EXCEPTION; }
-    wj_str a0;
-    if (!wj_to_str(ctx, argv[0], &a0, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
-    int32_t st = wr_Node_setTextContent(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
-    wj_str_free(ctx, &a0);
-    if (st < 0) { return wj_throw_status(ctx, st, "Node.textContent"); }
+    wr_Node_normalize(self->handle);
     return JS_UNDEFINED;
 }
 
-/* Node.insertBefore() -> dom.Node_insertBefore */
-static JSValue wjg_Node_insertBefore(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+/* Node.cloneNode() -> dom.Node_cloneNode */
+static JSValue wjg_Node_cloneNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     wj_obj *self = wj_this(ctx, this_val, 220);
     if (!self) { return JS_EXCEPTION; }
-    if (argc < 2) { return wj_throw_arity(ctx, "Node.insertBefore", 2, argc); }
-    uint64_t a0 = 0;
-    if (!wj_to_handle(ctx, wj_arg(argc, argv, 0), 220, false, &a0, "Node.insertBefore: argument 1 is not of type 'Node'")) { return JS_EXCEPTION; }
-    uint64_t a1 = 0;
-    if (!wj_to_handle(ctx, wj_arg(argc, argv, 1), 220, true, &a1, "Node.insertBefore: argument 2 is not of type 'Node'")) { return JS_EXCEPTION; }
-    int32_t st = wr_Node_insertBefore(self->handle, a0, a1);
-    if (st < 0) { return wj_throw_status(ctx, st, "Node.insertBefore"); }
-    return JS_DupValue(ctx, wj_arg(argc, argv, 0));
+    bool a0 = false;
+    if (false || !JS_IsUndefined(wj_arg(argc, argv, 0))) { a0 = JS_ToBool(ctx, wj_arg(argc, argv, 0)); }
+    uint64_t r = 0;
+    int32_t st = wr_Node_cloneNode(self->handle, a0 ? 1 : 0, (void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "Node.cloneNode"); }
+    return wj_wrap_node(ctx, r);
 }
 
-/* Node.appendChild() -> dom.Node_appendChild */
-static JSValue wjg_Node_appendChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+/* Node.isEqualNode() -> dom.Node_isEqualNode */
+static JSValue wjg_Node_isEqualNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     wj_obj *self = wj_this(ctx, this_val, 220);
     if (!self) { return JS_EXCEPTION; }
-    if (argc < 1) { return wj_throw_arity(ctx, "Node.appendChild", 1, argc); }
+    if (argc < 1) { return wj_throw_arity(ctx, "Node.isEqualNode", 1, argc); }
     uint64_t a0 = 0;
-    if (!wj_to_handle(ctx, wj_arg(argc, argv, 0), 220, false, &a0, "Node.appendChild: argument 1 is not of type 'Node'")) { return JS_EXCEPTION; }
-    int32_t st = wr_Node_appendChild(self->handle, a0);
-    if (st < 0) { return wj_throw_status(ctx, st, "Node.appendChild"); }
-    return JS_DupValue(ctx, wj_arg(argc, argv, 0));
+    if (!wj_to_handle(ctx, wj_arg(argc, argv, 0), 220, true, &a0, "Node.isEqualNode: argument 1 is not of type 'Node'")) { return JS_EXCEPTION; }
+    int32_t r = wr_Node_isEqualNode(self->handle, a0);
+    return JS_NewBool(ctx, r != 0);
 }
 
-/* Node.removeChild() -> dom.Node_removeChild */
-static JSValue wjg_Node_removeChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+/* Node.isSameNode() -> dom.Node_isSameNode */
+static JSValue wjg_Node_isSameNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     wj_obj *self = wj_this(ctx, this_val, 220);
     if (!self) { return JS_EXCEPTION; }
-    if (argc < 1) { return wj_throw_arity(ctx, "Node.removeChild", 1, argc); }
+    if (argc < 1) { return wj_throw_arity(ctx, "Node.isSameNode", 1, argc); }
     uint64_t a0 = 0;
-    if (!wj_to_handle(ctx, wj_arg(argc, argv, 0), 220, false, &a0, "Node.removeChild: argument 1 is not of type 'Node'")) { return JS_EXCEPTION; }
-    int32_t st = wr_Node_removeChild(self->handle, a0);
-    if (st < 0) { return wj_throw_status(ctx, st, "Node.removeChild"); }
-    return JS_DupValue(ctx, wj_arg(argc, argv, 0));
+    if (!wj_to_handle(ctx, wj_arg(argc, argv, 0), 220, true, &a0, "Node.isSameNode: argument 1 is not of type 'Node'")) { return JS_EXCEPTION; }
+    int32_t r = wr_Node_isSameNode(self->handle, a0);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* Node.compareDocumentPosition() -> dom.Node_compareDocumentPosition */
+static JSValue wjg_Node_compareDocumentPosition(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 220);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Node.compareDocumentPosition", 1, argc); }
+    uint64_t a0 = 0;
+    if (!wj_to_handle(ctx, wj_arg(argc, argv, 0), 220, false, &a0, "Node.compareDocumentPosition: argument 1 is not of type 'Node'")) { return JS_EXCEPTION; }
+    uint32_t r = wr_Node_compareDocumentPosition(self->handle, a0);
+    return JS_NewUint32(ctx, r);
+}
+
+/* Node.contains() -> dom.Node_contains */
+static JSValue wjg_Node_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 220);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Node.contains", 1, argc); }
+    uint64_t a0 = 0;
+    if (!wj_to_handle(ctx, wj_arg(argc, argv, 0), 220, true, &a0, "Node.contains: argument 1 is not of type 'Node'")) { return JS_EXCEPTION; }
+    int32_t r = wr_Node_contains(self->handle, a0);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* Node.lookupPrefix() -> dom.Node_lookupPrefix */
+static JSValue wjg_Node_lookupPrefix(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 220);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Node.lookupPrefix", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Node_lookupPrefix(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT, wj_scratch.data, wj_scratch.cap));
+    wj_str_free(ctx, &a0);
+    if (n == wr_Error_Not_Found) { return JS_NULL; }
+    if (n < 0) { return wj_throw_status(ctx, n, "Node.lookupPrefix"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Node.lookupNamespaceURI() -> dom.Node_lookupNamespaceURI */
+static JSValue wjg_Node_lookupNamespaceURI(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 220);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Node.lookupNamespaceURI", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Node_lookupNamespaceURI(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT, wj_scratch.data, wj_scratch.cap));
+    wj_str_free(ctx, &a0);
+    if (n == wr_Error_Not_Found) { return JS_NULL; }
+    if (n < 0) { return wj_throw_status(ctx, n, "Node.lookupNamespaceURI"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Node.isDefaultNamespace() -> dom.Node_isDefaultNamespace */
+static JSValue wjg_Node_isDefaultNamespace(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 220);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Node.isDefaultNamespace", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
+    int32_t r = wr_Node_isDefaultNamespace(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT);
+    wj_str_free(ctx, &a0);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* CharacterData.data -> dom.CharacterData_data */
+static JSValue wjg_CharacterData_get_data(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 222);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CharacterData_data(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CharacterData.data"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CharacterData.data = v -> dom.CharacterData_set_data */
+static JSValue wjg_CharacterData_set_data(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 222);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, WJ_STR_NULL_EMPTY, "")) { return JS_EXCEPTION; }
+    wr_CharacterData_set_data(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CharacterData.length -> dom.CharacterData_length */
+static JSValue wjg_CharacterData_get_length(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 222);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_CharacterData_length(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* CharacterData.substringData() -> dom.CharacterData_substringData */
+static JSValue wjg_CharacterData_substringData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 222);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "CharacterData.substringData", 2, argc); }
+    uint32_t a0 = 0;
+    if (!wj_to_uint32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    uint32_t a1 = 0;
+    if (!wj_to_uint32(ctx, wj_arg(argc, argv, 1), &a1, 32, 0)) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CharacterData_substringData(self->handle, a0, a1, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CharacterData.substringData"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CharacterData.appendData() -> dom.CharacterData_appendData */
+static JSValue wjg_CharacterData_appendData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 222);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "CharacterData.appendData", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CharacterData_appendData(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CharacterData.insertData() -> dom.CharacterData_insertData */
+static JSValue wjg_CharacterData_insertData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 222);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "CharacterData.insertData", 2, argc); }
+    uint32_t a0 = 0;
+    if (!wj_to_uint32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    wj_str a1;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_CharacterData_insertData(self->handle, a0, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
+    wj_str_free(ctx, &a1);
+    if (st < 0) { return wj_throw_status(ctx, st, "CharacterData.insertData"); }
+    return JS_UNDEFINED;
+}
+
+/* CharacterData.deleteData() -> dom.CharacterData_deleteData */
+static JSValue wjg_CharacterData_deleteData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 222);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "CharacterData.deleteData", 2, argc); }
+    uint32_t a0 = 0;
+    if (!wj_to_uint32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    uint32_t a1 = 0;
+    if (!wj_to_uint32(ctx, wj_arg(argc, argv, 1), &a1, 32, 0)) { return JS_EXCEPTION; }
+    int32_t st = wr_CharacterData_deleteData(self->handle, a0, a1);
+    if (st < 0) { return wj_throw_status(ctx, st, "CharacterData.deleteData"); }
+    return JS_UNDEFINED;
+}
+
+/* CharacterData.replaceData() -> dom.CharacterData_replaceData */
+static JSValue wjg_CharacterData_replaceData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 222);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 3) { return wj_throw_arity(ctx, "CharacterData.replaceData", 3, argc); }
+    uint32_t a0 = 0;
+    if (!wj_to_uint32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    uint32_t a1 = 0;
+    if (!wj_to_uint32(ctx, wj_arg(argc, argv, 1), &a1, 32, 0)) { return JS_EXCEPTION; }
+    wj_str a2;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 2), &a2, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_CharacterData_replaceData(self->handle, a0, a1, (const uint8_t *)(a2.ptr ? a2.ptr : ""), (uint32_t)a2.len);
+    wj_str_free(ctx, &a2);
+    if (st < 0) { return wj_throw_status(ctx, st, "CharacterData.replaceData"); }
+    return JS_UNDEFINED;
+}
+
+/* CharacterData.previousElementSibling -> dom.NonDocumentTypeChildNode_previousElementSibling */
+static JSValue wjg_CharacterData_get_previousElementSibling(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 222);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_NonDocumentTypeChildNode_previousElementSibling(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* CharacterData.nextElementSibling -> dom.NonDocumentTypeChildNode_nextElementSibling */
+static JSValue wjg_CharacterData_get_nextElementSibling(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 222);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_NonDocumentTypeChildNode_nextElementSibling(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* CharacterData.remove() -> dom.ChildNode_remove */
+static JSValue wjg_CharacterData_remove(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 222);
+    if (!self) { return JS_EXCEPTION; }
+    wr_ChildNode_remove(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* Text.splitText() -> dom.Text_splitText */
+static JSValue wjg_Text_splitText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 225);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Text.splitText", 1, argc); }
+    uint32_t a0 = 0;
+    if (!wj_to_uint32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_Text_splitText(self->handle, a0, (void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "Text.splitText"); }
+    return wj_wrap_node(ctx, r);
+}
+
+/* Text.wholeText -> dom.Text_wholeText */
+static JSValue wjg_Text_get_wholeText(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 225);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Text_wholeText(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Text.wholeText"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Document.elementFromPoint() -> dom.Document_elementFromPoint */
+static JSValue wjg_Document_elementFromPoint(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "Document.elementFromPoint", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, true)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, true)) { return JS_EXCEPTION; }
+    uint64_t r = wr_Document_elementFromPoint(a0, a1);
+    return wj_wrap_node(ctx, r);
+}
+
+/* Document.scrollingElement -> dom.Document_scrollingElement */
+static JSValue wjg_Document_get_scrollingElement(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_Document_scrollingElement();
+    return wj_wrap_node(ctx, r);
 }
 
 /* Document.URL -> document.Document_URL */
@@ -570,12 +1134,98 @@ static JSValue wjg_Document_get_URL(JSContext *ctx, JSValueConst this_val)
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
 }
 
+/* Document.documentURI -> dom.Document_documentURI */
+static JSValue wjg_Document_get_documentURI(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_documentURI(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Document.documentURI"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Document.compatMode -> dom.Document_compatMode */
+static JSValue wjg_Document_get_compatMode(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_compatMode(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Document.compatMode"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Document.characterSet -> dom.Document_characterSet */
+static JSValue wjg_Document_get_characterSet(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_characterSet(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Document.characterSet"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Document.charset -> dom.Document_charset */
+static JSValue wjg_Document_get_charset(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_charset(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Document.charset"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Document.inputEncoding -> dom.Document_inputEncoding */
+static JSValue wjg_Document_get_inputEncoding(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_inputEncoding(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Document.inputEncoding"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Document.contentType -> dom.Document_contentType */
+static JSValue wjg_Document_get_contentType(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_contentType(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Document.contentType"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Document.doctype -> dom.Document_doctype */
+static JSValue wjg_Document_get_doctype(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_Document_doctype();
+    return wj_wrap_node(ctx, r);
+}
+
 /* Document.documentElement -> dom.Document_documentElement */
 static JSValue wjg_Document_get_documentElement(JSContext *ctx, JSValueConst this_val)
 {
     wj_obj *self = wj_this(ctx, this_val, 227);
     if (!self) { return JS_EXCEPTION; }
     uint64_t r = wr_Document_documentElement();
+    return wj_wrap_node(ctx, r);
+}
+
+/* Document.createDocumentFragment() -> dom.Document_createDocumentFragment */
+static JSValue wjg_Document_createDocumentFragment(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_Document_createDocumentFragment((void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "Document.createDocumentFragment"); }
     return wj_wrap_node(ctx, r);
 }
 
@@ -594,11 +1244,77 @@ static JSValue wjg_Document_createTextNode(JSContext *ctx, JSValueConst this_val
     return wj_wrap_node(ctx, r);
 }
 
+/* Document.createCDATASection() -> dom.Document_createCDATASection */
+static JSValue wjg_Document_createCDATASection(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Document.createCDATASection", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_Document_createCDATASection((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (void *)&r);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "Document.createCDATASection"); }
+    return wj_wrap_node(ctx, r);
+}
+
+/* Document.createComment() -> dom.Document_createComment */
+static JSValue wjg_Document_createComment(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Document.createComment", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_Document_createComment((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (void *)&r);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "Document.createComment"); }
+    return wj_wrap_node(ctx, r);
+}
+
+/* Document.adoptNode() -> dom.Document_adoptNode */
+static JSValue wjg_Document_adoptNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Document.adoptNode", 1, argc); }
+    uint64_t a0 = 0;
+    if (!wj_to_handle(ctx, wj_arg(argc, argv, 0), 220, false, &a0, "Document.adoptNode: argument 1 is not of type 'Node'")) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_Document_adoptNode(a0, (void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "Document.adoptNode"); }
+    return wj_wrap_node(ctx, r);
+}
+
 static JSValue wjg_Document_get_onfullscreenchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "fullscreenchange"); }
 static JSValue wjg_Document_set_onfullscreenchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "fullscreenchange", v, 0); }
 static JSValue wjg_Document_get_onfullscreenerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "fullscreenerror"); }
 static JSValue wjg_Document_set_onfullscreenerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "fullscreenerror", v, 0); }
 static JSValue wjg_Document_set_location(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "location", "href", v); }
+/* Document.domain -> dom.Document_domain */
+static JSValue wjg_Document_get_domain(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_domain(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Document.domain"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Document.referrer -> dom.Document_referrer */
+static JSValue wjg_Document_get_referrer(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_referrer(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Document.referrer"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
 /* Document.cookie -> document.Document_cookie_get */
 static JSValue wjg_Document_get_cookie(JSContext *ctx, JSValueConst this_val)
 {
@@ -626,6 +1342,17 @@ static JSValue wjg_Document_set_cookie(JSContext *ctx, JSValueConst this_val, JS
     return JS_UNDEFINED;
 }
 
+/* Document.lastModified -> dom.Document_lastModified */
+static JSValue wjg_Document_get_lastModified(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_lastModified(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Document.lastModified"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
 /* Document.readyState -> dom.Document_readyState */
 static JSValue wjg_Document_get_readyState(JSContext *ctx, JSValueConst this_val)
 {
@@ -637,6 +1364,56 @@ static JSValue wjg_Document_get_readyState(JSContext *ctx, JSValueConst this_val
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
 }
 
+/* Document.title -> dom.Document_title */
+static JSValue wjg_Document_get_title(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_title(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Document.title"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Document.title = v -> dom.Document_set_title */
+static JSValue wjg_Document_set_title(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_Document_set_title((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* Document.dir -> dom.Document_dir */
+static JSValue wjg_Document_get_dir(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_dir(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Document.dir"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Document.dir = v -> dom.Document_set_dir */
+static JSValue wjg_Document_set_dir(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_Document_set_dir((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
 /* Document.body -> dom.Document_body */
 static JSValue wjg_Document_get_body(JSContext *ctx, JSValueConst this_val)
 {
@@ -644,6 +1421,20 @@ static JSValue wjg_Document_get_body(JSContext *ctx, JSValueConst this_val)
     if (!self) { return JS_EXCEPTION; }
     uint64_t r = wr_Document_body();
     return wj_wrap_node(ctx, r);
+}
+
+/* Document.body = v -> dom.Document_set_body */
+static JSValue wjg_Document_set_body(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t a0 = 0;
+    if (!wj_to_handle(ctx, argv[0], 234, true, &a0, "Document.body: argument 1 is not of type 'HTMLElement'")) { return JS_EXCEPTION; }
+    int32_t st = wr_Document_set_body(a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "Document.body"); }
+    return JS_UNDEFINED;
 }
 
 /* Document.head -> dom.Document_head */
@@ -662,6 +1453,15 @@ static JSValue wjg_Document_get_currentScript(JSContext *ctx, JSValueConst this_
     if (!self) { return JS_EXCEPTION; }
     uint64_t r = wr_Document_currentScript();
     return wj_wrap_node(ctx, r);
+}
+
+/* Document.hasFocus() -> dom.Document_hasFocus */
+static JSValue wjg_Document_hasFocus(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Document_hasFocus();
+    return JS_NewBool(ctx, r != 0);
 }
 
 static JSValue wjg_Document_get_onreadystatechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "readystatechange"); }
@@ -691,6 +1491,49 @@ static JSValue wjg_Document_get_activeElement(JSContext *ctx, JSValueConst this_
     wj_obj *self = wj_this(ctx, this_val, 227);
     if (!self) { return JS_EXCEPTION; }
     uint64_t r = wr_Document_activeElement();
+    return wj_wrap_node(ctx, r);
+}
+
+/* Document.firstElementChild -> dom.ParentNode_firstElementChild */
+static JSValue wjg_Document_get_firstElementChild(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_ParentNode_firstElementChild(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* Document.lastElementChild -> dom.ParentNode_lastElementChild */
+static JSValue wjg_Document_get_lastElementChild(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_ParentNode_lastElementChild(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* Document.childElementCount -> dom.ParentNode_childElementCount */
+static JSValue wjg_Document_get_childElementCount(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_ParentNode_childElementCount(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* Document.querySelector() -> dom.ParentNode_querySelector */
+static JSValue wjg_Document_querySelector(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 227);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Document.querySelector", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_ParentNode_querySelector(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (void *)&r);
+    wj_str_free(ctx, &a0);
+    if (st == wr_Error_Not_Found) { return JS_NULL; }
+    if (st < 0) { return wj_throw_status(ctx, st, "Document.querySelector"); }
     return wj_wrap_node(ctx, r);
 }
 
@@ -896,16 +1739,236 @@ static JSValue wjg_Document_get_ontouchmove(JSContext *ctx, JSValueConst this_va
 static JSValue wjg_Document_set_ontouchmove(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "touchmove", v, 0); }
 static JSValue wjg_Document_get_ontouchcancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "touchcancel"); }
 static JSValue wjg_Document_set_ontouchcancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "touchcancel", v, 0); }
+/* DocumentFragment.getElementById() -> dom.NonElementParentNode_getElementById */
+static JSValue wjg_DocumentFragment_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 229);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "DocumentFragment.getElementById", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    uint64_t r = wr_NonElementParentNode_getElementById(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return wj_wrap_node(ctx, r);
+}
+
+/* DocumentFragment.firstElementChild -> dom.ParentNode_firstElementChild */
+static JSValue wjg_DocumentFragment_get_firstElementChild(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 229);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_ParentNode_firstElementChild(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* DocumentFragment.lastElementChild -> dom.ParentNode_lastElementChild */
+static JSValue wjg_DocumentFragment_get_lastElementChild(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 229);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_ParentNode_lastElementChild(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* DocumentFragment.childElementCount -> dom.ParentNode_childElementCount */
+static JSValue wjg_DocumentFragment_get_childElementCount(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 229);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_ParentNode_childElementCount(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* DocumentFragment.querySelector() -> dom.ParentNode_querySelector */
+static JSValue wjg_DocumentFragment_querySelector(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 229);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "DocumentFragment.querySelector", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_ParentNode_querySelector(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (void *)&r);
+    wj_str_free(ctx, &a0);
+    if (st == wr_Error_Not_Found) { return JS_NULL; }
+    if (st < 0) { return wj_throw_status(ctx, st, "DocumentFragment.querySelector"); }
+    return wj_wrap_node(ctx, r);
+}
+
 static JSValue wjg_ShadowRoot_get_onslotchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 230, "slotchange"); }
 static JSValue wjg_ShadowRoot_set_onslotchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 230, "slotchange", v, 0); }
-/* Element.tagName -> dom.Element_tagName */
-static JSValue wjg_Element_get_tagName(JSContext *ctx, JSValueConst this_val)
+/* DocumentType.name -> dom.DocumentType_name */
+static JSValue wjg_DocumentType_get_name(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 232);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_DocumentType_name(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "DocumentType.name"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* DocumentType.publicId -> dom.DocumentType_publicId */
+static JSValue wjg_DocumentType_get_publicId(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 232);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_DocumentType_publicId(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "DocumentType.publicId"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* DocumentType.systemId -> dom.DocumentType_systemId */
+static JSValue wjg_DocumentType_get_systemId(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 232);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_DocumentType_systemId(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "DocumentType.systemId"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* DocumentType.remove() -> dom.ChildNode_remove */
+static JSValue wjg_DocumentType_remove(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 232);
+    if (!self) { return JS_EXCEPTION; }
+    wr_ChildNode_remove(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* Element.scrollTop -> dom.Element_scrollTop */
+static JSValue wjg_Element_get_scrollTop(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_Element_scrollTop(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* Element.scrollTop = v -> dom.Element_set_scrollTop */
+static JSValue wjg_Element_set_scrollTop(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_Element_set_scrollTop(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* Element.scrollLeft -> dom.Element_scrollLeft */
+static JSValue wjg_Element_get_scrollLeft(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_Element_scrollLeft(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* Element.scrollLeft = v -> dom.Element_set_scrollLeft */
+static JSValue wjg_Element_set_scrollLeft(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_Element_set_scrollLeft(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* Element.scrollWidth -> dom.Element_scrollWidth */
+static JSValue wjg_Element_get_scrollWidth(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Element_scrollWidth(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+/* Element.scrollHeight -> dom.Element_scrollHeight */
+static JSValue wjg_Element_get_scrollHeight(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Element_scrollHeight(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+/* Element.clientTop -> dom.Element_clientTop */
+static JSValue wjg_Element_get_clientTop(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Element_clientTop(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+/* Element.clientLeft -> dom.Element_clientLeft */
+static JSValue wjg_Element_get_clientLeft(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Element_clientLeft(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+/* Element.clientWidth -> dom.Element_clientWidth */
+static JSValue wjg_Element_get_clientWidth(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Element_clientWidth(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+/* Element.clientHeight -> dom.Element_clientHeight */
+static JSValue wjg_Element_get_clientHeight(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Element_clientHeight(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+/* Element.namespaceURI -> dom.Element_namespaceURI */
+static JSValue wjg_Element_get_namespaceURI(JSContext *ctx, JSValueConst this_val)
 {
     wj_obj *self = wj_this(ctx, this_val, 233);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
-    WJ_FETCH_STRING(n, wr_Element_tagName(self->handle, wj_scratch.data, wj_scratch.cap));
-    if (n < 0) { return wj_throw_status(ctx, n, "Element.tagName"); }
+    WJ_FETCH_STRING(n, wr_Element_namespaceURI(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n == wr_Error_Not_Found) { return JS_NULL; }
+    if (n < 0) { return wj_throw_status(ctx, n, "Element.namespaceURI"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Element.prefix -> dom.Element_prefix */
+static JSValue wjg_Element_get_prefix(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Element_prefix(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n == wr_Error_Not_Found) { return JS_NULL; }
+    if (n < 0) { return wj_throw_status(ctx, n, "Element.prefix"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Element.localName -> dom.Element_localName */
+static JSValue wjg_Element_get_localName(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Element_localName(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Element.localName"); }
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
 }
 
@@ -962,6 +2025,41 @@ static JSValue wjg_Element_set_className(JSContext *ctx, JSValueConst this_val, 
 }
 
 static JSValue wjg_Element_set_classList(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "classList", "value", v); }
+/* Element.slot -> dom.Element_slot */
+static JSValue wjg_Element_get_slot(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Element_slot(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Element.slot"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Element.slot = v -> dom.Element_set_slot */
+static JSValue wjg_Element_set_slot(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_Element_set_slot(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "Element.slot"); }
+    return JS_UNDEFINED;
+}
+
+/* Element.hasAttributes() -> dom.Element_hasAttributes */
+static JSValue wjg_Element_hasAttributes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Element_hasAttributes(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
 /* Element.getAttribute() -> dom.Element_getAttribute */
 static JSValue wjg_Element_getAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
@@ -978,20 +2076,42 @@ static JSValue wjg_Element_getAttribute(JSContext *ctx, JSValueConst this_val, i
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
 }
 
-/* Element.setAttribute() -> dom.Element_setAttribute */
-static JSValue wjg_Element_setAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+/* Element.getAttributeNS() -> dom.Element_getAttributeNS */
+static JSValue wjg_Element_getAttributeNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     wj_obj *self = wj_this(ctx, this_val, 233);
     if (!self) { return JS_EXCEPTION; }
-    if (argc < 2) { return wj_throw_arity(ctx, "Element.setAttribute", 2, argc); }
+    if (argc < 2) { return wj_throw_arity(ctx, "Element.getAttributeNS", 2, argc); }
     wj_str a0;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
     wj_str a1;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
-    int32_t st = wr_Element_setAttribute(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Element_getAttributeNS(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len, wj_scratch.data, wj_scratch.cap));
     wj_str_free(ctx, &a0);
     wj_str_free(ctx, &a1);
-    if (st < 0) { return wj_throw_status(ctx, st, "Element.setAttribute"); }
+    if (n == wr_Error_Not_Found) { return JS_NULL; }
+    if (n < 0) { return wj_throw_status(ctx, n, "Element.getAttributeNS"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Element.setAttributeNS() -> dom.Element_setAttributeNS */
+static JSValue wjg_Element_setAttributeNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 3) { return wj_throw_arity(ctx, "Element.setAttributeNS", 3, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
+    wj_str a1;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    wj_str a2;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 2), &a2, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_Element_setAttributeNS(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len, (const uint8_t *)(a2.ptr ? a2.ptr : ""), (uint32_t)a2.len);
+    wj_str_free(ctx, &a0);
+    wj_str_free(ctx, &a1);
+    wj_str_free(ctx, &a2);
+    if (st < 0) { return wj_throw_status(ctx, st, "Element.setAttributeNS"); }
     return JS_UNDEFINED;
 }
 
@@ -1009,10 +2129,284 @@ static JSValue wjg_Element_removeAttribute(JSContext *ctx, JSValueConst this_val
     return JS_UNDEFINED;
 }
 
+/* Element.removeAttributeNS() -> dom.Element_removeAttributeNS */
+static JSValue wjg_Element_removeAttributeNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "Element.removeAttributeNS", 2, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
+    wj_str a1;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    wr_Element_removeAttributeNS(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
+    wj_str_free(ctx, &a0);
+    wj_str_free(ctx, &a1);
+    return JS_UNDEFINED;
+}
+
+/* Element.hasAttribute() -> dom.Element_hasAttribute */
+static JSValue wjg_Element_hasAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Element.hasAttribute", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t r = wr_Element_hasAttribute(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* Element.hasAttributeNS() -> dom.Element_hasAttributeNS */
+static JSValue wjg_Element_hasAttributeNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "Element.hasAttributeNS", 2, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
+    wj_str a1;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    int32_t r = wr_Element_hasAttributeNS(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
+    wj_str_free(ctx, &a0);
+    wj_str_free(ctx, &a1);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* Element.shadowRoot -> dom.Element_shadowRoot */
+static JSValue wjg_Element_get_shadowRoot(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_Element_shadowRoot(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* Element.closest() -> dom.Element_closest */
+static JSValue wjg_Element_closest(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Element.closest", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_Element_closest(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (void *)&r);
+    wj_str_free(ctx, &a0);
+    if (st == wr_Error_Not_Found) { return JS_NULL; }
+    if (st < 0) { return wj_throw_status(ctx, st, "Element.closest"); }
+    return wj_wrap_node(ctx, r);
+}
+
+/* Element.matches() -> dom.Element_matches */
+static JSValue wjg_Element_matches(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Element.matches", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t r = 0;
+    int32_t st = wr_Element_matches(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (void *)&r);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "Element.matches"); }
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* Element.webkitMatchesSelector() -> dom.Element_webkitMatchesSelector */
+static JSValue wjg_Element_webkitMatchesSelector(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Element.webkitMatchesSelector", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t r = 0;
+    int32_t st = wr_Element_webkitMatchesSelector(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (void *)&r);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "Element.webkitMatchesSelector"); }
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* Element.insertAdjacentElement() -> dom.Element_insertAdjacentElement */
+static JSValue wjg_Element_insertAdjacentElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "Element.insertAdjacentElement", 2, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    uint64_t a1 = 0;
+    if (!wj_to_handle(ctx, wj_arg(argc, argv, 1), 233, false, &a1, "Element.insertAdjacentElement: argument 2 is not of type 'Element'")) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_Element_insertAdjacentElement(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, a1, (void *)&r);
+    wj_str_free(ctx, &a0);
+    if (st == wr_Error_Not_Found) { return JS_NULL; }
+    if (st < 0) { return wj_throw_status(ctx, st, "Element.insertAdjacentElement"); }
+    return wj_wrap_node(ctx, r);
+}
+
+/* Element.insertAdjacentText() -> dom.Element_insertAdjacentText */
+static JSValue wjg_Element_insertAdjacentText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "Element.insertAdjacentText", 2, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    wj_str a1;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_Element_insertAdjacentText(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
+    wj_str_free(ctx, &a0);
+    wj_str_free(ctx, &a1);
+    if (st < 0) { return wj_throw_status(ctx, st, "Element.insertAdjacentText"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_Element_get_onfullscreenchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 233, "fullscreenchange"); }
 static JSValue wjg_Element_set_onfullscreenchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 233, "fullscreenchange", v, 0); }
 static JSValue wjg_Element_get_onfullscreenerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 233, "fullscreenerror"); }
 static JSValue wjg_Element_set_onfullscreenerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 233, "fullscreenerror", v, 0); }
+/* Element.innerHTML -> dom.Element_innerHTML */
+static JSValue wjg_Element_get_innerHTML(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Element_innerHTML(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Element.innerHTML"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Element.innerHTML = v -> dom.Element_set_innerHTML */
+static JSValue wjg_Element_set_innerHTML(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_Element_set_innerHTML(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "Element.innerHTML"); }
+    return JS_UNDEFINED;
+}
+
+/* Element.outerHTML -> dom.Element_outerHTML */
+static JSValue wjg_Element_get_outerHTML(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Element_outerHTML(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Element.outerHTML"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Element.outerHTML = v -> dom.Element_set_outerHTML */
+static JSValue wjg_Element_set_outerHTML(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_Element_set_outerHTML(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "Element.outerHTML"); }
+    return JS_UNDEFINED;
+}
+
+/* Element.insertAdjacentHTML() -> dom.Element_insertAdjacentHTML */
+static JSValue wjg_Element_insertAdjacentHTML(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "Element.insertAdjacentHTML", 2, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    wj_str a1;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_Element_insertAdjacentHTML(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
+    wj_str_free(ctx, &a0);
+    wj_str_free(ctx, &a1);
+    if (st < 0) { return wj_throw_status(ctx, st, "Element.insertAdjacentHTML"); }
+    return JS_UNDEFINED;
+}
+
+/* Element.firstElementChild -> dom.ParentNode_firstElementChild */
+static JSValue wjg_Element_get_firstElementChild(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_ParentNode_firstElementChild(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* Element.lastElementChild -> dom.ParentNode_lastElementChild */
+static JSValue wjg_Element_get_lastElementChild(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_ParentNode_lastElementChild(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* Element.childElementCount -> dom.ParentNode_childElementCount */
+static JSValue wjg_Element_get_childElementCount(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_ParentNode_childElementCount(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* Element.querySelector() -> dom.ParentNode_querySelector */
+static JSValue wjg_Element_querySelector(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Element.querySelector", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_ParentNode_querySelector(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (void *)&r);
+    wj_str_free(ctx, &a0);
+    if (st == wr_Error_Not_Found) { return JS_NULL; }
+    if (st < 0) { return wj_throw_status(ctx, st, "Element.querySelector"); }
+    return wj_wrap_node(ctx, r);
+}
+
+/* Element.previousElementSibling -> dom.NonDocumentTypeChildNode_previousElementSibling */
+static JSValue wjg_Element_get_previousElementSibling(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_NonDocumentTypeChildNode_previousElementSibling(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* Element.nextElementSibling -> dom.NonDocumentTypeChildNode_nextElementSibling */
+static JSValue wjg_Element_get_nextElementSibling(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_NonDocumentTypeChildNode_nextElementSibling(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* Element.remove() -> dom.ChildNode_remove */
+static JSValue wjg_Element_remove(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 233);
+    if (!self) { return JS_EXCEPTION; }
+    wr_ChildNode_remove(self->handle);
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_Element_get_role(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 233, "role", WJ_REFLECT_NULLABLE_STRING, 0, 0, 0, 0); }
 static JSValue wjg_Element_set_role(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 233, "role", WJ_REFLECT_NULLABLE_STRING, v, 0, 0, 0); }
 static JSValue wjg_Element_get_ariaAtomic(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 233, "aria-atomic", WJ_REFLECT_NULLABLE_STRING, 0, 0, 0, 0); }
@@ -1101,10 +2495,104 @@ static JSValue wjg_Element_get_ariaValueNow(JSContext *ctx, JSValueConst this_va
 static JSValue wjg_Element_set_ariaValueNow(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 233, "aria-valuenow", WJ_REFLECT_NULLABLE_STRING, v, 0, 0, 0); }
 static JSValue wjg_Element_get_ariaValueText(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 233, "aria-valuetext", WJ_REFLECT_NULLABLE_STRING, 0, 0, 0, 0); }
 static JSValue wjg_Element_set_ariaValueText(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 233, "aria-valuetext", WJ_REFLECT_NULLABLE_STRING, v, 0, 0, 0); }
+/* HTMLElement.offsetParent -> dom.HTMLElement_offsetParent */
+static JSValue wjg_HTMLElement_get_offsetParent(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLElement_offsetParent(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* HTMLElement.offsetTop -> dom.HTMLElement_offsetTop */
+static JSValue wjg_HTMLElement_get_offsetTop(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLElement_offsetTop(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+/* HTMLElement.offsetLeft -> dom.HTMLElement_offsetLeft */
+static JSValue wjg_HTMLElement_get_offsetLeft(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLElement_offsetLeft(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+/* HTMLElement.offsetWidth -> dom.HTMLElement_offsetWidth */
+static JSValue wjg_HTMLElement_get_offsetWidth(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLElement_offsetWidth(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+/* HTMLElement.offsetHeight -> dom.HTMLElement_offsetHeight */
+static JSValue wjg_HTMLElement_get_offsetHeight(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLElement_offsetHeight(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
 static JSValue wjg_HTMLElement_get_title(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 234, "title", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLElement_set_title(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 234, "title", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLElement_get_lang(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 234, "lang", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLElement_set_lang(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 234, "lang", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLElement.translate -> dom.HTMLElement_translate */
+static JSValue wjg_HTMLElement_get_translate(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLElement_translate(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* HTMLElement.translate = v -> dom.HTMLElement_set_translate */
+static JSValue wjg_HTMLElement_set_translate(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    bool a0 = false;
+    if (true || !JS_IsUndefined(argv[0])) { a0 = JS_ToBool(ctx, argv[0]); }
+    int32_t st = wr_HTMLElement_set_translate(self->handle, a0 ? 1 : 0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLElement.translate"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLElement.dir -> dom.HTMLElement_dir */
+static JSValue wjg_HTMLElement_get_dir(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLElement_dir(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLElement.dir"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLElement.dir = v -> dom.HTMLElement_set_dir */
+static JSValue wjg_HTMLElement_set_dir(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLElement_set_dir(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLElement.dir"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLElement_get_inert(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 234, "inert", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLElement_set_inert(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 234, "inert", WJ_REFLECT_BOOL, v, 0, 0, 0); }
 /* HTMLElement.click() -> forms.HTMLElement_click */
@@ -1118,6 +2606,115 @@ static JSValue wjg_HTMLElement_click(JSContext *ctx, JSValueConst this_val, int 
 
 static JSValue wjg_HTMLElement_get_accessKey(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 234, "accesskey", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLElement_set_accessKey(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 234, "accesskey", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLElement.accessKeyLabel -> dom.HTMLElement_accessKeyLabel */
+static JSValue wjg_HTMLElement_get_accessKeyLabel(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLElement_accessKeyLabel(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLElement.accessKeyLabel"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLElement.draggable -> dom.HTMLElement_draggable */
+static JSValue wjg_HTMLElement_get_draggable(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLElement_draggable(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* HTMLElement.draggable = v -> dom.HTMLElement_set_draggable */
+static JSValue wjg_HTMLElement_set_draggable(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    bool a0 = false;
+    if (true || !JS_IsUndefined(argv[0])) { a0 = JS_ToBool(ctx, argv[0]); }
+    int32_t st = wr_HTMLElement_set_draggable(self->handle, a0 ? 1 : 0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLElement.draggable"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLElement.spellcheck -> dom.HTMLElement_spellcheck */
+static JSValue wjg_HTMLElement_get_spellcheck(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLElement_spellcheck(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* HTMLElement.spellcheck = v -> dom.HTMLElement_set_spellcheck */
+static JSValue wjg_HTMLElement_set_spellcheck(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    bool a0 = false;
+    if (true || !JS_IsUndefined(argv[0])) { a0 = JS_ToBool(ctx, argv[0]); }
+    int32_t st = wr_HTMLElement_set_spellcheck(self->handle, a0 ? 1 : 0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLElement.spellcheck"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLElement.innerText -> dom.HTMLElement_innerText */
+static JSValue wjg_HTMLElement_get_innerText(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLElement_innerText(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLElement.innerText"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLElement.innerText = v -> dom.HTMLElement_set_innerText */
+static JSValue wjg_HTMLElement_set_innerText(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, WJ_STR_NULL_EMPTY, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLElement_set_innerText(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLElement.innerText"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLElement.outerText -> dom.HTMLElement_outerText */
+static JSValue wjg_HTMLElement_get_outerText(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLElement_outerText(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLElement.outerText"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLElement.outerText = v -> dom.HTMLElement_set_outerText */
+static JSValue wjg_HTMLElement_set_outerText(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, WJ_STR_NULL_EMPTY, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLElement_set_outerText(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLElement.outerText"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLElement_get_headingOffset(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 234, "headingoffset", WJ_REFLECT_ULONG, 0, 4, 0, 8); }
 static JSValue wjg_HTMLElement_set_headingOffset(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 234, "headingoffset", WJ_REFLECT_ULONG, v, 4, 0, 8); }
 static JSValue wjg_HTMLElement_get_headingReset(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 234, "headingreset", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
@@ -1325,8 +2922,79 @@ static JSValue wjg_HTMLElement_get_ontouchmove(JSContext *ctx, JSValueConst this
 static JSValue wjg_HTMLElement_set_ontouchmove(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "touchmove", v, 0); }
 static JSValue wjg_HTMLElement_get_ontouchcancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 234, "touchcancel"); }
 static JSValue wjg_HTMLElement_set_ontouchcancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 234, "touchcancel", v, 0); }
+/* HTMLElement.contentEditable -> dom.ElementContentEditable_contentEditable */
+static JSValue wjg_HTMLElement_get_contentEditable(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_ElementContentEditable_contentEditable(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLElement.contentEditable"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLElement.contentEditable = v -> dom.ElementContentEditable_set_contentEditable */
+static JSValue wjg_HTMLElement_set_contentEditable(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_ElementContentEditable_set_contentEditable(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLElement.contentEditable"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLElement.isContentEditable -> dom.ElementContentEditable_isContentEditable */
+static JSValue wjg_HTMLElement_get_isContentEditable(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_ElementContentEditable_isContentEditable(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* HTMLElement.nonce -> dom.HTMLOrSVGOrMathMLElement_nonce */
+static JSValue wjg_HTMLElement_get_nonce(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLOrSVGOrMathMLElement_nonce(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLElement.nonce"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLElement.nonce = v -> dom.HTMLOrSVGOrMathMLElement_set_nonce */
+static JSValue wjg_HTMLElement_set_nonce(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLOrSVGOrMathMLElement_set_nonce(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLElement.nonce"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLElement_get_autofocus(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 234, "autofocus", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLElement_set_autofocus(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 234, "autofocus", WJ_REFLECT_BOOL, v, 0, 0, 0); }
+/* HTMLElement.tabIndex -> dom.HTMLOrSVGOrMathMLElement_tabIndex */
+static JSValue wjg_HTMLElement_get_tabIndex(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLOrSVGOrMathMLElement_tabIndex(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+static JSValue wjg_HTMLElement_set_tabIndex(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 234, "tabindex", WJ_REFLECT_LONG, v, 0, 0, 0); }
 /* HTMLElement.blur() -> forms.HTMLElement_blur */
 static JSValue wjg_HTMLElement_blur(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
@@ -1343,6 +3011,32 @@ static JSValue wjg_HTMLAnchorElement_set_ping(JSContext *ctx, JSValueConst this_
 static JSValue wjg_HTMLAnchorElement_get_rel(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 235, "rel", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLAnchorElement_set_rel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 235, "rel", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLAnchorElement_set_relList(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "relList", "value", v); }
+/* HTMLAnchorElement.text -> dom.HTMLAnchorElement_text */
+static JSValue wjg_HTMLAnchorElement_get_text(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLAnchorElement_text(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAnchorElement.text"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAnchorElement.text = v -> dom.HTMLAnchorElement_set_text */
+static JSValue wjg_HTMLAnchorElement_set_text(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLAnchorElement_set_text(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAnchorElement.text"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLAnchorElement_get_coords(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 235, "coords", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLAnchorElement_set_coords(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 235, "coords", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLAnchorElement_get_charset(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 235, "charset", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -1353,10 +3047,267 @@ static JSValue wjg_HTMLAnchorElement_get_rev(JSContext *ctx, JSValueConst this_v
 static JSValue wjg_HTMLAnchorElement_set_rev(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 235, "rev", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLAnchorElement_get_shape(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 235, "shape", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLAnchorElement_set_shape(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 235, "shape", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLAnchorElement.origin -> dom.HyperlinkElementUtils_origin */
+static JSValue wjg_HTMLAnchorElement_get_origin(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_origin(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAnchorElement.origin"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAnchorElement.protocol -> dom.HyperlinkElementUtils_protocol */
+static JSValue wjg_HTMLAnchorElement_get_protocol(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_protocol(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAnchorElement.protocol"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAnchorElement.protocol = v -> dom.HyperlinkElementUtils_set_protocol */
+static JSValue wjg_HTMLAnchorElement_set_protocol(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_protocol(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAnchorElement.protocol"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAnchorElement.username -> dom.HyperlinkElementUtils_username */
+static JSValue wjg_HTMLAnchorElement_get_username(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_username(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAnchorElement.username"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAnchorElement.username = v -> dom.HyperlinkElementUtils_set_username */
+static JSValue wjg_HTMLAnchorElement_set_username(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_username(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAnchorElement.username"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAnchorElement.password -> dom.HyperlinkElementUtils_password */
+static JSValue wjg_HTMLAnchorElement_get_password(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_password(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAnchorElement.password"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAnchorElement.password = v -> dom.HyperlinkElementUtils_set_password */
+static JSValue wjg_HTMLAnchorElement_set_password(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_password(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAnchorElement.password"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAnchorElement.host -> dom.HyperlinkElementUtils_host */
+static JSValue wjg_HTMLAnchorElement_get_host(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_host(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAnchorElement.host"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAnchorElement.host = v -> dom.HyperlinkElementUtils_set_host */
+static JSValue wjg_HTMLAnchorElement_set_host(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_host(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAnchorElement.host"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAnchorElement.hostname -> dom.HyperlinkElementUtils_hostname */
+static JSValue wjg_HTMLAnchorElement_get_hostname(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_hostname(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAnchorElement.hostname"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAnchorElement.hostname = v -> dom.HyperlinkElementUtils_set_hostname */
+static JSValue wjg_HTMLAnchorElement_set_hostname(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_hostname(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAnchorElement.hostname"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAnchorElement.port -> dom.HyperlinkElementUtils_port */
+static JSValue wjg_HTMLAnchorElement_get_port(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_port(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAnchorElement.port"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAnchorElement.port = v -> dom.HyperlinkElementUtils_set_port */
+static JSValue wjg_HTMLAnchorElement_set_port(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_port(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAnchorElement.port"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAnchorElement.pathname -> dom.HyperlinkElementUtils_pathname */
+static JSValue wjg_HTMLAnchorElement_get_pathname(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_pathname(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAnchorElement.pathname"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAnchorElement.pathname = v -> dom.HyperlinkElementUtils_set_pathname */
+static JSValue wjg_HTMLAnchorElement_set_pathname(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_pathname(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAnchorElement.pathname"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAnchorElement.search -> dom.HyperlinkElementUtils_search */
+static JSValue wjg_HTMLAnchorElement_get_search(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_search(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAnchorElement.search"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAnchorElement.search = v -> dom.HyperlinkElementUtils_set_search */
+static JSValue wjg_HTMLAnchorElement_set_search(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_search(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAnchorElement.search"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAnchorElement.hash -> dom.HyperlinkElementUtils_hash */
+static JSValue wjg_HTMLAnchorElement_get_hash(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_hash(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAnchorElement.hash"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAnchorElement.hash = v -> dom.HyperlinkElementUtils_set_hash */
+static JSValue wjg_HTMLAnchorElement_set_hash(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_hash(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAnchorElement.hash"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLAnchorElement_get_hreflang(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 235, "hreflang", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLAnchorElement_set_hreflang(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 235, "hreflang", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLAnchorElement_get_type(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 235, "type", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLAnchorElement_set_type(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 235, "type", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLAnchorElement.href -> dom.HTMLHyperlinkElementUtils_href */
+static JSValue wjg_HTMLAnchorElement_get_href(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 235);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLHyperlinkElementUtils_href(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAnchorElement.href"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+static JSValue wjg_HTMLAnchorElement_set_href(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 235, "href", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLAnchorElement_get_target(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 235, "target", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLAnchorElement_set_target(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 235, "target", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLAreaElement_get_alt(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 236, "alt", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -1374,10 +3325,267 @@ static JSValue wjg_HTMLAreaElement_set_rel(JSContext *ctx, JSValueConst this_val
 static JSValue wjg_HTMLAreaElement_set_relList(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "relList", "value", v); }
 static JSValue wjg_HTMLAreaElement_get_noHref(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 236, "nohref", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLAreaElement_set_noHref(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 236, "nohref", WJ_REFLECT_BOOL, v, 0, 0, 0); }
+/* HTMLAreaElement.origin -> dom.HyperlinkElementUtils_origin */
+static JSValue wjg_HTMLAreaElement_get_origin(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_origin(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAreaElement.origin"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAreaElement.protocol -> dom.HyperlinkElementUtils_protocol */
+static JSValue wjg_HTMLAreaElement_get_protocol(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_protocol(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAreaElement.protocol"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAreaElement.protocol = v -> dom.HyperlinkElementUtils_set_protocol */
+static JSValue wjg_HTMLAreaElement_set_protocol(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_protocol(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAreaElement.protocol"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAreaElement.username -> dom.HyperlinkElementUtils_username */
+static JSValue wjg_HTMLAreaElement_get_username(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_username(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAreaElement.username"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAreaElement.username = v -> dom.HyperlinkElementUtils_set_username */
+static JSValue wjg_HTMLAreaElement_set_username(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_username(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAreaElement.username"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAreaElement.password -> dom.HyperlinkElementUtils_password */
+static JSValue wjg_HTMLAreaElement_get_password(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_password(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAreaElement.password"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAreaElement.password = v -> dom.HyperlinkElementUtils_set_password */
+static JSValue wjg_HTMLAreaElement_set_password(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_password(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAreaElement.password"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAreaElement.host -> dom.HyperlinkElementUtils_host */
+static JSValue wjg_HTMLAreaElement_get_host(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_host(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAreaElement.host"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAreaElement.host = v -> dom.HyperlinkElementUtils_set_host */
+static JSValue wjg_HTMLAreaElement_set_host(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_host(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAreaElement.host"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAreaElement.hostname -> dom.HyperlinkElementUtils_hostname */
+static JSValue wjg_HTMLAreaElement_get_hostname(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_hostname(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAreaElement.hostname"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAreaElement.hostname = v -> dom.HyperlinkElementUtils_set_hostname */
+static JSValue wjg_HTMLAreaElement_set_hostname(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_hostname(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAreaElement.hostname"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAreaElement.port -> dom.HyperlinkElementUtils_port */
+static JSValue wjg_HTMLAreaElement_get_port(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_port(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAreaElement.port"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAreaElement.port = v -> dom.HyperlinkElementUtils_set_port */
+static JSValue wjg_HTMLAreaElement_set_port(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_port(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAreaElement.port"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAreaElement.pathname -> dom.HyperlinkElementUtils_pathname */
+static JSValue wjg_HTMLAreaElement_get_pathname(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_pathname(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAreaElement.pathname"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAreaElement.pathname = v -> dom.HyperlinkElementUtils_set_pathname */
+static JSValue wjg_HTMLAreaElement_set_pathname(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_pathname(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAreaElement.pathname"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAreaElement.search -> dom.HyperlinkElementUtils_search */
+static JSValue wjg_HTMLAreaElement_get_search(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_search(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAreaElement.search"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAreaElement.search = v -> dom.HyperlinkElementUtils_set_search */
+static JSValue wjg_HTMLAreaElement_set_search(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_search(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAreaElement.search"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLAreaElement.hash -> dom.HyperlinkElementUtils_hash */
+static JSValue wjg_HTMLAreaElement_get_hash(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_hash(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAreaElement.hash"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLAreaElement.hash = v -> dom.HyperlinkElementUtils_set_hash */
+static JSValue wjg_HTMLAreaElement_set_hash(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_hash(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLAreaElement.hash"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLAreaElement_get_hreflang(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 236, "hreflang", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLAreaElement_set_hreflang(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 236, "hreflang", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLAreaElement_get_type(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 236, "type", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLAreaElement_set_type(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 236, "type", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLAreaElement.href -> dom.HTMLHyperlinkElementUtils_href */
+static JSValue wjg_HTMLAreaElement_get_href(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 236);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLHyperlinkElementUtils_href(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLAreaElement.href"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+static JSValue wjg_HTMLAreaElement_set_href(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 236, "href", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLAreaElement_get_target(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 236, "target", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLAreaElement_set_target(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 236, "target", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLBRElement_get_clear(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 237, "clear", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -2833,6 +5041,15 @@ static JSValue wjg_HTMLTableSectionElement_get_chOff(JSContext *ctx, JSValueCons
 static JSValue wjg_HTMLTableSectionElement_set_chOff(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 298, "charoff", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLTableSectionElement_get_vAlign(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 298, "valign", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLTableSectionElement_set_vAlign(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 298, "valign", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLTemplateElement.content -> dom.HTMLTemplateElement_content */
+static JSValue wjg_HTMLTemplateElement_get_content(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 299);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLTemplateElement_content(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
 static JSValue wjg_HTMLTemplateElement_get_htmlFor(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 299, "for", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLTemplateElement_set_htmlFor(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 299, "for", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLTemplateElement_get_shadowRootDelegatesFocus(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 299, "shadowrootdelegatesfocus", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
@@ -3252,10 +5469,291 @@ static JSValue wjg_MathMLElement_get_ontouchmove(JSContext *ctx, JSValueConst th
 static JSValue wjg_MathMLElement_set_ontouchmove(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "touchmove", v, 0); }
 static JSValue wjg_MathMLElement_get_ontouchcancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 306, "touchcancel"); }
 static JSValue wjg_MathMLElement_set_ontouchcancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 306, "touchcancel", v, 0); }
+/* MathMLElement.nonce -> dom.HTMLOrSVGOrMathMLElement_nonce */
+static JSValue wjg_MathMLElement_get_nonce(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 306);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLOrSVGOrMathMLElement_nonce(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MathMLElement.nonce"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MathMLElement.nonce = v -> dom.HTMLOrSVGOrMathMLElement_set_nonce */
+static JSValue wjg_MathMLElement_set_nonce(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 306);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLOrSVGOrMathMLElement_set_nonce(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "MathMLElement.nonce"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_MathMLElement_get_autofocus(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 306, "autofocus", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_MathMLElement_set_autofocus(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 306, "autofocus", WJ_REFLECT_BOOL, v, 0, 0, 0); }
+/* MathMLElement.tabIndex -> dom.HTMLOrSVGOrMathMLElement_tabIndex */
+static JSValue wjg_MathMLElement_get_tabIndex(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 306);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLOrSVGOrMathMLElement_tabIndex(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+static JSValue wjg_MathMLElement_set_tabIndex(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 306, "tabindex", WJ_REFLECT_LONG, v, 0, 0, 0); }
 static JSValue wjg_MathMLAnchorElement_get_target(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 307, "target", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_MathMLAnchorElement_set_target(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 307, "target", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* MathMLAnchorElement.origin -> dom.HyperlinkElementUtils_origin */
+static JSValue wjg_MathMLAnchorElement_get_origin(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_origin(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MathMLAnchorElement.origin"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MathMLAnchorElement.protocol -> dom.HyperlinkElementUtils_protocol */
+static JSValue wjg_MathMLAnchorElement_get_protocol(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_protocol(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MathMLAnchorElement.protocol"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MathMLAnchorElement.protocol = v -> dom.HyperlinkElementUtils_set_protocol */
+static JSValue wjg_MathMLAnchorElement_set_protocol(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_protocol(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "MathMLAnchorElement.protocol"); }
+    return JS_UNDEFINED;
+}
+
+/* MathMLAnchorElement.username -> dom.HyperlinkElementUtils_username */
+static JSValue wjg_MathMLAnchorElement_get_username(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_username(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MathMLAnchorElement.username"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MathMLAnchorElement.username = v -> dom.HyperlinkElementUtils_set_username */
+static JSValue wjg_MathMLAnchorElement_set_username(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_username(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "MathMLAnchorElement.username"); }
+    return JS_UNDEFINED;
+}
+
+/* MathMLAnchorElement.password -> dom.HyperlinkElementUtils_password */
+static JSValue wjg_MathMLAnchorElement_get_password(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_password(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MathMLAnchorElement.password"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MathMLAnchorElement.password = v -> dom.HyperlinkElementUtils_set_password */
+static JSValue wjg_MathMLAnchorElement_set_password(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_password(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "MathMLAnchorElement.password"); }
+    return JS_UNDEFINED;
+}
+
+/* MathMLAnchorElement.host -> dom.HyperlinkElementUtils_host */
+static JSValue wjg_MathMLAnchorElement_get_host(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_host(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MathMLAnchorElement.host"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MathMLAnchorElement.host = v -> dom.HyperlinkElementUtils_set_host */
+static JSValue wjg_MathMLAnchorElement_set_host(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_host(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "MathMLAnchorElement.host"); }
+    return JS_UNDEFINED;
+}
+
+/* MathMLAnchorElement.hostname -> dom.HyperlinkElementUtils_hostname */
+static JSValue wjg_MathMLAnchorElement_get_hostname(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_hostname(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MathMLAnchorElement.hostname"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MathMLAnchorElement.hostname = v -> dom.HyperlinkElementUtils_set_hostname */
+static JSValue wjg_MathMLAnchorElement_set_hostname(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_hostname(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "MathMLAnchorElement.hostname"); }
+    return JS_UNDEFINED;
+}
+
+/* MathMLAnchorElement.port -> dom.HyperlinkElementUtils_port */
+static JSValue wjg_MathMLAnchorElement_get_port(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_port(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MathMLAnchorElement.port"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MathMLAnchorElement.port = v -> dom.HyperlinkElementUtils_set_port */
+static JSValue wjg_MathMLAnchorElement_set_port(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_port(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "MathMLAnchorElement.port"); }
+    return JS_UNDEFINED;
+}
+
+/* MathMLAnchorElement.pathname -> dom.HyperlinkElementUtils_pathname */
+static JSValue wjg_MathMLAnchorElement_get_pathname(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_pathname(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MathMLAnchorElement.pathname"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MathMLAnchorElement.pathname = v -> dom.HyperlinkElementUtils_set_pathname */
+static JSValue wjg_MathMLAnchorElement_set_pathname(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_pathname(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "MathMLAnchorElement.pathname"); }
+    return JS_UNDEFINED;
+}
+
+/* MathMLAnchorElement.search -> dom.HyperlinkElementUtils_search */
+static JSValue wjg_MathMLAnchorElement_get_search(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_search(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MathMLAnchorElement.search"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MathMLAnchorElement.search = v -> dom.HyperlinkElementUtils_set_search */
+static JSValue wjg_MathMLAnchorElement_set_search(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_search(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "MathMLAnchorElement.search"); }
+    return JS_UNDEFINED;
+}
+
+/* MathMLAnchorElement.hash -> dom.HyperlinkElementUtils_hash */
+static JSValue wjg_MathMLAnchorElement_get_hash(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_hash(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MathMLAnchorElement.hash"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MathMLAnchorElement.hash = v -> dom.HyperlinkElementUtils_set_hash */
+static JSValue wjg_MathMLAnchorElement_set_hash(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 307);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_hash(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "MathMLAnchorElement.hash"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_MathMLAnchorElement_get_hreflang(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 307, "hreflang", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_MathMLAnchorElement_set_hreflang(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 307, "hreflang", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_MathMLAnchorElement_get_type(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 307, "type", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -3462,8 +5960,44 @@ static JSValue wjg_SVGElement_get_ontouchmove(JSContext *ctx, JSValueConst this_
 static JSValue wjg_SVGElement_set_ontouchmove(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "touchmove", v, 0); }
 static JSValue wjg_SVGElement_get_ontouchcancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 308, "touchcancel"); }
 static JSValue wjg_SVGElement_set_ontouchcancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 308, "touchcancel", v, 0); }
+/* SVGElement.nonce -> dom.HTMLOrSVGOrMathMLElement_nonce */
+static JSValue wjg_SVGElement_get_nonce(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 308);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLOrSVGOrMathMLElement_nonce(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "SVGElement.nonce"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* SVGElement.nonce = v -> dom.HTMLOrSVGOrMathMLElement_set_nonce */
+static JSValue wjg_SVGElement_set_nonce(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 308);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLOrSVGOrMathMLElement_set_nonce(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SVGElement.nonce"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_SVGElement_get_autofocus(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 308, "autofocus", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_SVGElement_set_autofocus(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 308, "autofocus", WJ_REFLECT_BOOL, v, 0, 0, 0); }
+/* SVGElement.tabIndex -> dom.HTMLOrSVGOrMathMLElement_tabIndex */
+static JSValue wjg_SVGElement_get_tabIndex(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 308);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLOrSVGOrMathMLElement_tabIndex(self->handle);
+    return JS_NewInt32(ctx, r);
+}
+
+static JSValue wjg_SVGElement_set_tabIndex(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 308, "tabindex", WJ_REFLECT_LONG, v, 0, 0, 0); }
 static JSValue wjg_SVGElement_set_style(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "style", "cssText", v); }
 static JSValue wjg_SVGAElement_get_download(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 314, "download", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_SVGAElement_set_download(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 314, "download", WJ_REFLECT_STRING, v, 0, 0, 0); }
@@ -3472,6 +6006,251 @@ static JSValue wjg_SVGAElement_set_ping(JSContext *ctx, JSValueConst this_val, J
 static JSValue wjg_SVGAElement_get_rel(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 314, "rel", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_SVGAElement_set_rel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 314, "rel", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_SVGAElement_set_relList(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "relList", "value", v); }
+/* SVGAElement.origin -> dom.HyperlinkElementUtils_origin */
+static JSValue wjg_SVGAElement_get_origin(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_origin(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "SVGAElement.origin"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* SVGAElement.protocol -> dom.HyperlinkElementUtils_protocol */
+static JSValue wjg_SVGAElement_get_protocol(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_protocol(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "SVGAElement.protocol"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* SVGAElement.protocol = v -> dom.HyperlinkElementUtils_set_protocol */
+static JSValue wjg_SVGAElement_set_protocol(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_protocol(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SVGAElement.protocol"); }
+    return JS_UNDEFINED;
+}
+
+/* SVGAElement.username -> dom.HyperlinkElementUtils_username */
+static JSValue wjg_SVGAElement_get_username(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_username(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "SVGAElement.username"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* SVGAElement.username = v -> dom.HyperlinkElementUtils_set_username */
+static JSValue wjg_SVGAElement_set_username(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_username(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SVGAElement.username"); }
+    return JS_UNDEFINED;
+}
+
+/* SVGAElement.password -> dom.HyperlinkElementUtils_password */
+static JSValue wjg_SVGAElement_get_password(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_password(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "SVGAElement.password"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* SVGAElement.password = v -> dom.HyperlinkElementUtils_set_password */
+static JSValue wjg_SVGAElement_set_password(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_password(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SVGAElement.password"); }
+    return JS_UNDEFINED;
+}
+
+/* SVGAElement.host -> dom.HyperlinkElementUtils_host */
+static JSValue wjg_SVGAElement_get_host(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_host(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "SVGAElement.host"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* SVGAElement.host = v -> dom.HyperlinkElementUtils_set_host */
+static JSValue wjg_SVGAElement_set_host(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_host(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SVGAElement.host"); }
+    return JS_UNDEFINED;
+}
+
+/* SVGAElement.hostname -> dom.HyperlinkElementUtils_hostname */
+static JSValue wjg_SVGAElement_get_hostname(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_hostname(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "SVGAElement.hostname"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* SVGAElement.hostname = v -> dom.HyperlinkElementUtils_set_hostname */
+static JSValue wjg_SVGAElement_set_hostname(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_hostname(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SVGAElement.hostname"); }
+    return JS_UNDEFINED;
+}
+
+/* SVGAElement.port -> dom.HyperlinkElementUtils_port */
+static JSValue wjg_SVGAElement_get_port(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_port(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "SVGAElement.port"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* SVGAElement.port = v -> dom.HyperlinkElementUtils_set_port */
+static JSValue wjg_SVGAElement_set_port(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_port(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SVGAElement.port"); }
+    return JS_UNDEFINED;
+}
+
+/* SVGAElement.pathname -> dom.HyperlinkElementUtils_pathname */
+static JSValue wjg_SVGAElement_get_pathname(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_pathname(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "SVGAElement.pathname"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* SVGAElement.pathname = v -> dom.HyperlinkElementUtils_set_pathname */
+static JSValue wjg_SVGAElement_set_pathname(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_pathname(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SVGAElement.pathname"); }
+    return JS_UNDEFINED;
+}
+
+/* SVGAElement.search -> dom.HyperlinkElementUtils_search */
+static JSValue wjg_SVGAElement_get_search(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_search(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "SVGAElement.search"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* SVGAElement.search = v -> dom.HyperlinkElementUtils_set_search */
+static JSValue wjg_SVGAElement_set_search(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_search(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SVGAElement.search"); }
+    return JS_UNDEFINED;
+}
+
+/* SVGAElement.hash -> dom.HyperlinkElementUtils_hash */
+static JSValue wjg_SVGAElement_get_hash(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HyperlinkElementUtils_hash(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "SVGAElement.hash"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* SVGAElement.hash = v -> dom.HyperlinkElementUtils_set_hash */
+static JSValue wjg_SVGAElement_set_hash(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 314);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HyperlinkElementUtils_set_hash(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SVGAElement.hash"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_SVGAElement_get_hreflang(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 314, "hreflang", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_SVGAElement_set_hreflang(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 314, "hreflang", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_SVGAElement_get_type(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 314, "type", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -3750,6 +6529,123 @@ static JSValue wjg_WebSocket_close(JSContext *ctx, JSValueConst this_val, int ar
 
 static JSValue wjg_WebSocket_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 363, "message"); }
 static JSValue wjg_WebSocket_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 363, "message", v, 0); }
+/* Window.innerWidth -> dom.Window_innerWidth */
+static JSValue wjg_Window_get_innerWidth(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Window_innerWidth();
+    return JS_NewInt32(ctx, r);
+}
+
+/* Window.innerHeight -> dom.Window_innerHeight */
+static JSValue wjg_Window_get_innerHeight(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Window_innerHeight();
+    return JS_NewInt32(ctx, r);
+}
+
+/* Window.scrollX -> dom.Window_scrollX */
+static JSValue wjg_Window_get_scrollX(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_Window_scrollX();
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* Window.pageXOffset -> dom.Window_pageXOffset */
+static JSValue wjg_Window_get_pageXOffset(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_Window_pageXOffset();
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* Window.scrollY -> dom.Window_scrollY */
+static JSValue wjg_Window_get_scrollY(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_Window_scrollY();
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* Window.pageYOffset -> dom.Window_pageYOffset */
+static JSValue wjg_Window_get_pageYOffset(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_Window_pageYOffset();
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* Window.screenX -> dom.Window_screenX */
+static JSValue wjg_Window_get_screenX(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Window_screenX();
+    return JS_NewInt32(ctx, r);
+}
+
+/* Window.screenLeft -> dom.Window_screenLeft */
+static JSValue wjg_Window_get_screenLeft(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Window_screenLeft();
+    return JS_NewInt32(ctx, r);
+}
+
+/* Window.screenY -> dom.Window_screenY */
+static JSValue wjg_Window_get_screenY(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Window_screenY();
+    return JS_NewInt32(ctx, r);
+}
+
+/* Window.screenTop -> dom.Window_screenTop */
+static JSValue wjg_Window_get_screenTop(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Window_screenTop();
+    return JS_NewInt32(ctx, r);
+}
+
+/* Window.outerWidth -> dom.Window_outerWidth */
+static JSValue wjg_Window_get_outerWidth(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Window_outerWidth();
+    return JS_NewInt32(ctx, r);
+}
+
+/* Window.outerHeight -> dom.Window_outerHeight */
+static JSValue wjg_Window_get_outerHeight(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Window_outerHeight();
+    return JS_NewInt32(ctx, r);
+}
+
+/* Window.devicePixelRatio -> dom.Window_devicePixelRatio */
+static JSValue wjg_Window_get_devicePixelRatio(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_Window_devicePixelRatio();
+    return JS_NewFloat64(ctx, (double)r);
+}
+
 /* Window.document -> dom.Window_document */
 static JSValue wjg_Window_get_document(JSContext *ctx, JSValueConst this_val)
 {
@@ -4356,42 +7252,42 @@ static const wj_member wj_m_TaskController[] = {
     { "setPriority", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_AbstractRange[] = {
-    { "startContainer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "startOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "endContainer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "endOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "collapsed", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "startContainer", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AbstractRange_get_startContainer, NULL, 0 },
+    { "startOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AbstractRange_get_startOffset, NULL, 0 },
+    { "endContainer", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AbstractRange_get_endContainer, NULL, 0 },
+    { "endOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AbstractRange_get_endOffset, NULL, 0 },
+    { "collapsed", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AbstractRange_get_collapsed, NULL, 0 },
 };
 static const wj_member wj_m_Range[] = {
-    { "getClientRects", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "getBoundingClientRect", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "commonAncestorContainer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "setStart", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "setEnd", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "setStartBefore", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setStartAfter", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setEndBefore", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setEndAfter", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "collapse", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "selectNode", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "selectNodeContents", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "getClientRects", WJ_M_METHOD, 0, 0, wjr_Range_getClientRects, NULL, NULL, 0 },
+    { "getBoundingClientRect", WJ_M_METHOD, 0, 0, wjr_Range_getBoundingClientRect, NULL, NULL, 0 },
+    { "commonAncestorContainer", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Range_get_commonAncestorContainer, NULL, 0 },
+    { "setStart", WJ_M_METHOD, 0, 2, wjr_Range_setStart, NULL, NULL, 0 },
+    { "setEnd", WJ_M_METHOD, 0, 2, wjr_Range_setEnd, NULL, NULL, 0 },
+    { "setStartBefore", WJ_M_METHOD, 0, 1, wjr_Range_setStartBefore, NULL, NULL, 0 },
+    { "setStartAfter", WJ_M_METHOD, 0, 1, wjr_Range_setStartAfter, NULL, NULL, 0 },
+    { "setEndBefore", WJ_M_METHOD, 0, 1, wjr_Range_setEndBefore, NULL, NULL, 0 },
+    { "setEndAfter", WJ_M_METHOD, 0, 1, wjr_Range_setEndAfter, NULL, NULL, 0 },
+    { "collapse", WJ_M_METHOD, 0, 0, wjr_Range_collapse, NULL, NULL, 0 },
+    { "selectNode", WJ_M_METHOD, 0, 1, wjr_Range_selectNode, NULL, NULL, 0 },
+    { "selectNodeContents", WJ_M_METHOD, 0, 1, wjr_Range_selectNodeContents, NULL, NULL, 0 },
     { "START_TO_START", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },
     { "START_TO_END", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 1 },
     { "END_TO_END", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "END_TO_START", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
-    { "compareBoundaryPoints", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "deleteContents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "extractContents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "cloneContents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "insertNode", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "surroundContents", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "cloneRange", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "detach", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "isPointInRange", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "comparePoint", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "intersectsNode", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "toString", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "createContextualFragment", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "compareBoundaryPoints", WJ_M_METHOD, 0, 2, wjr_Range_compareBoundaryPoints, NULL, NULL, 0 },
+    { "deleteContents", WJ_M_METHOD, 0, 0, wjr_Range_deleteContents, NULL, NULL, 0 },
+    { "extractContents", WJ_M_METHOD, 0, 0, wjr_Range_extractContents, NULL, NULL, 0 },
+    { "cloneContents", WJ_M_METHOD, 0, 0, wjr_Range_cloneContents, NULL, NULL, 0 },
+    { "insertNode", WJ_M_METHOD, 0, 1, wjr_Range_insertNode, NULL, NULL, 0 },
+    { "surroundContents", WJ_M_METHOD, 0, 1, wjr_Range_surroundContents, NULL, NULL, 0 },
+    { "cloneRange", WJ_M_METHOD, 0, 0, wjr_Range_cloneRange, NULL, NULL, 0 },
+    { "detach", WJ_M_METHOD, 0, 0, wjr_Range_detach, NULL, NULL, 0 },
+    { "isPointInRange", WJ_M_METHOD, 0, 2, wjr_Range_isPointInRange, NULL, NULL, 0 },
+    { "comparePoint", WJ_M_METHOD, 0, 2, wjr_Range_comparePoint, NULL, NULL, 0 },
+    { "intersectsNode", WJ_M_METHOD, 0, 1, wjr_Range_intersectsNode, NULL, NULL, 0 },
+    { "toString", WJ_M_METHOD, 0, 0, wjr_Range_toString, NULL, NULL, 0 },
+    { "createContextualFragment", WJ_M_METHOD, 0, 1, wjr_Range_createContextualFragment, NULL, NULL, 0 },
 };
 static const wj_member wj_m_StaticRange[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
@@ -4651,14 +7547,14 @@ static const wj_member wj_m_CSSRuleList[] = {
     { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CSSStyleDeclaration[] = {
-    { "cssText", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "item", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getPropertyValue", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getPropertyPriority", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setProperty", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "removeProperty", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "parentRule", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "cssText", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CSSStyleDeclaration_get_cssText, wjr_CSSStyleDeclaration_set_cssText, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CSSStyleDeclaration_get_length, NULL, 0 },
+    { "item", WJ_M_METHOD, 0, 1, wjr_CSSStyleDeclaration_item, NULL, NULL, 0 },
+    { "getPropertyValue", WJ_M_METHOD, 0, 1, wjr_CSSStyleDeclaration_getPropertyValue, NULL, NULL, 0 },
+    { "getPropertyPriority", WJ_M_METHOD, 0, 1, wjr_CSSStyleDeclaration_getPropertyPriority, NULL, NULL, 0 },
+    { "setProperty", WJ_M_METHOD, 0, 2, wjr_CSSStyleDeclaration_setProperty, NULL, NULL, 0 },
+    { "removeProperty", WJ_M_METHOD, 0, 1, wjr_CSSStyleDeclaration_removeProperty, NULL, NULL, 0 },
+    { "parentRule", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CSSStyleDeclaration_get_parentRule, NULL, 0 },
 };
 static const wj_member wj_m_CSSPageDescriptors[] = {
     { "margin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -4677,7 +7573,7 @@ static const wj_member wj_m_CSSPageDescriptors[] = {
     { "bleed", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CSSStyleProperties[] = {
-    { "cssFloat", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "cssFloat", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CSSStyleProperties_get_cssFloat, wjr_CSSStyleProperties_set_cssFloat, 0 },
 };
 static const wj_member wj_m_CSSStyleValue[] = {
     { "toString", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -5161,27 +8057,27 @@ static const wj_member wj_m_DOMQuad[] = {
     { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMRectList[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "item", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRectList_get_length, NULL, 0 },
+    { "item", WJ_M_METHOD, 0, 1, wjr_DOMRectList_item, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMRectReadOnly[] = {
-    { "fromRect", WJ_M_STATIC_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "x", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "y", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "top", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "right", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "bottom", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "left", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "fromRect", WJ_M_STATIC_METHOD, 0, 0, wjr_DOMRectReadOnly_static_fromRect, NULL, NULL, 0 },
+    { "x", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRectReadOnly_get_x, NULL, 0 },
+    { "y", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRectReadOnly_get_y, NULL, 0 },
+    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRectReadOnly_get_width, NULL, 0 },
+    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRectReadOnly_get_height, NULL, 0 },
+    { "top", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRectReadOnly_get_top, NULL, 0 },
+    { "right", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRectReadOnly_get_right, NULL, 0 },
+    { "bottom", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRectReadOnly_get_bottom, NULL, 0 },
+    { "left", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRectReadOnly_get_left, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_DOMRectReadOnly_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMRect[] = {
-    { "fromRect", WJ_M_STATIC_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "x", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "y", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "width", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "height", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "fromRect", WJ_M_STATIC_METHOD, 0, 0, wjr_DOMRect_static_fromRect, NULL, NULL, 0 },
+    { "x", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRect_get_x, wjr_DOMRect_set_x, 0 },
+    { "y", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRect_get_y, wjr_DOMRect_set_y, 0 },
+    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRect_get_width, wjr_DOMRect_set_width, 0 },
+    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRect_get_height, wjr_DOMRect_set_height, 0 },
 };
 static const wj_member wj_m_DOMStringList[] = {
     { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -5192,16 +8088,16 @@ static const wj_member wj_m_DOMStringMap[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMTokenList[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "item", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "contains", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "add", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "remove", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "toggle", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "replace", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "supports", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "value", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "toString", WJ_M_METHOD, 0, 0, wj_stringifier, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMTokenList_get_length, NULL, 0 },
+    { "item", WJ_M_METHOD, 0, 1, wjr_DOMTokenList_item, NULL, NULL, 0 },
+    { "contains", WJ_M_METHOD, 0, 1, wjr_DOMTokenList_contains, NULL, NULL, 0 },
+    { "add", WJ_M_METHOD, 0, 0, wjr_DOMTokenList_add, NULL, NULL, 0 },
+    { "remove", WJ_M_METHOD, 0, 0, wjr_DOMTokenList_remove, NULL, NULL, 0 },
+    { "toggle", WJ_M_METHOD, 0, 1, wjr_DOMTokenList_toggle, NULL, NULL, 0 },
+    { "replace", WJ_M_METHOD, 0, 2, wjr_DOMTokenList_replace, NULL, NULL, 0 },
+    { "supports", WJ_M_METHOD, 0, 1, wjr_DOMTokenList_supports, NULL, NULL, 0 },
+    { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMTokenList_get_value, wjr_DOMTokenList_set_value, 0 },
+    { "toString", WJ_M_METHOD, 0, 0, wj_stringifier, wjr_DOMTokenList_get_value, NULL, 0 },
 };
 static const wj_member wj_m_DataTransfer[] = {
     { "dropEffect", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -5495,83 +8391,83 @@ static const wj_member wj_m_TransitionEvent[] = {
     { "pseudoElement", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_UIEvent[] = {
-    { "view", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "detail", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "initUIEvent", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "which", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "view", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_UIEvent_get_view, NULL, 0 },
+    { "detail", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_UIEvent_get_detail, NULL, 0 },
+    { "initUIEvent", WJ_M_METHOD, 0, 1, wjr_UIEvent_initUIEvent, NULL, NULL, 0 },
+    { "which", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_UIEvent_get_which, NULL, 0 },
 };
 static const wj_member wj_m_CompositionEvent[] = {
-    { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CompositionEvent_get_data, NULL, 0 },
     { "initCompositionEvent", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_FocusEvent[] = {
-    { "relatedTarget", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "relatedTarget", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FocusEvent_get_relatedTarget, NULL, 0 },
 };
 static const wj_member wj_m_InputEvent[] = {
-    { "dataTransfer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "dataTransfer", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_InputEvent_get_dataTransfer, NULL, 0 },
     { "getTargetRanges", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "isComposing", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "inputType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_InputEvent_get_data, NULL, 0 },
+    { "isComposing", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_InputEvent_get_isComposing, NULL, 0 },
+    { "inputType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_InputEvent_get_inputType, NULL, 0 },
 };
 static const wj_member wj_m_KeyboardEvent[] = {
     { "DOM_KEY_LOCATION_STANDARD", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },
     { "DOM_KEY_LOCATION_LEFT", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 1 },
     { "DOM_KEY_LOCATION_RIGHT", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "DOM_KEY_LOCATION_NUMPAD", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
-    { "key", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "code", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "location", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "ctrlKey", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "shiftKey", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "altKey", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "metaKey", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "repeat", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "isComposing", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getModifierState", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "initKeyboardEvent", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "charCode", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "keyCode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_KeyboardEvent_get_keyCode, NULL, 0 },
+    { "key", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_KeyboardEvent_get_key, NULL, 0 },
+    { "code", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_KeyboardEvent_get_code, NULL, 0 },
+    { "location", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_KeyboardEvent_get_location, NULL, 0 },
+    { "ctrlKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_KeyboardEvent_get_ctrlKey, NULL, 0 },
+    { "shiftKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_KeyboardEvent_get_shiftKey, NULL, 0 },
+    { "altKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_KeyboardEvent_get_altKey, NULL, 0 },
+    { "metaKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_KeyboardEvent_get_metaKey, NULL, 0 },
+    { "repeat", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_KeyboardEvent_get_repeat, NULL, 0 },
+    { "isComposing", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_KeyboardEvent_get_isComposing, NULL, 0 },
+    { "getModifierState", WJ_M_METHOD, 0, 1, wjr_KeyboardEvent_getModifierState, NULL, NULL, 0 },
+    { "initKeyboardEvent", WJ_M_METHOD, 0, 1, wjr_KeyboardEvent_initKeyboardEvent, NULL, NULL, 0 },
+    { "charCode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_KeyboardEvent_get_charCode, NULL, 0 },
+    { "keyCode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_KeyboardEvent_get_keyCode, NULL, 0 },
 };
 static const wj_member wj_m_MouseEvent[] = {
-    { "pageX", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "pageY", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "x", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "y", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "offsetX", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "offsetY", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "screenX", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "screenY", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "clientX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MouseEvent_get_clientX, NULL, 0 },
-    { "clientY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MouseEvent_get_clientY, NULL, 0 },
-    { "layerX", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "layerY", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "ctrlKey", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "shiftKey", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "altKey", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "metaKey", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "button", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MouseEvent_get_button, NULL, 0 },
-    { "buttons", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "relatedTarget", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getModifierState", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "initMouseEvent", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "pageX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_pageX, NULL, 0 },
+    { "pageY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_pageY, NULL, 0 },
+    { "x", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_x, NULL, 0 },
+    { "y", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_y, NULL, 0 },
+    { "offsetX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_offsetX, NULL, 0 },
+    { "offsetY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_offsetY, NULL, 0 },
+    { "screenX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_screenX, NULL, 0 },
+    { "screenY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_screenY, NULL, 0 },
+    { "clientX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_clientX, NULL, 0 },
+    { "clientY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_clientY, NULL, 0 },
+    { "layerX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_layerX, NULL, 0 },
+    { "layerY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_layerY, NULL, 0 },
+    { "ctrlKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_ctrlKey, NULL, 0 },
+    { "shiftKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_shiftKey, NULL, 0 },
+    { "altKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_altKey, NULL, 0 },
+    { "metaKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_metaKey, NULL, 0 },
+    { "button", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_button, NULL, 0 },
+    { "buttons", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_buttons, NULL, 0 },
+    { "relatedTarget", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MouseEvent_get_relatedTarget, NULL, 0 },
+    { "getModifierState", WJ_M_METHOD, 0, 1, wjr_MouseEvent_getModifierState, NULL, NULL, 0 },
+    { "initMouseEvent", WJ_M_METHOD, 0, 1, wjr_MouseEvent_initMouseEvent, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DragEvent[] = {
     { "dataTransfer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PointerEvent[] = {
-    { "pointerId", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "pressure", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "tangentialPressure", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "tiltX", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "tiltY", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "twist", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "altitudeAngle", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "azimuthAngle", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "pointerType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "isPrimary", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "pointerId", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_pointerId, NULL, 0 },
+    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_width, NULL, 0 },
+    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_height, NULL, 0 },
+    { "pressure", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_pressure, NULL, 0 },
+    { "tangentialPressure", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_tangentialPressure, NULL, 0 },
+    { "tiltX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_tiltX, NULL, 0 },
+    { "tiltY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_tiltY, NULL, 0 },
+    { "twist", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_twist, NULL, 0 },
+    { "altitudeAngle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_altitudeAngle, NULL, 0 },
+    { "azimuthAngle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_azimuthAngle, NULL, 0 },
+    { "pointerType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_pointerType, NULL, 0 },
+    { "isPrimary", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_isPrimary, NULL, 0 },
     { "persistentDeviceId", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "getCoalescedEvents", WJ_M_METHOD, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
     { "getPredictedEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -5580,10 +8476,10 @@ static const wj_member wj_m_WheelEvent[] = {
     { "DOM_DELTA_PIXEL", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },
     { "DOM_DELTA_LINE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 1 },
     { "DOM_DELTA_PAGE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
-    { "deltaX", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "deltaY", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "deltaZ", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "deltaMode", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "deltaX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WheelEvent_get_deltaX, NULL, 0 },
+    { "deltaY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WheelEvent_get_deltaY, NULL, 0 },
+    { "deltaZ", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WheelEvent_get_deltaZ, NULL, 0 },
+    { "deltaMode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WheelEvent_get_deltaMode, NULL, 0 },
     { "momentum", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TextEvent[] = {
@@ -6065,71 +8961,71 @@ static const wj_member wj_m_Node[] = {
     { "DOCUMENT_TYPE_NODE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 10 },
     { "DOCUMENT_FRAGMENT_NODE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 11 },
     { "NOTATION_NODE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 12 },
-    { "nodeType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Node_get_nodeType, NULL, 0 },
-    { "nodeName", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "baseURI", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "isConnected", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "ownerDocument", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getRootNode", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "nodeType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Node_get_nodeType, NULL, 0 },
+    { "nodeName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Node_get_nodeName, NULL, 0 },
+    { "baseURI", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Node_get_baseURI, NULL, 0 },
+    { "isConnected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Node_get_isConnected, NULL, 0 },
+    { "ownerDocument", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Node_get_ownerDocument, NULL, 0 },
+    { "getRootNode", WJ_M_METHOD, 0, 0, wjr_Node_getRootNode, NULL, NULL, 0 },
     { "parentNode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Node_get_parentNode, NULL, 0 },
-    { "parentElement", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "hasChildNodes", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "childNodes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 35, NULL, NULL, NULL, 0 },
+    { "parentElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Node_get_parentElement, NULL, 0 },
+    { "hasChildNodes", WJ_M_METHOD, 0, 0, wjg_Node_hasChildNodes, NULL, NULL, 0 },
+    { "childNodes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 35, NULL, wjr_Node_get_childNodes, NULL, 0 },
     { "firstChild", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Node_get_firstChild, NULL, 0 },
     { "lastChild", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Node_get_lastChild, NULL, 0 },
     { "previousSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Node_get_previousSibling, NULL, 0 },
     { "nextSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Node_get_nextSibling, NULL, 0 },
-    { "nodeValue", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "textContent", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Node_get_textContent, wjg_Node_set_textContent, 0 },
-    { "normalize", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "cloneNode", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "isEqualNode", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "isSameNode", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "nodeValue", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Node_get_nodeValue, wjr_Node_set_nodeValue, 0 },
+    { "textContent", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Node_get_textContent, wjr_Node_set_textContent, 0 },
+    { "normalize", WJ_M_METHOD, 0, 0, wjg_Node_normalize, NULL, NULL, 0 },
+    { "cloneNode", WJ_M_METHOD, 0, 0, wjg_Node_cloneNode, NULL, NULL, 0 },
+    { "isEqualNode", WJ_M_METHOD, 0, 1, wjg_Node_isEqualNode, NULL, NULL, 0 },
+    { "isSameNode", WJ_M_METHOD, 0, 1, wjg_Node_isSameNode, NULL, NULL, 0 },
     { "DOCUMENT_POSITION_DISCONNECTED", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 1 },
     { "DOCUMENT_POSITION_PRECEDING", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "DOCUMENT_POSITION_FOLLOWING", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 4 },
     { "DOCUMENT_POSITION_CONTAINS", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 8 },
     { "DOCUMENT_POSITION_CONTAINED_BY", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 16 },
     { "DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 32 },
-    { "compareDocumentPosition", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "contains", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "lookupPrefix", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "lookupNamespaceURI", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "isDefaultNamespace", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "insertBefore", WJ_M_METHOD, 0, 2, wjg_Node_insertBefore, NULL, NULL, 0 },
-    { "appendChild", WJ_M_METHOD, 0, 1, wjg_Node_appendChild, NULL, NULL, 0 },
-    { "replaceChild", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "removeChild", WJ_M_METHOD, 0, 1, wjg_Node_removeChild, NULL, NULL, 0 },
+    { "compareDocumentPosition", WJ_M_METHOD, 0, 1, wjg_Node_compareDocumentPosition, NULL, NULL, 0 },
+    { "contains", WJ_M_METHOD, 0, 1, wjg_Node_contains, NULL, NULL, 0 },
+    { "lookupPrefix", WJ_M_METHOD, 0, 1, wjg_Node_lookupPrefix, NULL, NULL, 0 },
+    { "lookupNamespaceURI", WJ_M_METHOD, 0, 1, wjg_Node_lookupNamespaceURI, NULL, NULL, 0 },
+    { "isDefaultNamespace", WJ_M_METHOD, 0, 1, wjg_Node_isDefaultNamespace, NULL, NULL, 0 },
+    { "insertBefore", WJ_M_METHOD, 0, 2, wjr_Node_insertBefore, NULL, NULL, 0 },
+    { "appendChild", WJ_M_METHOD, 0, 1, wjr_Node_appendChild, NULL, NULL, 0 },
+    { "replaceChild", WJ_M_METHOD, 0, 2, wjr_Node_replaceChild, NULL, NULL, 0 },
+    { "removeChild", WJ_M_METHOD, 0, 1, wjr_Node_removeChild, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Attr[] = {
-    { "namespaceURI", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "prefix", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "localName", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "value", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "ownerElement", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "specified", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "namespaceURI", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Attr_get_namespaceURI, NULL, 0 },
+    { "prefix", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Attr_get_prefix, NULL, 0 },
+    { "localName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Attr_get_localName, NULL, 0 },
+    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Attr_get_name, NULL, 0 },
+    { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Attr_get_value, wjr_Attr_set_value, 0 },
+    { "ownerElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Attr_get_ownerElement, NULL, 0 },
+    { "specified", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Attr_get_specified, NULL, 0 },
 };
 static const wj_member wj_m_CharacterData[] = {
-    { "data", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "substringData", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "appendData", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "insertData", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "deleteData", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "replaceData", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "previousElementSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "nextElementSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CharacterData_get_data, wjg_CharacterData_set_data, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CharacterData_get_length, NULL, 0 },
+    { "substringData", WJ_M_METHOD, 0, 2, wjg_CharacterData_substringData, NULL, NULL, 0 },
+    { "appendData", WJ_M_METHOD, 0, 1, wjg_CharacterData_appendData, NULL, NULL, 0 },
+    { "insertData", WJ_M_METHOD, 0, 2, wjg_CharacterData_insertData, NULL, NULL, 0 },
+    { "deleteData", WJ_M_METHOD, 0, 2, wjg_CharacterData_deleteData, NULL, NULL, 0 },
+    { "replaceData", WJ_M_METHOD, 0, 3, wjg_CharacterData_replaceData, NULL, NULL, 0 },
+    { "previousElementSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CharacterData_get_previousElementSibling, NULL, 0 },
+    { "nextElementSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CharacterData_get_nextElementSibling, NULL, 0 },
     { "beforeHTML", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "afterHTML", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "replaceWithHTML", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "beforeHTMLUnsafe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "afterHTMLUnsafe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "replaceWithHTMLUnsafe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "before", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "after", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "replaceWith", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "remove", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "before", WJ_M_METHOD, 0, 0, wjr_ChildNode_before, NULL, NULL, 0 },
+    { "after", WJ_M_METHOD, 0, 0, wjr_ChildNode_after, NULL, NULL, 0 },
+    { "replaceWith", WJ_M_METHOD, 0, 0, wjr_ChildNode_replaceWith, NULL, NULL, 0 },
+    { "remove", WJ_M_METHOD, 0, 0, wjg_CharacterData_remove, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Comment[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
@@ -6146,8 +9042,8 @@ static const wj_member wj_m_ProcessingInstruction[] = {
     { "sheet", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Text[] = {
-    { "splitText", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "wholeText", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "splitText", WJ_M_METHOD, 0, 1, wjg_Text_splitText, NULL, NULL, 0 },
+    { "wholeText", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Text_get_wholeText, NULL, 0 },
     { "getBoxQuads", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "convertQuadFromNode", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "convertRectFromNode", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
@@ -6161,38 +9057,38 @@ static const wj_member wj_m_Document[] = {
     { "rootElement", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "startViewTransition", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "activeViewTransition", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "elementFromPoint", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "elementFromPoint", WJ_M_METHOD, 0, 2, wjg_Document_elementFromPoint, NULL, NULL, 0 },
     { "elementsFromPoint", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "caretPositionFromPoint", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "scrollingElement", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "scrollingElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_scrollingElement, NULL, 0 },
     { "implementation", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 36, NULL, NULL, NULL, 0 },
     { "URL", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_URL, NULL, 0 },
-    { "documentURI", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "compatMode", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "characterSet", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "charset", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "inputEncoding", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "contentType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "doctype", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "documentURI", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_documentURI, NULL, 0 },
+    { "compatMode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_compatMode, NULL, 0 },
+    { "characterSet", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_characterSet, NULL, 0 },
+    { "charset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_charset, NULL, 0 },
+    { "inputEncoding", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_inputEncoding, NULL, 0 },
+    { "contentType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_contentType, NULL, 0 },
+    { "doctype", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_doctype, NULL, 0 },
     { "documentElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_documentElement, NULL, 0 },
-    { "getElementsByTagName", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getElementsByTagNameNS", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "getElementsByClassName", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "getElementsByTagName", WJ_M_METHOD, 0, 1, wjr_Document_getElementsByTagName, NULL, NULL, 0 },
+    { "getElementsByTagNameNS", WJ_M_METHOD, 0, 2, wjr_Document_getElementsByTagNameNS, NULL, NULL, 0 },
+    { "getElementsByClassName", WJ_M_METHOD, 0, 1, wjr_Document_getElementsByClassName, NULL, NULL, 0 },
     { "createElement", WJ_M_METHOD, 0, 1, wjr_Document_createElement, NULL, NULL, 0 },
-    { "createElementNS", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "createDocumentFragment", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "createElementNS", WJ_M_METHOD, 0, 2, wjr_Document_createElementNS, NULL, NULL, 0 },
+    { "createDocumentFragment", WJ_M_METHOD, 0, 0, wjg_Document_createDocumentFragment, NULL, NULL, 0 },
     { "createTextNode", WJ_M_METHOD, 0, 1, wjg_Document_createTextNode, NULL, NULL, 0 },
-    { "createCDATASection", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "createComment", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "createCDATASection", WJ_M_METHOD, 0, 1, wjg_Document_createCDATASection, NULL, NULL, 0 },
+    { "createComment", WJ_M_METHOD, 0, 1, wjg_Document_createComment, NULL, NULL, 0 },
     { "createProcessingInstruction", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "importNode", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "adoptNode", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "createAttribute", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "createAttributeNS", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "createEvent", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "createRange", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "createNodeIterator", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "createTreeWalker", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "importNode", WJ_M_METHOD, 0, 1, wjr_Document_importNode, NULL, NULL, 0 },
+    { "adoptNode", WJ_M_METHOD, 0, 1, wjg_Document_adoptNode, NULL, NULL, 0 },
+    { "createAttribute", WJ_M_METHOD, 0, 1, wjr_Document_createAttribute, NULL, NULL, 0 },
+    { "createAttributeNS", WJ_M_METHOD, 0, 2, wjr_Document_createAttributeNS, NULL, NULL, 0 },
+    { "createEvent", WJ_M_METHOD, 0, 1, wjr_Document_createEvent, NULL, NULL, 0 },
+    { "createRange", WJ_M_METHOD, 0, 0, wjr_Document_createRange, NULL, NULL, 0 },
+    { "createNodeIterator", WJ_M_METHOD, 0, 1, wjr_Document_createNodeIterator, NULL, NULL, 0 },
+    { "createTreeWalker", WJ_M_METHOD, 0, 1, wjr_Document_createTreeWalker, NULL, NULL, 0 },
     { "fullscreenEnabled", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, wj_lenient_setter, 0 },
     { "fullscreen", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, wj_lenient_setter, 0 },
     { "exitFullscreen", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -6200,30 +9096,30 @@ static const wj_member wj_m_Document[] = {
     { "onfullscreenerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onfullscreenerror, wjg_Document_set_onfullscreenerror, 0 },
     { "parseHTMLUnsafe", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "parseHTML", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "location", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, NULL, wjg_Document_set_location, 0 },
-    { "domain", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "referrer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "location", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Document_get_location, wjg_Document_set_location, 0 },
+    { "domain", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_Document_get_domain, NULL, 0 },
+    { "referrer", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_referrer, NULL, 0 },
     { "cookie", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_cookie, wjg_Document_set_cookie, 0 },
-    { "lastModified", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "lastModified", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_lastModified, NULL, 0 },
     { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_readyState, NULL, 0 },
-    { "title", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "dir", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "body", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjg_Document_get_body, NULL, 0 },
+    { "title", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_title, wjg_Document_set_title, 0 },
+    { "dir", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_dir, wjg_Document_set_dir, 0 },
+    { "body", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_body, wjg_Document_set_body, 0 },
     { "head", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_head, NULL, 0 },
-    { "images", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 37, NULL, NULL, NULL, 0 },
-    { "embeds", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 38, NULL, NULL, NULL, 0 },
-    { "plugins", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 39, NULL, NULL, NULL, 0 },
-    { "links", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 40, NULL, NULL, NULL, 0 },
-    { "forms", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 41, NULL, NULL, NULL, 0 },
-    { "scripts", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 42, NULL, NULL, NULL, 0 },
-    { "getElementsByName", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "images", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 37, NULL, wjr_Document_get_images, NULL, 0 },
+    { "embeds", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 38, NULL, wjr_Document_get_embeds, NULL, 0 },
+    { "plugins", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 39, NULL, wjr_Document_get_plugins, NULL, 0 },
+    { "links", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 40, NULL, wjr_Document_get_links, NULL, 0 },
+    { "forms", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 41, NULL, wjr_Document_get_forms, NULL, 0 },
+    { "scripts", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 42, NULL, wjr_Document_get_scripts, NULL, 0 },
+    { "getElementsByName", WJ_M_METHOD, 0, 1, wjr_Document_getElementsByName, NULL, NULL, 0 },
     { "currentScript", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_currentScript, NULL, 0 },
     { "open", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "close", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "write", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "writeln", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "defaultView", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "hasFocus", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "defaultView", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_defaultView, NULL, 0 },
+    { "hasFocus", WJ_M_METHOD, 0, 0, wjg_Document_hasFocus, NULL, NULL, 0 },
     { "designMode", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "execCommand", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "queryCommandEnabled", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
@@ -6240,7 +9136,7 @@ static const wj_member wj_m_Document[] = {
     { "vlinkColor", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "alinkColor", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "bgColor", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "anchors", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 43, NULL, NULL, NULL, 0 },
+    { "anchors", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 43, NULL, wjr_Document_get_anchors, NULL, 0 },
     { "applets", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 44, NULL, NULL, NULL, 0 },
     { "clear", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "captureEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -6250,7 +9146,7 @@ static const wj_member wj_m_Document[] = {
     { "onresume", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onresume, wjg_Document_set_onresume, 0 },
     { "wasDiscarded", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "fragmentDirective", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 46, NULL, NULL, NULL, 0 },
-    { "getSelection", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "getSelection", WJ_M_METHOD, 0, 0, wjr_Document_getSelection, NULL, NULL, 0 },
     { "hasStorageAccess", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "requestStorageAccess", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "timeline", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -6266,16 +9162,16 @@ static const wj_member wj_m_Document[] = {
     { "fullscreenElement", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, wj_lenient_setter, 0 },
     { "activeElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_activeElement, NULL, 0 },
     { "getAnimations", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "children", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 48, NULL, NULL, NULL, 0 },
-    { "firstElementChild", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "lastElementChild", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "childElementCount", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "prepend", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "append", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "replaceChildren", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "moveBefore", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "querySelector", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "querySelectorAll", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "children", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 48, NULL, wjr_ParentNode_get_children, NULL, 0 },
+    { "firstElementChild", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_firstElementChild, NULL, 0 },
+    { "lastElementChild", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_lastElementChild, NULL, 0 },
+    { "childElementCount", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_childElementCount, NULL, 0 },
+    { "prepend", WJ_M_METHOD, 0, 0, wjr_ParentNode_prepend, NULL, NULL, 0 },
+    { "append", WJ_M_METHOD, 0, 0, wjr_ParentNode_append, NULL, NULL, 0 },
+    { "replaceChildren", WJ_M_METHOD, 0, 0, wjr_ParentNode_replaceChildren, NULL, NULL, 0 },
+    { "moveBefore", WJ_M_METHOD, 0, 2, wjr_ParentNode_moveBefore, NULL, NULL, 0 },
+    { "querySelector", WJ_M_METHOD, 0, 1, wjg_Document_querySelector, NULL, NULL, 0 },
+    { "querySelectorAll", WJ_M_METHOD, 0, 1, wjr_ParentNode_querySelectorAll, NULL, NULL, 0 },
     { "createExpression", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "createNSResolver", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "evaluate", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
@@ -6386,17 +9282,17 @@ static const wj_member wj_m_XMLDocument[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DocumentFragment[] = {
-    { "getElementById", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "children", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 49, NULL, NULL, NULL, 0 },
-    { "firstElementChild", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "lastElementChild", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "childElementCount", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "prepend", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "append", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "replaceChildren", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "moveBefore", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "querySelector", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "querySelectorAll", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "getElementById", WJ_M_METHOD, 0, 1, wjg_DocumentFragment_getElementById, NULL, NULL, 0 },
+    { "children", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 49, NULL, wjr_ParentNode_get_children, NULL, 0 },
+    { "firstElementChild", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_DocumentFragment_get_firstElementChild, NULL, 0 },
+    { "lastElementChild", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_DocumentFragment_get_lastElementChild, NULL, 0 },
+    { "childElementCount", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_DocumentFragment_get_childElementCount, NULL, 0 },
+    { "prepend", WJ_M_METHOD, 0, 0, wjr_ParentNode_prepend, NULL, NULL, 0 },
+    { "append", WJ_M_METHOD, 0, 0, wjr_ParentNode_append, NULL, NULL, 0 },
+    { "replaceChildren", WJ_M_METHOD, 0, 0, wjr_ParentNode_replaceChildren, NULL, NULL, 0 },
+    { "moveBefore", WJ_M_METHOD, 0, 2, wjr_ParentNode_moveBefore, NULL, NULL, 0 },
+    { "querySelector", WJ_M_METHOD, 0, 1, wjg_DocumentFragment_querySelector, NULL, NULL, 0 },
+    { "querySelectorAll", WJ_M_METHOD, 0, 1, wjr_ParentNode_querySelectorAll, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ShadowRoot[] = {
     { "mode", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -6425,70 +9321,70 @@ static const wj_member wj_m_SVGUseElementShadowRoot[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DocumentType[] = {
-    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "publicId", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "systemId", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "before", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "after", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "replaceWith", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "remove", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_DocumentType_get_name, NULL, 0 },
+    { "publicId", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_DocumentType_get_publicId, NULL, 0 },
+    { "systemId", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_DocumentType_get_systemId, NULL, 0 },
+    { "before", WJ_M_METHOD, 0, 0, wjr_ChildNode_before, NULL, NULL, 0 },
+    { "after", WJ_M_METHOD, 0, 0, wjr_ChildNode_after, NULL, NULL, 0 },
+    { "replaceWith", WJ_M_METHOD, 0, 0, wjr_ChildNode_replaceWith, NULL, NULL, 0 },
+    { "remove", WJ_M_METHOD, 0, 0, wjg_DocumentType_remove, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Element[] = {
     { "computedStyleMap", WJ_M_METHOD, WJ_F_SAME_OBJECT, 0, NULL, NULL, NULL, 0 },
     { "startViewTransition", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "activeViewTransition", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getClientRects", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "getBoundingClientRect", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "getClientRects", WJ_M_METHOD, 0, 0, wjr_Element_getClientRects, NULL, NULL, 0 },
+    { "getBoundingClientRect", WJ_M_METHOD, 0, 0, wjr_Element_getBoundingClientRect, NULL, NULL, 0 },
     { "checkVisibility", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scrollIntoView", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scroll", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scrollTo", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scrollBy", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scrollTop", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "scrollLeft", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "scrollWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "scrollHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "clientTop", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "clientLeft", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "clientWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "clientHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "scrollIntoView", WJ_M_METHOD, 0, 0, wjr_Element_scrollIntoView, NULL, NULL, 0 },
+    { "scroll", WJ_M_METHOD, 0, 0, wjr_Element_scroll, NULL, NULL, 0 },
+    { "scrollTo", WJ_M_METHOD, 0, 0, wjr_Element_scrollTo, NULL, NULL, 0 },
+    { "scrollBy", WJ_M_METHOD, 0, 0, wjr_Element_scrollBy, NULL, NULL, 0 },
+    { "scrollTop", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_scrollTop, wjg_Element_set_scrollTop, 0 },
+    { "scrollLeft", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_scrollLeft, wjg_Element_set_scrollLeft, 0 },
+    { "scrollWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_scrollWidth, NULL, 0 },
+    { "scrollHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_scrollHeight, NULL, 0 },
+    { "clientTop", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_clientTop, NULL, 0 },
+    { "clientLeft", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_clientLeft, NULL, 0 },
+    { "clientWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_clientWidth, NULL, 0 },
+    { "clientHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_clientHeight, NULL, 0 },
     { "currentCSSZoom", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "namespaceURI", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "prefix", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "localName", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "tagName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_tagName, NULL, 0 },
+    { "namespaceURI", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_namespaceURI, NULL, 0 },
+    { "prefix", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_prefix, NULL, 0 },
+    { "localName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_localName, NULL, 0 },
+    { "tagName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Element_get_tagName, NULL, 0 },
     { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_id, wjg_Element_set_id, 0 },
     { "className", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_className, wjg_Element_set_className, 0 },
-    { "classList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 51, NULL, NULL, wjg_Element_set_classList, 0 },
-    { "slot", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hasAttributes", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "attributes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 52, NULL, NULL, NULL, 0 },
-    { "getAttributeNames", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "classList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 51, NULL, wjr_Element_get_classList, wjg_Element_set_classList, 0 },
+    { "slot", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_slot, wjg_Element_set_slot, 0 },
+    { "hasAttributes", WJ_M_METHOD, 0, 0, wjg_Element_hasAttributes, NULL, NULL, 0 },
+    { "attributes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 52, NULL, wjr_Element_get_attributes, NULL, 0 },
+    { "getAttributeNames", WJ_M_METHOD, 0, 0, wjr_Element_getAttributeNames, NULL, NULL, 0 },
     { "getAttribute", WJ_M_METHOD, 0, 1, wjg_Element_getAttribute, NULL, NULL, 0 },
-    { "getAttributeNS", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "setAttribute", WJ_M_METHOD, 0, 2, wjg_Element_setAttribute, NULL, NULL, 0 },
-    { "setAttributeNS", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
+    { "getAttributeNS", WJ_M_METHOD, 0, 2, wjg_Element_getAttributeNS, NULL, NULL, 0 },
+    { "setAttribute", WJ_M_METHOD, 0, 2, wjr_Element_setAttribute, NULL, NULL, 0 },
+    { "setAttributeNS", WJ_M_METHOD, 0, 3, wjg_Element_setAttributeNS, NULL, NULL, 0 },
     { "removeAttribute", WJ_M_METHOD, 0, 1, wjg_Element_removeAttribute, NULL, NULL, 0 },
-    { "removeAttributeNS", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "toggleAttribute", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "hasAttribute", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "hasAttributeNS", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "getAttributeNode", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getAttributeNodeNS", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "setAttributeNode", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setAttributeNodeNS", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "removeAttributeNode", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "removeAttributeNS", WJ_M_METHOD, 0, 2, wjg_Element_removeAttributeNS, NULL, NULL, 0 },
+    { "toggleAttribute", WJ_M_METHOD, 0, 1, wjr_Element_toggleAttribute, NULL, NULL, 0 },
+    { "hasAttribute", WJ_M_METHOD, 0, 1, wjg_Element_hasAttribute, NULL, NULL, 0 },
+    { "hasAttributeNS", WJ_M_METHOD, 0, 2, wjg_Element_hasAttributeNS, NULL, NULL, 0 },
+    { "getAttributeNode", WJ_M_METHOD, 0, 1, wjr_Element_getAttributeNode, NULL, NULL, 0 },
+    { "getAttributeNodeNS", WJ_M_METHOD, 0, 2, wjr_Element_getAttributeNodeNS, NULL, NULL, 0 },
+    { "setAttributeNode", WJ_M_METHOD, 0, 1, wjr_Element_setAttributeNode, NULL, NULL, 0 },
+    { "setAttributeNodeNS", WJ_M_METHOD, 0, 1, wjr_Element_setAttributeNodeNS, NULL, NULL, 0 },
+    { "removeAttributeNode", WJ_M_METHOD, 0, 1, wjr_Element_removeAttributeNode, NULL, NULL, 0 },
     { "attachShadow", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "shadowRoot", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "shadowRoot", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_shadowRoot, NULL, 0 },
     { "customElementRegistry", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "closest", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "matches", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "webkitMatchesSelector", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getElementsByTagName", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getElementsByTagNameNS", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "getElementsByClassName", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "insertAdjacentElement", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "insertAdjacentText", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "closest", WJ_M_METHOD, 0, 1, wjg_Element_closest, NULL, NULL, 0 },
+    { "matches", WJ_M_METHOD, 0, 1, wjg_Element_matches, NULL, NULL, 0 },
+    { "webkitMatchesSelector", WJ_M_METHOD, 0, 1, wjg_Element_webkitMatchesSelector, NULL, NULL, 0 },
+    { "getElementsByTagName", WJ_M_METHOD, 0, 1, wjr_Element_getElementsByTagName, NULL, NULL, 0 },
+    { "getElementsByTagNameNS", WJ_M_METHOD, 0, 2, wjr_Element_getElementsByTagNameNS, NULL, NULL, 0 },
+    { "getElementsByClassName", WJ_M_METHOD, 0, 1, wjr_Element_getElementsByClassName, NULL, NULL, 0 },
+    { "insertAdjacentElement", WJ_M_METHOD, 0, 2, wjg_Element_insertAdjacentElement, NULL, NULL, 0 },
+    { "insertAdjacentText", WJ_M_METHOD, 0, 2, wjg_Element_insertAdjacentText, NULL, NULL, 0 },
     { "requestFullscreen", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "onfullscreenchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_onfullscreenchange, wjg_Element_set_onfullscreenchange, 0 },
     { "onfullscreenerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_onfullscreenerror, wjg_Element_set_onfullscreenerror, 0 },
@@ -6499,9 +9395,9 @@ static const wj_member wj_m_Element[] = {
     { "appendHTMLUnsafe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "prependHTMLUnsafe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "getHTML", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "innerHTML", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "outerHTML", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "insertAdjacentHTML", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "innerHTML", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_innerHTML, wjg_Element_set_innerHTML, 0 },
+    { "outerHTML", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_outerHTML, wjg_Element_set_outerHTML, 0 },
+    { "insertAdjacentHTML", WJ_M_METHOD, 0, 2, wjg_Element_insertAdjacentHTML, NULL, NULL, 0 },
     { "setPointerCapture", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "releasePointerCapture", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "hasPointerCapture", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
@@ -6509,28 +9405,28 @@ static const wj_member wj_m_Element[] = {
     { "convertQuadFromNode", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "convertRectFromNode", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "convertPointFromNode", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "children", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 53, NULL, NULL, NULL, 0 },
-    { "firstElementChild", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "lastElementChild", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "childElementCount", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "prepend", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "append", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "replaceChildren", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "moveBefore", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "querySelector", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "querySelectorAll", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "previousElementSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "nextElementSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "children", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 53, NULL, wjr_ParentNode_get_children, NULL, 0 },
+    { "firstElementChild", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_firstElementChild, NULL, 0 },
+    { "lastElementChild", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_lastElementChild, NULL, 0 },
+    { "childElementCount", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_childElementCount, NULL, 0 },
+    { "prepend", WJ_M_METHOD, 0, 0, wjr_ParentNode_prepend, NULL, NULL, 0 },
+    { "append", WJ_M_METHOD, 0, 0, wjr_ParentNode_append, NULL, NULL, 0 },
+    { "replaceChildren", WJ_M_METHOD, 0, 0, wjr_ParentNode_replaceChildren, NULL, NULL, 0 },
+    { "moveBefore", WJ_M_METHOD, 0, 2, wjr_ParentNode_moveBefore, NULL, NULL, 0 },
+    { "querySelector", WJ_M_METHOD, 0, 1, wjg_Element_querySelector, NULL, NULL, 0 },
+    { "querySelectorAll", WJ_M_METHOD, 0, 1, wjr_ParentNode_querySelectorAll, NULL, NULL, 0 },
+    { "previousElementSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_previousElementSibling, NULL, 0 },
+    { "nextElementSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_nextElementSibling, NULL, 0 },
     { "beforeHTML", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "afterHTML", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "replaceWithHTML", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "beforeHTMLUnsafe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "afterHTMLUnsafe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "replaceWithHTMLUnsafe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "before", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "after", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "replaceWith", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "remove", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "before", WJ_M_METHOD, 0, 0, wjr_ChildNode_before, NULL, NULL, 0 },
+    { "after", WJ_M_METHOD, 0, 0, wjr_ChildNode_after, NULL, NULL, 0 },
+    { "replaceWith", WJ_M_METHOD, 0, 0, wjr_ChildNode_replaceWith, NULL, NULL, 0 },
+    { "remove", WJ_M_METHOD, 0, 0, wjg_Element_remove, NULL, NULL, 0 },
     { "assignedSlot", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "role", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_role, wjg_Element_set_role, 0 },
     { "ariaActiveDescendantElement", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -6590,27 +9486,27 @@ static const wj_member wj_m_Element[] = {
 };
 static const wj_member wj_m_HTMLElement[] = {
     { "scrollParent", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "offsetParent", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "offsetTop", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "offsetLeft", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "offsetWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "offsetHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "offsetParent", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_offsetParent, NULL, 0 },
+    { "offsetTop", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_offsetTop, NULL, 0 },
+    { "offsetLeft", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_offsetLeft, NULL, 0 },
+    { "offsetWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_offsetWidth, NULL, 0 },
+    { "offsetHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_offsetHeight, NULL, 0 },
     { "title", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_title, wjg_HTMLElement_set_title, 0 },
     { "lang", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_lang, wjg_HTMLElement_set_lang, 0 },
-    { "translate", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "dir", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hidden", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "translate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_translate, wjg_HTMLElement_set_translate, 0 },
+    { "dir", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_dir, wjg_HTMLElement_set_dir, 0 },
+    { "hidden", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLElement_get_hidden, wjr_HTMLElement_set_hidden, 0 },
     { "inert", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_inert, wjg_HTMLElement_set_inert, 0 },
     { "click", WJ_M_METHOD, 0, 0, wjg_HTMLElement_click, NULL, NULL, 0 },
     { "accessKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_accessKey, wjg_HTMLElement_set_accessKey, 0 },
-    { "accessKeyLabel", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "draggable", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "spellcheck", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "accessKeyLabel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_accessKeyLabel, NULL, 0 },
+    { "draggable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_draggable, wjg_HTMLElement_set_draggable, 0 },
+    { "spellcheck", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_spellcheck, wjg_HTMLElement_set_spellcheck, 0 },
     { "writingSuggestions", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "autocapitalize", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "autocorrect", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "innerText", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "outerText", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "innerText", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_innerText, wjg_HTMLElement_set_innerText, 0 },
+    { "outerText", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_outerText, wjg_HTMLElement_set_outerText, 0 },
     { "attachInternals", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "showPopover", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "hidePopover", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -6619,7 +9515,7 @@ static const wj_member wj_m_HTMLElement[] = {
     { "headingOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_headingOffset, wjg_HTMLElement_set_headingOffset, 0 },
     { "headingReset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_headingReset, wjg_HTMLElement_set_headingReset, 0 },
     { "attributeStyleMap", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 54, NULL, NULL, NULL, 0 },
-    { "style", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 55, NULL, NULL, wjg_HTMLElement_set_style, 0 },
+    { "style", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 55, NULL, wjr_ElementCSSInlineStyle_get_style, wjg_HTMLElement_set_style, 0 },
     { "onanimationstart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onanimationstart, wjg_HTMLElement_set_onanimationstart, 0 },
     { "onanimationiteration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onanimationiteration, wjg_HTMLElement_set_onanimationiteration, 0 },
     { "onanimationend", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_onanimationend, wjg_HTMLElement_set_onanimationend, 0 },
@@ -6721,43 +9617,43 @@ static const wj_member wj_m_HTMLElement[] = {
     { "ontouchend", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_ontouchend, wjg_HTMLElement_set_ontouchend, 0 },
     { "ontouchmove", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_ontouchmove, wjg_HTMLElement_set_ontouchmove, 0 },
     { "ontouchcancel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_ontouchcancel, wjg_HTMLElement_set_ontouchcancel, 0 },
-    { "contentEditable", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "contentEditable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_contentEditable, wjg_HTMLElement_set_contentEditable, 0 },
     { "enterKeyHint", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "isContentEditable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "isContentEditable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_isContentEditable, NULL, 0 },
     { "inputMode", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "dataset", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 56, NULL, NULL, NULL, 0 },
-    { "nonce", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "dataset", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 56, NULL, wjr_HTMLOrSVGOrMathMLElement_get_dataset, NULL, 0 },
+    { "nonce", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_nonce, wjg_HTMLElement_set_nonce, 0 },
     { "autofocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_autofocus, wjg_HTMLElement_set_autofocus, 0 },
-    { "tabIndex", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "focus", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "tabIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_tabIndex, wjg_HTMLElement_set_tabIndex, 0 },
+    { "focus", WJ_M_METHOD, 0, 0, wjr_HTMLOrSVGOrMathMLElement_focus, NULL, NULL, 0 },
     { "blur", WJ_M_METHOD, 0, 0, wjg_HTMLElement_blur, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLAnchorElement[] = {
     { "download", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_download, wjg_HTMLAnchorElement_set_download, 0 },
     { "ping", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_ping, wjg_HTMLAnchorElement_set_ping, 0 },
     { "rel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_rel, wjg_HTMLAnchorElement_set_rel, 0 },
-    { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 57, NULL, NULL, wjg_HTMLAnchorElement_set_relList, 0 },
-    { "text", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 57, NULL, wjr_HTMLAnchorElement_get_relList, wjg_HTMLAnchorElement_set_relList, 0 },
+    { "text", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_text, wjg_HTMLAnchorElement_set_text, 0 },
     { "referrerPolicy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "coords", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_coords, wjg_HTMLAnchorElement_set_coords, 0 },
     { "charset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_charset, wjg_HTMLAnchorElement_set_charset, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_name, wjg_HTMLAnchorElement_set_name, 0 },
     { "rev", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_rev, wjg_HTMLAnchorElement_set_rev, 0 },
     { "shape", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_shape, wjg_HTMLAnchorElement_set_shape, 0 },
-    { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "protocol", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "username", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "password", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "host", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hostname", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "port", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "pathname", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "search", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hash", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_origin, NULL, 0 },
+    { "protocol", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_protocol, wjg_HTMLAnchorElement_set_protocol, 0 },
+    { "username", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_username, wjg_HTMLAnchorElement_set_username, 0 },
+    { "password", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_password, wjg_HTMLAnchorElement_set_password, 0 },
+    { "host", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_host, wjg_HTMLAnchorElement_set_host, 0 },
+    { "hostname", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_hostname, wjg_HTMLAnchorElement_set_hostname, 0 },
+    { "port", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_port, wjg_HTMLAnchorElement_set_port, 0 },
+    { "pathname", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_pathname, wjg_HTMLAnchorElement_set_pathname, 0 },
+    { "search", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_search, wjg_HTMLAnchorElement_set_search, 0 },
+    { "hash", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_hash, wjg_HTMLAnchorElement_set_hash, 0 },
     { "hreflang", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_hreflang, wjg_HTMLAnchorElement_set_hreflang, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_type, wjg_HTMLAnchorElement_set_type, 0 },
-    { "href", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "toString", WJ_M_METHOD, 0, 0, wj_stringifier, NULL, NULL, 0 },
+    { "href", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_href, wjg_HTMLAnchorElement_set_href, 0 },
+    { "toString", WJ_M_METHOD, 0, 0, wj_stringifier, wjg_HTMLAnchorElement_get_href, NULL, 0 },
     { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAnchorElement_get_target, wjg_HTMLAnchorElement_set_target, 0 },
 };
 static const wj_member wj_m_HTMLAreaElement[] = {
@@ -6767,23 +9663,23 @@ static const wj_member wj_m_HTMLAreaElement[] = {
     { "download", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_download, wjg_HTMLAreaElement_set_download, 0 },
     { "ping", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_ping, wjg_HTMLAreaElement_set_ping, 0 },
     { "rel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_rel, wjg_HTMLAreaElement_set_rel, 0 },
-    { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 58, NULL, NULL, wjg_HTMLAreaElement_set_relList, 0 },
+    { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 58, NULL, wjr_HTMLAreaElement_get_relList, wjg_HTMLAreaElement_set_relList, 0 },
     { "referrerPolicy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "noHref", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_noHref, wjg_HTMLAreaElement_set_noHref, 0 },
-    { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "protocol", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "username", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "password", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "host", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hostname", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "port", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "pathname", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "search", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hash", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_origin, NULL, 0 },
+    { "protocol", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_protocol, wjg_HTMLAreaElement_set_protocol, 0 },
+    { "username", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_username, wjg_HTMLAreaElement_set_username, 0 },
+    { "password", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_password, wjg_HTMLAreaElement_set_password, 0 },
+    { "host", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_host, wjg_HTMLAreaElement_set_host, 0 },
+    { "hostname", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_hostname, wjg_HTMLAreaElement_set_hostname, 0 },
+    { "port", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_port, wjg_HTMLAreaElement_set_port, 0 },
+    { "pathname", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_pathname, wjg_HTMLAreaElement_set_pathname, 0 },
+    { "search", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_search, wjg_HTMLAreaElement_set_search, 0 },
+    { "hash", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_hash, wjg_HTMLAreaElement_set_hash, 0 },
     { "hreflang", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_hreflang, wjg_HTMLAreaElement_set_hreflang, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_type, wjg_HTMLAreaElement_set_type, 0 },
-    { "href", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "toString", WJ_M_METHOD, 0, 0, wj_stringifier, NULL, NULL, 0 },
+    { "href", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_href, wjg_HTMLAreaElement_set_href, 0 },
+    { "toString", WJ_M_METHOD, 0, 0, wj_stringifier, wjg_HTMLAreaElement_get_href, NULL, 0 },
     { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLAreaElement_get_target, wjg_HTMLAreaElement_set_target, 0 },
 };
 static const wj_member wj_m_HTMLBRElement[] = {
@@ -6918,7 +9814,7 @@ static const wj_member wj_m_HTMLFormElement[] = {
     { "noValidate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFormElement_get_noValidate, wjg_HTMLFormElement_set_noValidate, 0 },
     { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFormElement_get_target, wjg_HTMLFormElement_set_target, 0 },
     { "rel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFormElement_get_rel, wjg_HTMLFormElement_set_rel, 0 },
-    { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 62, NULL, NULL, wjg_HTMLFormElement_set_relList, 0 },
+    { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 62, NULL, wjr_HTMLFormElement_get_relList, wjg_HTMLFormElement_set_relList, 0 },
     { "elements", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 63, NULL, NULL, NULL, 0 },
     { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFormElement_get_length, NULL, 0 },
     { "submit", WJ_M_METHOD, 0, 0, wjg_HTMLFormElement_submit, NULL, NULL, 0 },
@@ -6983,7 +9879,7 @@ static const wj_member wj_m_HTMLIFrameElement[] = {
     { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "srcdoc", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_name, wjg_HTMLIFrameElement_set_name, 0 },
-    { "sandbox", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 64, NULL, NULL, wjg_HTMLIFrameElement_set_sandbox, 0 },
+    { "sandbox", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 64, NULL, wjr_HTMLIFrameElement_get_sandbox, wjg_HTMLIFrameElement_set_sandbox, 0 },
     { "allow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_allow, wjg_HTMLIFrameElement_set_allow, 0 },
     { "allowFullscreen", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_allowFullscreen, wjg_HTMLIFrameElement_set_allowFullscreen, 0 },
     { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_width, wjg_HTMLIFrameElement_set_width, 0 },
@@ -7111,12 +10007,12 @@ static const wj_member wj_m_HTMLLinkElement[] = {
     { "crossOrigin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "rel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_rel, wjg_HTMLLinkElement_set_rel, 0 },
     { "as", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 65, NULL, NULL, wjg_HTMLLinkElement_set_relList, 0 },
+    { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 65, NULL, wjr_HTMLLinkElement_get_relList, wjg_HTMLLinkElement_set_relList, 0 },
     { "media", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_media, wjg_HTMLLinkElement_set_media, 0 },
     { "integrity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_integrity, wjg_HTMLLinkElement_set_integrity, 0 },
     { "hreflang", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_hreflang, wjg_HTMLLinkElement_set_hreflang, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_type, wjg_HTMLLinkElement_set_type, 0 },
-    { "sizes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 66, NULL, NULL, wjg_HTMLLinkElement_set_sizes, 0 },
+    { "sizes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 66, NULL, wjr_HTMLLinkElement_get_sizes, wjg_HTMLLinkElement_set_sizes, 0 },
     { "imageSrcset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_imageSrcset, wjg_HTMLLinkElement_set_imageSrcset, 0 },
     { "imageSizes", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_imageSizes, wjg_HTMLLinkElement_set_imageSizes, 0 },
     { "referrerPolicy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -7277,7 +10173,7 @@ static const wj_member wj_m_HTMLOptionElement[] = {
     { "index", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOptionElement_get_index, NULL, 0 },
 };
 static const wj_member wj_m_HTMLOutputElement[] = {
-    { "htmlFor", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 72, NULL, NULL, wjg_HTMLOutputElement_set_htmlFor, 0 },
+    { "htmlFor", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 72, NULL, wjr_HTMLOutputElement_get_htmlFor, wjg_HTMLOutputElement_set_htmlFor, 0 },
     { "form", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOutputElement_get_form, NULL, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOutputElement_get_name, wjg_HTMLOutputElement_set_name, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLOutputElement_get_type, NULL, 0 },
@@ -7427,9 +10323,9 @@ static const wj_member wj_m_HTMLTableElement[] = {
     { "tFoot", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "createTFoot", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "deleteTFoot", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "tBodies", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 77, NULL, NULL, NULL, 0 },
+    { "tBodies", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 77, NULL, wjr_HTMLTableElement_get_tBodies, NULL, 0 },
     { "createTBody", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "rows", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 78, NULL, NULL, NULL, 0 },
+    { "rows", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 78, NULL, wjr_HTMLTableElement_get_rows, NULL, 0 },
     { "insertRow", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "deleteRow", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableElement_get_align, wjg_HTMLTableElement_set_align, 0 },
@@ -7445,7 +10341,7 @@ static const wj_member wj_m_HTMLTableElement[] = {
 static const wj_member wj_m_HTMLTableRowElement[] = {
     { "rowIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "sectionRowIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "cells", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 79, NULL, NULL, NULL, 0 },
+    { "cells", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 79, NULL, wjr_HTMLTableRowElement_get_cells, NULL, 0 },
     { "insertCell", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "deleteCell", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableRowElement_get_align, wjg_HTMLTableRowElement_set_align, 0 },
@@ -7455,7 +10351,7 @@ static const wj_member wj_m_HTMLTableRowElement[] = {
     { "bgColor", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableRowElement_get_bgColor, wjg_HTMLTableRowElement_set_bgColor, 0 },
 };
 static const wj_member wj_m_HTMLTableSectionElement[] = {
-    { "rows", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 80, NULL, NULL, NULL, 0 },
+    { "rows", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 80, NULL, wjr_HTMLTableSectionElement_get_rows, NULL, 0 },
     { "insertRow", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "deleteRow", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableSectionElement_get_align, wjg_HTMLTableSectionElement_set_align, 0 },
@@ -7464,7 +10360,7 @@ static const wj_member wj_m_HTMLTableSectionElement[] = {
     { "vAlign", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableSectionElement_get_vAlign, wjg_HTMLTableSectionElement_set_vAlign, 0 },
 };
 static const wj_member wj_m_HTMLTemplateElement[] = {
-    { "content", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "content", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTemplateElement_get_content, NULL, 0 },
     { "htmlFor", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTemplateElement_get_htmlFor, wjg_HTMLTemplateElement_set_htmlFor, 0 },
     { "shadowRootMode", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "shadowRootDelegatesFocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTemplateElement_get_shadowRootDelegatesFocus, wjg_HTMLTemplateElement_set_shadowRootDelegatesFocus, 0 },
@@ -7533,7 +10429,7 @@ static const wj_member wj_m_HTMLUnknownElement[] = {
 };
 static const wj_member wj_m_MathMLElement[] = {
     { "attributeStyleMap", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 81, NULL, NULL, NULL, 0 },
-    { "style", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 82, NULL, NULL, wjg_MathMLElement_set_style, 0 },
+    { "style", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 82, NULL, wjr_ElementCSSInlineStyle_get_style, wjg_MathMLElement_set_style, 0 },
     { "onanimationstart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onanimationstart, wjg_MathMLElement_set_onanimationstart, 0 },
     { "onanimationiteration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onanimationiteration, wjg_MathMLElement_set_onanimationiteration, 0 },
     { "onanimationend", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_onanimationend, wjg_MathMLElement_set_onanimationend, 0 },
@@ -7635,26 +10531,26 @@ static const wj_member wj_m_MathMLElement[] = {
     { "ontouchend", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_ontouchend, wjg_MathMLElement_set_ontouchend, 0 },
     { "ontouchmove", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_ontouchmove, wjg_MathMLElement_set_ontouchmove, 0 },
     { "ontouchcancel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_ontouchcancel, wjg_MathMLElement_set_ontouchcancel, 0 },
-    { "dataset", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 83, NULL, NULL, NULL, 0 },
-    { "nonce", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "dataset", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 83, NULL, wjr_HTMLOrSVGOrMathMLElement_get_dataset, NULL, 0 },
+    { "nonce", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_nonce, wjg_MathMLElement_set_nonce, 0 },
     { "autofocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_autofocus, wjg_MathMLElement_set_autofocus, 0 },
-    { "tabIndex", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "focus", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "tabIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLElement_get_tabIndex, wjg_MathMLElement_set_tabIndex, 0 },
+    { "focus", WJ_M_METHOD, 0, 0, wjr_HTMLOrSVGOrMathMLElement_focus, NULL, NULL, 0 },
     { "blur", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_MathMLAnchorElement[] = {
     { "href", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_target, wjg_MathMLAnchorElement_set_target, 0 },
-    { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "protocol", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "username", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "password", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "host", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hostname", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "port", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "pathname", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "search", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hash", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_origin, NULL, 0 },
+    { "protocol", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_protocol, wjg_MathMLAnchorElement_set_protocol, 0 },
+    { "username", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_username, wjg_MathMLAnchorElement_set_username, 0 },
+    { "password", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_password, wjg_MathMLAnchorElement_set_password, 0 },
+    { "host", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_host, wjg_MathMLAnchorElement_set_host, 0 },
+    { "hostname", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_hostname, wjg_MathMLAnchorElement_set_hostname, 0 },
+    { "port", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_port, wjg_MathMLAnchorElement_set_port, 0 },
+    { "pathname", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_pathname, wjg_MathMLAnchorElement_set_pathname, 0 },
+    { "search", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_search, wjg_MathMLAnchorElement_set_search, 0 },
+    { "hash", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_hash, wjg_MathMLAnchorElement_set_hash, 0 },
     { "hreflang", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_hreflang, wjg_MathMLAnchorElement_set_hreflang, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MathMLAnchorElement_get_type, wjg_MathMLAnchorElement_set_type, 0 },
 };
@@ -7763,14 +10659,14 @@ static const wj_member wj_m_SVGElement[] = {
     { "ontouchend", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_ontouchend, wjg_SVGElement_set_ontouchend, 0 },
     { "ontouchmove", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_ontouchmove, wjg_SVGElement_set_ontouchmove, 0 },
     { "ontouchcancel", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_ontouchcancel, wjg_SVGElement_set_ontouchcancel, 0 },
-    { "dataset", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 85, NULL, NULL, NULL, 0 },
-    { "nonce", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "dataset", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 85, NULL, wjr_HTMLOrSVGOrMathMLElement_get_dataset, NULL, 0 },
+    { "nonce", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_nonce, wjg_SVGElement_set_nonce, 0 },
     { "autofocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_autofocus, wjg_SVGElement_set_autofocus, 0 },
-    { "tabIndex", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "focus", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "tabIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGElement_get_tabIndex, wjg_SVGElement_set_tabIndex, 0 },
+    { "focus", WJ_M_METHOD, 0, 0, wjr_HTMLOrSVGOrMathMLElement_focus, NULL, NULL, 0 },
     { "blur", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "attributeStyleMap", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 86, NULL, NULL, NULL, 0 },
-    { "style", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 87, NULL, NULL, wjg_SVGElement_set_style, 0 },
+    { "style", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 87, NULL, wjr_ElementCSSInlineStyle_get_style, wjg_SVGElement_set_style, 0 },
 };
 static const wj_member wj_m_SVGDescElement[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
@@ -7815,16 +10711,16 @@ static const wj_member wj_m_SVGAElement[] = {
     { "relList", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 106, NULL, NULL, wjg_SVGAElement_set_relList, 0 },
     { "referrerPolicy", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "href", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 107, NULL, NULL, NULL, 0 },
-    { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "protocol", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "username", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "password", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "host", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hostname", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "port", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "pathname", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "search", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hash", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGAElement_get_origin, NULL, 0 },
+    { "protocol", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGAElement_get_protocol, wjg_SVGAElement_set_protocol, 0 },
+    { "username", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGAElement_get_username, wjg_SVGAElement_set_username, 0 },
+    { "password", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGAElement_get_password, wjg_SVGAElement_set_password, 0 },
+    { "host", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGAElement_get_host, wjg_SVGAElement_set_host, 0 },
+    { "hostname", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGAElement_get_hostname, wjg_SVGAElement_set_hostname, 0 },
+    { "port", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGAElement_get_port, wjg_SVGAElement_set_port, 0 },
+    { "pathname", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGAElement_get_pathname, wjg_SVGAElement_set_pathname, 0 },
+    { "search", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGAElement_get_search, wjg_SVGAElement_set_search, 0 },
+    { "hash", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGAElement_get_hash, wjg_SVGAElement_set_hash, 0 },
     { "hreflang", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGAElement_get_hreflang, wjg_SVGAElement_set_hreflang, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGAElement_get_type, wjg_SVGAElement_set_type, 0 },
 };
@@ -8313,23 +11209,23 @@ static const wj_member wj_m_Window[] = {
     { "moveBy", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "resizeTo", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "resizeBy", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "innerWidth", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "innerHeight", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "scrollX", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "pageXOffset", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "scrollY", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "pageYOffset", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "scroll", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scrollTo", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scrollBy", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "screenX", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "screenLeft", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "screenY", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "screenTop", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "outerWidth", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "outerHeight", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "devicePixelRatio", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "getComputedStyle", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "innerWidth", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_innerWidth, wj_replaceable_setter, 0 },
+    { "innerHeight", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_innerHeight, wj_replaceable_setter, 0 },
+    { "scrollX", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_scrollX, wj_replaceable_setter, 0 },
+    { "pageXOffset", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_pageXOffset, wj_replaceable_setter, 0 },
+    { "scrollY", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_scrollY, wj_replaceable_setter, 0 },
+    { "pageYOffset", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_pageYOffset, wj_replaceable_setter, 0 },
+    { "scroll", WJ_M_METHOD, 0, 0, wjr_Window_scroll, NULL, NULL, 0 },
+    { "scrollTo", WJ_M_METHOD, 0, 0, wjr_Window_scrollTo, NULL, NULL, 0 },
+    { "scrollBy", WJ_M_METHOD, 0, 0, wjr_Window_scrollBy, NULL, NULL, 0 },
+    { "screenX", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_screenX, wj_replaceable_setter, 0 },
+    { "screenLeft", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_screenLeft, wj_replaceable_setter, 0 },
+    { "screenY", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_screenY, wj_replaceable_setter, 0 },
+    { "screenTop", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_screenTop, wj_replaceable_setter, 0 },
+    { "outerWidth", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_outerWidth, wj_replaceable_setter, 0 },
+    { "outerHeight", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_outerHeight, wj_replaceable_setter, 0 },
+    { "devicePixelRatio", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_devicePixelRatio, wj_replaceable_setter, 0 },
+    { "getComputedStyle", WJ_M_METHOD, 0, 1, wjr_Window_getComputedStyle, NULL, NULL, 0 },
     { "event", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "fetchLater", WJ_M_METHOD, WJ_F_SECURE, 1, NULL, NULL, NULL, 0 },
     { "window", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Window_get_window, NULL, 0 },
@@ -8372,7 +11268,7 @@ static const wj_member wj_m_Window[] = {
     { "external", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE | WJ_F_SAME_OBJECT, 200, NULL, NULL, wj_replaceable_setter, 0 },
     { "requestIdleCallback", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "cancelIdleCallback", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getSelection", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "getSelection", WJ_M_METHOD, 0, 0, wjr_Window_getSelection, NULL, NULL, 0 },
     { "speechSynthesis", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 201, NULL, NULL, NULL, 0 },
     { "onanimationstart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onanimationstart, wjg_Window_set_onanimationstart, 0 },
     { "onanimationiteration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_onanimationiteration, wjg_Window_set_onanimationiteration, 0 },
@@ -8725,9 +11621,9 @@ static const wj_member wj_m_HTMLAllCollection[] = {
     { "item", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLCollection[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "item", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "namedItem", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLCollection_get_length, NULL, 0 },
+    { "item", WJ_M_METHOD, 0, 1, wjr_HTMLCollection_item, NULL, NULL, 0 },
+    { "namedItem", WJ_M_METHOD, 0, 1, wjr_HTMLCollection_namedItem, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLFormControlsCollection[] = {
     { "namedItem", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
@@ -8964,30 +11860,30 @@ static const wj_member wj_m_MimeTypeArray[] = {
     { "namedItem", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_MutationObserver[] = {
-    { "observe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "disconnect", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "takeRecords", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "observe", WJ_M_METHOD, 0, 1, wjr_MutationObserver_observe, NULL, NULL, 0 },
+    { "disconnect", WJ_M_METHOD, 0, 0, wjr_MutationObserver_disconnect, NULL, NULL, 0 },
+    { "takeRecords", WJ_M_METHOD, 0, 0, wjr_MutationObserver_takeRecords, NULL, NULL, 0 },
 };
 static const wj_member wj_m_MutationRecord[] = {
-    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "target", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 215, NULL, NULL, NULL, 0 },
-    { "addedNodes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 216, NULL, NULL, NULL, 0 },
-    { "removedNodes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 217, NULL, NULL, NULL, 0 },
-    { "previousSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "nextSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "attributeName", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "attributeNamespace", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "oldValue", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MutationRecord_get_type, NULL, 0 },
+    { "target", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 215, NULL, wjr_MutationRecord_get_target, NULL, 0 },
+    { "addedNodes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 216, NULL, wjr_MutationRecord_get_addedNodes, NULL, 0 },
+    { "removedNodes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 217, NULL, wjr_MutationRecord_get_removedNodes, NULL, 0 },
+    { "previousSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MutationRecord_get_previousSibling, NULL, 0 },
+    { "nextSibling", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MutationRecord_get_nextSibling, NULL, 0 },
+    { "attributeName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MutationRecord_get_attributeName, NULL, 0 },
+    { "attributeNamespace", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MutationRecord_get_attributeNamespace, NULL, 0 },
+    { "oldValue", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MutationRecord_get_oldValue, NULL, 0 },
 };
 static const wj_member wj_m_NamedNodeMap[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "item", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getNamedItem", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getNamedItemNS", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "setNamedItem", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setNamedItemNS", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "removeNamedItem", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "removeNamedItemNS", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NamedNodeMap_get_length, NULL, 0 },
+    { "item", WJ_M_METHOD, 0, 1, wjr_NamedNodeMap_item, NULL, NULL, 0 },
+    { "getNamedItem", WJ_M_METHOD, 0, 1, wjr_NamedNodeMap_getNamedItem, NULL, NULL, 0 },
+    { "getNamedItemNS", WJ_M_METHOD, 0, 2, wjr_NamedNodeMap_getNamedItemNS, NULL, NULL, 0 },
+    { "setNamedItem", WJ_M_METHOD, 0, 1, wjr_NamedNodeMap_setNamedItem, NULL, NULL, 0 },
+    { "setNamedItemNS", WJ_M_METHOD, 0, 1, wjr_NamedNodeMap_setNamedItemNS, NULL, NULL, 0 },
+    { "removeNamedItem", WJ_M_METHOD, 0, 1, wjr_NamedNodeMap_removeNamedItem, NULL, NULL, 0 },
+    { "removeNamedItemNS", WJ_M_METHOD, 0, 2, wjr_NamedNodeMap_removeNamedItemNS, NULL, NULL, 0 },
 };
 static const wj_member wj_m_NavigationActivation[] = {
     { "from", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -9091,18 +11987,18 @@ static const wj_member wj_m_NodeFilter[] = {
     { "acceptNode", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_NodeIterator[] = {
-    { "root", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 229, NULL, NULL, NULL, 0 },
-    { "referenceNode", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "pointerBeforeReferenceNode", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "whatToShow", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "filter", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "nextNode", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "previousNode", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "detach", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "root", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 229, NULL, wjr_NodeIterator_get_root, NULL, 0 },
+    { "referenceNode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NodeIterator_get_referenceNode, NULL, 0 },
+    { "pointerBeforeReferenceNode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NodeIterator_get_pointerBeforeReferenceNode, NULL, 0 },
+    { "whatToShow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NodeIterator_get_whatToShow, NULL, 0 },
+    { "filter", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NodeIterator_get_filter, NULL, 0 },
+    { "nextNode", WJ_M_METHOD, 0, 0, wjr_NodeIterator_nextNode, NULL, NULL, 0 },
+    { "previousNode", WJ_M_METHOD, 0, 0, wjr_NodeIterator_previousNode, NULL, NULL, 0 },
+    { "detach", WJ_M_METHOD, 0, 0, wjr_NodeIterator_detach, NULL, NULL, 0 },
 };
 static const wj_member wj_m_NodeList[] = {
-    { "item", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "item", WJ_M_METHOD, 0, 1, wjr_NodeList_item, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NodeList_get_length, NULL, 0 },
 };
 static const wj_member wj_m_RadioNodeList[] = {
     { "value", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -9711,31 +12607,31 @@ static const wj_member wj_m_Screen[] = {
     { "orientation", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 248, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Selection[] = {
-    { "anchorNode", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "anchorOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "focusNode", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "focusOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "isCollapsed", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "rangeCount", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "direction", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getRangeAt", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "addRange", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "removeRange", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "removeAllRanges", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "empty", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "anchorNode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Selection_get_anchorNode, NULL, 0 },
+    { "anchorOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Selection_get_anchorOffset, NULL, 0 },
+    { "focusNode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Selection_get_focusNode, NULL, 0 },
+    { "focusOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Selection_get_focusOffset, NULL, 0 },
+    { "isCollapsed", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Selection_get_isCollapsed, NULL, 0 },
+    { "rangeCount", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Selection_get_rangeCount, NULL, 0 },
+    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Selection_get_type, NULL, 0 },
+    { "direction", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Selection_get_direction, NULL, 0 },
+    { "getRangeAt", WJ_M_METHOD, 0, 1, wjr_Selection_getRangeAt, NULL, NULL, 0 },
+    { "addRange", WJ_M_METHOD, 0, 1, wjr_Selection_addRange, NULL, NULL, 0 },
+    { "removeRange", WJ_M_METHOD, 0, 1, wjr_Selection_removeRange, NULL, NULL, 0 },
+    { "removeAllRanges", WJ_M_METHOD, 0, 0, wjr_Selection_removeAllRanges, NULL, NULL, 0 },
+    { "empty", WJ_M_METHOD, 0, 0, wjr_Selection_empty, NULL, NULL, 0 },
     { "getComposedRanges", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "collapse", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setPosition", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "collapseToStart", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "collapseToEnd", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "extend", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setBaseAndExtent", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "selectAllChildren", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "modify", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "deleteFromDocument", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "containsNode", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "toString", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "collapse", WJ_M_METHOD, 0, 1, wjr_Selection_collapse, NULL, NULL, 0 },
+    { "setPosition", WJ_M_METHOD, 0, 1, wjr_Selection_setPosition, NULL, NULL, 0 },
+    { "collapseToStart", WJ_M_METHOD, 0, 0, wjr_Selection_collapseToStart, NULL, NULL, 0 },
+    { "collapseToEnd", WJ_M_METHOD, 0, 0, wjr_Selection_collapseToEnd, NULL, NULL, 0 },
+    { "extend", WJ_M_METHOD, 0, 1, wjr_Selection_extend, NULL, NULL, 0 },
+    { "setBaseAndExtent", WJ_M_METHOD, 0, 4, wjr_Selection_setBaseAndExtent, NULL, NULL, 0 },
+    { "selectAllChildren", WJ_M_METHOD, 0, 1, wjr_Selection_selectAllChildren, NULL, NULL, 0 },
+    { "modify", WJ_M_METHOD, 0, 0, wjr_Selection_modify, NULL, NULL, 0 },
+    { "deleteFromDocument", WJ_M_METHOD, 0, 0, wjr_Selection_deleteFromDocument, NULL, NULL, 0 },
+    { "containsNode", WJ_M_METHOD, 0, 1, wjr_Selection_containsNode, NULL, NULL, 0 },
+    { "toString", WJ_M_METHOD, 0, 0, wjr_Selection_toString, NULL, NULL, 0 },
 };
 static const wj_member wj_m_SpeechGrammar[] = {
     { "src", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -9912,17 +12808,17 @@ static const wj_member wj_m_TransformStreamDefaultController[] = {
     { "terminate", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TreeWalker[] = {
-    { "root", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 252, NULL, NULL, NULL, 0 },
-    { "whatToShow", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "filter", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "currentNode", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "parentNode", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "firstChild", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "lastChild", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "previousSibling", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "nextSibling", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "previousNode", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "nextNode", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "root", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 252, NULL, wjr_TreeWalker_get_root, NULL, 0 },
+    { "whatToShow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TreeWalker_get_whatToShow, NULL, 0 },
+    { "filter", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TreeWalker_get_filter, NULL, 0 },
+    { "currentNode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TreeWalker_get_currentNode, wjr_TreeWalker_set_currentNode, 0 },
+    { "parentNode", WJ_M_METHOD, 0, 0, wjr_TreeWalker_parentNode, NULL, NULL, 0 },
+    { "firstChild", WJ_M_METHOD, 0, 0, wjr_TreeWalker_firstChild, NULL, NULL, 0 },
+    { "lastChild", WJ_M_METHOD, 0, 0, wjr_TreeWalker_lastChild, NULL, NULL, 0 },
+    { "previousSibling", WJ_M_METHOD, 0, 0, wjr_TreeWalker_previousSibling, NULL, NULL, 0 },
+    { "nextSibling", WJ_M_METHOD, 0, 0, wjr_TreeWalker_nextSibling, NULL, NULL, 0 },
+    { "previousNode", WJ_M_METHOD, 0, 0, wjr_TreeWalker_previousNode, NULL, NULL, 0 },
+    { "nextNode", WJ_M_METHOD, 0, 0, wjr_TreeWalker_nextNode, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TrustedHTML[] = {
     { "toString", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -10164,15 +13060,15 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TaskController, .n_members = 1, .subtree_end = 2,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "AbstractRange", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "AbstractRange", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_AbstractRange, .n_members = 5, .subtree_end = 5,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Range", .parent = 2, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "Range", .parent = 2, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_Range_constructor,
       .members = wj_m_Range, .n_members = 29, .subtree_end = 4,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "StaticRange", .parent = 2, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "StaticRange", .parent = 2, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_StaticRange_constructor,
       .members = wj_m_StaticRange, .n_members = 0, .subtree_end = 5,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10304,15 +13200,15 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_CSSRuleList, .n_members = 2, .subtree_end = 37,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "CSSStyleDeclaration", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "CSSStyleDeclaration", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_CSSStyleDeclaration, .n_members = 8, .subtree_end = 40,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_CSSStyleDeclaration_index_get, .length_get = wjr_CSSStyleDeclaration_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "CSSPageDescriptors", .parent = 37, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_CSSPageDescriptors, .n_members = 14, .subtree_end = 39,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "CSSStyleProperties", .parent = 37, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "CSSStyleProperties", .parent = 37, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_CSSStyleProperties, .n_members = 1, .subtree_end = 40,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10568,15 +13464,15 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_DOMQuad, .n_members = 8, .subtree_end = 103,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMRectList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMRectList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_DOMRectList, .n_members = 2, .subtree_end = 104,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_DOMRectList_index_get, .length_get = wjr_DOMRectList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMRectReadOnly", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMRectReadOnly", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_DOMRectReadOnly_constructor,
       .members = wj_m_DOMRectReadOnly, .n_members = 10, .subtree_end = 106,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMRect", .parent = 104, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMRect", .parent = 104, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_DOMRect_constructor,
       .members = wj_m_DOMRect, .n_members = 5, .subtree_end = 106,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = "SVGRect", .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10586,11 +13482,11 @@ const wj_interface wj_interfaces[] = {
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "DOMStringMap", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_OVERRIDE_BUILTINS, .class_kind = WJ_CLASS_NAMED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_DOMStringMap, .n_members = 0, .subtree_end = 108,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = NULL, .length_get = NULL, .named_get = wjr_DOMStringMap_named_get, .named_set = wjr_DOMStringMap_named_set, .named_delete = wjr_DOMStringMap_named_delete, .named_keys = wjr_DOMStringMap_named_keys,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMTokenList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_ARRAY_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMTokenList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_ARRAY_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_DOMTokenList, .n_members = 9, .subtree_end = 109,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_DOMTokenList_index_get, .length_get = wjr_DOMTokenList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "DataTransfer", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_DataTransfer, .n_members = 9, .subtree_end = 110,
@@ -10772,27 +13668,27 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TransitionEvent, .n_members = 3, .subtree_end = 154,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "UIEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "UIEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_UIEvent_constructor,
       .members = wj_m_UIEvent, .n_members = 4, .subtree_end = 165,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "CompositionEvent", .parent = 154, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "CompositionEvent", .parent = 154, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_CompositionEvent_constructor,
       .members = wj_m_CompositionEvent, .n_members = 2, .subtree_end = 156,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FocusEvent", .parent = 154, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "FocusEvent", .parent = 154, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_FocusEvent_constructor,
       .members = wj_m_FocusEvent, .n_members = 1, .subtree_end = 157,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "InputEvent", .parent = 154, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "InputEvent", .parent = 154, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_InputEvent_constructor,
       .members = wj_m_InputEvent, .n_members = 5, .subtree_end = 158,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "KeyboardEvent", .parent = 154, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "KeyboardEvent", .parent = 154, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_KeyboardEvent_constructor,
       .members = wj_m_KeyboardEvent, .n_members = 17, .subtree_end = 159,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MouseEvent", .parent = 154, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "MouseEvent", .parent = 154, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_MouseEvent_constructor,
       .members = wj_m_MouseEvent, .n_members = 21, .subtree_end = 163,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10800,11 +13696,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_DragEvent, .n_members = 1, .subtree_end = 161,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PointerEvent", .parent = 159, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "PointerEvent", .parent = 159, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_PointerEvent_constructor,
       .members = wj_m_PointerEvent, .n_members = 15, .subtree_end = 162,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "WheelEvent", .parent = 159, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "WheelEvent", .parent = 159, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_WheelEvent_constructor,
       .members = wj_m_WheelEvent, .n_members = 8, .subtree_end = 163,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11048,7 +13944,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_CharacterData, .n_members = 19, .subtree_end = 227,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Comment", .parent = 222, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "Comment", .parent = 222, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_Comment_constructor,
       .members = wj_m_Comment, .n_members = 0, .subtree_end = 224,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11056,7 +13952,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_ProcessingInstruction, .n_members = 9, .subtree_end = 225,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Text", .parent = 222, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "Text", .parent = 222, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_Text_constructor,
       .members = wj_m_Text, .n_members = 7, .subtree_end = 227,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11072,7 +13968,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_XMLDocument, .n_members = 0, .subtree_end = 229,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DocumentFragment", .parent = 220, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DocumentFragment", .parent = 220, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_DocumentFragment_constructor,
       .members = wj_m_DocumentFragment, .n_members = 11, .subtree_end = 232,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11384,7 +14280,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MathMLElement, .n_members = 109, .subtree_end = 308,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MathMLAnchorElement", .parent = 306, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "MathMLAnchorElement", .parent = 306, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_MathMLAnchorElement, .n_members = 14, .subtree_end = 308,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11724,9 +14620,9 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_HTMLAllCollection, .n_members = 3, .subtree_end = 392,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "HTMLCollection", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "HTMLCollection", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLCollection, .n_members = 3, .subtree_end = 395,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_HTMLCollection_index_get, .length_get = wjr_HTMLCollection_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "HTMLFormControlsCollection", .parent = 392, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLFormControlsCollection, .n_members = 1, .subtree_end = 394,
@@ -11856,17 +14752,17 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MimeTypeArray, .n_members = 3, .subtree_end = 425,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MutationObserver", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "MutationObserver", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_MutationObserver_constructor,
       .members = wj_m_MutationObserver, .n_members = 3, .subtree_end = 426,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MutationRecord", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "MutationRecord", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_MutationRecord, .n_members = 9, .subtree_end = 427,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "NamedNodeMap", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "NamedNodeMap", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_NamedNodeMap, .n_members = 8, .subtree_end = 428,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_NamedNodeMap_index_get, .length_get = wjr_NamedNodeMap_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NavigationActivation", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_NavigationActivation, .n_members = 3, .subtree_end = 429,
@@ -11900,13 +14796,13 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_NodeFilter, .n_members = 17, .subtree_end = 436,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "NodeIterator", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "NodeIterator", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_NodeIterator, .n_members = 8, .subtree_end = 437,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "NodeList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_ARRAY_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "NodeList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_ARRAY_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_NodeList, .n_members = 2, .subtree_end = 439,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_NodeList_index_get, .length_get = wjr_NodeList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "RadioNodeList", .parent = 437, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_RadioNodeList, .n_members = 1, .subtree_end = 439,
@@ -12164,7 +15060,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_Screen, .n_members = 7, .subtree_end = 502,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Selection", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "Selection", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_Selection, .n_members = 25, .subtree_end = 503,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -12272,7 +15168,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TransformStreamDefaultController, .n_members = 4, .subtree_end = 529,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TreeWalker", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "TreeWalker", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_TreeWalker, .n_members = 11, .subtree_end = 530,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

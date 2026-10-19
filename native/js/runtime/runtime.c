@@ -8,12 +8,15 @@ bool wj_start_expose_unimplemented;
 
 void wj_install_console(JSContext *ctx, JSValueConst global);
 
+/* What the DOM bindings set up once the interfaces exist (runtime/dom_style.c: CSS property attributes). */
+__attribute__((weak)) int wj_dom_preinit(JSContext *ctx) { WJ_UNUSED(ctx); return 0; }
+
 /* Engine-only globals the bindings do not describe. */
 int wj_runtime_preinit(JSContext *ctx)
 {
     wj_realm *r = &wj_the_realm;
     if (wj_interface_find("console") < 0) { wj_install_console(ctx, r->global); }
-    return 0;
+    return wj_dom_preinit(ctx);
 }
 
 int wj_runtime_start(JSContext *ctx, int kind)

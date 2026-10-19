@@ -21,6 +21,29 @@ A node that is an element.
 
 Checked by the browser on every call (`lookup_Element`).
 
+### struct `DomRect`
+
+A rectangle (DOMRect).
+
+| field | type | |
+|---|---|---|
+| `x` | `f64` |  |%!(EXTRA false)
+| `y` | `f64` |  |%!(EXTRA false)
+| `width` | `f64` |  |%!(EXTRA false)
+| `height` | `f64` |  |%!(EXTRA false)
+
+### struct `SelectionState`
+
+The document's selection.
+
+| field | type | |
+|---|---|---|
+| `anchor` | `u64` |  |%!(EXTRA false)
+| `anchor_offset` | `u32` |  |%!(EXTRA false)
+| `focus` | `u64` |  |%!(EXTRA false)
+| `focus_offset` | `u32` |  |%!(EXTRA false)
+| `kind` | `u32` | 0 none, 1 caret (collapsed), 2 range |%!(EXTRA false)
+
 ## Functions
 
 ### `Document_documentElement`
@@ -349,4 +372,2321 @@ element.className = value
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Element_set_className :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `Collection_create`
+
+```
+Object Collection_create(Node root, i32 kind, string arg) raises
+```
+
+A live collection. Kinds: 0 child nodes, 1 child elements, 2 elements by qualified name (arg; "*" all), 3 by
+class names (arg), 4 by name attribute (arg), 5 forms, 6 images, 7 links (a and area with href), 8 scripts,
+9 embeds, 10 anchors (a with name), 11 elements by namespace and local name (arg: namespace, NUL, local name;
+"*" any), 12 all elements, 13 the select's / datalist's options, 14 a table's rows, 15 a row's cells, 16 a table's
+tBodies, 17 a form's elements. Invalid_Argument for an unknown kind.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Collection_create :: proc(c: ^Call, root: Api_Node, kind: i32, arg: string) -> (u64, Api_Error)`
+
+### `Collection_length`
+
+```
+u32 Collection_length(u64 collection)
+```
+
+The number of nodes (0 for a dead collection).
+
+Host: `Collection_length :: proc(c: ^Call, collection: u64) -> u32`
+
+### `Collection_item`
+
+```
+u64 Collection_item(u64 collection, u32 index)
+```
+
+The node at `index`, 0 past the end.
+
+Host: `Collection_item :: proc(c: ^Call, collection: u64, index: u32) -> u64`
+
+### `Collection_namedItem`
+
+```
+u64 Collection_namedItem(u64 collection, string name)
+```
+
+HTMLCollection.namedItem(name): the first element whose id or name (for the elements that have one) is `name`.
+
+Host: `Collection_namedItem :: proc(c: ^Call, collection: u64, name: string) -> u64`
+
+### `Collection_names`
+
+```
+string Collection_names(u64 collection)
+```
+
+The supported property names of an HTMLCollection, each followed by a NUL byte.
+
+Host: `Collection_names :: proc(c: ^Call, collection: u64) -> string`
+
+### `ParentNode_querySelectorAllPacked`
+
+```
+bytes ParentNode_querySelectorAllPacked(Node node, string selectors) raises
+```
+
+node.querySelectorAll(selectors): the elements in tree order, 8 bytes (a handle, little endian) each. Syntax for
+an invalid selector list.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `ParentNode_querySelectorAllPacked :: proc(c: ^Call, node: Api_Node, selectors: string) -> ([]u8, Api_Error)`
+
+### `ParentNode_querySelector`
+
+```
+Element ParentNode_querySelector(Node node, string selectors) raises
+```
+
+node.querySelector(selectors)
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `ParentNode_querySelector :: proc(c: ^Call, node: Api_Node, selectors: string) -> (u64, Api_Error)`
+
+### `TokenList_length`
+
+```
+u32 TokenList_length(Element element, string attr)
+```
+
+DOMTokenList over the content attribute `attr` of an element: its tokens (ordered set, ASCII whitespace split).
+
+Host: `TokenList_length :: proc(c: ^Call, element: Api_Element, attr: string) -> u32`
+
+### `TokenList_item`
+
+```
+string TokenList_item(Element element, string attr, u32 index) raises
+```
+
+The token at `index` (Not_Found: null).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `TokenList_item :: proc(c: ^Call, element: Api_Element, attr: string, index: u32) -> (string, Api_Error)`
+
+### `TokenList_contains`
+
+```
+bool TokenList_contains(Element element, string attr, string token)
+```
+
+Host: `TokenList_contains :: proc(c: ^Call, element: Api_Element, attr: string, token: string) -> bool`
+
+### `TokenList_add`
+
+```
+void TokenList_add(Element element, string attr, string tokens) raises
+```
+
+add(tokens...): `tokens` NUL-separated. Syntax for an empty token, Invalid_Character for one with whitespace.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `TokenList_add :: proc(c: ^Call, element: Api_Element, attr: string, tokens: string) -> Api_Error`
+
+### `TokenList_remove`
+
+```
+void TokenList_remove(Element element, string attr, string tokens) raises
+```
+
+remove(tokens...): as add.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `TokenList_remove :: proc(c: ^Call, element: Api_Element, attr: string, tokens: string) -> Api_Error`
+
+### `TokenList_toggle`
+
+```
+bool TokenList_toggle(Element element, string attr, string token, i32 force) raises
+```
+
+toggle(token, force): force -1 absent, 0 false, 1 true. Returns whether the token is there afterwards.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `TokenList_toggle :: proc(c: ^Call, element: Api_Element, attr: string, token: string, force: i32) -> (bool, Api_Error)`
+
+### `TokenList_replace`
+
+```
+bool TokenList_replace(Element element, string attr, string token, string new_token) raises
+```
+
+replace(token, newToken): whether it was there.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `TokenList_replace :: proc(c: ^Call, element: Api_Element, attr: string, token: string, new_token: string) -> (bool, Api_Error)`
+
+### `TokenList_supports`
+
+```
+bool TokenList_supports(Element element, string attr, string token) raises
+```
+
+supports(token): for rel lists, whether the browser knows the link type. Type for lists without supported tokens.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `TokenList_supports :: proc(c: ^Call, element: Api_Element, attr: string, token: string) -> (bool, Api_Error)`
+
+### `Dataset_get`
+
+```
+string Dataset_get(Element element, string name) raises
+```
+
+dataset[name]: the data-* attribute of a camel-cased name (Not_Found: absent).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Dataset_get :: proc(c: ^Call, element: Api_Element, name: string) -> (string, Api_Error)`
+
+### `Dataset_set`
+
+```
+void Dataset_set(Element element, string name, string value) raises
+```
+
+dataset[name] = value: Syntax for a name with "-" followed by a lower-case letter, Invalid_Character for a name
+that does not make a valid attribute name.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Dataset_set :: proc(c: ^Call, element: Api_Element, name: string, value: string) -> Api_Error`
+
+### `Dataset_delete`
+
+```
+bool Dataset_delete(Element element, string name)
+```
+
+delete dataset[name]: whether there was one.
+
+Host: `Dataset_delete :: proc(c: ^Call, element: Api_Element, name: string) -> bool`
+
+### `Dataset_names`
+
+```
+string Dataset_names(Element element)
+```
+
+The camel-cased names of the data-* attributes, each followed by a NUL byte.
+
+Host: `Dataset_names :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `Element_namespaceURI`
+
+```
+string Element_namespaceURI(Element element) raises
+```
+
+element.namespaceURI (Not_Found: null).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_namespaceURI :: proc(c: ^Call, element: Api_Element) -> (string, Api_Error)`
+
+### `Element_prefix`
+
+```
+string Element_prefix(Element element) raises
+```
+
+element.prefix (Not_Found: null).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_prefix :: proc(c: ^Call, element: Api_Element) -> (string, Api_Error)`
+
+### `Element_localName`
+
+```
+string Element_localName(Element element)
+```
+
+element.localName (SVG names with their case).
+
+Host: `Element_localName :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `Element_qualifiedTagName`
+
+```
+string Element_qualifiedTagName(Element element)
+```
+
+element.tagName: the qualified name, upper case for HTML elements.
+
+Host: `Element_qualifiedTagName :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `Element_slot`
+
+```
+string Element_slot(Element element)
+```
+
+element.slot
+
+Host: `Element_slot :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `Element_set_slot`
+
+```
+void Element_set_slot(Element element, string value) raises
+```
+
+element.slot = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_set_slot :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `Element_hasAttributes`
+
+```
+bool Element_hasAttributes(Element element)
+```
+
+element.hasAttributes()
+
+Host: `Element_hasAttributes :: proc(c: ^Call, element: Api_Element) -> bool`
+
+### `Element_attributeNames`
+
+```
+string Element_attributeNames(Element element)
+```
+
+The attributes' names in order, each followed by a NUL byte.
+
+Host: `Element_attributeNames :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `Element_attributeCount`
+
+```
+u32 Element_attributeCount(Element element)
+```
+
+The number of attributes.
+
+Host: `Element_attributeCount :: proc(c: ^Call, element: Api_Element) -> u32`
+
+### `Element_attributeNameAt`
+
+```
+string Element_attributeNameAt(Element element, u32 index) raises
+```
+
+The name of the attribute at `index` (Not_Found past the end).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_attributeNameAt :: proc(c: ^Call, element: Api_Element, index: u32) -> (string, Api_Error)`
+
+### `Element_getAttributeNS`
+
+```
+string Element_getAttributeNS(Element element, optional string namespace, string local_name) raises
+```
+
+element.getAttributeNS(namespace, localName) (Not_Found: null).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_getAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) -> (string, Api_Error)`
+
+### `Element_setAttributeChecked`
+
+```
+void Element_setAttributeChecked(Element element, string name, string value) raises
+```
+
+element.setAttribute(name, value): Invalid_Character for a name that is not a valid attribute name.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_setAttributeChecked :: proc(c: ^Call, element: Api_Element, name: string, value: string) -> Api_Error`
+
+### `Element_setAttributeNS`
+
+```
+void Element_setAttributeNS(Element element, optional string namespace, string qualified_name, string value) raises
+```
+
+element.setAttributeNS(namespace, qualifiedName, value): Invalid_Character, Namespace.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_setAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), qualified_name: string, value: string) -> Api_Error`
+
+### `Element_removeAttributeNS`
+
+```
+void Element_removeAttributeNS(Element element, optional string namespace, string local_name)
+```
+
+element.removeAttributeNS(namespace, localName)
+
+Host: `Element_removeAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string)`
+
+### `Element_toggleAttributeChecked`
+
+```
+bool Element_toggleAttributeChecked(Element element, string name, i32 force) raises
+```
+
+element.toggleAttribute(name, force): force -1 absent, 0 false, 1 true. Invalid_Character.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_toggleAttributeChecked :: proc(c: ^Call, element: Api_Element, name: string, force: i32) -> (bool, Api_Error)`
+
+### `Element_hasAttribute`
+
+```
+bool Element_hasAttribute(Element element, string name)
+```
+
+element.hasAttribute(name)
+
+Host: `Element_hasAttribute :: proc(c: ^Call, element: Api_Element, name: string) -> bool`
+
+### `Element_hasAttributeNS`
+
+```
+bool Element_hasAttributeNS(Element element, optional string namespace, string local_name)
+```
+
+element.hasAttributeNS(namespace, localName)
+
+Host: `Element_hasAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) -> bool`
+
+### `Element_closest`
+
+```
+Element Element_closest(Element element, string selectors) raises
+```
+
+element.closest(selectors): Syntax for an invalid selector list.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_closest :: proc(c: ^Call, element: Api_Element, selectors: string) -> (u64, Api_Error)`
+
+### `Element_matches`
+
+```
+bool Element_matches(Element element, string selectors) raises
+```
+
+element.matches(selectors): Syntax for an invalid selector list.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_matches :: proc(c: ^Call, element: Api_Element, selectors: string) -> (bool, Api_Error)`
+
+### `Element_webkitMatchesSelector`
+
+```
+bool Element_webkitMatchesSelector(Element element, string selectors) raises
+```
+
+element.webkitMatchesSelector(selectors)
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_webkitMatchesSelector :: proc(c: ^Call, element: Api_Element, selectors: string) -> (bool, Api_Error)`
+
+### `Element_insertAdjacentElement`
+
+```
+Element Element_insertAdjacentElement(Element element, string position, Element other) raises
+```
+
+element.insertAdjacentElement(where, element): Syntax for a bad position, the tree errors of insertBefore.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_insertAdjacentElement :: proc(c: ^Call, element: Api_Element, position: string, other: Api_Element) -> (u64, Api_Error)`
+
+### `Element_insertAdjacentText`
+
+```
+void Element_insertAdjacentText(Element element, string position, string data) raises
+```
+
+element.insertAdjacentText(where, data)
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_insertAdjacentText :: proc(c: ^Call, element: Api_Element, position: string, data: string) -> Api_Error`
+
+### `Element_insertAdjacentHTML`
+
+```
+void Element_insertAdjacentHTML(Element element, string position, string text) raises
+```
+
+element.insertAdjacentHTML(position, text): No_Modification_Allowed beside the document element.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_insertAdjacentHTML :: proc(c: ^Call, element: Api_Element, position: string, text: string) -> Api_Error`
+
+### `Element_innerHTML`
+
+```
+string Element_innerHTML(Element element)
+```
+
+element.innerHTML: the HTML fragment serialization of its children (a template's: its contents').
+
+Host: `Element_innerHTML :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `Element_set_innerHTML`
+
+```
+void Element_set_innerHTML(Element element, string value) raises
+```
+
+element.innerHTML = markup: parsed as a fragment in the element's context, one mutation replacing the children.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_set_innerHTML :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `Element_outerHTML`
+
+```
+string Element_outerHTML(Element element)
+```
+
+element.outerHTML
+
+Host: `Element_outerHTML :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `Element_set_outerHTML`
+
+```
+void Element_set_outerHTML(Element element, string value) raises
+```
+
+element.outerHTML = markup: No_Modification_Allowed when the parent is the document.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_set_outerHTML :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `Element_shadowRoot`
+
+```
+Node Element_shadowRoot(Element element)
+```
+
+element.shadowRoot: null (no shadow trees).
+
+Host: `Element_shadowRoot :: proc(c: ^Call, element: Api_Element) -> u64`
+
+### `HTMLElement_hiddenState`
+
+```
+i32 HTMLElement_hiddenState(Element element)
+```
+
+The `hidden` content attribute as HTMLElement.hidden reads it: 0 absent, 1 present, 2 "until-found".
+
+Host: `HTMLElement_hiddenState :: proc(c: ^Call, element: Api_Element) -> i32`
+
+### `HTMLElement_dir`
+
+```
+string HTMLElement_dir(Element element)
+```
+
+htmlElement.dir: "ltr", "rtl", "auto" or "".
+
+Host: `HTMLElement_dir :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HTMLElement_set_dir`
+
+```
+void HTMLElement_set_dir(Element element, string value) raises
+```
+
+htmlElement.dir = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLElement_set_dir :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HTMLElement_translate`
+
+```
+bool HTMLElement_translate(Element element)
+```
+
+htmlElement.translate
+
+Host: `HTMLElement_translate :: proc(c: ^Call, element: Api_Element) -> bool`
+
+### `HTMLElement_set_translate`
+
+```
+void HTMLElement_set_translate(Element element, bool value) raises
+```
+
+htmlElement.translate = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLElement_set_translate :: proc(c: ^Call, element: Api_Element, value: bool) -> Api_Error`
+
+### `HTMLElement_draggable`
+
+```
+bool HTMLElement_draggable(Element element)
+```
+
+htmlElement.draggable
+
+Host: `HTMLElement_draggable :: proc(c: ^Call, element: Api_Element) -> bool`
+
+### `HTMLElement_set_draggable`
+
+```
+void HTMLElement_set_draggable(Element element, bool value) raises
+```
+
+htmlElement.draggable = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLElement_set_draggable :: proc(c: ^Call, element: Api_Element, value: bool) -> Api_Error`
+
+### `HTMLElement_spellcheck`
+
+```
+bool HTMLElement_spellcheck(Element element)
+```
+
+htmlElement.spellcheck
+
+Host: `HTMLElement_spellcheck :: proc(c: ^Call, element: Api_Element) -> bool`
+
+### `HTMLElement_set_spellcheck`
+
+```
+void HTMLElement_set_spellcheck(Element element, bool value) raises
+```
+
+htmlElement.spellcheck = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLElement_set_spellcheck :: proc(c: ^Call, element: Api_Element, value: bool) -> Api_Error`
+
+### `HTMLElement_innerText`
+
+```
+string HTMLElement_innerText(Element element)
+```
+
+htmlElement.innerText: the rendered text (from the layout's text when the element is rendered, else
+textContent).
+
+Host: `HTMLElement_innerText :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HTMLElement_set_innerText`
+
+```
+void HTMLElement_set_innerText(Element element, string value) raises
+```
+
+htmlElement.innerText = value: text nodes and <br> for line feeds.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLElement_set_innerText :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HTMLElement_outerText`
+
+```
+string HTMLElement_outerText(Element element)
+```
+
+htmlElement.outerText
+
+Host: `HTMLElement_outerText :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HTMLElement_set_outerText`
+
+```
+void HTMLElement_set_outerText(Element element, string value) raises
+```
+
+htmlElement.outerText = value: No_Modification_Allowed without a parent.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLElement_set_outerText :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HTMLElement_accessKeyLabel`
+
+```
+string HTMLElement_accessKeyLabel(Element element)
+```
+
+htmlElement.accessKeyLabel ("": no access keys)
+
+Host: `HTMLElement_accessKeyLabel :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HTMLOrSVGOrMathMLElement_tabIndex`
+
+```
+i32 HTMLOrSVGOrMathMLElement_tabIndex(Element element)
+```
+
+element.tabIndex: the attribute, else 0 for focusable elements and -1 for the others.
+
+Host: `HTMLOrSVGOrMathMLElement_tabIndex :: proc(c: ^Call, element: Api_Element) -> i32`
+
+### `HTMLOrSVGOrMathMLElement_set_tabIndex`
+
+```
+void HTMLOrSVGOrMathMLElement_set_tabIndex(Element element, i32 value) raises
+```
+
+element.tabIndex = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLOrSVGOrMathMLElement_set_tabIndex :: proc(c: ^Call, element: Api_Element, value: i32) -> Api_Error`
+
+### `HTMLOrSVGOrMathMLElement_nonce`
+
+```
+string HTMLOrSVGOrMathMLElement_nonce(Element element)
+```
+
+element.nonce
+
+Host: `HTMLOrSVGOrMathMLElement_nonce :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HTMLOrSVGOrMathMLElement_set_nonce`
+
+```
+void HTMLOrSVGOrMathMLElement_set_nonce(Element element, string value) raises
+```
+
+element.nonce = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLOrSVGOrMathMLElement_set_nonce :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `ElementContentEditable_contentEditable`
+
+```
+string ElementContentEditable_contentEditable(Element element)
+```
+
+element.contentEditable: "true", "false", "plaintext-only" or "inherit".
+
+Host: `ElementContentEditable_contentEditable :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `ElementContentEditable_set_contentEditable`
+
+```
+void ElementContentEditable_set_contentEditable(Element element, string value) raises
+```
+
+element.contentEditable = value: Syntax for anything else.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `ElementContentEditable_set_contentEditable :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `ElementContentEditable_isContentEditable`
+
+```
+bool ElementContentEditable_isContentEditable(Element element)
+```
+
+element.isContentEditable
+
+Host: `ElementContentEditable_isContentEditable :: proc(c: ^Call, element: Api_Element) -> bool`
+
+### `HTMLHyperlinkElementUtils_href`
+
+```
+string HTMLHyperlinkElementUtils_href(Element element)
+```
+
+a.href / area.href: the URL resolved, or the attribute as is when it does not parse.
+
+Host: `HTMLHyperlinkElementUtils_href :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HTMLHyperlinkElementUtils_set_href`
+
+```
+void HTMLHyperlinkElementUtils_set_href(Element element, string value) raises
+```
+
+a.href = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLHyperlinkElementUtils_set_href :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HyperlinkElementUtils_origin`
+
+```
+string HyperlinkElementUtils_origin(Element element)
+```
+
+a.origin
+
+Host: `HyperlinkElementUtils_origin :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HyperlinkElementUtils_protocol`
+
+```
+string HyperlinkElementUtils_protocol(Element element)
+```
+
+a.protocol and the other components (URL Standard setters; nothing for a URL that does not parse)
+
+Host: `HyperlinkElementUtils_protocol :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HyperlinkElementUtils_set_protocol`
+
+```
+void HyperlinkElementUtils_set_protocol(Element element, string value) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HyperlinkElementUtils_set_protocol :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HyperlinkElementUtils_username`
+
+```
+string HyperlinkElementUtils_username(Element element)
+```
+
+Host: `HyperlinkElementUtils_username :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HyperlinkElementUtils_set_username`
+
+```
+void HyperlinkElementUtils_set_username(Element element, string value) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HyperlinkElementUtils_set_username :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HyperlinkElementUtils_password`
+
+```
+string HyperlinkElementUtils_password(Element element)
+```
+
+Host: `HyperlinkElementUtils_password :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HyperlinkElementUtils_set_password`
+
+```
+void HyperlinkElementUtils_set_password(Element element, string value) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HyperlinkElementUtils_set_password :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HyperlinkElementUtils_host`
+
+```
+string HyperlinkElementUtils_host(Element element)
+```
+
+Host: `HyperlinkElementUtils_host :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HyperlinkElementUtils_set_host`
+
+```
+void HyperlinkElementUtils_set_host(Element element, string value) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HyperlinkElementUtils_set_host :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HyperlinkElementUtils_hostname`
+
+```
+string HyperlinkElementUtils_hostname(Element element)
+```
+
+Host: `HyperlinkElementUtils_hostname :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HyperlinkElementUtils_set_hostname`
+
+```
+void HyperlinkElementUtils_set_hostname(Element element, string value) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HyperlinkElementUtils_set_hostname :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HyperlinkElementUtils_port`
+
+```
+string HyperlinkElementUtils_port(Element element)
+```
+
+Host: `HyperlinkElementUtils_port :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HyperlinkElementUtils_set_port`
+
+```
+void HyperlinkElementUtils_set_port(Element element, string value) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HyperlinkElementUtils_set_port :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HyperlinkElementUtils_pathname`
+
+```
+string HyperlinkElementUtils_pathname(Element element)
+```
+
+Host: `HyperlinkElementUtils_pathname :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HyperlinkElementUtils_set_pathname`
+
+```
+void HyperlinkElementUtils_set_pathname(Element element, string value) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HyperlinkElementUtils_set_pathname :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HyperlinkElementUtils_search`
+
+```
+string HyperlinkElementUtils_search(Element element)
+```
+
+Host: `HyperlinkElementUtils_search :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HyperlinkElementUtils_set_search`
+
+```
+void HyperlinkElementUtils_set_search(Element element, string value) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HyperlinkElementUtils_set_search :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HyperlinkElementUtils_hash`
+
+```
+string HyperlinkElementUtils_hash(Element element)
+```
+
+Host: `HyperlinkElementUtils_hash :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HyperlinkElementUtils_set_hash`
+
+```
+void HyperlinkElementUtils_set_hash(Element element, string value) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HyperlinkElementUtils_set_hash :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HTMLAnchorElement_text`
+
+```
+string HTMLAnchorElement_text(Element element)
+```
+
+a.text: its textContent.
+
+Host: `HTMLAnchorElement_text :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HTMLAnchorElement_set_text`
+
+```
+void HTMLAnchorElement_set_text(Element element, string value) raises
+```
+
+a.text = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLAnchorElement_set_text :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
+### `HTMLTemplateElement_content`
+
+```
+Node HTMLTemplateElement_content(Element element)
+```
+
+template.content
+
+Host: `HTMLTemplateElement_content :: proc(c: ^Call, element: Api_Element) -> u64`
+
+### `Element_boundingRect`
+
+```
+DomRect Element_boundingRect(Element element)
+```
+
+element.getBoundingClientRect(): the border box as drawn (transforms applied), in viewport coordinates.
+
+Host: `Element_boundingRect :: proc(c: ^Call, element: Api_Element) -> Api_DomRect`
+
+### `Element_clientRectsPacked`
+
+```
+bytes Element_clientRectsPacked(Element element)
+```
+
+element.getClientRects(): per box fragment, 32 bytes each (x, y, width, height as f64).
+
+Host: `Element_clientRectsPacked :: proc(c: ^Call, element: Api_Element) -> []u8`
+
+### `Element_clientTop`
+
+```
+i32 Element_clientTop(Element element)
+```
+
+element.clientTop, clientLeft, clientWidth, clientHeight (the viewport's size for the root element).
+
+Host: `Element_clientTop :: proc(c: ^Call, element: Api_Element) -> i32`
+
+### `Element_clientLeft`
+
+```
+i32 Element_clientLeft(Element element)
+```
+
+Host: `Element_clientLeft :: proc(c: ^Call, element: Api_Element) -> i32`
+
+### `Element_clientWidth`
+
+```
+i32 Element_clientWidth(Element element)
+```
+
+Host: `Element_clientWidth :: proc(c: ^Call, element: Api_Element) -> i32`
+
+### `Element_clientHeight`
+
+```
+i32 Element_clientHeight(Element element)
+```
+
+Host: `Element_clientHeight :: proc(c: ^Call, element: Api_Element) -> i32`
+
+### `Element_scrollTop`
+
+```
+f64 Element_scrollTop(Element element)
+```
+
+element.scrollTop / scrollLeft (the document's scroll offsets for the scrolling element).
+
+Host: `Element_scrollTop :: proc(c: ^Call, element: Api_Element) -> f64`
+
+### `Element_set_scrollTop`
+
+```
+void Element_set_scrollTop(Element element, f64 value)
+```
+
+Host: `Element_set_scrollTop :: proc(c: ^Call, element: Api_Element, value: f64)`
+
+### `Element_scrollLeft`
+
+```
+f64 Element_scrollLeft(Element element)
+```
+
+Host: `Element_scrollLeft :: proc(c: ^Call, element: Api_Element) -> f64`
+
+### `Element_set_scrollLeft`
+
+```
+void Element_set_scrollLeft(Element element, f64 value)
+```
+
+Host: `Element_set_scrollLeft :: proc(c: ^Call, element: Api_Element, value: f64)`
+
+### `Element_scrollWidth`
+
+```
+i32 Element_scrollWidth(Element element)
+```
+
+element.scrollWidth / scrollHeight
+
+Host: `Element_scrollWidth :: proc(c: ^Call, element: Api_Element) -> i32`
+
+### `Element_scrollHeight`
+
+```
+i32 Element_scrollHeight(Element element)
+```
+
+Host: `Element_scrollHeight :: proc(c: ^Call, element: Api_Element) -> i32`
+
+### `Element_scrollToXY`
+
+```
+void Element_scrollToXY(Element element, f64 x, f64 y, bool relative)
+```
+
+element.scrollTo(x, y) / scrollBy (relative): NaN keeps that axis.
+
+Host: `Element_scrollToXY :: proc(c: ^Call, element: Api_Element, x: f64, y: f64, relative: bool)`
+
+### `Element_scrollIntoViewAt`
+
+```
+void Element_scrollIntoViewAt(Element element, i32 block, i32 inline_pos)
+```
+
+element.scrollIntoView(options): block and inline 0 start, 1 center, 2 end, 3 nearest.
+
+Host: `Element_scrollIntoViewAt :: proc(c: ^Call, element: Api_Element, block: i32, inline_pos: i32)`
+
+### `HTMLElement_offsetParent`
+
+```
+Element HTMLElement_offsetParent(Element element)
+```
+
+htmlElement.offsetParent, offsetTop, offsetLeft, offsetWidth, offsetHeight
+
+Host: `HTMLElement_offsetParent :: proc(c: ^Call, element: Api_Element) -> u64`
+
+### `HTMLElement_offsetTop`
+
+```
+i32 HTMLElement_offsetTop(Element element)
+```
+
+Host: `HTMLElement_offsetTop :: proc(c: ^Call, element: Api_Element) -> i32`
+
+### `HTMLElement_offsetLeft`
+
+```
+i32 HTMLElement_offsetLeft(Element element)
+```
+
+Host: `HTMLElement_offsetLeft :: proc(c: ^Call, element: Api_Element) -> i32`
+
+### `HTMLElement_offsetWidth`
+
+```
+i32 HTMLElement_offsetWidth(Element element)
+```
+
+Host: `HTMLElement_offsetWidth :: proc(c: ^Call, element: Api_Element) -> i32`
+
+### `HTMLElement_offsetHeight`
+
+```
+i32 HTMLElement_offsetHeight(Element element)
+```
+
+Host: `HTMLElement_offsetHeight :: proc(c: ^Call, element: Api_Element) -> i32`
+
+### `Document_elementFromPoint`
+
+```
+Element Document_elementFromPoint(f64 x, f64 y)
+```
+
+document.elementFromPoint(x, y) (viewport coordinates)
+
+Host: `Document_elementFromPoint :: proc(c: ^Call, x: f64, y: f64) -> u64`
+
+### `Window_innerWidth`
+
+```
+i32 Window_innerWidth()
+```
+
+window.innerWidth / innerHeight
+
+Host: `Window_innerWidth :: proc(c: ^Call) -> i32`
+
+### `Window_innerHeight`
+
+```
+i32 Window_innerHeight()
+```
+
+Host: `Window_innerHeight :: proc(c: ^Call) -> i32`
+
+### `Window_outerWidth`
+
+```
+i32 Window_outerWidth()
+```
+
+window.outerWidth / outerHeight (the viewport's: the shell's window is not the page's business)
+
+Host: `Window_outerWidth :: proc(c: ^Call) -> i32`
+
+### `Window_outerHeight`
+
+```
+i32 Window_outerHeight()
+```
+
+Host: `Window_outerHeight :: proc(c: ^Call) -> i32`
+
+### `Window_scrollX`
+
+```
+f64 Window_scrollX()
+```
+
+window.scrollX / scrollY and their aliases
+
+Host: `Window_scrollX :: proc(c: ^Call) -> f64`
+
+### `Window_scrollY`
+
+```
+f64 Window_scrollY()
+```
+
+Host: `Window_scrollY :: proc(c: ^Call) -> f64`
+
+### `Window_pageXOffset`
+
+```
+f64 Window_pageXOffset()
+```
+
+Host: `Window_pageXOffset :: proc(c: ^Call) -> f64`
+
+### `Window_pageYOffset`
+
+```
+f64 Window_pageYOffset()
+```
+
+Host: `Window_pageYOffset :: proc(c: ^Call) -> f64`
+
+### `Window_devicePixelRatio`
+
+```
+f64 Window_devicePixelRatio()
+```
+
+window.devicePixelRatio
+
+Host: `Window_devicePixelRatio :: proc(c: ^Call) -> f64`
+
+### `Window_screenX`
+
+```
+i32 Window_screenX()
+```
+
+window.screenX / screenY / screenLeft / screenTop (0: the page does not learn where the window is)
+
+Host: `Window_screenX :: proc(c: ^Call) -> i32`
+
+### `Window_screenY`
+
+```
+i32 Window_screenY()
+```
+
+Host: `Window_screenY :: proc(c: ^Call) -> i32`
+
+### `Window_screenLeft`
+
+```
+i32 Window_screenLeft()
+```
+
+Host: `Window_screenLeft :: proc(c: ^Call) -> i32`
+
+### `Window_screenTop`
+
+```
+i32 Window_screenTop()
+```
+
+Host: `Window_screenTop :: proc(c: ^Call) -> i32`
+
+### `Window_scrollToXY`
+
+```
+void Window_scrollToXY(f64 x, f64 y, bool relative, bool smooth)
+```
+
+window.scrollTo(x, y) / scrollBy (relative): NaN keeps that axis; `smooth` asks for a smooth scroll.
+
+Host: `Window_scrollToXY :: proc(c: ^Call, x: f64, y: f64, relative: bool, smooth: bool)`
+
+### `Range_boundingRect`
+
+```
+DomRect Range_boundingRect(Node start, u32 start_offset, Node end, u32 end_offset)
+```
+
+The bounding box of a range's contents (Range.getBoundingClientRect), as Element_boundingRect.
+
+Host: `Range_boundingRect :: proc(c: ^Call, start: Api_Node, start_offset: u32, end: Api_Node, end_offset: u32) -> Api_DomRect`
+
+### `Range_clientRectsPacked`
+
+```
+bytes Range_clientRectsPacked(Node start, u32 start_offset, Node end, u32 end_offset)
+```
+
+Range.getClientRects(), packed as Element_clientRectsPacked.
+
+Host: `Range_clientRectsPacked :: proc(c: ^Call, start: Api_Node, start_offset: u32, end: Api_Node, end_offset: u32) -> []u8`
+
+### `MutationObserver_create`
+
+```
+Object MutationObserver_create(MicrotaskCallback notify, i32 user)
+```
+
+new MutationObserver: `notify(user)` runs as a microtask when records are queued.
+
+Host: `MutationObserver_create :: proc(c: ^Call, notify: u32, user: i32) -> u64`
+
+### `MutationObserver_observe`
+
+```
+void MutationObserver_observe(u64 observer, Node target, u32 options, string filter) raises
+```
+
+observer.observe(target, options): bits 1 childList, 2 attributes, 4 characterData, 8 subtree,
+16 attributeOldValue, 32 characterDataOldValue, 64 an attributeFilter (`filter`, names NUL-separated).
+Type when no kind of mutation is asked for (as DOM says, after the implied ones).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `MutationObserver_observe :: proc(c: ^Call, observer: u64, target: Api_Node, options: u32, filter: string) -> Api_Error`
+
+### `MutationObserver_disconnect`
+
+```
+void MutationObserver_disconnect(u64 observer)
+```
+
+observer.disconnect(): no more registrations, the queue emptied.
+
+Host: `MutationObserver_disconnect :: proc(c: ^Call, observer: u64)`
+
+### `MutationObserver_takeRecords`
+
+```
+bytes MutationObserver_takeRecords(u64 observer)
+```
+
+observer.takeRecords(): the records waiting, packed (src/page/js_dom_observe.odin, records_pack). Nothing
+changes until MutationObserver_release, so a call that did not fit can be made again.
+
+Host: `MutationObserver_takeRecords :: proc(c: ^Call, observer: u64) -> []u8`
+
+### `MutationObserver_release`
+
+```
+void MutationObserver_release(u64 observer)
+```
+
+The engine wrapped the nodes of the records it took: they leave the queue (and their pins go), the transient
+registrations end (DOM "notify mutation observers").
+
+Host: `MutationObserver_release :: proc(c: ^Call, observer: u64)`
+
+### `MutationObserver_live`
+
+```
+bool MutationObserver_live(u64 observer)
+```
+
+Whether some node the observer is registered on is still alive (the engine lets an observer go otherwise).
+
+Host: `MutationObserver_live :: proc(c: ^Call, observer: u64) -> bool`
+
+### `Range_comparePoints`
+
+```
+i32 Range_comparePoints(Node first, u32 first_offset, Node second, u32 second_offset)
+```
+
+A boundary point compared with another: -1 before, 0 equal, 1 after (DOM "position of a boundary point").
+
+Host: `Range_comparePoints :: proc(c: ^Call, first: Api_Node, first_offset: u32, second: Api_Node, second_offset: u32) -> i32`
+
+### `Range_text`
+
+```
+string Range_text(Node start, u32 start_offset, Node end, u32 end_offset)
+```
+
+range.toString(): the text of the Text nodes in the range.
+
+Host: `Range_text :: proc(c: ^Call, start: Api_Node, start_offset: u32, end: Api_Node, end_offset: u32) -> string`
+
+### `Range_contents`
+
+```
+Node Range_contents(Node start, u32 start_offset, Node end, u32 end_offset, i32 mode) raises
+```
+
+The contents of a range: mode 0 cloneContents (a new fragment), 1 extractContents (a fragment, the contents
+removed), 2 deleteContents (returns 0). Hierarchy when a doctype is in the range.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Range_contents :: proc(c: ^Call, start: Api_Node, start_offset: u32, end: Api_Node, end_offset: u32, mode: i32) -> (u64, Api_Error)`
+
+### `Selection_state`
+
+```
+SelectionState Selection_state()
+```
+
+The selection (offsets in UTF-16 code units for Text nodes).
+
+Host: `Selection_state :: proc(c: ^Call) -> Api_SelectionState`
+
+### `Selection_setRange`
+
+```
+void Selection_setRange(Node anchor, u32 anchor_offset, Node focus, u32 focus_offset) raises
+```
+
+setBaseAndExtent: Index_Size for an offset past a node's length, Invalid_Handle for a node outside the document.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Selection_setRange :: proc(c: ^Call, anchor: Api_Node, anchor_offset: u32, focus: Api_Node, focus_offset: u32) -> Api_Error`
+
+### `Selection_clear`
+
+```
+void Selection_clear()
+```
+
+removeAllRanges()
+
+Host: `Selection_clear :: proc(c: ^Call)`
+
+### `Selection_text`
+
+```
+string Selection_text()
+```
+
+selection.toString()
+
+Host: `Selection_text :: proc(c: ^Call) -> string`
+
+### `InlineStyle_getProperty`
+
+```
+string InlineStyle_getProperty(Element element, string name)
+```
+
+style.getPropertyValue(name): a longhand, a shorthand rebuilt from its longhands, or a custom property.
+
+Host: `InlineStyle_getProperty :: proc(c: ^Call, element: Api_Element, name: string) -> string`
+
+### `InlineStyle_priority`
+
+```
+string InlineStyle_priority(Element element, string name)
+```
+
+style.getPropertyPriority(name): "important" or "".
+
+Host: `InlineStyle_priority :: proc(c: ^Call, element: Api_Element, name: string) -> string`
+
+### `InlineStyle_setProperty`
+
+```
+void InlineStyle_setProperty(Element element, string name, string value, string priority) raises
+```
+
+style.setProperty(name, value, priority): an empty value removes it; an unknown property or an invalid value
+changes nothing (as CSSOM says).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `InlineStyle_setProperty :: proc(c: ^Call, element: Api_Element, name: string, value: string, priority: string) -> Api_Error`
+
+### `InlineStyle_removeProperty`
+
+```
+string InlineStyle_removeProperty(Element element, string name) raises
+```
+
+style.removeProperty(name): the value it had.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Has effects: call it once per result (no length query).
+
+Host: `InlineStyle_removeProperty :: proc(c: ^Call, element: Api_Element, name: string) -> (string, Api_Error)`
+
+### `InlineStyle_cssText`
+
+```
+string InlineStyle_cssText(Element element)
+```
+
+style.cssText
+
+Host: `InlineStyle_cssText :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `InlineStyle_setCssText`
+
+```
+void InlineStyle_setCssText(Element element, string text) raises
+```
+
+style.cssText = text
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `InlineStyle_setCssText :: proc(c: ^Call, element: Api_Element, text: string) -> Api_Error`
+
+### `InlineStyle_length`
+
+```
+u32 InlineStyle_length(Element element)
+```
+
+style.length: the longhands declared (shorthands count as theirs).
+
+Host: `InlineStyle_length :: proc(c: ^Call, element: Api_Element) -> u32`
+
+### `InlineStyle_item`
+
+```
+string InlineStyle_item(Element element, u32 index)
+```
+
+style.item(index) ("" past the end).
+
+Host: `InlineStyle_item :: proc(c: ^Call, element: Api_Element, index: u32) -> string`
+
+### `ComputedStyle_get`
+
+```
+string ComputedStyle_get(Element element, string pseudo, string name)
+```
+
+getComputedStyle(element, pseudo).getPropertyValue(name): "" for a property the browser does not compute.
+`pseudo`: "", "::before", "::after" (":before" too).
+
+Host: `ComputedStyle_get :: proc(c: ^Call, element: Api_Element, pseudo: string, name: string) -> string`
+
+### `ComputedStyle_count`
+
+```
+u32 ComputedStyle_count()
+```
+
+The number of properties getComputedStyle lists.
+
+Host: `ComputedStyle_count :: proc(c: ^Call) -> u32`
+
+### `ComputedStyle_name`
+
+```
+string ComputedStyle_name(u32 index)
+```
+
+The name of the listed property at `index` ("" past the end).
+
+Host: `ComputedStyle_name :: proc(c: ^Call, index: u32) -> string`
+
+### `Node_nodeName`
+
+```
+string Node_nodeName(Node node)
+```
+
+node.nodeName ("#text", "DIV", "#document"...).
+
+Host: `Node_nodeName :: proc(c: ^Call, node: Api_Node) -> string`
+
+### `Node_baseURI`
+
+```
+string Node_baseURI(Node node)
+```
+
+node.baseURI: the document's base URL.
+
+Host: `Node_baseURI :: proc(c: ^Call, node: Api_Node) -> string`
+
+### `Node_isConnected`
+
+```
+bool Node_isConnected(Node node)
+```
+
+node.isConnected
+
+Host: `Node_isConnected :: proc(c: ^Call, node: Api_Node) -> bool`
+
+### `Node_ownerDocument`
+
+```
+Node Node_ownerDocument(Node node)
+```
+
+node.ownerDocument (null for the document itself).
+
+Host: `Node_ownerDocument :: proc(c: ^Call, node: Api_Node) -> u64`
+
+### `Node_parentElement`
+
+```
+Element Node_parentElement(Node node)
+```
+
+node.parentElement
+
+Host: `Node_parentElement :: proc(c: ^Call, node: Api_Node) -> u64`
+
+### `Node_hasChildNodes`
+
+```
+bool Node_hasChildNodes(Node node)
+```
+
+node.hasChildNodes()
+
+Host: `Node_hasChildNodes :: proc(c: ^Call, node: Api_Node) -> bool`
+
+### `Node_nodeValue`
+
+```
+string Node_nodeValue(Node node) raises
+```
+
+node.nodeValue: the data of a Text or Comment node, Not_Found (null) for the others.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_nodeValue :: proc(c: ^Call, node: Api_Node) -> (string, Api_Error)`
+
+### `Node_set_nodeValue`
+
+```
+void Node_set_nodeValue(Node node, string value) raises
+```
+
+node.nodeValue = value (nothing for nodes without data).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_set_nodeValue :: proc(c: ^Call, node: Api_Node, value: string) -> Api_Error`
+
+### `Node_textContent`
+
+```
+string Node_textContent(Node node) raises
+```
+
+node.textContent (Not_Found: null, for the document and a doctype).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_textContent :: proc(c: ^Call, node: Api_Node) -> (string, Api_Error)`
+
+### `Node_set_textContent`
+
+```
+void Node_set_textContent(Node node, string value) raises
+```
+
+node.textContent = value: one mutation replacing every child by a Text node (none for "").
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_set_textContent :: proc(c: ^Call, node: Api_Node, value: string) -> Api_Error`
+
+### `Node_normalize`
+
+```
+void Node_normalize(Node node)
+```
+
+node.normalize()
+
+Host: `Node_normalize :: proc(c: ^Call, node: Api_Node)`
+
+### `Node_cloneNode`
+
+```
+Node Node_cloneNode(Node node, bool deep = false) raises
+```
+
+node.cloneNode(deep). Not_Supported for the document (one document per page).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_cloneNode :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error)`
+
+### `Node_isEqualNode`
+
+```
+bool Node_isEqualNode(Node node, optional Node other)
+```
+
+node.isEqualNode(other)
+
+Host: `Node_isEqualNode :: proc(c: ^Call, node: Api_Node, other: Api_Node) -> bool`
+
+### `Node_isSameNode`
+
+```
+bool Node_isSameNode(Node node, optional Node other)
+```
+
+node.isSameNode(other)
+
+Host: `Node_isSameNode :: proc(c: ^Call, node: Api_Node, other: Api_Node) -> bool`
+
+### `Node_compareDocumentPosition`
+
+```
+u32 Node_compareDocumentPosition(Node node, Node other)
+```
+
+node.compareDocumentPosition(other): DOCUMENT_POSITION_* bits.
+
+Host: `Node_compareDocumentPosition :: proc(c: ^Call, node: Api_Node, other: Api_Node) -> u32`
+
+### `Node_contains`
+
+```
+bool Node_contains(Node node, optional Node other)
+```
+
+node.contains(other)
+
+Host: `Node_contains :: proc(c: ^Call, node: Api_Node, other: Api_Node) -> bool`
+
+### `Node_lookupPrefix`
+
+```
+string Node_lookupPrefix(Node node, optional string namespace) raises
+```
+
+node.lookupPrefix(namespace) (Not_Found: null).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_lookupPrefix :: proc(c: ^Call, node: Api_Node, namespace: Maybe(string)) -> (string, Api_Error)`
+
+### `Node_lookupNamespaceURI`
+
+```
+string Node_lookupNamespaceURI(Node node, optional string prefix) raises
+```
+
+node.lookupNamespaceURI(prefix) (Not_Found: null).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_lookupNamespaceURI :: proc(c: ^Call, node: Api_Node, prefix: Maybe(string)) -> (string, Api_Error)`
+
+### `Node_isDefaultNamespace`
+
+```
+bool Node_isDefaultNamespace(Node node, optional string namespace)
+```
+
+node.isDefaultNamespace(namespace)
+
+Host: `Node_isDefaultNamespace :: proc(c: ^Call, node: Api_Node, namespace: Maybe(string)) -> bool`
+
+### `Node_rootNode`
+
+```
+Node Node_rootNode(Node node)
+```
+
+node.getRootNode() (no shadow trees: the root of its tree).
+
+Host: `Node_rootNode :: proc(c: ^Call, node: Api_Node) -> u64`
+
+### `Node_length`
+
+```
+u32 Node_length(Node node)
+```
+
+The length of a node (DOM "length"): UTF-16 code units of a Text or Comment node, else its number of children.
+
+Host: `Node_length :: proc(c: ^Call, node: Api_Node) -> u32`
+
+### `Node_preInsert`
+
+```
+void Node_preInsert(Node parent, Node node, optional Node child) raises
+```
+
+parent.insertBefore(node, child) / appendChild (child absent): DOM "pre-insert", every check (Hierarchy,
+Not_Found), a DocumentFragment's children inserted as one mutation.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_preInsert :: proc(c: ^Call, parent: Api_Node, node: Api_Node, child: Api_Node) -> Api_Error`
+
+### `Node_replaceChildChecked`
+
+```
+void Node_replaceChildChecked(Node parent, Node node, Node child) raises
+```
+
+parent.replaceChild(node, child): DOM "replace a child".
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_replaceChildChecked :: proc(c: ^Call, parent: Api_Node, node: Api_Node, child: Api_Node) -> Api_Error`
+
+### `Node_preRemove`
+
+```
+void Node_preRemove(Node parent, Node child) raises
+```
+
+parent.removeChild(child): Not_Found when child is not a child of parent.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_preRemove :: proc(c: ^Call, parent: Api_Node, child: Api_Node) -> Api_Error`
+
+### `Node_insertItems`
+
+```
+void Node_insertItems(Node node, i32 mode, bytes items) raises
+```
+
+prepend / append / replaceChildren (mode 0, 1, 2) of ParentNode, before / after / replaceWith (3, 4, 5) of
+ChildNode, with their (Node or DOMString) arguments packed in `items`: per item one byte 0 then a node handle (8
+bytes, little endian), or one byte 1 then a length (4 bytes) and UTF-8 text.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_insertItems :: proc(c: ^Call, node: Api_Node, mode: i32, items: []u8) -> Api_Error`
+
+### `Node_pinAll`
+
+```
+void Node_pinAll(u64[] nodes)
+```
+
+The node handles of `nodes` stay alive while pinned (a static NodeList, a mutation record).
+
+Host: `Node_pinAll :: proc(c: ^Call, nodes: []u64)`
+
+### `Node_unpinAll`
+
+```
+void Node_unpinAll(u64[] nodes)
+```
+
+Drops the pins of Node_pinAll (dead handles are ignored).
+
+Host: `Node_unpinAll :: proc(c: ^Call, nodes: []u64)`
+
+### `ParentNode_firstElementChild`
+
+```
+Element ParentNode_firstElementChild(Node node)
+```
+
+node.firstElementChild
+
+Host: `ParentNode_firstElementChild :: proc(c: ^Call, node: Api_Node) -> u64`
+
+### `ParentNode_lastElementChild`
+
+```
+Element ParentNode_lastElementChild(Node node)
+```
+
+node.lastElementChild
+
+Host: `ParentNode_lastElementChild :: proc(c: ^Call, node: Api_Node) -> u64`
+
+### `ParentNode_childElementCount`
+
+```
+u32 ParentNode_childElementCount(Node node)
+```
+
+node.childElementCount
+
+Host: `ParentNode_childElementCount :: proc(c: ^Call, node: Api_Node) -> u32`
+
+### `ChildNode_remove`
+
+```
+void ChildNode_remove(Node node)
+```
+
+node.remove()
+
+Host: `ChildNode_remove :: proc(c: ^Call, node: Api_Node)`
+
+### `NonDocumentTypeChildNode_previousElementSibling`
+
+```
+Element NonDocumentTypeChildNode_previousElementSibling(Node node)
+```
+
+node.previousElementSibling
+
+Host: `NonDocumentTypeChildNode_previousElementSibling :: proc(c: ^Call, node: Api_Node) -> u64`
+
+### `NonDocumentTypeChildNode_nextElementSibling`
+
+```
+Element NonDocumentTypeChildNode_nextElementSibling(Node node)
+```
+
+node.nextElementSibling
+
+Host: `NonDocumentTypeChildNode_nextElementSibling :: proc(c: ^Call, node: Api_Node) -> u64`
+
+### `NonElementParentNode_getElementById`
+
+```
+Element NonElementParentNode_getElementById(Node node, string id)
+```
+
+fragment.getElementById(id) (the document has its own)
+
+Host: `NonElementParentNode_getElementById :: proc(c: ^Call, node: Api_Node, id: string) -> u64`
+
+### `CharacterData_data`
+
+```
+string CharacterData_data(Node node)
+```
+
+characterData.data
+
+Host: `CharacterData_data :: proc(c: ^Call, node: Api_Node) -> string`
+
+### `CharacterData_set_data`
+
+```
+void CharacterData_set_data(Node node, string value)
+```
+
+characterData.data = value
+
+Host: `CharacterData_set_data :: proc(c: ^Call, node: Api_Node, value: string)`
+
+### `CharacterData_length`
+
+```
+u32 CharacterData_length(Node node)
+```
+
+characterData.length (UTF-16 code units)
+
+Host: `CharacterData_length :: proc(c: ^Call, node: Api_Node) -> u32`
+
+### `CharacterData_substringData`
+
+```
+string CharacterData_substringData(Node node, u32 offset, u32 count) raises
+```
+
+substringData(offset, count): Index_Size past the end.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `CharacterData_substringData :: proc(c: ^Call, node: Api_Node, offset: u32, count: u32) -> (string, Api_Error)`
+
+### `CharacterData_appendData`
+
+```
+void CharacterData_appendData(Node node, string data)
+```
+
+appendData(data)
+
+Host: `CharacterData_appendData :: proc(c: ^Call, node: Api_Node, data: string)`
+
+### `CharacterData_insertData`
+
+```
+void CharacterData_insertData(Node node, u32 offset, string data) raises
+```
+
+insertData(offset, data): Index_Size past the end.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `CharacterData_insertData :: proc(c: ^Call, node: Api_Node, offset: u32, data: string) -> Api_Error`
+
+### `CharacterData_deleteData`
+
+```
+void CharacterData_deleteData(Node node, u32 offset, u32 count) raises
+```
+
+deleteData(offset, count): Index_Size past the end.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `CharacterData_deleteData :: proc(c: ^Call, node: Api_Node, offset: u32, count: u32) -> Api_Error`
+
+### `CharacterData_replaceData`
+
+```
+void CharacterData_replaceData(Node node, u32 offset, u32 count, string data) raises
+```
+
+replaceData(offset, count, data): Index_Size past the end.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `CharacterData_replaceData :: proc(c: ^Call, node: Api_Node, offset: u32, count: u32, data: string) -> Api_Error`
+
+### `Text_splitText`
+
+```
+Node Text_splitText(Node node, u32 offset) raises
+```
+
+text.splitText(offset): the new Text node (inserted after it when it has a parent). Index_Size past the end.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Text_splitText :: proc(c: ^Call, node: Api_Node, offset: u32) -> (u64, Api_Error)`
+
+### `Text_wholeText`
+
+```
+string Text_wholeText(Node node)
+```
+
+text.wholeText
+
+Host: `Text_wholeText :: proc(c: ^Call, node: Api_Node) -> string`
+
+### `DocumentType_name`
+
+```
+string DocumentType_name(Node node)
+```
+
+doctype.name
+
+Host: `DocumentType_name :: proc(c: ^Call, node: Api_Node) -> string`
+
+### `DocumentType_publicId`
+
+```
+string DocumentType_publicId(Node node)
+```
+
+doctype.publicId
+
+Host: `DocumentType_publicId :: proc(c: ^Call, node: Api_Node) -> string`
+
+### `DocumentType_systemId`
+
+```
+string DocumentType_systemId(Node node)
+```
+
+doctype.systemId
+
+Host: `DocumentType_systemId :: proc(c: ^Call, node: Api_Node) -> string`
+
+### `Document_createElementChecked`
+
+```
+Element Document_createElementChecked(string local_name) raises
+```
+
+document.createElement(localName): Invalid_Character for a name that is not a valid element name.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_createElementChecked :: proc(c: ^Call, local_name: string) -> (u64, Api_Error)`
+
+### `Document_createElementNSChecked`
+
+```
+Element Document_createElementNSChecked(optional string namespace, string qualified_name) raises
+```
+
+document.createElementNS(namespace, qualifiedName): Invalid_Character, Namespace as DOM "validate and extract".
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_createElementNSChecked :: proc(c: ^Call, namespace: Maybe(string), qualified_name: string) -> (u64, Api_Error)`
+
+### `Document_createDocumentFragment`
+
+```
+Node Document_createDocumentFragment() raises
+```
+
+document.createDocumentFragment()
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_createDocumentFragment :: proc(c: ^Call) -> (u64, Api_Error)`
+
+### `Document_createComment`
+
+```
+Node Document_createComment(string data) raises
+```
+
+document.createComment(data)
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_createComment :: proc(c: ^Call, data: string) -> (u64, Api_Error)`
+
+### `Document_createCDATASection`
+
+```
+Node Document_createCDATASection(string data) raises
+```
+
+document.createCDATASection(data): Not_Supported (an HTML document).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_createCDATASection :: proc(c: ^Call, data: string) -> (u64, Api_Error)`
+
+### `Document_adoptNode`
+
+```
+Node Document_adoptNode(Node node) raises
+```
+
+document.adoptNode(node): removed from its parent (one document per page). Not_Supported for the document.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_adoptNode :: proc(c: ^Call, node: Api_Node) -> (u64, Api_Error)`
+
+### `Document_documentURI`
+
+```
+string Document_documentURI()
+```
+
+document.documentURI
+
+Host: `Document_documentURI :: proc(c: ^Call) -> string`
+
+### `Document_compatMode`
+
+```
+string Document_compatMode()
+```
+
+document.compatMode: "CSS1Compat" or "BackCompat".
+
+Host: `Document_compatMode :: proc(c: ^Call) -> string`
+
+### `Document_characterSet`
+
+```
+string Document_characterSet()
+```
+
+document.characterSet
+
+Host: `Document_characterSet :: proc(c: ^Call) -> string`
+
+### `Document_charset`
+
+```
+string Document_charset()
+```
+
+document.charset
+
+Host: `Document_charset :: proc(c: ^Call) -> string`
+
+### `Document_inputEncoding`
+
+```
+string Document_inputEncoding()
+```
+
+document.inputEncoding
+
+Host: `Document_inputEncoding :: proc(c: ^Call) -> string`
+
+### `Document_contentType`
+
+```
+string Document_contentType()
+```
+
+document.contentType
+
+Host: `Document_contentType :: proc(c: ^Call) -> string`
+
+### `Document_doctype`
+
+```
+Node Document_doctype()
+```
+
+document.doctype
+
+Host: `Document_doctype :: proc(c: ^Call) -> u64`
+
+### `Document_title`
+
+```
+string Document_title()
+```
+
+document.title: the <title> text, whitespace collapsed (the <svg> root's title in an SVG document).
+
+Host: `Document_title :: proc(c: ^Call) -> string`
+
+### `Document_set_title`
+
+```
+void Document_set_title(string value)
+```
+
+document.title = value: the first <title> (made in <head> when missing).
+
+Host: `Document_set_title :: proc(c: ^Call, value: string)`
+
+### `Document_dir`
+
+```
+string Document_dir()
+```
+
+document.dir
+
+Host: `Document_dir :: proc(c: ^Call) -> string`
+
+### `Document_set_dir`
+
+```
+void Document_set_dir(string value)
+```
+
+document.dir = value
+
+Host: `Document_set_dir :: proc(c: ^Call, value: string)`
+
+### `Document_hasFocus`
+
+```
+bool Document_hasFocus()
+```
+
+document.hasFocus()
+
+Host: `Document_hasFocus :: proc(c: ^Call) -> bool`
+
+### `Document_referrer`
+
+```
+string Document_referrer()
+```
+
+document.referrer
+
+Host: `Document_referrer :: proc(c: ^Call) -> string`
+
+### `Document_lastModified`
+
+```
+string Document_lastModified()
+```
+
+document.lastModified ("MM/DD/YYYY hh:mm:ss")
+
+Host: `Document_lastModified :: proc(c: ^Call) -> string`
+
+### `Document_domain`
+
+```
+string Document_domain()
+```
+
+document.domain (getter)
+
+Host: `Document_domain :: proc(c: ^Call) -> string`
+
+### `Document_scrollingElement`
+
+```
+Element Document_scrollingElement()
+```
+
+document.scrollingElement
+
+Host: `Document_scrollingElement :: proc(c: ^Call) -> u64`
+
+### `Document_set_body`
+
+```
+void Document_set_body(optional Element body) raises
+```
+
+document.body = element: Hierarchy when not a <body> or <frameset>, or without a document element.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_set_body :: proc(c: ^Call, body: Api_Element) -> Api_Error`
 

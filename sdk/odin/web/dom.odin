@@ -12,6 +12,24 @@ Node :: distinct EventTarget
 // A node that is an element.
 Element :: distinct Node
 
+// A rectangle (DOMRect).
+DomRect :: struct {
+	x: f64,
+	y: f64,
+	width: f64,
+	height: f64,
+}
+
+// The document's selection.
+SelectionState :: struct {
+	anchor: u64,
+	anchor_offset: u32,
+	focus: u64,
+	focus_offset: u32,
+	// 0 none, 1 caret (collapsed), 2 range
+	kind: u32,
+}
+
 foreign import _m_dom "dom"
 
 @(private = "file", default_calling_convention = "contextless")
@@ -46,6 +64,228 @@ foreign _m_dom {
 	@(link_name = "Element_set_id") _Element_set_id :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "Element_className") _Element_className :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Element_set_className") _Element_set_className :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "Collection_create") _Collection_create :: proc(root: u64, kind: i32, arg: [^]u8, arg_len: u32, _ret: ^Object) -> Error ---
+	@(link_name = "Collection_length") _Collection_length :: proc(collection: u64) -> u32 ---
+	@(link_name = "Collection_item") _Collection_item :: proc(collection: u64, index: u32) -> u64 ---
+	@(link_name = "Collection_namedItem") _Collection_namedItem :: proc(collection: u64, name: [^]u8, name_len: u32) -> u64 ---
+	@(link_name = "Collection_names") _Collection_names :: proc(collection: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "ParentNode_querySelectorAllPacked") _ParentNode_querySelectorAllPacked :: proc(node: u64, selectors: [^]u8, selectors_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "ParentNode_querySelector") _ParentNode_querySelector :: proc(node: u64, selectors: [^]u8, selectors_len: u32, _ret: ^Element) -> Error ---
+	@(link_name = "TokenList_length") _TokenList_length :: proc(element: u64, attr: [^]u8, attr_len: u32) -> u32 ---
+	@(link_name = "TokenList_item") _TokenList_item :: proc(element: u64, attr: [^]u8, attr_len: u32, index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "TokenList_contains") _TokenList_contains :: proc(element: u64, attr: [^]u8, attr_len: u32, token: [^]u8, token_len: u32) -> i32 ---
+	@(link_name = "TokenList_add") _TokenList_add :: proc(element: u64, attr: [^]u8, attr_len: u32, tokens: [^]u8, tokens_len: u32) -> Error ---
+	@(link_name = "TokenList_remove") _TokenList_remove :: proc(element: u64, attr: [^]u8, attr_len: u32, tokens: [^]u8, tokens_len: u32) -> Error ---
+	@(link_name = "TokenList_toggle") _TokenList_toggle :: proc(element: u64, attr: [^]u8, attr_len: u32, token: [^]u8, token_len: u32, force: i32, _ret: ^bool) -> Error ---
+	@(link_name = "TokenList_replace") _TokenList_replace :: proc(element: u64, attr: [^]u8, attr_len: u32, token: [^]u8, token_len: u32, new_token: [^]u8, new_token_len: u32, _ret: ^bool) -> Error ---
+	@(link_name = "TokenList_supports") _TokenList_supports :: proc(element: u64, attr: [^]u8, attr_len: u32, token: [^]u8, token_len: u32, _ret: ^bool) -> Error ---
+	@(link_name = "Dataset_get") _Dataset_get :: proc(element: u64, name: [^]u8, name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Dataset_set") _Dataset_set :: proc(element: u64, name: [^]u8, name_len: u32, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "Dataset_delete") _Dataset_delete :: proc(element: u64, name: [^]u8, name_len: u32) -> i32 ---
+	@(link_name = "Dataset_names") _Dataset_names :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_namespaceURI") _Element_namespaceURI :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_prefix") _Element_prefix :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_localName") _Element_localName :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_qualifiedTagName") _Element_qualifiedTagName :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_slot") _Element_slot :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_set_slot") _Element_set_slot :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "Element_hasAttributes") _Element_hasAttributes :: proc(element: u64) -> i32 ---
+	@(link_name = "Element_attributeNames") _Element_attributeNames :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_attributeCount") _Element_attributeCount :: proc(element: u64) -> u32 ---
+	@(link_name = "Element_attributeNameAt") _Element_attributeNameAt :: proc(element: u64, index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_getAttributeNS") _Element_getAttributeNS :: proc(element: u64, namespace: [^]u8, namespace_len: u32, local_name: [^]u8, local_name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_setAttributeChecked") _Element_setAttributeChecked :: proc(element: u64, name: [^]u8, name_len: u32, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "Element_setAttributeNS") _Element_setAttributeNS :: proc(element: u64, namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "Element_removeAttributeNS") _Element_removeAttributeNS :: proc(element: u64, namespace: [^]u8, namespace_len: u32, local_name: [^]u8, local_name_len: u32) ---
+	@(link_name = "Element_toggleAttributeChecked") _Element_toggleAttributeChecked :: proc(element: u64, name: [^]u8, name_len: u32, force: i32, _ret: ^bool) -> Error ---
+	@(link_name = "Element_hasAttribute") _Element_hasAttribute :: proc(element: u64, name: [^]u8, name_len: u32) -> i32 ---
+	@(link_name = "Element_hasAttributeNS") _Element_hasAttributeNS :: proc(element: u64, namespace: [^]u8, namespace_len: u32, local_name: [^]u8, local_name_len: u32) -> i32 ---
+	@(link_name = "Element_closest") _Element_closest :: proc(element: u64, selectors: [^]u8, selectors_len: u32, _ret: ^Element) -> Error ---
+	@(link_name = "Element_matches") _Element_matches :: proc(element: u64, selectors: [^]u8, selectors_len: u32, _ret: ^bool) -> Error ---
+	@(link_name = "Element_webkitMatchesSelector") _Element_webkitMatchesSelector :: proc(element: u64, selectors: [^]u8, selectors_len: u32, _ret: ^bool) -> Error ---
+	@(link_name = "Element_insertAdjacentElement") _Element_insertAdjacentElement :: proc(element: u64, position: [^]u8, position_len: u32, other: u64, _ret: ^Element) -> Error ---
+	@(link_name = "Element_insertAdjacentText") _Element_insertAdjacentText :: proc(element: u64, position: [^]u8, position_len: u32, data: [^]u8, data_len: u32) -> Error ---
+	@(link_name = "Element_insertAdjacentHTML") _Element_insertAdjacentHTML :: proc(element: u64, position: [^]u8, position_len: u32, text: [^]u8, text_len: u32) -> Error ---
+	@(link_name = "Element_innerHTML") _Element_innerHTML :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_set_innerHTML") _Element_set_innerHTML :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "Element_outerHTML") _Element_outerHTML :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_set_outerHTML") _Element_set_outerHTML :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "Element_shadowRoot") _Element_shadowRoot :: proc(element: u64) -> Node ---
+	@(link_name = "HTMLElement_hiddenState") _HTMLElement_hiddenState :: proc(element: u64) -> i32 ---
+	@(link_name = "HTMLElement_dir") _HTMLElement_dir :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLElement_set_dir") _HTMLElement_set_dir :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HTMLElement_translate") _HTMLElement_translate :: proc(element: u64) -> i32 ---
+	@(link_name = "HTMLElement_set_translate") _HTMLElement_set_translate :: proc(element: u64, value: i32) -> Error ---
+	@(link_name = "HTMLElement_draggable") _HTMLElement_draggable :: proc(element: u64) -> i32 ---
+	@(link_name = "HTMLElement_set_draggable") _HTMLElement_set_draggable :: proc(element: u64, value: i32) -> Error ---
+	@(link_name = "HTMLElement_spellcheck") _HTMLElement_spellcheck :: proc(element: u64) -> i32 ---
+	@(link_name = "HTMLElement_set_spellcheck") _HTMLElement_set_spellcheck :: proc(element: u64, value: i32) -> Error ---
+	@(link_name = "HTMLElement_innerText") _HTMLElement_innerText :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLElement_set_innerText") _HTMLElement_set_innerText :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HTMLElement_outerText") _HTMLElement_outerText :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLElement_set_outerText") _HTMLElement_set_outerText :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HTMLElement_accessKeyLabel") _HTMLElement_accessKeyLabel :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLOrSVGOrMathMLElement_tabIndex") _HTMLOrSVGOrMathMLElement_tabIndex :: proc(element: u64) -> i32 ---
+	@(link_name = "HTMLOrSVGOrMathMLElement_set_tabIndex") _HTMLOrSVGOrMathMLElement_set_tabIndex :: proc(element: u64, value: i32) -> Error ---
+	@(link_name = "HTMLOrSVGOrMathMLElement_nonce") _HTMLOrSVGOrMathMLElement_nonce :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLOrSVGOrMathMLElement_set_nonce") _HTMLOrSVGOrMathMLElement_set_nonce :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "ElementContentEditable_contentEditable") _ElementContentEditable_contentEditable :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "ElementContentEditable_set_contentEditable") _ElementContentEditable_set_contentEditable :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "ElementContentEditable_isContentEditable") _ElementContentEditable_isContentEditable :: proc(element: u64) -> i32 ---
+	@(link_name = "HTMLHyperlinkElementUtils_href") _HTMLHyperlinkElementUtils_href :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLHyperlinkElementUtils_set_href") _HTMLHyperlinkElementUtils_set_href :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HyperlinkElementUtils_origin") _HyperlinkElementUtils_origin :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HyperlinkElementUtils_protocol") _HyperlinkElementUtils_protocol :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HyperlinkElementUtils_set_protocol") _HyperlinkElementUtils_set_protocol :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HyperlinkElementUtils_username") _HyperlinkElementUtils_username :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HyperlinkElementUtils_set_username") _HyperlinkElementUtils_set_username :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HyperlinkElementUtils_password") _HyperlinkElementUtils_password :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HyperlinkElementUtils_set_password") _HyperlinkElementUtils_set_password :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HyperlinkElementUtils_host") _HyperlinkElementUtils_host :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HyperlinkElementUtils_set_host") _HyperlinkElementUtils_set_host :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HyperlinkElementUtils_hostname") _HyperlinkElementUtils_hostname :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HyperlinkElementUtils_set_hostname") _HyperlinkElementUtils_set_hostname :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HyperlinkElementUtils_port") _HyperlinkElementUtils_port :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HyperlinkElementUtils_set_port") _HyperlinkElementUtils_set_port :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HyperlinkElementUtils_pathname") _HyperlinkElementUtils_pathname :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HyperlinkElementUtils_set_pathname") _HyperlinkElementUtils_set_pathname :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HyperlinkElementUtils_search") _HyperlinkElementUtils_search :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HyperlinkElementUtils_set_search") _HyperlinkElementUtils_set_search :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HyperlinkElementUtils_hash") _HyperlinkElementUtils_hash :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HyperlinkElementUtils_set_hash") _HyperlinkElementUtils_set_hash :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HTMLAnchorElement_text") _HTMLAnchorElement_text :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLAnchorElement_set_text") _HTMLAnchorElement_set_text :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "HTMLTemplateElement_content") _HTMLTemplateElement_content :: proc(element: u64) -> Node ---
+	@(link_name = "Element_boundingRect") _Element_boundingRect :: proc(element: u64, _ret: ^DomRect) ---
+	@(link_name = "Element_clientRectsPacked") _Element_clientRectsPacked :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_clientTop") _Element_clientTop :: proc(element: u64) -> i32 ---
+	@(link_name = "Element_clientLeft") _Element_clientLeft :: proc(element: u64) -> i32 ---
+	@(link_name = "Element_clientWidth") _Element_clientWidth :: proc(element: u64) -> i32 ---
+	@(link_name = "Element_clientHeight") _Element_clientHeight :: proc(element: u64) -> i32 ---
+	@(link_name = "Element_scrollTop") _Element_scrollTop :: proc(element: u64) -> f64 ---
+	@(link_name = "Element_set_scrollTop") _Element_set_scrollTop :: proc(element: u64, value: f64) ---
+	@(link_name = "Element_scrollLeft") _Element_scrollLeft :: proc(element: u64) -> f64 ---
+	@(link_name = "Element_set_scrollLeft") _Element_set_scrollLeft :: proc(element: u64, value: f64) ---
+	@(link_name = "Element_scrollWidth") _Element_scrollWidth :: proc(element: u64) -> i32 ---
+	@(link_name = "Element_scrollHeight") _Element_scrollHeight :: proc(element: u64) -> i32 ---
+	@(link_name = "Element_scrollToXY") _Element_scrollToXY :: proc(element: u64, x: f64, y: f64, relative: i32) ---
+	@(link_name = "Element_scrollIntoViewAt") _Element_scrollIntoViewAt :: proc(element: u64, block: i32, inline_pos: i32) ---
+	@(link_name = "HTMLElement_offsetParent") _HTMLElement_offsetParent :: proc(element: u64) -> Element ---
+	@(link_name = "HTMLElement_offsetTop") _HTMLElement_offsetTop :: proc(element: u64) -> i32 ---
+	@(link_name = "HTMLElement_offsetLeft") _HTMLElement_offsetLeft :: proc(element: u64) -> i32 ---
+	@(link_name = "HTMLElement_offsetWidth") _HTMLElement_offsetWidth :: proc(element: u64) -> i32 ---
+	@(link_name = "HTMLElement_offsetHeight") _HTMLElement_offsetHeight :: proc(element: u64) -> i32 ---
+	@(link_name = "Document_elementFromPoint") _Document_elementFromPoint :: proc(x: f64, y: f64) -> Element ---
+	@(link_name = "Window_innerWidth") _Window_innerWidth :: proc() -> i32 ---
+	@(link_name = "Window_innerHeight") _Window_innerHeight :: proc() -> i32 ---
+	@(link_name = "Window_outerWidth") _Window_outerWidth :: proc() -> i32 ---
+	@(link_name = "Window_outerHeight") _Window_outerHeight :: proc() -> i32 ---
+	@(link_name = "Window_scrollX") _Window_scrollX :: proc() -> f64 ---
+	@(link_name = "Window_scrollY") _Window_scrollY :: proc() -> f64 ---
+	@(link_name = "Window_pageXOffset") _Window_pageXOffset :: proc() -> f64 ---
+	@(link_name = "Window_pageYOffset") _Window_pageYOffset :: proc() -> f64 ---
+	@(link_name = "Window_devicePixelRatio") _Window_devicePixelRatio :: proc() -> f64 ---
+	@(link_name = "Window_screenX") _Window_screenX :: proc() -> i32 ---
+	@(link_name = "Window_screenY") _Window_screenY :: proc() -> i32 ---
+	@(link_name = "Window_screenLeft") _Window_screenLeft :: proc() -> i32 ---
+	@(link_name = "Window_screenTop") _Window_screenTop :: proc() -> i32 ---
+	@(link_name = "Window_scrollToXY") _Window_scrollToXY :: proc(x: f64, y: f64, relative: i32, smooth: i32) ---
+	@(link_name = "Range_boundingRect") _Range_boundingRect :: proc(start: u64, start_offset: u32, end: u64, end_offset: u32, _ret: ^DomRect) ---
+	@(link_name = "Range_clientRectsPacked") _Range_clientRectsPacked :: proc(start: u64, start_offset: u32, end: u64, end_offset: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "MutationObserver_create") _MutationObserver_create :: proc(notify: MicrotaskCallback, user: i32) -> Object ---
+	@(link_name = "MutationObserver_observe") _MutationObserver_observe :: proc(observer: u64, target: u64, options: u32, filter: [^]u8, filter_len: u32) -> Error ---
+	@(link_name = "MutationObserver_disconnect") _MutationObserver_disconnect :: proc(observer: u64) ---
+	@(link_name = "MutationObserver_takeRecords") _MutationObserver_takeRecords :: proc(observer: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "MutationObserver_release") _MutationObserver_release :: proc(observer: u64) ---
+	@(link_name = "MutationObserver_live") _MutationObserver_live :: proc(observer: u64) -> i32 ---
+	@(link_name = "Range_comparePoints") _Range_comparePoints :: proc(first: u64, first_offset: u32, second: u64, second_offset: u32) -> i32 ---
+	@(link_name = "Range_text") _Range_text :: proc(start: u64, start_offset: u32, end: u64, end_offset: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Range_contents") _Range_contents :: proc(start: u64, start_offset: u32, end: u64, end_offset: u32, mode: i32, _ret: ^Node) -> Error ---
+	@(link_name = "Selection_state") _Selection_state :: proc(_ret: ^SelectionState) ---
+	@(link_name = "Selection_setRange") _Selection_setRange :: proc(anchor: u64, anchor_offset: u32, focus: u64, focus_offset: u32) -> Error ---
+	@(link_name = "Selection_clear") _Selection_clear :: proc() ---
+	@(link_name = "Selection_text") _Selection_text :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "InlineStyle_getProperty") _InlineStyle_getProperty :: proc(element: u64, name: [^]u8, name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "InlineStyle_priority") _InlineStyle_priority :: proc(element: u64, name: [^]u8, name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "InlineStyle_setProperty") _InlineStyle_setProperty :: proc(element: u64, name: [^]u8, name_len: u32, value: [^]u8, value_len: u32, priority: [^]u8, priority_len: u32) -> Error ---
+	@(link_name = "InlineStyle_removeProperty") _InlineStyle_removeProperty :: proc(element: u64, name: [^]u8, name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "InlineStyle_cssText") _InlineStyle_cssText :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "InlineStyle_setCssText") _InlineStyle_setCssText :: proc(element: u64, text: [^]u8, text_len: u32) -> Error ---
+	@(link_name = "InlineStyle_length") _InlineStyle_length :: proc(element: u64) -> u32 ---
+	@(link_name = "InlineStyle_item") _InlineStyle_item :: proc(element: u64, index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "ComputedStyle_get") _ComputedStyle_get :: proc(element: u64, pseudo: [^]u8, pseudo_len: u32, name: [^]u8, name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "ComputedStyle_count") _ComputedStyle_count :: proc() -> u32 ---
+	@(link_name = "ComputedStyle_name") _ComputedStyle_name :: proc(index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Node_nodeName") _Node_nodeName :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Node_baseURI") _Node_baseURI :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Node_isConnected") _Node_isConnected :: proc(node: u64) -> i32 ---
+	@(link_name = "Node_ownerDocument") _Node_ownerDocument :: proc(node: u64) -> Node ---
+	@(link_name = "Node_parentElement") _Node_parentElement :: proc(node: u64) -> Element ---
+	@(link_name = "Node_hasChildNodes") _Node_hasChildNodes :: proc(node: u64) -> i32 ---
+	@(link_name = "Node_nodeValue") _Node_nodeValue :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Node_set_nodeValue") _Node_set_nodeValue :: proc(node: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "Node_textContent") _Node_textContent :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Node_set_textContent") _Node_set_textContent :: proc(node: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "Node_normalize") _Node_normalize :: proc(node: u64) ---
+	@(link_name = "Node_cloneNode") _Node_cloneNode :: proc(node: u64, deep: i32, _ret: ^Node) -> Error ---
+	@(link_name = "Node_isEqualNode") _Node_isEqualNode :: proc(node: u64, other: u64) -> i32 ---
+	@(link_name = "Node_isSameNode") _Node_isSameNode :: proc(node: u64, other: u64) -> i32 ---
+	@(link_name = "Node_compareDocumentPosition") _Node_compareDocumentPosition :: proc(node: u64, other: u64) -> u32 ---
+	@(link_name = "Node_contains") _Node_contains :: proc(node: u64, other: u64) -> i32 ---
+	@(link_name = "Node_lookupPrefix") _Node_lookupPrefix :: proc(node: u64, namespace: [^]u8, namespace_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Node_lookupNamespaceURI") _Node_lookupNamespaceURI :: proc(node: u64, prefix: [^]u8, prefix_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Node_isDefaultNamespace") _Node_isDefaultNamespace :: proc(node: u64, namespace: [^]u8, namespace_len: u32) -> i32 ---
+	@(link_name = "Node_rootNode") _Node_rootNode :: proc(node: u64) -> Node ---
+	@(link_name = "Node_length") _Node_length :: proc(node: u64) -> u32 ---
+	@(link_name = "Node_preInsert") _Node_preInsert :: proc(parent: u64, node: u64, child: u64) -> Error ---
+	@(link_name = "Node_replaceChildChecked") _Node_replaceChildChecked :: proc(parent: u64, node: u64, child: u64) -> Error ---
+	@(link_name = "Node_preRemove") _Node_preRemove :: proc(parent: u64, child: u64) -> Error ---
+	@(link_name = "Node_insertItems") _Node_insertItems :: proc(node: u64, mode: i32, items: [^]u8, items_len: u32) -> Error ---
+	@(link_name = "Node_pinAll") _Node_pinAll :: proc(nodes: [^]u64, nodes_len: u32) ---
+	@(link_name = "Node_unpinAll") _Node_unpinAll :: proc(nodes: [^]u64, nodes_len: u32) ---
+	@(link_name = "ParentNode_firstElementChild") _ParentNode_firstElementChild :: proc(node: u64) -> Element ---
+	@(link_name = "ParentNode_lastElementChild") _ParentNode_lastElementChild :: proc(node: u64) -> Element ---
+	@(link_name = "ParentNode_childElementCount") _ParentNode_childElementCount :: proc(node: u64) -> u32 ---
+	@(link_name = "ChildNode_remove") _ChildNode_remove :: proc(node: u64) ---
+	@(link_name = "NonDocumentTypeChildNode_previousElementSibling") _NonDocumentTypeChildNode_previousElementSibling :: proc(node: u64) -> Element ---
+	@(link_name = "NonDocumentTypeChildNode_nextElementSibling") _NonDocumentTypeChildNode_nextElementSibling :: proc(node: u64) -> Element ---
+	@(link_name = "NonElementParentNode_getElementById") _NonElementParentNode_getElementById :: proc(node: u64, id: [^]u8, id_len: u32) -> Element ---
+	@(link_name = "CharacterData_data") _CharacterData_data :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "CharacterData_set_data") _CharacterData_set_data :: proc(node: u64, value: [^]u8, value_len: u32) ---
+	@(link_name = "CharacterData_length") _CharacterData_length :: proc(node: u64) -> u32 ---
+	@(link_name = "CharacterData_substringData") _CharacterData_substringData :: proc(node: u64, offset: u32, count: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "CharacterData_appendData") _CharacterData_appendData :: proc(node: u64, data: [^]u8, data_len: u32) ---
+	@(link_name = "CharacterData_insertData") _CharacterData_insertData :: proc(node: u64, offset: u32, data: [^]u8, data_len: u32) -> Error ---
+	@(link_name = "CharacterData_deleteData") _CharacterData_deleteData :: proc(node: u64, offset: u32, count: u32) -> Error ---
+	@(link_name = "CharacterData_replaceData") _CharacterData_replaceData :: proc(node: u64, offset: u32, count: u32, data: [^]u8, data_len: u32) -> Error ---
+	@(link_name = "Text_splitText") _Text_splitText :: proc(node: u64, offset: u32, _ret: ^Node) -> Error ---
+	@(link_name = "Text_wholeText") _Text_wholeText :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "DocumentType_name") _DocumentType_name :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "DocumentType_publicId") _DocumentType_publicId :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "DocumentType_systemId") _DocumentType_systemId :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_createElementChecked") _Document_createElementChecked :: proc(local_name: [^]u8, local_name_len: u32, _ret: ^Element) -> Error ---
+	@(link_name = "Document_createElementNSChecked") _Document_createElementNSChecked :: proc(namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32, _ret: ^Element) -> Error ---
+	@(link_name = "Document_createDocumentFragment") _Document_createDocumentFragment :: proc(_ret: ^Node) -> Error ---
+	@(link_name = "Document_createComment") _Document_createComment :: proc(data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
+	@(link_name = "Document_createCDATASection") _Document_createCDATASection :: proc(data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
+	@(link_name = "Document_adoptNode") _Document_adoptNode :: proc(node: u64, _ret: ^Node) -> Error ---
+	@(link_name = "Document_documentURI") _Document_documentURI :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_compatMode") _Document_compatMode :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_characterSet") _Document_characterSet :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_charset") _Document_charset :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_inputEncoding") _Document_inputEncoding :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_contentType") _Document_contentType :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_doctype") _Document_doctype :: proc() -> Node ---
+	@(link_name = "Document_title") _Document_title :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_set_title") _Document_set_title :: proc(value: [^]u8, value_len: u32) ---
+	@(link_name = "Document_dir") _Document_dir :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_set_dir") _Document_set_dir :: proc(value: [^]u8, value_len: u32) ---
+	@(link_name = "Document_hasFocus") _Document_hasFocus :: proc() -> i32 ---
+	@(link_name = "Document_referrer") _Document_referrer :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_lastModified") _Document_lastModified :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_domain") _Document_domain :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_scrollingElement") _Document_scrollingElement :: proc() -> Element ---
+	@(link_name = "Document_set_body") _Document_set_body :: proc(body: u64) -> Error ---
 }
 
 // document.documentElement (null in a worker).
@@ -367,5 +607,2770 @@ Element_className_alloc :: proc(element: $T_element, allocator: runtime.Allocato
 // element.className = value
 Element_set_className :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
 	return _Element_set_className(u64(element), raw_data(value), u32(len(value)))
+}
+
+// A live collection. Kinds: 0 child nodes, 1 child elements, 2 elements by qualified name (arg; "*" all), 3 by
+// class names (arg), 4 by name attribute (arg), 5 forms, 6 images, 7 links (a and area with href), 8 scripts,
+// 9 embeds, 10 anchors (a with name), 11 elements by namespace and local name (arg: namespace, NUL, local name;
+// "*" any), 12 all elements, 13 the select's / datalist's options, 14 a table's rows, 15 a row's cells, 16 a table's
+// tBodies, 17 a form's elements. Invalid_Argument for an unknown kind.
+Collection_create :: proc "contextless" (root: $T_root, kind: i32, arg: string) -> (result: Object, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	err = _Collection_create(u64(root), kind, raw_data(arg), u32(len(arg)), &result)
+	return
+}
+
+// The number of nodes (0 for a dead collection).
+Collection_length :: proc "contextless" (collection: u64) -> u32 {
+	return _Collection_length(collection)
+}
+
+// The node at `index`, 0 past the end.
+Collection_item :: proc "contextless" (collection: u64, index: u32) -> u64 {
+	return _Collection_item(collection, index)
+}
+
+// HTMLCollection.namedItem(name): the first element whose id or name (for the elements that have one) is `name`.
+Collection_namedItem :: proc "contextless" (collection: u64, name: string) -> u64 {
+	return _Collection_namedItem(collection, raw_data(name), u32(len(name)))
+}
+
+// The supported property names of an HTMLCollection, each followed by a NUL byte.
+Collection_names :: proc "contextless" (collection: u64, buf: []u8) -> (string, Error) {
+	n := _Collection_names(collection, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Collection_names's result.
+Collection_names_len :: proc "contextless" (collection: u64) -> (int, Error) {
+	n := _Collection_names(collection, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Collection_names's result in a buffer allocated to fit.
+Collection_names_alloc :: proc(collection: u64, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Collection_names(collection, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// node.querySelectorAll(selectors): the elements in tree order, 8 bytes (a handle, little endian) each. Syntax for
+// an invalid selector list.
+ParentNode_querySelectorAllPacked :: proc "contextless" (node: $T_node, selectors: string, buf: []u8) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _ParentNode_querySelectorAllPacked(u64(node), raw_data(selectors), u32(len(selectors)), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return []u8(buf), .Truncated }
+	return []u8(buf[:n]), .None
+}
+
+// The full length of ParentNode_querySelectorAllPacked's result.
+ParentNode_querySelectorAllPacked_len :: proc "contextless" (node: $T_node, selectors: string) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _ParentNode_querySelectorAllPacked(u64(node), raw_data(selectors), u32(len(selectors)), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// ParentNode_querySelectorAllPacked's result in a buffer allocated to fit.
+ParentNode_querySelectorAllPacked_alloc :: proc(node: $T_node, selectors: string, allocator: runtime.Allocator) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _ParentNode_querySelectorAllPacked(u64(node), raw_data(selectors), u32(len(selectors)), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return []u8(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// node.querySelector(selectors)
+ParentNode_querySelector :: proc "contextless" (node: $T_node, selectors: string) -> (result: Element, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	err = _ParentNode_querySelector(u64(node), raw_data(selectors), u32(len(selectors)), &result)
+	return
+}
+
+// DOMTokenList over the content attribute `attr` of an element: its tokens (ordered set, ASCII whitespace split).
+TokenList_length :: proc "contextless" (element: $T_element, attr: string) -> u32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _TokenList_length(u64(element), raw_data(attr), u32(len(attr)))
+}
+
+// The token at `index` (Not_Found: null).
+TokenList_item :: proc "contextless" (element: $T_element, attr: string, index: u32, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _TokenList_item(u64(element), raw_data(attr), u32(len(attr)), index, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of TokenList_item's result.
+TokenList_item_len :: proc "contextless" (element: $T_element, attr: string, index: u32) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _TokenList_item(u64(element), raw_data(attr), u32(len(attr)), index, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// TokenList_item's result in a buffer allocated to fit.
+TokenList_item_alloc :: proc(element: $T_element, attr: string, index: u32, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _TokenList_item(u64(element), raw_data(attr), u32(len(attr)), index, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+TokenList_contains :: proc "contextless" (element: $T_element, attr: string, token: string) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _TokenList_contains(u64(element), raw_data(attr), u32(len(attr)), raw_data(token), u32(len(token))) != 0
+}
+
+// add(tokens...): `tokens` NUL-separated. Syntax for an empty token, Invalid_Character for one with whitespace.
+TokenList_add :: proc "contextless" (element: $T_element, attr: string, tokens: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _TokenList_add(u64(element), raw_data(attr), u32(len(attr)), raw_data(tokens), u32(len(tokens)))
+}
+
+// remove(tokens...): as add.
+TokenList_remove :: proc "contextless" (element: $T_element, attr: string, tokens: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _TokenList_remove(u64(element), raw_data(attr), u32(len(attr)), raw_data(tokens), u32(len(tokens)))
+}
+
+// toggle(token, force): force -1 absent, 0 false, 1 true. Returns whether the token is there afterwards.
+TokenList_toggle :: proc "contextless" (element: $T_element, attr: string, token: string, force: i32) -> (result: bool, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	err = _TokenList_toggle(u64(element), raw_data(attr), u32(len(attr)), raw_data(token), u32(len(token)), force, &result)
+	return
+}
+
+// replace(token, newToken): whether it was there.
+TokenList_replace :: proc "contextless" (element: $T_element, attr: string, token: string, new_token: string) -> (result: bool, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	err = _TokenList_replace(u64(element), raw_data(attr), u32(len(attr)), raw_data(token), u32(len(token)), raw_data(new_token), u32(len(new_token)), &result)
+	return
+}
+
+// supports(token): for rel lists, whether the browser knows the link type. Type for lists without supported tokens.
+TokenList_supports :: proc "contextless" (element: $T_element, attr: string, token: string) -> (result: bool, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	err = _TokenList_supports(u64(element), raw_data(attr), u32(len(attr)), raw_data(token), u32(len(token)), &result)
+	return
+}
+
+// dataset[name]: the data-* attribute of a camel-cased name (Not_Found: absent).
+Dataset_get :: proc "contextless" (element: $T_element, name: string, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Dataset_get(u64(element), raw_data(name), u32(len(name)), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Dataset_get's result.
+Dataset_get_len :: proc "contextless" (element: $T_element, name: string) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Dataset_get(u64(element), raw_data(name), u32(len(name)), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Dataset_get's result in a buffer allocated to fit.
+Dataset_get_alloc :: proc(element: $T_element, name: string, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Dataset_get(u64(element), raw_data(name), u32(len(name)), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// dataset[name] = value: Syntax for a name with "-" followed by a lower-case letter, Invalid_Character for a name
+// that does not make a valid attribute name.
+Dataset_set :: proc "contextless" (element: $T_element, name: string, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Dataset_set(u64(element), raw_data(name), u32(len(name)), raw_data(value), u32(len(value)))
+}
+
+// delete dataset[name]: whether there was one.
+Dataset_delete :: proc "contextless" (element: $T_element, name: string) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Dataset_delete(u64(element), raw_data(name), u32(len(name))) != 0
+}
+
+// The camel-cased names of the data-* attributes, each followed by a NUL byte.
+Dataset_names :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Dataset_names(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Dataset_names's result.
+Dataset_names_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Dataset_names(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Dataset_names's result in a buffer allocated to fit.
+Dataset_names_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Dataset_names(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.namespaceURI (Not_Found: null).
+Element_namespaceURI :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_namespaceURI(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_namespaceURI's result.
+Element_namespaceURI_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_namespaceURI(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_namespaceURI's result in a buffer allocated to fit.
+Element_namespaceURI_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_namespaceURI(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.prefix (Not_Found: null).
+Element_prefix :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_prefix(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_prefix's result.
+Element_prefix_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_prefix(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_prefix's result in a buffer allocated to fit.
+Element_prefix_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_prefix(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.localName (SVG names with their case).
+Element_localName :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_localName(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_localName's result.
+Element_localName_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_localName(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_localName's result in a buffer allocated to fit.
+Element_localName_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_localName(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.tagName: the qualified name, upper case for HTML elements.
+Element_qualifiedTagName :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_qualifiedTagName(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_qualifiedTagName's result.
+Element_qualifiedTagName_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_qualifiedTagName(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_qualifiedTagName's result in a buffer allocated to fit.
+Element_qualifiedTagName_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_qualifiedTagName(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.slot
+Element_slot :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_slot(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_slot's result.
+Element_slot_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_slot(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_slot's result in a buffer allocated to fit.
+Element_slot_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_slot(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.slot = value
+Element_set_slot :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_set_slot(u64(element), raw_data(value), u32(len(value)))
+}
+
+// element.hasAttributes()
+Element_hasAttributes :: proc "contextless" (element: $T_element) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_hasAttributes(u64(element)) != 0
+}
+
+// The attributes' names in order, each followed by a NUL byte.
+Element_attributeNames :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_attributeNames(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_attributeNames's result.
+Element_attributeNames_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_attributeNames(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_attributeNames's result in a buffer allocated to fit.
+Element_attributeNames_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_attributeNames(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The number of attributes.
+Element_attributeCount :: proc "contextless" (element: $T_element) -> u32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_attributeCount(u64(element))
+}
+
+// The name of the attribute at `index` (Not_Found past the end).
+Element_attributeNameAt :: proc "contextless" (element: $T_element, index: u32, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_attributeNameAt(u64(element), index, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_attributeNameAt's result.
+Element_attributeNameAt_len :: proc "contextless" (element: $T_element, index: u32) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_attributeNameAt(u64(element), index, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_attributeNameAt's result in a buffer allocated to fit.
+Element_attributeNameAt_alloc :: proc(element: $T_element, index: u32, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_attributeNameAt(u64(element), index, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.getAttributeNS(namespace, localName) (Not_Found: null).
+Element_getAttributeNS :: proc "contextless" (element: $T_element, namespace: Maybe(string) = nil, local_name: string, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	n := _Element_getAttributeNS(u64(element), _namespace_p, _namespace_n, raw_data(local_name), u32(len(local_name)), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_getAttributeNS's result.
+Element_getAttributeNS_len :: proc "contextless" (element: $T_element, namespace: Maybe(string) = nil, local_name: string) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	n := _Element_getAttributeNS(u64(element), _namespace_p, _namespace_n, raw_data(local_name), u32(len(local_name)), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_getAttributeNS's result in a buffer allocated to fit.
+Element_getAttributeNS_alloc :: proc(element: $T_element, namespace: Maybe(string) = nil, local_name: string, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_getAttributeNS(u64(element), _namespace_p, _namespace_n, raw_data(local_name), u32(len(local_name)), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.setAttribute(name, value): Invalid_Character for a name that is not a valid attribute name.
+Element_setAttributeChecked :: proc "contextless" (element: $T_element, name: string, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_setAttributeChecked(u64(element), raw_data(name), u32(len(name)), raw_data(value), u32(len(value)))
+}
+
+// element.setAttributeNS(namespace, qualifiedName, value): Invalid_Character, Namespace.
+Element_setAttributeNS :: proc "contextless" (element: $T_element, namespace: Maybe(string) = nil, qualified_name: string, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	return _Element_setAttributeNS(u64(element), _namespace_p, _namespace_n, raw_data(qualified_name), u32(len(qualified_name)), raw_data(value), u32(len(value)))
+}
+
+// element.removeAttributeNS(namespace, localName)
+Element_removeAttributeNS :: proc "contextless" (element: $T_element, namespace: Maybe(string) = nil, local_name: string) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	_Element_removeAttributeNS(u64(element), _namespace_p, _namespace_n, raw_data(local_name), u32(len(local_name)))
+}
+
+// element.toggleAttribute(name, force): force -1 absent, 0 false, 1 true. Invalid_Character.
+Element_toggleAttributeChecked :: proc "contextless" (element: $T_element, name: string, force: i32) -> (result: bool, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	err = _Element_toggleAttributeChecked(u64(element), raw_data(name), u32(len(name)), force, &result)
+	return
+}
+
+// element.hasAttribute(name)
+Element_hasAttribute :: proc "contextless" (element: $T_element, name: string) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_hasAttribute(u64(element), raw_data(name), u32(len(name))) != 0
+}
+
+// element.hasAttributeNS(namespace, localName)
+Element_hasAttributeNS :: proc "contextless" (element: $T_element, namespace: Maybe(string) = nil, local_name: string) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	return _Element_hasAttributeNS(u64(element), _namespace_p, _namespace_n, raw_data(local_name), u32(len(local_name))) != 0
+}
+
+// element.closest(selectors): Syntax for an invalid selector list.
+Element_closest :: proc "contextless" (element: $T_element, selectors: string) -> (result: Element, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	err = _Element_closest(u64(element), raw_data(selectors), u32(len(selectors)), &result)
+	return
+}
+
+// element.matches(selectors): Syntax for an invalid selector list.
+Element_matches :: proc "contextless" (element: $T_element, selectors: string) -> (result: bool, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	err = _Element_matches(u64(element), raw_data(selectors), u32(len(selectors)), &result)
+	return
+}
+
+// element.webkitMatchesSelector(selectors)
+Element_webkitMatchesSelector :: proc "contextless" (element: $T_element, selectors: string) -> (result: bool, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	err = _Element_webkitMatchesSelector(u64(element), raw_data(selectors), u32(len(selectors)), &result)
+	return
+}
+
+// element.insertAdjacentElement(where, element): Syntax for a bad position, the tree errors of insertBefore.
+Element_insertAdjacentElement :: proc "contextless" (element: $T_element, position: string, other: $T_other) -> (result: Element, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_other)) && size_of(T_other) == 8 {
+	err = _Element_insertAdjacentElement(u64(element), raw_data(position), u32(len(position)), u64(other), &result)
+	return
+}
+
+// element.insertAdjacentText(where, data)
+Element_insertAdjacentText :: proc "contextless" (element: $T_element, position: string, data: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_insertAdjacentText(u64(element), raw_data(position), u32(len(position)), raw_data(data), u32(len(data)))
+}
+
+// element.insertAdjacentHTML(position, text): No_Modification_Allowed beside the document element.
+Element_insertAdjacentHTML :: proc "contextless" (element: $T_element, position: string, text: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_insertAdjacentHTML(u64(element), raw_data(position), u32(len(position)), raw_data(text), u32(len(text)))
+}
+
+// element.innerHTML: the HTML fragment serialization of its children (a template's: its contents').
+Element_innerHTML :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_innerHTML(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_innerHTML's result.
+Element_innerHTML_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_innerHTML(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_innerHTML's result in a buffer allocated to fit.
+Element_innerHTML_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_innerHTML(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.innerHTML = markup: parsed as a fragment in the element's context, one mutation replacing the children.
+Element_set_innerHTML :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_set_innerHTML(u64(element), raw_data(value), u32(len(value)))
+}
+
+// element.outerHTML
+Element_outerHTML :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_outerHTML(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_outerHTML's result.
+Element_outerHTML_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_outerHTML(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_outerHTML's result in a buffer allocated to fit.
+Element_outerHTML_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_outerHTML(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.outerHTML = markup: No_Modification_Allowed when the parent is the document.
+Element_set_outerHTML :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_set_outerHTML(u64(element), raw_data(value), u32(len(value)))
+}
+
+// element.shadowRoot: null (no shadow trees).
+Element_shadowRoot :: proc "contextless" (element: $T_element) -> Node where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_shadowRoot(u64(element))
+}
+
+// The `hidden` content attribute as HTMLElement.hidden reads it: 0 absent, 1 present, 2 "until-found".
+HTMLElement_hiddenState :: proc "contextless" (element: $T_element) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_hiddenState(u64(element))
+}
+
+// htmlElement.dir: "ltr", "rtl", "auto" or "".
+HTMLElement_dir :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLElement_dir(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HTMLElement_dir's result.
+HTMLElement_dir_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLElement_dir(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLElement_dir's result in a buffer allocated to fit.
+HTMLElement_dir_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLElement_dir(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// htmlElement.dir = value
+HTMLElement_set_dir :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_set_dir(u64(element), raw_data(value), u32(len(value)))
+}
+
+// htmlElement.translate
+HTMLElement_translate :: proc "contextless" (element: $T_element) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_translate(u64(element)) != 0
+}
+
+// htmlElement.translate = value
+HTMLElement_set_translate :: proc "contextless" (element: $T_element, value: bool) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_set_translate(u64(element), i32(1 if value else 0))
+}
+
+// htmlElement.draggable
+HTMLElement_draggable :: proc "contextless" (element: $T_element) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_draggable(u64(element)) != 0
+}
+
+// htmlElement.draggable = value
+HTMLElement_set_draggable :: proc "contextless" (element: $T_element, value: bool) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_set_draggable(u64(element), i32(1 if value else 0))
+}
+
+// htmlElement.spellcheck
+HTMLElement_spellcheck :: proc "contextless" (element: $T_element) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_spellcheck(u64(element)) != 0
+}
+
+// htmlElement.spellcheck = value
+HTMLElement_set_spellcheck :: proc "contextless" (element: $T_element, value: bool) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_set_spellcheck(u64(element), i32(1 if value else 0))
+}
+
+// htmlElement.innerText: the rendered text (from the layout's text when the element is rendered, else
+// textContent).
+HTMLElement_innerText :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLElement_innerText(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HTMLElement_innerText's result.
+HTMLElement_innerText_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLElement_innerText(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLElement_innerText's result in a buffer allocated to fit.
+HTMLElement_innerText_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLElement_innerText(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// htmlElement.innerText = value: text nodes and <br> for line feeds.
+HTMLElement_set_innerText :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_set_innerText(u64(element), raw_data(value), u32(len(value)))
+}
+
+// htmlElement.outerText
+HTMLElement_outerText :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLElement_outerText(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HTMLElement_outerText's result.
+HTMLElement_outerText_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLElement_outerText(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLElement_outerText's result in a buffer allocated to fit.
+HTMLElement_outerText_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLElement_outerText(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// htmlElement.outerText = value: No_Modification_Allowed without a parent.
+HTMLElement_set_outerText :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_set_outerText(u64(element), raw_data(value), u32(len(value)))
+}
+
+// htmlElement.accessKeyLabel ("": no access keys)
+HTMLElement_accessKeyLabel :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLElement_accessKeyLabel(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HTMLElement_accessKeyLabel's result.
+HTMLElement_accessKeyLabel_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLElement_accessKeyLabel(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLElement_accessKeyLabel's result in a buffer allocated to fit.
+HTMLElement_accessKeyLabel_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLElement_accessKeyLabel(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.tabIndex: the attribute, else 0 for focusable elements and -1 for the others.
+HTMLOrSVGOrMathMLElement_tabIndex :: proc "contextless" (element: $T_element) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLOrSVGOrMathMLElement_tabIndex(u64(element))
+}
+
+// element.tabIndex = value
+HTMLOrSVGOrMathMLElement_set_tabIndex :: proc "contextless" (element: $T_element, value: i32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLOrSVGOrMathMLElement_set_tabIndex(u64(element), value)
+}
+
+// element.nonce
+HTMLOrSVGOrMathMLElement_nonce :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLOrSVGOrMathMLElement_nonce(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HTMLOrSVGOrMathMLElement_nonce's result.
+HTMLOrSVGOrMathMLElement_nonce_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLOrSVGOrMathMLElement_nonce(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLOrSVGOrMathMLElement_nonce's result in a buffer allocated to fit.
+HTMLOrSVGOrMathMLElement_nonce_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLOrSVGOrMathMLElement_nonce(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.nonce = value
+HTMLOrSVGOrMathMLElement_set_nonce :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLOrSVGOrMathMLElement_set_nonce(u64(element), raw_data(value), u32(len(value)))
+}
+
+// element.contentEditable: "true", "false", "plaintext-only" or "inherit".
+ElementContentEditable_contentEditable :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _ElementContentEditable_contentEditable(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of ElementContentEditable_contentEditable's result.
+ElementContentEditable_contentEditable_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _ElementContentEditable_contentEditable(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// ElementContentEditable_contentEditable's result in a buffer allocated to fit.
+ElementContentEditable_contentEditable_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _ElementContentEditable_contentEditable(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.contentEditable = value: Syntax for anything else.
+ElementContentEditable_set_contentEditable :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _ElementContentEditable_set_contentEditable(u64(element), raw_data(value), u32(len(value)))
+}
+
+// element.isContentEditable
+ElementContentEditable_isContentEditable :: proc "contextless" (element: $T_element) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _ElementContentEditable_isContentEditable(u64(element)) != 0
+}
+
+// a.href / area.href: the URL resolved, or the attribute as is when it does not parse.
+HTMLHyperlinkElementUtils_href :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLHyperlinkElementUtils_href(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HTMLHyperlinkElementUtils_href's result.
+HTMLHyperlinkElementUtils_href_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLHyperlinkElementUtils_href(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLHyperlinkElementUtils_href's result in a buffer allocated to fit.
+HTMLHyperlinkElementUtils_href_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLHyperlinkElementUtils_href(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// a.href = value
+HTMLHyperlinkElementUtils_set_href :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLHyperlinkElementUtils_set_href(u64(element), raw_data(value), u32(len(value)))
+}
+
+// a.origin
+HyperlinkElementUtils_origin :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_origin(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HyperlinkElementUtils_origin's result.
+HyperlinkElementUtils_origin_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_origin(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HyperlinkElementUtils_origin's result in a buffer allocated to fit.
+HyperlinkElementUtils_origin_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HyperlinkElementUtils_origin(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// a.protocol and the other components (URL Standard setters; nothing for a URL that does not parse)
+HyperlinkElementUtils_protocol :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_protocol(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HyperlinkElementUtils_protocol's result.
+HyperlinkElementUtils_protocol_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_protocol(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HyperlinkElementUtils_protocol's result in a buffer allocated to fit.
+HyperlinkElementUtils_protocol_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HyperlinkElementUtils_protocol(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+HyperlinkElementUtils_set_protocol :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HyperlinkElementUtils_set_protocol(u64(element), raw_data(value), u32(len(value)))
+}
+
+HyperlinkElementUtils_username :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_username(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HyperlinkElementUtils_username's result.
+HyperlinkElementUtils_username_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_username(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HyperlinkElementUtils_username's result in a buffer allocated to fit.
+HyperlinkElementUtils_username_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HyperlinkElementUtils_username(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+HyperlinkElementUtils_set_username :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HyperlinkElementUtils_set_username(u64(element), raw_data(value), u32(len(value)))
+}
+
+HyperlinkElementUtils_password :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_password(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HyperlinkElementUtils_password's result.
+HyperlinkElementUtils_password_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_password(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HyperlinkElementUtils_password's result in a buffer allocated to fit.
+HyperlinkElementUtils_password_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HyperlinkElementUtils_password(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+HyperlinkElementUtils_set_password :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HyperlinkElementUtils_set_password(u64(element), raw_data(value), u32(len(value)))
+}
+
+HyperlinkElementUtils_host :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_host(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HyperlinkElementUtils_host's result.
+HyperlinkElementUtils_host_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_host(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HyperlinkElementUtils_host's result in a buffer allocated to fit.
+HyperlinkElementUtils_host_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HyperlinkElementUtils_host(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+HyperlinkElementUtils_set_host :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HyperlinkElementUtils_set_host(u64(element), raw_data(value), u32(len(value)))
+}
+
+HyperlinkElementUtils_hostname :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_hostname(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HyperlinkElementUtils_hostname's result.
+HyperlinkElementUtils_hostname_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_hostname(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HyperlinkElementUtils_hostname's result in a buffer allocated to fit.
+HyperlinkElementUtils_hostname_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HyperlinkElementUtils_hostname(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+HyperlinkElementUtils_set_hostname :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HyperlinkElementUtils_set_hostname(u64(element), raw_data(value), u32(len(value)))
+}
+
+HyperlinkElementUtils_port :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_port(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HyperlinkElementUtils_port's result.
+HyperlinkElementUtils_port_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_port(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HyperlinkElementUtils_port's result in a buffer allocated to fit.
+HyperlinkElementUtils_port_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HyperlinkElementUtils_port(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+HyperlinkElementUtils_set_port :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HyperlinkElementUtils_set_port(u64(element), raw_data(value), u32(len(value)))
+}
+
+HyperlinkElementUtils_pathname :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_pathname(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HyperlinkElementUtils_pathname's result.
+HyperlinkElementUtils_pathname_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_pathname(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HyperlinkElementUtils_pathname's result in a buffer allocated to fit.
+HyperlinkElementUtils_pathname_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HyperlinkElementUtils_pathname(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+HyperlinkElementUtils_set_pathname :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HyperlinkElementUtils_set_pathname(u64(element), raw_data(value), u32(len(value)))
+}
+
+HyperlinkElementUtils_search :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_search(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HyperlinkElementUtils_search's result.
+HyperlinkElementUtils_search_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_search(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HyperlinkElementUtils_search's result in a buffer allocated to fit.
+HyperlinkElementUtils_search_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HyperlinkElementUtils_search(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+HyperlinkElementUtils_set_search :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HyperlinkElementUtils_set_search(u64(element), raw_data(value), u32(len(value)))
+}
+
+HyperlinkElementUtils_hash :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_hash(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HyperlinkElementUtils_hash's result.
+HyperlinkElementUtils_hash_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HyperlinkElementUtils_hash(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HyperlinkElementUtils_hash's result in a buffer allocated to fit.
+HyperlinkElementUtils_hash_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HyperlinkElementUtils_hash(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+HyperlinkElementUtils_set_hash :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HyperlinkElementUtils_set_hash(u64(element), raw_data(value), u32(len(value)))
+}
+
+// a.text: its textContent.
+HTMLAnchorElement_text :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLAnchorElement_text(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HTMLAnchorElement_text's result.
+HTMLAnchorElement_text_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLAnchorElement_text(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLAnchorElement_text's result in a buffer allocated to fit.
+HTMLAnchorElement_text_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLAnchorElement_text(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// a.text = value
+HTMLAnchorElement_set_text :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLAnchorElement_set_text(u64(element), raw_data(value), u32(len(value)))
+}
+
+// template.content
+HTMLTemplateElement_content :: proc "contextless" (element: $T_element) -> Node where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLTemplateElement_content(u64(element))
+}
+
+// element.getBoundingClientRect(): the border box as drawn (transforms applied), in viewport coordinates.
+Element_boundingRect :: proc "contextless" (element: $T_element) -> (result: DomRect) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_Element_boundingRect(u64(element), &result)
+	return
+}
+
+// element.getClientRects(): per box fragment, 32 bytes each (x, y, width, height as f64).
+Element_clientRectsPacked :: proc "contextless" (element: $T_element, buf: []u8) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_clientRectsPacked(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return []u8(buf), .Truncated }
+	return []u8(buf[:n]), .None
+}
+
+// The full length of Element_clientRectsPacked's result.
+Element_clientRectsPacked_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_clientRectsPacked(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_clientRectsPacked's result in a buffer allocated to fit.
+Element_clientRectsPacked_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_clientRectsPacked(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return []u8(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.clientTop, clientLeft, clientWidth, clientHeight (the viewport's size for the root element).
+Element_clientTop :: proc "contextless" (element: $T_element) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_clientTop(u64(element))
+}
+
+Element_clientLeft :: proc "contextless" (element: $T_element) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_clientLeft(u64(element))
+}
+
+Element_clientWidth :: proc "contextless" (element: $T_element) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_clientWidth(u64(element))
+}
+
+Element_clientHeight :: proc "contextless" (element: $T_element) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_clientHeight(u64(element))
+}
+
+// element.scrollTop / scrollLeft (the document's scroll offsets for the scrolling element).
+Element_scrollTop :: proc "contextless" (element: $T_element) -> f64 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_scrollTop(u64(element))
+}
+
+Element_set_scrollTop :: proc "contextless" (element: $T_element, value: f64) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_Element_set_scrollTop(u64(element), value)
+}
+
+Element_scrollLeft :: proc "contextless" (element: $T_element) -> f64 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_scrollLeft(u64(element))
+}
+
+Element_set_scrollLeft :: proc "contextless" (element: $T_element, value: f64) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_Element_set_scrollLeft(u64(element), value)
+}
+
+// element.scrollWidth / scrollHeight
+Element_scrollWidth :: proc "contextless" (element: $T_element) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_scrollWidth(u64(element))
+}
+
+Element_scrollHeight :: proc "contextless" (element: $T_element) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_scrollHeight(u64(element))
+}
+
+// element.scrollTo(x, y) / scrollBy (relative): NaN keeps that axis.
+Element_scrollToXY :: proc "contextless" (element: $T_element, x: f64, y: f64, relative: bool) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_Element_scrollToXY(u64(element), x, y, i32(1 if relative else 0))
+}
+
+// element.scrollIntoView(options): block and inline 0 start, 1 center, 2 end, 3 nearest.
+Element_scrollIntoViewAt :: proc "contextless" (element: $T_element, block: i32, inline_pos: i32) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_Element_scrollIntoViewAt(u64(element), block, inline_pos)
+}
+
+// htmlElement.offsetParent, offsetTop, offsetLeft, offsetWidth, offsetHeight
+HTMLElement_offsetParent :: proc "contextless" (element: $T_element) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_offsetParent(u64(element))
+}
+
+HTMLElement_offsetTop :: proc "contextless" (element: $T_element) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_offsetTop(u64(element))
+}
+
+HTMLElement_offsetLeft :: proc "contextless" (element: $T_element) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_offsetLeft(u64(element))
+}
+
+HTMLElement_offsetWidth :: proc "contextless" (element: $T_element) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_offsetWidth(u64(element))
+}
+
+HTMLElement_offsetHeight :: proc "contextless" (element: $T_element) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLElement_offsetHeight(u64(element))
+}
+
+// document.elementFromPoint(x, y) (viewport coordinates)
+Document_elementFromPoint :: proc "contextless" (x: f64, y: f64) -> Element {
+	return _Document_elementFromPoint(x, y)
+}
+
+// window.innerWidth / innerHeight
+Window_innerWidth :: proc "contextless" () -> i32 {
+	return _Window_innerWidth()
+}
+
+Window_innerHeight :: proc "contextless" () -> i32 {
+	return _Window_innerHeight()
+}
+
+// window.outerWidth / outerHeight (the viewport's: the shell's window is not the page's business)
+Window_outerWidth :: proc "contextless" () -> i32 {
+	return _Window_outerWidth()
+}
+
+Window_outerHeight :: proc "contextless" () -> i32 {
+	return _Window_outerHeight()
+}
+
+// window.scrollX / scrollY and their aliases
+Window_scrollX :: proc "contextless" () -> f64 {
+	return _Window_scrollX()
+}
+
+Window_scrollY :: proc "contextless" () -> f64 {
+	return _Window_scrollY()
+}
+
+Window_pageXOffset :: proc "contextless" () -> f64 {
+	return _Window_pageXOffset()
+}
+
+Window_pageYOffset :: proc "contextless" () -> f64 {
+	return _Window_pageYOffset()
+}
+
+// window.devicePixelRatio
+Window_devicePixelRatio :: proc "contextless" () -> f64 {
+	return _Window_devicePixelRatio()
+}
+
+// window.screenX / screenY / screenLeft / screenTop (0: the page does not learn where the window is)
+Window_screenX :: proc "contextless" () -> i32 {
+	return _Window_screenX()
+}
+
+Window_screenY :: proc "contextless" () -> i32 {
+	return _Window_screenY()
+}
+
+Window_screenLeft :: proc "contextless" () -> i32 {
+	return _Window_screenLeft()
+}
+
+Window_screenTop :: proc "contextless" () -> i32 {
+	return _Window_screenTop()
+}
+
+// window.scrollTo(x, y) / scrollBy (relative): NaN keeps that axis; `smooth` asks for a smooth scroll.
+Window_scrollToXY :: proc "contextless" (x: f64, y: f64, relative: bool, smooth: bool) {
+	_Window_scrollToXY(x, y, i32(1 if relative else 0), i32(1 if smooth else 0))
+}
+
+// The bounding box of a range's contents (Range.getBoundingClientRect), as Element_boundingRect.
+Range_boundingRect :: proc "contextless" (start: $T_start, start_offset: u32, end: $T_end, end_offset: u32) -> (result: DomRect) where intrinsics.type_is_integer(intrinsics.type_core_type(T_start)) && size_of(T_start) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_end)) && size_of(T_end) == 8 {
+	_Range_boundingRect(u64(start), start_offset, u64(end), end_offset, &result)
+	return
+}
+
+// Range.getClientRects(), packed as Element_clientRectsPacked.
+Range_clientRectsPacked :: proc "contextless" (start: $T_start, start_offset: u32, end: $T_end, end_offset: u32, buf: []u8) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_start)) && size_of(T_start) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_end)) && size_of(T_end) == 8 {
+	n := _Range_clientRectsPacked(u64(start), start_offset, u64(end), end_offset, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return []u8(buf), .Truncated }
+	return []u8(buf[:n]), .None
+}
+
+// The full length of Range_clientRectsPacked's result.
+Range_clientRectsPacked_len :: proc "contextless" (start: $T_start, start_offset: u32, end: $T_end, end_offset: u32) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_start)) && size_of(T_start) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_end)) && size_of(T_end) == 8 {
+	n := _Range_clientRectsPacked(u64(start), start_offset, u64(end), end_offset, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Range_clientRectsPacked's result in a buffer allocated to fit.
+Range_clientRectsPacked_alloc :: proc(start: $T_start, start_offset: u32, end: $T_end, end_offset: u32, allocator: runtime.Allocator) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_start)) && size_of(T_start) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_end)) && size_of(T_end) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Range_clientRectsPacked(u64(start), start_offset, u64(end), end_offset, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return []u8(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// new MutationObserver: `notify(user)` runs as a microtask when records are queued.
+MutationObserver_create :: proc "contextless" (notify: MicrotaskCallback, user: i32) -> Object {
+	return _MutationObserver_create(notify, user)
+}
+
+// observer.observe(target, options): bits 1 childList, 2 attributes, 4 characterData, 8 subtree,
+// 16 attributeOldValue, 32 characterDataOldValue, 64 an attributeFilter (`filter`, names NUL-separated).
+// Type when no kind of mutation is asked for (as DOM says, after the implied ones).
+MutationObserver_observe :: proc "contextless" (observer: u64, target: $T_target, options: u32, filter: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_target)) && size_of(T_target) == 8 {
+	return _MutationObserver_observe(observer, u64(target), options, raw_data(filter), u32(len(filter)))
+}
+
+// observer.disconnect(): no more registrations, the queue emptied.
+MutationObserver_disconnect :: proc "contextless" (observer: u64) {
+	_MutationObserver_disconnect(observer)
+}
+
+// observer.takeRecords(): the records waiting, packed (src/page/js_dom_observe.odin, records_pack). Nothing
+// changes until MutationObserver_release, so a call that did not fit can be made again.
+MutationObserver_takeRecords :: proc "contextless" (observer: u64, buf: []u8) -> ([]u8, Error) {
+	n := _MutationObserver_takeRecords(observer, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return []u8(buf), .Truncated }
+	return []u8(buf[:n]), .None
+}
+
+// The full length of MutationObserver_takeRecords's result.
+MutationObserver_takeRecords_len :: proc "contextless" (observer: u64) -> (int, Error) {
+	n := _MutationObserver_takeRecords(observer, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// MutationObserver_takeRecords's result in a buffer allocated to fit.
+MutationObserver_takeRecords_alloc :: proc(observer: u64, allocator: runtime.Allocator) -> ([]u8, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _MutationObserver_takeRecords(observer, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return []u8(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The engine wrapped the nodes of the records it took: they leave the queue (and their pins go), the transient
+// registrations end (DOM "notify mutation observers").
+MutationObserver_release :: proc "contextless" (observer: u64) {
+	_MutationObserver_release(observer)
+}
+
+// Whether some node the observer is registered on is still alive (the engine lets an observer go otherwise).
+MutationObserver_live :: proc "contextless" (observer: u64) -> bool {
+	return _MutationObserver_live(observer) != 0
+}
+
+// A boundary point compared with another: -1 before, 0 equal, 1 after (DOM "position of a boundary point").
+Range_comparePoints :: proc "contextless" (first: $T_first, first_offset: u32, second: $T_second, second_offset: u32) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_first)) && size_of(T_first) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_second)) && size_of(T_second) == 8 {
+	return _Range_comparePoints(u64(first), first_offset, u64(second), second_offset)
+}
+
+// range.toString(): the text of the Text nodes in the range.
+Range_text :: proc "contextless" (start: $T_start, start_offset: u32, end: $T_end, end_offset: u32, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_start)) && size_of(T_start) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_end)) && size_of(T_end) == 8 {
+	n := _Range_text(u64(start), start_offset, u64(end), end_offset, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Range_text's result.
+Range_text_len :: proc "contextless" (start: $T_start, start_offset: u32, end: $T_end, end_offset: u32) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_start)) && size_of(T_start) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_end)) && size_of(T_end) == 8 {
+	n := _Range_text(u64(start), start_offset, u64(end), end_offset, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Range_text's result in a buffer allocated to fit.
+Range_text_alloc :: proc(start: $T_start, start_offset: u32, end: $T_end, end_offset: u32, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_start)) && size_of(T_start) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_end)) && size_of(T_end) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Range_text(u64(start), start_offset, u64(end), end_offset, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The contents of a range: mode 0 cloneContents (a new fragment), 1 extractContents (a fragment, the contents
+// removed), 2 deleteContents (returns 0). Hierarchy when a doctype is in the range.
+Range_contents :: proc "contextless" (start: $T_start, start_offset: u32, end: $T_end, end_offset: u32, mode: i32) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_start)) && size_of(T_start) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_end)) && size_of(T_end) == 8 {
+	err = _Range_contents(u64(start), start_offset, u64(end), end_offset, mode, &result)
+	return
+}
+
+// The selection (offsets in UTF-16 code units for Text nodes).
+Selection_state :: proc "contextless" () -> (result: SelectionState) {
+	_Selection_state(&result)
+	return
+}
+
+// setBaseAndExtent: Index_Size for an offset past a node's length, Invalid_Handle for a node outside the document.
+Selection_setRange :: proc "contextless" (anchor: $T_anchor, anchor_offset: u32, focus: $T_focus, focus_offset: u32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_anchor)) && size_of(T_anchor) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_focus)) && size_of(T_focus) == 8 {
+	return _Selection_setRange(u64(anchor), anchor_offset, u64(focus), focus_offset)
+}
+
+// removeAllRanges()
+Selection_clear :: proc "contextless" () {
+	_Selection_clear()
+}
+
+// selection.toString()
+Selection_text :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Selection_text(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Selection_text's result.
+Selection_text_len :: proc "contextless" () -> (int, Error) {
+	n := _Selection_text(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Selection_text's result in a buffer allocated to fit.
+Selection_text_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Selection_text(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// style.getPropertyValue(name): a longhand, a shorthand rebuilt from its longhands, or a custom property.
+InlineStyle_getProperty :: proc "contextless" (element: $T_element, name: string, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _InlineStyle_getProperty(u64(element), raw_data(name), u32(len(name)), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of InlineStyle_getProperty's result.
+InlineStyle_getProperty_len :: proc "contextless" (element: $T_element, name: string) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _InlineStyle_getProperty(u64(element), raw_data(name), u32(len(name)), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// InlineStyle_getProperty's result in a buffer allocated to fit.
+InlineStyle_getProperty_alloc :: proc(element: $T_element, name: string, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _InlineStyle_getProperty(u64(element), raw_data(name), u32(len(name)), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// style.getPropertyPriority(name): "important" or "".
+InlineStyle_priority :: proc "contextless" (element: $T_element, name: string, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _InlineStyle_priority(u64(element), raw_data(name), u32(len(name)), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of InlineStyle_priority's result.
+InlineStyle_priority_len :: proc "contextless" (element: $T_element, name: string) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _InlineStyle_priority(u64(element), raw_data(name), u32(len(name)), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// InlineStyle_priority's result in a buffer allocated to fit.
+InlineStyle_priority_alloc :: proc(element: $T_element, name: string, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _InlineStyle_priority(u64(element), raw_data(name), u32(len(name)), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// style.setProperty(name, value, priority): an empty value removes it; an unknown property or an invalid value
+// changes nothing (as CSSOM says).
+InlineStyle_setProperty :: proc "contextless" (element: $T_element, name: string, value: string, priority: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _InlineStyle_setProperty(u64(element), raw_data(name), u32(len(name)), raw_data(value), u32(len(value)), raw_data(priority), u32(len(priority)))
+}
+
+// style.removeProperty(name): the value it had.
+InlineStyle_removeProperty :: proc "contextless" (element: $T_element, name: string, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _InlineStyle_removeProperty(u64(element), raw_data(name), u32(len(name)), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// style.cssText
+InlineStyle_cssText :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _InlineStyle_cssText(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of InlineStyle_cssText's result.
+InlineStyle_cssText_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _InlineStyle_cssText(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// InlineStyle_cssText's result in a buffer allocated to fit.
+InlineStyle_cssText_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _InlineStyle_cssText(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// style.cssText = text
+InlineStyle_setCssText :: proc "contextless" (element: $T_element, text: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _InlineStyle_setCssText(u64(element), raw_data(text), u32(len(text)))
+}
+
+// style.length: the longhands declared (shorthands count as theirs).
+InlineStyle_length :: proc "contextless" (element: $T_element) -> u32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _InlineStyle_length(u64(element))
+}
+
+// style.item(index) ("" past the end).
+InlineStyle_item :: proc "contextless" (element: $T_element, index: u32, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _InlineStyle_item(u64(element), index, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of InlineStyle_item's result.
+InlineStyle_item_len :: proc "contextless" (element: $T_element, index: u32) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _InlineStyle_item(u64(element), index, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// InlineStyle_item's result in a buffer allocated to fit.
+InlineStyle_item_alloc :: proc(element: $T_element, index: u32, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _InlineStyle_item(u64(element), index, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// getComputedStyle(element, pseudo).getPropertyValue(name): "" for a property the browser does not compute.
+// `pseudo`: "", "::before", "::after" (":before" too).
+ComputedStyle_get :: proc "contextless" (element: $T_element, pseudo: string, name: string, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _ComputedStyle_get(u64(element), raw_data(pseudo), u32(len(pseudo)), raw_data(name), u32(len(name)), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of ComputedStyle_get's result.
+ComputedStyle_get_len :: proc "contextless" (element: $T_element, pseudo: string, name: string) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _ComputedStyle_get(u64(element), raw_data(pseudo), u32(len(pseudo)), raw_data(name), u32(len(name)), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// ComputedStyle_get's result in a buffer allocated to fit.
+ComputedStyle_get_alloc :: proc(element: $T_element, pseudo: string, name: string, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _ComputedStyle_get(u64(element), raw_data(pseudo), u32(len(pseudo)), raw_data(name), u32(len(name)), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The number of properties getComputedStyle lists.
+ComputedStyle_count :: proc "contextless" () -> u32 {
+	return _ComputedStyle_count()
+}
+
+// The name of the listed property at `index` ("" past the end).
+ComputedStyle_name :: proc "contextless" (index: u32, buf: []u8) -> (string, Error) {
+	n := _ComputedStyle_name(index, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of ComputedStyle_name's result.
+ComputedStyle_name_len :: proc "contextless" (index: u32) -> (int, Error) {
+	n := _ComputedStyle_name(index, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// ComputedStyle_name's result in a buffer allocated to fit.
+ComputedStyle_name_alloc :: proc(index: u32, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _ComputedStyle_name(index, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// node.nodeName ("#text", "DIV", "#document"...).
+Node_nodeName :: proc "contextless" (node: $T_node, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _Node_nodeName(u64(node), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Node_nodeName's result.
+Node_nodeName_len :: proc "contextless" (node: $T_node) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _Node_nodeName(u64(node), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Node_nodeName's result in a buffer allocated to fit.
+Node_nodeName_alloc :: proc(node: $T_node, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Node_nodeName(u64(node), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// node.baseURI: the document's base URL.
+Node_baseURI :: proc "contextless" (node: $T_node, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _Node_baseURI(u64(node), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Node_baseURI's result.
+Node_baseURI_len :: proc "contextless" (node: $T_node) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _Node_baseURI(u64(node), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Node_baseURI's result in a buffer allocated to fit.
+Node_baseURI_alloc :: proc(node: $T_node, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Node_baseURI(u64(node), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// node.isConnected
+Node_isConnected :: proc "contextless" (node: $T_node) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Node_isConnected(u64(node)) != 0
+}
+
+// node.ownerDocument (null for the document itself).
+Node_ownerDocument :: proc "contextless" (node: $T_node) -> Node where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Node_ownerDocument(u64(node))
+}
+
+// node.parentElement
+Node_parentElement :: proc "contextless" (node: $T_node) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Node_parentElement(u64(node))
+}
+
+// node.hasChildNodes()
+Node_hasChildNodes :: proc "contextless" (node: $T_node) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Node_hasChildNodes(u64(node)) != 0
+}
+
+// node.nodeValue: the data of a Text or Comment node, Not_Found (null) for the others.
+Node_nodeValue :: proc "contextless" (node: $T_node, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _Node_nodeValue(u64(node), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Node_nodeValue's result.
+Node_nodeValue_len :: proc "contextless" (node: $T_node) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _Node_nodeValue(u64(node), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Node_nodeValue's result in a buffer allocated to fit.
+Node_nodeValue_alloc :: proc(node: $T_node, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Node_nodeValue(u64(node), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// node.nodeValue = value (nothing for nodes without data).
+Node_set_nodeValue :: proc "contextless" (node: $T_node, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Node_set_nodeValue(u64(node), raw_data(value), u32(len(value)))
+}
+
+// node.textContent (Not_Found: null, for the document and a doctype).
+Node_textContent :: proc "contextless" (node: $T_node, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _Node_textContent(u64(node), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Node_textContent's result.
+Node_textContent_len :: proc "contextless" (node: $T_node) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _Node_textContent(u64(node), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Node_textContent's result in a buffer allocated to fit.
+Node_textContent_alloc :: proc(node: $T_node, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Node_textContent(u64(node), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// node.textContent = value: one mutation replacing every child by a Text node (none for "").
+Node_set_textContent :: proc "contextless" (node: $T_node, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Node_set_textContent(u64(node), raw_data(value), u32(len(value)))
+}
+
+// node.normalize()
+Node_normalize :: proc "contextless" (node: $T_node) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	_Node_normalize(u64(node))
+}
+
+// node.cloneNode(deep). Not_Supported for the document (one document per page).
+Node_cloneNode :: proc "contextless" (node: $T_node, deep: bool = false) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	err = _Node_cloneNode(u64(node), i32(1 if deep else 0), &result)
+	return
+}
+
+// node.isEqualNode(other)
+Node_isEqualNode :: proc "contextless" (node: $T_node, other: $T_other) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_other)) && size_of(T_other) == 8 {
+	return _Node_isEqualNode(u64(node), u64(other)) != 0
+}
+
+// node.isSameNode(other)
+Node_isSameNode :: proc "contextless" (node: $T_node, other: $T_other) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_other)) && size_of(T_other) == 8 {
+	return _Node_isSameNode(u64(node), u64(other)) != 0
+}
+
+// node.compareDocumentPosition(other): DOCUMENT_POSITION_* bits.
+Node_compareDocumentPosition :: proc "contextless" (node: $T_node, other: $T_other) -> u32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_other)) && size_of(T_other) == 8 {
+	return _Node_compareDocumentPosition(u64(node), u64(other))
+}
+
+// node.contains(other)
+Node_contains :: proc "contextless" (node: $T_node, other: $T_other) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_other)) && size_of(T_other) == 8 {
+	return _Node_contains(u64(node), u64(other)) != 0
+}
+
+// node.lookupPrefix(namespace) (Not_Found: null).
+Node_lookupPrefix :: proc "contextless" (node: $T_node, namespace: Maybe(string) = nil, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	n := _Node_lookupPrefix(u64(node), _namespace_p, _namespace_n, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Node_lookupPrefix's result.
+Node_lookupPrefix_len :: proc "contextless" (node: $T_node, namespace: Maybe(string) = nil) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	n := _Node_lookupPrefix(u64(node), _namespace_p, _namespace_n, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Node_lookupPrefix's result in a buffer allocated to fit.
+Node_lookupPrefix_alloc :: proc(node: $T_node, namespace: Maybe(string) = nil, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Node_lookupPrefix(u64(node), _namespace_p, _namespace_n, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// node.lookupNamespaceURI(prefix) (Not_Found: null).
+Node_lookupNamespaceURI :: proc "contextless" (node: $T_node, prefix: Maybe(string) = nil, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	_prefix_p: [^]u8
+	_prefix_n := max(u32)
+	if v, ok := prefix.?; ok { _prefix_p, _prefix_n = raw_data(v), u32(len(v)) }
+	n := _Node_lookupNamespaceURI(u64(node), _prefix_p, _prefix_n, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Node_lookupNamespaceURI's result.
+Node_lookupNamespaceURI_len :: proc "contextless" (node: $T_node, prefix: Maybe(string) = nil) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	_prefix_p: [^]u8
+	_prefix_n := max(u32)
+	if v, ok := prefix.?; ok { _prefix_p, _prefix_n = raw_data(v), u32(len(v)) }
+	n := _Node_lookupNamespaceURI(u64(node), _prefix_p, _prefix_n, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Node_lookupNamespaceURI's result in a buffer allocated to fit.
+Node_lookupNamespaceURI_alloc :: proc(node: $T_node, prefix: Maybe(string) = nil, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	_prefix_p: [^]u8
+	_prefix_n := max(u32)
+	if v, ok := prefix.?; ok { _prefix_p, _prefix_n = raw_data(v), u32(len(v)) }
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Node_lookupNamespaceURI(u64(node), _prefix_p, _prefix_n, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// node.isDefaultNamespace(namespace)
+Node_isDefaultNamespace :: proc "contextless" (node: $T_node, namespace: Maybe(string) = nil) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	return _Node_isDefaultNamespace(u64(node), _namespace_p, _namespace_n) != 0
+}
+
+// node.getRootNode() (no shadow trees: the root of its tree).
+Node_rootNode :: proc "contextless" (node: $T_node) -> Node where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Node_rootNode(u64(node))
+}
+
+// The length of a node (DOM "length"): UTF-16 code units of a Text or Comment node, else its number of children.
+Node_length :: proc "contextless" (node: $T_node) -> u32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Node_length(u64(node))
+}
+
+// parent.insertBefore(node, child) / appendChild (child absent): DOM "pre-insert", every check (Hierarchy,
+// Not_Found), a DocumentFragment's children inserted as one mutation.
+Node_preInsert :: proc "contextless" (parent: $T_parent, node: $T_node, child: $T_child) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_parent)) && size_of(T_parent) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_child)) && size_of(T_child) == 8 {
+	return _Node_preInsert(u64(parent), u64(node), u64(child))
+}
+
+// parent.replaceChild(node, child): DOM "replace a child".
+Node_replaceChildChecked :: proc "contextless" (parent: $T_parent, node: $T_node, child: $T_child) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_parent)) && size_of(T_parent) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_child)) && size_of(T_child) == 8 {
+	return _Node_replaceChildChecked(u64(parent), u64(node), u64(child))
+}
+
+// parent.removeChild(child): Not_Found when child is not a child of parent.
+Node_preRemove :: proc "contextless" (parent: $T_parent, child: $T_child) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_parent)) && size_of(T_parent) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_child)) && size_of(T_child) == 8 {
+	return _Node_preRemove(u64(parent), u64(child))
+}
+
+// prepend / append / replaceChildren (mode 0, 1, 2) of ParentNode, before / after / replaceWith (3, 4, 5) of
+// ChildNode, with their (Node or DOMString) arguments packed in `items`: per item one byte 0 then a node handle (8
+// bytes, little endian), or one byte 1 then a length (4 bytes) and UTF-8 text.
+Node_insertItems :: proc "contextless" (node: $T_node, mode: i32, items: []u8) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Node_insertItems(u64(node), mode, raw_data(items), u32(len(items)))
+}
+
+// The node handles of `nodes` stay alive while pinned (a static NodeList, a mutation record).
+Node_pinAll :: proc "contextless" (nodes: []u64) {
+	_Node_pinAll(raw_data(nodes), u32(len(nodes)))
+}
+
+// Drops the pins of Node_pinAll (dead handles are ignored).
+Node_unpinAll :: proc "contextless" (nodes: []u64) {
+	_Node_unpinAll(raw_data(nodes), u32(len(nodes)))
+}
+
+// node.firstElementChild
+ParentNode_firstElementChild :: proc "contextless" (node: $T_node) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _ParentNode_firstElementChild(u64(node))
+}
+
+// node.lastElementChild
+ParentNode_lastElementChild :: proc "contextless" (node: $T_node) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _ParentNode_lastElementChild(u64(node))
+}
+
+// node.childElementCount
+ParentNode_childElementCount :: proc "contextless" (node: $T_node) -> u32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _ParentNode_childElementCount(u64(node))
+}
+
+// node.remove()
+ChildNode_remove :: proc "contextless" (node: $T_node) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	_ChildNode_remove(u64(node))
+}
+
+// node.previousElementSibling
+NonDocumentTypeChildNode_previousElementSibling :: proc "contextless" (node: $T_node) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _NonDocumentTypeChildNode_previousElementSibling(u64(node))
+}
+
+// node.nextElementSibling
+NonDocumentTypeChildNode_nextElementSibling :: proc "contextless" (node: $T_node) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _NonDocumentTypeChildNode_nextElementSibling(u64(node))
+}
+
+// fragment.getElementById(id) (the document has its own)
+NonElementParentNode_getElementById :: proc "contextless" (node: $T_node, id: string) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _NonElementParentNode_getElementById(u64(node), raw_data(id), u32(len(id)))
+}
+
+// characterData.data
+CharacterData_data :: proc "contextless" (node: $T_node, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _CharacterData_data(u64(node), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of CharacterData_data's result.
+CharacterData_data_len :: proc "contextless" (node: $T_node) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _CharacterData_data(u64(node), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// CharacterData_data's result in a buffer allocated to fit.
+CharacterData_data_alloc :: proc(node: $T_node, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _CharacterData_data(u64(node), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// characterData.data = value
+CharacterData_set_data :: proc "contextless" (node: $T_node, value: string) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	_CharacterData_set_data(u64(node), raw_data(value), u32(len(value)))
+}
+
+// characterData.length (UTF-16 code units)
+CharacterData_length :: proc "contextless" (node: $T_node) -> u32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _CharacterData_length(u64(node))
+}
+
+// substringData(offset, count): Index_Size past the end.
+CharacterData_substringData :: proc "contextless" (node: $T_node, offset: u32, count: u32, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _CharacterData_substringData(u64(node), offset, count, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of CharacterData_substringData's result.
+CharacterData_substringData_len :: proc "contextless" (node: $T_node, offset: u32, count: u32) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _CharacterData_substringData(u64(node), offset, count, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// CharacterData_substringData's result in a buffer allocated to fit.
+CharacterData_substringData_alloc :: proc(node: $T_node, offset: u32, count: u32, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _CharacterData_substringData(u64(node), offset, count, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// appendData(data)
+CharacterData_appendData :: proc "contextless" (node: $T_node, data: string) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	_CharacterData_appendData(u64(node), raw_data(data), u32(len(data)))
+}
+
+// insertData(offset, data): Index_Size past the end.
+CharacterData_insertData :: proc "contextless" (node: $T_node, offset: u32, data: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _CharacterData_insertData(u64(node), offset, raw_data(data), u32(len(data)))
+}
+
+// deleteData(offset, count): Index_Size past the end.
+CharacterData_deleteData :: proc "contextless" (node: $T_node, offset: u32, count: u32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _CharacterData_deleteData(u64(node), offset, count)
+}
+
+// replaceData(offset, count, data): Index_Size past the end.
+CharacterData_replaceData :: proc "contextless" (node: $T_node, offset: u32, count: u32, data: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _CharacterData_replaceData(u64(node), offset, count, raw_data(data), u32(len(data)))
+}
+
+// text.splitText(offset): the new Text node (inserted after it when it has a parent). Index_Size past the end.
+Text_splitText :: proc "contextless" (node: $T_node, offset: u32) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	err = _Text_splitText(u64(node), offset, &result)
+	return
+}
+
+// text.wholeText
+Text_wholeText :: proc "contextless" (node: $T_node, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _Text_wholeText(u64(node), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Text_wholeText's result.
+Text_wholeText_len :: proc "contextless" (node: $T_node) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _Text_wholeText(u64(node), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Text_wholeText's result in a buffer allocated to fit.
+Text_wholeText_alloc :: proc(node: $T_node, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Text_wholeText(u64(node), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// doctype.name
+DocumentType_name :: proc "contextless" (node: $T_node, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _DocumentType_name(u64(node), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of DocumentType_name's result.
+DocumentType_name_len :: proc "contextless" (node: $T_node) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _DocumentType_name(u64(node), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// DocumentType_name's result in a buffer allocated to fit.
+DocumentType_name_alloc :: proc(node: $T_node, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _DocumentType_name(u64(node), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// doctype.publicId
+DocumentType_publicId :: proc "contextless" (node: $T_node, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _DocumentType_publicId(u64(node), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of DocumentType_publicId's result.
+DocumentType_publicId_len :: proc "contextless" (node: $T_node) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _DocumentType_publicId(u64(node), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// DocumentType_publicId's result in a buffer allocated to fit.
+DocumentType_publicId_alloc :: proc(node: $T_node, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _DocumentType_publicId(u64(node), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// doctype.systemId
+DocumentType_systemId :: proc "contextless" (node: $T_node, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _DocumentType_systemId(u64(node), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of DocumentType_systemId's result.
+DocumentType_systemId_len :: proc "contextless" (node: $T_node) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _DocumentType_systemId(u64(node), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// DocumentType_systemId's result in a buffer allocated to fit.
+DocumentType_systemId_alloc :: proc(node: $T_node, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _DocumentType_systemId(u64(node), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.createElement(localName): Invalid_Character for a name that is not a valid element name.
+Document_createElementChecked :: proc "contextless" (local_name: string) -> (result: Element, err: Error) {
+	err = _Document_createElementChecked(raw_data(local_name), u32(len(local_name)), &result)
+	return
+}
+
+// document.createElementNS(namespace, qualifiedName): Invalid_Character, Namespace as DOM "validate and extract".
+Document_createElementNSChecked :: proc "contextless" (namespace: Maybe(string) = nil, qualified_name: string) -> (result: Element, err: Error) {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	err = _Document_createElementNSChecked(_namespace_p, _namespace_n, raw_data(qualified_name), u32(len(qualified_name)), &result)
+	return
+}
+
+// document.createDocumentFragment()
+Document_createDocumentFragment :: proc "contextless" () -> (result: Node, err: Error) {
+	err = _Document_createDocumentFragment(&result)
+	return
+}
+
+// document.createComment(data)
+Document_createComment :: proc "contextless" (data: string) -> (result: Node, err: Error) {
+	err = _Document_createComment(raw_data(data), u32(len(data)), &result)
+	return
+}
+
+// document.createCDATASection(data): Not_Supported (an HTML document).
+Document_createCDATASection :: proc "contextless" (data: string) -> (result: Node, err: Error) {
+	err = _Document_createCDATASection(raw_data(data), u32(len(data)), &result)
+	return
+}
+
+// document.adoptNode(node): removed from its parent (one document per page). Not_Supported for the document.
+Document_adoptNode :: proc "contextless" (node: $T_node) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	err = _Document_adoptNode(u64(node), &result)
+	return
+}
+
+// document.documentURI
+Document_documentURI :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Document_documentURI(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_documentURI's result.
+Document_documentURI_len :: proc "contextless" () -> (int, Error) {
+	n := _Document_documentURI(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_documentURI's result in a buffer allocated to fit.
+Document_documentURI_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_documentURI(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.compatMode: "CSS1Compat" or "BackCompat".
+Document_compatMode :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Document_compatMode(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_compatMode's result.
+Document_compatMode_len :: proc "contextless" () -> (int, Error) {
+	n := _Document_compatMode(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_compatMode's result in a buffer allocated to fit.
+Document_compatMode_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_compatMode(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.characterSet
+Document_characterSet :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Document_characterSet(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_characterSet's result.
+Document_characterSet_len :: proc "contextless" () -> (int, Error) {
+	n := _Document_characterSet(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_characterSet's result in a buffer allocated to fit.
+Document_characterSet_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_characterSet(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.charset
+Document_charset :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Document_charset(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_charset's result.
+Document_charset_len :: proc "contextless" () -> (int, Error) {
+	n := _Document_charset(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_charset's result in a buffer allocated to fit.
+Document_charset_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_charset(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.inputEncoding
+Document_inputEncoding :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Document_inputEncoding(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_inputEncoding's result.
+Document_inputEncoding_len :: proc "contextless" () -> (int, Error) {
+	n := _Document_inputEncoding(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_inputEncoding's result in a buffer allocated to fit.
+Document_inputEncoding_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_inputEncoding(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.contentType
+Document_contentType :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Document_contentType(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_contentType's result.
+Document_contentType_len :: proc "contextless" () -> (int, Error) {
+	n := _Document_contentType(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_contentType's result in a buffer allocated to fit.
+Document_contentType_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_contentType(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.doctype
+Document_doctype :: proc "contextless" () -> Node {
+	return _Document_doctype()
+}
+
+// document.title: the <title> text, whitespace collapsed (the <svg> root's title in an SVG document).
+Document_title :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Document_title(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_title's result.
+Document_title_len :: proc "contextless" () -> (int, Error) {
+	n := _Document_title(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_title's result in a buffer allocated to fit.
+Document_title_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_title(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.title = value: the first <title> (made in <head> when missing).
+Document_set_title :: proc "contextless" (value: string) {
+	_Document_set_title(raw_data(value), u32(len(value)))
+}
+
+// document.dir
+Document_dir :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Document_dir(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_dir's result.
+Document_dir_len :: proc "contextless" () -> (int, Error) {
+	n := _Document_dir(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_dir's result in a buffer allocated to fit.
+Document_dir_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_dir(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.dir = value
+Document_set_dir :: proc "contextless" (value: string) {
+	_Document_set_dir(raw_data(value), u32(len(value)))
+}
+
+// document.hasFocus()
+Document_hasFocus :: proc "contextless" () -> bool {
+	return _Document_hasFocus() != 0
+}
+
+// document.referrer
+Document_referrer :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Document_referrer(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_referrer's result.
+Document_referrer_len :: proc "contextless" () -> (int, Error) {
+	n := _Document_referrer(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_referrer's result in a buffer allocated to fit.
+Document_referrer_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_referrer(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.lastModified ("MM/DD/YYYY hh:mm:ss")
+Document_lastModified :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Document_lastModified(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_lastModified's result.
+Document_lastModified_len :: proc "contextless" () -> (int, Error) {
+	n := _Document_lastModified(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_lastModified's result in a buffer allocated to fit.
+Document_lastModified_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_lastModified(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.domain (getter)
+Document_domain :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Document_domain(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_domain's result.
+Document_domain_len :: proc "contextless" () -> (int, Error) {
+	n := _Document_domain(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_domain's result in a buffer allocated to fit.
+Document_domain_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_domain(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.scrollingElement
+Document_scrollingElement :: proc "contextless" () -> Element {
+	return _Document_scrollingElement()
+}
+
+// document.body = element: Hierarchy when not a <body> or <frameset>, or without a document element.
+Document_set_body :: proc "contextless" (body: $T_body) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_body)) && size_of(T_body) == 8 {
+	return _Document_set_body(u64(body))
 }
 

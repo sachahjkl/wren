@@ -98,9 +98,9 @@ try { Node.prototype.appendChild.call({}, s); } catch (e) { console.log("illegal
 try { new Node(); } catch (e) { console.log("illegal ctor", e instanceof TypeError); }
 </script></body>`)
 		check(logged("true true true true true"), "one wrapper per node, prototype chain from the IDL")
-		check(logged("[object HTMLDivElement] div c null"), "toStringTag, getters, null for a missing attribute")
+		check(logged("[object HTMLDivElement] DIV c null"), "toStringTag, getters (tagName upper case in an HTML document), null for a missing attribute")
 		check(logged("null true true true made"), "appendChild returns its argument; the tree is the browser's")
-		check(logged("1 1 html"), "attributes, nodeType, documentElement")
+		check(logged("1 1 HTML"), "attributes, nodeType, documentElement")
 		check(logged("caught HierarchyRequestError"), "browser errors become DOMException names")
 		check(logged("illegal true"), "wrong this: TypeError")
 		check(logged("illegal ctor true"), "Node is not constructible")

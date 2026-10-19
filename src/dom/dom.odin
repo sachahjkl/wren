@@ -13,7 +13,14 @@ package dom
 import "core:strings"
 import "wb:base"
 
-Node_Kind :: enum u8 { Document, Element, Text, Comment }
+// Doctype: `name` is the doctype's name, its public and system identifiers are the attributes "publicId" and
+// "systemId" (absent = empty). Fragment: a DocumentFragment (never in the document's tree; inserting it moves its
+// children).
+Node_Kind :: enum u8 { Document, Element, Text, Comment, Doctype, Fragment }
+
+// The namespace of an element (DOM §4.9). The HTML parser gives SVG and MathML elements theirs; createElementNS may
+// give any: an Other namespace's URI (and any element's prefix) is kept in Document.ns_extra.
+Namespace :: enum u8 { HTML, SVG, MathML, None, Other }
 
 Attr :: struct {
 	name:  string,
@@ -36,6 +43,8 @@ Listener :: struct {
 
 Node :: struct {
 	kind:        Node_Kind,
+	ns:          Namespace,  // elements
+	held:        bool,       // a detached tree its owner keeps (a template's contents): not freed when nothing pins it
 	parent:      base.Handle,
 	first_child: base.Handle,
 	last_child:  base.Handle,
@@ -59,6 +68,24 @@ Document :: struct {
 	scope:      ^base.Scope,
 	cleanup:    base.Cleanup_Id,
 	mode:       Document_Mode,     // set by the HTML parser from the doctype (HTML §13.2.6.4.1)
+	// finer change counters than `mutations`, for caches that depend on part of the document only (live collections):
+	// tree_version moves on every insertion or removal of a node, attr_version on every attribute change
+	tree_version: u64,
+	attr_version: u64,
+	ids:        Id_Index,          // elements by id, built on first use (ids.odin)
+	ns_extra:   map[base.Handle]Ns_Extra,   // namespace URI of Other elements, prefixes (createElementNS)
+	templates:  map[base.Handle]base.Handle,   // <template> element -> its contents (a Fragment), made on first need
+	// called for each mutation as it happens (journal.odin): MutationObserver. Entries of one DOM operation (replace
+	// all children, insert a fragment...) carry the same `batch`.
+	observer:      Mutation_Hook,
+	observer_user: rawptr,
+	batch:         u32,
+	next_batch:    u32,
+}
+
+Ns_Extra :: struct {
+	uri:    string,   // owned; Other only
+	prefix: string,   // owned; "" = none
 }
 
 // The document's compatibility mode (DOM §4.5): what the rendering's quirks follow.
@@ -109,6 +136,10 @@ free_document :: proc(d: ^Document) {
 	for _, n in base.pool_next(&d.nodes, &it) { free_node_data(n) }
 	base.pool_destroy(&d.nodes)
 	journal_free(d)
+	ids_destroy(d)
+	for _, x in d.ns_extra { delete(x.uri); delete(x.prefix) }
+	delete(d.ns_extra)
+	delete(d.templates)
 	free(d)
 }
 
@@ -145,10 +176,43 @@ create_comment :: proc(d: ^Document, text: string) -> base.Handle {
 	return h
 }
 
+// An element of namespace `ns`. Names are kept lower case whatever the namespace (as the parser does): the style
+// engine and the selectors compare lower-case names; the bindings give SVG names their case back.
+create_element_ns :: proc(d: ^Document, tag: string, ns: Namespace, uri := "", prefix := "") -> base.Handle {
+	h := create_element(d, tag)
+	n := get(d, h)
+	n.ns = ns
+	if (ns == .Other && uri != "") || prefix != "" {
+		d.ns_extra[h] = Ns_Extra{uri = ns == .Other ? heap_str(uri) : "", prefix = heap_str(prefix)}
+	}
+	return h
+}
+
+create_doctype :: proc(d: ^Document, name, public_id, system_id: string) -> base.Handle {
+	h, n := base.pool_insert(&d.nodes, Node{kind = .Doctype, name = heap_str(name)})
+	if public_id != "" { append(&n.attrs, Attr{heap_str("publicId"), heap_str(public_id)}) }
+	if system_id != "" { append(&n.attrs, Attr{heap_str("systemId"), heap_str(system_id)}) }
+	return h
+}
+
+create_fragment :: proc(d: ^Document) -> base.Handle {
+	h, _ := base.pool_insert(&d.nodes, Node{kind = .Fragment})
+	return h
+}
+
+// The contents of a <template> element (HTML §4.12.3): a DocumentFragment, made empty on first need.
+template_content :: proc(d: ^Document, template: base.Handle) -> base.Handle {
+	if c, ok := d.templates[template]; ok && get(d, c) != nil { return c }
+	c := create_fragment(d)
+	get(d, c).held = true
+	d.templates[template] = c
+	return c
+}
+
 ////////////////////////////////
 // Tree
 
-can_have_children :: proc(n: ^Node) -> bool { return n.kind == .Element || n.kind == .Document }
+can_have_children :: proc(n: ^Node) -> bool { return n.kind == .Element || n.kind == .Document || n.kind == .Fragment }
 
 is_ancestor_or_self :: proc(d: ^Document, maybe_ancestor, node: base.Handle) -> bool {
 	for cur := node; cur != base.NIL_HANDLE; {
@@ -167,17 +231,18 @@ detach :: proc(d: ^Document, h: base.Handle) {
 	p := get(d, n.parent)
 	if n.prev != base.NIL_HANDLE { get(d, n.prev).next = n.next } else { p.first_child = n.next }
 	if n.next != base.NIL_HANDLE { get(d, n.next).prev = n.prev } else { p.last_child = n.prev }
-	old_parent := n.parent
+	old_parent, old_prev, old_next := n.parent, n.prev, n.next
 	n.parent, n.prev, n.next = base.NIL_HANDLE, base.NIL_HANDLE, base.NIL_HANDLE
 	touch(d)
-	journal_record(d, .Remove, h, old_parent)
+	d.tree_version += 1
+	journal_record(d, .Remove, h, old_parent, prev = old_prev, next = old_next)
 }
 
 // Inserts `child` before `ref` (NIL_HANDLE = at the end), moving it if it is already in a tree.
 insert_before :: proc(d: ^Document, parent, child, ref: base.Handle) -> Error {
 	p, c := get(d, parent), get(d, child)
 	if p == nil || c == nil { return .Invalid_Handle }
-	if !can_have_children(p) || c.kind == .Document { return .Hierarchy }
+	if !can_have_children(p) || c.kind == .Document || c.kind == .Fragment { return .Hierarchy }
 	// a childless node can only be its own ancestor: skip the O(depth) walk (building deep trees stays linear)
 	if child == parent || (c.first_child != base.NIL_HANDLE && is_ancestor_or_self(d, child, parent)) { return .Hierarchy }
 	if ref != base.NIL_HANDLE {
@@ -203,7 +268,8 @@ insert_before :: proc(d: ^Document, parent, child, ref: base.Handle) -> Error {
 	}
 	if c.pins_below > 0 { pins_adjust(d, parent, i64(c.pins_below)) }
 	touch(d)
-	journal_record(d, .Insert, child, parent)
+	d.tree_version += 1
+	journal_record(d, .Insert, child, parent, prev = c.prev, next = c.next)
 	return .None
 }
 
@@ -243,6 +309,18 @@ destroy_subtree :: proc(d: ^Document, h: base.Handle) {
 			append(&stack, c)
 			c = next
 		}
+		if n.kind == .Element {
+			ids_forget_node(d, cur, n)
+			if x, had := d.ns_extra[cur]; had { delete(x.uri); delete(x.prefix); delete_key(&d.ns_extra, cur) }
+			// a template's contents go with it, unless a script holds some of them (they are then a tree of their own)
+			if content, had := d.templates[cur]; had {
+				delete_key(&d.templates, cur)
+				if c := get(d, content); c != nil {
+					c.held = false
+					if c.pins_below == 0 { append(&stack, content) }
+				}
+			}
+		}
 		free_node_data(n)
 		base.pool_remove(&d.nodes, cur)
 	}
@@ -255,12 +333,14 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
 	if n.kind != .Element || name == "" { return .Invalid_Argument }
-	lname := strings.to_lower(name, context.temp_allocator)
+	lname := lower_name(name)
 	for &a in n.attrs {
 		if a.name == lname {
 			old := a.value
 			a.value = heap_str(value)
 			touch(d)
+			d.attr_version += 1
+			if lname == "id" { ids_changed(d, h, old, true, value, true) }
 			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, old, true)
 			delete(old)
 			return .None
@@ -268,14 +348,25 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 	}
 	append(&n.attrs, Attr{heap_str(lname), heap_str(value)})
 	touch(d)
+	d.attr_version += 1
+	if lname == "id" { ids_changed(d, h, "", false, value, true) }
 	journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, "", false)
 	return .None
+}
+
+// `name` in lower case: itself when it has no upper-case ASCII letter (the common case: no allocation), else a copy
+// in the temp allocator.
+lower_name :: proc(name: string) -> string {
+	for i in 0 ..< len(name) {
+		if name[i] >= 'A' && name[i] <= 'Z' { return strings.to_lower(name, context.temp_allocator) }
+	}
+	return name
 }
 
 get_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> (value: string, ok: bool) {
 	n := get(d, h)
 	if n == nil || n.kind != .Element { return "", false }
-	lname := strings.to_lower(name, context.temp_allocator)
+	lname := lower_name(name)
 	for a in n.attrs { if a.name == lname { return a.value, true } }
 	return "", false
 }
@@ -283,12 +374,15 @@ get_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> (value: str
 remove_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> Error {
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
-	lname := strings.to_lower(name, context.temp_allocator)
+	if n.kind != .Element { return .None }
+	lname := lower_name(name)
 	for a, i in n.attrs {
 		if a.name == lname {
 			old_name, old := a.name, a.value
 			ordered_remove(&n.attrs, i)
 			touch(d)
+			d.attr_version += 1
+			if lname == "id" { ids_changed(d, h, old, true, "", false) }
 			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, old, true)
 			delete(old_name); delete(old)
 			return .None
@@ -303,11 +397,10 @@ set_text_content :: proc(d: ^Document, h: base.Handle, text: string) -> Error {
 	if n == nil { return .Invalid_Handle }
 	switch n.kind {
 	case .Text, .Comment:
-		delete(n.text)
-		n.text = heap_str(text)
-		touch(d)
-		journal_record(d, .Text, h, n.parent)
-	case .Element, .Document:
+		set_data(d, h, text)
+	case .Element, .Document, .Fragment:
+		batch := batch_begin(d)
+		defer batch_end(d, batch)
 		for n.first_child != base.NIL_HANDLE {
 			c := n.first_child
 			detach(d, c)
@@ -319,14 +412,43 @@ set_text_content :: proc(d: ^Document, h: base.Handle, text: string) -> Error {
 			append_child(d, h, t)
 		}
 		touch(d)
+	case .Doctype:
 	}
 	return .None
+}
+
+// Replaces the data of a Text or Comment node (CharacterData "replace data" with the whole range): the journal keeps
+// the old data for MutationObserver's characterDataOldValue.
+set_data :: proc(d: ^Document, h: base.Handle, data: string) -> Error {
+	n := get(d, h)
+	if n == nil { return .Invalid_Handle }
+	if n.kind != .Text && n.kind != .Comment { return .Invalid_Argument }
+	old := n.text
+	n.text = heap_str(data)
+	touch(d)
+	journal_record(d, .Text, h, n.parent, old = old, had_old = true)
+	delete(old)
+	return .None
+}
+
+// Starts a group of mutations that are one DOM operation (their journal entries carry the same batch). Nested calls
+// join the outer group. Returns what batch_end needs.
+batch_begin :: proc(d: ^Document) -> u32 {
+	if d.batch != 0 { return 0 }
+	d.next_batch += 1
+	if d.next_batch == 0 { d.next_batch = 1 }
+	d.batch = d.next_batch
+	return d.batch
+}
+
+batch_end :: proc(d: ^Document, token: u32) {
+	if token != 0 && d.batch == token { d.batch = 0 }
 }
 
 // Concatenated text of the subtree (iterative, document order).
 text_content :: proc(d: ^Document, h: base.Handle, allocator := context.temp_allocator) -> string {
 	n := get(d, h)
-	if n == nil { return "" }
+	if n == nil || n.kind == .Doctype { return "" }
 	if n.kind == .Text || n.kind == .Comment { return strings.clone(n.text, allocator) }
 	sb := strings.builder_make(allocator)
 	stack: [dynamic]base.Handle
@@ -343,21 +465,8 @@ text_content :: proc(d: ^Document, h: base.Handle, allocator := context.temp_all
 	return strings.to_string(sb)
 }
 
-find_by_id :: proc(d: ^Document, id: string) -> base.Handle {
-	stack: [dynamic]base.Handle
-	defer delete(stack)
-	append(&stack, d.root)
-	for len(stack) > 0 {
-		cur := pop(&stack)
-		n := get(d, cur)
-		if n == nil { continue }
-		if n.kind == .Element {
-			if v, ok := get_attribute(d, cur, "id"); ok && v == id { return cur }
-		}
-		for ch := n.last_child; ch != base.NIL_HANDLE; ch = get(d, ch).prev { append(&stack, ch) }
-	}
-	return base.NIL_HANDLE
-}
+// The first element of the document's tree (in tree order) whose id is `id` (the id index, ids.odin).
+find_by_id :: proc(d: ^Document, id: string) -> base.Handle { return ids_lookup(d, id) }
 
 find_first_by_tag :: proc(d: ^Document, tag: string) -> base.Handle {
 	ltag := strings.to_lower(tag, context.temp_allocator)

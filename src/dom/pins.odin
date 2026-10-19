@@ -38,7 +38,7 @@ unpin :: proc(d: ^Document, h: base.Handle) -> base.Handle {
 	root := tree_root(d, h)
 	if root == d.root { return base.NIL_HANDLE }
 	r := get(d, root)
-	if r == nil || r.pins_below > 0 { return base.NIL_HANDLE }
+	if r == nil || r.pins_below > 0 || r.held { return base.NIL_HANDLE }
 	destroy_subtree(d, root)
 	return root
 }
@@ -56,7 +56,7 @@ tree_root :: proc(d: ^Document, h: base.Handle) -> base.Handle {
 // Destroys a detached subtree unless something in it is pinned (it then stays, detached, until its last pin goes).
 destroy_unpinned :: proc(d: ^Document, h: base.Handle) {
 	n := get(d, h)
-	if n == nil || n.pins_below > 0 { return }
+	if n == nil || n.pins_below > 0 || n.held { return }
 	destroy_subtree(d, h)
 }
 

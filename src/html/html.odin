@@ -34,9 +34,23 @@ Shim_Sink :: struct {
 	mode:    proc "c" (user: rawptr, compat_mode: i32),
 }
 
+// The second version of the shim (src/shim/wb_html_dom.c): namespaces, the doctype, template contents, fragments.
+Shim_Sink2 :: struct {
+	open:     proc "c" (user: rawptr, tag: [^]u8, tag_len: uint, attrs: [^]Shim_Attr, n_attrs: uint, ns: i32),
+	close:    proc "c" (user: rawptr),
+	text:     proc "c" (user: rawptr, s: [^]u8, len: uint),
+	comment:  proc "c" (user: rawptr, s: [^]u8, len: uint),
+	mode:     proc "c" (user: rawptr, compat_mode: i32),
+	doctype:  proc "c" (user: rawptr, name: [^]u8, name_len: uint, public_id: [^]u8, public_len: uint, system_id: [^]u8, system_len: uint),
+	template_begin: proc "c" (user: rawptr),
+	template_end:   proc "c" (user: rawptr),
+}
+
 @(default_calling_convention = "c")
 foreign lexbor {
 	wb_html_parse :: proc(data: [^]u8, len: uint, sink: ^Shim_Sink, user: rawptr) -> i32 ---
+	wb_html_parse2 :: proc(data: [^]u8, len: uint, sink: ^Shim_Sink2, user: rawptr) -> i32 ---
+	wb_html_parse_fragment :: proc(data: [^]u8, len: uint, ctx_tag: [^]u8, ctx_len: uint, ctx_ns: i32, quirks: i32, sink: ^Shim_Sink2, user: rawptr) -> i32 ---
 }
 
 Builder :: struct {
@@ -47,6 +61,51 @@ Builder :: struct {
 	truncated: bool,
 	mode:      dom.Document_Mode,
 }
+
+@(private)
+b_open2 :: proc "c" (user: rawptr, tag: [^]u8, tag_len: uint, attrs: [^]Shim_Attr, n_attrs: uint, ns: i32) {
+	b_open(user, tag, tag_len, attrs, n_attrs)
+	context = runtime.default_context()
+	bd := (^Builder)(user)
+	top := bd.stack[len(bd.stack) - 1]
+	if n := dom.get(bd.doc, top); n != nil && n.kind == .Element {
+		switch ns {
+		case 1: n.ns = .SVG
+		case 2: n.ns = .MathML
+		case 3: n.ns = .Other
+		}
+	}
+}
+
+@(private)
+b_doctype :: proc "c" (user: rawptr, name: [^]u8, name_len: uint, public_id: [^]u8, public_len: uint, system_id: [^]u8, system_len: uint) {
+	context = runtime.default_context()
+	b := (^Builder)(user)
+	parent := b.stack[len(b.stack) - 1]
+	if b.truncated || parent == base.NIL_HANDLE || b.count >= b.max_nodes { return }
+	dom.append_child(b.doc, parent, dom.create_doctype(b.doc, view(name, name_len), view(public_id, public_len), view(system_id, system_len)))
+	b.count += 1
+}
+
+// The contents of the template just opened: built in its DocumentFragment (dom.template_content), not under it.
+@(private)
+b_template_begin :: proc "c" (user: rawptr) {
+	context = runtime.default_context()
+	b := (^Builder)(user)
+	tpl := b.stack[len(b.stack) - 1]
+	if b.truncated || tpl == base.NIL_HANDLE { append(&b.stack, base.NIL_HANDLE); return }
+	append(&b.stack, dom.template_content(b.doc, tpl))
+}
+
+@(private)
+b_template_end :: proc "c" (user: rawptr) {
+	context = runtime.default_context()
+	b := (^Builder)(user)
+	if len(b.stack) > 1 { pop(&b.stack) }
+}
+
+@(private)
+SINK2 :: Shim_Sink2{open = b_open2, close = b_close, text = b_text, comment = b_comment, mode = b_mode, doctype = b_doctype, template_begin = b_template_begin, template_end = b_template_end}
 
 @(private)
 b_mode :: proc "c" (user: rawptr, compat_mode: i32) {
@@ -124,11 +183,27 @@ parse_into :: proc(d: ^dom.Document, parent: base.Handle, data: []byte, max_node
 	b := Builder{doc = d, max_nodes = max_nodes}
 	defer delete(b.stack)
 	append(&b.stack, parent)
-	sink := Shim_Sink{open = b_open, close = b_close, text = b_text, comment = b_comment, mode = b_mode}
-	status := wb_html_parse(raw_data(data), uint(len(data)), &sink, &b)
+	sink := SINK2
+	status := wb_html_parse2(raw_data(data), uint(len(data)), &sink, &b)
 	// a whole document (not a fragment parsed into an element) decides the document's mode
 	if status == 0 && parent == d.root { d.mode = b.mode }
 	return {ok = status == 0, truncated = b.truncated, status = status, nodes = b.count}
+}
+
+// HTML's fragment parsing algorithm (innerHTML, insertAdjacentHTML...): `data` parsed as the contents of an element
+// named `context_tag` of namespace `context_ns` (lower case), in a document of mode `mode`. The nodes are built into
+// a new DocumentFragment (detached, owned by the caller). ok = false: the parser failed (the fragment is empty).
+parse_fragment :: proc(d: ^dom.Document, context_tag: string, context_ns: dom.Namespace, mode: dom.Document_Mode, data: []byte, max_nodes: int) -> (fragment: base.Handle, result: Parse_Result) {
+	fragment = dom.create_fragment(d)
+	b := Builder{doc = d, max_nodes = max_nodes}
+	defer delete(b.stack)
+	append(&b.stack, fragment)
+	sink := SINK2
+	ns: i32 = context_ns == .SVG ? 1 : context_ns == .MathML ? 2 : 0
+	quirks: i32 = mode == .Quirks ? 1 : mode == .Limited_Quirks ? 2 : 0
+	tag := context_tag != "" ? context_tag : "body"
+	status := wb_html_parse_fragment(raw_data(data), uint(len(data)), raw_data(tag), uint(len(tag)), ns, quirks, &sink, &b)
+	return fragment, {ok = status == 0, truncated = b.truncated, status = status, nodes = b.count}
 }
 
 // The text of the document's <title>, for the tab strip.

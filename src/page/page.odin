@@ -102,6 +102,7 @@ Page :: struct {
 	selection:    Page_Selection,       // the document's selection (selection.odin)
 	js:           ^Js_Realm,            // the JavaScript realm, created on first use (js_realm.odin)
 	scripts:      ^Page_Scripts,        // the document's <script> elements (js_scripts.odin)
+	jsdom:        ^Js_Dom_State,        // the DOM bindings' state: selectors, observers, layout hook (js_dom_collections.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives
@@ -126,6 +127,7 @@ page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings
 	p.doc = dom.document_create(p.scope)
 	p.dp.invoke = invoke_listener
 	p.dp.user = p
+	p.dp.window = window_phase   // js_dom_events.odin: the Window after the document in the propagation path
 	styles_init(p)
 	forms_attach(p)
 	blank_document(p)
