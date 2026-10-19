@@ -106,6 +106,13 @@ exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	return nil
 }
 
+// the shell is a secure context (crypto.subtle stays)
+secure_context :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	a[0] = {}
+	a[0].i32 = 1
+	return nil
+}
+
 origin_tick: time.Tick
 
 performance_now :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -124,6 +131,7 @@ IMPORTS := [?]wasm.Import{
 	{module = "js", name = "Engine_locale", fn = engine_locale, params = {.I32, .I32}, results = {.I32}},
 	{module = "web", name = "Exception_message", fn = exception_message, params = {.I32, .I32}, results = {.I32}},
 	{module = "performance", name = "Performance_now", fn = performance_now, params = {}, results = {.F64}},
+	{module = "document", name = "Window_isSecureContext", fn = secure_context, params = {}, results = {.I32}},
 }
 
 usage :: proc() -> ! {

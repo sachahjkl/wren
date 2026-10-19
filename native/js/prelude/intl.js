@@ -401,7 +401,7 @@
       ignorePunctuation: getOpt(o, "ignorePunctuation", null, false), collation: "default", numeric: getOpt(o, "numeric", null, false), caseFirst: getOpt(o, "caseFirst", ["upper", "lower", "false"], "false") };
   }
   function collate(o, a, b) {
-    a = String(a); b = String(b);
+    a = String(a).normalize("NFC"); b = String(b).normalize("NFC");
     if (o.ignorePunctuation) { a = a.replace(/[\p{P}\s]/gu, ""); b = b.replace(/[\p{P}\s]/gu, ""); }
     const cmp = (x, y) => {
       if (o.numeric) {
@@ -498,14 +498,23 @@
 
   // the locale-sensitive methods of the standard library, on top of it
   const dtf = (need, locales, options) => { const f = new DateTimeFormat(locales, options); return { f, need: f._defaults ? need : "" }; };
-  def(Date.prototype, "toLocaleString", function (l, o) { const { f, need } = dtf("any", l, o); return dateParts(f._o, this, need).map((p) => p.value).join(""); });
-  def(Date.prototype, "toLocaleDateString", function (l, o) { const { f, need } = dtf("date", l, o); return dateParts(f._o, this, need).map((p) => p.value).join(""); });
-  def(Date.prototype, "toLocaleTimeString", function (l, o) { const { f, need } = dtf("time", l, o); return dateParts(f._o, this, need).map((p) => p.value).join(""); });
-  def(Number.prototype, "toLocaleString", function (l, o) { return new NumberFormat(l, o).format(this.valueOf()); });
-  def(BigInt.prototype, "toLocaleString", function (l, o) { return new NumberFormat(l, o).format(this.valueOf()); });
-  def(String.prototype, "localeCompare", function (that, l, o) {
-    if (this === undefined || this === null) throw new TypeError("String.prototype.localeCompare called on null or undefined");
-    return collate(new Collator(l, o)._o, String(this), String(that));
-  });
+  // methods (not constructors), with the lengths ECMA-402 gives them
+  const M = {
+    toLocaleString(l = undefined, o = undefined) { const { f, need } = dtf("any", l, o); return dateParts(f._o, this, need).map((p) => p.value).join(""); },
+    toLocaleDateString(l = undefined, o = undefined) { const { f, need } = dtf("date", l, o); return dateParts(f._o, this, need).map((p) => p.value).join(""); },
+    toLocaleTimeString(l = undefined, o = undefined) { const { f, need } = dtf("time", l, o); return dateParts(f._o, this, need).map((p) => p.value).join(""); },
+  };
+  const N = { toLocaleString(l = undefined, o = undefined) { return new NumberFormat(l, o).format(this.valueOf()); } };
+  const B = { toLocaleString(l = undefined, o = undefined) { return new NumberFormat(l, o).format(this.valueOf()); } };
+  const S = {
+    localeCompare(that, l = undefined, o = undefined) {
+      if (this === undefined || this === null) throw new TypeError("String.prototype.localeCompare called on null or undefined");
+      return collate(new Collator(l, o)._o, String(this), String(that));
+    },
+  };
+  for (const k of ["toLocaleString", "toLocaleDateString", "toLocaleTimeString"]) def(Date.prototype, k, M[k]);
+  def(Number.prototype, "toLocaleString", N.toLocaleString);
+  def(BigInt.prototype, "toLocaleString", B.toLocaleString);
+  def(String.prototype, "localeCompare", S.localeCompare);
 })(__wren_intl_host);
 delete globalThis.__wren_intl_host;

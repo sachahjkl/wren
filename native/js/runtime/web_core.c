@@ -826,6 +826,7 @@ int wj_web_preinit(JSContext *ctx)
 
 int wj_web_start(JSContext *ctx, int kind)
 {
+    if (kind == 0) { return 0; }   /* ECMAScript only (test262, the engine benchmark): no web interfaces to set up */
 #define WEB_START(name) if (web_##name##_start && web_##name##_start(ctx, kind) < 0) { return -1; }
     WEB_PARTS(WEB_START)
     return 0;

@@ -27,7 +27,18 @@ int wj_run_preludes(JSContext *ctx)
     JS_FreeValue(ctx, global);
     for (int i = 0; i < wj_prelude_count; i++) {
         const char *src = wj_prelude_sources[i].source;
-        JSValue r = JS_Eval(ctx, src, strlen(src), wj_prelude_sources[i].name, JS_EVAL_TYPE_GLOBAL);
+        /* compiled, then written and read back without its source: its functions stand in for built-ins, whose
+         * toString is "function name() { [native code] }" (ECMAScript NativeFunction) */
+        JSValue r = JS_Eval(ctx, src, strlen(src), wj_prelude_sources[i].name, JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_COMPILE_ONLY);
+        if (!JS_IsException(r)) {
+            size_t len = 0;
+            uint8_t *bc = JS_WriteObject(ctx, &len, r, JS_WRITE_OBJ_BYTECODE | JS_WRITE_OBJ_STRIP_SOURCE);
+            JS_FreeValue(ctx, r);
+            if (!bc) { wj_report_pending(ctx); return -1; }
+            r = JS_ReadObject(ctx, bc, len, JS_READ_OBJ_BYTECODE);
+            js_free(ctx, bc);
+            if (!JS_IsException(r)) { r = JS_EvalFunction(ctx, r); }
+        }
         if (JS_IsException(r)) {
             wj_report_pending(ctx);
             return -1;
