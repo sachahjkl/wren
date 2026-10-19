@@ -560,7 +560,7 @@ check_paint_values :: proc(c: ^Comp, l: ^Layout) {
 // Recording and replay
 
 // W_root^-1 * W_s: where space s lies in the picture of a chunk recorded in `root`'s coordinates.
-@(private = "file")
+@(private)
 slot_matrix :: proc(v: ^lay.View, root, s: i32) -> draw.Affine {
 	wr := lay.space_world(v, root)   // a translation (document, fixed)
 	ws := lay.space_world(v, s)
@@ -710,6 +710,10 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 	e := Effects{l = l, v = &v, dc = dc, origin = origin, xform = lay.NONE, clip = -2, group = -2,
 		chain = make([dynamic]i32, 0, 8, context.temp_allocator), open = make([dynamic]Open_Group, 0, 4, context.temp_allocator)}
 	e.groups = plan(c, &e)
+	// kept effect results: what the groups' layers and the backdrops would receive (effects_cache.odin)
+	fxc: Fx_Cache
+	fx_cache_begin(&fxc, c, &e, screen)
+	e.fxc = &fxc
 	for &ch in c.chunks {
 		if !ch.visible { continue }
 		if ch.immediate {
@@ -717,6 +721,8 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 				it := &l.items[i]
 				if lay.rect_empty(lay.rect_intersect(item_ink(&e, it), screen)) { continue }
 				if !effects_for(&e, it) { continue }
+				fx_cache_under(&e, nil, item = i)
+				if fx_cache_skipping(&e) { continue }
 				off := v.offsets[it.space] + origin
 				paint_item(l, dc, d, &v, it, draw.Rect{it.rect.min + off, it.rect.max + off}, off, origin)
 				composite_stats.immediate_items += 1
@@ -735,6 +741,8 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 		pop_chain_to(&e, clip_floor(&e))
 		e.clip = -2   // the next item re-pushes its own clips
 		set_xform(&e, lay.NONE)
+		fx_cache_under(&e, &ch)
+		if fx_cache_skipping(&e) { continue }   // a kept result of its group stands for it
 		res := draw.replay(dc, ch.pic, m)
 		if res == .Stale {
 			// glyphs at another size, or the atlas was reset: record again at this scale

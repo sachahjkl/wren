@@ -48,7 +48,10 @@ EFFECTS_PREFS := [?]config.Def{
 @(private) effects_settings: Effects_Settings
 @(private) effects_watch: int
 
-register_effects_prefs :: proc(p: ^config.Prefs) { config.register(p, EFFECTS_PREFS[:]) }
+register_effects_prefs :: proc(p: ^config.Prefs) {
+	config.register(p, EFFECTS_PREFS[:])
+	register_fx_cache_prefs(p)
+}
 
 @(private)
 effects_settings_from_prefs :: proc(p: ^config.Prefs) -> Effects_Settings {
@@ -66,12 +69,22 @@ effects_settings_from_prefs :: proc(p: ^config.Prefs) -> Effects_Settings {
 effects_init :: proc(app: ^App) {
 	effects_settings = effects_settings_from_prefs(&app.prefs)
 	render.set_blur_sigma_limit(&app.r, effects_settings.blur_sigma_limit)
+	fx_settings = fx_settings_from_prefs(&app.prefs)
+	fx_settings_apply(app)
 	effects_watch = config.watch(&app.prefs, "paint.effects.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		a := (^App)(user)
 		effects_settings = effects_settings_from_prefs(p)
 		render.set_blur_sigma_limit(&a.r, effects_settings.blur_sigma_limit)
+		fx_settings = fx_settings_from_prefs(p)
+		fx_settings_apply(a)
+	}, app)
+	// kept text shadows were rasterized with the text settings of their time
+	effects_font_watch = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		draw.layer_cache_clear(&(^App)(user).dc)
 	}, app)
 }
+
+@(private) effects_font_watch: int
 
 @(private)
 Effects :: struct {
@@ -85,6 +98,7 @@ Effects :: struct {
 	group:    i32,              // innermost group of `open` (-2: not set yet)
 	open:     [dynamic]Open_Group,
 	groups:   []Group_Paint,    // per group, for this frame
+	fxc:      ^Fx_Cache,        // kept effect results (compositor only; effects_cache.odin)
 }
 
 @(private)
@@ -94,6 +108,7 @@ Open_Group :: struct {
 	layer: bool,     // a layer was pushed (else maybe an alpha)
 	alpha: bool,
 	shape: bool,     // a clip-path shape was pushed
+	skip:  bool,     // its kept result is composited: its content is not drawn
 }
 
 @(private)
@@ -340,10 +355,13 @@ open_group :: proc(e: ^Effects, c: i32) {
 			bd_rect = draw.rect_shift(draw.Rect{b.abs, b.abs + b.size}, off)
 			bd_radii = lay.border_radii(cs, b.size.x, b.size.y, l.scale)
 			set_xform(e, box_xf)
-			bd = draw.backdrop_capture(e.dc, bd_rect, bfs)
+			id, key, anchor := fx_cache_backdrop(e, c)
+			bd = draw.backdrop_capture(e.dc, bd_rect, bfs, id, key, anchor)
 			has_bd = true
 		}
 	}
+	// what this group draws lies under the backdrops still to come
+	fx_cache_under(e, nil, group = c)
 	filters: []draw.Filter
 	if .Filter in g.effects && effects_settings.filters {
 		filters = css_filters(cs.filter, l.scale)
@@ -356,7 +374,12 @@ open_group :: proc(e: ^Effects, c: i32) {
 	layer := (filters != nil || blend != .Normal || isolate || (alpha < 1 && page_render.settings.opacity_layers && gp.units > 1)) && gp.seen && !lay.rect_empty(gp.bounds)
 	set_xform(e, lay.NONE)
 	if layer {
-		draw.push_effects(e.dc, draw.Rect{gp.bounds.min, gp.bounds.max}, draw.Layer_Effects{alpha = alpha, filters = filters, blend = blend})
+		fx := draw.Layer_Effects{alpha = alpha, filters = filters, blend = blend}
+		if !fx_cache_skipping(e) { fx_cache_layer(e, c, &fx) }
+		if !draw.push_effects(e.dc, draw.Rect{gp.bounds.min, gp.bounds.max}, fx) {
+			og.skip = true
+			e.fxc.skip += 1
+		}
 		og.layer = true
 	} else if alpha < 1 {
 		draw.push_alpha(e.dc, alpha)
@@ -372,6 +395,7 @@ open_group :: proc(e: ^Effects, c: i32) {
 @(private)
 close_group :: proc(e: ^Effects) {
 	og := pop(&e.open)
+	if og.skip { e.fxc.skip -= 1 }
 	pop_chain_to(e, og.floor)
 	if og.layer { draw.pop_layer(e.dc) } else if og.alpha { draw.pop_alpha(e.dc) }
 	if og.shape { draw.pop_clip(e.dc) }
