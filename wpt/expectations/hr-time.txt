@@ -1,0 +1,18 @@
+# web-platform-tests expectations of Wren for hr-time, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/hr-time/basic.any.html: TIMEOUT
+/hr-time/basic.any.worker.html: TIMEOUT
+/hr-time/clamped-time-origin-isolated.https.html: TIMEOUT
+/hr-time/clamped-time-origin.html: TIMEOUT
+/hr-time/cross-origin-isolated-timing-attack.https.html: TIMEOUT
+/hr-time/idlharness.any.html: TIMEOUT
+/hr-time/idlharness.any.worker.html: TIMEOUT
+/hr-time/monotonic-clock.any.html: TIMEOUT
+/hr-time/monotonic-clock.any.worker.html: TIMEOUT
+/hr-time/navigation-start-post-before-unload.html: TIMEOUT
+/hr-time/performance-tojson.html: TIMEOUT
+/hr-time/raf-coarsened-time.https.html: TIMEOUT
+/hr-time/test_cross_frame_start.html: TIMEOUT
+/hr-time/timeOrigin.html: TIMEOUT
+/hr-time/timing-attack.html: TIMEOUT
+/hr-time/window-worker-timeOrigin.window.html: TIMEOUT

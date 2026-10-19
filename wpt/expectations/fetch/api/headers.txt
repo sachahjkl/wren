@@ -1,0 +1,28 @@
+# web-platform-tests expectations of Wren for fetch/api/headers, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/fetch/api/headers/header-setcookie.any.html: TIMEOUT
+/fetch/api/headers/header-setcookie.any.worker.html: TIMEOUT
+/fetch/api/headers/header-values-last-event-id.any.html: TIMEOUT
+/fetch/api/headers/header-values-last-event-id.any.worker.html: TIMEOUT
+/fetch/api/headers/header-values-normalize.any.html: TIMEOUT
+/fetch/api/headers/header-values-normalize.any.worker.html: TIMEOUT
+/fetch/api/headers/header-values.any.html: TIMEOUT
+/fetch/api/headers/header-values.any.worker.html: TIMEOUT
+/fetch/api/headers/headers-basic.any.html: TIMEOUT
+/fetch/api/headers/headers-basic.any.worker.html: TIMEOUT
+/fetch/api/headers/headers-casing.any.html: TIMEOUT
+/fetch/api/headers/headers-casing.any.worker.html: TIMEOUT
+/fetch/api/headers/headers-combine.any.html: TIMEOUT
+/fetch/api/headers/headers-combine.any.worker.html: TIMEOUT
+/fetch/api/headers/headers-errors.any.html: TIMEOUT
+/fetch/api/headers/headers-errors.any.worker.html: TIMEOUT
+/fetch/api/headers/headers-forbidden-override.any.html: TIMEOUT
+/fetch/api/headers/headers-forbidden-override.any.worker.html: TIMEOUT
+/fetch/api/headers/headers-no-cors.any.html: TIMEOUT
+/fetch/api/headers/headers-no-cors.any.worker.html: TIMEOUT
+/fetch/api/headers/headers-normalize.any.html: TIMEOUT
+/fetch/api/headers/headers-normalize.any.worker.html: TIMEOUT
+/fetch/api/headers/headers-record.any.html: TIMEOUT
+/fetch/api/headers/headers-record.any.worker.html: TIMEOUT
+/fetch/api/headers/headers-structure.any.html: TIMEOUT
+/fetch/api/headers/headers-structure.any.worker.html: TIMEOUT

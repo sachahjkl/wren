@@ -1,0 +1,14 @@
+# web-platform-tests expectations of Wren for dom/collections, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/dom/collections/HTMLCollection-as-prototype.html: TIMEOUT
+/dom/collections/HTMLCollection-delete.html: TIMEOUT
+/dom/collections/HTMLCollection-detached-root-gc.html: TIMEOUT
+/dom/collections/HTMLCollection-empty-name.html: TIMEOUT
+/dom/collections/HTMLCollection-iterator.html: TIMEOUT
+/dom/collections/HTMLCollection-live-item-removal.html: TIMEOUT
+/dom/collections/HTMLCollection-live-mutations.window.html: TIMEOUT
+/dom/collections/HTMLCollection-own-props.html: TIMEOUT
+/dom/collections/HTMLCollection-supported-property-indices.html: TIMEOUT
+/dom/collections/HTMLCollection-supported-property-names.html: TIMEOUT
+/dom/collections/domstringmap-supported-property-names.html: TIMEOUT
+/dom/collections/namednodemap-supported-property-names.html: TIMEOUT

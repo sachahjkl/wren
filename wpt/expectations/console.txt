@@ -1,0 +1,21 @@
+# web-platform-tests expectations of Wren for console, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/console/console-count-logging.html: TIMEOUT
+/console/console-countReset-logging.html: TIMEOUT
+/console/console-is-a-namespace.any.html: TIMEOUT
+/console/console-is-a-namespace.any.worker.html: TIMEOUT
+/console/console-label-conversion.any.html: TIMEOUT
+/console/console-label-conversion.any.worker.html: TIMEOUT
+/console/console-log-large-array.any.html: TIMEOUT
+/console/console-log-large-array.any.worker.html: TIMEOUT
+/console/console-log-symbol.any.html: TIMEOUT
+/console/console-log-symbol.any.worker.html: TIMEOUT
+/console/console-namespace-object-class-string.any.html: TIMEOUT
+/console/console-namespace-object-class-string.any.worker.html: TIMEOUT
+/console/console-number-format-specifiers-symbol.html: TIMEOUT
+/console/console-tests-historical.any.html: TIMEOUT
+/console/console-tests-historical.any.worker.html: TIMEOUT
+/console/console-timing-logging.html: TIMEOUT
+/console/console-timing-missing-label-warnings.tentative.html: TIMEOUT
+/console/idlharness.any.html: TIMEOUT
+/console/idlharness.any.worker.html: TIMEOUT
