@@ -43,6 +43,7 @@ page_render_init :: proc(app: ^App) {
 	page_fonts_init(&page_render.fonts, &app.fonts, app.ui_font)
 	page_render.settings = lay.settings_from_prefs(&app.prefs)
 	page_render.gradients = make(map[string]^Gradient)
+	render_settings_init(app)
 	effects_init(app)
 	page_render.watch_layout = config.watch(&app.prefs, "layout.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		page_render.settings = lay.settings_from_prefs(p)
@@ -101,8 +102,17 @@ page_wheel :: proc(l: ^Layout, p, delta, viewport: draw.Vec2, scroll: f32) -> bo
 	return lay.scroll_wheel(l, p, delta, viewport, scroll)
 }
 
-// CSS colors are sRGB; the renderer blends in linear space.
+// CSS colors are sRGB; draw takes linear colors and mixes them in the renderer's blend space (render.blend_space).
 to_draw :: proc(c: css.Color) -> draw.Color { return draw.srgb(c.r, c.g, c.b, c.a) }
+
+// Two CSS colors interpolated as CSS does by default (Color 4 §12, Images 4 §3.5): premultiplied, on sRGB values.
+mix_css :: proc(a, b: css.Color, t: f32) -> draw.Color {
+	alpha := a.a + (b.a - a.a) * t
+	if alpha <= 0 { return {0, 0, 0, 0} }
+	pa, pb := [3]f32{a.r, a.g, a.b} * a.a, [3]f32{b.r, b.g, b.b} * b.a
+	c := (pa + (pb - pa) * t) / alpha
+	return to_draw(css.Color{c.r, c.g, c.b, alpha})
+}
 
 @(private = "file")
 dr :: #force_inline proc(r: lay.Rect) -> draw.Rect { return draw.Rect{r.min, r.max} }
@@ -116,6 +126,9 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: dra
 	// CSS border-radius draws circular arcs, not the squircle of the browser's own UI
 	circular := draw.set_circular_corners(dc, true)
 	defer draw.set_circular_corners(dc, circular)
+	// gradients interpolate on sRGB values whatever the blend space (CSS: `in srgb` is the default)
+	interp := draw.set_interpolation(dc, .Srgb)
+	defer draw.set_interpolation(dc, interp)
 	fx := effects_make(l, &v, dc, origin)
 	for idx in v.visible {
 		it := &l.items[idx]
@@ -691,9 +704,11 @@ paint_gradient :: proc(dc: ^draw.Context, text: string, r: draw.Rect, radii: [4]
 	w, h := r.max.x - r.min.x, r.max.y - r.min.y
 	if w <= 0 || h <= 0 { return }
 	if g.kind != .Linear || len(g.stops) == 1 {
+		// premultiplied average of the stops
 		avg: css.Color
-		for s in g.stops { avg += s.color }
+		for s in g.stops { avg += css.Color{s.color.r * s.color.a, s.color.g * s.color.a, s.color.b * s.color.a, s.color.a} }
 		avg /= f32(len(g.stops))
+		if avg.a > 0 { avg.r, avg.g, avg.b = avg.r / avg.a, avg.g / avg.a, avg.b / avg.a }
 		col := to_draw(avg)
 		draw.rect_corners(dc, r, {col, col, col, col}, radii)
 		return
@@ -733,7 +748,7 @@ paint_gradient :: proc(dc: ^draw.Context, text: string, r: draw.Rect, radii: [4]
 			if t <= pos[i] {
 				span := pos[i] - pos[i - 1]
 				f := span > 0 ? (t - pos[i - 1]) / span : 1
-				return draw.mix(to_draw(g.stops[i - 1].color), to_draw(g.stops[i].color), f)
+				return mix_css(g.stops[i - 1].color, g.stops[i].color, f)
 			}
 		}
 		return to_draw(g.stops[n - 1].color)
