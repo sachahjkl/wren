@@ -3,6 +3,7 @@ package layout
 import "core:mem/virtual"
 import "core:time"
 import "wb:base"
+import "wb:dom"
 import "wb:style"
 
 // Entry points. A pass is one of:
@@ -71,9 +72,11 @@ run_full :: proc(l: ^Layout, input: Input) {
 	c := ctx_make(l, input, &marker)
 
 	t0 := time.tick_now()
+	reserve_tree(l, input.doc)
 	build_tree(&c)
 	l.canvas_els = {c.root_el, c.body_el}
 	mark_bfc_floats(&c, 0)
+	reserve_lines(l)
 	t1 := time.tick_now()
 	root := &l.boxes[0]
 	root.pos = {0, 0}
@@ -83,6 +86,7 @@ run_full :: proc(l: ^Layout, input: Input) {
 	t2 := time.tick_now()
 	finish(&c)
 	t3 := time.tick_now()
+	reserve(&l.items, len(l.boxes) + len(l.frags) + 64)
 	build_display_list(&c)
 	note_refresh_inputs(l)
 	t4 := time.tick_now()
@@ -94,6 +98,32 @@ run_full :: proc(l: ^Layout, input: Input) {
 
 @(private)
 ms :: proc(a, b: time.Tick) -> f32 { return f32(time.duration_milliseconds(time.tick_diff(a, b))) }
+
+// A layout's arrays keep their capacity from one pass to the next; the first pass over a document (a fresh layout, a
+// larger page) sizes them from the document instead of doubling them as it goes (each doubling copies everything and
+// touches fresh memory). Estimates from the node count: about 3 boxes and 4 inline items for every 4 nodes.
+@(private)
+reserve_tree :: proc(l: ^Layout, d: ^dom.Document) {
+	n := d.nodes.count
+	reserve(&l.boxes, n * 3 / 4 + 64)
+	reserve(&l.inc.info, n * 3 / 4 + 64)
+	reserve(&l.inline_items, n + 64)
+	// handle index -> box: every slot the document handed out, none yet
+	used := int(d.nodes.used)
+	if len(l.node_box) < used {
+		old := len(l.node_box)
+		resize(&l.node_box, used)
+		for i in old ..< used { l.node_box[i] = NONE }
+	}
+}
+
+// Lines and fragments, once the inline items are known: about one fragment per item, a line per two.
+@(private)
+reserve_lines :: proc(l: ^Layout) {
+	n := len(l.inline_items)
+	reserve(&l.frags, n + n / 4 + 64)
+	reserve(&l.lines, n / 2 + 64)
+}
 
 // Forgets the result (and, unless kept, the scroll offsets): a new document is coming.
 reset :: proc(l: ^Layout, keep_scroll := false) {
