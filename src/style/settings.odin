@@ -51,6 +51,10 @@ Settings :: struct {
 	webfont_max_parallel: int,
 	webfont_max_faces:   int,
 	webfont_load_unused: bool,
+	webfont_block_ms:    f64,       // font-display auto / block: text waits this long for its font
+	webfont_short_block_ms: f64,    // fallback / optional
+	webfont_swap_ms:     f64,       // fallback: a font later than this is not used
+	render_block_ms:     f64,       // the first paint waits at most this long for render-blocking stylesheets
 	// restyle after DOM mutations (restyle_dom.odin)
 	inc_enabled:         bool,
 	inc_max_ratio:       f32,       // part of the document's nodes past which a full pass is done instead
@@ -135,6 +139,14 @@ PREFS := [?]config.Def{
 		description = "Most @font-face rules one page may load fonts for."},
 	{name = "style.webfonts.load_unused", kind = .Bool, default = {b = false},
 		description = "Download every @font-face of a page, even those no element uses (off: only families some element asks for)."},
+	{name = "style.webfonts.block_period_ms", kind = .Float, default = {f = 3000}, bounded = true, min = 0, max = 60_000, unit = "ms",
+		description = "font-display: auto and block: how long the first paint of a page waits for a web font its text uses (CSS Fonts 4: about 3 s). Later, the fallback font shows and the web font replaces it when it arrives."},
+	{name = "style.webfonts.short_block_period_ms", kind = .Float, default = {f = 100}, bounded = true, min = 0, max = 60_000, unit = "ms",
+		description = "font-display: fallback and optional: how long the first paint waits for the font (CSS Fonts 4: about 100 ms). optional: a font not there by then is not used by this page."},
+	{name = "style.webfonts.swap_period_ms", kind = .Float, default = {f = 3000}, bounded = true, min = 0, max = 60_000, unit = "ms",
+		description = "font-display: fallback: a font that arrives later than this after its download started is not used (CSS Fonts 4: about 3 s)."},
+	{name = "style.render_blocking.timeout_ms", kind = .Float, default = {f = 8000}, bounded = true, min = 0, max = 120_000, unit = "ms",
+		description = "The first paint of a page waits for the stylesheets of the document (<link rel=stylesheet>, <style> with @import, media matching, or blocking=\"render\") so that it is not shown unstyled; past this delay it is painted with what has arrived. 0 = never wait."},
 	{name = "style.incremental.enabled", kind = .Bool, default = {b = true},
 		description = "After DOM changes, restyle only the elements the changes can affect (found from the selectors of the page). Off: every change restyles the whole document (same result)."},
 	{name = "style.incremental.max_ratio", kind = .Float, default = {f = 0.3}, bounded = true, min = 0, max = 1,
@@ -205,6 +217,10 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.webfont_max_parallel = int(config.int_of(p, "style.webfonts.max_parallel"))
 	s.webfont_max_faces = int(config.int_of(p, "style.webfonts.max_faces"))
 	s.webfont_load_unused = config.bool_of(p, "style.webfonts.load_unused")
+	s.webfont_block_ms = config.float_of(p, "style.webfonts.block_period_ms")
+	s.webfont_short_block_ms = config.float_of(p, "style.webfonts.short_block_period_ms")
+	s.webfont_swap_ms = config.float_of(p, "style.webfonts.swap_period_ms")
+	s.render_block_ms = config.float_of(p, "style.render_blocking.timeout_ms")
 	s.inc_enabled = config.bool_of(p, "style.incremental.enabled")
 	s.inc_max_ratio = f32(config.float_of(p, "style.incremental.max_ratio"))
 	s.inc_parallel_min = int(config.int_of(p, "style.incremental.parallel_min"))

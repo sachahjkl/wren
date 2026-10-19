@@ -1,0 +1,7 @@
+﻿:root { color: CanvasText; background-color: Canvas; font-family: system-ui, sans-serif; }
+body { margin: 0; }
+header { background-color: #ebecef; padding: 24px; text-align: right; }
+header a { color: #333; border: 1px solid #ccc; padding: 4px 8px; margin-left: 6px; text-decoration: none; }
+main { max-width: 900px; margin: 0 auto; padding: 24px; }
+.lead { font-size: 1.4em; text-align: center; font-weight: 300; }
+.side { color: CanvasText; }

@@ -56,7 +56,7 @@ Os_Appearance :: struct {
 	known:          bool,
 	dark:           bool,         // the user's apps theme is dark
 	has_accent:     bool,
-	accent:         css.Color,
+	accent:         [Scheme]css.Color,   // the accent as Windows shows it on light and on dark surfaces
 	has_highlight:  bool,
 	highlight:      css.Color,    // selection background (GetSysColor(COLOR_HIGHLIGHT))
 	highlight_text: css.Color,
@@ -73,6 +73,16 @@ set_os_appearance :: proc(a: Os_Appearance) -> bool {
 }
 
 os_appearance :: proc() -> Os_Appearance { return os_look }
+
+// The scheme the user prefers (style.color_scheme; auto: the platform's apps theme).
+preferred_scheme :: proc(s: ^Settings) -> Scheme {
+	switch s.color_scheme {
+	case .Light: return .Light
+	case .Dark: return .Dark
+	case .Auto:
+	}
+	return os_look.dark ? .Dark : .Light
+}
 
 ////////////////////////////////
 // System colors
@@ -194,11 +204,11 @@ colors_from_prefs :: proc(p: ^config.Prefs, s: ^Settings) {
 			case strings.equal_fold(text, "auto"):
 				autos[c] = true
 			case strings.equal_fold(text, "system"):
-				s.colors[scheme][c] = system_value(look, c, s.colors[scheme])
+				s.colors[scheme][c] = system_value(look, c, scheme, s.colors[scheme])
 			case:
 				col, ok := parse_pref_color(text)
 				if !ok { col, ok = parse_pref_color(fallback) }
-				if !ok { col = system_value(look, c, s.colors[scheme]) }
+				if !ok { col = system_value(look, c, scheme, s.colors[scheme]) }
 				s.colors[scheme][c] = col
 			}
 		}
@@ -216,11 +226,11 @@ colors_from_prefs :: proc(p: ^config.Prefs, s: ^Settings) {
 
 // What `system` means for one color.
 @(private)
-system_value :: proc(look: Os_Appearance, c: System_Color, so_far: [System_Color]css.Color) -> css.Color {
+system_value :: proc(look: Os_Appearance, c: System_Color, scheme: Scheme, so_far: [System_Color]css.Color) -> css.Color {
 	#partial switch c {
 	case .Highlight, .Selected_Item: if look.has_highlight { return look.highlight }
 	case .Highlight_Text, .Selected_Item_Text: if look.has_highlight { return look.highlight_text }
-	case .Accent_Color: if look.has_accent { return look.accent }
+	case .Accent_Color: if look.has_accent { return look.accent[scheme] }
 	case .Accent_Color_Text: return contrast_text(so_far[.Accent_Color])
 	}
 	return css.color_from_u32(FALLBACK_SYSTEM[c])

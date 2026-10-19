@@ -98,6 +98,7 @@ Page :: struct {
 	anim:         Page_Animations,      // transitions and animations (animations.odin)
 	fonts:        Page_Fonts,           // @font-face downloads (fonts.odin)
 	images:       Page_Images,          // <img>, CSS images, Image_decode (images.odin)
+	render:       Render_Block,         // what the first paint waits for (render_blocking.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives

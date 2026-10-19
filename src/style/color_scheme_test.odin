@@ -209,6 +209,35 @@ page_color_scheme_meta :: proc(t: ^testing.T) {
 	}
 }
 
+// webassembly.org: light and dark sheets chosen by media in <noscript>; the media of a sheet's owner must survive the
+// rebuilds of the engine (its list lived in the engine's arena, reset by every rebuild: both sheets applied).
+@(test)
+sheets_chosen_by_prefers_color_scheme :: proc(t: ^testing.T) {
+	SRC :: `<head><noscript>
+		<style media="(prefers-color-scheme: light)">:root { color-scheme: light; background-color: #fefefe }</style>
+		<style media="(prefers-color-scheme: dark)">:root { color-scheme: dark; background-color: #1e1e1e }</style>
+		<meta name="color-scheme" content="light dark"></noscript></head><p id=p>x</p><a id=a href=y>l</a>`
+	for dark in ([2]bool{false, true}) {
+		f := sx_load(SRC, dark)
+		defer sx_unload(f)
+		for _ in 0 ..< 2 {
+			testing.expect_value(t, sx(f, "p").used_scheme, dark ? Scheme.Dark : Scheme.Light)
+			testing.expect(t, same(f.st.canvas, hexc(dark ? 0x1e1e1e : 0xfefefe)))
+			testing.expect(t, same(sx(f, "a").color, hexc(dark ? 0x9e9eff : 0x0000ee)))
+			f.eng.dirty = true   // a rebuild (a sheet added, preferences...) must change nothing
+			styled_destroy(f.st)
+			f.st = compute_styles(f.eng, f.doc, {})
+		}
+		// the preference changes: the other sheet applies
+		env := f.eng.env
+		env.prefers_dark = !dark
+		engine_set_environment(f.eng, env)
+		styled_destroy(f.st)
+		f.st = compute_styles(f.eng, f.doc, {})
+		testing.expect_value(t, sx(f, "p").used_scheme, dark ? Scheme.Light : Scheme.Dark)
+	}
+}
+
 @(test)
 meta_changes_restyle :: proc(t: ^testing.T) {
 	f := sx_load(`<head><title>t</title></head><body><p id=p>x</p><a id=a href=y>l</a></body>`, false)
@@ -254,7 +283,7 @@ system_color_preferences :: proc(t: ^testing.T) {
 	config.set_from_string(&p, "page.color.dark.field", "not a color", .User)
 	saved := os_appearance()
 	defer set_os_appearance(saved)
-	set_os_appearance(Os_Appearance{known = true, has_accent = true, accent = hexc(0xffd000), has_highlight = true, highlight = hexc(0x0078d7), highlight_text = hexc(0xffffff)})
+	set_os_appearance(Os_Appearance{known = true, has_accent = true, accent = {.Light = hexc(0xffd000), .Dark = hexc(0x3b5b76)}, has_highlight = true, highlight = hexc(0x0078d7), highlight_text = hexc(0xffffff)})
 	s := settings_from_prefs(&p)
 	defer settings_destroy(&s)
 	testing.expect(t, same(s.colors[.Dark][.Link_Text], hexc(0x00ff00)))
@@ -262,6 +291,8 @@ system_color_preferences :: proc(t: ^testing.T) {
 	testing.expect(t, same(s.colors[.Dark][.Field], hexc(0x3b3b3b)), "an invalid value falls back to the default")
 	testing.expect(t, same(s.colors[.Light][.Accent_Color], hexc(0xffd000)), "system: the platform's accent")
 	testing.expect(t, same(s.colors[.Light][.Accent_Color_Text], hexc(0x000000)), "auto: black on a light accent")
+	testing.expect(t, same(s.colors[.Dark][.Accent_Color], hexc(0x3b5b76)), "the accent of dark surfaces")
+	testing.expect(t, same(s.colors[.Dark][.Accent_Color_Text], hexc(0xffffff)))
 	testing.expect(t, same(s.colors[.Light][.Highlight], hexc(0x0078d7)))
 	testing.expect(t, same(s.colors[.Dark][.Selected_Item], hexc(0x99c8ff)))
 
