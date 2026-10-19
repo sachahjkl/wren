@@ -140,6 +140,7 @@ split_items :: proc(input: []css.Value, allocator := context.temp_allocator) -> 
 }
 
 parse_color :: proc(cx: ^Cx, vs: []css.Value) -> (css.Color, bool) {
+	cx.cenv.current, cx.cenv.has_current = cx.c.color, true   // currentcolor inside color-mix(), relative colors
 	cv, ok := css.parse_color(vs, &cx.cenv)
 	if !ok { return {}, false }
 	if cv.kind == .Current_Color { return cx.c.color, true }

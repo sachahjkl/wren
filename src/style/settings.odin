@@ -250,12 +250,12 @@ parse_options :: proc(s: ^Settings) -> css.Parse_Options {
 // The family name a generic keyword stands for.
 generic_family :: proc(s: ^Settings, generic: string) -> string {
 	switch generic {
-	case "serif": return s.family_serif
+	case "serif", "ui-serif": return s.family_serif
 	case "sans-serif": return s.family_sans_serif
-	case "monospace": return s.family_monospace
+	case "monospace", "ui-monospace": return s.family_monospace
 	case "cursive": return s.family_cursive
 	case "fantasy": return s.family_fantasy
-	case "system-ui", "ui-sans-serif", "-apple-system", "ui-serif", "ui-rounded", "ui-monospace": return s.family_system_ui
+	case "system-ui", "ui-sans-serif", "-apple-system", "ui-rounded": return s.family_system_ui
 	}
 	return ""
 }

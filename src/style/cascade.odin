@@ -64,6 +64,7 @@ Styled :: struct {
 	by_node:        [dynamic]^Computed,
 	initial:        ^Computed,
 	root_font_size: f32,
+	root_line_height: f32,   // px: what rlh means
 	mutations:      u64,     // the document's mutation counter when this was computed
 	serial:         u64,     // unique per pass: lets layout notice that styles changed even if nothing else did
 	layout_serial:  u64,     // the serial of the last change that was not paint-only (paint_change.odin)
@@ -182,13 +183,27 @@ Var_Env :: struct {
 	parent:   ^Custom_Props,
 	final:    ^Custom_Props,          // set once resolution is finished
 	budget:   int,
+	cx:       ^Cx,                    // the element: registered properties compute their values with it (nil: as written)
+}
+
+// What an element gets for a custom property it does not declare: its parent's value, except for a registered property
+// that does not inherit; then the registered initial value, if any.
+@(private)
+custom_inherited :: proc(env: ^Var_Env, name: string) -> (string, bool) {
+	reg := registered(env.engine, name)
+	if env.parent != nil && (reg == nil || reg.inherits) {
+		if v, ok := env.parent.values[name]; ok { return v, true }
+	}
+	if reg != nil && reg.has_initial { return reg.initial, true }
+	return "", false
 }
 
 @(private)
 var_lookup :: proc(env: ^Var_Env, name: string, depth: int) -> (string, bool) {
 	if env.final != nil {
-		v, ok := env.final.values[name]
-		return v, ok
+		if v, ok := env.final.values[name]; ok { return v, true }
+		if reg := registered(env.engine, name); reg != nil && reg.has_initial { return reg.initial, true }
+		return "", false
 	}
 	if cand, has := env.pending[name]; has && cand.valid {
 		switch env.state[name] {
@@ -196,21 +211,42 @@ var_lookup :: proc(env: ^Var_Env, name: string, depth: int) -> (string, bool) {
 		case 2: return env.resolved[name], true
 		}
 		env.state[name] = 1
-		vals, ok := substitute(env, cand.decl.value, depth + 1)
+		reg := registered(env.engine, name)
+		text: string
+		ok: bool
+		switch css_wide_keyword(cand.decl.value) {
+		case "initial":
+			// the guaranteed-invalid value, or the registered initial value
+			if reg != nil && reg.has_initial { text, ok = reg.initial, true }
+		case "inherit":
+			if env.parent != nil { text, ok = env.parent.values[name] }
+			if !ok && reg != nil && reg.has_initial { text, ok = reg.initial, true }
+		case "unset", "revert", "revert-layer":
+			text, ok = custom_inherited(env, name)
+		case:
+			vals: []css.Value
+			vals, ok = substitute(env, cand.decl.value, depth + 1)
+			if ok {
+				if reg != nil && !reg.universal && env.cx != nil {
+					text, ok = registered_compute(env.cx, reg, vals, env.alloc)
+					// invalid at computed-value time: as if `unset`
+					if !ok { text, ok = custom_inherited(env, name) }
+				} else {
+					text = css.serialize_values(vals, env.alloc)
+				}
+			} else if reg != nil {
+				text, ok = custom_inherited(env, name)
+			}
+		}
 		if !ok {
 			env.state[name] = 3
 			return "", false
 		}
-		text := css.serialize_values(vals, env.alloc)
 		env.resolved[name] = text
 		env.state[name] = 2
 		return text, true
 	}
-	if env.parent != nil {
-		v, ok := env.parent.values[name]
-		return v, ok
-	}
-	return "", false
+	return custom_inherited(env, name)
 }
 
 @(private)
@@ -390,20 +426,28 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	scheme_settle(&cx, s.page_scheme, e.env.prefers_dark)
 	cx.lc = css.Length_Context{
 		font_size = f64(c.font_size), root_font_size = f64(s.root_font_size > 0 ? s.root_font_size : e.settings.default_font_size),
-		x_height = f64(c.font_size) * 0.5, ch = f64(c.font_size) * 0.5, vw = e.env.width, vh = e.env.height,
+		x_height = f64(c.font_size) * css.X_HEIGHT_EM, ch = f64(c.font_size) * css.CH_EM, vw = e.env.width, vh = e.env.height,
+		line_height = f64(used_line_height(c, s.line_height_normal)), root_line_height = f64(s.root_line_height),
 	}
 
 	// custom properties (the maps exist only for elements that declare some)
-	env := Var_Env{engine = e, alloc = a, budget = e.settings.max_var_bytes}
+	env := Var_Env{engine = e, alloc = a, budget = e.settings.max_var_bytes, cx = &cx}
 	env.parent = c.custom
-	if len(cust) > 0 {
+	// registered properties that do not inherit stop here: the map is copied without them
+	drops_noninherited := e.registered_noninherited > 0 && c.custom != nil && carries_noninherited(e, c.custom)
+	if len(cust) > 0 || drops_noninherited {
 		env.pending = make(map[string]Custom_Cand, context.temp_allocator)
 		env.resolved = make(map[string]string, context.temp_allocator)
 		env.state = make(map[string]u8, context.temp_allocator)
 		for k, v in cust { env.pending[k] = v }
 		props := new(Custom_Props, a)
 		props.values = make(map[string]string, a)
-		if c.custom != nil { for k, v in c.custom.values { props.values[k] = v } }
+		if c.custom != nil {
+			for k, v in c.custom.values {
+				if reg := registered(e, k); reg != nil && !reg.inherits { continue }
+				props.values[k] = v
+			}
+		}
 		for name in cust {
 			text, ok := var_lookup(&env, name, 0)
 			if ok { props.values[name] = text } else { delete_key(&props.values, name) }
@@ -446,14 +490,31 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		if pr == .Color_Scheme || pr == .Color { scheme_settle(&cx, s.page_scheme, e.env.prefers_dark) }
 		if pr == .Font_Size {
 			cx.lc.font_size = f64(c.font_size)
-			cx.lc.x_height = f64(c.font_size) * 0.5
-			cx.lc.ch = f64(c.font_size) * 0.5
+			cx.lc.x_height = f64(c.font_size) * css.X_HEIGHT_EM
+			cx.lc.ch = f64(c.font_size) * css.CH_EM
 		}
+		if pr == .Font_Size || pr == .Line_Height { cx.lc.line_height = f64(used_line_height(c, s.line_height_normal)) }
 	}
 	for pr in p.touched { p.ws[pr] = {} }
 	clear(&p.touched)
 	finish_style(&cx, h)
 	return c
+}
+
+@(private)
+carries_noninherited :: proc(e: ^Engine, props: ^Custom_Props) -> bool {
+	for name, reg in e.registered { if !reg.inherits && name in props.values { return true } }
+	return false
+}
+
+// The line height in px (what lh means): `normal` is `line_height_normal` times the font size.
+used_line_height :: proc(c: ^Computed, normal: f32) -> f32 {
+	switch c.line_height.kind {
+	case .Number: return c.line_height.v * c.font_size
+	case .Length: return c.line_height.v
+	case .Normal:
+	}
+	return (normal > 0 ? normal : 1.2) * c.font_size
 }
 
 // `unset`: inherit when the property is inherited, otherwise its initial value.
@@ -604,7 +665,10 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 			s.by_node[idx] = c
 			if p.counters != nil { counters_enter(p.counters, doc, f.h, n, c, hidden, p.alloc) } else { resolve_static(doc, f.h, c, p.alloc) }
 		}
-		if f.parent == nil && s.root_font_size == 0 { s.root_font_size = c.font_size }
+		if f.parent == nil && s.root_font_size == 0 {
+			s.root_font_size = c.font_size
+			s.root_line_height = used_line_height(c, s.line_height_normal)
+		}
 		if !sync.atomic_load(&s.motion) && (has_transitions(c) || has_animations(c)) { sync.atomic_store(&s.motion, true) }   // threads of a parallel pass may race here
 		if !descend && f.h == root { break }
 		if p.counters != nil { append(&stack, Frame{h = f.h, hidden = hidden, exit = true, c = c}) }

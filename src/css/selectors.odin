@@ -24,9 +24,11 @@ Pseudo :: enum u8 {
 	Checked, Disabled, Enabled, Required, Optional, Read_Only, Read_Write, Placeholder_Shown,
 	Valid, Invalid, User_Valid, User_Invalid, In_Range, Out_Of_Range, Indeterminate, Default, Autofill,
 	// other
-	Lang, Dir, Scope, Defined,
+	Lang, Dir, Scope, Defined, Open,
+	Never,          // valid, but matches nothing in this engine's documents: :host outside a shadow tree, :popover-open...
 	// pseudo-elements
 	Before, After, First_Line, First_Letter, Selection, Placeholder, Marker, Backdrop,
+	Other_Element,  // a valid pseudo-element that generates nothing here (::part(), ::file-selector-button, ::-webkit-*...)
 }
 
 Simple :: struct {
@@ -231,7 +233,7 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s:
 				if len(vs) > 2 && vs[2].kind == .Token && vs[2].tok.kind == .Ident {
 					if elem, good := pseudo_element_of(vs[2].tok.text); good { return {}, elem, 3, true }
 				}
-				if len(vs) > 2 && vs[2].kind == .Function && strings.equal_fold(vs[2].tok.text, "highlight") { return {}, .Selection, 3, true }
+				if len(vs) > 2 && vs[2].kind == .Function && functional_pseudo_element(vs[2]) { return {}, .Other_Element, 3, true }
 				return {}, .None, 0, false
 			}
 			if len(vs) > 1 && vs[1].kind == .Token && vs[1].tok.kind == .Ident {
@@ -272,8 +274,26 @@ pseudo_element_of :: proc(name: string) -> (Pseudo, bool) {
 	case "placeholder": return .Placeholder, true
 	case "marker": return .Marker, true
 	case "backdrop": return .Backdrop, true
+	case "-webkit-input-placeholder": return .Placeholder, true
+	case "file-selector-button", "details-content", "target-text", "spelling-error", "grammar-error", "search-text", "cue",
+	     "view-transition", "checkmark", "picker-icon", "scroll-marker", "scroll-marker-group", "scroll-button", "column":
+		return .Other_Element, true
 	}
+	// Blink accepts every -webkit- pseudo-element (its form controls' parts, scroll bars...): a sheet written for it keeps
+	// its selector lists. They style parts this engine does not have.
+	if len(name) > 8 && strings.equal_fold(name[:8], "-webkit-") { return .Other_Element, true }
 	return .None, false
+}
+
+// ::part(), ::slotted(), ::highlight()...: valid functional pseudo-elements that match no box of this engine.
+@(private)
+functional_pseudo_element :: proc(f: Value) -> bool {
+	switch strings.to_lower(f.tok.text, context.temp_allocator) {
+	case "part", "slotted", "highlight", "cue", "cue-region", "picker", "view-transition-group", "view-transition-image-pair",
+	     "view-transition-old", "view-transition-new", "scroll-button":
+		return true
+	}
+	return false
 }
 
 @(private)
@@ -315,6 +335,12 @@ simple_pseudo_class :: proc(name: string) -> (Pseudo, bool) {
 	case "autofill", "-webkit-autofill": return .Autofill, true
 	case "scope": return .Scope, true
 	case "defined": return .Defined, true
+	case "open": return .Open, true
+	case "-webkit-any-link": return .Any_Link, true
+	case "host", "has-slotted", "popover-open", "modal", "fullscreen", "-webkit-full-screen", "picture-in-picture",
+	     "playing", "paused", "seeking", "buffering", "stalled", "muted", "volume-locked", "current", "past", "future",
+	     "target-current", "active-view-transition", "xr-overlay":
+		return .Never, true
 	}
 	return .None, false
 }
@@ -330,9 +356,13 @@ parse_functional_pseudo :: proc(f: Value, a: Arena_Alloc, parent: ^Selector_List
 		if !good { return {}, false }
 		s.pseudo = .Not
 		s.list = new(Selector_List, a); s.list^ = lst
-	case "is", "where":
-		s.pseudo = name == "is" ? .Is : .Where
+	case "is", "where", "-webkit-any", "matches", "-webkit-matches":
+		s.pseudo = name == "where" ? .Where : .Is
 		s.list = new(Selector_List, a); s.list^ = parse_forgiving_list(args, a, parent, false)
+	case "host", "host-context", "state", "active-view-transition-type", "current":
+		// shadow-tree and custom-element states: nothing in a document matches them here
+		if len(args) == 0 { return {}, false }
+		s.pseudo = .Never
 	case "has":
 		items := split_commas(args, a)
 		out := make([dynamic]Complex, a)

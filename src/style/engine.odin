@@ -97,6 +97,8 @@ Engine :: struct {
 	faces:     [dynamic]Font_Face,        // ... parsed (fontface.odin); strings in `alloc`
 	keyframes: [dynamic]Keyframes_Ref,    // @keyframes rules in force
 	keyframe_sets: map[string]^Keyframes_Set,   // the winning rule of each name, compiled (keyframes.odin)
+	registered: map[string]^Registered_Prop,    // @property registrations in force (property.odin); values in `alloc`
+	registered_noninherited: int,               // how many of them do not inherit
 	rebuilds:  u64,                       // counts rebuilds: compiled keyframes and faces are stale after one
 	cur_base_url: string,                 // while flattening: the URL of the sheet being read
 	kf_order:  u32,
@@ -160,6 +162,7 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.faces)
 	delete(e.keyframes)
 	delete(e.keyframe_sets)
+	delete(e.registered)
 	delete(e.state_entries)
 	inv_free(&e.inv)
 	if e.has_spare { virtual.arena_destroy(&e.spare) }
@@ -565,6 +568,7 @@ flatten_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCtx) {
 	case .Keyframes:
 		e.kf_order += 1
 		append(&e.keyframes, Keyframes_Ref{rule = r, layer = lc.rank, order = e.kf_order, origin = origin})
+	case .Property: register_property(e, r)
 	case .Import, .Namespace, .Page, .Container, .Unknown:
 	}
 }
@@ -626,6 +630,8 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	clear(&e.faces)
 	clear(&e.keyframes)
 	clear(&e.keyframe_sets)
+	clear(&e.registered)
+	e.registered_noninherited = 0
 	e.order, e.rule_count, e.media_dependent, e.anon_layers, e.kf_order = 0, 0, false, 0, 0
 
 	if doc != nil {

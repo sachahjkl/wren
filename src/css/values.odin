@@ -23,6 +23,9 @@ Color_Env :: struct {
 	dark:   bool,
 	system: proc(user: rawptr, name: string, dark: bool) -> (Color, bool),   // CanvasText, LinkText... (`name` lowercase)
 	user:   rawptr,
+	// the value of currentcolor where it is known (computed values): color-mix() and relative colors resolve it
+	current:     Color,
+	has_current: bool,
 }
 
 ////////////////////////////////
@@ -269,125 +272,16 @@ parse_color :: proc(input: []Value, env: ^Color_Env) -> (cv: Color_Value, ok: bo
 
 @(private)
 parse_color_function :: proc(f: Value, env: ^Color_Env) -> (cv: Color_Value, ok: bool) {
-	name := strings.to_lower(f.tok.text, context.temp_allocator)
-	args := f.children
-	switch name {
-	case "light-dark":
-		parts := split_commas(args, context.temp_allocator)
-		if len(parts) != 2 { return {}, false }
-		pick := (env != nil && env.dark) ? parts[1] : parts[0]
-		return parse_color(pick, env)
-	case "color-mix":
-		return parse_color_mix(args, env)
-	}
-	c: Components
-	if !read_components(args, &c) { return {}, false }
-	alpha := alpha_of(c)
-	val :: proc(c: Components, i: int, pct_100: f64) -> f64 {
-		if c.is_none[i] { return 0 }
-		return c.is_pct[i] ? c.vals[i] / 100 * pct_100 : c.vals[i]
-	}
-	switch name {
-	case "rgb", "rgba":
-		ch :: proc(c: Components, i: int) -> f32 { return clamp01(f32(val(c, i, 255) / 255)) }
-		return Color_Value{rgba = {ch(c, 0), ch(c, 1), ch(c, 2), alpha}}, true
-	case "hsl", "hsla":
-		h := c.is_none[0] ? 0 : hue_degrees(c.vals[0], c.has_unit[0])
-		s := clamp(val(c, 1, 100) / 100, 0, 1)
-		l := clamp(val(c, 2, 100) / 100, 0, 1)
-		rgb := hsl_to_rgb(h, s, l)
-		return Color_Value{rgba = {rgb.r, rgb.g, rgb.b, alpha}}, true
-	case "hwb":
-		h := c.is_none[0] ? 0 : hue_degrees(c.vals[0], c.has_unit[0])
-		w := clamp(val(c, 1, 100) / 100, 0, 1)
-		b := clamp(val(c, 2, 100) / 100, 0, 1)
-		if w + b >= 1 { g := f32(w / (w + b)); return Color_Value{rgba = {g, g, g, alpha}}, true }
-		rgb := hsl_to_rgb(h, 1, 0.5)
-		for k in 0 ..< 3 { rgb[k] = rgb[k] * f32(1 - w - b) + f32(w) }
-		return Color_Value{rgba = {rgb.r, rgb.g, rgb.b, alpha}}, true
-	case "lab":
-		col := lab_to_srgb(val(c, 0, 100), val(c, 1, 125), val(c, 2, 125))
-		col.a = alpha
-		return Color_Value{rgba = col}, true
-	case "lch":
-		h := hue_degrees(c.vals[2], c.has_unit[2]) * math.PI / 180
-		ch := val(c, 1, 150)
-		col := lab_to_srgb(val(c, 0, 100), ch * math.cos(h), ch * math.sin(h))
-		col.a = alpha
-		return Color_Value{rgba = col}, true
-	case "oklab":
-		col := oklab_to_srgb(val(c, 0, 1), val(c, 1, 0.4), val(c, 2, 0.4))
-		col.a = alpha
-		return Color_Value{rgba = col}, true
-	case "oklch":
-		h := hue_degrees(c.vals[2], c.has_unit[2]) * math.PI / 180
-		ch := val(c, 1, 0.4)
-		col := oklab_to_srgb(val(c, 0, 1), ch * math.cos(h), ch * math.sin(h))
-		col.a = alpha
-		return Color_Value{rgba = col}, true
-	}
-	return {}, false
-}
-
-// color-mix(in srgb|oklab|srgb-linear, c1 [p1%], c2 [p2%])
-@(private)
-parse_color_mix :: proc(args: []Value, env: ^Color_Env) -> (cv: Color_Value, ok: bool) {
-	parts := split_commas(args, context.temp_allocator)
-	if len(parts) != 3 { return {}, false }
-	space := ""
-	for v in trim_values(parts[0]) { if v.kind == .Token && v.tok.kind == .Ident && !strings.equal_fold(v.tok.text, "in") { space = strings.to_lower(v.tok.text, context.temp_allocator) } }
-	if space == "" { return {}, false }
-	Side :: struct { c: Color, p: f64, has_p: bool }
-	sides: [2]Side
-	for i in 0 ..< 2 {
-		vs := trim_values(parts[i + 1])
-		rest := make([dynamic]Value, context.temp_allocator)
-		for v in vs {
-			if v.kind == .Token && v.tok.kind == .Percentage { sides[i].p, sides[i].has_p = v.tok.num / 100, true } else { append(&rest, v) }
-		}
-		col, good := parse_color(rest[:], env)
-		if !good || col.kind == .Current_Color { return {}, false }
-		sides[i].c = col.rgba
-	}
-	p1, p2 := sides[0].p, sides[1].p
-	switch {
-	case !sides[0].has_p && !sides[1].has_p: p1, p2 = 0.5, 0.5
-	case !sides[0].has_p: p1 = 1 - p2
-	case !sides[1].has_p: p2 = 1 - p1
-	}
-	total := p1 + p2
-	if total <= 0 { return {}, false }
-	alpha_mult := min(total, 1)
-	p1, p2 = p1 / total, p2 / total
-	a := sides[0].c; b := sides[1].c
-	// premultiplied interpolation
-	alpha := f32(f64(a.a) * p1 + f64(b.a) * p2)
-	out: Color
-	switch space {
-	case "srgb":
-		for k in 0 ..< 3 { out[k] = alpha > 0 ? f32((f64(a[k] * a.a) * p1 + f64(b[k] * b.a) * p2)) / alpha : 0 }
-	case "srgb-linear":
-		for k in 0 ..< 3 {
-			l := (srgb_decode(a[k]) * f64(a.a) * p1 + srgb_decode(b[k]) * f64(b.a) * p2) / max(f64(alpha), 1e-9)
-			out[k] = srgb_encode(l)
-		}
-	case "oklab", "oklch", "lab", "lch", "hsl", "hwb", "xyz", "display-p3":
-		la, lb := srgb_to_oklab(a), srgb_to_oklab(b)   // other spaces are interpolated in OKLab: close for most inputs
-		l := (la[0] * f64(a.a) * p1 + lb[0] * f64(b.a) * p2) / max(f64(alpha), 1e-9)
-		aa := (la[1] * f64(a.a) * p1 + lb[1] * f64(b.a) * p2) / max(f64(alpha), 1e-9)
-		bb := (la[2] * f64(a.a) * p1 + lb[2] * f64(b.a) * p2) / max(f64(alpha), 1e-9)
-		out = oklab_to_srgb(l, aa, bb)
-	case: return {}, false
-	}
-	out.a = alpha * f32(alpha_mult)
-	for k in 0 ..< 3 { out[k] = clamp01(out[k]) }
-	return Color_Value{rgba = out}, true
+	sc, cur, good := parse_color_function_sc(f, env)
+	if !good { return {}, false }
+	if cur { return Color_Value{kind = .Current_Color}, true }
+	return Color_Value{rgba = color_to_srgb(sc)}, true
 }
 
 ////////////////////////////////
 // Lengths, numbers and calc()
 
-Unit :: enum u8 { Px, Em, Rem, Ex, Ch, Lh, Vw, Vh, Vmin, Vmax, Percent, Ms, Deg }   // Ms, Deg: canonical time and angle
+Unit :: enum u8 { Px, Em, Rem, Ex, Ch, Lh, Vw, Vh, Vmin, Vmax, Percent, Ms, Deg, Rlh, Cap, Ic, Rex, Rch, Ric, Rcap }   // Ms, Deg: canonical time and angle
 
 // <time> in milliseconds and <angle> in degrees, from a unit as written.
 time_unit_to_ms :: proc(n: f64, unit: string) -> (f64, bool) {
@@ -429,10 +323,20 @@ relative_unit :: proc(unit: string) -> (Unit, bool) {
 	case "ex": return .Ex, true
 	case "ch": return .Ch, true
 	case "lh": return .Lh, true
-	case "vw", "svw", "lvw", "dvw", "vi": return .Vw, true
-	case "vh", "svh", "lvh", "dvh", "vb": return .Vh, true
-	case "vmin", "svmin", "lvmin", "dvmin": return .Vmin, true
-	case "vmax", "svmax", "lvmax", "dvmax": return .Vmax, true
+	case "rlh": return .Rlh, true
+	case "cap": return .Cap, true
+	case "ic": return .Ic, true
+	case "rex": return .Rex, true
+	case "rch": return .Rch, true
+	case "ric": return .Ric, true
+	case "rcap": return .Rcap, true
+	// the viewport never has collapsing browser bars here: small, large and dynamic viewports are the same. Container
+	// query units resolve against the small viewport when no container applies (CSS Contain 3 §6.1), which is always
+	// the case in this engine (container queries are not implemented).
+	case "vw", "svw", "lvw", "dvw", "vi", "svi", "lvi", "dvi", "cqw", "cqi": return .Vw, true
+	case "vh", "svh", "lvh", "dvh", "vb", "svb", "lvb", "dvb", "cqh", "cqb": return .Vh, true
+	case "vmin", "svmin", "lvmin", "dvmin", "cqmin": return .Vmin, true
+	case "vmax", "svmax", "lvmax", "dvmax", "cqmax": return .Vmax, true
 	}
 	return .Px, false
 }
@@ -444,9 +348,16 @@ Length_Context :: struct {
 	x_height:    f64,
 	ch:          f64,
 	line_height: f64,
+	root_line_height: f64,   // rlh
 	vw, vh:      f64,    // viewport size in px
 	percent_base: f64,   // what 100% means here
 }
+
+// Font-relative units this engine resolves without the font's metrics, as fractions of the em (CSS Values 4 gives these
+// as the fallbacks when a metric is unavailable: ex and ch 0.5em, cap the ascent ~0.7em, ic 1em).
+X_HEIGHT_EM :: 0.5
+CH_EM :: 0.5
+CAP_EM :: 0.7
 
 resolve_unit :: proc(n: f64, u: Unit, c: Length_Context) -> f64 {
 	switch u {
@@ -455,7 +366,14 @@ resolve_unit :: proc(n: f64, u: Unit, c: Length_Context) -> f64 {
 	case .Rem: return n * c.root_font_size
 	case .Ex: return n * c.x_height
 	case .Ch: return n * c.ch
-	case .Lh: return n * c.line_height
+	case .Lh: return n * (c.line_height > 0 ? c.line_height : c.font_size * 1.2)
+	case .Rlh: return n * (c.root_line_height > 0 ? c.root_line_height : c.root_font_size * 1.2)
+	case .Cap: return n * c.font_size * CAP_EM
+	case .Ic: return n * c.font_size
+	case .Rex: return n * c.root_font_size * X_HEIGHT_EM
+	case .Rch: return n * c.root_font_size * CH_EM
+	case .Ric: return n * c.root_font_size
+	case .Rcap: return n * c.root_font_size * CAP_EM
 	case .Vw: return n * c.vw / 100
 	case .Vh: return n * c.vh / 100
 	case .Vmin: return n * min(c.vw, c.vh) / 100
@@ -466,47 +384,154 @@ resolve_unit :: proc(n: f64, u: Unit, c: Length_Context) -> f64 {
 	return n
 }
 
-Calc_Op :: enum u8 { Number, Dimension, Add, Sub, Mul, Div, Min, Max, Clamp, Abs, Neg }
+Calc_Op :: enum u8 {
+	Number, Dimension, Add, Sub, Mul, Div, Min, Max, Clamp, Abs, Neg,
+	// CSS Values 4 math functions
+	Round, Mod, Rem, Sign, Pow, Sqrt, Hypot, Log, Exp, Sin, Cos, Tan, Asin, Acos, Atan, Atan2,
+}
+
+Round_Strategy :: enum u8 { Nearest, Up, Down, To_Zero }
 
 // A calc() expression tree. Leaves are numbers or dimensions (a value and a unit); percentages are `.Percent`.
+// Round: `strategy` says how; trigonometric functions take radians (an angle argument is converted when parsed) and
+// the inverse ones give degrees.
 Calc :: struct {
 	op:   Calc_Op,
 	num:  f64,
 	unit: Unit,
+	strategy: Round_Strategy,
 	a, b, c: ^Calc,
 }
 
-// Parses calc(), min(), max(), clamp(), abs() (and a bare parenthesised sum inside them).
+// The CSS name and arguments of a math function node (serialisation).
+calc_function_of :: proc(n: ^Calc) -> (name: string, args: [3]^Calc, count: int) {
+	args = {n.a, n.b, n.c}
+	for x in args { if x != nil { count += 1 } }
+	#partial switch n.op {
+	case .Min: name = "min"
+	case .Max: name = "max"
+	case .Clamp: name = "clamp"
+	case .Abs: name = "abs"
+	case .Round: name = "round"
+	case .Mod: name = "mod"
+	case .Rem: name = "rem"
+	case .Sign: name = "sign"
+	case .Pow: name = "pow"
+	case .Sqrt: name = "sqrt"
+	case .Hypot: name = "hypot"
+	case .Log: name = "log"
+	case .Exp: name = "exp"
+	case .Sin: name = "sin"
+	case .Cos: name = "cos"
+	case .Tan: name = "tan"
+	case .Asin: name = "asin"
+	case .Acos: name = "acos"
+	case .Atan: name = "atan"
+	case .Atan2: name = "atan2"
+	case: name = "calc"
+	}
+	return
+}
+
+@(private)
+calc_node :: proc(alloc: Arena_Alloc, op: Calc_Op, a: ^Calc, b: ^Calc = nil, c: ^Calc = nil) -> ^Calc {
+	n := new(Calc, alloc)
+	n.op, n.a, n.b, n.c = op, a, b, c
+	return n
+}
+
+// Some leaf of the tree is an angle.
+@(private)
+calc_has_angle :: proc(n: ^Calc) -> bool {
+	if n == nil { return false }
+	if n.op == .Dimension && n.unit == .Deg { return true }
+	#partial switch n.op {
+	case .Asin, .Acos, .Atan, .Atan2: return true   // their result is an angle
+	case .Sin, .Cos, .Tan: return false             // their result is a number
+	}
+	return calc_has_angle(n.a) || calc_has_angle(n.b) || calc_has_angle(n.c)
+}
+
+// Parses calc() and the math functions: min(), max(), clamp(), abs(), sign(), round(), mod(), rem(), pow(), sqrt(),
+// hypot(), log(), exp(), sin(), cos(), tan(), asin(), acos(), atan(), atan2() (and parenthesised sums inside them).
 parse_calc :: proc(f: Value, alloc: Arena_Alloc) -> ^Calc {
 	if f.kind != .Function { return nil }
 	name := strings.to_lower(f.tok.text, context.temp_allocator)
+	args :: proc(f: Value, alloc: Arena_Alloc, lo, hi: int) -> ([]^Calc, bool) {
+		parts := split_commas(f.children, context.temp_allocator)
+		if len(parts) < lo || len(parts) > hi { return nil, false }
+		out := make([]^Calc, len(parts), context.temp_allocator)
+		for p, i in parts {
+			out[i] = calc_sum(trim_values(p), alloc, 0)
+			if out[i] == nil { return nil, false }
+		}
+		return out, true
+	}
 	switch name {
 	case "calc", "-webkit-calc", "-moz-calc": return calc_sum(trim_values(f.children), alloc, 0)
-	case "min", "max":
-		args := split_commas(f.children, context.temp_allocator)
-		if len(args) == 0 || len(args) > 64 { return nil }
-		acc := calc_sum(trim_values(args[0]), alloc, 0)
-		if acc == nil { return nil }
-		for i in 1 ..< len(args) {
-			rhs := calc_sum(trim_values(args[i]), alloc, 0)
-			if rhs == nil { return nil }
-			n := new(Calc, alloc); n.op = name == "min" ? .Min : .Max; n.a, n.b = acc, rhs
-			acc = n
-		}
+	case "min", "max", "hypot":
+		xs, ok := args(f, alloc, 1, 64)
+		if !ok { return nil }
+		op: Calc_Op = name == "min" ? .Min : name == "max" ? .Max : .Hypot
+		if op == .Hypot && len(xs) == 1 { return calc_node(alloc, .Abs, xs[0]) }
+		acc := xs[0]
+		for i in 1 ..< len(xs) { acc = calc_node(alloc, op, acc, xs[i]) }
 		return acc
 	case "clamp":
-		args := split_commas(f.children, context.temp_allocator)
-		if len(args) != 3 { return nil }
-		a := calc_sum(trim_values(args[0]), alloc, 0)
-		b := calc_sum(trim_values(args[1]), alloc, 0)
-		c := calc_sum(trim_values(args[2]), alloc, 0)
-		if a == nil || b == nil || c == nil { return nil }
-		n := new(Calc, alloc); n.op, n.a, n.b, n.c = .Clamp, a, b, c
-		return n
-	case "abs":
-		a := calc_sum(trim_values(f.children), alloc, 0)
+		xs, ok := args(f, alloc, 3, 3)
+		if !ok { return nil }
+		return calc_node(alloc, .Clamp, xs[0], xs[1], xs[2])
+	case "abs", "sign", "sqrt", "exp":
+		xs, ok := args(f, alloc, 1, 1)
+		if !ok { return nil }
+		op: Calc_Op = name == "abs" ? .Abs : name == "sign" ? .Sign : name == "sqrt" ? .Sqrt : .Exp
+		return calc_node(alloc, op, xs[0])
+	case "mod", "rem", "pow", "atan2":
+		xs, ok := args(f, alloc, 2, 2)
+		if !ok { return nil }
+		op: Calc_Op = name == "mod" ? .Mod : name == "rem" ? .Rem : name == "pow" ? .Pow : .Atan2
+		return calc_node(alloc, op, xs[0], xs[1])
+	case "log":
+		xs, ok := args(f, alloc, 1, 2)
+		if !ok { return nil }
+		return calc_node(alloc, .Log, xs[0], len(xs) == 2 ? xs[1] : nil)
+	case "sin", "cos", "tan":
+		xs, ok := args(f, alloc, 1, 1)
+		if !ok { return nil }
+		x := xs[0]
+		if calc_has_angle(x) {   // degrees -> radians
+			k := new(Calc, alloc); k.op, k.num = .Number, math.PI / 180
+			x = calc_node(alloc, .Mul, x, k)
+		}
+		return calc_node(alloc, name == "sin" ? .Sin : name == "cos" ? .Cos : .Tan, x)
+	case "asin", "acos", "atan":
+		xs, ok := args(f, alloc, 1, 1)
+		if !ok { return nil }
+		return calc_node(alloc, name == "asin" ? .Asin : name == "acos" ? .Acos : .Atan, xs[0])
+	case "round":
+		// round([strategy,] A [, B])
+		parts := split_commas(f.children, context.temp_allocator)
+		strategy := Round_Strategy.Nearest
+		if len(parts) > 0 {
+			switch ident_of(parts[0]) {
+			case "nearest": strategy = .Nearest; parts = parts[1:]
+			case "up": strategy = .Up; parts = parts[1:]
+			case "down": strategy = .Down; parts = parts[1:]
+			case "to-zero": strategy = .To_Zero; parts = parts[1:]
+			}
+		}
+		if len(parts) < 1 || len(parts) > 2 { return nil }
+		a := calc_sum(trim_values(parts[0]), alloc, 0)
 		if a == nil { return nil }
-		n := new(Calc, alloc); n.op, n.a = .Abs, a
+		b: ^Calc
+		if len(parts) == 2 {
+			b = calc_sum(trim_values(parts[1]), alloc, 0)
+			if b == nil { return nil }
+		} else {
+			b = new(Calc, alloc); b.op, b.num = .Number, 1
+		}
+		n := calc_node(alloc, .Round, a, b)
+		n.strategy = strategy
 		return n
 	}
 	return nil
@@ -598,6 +623,9 @@ calc_leaf :: proc(v: Value, alloc: Arena_Alloc, depth: int) -> ^Calc {
 			switch strings.to_lower(t.text, context.temp_allocator) {
 			case "pi": n.op, n.num = .Number, math.PI
 			case "e": n.op, n.num = .Number, math.E
+			case "infinity": n.op, n.num = .Number, CALC_INFINITY
+			case "-infinity": n.op, n.num = .Number, -CALC_INFINITY
+			case "nan": n.op, n.num = .Number, 0   // NaN in a property value is censored to 0 (CSS Values 4 §10.9)
 			case: return nil
 			}
 		case: return nil
@@ -632,8 +660,64 @@ eval_calc :: proc(n: ^Calc, c: Length_Context) -> f64 {
 	case .Clamp: return max(eval_calc(n.a, c), min(eval_calc(n.b, c), eval_calc(n.c, c)))
 	case .Abs: return math.abs(eval_calc(n.a, c))
 	case .Neg: return -eval_calc(n.a, c)
+	case .Sign:
+		x := eval_calc(n.a, c)
+		return x > 0 ? 1 : x < 0 ? -1 : 0
+	case .Round:
+		a, b := eval_calc(n.a, c), eval_calc(n.b, c)
+		if b == 0 { return a }
+		q := a / b
+		r: f64
+		switch n.strategy {
+		case .Nearest: r = math.floor(q + 0.5)
+		case .Up: r = math.ceil(q)
+		case .Down: r = math.floor(q)
+		case .To_Zero: r = math.trunc(q)
+		}
+		return r * b
+	case .Mod:
+		a, b := eval_calc(n.a, c), eval_calc(n.b, c)
+		if b == 0 { return 0 }
+		return a - b * math.floor(a / b)
+	case .Rem:
+		a, b := eval_calc(n.a, c), eval_calc(n.b, c)
+		if b == 0 { return 0 }
+		return a - b * math.trunc(a / b)
+	case .Pow: return finite(math.pow(eval_calc(n.a, c), eval_calc(n.b, c)))
+	case .Sqrt: return finite(math.sqrt(max(eval_calc(n.a, c), 0)))
+	case .Hypot:
+		a, b := eval_calc(n.a, c), eval_calc(n.b, c)
+		return finite(math.sqrt(a * a + b * b))
+	case .Log:
+		x := eval_calc(n.a, c)
+		if x <= 0 { return 0 }
+		if n.b == nil { return math.ln(x) }
+		base := eval_calc(n.b, c)
+		if base <= 0 || base == 1 { return 0 }
+		return math.ln(x) / math.ln(base)
+	case .Exp: return finite(math.exp(eval_calc(n.a, c)))
+	case .Sin: return math.sin(eval_calc(n.a, c))
+	case .Cos: return math.cos(eval_calc(n.a, c))
+	case .Tan: return finite(math.tan(eval_calc(n.a, c)))
+	case .Asin: return math.asin(clamp(eval_calc(n.a, c), -1, 1)) * 180 / math.PI
+	case .Acos: return math.acos(clamp(eval_calc(n.a, c), -1, 1)) * 180 / math.PI
+	case .Atan: return math.atan(eval_calc(n.a, c)) * 180 / math.PI
+	case .Atan2: return math.atan2(eval_calc(n.a, c), eval_calc(n.b, c)) * 180 / math.PI
 	}
 	return 0
+}
+
+// What `infinity` stands for: finite in every later f32 computation (radii scaled to their box, z-index clamped...), far
+// beyond any real length. `border-radius: calc(infinity * 1px)` (a pill) is the common use.
+CALC_INFINITY :: 1e15
+
+// NaN becomes 0 and infinities the largest finite values, as CSS Values 4 §10.9 asks of a value that reaches a property.
+@(private)
+finite :: proc(x: f64) -> f64 {
+	if math.is_nan(x) { return 0 }
+	if math.is_inf(x, 1) { return CALC_INFINITY }
+	if math.is_inf(x, -1) { return -CALC_INFINITY }
+	return x
 }
 
 // A calc() made only of numbers and absolute lengths (media queries, color components).
