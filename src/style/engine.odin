@@ -38,6 +38,7 @@ Rule :: struct {
 	layer:   u32,
 	order:   u32,
 	cq:      ^Cq_Cond,   // @container conditions around the rule (container.odin); nil: none
+	hint:    bool,       // HTML presentational hints (hints.odin): author origin, below every layer and sheet
 }
 
 // Dynamic state that a rule can depend on. Which of them appear in the active rules decides what a change of state costs.

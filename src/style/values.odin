@@ -417,11 +417,12 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Text_Align:
 		if id, ok := ident_raw(vs); ok {
 			switch strings.to_lower(id, context.temp_allocator) {
-			case "-webkit-center": c.text_align = .Center; return true
-			case "-webkit-left": c.text_align = .Left; return true
-			case "-webkit-right": c.text_align = .Right; return true
+			case "-webkit-center": c.text_align = .Legacy_Center; return true
+			case "-webkit-left": c.text_align = .Legacy_Left; return true
+			case "-webkit-right": c.text_align = .Legacy_Right; return true
 			case "justify-all": c.text_align = .Justify; return true
 			case "match-parent": c.text_align = .Start; return true
+			case "legacy-center", "legacy-left", "legacy-right": return false   // (internal names, not CSS keywords)
 			}
 		}
 		return set_enum(vs, &c.text_align)
@@ -602,12 +603,13 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Aspect_Ratio:
 		items := split_items(vs)
 		ratio := f32(0)
-		have := false
+		have, auto := false, false
 		i := 0
 		for i < len(items) {
 			it := items[i]
 			if it.kind == .Token && it.tok.kind == .Ident {
-				if !strings.equal_fold(it.tok.text, "auto") { return false }
+				if !strings.equal_fold(it.tok.text, "auto") || auto { return false }
+				auto = true
 				i += 1
 				continue
 			}
@@ -627,6 +629,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		}
 		if !have && len(items) != 1 { return false }
 		c.aspect_ratio = ratio
+		c.aspect_ratio_auto = auto && have
 	case .Object_Fit: return set_enum(vs, &c.object_fit)
 	case .Flex_Direction: return set_enum(vs, &c.flex_direction)
 	case .Flex_Wrap: return set_enum(vs, &c.flex_wrap)

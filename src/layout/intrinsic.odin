@@ -184,9 +184,7 @@ natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 			if iw, ih, ok := c.replaced.intrinsic(c.replaced.user, h_node); ok { return iw * s, ih * s, true, true }
 		}
 		if rw, rh, hw, hh, ok := ratio_only(c, h_node); ok { return rw, rh, hw, hh }
-		aw, okw := attr_px(c, h_node, "width")
-		ah, okh := attr_px(c, h_node, "height")
-		if okw || okh { return aw * s, ah * s, okw, okh }
+		// (its width / height attributes are presentational hints, CSS width / height and aspect-ratio: style's hints.odin)
 		return c.set.placeholder_w * s, c.set.placeholder_h * s, true, true
 	case "canvas":
 		aw, okw := attr_px(c, h_node, "width")
@@ -257,8 +255,21 @@ natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 	return 0, 0, true, true
 }
 
-// Used border-box size of a replaced element. cb_w / cb_h < 0: indefinite percentage bases.
-replaced_size :: proc(c: ^Ctx, bi: i32, cb_w, cb_h: f32) -> Vec2 {
+// An image whose natural size is not known yet (not loaded, broken): natural_size_of gave it the placeholder size, which
+// has no natural ratio to speak of.
+@(private)
+placeholder_size :: proc(c: ^Ctx, bi: i32) -> bool {
+	n := dom.get(c.d, c.l.boxes[bi].node)
+	if n == nil || n.name != "img" { return false }
+	if c.replaced.intrinsic != nil {
+		if _, _, ok := c.replaced.intrinsic(c.replaced.user, c.l.boxes[bi].node); ok { return false }
+	}
+	return c.replaced.ratio == nil || c.replaced.ratio(c.replaced.user, c.l.boxes[bi].node) <= 0
+}
+
+// Used border-box size of a replaced element. cb_w / cb_h < 0: indefinite percentage bases. used_w >= 0: the border-box
+// width is already decided (layout_contents): only the height is found, from it.
+replaced_size :: proc(c: ^Ctx, bi: i32, cb_w, cb_h: f32, used_w: f32 = -1) -> Vec2 {
 	b := &c.l.boxes[bi]
 	cs := b.cs
 	base := max(cb_w, 0)
@@ -269,15 +280,19 @@ replaced_size :: proc(c: ^Ctx, bi: i32, cb_w, cb_h: f32) -> Vec2 {
 	b = &c.l.boxes[bi]
 	ratio := cs.aspect_ratio
 	// only real replaced content (images, video, canvas...) has a natural aspect ratio: a text field given a width keeps
-	// its natural height instead of growing in proportion
+	// its natural height instead of growing in proportion. `auto && <ratio>` (an image's width and height attributes):
+	// the natural ratio once there is one, the given ratio until then (no natural size: the placeholder's is not one)
+	natural_ratio := has_w && has_h && nh > 0 && nw > 0 && .Control not_in b.flags && !placeholder_size(c, bi)
+	if (ratio <= 0 || cs.aspect_ratio_auto) && natural_ratio { ratio = nw / nh }
 	if ratio <= 0 && has_w && has_h && nh > 0 && nw > 0 && .Control not_in b.flags { ratio = nw / nh }
 	// a natural ratio and no natural size (natural_size_of): stretched to the containing block, 300 px when it has none
 	stretch := !has_w && !has_h && nw > 0 && nh > 0
-	if stretch && ratio <= 0 { ratio = nw / nh }
+	if stretch && (ratio <= 0 || cs.aspect_ratio_auto) { ratio = nw / nh }
 	sw, okw := definite(c, cs.width, cb_w)
 	sh, okh := definite(c, cs.height, cb_h)
 	if okw && bb { sw = max(sw - pbw, 0) }
 	if okh && bb { sh = max(sh - pbh, 0) }
+	if used_w >= 0 { sw, okw = max(used_w - pbw, 0), true }
 	w, h: f32
 	switch {
 	case okw && okh: w, h = sw, sh

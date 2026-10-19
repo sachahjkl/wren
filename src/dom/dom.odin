@@ -56,7 +56,11 @@ Document :: struct {
 	journal:    Journal,           // what the mutations were, when some reader asked (journal.odin)
 	scope:      ^base.Scope,
 	cleanup:    base.Cleanup_Id,
+	mode:       Document_Mode,     // set by the HTML parser from the doctype (HTML §13.2.6.4.1)
 }
+
+// The document's compatibility mode (DOM §4.5): what the rendering's quirks follow.
+Document_Mode :: enum u8 { No_Quirks, Quirks, Limited_Quirks }
 
 Error :: enum i32 {
 	None              = 0,

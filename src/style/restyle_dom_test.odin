@@ -206,6 +206,28 @@ restyle_dom_attributes_and_ids :: proc(t: ^testing.T) {
 	expect_partial(t, f, "inline style", 1)
 }
 
+// Presentational attributes no selector reads (hints.odin): the element, or a table's cells, restyle.
+@(test)
+restyle_dom_presentational_hints :: proc(t: ^testing.T) {
+	f := rx_load(`<!doctype html><body id=b><div id=d>x</div><table id=t><tr id=r><td id=c>a</td><td>b</td></tr></table><a id=a href=x>l</a></body>`)
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "d"), "align", "center")
+	expect_partial(t, f, "div align", 2)
+	testing.expect_value(t, style_of(f.st, by_id(f, "d")).text_align, Text_Align.Legacy_Center)
+	dom.set_attribute(f.doc, by_id(f, "c"), "bgcolor", "red")
+	expect_partial(t, f, "td bgcolor", 1)
+	dom.set_attribute(f.doc, by_id(f, "t"), "cellpadding", "7")
+	expect_partial(t, f, "table cellpadding reaches the cells")
+	testing.expect(t, style_of(f.st, by_id(f, "c")).padding[.Top].v == 7, "cellpadding applied")
+	dom.set_attribute(f.doc, by_id(f, "t"), "border", "1")
+	expect_partial(t, f, "table border reaches the cells")
+	dom.set_attribute(f.doc, by_id(f, "b"), "link", "#ff0000")
+	expect_partial(t, f, "body link reaches the links")
+	testing.expect(t, style_of(f.st, by_id(f, "a")).color == {1, 0, 0, 1}, "link color applied")
+	dom.remove_attribute(f.doc, by_id(f, "t"), "cellpadding")
+	expect_partial(t, f, "cellpadding removed")
+}
+
 @(test)
 restyle_dom_inheritance :: proc(t: ^testing.T) {
 	f := rx_load(`<style>.big { font-size: 30px; color: red; --pad: 7px } p { padding: var(--pad, 1px) } span { margin: 1em } .kid { border-style: solid; border-width: inherit } .bw { border: 3px solid }</style>

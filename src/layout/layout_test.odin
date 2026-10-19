@@ -344,7 +344,8 @@ flexbox :: proc(t: ^testing.T) {
 
 @(test)
 tables :: proc(t: ^testing.T) {
-	f := load(`<body style="margin:0;font-size:10px;line-height:10px">
+	// (standards mode: in quirks mode tables would not inherit the font size and line height)
+	f := load(`<!doctype html><body style="margin:0;font-size:10px;line-height:10px">
 <table id=t style="border-spacing:0"><tr><td id=c1 style="width:50px;padding:0">a</td><td id=c2 style="width:30px;padding:0">b</td></tr><tr><td id=c3 colspan=2 style="padding:0">c</td></tr></table>
 <table id=t2 style="border-spacing:2px"><tr><td id=d1 style="padding:0" rowspan=2>x<br>y<br>z</td><td id=d2 style="padding:0">q</td></tr><tr><td id=d3 style="padding:0">r</td></tr></table>
 <div id=orph style="display:table-cell">cell</div>

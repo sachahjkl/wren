@@ -36,8 +36,15 @@ make_key :: proc(r: ^Rule, important: bool, spec: css.Specificity) -> Cascade_Ke
 	case .UA: k.level = important ? 5 : 0
 	case .User: k.level = important ? 4 : 1
 	case .Author:
+		// layer keys are shifted by one so that presentational hints (key 0) sit below the first cascade layer
 		k.level = important ? 3 : 2
-		k.layer = important ? max(u32) - r.layer : r.layer
+		if r.hint {
+			k.layer = 0
+		} else if important {
+			k.layer = max(u32) - r.layer
+		} else {
+			k.layer = r.layer == UNLAYERED ? UNLAYERED : r.layer + 1
+		}
 	}
 	return k
 }
@@ -69,6 +76,8 @@ Styled :: struct {
 	serial:         u64,     // unique per pass: lets layout notice that styles changed even if nothing else did
 	layout_serial:  u64,     // the serial of the last change that was not paint-only (paint_change.odin)
 	line_height_normal: f32, // what `line-height: normal` means (a multiple of the font size), from the preferences
+	quirks:         bool,    // the document is in quirks mode and its quirks apply (style.quirks_mode.enabled): layout's
+	                         // quirks follow it
 	canvas:         css.Color,   // the color painted behind the whole page (root or body background, else Canvas)
 	canvas_default: css.Color,   // Canvas of the root element's used color scheme
 	canvas_schemes: [Scheme]css.Color,   // Canvas of each scheme (the preferences)
@@ -635,6 +644,7 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 @(private)
 compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom) -> ^Computed {
 	collect_entries(p, h, n, ancestors)
+	add_hint_entry(p, h, n)
 
 	inline_rule: ^Rule
 	if text, ok := attr(n, "style"); ok && p.e.settings.author_stylesheets && text != "" {
@@ -823,6 +833,7 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	s.layout_serial = s.serial
 	s.pass_id = s.serial
 	s.line_height_normal = e.settings.line_height_normal
+	s.quirks = e.settings.quirks_rules && doc.mode == .Quirks
 	for sc in Scheme { s.canvas_schemes[sc] = e.settings.colors[sc][.Canvas] }
 	s.root_scheme = used_scheme({}, e.env.prefers_dark)
 	s.canvas = s.canvas_schemes[s.root_scheme]

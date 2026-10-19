@@ -68,6 +68,8 @@ DEMOS := [?]Demo{
 		"Flexbox, floats and clearance, positioning and stacking order, tables, lists, overflow and scroll boxes, borders, preformatted text.", false, "", false},
 	{.Layout, "CSS Grid", "grid.html",
 		"Named areas, <code>repeat(auto-fill, minmax())</code> galleries, dense packing, alignment, nested grids with positioned boxes, and subgrid rows shared by cards.", false, "", false},
+	{.Layout, "Presentational HTML", "legacy-html.html",
+		"Old attributes mapped to CSS as the HTML Standard says: <code>&lt;center&gt;</code> and <code>align</code> moving narrower blocks, tables with <code>cellpadding</code>, <code>border</code>, <code>bgcolor</code>, <code>valign</code>, <code>&lt;font&gt;</code>, list types, <code>&lt;hr size noshade&gt;</code>, floated images with <code>hspace</code>, and an image whose square <code>width</code> / <code>height</code> attributes give way to its own ratio under <code>height: auto</code>.", false, "", false},
 
 	{.Rendering, "CSS effects", "effects.html",
 		"<code>filter</code> (blur, drop-shadow, color functions), <code>backdrop-filter</code> glass, every <code>mix-blend-mode</code>, animated <code>clip-path</code> shapes and shadows, drawn on the GPU; unchanged results are kept from frame to frame.", false, "", false},

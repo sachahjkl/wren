@@ -37,7 +37,7 @@ Settings :: struct {
 	// generic family -> concrete family names, used by the painter
 	family_serif, family_sans_serif, family_monospace, family_cursive, family_fantasy, family_system_ui: string,  // owned
 	default_generic:     string,    // owned: the generic family used when a page names none
-	line_height_normal:  f32,       // multiple of font size for `line-height: normal`
+	line_height_normal:  f32,       // multiple of font size for `line-height: normal`; 0: from the font (layout)
 	// transitions and animations (timeline.odin)
 	anim_mode:           Anim_Mode,
 	anim_reduced_max_ms: f32,       // Reduce: longest duration of a transition or of one animation iteration
@@ -63,6 +63,8 @@ Settings :: struct {
 	inc_journal:         int,       // entries of the document's mutation journal
 	background_clip_text: bool,     // the painter clips backgrounds to text: `background-clip: text` is accepted
 	cq_max_rounds:       int,       // container queries: style + layout rounds per frame once container sizes change
+	presentational_hints: bool,     // HTML's presentational attributes (align, bgcolor, width...) style elements (hints.odin)
+	quirks_rules:        bool,      // documents in quirks mode get the rendering quirks of HTML §15 (hints.odin, layout)
 }
 
 // Auto: Reduce when prefers-reduced-motion is reported, else Normal. Reduce: transitions and iterations are cut to
@@ -118,7 +120,8 @@ PREFS := [?]config.Def{
 	{name = "font.family.cursive", kind = .String, default = {s = "Comic Sans MS"}, description = "Font used for the generic family `cursive`."},
 	{name = "font.family.fantasy", kind = .String, default = {s = "Impact"}, description = "Font used for the generic family `fantasy`."},
 	{name = "font.family.system_ui", kind = .String, default = {s = "Segoe UI"}, description = "Font used for `system-ui`."},
-	{name = "font.line_height.normal", kind = .Float, default = {f = 1.2}, bounded = true, min = 1, max = 3, description = "What `line-height: normal` means, as a multiple of the font size."},
+	{name = "font.line_height.normal", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 3,
+		description = "What `line-height: normal` means, as a multiple of the font size. 0: from the font, its ascent + descent + line gap, as other browsers do (Arial: about 1.15, Verdana 1.22); the lh unit then takes 1.2."},
 	{name = "page.body_margin", kind = .Float, default = {f = 8}, bounded = true, min = 0, max = 200, unit = "px", description = "Margin around the body of a page."},
 	{name = "style.animations.mode", kind = .String, default = {s = "auto"}, choices = {"auto", "normal", "reduce", "off"},
 		description = "CSS transitions and animations. auto: like reduce when style.prefers_reduced_motion is on, else normal. reduce: durations are cut to style.animations.reduced_max_duration_ms and infinite animations run once. off: nothing moves, end values apply at once."},
@@ -163,6 +166,10 @@ PREFS := [?]config.Def{
 		description = "Accept `background-clip: text` (gradient or image text: the backgrounds are painted through the glyphs of the element and of its descendants). When off, the value is invalid, so pages that test @supports (background-clip: text) keep their plain-text fallback."},
 	{name = "style.container_queries.max_rounds", kind = .Int, default = {i = 3}, bounded = true, min = 0, max = 16,
 		description = "Container queries (@container, cq units) depend on sizes only layout knows: after a layout that changes the size of a query container, styles and layout are computed again, at most this many times per frame (the rest waits for the next frame). 0 = sizes are never fed back: queries stay unknown and cq units use the viewport."},
+	{name = "style.presentational_hints.enabled", kind = .Bool, default = {b = true},
+		description = "Honor HTML's presentational attributes (align, valign, bgcolor, width / height, cellpadding, cellspacing, border, <font>, hspace...) as the HTML Standard's rendering section maps them to CSS: author styles of the lowest priority, which any stylesheet of the page overrides. Off: those attributes do nothing (old pages lose their layout). Follows style.author_stylesheets.enabled."},
+	{name = "style.quirks_mode.enabled", kind = .Bool, default = {b = true},
+		description = "Documents without a standard doctype (quirks mode) get the rendering quirks of the HTML Standard and other browsers: tables do not inherit font sizes, forms have a bottom margin, the body fills the window, percentage heights look past auto-height ancestors. Off: they are laid out as standard documents."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) {
@@ -233,6 +240,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.inc_verify = config.bool_of(p, "style.incremental.verify")
 	s.inc_journal = int(config.int_of(p, "style.incremental.journal_entries"))
 	s.background_clip_text = config.bool_of(p, "style.background_clip_text.enabled")
+	s.presentational_hints = config.bool_of(p, "style.presentational_hints.enabled")
+	s.quirks_rules = config.bool_of(p, "style.quirks_mode.enabled")
 	s.cq_max_rounds = int(config.int_of(p, "style.container_queries.max_rounds"))
 	return s
 }

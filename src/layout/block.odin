@@ -158,8 +158,19 @@ block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 	b.size.x = w
 	// auto margins share what is left (§10.3.3); over-constrained: the end margin gives way
 	free := avail - w - (b.auto_l ? 0 : b.margin[3]) - (b.auto_r ? 0 : b.margin[1])
-	rtl := c.l.boxes[b.parent].cs != nil && is_rtl(c.l.boxes[b.parent].cs)
-	if b.auto_l && b.auto_r {
+	pcs := c.l.boxes[b.parent].cs
+	rtl := pcs != nil && is_rtl(pcs)
+	// HTML's align attributes and <center> (-webkit-* text-align values) place a narrower block-level child whose margins
+	// are not auto as Blink does: its margin box centered, or pushed to one side
+	legacy := pcs != nil && !b.auto_l && !b.auto_r ? pcs.text_align : .Start
+	if legacy == .Legacy_Center {
+		start := max(free * 0.5, 0)
+		if rtl { b.margin[1] += start; b.margin[3] = avail - w - b.margin[1] } else { b.margin[3] += start; b.margin[1] = avail - w - b.margin[3] }
+	} else if legacy == .Legacy_Right && !rtl {
+		b.margin[3] += max(free, 0); b.margin[1] = avail - w - b.margin[3]
+	} else if legacy == .Legacy_Left && rtl {
+		b.margin[1] += max(free, 0); b.margin[3] = avail - w - b.margin[1]
+	} else if b.auto_l && b.auto_r {
 		if free < 0 {
 			if rtl { b.margin[3], b.margin[1] = free, 0 } else { b.margin[3], b.margin[1] = 0, free }
 		} else {
@@ -185,7 +196,8 @@ Result :: struct {
 
 @(private)
 collapses_top :: proc(b: ^Box) -> bool {
-	return b.kind == .Block && .Bfc not_in b.flags && b.border[0] == 0 && b.padding[0] == 0 && .Block_In_Inline not_in b.flags
+	// (a block-in-inline collapses only when it starts its context: block_in_inline gives it the open margins then)
+	return b.kind == .Block && .Bfc not_in b.flags && b.border[0] == 0 && b.padding[0] == 0
 }
 
 @(private)
@@ -201,6 +213,37 @@ specified_height :: proc(c: ^Ctx, b: ^Box, cb_h: f32) -> (f32, bool) {
 	return to_border_h(c, b, b.cs.height, cb_h)
 }
 
+// The body element in flow as the root element's child (quirks mode); its parent box is then the root element's.
+@(private)
+is_quirks_body :: proc(c: ^Ctx, bi: i32) -> bool {
+	b := &c.l.boxes[bi]
+	if b.node != c.body_el || b.parent == NONE || b.flags & {.Abs, .Float} != {} { return false }
+	return c.l.boxes[b.parent].node == c.root_el
+}
+
+// Quirks mode: the height a percentage height resolves against when its containing block's height is auto: the first
+// ancestor block with a length height (its content box), the body or the root (the window less their margins, borders
+// and padding); -1: none (a table cell or a flex / grid container in between).
+@(private)
+quirks_percent_base :: proc(c: ^Ctx, bi: i32) -> f32 {
+	for a := c.l.boxes[bi].parent; a != NONE; a = c.l.boxes[a].parent {
+		ab := &c.l.boxes[a]
+		if .Root in ab.flags { return c.vp.y }
+		if ab.node == c.root_el { return max(c.vp.y - ab.margin[0] - ab.margin[2] - pb_h(ab), 0) }
+		if is_quirks_body(c, a) {
+			root := &c.l.boxes[ab.parent]
+			return max(c.vp.y - root.margin[0] - root.margin[2] - pb_h(root) - ab.margin[0] - ab.margin[2] - pb_h(ab), 0)
+		}
+		if ab.kind != .Block { return -1 }
+		if ab.cs.height.kind == .Px {
+			h := ab.cs.height.v * c.scale
+			return max(ab.cs.box_sizing == .Border_Box ? h - pb_h(ab) : h, 0)
+		}
+		if ab.cs.height.kind != .Auto && ab.cs.height.kind != .Percent { return -1 }
+	}
+	return -1
+}
+
 // Lays out the content of box `bi` at border-box width `w` (already stored in size.x), and returns its height.
 //   cb_h:     height of the containing block (percentages of `height`), < 0: indefinite
 //   forced_h: >= 0 imposes the border-box height (flex, tables)
@@ -213,13 +256,21 @@ specified_height :: proc(c: ^Ctx, b: ^Box, cb_h: f32) -> (f32, bool) {
 // then independent of where it sits; the margins it adds to a strut it shares with its parent (collapsing through its
 // top) are recorded apart and merged, which is the same as adding them in place (a strut is a max / min).
 @(private)
-layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_Ctx) -> Result {
+layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flow_Ctx) -> Result {
 	if c.pre != nil { pre_wait_box(c, bi) }
 	b := &c.l.boxes[bi]
 	b.size.x = w
 	fc := fc_in
 	independent := fc == nil
+	cb_h := cb_h_in
+	// quirks mode (HTML §15 / Quirks Mode §3.5): a percentage height against an auto-height block looks further up
+	// (the base found is part of the cache key: it follows the window's height)
+	if cb_h < 0 && c.st != nil && c.st.quirks && b.cs != nil && b.cs.height.kind == .Percent && b.kind != .Cell {
+		if qb := quirks_percent_base(c, bi); qb >= 0 { cb_h = qb }
+	}
 	key := [3]f32{w, cb_h, forced_h}
+	// (the quirks-mode body's height follows the window's: in the key)
+	if cb_h < 0 && c.st != nil && c.st.quirks && is_quirks_body(c, bi) { key[1] = -2 - c.vp.y }
 	flow_ok := !independent && floats_clear_of(fc, b)
 	if b.cache_ok && b.inc == {} && b.cache_in == key {
 		if independent && !b.cache_flow {
@@ -276,9 +327,11 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_C
 		if !ct { cfc.open = nil }
 		through := false
 		if .Ifc in b.flags {
-			h, empty := layout_ifc(c, bi, cw, &cfc)
+			h, empty, trail := layout_ifc(c, bi, cw, &cfc)
 			content_h = h
 			through = empty
+			// a block-in-inline ends the context: its bottom margin collapses with this box's, or counts here
+			if trail != 0 { if cbm { strut_add(&res.end, trail) } else { content_h += trail } }
 		} else {
 			h, end, thr := flow_blocks(c, bi, cw, ch_def, &cfc, ct, cbm)
 			content_h = h
@@ -299,7 +352,9 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_C
 	case .Table:
 		content_h = layout_table(c, bi, w, cb_h, forced_h)
 	case .Replaced:
-		sz := replaced_size(c, bi, -1, cb_h)
+		// the height follows the width already chosen (a percentage width resolved, max-width applied, a flex or grid
+		// stretch): with the ratio when there is one
+		sz := replaced_size(c, bi, -1, cb_h, w)
 		b = &c.l.boxes[bi]
 		content_h = sz.y - pb_h(b)
 		if !has_h { spec_h, has_h = sz.y, true }
@@ -317,6 +372,11 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32, fc_in: ^Flow_C
 	}
 	if b.kind == .Table { h = content_h }
 	if .Root in b.flags { h = max(h, c.vp.y) }
+	// quirks mode: the body fills the window (Quirks Mode §3.6 "the body element fills the html element")
+	if !has_h && c.st != nil && c.st.quirks && b.kind == .Block && is_quirks_body(c, bi) {
+		root := &c.l.boxes[b.parent]
+		h = max(h, c.vp.y - root.margin[0] - root.margin[2] - pb_h(root) - b.margin[0] - b.margin[2])
+	}
 	b.size = {w, h}
 	if .List_Item in b.flags && b.marker_w != 0 { place_marker(c, bi) }
 	if b.abs_first != NONE { if b.kind == .Grid { grid_abs(c, bi) } else { layout_abs_list(c, bi) } }

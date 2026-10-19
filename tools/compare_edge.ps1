@@ -1,7 +1,14 @@
 # Captures a page in Wren and in Microsoft Edge (headless) at the same viewport size and device scale, and writes a
 # side-by-side image, a difference image and a measure of the difference.
 #   powershell -NoProfile -File tools\compare_edge.ps1 -Url https://example.com [-Name example] [-Width 1280] [-Height 720]
-#       [-WaitMs 6000] [-OutDir build\cmp] [-NoWren] [-NoEdge]
+#       [-WaitMs 6000] [-OutDir build\cmp] [-NoWren] [-NoEdge] [-NoScript [-UserAgent <ua>] [-AcceptLanguage <list>]]
+# -Exe: another build of Wren (an older one, to measure a change; default build\browser.exe).
+# -NoScript compares on equal terms with Wren, which runs no JavaScript: Edge runs with scripts disabled and sends Wren's
+# User-Agent and Accept-Language (the defaults of network.user_agent and network.accept_language), so that servers that
+# pick a page by browser (Google serves its plain HTML page to unknown browsers) send both the same document. Edge's DOM
+# after loading is kept as <name>_edge.html (check which page it got). Some servers still tell them apart by other
+# headers (Google's page for script-less Chromium has a <noscript> refresh to another page): -Snapshot (implies
+# -NoScript) has Edge render the document fetched with Wren's headers, saved as <name>_snapshot.html with a <base>.
 # Outputs in -OutDir: <name>_wren.png, <name>_edge.png (the viewport only, physical pixels), <name>_side.png (Wren left,
 # Edge right), <name>_diff.png (differing pixels in red over a faded Edge capture), and one line of JSON on stdout:
 #   {"name":..., "width":..., "height":..., "scale":..., "diff_pixels": <fraction of pixels whose largest channel
@@ -19,9 +26,15 @@ param(
     [int]$WaitMs = 6000,
     [string]$OutDir = 'build\cmp',
     [switch]$NoWren,
-    [switch]$NoEdge
+    [switch]$NoEdge,
+    [switch]$NoScript,
+    [switch]$Snapshot,
+    [string]$UserAgent = 'Wren/0.1',
+    [string]$AcceptLanguage = 'en-US,en;q=0.9',
+    [string]$Exe = ''
 )
 $ErrorActionPreference = 'Stop'
+if ($Snapshot) { $NoScript = [switch]$true }
 $root = Split-Path $PSScriptRoot -Parent
 if (-not [IO.Path]::IsPathRooted($OutDir)) { $OutDir = Join-Path $root $OutDir }
 New-Item -ItemType Directory -Force $OutDir | Out-Null
@@ -105,6 +118,7 @@ $wrenPng = Join-Path $OutDir "${Name}_wren.png"
 $edgePng = Join-Path $OutDir "${Name}_edge.png"
 
 if (-not $NoWren) {
+    $exeArgs = if ($Exe) { @('-Exe', $Exe) } else { @() }
     # calibration: the window's chrome around the viewport, measured once per size (cached in the output folder)
     $calibFile = Join-Path $OutDir "calibration_${physW}x${physH}.txt"
     $shot = Join-Path ([IO.Path]::GetTempPath()) "wren_cmp_$PID.png"
@@ -115,17 +129,17 @@ if (-not $NoWren) {
         # a first window at an estimated size, then the exact one
         $outerW = $physW + 40; $outerH = $physH + [int](220 * $scale)
         for ($pass = 0; $pass -lt 2; $pass++) {
-            & powershell -NoProfile -File (Join-Path $PSScriptRoot 'screenshot.ps1') -Url $pageUrl -Out $shot -WaitMs 2500 -Width $outerW -Height $outerH | Out-Null
+            & powershell -NoProfile -File (Join-Path $PSScriptRoot 'screenshot.ps1') -Url $pageUrl -Out $shot -WaitMs 2500 -Width $outerW -Height $outerH @exeArgs | Out-Null
             $r = [Cmp]::FindColor($shot, 0xFF00FF, 8)
             if ($r[2] -eq 0) { throw 'calibration: the viewport was not found in the capture' }
             $outerW += $physW - $r[2]; $outerH += $physH - $r[3]
         }
-        & powershell -NoProfile -File (Join-Path $PSScriptRoot 'screenshot.ps1') -Url $pageUrl -Out $shot -WaitMs 2500 -Width $outerW -Height $outerH | Out-Null
+        & powershell -NoProfile -File (Join-Path $PSScriptRoot 'screenshot.ps1') -Url $pageUrl -Out $shot -WaitMs 2500 -Width $outerW -Height $outerH @exeArgs | Out-Null
         $r = [Cmp]::FindColor($shot, 0xFF00FF, 8)
         [IO.File]::WriteAllText($calibFile, "$outerW $outerH $($r[0]) $($r[1]) $($r[2]) $($r[3])")
     }
     $c = (Get-Content $calibFile -Raw).Trim() -split ' ' | ForEach-Object { [int]$_ }
-    & powershell -NoProfile -File (Join-Path $PSScriptRoot 'screenshot.ps1') -Url $Url -Out $shot -WaitMs $WaitMs -Width $c[0] -Height $c[1] | Out-Null
+    & powershell -NoProfile -File (Join-Path $PSScriptRoot 'screenshot.ps1') -Url $Url -Out $shot -WaitMs $WaitMs -Width $c[0] -Height $c[1] @exeArgs | Out-Null
     [Cmp]::Crop($shot, $wrenPng, $c[2], $c[3], $c[4], $c[5])
     Remove-Item $shot -ErrorAction SilentlyContinue
 }
@@ -137,15 +151,69 @@ if (-not $NoEdge) {
     $profileDir = Join-Path ([IO.Path]::GetTempPath()) "wren_cmp_edge_$PID"
     $edgeArgs = @('--headless=new', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--disable-extensions', "--user-data-dir=$profileDir",
         "--force-device-scale-factor=$([string]::Format([Globalization.CultureInfo]::InvariantCulture, '{0}', $scale))",
-        "--window-size=$Width,$Height", "--virtual-time-budget=$WaitMs", "--screenshot=$edgePng", $Url)
-    $p = Start-Process $edge -ArgumentList $edgeArgs -PassThru -WindowStyle Hidden
-    if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Edge did not finish' }
+        "--window-size=$Width,$Height")
+    # (with scripts off and a forced device scale, Edge never ends a virtual time budget: the load event decides)
+    if (-not $NoScript) { $edgeArgs += "--virtual-time-budget=$WaitMs" }
+    if ($NoScript) {
+        # scripts are turned off by the profile's content settings: --blink-settings=scriptEnabled=false would also stop
+        # headless --screenshot, which drives the page through script
+        New-Item -ItemType Directory -Force (Join-Path $profileDir 'Default') | Out-Null
+        [IO.File]::WriteAllText((Join-Path $profileDir 'Default\Preferences'), '{"profile":{"default_content_setting_values":{"javascript":2}}}')
+        $first = ($AcceptLanguage -split ',')[0].Trim()
+        # no client hints either: Sec-CH-UA would still name Edge (Google then answers with its consent redirect)
+        $edgeArgs += @("`"--user-agent=$UserAgent`"", "--accept-lang=$AcceptLanguage", "--lang=$first",
+            '--disable-features=UserAgentClientHint,UserAgentClientHintFullVersionList')
+    }
+    $edgeUrl = $Url
+    if ($Snapshot) {
+        # the document as Wren's headers get it, saved with a <base> so that its subresources still come from the site
+        $r = Invoke-WebRequest $Url -UseBasicParsing -UserAgent $UserAgent -Headers @{ 'Accept-Language' = $AcceptLanguage }
+        $html = $r.Content
+        $baseTag = '<base href="' + [Net.WebUtility]::HtmlEncode($Url) + '">'
+        $m = [regex]::Match($html, '<head[^>]*>', 'IgnoreCase')
+        $html = if ($m.Success) { $html.Insert($m.Index + $m.Length, $baseTag) } else { $baseTag + $html }
+        $snap = Join-Path $OutDir "${Name}_snapshot.html"
+        [IO.File]::WriteAllText($snap, $html, (New-Object Text.UTF8Encoding $false))
+        $edgeUrl = 'file:///' + ($snap -replace '\\', '/')
+    }
+    if (Test-Path $edgePng) { Remove-Item $edgePng }
+    # Edge's helper processes may outlive the first one: a new start on a profile still in use would hand the address to
+    # them and exit without doing anything. Waits for them (kills them past the delay).
+    $tag = [IO.Path]::GetFileName($profileDir)
+    $profileProcs = { Get-CimInstance Win32_Process -Filter "name='msedge.exe'" | Where-Object { $_.CommandLine -like "*$tag*" } }
+    $waitFree = {
+        $deadline = (Get-Date).AddSeconds(20)
+        while ((Get-Date) -lt $deadline -and (& $profileProcs)) { Start-Sleep -Milliseconds 300 }
+        & $profileProcs | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    }
+    if ($NoScript) {
+        # without a virtual time budget the capture is taken at the load event, sometimes before web fonts arrive: a
+        # first load fills the profile's cache, the second (the capture) gets them from there
+        $warm = Join-Path $OutDir "${Name}_edge_warmup.png"
+        $p = Start-Process $edge -ArgumentList ($edgeArgs + @("--screenshot=$warm", $edgeUrl)) -PassThru -WindowStyle Hidden
+        if (-not $p.WaitForExit(120000)) { $p.Kill() }
+        Remove-Item $warm -ErrorAction SilentlyContinue
+        & $waitFree
+    }
+    for ($attempt = 0; $attempt -lt 3 -and -not (Test-Path $edgePng); $attempt++) {
+        if ($attempt -gt 0) { & $waitFree }
+        $p = Start-Process $edge -ArgumentList ($edgeArgs + @("--screenshot=$edgePng", $edgeUrl)) -PassThru -WindowStyle Hidden
+        if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Edge did not finish' }
+    }
     if (-not (Test-Path $edgePng)) { throw 'Edge wrote no capture' }
+    if ($NoScript) {
+        & $waitFree
+        $dom = Join-Path $OutDir "${Name}_edge.html"
+        $p = Start-Process $edge -ArgumentList ($edgeArgs + @('--dump-dom', $edgeUrl)) -PassThru -WindowStyle Hidden -RedirectStandardOutput $dom
+        # (with scripts off, --dump-dom may never exit: the DOM is written once the page has loaded)
+        if (-not $p.WaitForExit(30000)) { $p.Kill() }
+        & $waitFree
+    }
     try { [IO.Directory]::Delete($profileDir, $true) } catch { }
 }
 
 if ((Test-Path $wrenPng) -and (Test-Path $edgePng)) {
-    $m = [Cmp]::Compare($wrenPng, $edgePng, (Join-Path $OutDir "${Name}_side.png"), (Join-Path $OutDir "${Name}_diff.png"), "Wren  $Url", "Edge  $Url")
+    $m = [Cmp]::Compare($wrenPng, $edgePng, (Join-Path $OutDir "${Name}_side.png"), (Join-Path $OutDir "${Name}_diff.png"), "Wren  $Url", $(if ($NoScript) { "Edge (no script)  $Url" } else { "Edge  $Url" }))
     $inv = [Globalization.CultureInfo]::InvariantCulture
     '{{"name":"{0}","width":{1},"height":{2},"scale":{3},"diff_pixels":{4},"mean_abs":{5}}}' -f $Name, $Width, $Height, $scale.ToString($inv), $m[0].ToString('0.0000', $inv), $m[1].ToString('0.00', $inv)
 }
