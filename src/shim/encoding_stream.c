@@ -60,11 +60,15 @@ static void out_cp(wb_out *o, lxb_codepoint_t c)
     else { d[0] = 0xEF; d[1] = 0xBF; d[2] = 0xBD; o->len += 3; }
 }
 
+/* The decoder keeps this pointer for its whole life: LXB_ENCODING_REPLACEMENT_BUFFER is a compound literal, which
+ * would die with decoder_init's block (MSVC 14.51 reuses that stack slot: U+0000 came out instead of U+FFFD). */
+static const lxb_codepoint_t wb_replacement[LXB_ENCODING_REPLACEMENT_BUFFER_LEN] = { LXB_ENCODING_REPLACEMENT_CODEPOINT };
+
 static int decoder_init(wb_decoder *d)
 {
     if (lxb_encoding_decode_init(&d->dec, d->enc, d->cp, WB_CP_BUF) != LXB_STATUS_OK) { return -1; }
     if (!d->fatal) {
-        if (lxb_encoding_decode_replace_set(&d->dec, LXB_ENCODING_REPLACEMENT_BUFFER, LXB_ENCODING_REPLACEMENT_BUFFER_LEN) != LXB_STATUS_OK) { return -1; }
+        if (lxb_encoding_decode_replace_set(&d->dec, wb_replacement, LXB_ENCODING_REPLACEMENT_BUFFER_LEN) != LXB_STATUS_OK) { return -1; }
     }
     d->bom_seen = 0;
     return 0;
