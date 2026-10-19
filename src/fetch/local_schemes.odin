@@ -117,7 +117,8 @@ file_path_from_url :: proc(u: url.URL, allocator := context.allocator) -> (path:
 	// "/C:/x" -> "C:/x"
 	if len(p) >= 3 && p[0] == '/' && p[2] == ':' && ((p[1] >= 'a' && p[1] <= 'z') || (p[1] >= 'A' && p[1] <= 'Z')) { p = p[1:] }
 	if u.host != "" && u.host != "localhost" { p = strings.concatenate({"//", u.host, p}, context.temp_allocator) }
-	out, _ := strings.replace_all(p, "/", "\\", allocator)
+	out, allocated := strings.replace_all(p, "/", "\\", allocator)
+	if !allocated { out = strings.clone(out, allocator) }   // ("C:" has no '/': the result would be the temporary decoding)
 	return out, true
 }
 

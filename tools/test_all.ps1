@@ -78,6 +78,12 @@ Step 'build pagetest' { odin build src/tools/pagetest -collection:wb=src -vet -o
 Step 'build policytest' { odin build src/tools/policytest -collection:wb=src -vet -out:build/policytest.exe }
 Step 'build web API test (guest + tool)' { odin build examples/webapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/webapitest.wasm -o:size; if ($LASTEXITCODE -eq 0) { odin build src/tools/webapitest -collection:wb=src -vet -out:build/webapitest.exe } }
 Step 'build fetch' { odin build src/tools/fetch -collection:wb=src -vet -out:build/fetch.exe }
+Step 'file: folders end-to-end test (index file, listing, redirect to /, errors, who may open what; no server)' {
+    odin build src/tools/filetest -collection:wb=src -vet -out:build/filetest.exe
+    if ($LASTEXITCODE -ne 0) { return }
+    $o = .\build\filetest.exe | Out-String; $o
+    $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
+}
 Step 'build testserver' { Push-Location tools\testserver; go build -o ..\..\build\testserver.exe .; Pop-Location }
 
 $srv = Start-Process (Join-Path $root 'build\testserver.exe') -PassThru -WindowStyle Hidden
