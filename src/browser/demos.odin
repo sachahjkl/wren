@@ -103,6 +103,12 @@ DEMOS := [?]Demo{
 
 	{.JavaScript, "JavaScript in WebAssembly", "js.html",
 		"Plain HTML and JavaScript run by QuickJS-ng compiled to WebAssembly, one sandboxed instance per page: a click listener, nodes built with <code>createElement</code>, the bindings' prototype chain (generated from the specifications' Web IDL), ES2023 features and microtasks. Off with <code>javascript.enabled</code>.", false, "", false},
+	{.JavaScript, "DOM from JavaScript", "js-dom.html",
+		"A to-do list driven by <code>classList</code> and <code>dataset</code>, a <code>MutationObserver</code> log of the changes, a box resized from script and measured with <code>getBoundingClientRect</code>, and a form read through <code>elements</code> and <code>querySelectorAll</code> into a table.", false, "", false},
+	{.JavaScript, "Script loading", "/jsload/files/demo.html",
+		"HTML's script processing: a head script before <code>&lt;body&gt;</code> exists, a deferred external script, a module with an import map, <code>document.write</code>, <code>&lt;noscript&gt;</code>, an <code>onclick</code> attribute, <code>setInterval</code>, and the order of <code>DOMContentLoaded</code> and <code>load</code>.", true, "", false},
+	{.JavaScript, "Web APIs from JavaScript", "/jsweb/demo",
+		"One row per API, run in the page's realm: <code>fetch</code> and response streams, <code>XMLHttpRequest</code>, <code>AbortSignal.timeout</code>, <code>URL</code>, <code>TextEncoder</code>, <code>crypto.subtle</code>, <code>localStorage</code>, <code>history.pushState</code>, <code>FileReader</code>, <code>structuredClone</code>, <code>MessageChannel</code>, <code>WebSocket</code> and <code>EventSource</code>.", true, "", false},
 
 	{.Network, "Content-Security-Policy", "/site-csp/counter.html",
 		"The counter page served with a policy that allows scripts only from unreachable hosts: its Wasm module is blocked, and the violation is reported.", true, "", false},
@@ -140,6 +146,14 @@ DEMOS := [?]Demo{
 		"Timers, <code>requestAnimationFrame</code>, abort signals, fetch streams, encoding, crypto, storage, URL and history.", true, "webapitest", false},
 	{.E2e, "Workers test", "",
 		"Dedicated workers: messages, transfers, fetch, termination, 16 in parallel.", true, "workerstest", false},
+	{.E2e, "JavaScript test", "js.html",
+		"Realms, scripts, the generated bindings, events, wrappers and node lifetime, the bytecode cache, interruption, and the cost of crossing into the browser.", false, "jstest", false},
+	{.E2e, "DOM for JavaScript test", "js-dom.html",
+		"Tree, elements, markup, selectors, CSSOM, geometry, UI events, <code>MutationObserver</code>, traversal, ranges, leaks and micro-benchmarks.", false, "jsdomtest", false},
+	{.E2e, "JavaScript loading test", "/jsload/files/demo.html",
+		"Script order, <code>document.write</code>, dynamic scripts, modules, handlers, CSP, <code>&lt;noscript&gt;</code>, timers, errors, workers.", true, "jsloadtest", false},
+	{.E2e, "JavaScript web APIs test", "/jsweb/demo",
+		"fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging.", true, "jswebtest", false},
 }
 
 Demos_Source :: enum u8 { Preference, Package, Repository, Server }
