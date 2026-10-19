@@ -29,7 +29,7 @@ $shots = @(
     @{ n = 'about-config';           u = 'about:config' }
     @{ n = 'find';                   u = 'https://sacha.house/cv'; w = 6000; a = 'key:Ctrl+F; wait:300; type:Angular; wait:900' }
     @{ n = 'context-menu';           u = 'https://sacha.house/cv'; w = 6000; a = 'dclick:470,695; wait:300; rclick:470,695; wait:700' }
-    @{ n = 'tabs';                   u = 'about:home'; a = 'key:Ctrl+L; wait:200; type:https://webassembly.org; key:Enter; wait:4000; key:Ctrl+T; wait:400; key:Ctrl+L; wait:200; type:https://sacha.house; key:Enter; wait:5000; key:Ctrl+T; wait:400; key:Ctrl+L; wait:200; type:about:demos; key:Enter; wait:1200; click:1500,560; wait:400' }
+    @{ n = 'tabs';                   u = 'https://webassembly.org'; w = 5000; a = 'key:Ctrl+T; wait:1000; key:Ctrl+L; wait:500; type:https://sacha.house; wait:300; key:Enter; wait:6000; key:Ctrl+T; wait:1000; key:Ctrl+L; wait:500; type:about:demos; wait:300; key:Enter; wait:1500; click:1500,560; wait:400' }
     @{ n = 'daylight';               u = 'https://sacha.house/cv'; w = 6000; x = @('--pref browser.ui.theme=daylight') }
 )
 $Only = @($Only | ForEach-Object { $_ -split ',' } | Where-Object { $_ })   # powershell -File passes a,b,c as one string

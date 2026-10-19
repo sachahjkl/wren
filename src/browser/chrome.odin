@@ -149,7 +149,7 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	}
 	if app.focus_address {
 		app.focus_address = false
-		if b := ui.prev_box("###address"); b != nil {
+		if b := res.box; b != nil {   // the field's own box: it sits in the address bar's container
 			ui.set_focus(b.key)
 			ui.field_select_all(&app.address)
 			forms_page_blur()
