@@ -4,13 +4,32 @@ A browser where WebAssembly is the only execution engine. No JavaScript, no glue
 resolved by the browser itself. Written in Odin on top of [gui_toolkit](https://github.com/sachahjkl/gui_toolkit);
 Windows first, platform services used wherever they exist (WinHTTP for HTTP/TLS, D3D11 for drawing).
 
-    build.bat                      # build\browser.exe  (builds the Wasm runtime and Lexbor on first use)
+    build.bat                      # build\browser.exe  (fetches Wasmtime, builds WAMR and Lexbor on first use)
     build\browser.exe http://127.0.0.1:8765/site/index.html      (run build\testserver.exe first), or a file:/// URL
     powershell -File tools\test_all.ps1 [-Quick]
 
 Needs: Odin (`dev-2026-10`), Visual Studio 2022 (MSVC, for WAMR and Lexbor), Go (only for the test server). Dependencies
 are pinned submodules: `ext/gui_toolkit` (tag v0.3.2), `ext/lexbor` (v3.0.1) and `ext/wamr` (a commit after 2.4.5 that has
-the instruction-limit fix for the MSVC build). The Public Suffix List is embedded (`tools/update_psl.ps1` refreshes it).
+the instruction-limit fix for the MSVC build), plus the Wasmtime C API (see *Wasm engines*). The Public Suffix List is
+embedded (`tools/update_psl.ps1` refreshes it).
+
+## Wasm engines
+
+Two engines behind one API (`src/wasm`), chosen by the preference `wasm.engine` (read at start-up):
+
+- **Wasmtime** (default): the official C API release **v49.0.3**, downloaded by `tools\fetch_wasmtime.ps1` (version and
+  SHA-256 pinned in the script) into `build\wasmtime`; the static `wasmtime.lib` is linked into `browser.exe` (no DLL; it
+  adds about 12 MB). It needs `ws2_32 advapi32 userenv ntdll shell32 ole32 bcrypt kernel32` and the dynamic CRT
+  (`msvcrt ucrt vcruntime`), declared in `src/wasm/wasmtime.odin`. Modules are compiled by Cranelift (or Winch,
+  `wasm.wasmtime.compiler`), kept in a memory cache and in an HMAC-authenticated disk cache of the profile (`wasm-cache`),
+  and every call from the host has a wall-clock deadline (`wasm.max_call_ms`, epoch interruption).
+- **WAMR**: the fast interpreter (`tools\build_wamr.bat`, built once into `build\wamr`; built without WAMR's copy of the
+  wasm-c-api, which Wasmtime provides). Calls are bounded by an instruction budget (`wasm.instruction_budget`).
+
+Host functions are declared once (`wasm.Native_Symbol`: name, procedure, signature) and called through thunks generated
+per signature shape: `build.bat` runs `src/tools/wasmthunks`, which rewrites `src/wasm/thunks_generated.odin` when the
+signatures of the sources change. `src/tools/wasmbench` compares the engines. `test_all.ps1` runs the page, web API
+and workers end-to-end tests once per engine (`-Engines wasmtime,wamr`).
 
 ## Layout
 
@@ -24,7 +43,7 @@ the instruction-limit fix for the MSVC build). The Public Suffix List is embedde
 | `src/cookies` | the cookie jar (RFC 6265bis): parsing, storage model, SameSite, prefixes, eviction, persistence |
 | `src/csp` | Content Security Policy 3: parsing, source matching, fallbacks, nonces, report-only |
 | `src/fetch` | **the policy layer** (Fetch Standard): modes, CORS + preflight cache, credentials, redirects, HSTS, referrer policy, mixed content, schemes (http, file, data), MIME checks, response filtering |
-| `src/wasm` | WAMR bindings + `Instance` (instruction budget per call, memory cap, validated pointers) |
+| `src/wasm` | the Wasm engines (Wasmtime, WAMR) behind one `Instance` API: host functions, validated pointers, deadlines / budgets, limits, compiled-code caches |
 | `src/html` | HTML5 parsing (Lexbor through a C shim), charset sniffing and decoding, `<title>`, Wasm script discovery |
 | `src/dom` | document tree, attributes, listeners, capture/target/bubble dispatch |
 | `src/page` | one document = DOM + its Wasm instances + its requests and timers + its Environment (origin, CSP, referrer policy); the import tables (`bindings*.odin`) |
@@ -32,7 +51,7 @@ the instruction-limit fix for the MSVC build). The Public Suffix List is embedde
 | `src/shim` | C shims over Lexbor (HTML events, URL parser, encodings) |
 | `sdk/odin/web` | guest-side bindings for Odin (`freestanding_wasm32`); other languages get generated ones |
 | `examples/` | guest pages: `hello`, `e2e` (DOM, events, timers, fetch, cookies, origin), `counter` + `site/` (an HTML page that names its module) |
-| `tools/` | WAMR / Lexbor builds, test server (Go), stress, test and screenshot scripts |
+| `tools/` | Wasmtime fetch, WAMR / Lexbor builds, test server (Go), stress, test, perf and screenshot scripts |
 
 ## The rules that keep it from breaking at scale
 
@@ -51,8 +70,8 @@ the instruction-limit fix for the MSVC build). The Public Suffix List is embedde
    waiting never counts against connect timeouts); reading pauses when 1 MB is queued for a request; `max_body` caps a
    response; ≤ 20 redirects (the Fetch Standard's number); cookies ≤ 180 per site and 3000 total (browser norm) with LRU
    eviction; preflight cache ≤ 1000; fetch records a page may hold ≤ 1 GiB; guest memory is capped; every host→guest call
-   has an instruction budget (a spinning script is stopped, the instance lives on).
-6. **The guest cannot reach host memory.** Native signatures declare `(*~)` pointer+length pairs, validated by the runtime
+   has a deadline (Wasmtime) or an instruction budget (WAMR): a spinning script is stopped, the instance lives on.
+6. **The guest cannot reach host memory.** Native signatures declare `(*~)` pointer+length pairs, validated (same rules with both engines)
    against the guest's linear memory before our code runs; strings are copied out through caller-provided buffers.
 7. **No recursion on hostile depth.** Tree destruction, text extraction, searches and the HTML replay are iterative.
 
@@ -95,5 +114,5 @@ fetched concurrently and run in document order, each in its own instance sharing
 - CSP violation *reporting* (`report-uri` / `report-to`): violations go to the console only. No SRI (`integrity=`).
 - HTTP authentication (401), downloads (`Content-Disposition`), `blob:` URLs, WebSocket, cookie partitioning (CHIPS).
 - Text shaping (`vendor:kb_text_shape` is available in Odin), images (the renderer only has R8 atlas textures), IME.
-- Wasm: interpreter only. AOT would need `wamrc`/LLVM; GC proposal and threads are disabled.
+- Wasm: threads and shared memory are off (each worker has its own store and memory); GC is available but off by default.
 - Streaming bodies to the guest: `Fetch_*` buffers the response (bounded by `max_body` and the per-page ceiling).

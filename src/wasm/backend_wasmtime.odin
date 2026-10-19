@@ -622,6 +622,20 @@ wt_call :: proc(inst: ^Instance, f: ^wt_func, sig: ^Wt_Sig, buf: []u32, argc: in
 	return .Ok
 }
 
+// The binary of a module in the text format (tests, tools). Needs no engine.
+wat_to_wasm :: proc(text: string, allocator := context.allocator) -> (bin: []byte, err: string) {
+	out: wt_byte_vec
+	if e := wasmtime_wat2wasm(raw_data(text), len(text), &out); e != nil {
+		err = wt_error_text(e, allocator)
+		wasmtime_error_delete(e)
+		return
+	}
+	bin = make([]byte, int(out.size), allocator)
+	copy(bin, out.data[:out.size])
+	wasm_byte_vec_delete(&out)
+	return
+}
+
 @(private)
 wt_guest_bytes :: proc(inst: ^Instance, offset: u32, length: u32) -> []byte {
 	s := &inst.wt

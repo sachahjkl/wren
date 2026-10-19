@@ -1,8 +1,9 @@
 # Measures the browser on real pages with real input. Needs build\browser_prof.exe (build.bat profile).
-#   powershell -File tools\perf.ps1 [-Only name,name] [-NoSample] [-Exe browser_prof.exe] [-Tag suffix]
+#   powershell -File tools\perf.ps1 [-Only name,name] [-NoSample] [-Exe browser_prof.exe] [-Tag suffix] [-Prefs '--pref a=b ...']
+# -Prefs is added to every run (e.g. '--pref wasm.engine=wamr' with -Tag _wamr to compare the Wasm engines).
 # Scenarios ending in _full run with layout.incremental.enabled=false (the reference for incremental layout).
 # Writes build\perf\<run>.txt (per-phase statistics, CPU time, sampling profile) and <run>.csv (one row per frame).
-param([string[]]$Only = @(), [switch]$NoSample, [string]$Exe = 'browser_prof.exe', [string]$Tag = '')
+param([string[]]$Only = @(), [switch]$NoSample, [string]$Exe = 'browser_prof.exe', [string]$Tag = '', [string]$Prefs = '')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root 'build\perf'
@@ -92,7 +93,7 @@ function Run($name, $url, [scriptblock]$actions, [bool]$sample = $true, [string]
     $prefix = Join-Path $out "$name$Tag"
     $env:WREN_PROF = $prefix
     $env:WREN_SAMPLE = if ($sample -and -not $NoSample) { '1' } else { '0' }
-    $argv = (@($extra, $url) | Where-Object { $_ }) -join ' '
+    $argv = (@($Prefs, $extra, $url) | Where-Object { $_ }) -join ' '
     $p = if ($argv) { Start-Process (Join-Path $root "build\$Exe") -ArgumentList $argv -PassThru } else { Start-Process (Join-Path $root "build\$Exe") -PassThru }
     try {
         $sw = [Diagnostics.Stopwatch]::StartNew()
