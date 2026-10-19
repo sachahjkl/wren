@@ -20,6 +20,7 @@ Settings :: struct {
 	key_page_fraction: f32,
 	homepage:          string,   // owned
 	ui_font_size:      f32,
+	ui_theme:         string,   // owned: a name of ui.NAMED_PALETTES
 	persist_profile:   bool,
 	layout_band_px:    f32,
 	blocking_threads:  int,
@@ -41,6 +42,8 @@ PREFS := [?]config.Def{
 		description = "Distance of one arrow-key press when the page scrolls with the keyboard, in CSS pixels."},
 	{name = "browser.scroll.key_page_fraction", kind = .Float, default = {f = 0.875}, bounded = true, min = 0.1, max = 1,
 		description = "Page Up / Page Down / Space move by this share of the visible height (the rest stays visible for context)."},
+	{name = "browser.ui.theme", kind = .String, default = {s = "graphite"}, choices = {"graphite", "midnight", "daylight", "nord", "dracula", "amber", "aero", "bootstrap"},
+		description = "Palette of the browser's own interface (tabs, address bar, menus, status bar). Pages keep their own colors."},
 	{name = "browser.ui.font_size", kind = .Float, default = {f = 15}, bounded = true, min = 8, max = 48, unit = "px", restart = false,
 		description = "Font size of the browser's own interface (tabs, address bar, console)."},
 	{name = "browser.threads.blocking", kind = .Int, default = {i = 4}, bounded = true, min = 1, max = 256, restart = true,
@@ -72,6 +75,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		key_page_fraction = f32(config.float_of(p, "browser.scroll.key_page_fraction")),
 		homepage = strings.clone(config.string_of(p, "browser.homepage")),
 		ui_font_size = f32(config.float_of(p, "browser.ui.font_size")),
+		ui_theme = strings.clone(config.string_of(p, "browser.ui.theme")),
 		persist_profile = config.bool_of(p, "browser.profile.persist"),
 		layout_band_px = f32(config.float_of(p, "browser.layout.band_height_px")),
 		blocking_threads = int(config.int_of(p, "browser.threads.blocking")),

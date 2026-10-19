@@ -877,6 +877,7 @@ apply_prefs :: proc(app: ^App) {
 	for tab in app.tabs { if tab.page != nil { page.configure_styles(tab.page) } }
 
 	delete(app.cfg.homepage)
+	delete(app.cfg.ui_theme)
 	app.cfg = settings_from_prefs(&app.prefs)
 	arm_autosave(app)
 	app.frames_requested = max(app.frames_requested, 3)
@@ -927,8 +928,10 @@ frame :: proc(app: ^App) {
 	dt := clamp(f32(time.duration_seconds(time.tick_diff(app.last_tick, now))), 0.0005, 0.1)
 	app.last_tick = now
 
-	ui.apply_palette(&app.theme, ui.PALETTE_MIDNIGHT, render.blend_space(&app.r))
-	platform.set_dark_title(app.win, true)
+	pal, pal_ok := ui.palette_named(app.cfg.ui_theme)   // browser.ui.theme
+	if !pal_ok { pal = ui.PALETTE_GRAPHITE }
+	ui.apply_palette(&app.theme, pal, render.blend_space(&app.r))
+	platform.set_dark_title(app.win, pal.dark)
 	base_style := ui.Style{
 		pref = {.X = ui.text_size(), .Y = ui.px(36)},
 		font = app.ui_font, font_size = app.cfg.ui_font_size, text_pad = 7,
