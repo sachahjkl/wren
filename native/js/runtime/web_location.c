@@ -91,6 +91,26 @@ JSValue wjr_Location_set_hash(JSContext *ctx, JSValueConst this_val, JSValueCons
 
 JSValue wjr_Location_get_origin(JSContext *ctx, JSValueConst this_val) { return location_get(ctx, this_val, wr_URLComponent_Origin); }
 
+/* location.ancestorOrigins: a document without frames has no ancestors (an empty DOMStringList, the same object) */
+static JSValue ancestor_origins = JS_UNDEFINED;
+
+JSValue wjr_Location_get_ancestorOrigins(JSContext *ctx, JSValueConst this_val)
+{
+    if (!wj_this(ctx, this_val, WJ_IFACE_Location)) { return JS_EXCEPTION; }
+    if (JS_IsUndefined(ancestor_origins)) {
+        ancestor_origins = wj_new_object(ctx, WJ_IFACE_DOMStringList, NULL, NULL);
+        if (JS_IsException(ancestor_origins)) { ancestor_origins = JS_UNDEFINED; return JS_EXCEPTION; }
+    }
+    return JS_DupValue(ctx, ancestor_origins);
+}
+
+/* DOMStringList: the lists this browser makes are empty */
+JSValue wjr_DOMStringList_get_length(JSContext *ctx, JSValueConst this_val) { return wj_this(ctx, this_val, WJ_IFACE_DOMStringList) ? JS_NewInt32(ctx, 0) : JS_EXCEPTION; }
+JSValue wjr_DOMStringList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return wj_this(ctx, this_val, WJ_IFACE_DOMStringList) ? JS_NULL : JS_EXCEPTION; }
+JSValue wjr_DOMStringList_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return wj_this(ctx, this_val, WJ_IFACE_DOMStringList) ? JS_FALSE : JS_EXCEPTION; }
+JSValue wjr_DOMStringList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found) { WJ_UNUSED(ctx); WJ_UNUSED(obj); WJ_UNUSED(index); *found = false; return JS_UNDEFINED; }
+uint32_t wjr_DOMStringList_length_hook(JSContext *ctx, JSValueConst obj) { WJ_UNUSED(ctx); WJ_UNUSED(obj); return 0; }
+
 static JSValue location_go(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, bool replace)
 {
     if (!wj_this(ctx, this_val, WJ_IFACE_Location)) { return JS_EXCEPTION; }

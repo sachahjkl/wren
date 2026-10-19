@@ -14,6 +14,8 @@ test("location", () => {
   eq(location.hash, "", "hash");
   ok(Object.getOwnPropertyDescriptor(location, "href") !== undefined, "[LegacyUnforgeable]: own properties");
   eq(Object.getOwnPropertyDescriptor(location, "href").configurable, false, "...not configurable");
+  eq(location.ancestorOrigins.length, 0, "ancestorOrigins: no frames");
+  ok(JSON.parse(JSON.stringify(location)).href === location.href, "JSON.stringify(location) reads every member");
 });
 
 test("pushState and replaceState", () => {

@@ -41,6 +41,11 @@ JSValue wjr_DOMException_constructor(JSContext *ctx, JSValueConst this_val, int 
 JSValue wjr_DOMException_get_code(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_DOMException_get_message(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_DOMException_get_name(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMStringList_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMStringList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMStringList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+JSValue wjr_DOMStringList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+uint32_t wjr_DOMStringList_length_hook(JSContext *ctx, JSValueConst obj);
 JSValue wjr_Document_createElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_get_location(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_set_location(JSContext *ctx, JSValueConst this_val, JSValueConst v);
@@ -114,6 +119,7 @@ JSValue wjr_History_pushState(JSContext *ctx, JSValueConst this_val, int argc, J
 JSValue wjr_History_replaceState(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_History_set_scrollRestoration(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Location_assign(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Location_get_ancestorOrigins(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Location_get_hash(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Location_get_host(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Location_get_hostname(JSContext *ctx, JSValueConst this_val);
@@ -5327,9 +5333,9 @@ static const wj_member wj_m_DOMRect[] = {
     { "height", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMStringList[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "item", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "contains", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMStringList_get_length, NULL, 0 },
+    { "item", WJ_M_METHOD, 0, 1, wjr_DOMStringList_item, NULL, NULL, 0 },
+    { "contains", WJ_M_METHOD, 0, 1, wjr_DOMStringList_contains, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMStringMap[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
@@ -9044,7 +9050,7 @@ static const wj_member wj_m_Location[] = {
     { "assign", WJ_M_METHOD, WJ_F_UNFORGEABLE, 1, wjr_Location_assign, NULL, NULL, 0 },
     { "replace", WJ_M_METHOD, WJ_F_UNFORGEABLE, 1, wjr_Location_replace, NULL, NULL, 0 },
     { "reload", WJ_M_METHOD, WJ_F_UNFORGEABLE, 0, wjr_Location_reload, NULL, NULL, 0 },
-    { "ancestorOrigins", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, NULL, NULL, 0 },
+    { "ancestorOrigins", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Location_get_ancestorOrigins, NULL, 0 },
 };
 static const wj_member wj_m_Lock[] = {
     { "name", WJ_M_ATTRIBUTE, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
@@ -10736,9 +10742,9 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_DOMRect, .n_members = 5, .subtree_end = 106,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = "SVGRect", .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMStringList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMStringList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_DOMStringList, .n_members = 3, .subtree_end = 107,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_DOMStringList_index_get, .length_get = wjr_DOMStringList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "DOMStringMap", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_OVERRIDE_BUILTINS, .class_kind = WJ_CLASS_NAMED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_DOMStringMap, .n_members = 0, .subtree_end = 108,
