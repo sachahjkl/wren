@@ -21,6 +21,7 @@ instantiated by Wasmtime once per realm (a page, a worker), its imports being th
 | `engine/wj.h` | the engine-agnostic layer the bindings and hand-written members use (types, conversions, platform objects, errors) |
 | `engine/qjs_*.c`, `qjs_backend.h` | its QuickJS-ng implementation: realm life cycle and exports (`qjs_realm.c`), platform classes, wrapper cache, GC groups, interface objects (`qjs_platform.c`), Web IDL conversions (`qjs_convert.c`), errors (`qjs_errors.c`) |
 | `runtime/*.c` | hand-written members, named `wjr_<Interface>_<member>` (see below), and runtime pieces (events, console, reflection...) |
+| `runtime/web*.c`, `promise.c`, `buffer.c` | the web APIs that are not the DOM (fetch, XMLHttpRequest, streams, URL, encoding, abort, Blob, storage, location/history, navigator, performance, crypto, matchMedia, sockets, messaging), on the helpers of `runtime/web.h`: browser promises as JavaScript promises (`wj_promise_from_host`), BufferSource read in place and browser buffers copied once, hidden state of the browser's events, pair iterators, tasks, pins |
 | `gen/` | generated, committed: `wren_api.h` (the browser's imports, from `api/*.widl`), `bindings.c/.h` (interface table, glue) |
 | `webref/` | the official Web IDL, vendored from `@webref/idl` (pinned: `VERSION`, `SHA256SUMS`, refreshed by `tools/update_webref.ps1`) |
 | `patches/` | patches to QuickJS-ng (GC prologue hook, Math.random reseed, array-index atoms, time zone from the host) |
@@ -53,7 +54,8 @@ implemented by, first match wins:
    the object is the page's singleton: document, window) and the arguments in order. The generator converts by the
    Web IDL rules what it can (numbers, booleans, strings incl. enums and `(TrustedX or DOMString)`, nullable/optional
    arguments with defaults, interface types as handles, node results wrapped, `raises` → exceptions, `Not_Found` →
-   null for nullable results, `appendChild`-like results). Write the function in `api/js_*.widl` (or a module's own
+   null for nullable results, `appendChild`-like results, `Promise<T>` results as JavaScript promises settled by the
+   browser's promise, T's value converted by `wj_promise_from_host`). Write the function in `api/js_*.widl` (or a module's own
    file) and its Odin implementation in `src/page/js_*.odin`; bindgen binds it. `docs/js/coverage.md` lists what each
    member uses, and the browser functions that exist but could not be bound (with the reason).
 4. Otherwise the member is absent (pref `javascript.bindings.unimplemented = throw`: present and throwing

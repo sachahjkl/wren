@@ -518,7 +518,7 @@ JSValue wjr_EventTarget_dispatchEvent(JSContext *ctx, JSValueConst this_val, int
     if (e->bubbles) { init |= wr_EventInit_Bubbles; }
     if (e->cancelable) { init |= wr_EventInit_Cancelable; }
     if (e->composed) { init |= wr_EventInit_Composed; }
-    extern bool wj_dispatch_trusted;
+    extern bool wj_dispatch_trusted;   /* events the realm fires as the browser's own are trusted */
     e->trusted = wj_dispatch_trusted;
     e->stop = e->stop_immediate = e->canceled = 0;
     e->dispatching = 1;

@@ -297,6 +297,26 @@ wj_val wj_lenient_setter(wj_ctx *ctx, wj_val this_val, wj_val v);
 /* `stringifier attribute`: toString() returns the attribute (the member's getter is in the data of the function) */
 wj_val wj_stringifier(wj_ctx *ctx, wj_val this_val, int argc, wj_val *argv);
 
+/* ---- promises of the browser (runtime/promise.c) ---- */
+
+/* How the value of a browser promise (module async: an i64 and a text) becomes the JavaScript value it is fulfilled
+ * with; a rejection's code becomes the exception it names (TypeError, DOMException "AbortError"...). */
+enum {
+    WJ_HOST_UNDEFINED = 0,   /* undefined */
+    WJ_HOST_NUMBER,          /* the promise's value */
+    WJ_HOST_BOOL,
+    WJ_HOST_TEXT,            /* the promise's text */
+    WJ_HOST_ARRAYBUFFER,     /* the value is a buffer handle: an ArrayBuffer of its bytes (the buffer is released) */
+    WJ_HOST_UINT8ARRAY,      /* the same, as a Uint8Array */
+};
+/* `settle`, when given, makes the value (fulfilled) or the reason (rejected) instead of the kind's conversion; it
+ * returns WJ_EXCEPTION to reject with the pending exception. `data` is kept until then and given back. */
+typedef wj_val (*wj_host_settle)(wj_ctx *ctx, int state, uint64_t host, int64_t value, wj_val data, bool *reject);
+/* A JavaScript promise settled by the browser's promise `host` (the realm's: released once it settled). */
+wj_val wj_promise_from_host(wj_ctx *ctx, uint64_t host, int kind, wj_host_settle settle, wj_val data);
+/* The pending exception as a rejected promise (operations returning promises never throw: Web IDL). */
+wj_val wj_promise_reject_pending(wj_ctx *ctx);
+
 /* ---- misc ---- */
 
 void *wj_malloc(size_t n);

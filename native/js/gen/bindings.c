@@ -5,15 +5,59 @@
 #include "wj.h"
 #include "bindings.h"
 
+JSValue wjr_AbortController_abort(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_AbortController_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_AbortController_get_signal(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AbortSignal_get_aborted(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AbortSignal_get_reason(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AbortSignal_static_abort(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_AbortSignal_static_any(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_AbortSignal_static_timeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_AbortSignal_throwIfAborted(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_AnimationFrameProvider_cancelAnimationFrame(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_AnimationFrameProvider_requestAnimationFrame(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Blob_arrayBuffer(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Blob_bytes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Blob_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Blob_get_size(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Blob_get_type(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Blob_slice(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Blob_stream(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Blob_text(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Blob_textStream(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Body_arrayBuffer(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Body_blob(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Body_bytes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Body_formData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Body_get_body(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Body_get_bodyUsed(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Body_json(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Body_text(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Body_textStream(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CloseEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CloseEvent_get_code(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CloseEvent_get_reason(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CloseEvent_get_wasClean(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Crypto_getRandomValues(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Crypto_get_subtle(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CustomEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CustomEvent_get_detail(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CustomEvent_initCustomEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMException_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMException_get_code(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMException_get_message(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMException_get_name(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMStringList_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMStringList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMStringList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+JSValue wjr_DOMStringList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+uint32_t wjr_DOMStringList_length_hook(JSContext *ctx, JSValueConst obj);
 JSValue wjr_DedicatedWorkerGlobalScope_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_createElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_get_location(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_open(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_set_location(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Document_write(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_writeln(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ErrorEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -22,6 +66,8 @@ JSValue wjr_ErrorEvent_get_error(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ErrorEvent_get_filename(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ErrorEvent_get_lineno(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ErrorEvent_get_message(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_EventSource_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_EventSource_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_EventTarget_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_EventTarget_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_EventTarget_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -47,6 +93,28 @@ JSValue wjr_Event_set_cancelBubble(JSContext *ctx, JSValueConst this_val, JSValu
 JSValue wjr_Event_set_returnValue(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Event_stopImmediatePropagation(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Event_stopPropagation(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileReader_abort(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileReader_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileReader_get_error(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_FileReader_get_readyState(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_FileReader_get_result(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_FileReader_readAsArrayBuffer(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileReader_readAsBinaryString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileReader_readAsDataURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileReader_readAsText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_File_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_File_get_lastModified(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_File_get_name(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_File_get_webkitRelativePath(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_FormData_append(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FormData_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FormData_entries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FormData_forEach(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FormData_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FormData_getAll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FormData_keys(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FormData_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FormData_values(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_GlobalEventHandlers_get_onblur(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_GlobalEventHandlers_get_onerror(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_GlobalEventHandlers_get_onfocus(JSContext *ctx, JSValueConst this_val);
@@ -70,13 +138,246 @@ JSValue wjr_HTMLScriptElement_set_referrerPolicy(JSContext *ctx, JSValueConst th
 JSValue wjr_HTMLScriptElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLScriptElement_set_text(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLScriptElement_static_supports(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HashChangeEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HashChangeEvent_get_newURL(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HashChangeEvent_get_oldURL(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Headers_append(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Headers_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Headers_delete(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Headers_entries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Headers_forEach(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Headers_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Headers_getSetCookie(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Headers_has(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Headers_keys(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Headers_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Headers_values(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_History_back(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_History_forward(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_History_get_scrollRestoration(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_History_get_state(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_History_pushState(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_History_replaceState(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_History_set_scrollRestoration(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_IdleDeadline_get_didTimeout(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_IdleDeadline_timeRemaining(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Location_assign(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Location_get_ancestorOrigins(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Location_get_hash(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Location_get_host(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Location_get_hostname(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Location_get_href(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Location_get_origin(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Location_get_pathname(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Location_get_port(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Location_get_protocol(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Location_get_search(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Location_reload(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Location_replace(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Location_set_hash(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_Location_set_host(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_Location_set_hostname(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_Location_set_href(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_Location_set_pathname(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_Location_set_port(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_Location_set_protocol(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_Location_set_search(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_MediaQueryListEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MediaQueryListEvent_get_matches(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MediaQueryListEvent_get_media(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MediaQueryList_addListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MediaQueryList_removeListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MessageChannel_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MessageChannel_get_port1(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MessageChannel_get_port2(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_MessageEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_MessageEvent_get_data(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MessageEvent_get_lastEventId(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MessageEvent_get_origin(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MessageEvent_get_ports(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MessageEvent_get_source(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MessageEvent_initMessageEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MessagePort_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MessagePort_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MessagePort_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_MessagePort_start(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NavigatorConcurrentHardware_get_hardwareConcurrency(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorCookies_get_cookieEnabled(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorID_get_appCodeName(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorID_get_appName(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorID_get_appVersion(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorID_get_platform(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorID_get_product(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorID_get_productSub(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorID_get_userAgent(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorID_get_vendor(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorID_get_vendorSub(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorLanguage_get_language(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorLanguage_get_languages(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorOnLine_get_onLine(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorPlugins_get_mimeTypes(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorPlugins_get_pdfViewerEnabled(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorPlugins_get_plugins(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigatorPlugins_javaEnabled(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Navigator_get_maxTouchPoints(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Navigator_sendBeacon(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceEntry_get_duration(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceEntry_get_entryType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceEntry_get_id(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceEntry_get_name(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceEntry_get_navigationId(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceEntry_get_startTime(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceEntry_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceMark_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceMark_get_detail(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceMeasure_get_detail(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Performance_clearMarks(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Performance_clearMeasures(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Performance_clearResourceTimings(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Performance_getEntries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Performance_getEntriesByName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Performance_getEntriesByType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Performance_mark(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Performance_measure(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Performance_setResourceTimingBufferSize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Performance_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PopStateEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PopStateEvent_get_hasUAVisualTransition(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PopStateEvent_get_state(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ProgressEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ProgressEvent_get_lengthComputable(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ProgressEvent_get_loaded(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ProgressEvent_get_total(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PromiseRejectionEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PromiseRejectionEvent_get_promise(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PromiseRejectionEvent_get_reason(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ReadableStreamDefaultController_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ReadableStreamDefaultController_enqueue(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ReadableStreamDefaultController_error(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ReadableStreamDefaultController_get_desiredSize(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ReadableStreamDefaultReader_cancel(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ReadableStreamDefaultReader_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ReadableStreamDefaultReader_get_closed(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ReadableStreamDefaultReader_read(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ReadableStreamDefaultReader_releaseLock(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ReadableStream_cancel(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ReadableStream_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ReadableStream_getReader(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ReadableStream_get_locked(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ReadableStream_tee(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ReadableStream_values(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Request_clone(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Request_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Request_get_cache(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_credentials(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_destination(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_duplex(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_headers(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_integrity(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_isHistoryNavigation(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_isReloadNavigation(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_keepalive(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_method(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_mode(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_redirect(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_referrer(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_referrerPolicy(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_signal(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Request_get_url(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Response_clone(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Response_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Response_get_headers(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Response_get_ok(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Response_get_redirected(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Response_get_status(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Response_get_statusText(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Response_get_type(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Response_get_url(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Response_static_error(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Response_static_json(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Response_static_redirect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Screen_get_availHeight(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Screen_get_availWidth(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Screen_get_colorDepth(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Screen_get_height(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Screen_get_pixelDepth(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Screen_get_width(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_StorageEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_StorageEvent_get_key(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_StorageEvent_get_newValue(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_StorageEvent_get_oldValue(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_StorageEvent_get_storageArea(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_StorageEvent_get_url(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Storage_clear(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Storage_getItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Storage_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Storage_key(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+int wjr_Storage_named_delete(JSContext *ctx, JSValueConst obj, const char *name, size_t len);
+JSValue wjr_Storage_named_get(JSContext *ctx, JSValueConst obj, const char *name, size_t len, bool *found);
+int wjr_Storage_named_keys(JSContext *ctx, JSValueConst obj, JSValue array);
+int wjr_Storage_named_set(JSContext *ctx, JSValueConst obj, const char *name, size_t len, JSValueConst value);
+JSValue wjr_Storage_removeItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Storage_setItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SubtleCrypto_decrypt(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SubtleCrypto_deriveBits(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SubtleCrypto_deriveKey(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SubtleCrypto_digest(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SubtleCrypto_encrypt(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SubtleCrypto_exportKey(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SubtleCrypto_generateKey(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SubtleCrypto_importKey(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SubtleCrypto_sign(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SubtleCrypto_unwrapKey(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SubtleCrypto_verify(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SubtleCrypto_wrapKey(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextDecoder_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextDecoder_decode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextDecoder_get_fatal(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextDecoder_get_ignoreBOM(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextEncoder_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextEncoder_encode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextEncoder_encodeInto(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextEncoder_get_encoding(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URLSearchParams_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_URLSearchParams_entries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_URLSearchParams_forEach(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_URLSearchParams_getAll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_URLSearchParams_keys(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_URLSearchParams_toString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_URLSearchParams_values(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_URL_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_URL_get_hash(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URL_get_host(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URL_get_hostname(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URL_get_href(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URL_get_origin(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URL_get_password(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URL_get_pathname(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URL_get_port(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URL_get_protocol(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URL_get_search(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URL_get_searchParams(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URL_get_username(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_URL_set_hash(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_URL_set_host(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_URL_set_hostname(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_URL_set_href(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_URL_set_password(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_URL_set_pathname(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_URL_set_port(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_URL_set_protocol(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_URL_set_search(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_URL_set_username(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_URL_static_canParse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_URL_static_createObjectURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_URL_static_parse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_URL_static_revokeObjectURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_URL_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WebSocket_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WebSocket_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WebSocket_get_binaryType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WebSocket_send(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WebSocket_set_binaryType(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_WindowEventHandlers_get_onafterprint(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WindowEventHandlers_get_onbeforeprint(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WindowEventHandlers_get_onbeforeunload(JSContext *ctx, JSValueConst this_val);
@@ -113,28 +414,65 @@ JSValue wjr_WindowEventHandlers_set_onrejectionhandled(JSContext *ctx, JSValueCo
 JSValue wjr_WindowEventHandlers_set_onstorage(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_WindowEventHandlers_set_onunhandledrejection(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_WindowEventHandlers_set_onunload(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_WindowLocalStorage_get_localStorage(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowOrWorkerGlobalScope_atob(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_btoa(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_clearInterval(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_clearTimeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_fetch(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_get_crypto(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowOrWorkerGlobalScope_get_performance(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WindowOrWorkerGlobalScope_queueMicrotask(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_reportError(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_setInterval(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_setTimeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_structuredClone(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowSessionStorage_get_sessionStorage(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_cancelIdleCallback(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Window_get_clientInformation(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_frameElement(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_frames(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_get_history(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_get_location(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_get_navigator(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_opener(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_parent(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_get_screen(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_self(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_top(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_window(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_matchMedia(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Window_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_requestIdleCallback(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WorkerGlobalScope_get_navigator(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WorkerGlobalScope_get_self(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WorkerGlobalScope_importScripts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Worker_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Worker_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Worker_terminate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_XMLHttpRequest_abort(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_XMLHttpRequest_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_XMLHttpRequest_getAllResponseHeaders(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_XMLHttpRequest_getResponseHeader(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_XMLHttpRequest_get_readyState(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_XMLHttpRequest_get_response(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_XMLHttpRequest_get_responseText(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_XMLHttpRequest_get_responseType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_XMLHttpRequest_get_responseURL(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_XMLHttpRequest_get_responseXML(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_XMLHttpRequest_get_status(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_XMLHttpRequest_get_statusText(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_XMLHttpRequest_get_timeout(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_XMLHttpRequest_get_upload(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_XMLHttpRequest_get_withCredentials(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_XMLHttpRequest_open(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_XMLHttpRequest_overrideMimeType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_XMLHttpRequest_send(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_XMLHttpRequest_setRequestHeader(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_XMLHttpRequest_set_responseType(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_XMLHttpRequest_set_timeout(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_XMLHttpRequest_set_withCredentials(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_console_assert(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_clear(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_count(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -154,15 +492,6 @@ JSValue wjr_console_timeEnd(JSContext *ctx, JSValueConst this_val, int argc, JSV
 JSValue wjr_console_timeLog(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_trace(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_warn(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-
-/* AbortController.signal -> abort.AbortController_signal */
-static JSValue wjg_AbortController_get_signal(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 0);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = wr_AbortController_signal(self->handle);
-    return wj_wrap_host(ctx, r, 167);
-}
 
 static JSValue wjg_CSSMediaRule_set_media(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "media", "mediaText", v); }
 static JSValue wjg_CSSPageRule_set_style(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "style", "cssText", v); }
@@ -269,37 +598,6 @@ static JSValue wjg_ElementInternals_get_ariaValueNow(JSContext *ctx, JSValueCons
 static JSValue wjg_ElementInternals_set_ariaValueNow(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 113, "aria-valuenow", WJ_REFLECT_NULLABLE_STRING, v, 0, 0, 0); }
 static JSValue wjg_ElementInternals_get_ariaValueText(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 113, "aria-valuetext", WJ_REFLECT_NULLABLE_STRING, 0, 0, 0, 0); }
 static JSValue wjg_ElementInternals_set_ariaValueText(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 113, "aria-valuetext", WJ_REFLECT_NULLABLE_STRING, v, 0, 0, 0); }
-/* CloseEvent.wasClean -> websocket.CloseEvent_wasClean */
-static JSValue wjg_CloseEvent_get_wasClean(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 121);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t r = wr_CloseEvent_wasClean(self->handle);
-    return JS_NewBool(ctx, r != 0);
-}
-
-/* MessageEvent.origin -> eventsource.MessageEvent_origin */
-static JSValue wjg_MessageEvent_get_origin(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 134);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t n;
-    WJ_FETCH_STRING(n, wr_MessageEvent_origin(self->handle, wj_scratch.data, wj_scratch.cap));
-    if (n < 0) { return wj_throw_status(ctx, n, "MessageEvent.origin"); }
-    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
-}
-
-/* MessageEvent.lastEventId -> eventsource.MessageEvent_lastEventId */
-static JSValue wjg_MessageEvent_get_lastEventId(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 134);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t n;
-    WJ_FETCH_STRING(n, wr_MessageEvent_lastEventId(self->handle, wj_scratch.data, wj_scratch.cap));
-    if (n < 0) { return wj_throw_status(ctx, n, "MessageEvent.lastEventId"); }
-    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
-}
-
 /* KeyboardEvent.keyCode -> events.KeyboardEvent_keyCode */
 static JSValue wjg_KeyboardEvent_get_keyCode(JSContext *ctx, JSValueConst this_val)
 {
@@ -334,37 +632,6 @@ static JSValue wjg_MouseEvent_get_button(JSContext *ctx, JSValueConst this_val)
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_MouseEvent_button(self->handle);
     return JS_NewInt32(ctx, r);
-}
-
-/* AbortSignal.timeout() -> abort.AbortSignal_timeout */
-static JSValue wjg_AbortSignal_static_timeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    WJ_UNUSED(this_val);
-    if (argc < 1) { return wj_throw_arity(ctx, "AbortSignal.timeout", 1, argc); }
-    uint64_t a0 = 0;
-    if (!wj_to_uint64(ctx, wj_arg(argc, argv, 0), &a0, WJ_ENFORCE_RANGE)) { return JS_EXCEPTION; }
-    uint64_t r = 0;
-    int32_t st = wr_AbortSignal_timeout(a0, (void *)&r);
-    if (st < 0) { return wj_throw_status(ctx, st, "AbortSignal.timeout"); }
-    return wj_wrap_host(ctx, r, 167);
-}
-
-/* AbortSignal.aborted -> abort.AbortSignal_aborted */
-static JSValue wjg_AbortSignal_get_aborted(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 167);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t r = wr_AbortSignal_aborted(self->handle);
-    return JS_NewBool(ctx, r != 0);
-}
-
-/* AbortSignal.throwIfAborted() -> abort.AbortSignal_throwIfAborted */
-static JSValue wjg_AbortSignal_throwIfAborted(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 167);
-    if (!self) { return JS_EXCEPTION; }
-    (void)wr_AbortSignal_throwIfAborted(self->handle);
-    return JS_UNDEFINED;
 }
 
 static JSValue wjg_AbortSignal_get_onabort(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 167, "abort"); }
@@ -442,15 +709,6 @@ static JSValue wjg_EventSource_get_onmessage(JSContext *ctx, JSValueConst this_v
 static JSValue wjg_EventSource_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 203, "message", v, 0); }
 static JSValue wjg_EventSource_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 203, "error"); }
 static JSValue wjg_EventSource_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 203, "error", v, 0); }
-/* EventSource.close() -> eventsource.EventSource_close */
-static JSValue wjg_EventSource_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 203);
-    if (!self) { return JS_EXCEPTION; }
-    wr_EventSource_close(self->handle);
-    return JS_UNDEFINED;
-}
-
 static JSValue wjg_FileReader_get_onloadstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 204, "loadstart"); }
 static JSValue wjg_FileReader_set_onloadstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 204, "loadstart", v, 0); }
 static JSValue wjg_FileReader_get_onprogress(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 204, "progress"); }
@@ -493,6 +751,26 @@ static JSValue wjg_IDBTransaction_get_onerror(JSContext *ctx, JSValueConst this_
 static JSValue wjg_IDBTransaction_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 209, "error", v, 0); }
 static JSValue wjg_MediaDevices_get_ondevicechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 210, "devicechange"); }
 static JSValue wjg_MediaDevices_set_ondevicechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 210, "devicechange", v, 0); }
+/* MediaQueryList.media -> media.MediaQueryList_media */
+static JSValue wjg_MediaQueryList_get_media(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 211);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_MediaQueryList_media(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MediaQueryList.media"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MediaQueryList.matches -> media.MediaQueryList_matches */
+static JSValue wjg_MediaQueryList_get_matches(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 211);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_MediaQueryList_matches(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
 static JSValue wjg_MediaQueryList_get_onchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 211, "change"); }
 static JSValue wjg_MediaQueryList_set_onchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 211, "change", v, 0); }
 static JSValue wjg_MediaSource_get_onsourceopen(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 212, "sourceopen"); }
@@ -516,7 +794,6 @@ static JSValue wjg_MediaStreamTrack_set_onunmute(JSContext *ctx, JSValueConst th
 static JSValue wjg_MediaStreamTrack_get_onended(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 215, "ended"); }
 static JSValue wjg_MediaStreamTrack_set_onended(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 215, "ended", v, 0); }
 static JSValue wjg_MessagePort_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 216, "message"); }
-static JSValue wjg_MessagePort_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 216, "message", v, 0); }
 static JSValue wjg_MessagePort_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 216, "messageerror"); }
 static JSValue wjg_MessagePort_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 216, "messageerror", v, 0); }
 static JSValue wjg_Navigation_get_onnavigate(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 217, "navigate"); }
@@ -691,7 +968,6 @@ static JSValue wjg_Document_get_onfullscreenchange(JSContext *ctx, JSValueConst 
 static JSValue wjg_Document_set_onfullscreenchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "fullscreenchange", v, 0); }
 static JSValue wjg_Document_get_onfullscreenerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 227, "fullscreenerror"); }
 static JSValue wjg_Document_set_onfullscreenerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 227, "fullscreenerror", v, 0); }
-static JSValue wjg_Document_set_location(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "location", "href", v); }
 /* Document.cookie -> document.Document_cookie_get */
 static JSValue wjg_Document_get_cookie(JSContext *ctx, JSValueConst this_val)
 {
@@ -1840,6 +2116,21 @@ static JSValue wjg_HTMLImageElement_get_currentSrc(JSContext *ctx, JSValueConst 
     WJ_FETCH_STRING(n, wr_HTMLImageElement_currentSrc(self->handle, wj_scratch.data, wj_scratch.cap));
     if (n < 0) { return wj_throw_status(ctx, n, "HTMLImageElement.currentSrc"); }
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLImageElement.decode() -> images.HTMLImageElement_decode */
+static JSValue wjg_HTMLImageElement_decode_body(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 260);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLImageElement_decode(self->handle);
+    return wj_promise_from_host(ctx, r, WJ_HOST_UNDEFINED, NULL, JS_UNDEFINED);
+}
+
+static JSValue wjg_HTMLImageElement_decode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    JSValue r = wjg_HTMLImageElement_decode_body(ctx, this_val, argc, argv);
+    return JS_IsException(r) ? wj_promise_reject_pending(ctx) : r;
 }
 
 static JSValue wjg_HTMLImageElement_get_name(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 260, "name", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -3493,30 +3784,6 @@ static JSValue wjg_Performance_get_timeOrigin(JSContext *ctx, JSValueConst this_
 
 static JSValue wjg_Performance_get_onresourcetimingbufferfull(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 345, "resourcetimingbufferfull"); }
 static JSValue wjg_Performance_set_onresourcetimingbufferfull(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 345, "resourcetimingbufferfull", v, 0); }
-/* Performance.clearMarks() -> performance.Performance_clearMarks */
-static JSValue wjg_Performance_clearMarks(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 345);
-    if (!self) { return JS_EXCEPTION; }
-    wj_str a0;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_OPTIONAL, "")) { return JS_EXCEPTION; }
-    wr_Performance_clearMarks((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
-    wj_str_free(ctx, &a0);
-    return JS_UNDEFINED;
-}
-
-/* Performance.clearMeasures() -> performance.Performance_clearMeasures */
-static JSValue wjg_Performance_clearMeasures(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 345);
-    if (!self) { return JS_EXCEPTION; }
-    wj_str a0;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_OPTIONAL, "")) { return JS_EXCEPTION; }
-    wr_Performance_clearMeasures((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
-    wj_str_free(ctx, &a0);
-    return JS_UNDEFINED;
-}
-
 static JSValue wjg_PermissionStatus_get_onchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 346, "change"); }
 static JSValue wjg_PermissionStatus_set_onchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 346, "change", v, 0); }
 static JSValue wjg_ScreenOrientation_get_onchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 347, "change"); }
@@ -3668,21 +3935,6 @@ static JSValue wjg_WebSocket_get_protocol(JSContext *ctx, JSValueConst this_val)
     WJ_FETCH_STRING(n, wr_WebSocket_protocol(self->handle, wj_scratch.data, wj_scratch.cap));
     if (n < 0) { return wj_throw_status(ctx, n, "WebSocket.protocol"); }
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
-}
-
-/* WebSocket.close() -> websocket.WebSocket_close */
-static JSValue wjg_WebSocket_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 363);
-    if (!self) { return JS_EXCEPTION; }
-    uint32_t a0 = 0;
-    if (!JS_IsUndefined(wj_arg(argc, argv, 0)) && !wj_to_uint32(ctx, wj_arg(argc, argv, 0), &a0, 16, WJ_CLAMP)) { return JS_EXCEPTION; }
-    wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, WJ_STR_OPTIONAL, "")) { return JS_EXCEPTION; }
-    int32_t st = wr_WebSocket_close(self->handle, a0, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
-    wj_str_free(ctx, &a1);
-    if (st < 0) { return wj_throw_status(ctx, st, "WebSocket.close"); }
-    return JS_UNDEFINED;
 }
 
 static JSValue wjg_WebSocket_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 363, "message"); }
@@ -4016,64 +4268,6 @@ static JSValue wjg_History_go(JSContext *ctx, JSValueConst this_val, int argc, J
     return JS_UNDEFINED;
 }
 
-/* Location.assign() -> history.Location_assign */
-static JSValue wjg_Location_assign(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 412);
-    if (!self) { return JS_EXCEPTION; }
-    if (argc < 1) { return wj_throw_arity(ctx, "Location.assign", 1, argc); }
-    wj_str a0;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
-    int32_t st = wr_Location_assign((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
-    wj_str_free(ctx, &a0);
-    if (st < 0) { return wj_throw_status(ctx, st, "Location.assign"); }
-    return JS_UNDEFINED;
-}
-
-/* Location.replace() -> history.Location_replace */
-static JSValue wjg_Location_replace(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 412);
-    if (!self) { return JS_EXCEPTION; }
-    if (argc < 1) { return wj_throw_arity(ctx, "Location.replace", 1, argc); }
-    wj_str a0;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
-    int32_t st = wr_Location_replace((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
-    wj_str_free(ctx, &a0);
-    if (st < 0) { return wj_throw_status(ctx, st, "Location.replace"); }
-    return JS_UNDEFINED;
-}
-
-/* Location.reload() -> history.Location_reload */
-static JSValue wjg_Location_reload(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 412);
-    if (!self) { return JS_EXCEPTION; }
-    wr_Location_reload();
-    return JS_UNDEFINED;
-}
-
-/* Response.body -> fetch.Response_body */
-static JSValue wjg_Response_get_body(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 474);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = 0;
-    int32_t st = wr_Response_body(self->handle, (void *)&r);
-    if (st == wr_Error_Not_Found) { return JS_NULL; }
-    if (st < 0) { return wj_throw_status(ctx, st, "Response.body"); }
-    return wj_wrap_host(ctx, r, 465);
-}
-
-/* Response.bodyUsed -> fetch.Response_bodyUsed */
-static JSValue wjg_Response_get_bodyUsed(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 474);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t r = wr_Response_bodyUsed(self->handle);
-    return JS_NewBool(ctx, r != 0);
-}
-
 static JSValue wjg_StyleSheet_set_media(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "media", "mediaText", v); }
 /* TextDecoder.encoding -> encoding.TextDecoder_encoding */
 static JSValue wjg_TextDecoder_get_encoding(JSContext *ctx, JSValueConst this_val)
@@ -4084,48 +4278,6 @@ static JSValue wjg_TextDecoder_get_encoding(JSContext *ctx, JSValueConst this_va
     WJ_FETCH_STRING(n, wr_TextDecoder_encoding(self->handle, wj_scratch.data, wj_scratch.cap));
     if (n < 0) { return wj_throw_status(ctx, n, "TextDecoder.encoding"); }
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
-}
-
-/* URL.parse() -> url.URL_parse */
-static JSValue wjg_URL_static_parse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    WJ_UNUSED(this_val);
-    if (argc < 1) { return wj_throw_arity(ctx, "URL.parse", 1, argc); }
-    wj_str a0;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
-    wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, WJ_STR_OPTIONAL, "")) { return JS_EXCEPTION; }
-    uint64_t r = 0;
-    int32_t st = wr_URL_parse((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (const uint8_t *)a1.ptr, a1.ptr ? (uint32_t)a1.len : WR_ABSENT, (void *)&r);
-    wj_str_free(ctx, &a0);
-    wj_str_free(ctx, &a1);
-    if (st == wr_Error_Not_Found) { return JS_NULL; }
-    if (st < 0) { return wj_throw_status(ctx, st, "URL.parse"); }
-    return wj_wrap_host(ctx, r, 536);
-}
-
-/* URL.canParse() -> url.URL_canParse */
-static JSValue wjg_URL_static_canParse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    WJ_UNUSED(this_val);
-    if (argc < 1) { return wj_throw_arity(ctx, "URL.canParse", 1, argc); }
-    wj_str a0;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
-    wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, WJ_STR_OPTIONAL, "")) { return JS_EXCEPTION; }
-    int32_t r = wr_URL_canParse((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (const uint8_t *)a1.ptr, a1.ptr ? (uint32_t)a1.len : WR_ABSENT);
-    wj_str_free(ctx, &a0);
-    wj_str_free(ctx, &a1);
-    return JS_NewBool(ctx, r != 0);
-}
-
-/* URL.searchParams -> url.URL_searchParams */
-static JSValue wjg_URL_get_searchParams(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 536);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = wr_URL_searchParams(self->handle);
-    return wj_wrap_host(ctx, r, 537);
 }
 
 /* URLSearchParams.size -> url.URLSearchParams_size */
@@ -4228,8 +4380,8 @@ static JSValue wjg_URLSearchParams_sort(JSContext *ctx, JSValueConst this_val, i
 
 
 static const wj_member wj_m_AbortController[] = {
-    { "signal", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 0, NULL, wjg_AbortController_get_signal, NULL, 0 },
-    { "abort", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "signal", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 0, NULL, wjr_AbortController_get_signal, NULL, 0 },
+    { "abort", WJ_M_METHOD, 0, 0, wjr_AbortController_abort, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TaskController[] = {
     { "setPriority", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
@@ -4357,19 +4509,19 @@ static const wj_member wj_m_BarProp[] = {
     { "visible", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Blob[] = {
-    { "size", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "slice", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "stream", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "text", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "arrayBuffer", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "textStream", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "bytes", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "size", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Blob_get_size, NULL, 0 },
+    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Blob_get_type, NULL, 0 },
+    { "slice", WJ_M_METHOD, 0, 0, wjr_Blob_slice, NULL, NULL, 0 },
+    { "stream", WJ_M_METHOD, 0, 0, wjr_Blob_stream, NULL, NULL, 0 },
+    { "text", WJ_M_METHOD, 0, 0, wjr_Blob_text, NULL, NULL, 0 },
+    { "arrayBuffer", WJ_M_METHOD, 0, 0, wjr_Blob_arrayBuffer, NULL, NULL, 0 },
+    { "textStream", WJ_M_METHOD, 0, 0, wjr_Blob_textStream, NULL, NULL, 0 },
+    { "bytes", WJ_M_METHOD, 0, 0, wjr_Blob_bytes, NULL, NULL, 0 },
 };
 static const wj_member wj_m_File[] = {
-    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "lastModified", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "webkitRelativePath", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_File_get_name, NULL, 0 },
+    { "lastModified", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_File_get_lastModified, NULL, 0 },
+    { "webkitRelativePath", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_File_get_webkitRelativePath, NULL, 0 },
 };
 static const wj_member wj_m_ByteLengthQueuingStrategy[] = {
     { "highWaterMark", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -4860,8 +5012,8 @@ static const wj_member wj_m_CredentialsContainer[] = {
     { "preventSilentAccess", WJ_M_METHOD, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Crypto[] = {
-    { "subtle", WJ_M_ATTRIBUTE, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
-    { "getRandomValues", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "subtle", WJ_M_ATTRIBUTE, WJ_F_SECURE, 0, NULL, wjr_Crypto_get_subtle, NULL, 0 },
+    { "getRandomValues", WJ_M_METHOD, 0, 1, wjr_Crypto_getRandomValues, NULL, NULL, 0 },
     { "randomUUID", WJ_M_METHOD, WJ_F_SECURE, 0, wjg_Crypto_randomUUID, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CryptoKey[] = {
@@ -4882,9 +5034,9 @@ static const wj_member wj_m_CustomStateSet[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMException[] = {
-    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "message", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "code", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMException_get_name, NULL, 0 },
+    { "message", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMException_get_message, NULL, 0 },
+    { "code", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMException_get_code, NULL, 0 },
     { "INDEX_SIZE_ERR", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 1 },
     { "DOMSTRING_SIZE_ERR", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "HIERARCHY_REQUEST_ERR", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
@@ -5063,9 +5215,9 @@ static const wj_member wj_m_DOMRect[] = {
     { "height", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMStringList[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "item", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "contains", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMStringList_get_length, NULL, 0 },
+    { "item", WJ_M_METHOD, 0, 1, wjr_DOMStringList_item, NULL, NULL, 0 },
+    { "contains", WJ_M_METHOD, 0, 1, wjr_DOMStringList_contains, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMStringMap[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
@@ -5224,9 +5376,9 @@ static const wj_member wj_m_ClipboardEvent[] = {
     { "clipboardData", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CloseEvent[] = {
-    { "wasClean", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CloseEvent_get_wasClean, NULL, 0 },
-    { "code", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "reason", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "wasClean", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CloseEvent_get_wasClean, NULL, 0 },
+    { "code", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CloseEvent_get_code, NULL, 0 },
+    { "reason", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CloseEvent_get_reason, NULL, 0 },
 };
 static const wj_member wj_m_CommandEvent[] = {
     { "source", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -5261,27 +5413,27 @@ static const wj_member wj_m_GamepadEvent[] = {
     { "gamepad", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 26, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HashChangeEvent[] = {
-    { "oldURL", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "newURL", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "oldURL", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HashChangeEvent_get_oldURL, NULL, 0 },
+    { "newURL", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HashChangeEvent_get_newURL, NULL, 0 },
 };
 static const wj_member wj_m_IDBVersionChangeEvent[] = {
     { "oldVersion", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "newVersion", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_MediaQueryListEvent[] = {
-    { "media", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "matches", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "media", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MediaQueryListEvent_get_media, NULL, 0 },
+    { "matches", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MediaQueryListEvent_get_matches, NULL, 0 },
 };
 static const wj_member wj_m_MediaStreamTrackEvent[] = {
     { "track", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 27, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_MessageEvent[] = {
     { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MessageEvent_get_data, NULL, 0 },
-    { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MessageEvent_get_origin, NULL, 0 },
-    { "lastEventId", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MessageEvent_get_lastEventId, NULL, 0 },
-    { "source", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "ports", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "initMessageEvent", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MessageEvent_get_origin, NULL, 0 },
+    { "lastEventId", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MessageEvent_get_lastEventId, NULL, 0 },
+    { "source", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MessageEvent_get_source, NULL, 0 },
+    { "ports", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MessageEvent_get_ports, NULL, 0 },
+    { "initMessageEvent", WJ_M_METHOD, 0, 1, wjr_MessageEvent_initMessageEvent, NULL, NULL, 0 },
 };
 static const wj_member wj_m_NavigateEvent[] = {
     { "navigationType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -5316,13 +5468,13 @@ static const wj_member wj_m_PageTransitionEvent[] = {
     { "persisted", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PopStateEvent[] = {
-    { "state", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "hasUAVisualTransition", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "state", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PopStateEvent_get_state, NULL, 0 },
+    { "hasUAVisualTransition", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PopStateEvent_get_hasUAVisualTransition, NULL, 0 },
 };
 static const wj_member wj_m_ProgressEvent[] = {
-    { "lengthComputable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "loaded", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "total", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "lengthComputable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ProgressEvent_get_lengthComputable, NULL, 0 },
+    { "loaded", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ProgressEvent_get_loaded, NULL, 0 },
+    { "total", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ProgressEvent_get_total, NULL, 0 },
 };
 static const wj_member wj_m_PromiseRejectionEvent[] = {
     { "promise", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PromiseRejectionEvent_get_promise, NULL, 0 },
@@ -5347,11 +5499,11 @@ static const wj_member wj_m_SpeechSynthesisErrorEvent[] = {
     { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_StorageEvent[] = {
-    { "key", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "oldValue", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "newValue", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "url", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "storageArea", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "key", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_StorageEvent_get_key, NULL, 0 },
+    { "oldValue", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_StorageEvent_get_oldValue, NULL, 0 },
+    { "newValue", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_StorageEvent_get_newValue, NULL, 0 },
+    { "url", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_StorageEvent_get_url, NULL, 0 },
+    { "storageArea", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_StorageEvent_get_storageArea, NULL, 0 },
     { "initStorageEvent", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_SubmitEvent[] = {
@@ -5488,12 +5640,12 @@ static const wj_member wj_m_EventTarget[] = {
     { "dispatchEvent", WJ_M_METHOD, 0, 1, wjr_EventTarget_dispatchEvent, NULL, NULL, 0 },
 };
 static const wj_member wj_m_AbortSignal[] = {
-    { "abort", WJ_M_STATIC_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "timeout", WJ_M_STATIC_METHOD, 0, 1, wjg_AbortSignal_static_timeout, NULL, NULL, 0 },
-    { "any", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "aborted", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_AbortSignal_get_aborted, NULL, 0 },
-    { "reason", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "throwIfAborted", WJ_M_METHOD, 0, 0, wjg_AbortSignal_throwIfAborted, NULL, NULL, 0 },
+    { "abort", WJ_M_STATIC_METHOD, 0, 0, wjr_AbortSignal_static_abort, NULL, NULL, 0 },
+    { "timeout", WJ_M_STATIC_METHOD, 0, 1, wjr_AbortSignal_static_timeout, NULL, NULL, 0 },
+    { "any", WJ_M_STATIC_METHOD, 0, 1, wjr_AbortSignal_static_any, NULL, NULL, 0 },
+    { "aborted", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AbortSignal_get_aborted, NULL, 0 },
+    { "reason", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AbortSignal_get_reason, NULL, 0 },
+    { "throwIfAborted", WJ_M_METHOD, 0, 0, wjr_AbortSignal_throwIfAborted, NULL, NULL, 0 },
     { "onabort", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_AbortSignal_get_onabort, wjg_AbortSignal_set_onabort, 0 },
 };
 static const wj_member wj_m_TaskSignal[] = {
@@ -5752,20 +5904,20 @@ static const wj_member wj_m_EventSource[] = {
     { "onopen", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_EventSource_get_onopen, wjg_EventSource_set_onopen, 0 },
     { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_EventSource_get_onmessage, wjg_EventSource_set_onmessage, 0 },
     { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_EventSource_get_onerror, wjg_EventSource_set_onerror, 0 },
-    { "close", WJ_M_METHOD, 0, 0, wjg_EventSource_close, NULL, NULL, 0 },
+    { "close", WJ_M_METHOD, 0, 0, wjr_EventSource_close, NULL, NULL, 0 },
 };
 static const wj_member wj_m_FileReader[] = {
-    { "readAsArrayBuffer", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "readAsBinaryString", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "readAsText", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "readAsDataURL", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "abort", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "readAsArrayBuffer", WJ_M_METHOD, 0, 1, wjr_FileReader_readAsArrayBuffer, NULL, NULL, 0 },
+    { "readAsBinaryString", WJ_M_METHOD, 0, 1, wjr_FileReader_readAsBinaryString, NULL, NULL, 0 },
+    { "readAsText", WJ_M_METHOD, 0, 1, wjr_FileReader_readAsText, NULL, NULL, 0 },
+    { "readAsDataURL", WJ_M_METHOD, 0, 1, wjr_FileReader_readAsDataURL, NULL, NULL, 0 },
+    { "abort", WJ_M_METHOD, 0, 0, wjr_FileReader_abort, NULL, NULL, 0 },
     { "EMPTY", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },
     { "LOADING", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 1 },
     { "DONE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
-    { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "result", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FileReader_get_readyState, NULL, 0 },
+    { "result", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FileReader_get_result, NULL, 0 },
+    { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FileReader_get_error, NULL, 0 },
     { "onloadstart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_FileReader_get_onloadstart, wjg_FileReader_set_onloadstart, 0 },
     { "onprogress", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_FileReader_get_onprogress, wjg_FileReader_set_onprogress, 0 },
     { "onload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_FileReader_get_onload, wjg_FileReader_set_onload, 0 },
@@ -5831,10 +5983,10 @@ static const wj_member wj_m_MediaDevices[] = {
     { "getUserMedia", WJ_M_METHOD, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_MediaQueryList[] = {
-    { "media", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "matches", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "addListener", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "removeListener", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "media", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaQueryList_get_media, NULL, 0 },
+    { "matches", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaQueryList_get_matches, NULL, 0 },
+    { "addListener", WJ_M_METHOD, 0, 1, wjr_MediaQueryList_addListener, NULL, NULL, 0 },
+    { "removeListener", WJ_M_METHOD, 0, 1, wjr_MediaQueryList_removeListener, NULL, NULL, 0 },
     { "onchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaQueryList_get_onchange, wjg_MediaQueryList_set_onchange, 0 },
 };
 static const wj_member wj_m_MediaSource[] = {
@@ -5890,10 +6042,10 @@ static const wj_member wj_m_MediaStreamTrack[] = {
     { "applyConstraints", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_MessagePort[] = {
-    { "postMessage", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "start", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "close", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MessagePort_get_onmessage, wjg_MessagePort_set_onmessage, 0 },
+    { "postMessage", WJ_M_METHOD, 0, 1, wjr_MessagePort_postMessage, NULL, NULL, 0 },
+    { "start", WJ_M_METHOD, 0, 0, wjr_MessagePort_start, NULL, NULL, 0 },
+    { "close", WJ_M_METHOD, 0, 0, wjr_MessagePort_close, NULL, NULL, 0 },
+    { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MessagePort_get_onmessage, wjr_MessagePort_set_onmessage, 0 },
     { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MessagePort_get_onmessageerror, wjg_MessagePort_set_onmessageerror, 0 },
 };
 static const wj_member wj_m_Navigation[] = {
@@ -6079,7 +6231,7 @@ static const wj_member wj_m_Document[] = {
     { "onfullscreenerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onfullscreenerror, wjg_Document_set_onfullscreenerror, 0 },
     { "parseHTMLUnsafe", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "parseHTML", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "location", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, NULL, wjg_Document_set_location, 0 },
+    { "location", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Document_get_location, wjr_Document_set_location, 0 },
     { "domain", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "referrer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "cookie", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_cookie, wjg_Document_set_cookie, 0 },
@@ -6900,7 +7052,7 @@ static const wj_member wj_m_HTMLImageElement[] = {
     { "decoding", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "loading", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "fetchPriority", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "decode", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "decode", WJ_M_METHOD, 0, 0, wjg_HTMLImageElement_decode, NULL, NULL, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_name, wjg_HTMLImageElement_set_name, 0 },
     { "lowsrc", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLImageElement_get_align, wjg_HTMLImageElement_set_align, 0 },
@@ -7973,19 +8125,19 @@ static const wj_member wj_m_Performance[] = {
     { "interactionCount", WJ_M_ATTRIBUTE, WJ_F_WINDOW_ONLY, 0, NULL, NULL, NULL, 0 },
     { "now", WJ_M_METHOD, 0, 0, wjg_Performance_now, NULL, NULL, 0 },
     { "timeOrigin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Performance_get_timeOrigin, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_Performance_toJSON, NULL, NULL, 0 },
     { "timing", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_WINDOW_ONLY, 193, NULL, NULL, NULL, 0 },
     { "navigation", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_WINDOW_ONLY, 194, NULL, NULL, NULL, 0 },
-    { "getEntries", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "getEntriesByType", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getEntriesByName", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clearResourceTimings", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "setResourceTimingBufferSize", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "getEntries", WJ_M_METHOD, 0, 0, wjr_Performance_getEntries, NULL, NULL, 0 },
+    { "getEntriesByType", WJ_M_METHOD, 0, 1, wjr_Performance_getEntriesByType, NULL, NULL, 0 },
+    { "getEntriesByName", WJ_M_METHOD, 0, 1, wjr_Performance_getEntriesByName, NULL, NULL, 0 },
+    { "clearResourceTimings", WJ_M_METHOD, 0, 0, wjr_Performance_clearResourceTimings, NULL, NULL, 0 },
+    { "setResourceTimingBufferSize", WJ_M_METHOD, 0, 1, wjr_Performance_setResourceTimingBufferSize, NULL, NULL, 0 },
     { "onresourcetimingbufferfull", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Performance_get_onresourcetimingbufferfull, wjg_Performance_set_onresourcetimingbufferfull, 0 },
-    { "mark", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clearMarks", WJ_M_METHOD, 0, 0, wjg_Performance_clearMarks, NULL, NULL, 0 },
-    { "measure", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clearMeasures", WJ_M_METHOD, 0, 0, wjg_Performance_clearMeasures, NULL, NULL, 0 },
+    { "mark", WJ_M_METHOD, 0, 1, wjr_Performance_mark, NULL, NULL, 0 },
+    { "clearMarks", WJ_M_METHOD, 0, 0, wjr_Performance_clearMarks, NULL, NULL, 0 },
+    { "measure", WJ_M_METHOD, 0, 1, wjr_Performance_measure, NULL, NULL, 0 },
+    { "clearMeasures", WJ_M_METHOD, 0, 0, wjr_Performance_clearMeasures, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PermissionStatus[] = {
     { "state", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -8178,15 +8330,15 @@ static const wj_member wj_m_WebSocket[] = {
     { "onclose", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WebSocket_get_onclose, wjg_WebSocket_set_onclose, 0 },
     { "extensions", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WebSocket_get_extensions, NULL, 0 },
     { "protocol", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WebSocket_get_protocol, NULL, 0 },
-    { "close", WJ_M_METHOD, 0, 0, wjg_WebSocket_close, NULL, NULL, 0 },
+    { "close", WJ_M_METHOD, 0, 0, wjr_WebSocket_close, NULL, NULL, 0 },
     { "onmessage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WebSocket_get_onmessage, wjg_WebSocket_set_onmessage, 0 },
-    { "binaryType", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "send", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "binaryType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WebSocket_get_binaryType, wjr_WebSocket_set_binaryType, 0 },
+    { "send", WJ_M_METHOD, 0, 1, wjr_WebSocket_send, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Window[] = {
     { "cookieStore", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 197, NULL, NULL, NULL, 0 },
-    { "matchMedia", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "screen", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE | WJ_F_SAME_OBJECT, 198, NULL, NULL, wj_replaceable_setter, 0 },
+    { "matchMedia", WJ_M_METHOD, 0, 1, wjr_Window_matchMedia, NULL, NULL, 0 },
+    { "screen", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE | WJ_F_SAME_OBJECT, 198, NULL, wjr_Window_get_screen, wj_replaceable_setter, 0 },
     { "visualViewport", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE | WJ_F_SAME_OBJECT, 199, NULL, NULL, wj_replaceable_setter, 0 },
     { "moveTo", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "moveBy", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
@@ -8215,8 +8367,8 @@ static const wj_member wj_m_Window[] = {
     { "self", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_Window_get_self, wj_replaceable_setter, 0 },
     { "document", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjg_Window_get_document, NULL, 0 },
     { "name", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "location", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, NULL, wjg_Window_set_location, 0 },
-    { "history", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "location", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Window_get_location, wjg_Window_set_location, 0 },
+    { "history", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Window_get_history, NULL, 0 },
     { "navigation", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "customElements", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "locationbar", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
@@ -8238,14 +8390,14 @@ static const wj_member wj_m_Window[] = {
     { "parent", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_Window_get_parent, wj_replaceable_setter, 0 },
     { "frameElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Window_get_frameElement, NULL, 0 },
     { "open", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "navigator", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "clientInformation", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
+    { "navigator", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Window_get_navigator, NULL, 0 },
+    { "clientInformation", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_Window_get_clientInformation, wj_replaceable_setter, 0 },
     { "originAgentCluster", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "alert", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "confirm", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "prompt", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "print", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "postMessage", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "postMessage", WJ_M_METHOD, 0, 1, wjr_Window_postMessage, NULL, NULL, 0 },
     { "captureEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "releaseEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "external", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE | WJ_F_SAME_OBJECT, 200, NULL, NULL, wj_replaceable_setter, 0 },
@@ -8375,14 +8527,14 @@ static const wj_member wj_m_Window[] = {
     { "onunhandledrejection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onunhandledrejection, wjr_WindowEventHandlers_set_onunhandledrejection, 0 },
     { "onunload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowEventHandlers_get_onunload, wjr_WindowEventHandlers_set_onunload, 0 },
     { "indexedDB", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 202, NULL, NULL, NULL, 0 },
-    { "fetch", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "performance", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
+    { "fetch", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_fetch, NULL, NULL, 0 },
+    { "performance", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_WindowOrWorkerGlobalScope_get_performance, wj_replaceable_setter, 0 },
     { "origin", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_origin, wj_replaceable_setter, 0 },
     { "isSecureContext", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_isSecureContext, NULL, 0 },
     { "crossOriginIsolated", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "reportError", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_reportError, NULL, NULL, 0 },
-    { "btoa", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "atob", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "btoa", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_btoa, NULL, NULL, 0 },
+    { "atob", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_atob, NULL, NULL, 0 },
     { "setTimeout", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setTimeout, NULL, NULL, 0 },
     { "clearTimeout", WJ_M_METHOD, 0, 0, wjr_WindowOrWorkerGlobalScope_clearTimeout, NULL, NULL, 0 },
     { "setInterval", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setInterval, NULL, NULL, 0 },
@@ -8393,11 +8545,11 @@ static const wj_member wj_m_Window[] = {
     { "scheduler", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "caches", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 203, NULL, NULL, NULL, 0 },
     { "trustedTypes", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "crypto", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 204, NULL, NULL, NULL, 0 },
+    { "crypto", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 204, NULL, wjr_WindowOrWorkerGlobalScope_get_crypto, NULL, 0 },
     { "requestAnimationFrame", WJ_M_METHOD, 0, 1, wjr_AnimationFrameProvider_requestAnimationFrame, NULL, NULL, 0 },
     { "cancelAnimationFrame", WJ_M_METHOD, 0, 1, wjr_AnimationFrameProvider_cancelAnimationFrame, NULL, NULL, 0 },
-    { "sessionStorage", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "localStorage", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "sessionStorage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowSessionStorage_get_sessionStorage, NULL, 0 },
+    { "localStorage", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowLocalStorage_get_localStorage, NULL, 0 },
 };
 static const wj_member wj_m_Worker[] = {
     { "terminate", WJ_M_METHOD, 0, 0, wjr_Worker_terminate, NULL, NULL, 0 },
@@ -8409,7 +8561,7 @@ static const wj_member wj_m_Worker[] = {
 static const wj_member wj_m_WorkerGlobalScope[] = {
     { "self", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WorkerGlobalScope_get_self, NULL, 0 },
     { "location", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "navigator", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "navigator", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WorkerGlobalScope_get_navigator, NULL, 0 },
     { "importScripts", WJ_M_METHOD, 0, 0, wjr_WorkerGlobalScope_importScripts, NULL, NULL, 0 },
     { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WorkerGlobalScope_get_onerror, wjg_WorkerGlobalScope_set_onerror, 0 },
     { "onlanguagechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WorkerGlobalScope_get_onlanguagechange, wjg_WorkerGlobalScope_set_onlanguagechange, 0 },
@@ -8419,14 +8571,14 @@ static const wj_member wj_m_WorkerGlobalScope[] = {
     { "onunhandledrejection", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WorkerGlobalScope_get_onunhandledrejection, wjg_WorkerGlobalScope_set_onunhandledrejection, 0 },
     { "fonts", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "indexedDB", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 205, NULL, NULL, NULL, 0 },
-    { "fetch", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "performance", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
+    { "fetch", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_fetch, NULL, NULL, 0 },
+    { "performance", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_WindowOrWorkerGlobalScope_get_performance, wj_replaceable_setter, 0 },
     { "origin", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "isSecureContext", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "crossOriginIsolated", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "reportError", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_reportError, NULL, NULL, 0 },
-    { "btoa", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "atob", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "btoa", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_btoa, NULL, NULL, 0 },
+    { "atob", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_atob, NULL, NULL, 0 },
     { "setTimeout", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setTimeout, NULL, NULL, 0 },
     { "clearTimeout", WJ_M_METHOD, 0, 0, wjr_WindowOrWorkerGlobalScope_clearTimeout, NULL, NULL, 0 },
     { "setInterval", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setInterval, NULL, NULL, 0 },
@@ -8437,7 +8589,7 @@ static const wj_member wj_m_WorkerGlobalScope[] = {
     { "scheduler", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "caches", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 206, NULL, NULL, NULL, 0 },
     { "trustedTypes", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "crypto", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 207, NULL, NULL, NULL, 0 },
+    { "crypto", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 207, NULL, wjr_WindowOrWorkerGlobalScope_get_crypto, NULL, 0 },
 };
 static const wj_member wj_m_DedicatedWorkerGlobalScope[] = {
     { "name", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_DedicatedWorkerGlobalScope_get_name, wj_replaceable_setter, 0 },
@@ -8464,24 +8616,24 @@ static const wj_member wj_m_XMLHttpRequest[] = {
     { "HEADERS_RECEIVED", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "LOADING", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
     { "DONE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 4 },
-    { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "open", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "setRequestHeader", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "timeout", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "withCredentials", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "upload", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 208, NULL, NULL, NULL, 0 },
-    { "send", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "abort", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "responseURL", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "status", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "statusText", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getResponseHeader", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getAllResponseHeaders", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "overrideMimeType", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "responseType", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "response", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "responseText", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "responseXML", WJ_M_ATTRIBUTE, WJ_F_WINDOW_ONLY, 0, NULL, NULL, NULL, 0 },
+    { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_XMLHttpRequest_get_readyState, NULL, 0 },
+    { "open", WJ_M_METHOD, 0, 2, wjr_XMLHttpRequest_open, NULL, NULL, 0 },
+    { "setRequestHeader", WJ_M_METHOD, 0, 2, wjr_XMLHttpRequest_setRequestHeader, NULL, NULL, 0 },
+    { "timeout", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_XMLHttpRequest_get_timeout, wjr_XMLHttpRequest_set_timeout, 0 },
+    { "withCredentials", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_XMLHttpRequest_get_withCredentials, wjr_XMLHttpRequest_set_withCredentials, 0 },
+    { "upload", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 208, NULL, wjr_XMLHttpRequest_get_upload, NULL, 0 },
+    { "send", WJ_M_METHOD, 0, 0, wjr_XMLHttpRequest_send, NULL, NULL, 0 },
+    { "abort", WJ_M_METHOD, 0, 0, wjr_XMLHttpRequest_abort, NULL, NULL, 0 },
+    { "responseURL", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_XMLHttpRequest_get_responseURL, NULL, 0 },
+    { "status", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_XMLHttpRequest_get_status, NULL, 0 },
+    { "statusText", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_XMLHttpRequest_get_statusText, NULL, 0 },
+    { "getResponseHeader", WJ_M_METHOD, 0, 1, wjr_XMLHttpRequest_getResponseHeader, NULL, NULL, 0 },
+    { "getAllResponseHeaders", WJ_M_METHOD, 0, 0, wjr_XMLHttpRequest_getAllResponseHeaders, NULL, NULL, 0 },
+    { "overrideMimeType", WJ_M_METHOD, 0, 1, wjr_XMLHttpRequest_overrideMimeType, NULL, NULL, 0 },
+    { "responseType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_XMLHttpRequest_get_responseType, wjr_XMLHttpRequest_set_responseType, 0 },
+    { "response", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_XMLHttpRequest_get_response, NULL, 0 },
+    { "responseText", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_XMLHttpRequest_get_responseText, NULL, 0 },
+    { "responseXML", WJ_M_ATTRIBUTE, WJ_F_WINDOW_ONLY, 0, NULL, wjr_XMLHttpRequest_get_responseXML, NULL, 0 },
 };
 static const wj_member wj_m_XMLHttpRequestUpload[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
@@ -8567,12 +8719,16 @@ static const wj_member wj_m_FontFaceVariations[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_FormData[] = {
-    { "append", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "append", WJ_M_METHOD, 0, 2, wjr_FormData_append, NULL, NULL, 0 },
     { "delete", WJ_M_METHOD, 0, 1, wjg_FormData_delete, NULL, NULL, 0 },
-    { "get", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getAll", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "get", WJ_M_METHOD, 0, 1, wjr_FormData_get, NULL, NULL, 0 },
+    { "getAll", WJ_M_METHOD, 0, 1, wjr_FormData_getAll, NULL, NULL, 0 },
     { "has", WJ_M_METHOD, 0, 1, wjg_FormData_has, NULL, NULL, 0 },
-    { "set", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "set", WJ_M_METHOD, 0, 2, wjr_FormData_set, NULL, NULL, 0 },
+    { "entries", WJ_M_METHOD, 0, 0, wjr_FormData_entries, NULL, NULL, 0 },
+    { "keys", WJ_M_METHOD, 0, 0, wjr_FormData_keys, NULL, NULL, 0 },
+    { "values", WJ_M_METHOD, 0, 0, wjr_FormData_values, NULL, NULL, 0 },
+    { "forEach", WJ_M_METHOD, 0, 1, wjr_FormData_forEach, NULL, NULL, 0 },
 };
 static const wj_member wj_m_FragmentDirective[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
@@ -8618,12 +8774,16 @@ static const wj_member wj_m_HTMLOptionsCollection[] = {
     { "selectedIndex", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Headers[] = {
-    { "append", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "delete", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "get", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getSetCookie", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "has", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "set", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "append", WJ_M_METHOD, 0, 2, wjr_Headers_append, NULL, NULL, 0 },
+    { "delete", WJ_M_METHOD, 0, 1, wjr_Headers_delete, NULL, NULL, 0 },
+    { "get", WJ_M_METHOD, 0, 1, wjr_Headers_get, NULL, NULL, 0 },
+    { "getSetCookie", WJ_M_METHOD, 0, 0, wjr_Headers_getSetCookie, NULL, NULL, 0 },
+    { "has", WJ_M_METHOD, 0, 1, wjr_Headers_has, NULL, NULL, 0 },
+    { "set", WJ_M_METHOD, 0, 2, wjr_Headers_set, NULL, NULL, 0 },
+    { "entries", WJ_M_METHOD, 0, 0, wjr_Headers_entries, NULL, NULL, 0 },
+    { "keys", WJ_M_METHOD, 0, 0, wjr_Headers_keys, NULL, NULL, 0 },
+    { "values", WJ_M_METHOD, 0, 0, wjr_Headers_values, NULL, NULL, 0 },
+    { "forEach", WJ_M_METHOD, 0, 1, wjr_Headers_forEach, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Highlight[] = {
     { "priority", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -8634,13 +8794,13 @@ static const wj_member wj_m_HighlightRegistry[] = {
 };
 static const wj_member wj_m_History[] = {
     { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_History_get_length, NULL, 0 },
-    { "scrollRestoration", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "state", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "scrollRestoration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_History_get_scrollRestoration, wjr_History_set_scrollRestoration, 0 },
+    { "state", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_History_get_state, NULL, 0 },
     { "go", WJ_M_METHOD, 0, 0, wjg_History_go, NULL, NULL, 0 },
-    { "back", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "forward", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "pushState", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "replaceState", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "back", WJ_M_METHOD, 0, 0, wjr_History_back, NULL, NULL, 0 },
+    { "forward", WJ_M_METHOD, 0, 0, wjr_History_forward, NULL, NULL, 0 },
+    { "pushState", WJ_M_METHOD, 0, 2, wjr_History_pushState, NULL, NULL, 0 },
+    { "replaceState", WJ_M_METHOD, 0, 2, wjr_History_replaceState, NULL, NULL, 0 },
 };
 static const wj_member wj_m_IDBCursor[] = {
     { "source", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -8759,20 +8919,20 @@ static const wj_member wj_m_IntersectionObserverEntry[] = {
     { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Location[] = {
-    { "href", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "toString", WJ_M_METHOD, 0, 0, wj_stringifier, NULL, NULL, 0 },
-    { "origin", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, NULL, NULL, 0 },
-    { "protocol", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "host", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hostname", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "port", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "pathname", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "search", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hash", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "assign", WJ_M_METHOD, WJ_F_UNFORGEABLE, 1, wjg_Location_assign, NULL, NULL, 0 },
-    { "replace", WJ_M_METHOD, WJ_F_UNFORGEABLE, 1, wjg_Location_replace, NULL, NULL, 0 },
-    { "reload", WJ_M_METHOD, WJ_F_UNFORGEABLE, 0, wjg_Location_reload, NULL, NULL, 0 },
-    { "ancestorOrigins", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, NULL, NULL, 0 },
+    { "href", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Location_get_href, wjr_Location_set_href, 0 },
+    { "toString", WJ_M_METHOD, 0, 0, wj_stringifier, wjr_Location_get_href, NULL, 0 },
+    { "origin", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Location_get_origin, NULL, 0 },
+    { "protocol", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Location_get_protocol, wjr_Location_set_protocol, 0 },
+    { "host", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Location_get_host, wjr_Location_set_host, 0 },
+    { "hostname", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Location_get_hostname, wjr_Location_set_hostname, 0 },
+    { "port", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Location_get_port, wjr_Location_set_port, 0 },
+    { "pathname", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Location_get_pathname, wjr_Location_set_pathname, 0 },
+    { "search", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Location_get_search, wjr_Location_set_search, 0 },
+    { "hash", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Location_get_hash, wjr_Location_set_hash, 0 },
+    { "assign", WJ_M_METHOD, WJ_F_UNFORGEABLE, 1, wjr_Location_assign, NULL, NULL, 0 },
+    { "replace", WJ_M_METHOD, WJ_F_UNFORGEABLE, 1, wjr_Location_replace, NULL, NULL, 0 },
+    { "reload", WJ_M_METHOD, WJ_F_UNFORGEABLE, 0, wjr_Location_reload, NULL, NULL, 0 },
+    { "ancestorOrigins", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Location_get_ancestorOrigins, NULL, 0 },
 };
 static const wj_member wj_m_Lock[] = {
     { "name", WJ_M_ATTRIBUTE, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
@@ -8828,8 +8988,8 @@ static const wj_member wj_m_MediaSourceHandle[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_MessageChannel[] = {
-    { "port1", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "port2", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "port1", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MessageChannel_get_port1, NULL, 0 },
+    { "port2", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MessageChannel_get_port2, NULL, 0 },
 };
 static const wj_member wj_m_MimeType[] = {
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -8899,7 +9059,7 @@ static const wj_member wj_m_NavigationTransition[] = {
     { "finished", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Navigator[] = {
-    { "sendBeacon", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "sendBeacon", WJ_M_METHOD, 0, 1, wjr_Navigator_sendBeacon, NULL, NULL, 0 },
     { "clipboard", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 218, NULL, NULL, NULL, 0 },
     { "credentials", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 219, NULL, NULL, NULL, 0 },
     { "getGamepads", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -8908,7 +9068,7 @@ static const wj_member wj_m_Navigator[] = {
     { "mediaDevices", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 221, NULL, NULL, NULL, 0 },
     { "mediaSession", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 222, NULL, NULL, NULL, 0 },
     { "permissions", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 223, NULL, NULL, NULL, 0 },
-    { "maxTouchPoints", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "maxTouchPoints", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Navigator_get_maxTouchPoints, NULL, 0 },
     { "serviceWorker", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 224, NULL, NULL, NULL, 0 },
     { "vibrate", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "share", WJ_M_METHOD, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
@@ -8916,28 +9076,28 @@ static const wj_member wj_m_Navigator[] = {
     { "setAppBadge", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "clearAppBadge", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "deviceMemory", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "appCodeName", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "appName", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "appVersion", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "platform", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "product", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "productSub", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "userAgent", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "vendor", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "vendorSub", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "appCodeName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_appCodeName, NULL, 0 },
+    { "appName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_appName, NULL, 0 },
+    { "appVersion", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_appVersion, NULL, 0 },
+    { "platform", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_platform, NULL, 0 },
+    { "product", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_product, NULL, 0 },
+    { "productSub", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_productSub, NULL, 0 },
+    { "userAgent", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_userAgent, NULL, 0 },
+    { "vendor", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_vendor, NULL, 0 },
+    { "vendorSub", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_vendorSub, NULL, 0 },
     { "taintEnabled", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "oscpu", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "language", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "languages", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "onLine", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "language", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorLanguage_get_language, NULL, 0 },
+    { "languages", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorLanguage_get_languages, NULL, 0 },
+    { "onLine", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorOnLine_get_onLine, NULL, 0 },
     { "registerProtocolHandler", WJ_M_METHOD, WJ_F_SECURE, 2, NULL, NULL, NULL, 0 },
     { "unregisterProtocolHandler", WJ_M_METHOD, WJ_F_SECURE, 2, NULL, NULL, NULL, 0 },
-    { "cookieEnabled", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "plugins", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 225, NULL, NULL, NULL, 0 },
-    { "mimeTypes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 226, NULL, NULL, NULL, 0 },
-    { "javaEnabled", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "pdfViewerEnabled", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "hardwareConcurrency", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "cookieEnabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorCookies_get_cookieEnabled, NULL, 0 },
+    { "plugins", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 225, NULL, wjr_NavigatorPlugins_get_plugins, NULL, 0 },
+    { "mimeTypes", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 226, NULL, wjr_NavigatorPlugins_get_mimeTypes, NULL, 0 },
+    { "javaEnabled", WJ_M_METHOD, 0, 0, wjr_NavigatorPlugins_javaEnabled, NULL, NULL, 0 },
+    { "pdfViewerEnabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorPlugins_get_pdfViewerEnabled, NULL, 0 },
+    { "hardwareConcurrency", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorConcurrentHardware_get_hardwareConcurrency, NULL, 0 },
     { "connection", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 227, NULL, NULL, NULL, 0 },
     { "storage", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 228, NULL, NULL, NULL, 0 },
     { "userAgentData", WJ_M_ATTRIBUTE, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
@@ -9093,13 +9253,13 @@ static const wj_member wj_m_Path2D[] = {
     { "ellipse", WJ_M_METHOD, 0, 7, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceEntry[] = {
-    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "entryType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "startTime", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "navigationId", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceEntry_get_id, NULL, 0 },
+    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceEntry_get_name, NULL, 0 },
+    { "entryType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceEntry_get_entryType, NULL, 0 },
+    { "startTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceEntry_get_startTime, NULL, 0 },
+    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceEntry_get_duration, NULL, 0 },
+    { "navigationId", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceEntry_get_navigationId, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_PerformanceEntry_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_LargestContentfulPaint[] = {
     { "loadTime", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -9130,10 +9290,10 @@ static const wj_member wj_m_PerformanceLongTaskTiming[] = {
     { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceMark[] = {
-    { "detail", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "detail", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceMark_get_detail, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceMeasure[] = {
-    { "detail", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "detail", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceMeasure_get_detail, NULL, 0 },
 };
 static const wj_member wj_m_PerformancePaintTiming[] = {
     { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -9282,12 +9442,13 @@ static const wj_member wj_m_ReadableByteStreamController[] = {
 };
 static const wj_member wj_m_ReadableStream[] = {
     { "from", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "locked", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "cancel", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "getReader", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "locked", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ReadableStream_get_locked, NULL, 0 },
+    { "cancel", WJ_M_METHOD, 0, 0, wjr_ReadableStream_cancel, NULL, NULL, 0 },
+    { "getReader", WJ_M_METHOD, 0, 0, wjr_ReadableStream_getReader, NULL, NULL, 0 },
     { "pipeThrough", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "pipeTo", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "tee", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "tee", WJ_M_METHOD, 0, 0, wjr_ReadableStream_tee, NULL, NULL, 0 },
+    { "values", WJ_M_METHOD, 0, 0, wjr_ReadableStream_values, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ReadableStreamBYOBReader[] = {
     { "read", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
@@ -9301,44 +9462,44 @@ static const wj_member wj_m_ReadableStreamBYOBRequest[] = {
     { "respondWithNewView", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ReadableStreamDefaultController[] = {
-    { "desiredSize", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "close", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "enqueue", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "error", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "desiredSize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ReadableStreamDefaultController_get_desiredSize, NULL, 0 },
+    { "close", WJ_M_METHOD, 0, 0, wjr_ReadableStreamDefaultController_close, NULL, NULL, 0 },
+    { "enqueue", WJ_M_METHOD, 0, 0, wjr_ReadableStreamDefaultController_enqueue, NULL, NULL, 0 },
+    { "error", WJ_M_METHOD, 0, 0, wjr_ReadableStreamDefaultController_error, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ReadableStreamDefaultReader[] = {
-    { "read", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "releaseLock", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "closed", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "cancel", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "read", WJ_M_METHOD, 0, 0, wjr_ReadableStreamDefaultReader_read, NULL, NULL, 0 },
+    { "releaseLock", WJ_M_METHOD, 0, 0, wjr_ReadableStreamDefaultReader_releaseLock, NULL, NULL, 0 },
+    { "closed", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ReadableStreamDefaultReader_get_closed, NULL, 0 },
+    { "cancel", WJ_M_METHOD, 0, 0, wjr_ReadableStreamDefaultReader_cancel, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Request[] = {
-    { "method", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "url", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "headers", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 231, NULL, NULL, NULL, 0 },
-    { "destination", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "referrer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "referrerPolicy", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "mode", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "credentials", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "cache", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "redirect", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "integrity", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "keepalive", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "isReloadNavigation", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "isHistoryNavigation", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "signal", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "duplex", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "clone", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "body", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "bodyUsed", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "arrayBuffer", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "blob", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "bytes", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "formData", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "json", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "text", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "textStream", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "method", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_method, NULL, 0 },
+    { "url", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_url, NULL, 0 },
+    { "headers", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 231, NULL, wjr_Request_get_headers, NULL, 0 },
+    { "destination", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_destination, NULL, 0 },
+    { "referrer", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_referrer, NULL, 0 },
+    { "referrerPolicy", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_referrerPolicy, NULL, 0 },
+    { "mode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_mode, NULL, 0 },
+    { "credentials", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_credentials, NULL, 0 },
+    { "cache", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_cache, NULL, 0 },
+    { "redirect", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_redirect, NULL, 0 },
+    { "integrity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_integrity, NULL, 0 },
+    { "keepalive", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_keepalive, NULL, 0 },
+    { "isReloadNavigation", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_isReloadNavigation, NULL, 0 },
+    { "isHistoryNavigation", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_isHistoryNavigation, NULL, 0 },
+    { "signal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_signal, NULL, 0 },
+    { "duplex", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Request_get_duplex, NULL, 0 },
+    { "clone", WJ_M_METHOD, 0, 0, wjr_Request_clone, NULL, NULL, 0 },
+    { "body", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Body_get_body, NULL, 0 },
+    { "bodyUsed", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Body_get_bodyUsed, NULL, 0 },
+    { "arrayBuffer", WJ_M_METHOD, 0, 0, wjr_Body_arrayBuffer, NULL, NULL, 0 },
+    { "blob", WJ_M_METHOD, 0, 0, wjr_Body_blob, NULL, NULL, 0 },
+    { "bytes", WJ_M_METHOD, 0, 0, wjr_Body_bytes, NULL, NULL, 0 },
+    { "formData", WJ_M_METHOD, 0, 0, wjr_Body_formData, NULL, NULL, 0 },
+    { "json", WJ_M_METHOD, 0, 0, wjr_Body_json, NULL, NULL, 0 },
+    { "text", WJ_M_METHOD, 0, 0, wjr_Body_text, NULL, NULL, 0 },
+    { "textStream", WJ_M_METHOD, 0, 0, wjr_Body_textStream, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ResizeObserver[] = {
     { "observe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
@@ -9357,26 +9518,26 @@ static const wj_member wj_m_ResizeObserverSize[] = {
     { "blockSize", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Response[] = {
-    { "error", WJ_M_STATIC_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "redirect", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "json", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "url", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "redirected", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "status", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "ok", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "statusText", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "headers", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 232, NULL, NULL, NULL, 0 },
-    { "clone", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "body", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Response_get_body, NULL, 0 },
-    { "bodyUsed", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Response_get_bodyUsed, NULL, 0 },
-    { "arrayBuffer", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "blob", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "bytes", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "formData", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "json", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "text", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "textStream", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "error", WJ_M_STATIC_METHOD, 0, 0, wjr_Response_static_error, NULL, NULL, 0 },
+    { "redirect", WJ_M_STATIC_METHOD, 0, 1, wjr_Response_static_redirect, NULL, NULL, 0 },
+    { "json", WJ_M_STATIC_METHOD, 0, 1, wjr_Response_static_json, NULL, NULL, 0 },
+    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Response_get_type, NULL, 0 },
+    { "url", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Response_get_url, NULL, 0 },
+    { "redirected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Response_get_redirected, NULL, 0 },
+    { "status", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Response_get_status, NULL, 0 },
+    { "ok", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Response_get_ok, NULL, 0 },
+    { "statusText", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Response_get_statusText, NULL, 0 },
+    { "headers", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 232, NULL, wjr_Response_get_headers, NULL, 0 },
+    { "clone", WJ_M_METHOD, 0, 0, wjr_Response_clone, NULL, NULL, 0 },
+    { "body", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Body_get_body, NULL, 0 },
+    { "bodyUsed", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Body_get_bodyUsed, NULL, 0 },
+    { "arrayBuffer", WJ_M_METHOD, 0, 0, wjr_Body_arrayBuffer, NULL, NULL, 0 },
+    { "blob", WJ_M_METHOD, 0, 0, wjr_Body_blob, NULL, NULL, 0 },
+    { "bytes", WJ_M_METHOD, 0, 0, wjr_Body_bytes, NULL, NULL, 0 },
+    { "formData", WJ_M_METHOD, 0, 0, wjr_Body_formData, NULL, NULL, 0 },
+    { "json", WJ_M_METHOD, 0, 0, wjr_Body_json, NULL, NULL, 0 },
+    { "text", WJ_M_METHOD, 0, 0, wjr_Body_text, NULL, NULL, 0 },
+    { "textStream", WJ_M_METHOD, 0, 0, wjr_Body_textStream, NULL, NULL, 0 },
 };
 static const wj_member wj_m_SVGAngle[] = {
     { "SVG_ANGLETYPE_UNKNOWN", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },
@@ -9581,12 +9742,12 @@ static const wj_member wj_m_Scheduling[] = {
     { "isInputPending", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Screen[] = {
-    { "availWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "availHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "colorDepth", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "pixelDepth", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "availWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Screen_get_availWidth, NULL, 0 },
+    { "availHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Screen_get_availHeight, NULL, 0 },
+    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Screen_get_width, NULL, 0 },
+    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Screen_get_height, NULL, 0 },
+    { "colorDepth", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Screen_get_colorDepth, NULL, 0 },
+    { "pixelDepth", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Screen_get_pixelDepth, NULL, 0 },
     { "orientation", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 248, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Selection[] = {
@@ -9651,12 +9812,12 @@ static const wj_member wj_m_SpeechSynthesisVoice[] = {
     { "default", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Storage[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "key", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getItem", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setItem", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "removeItem", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clear", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Storage_get_length, NULL, 0 },
+    { "key", WJ_M_METHOD, 0, 1, wjr_Storage_key, NULL, NULL, 0 },
+    { "getItem", WJ_M_METHOD, 0, 1, wjr_Storage_getItem, NULL, NULL, 0 },
+    { "setItem", WJ_M_METHOD, 0, 2, wjr_Storage_setItem, NULL, NULL, 0 },
+    { "removeItem", WJ_M_METHOD, 0, 1, wjr_Storage_removeItem, NULL, NULL, 0 },
+    { "clear", WJ_M_METHOD, 0, 0, wjr_Storage_clear, NULL, NULL, 0 },
 };
 static const wj_member wj_m_StorageManager[] = {
     { "persisted", WJ_M_METHOD, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
@@ -9700,24 +9861,24 @@ static const wj_member wj_m_StyleSheetList[] = {
     { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_SubtleCrypto[] = {
-    { "encrypt", WJ_M_METHOD, WJ_F_SECURE, 3, NULL, NULL, NULL, 0 },
-    { "decrypt", WJ_M_METHOD, WJ_F_SECURE, 3, NULL, NULL, NULL, 0 },
-    { "sign", WJ_M_METHOD, WJ_F_SECURE, 3, NULL, NULL, NULL, 0 },
-    { "verify", WJ_M_METHOD, WJ_F_SECURE, 4, NULL, NULL, NULL, 0 },
-    { "digest", WJ_M_METHOD, WJ_F_SECURE, 2, NULL, NULL, NULL, 0 },
-    { "generateKey", WJ_M_METHOD, WJ_F_SECURE, 3, NULL, NULL, NULL, 0 },
-    { "deriveKey", WJ_M_METHOD, WJ_F_SECURE, 5, NULL, NULL, NULL, 0 },
-    { "deriveBits", WJ_M_METHOD, WJ_F_SECURE, 2, NULL, NULL, NULL, 0 },
-    { "importKey", WJ_M_METHOD, WJ_F_SECURE, 5, NULL, NULL, NULL, 0 },
-    { "exportKey", WJ_M_METHOD, WJ_F_SECURE, 2, NULL, NULL, NULL, 0 },
-    { "wrapKey", WJ_M_METHOD, WJ_F_SECURE, 4, NULL, NULL, NULL, 0 },
-    { "unwrapKey", WJ_M_METHOD, WJ_F_SECURE, 7, NULL, NULL, NULL, 0 },
+    { "encrypt", WJ_M_METHOD, WJ_F_SECURE, 3, wjr_SubtleCrypto_encrypt, NULL, NULL, 0 },
+    { "decrypt", WJ_M_METHOD, WJ_F_SECURE, 3, wjr_SubtleCrypto_decrypt, NULL, NULL, 0 },
+    { "sign", WJ_M_METHOD, WJ_F_SECURE, 3, wjr_SubtleCrypto_sign, NULL, NULL, 0 },
+    { "verify", WJ_M_METHOD, WJ_F_SECURE, 4, wjr_SubtleCrypto_verify, NULL, NULL, 0 },
+    { "digest", WJ_M_METHOD, WJ_F_SECURE, 2, wjr_SubtleCrypto_digest, NULL, NULL, 0 },
+    { "generateKey", WJ_M_METHOD, WJ_F_SECURE, 3, wjr_SubtleCrypto_generateKey, NULL, NULL, 0 },
+    { "deriveKey", WJ_M_METHOD, WJ_F_SECURE, 5, wjr_SubtleCrypto_deriveKey, NULL, NULL, 0 },
+    { "deriveBits", WJ_M_METHOD, WJ_F_SECURE, 2, wjr_SubtleCrypto_deriveBits, NULL, NULL, 0 },
+    { "importKey", WJ_M_METHOD, WJ_F_SECURE, 5, wjr_SubtleCrypto_importKey, NULL, NULL, 0 },
+    { "exportKey", WJ_M_METHOD, WJ_F_SECURE, 2, wjr_SubtleCrypto_exportKey, NULL, NULL, 0 },
+    { "wrapKey", WJ_M_METHOD, WJ_F_SECURE, 4, wjr_SubtleCrypto_wrapKey, NULL, NULL, 0 },
+    { "unwrapKey", WJ_M_METHOD, WJ_F_SECURE, 7, wjr_SubtleCrypto_unwrapKey, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TextDecoder[] = {
-    { "decode", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "decode", WJ_M_METHOD, 0, 0, wjr_TextDecoder_decode, NULL, NULL, 0 },
     { "encoding", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextDecoder_get_encoding, NULL, 0 },
-    { "fatal", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "ignoreBOM", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "fatal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextDecoder_get_fatal, NULL, 0 },
+    { "ignoreBOM", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextDecoder_get_ignoreBOM, NULL, 0 },
 };
 static const wj_member wj_m_TextDecoderStream[] = {
     { "encoding", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -9727,9 +9888,9 @@ static const wj_member wj_m_TextDecoderStream[] = {
     { "writable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TextEncoder[] = {
-    { "encode", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "encodeInto", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "encoding", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "encode", WJ_M_METHOD, 0, 0, wjr_TextEncoder_encode, NULL, NULL, 0 },
+    { "encodeInto", WJ_M_METHOD, 0, 2, wjr_TextEncoder_encodeInto, NULL, NULL, 0 },
+    { "encoding", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextEncoder_get_encoding, NULL, 0 },
 };
 static const wj_member wj_m_TextEncoderStream[] = {
     { "encoding", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -9837,35 +9998,39 @@ static const wj_member wj_m_TrustedTypePolicyFactory[] = {
     { "defaultPolicy", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_URL[] = {
-    { "createObjectURL", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "revokeObjectURL", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "parse", WJ_M_STATIC_METHOD, 0, 1, wjg_URL_static_parse, NULL, NULL, 0 },
-    { "canParse", WJ_M_STATIC_METHOD, 0, 1, wjg_URL_static_canParse, NULL, NULL, 0 },
-    { "href", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "toString", WJ_M_METHOD, 0, 0, wj_stringifier, NULL, NULL, 0 },
-    { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "protocol", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "username", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "password", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "host", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "hostname", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "port", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "pathname", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "search", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "searchParams", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 253, NULL, wjg_URL_get_searchParams, NULL, 0 },
-    { "hash", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "createObjectURL", WJ_M_STATIC_METHOD, 0, 1, wjr_URL_static_createObjectURL, NULL, NULL, 0 },
+    { "revokeObjectURL", WJ_M_STATIC_METHOD, 0, 1, wjr_URL_static_revokeObjectURL, NULL, NULL, 0 },
+    { "parse", WJ_M_STATIC_METHOD, 0, 1, wjr_URL_static_parse, NULL, NULL, 0 },
+    { "canParse", WJ_M_STATIC_METHOD, 0, 1, wjr_URL_static_canParse, NULL, NULL, 0 },
+    { "href", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_URL_get_href, wjr_URL_set_href, 0 },
+    { "toString", WJ_M_METHOD, 0, 0, wj_stringifier, wjr_URL_get_href, NULL, 0 },
+    { "origin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_URL_get_origin, NULL, 0 },
+    { "protocol", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_URL_get_protocol, wjr_URL_set_protocol, 0 },
+    { "username", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_URL_get_username, wjr_URL_set_username, 0 },
+    { "password", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_URL_get_password, wjr_URL_set_password, 0 },
+    { "host", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_URL_get_host, wjr_URL_set_host, 0 },
+    { "hostname", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_URL_get_hostname, wjr_URL_set_hostname, 0 },
+    { "port", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_URL_get_port, wjr_URL_set_port, 0 },
+    { "pathname", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_URL_get_pathname, wjr_URL_set_pathname, 0 },
+    { "search", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_URL_get_search, wjr_URL_set_search, 0 },
+    { "searchParams", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 253, NULL, wjr_URL_get_searchParams, NULL, 0 },
+    { "hash", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_URL_get_hash, wjr_URL_set_hash, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_URL_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_URLSearchParams[] = {
     { "size", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_URLSearchParams_get_size, NULL, 0 },
     { "append", WJ_M_METHOD, 0, 2, wjg_URLSearchParams_append, NULL, NULL, 0 },
     { "delete", WJ_M_METHOD, 0, 1, wjg_URLSearchParams_delete, NULL, NULL, 0 },
     { "get", WJ_M_METHOD, 0, 1, wjg_URLSearchParams_get, NULL, NULL, 0 },
-    { "getAll", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "getAll", WJ_M_METHOD, 0, 1, wjr_URLSearchParams_getAll, NULL, NULL, 0 },
     { "has", WJ_M_METHOD, 0, 1, wjg_URLSearchParams_has, NULL, NULL, 0 },
     { "set", WJ_M_METHOD, 0, 2, wjg_URLSearchParams_set, NULL, NULL, 0 },
     { "sort", WJ_M_METHOD, 0, 0, wjg_URLSearchParams_sort, NULL, NULL, 0 },
-    { "toString", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "toString", WJ_M_METHOD, 0, 0, wjr_URLSearchParams_toString, NULL, NULL, 0 },
+    { "entries", WJ_M_METHOD, 0, 0, wjr_URLSearchParams_entries, NULL, NULL, 0 },
+    { "keys", WJ_M_METHOD, 0, 0, wjr_URLSearchParams_keys, NULL, NULL, 0 },
+    { "values", WJ_M_METHOD, 0, 0, wjr_URLSearchParams_values, NULL, NULL, 0 },
+    { "forEach", WJ_M_METHOD, 0, 1, wjr_URLSearchParams_forEach, NULL, NULL, 0 },
 };
 static const wj_member wj_m_UserActivation[] = {
     { "hasBeenActive", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -9922,21 +10087,21 @@ static const wj_member wj_m_WorkerNavigator[] = {
     { "setAppBadge", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "clearAppBadge", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "deviceMemory", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "appCodeName", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "appName", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "appVersion", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "platform", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "product", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "productSub", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "userAgent", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "vendor", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "vendorSub", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "appCodeName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_appCodeName, NULL, 0 },
+    { "appName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_appName, NULL, 0 },
+    { "appVersion", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_appVersion, NULL, 0 },
+    { "platform", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_platform, NULL, 0 },
+    { "product", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_product, NULL, 0 },
+    { "productSub", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_productSub, NULL, 0 },
+    { "userAgent", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_userAgent, NULL, 0 },
+    { "vendor", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_vendor, NULL, 0 },
+    { "vendorSub", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorID_get_vendorSub, NULL, 0 },
     { "taintEnabled", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "oscpu", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "language", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "languages", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "onLine", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "hardwareConcurrency", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "language", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorLanguage_get_language, NULL, 0 },
+    { "languages", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorLanguage_get_languages, NULL, 0 },
+    { "onLine", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorOnLine_get_onLine, NULL, 0 },
+    { "hardwareConcurrency", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigatorConcurrentHardware_get_hardwareConcurrency, NULL, 0 },
     { "connection", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 257, NULL, NULL, NULL, 0 },
     { "storage", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 258, NULL, NULL, NULL, 0 },
     { "userAgentData", WJ_M_ATTRIBUTE, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
@@ -10035,7 +10200,7 @@ const int wj_interface_count = 556;
 const int wj_same_object_count = 259;
 
 const wj_interface wj_interfaces[] = {
-    { .name = "AbortController", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "AbortController", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_AbortController_constructor,
       .members = wj_m_AbortController, .n_members = 2, .subtree_end = 2,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10103,11 +10268,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_BarProp, .n_members = 1, .subtree_end = 17,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Blob", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "Blob", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_Blob_constructor,
       .members = wj_m_Blob, .n_members = 8, .subtree_end = 19,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "File", .parent = 17, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = NULL,
+    { .name = "File", .parent = 17, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = wjr_File_constructor,
       .members = wj_m_File, .n_members = 3, .subtree_end = 19,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10407,7 +10572,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_CustomStateSet, .n_members = 0, .subtree_end = 93,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMException", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMException", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_DOMException_constructor,
       .members = wj_m_DOMException, .n_members = 28, .subtree_end = 96,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10459,16 +10624,16 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_DOMRect, .n_members = 5, .subtree_end = 106,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = "SVGRect", .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMStringList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMStringList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_DOMStringList, .n_members = 3, .subtree_end = 107,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_DOMStringList_index_get, .length_get = wjr_DOMStringList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "DOMStringMap", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_OVERRIDE_BUILTINS, .class_kind = WJ_CLASS_NAMED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_DOMStringMap, .n_members = 0, .subtree_end = 108,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "DOMTokenList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_ARRAY_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_DOMTokenList, .n_members = 9, .subtree_end = 109,
+      .members = wj_m_DOMTokenList, .n_members = 10, .subtree_end = 109,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "DataTransfer", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
@@ -10519,7 +10684,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_ClipboardEvent, .n_members = 1, .subtree_end = 121,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "CloseEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "CloseEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_CloseEvent_constructor,
       .members = wj_m_CloseEvent, .n_members = 3, .subtree_end = 122,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10555,7 +10720,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_GamepadEvent, .n_members = 1, .subtree_end = 130,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "HashChangeEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "HashChangeEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_HashChangeEvent_constructor,
       .members = wj_m_HashChangeEvent, .n_members = 2, .subtree_end = 131,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10563,7 +10728,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_IDBVersionChangeEvent, .n_members = 2, .subtree_end = 132,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MediaQueryListEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "MediaQueryListEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_MediaQueryListEvent_constructor,
       .members = wj_m_MediaQueryListEvent, .n_members = 2, .subtree_end = 133,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10599,11 +10764,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_PageTransitionEvent, .n_members = 1, .subtree_end = 141,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PopStateEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "PopStateEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_PopStateEvent_constructor,
       .members = wj_m_PopStateEvent, .n_members = 2, .subtree_end = 142,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ProgressEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "ProgressEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_ProgressEvent_constructor,
       .members = wj_m_ProgressEvent, .n_members = 3, .subtree_end = 143,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10627,7 +10792,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_SpeechSynthesisErrorEvent, .n_members = 1, .subtree_end = 148,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "StorageEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "StorageEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_StorageEvent_constructor,
       .members = wj_m_StorageEvent, .n_members = 6, .subtree_end = 149,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10847,11 +11012,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_CookieStore, .n_members = 5, .subtree_end = 203,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "EventSource", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "EventSource", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_EventSource_constructor,
       .members = wj_m_EventSource, .n_members = 10, .subtree_end = 204,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FileReader", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "FileReader", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_FileReader_constructor,
       .members = wj_m_FileReader, .n_members = 17, .subtree_end = 205,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10879,7 +11044,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MediaDevices, .n_members = 4, .subtree_end = 211,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MediaQueryList", .parent = 166, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "MediaQueryList", .parent = 166, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_MediaQueryList, .n_members = 5, .subtree_end = 212,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10899,7 +11064,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MediaStreamTrack, .n_members = 15, .subtree_end = 216,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MessagePort", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "MessagePort", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_MessagePort, .n_members = 5, .subtree_end = 217,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -10976,11 +11141,11 @@ const wj_interface wj_interfaces[] = {
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "HTMLAnchorElement", .parent = 234, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_HTMLAnchorElement, .n_members = 25, .subtree_end = 236,
+      .members = wj_m_HTMLAnchorElement, .n_members = 26, .subtree_end = 236,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "HTMLAreaElement", .parent = 234, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_HTMLAreaElement, .n_members = 23, .subtree_end = 237,
+      .members = wj_m_HTMLAreaElement, .n_members = 24, .subtree_end = 237,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "HTMLBRElement", .parent = 234, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
@@ -11487,7 +11652,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_VisualViewport, .n_members = 10, .subtree_end = 363,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "WebSocket", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "WebSocket", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_WebSocket_constructor,
       .members = wj_m_WebSocket, .n_members = 16, .subtree_end = 364,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11507,11 +11672,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_DedicatedWorkerGlobalScope, .n_members = 7, .subtree_end = 368,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "XMLHttpRequestEventTarget", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "XMLHttpRequestEventTarget", .parent = 166, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_XMLHttpRequestEventTarget, .n_members = 7, .subtree_end = 371,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "XMLHttpRequest", .parent = 368, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "XMLHttpRequest", .parent = 368, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_XMLHttpRequest_constructor,
       .members = wj_m_XMLHttpRequest, .n_members = 24, .subtree_end = 370,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11579,8 +11744,8 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_FontFaceVariations, .n_members = 0, .subtree_end = 386,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FormData", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FormData, .n_members = 6, .subtree_end = 387,
+    { .name = "FormData", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_FormData_constructor,
+      .members = wj_m_FormData, .n_members = 10, .subtree_end = 387,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FragmentDirective", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
@@ -11615,8 +11780,8 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_HTMLOptionsCollection, .n_members = 4, .subtree_end = 395,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Headers", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Headers, .n_members = 6, .subtree_end = 396,
+    { .name = "Headers", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_Headers_constructor,
+      .members = wj_m_Headers, .n_members = 10, .subtree_end = 396,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Highlight", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
@@ -11684,7 +11849,7 @@ const wj_interface wj_interfaces[] = {
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Location", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_HAS_UNFORGEABLE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Location, .n_members = 13, .subtree_end = 413,
+      .members = wj_m_Location, .n_members = 14, .subtree_end = 413,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Lock", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
@@ -11708,7 +11873,7 @@ const wj_interface wj_interfaces[] = {
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MediaList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_MediaList, .n_members = 5, .subtree_end = 419,
+      .members = wj_m_MediaList, .n_members = 6, .subtree_end = 419,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MediaMetadata", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
@@ -11723,7 +11888,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MediaSourceHandle, .n_members = 0, .subtree_end = 422,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MessageChannel", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "MessageChannel", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_MessageChannel_constructor,
       .members = wj_m_MessageChannel, .n_members = 2, .subtree_end = 423,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11767,7 +11932,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_NavigationTransition, .n_members = 5, .subtree_end = 433,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Navigator", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "Navigator", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_Navigator, .n_members = 43, .subtree_end = 434,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11811,7 +11976,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_Path2D, .n_members = 11, .subtree_end = 444,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceEntry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "PerformanceEntry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_PerformanceEntry, .n_members = 7, .subtree_end = 455,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11827,11 +11992,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_PerformanceLongTaskTiming, .n_members = 6, .subtree_end = 448,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceMark", .parent = 444, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "PerformanceMark", .parent = 444, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_PerformanceMark_constructor,
       .members = wj_m_PerformanceMark, .n_members = 1, .subtree_end = 449,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceMeasure", .parent = 444, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "PerformanceMeasure", .parent = 444, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_PerformanceMeasure, .n_members = 1, .subtree_end = 450,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11895,8 +12060,8 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_ReadableByteStreamController, .n_members = 5, .subtree_end = 465,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ReadableStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ReadableStream, .n_members = 7, .subtree_end = 466,
+    { .name = "ReadableStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_ReadableStream_constructor,
+      .members = wj_m_ReadableStream, .n_members = 8, .subtree_end = 466,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ReadableStreamBYOBReader", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
@@ -11907,15 +12072,15 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_ReadableStreamBYOBRequest, .n_members = 3, .subtree_end = 468,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ReadableStreamDefaultController", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "ReadableStreamDefaultController", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_ReadableStreamDefaultController, .n_members = 4, .subtree_end = 469,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ReadableStreamDefaultReader", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "ReadableStreamDefaultReader", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_ReadableStreamDefaultReader_constructor,
       .members = wj_m_ReadableStreamDefaultReader, .n_members = 4, .subtree_end = 470,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Request", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "Request", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_Request_constructor,
       .members = wj_m_Request, .n_members = 26, .subtree_end = 471,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -11931,7 +12096,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_ResizeObserverSize, .n_members = 2, .subtree_end = 474,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Response", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "Response", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_Response_constructor,
       .members = wj_m_Response, .n_members = 20, .subtree_end = 475,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -12039,7 +12204,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_Scheduling, .n_members = 1, .subtree_end = 501,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Screen", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "Screen", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_Screen, .n_members = 7, .subtree_end = 502,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -12075,9 +12240,9 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_SpeechSynthesisVoice, .n_members = 5, .subtree_end = 510,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Storage", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_NAMED, .ctor_length = 0, .ctor = NULL,
+    { .name = "Storage", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_NAMED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_Storage, .n_members = 6, .subtree_end = 511,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = NULL, .length_get = NULL, .named_get = wjr_Storage_named_get, .named_set = wjr_Storage_named_set, .named_delete = wjr_Storage_named_delete, .named_keys = wjr_Storage_named_keys,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "StorageManager", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_StorageManager, .n_members = 3, .subtree_end = 512,
@@ -12103,11 +12268,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_StyleSheetList, .n_members = 2, .subtree_end = 517,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "SubtleCrypto", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "SubtleCrypto", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_SubtleCrypto, .n_members = 12, .subtree_end = 518,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TextDecoder", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "TextDecoder", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_TextDecoder_constructor,
       .members = wj_m_TextDecoder, .n_members = 4, .subtree_end = 519,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -12115,7 +12280,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TextDecoderStream, .n_members = 5, .subtree_end = 520,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TextEncoder", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "TextEncoder", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_TextEncoder_constructor,
       .members = wj_m_TextEncoder, .n_members = 3, .subtree_end = 521,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -12179,12 +12344,12 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TrustedTypePolicyFactory, .n_members = 9, .subtree_end = 536,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "URL", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
-      .members = wj_m_URL, .n_members = 17, .subtree_end = 537,
+    { .name = "URL", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_URL_constructor,
+      .members = wj_m_URL, .n_members = 18, .subtree_end = 537,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = "webkitURL", .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "URLSearchParams", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_URLSearchParams, .n_members = 9, .subtree_end = 538,
+    { .name = "URLSearchParams", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_URLSearchParams_constructor,
+      .members = wj_m_URLSearchParams, .n_members = 13, .subtree_end = 538,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "UserActivation", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
@@ -12208,10 +12373,10 @@ const wj_interface wj_interfaces[] = {
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WorkerLocation", .parent = -1, .exposed = WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_WorkerLocation, .n_members = 9, .subtree_end = 544,
+      .members = wj_m_WorkerLocation, .n_members = 10, .subtree_end = 544,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "WorkerNavigator", .parent = -1, .exposed = WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "WorkerNavigator", .parent = -1, .exposed = WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_WorkerNavigator, .n_members = 24, .subtree_end = 545,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

@@ -136,6 +136,9 @@ foreign _m_forms {
 	@(link_name = "FormData_isFileAt") _FormData_isFileAt :: proc(data: FormData, index: i32, _ret: ^bool) -> Error ---
 	@(link_name = "FormData_fileSizeAt") _FormData_fileSizeAt :: proc(data: FormData, index: i32) -> i64 ---
 	@(link_name = "FormData_fileTypeAt") _FormData_fileTypeAt :: proc(data: FormData, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "FormData_fileAt") _FormData_fileAt :: proc(data: FormData, index: i32, _ret: ^Buffer) -> Error ---
+	@(link_name = "FormData_setBlob") _FormData_setBlob :: proc(data: FormData, name: [^]u8, name_len: u32, blob: Buffer, filename: [^]u8, filename_len: u32, mime: [^]u8, mime_len: u32) -> Error ---
+	@(link_name = "FormData_encode") _FormData_encode :: proc(data: FormData, boundary: [^]u8, boundary_len: u32, _ret: ^Buffer) -> Error ---
 }
 
 // control.value
@@ -1093,5 +1096,23 @@ FormData_fileTypeAt_alloc :: proc(data: FormData, index: i32, allocator: runtime
 		cap = int(n)
 	}
 	return {}, .Truncated
+}
+
+// The bytes of the index-th entry, a file (a file chosen in an <input type=file> is read now). Not_Found when there
+// is no such entry or it is not a file.
+FormData_fileAt :: proc "contextless" (data: FormData, index: i32) -> (result: Buffer, err: Error) {
+	err = _FormData_fileAt(data, index, &result)
+	return
+}
+
+// set(name, blob, filename): like FormData_set with a file entry.
+FormData_setBlob :: proc "contextless" (data: FormData, name: string, blob: Buffer, filename: string = "", mime: string = "") -> Error {
+	return _FormData_setBlob(data, raw_data(name), u32(len(name)), blob, raw_data(filename), u32(len(filename)), raw_data(mime), u32(len(mime)))
+}
+
+// The entries as a multipart/form-data body with this boundary (files chosen in an <input type=file> are read now).
+FormData_encode :: proc "contextless" (data: FormData, boundary: string) -> (result: Buffer, err: Error) {
+	err = _FormData_encode(data, raw_data(boundary), u32(len(boundary)), &result)
+	return
 }
 

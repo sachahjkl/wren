@@ -406,7 +406,7 @@ emit_put_forwards :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, ta
 // Members implemented by browser functions
 
 @(private)
-Conv :: enum u8 { None, Bool, I32, U32, I64, U64, F64, F32, String, Usv, Node, Host, Void }
+Conv :: enum u8 { None, Bool, I32, U32, I64, U64, F64, F32, String, Usv, Node, Host, Void, Promise }
 
 // How an IDL type converts for a browser function, and the interface of an object type.
 @(private)
@@ -436,6 +436,11 @@ conv_of :: proc(g: ^Gen, t: ^webidl.Type) -> (c: Conv, iface: string) {
 			if ra.kind != .Named || !webidl.inherits(g.m, ra.name, "Node") { nodes = false; break }
 		}
 		if nodes { return .Node, "Node" }
+	}
+	// Promise<T> (results only): a promise handle of the browser, its value converted by T (iface: the WJ_HOST_* kind)
+	if r.kind == .Promise {
+		if k := promise_kind(g, r); k != "" { return .Promise, k }
+		return .None, ""
 	}
 	if r.kind != .Named { return .None, "" }
 	// an IDL enum is its string: the browser function takes or returns the value itself
@@ -475,6 +480,7 @@ widl_scalar_ok :: proc(c: Conv, t: idl.Type) -> bool {
 	case .String: return t.kind == .String || t.kind == .Usv_String
 	case .Usv: return t.kind == .Usv_String || t.kind == .String
 	case .Node, .Host: return t.kind == .Handle || t.kind == .U64 || t.kind == .Promise
+	case .Promise: return t.kind == .Promise || (t.kind == .Handle && t.name == "Promise")   // Promise<T>, or the bare handle
 	}
 	return false
 }
@@ -530,7 +536,7 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 		result, result_iface = conv_of(g, mb.type)
 		if mb.type != nil { result_nullable = webidl.resolve(g.m, mb.type).nullable }
 	}
-	for a in args { if a.conv == .None || a.conv == .Void { return "", fmt.tprintf("an argument of type %s has no conversion", webidl.type_text(a.t)) } }
+	for a in args { if a.conv == .None || a.conv == .Void || a.conv == .Promise { return "", fmt.tprintf("an argument of type %s has no conversion", webidl.type_text(a.t)) } }
 	if result == .None { return "", fmt.tprintf("the result type %s has no conversion", webidl.type_text(mb.type)) }
 
 	// the browser function's side: an optional self handle, then one parameter per argument
@@ -582,7 +588,8 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 	case:
 		fname = fmt.aprintf("wjg_%s_%s%s", it.name, mb.static_ ? "static_" : "", mb.name)
 		wl(b, "/* %s() -> %s.%s */", qual, d.module.name, import_name)
-		wl(b, "static JSValue %s(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)", fname)
+		// an operation returning a promise never throws (Web IDL): its body's exceptions become a rejection (below)
+		wl(b, "static JSValue %s%s(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)", fname, result == .Promise ? "_body" : "")
 		wl(b, "{")
 	}
 	if !mb.static_ {
@@ -711,7 +718,33 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 	}
 	wl(b, "}")
 	wl(b, "")
+	if result == .Promise && !setter && mb.kind != .Attribute {
+		wl(b, "static JSValue %s(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)", fname)
+		wl(b, "{")
+		wl(b, "    JSValue r = %s_body(ctx, this_val, argc, argv);", fname)
+		wl(b, "    return JS_IsException(r) ? wj_promise_reject_pending(ctx) : r;")
+		wl(b, "}")
+		wl(b, "")
+	}
 	return fname, ""
+}
+
+// The WJ_HOST_* conversion of the value of a Promise<T> (the settled host promise's i64 / text), "" when T has none.
+@(private)
+promise_kind :: proc(g: ^Gen, t: ^webidl.Type) -> string {
+	if t == nil || len(t.args) == 0 { return "" }
+	inner := webidl.resolve(g.m, t.args[0])
+	if inner == nil || inner.kind != .Named { return "" }
+	switch inner.name {
+	case "undefined": return "WJ_HOST_UNDEFINED"
+	case "boolean": return "WJ_HOST_BOOL"
+	case "DOMString", "USVString", "ByteString", "CSSOMString": return "WJ_HOST_TEXT"
+	case "ArrayBuffer": return "WJ_HOST_ARRAYBUFFER"
+	case "Uint8Array": return "WJ_HOST_UINT8ARRAY"
+	case "byte", "octet", "short", "unsigned short", "long", "unsigned long", "long long", "unsigned long long", "double", "unrestricted double", "float", "unrestricted float", "DOMHighResTimeStamp":
+		return "WJ_HOST_NUMBER"
+	}
+	return ""
 }
 
 @(private)
@@ -730,7 +763,7 @@ c_ret_type :: proc(c: Conv) -> string {
 	case .I32: return "int32_t"
 	case .U32: return "uint32_t"
 	case .I64: return "int64_t"
-	case .U64, .Node, .Host: return "uint64_t"
+	case .U64, .Node, .Host, .Promise: return "uint64_t"
 	case .F64: return "double"
 	case .F32: return "float"
 	case .Void: return "uint64_t"   // a result the IDL drops (written through a pointer: room for any scalar)
@@ -749,6 +782,7 @@ c_result :: proc(g: ^Gen, c: Conv, iface: string, v: string) -> string {
 	case .F64, .F32: return fmt.tprintf("JS_NewFloat64(ctx, (double)%s)", v)
 	case .Node: return fmt.tprintf("wj_wrap_node(ctx, %s)", v)
 	case .Host: return fmt.tprintf("wj_wrap_host(ctx, %s, %d)", v, g.index_of[iface] or_else 0)
+	case .Promise: return fmt.tprintf("wj_promise_from_host(ctx, %s, %s, NULL, JS_UNDEFINED)", v, iface)
 	}
 	return "JS_UNDEFINED"
 }
@@ -853,6 +887,7 @@ emit_c :: proc(g: ^Gen, impls: [][]Member_Impl) {
 				wl(&g.c, "    {{ %q, %s, %s, %d, NULL, %s, %s, 0 }},", mb.name, kind, flags, so, get, set)
 				if mb.stringifier {
 					wl(&g.c, "    {{ \"toString\", WJ_M_METHOD, 0, 0, wj_stringifier, %s, NULL, 0 }},", get)
+					count += 1   // an entry of the table too: n_members must cover it (else the last member is lost)
 				}
 			case .Operation:
 				kind := mb.static_ ? "WJ_M_STATIC_METHOD" : "WJ_M_METHOD"

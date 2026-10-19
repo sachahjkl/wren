@@ -42,6 +42,9 @@ serialize_headers :: proc(list: []http.Header, allocator := context.temp_allocat
 @(private)
 fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	f := (^Fetch)(user)
+	// `user` is the record's slot: an event the loader queued before the record was released (and its task
+	// cancelled) may arrive after another request took the slot. Only the record's own task speaks for it.
+	if f.task != task { return }
 	if f.ext != nil { fetch_ext_event(f, ev); return }   // promise / stream / abort signal (bindings_fetch.odin)
 	u := Fetch_Update{kind = ev.kind, data = ev.data, error = ev.error, detail = ev.detail}
 	if ev.kind == .Response {

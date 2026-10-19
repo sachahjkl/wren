@@ -909,3 +909,40 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `FormData_fileTypeAt :: proc(c: ^Call, data: Api_FormData, index: i32) -> (string, Api_Error)`
 
+### `FormData_fileAt`
+
+```
+Buffer FormData_fileAt(FormData data, i32 index) raises
+```
+
+The bytes of the index-th entry, a file (a file chosen in an <input type=file> is read now). Not_Found when there
+is no such entry or it is not a file.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `FormData_fileAt :: proc(c: ^Call, data: Api_FormData, index: i32) -> (u64, Api_Error)`
+
+### `FormData_setBlob`
+
+```
+void FormData_setBlob(FormData data, usvstring name, Buffer blob, usvstring filename = "", string mime = "") raises
+```
+
+set(name, blob, filename): like FormData_set with a file entry.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `FormData_setBlob :: proc(c: ^Call, data: Api_FormData, name: string, blob: Api_Buffer, filename: string, mime: string) -> Api_Error`
+
+### `FormData_encode`
+
+```
+Buffer FormData_encode(FormData data, string boundary) raises
+```
+
+The entries as a multipart/form-data body with this boundary (files chosen in an <input type=file> are read now).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `FormData_encode :: proc(c: ^Call, data: Api_FormData, boundary: string) -> (u64, Api_Error)`
+

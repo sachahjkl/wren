@@ -59,6 +59,7 @@ Event_interface :: proc(c: ^Call, event: Api_Event) -> u32 {
 	case "popstate": return JS_IFACE_PopStateEvent
 	case "storage": return JS_IFACE_StorageEvent
 	case "close": if is_object(u64(event.data.target)) { return JS_IFACE_CloseEvent }
+	case "change": if mql_get(c.page, u64(event.data.target)) != nil { return JS_IFACE_MediaQueryListEvent }
 	case "submit": return JS_IFACE_SubmitEvent
 	case "formdata": return JS_IFACE_FormDataEvent
 	case "toggle", "beforetoggle": return JS_IFACE_ToggleEvent
