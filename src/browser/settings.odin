@@ -63,6 +63,8 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_interaction_prefs(p)
 	register_hud_prefs(p)
 	register_font_prefs(p)
+	register_frame_prefs(p)    // pacing.odin
+	register_scroll_prefs(p)   // smooth_scroll.odin
 	_ = wasm.PREFS
 	_ = html.PREFS
 }

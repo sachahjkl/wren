@@ -112,7 +112,7 @@ find_update :: proc(app: ^App, t: ^Tab) {
 	if same_query && find.page == p && find.mutations == p.doc.mutations && find.styled == styled_serial { return }
 	// content that keeps changing is searched again at most a few times a second
 	now := ui.now_ms()
-	if same_query && find.page == p && now - find.searched_ms < 250 { app.frames_requested = max(app.frames_requested, 1); return }
+	if same_query && find.page == p && now - find.searched_ms < 250 { app.frames_requested = max(app.frames_requested, 2); return }
 	keep := same_query && find.page == p ? find.active : -1
 	find_clear_matches()
 	delete(find.query)

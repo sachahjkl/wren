@@ -34,7 +34,8 @@ if "%1"=="profile" goto profile
 odin build src/browser -out:build/browser.exe %COLL% -o:speed -vet -subsystem:windows
 goto done
 :profile
-odin build src/browser -out:build/browser_prof.exe %COLL% -o:speed -debug -define:PROFILE=true -vet -subsystem:windows
+:: (no Direct3D debug layer: GPU and present times as in a release build)
+odin build src/browser -out:build/browser_prof.exe %COLL% -o:speed -debug -define:PROFILE=true -define:D3D_DEBUG=false -vet -subsystem:windows
 if errorlevel 1 exit /b 1
 echo built build\browser_prof.exe
 exit /b 0

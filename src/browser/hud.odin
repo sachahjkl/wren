@@ -14,6 +14,7 @@ package browser
 
 import "base:runtime"
 import "core:fmt"
+import "core:math"
 import "core:strings"
 import win "core:sys/windows"
 import "toolkit:draw"
@@ -43,18 +44,24 @@ HUD_PREFS := [?]config.Def{
 		description = "Frames shown by the status bar's graph (the most recent at the right)."},
 	{name = "browser.status_bar.graph.width_em", kind = .Float, default = {f = 9}, bounded = true, min = 2, max = 80, unit = "em",
 		description = "Width of the status bar's graph, in multiples of the interface's font size."},
-	{name = "browser.status_bar.graph.budget_ms", kind = .Float, default = {f = 16.7}, bounded = true, min = 0, max = 1000, unit = "ms",
-		description = "The dashed line of the graph: the time a frame may take (16.7 ms = 60 frames per second). 0 = no line."},
-	{name = "browser.status_bar.graph.scale_ms", kind = .Float, default = {f = 4}, bounded = true, min = 0, max = 10_000, unit = "ms",
+	{name = "browser.status_bar.graph.budget_ms", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 1000, unit = "ms",
+		description = "The time a frame may take: the dashed line of the graph, and what the panel counts frames over. 0 = the frame period of browser.frame.target_hz (the monitor's refresh rate: 5.56 ms at 180 Hz, 16.7 ms at 60 Hz)."},
+	{name = "browser.status_bar.graph.budget_line", kind = .Bool, default = {b = true},
+		description = "Draw the budget as a dashed line across the graph."},
+	{name = "browser.status_bar.graph.scale_ms", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 10_000, unit = "ms",
 		description = "The top of the graph is at least this much (0: the budget), so short frames stay visible; taller frames raise it (the budget line shows once it fits) up to browser.status_bar.graph.max_scale_ms."},
 	{name = "browser.status_bar.graph.max_scale_ms", kind = .Float, default = {f = 100}, bounded = true, min = 0, max = 100_000, unit = "ms",
 		description = "The top of the graph is at most this much: longer frames are cut and marked. 0 = no limit."},
 	{name = "browser.status_bar.graph.colors", kind = .String, default = {s = ""},
 		description = "Colors of the graph's phases, comma separated #rrggbb in this order: tasks, styles, layout, paint, interface, submit, GPU. Empty entries keep the default (from the theme)."},
-	{name = "browser.status_bar.warn_ms", kind = .Float, default = {f = 16.7}, bounded = true, min = 0, max = 10_000, unit = "ms",
-		description = "Frames that take longer are marked in the warning color (graph, CPU counter). 0 = never."},
-	{name = "browser.status_bar.bad_ms", kind = .Float, default = {f = 33.3}, bounded = true, min = 0, max = 10_000, unit = "ms",
-		description = "Frames that take longer are marked in the error color (graph, CPU counter). 0 = never."},
+	{name = "browser.status_bar.warn_ms", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 10_000, unit = "ms",
+		description = "Frames that take longer are marked in the warning color (graph, CPU counter). 0 = browser.status_bar.warn_budgets times the budget."},
+	{name = "browser.status_bar.bad_ms", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 10_000, unit = "ms",
+		description = "Frames that take longer are marked in the error color (graph, CPU counter). 0 = browser.status_bar.bad_budgets times the budget."},
+	{name = "browser.status_bar.warn_budgets", kind = .Float, default = {f = 1}, bounded = true, min = 0, max = 100,
+		description = "Without browser.status_bar.warn_ms: frames over this many budgets are marked in the warning color. 0 = never."},
+	{name = "browser.status_bar.bad_budgets", kind = .Float, default = {f = 2}, bounded = true, min = 0, max = 100,
+		description = "Without browser.status_bar.bad_ms: frames over this many budgets (a missed refresh, at least) are marked in the error color. 0 = never."},
 	{name = "browser.status_bar.gpu_timing", kind = .Bool, default = {b = true},
 		description = "Measure the GPU time of each frame (Direct3D timestamp queries, read a few frames later: the browser never waits for them) while the status bar or the title shows it."},
 	{name = "browser.status_bar.wasm_timing", kind = .Bool, default = {b = true},
@@ -85,7 +92,7 @@ HUD_SERIES_NAMES := [Hud_Series]string{
 }
 HUD_SERIES_HELP := [Hud_Series]string{
 	.Tasks = "input, scripts", .Styles = "recalc", .Layout = "page",
-	.Paint = "page, compositor", .UI = "chrome", .Submit = "draw, present", .GPU = "drawing",
+	.Paint = "page, compositor", .UI = "chrome", .Submit = "draw calls", .GPU = "drawing",
 }
 
 Hud_Settings :: struct {
@@ -97,7 +104,9 @@ Hud_Settings :: struct {
 	window_ms:    f64,
 	samples:      int,
 	graph_em:     f32,
-	budget, scale, max_scale, warn, bad: f32,
+	budget, scale, max_scale, warn, bad: f32,   // as set: 0 = from the frame budget (hud_budget, hud_warn, hud_bad)
+	budget_line:  bool,
+	warn_budgets, bad_budgets: f32,
 	colors:       [Hud_Series]Maybe(draw.Color),
 	gpu_timing:   bool,
 	wasm_timing:  bool,
@@ -141,6 +150,9 @@ hud_settings_from_prefs :: proc(p: ^config.Prefs) -> (s: Hud_Settings) {
 	s.max_scale = f32(config.float_of(p, "browser.status_bar.graph.max_scale_ms"))
 	s.warn = f32(config.float_of(p, "browser.status_bar.warn_ms"))
 	s.bad = f32(config.float_of(p, "browser.status_bar.bad_ms"))
+	s.budget_line = config.bool_of(p, "browser.status_bar.graph.budget_line")
+	s.warn_budgets = f32(config.float_of(p, "browser.status_bar.warn_budgets"))
+	s.bad_budgets = f32(config.float_of(p, "browser.status_bar.bad_budgets"))
 	for part, i in strings.split(config.string_of(p, "browser.status_bar.graph.colors"), ",", context.temp_allocator) {
 		if i >= len(Hud_Series) { break }
 		if c, ok := parse_pref_color(part); ok { s.colors[Hud_Series(i)] = c }
@@ -152,6 +164,21 @@ hud_settings_from_prefs :: proc(p: ^config.Prefs) -> (s: Hud_Settings) {
 	s.title_stats = config.bool_of(p, "browser.title.stats")
 	s.title_ms = f64(config.int_of(p, "browser.title.interval_ms"))
 	s.title_sep = strings.clone(config.string_of(p, "browser.title.separator"))
+	return
+}
+
+// The frame budget (ms): browser.status_bar.graph.budget_ms, else the frame period (pacing.odin).
+hud_budget :: proc() -> f32 { b, _, _ := hud_thresholds(hud.cfg, frame_budget_ms()); return b }
+
+// The warning / error thresholds (ms; 0 = none).
+hud_warn :: proc() -> f32 { _, w, _ := hud_thresholds(hud.cfg, frame_budget_ms()); return w }
+hud_bad :: proc() -> f32 { _, _, b := hud_thresholds(hud.cfg, frame_budget_ms()); return b }
+
+// Budget and thresholds from the settings: set values win, else the frame period and multiples of the budget.
+hud_thresholds :: proc(s: Hud_Settings, period_ms: f32) -> (budget, warn, bad: f32) {
+	budget = s.budget > 0 ? s.budget : period_ms
+	warn = s.warn > 0 ? s.warn : s.warn_budgets * budget
+	bad = s.bad > 0 ? s.bad : s.bad_budgets * budget
 	return
 }
 
@@ -187,10 +214,16 @@ Hud_Numbers :: struct {
 	at_ms:     f64,
 	frames:    int,     // frames in the window
 	fps:       f32,
-	cpu_mean, cpu_p95, cpu_max: f32,
-	gpu_mean, gpu_max: f32,
+	cpu_mean, cpu_p95, cpu_p99, cpu_max: f32,
+	gpu_mean, gpu_p95, gpu_p99, gpu_max: f32,
 	gpu_n:     int,     // frames of the window with a GPU time
 	over:      int,     // frames over the budget (CPU)
+	gpu_over:  int,     // frames whose GPU time is over the budget
+	budget:    f32,     // the budget the counts are against
+	shown:     int,     // frames seen reaching the screen (swap chain statistics)
+	missed:    int,     // refreshes frames of continuous runs came late for
+	lat_mean, lat_p95, lat_max: f32,   // input -> screen (ms), frames built from input
+	lat_n:     int,
 	series:    [Hud_Series]f32,   // mean of each phase
 	wasm_mean: f32,
 	full_restyles, partial_restyles: int,
@@ -221,6 +254,7 @@ Hud :: struct {
 	title_page:   string,              // the tab title it was made with (identity: the tab's own string)
 	title_url:    string,
 	panel_open:   bool,
+	shown:        [dynamic]Shown_Sample,  // frames that reached the screen, oldest first (hud_displayed)
 	mono:         font.Font_Id,
 	mono_tried:   bool,
 }
@@ -228,6 +262,22 @@ Hud :: struct {
 hud: Hud
 
 HUD_HISTORY_MIN :: 512   // samples kept at least: frames per second are counted on them
+
+// A frame on screen: when we learnt it, its input latency (< 0: built from no input) and the refreshes it missed.
+Shown_Sample :: struct { t_ms: f64, latency_ms: f32, missed: u32 }
+
+// A frame the swap chain reports on screen (pacer_end_frame): kept for the numbers of the rate window.
+hud_displayed :: proc(d: render.Displayed_Frame) {
+	lat: f32 = -1
+	if d.input._nsec != 0 && d.shown._nsec > d.input._nsec { lat = f32(f64(d.shown._nsec - d.input._nsec) / 1e6) }
+	now := ui.now_ms()
+	append(&hud.shown, Shown_Sample{t_ms = now, latency_ms = lat, missed = d.missed})
+	// keep the rate window (and a bound)
+	keep_from := 0
+	for keep_from < len(hud.shown) && (hud.shown[keep_from].t_ms < now - hud.cfg.window_ms - 1000 || len(hud.shown) - keep_from > 8192) { keep_from += 1 }
+	if keep_from > 0 { remove_range(&hud.shown, 0, keep_from) }
+	prof_displayed(d, lat)
+}
 
 hud_init :: proc(app: ^App) {
 	hud.cfg = hud_settings_from_prefs(&app.prefs)
@@ -265,6 +315,7 @@ hud_destroy :: proc(app: ^App) {
 	hud_settings_destroy(&hud.cfg)
 	ui.history_destroy(&hud.history)
 	delete(hud.details)
+	delete(hud.shown)
 	delete(hud.title_text)
 	hud = {}
 }
@@ -332,7 +383,7 @@ hud_sample :: proc(app: ^App, now: f64) {
 	a := &phase_clock.acc
 	d := h.cur
 	h.cur = {}
-	d.wait_ms = f32(a[.Wait])
+	d.wait_ms = f32(a[.Wait] + a[.Present])
 	d.gpu_index = -1
 	if n := render.gpu_next_frame(&app.r); n > h.gpu_seen { d.gpu_index = n - 1 }
 	h.gpu_seen = render.gpu_next_frame(&app.r)
@@ -351,7 +402,8 @@ hud_sample :: proc(app: ^App, now: f64) {
 		s.v[Hud_Series.Layout] = f32(a[.Layout])
 		s.v[Hud_Series.Paint] = f32(a[.Paint_Items])
 		s.v[Hud_Series.UI] = f32(a[.Build_UI] + max(a[.UI_Draw] - page_ms, 0))
-		s.v[Hud_Series.Submit] = f32(a[.Submit] + a[.Present])
+		// Present is waiting (for the compositor to take the previous frame), not work: like the swap chain wait, not counted
+		s.v[Hud_Series.Submit] = f32(a[.Submit])
 		h.details[h.serial % u64(len(h.details))] = d
 		h.last_frame_ms = now
 		hud_arm_settle()
@@ -400,7 +452,10 @@ hud_refresh :: proc(app: ^App, now: f64) {
 	n := &h.nums
 	n^ = {at_ms = now}
 	since := now - h.cfg.window_ms
+	budget := hud_budget()
+	n.budget = budget
 	cpu := make([dynamic]f32, 0, 256, context.temp_allocator)
+	gpu := make([dynamic]f32, 0, 256, context.temp_allocator)
 	oldest := now
 	for i := ui.history_len(&h.history) - 1; i >= 0; i -= 1 {
 		s := ui.history_at(&h.history, i)
@@ -410,9 +465,13 @@ hud_refresh :: proc(app: ^App, now: f64) {
 		append(&cpu, c)
 		n.cpu_mean += c
 		n.cpu_max = max(n.cpu_max, c)
-		if h.cfg.budget > 0 && c > h.cfg.budget { n.over += 1 }
+		if budget > 0 && c > budget { n.over += 1 }
 		for k in Hud_Series { n.series[k] += s.v[k] }
-		if g := s.v[Hud_Series.GPU]; g > 0 { n.gpu_mean += g; n.gpu_max = max(n.gpu_max, g); n.gpu_n += 1 }
+		if g := s.v[Hud_Series.GPU]; g > 0 {
+			append(&gpu, g)
+			n.gpu_mean += g; n.gpu_max = max(n.gpu_max, g); n.gpu_n += 1
+			if budget > 0 && g > budget { n.gpu_over += 1 }
+		}
 		if d := &h.details[s.tag % u64(len(h.details))]; d.serial == s.tag {
 			n.wasm_mean += d.wasm_ms
 			switch d.restyle {
@@ -429,16 +488,36 @@ hud_refresh :: proc(app: ^App, now: f64) {
 		n.cpu_mean /= f
 		n.wasm_mean /= f
 		for k in Hud_Series { n.series[k] /= f }
-		sorted := cpu[:]
-		sort_f32(sorted)
-		n.cpu_p95 = sorted[clamp(int(f32(len(sorted)) * 0.95 + 0.999) - 1, 0, len(sorted) - 1)]
+		n.cpu_p95, n.cpu_p99 = percentile(cpu[:], 0.95), percentile(cpu[:], 0.99)
 	}
-	if n.gpu_n > 0 { n.gpu_mean /= f32(n.gpu_n) }
+	if n.gpu_n > 0 {
+		n.gpu_mean /= f32(n.gpu_n)
+		n.gpu_p95, n.gpu_p99 = percentile(gpu[:], 0.95), percentile(gpu[:], 0.99)
+	}
+	// frames on screen in the window: missed refreshes, input latency
+	lat := make([dynamic]f32, 0, 256, context.temp_allocator)
+	for i := len(h.shown) - 1; i >= 0 && h.shown[i].t_ms >= since; i -= 1 {
+		sh := h.shown[i]
+		n.shown += 1
+		n.missed += int(sh.missed)
+		if sh.latency_ms >= 0 { append(&lat, sh.latency_ms); n.lat_mean += sh.latency_ms; n.lat_max = max(n.lat_max, sh.latency_ms) }
+	}
+	if n.lat_n = len(lat); n.lat_n > 0 {
+		n.lat_mean /= f32(n.lat_n)
+		n.lat_p95 = percentile(lat[:], 0.95)
+	}
 	// the window, or the frames the history still holds when they came faster than it keeps
 	span := h.cfg.window_ms
 	if n.frames == ui.history_capacity(&h.history) { span = max(now - oldest, 1) }
 	n.fps = f32(f64(n.frames) * 1000 / span)
 	n.working_set, n.private_bytes, n.mem_valid = process_memory()
+}
+
+// The `q` quantile (0..1) of `v` (sorted in place): the smallest value at least that share of them do not exceed.
+percentile :: proc(v: []f32, q: f32) -> f32 {
+	if len(v) == 0 { return 0 }
+	sort_f32(v)
+	return v[clamp(int(f32(len(v)) * q + 0.999) - 1, 0, len(v) - 1)]
 }
 
 @(private = "file")
@@ -487,6 +566,12 @@ fmt_ms :: proc(v: f32, comma := false) -> string {
 	return comma ? decimal_comma(s) : s
 }
 
+// A rate in hertz: whole when it is (180), else to the hundredth (59.94, 179.98).
+fmt_hz :: proc(v: f64, comma := false) -> string {
+	s := abs(v - math.round(v)) < 0.005 ? fmt.tprintf("%.0f", v) : fmt.tprintf("%.2f", v)
+	return comma ? decimal_comma(s) : s
+}
+
 fmt_bytes :: proc(n: int, comma := false) -> string {
 	s: string
 	switch {
@@ -511,7 +596,6 @@ fmt_count :: proc(n: int) -> string {
 	return strings.to_string(b)
 }
 
-@(private = "file")
 decimal_comma :: proc(s: string) -> string {
 	out, _ := strings.replace_all(s, ".", ",", context.temp_allocator)
 	return out

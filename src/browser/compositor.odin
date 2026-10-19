@@ -33,8 +33,8 @@ COMPOSITOR_PREFS := [?]config.Def{
 		description = "Most display items recorded into one picture. Smaller: finer culling and re-recording, more draw calls."},
 	{name = "render.compositor.max_chunks", kind = .Int, default = {i = 4096}, bounded = true, min = 16, max = 1_000_000,
 		description = "Most pictures per page. Past it pictures hold more items; if effect groups alone need more, the page is drawn directly."},
-	{name = "render.compositor.settle_frames", kind = .Int, default = {i = 3}, bounded = true, min = 0, max = 600, unit = "frames",
-		description = "After layout passes on nearby frames (a window resize, an animation of a layout property), the page is drawn directly until this many frames passed without one; then what changed is recorded. 0: record after every layout pass."},
+	{name = "render.compositor.settle_ms", kind = .Float, default = {f = 50}, bounded = true, min = 0, max = 10_000, unit = "ms",
+		description = "After layout passes on nearby frames (a window resize, an animation of a layout property), the page is drawn directly until this long passed without one (whatever the frame rate); then what changed is recorded. 0: record after every layout pass."},
 	{name = "render.compositor.memory_mb", kind = .Int, default = {i = 256}, bounded = true, min = 8, max = 16384, unit = "MB",
 		description = "GPU memory the retained pictures may use before the ones not drawn recently are evicted (they are uploaded again from their recording when they come back into view)."},
 }
@@ -44,11 +44,11 @@ Compositor_Settings :: struct {
 	enabled:     bool,
 	chunk_items: int,
 	max_chunks:  int,
-	settle_frames: int,
+	settle_ms:   f64,
 	memory:      int,   // bytes
 }
 
-@(private) compositor_settings := Compositor_Settings{enabled = true, chunk_items = 512, max_chunks = 4096, settle_frames = 3, memory = 256 << 20}
+@(private) compositor_settings := Compositor_Settings{enabled = true, chunk_items = 512, max_chunks = 4096, settle_ms = 50, memory = 256 << 20}
 
 @(private)
 compositor_settings_from_prefs :: proc(p: ^config.Prefs) -> Compositor_Settings {
@@ -56,7 +56,7 @@ compositor_settings_from_prefs :: proc(p: ^config.Prefs) -> Compositor_Settings 
 		enabled = config.bool_of(p, "render.compositor.enabled"),
 		chunk_items = int(config.int_of(p, "render.compositor.chunk_items")),
 		max_chunks = int(config.int_of(p, "render.compositor.max_chunks")),
-		settle_frames = int(config.int_of(p, "render.compositor.settle_frames")),
+		settle_ms = config.float_of(p, "render.compositor.settle_ms"),
 		memory = int(config.int_of(p, "render.compositor.memory_mb")) << 20,
 	}
 }
@@ -112,7 +112,8 @@ Comp :: struct {
 	floors:     [dynamic][dynamic]i32,   // per group: the clips pushed around it (paint_effects.odin, open_group)
 	group_units: [dynamic]int,
 	pool:       [dynamic]^draw.Picture,  // pictures of dropped chunks
-	frame, pass_frame: i64,              // frames painted; the last one with a new layout pass
+	frame:      i64,                     // frames painted
+	pass_ms:    f64,                     // frame time (pacer.frame_ms) of the last one with a new layout pass
 	last_passes: u64,                    // layout passes seen at the last frame
 	doc:        ^dom.Document,
 	dc:         ^draw.Context,               // the context the pictures were recorded with
@@ -124,7 +125,7 @@ Comp :: struct {
 comp_of :: proc(l: ^Layout) -> ^Comp {
 	if c, ok := comps[l]; ok { return c }
 	c := new(Comp)
-	c.pass_frame = -1 << 40
+	c.pass_ms = -1e18
 	comps[l] = c
 	return c
 }
@@ -666,15 +667,13 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 	c.frame += 1
 	passes := l.passes[.Full] + l.passes[.Incremental]
 	// laid out again frame after frame (a resize, an animation of a layout property): recording would cost more than
-	// drawing. Drawn directly until no layout pass came for settle_frames, then what changed is recorded.
-	settle := i64(compositor_settings.settle_frames)
-	busy := false
+	// drawing. Drawn directly until no layout pass came for settle_ms (a time, not a number of frames: the same at any
+	// frame rate), then what changed is recorded.
+	now := pacer.frame_ms
+	busy := now - c.pass_ms < compositor_settings.settle_ms
 	if passes != c.last_passes {
 		c.last_passes = passes
-		busy = c.frame - c.pass_frame <= settle
-		c.pass_frame = c.frame
-	} else {
-		busy = c.frame - c.pass_frame <= settle
+		c.pass_ms = now
 	}
 	if passes != c.seen_passes || c.items_len != len(l.items) || c.chunk_items != max(compositor_settings.chunk_items, (len(l.items) + compositor_settings.max_chunks - 1) / max(compositor_settings.max_chunks, 1)) {
 		if busy { return false }

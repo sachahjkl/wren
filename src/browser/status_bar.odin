@@ -154,9 +154,10 @@ status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 			colors := hud_series_colors()
 			ui.next({width = ui.px(em * hud.cfg.graph_em), height = ui.px(ui.dense(em * 1.25))})
 			flat := transmute([len(Hud_Series)]draw.Color)colors
+			budget := hud_budget()
 			opts := ui.Frame_Graph_Opts{
-				colors = flat[:], series = len(Hud_Series), bars = hud.cfg.samples, budget = hud.cfg.budget,
-				scale = hud.cfg.scale, max_scale = hud.cfg.max_scale, warn = hud.cfg.warn, bad = hud.cfg.bad,
+				colors = flat[:], series = len(Hud_Series), bars = hud.cfg.samples, budget = hud.cfg.budget_line ? budget : 0,
+				scale = hud.cfg.scale > 0 ? hud.cfg.scale : budget, max_scale = hud.cfg.max_scale, warn = hud_warn(), bad = hud_bad(),
 			}
 			res := ui.frame_graph("###sb_graph", &hud.history, opts)
 			graph_box = res.box
@@ -168,8 +169,8 @@ status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 		case .Cpu:
 			text := n.frames > 0 ? fmt.tprintf("CPU %s ms###sb_cpu", fmt_ms(n.cpu_mean, c)) : "CPU -- ms###sb_cpu"
 			tone := "weak"
-			if hud.cfg.bad > 0 && n.cpu_mean > hud.cfg.bad { tone = "bad" } else if hud.cfg.warn > 0 && n.cpu_mean > hud.cfg.warn { tone = "warn" }
-			tip(ui.status_item(text, tone = tone, mono = true), "Work of the browser per frame, mean (waiting for the screen not counted)")
+			if bad := hud_bad(); bad > 0 && n.cpu_mean > bad { tone = "bad" } else if warn := hud_warn(); warn > 0 && n.cpu_mean > warn { tone = "warn" }
+			tip(ui.status_item(text, tone = tone, mono = true), fmt.tprintf("Work of the browser per frame, mean (waiting for the screen not counted). Budget %s ms (%s Hz)", fmt_ms(hud_budget(), c), fmt_hz(pacer.hz, c)))
 		case .Gpu:
 			text := "GPU n/a###sb_gpu"
 			if render.gpu_timing_enabled(&app.r) { text = n.gpu_n > 0 ? fmt.tprintf("GPU %s ms###sb_gpu", fmt_ms(n.gpu_mean, c)) : "GPU -- ms###sb_gpu" }
@@ -200,7 +201,8 @@ graph_tooltip :: proc(index: int, colors: [Hud_Series]draw.Color) {
 			ui.stat_row(fmt.tprintf("tt_%d", int(k)), HUD_SERIES_NAMES[k], value, w, swatch_color = colors[k])
 		}
 		total := ui.sample_total(s, CPU_SERIES)
-		tone := hud.cfg.bad > 0 && total > hud.cfg.bad ? "bad" : hud.cfg.warn > 0 && total > hud.cfg.warn ? "warn" : ""
+		bad, warn := hud_bad(), hud_warn()
+		tone := bad > 0 && total > bad ? "bad" : warn > 0 && total > warn ? "warn" : ""
 		ui.stat_row("tt_cpu", "CPU total", fmt.tprintf("%s ms", fmt_ms(total, c)), w, tone = tone)
 		if d := &hud.details[s.tag % u64(len(hud.details))]; d.serial == s.tag {
 			if d.restyle != .None { ui.stat_row("tt_rs", "Restyle", restyle_text(d), w, mono = false) }
@@ -243,7 +245,7 @@ recent_detail :: proc(pick: proc(d: ^Frame_Detail) -> bool) -> ^Frame_Detail {
 	return nil
 }
 
-Panel_Section :: enum u8 { Frames, Phases, Style, Layout, Compositor, Wasm, Memory, Build }
+Panel_Section :: enum u8 { Frames, Display, Phases, Style, Layout, Compositor, Wasm, Memory, Build }
 
 // Columns of label / value rows above the graph, in the status bar's text size: three when the window is wide enough,
 // else two, else one.
@@ -259,9 +261,9 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 		w := col * f32(ncols) + gap * f32(ncols - 1)
 		layout: [][]Panel_Section
 		switch ncols {
-		case 3: layout = {{.Frames, .Phases}, {.Style, .Layout, .Compositor}, {.Wasm, .Memory, .Build}}
-		case 2: layout = {{.Frames, .Phases, .Style, .Layout}, {.Compositor, .Wasm, .Memory, .Build}}
-		case:   layout = {{.Frames, .Phases, .Style, .Layout, .Compositor, .Wasm, .Memory, .Build}}
+		case 3: layout = {{.Frames, .Display}, {.Phases, .Style, .Layout}, {.Compositor, .Wasm, .Memory, .Build}}
+		case 2: layout = {{.Frames, .Display, .Phases, .Style}, {.Layout, .Compositor, .Wasm, .Memory, .Build}}
+		case:   layout = {{.Frames, .Display, .Phases, .Style, .Layout, .Compositor, .Wasm, .Memory, .Build}}
 		}
 		if ui.popover(PANEL_ID, anchor, w, .Above, align_right = true) {
 			ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.1))})
@@ -298,15 +300,40 @@ panel_section :: proc(app: ^App, t: ^Tab, section: Panel_Section, w: f32) {
 	c := hud.cfg.comma
 	switch section {
 	case .Frames:
-		ui.stat_heading("frames", "FRAMES: MEAN / P95 / MAX", w)
-		ui.stat_row("fps", "Per second", fmt.tprintf("%.0f", n.fps), w)
-		ui.stat_row("cpu", "CPU ms", n.frames > 0 ? fmt.tprintf("%s / %s / %s", fmt_ms(n.cpu_mean, c), fmt_ms(n.cpu_p95, c), fmt_ms(n.cpu_max, c)) : "--", w)
+		budget := n.budget > 0 ? n.budget : hud_budget()
+		ui.stat_heading("frames", "FRAMES: MEAN / P95 / P99", w)
+		ui.stat_row("fps", "Per second", fmt.tprintf("%.0f of %s", n.fps, fmt_hz(pacer.hz, c)), w)
+		bt := fmt.tprintf("%.2f", budget)
+		ui.stat_row("budget", "Budget ms", c ? decimal_comma(bt) : bt, w)
+		ui.stat_row("cpu", "CPU ms", n.frames > 0 ? fmt.tprintf("%s / %s / %s", fmt_ms(n.cpu_mean, c), fmt_ms(n.cpu_p95, c), fmt_ms(n.cpu_p99, c)) : "--", w,
+			tone = n.frames > 0 && n.cpu_p99 > budget ? "warn" : "")
 		gpu := "not measured"
-		if render.gpu_timing_enabled(&app.r) { gpu = n.gpu_n > 0 ? fmt.tprintf("%s / -- / %s", fmt_ms(n.gpu_mean, c), fmt_ms(n.gpu_max, c)) : "--" }
-		ui.stat_row("gpu", "GPU ms", gpu, w)
-		if hud.cfg.budget > 0 {
-			ui.stat_row("over", fmt.tprintf("Over %s ms", fmt_ms(hud.cfg.budget, c)), fmt.tprintf("%d of %d", n.over, n.frames), w, tone = n.over > 0 ? "warn" : "")
+		if render.gpu_timing_enabled(&app.r) { gpu = n.gpu_n > 0 ? fmt.tprintf("%s / %s / %s", fmt_ms(n.gpu_mean, c), fmt_ms(n.gpu_p95, c), fmt_ms(n.gpu_p99, c)) : "--" }
+		ui.stat_row("gpu", "GPU ms", gpu, w, tone = n.gpu_n > 0 && n.gpu_p99 > budget ? "warn" : "")
+		ui.stat_row("max", "Longest, CPU / GPU", n.frames > 0 ? fmt.tprintf("%s / %s", fmt_ms(n.cpu_max, c), n.gpu_n > 0 ? fmt_ms(n.gpu_max, c) : "--") : "--", w)
+		ui.stat_row("over", "Over budget", fmt.tprintf("%d + %d of %d", n.over, n.gpu_over, n.frames), w, tone = n.over + n.gpu_over > 0 ? "warn" : "")
+		ui.stat_row("missed", "Missed refreshes", n.shown > 0 ? fmt.tprintf("%d of %d", n.missed, n.shown) : "--", w, tone = n.missed > 0 ? "bad" : "")
+		ui.stat_row("lat", "Input to screen", n.lat_n > 0 ? fmt.tprintf("%s / %s ms", fmt_ms(n.lat_mean, c), fmt_ms(n.lat_p95, c)) : "--", w)
+	case .Display:
+		ui.stat_heading("display", "DISPLAY", w)
+		d := pacer.display
+		src := "default"
+		switch d.source {
+		case .Display_Config: src = "exact"
+		case .Mode:           src = "mode"
+		case .Dwm:            src = "DWM"
+		case .Default:        src = "assumed"
 		}
+		ui.stat_row("d_hz", "Monitor", fmt.tprintf("%s Hz (%s)", fmt_hz(d.hz, c), src), w)
+		measured := render.measured_refresh_hz(&app.r)
+		ui.stat_row("d_meas", "Measured vblanks", measured > 0 ? fmt.tprintf("%s Hz", fmt_hz(measured, c)) : "--", w)
+		how := pacer.timed ? "timed" : pacer.interval > 1 ? fmt.tprintf("every %d refreshes", pacer.interval) : "every refresh"
+		ui.stat_row("d_target", "Target", fmt.tprintf("%s Hz, %s", fmt_hz(pacer.hz, c), how), w, mono = false)
+		mode := pacer.tearing ? "tearing (variable refresh)" : "vsync"
+		if pacer.cfg.mode == .Tearing && !pacer.tearing { mode = "vsync (no tearing support)" }
+		ui.stat_row("d_mode", "Present", mode, w, mono = false)
+		_, shown_total, missed_total := render.present_totals(&app.r)
+		ui.stat_row("d_tot", "Shown / missed, total", fmt.tprintf("%d / %d", shown_total, missed_total), w)
 	case .Phases:
 		colors := hud_series_colors()
 		ui.stat_heading("phases", "PHASES, MEAN MS", w)

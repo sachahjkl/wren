@@ -48,13 +48,15 @@ keyboard_scroll :: proc(app: ^App, t: ^Tab, start: base.Handle, k: Key_Scroll) -
 		}
 		return 0
 	}
+	// smooth_scroll.odin: animated, from where the scroller is already going (held keys add up)
+	dur := k == .Line_Up || k == .Line_Down || k == .Line_Left || k == .Line_Right ? smooth_cfg.key_ms : smooth_cfg.page_ms
 	d := t.page.doc
 	viewport := draw_size(app)
 	for n := start; n != base.NIL_HANDLE; {
 		node := dom.get(d, n)
 		if node == nil { break }
 		if limit, ok := lay.scroll_max(&t.layout, n); ok {
-			cur, _ := lay.scroll_of(&t.layout, n)
+			cur := smooth_pending(app, t, n)
 			port: f32
 			if r, rok := lay.box_of(&t.layout, n, viewport, t.scroll); rok {
 				port = vertical ? r.padding.max.y - r.padding.min.y : r.padding.max.x - r.padding.min.x
@@ -62,8 +64,7 @@ keyboard_scroll :: proc(app: ^App, t: ^Tab, start: base.Handle, k: Key_Scroll) -
 			next := cur
 			if vertical { next.y = clamp(cur.y + amount(k, line, port, cur.y, limit.y, app.cfg.key_page_fraction), 0, limit.y) } else { next.x = clamp(cur.x + amount(k, line, port, cur.x, limit.x, app.cfg.key_page_fraction), 0, limit.x) }
 			if abs(next.x - cur.x) >= 0.5 || abs(next.y - cur.y) >= 0.5 {
-				lay.set_scroll(&t.layout, n, next)
-				app.frames_requested = max(app.frames_requested, 2)
+				smooth_scroll_to(app, t, n, next, dur)
 				return true
 			}
 		}
@@ -71,9 +72,9 @@ keyboard_scroll :: proc(app: ^App, t: ^Tab, start: base.Handle, k: Key_Scroll) -
 	}
 	// the document scrolls vertically only (page_draw clamps the offset)
 	if vertical {
-		t.scroll += amount(k, line, viewport.y, t.scroll, max(t.layout.height - viewport.y, 0), app.cfg.key_page_fraction)
-		t.scroll = clamp(t.scroll, 0, max(t.layout.height - viewport.y, 0))
-		app.frames_requested = max(app.frames_requested, 2)
+		cur := smooth_pending(app, t, base.NIL_HANDLE).y
+		limit := max(t.layout.height - viewport.y, 0)
+		smooth_scroll_to(app, t, base.NIL_HANDLE, {0, clamp(cur + amount(k, line, viewport.y, cur, limit, app.cfg.key_page_fraction), 0, limit)}, dur)
 	}
 	return true
 }

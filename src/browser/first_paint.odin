@@ -251,7 +251,7 @@ loading_bar :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect) {
 	draw.push_clip(dc, r)
 	draw.rect(dc, {{x, r.min.y}, {x + seg, r.min.y + h}}, accent)
 	draw.pop_clip(dc)
-	app.frames_requested = max(app.frames_requested, 1)
+	app.frames_requested = max(app.frames_requested, 2)
 }
 
 // The tab is loading a document that has not painted yet.

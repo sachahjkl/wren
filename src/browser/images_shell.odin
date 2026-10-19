@@ -242,7 +242,7 @@ images_after_paint :: proc(app: ^App) {
 		shell.wake = host.set_timer(&app.loop, delay, 0, proc(data: rawptr) {
 			shell.wake = base.NIL_HANDLE
 			a := (^App)(data)
-			a.frames_requested = max(a.frames_requested, 1)
+			a.frames_requested = max(a.frames_requested, 2)
 		}, app)
 	}
 	enforce_texture_budget(app)
