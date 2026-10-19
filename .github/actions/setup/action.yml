@@ -1,0 +1,77 @@
+name: Set up the Wren toolchain
+description: >-
+  Odin (pinned release, SHA-256 checked), Rust stable with llvm-tools, Go, the MSVC environment, and the caches of
+  what build.bat fetches or builds (Wasmtime, Lexbor, the native/media library, NASM, the cargo registry).
+
+runs:
+  using: composite
+  steps:
+    - name: Odin dev-2026-10
+      shell: pwsh
+      env:
+        # odin version: dev-2026-10-nightly:84bc3fc (the tag dev-2026-10 is that commit)
+        ODIN_TAG: dev-2026-10
+        ODIN_SHA256: b6b2e426a8b6f147b74ec7e18bef8df27cf40fe16193159df7ca09a0cc0c2011
+      run: |
+        $zip = Join-Path $env:RUNNER_TEMP "odin-$env:ODIN_TAG.zip"
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest "https://github.com/odin-lang/Odin/releases/download/$env:ODIN_TAG/odin-windows-amd64-$env:ODIN_TAG.zip" -OutFile $zip
+        $got = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+        if ($got -ne $env:ODIN_SHA256) { throw "Odin archive SHA-256 mismatch: $got" }
+        $dir = Join-Path $env:RUNNER_TEMP 'odin'
+        Expand-Archive $zip -DestinationPath $dir -Force
+        Add-Content $env:GITHUB_PATH (Join-Path $dir 'dist')
+        & (Join-Path $dir 'dist\odin.exe') version
+
+    - name: Rust stable + llvm-tools
+      shell: pwsh
+      run: |
+        rustup toolchain install stable --profile minimal --component llvm-tools --target x86_64-pc-windows-msvc
+        rustup default stable
+        rustc --version
+
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: tools/testserver/go.mod
+        cache: false
+
+    - uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Cache keys
+      id: keys
+      shell: pwsh
+      run: |
+        "lexbor=$(git -C ext/lexbor rev-parse HEAD)" >> $env:GITHUB_OUTPUT
+
+    - name: Cache Wasmtime
+      uses: actions/cache@v4
+      with:
+        path: build/wasmtime
+        key: wasmtime-${{ hashFiles('tools/fetch_wasmtime.ps1') }}
+
+    - name: Cache Lexbor
+      uses: actions/cache@v4
+      with:
+        path: |
+          build/lexbor/lexbor.lib
+          build/lexbor/STAMP
+        key: lexbor-${{ steps.keys.outputs.lexbor }}-${{ hashFiles('src/shim/**', 'tools/build_lexbor.ps1') }}
+
+    - name: Cache native/media and NASM
+      uses: actions/cache@v4
+      with:
+        path: |
+          build/media/wren_media.lib
+          build/media/STAMP
+          build/tools
+        key: media-${{ hashFiles('native/media/src/**', 'native/media/Cargo.toml', 'native/media/Cargo.lock', 'tools/build_media.ps1') }}
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+        key: cargo-registry-${{ hashFiles('native/media/Cargo.lock') }}

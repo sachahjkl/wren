@@ -1,15 +1,20 @@
 # Runs every test of the project: unit tests, the end-to-end page test, the network stress script.
-#   powershell -File tools\test_all.ps1 [-Quick]
-#   (-Quick skips the long network stress)
-param([switch]$Quick)
+#   powershell -File tools\test_all.ps1 [-Quick] [-CI]
+#   (-Quick skips the long network stress; -CI, for continuous integration runners: -Quick, end-to-end timeouts x3 for
+#   slow shared machines, the whole output of a failed step instead of its last lines. Nothing here opens a window or
+#   reaches the internet: the end-to-end tests use the local test server on 127.0.0.1, the pixel tests WARP.)
+param([switch]$Quick, [switch]$CI)
+if ($CI) { $Quick = $true }
+$slow = if ($CI) { 3 } else { 1 }
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 $failed = 0
 function Step($name, [scriptblock]$body) {
+    $t0 = Get-Date
     $out = & $body 2>&1 | Out-String
     $ok = $LASTEXITCODE -eq 0 -or $out -match 'All tests were successful'
-    "{0} {1}" -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $name
-    if (-not $ok) { $script:failed++; ($out -split "`n" | Select-Object -Last 15) -join "`n" }
+    "{0} {1}{2}" -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $name, $(if ($CI) { " ($([int]((Get-Date) - $t0).TotalSeconds) s)" } else { '' })
+    if (-not $ok) { $script:failed++; if ($CI) { $out } else { ($out -split "`n" | Select-Object -Last 15) -join "`n" } }
 }
 
 New-Item -ItemType Directory -Force build | Out-Null
@@ -48,13 +53,13 @@ Start-Sleep -Seconds 1
 try {
     Step 'network policy test (CORS, cookies, redirects, CSP, schemes)' {
         $p = Start-Process .\build\policytest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\pol.txt
-        if (-not $p.WaitForExit(120000)) { $p.Kill(); Get-Content build\pol.txt; $global:LASTEXITCODE = 1; return }
+        if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\pol.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\pol.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'end-to-end page test' {
         $p = Start-Process .\build\pagetest.exe -ArgumentList 'build\e2e.wasm','examples\site\index.html','examples\site\counter.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\pt.txt
-        if (-not $p.WaitForExit(90000)) { $p.Kill(); Get-Content build\pt.txt; $global:LASTEXITCODE = 1; return }
+        if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\pt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\pt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
@@ -64,19 +69,19 @@ try {
         odin build src/tools/netapitest -collection:wb=src -vet -out:build/netapitest.exe
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\netapitest.exe -ArgumentList 'build\netapitest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\nat.txt
-        if (-not $p.WaitForExit(180000)) { $p.Kill(); Get-Content build\nat.txt; $global:LASTEXITCODE = 1; return }
+        if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\nat.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\nat.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'web platform API test (timers, rAF, abort, fetch streams, encoding, crypto, storage, URL, history)' {
         $p = Start-Process .\build\webapitest.exe -ArgumentList 'build\webapitest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\wt.txt
-        if (-not $p.WaitForExit(90000)) { $p.Kill(); Get-Content build\wt.txt; $global:LASTEXITCODE = 1; return }
+        if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\wt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\wt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'forms end-to-end test (controls, validation, FormData, submission)' {
         $p = Start-Process .\build\formstest.exe -ArgumentList 'examples\site\forms.html','examples\site\formstest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\ft.txt
-        if (-not $p.WaitForExit(90000)) { $p.Kill(); Get-Content build\ft.txt; $global:LASTEXITCODE = 1; return }
+        if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\ft.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\ft.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
@@ -88,7 +93,7 @@ try {
         odin build src/tools/workerstest -collection:wb=src -vet -out:build/workerstest.exe
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\workerstest.exe -ArgumentList 'build\workerstest.wasm','examples\site\workerstest_worker.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\wkt.txt
-        if (-not $p.WaitForExit(180000)) { $p.Kill(); Get-Content build\wkt.txt; $global:LASTEXITCODE = 1; return }
+        if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\wkt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\wkt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
@@ -96,7 +101,7 @@ try {
         odin build src/tools/styletest -collection:wb=src -vet -out:build/styletest.exe 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\styletest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\stt.txt
-        if (-not $p.WaitForExit(60000)) { $p.Kill(); Get-Content build\stt.txt; $global:LASTEXITCODE = 1; return }
+        if (-not $p.WaitForExit(60000 * $slow)) { $p.Kill(); Get-Content build\stt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\stt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
@@ -104,7 +109,7 @@ try {
         odin build src/tools/mediatest -collection:wb=src -vet -out:build/mediatest.exe
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\mediatest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\mdt.txt
-        if (-not $p.WaitForExit(90000)) { $p.Kill(); Get-Content build\mdt.txt; $global:LASTEXITCODE = 1; return }
+        if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\mdt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\mdt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
@@ -114,7 +119,7 @@ try {
         odin build src/tools/imagestest -collection:wb=src -vet -out:build/imagestest.exe
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\imagestest.exe -ArgumentList 'build\imagestest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\imt.txt
-        if (-not $p.WaitForExit(180000)) { $p.Kill(); Get-Content build\imt.txt; $global:LASTEXITCODE = 1; return }
+        if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\imt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\imt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }

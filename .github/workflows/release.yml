@@ -1,0 +1,60 @@
+name: Release
+
+# A version tag vX.Y.Z (annotated: git tag -a vX.Y.Z -m "Wren X.Y.Z") builds the release package and publishes it.
+# The tag must match APP_VERSION of src/browser/about.odin.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2025
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0   # the release notes are made from the history since the previous tag
+
+      - uses: ./.github/actions/setup
+
+      - name: Check the version
+        id: version
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $m = Select-String -Path src\browser\about.odin -Pattern 'APP_VERSION\s*::\s*"([^"]+)"'
+          $v = $m.Matches[0].Groups[1].Value
+          if ("v$v" -ne $tag) { throw "tag $tag does not match APP_VERSION $v (src/browser/about.odin)" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Build (release)
+        run: |
+          cmd /c build.bat
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Tests (tools\test_all.ps1 -CI)
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Package
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1 -Version ${{ steps.version.outputs.version }}
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          powershell -NoProfile -ExecutionPolicy Bypass -File tools\release_notes.ps1 -Tag ${{ github.ref_name }} -Out build\dist\NOTES.md
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = '${{ steps.version.outputs.version }}'
+          $tag = '${{ github.ref_name }}'
+          gh release create $tag "build/dist/wren-$v-windows-x64.zip" build/dist/SHA256SUMS.txt --title "Wren $v" --notes-file build/dist/NOTES.md --verify-tag
+          if ($LASTEXITCODE -ne 0) { exit 1 }

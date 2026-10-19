@@ -5,6 +5,7 @@
 :: and the Wasmtime C API, a pinned release checked by SHA-256 -> build\wasmtime (tools\fetch_wasmtime.ps1, fetched once).
 :: The built-in image decoders (native\media, Rust: resvg, image-webp, zenavif-parse, rav1d, qcms; crates pinned by Cargo.lock,
 :: NASM by SHA-256) -> build\media\wren_media.lib (tools\build_media.ps1, rebuilt only when its sources change).
+:: Lexbor (ext\lexbor) and the C shims (src\shim) -> build\lexbor\lexbor.lib (tools\build_lexbor.ps1, MSVC, same rule).
 setlocal
 cd /D "%~dp0"
 if exist ext\gui_toolkit\ui goto have_toolkit
@@ -12,6 +13,7 @@ echo ext\gui_toolkit is empty: run  git submodule update --init
 exit /b 1
 :have_toolkit
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\fetch_wasmtime.ps1 >nul || (echo fetching Wasmtime failed & exit /b 1)
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_lexbor.ps1 >nul || (echo building Lexbor failed: run tools\build_lexbor.ps1 & exit /b 1)
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_media.ps1 >nul || (echo building the image decoders failed: run tools\build_media.ps1 & exit /b 1)
 if not exist build mkdir build
 :: the web API from its description (api\*.widl): host bindings, guest SDK, docs, conformance tests (only what changed)

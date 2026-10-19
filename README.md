@@ -1,158 +1,326 @@
-# wasm_browser
+<p align="center"><img src="assets/logo_256.png" width="128" alt="Wren logo"></p>
 
-A browser where WebAssembly is the only execution engine. No JavaScript, no glue layer: web APIs are Wasm imports
-resolved by the browser itself. Written in Odin on top of [gui_toolkit](https://github.com/sachahjkl/gui_toolkit);
-Windows first, platform services used wherever they exist (WinHTTP for HTTP/TLS, D3D11 for drawing).
+<h1 align="center">Wren</h1>
 
-    build.bat                      # build\browser.exe  (fetches Wasmtime, builds Lexbor and the image decoders on first use)
-    build\browser.exe http://127.0.0.1:8765/site/index.html      (run build\testserver.exe first), or a file:/// URL
-    powershell -File tools\test_all.ps1 [-Quick]
+<p align="center">
+<a href="https://github.com/sachahjkl/wren/actions/workflows/ci.yml"><img src="https://github.com/sachahjkl/wren/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+<a href="https://github.com/sachahjkl/wren/releases/latest"><img src="https://img.shields.io/github/v/release/sachahjkl/wren?color=ffb84d" alt="latest release"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-1d57ba" alt="MIT license"></a>
+<img src="https://img.shields.io/badge/platform-Windows%20x64-555" alt="Windows x64">
+</p>
 
-Needs: Odin (`dev-2026-10`), Visual Studio 2022 (MSVC, for Lexbor), Rust (rustup, stable >= 1.93, for the image decoders; its
-`llvm-tools` component is added on first build), Go (only for the test server). Dependencies are pinned submodules:
-`ext/gui_toolkit` and `ext/lexbor` (v3.0.1), plus the Wasmtime C API (see *Wasm engine*). The Public Suffix List is embedded
-(`tools/update_psl.ps1` refreshes it).
+<p align="center"><b>A small web browser that runs WebAssembly, and nothing else.</b></p>
 
-## Wasm engine
+Wren is a browser written in [Odin](https://odin-lang.org) where **WebAssembly is the only execution engine**. There
+is no JavaScript engine and no JS glue: a page names its modules with `<script type="application/wasm" src="…">`, and
+the web APIs those modules call (DOM, events, timers, fetch, storage, workers, WebSocket…) are **Wasm imports
+resolved by the browser itself**. Every import is described once, in a Web IDL dialect (`api/*.widl`), and a generator
+produces the host bindings, the guest SDK, the documentation and the conformance tests from it.
 
-Wasmtime, the official C API release **v49.0.3**, downloaded by `tools\fetch_wasmtime.ps1` (version and SHA-256 pinned
-in the script) into `build\wasmtime`; the static `wasmtime.lib` is linked into `browser.exe` (no DLL; it adds about
-12 MB). It needs `ws2_32 advapi32 userenv ntdll shell32 ole32 bcrypt kernel32` and the dynamic CRT
-(`msvcrt ucrt vcruntime`), declared in `src/wasm/wasmtime.odin`. Modules are compiled by Cranelift (or Winch,
-`wasm.wasmtime.compiler`), kept in a memory cache and in an HMAC-authenticated disk cache of the profile (`wasm-cache`),
-and every call from the host has a wall-clock deadline (`wasm.max_call_ms`, epoch interruption; with
-`wasm.wasmtime.fuel`, also an instruction budget). `src/tools/wasmbench` compares the compiler configurations and
-measures host calls.
+Everything else is a real browser engine: HTML parsed by Lexbor, a CSS engine with the modern cascade, block, inline,
+flex, grid and table layout, incremental and parallel, painted by a retained GPU compositor on Direct3D 11, with text on
+DirectWrite. The window and its chrome are built with [gui_toolkit](https://github.com/sachahjkl/gui_toolkit), an
+immediate-mode UI toolkit by the same author. Windows first: the platform does what it does best (WinHTTP for HTTP and
+TLS, WIC for images, DirectWrite for text, BCrypt for crypto).
 
-## The web API: one description, everything generated
+![Wren rendering the CSS effects demo: filters, backdrop-filter, mix-blend-mode](docs/screenshots/css-effects.png)
 
-Every Wasm import of the browser is described once, in `api/*.widl` (a dialect of Web IDL: modules, functions, typed
-handles, enums, flags, structs, callbacks, `raises`, `[Exposed=Window|Worker]`, documentation). `src/tools/bindgen`
-generates from it, deterministically:
+> **Status: prototype.** Wren is a research project, not a daily browser. It loads and draws many real sites well,
+> but those sites' JavaScript never runs, and it is Windows-only. See [Status and limits](#status-and-limits).
 
-- the host side, `src/page/api_generated.odin`: one trampoline per import, defined directly on the Wasmtime linker,
-  which checks every address against the module's memory, converts strings (UTF-8 checked), handles (looked up by
-  kind), enums, flags and structs, and calls the implementation (`bindings_*.odin`) with Odin values. The expected
-  prototype of each implementation is written above its trampoline: a missing or mistyped one does not compile;
-- the Odin guest SDK, `sdk/odin/web/<module>.odin` (distinct handle types, `string` / `[]u8` / `Maybe`, `(T, Error)`
-  results, `F` / `F_len` / `F_alloc` for strings of unknown size);
-- the documentation, `docs/api/` (with the ABI);
-- conformance tests: `examples/apiconformance` and `src/tools/apiconformance/cases_generated.odin` (bad addresses, bad
-  UTF-8, dead handles, enums out of range, buffers too small, for every function).
+## Contents
 
-`build.bat` regenerates what changed; `test_all.ps1` fails when a generated file is out of date (`bindgen -check`).
-Imports take 64-bit addresses in a module whose memory 0 is memory64 (`wasm.features.memory64`).
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Try it](#try-it)
+- [Building from source](#building-from-source)
+- [Tests](#tests)
+- [Writing a page module](#writing-a-page-module)
+- [Project layout](#project-layout)
+- [Status and limits](#status-and-limits)
+- [Releases](#releases)
+- [License and credits](#license-and-credits)
 
-## Image decoders
+## Screenshots
 
-`src/images` decodes on its own threads, never on the interface thread. PNG, JPEG, GIF, BMP, ICO and TIFF go through the
-platform (WIC; HEIF too when the Store codec is installed). WebP, AVIF and SVG are always available, whatever Windows has
-installed, through a Rust static library built by `tools\build_media.ps1` from `native\media` (rebuilt only when its
-sources change; about 6 MB added to `browser.exe`, 1.5 min the first time):
-
-- **SVG**: resvg 0.48.1 (usvg + tiny-skia; text with the system fonts through fontdb). Rendered at the size it is shown at
-  (device pixels), in the secure static mode of SVG images (no external resource, script or animation); hostile documents
-  are bounded by `images.svg.*` (nodes, depth, entity and `<use>` expansion, rendering cost). Inline `<svg>` elements of
-  HTML documents are drawn by the same renderer (`src/page/inline_svg.odin`).
-- **WebP**: image-webp 0.2.4 (pure safe Rust: lossy, lossless, alpha, animation).
-- **AVIF**: zenavif-parse 0.6.2 (container: alpha, grids, sequences, colr / irot / imir / clap) + rav1d 1.1.0 (the Rust
-  port of dav1d, with dav1d's assembly: NASM 2.16.03 is fetched and checked by SHA-256 by the script).
-- **Colour**: qcms 0.3.0 (Firefox's): ICC profiles of every format, AVIF's CICP code points and EXIF's Adobe RGB to sRGB
-  (`images.color_management`).
-
-Every crate is pinned by exact version in `native\media\Cargo.toml` and by SHA-256 in `Cargo.lock` (`--locked`). Both
-Rust libraries (Wasmtime's and this one) carry a standard library: the script renames the one duplicated unmangled symbol
-(`rust_eh_personality`, unused on MSVC) in ours with `llvm-objcopy`. `tools\gen_media_fixtures.ps1` (ImageMagick, FFmpeg)
-made the AVIF / WebP test files of `examples\site\media`; `src\tools\mediabench` times decodes.
-
-## Layout
-
-| Path | Role |
+| | |
 |---|---|
-| `src/base` | `Scope` (ownership tree with cleanups) and `Pool` (generational handles, stable pointers) |
-| `src/host` | the event loop (thread-safe posts with coalesced wakes, timers) and a blocking-work pool (file reads) |
-| `src/net` | transport: HTTP(S) on WinHTTP async, per-host/global queues, back-pressure, caps, cancellation. *No policy.* |
-| `src/url` | WHATWG URLs (Lexbor), origins, sites, Public Suffix List, secure contexts |
-| `src/http` | header lists, forbidden / CORS-safelisted names and methods, MIME types |
-| `src/cookies` | the cookie jar (RFC 6265bis): parsing, storage model, SameSite, prefixes, eviction, persistence |
-| `src/csp` | Content Security Policy 3: parsing, source matching, fallbacks, nonces, report-only |
-| `src/fetch` | **the policy layer** (Fetch Standard): modes, CORS + preflight cache, credentials, redirects, HSTS, referrer policy, mixed content, schemes (http, file, data), MIME checks, response filtering |
-| `src/wasm` | the Wasm engine (Wasmtime): instances, host functions on the linker with address checks (memory64 too), deadlines, limits, compiled-code caches |
-| `src/html` | HTML5 parsing (Lexbor through a C shim), charset sniffing and decoding, `<title>`, Wasm script discovery |
-| `src/dom` | document tree, attributes, listeners, capture/target/bubble dispatch |
-| `src/page` | one document = DOM + its Wasm instances + its requests and timers + its Environment (origin, CSP, referrer policy); the implementations of the imports (`bindings*.odin`) behind the generated trampolines (`api_generated.odin`) |
-| `src/browser` | the shell: tabs, navigation, address bar, console strip, placeholder painter (`render.odin`) |
-| `src/shim` | C shims over Lexbor (HTML events, URL parser, encodings) |
-| `api/` | the description of the web API (`*.widl`), source of the bindings, SDK, docs and conformance tests (`src/tools/bindgen`) |
-| `sdk/odin/web` | the generated guest SDK for Odin (`freestanding_wasm32`) |
-| `docs/api` | the generated API reference |
-| `examples/` | guest pages: `hello`, `e2e` (DOM, events, timers, fetch, cookies, origin), `counter` + `site/` (an HTML page that names its module) |
-| `src/images` | image decoding on threads: WIC, and the built-in SVG / WebP / AVIF decoders and colour management (`native/media`, Rust) |
-| `native/media` | the Rust static library of the built-in image decoders (resvg, image-webp, zenavif-parse, rav1d, qcms) |
-| `tools/` | Wasmtime fetch, Lexbor and image decoder builds, test server (Go), stress, test, perf and screenshot scripts |
+| ![The start page](docs/screenshots/home.png) | ![A page whose behaviour is a Wasm module](docs/screenshots/wasm-counter.png) |
+| **about:home**, the start page: an ordinary document, styled by the engine | **A page with no JavaScript**: the counter and the clock are an Odin module compiled to Wasm |
+| ![CSS transforms](docs/screenshots/css-transforms.png) | ![CSS Grid](docs/screenshots/css-grid.png) |
+| **Transforms**: rotated text, forms and scroll boxes, nested rounded clips, group opacity, 7,000 animated nodes | **Grid**: areas, `auto-fill` / `minmax`, dense packing, alignment, nesting, subgrid |
+| ![Gradients and shadows](docs/screenshots/css-gradients.png) | ![Masks, background-clip text, legends, color glyphs](docs/screenshots/masks-and-color-glyphs.png) |
+| **Gradients**: linear, radial, conic, repeating, interpolation in sRGB / Oklab / Oklch / Lab / Lch / HSL | **Paint**: `mask-image`, `background-clip: text`, fieldset legends, rounded images, COLRv1 / sbix / OT-SVG color glyphs |
+| ![odin-lang.org in Wren](docs/screenshots/odin-lang-org.png) | ![webassembly.org in Wren](docs/screenshots/webassembly-org.png) |
+| **odin-lang.org**, a real site over HTTPS (its scripts do not run) | **webassembly.org**, in its dark color scheme |
+| ![Frame statistics panel](docs/screenshots/frame-statistics.png) | ![about:config](docs/screenshots/about-config.png) |
+| **Frame statistics** (Ctrl+Shift+B): phases per frame, display pacing, compositor, Wasm and memory counters | **about:config**: every setting of the browser, documented, searchable and editable |
 
-## The rules that keep it from breaking at scale
+The demo pages are in [`examples/site`](examples/site) (served by the test server, see [Try it](#try-it)).
+Screenshots are taken with `tools\screenshot.ps1`.
 
-1. **One ownership tree.** process → tab → navigation → page → (instances, DOM, requests, timers). Everything a page
-   starts is registered in its scope; closing a tab or navigating is `scope_close`. Cleanups run newest first, children
-   before parents, so nothing outlives what it points to. Scopes are main-thread only.
-2. **Handles, never pointers, cross boundaries.** `Handle = generation << 32 | index`, 0 is invalid. A destroyed or
-   recycled slot fails to resolve. Late network events, timers and listener callbacks for dead objects are dropped, not
-   delivered to reused memory. Pool objects never move (chunked), so `^T` stays valid until removed.
-3. **Single UI thread, everything else posts.** WinHTTP's threads and the blocking pool only push events and `host.post`
-   once per burst; every user-visible callback runs on the loop thread. No locks in browser state.
-4. **Mechanism and policy are separate.** `net` moves bytes and never follows a redirect, stores a cookie or sends ambient
-   credentials. `fetch` decides, per hop, on the UI thread, with the document's Environment in hand. A guest, a module
-   load and a navigation all go through the same code, so there is one place where "may this request happen" is answered.
-5. **Bounded everything, with a reason each.** Per-host (6) and global (64) request limits in our own priority queues (so
-   waiting never counts against connect timeouts); reading pauses when 1 MB is queued for a request; `max_body` caps a
-   response; ≤ 20 redirects (the Fetch Standard's number); cookies ≤ 180 per site and 3000 total (browser norm) with LRU
-   eviction; preflight cache ≤ 1000; fetch records a page may hold ≤ 1 GiB; guest memory is capped; every host→guest call
-   has a deadline (epoch interruption): a spinning script is stopped, the instance lives on.
-6. **The guest cannot reach host memory.** Every address+length pair of an import is checked by its generated trampoline
-   against the guest's linear memory before our code runs; strings are copied out through caller-provided buffers.
-7. **No recursion on hostile depth.** Tree destruction, text extraction, searches and the HTML replay are iterative.
+## Features
 
-## Security model
+Everything below exists in the code today and is covered by the tests of [`tools\test_all.ps1`](tools/test_all.ps1).
 
-- **Origins.** `scheme://host:port`, or an opaque origin equal only to itself (`file:`, `data:`, redirect-tainted
-  requests). Sites use the Public Suffix List (`github.io` is a suffix; `localhost`, IPs have no registrable domain).
-- **Requests** carry an Environment: `Request_Desc.initiator` is the document asking (nil = the address bar). Modes:
-  `navigate`, `same-origin`, `no-cors` (opaque response: status 0, no headers, no body for scripts) and `cors`.
-- **CORS**: Origin header, ACAO / ACAC checks, header exposure filtering, preflights with the spec's rules (safelisted
-  methods and headers, `*` never covering `Authorization`, wildcard disabled with credentials), preflight cache with
-  max-age. Cross-origin Wasm modules need CORS; modules must be `application/wasm`.
-- **Cookies**: stored and sent only by `fetch` (WinHTTP's are off). `Secure` needs a secure context (localhost counts),
-  `__Secure-` / `__Host-` prefixes, `SameSite` (default Lax, `None` needs `Secure`), HttpOnly invisible to scripts,
-  "leave Secure cookies alone", Domain checked against the PSL. **Third-party cookies are blocked by default**
-  (`Profile.third_party_cookies`). `document.cookie` exists only for tuple origins.
-- **HSTS**, **referrer policy** (header, `<meta>`, per request), **mixed content** (blocked; images auto-upgraded),
-  **bad ports**, **Fetch Metadata** headers (`Sec-Fetch-*`), **CSP** (headers and `<meta>`, report-only, `upgrade-insecure-requests`,
-  `block-all-mixed-content`; `script-src` governs Wasm modules).
-- **Local files**: a `file:` document may read files in its own directory tree and nothing else; web pages never read
-  local files; only the address bar may open any file.
+**WebAssembly, as the only script engine**
+- [Wasmtime](https://wasmtime.dev) 49 (official C API, statically linked; Cranelift, or Winch via
+  `wasm.wasmtime.compiler`). Any number of modules per document, fetched concurrently, run in document order, each in
+  its own instance sharing the DOM; memory64 modules supported.
+- Compiled code is cached in memory and in an HMAC-authenticated disk cache in the profile.
+- Every host-to-guest call has a wall-clock deadline (epoch interruption, optionally fuel): a spinning module is
+  stopped, its instance lives on. Guest memory is capped.
+- Dedicated **workers**: a module on a thread of its own with its own store, messages and transferable buffers.
 
-## Guest ABI (summary)
+**The web API: one description, everything generated** ([`api/`](api), [`docs/api`](docs/api))
+- 21 modules, 289 functions: DOM, events, document, forms, timers and `requestAnimationFrame`, fetch (with streams),
+  AbortController, URL, TextEncoder / TextDecoder, crypto (`getRandomValues`, digests), Web Storage, history,
+  performance, images, EventSource, WebSocket, workers, console.
+- `src/tools/bindgen` turns `api/*.widl` into: host trampolines defined directly on the Wasmtime linker (every address
+  checked against the guest's memory, UTF-8 validated, handles looked up by kind), the Odin guest SDK
+  ([`sdk/odin/web`](sdk/odin/web)), the reference documentation ([`docs/api`](docs/api)) and generated conformance
+  tests (bad addresses, bad UTF-8, dead handles, enums out of range, buffers too small, for every function).
+- Promises, microtasks and EventTarget for host objects, as the web platform defines them.
 
-Imports are grouped by spec area (`dom`, `events`, `timers`, `net`, `document`, `console`) and named `Interface_member` like
-Web IDL. Handles are `i64`; strings are `(ptr, len)` UTF-8; returned strings go to a `(ptr, cap)` buffer and the result is
-the length needed; callbacks are function-table indices + an `i32` user value; errors are negative `i32`, handle-returning
-functions return 0. `Fetch_start` takes packed Fetch API options (mode, credentials, redirect, referrer policy). See
-`src/page/bindings*.odin` (host side) and `sdk/odin/web/web.odin` (guest side).
+**HTML, CSS and layout**
+- HTML5 parsing with [Lexbor](https://lexbor.com), charset sniffing and decoding, `view-source:`.
+- CSS: cascade layers, custom properties and `@property`, nesting-era selectors (`:is`, `:where`, `:has`, `:not`…),
+  media and container queries, Color 4 / 5 (Oklab, Oklch, `color-mix`…), math functions, `@font-face` with WOFF and
+  WOFF2, transitions and animations, `color-scheme` and system colors. Style is computed in parallel on large documents
+  and restyled incrementally (invalidation sets, Bloom filter).
+- Layout: block and inline (bidi, line breaking), floats, positioning (absolute, fixed, sticky), **flexbox**,
+  **grid** (with subgrid), **tables**, replaced elements, scroll containers. Incremental relayout from DOM and style
+  journals (checked against a full pass), paragraphs pre-laid out on several threads on page load.
+- HTML forms: every control, constraint validation, `FormData`, submission in its three encodings.
 
-A document names its modules with `<script type="application/wasm" src="..." nonce="...">`, any number of them. They are
-fetched concurrently and run in document order, each in its own instance sharing the DOM. (The syntax is one function,
-`html.wasm_scripts`, if it ever changes.)
+**Painting and text**
+- A retained compositor: the display list is recorded into GPU-side pictures and replayed; scrolling and transform
+  animations change matrices only.
+- CSS transforms, rounded clips, `opacity` groups, `filter`, `backdrop-filter`, `mix-blend-mode`, `isolation`,
+  `clip-path`, box shadows (exact gaussian, in the shader), gradients of every kind, `mask-image` and
+  `-webkit-mask-*`, `background-clip: text`.
+- Colors blended on sRGB values as browsers do (with Chromium's text contrast settings), gamma-correct where it should.
+- Text on **DirectWrite**: per-character font fallback, OpenType shaping, bidi, color emoji and color fonts in every
+  format (COLRv1, sbix, CBDT, OT-SVG, rasterized off the UI thread).
+- Images decoded off the UI thread: PNG, JPEG, GIF, BMP, ICO and TIFF through WIC; **WebP**, **AVIF** and **SVG**
+  always, through a built-in Rust library (image-webp, rav1d, resvg); ICC profiles and CICP color management (qcms);
+  `srcset`, `<picture>`, lazy loading, inline `<svg>`.
 
-## Not done yet
+**Network and security**
+- HTTP(S) on WinHTTP, asynchronous, with per-host and global queues, back-pressure and cancellation.
+- A Fetch Standard policy layer: CORS with preflight cache, credentials modes, redirects, referrer policy, mixed
+  content blocking, Fetch Metadata, bad ports, MIME checks.
+- Cookies (RFC 6265bis: SameSite, prefixes, Public Suffix List, third-party cookies blocked by default), **HSTS**,
+  **Content Security Policy** 3 (`script-src` governs Wasm modules), secure contexts.
+- A `file:` page may read only its own directory tree; web pages never read local files.
 
-- **HTTP cache** (RFC 9111): every request goes to the network. `Request_Desc` has no cache mode yet.
-- Style and layout: `src/browser/render.odin` is a placeholder (blocks, inline flow, default styles; no CSS). Lexbor's
-  CSS parser and selectors are compiled in and unused so far.
-- CSP violation *reporting* (`report-uri` / `report-to`): violations go to the console only. No SRI (`integrity=`).
-- HTTP authentication (401), downloads (`Content-Disposition`), `blob:` URLs, WebSocket, cookie partitioning (CHIPS).
-- IME. (Text is on DirectWrite through the toolkit: per-character fallback, shaping, bidi, color emoji; see
-  `ext/gui_toolkit/docs/text.md` and `src/browser/fonts.odin`. Not yet: vertical writing modes, `text-decoration` from
-  font metrics, ClearType.)
-- Wasm: threads and shared memory are off (each worker has its own store and memory); GC is available but off by default.
-- Streaming bodies to the guest: `Fetch_*` buffers the response (bounded by `max_body` and the per-page ceiling).
+**The browser around the page**
+- Tabs, history, address bar with search, find in page (Ctrl+F), text selection (word, paragraph, Shift+click),
+  context menus, page zoom, keyboard navigation everywhere in the chrome.
+- **Frame pacing** on the display's exact refresh rate (60 to 180 Hz and beyond), vblank-aligned animation clock,
+  smooth scrolling, one frame in flight; a status bar with a live frame graph and a statistics panel.
+- **Everything is configurable**: every subsystem declares its preferences (type, bounds, unit, description); they
+  are layered *defaults < profile file < command line (`--pref name=value`) < policy file* and edited live in
+  `about:config`.
+- Draws only when something changes: an idle page costs no frames.
+
+## Try it
+
+Download `wren-<version>-windows-x64.zip` from the [latest release](https://github.com/sachahjkl/wren/releases/latest),
+unzip it anywhere and run `wren.exe`. It needs Windows 10 or 11 (x64) with a Direct3D 11 GPU; nothing else to install.
+
+The cards of the start page and the screenshots above use the demo pages of `examples/site`, served by a small local
+test server that is in the zip too: run `demo.bat` (it starts `testserver.exe` on 127.0.0.1:8765 and opens Wren on the
+demo page), or start them yourself:
+
+    testserver.exe                                   # http://127.0.0.1:8765, https://127.0.0.1:8766 (self-signed)
+    wren.exe http://127.0.0.1:8765/site/effects.html
+
+Useful command-line options: `--profile DIR` (another profile directory; the default is `%APPDATA%\Wren`),
+`--pref name=value` (any preference of `about:config`), `--policy FILE`.
+
+Keys: Ctrl+T / Ctrl+W tabs, Ctrl+L address bar, Ctrl+F find, Ctrl+Plus / Minus / 0 zoom, Ctrl+U view source,
+Ctrl+B status bar, Ctrl+Shift+B frame statistics.
+
+## Building from source
+
+Requirements (exact versions used by CI):
+
+| Tool | Version | Used for |
+|---|---|---|
+| Windows | 10 or 11, x64 | the only platform |
+| [Odin](https://github.com/odin-lang/Odin/releases/tag/dev-2026-10) | **`dev-2026-10`** (`dev-2026-10-nightly:84bc3fc`) | the browser and its tools |
+| Visual Studio 2022 (or Build Tools) | "Desktop development with C++": MSVC x64 and a Windows SDK | Odin's linker, Lexbor and the C shims |
+| [Rust](https://rustup.rs) | stable ≥ 1.93, `x86_64-pc-windows-msvc` | the built-in image and font decoders (`native/media`) |
+| [Go](https://go.dev/dl/) | ≥ 1.25.6 | only the test server (`tools/testserver`) |
+| Git | any | submodules, the commit shown in About |
+
+```bat
+git clone --recurse-submodules https://github.com/sachahjkl/wren.git
+cd wren
+build.bat            &:: optimized build -> build\browser.exe
+build.bat debug      &:: debug build
+build.bat profile    &:: optimized + PDB + the built-in profiler -> build\browser_prof.exe
+```
+
+What `build.bat` does, each step skipped when it is already up to date:
+
+1. `tools\fetch_wasmtime.ps1` downloads the official **Wasmtime 49.0.3** C API release (SHA-256 pinned) into
+   `build\wasmtime`; its static `wasmtime.lib` is linked into the exe.
+2. `tools\build_lexbor.ps1` compiles **Lexbor v3.0.1** (`ext/lexbor`) and the C shims of `src/shim` with MSVC into
+   `build\lexbor\lexbor.lib`.
+3. `tools\build_media.ps1` builds `native/media` with Cargo (`--locked`, every crate pinned by version and hash),
+   downloads **NASM 2.16.03** (SHA-256 pinned) for rav1d's assembly, adds the `llvm-tools` rustup component on first
+   use, and produces `build\media\wren_media.lib` (about 1.5 minutes the first time).
+4. `src/tools/bindgen` regenerates the web API bindings, SDK and docs from `api/*.widl` (only what changed).
+5. `odin build src/browser` links everything into one self-contained `build\browser.exe` (no DLL beyond the system's
+   and the Visual C++ runtime that Windows ships).
+
+Run it with `build\browser.exe [URL]`. For the demo pages, build and start the test server first:
+
+```bat
+cd tools\testserver && go build -o ..\..\build\testserver.exe . && cd ..\..
+build\testserver.exe
+```
+
+## Tests
+
+```powershell
+powershell -NoProfile -File tools\test_all.ps1 -Quick   # every suite but the long network stress
+powershell -NoProfile -File tools\test_all.ps1          # everything
+powershell -NoProfile -File tools\test_all.ps1 -CI      # what continuous integration runs (see below)
+```
+
+The suite runs the unit tests of every package (`odin test src/<package> -vet`), checks that the generated web API is
+up to date (`bindgen -check`), runs the generated API conformance cases, the graphics toolkit's pixel tests on an
+offscreen WARP renderer, and end-to-end tests that drive real pages and Wasm guests against the local test server
+(network policy, DOM and events, web platform APIs, forms, workers, EventSource and WebSocket, style animations,
+images and image formats). None of them opens a window or needs the internet.
+
+`-CI` is `-Quick` for machines without a display: [GitHub Actions](.github/workflows/ci.yml) runs it on
+`windows-2025` for every push and pull request.
+
+## Writing a page module
+
+A page module is any Wasm module that imports the functions of [`docs/api`](docs/api) and exports `wb_main`. The
+Odin SDK is [`sdk/odin/web`](sdk/odin/web), one generated file per API module. A page:
+
+```html
+<!doctype html>
+<title>Counter</title>
+<script type="application/wasm" src="counter.wasm"></script>
+<p>Value: <b id="count">0</b> <button id="inc">+1</button></p>
+```
+
+and its module ([`examples/counter`](examples/counter/main.odin) is the full version):
+
+```odin
+package counter
+
+import "web:web"
+
+count: i64
+count_node: web.Element
+
+on_click :: proc "contextless" (user: i32, ev: web.Event) {
+	count += i64(user)
+	buf: [24]u8
+	n := len(buf)
+	for v := count; ; v /= 10 { n -= 1; buf[n] = u8('0' + v % 10); if v < 10 { break } }
+	web.Node_setTextContent(count_node, string(buf[n:]))
+}
+
+@(export)
+wb_main :: proc "contextless" () {
+	count_node = web.Document_getElementById("count")
+	web.EventTarget_addEventListener(web.Document_getElementById("inc"), "click", on_click, 1)
+	web.console_log("counter ready")
+}
+```
+
+```bat
+odin build examples/counter -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator ^
+    -collection:web=sdk/odin -out:examples/site/counter.wasm -o:size
+```
+
+Conventions (the full ABI is in [`docs/api/README.md`](docs/api/README.md)): handles are `i64`, strings are UTF-8
+`(pointer, length)`, strings returned by the browser go into a caller buffer and the result is the length needed,
+callbacks are function-table indices with a user value, errors are negative `i32`. Any language that compiles to Wasm
+can implement them; only the Odin SDK is generated today. A new API starts as a few lines in `api/<module>.widl`:
+`build.bat` regenerates the trampoline and tells you, through a compile error, which host procedure to write.
+
+## Project layout
+
+```
+api/            the web API, described once (*.widl): source of the bindings, SDK, docs and conformance tests
+assets/         logo and icon
+docs/api/       generated API reference (with the ABI)        docs/architecture.md: design rules and security model
+examples/       Wasm guest pages (counter, forms, workers, conformance...) and site/, the demo pages
+ext/            submodules: gui_toolkit (window, UI, renderer, text), lexbor (HTML, URLs, encodings)
+native/media/   Rust static library: SVG (resvg), WebP (image-webp), AVIF (rav1d), color (qcms), WOFF2 (brotli)
+sdk/odin/web/   generated Odin guest SDK
+src/
+  base/         scopes (ownership tree with cleanups) and generational handle pools
+  host/         event loop, thread-safe posts, timers, blocking-work pool
+  net/          transport: HTTP(S) and WebSocket on WinHTTP; no policy
+  url/ http/    WHATWG URLs, origins, Public Suffix List; headers and MIME types
+  cookies/ csp/ the cookie jar (RFC 6265bis) and Content Security Policy 3
+  fetch/        the policy layer (Fetch Standard): CORS, credentials, redirects, HSTS, referrer, mixed content
+  html/ dom/    HTML parsing (Lexbor), charsets; the document tree, events and the mutation journal
+  css/ style/   tokenizer, parser, selectors, values; the style engine (cascade, layers, animations, parallel)
+  layout/       box tree, block / inline / flex / grid / table layout, incremental and parallel passes, display list
+  images/ webfont/  image decoding threads (WIC + native/media); web font unpacking (WOFF, WOFF2)
+  forms/        HTML form controls as a model: values, validation, editing, submission
+  wasm/         the Wasm engine (Wasmtime): instances, linker, deadlines, limits, compiled-code caches
+  page/         one document = DOM + Wasm instances + requests + timers; the implementations of the imports
+  config/       the preference registry behind about:config
+  browser/      the shell: window, tabs, chrome, painter and compositor, pacing, status bar, about: pages
+  shim/         C shims over Lexbor
+  tools/        bindgen, end-to-end test drivers, benchmarks
+tools/          build, test, screenshot and measurement scripts; testserver/ (Go)
+```
+
+[`docs/architecture.md`](docs/architecture.md) explains the rules that hold it together (one ownership tree, handles
+across every boundary, a single UI thread, mechanism separate from policy, a bound on everything) and the security model.
+
+## Status and limits
+
+Wren is a prototype. It is meant to show how far a Wasm-only browser can go, not to replace one. Known limits:
+
+- **No JavaScript**, by design: sites render without their scripts. Single-page applications that build their content
+  in JS show little or nothing.
+- **Windows only** (Win32, Direct3D 11, DirectWrite, WinHTTP, WIC). The layers above the platform are portable Odin.
+- No HTTP cache yet (every load goes to the network); no HTTP authentication, no SRI, CSP violations are reported to
+  the console only; no cookie partitioning.
+- No IME composition, no vertical writing modes, no multi-column layout; no `<video>`, `<audio>` or `<canvas>`.
+- Wasm threads and shared memory are off (each worker has its own memory); the Wasm GC proposal is off by default.
+- Response bodies are bounded (`max_body` and a per-page ceiling); `Response_body` is a minimal ReadableStream.
+
+## Releases
+
+Binaries are built by [GitHub Actions](.github/workflows/release.yml) from a version tag and attached to the
+[releases](https://github.com/sachahjkl/wren/releases) with their SHA-256 sums. To make one (see
+[CONTRIBUTING.md](CONTRIBUTING.md)):
+
+```bat
+git tag -a v0.2.0 -m "Wren 0.2.0"
+git push origin v0.2.0
+```
+
+## License and credits
+
+Wren is released under the [MIT license](LICENSE). It stands on:
+
+- [Odin](https://odin-lang.org) by Ginger Bill and contributors;
+- [gui_toolkit](https://github.com/sachahjkl/gui_toolkit) (MIT), whose design follows the UI layers of the
+  [RAD Debugger](https://github.com/EpicGamesExt/raddebugger) (MIT, Epic Games Tools);
+- [Wasmtime](https://github.com/bytecodealliance/wasmtime) (Apache-2.0 with LLVM exception, Bytecode Alliance);
+- [Lexbor](https://github.com/lexbor/lexbor) (Apache-2.0);
+- [resvg](https://github.com/linebender/resvg), [image-webp](https://github.com/image-rs/image-webp),
+  [rav1d](https://github.com/memorysafety/rav1d) (BSD-2-Clause), [zenavif-parse](https://crates.io/crates/zenavif-parse)
+  (MPL-2.0), [qcms](https://github.com/FirefoxGraphics/qcms) (MIT),
+  [brotli-decompressor](https://github.com/dropbox/rust-brotli-decompressor) and the crates they depend on;
+- [NASM](https://www.nasm.us) (build time only), the [Public Suffix List](https://publicsuffix.org) (MPL-2.0).
+
+Fonts used by the demo pages and tests come with their licenses next to them (`examples/site/fonts`,
+`native/media/tests/fonts`). [THIRD_PARTY.md](THIRD_PARTY.md) lists every component linked into `wren.exe`.

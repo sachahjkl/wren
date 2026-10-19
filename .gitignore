@@ -8,3 +8,11 @@ examples/site/formstest.wasm
 examples/site/mutation.wasm
 examples/site/workerstest_worker.wasm
 src/browser/wren.res
+# cargo run by hand inside native/media (the scripts use build/media/target)
+native/media/target/
+# release packages (tools/package.ps1 writes them under build/)
+*.zip
+# a policy file next to the exe overrides every preference (browser --policy)
+policies.txt
+.vs/
+.vscode/
