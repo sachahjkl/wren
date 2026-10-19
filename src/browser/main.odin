@@ -686,29 +686,13 @@ build_ui :: proc(app: ^App) {
 		ui.next({axis = .Y})
 		root := ui.build_box({.Draw_Background}, "###window")
 		if ui.parent(root) {
-			// tab strip
-			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.6))})
-			if ui.row(.Center) {
-				labels := make([]string, len(app.tabs), ui.frame_allocator())
-				for tab, i in app.tabs { labels[i] = fmt.aprintf("%s###tab%d", tab.title, i, allocator = ui.frame_allocator()) }
-				sel := app.current
-				right, middle: int
-				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
-				if ui.tabs("tabs", labels, nil, &sel, &right, &middle) && sel != app.current { tab_select(app, sel) }
-				if right >= 0 { tab_context_menu(app, right, ui.mouse_pos()) }
-				if middle >= 0 { tab_close(app, middle); return }
-				ui.next({width = ui.px(em * 2.4), height = ui.px(ui.dense(em * 2.2))})
-				add := ui.icon_button("###newtab", GLYPH_ADD)
-				tip(add, "New tab (Ctrl+T)")
-				if add.clicked { tab_open(app) }
-				ui.next({width = ui.px(em * 2.4), height = ui.px(ui.dense(em * 2.2))})
-				close := ui.icon_button("###closetab", GLYPH_CLOSE)
-				tip(close, "Close tab (Ctrl+W)")
-				if close.clicked { tab_close(app, app.current); return }
+			// tab strip (the window's title bar when integrated: window_chrome.odin), navigation, security chip,
+			// address, menu; in full screen they come over the page on demand (fullscreen_bars)
+			if !platform.is_fullscreen(app.win) {
+				if tab_strip(app, platform.is_integrated_title(app.win)) { return }
+				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
+				if ui.row(.Center) { address_row(app, t) }
 			}
-			// navigation, security chip, address, menu
-			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
-			if ui.row(.Center) { address_row(app, t) }
 			find_bar(app, t)
 			// page
 			ui.next({width = ui.fill(), height = ui.fill()})
@@ -733,6 +717,7 @@ build_ui :: proc(app: ^App) {
 				}
 			}
 			status_bar_build(app, t)
+			fullscreen_bars(app, t)
 		}
 	}
 	context_menus_build(app)
@@ -896,9 +881,17 @@ frame :: proc(app: ^App, idled := false) {
 
 	// network completions, timers and posted tasks run here, on the UI thread
 	prof_begin(.Loop)
-	if host.run_ready(&app.loop) > 0 { app.frames_requested = max(app.frames_requested, 2) }
+	ran := host.run_ready(&app.loop)
+	if ran > 0 { app.frames_requested = max(app.frames_requested, 2) }
 	images_shell_frame(app)
 	prof_end(.Loop)
+	// a wake that brought nothing (a timer of the system for the window, a message of no consequence): no frame. (It
+	// was one, and the status bar counted it, and armed its settle wake again: two frames every half second, forever.)
+	// (a timed wake of the toolkit's, a caret blink or a tooltip delay, always draws)
+	if idled && len(events) == 0 && ran == 0 && app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && ui.wake_ms(&app.ui_state) == 0 && !app.win.paint_requested {
+		free_all(context.temp_allocator)
+		return
+	}
 	prof_begin(.Input)
 	route_page_input(app, events)
 	events = forms_unconsumed_events(events)   // keys the page used do not reach the chrome
@@ -932,11 +925,13 @@ frame :: proc(app: ^App, idled := false) {
 		font = app.ui_font, font_size = app.cfg.ui_font_size, text_pad = 7,
 		cursor = .Arrow,
 	}
+	window_chrome_frame(app)   // window_chrome.odin
 	prof_begin(.Build_UI)
 	ui.begin_build(&app.ui_state, {
 		window_size = size, events = events, dt = dt, animations = platform.os_animations_enabled(),
 		dpi_scale = app.win.dpi_scale, base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
 		disable_zoom = true,   // Ctrl+Plus / Minus / 0 and Ctrl+wheel zoom the page (zoom.odin), not the chrome
+		window = app.win, frame_ms = pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock
 	})
 	build_ui(app)
 	ui.end_build()
@@ -1006,7 +1001,7 @@ main :: proc() {
 	// the first navigation, whose loads run on their own threads while the renderer starts.
 	font.init(&app.fonts, font_settings_from_prefs(&app.prefs))
 	preload := fonts_preload_start(app)   // the font state is the preload thread's until fonts_preload_finish
-	app.win = platform.open_window(APP_NAME, {1280, 800})
+	app.win = platform.open_window(APP_NAME, {1280, 800}, integrated_title = config.bool_of(&app.prefs, "browser.window.integrated_titlebar"))
 	prof_mark(.Window)
 
 	host.loop_init(&app.loop, wake_window, app.win)
@@ -1060,6 +1055,7 @@ main :: proc() {
 	prof_init(app)
 	pacer_init(app)
 	smooth_init(app)
+	window_chrome_init(app)
 	hud_init(app)
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
@@ -1097,6 +1093,7 @@ main :: proc() {
 	appearance_destroy()
 	hud_destroy(app)
 	smooth_shutdown(app)
+	window_chrome_destroy(app)
 	pacer_destroy(app)
 	host.loop_destroy(&app.loop)
 	wasm.runtime_destroy()

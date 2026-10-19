@@ -419,6 +419,7 @@ set_pref_bool :: proc(app: ^App, name: string, v: bool) {
 
 // The panel takes the clicks and the wheel that land on it (the page under it does not get them).
 hud_captures :: proc(pos: draw.Vec2) -> bool {
+	if fullscreen_bars_capture(pos) { return true }   // and so do the bars of full screen (window_chrome.odin)
 	if !hud.panel_open { return false }
 	r, ok := ui.popover_rect(PANEL_ID)
 	return ok && draw.rect_contains(r, pos)

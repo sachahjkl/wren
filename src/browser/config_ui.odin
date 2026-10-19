@@ -1,13 +1,20 @@
 package browser
 
-// about:config: every preference of the browser, searchable (name and description), grouped by its first name segment,
-// editable, built with the toolkit like the rest of the chrome. Each row shows the name, the description (wrapped), the
-// default, the bounds, the unit, "restart required" and where the value comes from (modified, command line, policy).
+// about:config: every preference of the browser, searchable (name and description), grouped by its first name segment
+// (groups fold), editable, built with the toolkit like the rest of the chrome. Each row shows the name, the description
+// (wrapped), the default, the bounds, the unit, "restart required" and where the value comes from (modified, command
+// line, policy).
 //
-// Keyboard: the list is one Tab stop: Up / Down / Page Up / Page Down / Home / End move over the preferences, typing
-// jumps to a name, Enter edits the active one (a check box toggles; a choice or a text field takes the focus: Enter
-// applies, Escape goes back to the list), Delete resets it to its default. Ctrl+F (or Tab from the list backwards)
-// reaches the search field.
+// The list is virtualized (ui.vlist): only the rows in view are built, whatever the number of preferences. The rows
+// themselves (which preferences, in which order, under which headers) are worked out again only when the search, the
+// "modified only" filter, a folded group or the registry changes, not at every frame; wrapped descriptions come from
+// the toolkit's cache.
+//
+// Keyboard: the list is one Tab stop: Up / Down / Page Up / Page Down / Home / End move over the rows, typing jumps to a
+// name, Enter edits the active preference (a check box toggles; a choice or a text field takes the focus: Enter
+// applies, Escape goes back to the list) or folds / unfolds a group, Left folds the group (from a preference: goes to
+// its header), Right unfolds it, Ctrl+Left / Ctrl+Right fold / unfold them all, Delete resets the preference to its
+// default. Ctrl+F (or Tab from the list backwards) reaches the search field.
 
 import "core:fmt"
 import "core:strings"
@@ -23,22 +30,48 @@ Row_State :: struct {
 	want_focus: bool,    // give the editor the focus at the next build
 }
 
+Config_Row_Kind :: enum u8 { Header, Pref }
+
+// A row of the list: a group header or a preference.
+Config_Row :: struct {
+	kind:  Config_Row_Kind,
+	ref:   config.Ref,   // Pref
+	name:  string,       // the preference's name, or the group's (the registry's strings)
+	group: string,
+}
+
 Config_View :: struct {
 	search:        ui.Text_Field,
 	modified_only: bool,
 	rows:          map[string]^Row_State,
-	list:          ui.List_State,
-	names:         [dynamic]string,   // the rows of the last build, in order ("" = a group header); not owned
+	list:          ui.Virtual_List,
 	focus_search:  bool,
 	focus_list:    bool,
+	collapsed:     map[string]bool,     // folded groups (owned keys)
+	serial:        u64,                 // bumped when something that changes a row's height changes (an error shown)
+	// the rows, worked out again only when what they depend on changes (model_key)
+	model:         [dynamic]Config_Row,
+	ids:           [dynamic]u64,        // identities for the list's height cache: name, source, error
+	labels:        [dynamic]string,     // type-ahead
+	selectable:    [dynamic]bool,
+	model_query:   string,              // owned
+	model_key:     [4]u64,              // prefs version, entries, serial, modified_only
+	model_valid:   bool,
+	started:       bool,                // the view was built once (no active row before the user picks one)
 }
 
 config_view_destroy :: proc(v: ^Config_View) {
 	ui.field_destroy(&v.search)
 	for k, r in v.rows { ui.field_destroy(&r.field); delete(r.synced); delete(r.error); free(r); delete(k) }
 	delete(v.rows)
-	ui.list_state_destroy(&v.list)
-	delete(v.names)
+	ui.vlist_destroy(&v.list)
+	for k in v.collapsed { delete(k) }
+	delete(v.collapsed)
+	delete(v.model)
+	delete(v.ids)
+	delete(v.labels)
+	delete(v.selectable)
+	delete(v.model_query)
 }
 
 @(private)
@@ -81,6 +114,50 @@ facts_line :: proc(prefs: ^config.Prefs, r: config.Ref, e: ^config.Entry) -> str
 	return strings.join(parts[:], "  \u00b7  ", context.temp_allocator)
 }
 
+@(private = "file")
+fnv :: proc(h: u64, s: string) -> u64 {
+	h := h
+	for c in transmute([]u8)s { h = (h ~ u64(c)) * 0x100000001b3 }
+	return h
+}
+
+// The rows for the current search, filter and folded groups (only when one of them or the registry changed).
+@(private = "file")
+config_model :: proc(v: ^Config_View, prefs: ^config.Prefs, query: string) {
+	key := [4]u64{prefs.version, u64(len(prefs.entries)), v.serial, u64(v.modified_only)}
+	if v.model_valid && key == v.model_key && query == v.model_query { return }
+	v.model_valid, v.model_key = true, key
+	delete(v.model_query)
+	v.model_query = strings.clone(query)
+	clear(&v.model); clear(&v.ids); clear(&v.labels); clear(&v.selectable)
+	grouped := query == "" && !v.modified_only
+	group := ""
+	folded := false
+	for name in config.sorted_names(prefs) {
+		r := config.ref_of(prefs, name)
+		e := config.entry(prefs, r)
+		if v.modified_only && e.source == .Default { continue }
+		if query != "" && !strings.contains(strings.to_lower(name, context.temp_allocator), query) &&
+		   !strings.contains(strings.to_lower(e.def.description, context.temp_allocator), query) { continue }
+		if grouped && (len(v.model) == 0 || e.def.category != group) {
+			group = e.def.category
+			folded = v.collapsed[group]
+			append(&v.model, Config_Row{kind = .Header, name = group, group = group})
+			append(&v.ids, fnv(0xcbf29ce484222325, "\x00group:") ~ fnv(0x84222325cbf29ce4, group))
+			append(&v.labels, group)
+			append(&v.selectable, true)
+		}
+		if grouped && folded { continue }
+		append(&v.model, Config_Row{kind = .Pref, ref = r, name = name, group = e.def.category})
+		// what changes the row's height: its flags (source) and an error shown under it
+		id := fnv(0xcbf29ce484222325, name) ~ (u64(e.source) << 56)
+		if st, ok := v.rows[name]; ok && st.error != "" { id = fnv(id, st.error) }
+		append(&v.ids, id)
+		append(&v.labels, name)
+		append(&v.selectable, true)
+	}
+}
+
 // Builds the page. `prefs` is the registry; changes go through `config.set_from_string` so every observer runs.
 config_page :: proc(v: ^Config_View, prefs: ^config.Prefs) {
 	em := ui.font_size()
@@ -109,43 +186,32 @@ config_page :: proc(v: ^Config_View, prefs: ^config.Prefs) {
 				ui.spacer(ui.px(em * 0.8))
 				if ui.tags("weak") {
 					ui.next({width = ui.fill(), height = ui.pct(1)})
-					ui.label("Arrows, Page Up / Down: move   Enter: edit   Escape: back to the list   Delete: reset to the default   letters: jump to a name###cfg_help")
+					ui.label("Arrows, Page Up / Down: move   Enter: edit, fold   Left / Right: fold, unfold (Ctrl: all)   Escape: back to the list   Delete: reset   letters: jump to a name###cfg_help")
 				}
 			}
 			ui.spacer(ui.px(em * 0.3))
 
 			query := strings.to_lower(strings.trim_space(ui.field_string(&v.search)), context.temp_allocator)
-			grouped := query == "" && !v.modified_only
-			clear(&v.names)
+			if !v.started { v.started = true; v.list.sel = -1 }
+			if query != v.model_query { ui.list_select(&v.list.list, -1); ui.vlist_scroll_to(&v.list, 0) }   // another search: from the top
+			config_model(v, prefs, query)
 			ui.next({width = ui.fill(), height = ui.fill()})
-			if ui.list("###cfg_list", &v.list) {
-				if v.focus_list { v.focus_list = false; ui.set_focus(v.list.key); if v.list.sel < 0 { ui.list_select(&v.list, 0) } }
-				shown := 0
-				group := ""
-				for name in config.sorted_names(prefs) {
-					r := config.ref_of(prefs, name)
-					e := config.entry(prefs, r)
-					if v.modified_only && e.source == .Default { continue }
-					if query != "" {
-						hay := strings.to_lower(strings.concatenate({name, " ", e.def.description}, context.temp_allocator), context.temp_allocator)
-						if !strings.contains(hay, query) { continue }
+			if rows, ok := ui.vlist("###cfg_list", &v.list, v.ids[:], v.labels[:], v.selectable[:]); ok {
+				if v.focus_list { v.focus_list = false; ui.set_focus(v.list.key); if v.list.sel < 0 { ui.list_select(&v.list.list, 0) } }
+				for i in rows.first ..< rows.last {
+					row := v.model[i]
+					switch row.kind {
+					case .Header: group_header(v, i, row.group)
+					case .Pref:   config_row(v, prefs, row.ref, config.entry(prefs, row.ref), i)
 					}
-					if grouped && e.def.category != group {
-						group = e.def.category
-						group_header(v, len(v.names), group)
-						append(&v.names, "")
-					}
-					config_row(v, prefs, r, e, len(v.names))
-					append(&v.names, name)
-					shown += 1
 				}
-				if shown == 0 {
+				if len(v.model) == 0 {
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 4))})
 					if ui.tags("weak") { if ui.style({text_align = .Center}) { ui.label("No preference matches.") } }
 				}
 			}
 			when DEBUG_INPUT {
-				if v.list.changed { debug_log(fmt.tprintf("cfg list sel %d of %d (%q) focused %v typed %q", v.list.sel, v.list.count, v.list.sel >= 0 && v.list.sel < len(v.names) ? v.names[v.list.sel] : "", v.list.focused, string(v.list.typed[:v.list.typed_len]))) }
+				if v.list.changed { debug_log(fmt.tprintf("cfg list sel %d of %d focused %v typed %q", v.list.sel, v.list.count, v.list.focused, string(v.list.typed[:v.list.typed_len]))) }
 			}
 			config_list_keys(v, prefs)
 		}
@@ -153,53 +219,90 @@ config_page :: proc(v: ^Config_View, prefs: ^config.Prefs) {
 }
 
 @(private = "file")
+toggle_group :: proc(v: ^Config_View, group: string, fold: bool) {
+	if fold == v.collapsed[group] { return }
+	if fold {
+		v.collapsed[strings.clone(group)] = true
+	} else if k, ok := delete_key(&v.collapsed, group); ok {
+		delete(k)
+	}
+	v.model_valid = false
+}
+
+@(private = "file")
 group_header :: proc(v: ^Config_View, index: int, group: string) {
 	em := ui.font_size()
+	folded := v.collapsed[group]
 	ui.next({height = ui.px(ui.dense(em * 2.2))})
-	row := ui.list_row(&v.list, index, group, selectable = false)
+	row := ui.list_row(&v.list.list, index, group)
 	if ui.parent(row.box) {
-		ui.spacer(ui.px(em * 0.8))
+		ui.spacer(ui.px(em * 0.5))
 		if ui.tags("weak") {
+			ui.icon(folded ? GLYPH_FORWARD : ui.ICON_DOWN, em * 1.4)
 			if ui.style({font_size = em * 0.95}) {
 				ui.next({width = ui.fill(), height = ui.pct(1)})
 				ui.label(fmt.tprintf("%s###grp_%s", strings.to_upper(group, context.temp_allocator), group))
 			}
 		}
 	}
+	if row.clicked { toggle_group(v, group, !folded) }
 }
 
 // What the keyboard does on the active row (after the list took the moves).
 @(private = "file")
 config_list_keys :: proc(v: ^Config_View, prefs: ^config.Prefs) {
+	if v.list.focused {
+		if ui.key_press(.Left, {.Ctrl}) { for r in v.model { if r.kind == .Header { toggle_group(v, r.group, true) } } }
+		if ui.key_press(.Right, {.Ctrl}) {
+			for k in v.collapsed { delete(k) }
+			clear(&v.collapsed)
+			v.model_valid = false
+		}
+	}
 	sel := v.list.sel
-	if sel < 0 || sel >= len(v.names) || v.names[sel] == "" { return }
-	name := v.names[sel]
-	r := config.ref_of(prefs, name)
-	e := config.entry(prefs, r)
+	if sel < 0 || sel >= len(v.model) { return }
+	row := v.model[sel]
+	if v.list.focused && ui.key_press(.F, {.Ctrl}) { v.focus_search = true }
+	if row.kind == .Header {
+		folded := v.collapsed[row.group]
+		if v.list.activated { toggle_group(v, row.group, !folded) }
+		if v.list.focused && ui.key_press(.Left) { toggle_group(v, row.group, true) }
+		if v.list.focused && ui.key_press(.Right) { toggle_group(v, row.group, false) }
+		return
+	}
+	if v.list.focused && ui.key_press(.Left) {
+		// to the header of the preference's group
+		for i := sel; i >= 0; i -= 1 { if v.model[i].kind == .Header { ui.list_select(&v.list.list, i); break } }
+		return
+	}
+	name := row.name
+	e := config.entry(prefs, row.ref)
 	st := row_for(v, name)
 	locked := e.locked || e.source == .Command_Line
 	if v.list.activated && !locked {
 		if e.def.kind == .Bool {
-			config_apply(prefs, st, name, e.value.b ? "false" : "true")
+			config_apply(v, prefs, st, name, e.value.b ? "false" : "true")
 		} else {
 			st.want_focus = true
 		}
 	}
-	if v.list.focused && !locked && e.source == .User && (ui.key_press(.Delete) || ui.key_press(.Backspace)) { config_reset(prefs, st, name) }
-	if v.list.focused && ui.key_press(.F, {.Ctrl}) { v.focus_search = true }
+	if v.list.focused && !locked && e.source == .User && (ui.key_press(.Delete) || ui.key_press(.Backspace)) { config_reset(v, prefs, st, name) }
 }
 
 @(private = "file")
-config_apply :: proc(prefs: ^config.Prefs, st: ^Row_State, name, text: string) {
+config_apply :: proc(v: ^Config_View, prefs: ^config.Prefs, st: ^Row_State, name, text: string) {
 	err := config.set_from_string(prefs, name, text, .User)
+	had := st.error != ""
 	delete(st.error)
 	st.error = err == .None ? "" : strings.clone(config.set_error_text(err))
+	if had || st.error != "" { v.serial += 1 }
 }
 
 @(private = "file")
-config_reset :: proc(prefs: ^config.Prefs, st: ^Row_State, name: string) {
+config_reset :: proc(v: ^Config_View, prefs: ^config.Prefs, st: ^Row_State, name: string) {
 	config.reset(prefs, name)
 	delete(st.synced); st.synced = ""
+	if st.error != "" { v.serial += 1 }
 	delete(st.error); st.error = ""
 }
 
@@ -211,7 +314,7 @@ config_row :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^con
 	locked := e.locked || e.source == .Command_Line
 	id := fmt.tprintf("###cfg_%s", name)
 
-	row := ui.list_row(&v.list, index, name)
+	row := ui.list_row(&v.list.list, index, name)
 	ui.push_parent(row.box)
 	defer ui.pop_parent()
 	ui.spacer(ui.px(em * 0.8))
@@ -268,7 +371,7 @@ config_row :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^con
 					ui.next({width = ui.px(em * 8), height = ui.px(ui.dense(em * 2))})
 					sig := ui.checkbox(fmt.tprintf("%s###b", id), val ? "true" : "false", &val)
 					st.editor = sig.box.key
-					if sig.clicked { config_apply(prefs, st, name, val ? "true" : "false") }
+					if sig.clicked { config_apply(v, prefs, st, name, val ? "true" : "false") }
 				case .String:
 					if len(e.def.choices) > 0 {
 						sel := 0
@@ -276,7 +379,7 @@ config_row :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^con
 						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 						dd_id := fmt.tprintf("%s###dd", id)
 						if b := ui.prev_box(dd_id); b != nil { st.editor = b.key }
-						if ui.dropdown(dd_id, e.def.choices, &sel) { config_apply(prefs, st, name, e.def.choices[sel]); v.focus_list = st.focused }
+						if ui.dropdown(dd_id, e.def.choices, &sel) { config_apply(v, prefs, st, name, e.def.choices[sel]); v.focus_list = st.focused }
 						if st.want_focus && st.editor != 0 { st.want_focus = false; ui.set_focus(st.editor) }
 						st.focused = ui.focus_key() == st.editor && st.editor != 0
 						if st.focused && ui.key_press(.Escape) { v.focus_list = true }
@@ -292,8 +395,8 @@ config_row :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^con
 					st.editor = res.box.key
 					if st.want_focus { st.want_focus = false; ui.set_focus(res.box.key); ui.field_select_all(&st.field) }
 					st.focused = res.focused
-					if res.committed { config_apply(prefs, st, name, ui.field_string(&st.field)); delete(st.synced); st.synced = ""; v.focus_list = true }
-					if res.cancelled { delete(st.synced); st.synced = ""; delete(st.error); st.error = ""; v.focus_list = true }
+					if res.committed { config_apply(v, prefs, st, name, ui.field_string(&st.field)); delete(st.synced); st.synced = ""; v.focus_list = true }
+					if res.cancelled { delete(st.synced); st.synced = ""; if st.error != "" { v.serial += 1 }; delete(st.error); st.error = ""; v.focus_list = true }
 				}
 			}
 		}
@@ -304,7 +407,7 @@ config_row :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^con
 			if e.source == .User && !locked {
 				ui.next({width = ui.text_size(em * 0.6), height = ui.px(ui.dense(em * 1.8))})
 				if ui.tags("ghost_button") {
-					if ui.button(fmt.tprintf("Reset to default###r_%s", name)).clicked { config_reset(prefs, st, name) }
+					if ui.button(fmt.tprintf("Reset to default###r_%s", name)).clicked { config_reset(v, prefs, st, name) }
 				}
 			}
 		}

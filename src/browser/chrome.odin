@@ -447,6 +447,8 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			if ui.menu_item("Frame statistics", "Ctrl+Shift+B", checked = hud.panel_open).clicked { toggle_frame_stats(app) }
 			if ui.menu_item("Statistics in the title", checked = hud.cfg.title_stats).clicked { set_pref_bool(app, "browser.title.stats", !hud.cfg.title_stats) }
 			if ui.menu_item("Console", checked = app.show_console).clicked { app.show_console = !app.show_console }
+			if ui.menu_item("Full screen", "F11", checked = platform.is_fullscreen(app.win)).clicked { toggle_fullscreen(app) }
+			if ui.menu_item("Tabs in the title bar", checked = wchrome.cfg.integrated).clicked { set_pref_bool(app, "browser.window.integrated_titlebar", !wchrome.cfg.integrated) }
 		}
 		if ui.menu_item("Settings", icon = GLYPH_GEAR).clicked && t != nil { navigate(app, t, "about:config") }
 		ui.menu_separator()
@@ -489,6 +491,7 @@ chrome_shortcuts :: proc(app: ^App) {
 	case ui.key_press(.Equal, ctrl), ui.key_press(.Num_Add, ctrl), ui.key_press(.Equal, cs): zoom_step(app, t, 1)
 	case ui.key_press(.Minus, ctrl), ui.key_press(.Num_Subtract, ctrl): zoom_step(app, t, -1)
 	case ui.key_press(.N0, ctrl): zoom_set(app, t, 1)
+	case ui.key_press(.F11): toggle_fullscreen(app)   // window_chrome.odin
 	case ui.key_press(.B, ctrl): toggle_status_bar(app)
 	case ui.key_press(.B, cs): toggle_frame_stats(app)
 	case t != nil && t.load != nil && t.load.task != base.NIL_HANDLE && ui.focus_key() == 0 && ui.key_press(.Escape):
