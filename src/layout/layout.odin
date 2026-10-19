@@ -98,6 +98,7 @@ run_full :: proc(l: ^Layout, input: Input) {
 	t5 := time.tick_now()
 	l.stats = {ms(t0, t1), ms(t1, t2), ms(t2, t3), ms(t3, t4), ms(t4, t5)}
 	inc_note_full(l)
+	pre_garbage(&c)
 }
 
 @(private)

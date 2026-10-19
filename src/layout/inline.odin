@@ -916,7 +916,6 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (out: []Frag, lin
 // fragments. `out` and `lines` are left as they are (a pre-built context may be published again).
 @(private)
 ifc_publish :: proc(c: ^Ctx, bi: i32, out: []Frag, lines: []Line) {
-	b := &c.l.boxes[bi]
 	base := i32(len(c.l.frags))
 	append(&c.l.frags, ..out)
 	l0 := i32(len(c.l.lines))
@@ -925,15 +924,23 @@ ifc_publish :: proc(c: ^Ctx, bi: i32, out: []Frag, lines: []Line) {
 		ln2.frags += base
 		append(&c.l.lines, ln2)
 	}
-	b.lines = {l0, i32(len(c.l.lines))}
-	if b.lines[1] > b.lines[0] {
-		fl := &c.l.lines[b.lines[0]]
-		ll := &c.l.lines[b.lines[1] - 1]
-		b.baseline = fl.y + fl.baseline
-		b.last_baseline = ll.y + ll.baseline
-	}
+	ifc_settle(c, bi, {l0, i32(len(c.l.lines))})
+}
+
+// Context `bi` takes the lines `lines` of Layout.lines (their fragments are contiguous): baselines, and the union of
+// the fragments of each of its inline boxes.
+@(private)
+ifc_settle :: proc(c: ^Ctx, bi: i32, lines: [2]i32) {
+	b := &c.l.boxes[bi]
+	b.lines = lines
+	if b.lines[1] <= b.lines[0] { return }
+	fl := &c.l.lines[b.lines[0]]
+	ll := &c.l.lines[b.lines[1] - 1]
+	b.baseline = fl.y + fl.baseline
+	b.last_baseline = ll.y + ll.baseline
+	f0, f1 := fl.frags[0], ll.frags[1]
 	// inline boxes: the union of their fragments (positioning, queries)
-	for i in base ..< i32(len(c.l.frags)) {
+	for i in f0 ..< f1 {
 		f := &c.l.frags[i]
 		if f.kind != .Box { continue }
 		ib := &c.l.boxes[f.box]
@@ -946,7 +953,7 @@ ifc_publish :: proc(c: ^Ctx, bi: i32, out: []Frag, lines: []Line) {
 			ib.pos, ib.size = u.min, u.max - u.min
 		}
 	}
-	for i in base ..< i32(len(c.l.frags)) {
+	for i in f0 ..< f1 {
 		f := &c.l.frags[i]
 		if f.kind == .Box { c.l.boxes[f.box].tmp_al = -1 }
 	}

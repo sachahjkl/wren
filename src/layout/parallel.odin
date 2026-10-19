@@ -38,6 +38,8 @@ Pre_Result :: struct {
 	empty:        bool,
 	chunk:        i32,
 	frags, lines: [2]i32,      // in the chunk's arrays; lines refer to fragments from frags[0]
+	glines:       [2]i32,      // in Layout.lines (pre_place)
+	taken:        bool,
 }
 
 @(private)
@@ -47,6 +49,7 @@ Pre_Pass :: struct {
 	results: []Pre_Result,
 	slot:    []i32,            // box -> index in roots (NONE: not laid out ahead)
 	chunks:  int,
+	off_f, off_l: []int,       // where each chunk's fragments and lines went in the layout's arrays
 }
 
 // One parallel step at a time in the process: a layout that finds the threads busy (another layout on another thread)
@@ -248,8 +251,54 @@ pre_layout :: proc(c: ^Ctx) {
 	pre.chunks = clamp(len(roots) / 32, 1, host.thread_pool_size(pool) * 8)
 	for len(l.pre_chunks) < pre.chunks { append(&l.pre_chunks, Pre_Chunk{}) }
 	host.parallel_for(pool, pre.chunks, pre_chunk, pre)
+
+	// the lines go to their place in the layout's arrays at once (on the threads): a context taken refers to them, an
+	// unused one (the block layout asked for another width) is left there as garbage of the pass
+	pre.off_f = make([]int, pre.chunks, context.temp_allocator)
+	pre.off_l = make([]int, pre.chunks, context.temp_allocator)
+	at_f, at_l := len(l.frags), len(l.lines)
+	for k in 0 ..< pre.chunks {
+		pre.off_f[k], pre.off_l[k] = at_f, at_l
+		at_f += len(l.pre_chunks[k].frags)
+		at_l += len(l.pre_chunks[k].lines)
+	}
+	non_zero_resize(&l.frags, at_f)
+	non_zero_resize(&l.lines, at_l)
+	host.parallel_for(pool, pre.chunks, pre_place, pre)
 	c.pre = pre
 	l.pre_counts[0] = len(roots)
+}
+
+@(private)
+pre_place :: proc(data: rawptr, k: int) {
+	pre := (^Pre_Pass)(data)
+	l := pre.c.l
+	ch := &l.pre_chunks[k]
+	copy(l.frags[pre.off_f[k]:], ch.frags[:])
+	n := len(pre.roots)
+	for ri in k * n / pre.chunks ..< (k + 1) * n / pre.chunks {
+		r := &pre.results[ri]
+		if r.chunk == NONE { continue }
+		fb := i32(pre.off_f[k]) + r.frags[0]
+		for li in r.lines[0] ..< r.lines[1] {
+			ln := ch.lines[li]
+			ln.frags += fb
+			l.lines[i32(pre.off_l[k]) + li] = ln
+		}
+		r.glines = r.lines + i32(pre.off_l[k])
+	}
+}
+
+// After a full pass's layout: the lines laid out ahead that no context took are garbage (incremental.odin compacts it).
+@(private)
+pre_garbage :: proc(c: ^Ctx) {
+	pre := c.pre
+	if pre == nil { return }
+	for &r in pre.results {
+		if r.chunk == NONE || r.taken { continue }
+		c.l.inc.dead_lines += int(r.lines[1] - r.lines[0])
+		c.l.inc.dead_frags += int(r.frags[1] - r.frags[0])
+	}
 }
 
 @(private)
@@ -302,9 +351,9 @@ pre_adopt :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (h: f32, empty: b
 	if fc != nil && fc.bfc != nil && len(fc.bfc.floats) > 0 { return }
 	b := &c.l.boxes[bi]
 	if content_x(b) != r.cx || content_y(b) != r.cy { return }
-	ch := &c.l.pre_chunks[r.chunk]
-	ifc_publish(c, bi, ch.frags[r.frags[0]:r.frags[1]], ch.lines[r.lines[0]:r.lines[1]])
-	c.l.pre_counts[1] += 1
+	ifc_settle(c, bi, r.glines)
+	if !r.taken { c.l.pre_counts[1] += 1 }
+	r.taken = true
 	return r.h, r.empty, true
 }
 
