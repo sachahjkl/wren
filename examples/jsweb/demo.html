@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Wren: the web APIs of JavaScript</title>
+<style>
+  body { font: 15px/1.45 "Segoe UI", sans-serif; margin: 24px 32px; color: #1d2433; background: #f6f7fb; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 18px; color: #5a6275; }
+  table { border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+  th, td { text-align: left; padding: 6px 14px; border-bottom: 1px solid #e6e8ef; vertical-align: top; }
+  th { background: #2f3b57; color: white; font-weight: 600; }
+  td.api { font-family: Consolas, monospace; white-space: nowrap; }
+  td.ok { color: #0a7a33; font-weight: 600; }
+  td.ko { color: #b42318; font-weight: 600; }
+  td.val { font-family: Consolas, monospace; color: #3a4357; max-width: 640px; overflow-wrap: anywhere; }
+</style>
+<h1>JavaScript web APIs in Wren</h1>
+<p class="sub">Served by the test server (<code>/jsweb/demo</code>); each row runs in this page's realm.</p>
+<table><thead><tr><th>API</th><th></th><th>result</th></tr></thead><tbody id="rows"></tbody></table>
+<script>
+const rows = document.getElementById("rows");
+function row(api, ok, value) {
+  const tr = document.createElement("tr");
+  const a = document.createElement("td"); a.className = "api"; a.textContent = api;
+  const s = document.createElement("td"); s.className = ok ? "ok" : "ko"; s.textContent = ok ? "ok" : "fail";
+  const v = document.createElement("td"); v.className = "val"; v.textContent = String(value);
+  tr.appendChild(a); tr.appendChild(s); tr.appendChild(v);
+  rows.appendChild(tr);
+}
+async function check(api, fn) {
+  try { row(api, true, await fn()); } catch (e) { row(api, false, (e && e.name) + ": " + (e && e.message)); }
+}
+(async () => {
+  await check("fetch() + json()", async () => JSON.stringify(await (await fetch("/jsweb/json")).json()));
+  await check("Response stream", async () => { let n = 0; for await (const c of (await fetch("/webapi/chunks?n=3&ms=5")).body) n += c.length; return n + " bytes in chunks"; });
+  await check("XMLHttpRequest", () => new Promise((res, rej) => { const x = new XMLHttpRequest(); x.open("GET", "/jsweb/headers"); x.onload = () => res(x.status + " " + x.getResponseHeader("x-multi")); x.onerror = rej; x.send(); }));
+  await check("AbortSignal.timeout", async () => { try { await (await fetch("/webapi/slow?ms=2000", { signal: AbortSignal.timeout(50) })).text(); return "not aborted"; } catch (e) { return e.name; } });
+  await check("URL / URLSearchParams", () => { const u = new URL("https://example.com/a?b=1"); u.searchParams.append("c", "d e"); return u.href; });
+  await check("TextEncoder / TextDecoder", () => new TextDecoder().decode(new TextEncoder().encode("h\u00e9llo \u20ac")));
+  await check("crypto.subtle.digest", async () => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode("abc"))), b => b.toString(16).padStart(2, "0")).join("").slice(0, 32) + "\u2026");
+  await check("crypto.randomUUID", () => crypto.randomUUID());
+  await check("localStorage", () => { localStorage.demo = "stored"; return localStorage.getItem("demo") + ", keys: " + Object.keys(localStorage).join(); });
+  await check("history.pushState", () => { history.pushState({ step: 1 }, "", "?demo"); return location.search + " state " + JSON.stringify(history.state); });
+  await check("navigator", () => navigator.userAgent + " | " + navigator.languages.join() + " | " + navigator.hardwareConcurrency + " threads");
+  await check("matchMedia / screen", () => "all: " + matchMedia("all").matches + ", screen " + screen.width + "x" + screen.height);
+  await check("performance", () => { performance.mark("a"); performance.mark("b"); return performance.measure("a-b", "a", "b").entryType + ", now " + performance.now().toFixed(1) + " ms"; });
+  await check("Blob / FileReader", () => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(new Blob(["hi"], { type: "text/plain" })); }));
+  await check("structuredClone", () => { const m = structuredClone(new Map([[1, new Date(0)]])); return m.get(1).toISOString(); });
+  await check("MessageChannel", () => new Promise(res => { const c = new MessageChannel(); c.port2.onmessage = e => res(e.data.v); c.port1.postMessage({ v: "delivered" }); }));
+  await check("WebSocket echo", () => new Promise((res, rej) => { const ws = new WebSocket("ws://127.0.0.1:8765/ws/echo"); ws.onopen = () => ws.send("ping"); ws.onmessage = e => { res(e.data); ws.close(); }; ws.onerror = rej; }));
+  await check("EventSource", () => new Promise(res => { const es = new EventSource("/sse/basic"); es.onmessage = e => { res(e.data); es.close(); }; }));
+})();
+</script>

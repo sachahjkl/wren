@@ -10,6 +10,7 @@ package main
 //	/jsweb/latin1          "caf\xe9" as text/plain; charset=iso-8859-1
 //	/jsweb/beacon          POST: counted; /jsweb/beacon-log answers "<count>|<last body>|<last Content-Type>"
 //	/jsweb/page            an empty HTML page (for documents the test loads by URL)
+//	/jsweb/demo            examples/jsweb/demo.html (the server runs from the repository root)
 
 import (
 	"fmt"
@@ -78,6 +79,10 @@ func registerJSWebHandlers(mux *http.ServeMux) {
 		defer beacon.Unlock()
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		fmt.Fprintf(w, "%d|%s|%s", beacon.count, beacon.body, beacon.ctype)
+	})
+	mux.HandleFunc("/jsweb/demo", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		http.ServeFile(w, r, "examples/jsweb/demo.html")
 	})
 	mux.HandleFunc("/jsweb/page", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
