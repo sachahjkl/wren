@@ -79,7 +79,8 @@ try {
         [SH]::PostMessage($h, 0x0101, [IntPtr]$code, [IntPtr]0xC0000001) | Out-Null   # WM_KEYUP
         Start-Sleep -Milliseconds $ClickPauseMs
     }
-    # -Actions "drag:x1,y1-x2,y2; rclick:x,y; dclick:x,y; tclick:x,y; click:x,y; key:Ctrl+F; type:some text; wait:ms; shot:path.png"
+    # -Actions "drag:x1,y1-x2,y2; rclick:x,y; dclick:x,y; tclick:x,y; click:x,y; key:Ctrl+F; type:some text; wait:ms; shot:path.png;
+    #          hover:x,y; hovershot:path.png" (hover: the real pointer; hovershot: a capture that leaves it where it is)
     # (window-relative pixels like -Click; key: real keyboard input, so modifiers count: Ctrl+Shift+T, Shift+F10, Menu, F6...)
     $named = @{ PageUp = 0x21; PageDown = 0x22; End = 0x23; Home = 0x24; Left = 0x25; Up = 0x26; Right = 0x27; Down = 0x28; Space = 0x20; Tab = 0x09;
         Enter = 0x0D; Escape = 0x1B; Esc = 0x1B; Delete = 0x2E; Backspace = 0x08; Menu = 0x5D; Plus = 0xBB; Minus = 0xBD; Insert = 0x2D }
@@ -143,6 +144,15 @@ try {
             'type' { foreach ($ch in $arg.ToCharArray()) { [SH]::PostMessage($h, 0x0102, [IntPtr][int]$ch, [IntPtr]1) | Out-Null; Start-Sleep -Milliseconds 20 } }
             'wait' { Start-Sleep -Milliseconds ([int]$arg) }
             'shot' { [SH]::SetCursorPos($r0.R + 15, $r0.T + 200) | Out-Null; Start-Sleep -Milliseconds $SettleMs; Grab $h $arg }
+            # hover:x,y moves the real pointer there (window-relative); hovershot:path captures without parking it
+            'hover' {
+                $xy = $arg -split ','
+                $r = New-Object SH+RECT
+                if ([SH]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [SH]::GetWindowRect($h, [ref]$r) | Out-Null }
+                [SH]::SetCursorPos($r.L + [int]$xy[0] - 3, $r.T + [int]$xy[1]) | Out-Null; Start-Sleep -Milliseconds 60
+                [SH]::SetCursorPos($r.L + [int]$xy[0], $r.T + [int]$xy[1]) | Out-Null
+            }
+            'hovershot' { Start-Sleep -Milliseconds $SettleMs; Grab $h $arg }
         }
         Start-Sleep -Milliseconds $ClickPauseMs
     }
