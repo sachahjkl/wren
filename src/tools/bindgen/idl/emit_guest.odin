@@ -277,12 +277,13 @@ emit_guest_wrapper :: proc(api: ^Api, o: ^Out, d: ^Decl) {
 		bufp := len(ps) > 0 ? fmt.tprintf("%s, buf: []u8", ps) : "buf: []u8"
 		is_bytes := d.result.kind == .Bytes
 		rt := is_bytes ? "[]u8" : "string"
+		conv := is_bytes ? "" : "string"   // a bytes result is the buffer itself
 		wl(o, "%s :: proc \"contextless\" (%s) -> (%s, Error)%s {{", name, bufp, rt, wc)
 		ws(o, pre)
 		wl(o, "\tn := _%s(%s)", d.host_name, args)
 		wl(o, "\tif n < 0 {{ return {{}}, Error(n) }}")
-		wl(o, "\tif int(n) > len(buf) {{ return %s(buf), .Truncated }}", rt)
-		wl(o, "\treturn %s(buf[:n]), .None", rt)
+		wl(o, "\tif int(n) > len(buf) {{ return %s(buf), .Truncated }}", conv)
+		wl(o, "\treturn %s(buf[:n]), .None", conv)
 		wl(o, "}")
 		wl(o, "")
 		if !d.effects {
@@ -304,7 +305,7 @@ emit_guest_wrapper :: proc(api: ^Api, o: ^Out, d: ^Decl) {
 			wl(o, "\t\tbuf := make([]u8, cap, allocator)")
 			wl(o, "\t\tn := _%s(%s)", d.host_name, args)
 			wl(o, "\t\tif n < 0 {{ delete(buf, allocator); return {{}}, Error(n) }}")
-			wl(o, "\t\tif int(n) <= cap {{ return %s(buf[:n]), .None }}", rt)
+			wl(o, "\t\tif int(n) <= cap {{ return %s(buf[:n]), .None }}", conv)
 			wl(o, "\t\tdelete(buf, allocator)")
 			wl(o, "\t\tcap = int(n)")
 			wl(o, "\t}")

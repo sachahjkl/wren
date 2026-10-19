@@ -668,8 +668,8 @@ Collection_names_alloc :: proc(collection: u64, allocator: runtime.Allocator) ->
 ParentNode_querySelectorAllPacked :: proc "contextless" (node: $T_node, selectors: string, buf: []u8) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
 	n := _ParentNode_querySelectorAllPacked(u64(node), raw_data(selectors), u32(len(selectors)), raw_data(buf), u32(len(buf)))
 	if n < 0 { return {}, Error(n) }
-	if int(n) > len(buf) { return []u8(buf), .Truncated }
-	return []u8(buf[:n]), .None
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
 }
 
 // The full length of ParentNode_querySelectorAllPacked's result.
@@ -686,7 +686,7 @@ ParentNode_querySelectorAllPacked_alloc :: proc(node: $T_node, selectors: string
 		buf := make([]u8, cap, allocator)
 		n := _ParentNode_querySelectorAllPacked(u64(node), raw_data(selectors), u32(len(selectors)), raw_data(buf), u32(len(buf)))
 		if n < 0 { delete(buf, allocator); return {}, Error(n) }
-		if int(n) <= cap { return []u8(buf[:n]), .None }
+		if int(n) <= cap { return (buf[:n]), .None }
 		delete(buf, allocator)
 		cap = int(n)
 	}
@@ -1888,8 +1888,8 @@ Element_boundingRect :: proc "contextless" (element: $T_element) -> (result: Dom
 Element_clientRectsPacked :: proc "contextless" (element: $T_element, buf: []u8) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
 	n := _Element_clientRectsPacked(u64(element), raw_data(buf), u32(len(buf)))
 	if n < 0 { return {}, Error(n) }
-	if int(n) > len(buf) { return []u8(buf), .Truncated }
-	return []u8(buf[:n]), .None
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
 }
 
 // The full length of Element_clientRectsPacked's result.
@@ -1906,7 +1906,7 @@ Element_clientRectsPacked_alloc :: proc(element: $T_element, allocator: runtime.
 		buf := make([]u8, cap, allocator)
 		n := _Element_clientRectsPacked(u64(element), raw_data(buf), u32(len(buf)))
 		if n < 0 { delete(buf, allocator); return {}, Error(n) }
-		if int(n) <= cap { return []u8(buf[:n]), .None }
+		if int(n) <= cap { return (buf[:n]), .None }
 		delete(buf, allocator)
 		cap = int(n)
 	}
@@ -2064,8 +2064,8 @@ Range_boundingRect :: proc "contextless" (start: $T_start, start_offset: u32, en
 Range_clientRectsPacked :: proc "contextless" (start: $T_start, start_offset: u32, end: $T_end, end_offset: u32, buf: []u8) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_start)) && size_of(T_start) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_end)) && size_of(T_end) == 8 {
 	n := _Range_clientRectsPacked(u64(start), start_offset, u64(end), end_offset, raw_data(buf), u32(len(buf)))
 	if n < 0 { return {}, Error(n) }
-	if int(n) > len(buf) { return []u8(buf), .Truncated }
-	return []u8(buf[:n]), .None
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
 }
 
 // The full length of Range_clientRectsPacked's result.
@@ -2082,7 +2082,7 @@ Range_clientRectsPacked_alloc :: proc(start: $T_start, start_offset: u32, end: $
 		buf := make([]u8, cap, allocator)
 		n := _Range_clientRectsPacked(u64(start), start_offset, u64(end), end_offset, raw_data(buf), u32(len(buf)))
 		if n < 0 { delete(buf, allocator); return {}, Error(n) }
-		if int(n) <= cap { return []u8(buf[:n]), .None }
+		if int(n) <= cap { return (buf[:n]), .None }
 		delete(buf, allocator)
 		cap = int(n)
 	}
@@ -2111,8 +2111,8 @@ MutationObserver_disconnect :: proc "contextless" (observer: u64) {
 MutationObserver_takeRecords :: proc "contextless" (observer: u64, buf: []u8) -> ([]u8, Error) {
 	n := _MutationObserver_takeRecords(observer, raw_data(buf), u32(len(buf)))
 	if n < 0 { return {}, Error(n) }
-	if int(n) > len(buf) { return []u8(buf), .Truncated }
-	return []u8(buf[:n]), .None
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
 }
 
 // The full length of MutationObserver_takeRecords's result.
@@ -2129,7 +2129,7 @@ MutationObserver_takeRecords_alloc :: proc(observer: u64, allocator: runtime.All
 		buf := make([]u8, cap, allocator)
 		n := _MutationObserver_takeRecords(observer, raw_data(buf), u32(len(buf)))
 		if n < 0 { delete(buf, allocator); return {}, Error(n) }
-		if int(n) <= cap { return []u8(buf[:n]), .None }
+		if int(n) <= cap { return (buf[:n]), .None }
 		delete(buf, allocator)
 		cap = int(n)
 	}
