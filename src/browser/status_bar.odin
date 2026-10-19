@@ -79,12 +79,18 @@ status_bar_build :: proc(app: ^App, t: ^Tab) {
 	hud_mono(app)
 	graph_box: ^ui.Box
 	if ui.status_bar("###statusbar") {
+		// the room of the left part: its width as laid out in the frame before (a change draws one more frame)
+		avail := max(f32)
+		if b := ui.prev_box("###sb_left"); b != nil && b.size.x > 0 {
+			avail = b.size.x
+			if b.size.x != left_width_seen { left_width_seen = b.size.x; app.frames_requested = max(app.frames_requested, 2) }
+		}
 		if ui.status_fill("###sb_left") {
 			link := hud.cfg.link_preview ? hovered_link(t) : ""
 			if link != "" {
 				ui.status_item(fmt.tprintf("%s###sb_link", link), tone = "", width = ui.fill())
 			} else if t != nil {
-				status_left(app, t)
+				status_left(app, t, avail)
 			}
 		}
 		graph_box = status_right(app)
@@ -92,53 +98,121 @@ status_bar_build :: proc(app: ^App, t: ^Tab) {
 	if hud.panel_open && graph_box != nil { frame_stats_panel(app, t, graph_box.rect) }
 }
 
+// One item of the left part: its text, a shorter form for a narrow bar ("" = none), and how long it stays when the bar
+// is too narrow for everything (higher stays longer).
+Status_Left_Item :: struct {
+	kind:     Status_Item,
+	text:     string,
+	short:    string,
+	id:       string,
+	tone:     string,
+	tip:      string,
+	priority: int,
+	width:    f32,
+	shown:    bool,
+	cut:      f32,   // > 0: shown this wide, its text ending with "..." (the last resort)
+}
+
+// Which items of the left part fit `avail` (px), and in what form: first the short forms (lowest priority first), then
+// items left out (lowest priority first, the page state never), then the last item shown cut with "...". Items
+// never overlap the graph nor end mid-word against it. `measure` gives an item's width for a text.
+status_left_fit :: proc(items: []Status_Left_Item, avail, sep_w: f32, measure: proc(text: string) -> f32) {
+	total :: proc(items: []Status_Left_Item, sep_w: f32) -> f32 {
+		w: f32
+		n := 0
+		for it in items { if it.shown { w += it.width; n += 1 } }
+		return w + f32(max(n - 1, 0)) * sep_w
+	}
+	for &it in items { it.shown, it.width, it.cut = true, measure(it.text), 0 }
+	if total(items, sep_w) <= avail { return }
+	order := make([]int, len(items), context.temp_allocator)
+	for i in 0 ..< len(items) { order[i] = i }
+	// lowest priority first; equal priorities: the later item first
+	for i in 1 ..< len(order) {
+		for j := i; j > 0; j -= 1 {
+			a, b := items[order[j - 1]], items[order[j]]
+			if a.priority > b.priority || (a.priority == b.priority && order[j - 1] < order[j]) { order[j - 1], order[j] = order[j], order[j - 1] } else { break }
+		}
+	}
+	for i in order {
+		it := &items[i]
+		if it.short == "" { continue }
+		it.text, it.width = it.short, measure(it.short)
+		if total(items, sep_w) <= avail { return }
+	}
+	for i in order {
+		it := &items[i]
+		if it.kind == .State { continue }
+		it.shown = false
+		if total(items, sep_w) <= avail { return }
+	}
+	// still too wide (a long page state): the last item shown takes what is left, cut
+	for i := len(items) - 1; i >= 0; i -= 1 {
+		if !items[i].shown { continue }
+		rest := avail - (total(items, sep_w) - items[i].width)
+		items[i].cut = max(rest, 1)
+		break
+	}
+}
+
+@(private = "file") left_width_seen: f32   // the left part's width in the frame before (to draw again when it changes)
+
 @(private = "file")
-status_left :: proc(app: ^App, t: ^Tab) {
-	first := true
-	sep :: proc(first: ^bool) { if !first^ { ui.status_separator() }; first^ = false }
+status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
 	p := t.page
+	items := make([dynamic]Status_Left_Item, 0, 8, context.temp_allocator)
+	add :: proc(items: ^[dynamic]Status_Left_Item, it: Status_Left_Item) { append(items, it) }
 	for item in hud.cfg.items {
 		switch item {
 		case .State:
 			st := page_state(t)
 			if st.text == "" { continue }
-			sep(&first)
-			sig := ui.status_item(fmt.tprintf("%s###sb_state", st.text), tone = st.tone)
-			if st.detail != "" && st.detail != st.text { tip(sig, st.detail) }
+			add(&items, {kind = item, text = st.text, id = "###sb_state", tone = st.tone, tip = st.detail != st.text ? st.detail : "", priority = 100})
 		case .Size:
 			if t.load == nil || t.load.bytes <= 0 { continue }
-			sep(&first)
-			ui.status_item(fmt.tprintf("%s###sb_size", fmt_bytes(t.load.bytes, hud.cfg.comma)))
+			add(&items, {kind = item, text = fmt_bytes(t.load.bytes, hud.cfg.comma), id = "###sb_size", tone = "weak", tip = "Size of the document", priority = 50})
 		case .Origin:
 			if p == nil || p.env.location.scheme == "about" { continue }
 			o := url.origin_serialize(p.env.origin, context.temp_allocator)
 			if o == "null" { continue }   // an opaque origin (file:, data:): the state item says what it is
-			sep(&first)
-			ui.status_item(fmt.tprintf("%s###sb_origin", o))
+			short := p.env.location.host != "" && p.env.location.host != o ? p.env.location.host : ""
+			add(&items, {kind = item, text = o, short = short, id = "###sb_origin", tone = "weak", tip = o, priority = 80})
 		case .Requests:
 			n := fetch.in_flight(&app.loader)
-			sep(&first)
-			ui.status_item(fmt.tprintf("%s request%s###sb_req", fmt_count(n), n == 1 ? "" : "s"), tone = n > 0 ? "" : "weak")
+			add(&items, {kind = item, text = fmt.tprintf("%s request%s", fmt_count(n), n == 1 ? "" : "s"), short = fmt.tprintf("%s req.", fmt_count(n)),
+				id = "###sb_req", tone = n > 0 ? "" : "weak", tip = "Requests in flight", priority = 60})
 		case .Cookies:
 			if p == nil || p.env.location.host == "" { continue }
 			n := cookies.count_for_host(&app.profile.jar, p.env.location.host)
-			sep(&first)
-			tip(ui.status_item(fmt.tprintf("%s cookie%s###sb_cookies", fmt_count(n), n == 1 ? "" : "s")), fmt.tprintf("Cookies of %s", p.env.location.host))
+			add(&items, {kind = item, text = fmt.tprintf("%s cookie%s", fmt_count(n), n == 1 ? "" : "s"), short = fmt.tprintf("%s ck.", fmt_count(n)),
+				id = "###sb_cookies", tone = "weak", tip = fmt.tprintf("Cookies of %s", p.env.location.host), priority = 30})
 		case .Nodes:
 			if p == nil { continue }
-			sep(&first)
-			ui.status_item(fmt.tprintf("%s nodes###sb_nodes", fmt_count(p.doc.nodes.count)))
+			add(&items, {kind = item, text = fmt.tprintf("%s nodes", fmt_count(p.doc.nodes.count)), short = fmt.tprintf("%s n.", fmt_count(p.doc.nodes.count)),
+				id = "###sb_nodes", tone = "weak", tip = "Nodes of the document", priority = 40})
 		case .Modules:
 			if p == nil || len(p.instances) == 0 { continue }
-			sep(&first)
-			ui.status_item(fmt.tprintf("%d module%s###sb_mods", len(p.instances), len(p.instances) == 1 ? "" : "s"))
+			add(&items, {kind = item, text = fmt.tprintf("%d module%s", len(p.instances), len(p.instances) == 1 ? "" : "s"), short = fmt.tprintf("%d mod.", len(p.instances)),
+				id = "###sb_mods", tone = "weak", tip = "WebAssembly modules of the page", priority = 20})
 		case .Zoom:
 			if zoom_percent(t) == 100 { continue }
-			sep(&first)
-			z := ui.status_item(fmt.tprintf("%d %%###sb_zoom", zoom_percent(t)), tone = "", clickable = true)
-			tip(z, "Page zoom: click to reset (Ctrl+0)")
-			if z.clicked { zoom_set(app, t, 1) }
+			add(&items, {kind = item, text = fmt.tprintf("%d %%", zoom_percent(t)), id = "###sb_zoom", tone = "", tip = "Page zoom: click to reset (Ctrl+0)", priority = 90})
 		}
+	}
+	em := ui.font_size()
+	// as the bar lays its items out (ui.status_item): text plus 2 * (text_pad 0.35 em + padding 0.15 em), rounded up; a
+	// separator 0.5 em + 1 px
+	measure :: proc(text: string) -> f32 { size := ui.font_size(); return ui.text_width(ui.top_style().font, size, text) + size + 1 }
+	status_left_fit(items[:], avail, em * 0.5 + max(1, ui.scale()), measure)
+	first := true
+	for it in items {
+		if !it.shown { continue }
+		if !first { ui.status_separator() }
+		first = false
+		width: Maybe(ui.Size) = it.cut > 0 ? ui.px(it.cut) : nil
+		sig := ui.status_item(fmt.tprintf("%s%s", it.text, it.id), tone = it.tone, clickable = it.kind == .Zoom, width = width)
+		if it.tip != "" { tip(sig, it.text != it.tip ? it.tip : it.text) }
+		if it.kind == .Zoom && sig.clicked { zoom_set(app, t, 1) }
 	}
 }
 
