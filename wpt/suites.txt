@@ -1,0 +1,26 @@
+# The web-platform-tests folders Wren measures (src/tools/wpt, tools/wpt.ps1), in report order.
+# <folder> [only=<sub>,<sub>]: a sample, the listed sub-folders only ("." = the folder's own files, not its sub-folders).
+# Support folders (resources, support, tools, common...) are never tests. tools\wpt.ps1 fetches these folders and the
+# shared ones (resources, common, interfaces...) at the pinned commit.
+dom/nodes
+dom/events
+dom/collections
+dom/lists
+html/webappapis/timers
+html/webappapis/microtask-queuing
+html/semantics/scripting-1
+html/dom
+url
+encoding
+fetch/api/basic
+fetch/api/headers
+fetch/api/request
+fetch/api/response
+webidl/ecmascript-binding
+console
+hr-time
+domparsing
+xhr
+webstorage
+streams only=.,readable-streams,writable-streams
+workers only=.
