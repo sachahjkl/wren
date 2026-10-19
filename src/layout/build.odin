@@ -324,7 +324,22 @@ group_items :: proc(c: ^Ctx, start := 0) {
 	if n == 0 { return }
 	nb := len(c.l.boxes)
 	count := make([]i32, nb + 1, context.temp_allocator)
-	for &it in items { count[it.ifc + 1] += 1 }
+	// already grouped (no context's items interrupted by another's, the usual case): ranges only, no sort
+	grouped := true
+	for &it, i in items {
+		if grouped && i > 0 && it.ifc != items[i - 1].ifc && count[it.ifc + 1] > 0 { grouped = false }
+		count[it.ifc + 1] += 1
+	}
+	if grouped {
+		base := i32(start)
+		for i := 0; i < n; {
+			j := i + 1
+			for j < n && items[j].ifc == items[i].ifc { j += 1 }
+			c.l.boxes[items[i].ifc].items = {base + i32(i), base + i32(j)}
+			i = j
+		}
+		return
+	}
 	for i in 1 ..= nb { count[i] += count[i - 1] }
 	base := i32(start)
 	for bi in 0 ..< nb {

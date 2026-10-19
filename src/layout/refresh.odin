@@ -45,14 +45,18 @@ anon_paint_props :: proc() -> []style.Prop {
 note_refresh_inputs :: proc(l: ^Layout) {
 	l.canvas_items = {NONE, NONE}
 	root_el := l.boxes[0].first
-	for &it, i in l.items {
-		if it.kind != .Box || it.box < 0 { continue }
-		if it.box == root_el { l.canvas_items[0] = i32(i) }
-		if b := &l.boxes[it.box]; b.node == l.canvas_els[1] && b.node != base.NIL_HANDLE && .Pseudo not_in b.flags { l.canvas_items[1] = i32(i) }
-	}
 	clear(&l.deco_items)
 	for &it, i in l.items {
-		if it.kind == .Text && it.deco != {} && it.deco_box > 0 { append(&l.deco_items, i32(i)) }
+		#partial switch it.kind {
+		case .Box:
+			if it.box < 0 { continue }
+			if it.box == root_el { l.canvas_items[0] = i32(i) }
+			// a box's item carries its element (hit_node): only the body's item needs its box read
+			if it.node != l.canvas_els[1] { continue }
+			if b := &l.boxes[it.box]; b.node == l.canvas_els[1] && b.node != base.NIL_HANDLE && .Pseudo not_in b.flags { l.canvas_items[1] = i32(i) }
+		case .Text:
+			if it.deco != {} && it.deco_box > 0 { append(&l.deco_items, i32(i)) }
+		}
 	}
 	l.loose_styles = false
 	for &it in l.inline_items {

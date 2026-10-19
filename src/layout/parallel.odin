@@ -3,6 +3,7 @@ package layout
 import "base:runtime"
 import "core:sync"
 import "wb:host"
+import "wb:style"
 
 // Parallel pre-layout of inline formatting contexts, for full passes over large documents (a page load). Line building
 // (words, measuring, breaking, vertical alignment) is most of a full pass, and the lines of a paragraph depend only on
@@ -94,31 +95,82 @@ shutdown_threads :: proc() {
 
 // Content width of every block in normal flow whose width is its containing block's minus its own margins, borders and
 // padding, from the viewport down (-1: not known ahead). Mirrors block_width for auto widths.
+// What each box contributes, found on the layout threads (styles are read there): whether its width follows from its
+// parent's, and its horizontal margins and border + padding when they do not depend on that width.
 @(private)
-pre_predict :: proc(c: ^Ctx, pred: []f32) {
+Pre_Box :: struct {
+	follows:     bool,   // a block in flow with an auto width, in a block container
+	relative:    bool,   // some margin or padding is a percentage or calc(): resolved against the parent's width
+	simple:      bool,   // an inline formatting context pre_simple accepts
+	ml, mr, pbw: f32,
+}
+
+@(private)
+Pre_Predict :: struct {
+	c:      ^Ctx,
+	boxes:  []Pre_Box,
+	chunks: int,
+}
+
+@(private)
+pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box {
 	l := c.l
+	pp := Pre_Predict{c = c, boxes = make([]Pre_Box, len(l.boxes), context.temp_allocator)}
+	pp.chunks = clamp(len(l.boxes) / 1024, 1, host.thread_pool_size(pool) * 4)
+	host.parallel_for(pool, pp.chunks, proc(data: rawptr, k: int) {
+		pp := (^Pre_Predict)(data)
+		c := pp.c
+		l := c.l
+		n := len(l.boxes)
+		AHEAD :: 8
+		lo, hi := k * n / pp.chunks, (k + 1) * n / pp.chunks
+		for i in lo ..< hi {
+			if i + AHEAD < hi { prefetch_fields(l.boxes[i + AHEAD].cs, LAYOUT_FIELDS) }
+			b := &l.boxes[i]
+			x := &pp.boxes[i]
+			if .Ifc in b.flags { x.simple = pre_simple(l, b) }
+			p := b.parent
+			if p == NONE { continue }
+			pb := &l.boxes[p]
+			if pb.kind != .Block || .Ifc in pb.flags { continue }
+			if b.kind != .Block || b.flags & {.Abs, .Float, .Block_In_Inline, .Atomic, .Dead} != {} { continue }
+			cs := b.cs
+			if cs == nil || cs.width.kind != .Auto || cs.max_width.kind != .None { continue }
+			if cs.min_width.kind != .Auto && !(cs.min_width.kind == .Px && cs.min_width.v <= 0) { continue }
+			x.follows = true
+			fixed :: proc(l: style.Length) -> bool { return l.kind != .Percent && l.kind != .Calc }
+			if !fixed(cs.margin[.Left]) || !fixed(cs.margin[.Right]) || !fixed(cs.padding[.Left]) || !fixed(cs.padding[.Right]) {
+				x.relative = true
+				continue
+			}
+			x.ml, x.mr, x.pbw = pre_edges(c, cs, 0)
+		}
+	}, &pp)
+
 	pred[0] = c.vp.x
-	AHEAD :: 8
 	for i in 1 ..< len(l.boxes) {
-		if i + AHEAD < len(l.boxes) { prefetch_fields(l.boxes[i + AHEAD].cs, LAYOUT_FIELDS) }
 		pred[i] = -1
-		b := &l.boxes[i]
-		p := b.parent
-		if p == NONE || pred[p] < 0 { continue }
-		pb := &l.boxes[p]
-		if pb.kind != .Block || .Ifc in pb.flags { continue }
-		if b.kind != .Block || b.flags & {.Abs, .Float, .Block_In_Inline, .Atomic, .Dead} != {} { continue }
-		cs := b.cs
-		if cs == nil || cs.width.kind != .Auto || cs.max_width.kind != .None { continue }
-		if cs.min_width.kind != .Auto && !(cs.min_width.kind == .Px && cs.min_width.v <= 0) { continue }
-		pcw := pred[p]
-		ml := cs.margin[.Left].kind == .Auto ? 0 : px_of(c, cs.margin[.Left], pcw)
-		mr := cs.margin[.Right].kind == .Auto ? 0 : px_of(c, cs.margin[.Right], pcw)
-		pbw := max(px_of(c, cs.padding[.Left], pcw), 0) + max(px_of(c, cs.padding[.Right], pcw), 0) +
-			border_px(c, cs.border_width[.Left]) + border_px(c, cs.border_width[.Right])
+		x := &pp.boxes[i]
+		if !x.follows { continue }
+		pcw := pred[l.boxes[i].parent]
+		if pcw < 0 { continue }
+		ml, mr, pbw := x.ml, x.mr, x.pbw
+		if x.relative { ml, mr, pbw = pre_edges(c, l.boxes[i].cs, pcw) }
 		w := max(pcw - ml - mr, pbw)
 		pred[i] = max(w - pbw, 0)
 	}
+	return pp.boxes
+}
+
+// Horizontal margins (auto: 0) and border + padding of a block in flow against its parent's content width, as
+// resolve_box_model, pb_w and block_width find them.
+@(private)
+pre_edges :: proc(c: ^Ctx, cs: ^style.Computed, pcw: f32) -> (ml, mr, pbw: f32) {
+	ml = cs.margin[.Left].kind == .Auto ? 0 : px_of(c, cs.margin[.Left], pcw)
+	mr = cs.margin[.Right].kind == .Auto ? 0 : px_of(c, cs.margin[.Right], pcw)
+	pbw = max(px_of(c, cs.padding[.Right], pcw), 0) + max(px_of(c, cs.padding[.Left], pcw), 0) +
+		border_px(c, cs.border_width[.Right]) + border_px(c, cs.border_width[.Left])
+	return
 }
 
 // Contexts whose content needs nothing but the content width (no atomic inline, float, positioned or block-level box).
@@ -148,14 +200,14 @@ pre_layout :: proc(c: ^Ctx) {
 	defer par_release()
 
 	pred := make([]f32, len(l.boxes), context.temp_allocator)
-	pre_predict(c, pred)
+	info := pre_predict(c, pred, pool)
 	roots := make([dynamic]i32, 0, n_ifc, context.temp_allocator)
 	results := make([dynamic]Pre_Result, 0, n_ifc, context.temp_allocator)
 	slot := make([]i32, len(l.boxes), context.temp_allocator)
 	for i in 0 ..< len(l.boxes) {
 		slot[i] = NONE
 		b := &l.boxes[i]
-		if .Ifc not_in b.flags || pred[i] < 0 || b.parent == NONE || !pre_simple(l, b) { continue }
+		if .Ifc not_in b.flags || pred[i] < 0 || b.parent == NONE || !info[i].simple { continue }
 		slot[i] = i32(len(roots))
 		append(&roots, i32(i))
 		append(&results, Pre_Result{pcw = pred[b.parent], cw = pred[i], chunk = NONE})
@@ -186,6 +238,14 @@ pre_chunk :: proc(data: rawptr, k: int) {
 	clear(&ch.lines)
 	n := len(pre.roots)
 	fc: Flow_Ctx   // no formatting context: no float reaches the lines
+	// about a fragment per item and a line per two (as reserve_lines)
+	want := 0
+	for ri in k * n / pre.chunks ..< (k + 1) * n / pre.chunks {
+		b := &l.boxes[pre.roots[ri]]
+		want += int(b.items[1] - b.items[0])
+	}
+	reserve(&ch.frags, want + want / 4 + 16)
+	reserve(&ch.lines, want / 2 + 16)
 	for ri in k * n / pre.chunks ..< (k + 1) * n / pre.chunks {
 		bi := pre.roots[ri]
 		r := &pre.results[ri]
