@@ -29,7 +29,7 @@ DEMOS_PREFS := [?]config.Def{
 
 register_demos_prefs :: proc(p: ^config.Prefs) { config.register(p, DEMOS_PREFS[:]) }
 
-Demo_Theme :: enum u8 { Css, Layout, Rendering, Text, Images, Wasm, Network, Performance, E2e }
+Demo_Theme :: enum u8 { Css, Layout, Rendering, Text, Images, Wasm, JavaScript, Network, Performance, E2e }
 
 @(private)
 DEMO_THEME_TITLES := [Demo_Theme]string{
@@ -39,6 +39,7 @@ DEMO_THEME_TITLES := [Demo_Theme]string{
 	.Text        = "Text",
 	.Images      = "Images",
 	.Wasm        = "WebAssembly APIs and workers",
+	.JavaScript  = "JavaScript",
 	.Network     = "Network and security",
 	.Performance = "Performance and stress",
 	.E2e         = "End-to-end tests",
@@ -99,6 +100,9 @@ DEMOS := [?]Demo{
 		"Reached from the counter page: navigating closed the previous page, and freed its Wasm instance, its timer and its DOM with it.", false, "", false},
 	{.Wasm, "Form controls", "forms.html",
 		"Text, email, number, date, range, color, select and file controls, validation pseudo-classes (<code>:user-invalid</code>, <code>:out-of-range</code>), a Wasm module that reads, fills and validates the form, and a multipart POST to the server.", true, "", false},
+
+	{.JavaScript, "JavaScript in WebAssembly", "js.html",
+		"Plain HTML and JavaScript run by QuickJS-ng compiled to WebAssembly, one sandboxed instance per page: a click listener, nodes built with <code>createElement</code>, the bindings' prototype chain (generated from the specifications' Web IDL), ES2023 features and microtasks. Off with <code>javascript.enabled</code>.", false, "", false},
 
 	{.Network, "Content-Security-Policy", "/site-csp/counter.html",
 		"The counter page served with a policy that allows scripts only from unreachable hosts: its Wasm module is blocked, and the violation is reported.", true, "", false},

@@ -35,7 +35,7 @@
 <div class="head">
 <h1><span class="w">W</span>ren demos and tests</h1>
 <p class="intro">Every page that comes with the browser, by theme, with what it shows. The pages marked <span class="badge srv">test server</span> load from <b>testserver.exe</b> (http://127.0.0.1:8765/): start it first (<code>demo.bat</code> in the release, <code>build\testserver.exe</code> from the repository). The same list is built into the browser: <a href="about:demos">about:demos</a>.</p>
-<nav><a href="#css">CSS engine</a><a href="#layout">Layout</a><a href="#rendering">Rendering and effects</a><a href="#text">Text</a><a href="#images">Images</a><a href="#wasm">WebAssembly APIs and workers</a><a href="#network">Network and security</a><a href="#performance">Performance and stress</a><a href="#tests">End-to-end tests</a></nav>
+<nav><a href="#css">CSS engine</a><a href="#layout">Layout</a><a href="#rendering">Rendering and effects</a><a href="#text">Text</a><a href="#images">Images</a><a href="#wasm">WebAssembly APIs and workers</a><a href="#javascript">JavaScript</a><a href="#network">Network and security</a><a href="#performance">Performance and stress</a><a href="#tests">End-to-end tests</a></nav>
 </div>
 <div class="main">
 <h2 id="css">CSS engine</h2>
@@ -63,6 +63,8 @@
 <div class="demo"><h3><a href="counter.html">A page with no JavaScript</a></h3><p>Real HTML whose behaviour is a WebAssembly module (<code>counter.wasm</code>, written in Odin): buttons, a ticking timer, DOM updates, and a relative link.</p></div>
 <div class="demo"><h3><a href="about.html">Page lifetime</a></h3><p>Reached from the counter page: navigating closed the previous page, and freed its Wasm instance, its timer and its DOM with it.</p></div>
 <div class="demo"><h3><a href="http://127.0.0.1:8765/site/forms.html">Form controls</a><span class="badge srv">test server</span></h3><p>Text, email, number, date, range, color, select and file controls, validation pseudo-classes (<code>:user-invalid</code>, <code>:out-of-range</code>), a Wasm module that reads, fills and validates the form, and a multipart POST to the server.</p></div>
+<h2 id="javascript">JavaScript</h2>
+<div class="demo"><h3><a href="js.html">JavaScript in WebAssembly</a></h3><p>Plain HTML and JavaScript run by QuickJS-ng compiled to WebAssembly, one sandboxed instance per page: a click listener, nodes built with <code>createElement</code>, the bindings' prototype chain (generated from the specifications' Web IDL), ES2023 features and microtasks. Off with <code>javascript.enabled</code>.</p></div>
 <h2 id="network">Network and security</h2>
 <div class="demo"><h3><a href="http://127.0.0.1:8765/site-csp/counter.html">Content-Security-Policy</a><span class="badge srv">test server</span></h3><p>The counter page served with a policy that allows scripts only from unreachable hosts: its Wasm module is blocked, and the violation is reported.</p></div>
 <div class="demo"><h3><a href="http://127.0.0.1:8765/start">Cookies and redirects</a><span class="badge srv">test server</span></h3><p>Sets a cookie, then redirects to the counter page: the cookie and the redirect show in the page information of the address bar.</p></div>

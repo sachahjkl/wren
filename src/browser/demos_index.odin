@@ -64,6 +64,7 @@ theme_anchor :: proc(theme: Demo_Theme) -> string {
 	case .Text:        return "text"
 	case .Images:      return "images"
 	case .Wasm:        return "wasm"
+	case .JavaScript:  return "javascript"
 	case .Network:     return "network"
 	case .Performance: return "performance"
 	case .E2e:         return "tests"
