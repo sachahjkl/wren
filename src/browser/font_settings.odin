@@ -2,6 +2,7 @@ package browser
 
 import "toolkit:font"
 import "wb:config"
+import "wb:host"
 
 ////////////////////////////////
 // Text rendering and shaping (toolkit:font on DirectWrite): glyph bitmaps, the atlas, color glyphs, the system fallback
@@ -16,7 +17,9 @@ FONT_PREFS := [?]config.Def{
 	{name = "font.raster.grid_fit", kind = .String, default = {s = "default"}, choices = {"default", "enabled", "disabled"},
 		description = "Hinting of glyph outlines to the pixel grid: default (DirectWrite chooses by size), enabled, disabled."},
 	{name = "font.color_glyphs", kind = .Bool, default = {b = true},
-		description = "Draw color glyphs (COLR/CPAL emoji of Segoe UI Emoji...) in color. Off: their outline in the text color."},
+		description = "Draw color glyphs in color: emoji and color fonts in every format (COLR v0 layers, COLR v1 gradients and paint trees, sbix / CBDT / PNG bitmaps, OT-SVG), drawn by Direct2D. Off: their outline in the text color."},
+	{name = "font.color_glyphs.async", kind = .Bool, default = {b = true},
+		description = "Draw color glyphs on a thread of their own: a page shows its text at once and each emoji appears when it is drawn (a complex emoji takes a few milliseconds). Off: a frame waits for the color glyphs it shows."},
 	{name = "font.fallback.system", kind = .Bool, default = {b = true},
 		description = "Characters no font of the font-family list has (and no face of the page) come from the fonts Windows picks for them (DirectWrite's system fallback: symbols, CJK, emoji, Arabic...). Off: they show the missing-glyph box of the first font."},
 	{name = "font.atlas.page_size", kind = .Int, default = {i = 2048}, bounded = true, min = 256, max = 8192, unit = "px", restart = true,
@@ -50,6 +53,7 @@ font_settings_from_prefs :: proc(p: ^config.Prefs) -> font.Settings {
 	case: s.grid_fit = .Default
 	}
 	s.color_glyphs = config.bool_of(p, "font.color_glyphs")
+	s.color_async = config.bool_of(p, "font.color_glyphs.async")
 	s.system_fallback = config.bool_of(p, "font.fallback.system")
 	s.page_size = int(config.int_of(p, "font.atlas.page_size"))
 	s.max_gray_pages = int(config.int_of(p, "font.atlas.gray_pages"))
@@ -64,6 +68,11 @@ font_settings_from_prefs :: proc(p: ^config.Prefs) -> font.Settings {
 // measures may change (the system fallback), the generic families are resolved again.
 font_settings_init :: proc(app: ^App) {
 	font_generics_apply(app)
+	// color glyphs drawn on their thread: a frame shows them (host.post wakes the loop from any thread)
+	font.set_color_ready_callback(&app.fonts, proc(user: rawptr) {
+		a := (^App)(user)
+		host.post(&a.loop, proc(data: rawptr) { app := (^App)(data); app.frames_requested = max(app.frames_requested, 2) }, a)
+	}, app)
 	font_watch = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		a := (^App)(user)
 		old := a.fonts.settings
