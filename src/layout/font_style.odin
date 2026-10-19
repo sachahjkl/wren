@@ -7,28 +7,20 @@ import "wb:style"
 // font-variant-*, font-kerning, then font-feature-settings, which wins) and variations (font-variation-settings).
 
 // Identity of the feature-related values of a style, for the font cache of a pass (the lists are shared by inheritance).
+// (A list is never shared by two different values: its address tells it apart.)
 @(private)
 Font_Sig :: struct {
-	feat:    rawptr,
-	nfeat:   int,
-	vars:    rawptr,
-	nvars:   int,
-	lig:     style.Font_Variant_Ligatures,
-	ea:      style.Font_Variant_East_Asian,
-	caps:    style.Font_Variant_Caps,
-	num:     style.Font_Variant_Numeric,
-	pos:     style.Font_Variant_Position,
-	kerning: style.Font_Kerning,
+	feat:  rawptr,
+	vars:  rawptr,
+	enums: u64,     // ligatures, east-asian, caps, numeric, position, kerning
 }
 
 @(private)
 font_sig :: #force_inline proc(cs: ^style.Computed) -> Font_Sig {
-	return Font_Sig{
-		feat = raw_data(cs.font_feature_settings), nfeat = len(cs.font_feature_settings),
-		vars = raw_data(cs.font_variation_settings), nvars = len(cs.font_variation_settings),
-		lig = cs.font_variant_ligatures, ea = cs.font_variant_east_asian, caps = cs.font_variant_caps,
-		num = cs.font_variant_numeric, pos = cs.font_variant_position, kerning = cs.font_kerning,
-	}
+	e := u64(transmute(u16)cs.font_variant_ligatures) | u64(transmute(u16)cs.font_variant_east_asian) << 16 |
+		u64(cs.font_variant_caps) << 32 | u64(transmute(u8)cs.font_variant_numeric) << 40 | u64(cs.font_variant_position) << 48 |
+		u64(cs.font_kerning) << 56
+	return Font_Sig{feat = raw_data(cs.font_feature_settings), vars = raw_data(cs.font_variation_settings), enums = e}
 }
 
 // The OpenType features and variation axes of a style, in `a`.

@@ -1,5 +1,6 @@
 package layout
 
+import "base:intrinsics"
 import "core:strings"
 import "core:unicode/utf8"
 import "wb:style"
@@ -34,10 +35,18 @@ bidi_level :: #force_inline proc(p: ^Bidi_Para, item: i32, pos: int) -> u8 {
 // U+1E800..U+1EFFF, RLM, ALM, the embedding / override / isolate controls).
 @(private)
 has_rtl :: proc(text: string) -> bool {
-	for i := 0; i < len(text); i += 1 {
+	p := raw_data(text)
+	i := 0
+	for i < len(text) {
+		// eight ASCII bytes at a time (most text)
+		if i + 8 <= len(text) && intrinsics.unaligned_load((^u64)(rawptr(uintptr(p) + uintptr(i)))) & 0x8080808080808080 == 0 {
+			i += 8
+			continue
+		}
 		b := text[i]
+		i += 1
 		if b < 0xD6 || b & 0xC0 == 0x80 { continue }
-		r, _ := utf8.decode_rune_in_string(text[i:])
+		r, _ := utf8.decode_rune_in_string(text[i - 1:])
 		switch {
 		case r >= 0x0590 && r <= 0x08FF, r >= 0xFB1D && r <= 0xFDFF, r >= 0xFE70 && r <= 0xFEFF, r >= 0x10800 && r <= 0x10FFF,
 		     r >= 0x1E800 && r <= 0x1EFFF, r == 0x200F, r == 0x061C, r >= 0x202A && r <= 0x202E, r >= 0x2066 && r <= 0x2069:

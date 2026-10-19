@@ -23,6 +23,7 @@ Ctx :: struct {
 	font_cache: map[Font_Key]i32,
 	last_key: Font_Key,
 	last_fi:  i32,
+	last_cs:  ^style.Computed,           // the style last_fi was found for (same style: same font)
 	anon_cs:  map[Anon_Key]^style.Computed,
 	counters: map[base.Handle]List_Counter,
 	quote_depth: int,
@@ -188,13 +189,14 @@ b_index :: proc(c: ^Ctx, b: ^Box) -> i32 {
 
 @(private)
 font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
+	if cs == c.last_cs && c.last_fi >= 0 { return c.last_fi }
 	key := Font_Key{
 		families = raw_data(cs.font_family), n = len(cs.font_family), weight = cs.font_weight,
 		italic = cs.font_style != .Normal, size = cs.font_size, lh_kind = cs.line_height.kind, lh = cs.line_height.v,
 		style = cs.font_style, stretch = cs.font_stretch, feat = font_sig(cs),
 	}
-	if c.last_fi >= 0 && key == c.last_key { return c.last_fi }
-	if fi, ok := c.font_cache[key]; ok { c.last_key, c.last_fi = key, fi; return fi }
+	if c.last_fi >= 0 && key == c.last_key { c.last_cs = cs; return c.last_fi }
+	if fi, ok := c.font_cache[key]; ok { c.last_key, c.last_fi, c.last_cs = key, fi, cs; return fi }
 	info: Font_Info
 	info.size = cs.font_size * c.scale
 	info.weight, info.italic = cs.font_weight, key.italic
@@ -211,7 +213,7 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	fi := i32(len(c.l.fonts))
 	append(&c.l.fonts, info)
 	c.font_cache[key] = fi
-	c.last_key, c.last_fi = key, fi
+	c.last_key, c.last_fi, c.last_cs = key, fi, cs
 	return fi
 }
 
