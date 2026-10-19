@@ -23,7 +23,7 @@ func registerFirstPaintHandlers(mux *http.ServeMux) {
 				return
 			}
 		}
-		b, err := os.ReadFile(filepath.Join("examples/site/firstpaint", name))
+		b, err := os.ReadFile(sitePath("firstpaint", name))
 		if err != nil {
 			http.NotFound(w, r)
 			return

@@ -86,7 +86,7 @@ func serveImageFile(w http.ResponseWriter, r *http.Request, prefix string, cors 
 	if d, _ := strconv.Atoi(r.URL.Query().Get("delay")); d > 0 {
 		time.Sleep(time.Duration(d) * time.Millisecond)
 	}
-	b, err := os.ReadFile(filepath.Join("examples/site/images", filepath.Base(name)))
+	b, err := os.ReadFile(sitePath("images", filepath.Base(name)))
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -115,7 +115,7 @@ func registerImageHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/images/cors/", func(w http.ResponseWriter, r *http.Request) { serveImageFile(w, r, "/images/cors/", true) })
 	mux.HandleFunc("/images/slow/", func(w http.ResponseWriter, r *http.Request) {
 		countImage(r.URL.Path)
-		b, err := os.ReadFile(filepath.Join("examples/site/images", filepath.Base(strings.TrimPrefix(r.URL.Path, "/images/slow/"))))
+		b, err := os.ReadFile(sitePath("images", filepath.Base(strings.TrimPrefix(r.URL.Path, "/images/slow/"))))
 		if err != nil {
 			http.NotFound(w, r)
 			return

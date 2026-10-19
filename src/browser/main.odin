@@ -229,6 +229,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	// built-in pages show at once (they paint in their first frame)
 	if target == "about:config" { hold_release(t); show_config(app, t); return }
 	if target == HOME_URL { hold_release(t); show_home(app, t); return }
+	if target == DEMOS_URL { hold_release(t); show_demos(app, t); return }
 	load := new(Doc_Load)
 	load.tab = t
 	shown := target
@@ -236,7 +237,8 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 		load.view_source = true
 		target = strings.clone(normalize_address(target[len(VIEW_SOURCE):]), context.temp_allocator)
 	}
-	if from != nil { load.initiator, load.has_initiator = fetch.environment_clone(from.env), true }
+	// (a link of a built-in page opens as the address bar would: about:demos links to local files)
+	if from != nil && !builtin_document(from) { load.initiator, load.has_initiator = fetch.environment_clone(from.env), true }
 
 	// the previous page stays on screen until this one paints, or closes now (first_paint.odin)
 	hold_begin(app, t, target)

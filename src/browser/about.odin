@@ -91,18 +91,13 @@ HOME_TEMPLATE :: `<!doctype html>
       <p>Every setting of the browser, searchable and editable. Nothing is hard-wired.</p>
       <p class="where">about:config</p>
     </a>
-    <a class="card" href="http://127.0.0.1:8765/site/style.html">
-      <h3>Style engine demo</h3>
-      <p>Selectors, the cascade, layers, variables, media queries and linked sheets.</p>
-      <p class="where">127.0.0.1:8765/site/style.html</p>
-    </a>
-    <a class="card" href="http://127.0.0.1:8765/site/">
-      <h3>WebAssembly page</h3>
-      <p>A page whose logic is a Wasm module: no JavaScript anywhere.</p>
-      <p class="where">127.0.0.1:8765/site/</p>
+    <a class="card" href="about:demos">
+      <h3>Demos &amp; tests</h3>
+      <p>Every demo and test page that comes with Wren, by theme: CSS, layout, effects, text, images, WebAssembly, network, performance.</p>
+      <p class="where">about:demos</p>
     </a>
   </div>
-  <p class="foot"><b>$NAME$</b> $VERSION$ &middot; WebAssembly only &middot; written in Odin<br>The demos need <b>build\testserver.exe</b> running.</p>
+  <p class="foot"><b>$NAME$</b> $VERSION$ &middot; WebAssembly only &middot; written in Odin<br>Some demos need the test server: <b>testserver.exe</b> (demo.bat in the release).</p>
 </body>
 </html>
 `
