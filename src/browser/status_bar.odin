@@ -192,7 +192,17 @@ status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
 				id = "###sb_nodes", tone = "weak", tip = "Nodes of the document", priority = 40})
 		case .Modules:
 			if p == nil || len(p.instances) == 0 { continue }
-			add(&items, {kind = item, text = fmt.tprintf("%d module%s", len(p.instances), len(p.instances) == 1 ? "" : "s"), short = fmt.tprintf("%d mod.", len(p.instances)),
+			// the JavaScript realm is an instance of the engine module: shown as such, the page's own modules counted apart
+			mods := len(p.instances)
+			has_js := p.js != nil && p.js.inst != nil
+			if has_js { mods -= 1 }
+			if has_js {
+				state := p.js.failed ? "JS stopped" : "JS"
+				add(&items, {kind = item, text = state, short = state, id = "###sb_js", tone = p.js.failed ? "bad" : "weak",
+					tip = p.js.failed ? "The page's JavaScript engine stopped (see the console)" : "This page runs JavaScript (in WebAssembly)", priority = 20})
+			}
+			if mods == 0 { continue }
+			add(&items, {kind = item, text = fmt.tprintf("%d module%s", mods, mods == 1 ? "" : "s"), short = fmt.tprintf("%d mod.", mods),
 				id = "###sb_mods", tone = "weak", tip = "WebAssembly modules of the page", priority = 20})
 		case .Zoom:
 			if zoom_percent(t) == 100 { continue }
