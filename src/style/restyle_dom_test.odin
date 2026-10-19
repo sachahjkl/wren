@@ -321,6 +321,66 @@ restyle_dom_falls_back :: proc(t: ^testing.T) {
 	testing.expect(t, !ok3)
 }
 
+// With a forms model (a control provider), what can reach other controls' state falls back to a full pass; the rest
+// of the document stays partial.
+@(test)
+restyle_dom_forms :: proc(t: ^testing.T) {
+	provider := Control_Provider{query = proc(user: rawptr, el: base.Handle, q: Control_Query) -> (bool, bool) { return false, false }}
+	f := rx_load(`<form><input id=i name=a><input name=a></form><div id=d><p id=p>x</p></div>`)
+	defer rx_unload(f)
+	f.st.state.controls = provider
+	p := by_id(f, "p")
+	dom.remove_child(f.doc, by_id(f, "d"), p)
+	dom.release(f.doc, p)
+	_, ok := restyle_dom(f.eng, f.doc, f.st)
+	testing.expect(t, !ok, "an element gone from a document with forms")
+	g := rx_load(`<div id=d><p id=p>x</p><p>y</p></div>`)
+	defer rx_unload(g)
+	g.st.state.controls = provider
+	q := by_id(g, "p")
+	dom.remove_child(g.doc, by_id(g, "d"), q)
+	dom.release(g.doc, q)
+	expect_partial(t, g, "an element gone from a document without forms")
+	in_ := dom.create_element(g.doc, "input")
+	dom.append_child(g.doc, by_id(g, "d"), in_)
+	_, ok2 := restyle_dom(g.eng, g.doc, g.st)
+	testing.expect(t, !ok2 && g.eng.last_restyle.fallback == "form controls inserted")
+	old := g.st
+	g.st = compute_styles(g.eng, g.doc, {controls = provider})
+	styled_destroy(old)
+	dom.set_attribute(g.doc, in_, "name", "b")
+	_, ok3 := restyle_dom(g.eng, g.doc, g.st)
+	testing.expect(t, !ok3 && g.eng.last_restyle.fallback == "form control attribute changed")
+}
+
+// Transitions start from the changes of a partial restyle; animations start in a subtree shown again and stop with
+// elements removed.
+@(test)
+restyle_dom_animations :: proc(t: ^testing.T) {
+	f := rx_load(`<style>.a { transition: color 1s } .a.on { color: red } @keyframes k { from { opacity: 0 } to { opacity: 1 } } .anim { animation: k 1s infinite }</style>
+		<div id=x class=a>t</div><div id=hid style="display: none"><p class=anim>x</p></div>`)
+	defer rx_unload(f)
+	tl := timeline_make(f.eng)
+	defer timeline_destroy(tl, f.st)
+	timeline_restyled(tl, f.doc, nil, f.st, 0)
+	testing.expect_value(t, timeline_running(tl), 0)
+	x := by_id(f, "x")
+	dom.set_attribute(f.doc, x, "class", "a on")
+	expect_partial(t, f, "transition")
+	timeline_restyled_dom(tl, f.doc, f.st, 16)
+	testing.expect_value(t, timeline_running(tl), 1)
+	dom.remove_attribute(f.doc, by_id(f, "hid"), "style")
+	expect_partial(t, f, "shown")
+	timeline_restyled_dom(tl, f.doc, f.st, 32)
+	testing.expect_value(t, timeline_running(tl), 2)
+	dom.remove_child(f.doc, dom.get(f.doc, x).parent, x)
+	dom.release(f.doc, x)
+	expect_partial(t, f, "removed")
+	timeline_restyled_dom(tl, f.doc, f.st, 48)
+	testing.expect_value(t, timeline_running(tl), 1)
+	timeline_tick(tl, f.doc, f.st, 64)
+}
+
 @(test)
 restyle_dom_journal_and_records :: proc(t: ^testing.T) {
 	f := rx_load(`<style>.w { width: 10px } .c { color: red }</style><div id=a>x</div><div id=b>y</div>`)

@@ -329,21 +329,6 @@ form_related_in :: proc(doc: ^dom.Document, h: base.Handle) -> bool {
 	return false
 }
 
-@(private = "file")
-inside_form_container :: proc(doc: ^dom.Document, h: base.Handle) -> bool {
-	for cur := h; cur != base.NIL_HANDLE; {
-		n := dom.get(doc, cur)
-		if n == nil { return false }
-		if n.kind == .Element {
-			switch n.name {
-			case "form", "select", "datalist", "fieldset", "optgroup": return true
-			}
-		}
-		cur = n.parent
-	}
-	return false
-}
-
 // Some element of the subtree of `h` (styles as last computed) changes or shows counters or quotes.
 @(private = "file")
 subtree_feeds :: proc(s: ^Styled, doc: ^dom.Document, h: base.Handle) -> bool {
@@ -412,7 +397,14 @@ attribute_changed :: proc(m: ^Marker, ch: Attr_Change) {
 	if r, ok := ix.by_attr[ch.name]; ok { apply(m, h, r) }
 	if ch.name in ix.has_attrs { has_invalidate(m, h, false) }
 	if ix.uses_controls && is_form_attr(ch.name) {
-		for f in FORM_RELATED { if n.name == f { apply(m, h, ix.controls); break } }
+		for f in FORM_RELATED {
+			if n.name != f { continue }
+			// the forms model answers from groups and forms (radio groups, form validity, default button): another
+			// control's state may follow
+			if m.s.state.controls.query != nil { m.fail = "form control attribute changed"; return }
+			apply(m, h, ix.controls)
+			break
+		}
 	}
 	if content_reads_attr(base_style_of(m.s, h), ch.name) { mark(m, h, false) }
 }
@@ -440,7 +432,7 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			}
 			if !connected(doc, en.node) { continue }   // removed again since (that removal is in the journal)
 			structure = true
-			if controls && (form_related_in(doc, en.node) || inside_form_container(doc, n.parent)) { m.fail = "form controls inserted"; return }
+			if controls && form_related_in(doc, en.node) { m.fail = "form controls inserted"; return }
 			if n.name == "style" || n.name == "link" { m.fail = "stylesheet element inserted"; return }
 			// moved here from elsewhere: counter values change on both sides (new elements: see settle)
 			if s.counters_used && !m.rewalk && subtree_feeds(s, doc, en.node) { m.rewalk = true }
@@ -460,16 +452,24 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			m.removed_any = true
 			if n == nil {
 				if s.counters_used { m.rewalk = true }
-				if controls { m.fail = "element removed from a document with form controls"; return }
+				if controls {
+					// what it held is gone: it may have been a control of a form or radio group still there. Only a
+					// document with form elements cares (scanned once per full pass; inserting some forces one)
+					if s.forms_scan == 0 {
+						s.forms_scan = 1
+						root := dom.get(doc, doc.root)
+						for ch := root.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next {
+							if form_related_in(doc, ch) { s.forms_scan = 2; break }
+						}
+					}
+					if s.forms_scan == 2 { m.fail = "element removed from a document with form controls"; return }
+				}
 			} else {
 				if !connected(doc, en.node) { append(&m.removed, en.node) }
 				if s.counters_used && !m.rewalk && subtree_feeds(s, doc, en.node) { m.rewalk = true }
 				if controls && form_related_in(doc, en.node) { m.fail = "form controls removed"; return }
 			}
-			if p_ok {
-				if controls && inside_form_container(doc, en.parent) { m.fail = "form content changed"; return }
-				children_removed(m, en.parent)
-			}
+			if p_ok { children_removed(m, en.parent) }
 		case .Text:
 			n := dom.get(doc, en.node)
 			p := n != nil ? n.parent : en.parent
@@ -676,6 +676,7 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 	w.e.last_restyle.parallel = true
 	for &t in job.tasks {
 		append(&s.thread_arenas, t.arena)
+		s.partial_bytes += int(t.arena.total_used)
 		pass_destroy(t.w.p)
 		for r in t.w.results {
 			if s.track_changes { append(&s.changes, Style_Change{node = r.h, old = r.old, new = r.new}) }
@@ -703,7 +704,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	if e.dirty { return fail(e, "rules changed") }
 	entries, jok := dom.journal_since(doc, s.mutations)
 	if !jok { return fail(e, "mutation journal incomplete") }
-	if int(s.arena.total_used) > int(s.base_used) + e.settings.restyle_waste_bytes { return fail(e, "memory left by partial restyles") }
+	if int(s.arena.total_used) - int(s.base_used) + s.partial_bytes > e.settings.restyle_waste_bytes { return fail(e, "memory left by partial restyles") }
 	ix := inv_index(e)
 	if ix.give_up { return fail(e, "selectors nested too deep") }
 

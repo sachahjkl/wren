@@ -84,6 +84,8 @@ Styled :: struct {
 	// restyle_dom (restyle_dom.odin), for the timeline: elements shown again (display: none before), elements removed
 	shown:          [dynamic]base.Handle,
 	removed_any:    bool,
+	forms_scan:     u8,                    // restyle_dom: 0 not looked, 1 no form element in the document, 2 some
+	partial_bytes:  int,                   // memory of the threads of parallel partial restyles (counted as waste)
 }
 
 // A computed style replaced by a partial restyle: `old` is what was in effect (animated values included), `new` the
