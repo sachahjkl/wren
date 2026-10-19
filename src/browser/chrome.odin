@@ -131,11 +131,20 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	if nav_button("###nav_reload", GLYPH_RELOAD, "Reload (F5)", t != nil && t.url != "") { reload(app, t) }
 	ui.spacer(ui.px(em * 0.4))
 
-	security_chip(app, t)
-	ui.spacer(ui.px(em * 0.4))
-
-	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-	res := ui.line_edit("###address", &app.address, "Search or enter an address")
+	// One bar: the field fills it, the security chip sits inside on its left (the field's text starts after it, and its
+	// focus ring goes around the whole bar). The chip's width is last frame's: it changes only with its label.
+	h := ui.dense(em * 2)
+	inset := max(math.round(em * 0.2), 2)
+	chip_w := security_of(t).label != "" ? security_chip_width : 0
+	res: ui.Edit_Result
+	ui.next({width = ui.fill(), height = ui.px(h)})
+	if ui.row(.Center, {}, "###address_bar") {
+		field := ui.Style_Mod{width = ui.pct(1), height = ui.pct(1)}
+		if chip_w > 0 { field.text_pad = chip_w + inset + em * 0.45 }
+		ui.next(field)
+		res = ui.line_edit("###address", &app.address, "Search or enter an address")
+		security_chip(app, t, inset, h - 2 * inset)
+	}
 	if app.focus_address {
 		app.focus_address = false
 		if b := ui.prev_box("###address"); b != nil {
@@ -202,7 +211,12 @@ page_info_request: bool
 ////////////////////////////////
 // Security chip and page information
 
-security_chip :: proc(app: ^App, t: ^Tab) {
+// Width of the security chip at the last layout (the address field leaves it that much room).
+@(private = "file")
+security_chip_width: f32
+
+// `inset` >= 0: placed inside the address field, `inset` from its top-left corner, `height` tall.
+security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0) {
 	em := ui.font_size()
 	sec := security_of(t)
 	if sec.label == "" { return }
@@ -211,6 +225,7 @@ security_chip :: proc(app: ^App, t: ^Tab) {
 	if ui.tags(tone_tag(sec.tone)) { var_tone = ui.color("text") }
 
 	next := ui.Style_Mod{width = ui.children_sum(), height = ui.px(ui.dense(em * 2)), radius = em * 0.5}
+	if inset >= 0 { next.fixed_x, next.fixed_y, next.height, next.radius = inset, inset, ui.px(height), max(em * 0.5 - inset, 2) }
 	if sec.tone != .Weak {
 		// tints tuned for linear light: ui.tuned keeps their look in an sRGB frame (render.blend_space)
 		next.bg = ui.tuned(draw.Color{var_tone.r, var_tone.g, var_tone.b, 0.14})
@@ -220,6 +235,7 @@ security_chip :: proc(app: ^App, t: ^Tab) {
 	b: ^ui.Box
 	if ui.row(.Center, {.Clickable, .Draw_Background, .Draw_Border, .Draw_Hot_Effects}, "###sec_chip") {
 		b = ui.parent_box()
+		security_chip_width = b.rect.max.x - b.rect.min.x
 		sig := ui.signal(b)
 		ui.spacer(ui.px(em * 0.5))
 		if ui.tags(tone_tag(sec.tone)) {
