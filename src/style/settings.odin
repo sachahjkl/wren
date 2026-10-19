@@ -32,11 +32,7 @@ Settings :: struct {
 	default_font_size:   f32,
 	monospace_font_size: f32,
 	minimum_font_size:   f32,
-	text_color:          css.Color,
-	background_color:    css.Color,
-	link_color:          css.Color,
-	visited_color:       css.Color,
-	active_link_color:   css.Color,
+	colors:              [Scheme][System_Color]css.Color,   // system colors of each color scheme (color_scheme.odin)
 	body_margin:         f32,
 	// generic family -> concrete family names, used by the painter
 	family_serif, family_sans_serif, family_monospace, family_cursive, family_fantasy, family_system_ui: string,  // owned
@@ -55,6 +51,10 @@ Settings :: struct {
 	webfont_max_parallel: int,
 	webfont_max_faces:   int,
 	webfont_load_unused: bool,
+	webfont_block_ms:    f64,       // font-display auto / block: text waits this long for its font
+	webfont_short_block_ms: f64,    // fallback / optional
+	webfont_swap_ms:     f64,       // fallback: a font later than this is not used
+	render_block_ms:     f64,       // the first paint waits at most this long for render-blocking stylesheets
 	// restyle after DOM mutations (restyle_dom.odin)
 	inc_enabled:         bool,
 	inc_max_ratio:       f32,       // part of the document's nodes past which a full pass is done instead
@@ -102,7 +102,7 @@ PREFS := [?]config.Def{
 	{name = "style.author_fonts.enabled", kind = .Bool, default = {b = true}, description = "Let pages set fonts. Off: font-family and font-size from pages are ignored."},
 	{name = "style.user_stylesheet", kind = .String, default = {s = ""}, description = "Path of a CSS file applied to every page with user priority (empty = none)."},
 	{name = "style.color_scheme", kind = .String, default = {s = "auto"}, choices = {"auto", "light", "dark"},
-		description = "prefers-color-scheme reported to pages and used by light-dark(). auto follows the operating system."},
+		description = "The color scheme the user prefers: reported to pages (prefers-color-scheme) and used by pages and elements that support both (color-scheme: light dark). auto follows the Windows apps theme (Settings > Personalization > Colors), live."},
 	{name = "style.prefers_reduced_motion", kind = .Bool, default = {b = false}, description = "Report prefers-reduced-motion: reduce to pages."},
 	{name = "style.prefers_more_contrast", kind = .Bool, default = {b = false}, description = "Report prefers-contrast: more to pages."},
 	{name = "font.size.default", kind = .Float, default = {f = 16}, bounded = true, min = 6, max = 96, unit = "px", description = "Default font size (CSS `medium`)."},
@@ -117,11 +117,6 @@ PREFS := [?]config.Def{
 	{name = "font.family.fantasy", kind = .String, default = {s = "Impact"}, description = "Font used for the generic family `fantasy`."},
 	{name = "font.family.system_ui", kind = .String, default = {s = "Segoe UI"}, description = "Font used for `system-ui`."},
 	{name = "font.line_height.normal", kind = .Float, default = {f = 1.2}, bounded = true, min = 1, max = 3, description = "What `line-height: normal` means, as a multiple of the font size."},
-	{name = "page.color.text", kind = .String, default = {s = "#000000"}, description = "Default text color of pages (CSS color)."},
-	{name = "page.color.background", kind = .String, default = {s = "#ffffff"}, description = "Default background color of pages (CSS color)."},
-	{name = "page.color.link", kind = .String, default = {s = "#0000ee"}, description = "Color of links."},
-	{name = "page.color.visited", kind = .String, default = {s = "#551a8b"}, description = "Color of visited links."},
-	{name = "page.color.active_link", kind = .String, default = {s = "#ee0000"}, description = "Color of a link being pressed."},
 	{name = "page.body_margin", kind = .Float, default = {f = 8}, bounded = true, min = 0, max = 200, unit = "px", description = "Margin around the body of a page."},
 	{name = "style.animations.mode", kind = .String, default = {s = "auto"}, choices = {"auto", "normal", "reduce", "off"},
 		description = "CSS transitions and animations. auto: like reduce when style.prefers_reduced_motion is on, else normal. reduce: durations are cut to style.animations.reduced_max_duration_ms and infinite animations run once. off: nothing moves, end values apply at once."},
@@ -144,6 +139,14 @@ PREFS := [?]config.Def{
 		description = "Most @font-face rules one page may load fonts for."},
 	{name = "style.webfonts.load_unused", kind = .Bool, default = {b = false},
 		description = "Download every @font-face of a page, even those no element uses (off: only families some element asks for)."},
+	{name = "style.webfonts.block_period_ms", kind = .Float, default = {f = 3000}, bounded = true, min = 0, max = 60_000, unit = "ms",
+		description = "font-display: auto and block: how long the first paint of a page waits for a web font its text uses (CSS Fonts 4: about 3 s). Later, the fallback font shows and the web font replaces it when it arrives."},
+	{name = "style.webfonts.short_block_period_ms", kind = .Float, default = {f = 100}, bounded = true, min = 0, max = 60_000, unit = "ms",
+		description = "font-display: fallback and optional: how long the first paint waits for the font (CSS Fonts 4: about 100 ms). optional: a font not there by then is not used by this page."},
+	{name = "style.webfonts.swap_period_ms", kind = .Float, default = {f = 3000}, bounded = true, min = 0, max = 60_000, unit = "ms",
+		description = "font-display: fallback: a font that arrives later than this after its download started is not used (CSS Fonts 4: about 3 s)."},
+	{name = "style.render_blocking.timeout_ms", kind = .Float, default = {f = 8000}, bounded = true, min = 0, max = 120_000, unit = "ms",
+		description = "The first paint of a page waits for the stylesheets of the document (<link rel=stylesheet>, <style> with @import, media matching, or blocking=\"render\") so that it is not shown unstyled; past this delay it is painted with what has arrived. 0 = never wait."},
 	{name = "style.incremental.enabled", kind = .Bool, default = {b = true},
 		description = "After DOM changes, restyle only the elements the changes can affect (found from the selectors of the page). Off: every change restyles the whole document (same result)."},
 	{name = "style.incremental.max_ratio", kind = .Float, default = {f = 0.3}, bounded = true, min = 0, max = 1,
@@ -156,17 +159,9 @@ PREFS := [?]config.Def{
 		description = "Mutations of a document remembered between two restyles; more at once make the next restyle a full one."},
 }
 
-register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
-
-@(private)
-color_pref :: proc(p: ^config.Prefs, name: string, fallback: css.Color) -> css.Color {
-	text := config.string_of(p, name)
-	arena := context.temp_allocator
-	toks := css.tokenize(text, arena)
-	vals := make([dynamic]css.Value, arena)
-	for t in toks { append(&vals, css.Value{kind = .Token, tok = t}) }
-	if cv, ok := css.parse_color(vals[:], nil); ok && cv.kind == .Rgba { return cv.rgba }
-	return fallback
+register_prefs :: proc(p: ^config.Prefs) {
+	config.register(p, PREFS[:])
+	config.register(p, color_pref_defs())
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -204,11 +199,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.family_fantasy = strings.clone(config.string_of(p, "font.family.fantasy"))
 	s.family_system_ui = strings.clone(config.string_of(p, "font.family.system_ui"))
 	s.line_height_normal = f32(config.float_of(p, "font.line_height.normal"))
-	s.text_color = color_pref(p, "page.color.text", {0, 0, 0, 1})
-	s.background_color = color_pref(p, "page.color.background", {1, 1, 1, 1})
-	s.link_color = color_pref(p, "page.color.link", {0, 0, 0.93, 1})
-	s.visited_color = color_pref(p, "page.color.visited", {0.33, 0.1, 0.55, 1})
-	s.active_link_color = color_pref(p, "page.color.active_link", {0.93, 0, 0, 1})
+	colors_from_prefs(p, &s)
 	s.body_margin = f32(config.float_of(p, "page.body_margin"))
 	switch config.string_of(p, "style.animations.mode") {
 	case "normal": s.anim_mode = .Normal
@@ -226,6 +217,10 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.webfont_max_parallel = int(config.int_of(p, "style.webfonts.max_parallel"))
 	s.webfont_max_faces = int(config.int_of(p, "style.webfonts.max_faces"))
 	s.webfont_load_unused = config.bool_of(p, "style.webfonts.load_unused")
+	s.webfont_block_ms = config.float_of(p, "style.webfonts.block_period_ms")
+	s.webfont_short_block_ms = config.float_of(p, "style.webfonts.short_block_period_ms")
+	s.webfont_swap_ms = config.float_of(p, "style.webfonts.swap_period_ms")
+	s.render_block_ms = config.float_of(p, "style.render_blocking.timeout_ms")
 	s.inc_enabled = config.bool_of(p, "style.incremental.enabled")
 	s.inc_max_ratio = f32(config.float_of(p, "style.incremental.max_ratio"))
 	s.inc_parallel_min = int(config.int_of(p, "style.incremental.parallel_min"))

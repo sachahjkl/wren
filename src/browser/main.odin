@@ -86,6 +86,7 @@ Tab :: struct {
 	history:  [dynamic]string,   // addresses visited in this tab (mirror of `session`, for the chrome)
 	hist:     int,               // index of the current one
 	session:  Session_History,   // the joint session history: entries, history.state, same-document entries
+	hold:     Paint_Hold,        // the previous page, shown until the new one paints (first_paint.odin)
 }
 
 Session_History :: page.Session_History   // (a field named `page` hides the package in the struct above)
@@ -152,7 +153,8 @@ tab_open :: proc(app: ^App, address := "") -> ^Tab {
 tab_close :: proc(app: ^App, index: int) {
 	t := app.tabs[index]
 	ordered_remove(&app.tabs, index)
-	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone
+	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone (a held page too)
+	hold_destroy(t)
 	page.storage_drop_session(&app.storage, tab_key(t))
 	page.session_destroy(&t.session)
 	delete(t.url); delete(t.title); delete(t.status)
@@ -217,19 +219,20 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	target := strings.clone(normalize_address(address), context.temp_allocator)
 	if target == "" { target = strings.clone(app.cfg.homepage, context.temp_allocator) }
 	if record { history_push(t, target) }
-	if target == "about:config" { show_config(app, t); return }
-	if target == HOME_URL { show_home(app, t); return }
-	t.kind = .Web
+	// built-in pages show at once (they paint in their first frame)
+	if target == "about:config" { hold_release(t); show_config(app, t); return }
+	if target == HOME_URL { hold_release(t); show_home(app, t); return }
 	load := new(Doc_Load)
 	load.tab = t
 	if from != nil { load.initiator, load.has_initiator = fetch.environment_clone(from.env), true }
 
-	base.scope_close(t.nav)           // closes the previous page, its modules and every request it still had
+	// the previous page stays on screen until this one paints, or closes now (first_paint.odin)
+	hold_begin(app, t, target)
+	t.kind = .Web
 	t.nav = base.scope_make("navigation", t.scope)
 	base.on_close(t.nav, load_closed, load)
 	t.page = nil
 	t.load = load
-	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0
 	delete(t.fragment_seen)
@@ -414,6 +417,7 @@ document_loaded :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 		// the document is a module
 		_, ok, err := page.load_module(p, data, t.url)
 		if ok { set_status(t, fmt.tprintf("%s: running", t.url)) } else { set_status(t, err); tab_log(t, .Error, err) }
+		page.render_begin(p)   // the document is what the module built
 		return
 	}
 	if load.mime != "" && load.mime != "text/html" && load.mime != "application/xhtml+xml" {
@@ -437,6 +441,7 @@ document_parsed :: proc(p: ^page.Page, user: rawptr, d: ^page.Parsed_Document) {
 	app.frames_requested = max(app.frames_requested, 3)
 	if !d.decoded { show_error_page(app, load, "Cannot decode the document", load.charset); return }
 	r := page.adopt_document(p, d)
+	if !p.render.adopted { page.render_begin(p) }   // nothing adopted: the blank document is what there is
 	if !r.ok { tab_log(t, .Error, fmt.tprintf("HTML parse failed (%d)", r.status)) }
 	if r.truncated { tab_log(t, .Warn, "document truncated: too many nodes") }
 	if title := html.title(p.doc); title != "" {
@@ -455,6 +460,7 @@ show_text :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 	pre := dom.create_element(p.doc, "pre")
 	dom.set_text_content(p.doc, pre, string(d.text[:min(len(d.text), 1 << 20)]))
 	dom.append_child(p.doc, p.body, pre)
+	page.render_begin(p)
 	set_status(load.tab, fmt.tprintf("HTTP %d, %d bytes of text", load.status, len(data)))
 }
 
@@ -525,10 +531,18 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	app := the_app
 	app.page_rect = b.rect
 	t := current_tab(app)
-	if t == nil || t.page == nil || t.kind != .Web {
-		draw.rect(dc, b.rect, draw.hex(0xffffffff))
+	for other in app.tabs { if other != t { hold_release(other) } }   // a frame held in a tab not shown is of no use
+	if t == nil || t.kind != .Web {
+		draw.rect(dc, b.rect, to_draw(expected_canvas(app)))
 		return
 	}
+	defer loading_bar(app, t, dc, b.rect)
+	if t.page == nil {
+		// the request is out: the previous page stays (first_paint.odin), else the expected canvas
+		hold_paint(app, t, dc, b.rect, expected_canvas(app))
+		return
+	}
+	hold_commit(t)
 	scale := ui.scale()
 	size := draw.rect_size(b.rect)
 	// an incremental layout reads what the style passes changed (layout.incremental.*)
@@ -537,6 +551,15 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	prof_begin(.Styles)
 	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
 	prof_end(.Styles)
+	first := !t.page.render.painted
+	if first {
+		// render-blocking stylesheets and fonts first (page/render_blocking.odin): meanwhile the old frame, or the canvas
+		if state, _ := page.first_paint_state(t.page); state != .Ready {
+			hold_paint(app, t, dc, b.rect, styled.canvas)
+			first_paint_wake(app, t)
+			return
+		}
+	}
 	draw.rect(dc, b.rect, to_draw(styled.canvas))
 	adopt_web_fonts(t)
 	images_before_layout(t)
@@ -552,6 +575,17 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		}
 	}
 	images_after_layout(t, size, scale)
+	if first {
+		// the first useful paint: something to see, or nothing left to wait for once the hold is over
+		if t.hold.active && !layout_contentful(&t.layout) && hold_wait_ms(t) > 0 {
+			hold_paint(app, t, dc, b.rect, styled.canvas)
+			first_paint_wake(app, t)
+			return
+		}
+		page.first_paint_done(t.page)
+		hold_release(t)
+		prof_first_paint(t)
+	}
 	scroll_to_fragment(t, size)
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
 	draw.push_clip(dc, b.rect)
@@ -951,6 +985,7 @@ main :: proc() {
 	prof_mark(.Window)
 
 	host.loop_init(&app.loop, wake_window, app.win)
+	appearance_init(app)   // before any settings are derived: `system` colors, auto color scheme
 	ns := net.settings_from_prefs(&app.prefs)
 	if !net.client_init(&app.client, &app.loop, ns) { fmt.eprintln("network init failed"); return }
 	net.settings_destroy(&ns)
@@ -988,6 +1023,7 @@ main :: proc() {
 	ui.init(&app.ui_state, &app.fonts, &app.theme)
 	app.ui_state.icon_font = app.icons
 	page_render_init(app)
+	first_paint_init(app)
 	fonts_preload_adopt(&page_render.fonts, preload)
 	images_shell_init(app)
 	images_set_texture_api(renderer_texture_api(app))
@@ -1026,6 +1062,7 @@ main :: proc() {
 	host.blocking_destroy(&app.blocking)
 	net.client_destroy(&app.client)
 	fetch.profile_destroy(&app.profile)
+	appearance_destroy()
 	host.loop_destroy(&app.loop)
 	wasm.runtime_destroy()
 	measure_destroy(&app.measure)

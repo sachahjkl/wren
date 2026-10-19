@@ -111,6 +111,7 @@ func main() {
 	registerFormHandlers(mux)
 	registerImageHandlers(mux)
 	registerMediaHandlers(mux)
+	registerFirstPaintHandlers(mux)
 
 	go func() {
 		log.Fatal(http.ListenAndServe("127.0.0.1:8767", mux))

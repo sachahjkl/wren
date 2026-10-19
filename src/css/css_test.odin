@@ -279,7 +279,10 @@ col :: proc(src: string, dark := false) -> (c: Color, current: bool, ok: bool) {
 	toks := tokenize(src, ar.alloc)
 	p := Parser{toks = toks, a = ar.alloc, opt = OPT, errors = new([dynamic]string, ar.alloc)}
 	vs := parse_values(&p, .EOF, 0)
-	env := Color_Env{dark = dark, system = proc(user: rawptr, name: string) -> (Color, bool) { return name == "canvastext" ? Color{0, 0, 0, 1} : Color{}, name == "canvastext" }}
+	env := Color_Env{dark = dark, system = proc(user: rawptr, name: string, dark: bool) -> (Color, bool) {
+		if name != "canvastext" { return {}, false }
+		return dark ? Color{1, 1, 1, 1} : Color{0, 0, 0, 1}, true
+	}}
 	cv, good := parse_color(vs, &env)
 	return cv.rgba, cv.kind == .Current_Color, good
 }
@@ -328,6 +331,10 @@ colors :: proc(t: ^testing.T) {
 	testing.expect(t, ok && c.a == 0)
 	c, _, ok = col("CanvasText")
 	testing.expect(t, ok && near(c, {0, 0, 0, 1}), "system colors come from the environment")
+	c, _, ok = col("CanvasText", true)
+	testing.expect(t, ok && near(c, {1, 1, 1, 1}), "system colors follow the color scheme of the environment")
+	c, _, ok = col("light-dark(red, CanvasText)", true)
+	testing.expect(t, ok && near(c, {1, 1, 1, 1}), "light-dark() branches resolve in the same scheme")
 	for bad in ([]string{"#ff", "#gggggg", "rgb(1 2)", "notacolor", "hsl(1)", "rgb(1, 2, 3, 4, 5)", "12"}) {
 		_, _, g := col(bad)
 		testing.expect(t, !g, bad)

@@ -1,0 +1,26 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Color schemes (webassembly.org-like)</title>
+<link rel="stylesheet" href="/firstpaint/f/base.css">
+<noscript>
+  <link rel="stylesheet" href="/firstpaint/f/light.css" media="(prefers-color-scheme: light)">
+  <link rel="stylesheet" href="/firstpaint/f/dark.css" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+</noscript>
+</head>
+<body>
+<header><a href="firstpaint-slow.html">Slow stylesheet</a><a href="firstpaint.html">Reload</a><a href="index.html">Site</a></header>
+<main>
+  <p class="lead">A page in the style of webassembly.org: its dark theme comes from a stylesheet in &lt;noscript&gt; chosen by prefers-color-scheme, and <code>color-scheme: dark</code> on the root.</p>
+  <p class="flash">Links the page colors: <a href="#x">a styled link</a>. A link it leaves alone follows LinkText: <span class="plain"></span></p>
+  <p>Unstyled links: <a href="firstpaint.html">this page</a>, <a href="index.html">the site</a>, <a href="#nowhere">a fragment</a>.</p>
+  <p>Form controls: <input value="a text field"> <button>A button</button> <select><option>One</option><option>Two</option></select>
+     <label><input type="checkbox" checked> checked</label> <label><input type="radio" checked> radio</label> <input type="range"></p>
+  <p class="side">color: CanvasText. <mark>mark</mark> <span style="color: GrayText">GrayText</span> <span style="background: light-dark(#cde, #234)">light-dark()</span></p>
+  <div style="color-scheme: light; background: Canvas; color: CanvasText; padding: 8px">A <code>color-scheme: light</code> island: <a href="#l">LinkText</a> <input value="light field"> <button>light button</button></div>
+  <div style="height: 900px"></div>
+</main>
+</body>
+</html>

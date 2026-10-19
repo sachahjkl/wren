@@ -146,15 +146,18 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: dra
 		case .Outline: paint_outline(l, dc, it, r)
 		case .Scrollbar:
 			track := r
-			if page_render.settings.scrollbar_track.a > 0 { draw.rect(dc, track, to_draw(page_render.settings.scrollbar_track), min(track.max.x - track.min.x, track.max.y - track.min.y) * 0.5) }
+			thumb_c, track_c := scrollbar_colors(it.cs != nil ? it.cs.used_scheme : .Light, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
+			if track_c.a > 0 { draw.rect(dc, track, to_draw(track_c), min(track.max.x - track.min.x, track.max.y - track.min.y) * 0.5) }
 			th := draw.rect_shift(dr(lay.scrollbar_thumb(l, &v, it)), origin)
-			draw.rect(dc, th, to_draw(page_render.settings.scrollbar_thumb), min(th.max.x - th.min.x, th.max.y - th.min.y) * 0.5)
+			draw.rect(dc, th, to_draw(thumb_c), min(th.max.x - th.min.x, th.max.y - th.min.y) * 0.5)
 		}
 	}
 	effects_end(&fx)
 	if track, thumb, ok := lay.doc_scrollbar(l, size, scroll); ok {
-		if page_render.settings.scrollbar_track.a > 0 { draw.rect(dc, draw.rect_shift(dr(track), origin), to_draw(page_render.settings.scrollbar_track), (track.max.x - track.min.x) * 0.5) }
-		draw.rect(dc, draw.rect_shift(dr(thumb), origin), to_draw(page_render.settings.scrollbar_thumb), (thumb.max.x - thumb.min.x) * 0.5)
+		root := l.styled != nil ? (^style.Styled)(l.styled).root_scheme : style.Scheme.Light   // alive while the layout is painted
+		thumb_c, track_c := scrollbar_colors(root, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
+		if track_c.a > 0 { draw.rect(dc, draw.rect_shift(dr(track), origin), to_draw(track_c), (track.max.x - track.min.x) * 0.5) }
+		draw.rect(dc, draw.rect_shift(dr(thumb), origin), to_draw(thumb_c), (thumb.max.x - thumb.min.x) * 0.5)
 	}
 }
 

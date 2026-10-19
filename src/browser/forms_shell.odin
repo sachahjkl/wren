@@ -238,8 +238,11 @@ forms_content_painter :: proc(user: rawptr, dc: ^draw.Context, doc: ^dom.Documen
 	if kind != .Control { return false }
 	app := (^App)(user)
 	t := current_tab(app)
-	if t == nil || t.page == nil || t.page.doc != doc || t.page.formctl == nil { return false }
-	paint_control(dc, &app.fonts, font_id != 0 ? font_id : app.ui_font, node, content, cs, t.page, time.tick_now())
+	if t == nil { return false }
+	p := t.page
+	if t.hold.active && t.hold.page != nil && t.hold.page.doc == doc { p = t.hold.page }   // the frame held through a navigation
+	if p == nil || p.doc != doc || p.formctl == nil { return false }
+	paint_control(dc, &app.fonts, font_id != 0 ? font_id : app.ui_font, node, content, cs, p, time.tick_now())
 	return true
 }
 
@@ -377,13 +380,6 @@ layout_field :: proc(app: ^App, f: ^forms.Forms, h: base.Handle, pt: Painted) ->
 ////////////////////////////////
 // Painting
 
-@(private = "file")
-SEL_BG :: 0x3390ff70
-@(private = "file")
-SEL_BG_UNFOCUSED :: 0x8c8c8c50
-@(private = "file")
-ACCENT :: 0x2f6fdbff
-
 // Content size (CSS px) of a replaced control whose width/height are `auto`: input fields from `size`, textareas from
 // cols/rows, buttons and selects from their labels.
 control_intrinsic_size :: proc(app: ^App, p: ^page.Page, h: base.Handle, cs: ^style.Computed) -> [2]f32 {
@@ -506,6 +502,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 	scale := ui.scale()
 	size := max(cs.font_size * scale, 1)
 	fg := to_draw(cs.color)
+	pal := control_palette(cs)
 	xf := draw.current_transform(dc)
 	inv, _ := draw.affine_inverse(xf)
 	pt := Painted{content = content, xform = xf, inv = inv, size = size, font = fid, frame = fview.frame}
@@ -528,18 +525,18 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 			r := draw.Rect{c - side * 0.5, c + side * 0.5}
 			on := forms.checked(f, node)
 			radius := t == .Radio ? side * 0.5 : side * 0.18
-			draw.rect(dc, r, on ? draw.hex(ACCENT) : draw.hex(0xffffffff), radius)
-			draw.rect(dc, r, on ? draw.hex(ACCENT) : draw.hex(0x767676ff), radius, max(scale, 1))
+			draw.rect(dc, r, on ? pal.accent : pal.field, radius)
+			draw.rect(dc, r, on ? pal.accent : pal.border, radius, max(scale, 1))
 			if t == .Checkbox {
 				if forms.indeterminate(f, node) {
-					draw.rect(dc, {{r.min.x + side * 0.22, c.y - side * 0.08}, {r.max.x - side * 0.22, c.y + side * 0.08}}, on ? draw.hex(0xffffffff) : draw.hex(0x333333ff))
+					draw.rect(dc, {{r.min.x + side * 0.22, c.y - side * 0.08}, {r.max.x - side * 0.22, c.y + side * 0.08}}, on ? pal.accent_text : pal.mark_off)
 				} else if on {
-					check_mark(dc, r, draw.hex(0xffffffff))
+					check_mark(dc, r, pal.accent_text)
 				}
 			} else if on {
-				draw.rect(dc, {c - side * 0.2, c + side * 0.2}, draw.hex(0xffffffff), side * 0.2)
+				draw.rect(dc, {c - side * 0.2, c + side * 0.2}, pal.accent_text, side * 0.2)
 			}
-			if focused { draw.rect(dc, draw.rect_pad(r, 2 * scale), draw.hex(0x4d90feff), radius + 2 * scale, max(scale, 1)) }
+			if focused { draw.rect(dc, draw.rect_pad(r, 2 * scale), pal.focus_ring, radius + 2 * scale, max(scale, 1)) }
 		case .Submit, .Reset, .Button, .Image:
 			centered_text(dc, fonts, fid, size, content, fg, button_label(f, node))
 		case .Range:
@@ -552,35 +549,35 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 			thumb := (content.max.y - content.min.y) * 0.8
 			x0, x1 := content.min.x + thumb * 0.5, content.max.x - thumb * 0.5
 			x := x0 + (x1 - x0) * k
-			draw.rect(dc, {{x0, cy - th * 0.5}, {x1, cy + th * 0.5}}, draw.hex(0xc8c8c8ff), th * 0.5)
-			draw.rect(dc, {{x0, cy - th * 0.5}, {x, cy + th * 0.5}}, draw.hex(ACCENT), th * 0.5)
-			draw.rect(dc, {{x - thumb * 0.5, cy - thumb * 0.5}, {x + thumb * 0.5, cy + thumb * 0.5}}, draw.hex(ACCENT), thumb * 0.5)
-			if focused { draw.rect(dc, {{x - thumb * 0.5 - 2 * scale, cy - thumb * 0.5 - 2 * scale}, {x + thumb * 0.5 + 2 * scale, cy + thumb * 0.5 + 2 * scale}}, draw.hex(0x4d90feff), thumb * 0.5 + 2 * scale, max(scale, 1)) }
+			draw.rect(dc, {{x0, cy - th * 0.5}, {x1, cy + th * 0.5}}, pal.track, th * 0.5)
+			draw.rect(dc, {{x0, cy - th * 0.5}, {x, cy + th * 0.5}}, pal.accent, th * 0.5)
+			draw.rect(dc, {{x - thumb * 0.5, cy - thumb * 0.5}, {x + thumb * 0.5, cy + thumb * 0.5}}, pal.accent, thumb * 0.5)
+			if focused { draw.rect(dc, {{x - thumb * 0.5 - 2 * scale, cy - thumb * 0.5 - 2 * scale}, {x + thumb * 0.5 + 2 * scale, cy + thumb * 0.5 + 2 * scale}}, pal.focus_ring, thumb * 0.5 + 2 * scale, max(scale, 1)) }
 		case .Color:
 			if !(focused && forms.has_attr(n, "list")) {
 				sw := draw.rect_pad(content, -2 * scale)
 				draw.rect(dc, sw, parse_hex_color(forms.value(f, node)), 2 * scale)
-				draw.rect(dc, sw, draw.hex(0x00000040), 2 * scale, max(scale, 1))
+				draw.rect(dc, sw, pal.border, 2 * scale, max(scale, 1))
 			}
 		case .File:
 			label := "Choose files" if forms.has_attr(n, "multiple") else "Choose file"
 			bw := font.text_width(fonts, fid, size, label) + 12 * scale
 			b := draw.Rect{content.min, {content.min.x + bw, content.max.y}}
-			draw.rect(dc, b, draw.hex(0xefefefff), 3 * scale)
-			draw.rect(dc, b, draw.hex(0x767676ff), 3 * scale, max(scale, 1))
-			centered_text(dc, fonts, fid, size, b, draw.hex(0x000000ff), label)
+			draw.rect(dc, b, pal.face, 3 * scale)
+			draw.rect(dc, b, pal.border, 3 * scale, max(scale, 1))
+			centered_text(dc, fonts, fid, size, b, pal.face_text, label)
 			fl := forms.files(f, node)
 			names := "No file chosen"
 			if len(fl) == 1 { names = fl[0].name } else if len(fl) > 1 { names = strings.concatenate({itoa(len(fl)), " files"}, context.temp_allocator) }
 			draw.push_clip(dc, {{b.max.x + 6 * scale, content.min.y}, content.max})
 			centered_text(dc, fonts, fid, size, {{b.max.x + 6 * scale, content.min.y}, content.max}, fg, names, false)
 			draw.pop_clip(dc)
-			if focused { draw.rect(dc, draw.rect_pad(b, 2 * scale), draw.hex(0x4d90feff), 4 * scale, max(scale, 1)) }
+			if focused { draw.rect(dc, draw.rect_pad(b, 2 * scale), pal.focus_ring, 4 * scale, max(scale, 1)) }
 		case:
-			paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused)
+			paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused, &pal)
 		}
 	case .Textarea:
-		paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused)
+		paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused, &pal)
 	case .Select:
 		if forms.is_dropdown(f, node) {
 			label := ""
@@ -601,7 +598,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 				draw.rect(dc, {{cx - w, y}, {cx + w, y + hw * 0.7 / f32(steps) + 0.5}}, fg)
 			}
 		} else {
-			paint_list_box(app, dc, fonts, fid, f, node, pt, fg, focused)
+			paint_list_box(app, dc, fonts, fid, f, node, pt, fg, focused, &pal)
 		}
 	case .Button:
 		centered_text(dc, fonts, fid, size, content, fg, button_label(f, node))
@@ -610,7 +607,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 }
 
 @(private = "file")
-paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, node: base.Handle, n: ^dom.Node, pt: Painted, fg: draw.Color, focused: bool) {
+paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, node: base.Handle, n: ^dom.Node, pt: Painted, fg: draw.Color, focused: bool, pal: ^Control_Palette) {
 	content := pt.content
 	size := pt.size
 	multiline := forms.kind_of(n) == .Textarea
@@ -659,7 +656,7 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 	// selection
 	if a != b {
 		da, db := ft.starts[a], ft.starts[b]
-		color := focused ? draw.hex(SEL_BG) : draw.hex(SEL_BG_UNFOCUSED)
+		color := focused ? pal.highlight : pal.highlight_dim
 		for l, i in ft.lines {
 			s0, s1 := max(da, l.start), min(db, l.end)
 			if s0 > s1 || (s0 == s1 && !(db > l.end && s0 == l.end)) { continue }
@@ -713,7 +710,7 @@ select_rows :: proc(f: ^forms.Forms, sel: base.Handle) -> []Row {
 }
 
 @(private = "file")
-paint_rows :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, rows: []Row, first: int, area: draw.Rect, row_h, size: f32, fg: draw.Color, hover: int, focused: bool) {
+paint_rows :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, rows: []Row, first: int, area: draw.Rect, row_h, size: f32, fg: draw.Color, hover: int, focused: bool, pal: ^Control_Palette) {
 	scale := ui.scale()
 	draw.push_clip(dc, area)
 	defer draw.pop_clip(dc)
@@ -725,8 +722,8 @@ paint_rows :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: 
 		color := fg
 		if row.option != base.NIL_HANDLE {
 			sel := forms.option_selected(f, row.option)
-			if i == hover { draw.rect(dc, r, draw.hex(0x2f6fdb30)) }
-			if sel { draw.rect(dc, r, focused || hover >= 0 ? draw.hex(ACCENT) : draw.hex(0xc8c8c8ff)); color = focused || hover >= 0 ? draw.hex(0xffffffff) : fg }
+			if i == hover { draw.rect(dc, r, pal.hover) }
+			if sel { draw.rect(dc, r, focused || hover >= 0 ? pal.selected : pal.inactive); color = focused || hover >= 0 ? pal.selected_text : fg }
 			if forms.is_disabled(f, row.option) { color.a *= 0.45 }
 		} else {
 			color.a *= 0.75
@@ -737,13 +734,13 @@ paint_rows :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: 
 }
 
 @(private = "file")
-paint_list_box :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, node: base.Handle, pt: Painted, fg: draw.Color, focused: bool) {
+paint_list_box :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, node: base.Handle, pt: Painted, fg: draw.Color, focused: bool, pal: ^Control_Palette) {
 	rows := select_rows(f, node)
 	m := font.metrics(fonts, fid, pt.size)
 	row_h := math.ceil((m.ascent + m.descent) * 1.25)
 	sc := fview.scroll[node]
 	first := clamp(int(sc.y), 0, max(len(rows) - 1, 0))
-	paint_rows(dc, fonts, fid, f, rows, first, pt.content, row_h, pt.size, fg, -1, focused)
+	paint_rows(dc, fonts, fid, f, rows, first, pt.content, row_h, pt.size, fg, -1, focused, pal)
 }
 
 ////////////////////////////////
@@ -773,17 +770,18 @@ forms_paint_overlays :: proc(app: ^App, dc: ^draw.Context, page_rect: draw.Rect)
 			x := clamp(anchor.min.x, page_rect.min.x, max(page_rect.max.x - w, page_rect.min.x))
 			pp.rect = {{x, y}, {x + w, y + h}}
 			pp.first = clamp(pp.first, 0, max(len(rows) - visible, 0))
-			draw.rect(dc, draw.rect_shift(pp.rect, {0, 3 * scale}), draw.hex(0x00000030), 4 * scale, 0, 8 * scale)
-			draw.rect(dc, pp.rect, draw.hex(0xffffffff), 3 * scale)
-			draw.rect(dc, pp.rect, draw.hex(0x9a9a9aff), 3 * scale, max(scale, 1))
+			pal := control_palette(p.styled != nil ? style.style_of(p.styled, pp.sel) : nil)
+			draw.rect(dc, draw.rect_shift(pp.rect, {0, 3 * scale}), pal.shadow, 4 * scale, 0, 8 * scale)
+			draw.rect(dc, pp.rect, pal.field, 3 * scale)
+			draw.rect(dc, pp.rect, pal.popup_border, 3 * scale, max(scale, 1))
 			inner := draw.rect_pad(pp.rect, -scale)
-			paint_rows(dc, &app.fonts, fid, f, rows, pp.first, inner, pp.row_h, size, draw.hex(0x1a1a1aff), pp.hover, true)
+			paint_rows(dc, &app.fonts, fid, f, rows, pp.first, inner, pp.row_h, size, pal.field_text, pp.hover, true, &pal)
 			if len(rows) > visible {
 				// scroll indicator
 				track := draw.Rect{{inner.max.x - 4 * scale, inner.min.y}, inner.max}
 				th := (track.max.y - track.min.y) * f32(visible) / f32(len(rows))
 				ty := track.min.y + (track.max.y - track.min.y - th) * f32(pp.first) / f32(max(len(rows) - visible, 1))
-				draw.rect(dc, {{track.min.x, ty}, {track.max.x, ty + th}}, draw.hex(0x00000050), 2 * scale)
+				draw.rect(dc, {{track.min.x, ty}, {track.max.x, ty + th}}, pal.border, 2 * scale)
 			}
 		} else {
 			pp.open = false
@@ -802,14 +800,16 @@ forms_paint_overlays :: proc(app: ^App, dc: ^draw.Context, page_rect: draw.Rect)
 			x := clamp(painted_bounds(pt).min.x - 4 * scale, page_rect.min.x, max(page_rect.max.x - w, page_rect.min.x))
 			y := painted_bounds(pt).max.y + 8 * scale
 			r := draw.Rect{{x, y}, {x + w, y + h}}
-			draw.rect(dc, draw.rect_shift(r, {0, 2 * scale}), draw.hex(0x00000030), 5 * scale, 0, 8 * scale)
-			draw.rect(dc, {{x + 14 * scale, y - 5 * scale}, {x + 24 * scale, y + 5 * scale}}, draw.hex(0xffffffff), 2 * scale)
-			draw.rect(dc, r, draw.hex(0xffffffff), 5 * scale)
-			draw.rect(dc, r, draw.hex(0xb0b0b0ff), 5 * scale, max(scale, 1))
+			pal := control_palette(p.styled != nil ? style.style_of(p.styled, node) : nil)
+			bubble := pal.scheme == .Dark ? draw.hex(0x3b3b3bff) : draw.hex(0xffffffff)
+			draw.rect(dc, draw.rect_shift(r, {0, 2 * scale}), pal.shadow, 5 * scale, 0, 8 * scale)
+			draw.rect(dc, {{x + 14 * scale, y - 5 * scale}, {x + 24 * scale, y + 5 * scale}}, bubble, 2 * scale)
+			draw.rect(dc, r, bubble, 5 * scale)
+			draw.rect(dc, r, pal.popup_border, 5 * scale, max(scale, 1))
 			ic := draw.Rect{{x + pad, y + (h - icon) * 0.5}, {x + pad + icon, y + (h + icon) * 0.5}}
 			draw.rect(dc, ic, draw.hex(0xf29d00ff), 3 * scale)
 			centered_text(dc, &app.fonts, fid, size, ic, draw.hex(0xffffffff), "!")
-			centered_text(dc, &app.fonts, fid, size, {{ic.max.x + pad, y}, {r.max.x, r.max.y}}, draw.hex(0x1a1a1aff), msg, false)
+			centered_text(dc, &app.fonts, fid, size, {{ic.max.x + pad, y}, {r.max.x, r.max.y}}, pal.field_text, msg, false)
 		}
 	}
 	_ = p

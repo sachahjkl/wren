@@ -4,8 +4,10 @@ package browser
 // main menu at the end of the address bar. Built with the toolkit like the rest of the interface.
 
 import "core:fmt"
+import "core:math"
 import "core:strings"
 import "toolkit:draw"
+import "toolkit:font"
 import "toolkit:ui"
 import "wb:cookies"
 import "wb:url"
@@ -169,12 +171,15 @@ security_chip :: proc(app: ^App, t: ^Tab) {
 		sig := ui.signal(b)
 		ui.spacer(ui.px(em * 0.5))
 		if ui.tags(tone_tag(sec.tone)) {
-			fg: Maybe(draw.Color)
-			if sec.tone != .Weak { fg = var_tone }
-			// the icon box is as wide as the glyph: the gap to the label is the spacer alone
-			ui.icon(sec.glyph, em * 1.05, fg)
-			ui.spacer(ui.px(em * 0.35))
-			ui.next({width = ui.text_size(0), height = ui.pct(1)})
+			chip_icon.glyph = sec.glyph
+			chip_icon.color = sec.tone != .Weak ? var_tone : ui.color("text")
+			// the icon box is exactly the glyph's ink, centred on the label's capitals (chip_icon_draw); the label has
+			// no side padding: the gap between them is the spacer alone
+			ink := chip_icon_ink(app, ui.font_size())
+			ui.next({width = ui.px(ink), height = ui.pct(1)})
+			ui.custom("###sec_icon", chip_icon_draw, app)
+			ui.spacer(ui.px(em * 0.4))
+			ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0})
 			ui.label(fmt.aprintf("%s###sec_label", sec.label, allocator = ui.frame_allocator()))
 		}
 		ui.spacer(ui.px(em * 0.65))
@@ -187,6 +192,35 @@ security_chip :: proc(app: ^App, t: ^Tab) {
 		tip(sig, "Page information")
 	}
 	if b != nil { page_info_popup(app, t, sec, b) }
+}
+
+@(private = "file")
+chip_icon: struct { glyph: string, color: draw.Color }
+
+// Width of the ink of the chip's icon glyph at this text size (physical pixels).
+@(private = "file")
+chip_icon_ink :: proc(app: ^App, size: f32) -> f32 {
+	if chip_icon.glyph == "" { return 0 }
+	g := font.glyph(&app.fonts, app.icons, size, rune(chip_icon.glyph[0]))
+	return g.size.x > 0 ? g.size.x : g.advance
+}
+
+// The icon font's metrics are not the text font's: centring both boxes by their own metrics leaves the glyph off the
+// text. The glyph's ink is centred on the middle of the label's capital letters instead (the label is drawn from the
+// same box height and the UI font's metrics: draw_ui text_origin).
+@(private = "file")
+chip_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	app := (^App)(user)
+	if chip_icon.glyph == "" { return }
+	size := b.font_size
+	m := font.metrics(&app.fonts, app.ui_font, size)
+	cy := (b.rect.min.y + b.rect.max.y) * 0.5
+	baseline := math.round(cy + (m.ascent - m.descent) * 0.5)
+	cap := font.glyph(&app.fonts, app.ui_font, size, 'H')
+	mid := baseline + cap.offset.y + cap.size.y * 0.5
+	g := font.glyph(&app.fonts, app.icons, size, rune(chip_icon.glyph[0]))
+	pen := draw.Vec2{b.rect.min.x - g.offset.x, math.round(mid - (g.offset.y + g.size.y * 0.5))}
+	draw.text(dc, app.icons, size, pen, chip_icon.color, chip_icon.glyph)
 }
 
 // Greedy word wrap on character count (the popup uses a proportional font, so this is an estimate that errs short).

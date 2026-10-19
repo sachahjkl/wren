@@ -162,7 +162,7 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 		c.margin[side] = px(0)
 		c.padding[side] = px(0)
 		c.border_width[side] = 3
-		c.border_color[side] = s.text_color
+		c.border_color[side] = s.colors[.Light][.Canvas_Text]
 	}
 	c.opacity = 1
 	c.flex_shrink = 1
@@ -170,18 +170,20 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.align_self = .Auto
 	c.justify_self = .Auto
 	c.row_gap, c.column_gap = Length{kind = .Normal}, Length{kind = .Normal}
-	c.color = s.text_color
+	// the initial color is CanvasText, of the element's own scheme (see scheme_settle)
+	c.color_pair = Scheme_Color{s.colors[.Light][.Canvas_Text], s.colors[.Dark][.Canvas_Text]}
+	c.color = c.color_pair.light
 	c.font_size = s.default_font_size
 	c.font_weight = 400
 	c.line_height = Line_Height{kind = .Normal}
-	c.text_decoration_color = s.text_color
+	c.text_decoration_color = c.color
 	c.text_indent = px(0)
 	c.tab_size, c.tab_spaces = 8, true
 	c.pointer_events = true
 	c.background_color = {0, 0, 0, 0}
 	c.background_position = {Length{kind = .Percent, v = 0}, Length{kind = .Percent, v = 0}}
 	c.outline_width = 3
-	c.outline_color = s.text_color
+	c.outline_color = c.color
 	c.list_style_type = .Disc
 	c.list_style = List_Marker_Style{style = .Disc}
 	c.border_collapse = false
@@ -352,14 +354,11 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		cx.lc.font_size = f64(c.font_size)
 		cx.lc.x_height = f64(c.font_size) * 0.5
 		cx.lc.ch = f64(c.font_size) * 0.5
-	case .Color:
-		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "currentcolor") {
-			c.color = cx.parent != nil ? cx.parent.color : s.text_color
-			return true
-		}
-		col, ok := parse_color(cx, vs)
+	case .Color_Scheme:
+		v, ok := parse_color_scheme(vs)
 		if !ok { return false }
-		c.color = col
+		c.color_scheme = v
+	case .Color: return apply_color(cx, vs)
 	case .Font_Family:
 		fam, ok := parse_font_family(cx, vs)
 		if !ok { return false }

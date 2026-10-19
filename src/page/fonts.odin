@@ -16,6 +16,9 @@ import "wb:webfont"
 // are the shell's business) is skipped. Downloads run at most style.webfonts.max_parallel at a time; each file and its
 // decoded form are limited to style.webfonts.max_bytes.
 //
+// font-display: the first paint waits for a used face in its block period (render_blocking.odin); a `fallback` face
+// that arrives after its swap period, or an `optional` one after its block period, is not used by the page.
+//
 // The shell polls: when `fonts_generation(p)` changes, the faces in `fonts_ready(p)` are new; it registers them with its
 // font engine (family, weight range, italic, sfnt bytes) and lays the page out again.
 
@@ -45,6 +48,7 @@ Web_Font :: struct {
 	url:           string,          // the source being loaded or that was loaded (aliases `sources`)
 	data:          []byte,          // Ready: the sfnt file (TrueType / OpenType)
 	format:        webfont.Format,  // Ready: what the downloaded file was
+	started_ms:    f64,             // when the page asked for it (loop clock): font-display periods count from here
 }
 
 Page_Fonts :: struct {
@@ -123,6 +127,7 @@ fonts_sync :: proc(p: ^Page) {
 		f.key, f.family = strings.clone(ff.key), strings.clone(ff.family)
 		f.weight, f.font_style, f.stretch, f.display = ff.weight, ff.style, ff.stretch, ff.display
 		f.italic = ff.style != .Normal
+		f.started_ms = now_ms(p)
 		f.unicode_range = make([][2]u32, len(ff.unicode_range))
 		copy(f.unicode_range, ff.unicode_range)
 		srcs := make([dynamic]Web_Font_Source)
@@ -196,6 +201,19 @@ font_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		if err != .None {
 			log(p, .Warn, fmt.tprintf("font %s: cannot use it (%v, %v)", f.url, format, err))
 			font_retry(p, f)
+			return
+		}
+		// font-display: past its periods, a font is not swapped in any more (CSS Fonts 4 §4.9.1)
+		s := &p.settings.style
+		late := now_ms(p) - f.started_ms
+		too_late := (f.display == .Optional && late > s.webfont_short_block_ms) ||
+		            (f.display == .Fallback && late > s.webfont_short_block_ms + s.webfont_swap_ms)
+		if too_late {
+			delete(sfnt)
+			f.state = .Failed
+			log(p, .Log, fmt.tprintf("font %s arrived after %.0f ms: not used by this page (font-display: %v)", f.url, late, f.display))
+			p.fonts.loading -= 1
+			fonts_pump(p)
 			return
 		}
 		f.data, f.format, f.state = sfnt, format, .Ready

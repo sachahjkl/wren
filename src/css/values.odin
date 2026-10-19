@@ -17,10 +17,11 @@ Color_Value :: struct {
 	rgba: Color,
 }
 
-// What color parsing needs from the style system.
+// What color parsing needs from the style system. `dark` is the used color scheme of the element the value is for (CSS
+// Color Adjust 1): it picks the branch of light-dark() and the set of system colors.
 Color_Env :: struct {
-	dark:   bool,                                           // prefers-color-scheme, for light-dark()
-	system: proc(user: rawptr, name: string) -> (Color, bool),   // CanvasText, LinkText...
+	dark:   bool,
+	system: proc(user: rawptr, name: string, dark: bool) -> (Color, bool),   // CanvasText, LinkText... (`name` lowercase)
 	user:   rawptr,
 }
 
@@ -255,7 +256,7 @@ parse_color :: proc(input: []Value, env: ^Color_Env) -> (cv: Color_Value, ok: bo
 			}
 			for e in NAMED_COLORS { if e.name == n { return Color_Value{rgba = color_from_u32(e.rgb)}, true } }
 			if env != nil && env.system != nil {
-				if c, good := env.system(env.user, n); good { return Color_Value{rgba = c}, true }
+				if c, good := env.system(env.user, n, env.dark); good { return Color_Value{rgba = c}, true }
 			}
 		}
 		return {}, false

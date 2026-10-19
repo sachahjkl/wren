@@ -646,6 +646,12 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 		if a.origin != b.origin { return int(a.origin) < int(b.origin) }
 		return a.order < b.order
 	})
+	// the media lists of the owners live in e.alloc, which was just reset: parsed again from their text
+	opt := parse_options(&e.settings)
+	for s in e.sheets {
+		s.media = nil
+		if s.media_text != "" { s.media = css.parse_media_query_list(css.parse_component_values(s.media_text, opt, context.temp_allocator), e.alloc) }
+	}
 	for s in e.sheets { flatten_sheet(e, s, LayerCtx{rank = UNLAYERED}) }
 	compile_keyframes(e)
 	parse_font_faces(e)
@@ -764,5 +770,6 @@ supports_block :: proc(e: ^Engine, children: []css.Value) -> bool {
 probe_context :: proc(e: ^Engine, a: runtime.Allocator) -> Cx {
 	c := new(Computed, a)
 	c^ = initial_computed(&e.settings)
-	return Cx{settings = &e.settings, c = c, alloc = a, lc = css.Length_Context{font_size = 16, root_font_size = 16, vw = 1280, vh = 800}}
+	return Cx{settings = &e.settings, c = c, alloc = a, lc = css.Length_Context{font_size = 16, root_font_size = 16, vw = 1280, vh = 800},
+		cenv = css.Color_Env{system = system_color, user = &e.settings}}
 }

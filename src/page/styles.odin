@@ -26,6 +26,8 @@ Style_Load :: struct {
 	bad_status:   bool,
 	is_import:    bool,
 	serial:       u64,           // tells a background parse whether this load is still the one it parses for
+	parser:       bool,          // part of the document as parsed (or blocking="render"): may block its first paint
+	failed:       bool,          // nothing will come of it (network error, HTTP error, refused)
 }
 
 @(private)
@@ -129,6 +131,7 @@ sync_styles :: proc(p: ^Page) {
 		l := new(Style_Load)
 		l.page, l.owner, l.url = p, k.owner, abs
 		l.href, l.media = strings.clone(k.href), strings.clone(k.media)
+		l.parser = render_blocking_candidate(p, k.owner)
 		p.link_loads[k.owner] = l
 		co, has_co := dom.get_attribute(p.doc, k.owner, "crossorigin")
 		nonce, _ := dom.get_attribute(p.doc, k.owner, "nonce")
@@ -145,6 +148,7 @@ start_pending_imports :: proc(p: ^Page) {
 		if !ok { log(p, .Warn, fmt.tprintf("@import: invalid URL %q", pi.url)); continue }
 		l := new(Style_Load)
 		l.page, l.url, l.is_import, l.sheet_id, l.slot = p, abs, true, pi.sheet_id, pi.slot
+		l.parser = p.render.collecting   // imports found before the first paint (of the document's own sheets) block it
 		append(&p.import_loads, l)
 		start_style_fetch(p, l, "", false, "")
 	}
@@ -159,11 +163,13 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		r := ev.response
 		if r.type != .Opaque && (r.status < 200 || r.status >= 300) {
 			l.bad_status = true
+			l.failed = true
 			log(p, .Warn, fmt.tprintf("stylesheet %s: HTTP %d", l.url, r.status))
 		}
 	case .Data:
 	case .Failed:
 		l.task = base.NIL_HANDLE
+		l.failed = true
 		log(p, .Warn, fmt.tprintf("stylesheet %s: %s", l.url, ev.detail))
 	case .Done:
 		l.task = base.NIL_HANDLE
@@ -173,10 +179,11 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		text := decode_css(ev.data, p.settings.style.max_sheet_bytes)
 		defer delete(text)
 		if l.is_import {
-			style.engine_resolve_import_by_id(p.engine, l.sheet_id, l.slot, string(text), l.url)
+			if !style.engine_resolve_import_by_id(p.engine, l.sheet_id, l.slot, string(text), l.url) { l.failed = true }
 		} else {
 			if _, still := p.link_loads[l.owner]; !still { return }
 			if s := style.engine_add_sheet(p.engine, string(text), l.owner, l.media, l.url, from_link = true); s == nil {
+				l.failed = true
 				log(p, .Warn, fmt.tprintf("stylesheet %s: too large or disabled", l.url))
 			}
 		}
@@ -207,7 +214,7 @@ decode_css :: proc(data: []byte, max_bytes: int) -> []byte {
 // The result is cached; its `serial` changes exactly when some computed style changed, which is what layout watches.
 styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Styled {
 	e := p.engine
-	env := style.media_env_from(&e.settings, f64(viewport_w), f64(viewport_h), dppx, false)
+	env := style.media_env_from(&e.settings, f64(viewport_w), f64(viewport_h), dppx, style.os_appearance().dark)
 	style.engine_set_environment(e, env)
 
 	now := document_time_ms(p)

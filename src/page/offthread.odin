@@ -284,6 +284,7 @@ adopt_document :: proc(p: ^Page, d: ^Parsed_Document) -> html.Parse_Result {
 		s.sheet = nil
 	}
 	apply_meta(p)
+	render_begin(p)   // its stylesheets start loading now; the first paint waits for them (render_blocking.odin)
 	return d.result
 }
 
