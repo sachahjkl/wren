@@ -73,6 +73,18 @@ sx_step :: proc(t: ^testing.T, f: ^Sx, what: string, loc := #caller_location) ->
 	return ok
 }
 
+// `color: currentcolor` is `inherit`: declared in a sheet it is validated without an element (probe context), on the
+// root it takes the initial color (https://sacha.house crashed on it).
+@(test)
+color_currentcolor_everywhere :: proc(t: ^testing.T) {
+	f := sx_load(`<style>:root{color:currentColor} p{color:currentcolor} @supports (color: currentColor) { b{color:red} }</style><body style="color:#123456"><p id=p>x <b id=b>y</b></p></body>`, false)
+	defer sx_unload(f)
+	testing.expect(t, same(sx(f, "p").color, hexc(0x123456)), "currentcolor inherits")
+	testing.expect(t, same(sx(f, "b").color, hexc(0xff0000)), "@supports (color: currentColor) holds")
+	root := style_of(f.st, f.doc.root)
+	testing.expect(t, root == nil || root.color.a > 0, "the root has a color")
+}
+
 @(test)
 color_scheme_values :: proc(t: ^testing.T) {
 	ok_cases := [?]struct { src: string, v: Color_Scheme_Value }{
