@@ -230,6 +230,7 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.background_attachments = SCROLL[:]
 	c.grid_auto_columns = AUTO_TRACKS[:]
 	c.grid_auto_rows = AUTO_TRACKS[:]
+	masks_initial(&c)
 	return c
 }
 
@@ -805,6 +806,8 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		return apply_prop_more(cx, p, vs)
 	case .Container_Type, .Container_Name, .Scrollbar_Width, .Scrollbar_Color, .Scrollbar_Gutter:
 		return apply_container_prop(cx, p, vs)
+	case .Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite, .Text_Fill_Color:
+		return apply_mask_prop(cx, p, vs)
 	}
 	return true
 }

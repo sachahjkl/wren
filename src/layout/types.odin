@@ -163,6 +163,8 @@ Box_Flag :: enum u8 {
 	// passes over every box read the style only for the boxes that have them
 	Effects,       // may make an effect group (opacity, filter, backdrop-filter, mix-blend-mode, clip-path: box_effects)
 	Blends,        // mix-blend-mode other than normal (isolated_contexts)
+	Fieldset,      // a <fieldset> block (fieldset.odin)
+	Legend,        // the rendered legend of the fieldset that is its parent: drawn on its top border
 }
 Box_Flags :: bit_set[Box_Flag; u32]
 

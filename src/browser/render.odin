@@ -67,8 +67,8 @@ set_replaced_sizes :: proc(api: lay.Replaced_Api) { page_render.replaced = api }
 
 register_layout_prefs :: proc(p: ^config.Prefs) { lay.register_prefs(p) }
 
-layout_reset :: proc(l: ^Layout) { composite_forget(l); lay.reset(l) }
-layout_destroy :: proc(l: ^Layout) { composite_forget(l); lay.destroy(l) }
+layout_reset :: proc(l: ^Layout) { composite_forget(l); text_clip_forget(l); lay.reset(l) }
+layout_destroy :: proc(l: ^Layout) { composite_forget(l); text_clip_forget(l); lay.destroy(l) }
 
 // `viewport`: size of the page area in physical pixels; `scale`: physical pixels per CSS px. `images_gen` /
 // `fonts_gen`: change counters of the natural sizes of images and of the page's web fonts (lay.Input).
@@ -129,6 +129,7 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size
 	// corner colors interpolate on sRGB values whatever the blend space (CSS: `in srgb` is the default)
 	interp := draw.set_interpolation(dc, .Srgb)
 	defer draw.set_interpolation(dc, interp)
+	paint_canvas_images(l, dc, origin, size, scroll)
 	if !(compositor_settings.enabled && composite_paint(l, dc, d, origin, size, scroll)) {
 		v := lay.view_make(l, size, scroll)
 		fx := effects_make(l, &v, dc, origin)
@@ -143,8 +144,57 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size
 	if track, thumb, ok := lay.doc_scrollbar(l, size, scroll); ok {
 		root := l.styled != nil ? (^style.Styled)(l.styled).root_scheme : style.Scheme.Light   // alive while the layout is painted
 		thumb_c, track_c := scrollbar_colors(root, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
+		// the viewport's bar follows the root element's scrollbar-color
+		if ri := l.canvas_items[0]; ri >= 0 && int(ri) < len(l.items) { thumb_c, track_c = scrollbar_colors_of(l.items[ri].cs, thumb_c, track_c) }
 		if track_c.a > 0 { draw.rect(dc, draw.rect_shift(dr(track), origin), to_draw(track_c), (track.max.x - track.min.x) * 0.5) }
 		draw.rect(dc, draw.rect_shift(dr(thumb), origin), to_draw(thumb_c), (thumb.max.x - thumb.min.x) * 0.5)
+	}
+}
+
+// The box whose background is the canvas's (CSS Backgrounds §2.11.2): the root element's, or the body's when the root
+// has neither a background color nor an image. Its color fills the canvas (the shell paints Styled.canvas), its images
+// are painted over the whole canvas (paint_canvas_images), and the box itself paints no background. NONE: neither.
+canvas_source_box :: proc(l: ^Layout) -> i32 {
+	paints :: proc(cs: ^style.Computed) -> bool {
+		if cs == nil { return false }
+		if cs.background_color.a > 0 { return true }
+		for im in cs.background_images { if im.kind != .None { return true } }
+		return false
+	}
+	for k in 0 ..< 2 {
+		i := l.canvas_items[k]
+		if i < 0 || int(i) >= len(l.items) { continue }
+		it := &l.items[i]
+		if paints(it.cs) { return it.box }
+	}
+	return lay.NONE
+}
+
+// The background images of the canvas source, positioned against the root element's box (its origin box) and painted
+// over the whole viewport.
+@(private = "file")
+paint_canvas_images :: proc(l: ^Layout, dc: ^draw.Context, origin, size: draw.Vec2, scroll: f32) {
+	src := canvas_source_box(l)
+	if src == lay.NONE { return }
+	cs := l.boxes[src].cs
+	has_image := false
+	for im in cs.background_images { if im.kind != .None { has_image = true; break } }
+	if !has_image { return }
+	ri := l.canvas_items[0]
+	if ri < 0 { ri = l.canvas_items[1] }
+	if ri < 0 || int(ri) >= len(l.items) { return }
+	root := &l.items[ri]
+	rb := &l.boxes[root.box]
+	v := lay.view_make(l, size, scroll, cull = false)
+	off := v.offsets[root.space] + origin
+	border := draw.rect_shift(dr(root.rect), off)
+	boxes := bg_boxes(border, {}, {rb.border[0], rb.border[1], rb.border[2], rb.border[3]}, rb.padding)
+	viewport := draw.Rect{origin, origin + size}
+	layers := style.background_layers(cs)
+	for i := len(layers) - 1; i >= 0; i -= 1 {
+		layer := &layers[i]
+		pos_area, _ := area_of(&boxes, layer.origin)
+		paint_image_layer(dc, layer, pos_area, viewport, {}, l.scale)
 	}
 }
 
@@ -156,8 +206,8 @@ paint_item :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, v: ^lay.View
 	switch it.kind {
 	case .Box:
 		if page_render.bare != nil && page_render.bare(page_render.content_user, d, it.node) { return }
-		paint_box(l, dc, it, r)
-	case .Inline_Box: paint_inline_box(l, dc, it, r)
+		paint_box(l, dc, v, it, r, origin)
+	case .Inline_Box: paint_inline_box(l, dc, v, it, r, origin)
 	case .Text: paint_text(l, dc, it, r, off)
 	case .Marker: paint_marker(l, dc, it, r, off)
 	case .Replaced, .Control: paint_content(l, dc, d, it, r, off)
@@ -165,10 +215,18 @@ paint_item :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, v: ^lay.View
 	case .Scrollbar:
 		track := r
 		thumb_c, track_c := scrollbar_colors(it.cs != nil ? it.cs.used_scheme : .Light, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
+		thumb_c, track_c = scrollbar_colors_of(it.cs, thumb_c, track_c)
 		if track_c.a > 0 { draw.rect(dc, track, to_draw(track_c), min(track.max.x - track.min.x, track.max.y - track.min.y) * 0.5) }
 		th := draw.rect_shift(dr(lay.scrollbar_thumb(l, v, it)), origin)
 		draw.rect(dc, th, to_draw(thumb_c), min(th.max.x - th.min.x, th.max.y - th.min.y) * 0.5)
 	}
+}
+
+// scrollbar-color (CSS Scrollbars 1): the element's thumb and track colors, else the defaults given.
+@(private = "file")
+scrollbar_colors_of :: proc(cs: ^style.Computed, thumb, track: css.Color) -> (css.Color, css.Color) {
+	if cs == nil || cs.scrollbar_color.auto { return thumb, track }
+	return cs.scrollbar_color.thumb, cs.scrollbar_color.track
 }
 
 // Corner radii (draw order: top-left, bottom-left, top-right, bottom-right), reduced so adjacent ones fit (CSS
@@ -182,21 +240,47 @@ corner_radii :: proc(cs: ^style.Computed, r: draw.Rect, scale: f32) -> [4]f32 {
 no_radius :: proc(r: [4]f32) -> bool { return r == {0, 0, 0, 0} }
 
 @(private = "file")
-paint_box :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
+paint_box :: proc(l: ^Layout, dc: ^draw.Context, v: ^lay.View, it: ^lay.Display_Item, r: draw.Rect, origin: draw.Vec2) {
 	cs := it.cs
 	if cs == nil { return }
 	b := &l.boxes[it.box]
+	r := r
+	// a fieldset with a rendered legend: the box starts at the border drawn through the legend's middle
+	shift, gap, legend := lay.fieldset_border(l, it.box)
+	if legend { r.min.y = min(r.min.y + shift, r.max.y) }
 	radii := corner_radii(cs, r, l.scale)
 	widths := [4]f32{b.border[0], b.border[1], b.border[2], b.border[3]}
 	boxes := bg_boxes(r, radii, widths, b.padding)
 	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, false) }
-	if .No_Background not_in it.flags { paint_backgrounds(dc, cs, &boxes, l.scale) }
+	if .No_Background not_in it.flags && it.box != canvas_source_box(l) {
+		if background_clips_text(cs) { paint_backgrounds_text(l, dc, v, it, &boxes, origin) } else { paint_backgrounds(dc, cs, &boxes, l.scale) }
+	}
 	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, true) }
-	if widths != {} { paint_borders(dc, r, widths, cs.border_style, cs.border_color, radii) }
+	if widths == {} { return }
+	if !legend || widths[0] <= 0 {
+		paint_borders(dc, r, widths, cs.border_style, cs.border_color, radii)
+		return
+	}
+	// the border interrupted behind the legend's border box: three clips that do not overlap (left of the gap, right
+	// of it, under the top border between them), so a translucent border is not drawn twice
+	dx := r.min.x - it.rect.min.x
+	g0, g1 := gap[0] + dx, gap[1] + dx
+	big := draw.rect_pad(r, 4)
+	parts := [3]draw.Rect{
+		{big.min, {g0, big.max.y}},
+		{{g1, big.min.y}, big.max},
+		{{g0, r.min.y + widths[0]}, {g1, big.max.y}},
+	}
+	for p in parts {
+		if p.max.x <= p.min.x || p.max.y <= p.min.y { continue }
+		draw.push_clip(dc, p)
+		paint_borders(dc, r, widths, cs.border_style, cs.border_color, radii)
+		draw.pop_clip(dc)
+	}
 }
 
 @(private = "file")
-paint_inline_box :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
+paint_inline_box :: proc(l: ^Layout, dc: ^draw.Context, v: ^lay.View, it: ^lay.Display_Item, r: draw.Rect, origin: draw.Vec2) {
 	cs := it.cs
 	if cs == nil { return }
 	b := &l.boxes[it.box]
@@ -208,7 +292,7 @@ paint_inline_box :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r
 	pad := [4]f32{b.padding[0], .Right_Edge in it.flags ? b.padding[1] : 0, b.padding[2], .Left_Edge in it.flags ? b.padding[3] : 0}
 	boxes := bg_boxes(r, radii, widths, pad)
 	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, false) }
-	paint_backgrounds(dc, cs, &boxes, l.scale)
+	if background_clips_text(cs) { paint_backgrounds_text(l, dc, v, it, &boxes, origin) } else { paint_backgrounds(dc, cs, &boxes, l.scale) }
 	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, true) }
 	if widths != {} { paint_borders(dc, r, widths, cs.border_style, cs.border_color, radii) }
 }
@@ -415,7 +499,8 @@ paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw
 		draw_run(dc, fid, fi.size, pos, col, it.text, opts)
 	}
 	col := to_draw(cs.color)
-	draw_run(dc, fid, fi.size, {r.min.x, baseline}, col, it.text, opts)
+	fill := to_draw(style.text_fill(cs))   // -webkit-text-fill-color (background-clip: text pages make it transparent)
+	if fill.a > 0 { draw_run(dc, fid, fi.size, {r.min.x, baseline}, fill, it.text, opts) }
 	if it.deco != {} {
 		dcol := to_draw(it.deco_color)
 		if it.deco_color.a == 0 { dcol = col }

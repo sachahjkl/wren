@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Masks, clipped text, legends, color glyphs</title>
+<style>
+/* color fonts (tests of the toolkit; licences in fonts/): Google's COLRv1 test glyphs, Twemoji smileys as sbix and OT-SVG */
+@font-face { font-family: "COLRv1 test"; src: url(fonts/test_glyphs-glyf_colr_1.ttf) }
+@font-face { font-family: "Twemoji sbix"; src: url(fonts/twemoji_smiley-sbix.ttf) }
+@font-face { font-family: "Twemoji SVG"; src: url(fonts/twemoji_smiley-picosvg.ttf) }
+html { scrollbar-color: #e8590c #fff4e6 }
+body { margin: 0; padding: 12px 16px; font: 14px "Segoe UI", sans-serif; color: #1d2433; background: #f8f9fa }
+h2 { font-size: 15px; margin: 14px 0 6px }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+.b { width: 70px; height: 46px; background: linear-gradient(90deg, #e03131, #1c7ed6); border-radius: 6px }
+.fade { mask-image: linear-gradient(to right, black, transparent) }
+.dot { background: #2b8a3e; -webkit-mask: radial-gradient(circle, black 49%, transparent 51%) center / 34px 34px no-repeat }
+.lum { mask-image: linear-gradient(white, black); mask-mode: luminance }
+.xor { mask-image: linear-gradient(black, black), linear-gradient(90deg, black 50%, transparent 50%); mask-size: 100% 50%, 100% 100%; mask-repeat: no-repeat; mask-composite: exclude }
+.rep { mask: radial-gradient(circle, black 40%, transparent 42%) 0 0 / 12px 12px }
+.op { opacity: .5; mask-image: linear-gradient(black, transparent) }
+/* icons as MDN draws them: an SVG as the mask of a box in currentcolor */
+.icon { display: inline-block; width: 18px; height: 18px; background-color: currentcolor; vertical-align: middle;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 6l6 6-6 6' fill='none' stroke='black' stroke-width='2.5'/%3E%3C/svg%3E") center / contain no-repeat }
+.icon.ext { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 3h7v7M21 3l-9 9M19 14v6H4V5h6' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E") }
+.blue { color: #1971c2 } .red { color: #c92a2a }
+.ct { font: 900 38px "Segoe UI", sans-serif; background: linear-gradient(90deg, #f03e3e, #fab005, #1c7ed6); -webkit-background-clip: text; background-clip: text; color: transparent }
+.ct2 { font: bold 30px Consolas, monospace; background: url(images/effects-photo.png) center / cover; -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: saturate(1.4) }
+fieldset { border: 2px solid #364fc7; padding: 6px 12px; margin: 0; min-width: 160px }
+fieldset.r { border-radius: 10px; border-color: #e8590c }
+fieldset.c legend { margin: 0 auto }
+fieldset.t legend { font-size: 26px }
+legend { padding: 0 6px }
+img.av { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #1c7ed6 }
+img.sq { width: 40px; height: 40px; border-radius: 10px 0 }
+.scroll { width: 160px; height: 70px; overflow: auto; border: 1px solid #adb5bd; scrollbar-color: #2f9e44 #ebfbee }
+.scroll div { height: 200px; background: linear-gradient(#fff, #d3f9d8) }
+.glyphs { font: 34px "COLRv1 test" }
+.emoji { font-size: 34px }
+.sbix { font: 34px "Twemoji sbix" } .svg { font: 34px "Twemoji SVG" }
+.fg { color: #2f9e44 }
+</style>
+</head>
+<body>
+<h2>mask-image: gradients, luminance, composition, repetition, under opacity</h2>
+<div class="row"><div class="b fade"></div><div class="b dot"></div><div class="b lum"></div><div class="b xor"></div><div class="b rep"></div><div class="b op"></div>
+<span class="blue"><span class="icon"></span> chevron</span> <span class="red">link <span class="icon ext"></span></span></div>
+<h2>background-clip: text</h2>
+<div class="row"><span class="ct">Gradient <i>text</i></span><span class="ct2">PHOTO&nbsp;TEXT</span></div>
+<h2>fieldset and legend</h2>
+<div class="row">
+<fieldset><legend>Navigation</legend>a plain legend</fieldset>
+<fieldset class="r"><legend>Rounded</legend>border-radius</fieldset>
+<fieldset class="c"><legend>Centered</legend>margin: auto</fieldset>
+<fieldset class="t"><legend>Tall</legend>a legend taller than the border</fieldset>
+</div>
+<h2>Rounded images, scrollbar-color</h2>
+<div class="row"><img class="av" src="images/effects-photo.png" alt=""><img class="sq" src="images/effects-photo.png" alt=""><div class="scroll"><div></div></div></div>
+<h2>Color glyphs: COLR v1 (gradients, sweep, composite, transforms, text color), sbix, OT-SVG, system emoji</h2>
+<div class="glyphs">&#xF0100;&#xF0200;&#xF0503;&#xF0A05;&#xF0600;&#xF0800;&#xF0E01; <span class="fg">&#xF0B00;&#xF0B06;</span></div>
+<div class="row"><span class="sbix">&#x1F603;</span><span class="svg">&#x1F603;</span><span class="emoji">&#x1F600;&#x1F44D;&#x1F3FD;&#x1F3F3;&#xFE0F;&#x200D;&#x1F308;&#x1F525;</span></div>
+</body>
+</html>

@@ -35,6 +35,8 @@ PAINT_PROPS :: [?]Prop{
 	.Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition,
 	.Object_Position, .Filter, .Backdrop_Filter, .Clip_Path,
 	.Scroll_Behavior, .Overscroll_Behavior_X, .Overscroll_Behavior_Y, .Caret_Color, .Accent_Color,
+	.Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite,
+	.Text_Fill_Color,
 }
 
 @(private) tiers_once: sync.Once
@@ -94,6 +96,7 @@ structure_sig :: proc(c: ^Computed) -> u8 {
 	if len(c.filter) > 0 { sig |= 4 }
 	if len(c.backdrop_filter) > 0 { sig |= 8 }
 	if c.clip_path != nil { sig |= 16 }
+	if has_mask(c) { sig |= 32 }
 	return sig
 }
 

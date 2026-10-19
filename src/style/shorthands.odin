@@ -98,6 +98,7 @@ tables_build :: proc() {
 		{"border-end-end-radius", "border-bottom-right-radius"}, {"border-end-start-radius", "border-bottom-left-radius"},
 		{"border-block-start", "border-top"}, {"border-block-end", "border-bottom"}, {"border-inline-start", "border-left"}, {"border-inline-end", "border-right"},
 	}) { alias_by_name[pair[0]] = pair[1] }
+	mask_names()
 }
 
 // A property name as written in CSS: a longhand, a shorthand or neither.
@@ -169,7 +170,9 @@ short_longhands :: proc(s: Short) -> []Prop {
 	@(static) bi_width := [?]Prop{.Border_Left_Width, .Border_Right_Width}
 	@(static) bi_style := [?]Prop{.Border_Left_Style, .Border_Right_Style}
 	@(static) bi_color := [?]Prop{.Border_Left_Color, .Border_Right_Color}
+	@(static) mask := [?]Prop{.Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite}
 	switch s {
+	case .Mask: return mask[:]
 	case .Container: return container[:]
 	case .Border_Block: return border_block[:]
 	case .Border_Inline: return border_inline[:]
@@ -516,6 +519,9 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 
 	case .Background:
 		return expand_background(vs, a)
+
+	case .Mask:
+		return expand_mask(vs, a)
 
 	case .White_Space, .Text_Wrap, .Font_Variant, .Transition, .Animation, .Overscroll_Behavior, .Columns,
 	     .Grid_Template, .Grid, .Grid_Row, .Grid_Column, .Grid_Area:

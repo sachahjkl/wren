@@ -1098,6 +1098,7 @@ main :: proc() {
 	hud_destroy(app)
 	smooth_shutdown(app)
 	pacer_destroy(app)
+	font.set_color_ready_callback(&app.fonts, nil, nil)   // the color glyph thread no longer posts to the loop
 	host.loop_destroy(&app.loop)
 	wasm.runtime_destroy()
 	measure_destroy(&app.measure)

@@ -19,6 +19,7 @@ Group_Effect :: enum u8 {
 	Blend,        // mix-blend-mode other than normal
 	Isolate,      // an isolated group for blending descendants
 	Clip_Path,    // clip-path other than none
+	Mask,         // a mask-image layer with an image
 }
 Group_Effects :: bit_set[Group_Effect; u8]
 
@@ -32,6 +33,7 @@ box_effects :: proc(cs: ^style.Computed) -> Group_Effects {
 	if len(cs.backdrop_filter) > 0 { fx += {.Backdrop} }
 	if cs.mix_blend_mode != .Normal { fx += {.Blend} }
 	if cs.clip_path != nil { fx += {.Clip_Path} }
+	if style.has_mask(cs) { fx += {.Mask} }
 	return fx
 }
 

@@ -29,7 +29,7 @@ bg_boxes :: proc(border: draw.Rect, radii: [4]f32, widths, pad: [4]f32) -> Bg_Bo
 	return b
 }
 
-@(private = "file")
+@(private)
 area_of :: proc(b: ^Bg_Boxes, a: style.Box_Area) -> (draw.Rect, [4]f32) {
 	switch a {
 	case .Border_Box: return b.border, b.border_radii
@@ -53,14 +53,19 @@ paint_backgrounds :: proc(dc: ^draw.Context, cs: ^style.Computed, b: ^Bg_Boxes, 
 	}
 	for i := len(layers) - 1; i >= 0; i -= 1 {
 		layer := &layers[i]
-		switch layer.image.kind {
-		case .None:
-		case .Gradient: paint_gradient_layer(dc, layer, b, scale)
-		case .Url:
-			pos_area, _ := area_of(b, layer.origin)
-			clip, radii := area_of(b, layer.clip)
-			images_paint_background_layer(dc, layer, pos_area, clip, radii, scale)
-		}
+		pos_area, _ := area_of(b, layer.origin)
+		clip, radii := area_of(b, layer.clip)
+		paint_image_layer(dc, layer, pos_area, clip, radii, scale)
+	}
+}
+
+// One image layer (a background layer, or a mask layer as one) in its positioning area, painted inside `clip`
+// (rounded by `radii`).
+paint_image_layer :: proc(dc: ^draw.Context, layer: ^style.Bg_Layer, pos_area, clip: draw.Rect, radii: [4]f32, scale: f32) {
+	switch layer.image.kind {
+	case .None:
+	case .Gradient: paint_gradient_layer(dc, layer, pos_area, clip, radii, scale)
+	case .Url: images_paint_background_layer(dc, layer, pos_area, clip, radii, scale)
 	}
 }
 
@@ -85,11 +90,9 @@ gradient_tile_size :: proc(sz: style.Bg_Size, w, h, scale: f32) -> draw.Vec2 {
 }
 
 @(private = "file")
-paint_gradient_layer :: proc(dc: ^draw.Context, layer: ^style.Bg_Layer, b: ^Bg_Boxes, scale: f32) {
+paint_gradient_layer :: proc(dc: ^draw.Context, layer: ^style.Bg_Layer, area, clip: draw.Rect, radii: [4]f32, scale: f32) {
 	g := layer.image.grad
 	if g == nil || len(g.stops) == 0 { return }
-	area, _ := area_of(b, layer.origin)
-	clip, radii := area_of(b, layer.clip)
 	aw, ah := area.max.x - area.min.x, area.max.y - area.min.y
 	if aw <= 0 || ah <= 0 || clip.max.x <= clip.min.x || clip.max.y <= clip.min.y { return }
 	ts := gradient_tile_size(layer.size, aw, ah, scale)

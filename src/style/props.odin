@@ -302,6 +302,15 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Scrollbar_Width: return fa(&c.scrollbar_width), NO_FIELD
 	case .Scrollbar_Color: return fa(&c.scrollbar_color), NO_FIELD
 	case .Scrollbar_Gutter: return fa(&c.scrollbar_gutter), NO_FIELD
+	case .Mask_Image: return fa(&c.mask_images), NO_FIELD
+	case .Mask_Mode: return fa(&c.mask_modes), NO_FIELD
+	case .Mask_Repeat: return fa(&c.mask_repeats), NO_FIELD
+	case .Mask_Position: return fa(&c.mask_positions), NO_FIELD
+	case .Mask_Size: return fa(&c.mask_sizes), NO_FIELD
+	case .Mask_Origin: return fa(&c.mask_origins), NO_FIELD
+	case .Mask_Clip: return fa(&c.mask_clips), NO_FIELD
+	case .Mask_Composite: return fa(&c.mask_composites), NO_FIELD
+	case .Text_Fill_Color: return fa(&c.text_fill_color), NO_FIELD
 	}
 	return NO_FIELD, NO_FIELD
 }

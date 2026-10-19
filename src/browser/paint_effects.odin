@@ -26,6 +26,7 @@ Effects_Settings :: struct {
 	backdrop_filters: bool,
 	blend_modes:      bool,
 	clip_paths:       bool,
+	masks:            bool,
 	exact_shadows:    bool,
 	blur_sigma_limit: f32,
 }
@@ -39,6 +40,8 @@ EFFECTS_PREFS := [?]config.Def{
 		description = "Composite elements with their CSS mix-blend-mode (multiply, screen, overlay, difference, hue...). Off: every element is drawn normally over what is behind it."},
 	{name = "paint.effects.clip_paths", kind = .Bool, default = {b = true},
 		description = "Clip elements to their CSS clip-path shape (inset, circle, ellipse, polygon, reference box). Off: clip-path is ignored when painting (hit testing still follows it)."},
+	{name = "paint.effects.masks", kind = .Bool, default = {b = true},
+		description = "Draw CSS masks (mask-image and the other mask-* properties, -webkit-mask-*): an element is shown through the alpha or the luminance of its mask images and gradients (one offscreen layer per masked element). Off: masked elements are drawn unmasked (an icon drawn as a mask over a colored box shows as the box)."},
 	{name = "paint.effects.exact_shadows", kind = .Bool, default = {b = true},
 		description = "Blur text shadows with a true gaussian (one offscreen layer each). Off: a faded copy of the text (cheaper). Box shadows, outer and inset, are always exact (computed analytically by the shader)."},
 	{name = "paint.effects.blur_full_resolution_px", kind = .Float, default = {f = 8}, bounded = true, min = 2, max = 40, unit = "px",
@@ -57,6 +60,7 @@ effects_settings_from_prefs :: proc(p: ^config.Prefs) -> Effects_Settings {
 		backdrop_filters = config.bool_of(p, "paint.effects.backdrop_filters"),
 		blend_modes = config.bool_of(p, "paint.effects.blend_modes"),
 		clip_paths = config.bool_of(p, "paint.effects.clip_paths"),
+		masks = config.bool_of(p, "paint.effects.masks"),
 		exact_shadows = config.bool_of(p, "paint.effects.exact_shadows"),
 		blur_sigma_limit = f32(config.float_of(p, "paint.effects.blur_full_resolution_px")),
 	}
@@ -94,6 +98,7 @@ Open_Group :: struct {
 	layer: bool,     // a layer was pushed (else maybe an alpha)
 	alpha: bool,
 	shape: bool,     // a clip-path shape was pushed
+	mask:  bool,     // the layer is masked: its mask layers are drawn when it closes
 }
 
 @(private)
@@ -353,9 +358,13 @@ open_group :: proc(e: ^Effects, c: i32) {
 	if .Blend in g.effects && effects_settings.blend_modes { blend = draw.Blend_Mode(cs.mix_blend_mode) }
 	alpha := g.alpha
 	isolate := .Isolate in g.effects && effects_settings.blend_modes
-	layer := (filters != nil || blend != .Normal || isolate || (alpha < 1 && page_render.settings.opacity_layers && gp.units > 1)) && gp.seen && !lay.rect_empty(gp.bounds)
+	masked := .Mask in g.effects && effects_settings.masks
+	layer := (filters != nil || blend != .Normal || isolate || masked || (alpha < 1 && page_render.settings.opacity_layers && gp.units > 1)) && gp.seen && !lay.rect_empty(gp.bounds)
 	set_xform(e, lay.NONE)
-	if layer {
+	if layer && masked {
+		draw.push_mask(e.dc, draw.Rect{gp.bounds.min, gp.bounds.max}, draw.Layer_Effects{alpha = alpha, filters = filters, blend = blend})
+		og.layer, og.mask = true, true
+	} else if layer {
 		draw.push_effects(e.dc, draw.Rect{gp.bounds.min, gp.bounds.max}, draw.Layer_Effects{alpha = alpha, filters = filters, blend = blend})
 		og.layer = true
 	} else if alpha < 1 {
@@ -373,6 +382,12 @@ open_group :: proc(e: ^Effects, c: i32) {
 close_group :: proc(e: ^Effects) {
 	og := pop(&e.open)
 	pop_chain_to(e, og.floor)
+	if og.mask {
+		b := &e.l.boxes[e.l.groups[og.g].box]
+		set_xform(e, e.l.spaces[b.space].xform)
+		paint_mask_layers(e, b, e.v.offsets[b.space] + e.origin)
+		set_xform(e, lay.NONE)
+	}
 	if og.layer { draw.pop_layer(e.dc) } else if og.alpha { draw.pop_alpha(e.dc) }
 	if og.shape { draw.pop_clip(e.dc) }
 }
