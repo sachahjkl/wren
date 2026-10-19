@@ -6,7 +6,7 @@ import "wb:config"
 
 // Two levels of settings:
 //   * Options: per instance (a page's modules, a worker's module), read for every new page (page.Settings.wasm).
-//   * Runtime_Settings: the engine itself (which engine, compiler, proposals, caches). Wasmtime compiles with one
+//   * Runtime_Settings: the engine itself (compiler, proposals, caches). Wasmtime compiles with one
 //     configuration per process, so these take effect at the next start (`restart`).
 
 PREFS := [?]config.Def{

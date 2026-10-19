@@ -1,9 +1,6 @@
 [submodule "ext/gui_toolkit"]
 	path = ext/gui_toolkit
 	url = https://github.com/sachahjkl/gui_toolkit.git
-[submodule "ext/wamr"]
-	path = ext/wamr
-	url = https://github.com/bytecodealliance/wasm-micro-runtime.git
 [submodule "ext/lexbor"]
 	path = ext/lexbor
 	url = https://github.com/lexbor/lexbor.git

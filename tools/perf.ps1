@@ -1,6 +1,6 @@
 # Measures the browser on real pages with real input. Needs build\browser_prof.exe (build.bat profile).
 #   powershell -File tools\perf.ps1 [-Only name,name] [-NoSample] [-Exe browser_prof.exe] [-Tag suffix] [-Prefs '--pref a=b ...']
-# -Prefs is added to every run (e.g. '--pref wasm.engine=wamr' with -Tag _wamr to compare the Wasm engines).
+# -Prefs is added to every run (e.g. '--pref wasm.wasmtime.compiler=winch' with -Tag _winch to compare the Wasm compilers).
 # Scenarios ending in _full run with layout.incremental.enabled=false (the reference for incremental layout).
 # Writes build\perf\<run>.txt (per-phase statistics, CPU time, sampling profile) and <run>.csv (one row per frame).
 param([string[]]$Only = @(), [switch]$NoSample, [string]$Exe = 'browser_prof.exe', [string]$Tag = '', [string]$Prefs = '')
