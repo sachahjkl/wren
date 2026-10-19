@@ -9,6 +9,7 @@ import "core:os"
 import "core:strings"
 import "core:time"
 import "wb:base"
+import "wb:dom"
 import "wb:fetch"
 import "wb:host"
 import "wb:js"
@@ -134,6 +135,27 @@ console.log("handlers done");
 		page.page_close(p)
 	}
 
+	fmt.println("-- the browser's own events reach JavaScript listeners")
+	{
+		p := load(process, `<!doctype html><body><button id=b>b</button><script>
+let seen = null;
+document.getElementById("b").addEventListener("click", e => {
+  seen = e;
+  console.log("click", e instanceof MouseEvent, e.isTrusted, e.type, e.target.id, e.bubbles, e.cancelable);
+  e.preventDefault();
+});
+document.addEventListener("click", e => console.log("document saw", e === seen, e.eventPhase));
+</script></body>`)
+		b := dom.find_by_id(p.doc, "b")
+		allowed := page.dispatch_event(p, b, dom.Event{type = "click", bubbles = true, cancelable = true, x = 3, y = 4})
+		check(logged("click true true click b true true"), "a click from the browser is a trusted MouseEvent")
+		check(logged("document saw true 3"), "the same wrapper bubbles up to the document")
+		check(!allowed, "preventDefault from JavaScript cancels the browser's default action")
+		page.js_run(p, transmute([]byte)string(`console.log("after", seen.type, seen.currentTarget, seen.eventPhase, seen.defaultPrevented)`), "probe.js")
+		check(logged("after click null 0 true"), "a kept event keeps its state after the dispatch")
+		page.page_close(p)
+	}
+
 	fmt.println("-- wrappers and nodes: the two heaps free each other")
 	{
 		p := load(process, `<!doctype html><body><script>
@@ -203,6 +225,9 @@ function performance_now() { return Date.now(); }
 const o = {x: 1};
 bench("empty loop", n => { for (let i = 0; i < n; i++) {} });
 bench("JS property get", n => { let s = 0; for (let i = 0; i < n; i++) s += o.x; });
+const ev = new Event("x");
+bench("constant on the prototype chain (Node.ELEMENT_NODE via a)", n => { let s = 0; for (let i = 0; i < n; i++) s += a.ELEMENT_NODE; });
+bench("C getter, no browser call (event.bubbles)", n => { let s = 0; for (let i = 0; i < n; i++) s += ev.bubbles; });
 bench("nodeType (getter, import)", n => { let s = 0; for (let i = 0; i < n; i++) s += a.nodeType; });
 bench("firstChild (getter, wrapper cache)", n => { let s; for (let i = 0; i < n; i++) s = a.firstChild; });
 bench("title (reflected attribute)", n => { let s; for (let i = 0; i < n; i++) s = a.title; });

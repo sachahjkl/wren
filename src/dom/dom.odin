@@ -255,7 +255,10 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
 	if n.kind != .Element || name == "" { return .Invalid_Argument }
-	lname := strings.to_lower(name, context.temp_allocator)
+	lname := name
+	for i in 0 ..< len(name) {
+		if name[i] >= 'A' && name[i] <= 'Z' { lname = strings.to_lower(name, context.temp_allocator); break }
+	}
 	for &a in n.attrs {
 		if a.name == lname {
 			old := a.value
@@ -275,15 +278,27 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 get_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> (value: string, ok: bool) {
 	n := get(d, h)
 	if n == nil || n.kind != .Element { return "", false }
-	lname := strings.to_lower(name, context.temp_allocator)
-	for a in n.attrs { if a.name == lname { return a.value, true } }
+	// names are stored in lower case: compare folding the query's ASCII letters, without allocating (a hot path of
+	// scripts: getAttribute, reflected IDL attributes)
+	outer: for a in n.attrs {
+		if len(a.name) != len(name) { continue }
+		for i in 0 ..< len(name) {
+			c := name[i]
+			if c >= 'A' && c <= 'Z' { c += 32 }
+			if c != a.name[i] { continue outer }
+		}
+		return a.value, true
+	}
 	return "", false
 }
 
 remove_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> Error {
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
-	lname := strings.to_lower(name, context.temp_allocator)
+	lname := name
+	for i in 0 ..< len(name) {
+		if name[i] >= 'A' && name[i] <= 'Z' { lname = strings.to_lower(name, context.temp_allocator); break }
+	}
 	for a, i in n.attrs {
 		if a.name == lname {
 			old_name, old := a.name, a.value
