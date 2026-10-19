@@ -2,7 +2,8 @@
 #   powershell -File tools\test_all.ps1 [-Quick] [-CI]
 #   (-Quick skips the long network stress; -CI, for continuous integration runners: -Quick, end-to-end timeouts x3 for
 #   slow shared machines, the whole output of a failed step instead of its last lines. Nothing here opens a window or
-#   reaches the internet: the end-to-end tests use the local test server on 127.0.0.1, the pixel tests WARP.)
+#   reaches the internet: the end-to-end tests use the local test server on 127.0.0.1, the pixel tests WARP; only the
+#   pinned test suites, test262 and web-platform-tests, are fetched once into build\.)
 param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900)
 if ($CI) { $Quick = $true }
 $slow = if ($CI) { 3 } else { 1 }
@@ -56,6 +57,7 @@ foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp',
 Step 'unit tests: wasm' { odin test src/wasm -collection:wb=src -vet -define:ODIN_TEST_THREADS=1 -out:build/wasm_test.exe 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'unit tests: bindgen (description language, determinism)' { odin test src/tools/bindgen/idl -collection:wb=src -vet -out:build/bindgen_test.exe 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'generated web API up to date (bindgen -check)' { odin run src/tools/bindgen -collection:wb=src -vet -out:build/bindgen.exe -- -check }
+Step 'test262 in the Wasm engine (-Quick: every 25th test; fails on a failure src\tools\test262\known_failures.txt does not list)' { $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\test262.ps1', '-NoNative'); if ($Quick) { $a += '-Quick' }; powershell @a }
 Step 'web API conformance (generated cases: bounds, UTF-8, handles, enums, capacity)' {
     odin build examples/apiconformance -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -out:build/apiconformance.wasm -o:size
     if ($LASTEXITCODE -ne 0) { return }
@@ -160,6 +162,11 @@ try {
         if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\imt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\imt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
+    }
+    Step 'web-platform-tests (wpt\suites.txt, pinned; -Quick: a sample; fails on a regression against wpt\expectations)' {
+        $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\wpt.ps1', '-NoServer', '-TimeoutMs', (10000 * $slow))
+        if ($Quick) { $a += '-Quick' }
+        powershell @a
     }
 } finally { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }
 

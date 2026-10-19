@@ -35,6 +35,18 @@ jobs:
         shell: cmd
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI
 
+      # what the JavaScript conformance steps of test_all measured (WPT sample per folder, test262 failures)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: js-conformance-${{ github.sha }}
+          path: |
+            build/wpt/report.md
+            build/wpt/results.txt
+            build/test262/wasm_errors.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Package (smoke test of tools\package.ps1)
         shell: cmd
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1
