@@ -71,6 +71,7 @@ Images_Shell :: struct {
 	now_ms:     f64,
 	evicted:    [dynamic]u64,
 	fake_next:  Image_Texture,
+	device_generation: u64,          // render.Renderer.device_generation the textures were made on
 }
 
 @(private = "file")
@@ -209,6 +210,11 @@ images_after_layout :: proc(t: ^Tab, size: draw.Vec2, scale: f32) {
 
 // Before painting a page: a new epoch for the cache and the texture budget, and the clock of animations.
 images_paint_begin_frame :: proc(app: ^App) {
+	// the GPU device was recreated (render.recover): texture contents are gone, decoded frames are uploaded again
+	if app.r.device_generation != shell.device_generation {
+		shell.device_generation = app.r.device_generation
+		release_all_textures()
+	}
 	page.images_paint_begin()
 	shell.epoch += 1
 	shell.now_ms = f64(host.now_ns(&app.loop)) / 1e6
@@ -417,35 +423,17 @@ paint_alt :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Handle, conten
 ////////////////////////////////
 // CSS background images (CSS Backgrounds 3 §3)
 
-// Paints the url() layers of a box's background, bottom layer first. `border` is the border box, `widths` its border
-// widths and `pad` its padding (top, right, bottom, left, device px); `radii` the border-box corner radii.
-images_paint_backgrounds :: proc(dc: ^draw.Context, cs: ^style.Computed, border: draw.Rect, widths, pad: [4]f32, radii: [4]f32, scale: f32) {
+// Paints one url() layer of a box's background: `pos_area` is its positioning area (background-origin), `clip_area`
+// and `clip_radii` its painting area (background-clip, rounded like the box).
+images_paint_background_layer :: proc(dc: ^draw.Context, layer: ^style.Bg_Layer, pos_area, clip_area: draw.Rect, clip_radii: [4]f32, scale: f32) {
 	p := shell.page
-	if p == nil || cs == nil || len(cs.background_images) == 0 { return }
-	has_url := false
-	for im in cs.background_images { if im.kind == .Url { has_url = true; break } }
-	if !has_url { return }
-	padding := draw.Rect{border.min + {widths[3], widths[0]}, border.max - {widths[1], widths[2]}}
-	content := draw.Rect{padding.min + {pad[3], pad[0]}, padding.max - {pad[1], pad[2]}}
-	area_of :: proc(a: style.Box_Area, border, padding, content: draw.Rect) -> draw.Rect {
-		switch a {
-		case .Border_Box: return border
-		case .Padding_Box: return padding
-		case .Content_Box, .Text: return content
-		}
-		return border
-	}
-	layers := style.background_layers(cs)
+	if p == nil || layer.image.kind != .Url { return }
 	max_tiles := the_app != nil ? the_app.page_settings.images.background_tiles : 4096
-	for i := len(layers) - 1; i >= 0; i -= 1 {
-		layer := layers[i]
-		if layer.image.kind != .Url { continue }
+	{
 		v := page.css_image_view(p, layer.image.url)
-		if v.state != .Ready { continue }
-		pos_area := area_of(layer.origin, border, padding, content)
-		clip_area := area_of(layer.clip, border, padding, content)
+		if v.state != .Ready { return }
 		aw, ah := pos_area.max.x - pos_area.min.x, pos_area.max.y - pos_area.min.y
-		if aw <= 0 || ah <= 0 { continue }
+		if aw <= 0 || ah <= 0 { return }
 		// tile size
 		nw, nh := v.natural[0] * scale, v.natural[1] * scale
 		tw, th := nw, nh
@@ -465,7 +453,7 @@ images_paint_backgrounds :: proc(dc: ^draw.Context, cs: ^style.Computed, border:
 		rx, ry := layer.repeat[0], layer.repeat[1]
 		if rx == .Round && tw > 0 { tw = aw / max(math.round(aw / tw), 1) }
 		if ry == .Round && th > 0 { th = ah / max(math.round(ah / th), 1) }
-		if tw < 0.5 || th < 0.5 { continue }
+		if tw < 0.5 || th < 0.5 { return }
 		ox := pos_area.min.x + style.resolve(layer.position[0], (aw - tw) / scale) * scale
 		oy := pos_area.min.y + style.resolve(layer.position[1], (ah - th) / scale) * scale
 		tile := draw.Rect{{ox, oy}, {ox + tw, oy + th}}
@@ -475,14 +463,15 @@ images_paint_backgrounds :: proc(dc: ^draw.Context, cs: ^style.Computed, border:
 		dst := clip_area
 		if !rep_x { dst.min.x, dst.max.x = max(dst.min.x, tile.min.x), min(dst.max.x, tile.max.x) }
 		if !rep_y { dst.min.y, dst.max.y = max(dst.min.y, tile.min.y), min(dst.max.y, tile.max.y) }
-		if dst.max.x <= dst.min.x || dst.max.y <= dst.min.y { continue }
+		if dst.max.x <= dst.min.x || dst.max.y <= dst.min.y { return }
 		ww, wh := want_size(tile)
 		fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, 500)
-		if !fp.ok { continue }
+		if !fp.ok { return }
 		note_next(fp)
 		tex, ok := texture_for(v.id, fp)
-		if !ok { continue }
-		draw.push_clip(dc, clip_area)   // (rounded corners do not clip background images yet)
+		if !ok { return }
+		// the painting area, with the box's rounded corners
+		if clip_radii == {} { draw.push_clip(dc, clip_area) } else { draw.push_clip_rounded(dc, clip_area, clip_radii) }
 		if (rep_x || rep_y) && shell.api.draw_tiled != nil {
 			shell.api.draw_tiled(shell.api.user, dc, tex, dst, tile, WHITE_TINT, {})
 		} else {

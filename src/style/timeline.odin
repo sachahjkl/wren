@@ -917,6 +917,7 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 		delete_key(&tl.overlays, h)
 	}
 	if !paint_only(ps_union(props, tl.last_props)) { layout = true }
+	s.animated = ps_union(props, tl.last_props)
 	tl.last_props = props
 	return
 }

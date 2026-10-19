@@ -91,6 +91,7 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 	}
 	// nothing was replaced and every text belongs to an element with a box: inline and display items are up to date
 	if len(remap) == 0 && !l.loose_styles { return refresh_rest(l, input, t0) }
+	l.restyled += 1
 	for &it in l.inline_items {
 		if it.cs == nil { continue }
 		if nc, ok := remap[it.cs]; ok { it.cs = nc; continue }

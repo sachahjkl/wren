@@ -312,6 +312,7 @@ Layout :: struct {
 	valid:      bool,
 	last_pass:  Pass_Kind,      // what the last `run` did
 	passes:     [Pass_Kind]u64, // how many of each `run` did (diagnostics, tests)
+	restyled:   u64,            // bumps when a refresh re-points items to new style records (the compositor checks them)
 	// results
 	boxes:        [dynamic]Box,
 	inline_items: [dynamic]Inline_Item,

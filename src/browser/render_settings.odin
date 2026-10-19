@@ -15,6 +15,7 @@ import "wb:config"
 Render_Settings :: struct {
 	space: render.Blend_Space,
 	text:  render.Text_Rendering,
+	dither: bool,
 }
 
 RENDER_PREFS := [?]config.Def{
@@ -28,12 +29,17 @@ RENDER_PREFS := [?]config.Def{
 		description = "Text contrast enhancement (Skia's): thickens dark text on light backgrounds, fading out for light text on dark ones. Chromium on Windows: 1.0 (0.5 before Chrome 132)."},
 	{name = "render.text.coverage_exponent", kind = .Float, default = {f = 1}, bounded = true, min = 0.25, max = 4,
 		description = "Glyph coverage is raised to this power before the correction: below 1 thickens all text, above 1 thins it."},
+	{name = "render.gradients.dither", kind = .Bool, default = {b = true},
+		description = "Add noise of one 8-bit level to CSS gradients so that slow color ramps show no bands (as Chromium's Skia does). Off: exact colors, possible banding."},
 }
 
 @(private) render_settings: Render_Settings
 @(private) render_watch: int
 
-register_render_prefs :: proc(p: ^config.Prefs) { config.register(p, RENDER_PREFS[:]) }
+register_render_prefs :: proc(p: ^config.Prefs) {
+	config.register(p, RENDER_PREFS[:])
+	config.register(p, COMPOSITOR_PREFS[:])
+}
 
 @(private)
 render_settings_from_prefs :: proc(p: ^config.Prefs) -> Render_Settings {
@@ -50,6 +56,7 @@ render_settings_from_prefs :: proc(p: ^config.Prefs) -> Render_Settings {
 			contrast = f32(config.float_of(p, "render.text.contrast")),
 			coverage_exponent = f32(config.float_of(p, "render.text.coverage_exponent")),
 		},
+		dither = config.bool_of(p, "render.gradients.dither"),
 	}
 }
 
@@ -68,6 +75,8 @@ render_settings_init :: proc(app: ^App) {
 @(private)
 render_settings_apply :: proc(app: ^App, s: Render_Settings) {
 	render_settings = s
+	gradient_dither = s.dither
+	compositor_settings = compositor_settings_from_prefs(&app.prefs)
 	render.set_blend_space(&app.r, s.space)
 	render.set_text_rendering(&app.r, s.text)
 }

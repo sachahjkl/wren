@@ -37,6 +37,8 @@ Gradient_Kind :: enum u8 { Linear, Radial, Conic }
 Radial_Shape :: enum u8 { Ellipse, Circle }
 Radial_Extent :: enum u8 { Farthest_Corner, Farthest_Side, Closest_Corner, Closest_Side, Explicit }
 Color_Space :: enum u8 { Default, Srgb, Srgb_Linear, Oklab, Oklch, Lab, Lch, Hsl, Hwb, Xyz }
+// How hues of polar color spaces are interpolated (CSS Color 4 §12.4: `in oklch longer hue`).
+Hue_Method :: enum u8 { Shorter, Longer, Increasing, Decreasing }
 
 // `pos` is Auto when the stop has no position (CSS Images 3 fixes them up, see `gradient_stops`); a hint is a position
 // without a color (the color field is unused).
@@ -57,6 +59,7 @@ Gradient :: struct {
 	radius:    [2]Length,      // Radial with an explicit size (circle: radius[0] only)
 	position:  [2]Length,      // Radial and conic center
 	space:     Color_Space,    // `in <colorspace>`; Default = premultiplied sRGB for legacy colors
+	hue:       Hue_Method,     // `in <polar space> <method> hue`
 	stops:     []Color_Stop,
 }
 
