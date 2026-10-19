@@ -121,6 +121,13 @@ try {
 
 if (-not $Quick) {
     Step 'network stress' { powershell -NoProfile -File tools\net_stress.ps1 -SizeMB 100 }
+    Step 'native WOFF2 decoder tests (real Google Fonts against their TrueType, collections, corruptions) and cssaudit' {
+        $env:PATH = "$root\build\tools\nasm-2.16.03;$env:PATH"
+        cargo test --release --manifest-path native\media\Cargo.toml --target-dir build\media\target woff2 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o
+        $ok = $o -match 'test result: ok'
+        odin build src/tools/cssaudit -collection:wb=src -vet -out:build/cssaudit.exe
+        $global:LASTEXITCODE = if ($ok -and $LASTEXITCODE -eq 0) { 0 } else { 1 }
+    }
 }
 "failed steps: $failed"
 exit $failed
