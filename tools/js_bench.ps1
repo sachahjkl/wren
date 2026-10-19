@@ -269,6 +269,15 @@ function Run-Dom {
         $ratio = if ($nums.ContainsKey('wasm') -and $nums.ContainsKey('edge') -and $nums['edge'] -gt 0) { Fmt ($nums['wasm'] / $nums['edge']) '0.0' } else { '' }
         $md += "| $name | $($cells[0]) | $($cells[1]) | $ratio |"
     }
+    # the floor of a call from Wasm to the browser, without JavaScript (src\tools\wasmbench, Cranelift)
+    Push-Location $root
+    try {
+        & odin build examples/wasmbench -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/wasmbench.wasm -o:speed
+        & odin build src/tools/wasmbench -collection:wb=src -vet -o:speed -out:build/wasmbench.exe "-extra-linker-flags:/STACK:33554432"
+        $wb = @(& (Join-Path $root 'build\wasmbench.exe') (Join-Path $root 'build\wasmbench.wasm') 2>$null | ForEach-Object { "$_" })
+        $raw = $wb | Where-Object { $_ -match '^\| 1 M host calls \(\) \(ns/call\) \| ([0-9.]+)' } | Select-Object -First 1
+        if ($raw -and $raw -match '\| ([0-9.]+) \|') { $md += "| raw call Wasm -> browser, no argument (src\tools\wasmbench) | $($Matches[1]) ns | | |" }
+    } finally { Pop-Location }
     $md += ''
     $md += "Time per operation (median of $Runs runs; ns). Wren: build\jspage.exe (a page without a window: parse, scripts, layout on demand); Edge $(Edge-Version) headless. A case whose API Wren lacks shows the error it threw."
     $text = $md -join "`n"
@@ -293,11 +302,14 @@ function Run-Startup {
         if ($l -match '^realm creation: median ([0-9.]+) ms') { $md += "| realm creation without the pre-initialized image (-raw: the engine's start-up runs per realm) | $($Matches[1]) ms |" }
     }
     $exe = Join-Path $root 'build\jspage.exe'
+    Push-Location $root
+    try { & odin build src/tools/jspage -collection:wb=src -vet -o:speed -out:$exe "-extra-linker-flags:/STACK:33554432" } finally { Pop-Location }
     if (Test-Path $exe) {
         $page = Join-Path $root 'examples\jsbench\startup.html'
         $o3 = (& $exe -wait 10000 -until 'DONE' -stats ('file:///' + ($page -replace '\\', '/')) 2>&1 | ForEach-Object { "$_" })
         foreach ($l in $o3) {
-            if ($l -match '^STAT\tfirst_script_ms\t([0-9.]+)') { $md += "| page: from page_create to the end of its first script (realm created on first use) | $($Matches[1]) ms |" }
+            if ($l -match '^STAT\tfirst_script_ms\t([0-9.]+)') { $md += "| first page of the process: from the navigation to its first script's output (fetch, parse, realm created on first use, engine code compiled or read from the cache) | $($Matches[1]) ms |" }
+            if ($l -match '^STAT\tnext_page_first_script_ms\t([0-9.]+)') { $md += "| next page: the same | $($Matches[1]) ms |" }
             if ($l -match '^STAT\tjs_heap_kib\t([0-9.]+)') { $md += "| page: JavaScript heap after a small script | $($Matches[1]) KiB |" }
             if ($l -match '^STAT\tprivate_per_page_kib\t([0-9.]+)') { $md += "| page: private memory per page with a realm (20 pages alive) | $($Matches[1]) KiB |" }
         }

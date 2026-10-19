@@ -1,0 +1,102 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>DOM and binding micro-benchmarks</title>
+<!--
+  Micro-benchmarks of the DOM from JavaScript and of the cost of one call across the JavaScript <-> browser boundary
+  (tools\js_bench.ps1 -Mode dom runs this page in Wren without a window, build\jspage.exe, and in Edge headless).
+  Each case reports the time of one operation in nanoseconds: its loop runs long enough to be timed (doubling the count
+  until it lasts CALIBRATE_MS), then MEASURE_RUNS times; the best run counts (the least disturbed one). The clock is
+  performance.now() when the page has it, Date.now() otherwise (the run lengths keep the error below 1 %).
+  Output: one line per case, "CASE<TAB>name<TAB>ns per operation<TAB>note" (or "error: ..." when the case threw: an API
+  the browser lacks), then "DONE"; on the console and in <pre id="results"> (what Edge's --dump-dom shows). Everything
+  runs synchronously, in this one script, before the load event.
+-->
+<body>
+<div id="host"></div>
+<pre id="results"></pre>
+<script>
+(function () {
+  "use strict";
+  var CALIBRATE_MS = 100, MEASURE_RUNS = 3;
+  var now = (function () {
+    try { if (typeof performance !== "undefined" && typeof performance.now() === "number") { return function () { return performance.now(); }; } } catch (e) {}
+    return function () { return Date.now(); };
+  })();
+  var out = [];
+  function emit(line) { out.push(line); try { console.log(line); } catch (e) {} }
+  var sink = 0;   // results kept alive so that no loop is optimized away
+
+  function measure(name, setup, body, note) {
+    try {
+      var ctx = setup ? setup() : null;
+      var n = 1, t = 0;
+      for (;;) {
+        var t0 = now();
+        body(ctx, n);
+        t = now() - t0;
+        if (t >= CALIBRATE_MS || n >= (1 << 26)) { break; }
+        n *= t > 0 ? Math.min(8, Math.max(2, Math.ceil(CALIBRATE_MS * 1.2 / t))) : 8;
+      }
+      var best = Infinity;
+      for (var r = 0; r < MEASURE_RUNS; r++) {
+        if (setup) { ctx = setup(); }
+        var t1 = now();
+        body(ctx, n);
+        best = Math.min(best, now() - t1);
+      }
+      emit("CASE\t" + name + "\t" + (best * 1e6 / n).toFixed(1) + "\t" + (note || "") + " (x" + n + ")");
+    } catch (e) {
+      emit("CASE\t" + name + "\terror: " + String(e && e.name ? e.name + ": " + e.message : e).replace(/\s+/g, " ").slice(0, 160) + "\t" + (note || ""));
+    }
+  }
+
+  var host = document.getElementById("host");
+  // the element most cases work on (made with the fewest APIs: a case measures one API, not its setup)
+  var subject = document.createElement("div");
+  host.appendChild(subject);
+  function child() { return subject; }
+
+  // the floor: what the loop costs without any call (JavaScript only)
+  measure("empty loop iteration (JavaScript)", null, function (c, n) { var s = 0; for (var i = 0; i < n; i++) { s += i; } sink += s; });
+  measure("call of a JavaScript function", null, function (c, n) { var f = function (x) { return x + 1; }; var s = 0; for (var i = 0; i < n; i++) { s = f(s); } sink += s; });
+
+  // one call across the boundary, as cheap as it gets
+  measure("getter: node.nodeType", function () { return child(); }, function (el, n) { var s = 0; for (var i = 0; i < n; i++) { s += el.nodeType; } sink += s; }, "simple getter");
+  measure("getter: element.id", function () { var e = child(); e.id = "x"; return e; }, function (el, n) { var s = 0; for (var i = 0; i < n; i++) { s += el.id.length; } sink += s; }, "string result");
+  measure("getter: node.parentNode", function () { return child(); }, function (el, n) { var p = null; for (var i = 0; i < n; i++) { p = el.parentNode; } sink += p ? 1 : 0; }, "wrapper of a node (cached)");
+  measure("element.getAttribute", function () { var e = child(); e.setAttribute("data-x", "value"); return e; }, function (el, n) { var s = 0; for (var i = 0; i < n; i++) { s += el.getAttribute("data-x").length; } sink += s; });
+  measure("document.getElementById", null, function (c, n) { var s = 0; for (var i = 0; i < n; i++) { s += document.getElementById("host") ? 1 : 0; } sink += s; });
+
+  // tree mutations
+  measure("createElement + appendChild", null, function (c, n) {
+    // into a detached container, a new one every 10 000 nodes (the old ones are garbage)
+    var d = document.createElement("div");
+    for (var i = 0, k = 0; i < n; i++) {
+      d.appendChild(document.createElement("span"));
+      if (++k === 10000) { k = 0; d = document.createElement("div"); }
+    }
+  }, "per node, 10 000 per container");
+  measure("textContent set", function () { return child(); }, function (el, n) { for (var i = 0; i < n; i++) { el.textContent = "x" + (i & 1023); } });
+  measure("textContent get", function () { var e = child(); e.textContent = "some text"; return e; }, function (el, n) { var s = 0; for (var i = 0; i < n; i++) { s += el.textContent.length; } sink += s; });
+  measure("classList.toggle", function () { return child(); }, function (el, n) { for (var i = 0; i < n; i++) { el.classList.toggle("on"); } });
+  measure("setAttribute", function () { return child(); }, function (el, n) { for (var i = 0; i < n; i++) { el.setAttribute("data-y", (i & 255) + ""); } });
+
+  // queries
+  measure("querySelectorAll('.c7') over 1 000 elements", function () {
+    var d = document.getElementById("qsa");
+    if (!d) {
+      d = document.createElement("div"); d.id = "qsa";
+      for (var i = 0; i < 1000; i++) { var e = document.createElement("p"); e.className = "c" + (i % 10); d.appendChild(e); }
+      host.appendChild(d);
+    }
+    return d;
+  }, function (d, n) { var s = 0; for (var i = 0; i < n; i++) { s += d.querySelectorAll(".c7").length; } sink += s; }, "per query");
+
+  // layout read without a mutation in between (the layout stays valid)
+  measure("offsetWidth (no mutation)", function () { var e = child(); e.style.width = "100px"; return e; }, function (el, n) { var s = 0; for (var i = 0; i < n; i++) { s += el.offsetWidth; } sink += s; }, "layout read");
+
+  emit("DONE\t" + sink);
+  document.getElementById("results").textContent = out.join("\n");
+})();
+</script>
+</body>
