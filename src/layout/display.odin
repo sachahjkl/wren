@@ -224,28 +224,42 @@ paint_stacking :: proc(p: ^Paint_Ctx, bi: i32) {
 	sub := Paint_Ctx{c = c, outlines = &outlines, scrollers = &scrollers}
 	emit_box(&sub, bi)
 
-	// layers of this context
-	neg := make([dynamic]Z_Entry, 0, 0, context.temp_allocator)
-	zero := make([dynamic]i32, 0, 0, context.temp_allocator)
-	pos := make([dynamic]Z_Entry, 0, 0, context.temp_allocator)
-	stack := make([dynamic]i32, 0, 32, context.temp_allocator)
-	for ch := c.l.boxes[bi].first; ch != NONE; ch = c.l.boxes[ch].next { append(&stack, ch) }
-	slice.reverse(stack[:])
-	for len(stack) > 0 {
-		x := pop(&stack)
-		b := &c.l.boxes[x]
-		if .Stacking in b.flags {
-			z := b.cs.z_auto ? 0 : b.cs.z_index
-			if z < 0 { append(&neg, Z_Entry{x, z}) } else if z == 0 { append(&zero, x) } else { append(&pos, Z_Entry{x, z}) }
-			continue
+	// layers of this context (the page's: kept from the last pass when the boxes and styles are the same, dl_walks)
+	neg, pos: []Z_Entry
+	zero: []i32
+	kept := bi == 0 ? &c.l.dl_walks : nil
+	if kept != nil && kept.key == dl_walks_key(c.l) {
+		neg, zero, pos = kept.neg[:], kept.zero[:], kept.pos[:]
+	} else {
+		dneg := make([dynamic]Z_Entry, 0, 0, context.temp_allocator)
+		dzero := make([dynamic]i32, 0, 0, context.temp_allocator)
+		dpos := make([dynamic]Z_Entry, 0, 0, context.temp_allocator)
+		stack := make([dynamic]i32, 0, 32, context.temp_allocator)
+		for ch := c.l.boxes[bi].first; ch != NONE; ch = c.l.boxes[ch].next { append(&stack, ch) }
+		slice.reverse(stack[:])
+		for len(stack) > 0 {
+			x := pop(&stack)
+			b := &c.l.boxes[x]
+			if .Stacking in b.flags {
+				z := b.cs.z_auto ? 0 : b.cs.z_index
+				if z < 0 { append(&dneg, Z_Entry{x, z}) } else if z == 0 { append(&dzero, x) } else { append(&dpos, Z_Entry{x, z}) }
+				continue
+			}
+			if .Positioned in b.flags { append(&dzero, x) }
+			n := len(stack)
+			for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next { append(&stack, ch) }
+			slice.reverse(stack[n:])
 		}
-		if .Positioned in b.flags { append(&zero, x) }
-		n := len(stack)
-		for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next { append(&stack, ch) }
-		slice.reverse(stack[n:])
+		slice.stable_sort_by(dneg[:], z_less)
+		slice.stable_sort_by(dpos[:], z_less)
+		neg, zero, pos = dneg[:], dzero[:], dpos[:]
+		if kept != nil {
+			kept.key = dl_walks_key(c.l)
+			kept.walk_ok = false
+			clear(&kept.neg); clear(&kept.zero); clear(&kept.pos)
+			append(&kept.neg, ..neg); append(&kept.zero, ..zero); append(&kept.pos, ..pos)
+		}
 	}
-	slice.stable_sort_by(neg[:], z_less)
-	slice.stable_sort_by(pos[:], z_less)
 
 	for e in neg { paint_stacking(&sub, e.box) }
 	paint_content(&sub, bi)
@@ -284,6 +298,18 @@ emit_scrollbars :: proc(c: ^Ctx, bi: i32) {
 		it.flags = {}
 		push_item(c, it)
 	}
+}
+
+// What Dl_Walks are valid for: the same boxes (no box made since), the same style records.
+@(private)
+dl_walks_key :: proc(l: ^Layout) -> [3]u64 {
+	return {l.tree_gen, u64(l.serial), u64(l.styled_pass)}
+}
+
+@(private)
+dl_walks_destroy :: proc(w: ^Dl_Walks) {
+	delete(w.neg); delete(w.zero); delete(w.pos); delete(w.walk); delete(w.floats)
+	w^ = {}
 }
 
 @(private)

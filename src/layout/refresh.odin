@@ -40,9 +40,10 @@ anon_paint_props :: proc() -> []style.Prop {
 	return anon_list[:anon_count]
 }
 
-// After a full layout: what the refresh path needs to find quickly.
+// After a full layout: what the refresh path needs to find quickly. `same_boxes`: no box or item was made or removed
+// since the last call (loose_styles holds).
 @(private)
-note_refresh_inputs :: proc(l: ^Layout) {
+note_refresh_inputs :: proc(l: ^Layout, same_boxes := false) {
 	l.canvas_items = {NONE, NONE}
 	root_el := l.boxes[0].first
 	clear(&l.deco_items)
@@ -58,6 +59,7 @@ note_refresh_inputs :: proc(l: ^Layout) {
 			if it.deco != {} && it.deco_box > 0 { append(&l.deco_items, i32(i)) }
 		}
 	}
+	if same_boxes { return }
 	l.loose_styles = false
 	for &it in l.inline_items {
 		if it.node != base.NIL_HANDLE && box_index(l, it.node) == NONE { l.loose_styles = true; break }

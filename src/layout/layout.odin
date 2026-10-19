@@ -68,6 +68,7 @@ run_full :: proc(l: ^Layout, input: Input) {
 	note_inputs(l, input)
 	l.last_pass = .Full
 	l.passes[.Full] += 1
+	l.tree_gen += 1
 
 	marker: u8
 	c := ctx_make(l, input, &marker)
@@ -144,6 +145,8 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	clear(&l.deco_items)
 	inc_reset(l)
 	pre_destroy(l)
+	dl_walks_destroy(&l.dl_walks)
+	l.tree_gen += 1
 	if l.arena_ready { virtual.arena_free_all(&l.arena) }
 	l.valid = false
 	l.last_pass = .None
@@ -159,6 +162,7 @@ destroy :: proc(l: ^Layout) {
 	delete(l.deco_items)
 	inc_destroy(l)
 	pre_destroy(l)
+	dl_walks_destroy(&l.dl_walks)
 	if l.arena_ready { virtual.arena_destroy(&l.arena) }
 	l^ = {}
 }

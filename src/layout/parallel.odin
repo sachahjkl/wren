@@ -587,22 +587,35 @@ paint_content_shared :: proc(p: ^Paint_Ctx, root: i32) -> bool {
 	}
 	if int(end - root) < l.settings.threads_min_boxes { return false }
 
-	walk := make([dynamic]i32, 0, int(end - root), context.temp_allocator)
-	floats := make([dynamic]i32, 0, 16, context.temp_allocator)   // step 4, in the same walk's order
-	stack := make([dynamic]i32, 0, 64, context.temp_allocator)
-	push :: proc(l: ^Layout, stack: ^[dynamic]i32, x: i32) {
-		n := len(stack)
-		for ch := l.boxes[x].first; ch != NONE; ch = l.boxes[ch].next { append(stack, ch) }
-		for i, j := n, len(stack) - 1; i < j; i, j = i + 1, j - 1 { stack[i], stack[j] = stack[j], stack[i] }
-	}
-	push(l, &stack, root)
-	for len(stack) > 0 {
-		x := pop(&stack)
-		b := &l.boxes[x]
-		if hoisted(b) || .Atomic in b.flags { continue }
-		if .Float in b.flags { append(&floats, x); continue }
-		append(&walk, x)
-		push(l, &stack, x)
+	// the boxes steps 3 and 5 visit, and the floats (step 4) in the same walk's order; the page's are kept (Dl_Walks)
+	walk, floats: []i32
+	kept := root == 0 && l.dl_walks.key == dl_walks_key(l) ? &l.dl_walks : nil
+	if kept != nil && kept.walk_ok {
+		walk, floats = kept.walk[:], kept.floats[:]
+	} else {
+		dwalk := make([dynamic]i32, 0, int(end - root), context.temp_allocator)
+		dfloats := make([dynamic]i32, 0, 16, context.temp_allocator)
+		stack := make([dynamic]i32, 0, 64, context.temp_allocator)
+		push :: proc(l: ^Layout, stack: ^[dynamic]i32, x: i32) {
+			n := len(stack)
+			for ch := l.boxes[x].first; ch != NONE; ch = l.boxes[ch].next { append(stack, ch) }
+			for i, j := n, len(stack) - 1; i < j; i, j = i + 1, j - 1 { stack[i], stack[j] = stack[j], stack[i] }
+		}
+		push(l, &stack, root)
+		for len(stack) > 0 {
+			x := pop(&stack)
+			b := &l.boxes[x]
+			if hoisted(b) || .Atomic in b.flags { continue }
+			if .Float in b.flags { append(&dfloats, x); continue }
+			append(&dwalk, x)
+			push(l, &stack, x)
+		}
+		walk, floats = dwalk[:], dfloats[:]
+		if kept != nil {
+			clear(&kept.walk); clear(&kept.floats)
+			append(&kept.walk, ..walk); append(&kept.floats, ..floats)
+			kept.walk_ok = true
+		}
 	}
 	if len(walk) < l.settings.threads_min_boxes { return false }
 	pool := par_acquire(l.settings.threads)

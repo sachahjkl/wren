@@ -377,6 +377,8 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	l.last_pass = .Incremental
 	start_items := len(l.inline_items)
 	start_boxes := len(l.boxes)
+	// boxes made again go at the end and dead ones stay: the arrays are no longer in tree order (finish walks the tree)
+	if len(roots) > 0 || len(plans) > 0 { l.tree_order = false; l.tree_gen += 1 }
 	for r in roots { kill_contents(&c, r) }
 	drop_planned(&c, plans[:])
 	// before the styles are re-read: anonymous children follow them
@@ -434,7 +436,7 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 		finish(&c)
 		t3 = time.tick_now()
 		build_display_list(&c)
-		note_refresh_inputs(l)
+		note_refresh_inputs(l, same_boxes = len(roots) == 0 && len(plans) == 0)
 		t4 = time.tick_now()
 		build_bands(l, max(input.band_h, 16) * input.scale)
 	}
