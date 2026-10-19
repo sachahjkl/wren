@@ -134,16 +134,17 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	// One bar: the field fills it, the security chip sits inside on its left (the field's text starts after it, and its
 	// focus ring goes around the whole bar). The chip's width is last frame's: it changes only with its label.
 	h := ui.dense(em * 2)
-	inset := max(math.round(em * 0.2), 2)
+	inset := max(math.round(ui.scale()), 1)   // the field's border: the chip is the bar's left segment, inside it
 	chip_w := security_of(t).label != "" ? security_chip_width : 0
 	res: ui.Edit_Result
 	ui.next({width = ui.fill(), height = ui.px(h)})
 	if ui.row(.Center, {}, "###address_bar") {
 		field := ui.Style_Mod{width = ui.pct(1), height = ui.pct(1)}
-		if chip_w > 0 { field.text_pad = chip_w + inset + em * 0.45 }
+		if chip_w > 0 { field.text_pad = chip_w + inset + em * 0.5 }
 		ui.next(field)
 		res = ui.line_edit("###address", &app.address, "Search or enter an address")
-		security_chip(app, t, inset, h - 2 * inset)
+		field_radius := res.box != nil ? res.box.radius : em * 0.5
+		security_chip(app, t, inset, h - 2 * inset, max(field_radius - inset, 0))
 	}
 	if app.focus_address {
 		app.focus_address = false
@@ -214,9 +215,26 @@ page_info_request: bool
 // Width of the security chip at the last layout (the address field leaves it that much room).
 @(private = "file")
 security_chip_width: f32
+@(private = "file")
+security_chip_hot: bool
 
 // `inset` >= 0: placed inside the address field, `inset` from its top-left corner, `height` tall.
-security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0) {
+Chip_Segment :: struct { color, divider: draw.Color, radius: f32 }
+
+@(private = "file")
+chip_segment: Chip_Segment
+
+// The chip as the address bar's left segment: its tint up to a divider, rounded on the left like the bar.
+@(private = "file")
+chip_segment_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	s := (^Chip_Segment)(user)
+	r := b.rect
+	if s.color.a > 0 { draw.rect_corners(dc, r, {s.color, s.color, s.color, s.color}, {s.radius, s.radius, 0, 0}) }
+	w := max(math.round(ui.scale()), 1)
+	draw.rect(dc, {{r.max.x - w, r.min.y}, {r.max.x, r.max.y}}, s.divider)
+}
+
+security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radius: f32 = 0) {
 	em := ui.font_size()
 	sec := security_of(t)
 	if sec.label == "" { return }
@@ -225,18 +243,31 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0) {
 	if ui.tags(tone_tag(sec.tone)) { var_tone = ui.color("text") }
 
 	next := ui.Style_Mod{width = ui.children_sum(), height = ui.px(ui.dense(em * 2)), radius = em * 0.5}
-	if inset >= 0 { next.fixed_x, next.fixed_y, next.height, next.radius = inset, inset, ui.px(height), max(em * 0.5 - inset, 2) }
-	if sec.tone != .Weak {
+	embedded := inset >= 0
+	flags := ui.Box_Flags{.Clickable, .Draw_Background, .Draw_Border, .Draw_Hot_Effects}
+	if embedded {
+		// the bar's left segment: no frame of its own, its tint is drawn by chip_segment_draw (left corners only)
+		next.fixed_x, next.fixed_y, next.height = inset, inset, ui.px(height)
+		flags = {.Clickable}
+		base := sec.tone != .Weak ? var_tone : ui.color("text")
+		a: f32 = sec.tone != .Weak ? 0.14 : 0
+		if security_chip_hot { a += 0.08 }
+		chip_segment = {color = a > 0 ? ui.tuned(draw.Color{base.r, base.g, base.b, a}) : {}, radius = radius}
+		if ui.tags("input") { chip_segment.divider = ui.color("border") }
+		ui.next({fixed_x = inset, fixed_y = inset, width = ui.px(security_chip_width), height = ui.px(height)})
+		ui.custom("###sec_segment", chip_segment_draw, &chip_segment)
+	} else if sec.tone != .Weak {
 		// tints tuned for linear light: ui.tuned keeps their look in an sRGB frame (render.blend_space)
 		next.bg = ui.tuned(draw.Color{var_tone.r, var_tone.g, var_tone.b, 0.14})
 		next.border = ui.tuned(draw.Color{var_tone.r, var_tone.g, var_tone.b, 0.45})
 	}
 	ui.next(next)
 	b: ^ui.Box
-	if ui.row(.Center, {.Clickable, .Draw_Background, .Draw_Border, .Draw_Hot_Effects}, "###sec_chip") {
+	if ui.row(.Center, flags, "###sec_chip") {
 		b = ui.parent_box()
 		security_chip_width = b.rect.max.x - b.rect.min.x
 		sig := ui.signal(b)
+		security_chip_hot = embedded && sig.hovering
 		ui.spacer(ui.px(em * 0.5))
 		if ui.tags(tone_tag(sec.tone)) {
 			chip_icon.glyph = sec.glyph
