@@ -71,7 +71,59 @@
     return e;
   }
 
+  // The Window's named properties (HTML §7.2.2.3): elements with an id, and embed / form / img / object elements with a
+  // name, reachable as properties of the global (`test1` for <div id=test1>). A proxy between Window.prototype and
+  // EventTarget.prototype (the "named properties object"): what the global and Window.prototype define wins.
+  function namedProperties(windowProto) {
+    const target = Object.create(Object.getPrototypeOf(windowProto));
+    const NAMED = new Set(["embed", "form", "img", "object"]);
+    const lookup = (name) => {
+      if (typeof name !== "string" || name === "") return undefined;
+      const d = globalThis.document;
+      if (d === undefined || d === null) return undefined;
+      for (const el of d.getElementsByName(name)) if (NAMED.has(el.localName)) return el;
+      const el = d.getElementById(name);
+      return el === null ? undefined : el;
+    };
+    const proxy = new Proxy(target, {
+      get(t, p, r) {
+        if (typeof p === "string" && !(p in t)) { const v = lookup(p); if (v !== undefined) return v; }
+        return Reflect.get(t, p, r);
+      },
+      has(t, p) { return Reflect.has(t, p) || lookup(p) !== undefined; },
+      getOwnPropertyDescriptor(t, p) {
+        const own = Reflect.getOwnPropertyDescriptor(t, p);
+        if (own !== undefined) return own;
+        const v = lookup(p);
+        return v === undefined ? undefined : { value: v, writable: true, enumerable: false, configurable: true };
+      },
+      defineProperty() { return false; },
+      deleteProperty() { return false; },
+      setPrototypeOf() { return false; },
+    });
+    Object.setPrototypeOf(windowProto, proxy);
+  }
+
+  // element.part (CSS Shadow Parts §5): the DOMTokenList of the part attribute, the same object every time.
+  function elementExtras() {
+    const E = globalThis.Element;
+    if (typeof E !== "function") return;
+    const lists = new WeakMap();
+    Object.defineProperty(E.prototype, "part", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        let l = lists.get(this);
+        if (l === undefined) { l = host.partList(this); lists.set(this, l); }
+        return l;
+      },
+      set(v) { this.part.value = v; },
+    });
+  }
+
   host.install({
+    namedProperties,
+    elementExtras,
     get(target, handle) { return entry(handle).proxy; },
     set(target, handle, value) {
       if (value === null || typeof value !== "object" || typeof value[Symbol.iterator] !== "function") {

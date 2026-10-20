@@ -354,6 +354,7 @@ foreign _m_dom {
 	@(link_name = "HTMLSlotElement_assignedPacked") _HTMLSlotElement_assignedPacked :: proc(slot: u64, flatten: i32, elements: i32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "HTMLSlotElement_assignNodes") _HTMLSlotElement_assignNodes :: proc(slot: u64, nodes: [^]u64, nodes_len: u32) -> Error ---
 	@(link_name = "Document_shadowIncludingByName") _Document_shadowIncludingByName :: proc(name: [^]u8, name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "DocumentOrShadowRoot_elementsFromPointPacked") _DocumentOrShadowRoot_elementsFromPointPacked :: proc(root: u64, x: f64, y: f64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Shadow_fireSlotChanges") _Shadow_fireSlotChanges :: proc() ---
 	@(link_name = "Node_isLive") _Node_isLive :: proc(node: u64) -> i32 ---
 	@(link_name = "Node_shadowIncludingElements") _Node_shadowIncludingElements :: proc(root: u64, _buf: [^]u8, _cap: u32) -> i32 ---
@@ -4041,6 +4042,36 @@ Document_shadowIncludingByName_alloc :: proc(name: string, allocator: runtime.Al
 	for _ in 0 ..< 4 {
 		buf := make([]u8, cap, allocator)
 		n := _Document_shadowIncludingByName(raw_data(name), u32(len(name)), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// elementsFromPoint(x, y) of the document or of a shadow root: the elements hit, retargeted against `root`,
+// innermost first. Handles, 8 bytes each.
+DocumentOrShadowRoot_elementsFromPointPacked :: proc "contextless" (root: $T_root, x: f64, y: f64, buf: []u8) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	n := _DocumentOrShadowRoot_elementsFromPointPacked(u64(root), x, y, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of DocumentOrShadowRoot_elementsFromPointPacked's result.
+DocumentOrShadowRoot_elementsFromPointPacked_len :: proc "contextless" (root: $T_root, x: f64, y: f64) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	n := _DocumentOrShadowRoot_elementsFromPointPacked(u64(root), x, y, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// DocumentOrShadowRoot_elementsFromPointPacked's result in a buffer allocated to fit.
+DocumentOrShadowRoot_elementsFromPointPacked_alloc :: proc(root: $T_root, x: f64, y: f64, allocator: runtime.Allocator) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _DocumentOrShadowRoot_elementsFromPointPacked(u64(root), x, y, raw_data(buf), u32(len(buf)))
 		if n < 0 { delete(buf, allocator); return {}, Error(n) }
 		if int(n) <= cap { return (buf[:n]), .None }
 		delete(buf, allocator)

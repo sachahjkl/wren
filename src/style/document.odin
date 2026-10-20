@@ -38,8 +38,8 @@ has_token :: proc(list, token: string) -> bool {
 //   * a <link rel="stylesheet"> keeps its (separately loaded) sheet while the element exists; the sheet is dropped with it.
 // Returns every <link rel="stylesheet"> currently in the document, for the caller to load and register with
 // `engine_add_sheet(..., from_link = true)`.
-// `keep_missing`: sheets whose owner is not found stay (part of the document is detached for a while).
-sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, allocator := context.temp_allocator, keep_missing := false) -> []Linked_Sheet {
+// `keep_missing`: whether the sheet of an owner that is not found stays (part of the document is detached for a while).
+sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, allocator := context.temp_allocator, keep_missing: proc(user: rawptr, owner: base.Handle) -> bool = nil, keep_user: rawptr = nil) -> []Linked_Sheet {
 	links := make([dynamic]Linked_Sheet, allocator)
 	Style_El :: struct { owner: base.Handle, text, media: string, scope: base.Handle }
 	styles := make([dynamic]Style_El, context.temp_allocator)
@@ -67,15 +67,22 @@ sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, a
 	}
 
 	// drop what no longer matches
-	for i := len(e.sheets) - 1; i >= 0 && !keep_missing; i -= 1 {
+	for i := len(e.sheets) - 1; i >= 0; i -= 1 {
 		s := e.sheets[i]
 		if s.origin != .Author || s.constructed { continue }
 		keep := false
+		found := false
 		if s.from_link {
 			for l in links { if l.owner == s.owner && l.scope == s.scope { keep = true; break } }
+			found = keep
 		} else {
-			for st in styles { if st.owner == s.owner && st.scope == s.scope && st.text == s.sheet.source && st.media == s.media_text { keep = true; break } }
+			for st in styles {
+				if st.owner != s.owner { continue }
+				found = true
+				if st.scope == s.scope && st.text == s.sheet.source && st.media == s.media_text { keep = true; break }
+			}
 		}
+		if !found && keep_missing != nil && keep_missing(keep_user, s.owner) { keep = true }
 		if !keep {
 			sheet_changed(e, s)
 			sheet_free(s)

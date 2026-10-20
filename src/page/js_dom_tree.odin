@@ -169,8 +169,13 @@ document_base_url :: proc(p: ^Page) -> string {
 Node_isConnected :: proc(c: ^Call, node: Api_Node) -> bool { return dom.is_connected(c.page.doc, H(node.handle)) }
 
 Node_ownerDocument :: proc(c: ^Call, node: Api_Node) -> u64 {
-	if node.data.kind == .Document { return 0 }
-	return u64(c.page.doc.root)
+	if node.data.kind == .Document || node.data.as_document { return 0 }
+	// a node of a document createHTMLDocument made, shadow trees included: that document
+	d := c.page.doc
+	if r := dom.shadow_including_root(d, H(node.handle)); r != d.root {
+		if n := dom.get(d, r); n != nil && n.as_document { return u64(r) }
+	}
+	return u64(d.root)
 }
 
 Node_parentElement :: proc(c: ^Call, node: Api_Node) -> u64 {
@@ -209,6 +214,7 @@ Node_normalize :: proc(c: ^Call, node: Api_Node) { dom.normalize(c.page.doc, H(n
 
 Node_cloneNode :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error) {
 	if node.data.kind == .Document { return 0, fail(c, .Not_Supported, "cloneNode: this browser has one document per page; the document cannot be cloned") }
+	if node.data.is_shadow { return 0, fail(c, .Not_Supported, "A shadow root cannot be cloned.") }
 	return u64(dom.clone_node(c.page.doc, H(node.handle), deep)), .None
 }
 
@@ -816,6 +822,7 @@ Document_createCDATASection :: proc(c: ^Call, data: string) -> (u64, Api_Error) 
 
 Document_adoptNode :: proc(c: ^Call, node: Api_Node) -> (u64, Api_Error) {
 	if node.data.kind == .Document { return 0, fail(c, .Not_Supported, "The node provided is a document, which may not be adopted.") }
+	if node.data.is_shadow { return 0, fail(c, .Hierarchy, "The node provided is a shadow root, which may not be adopted.") }
 	if node.data.parent != base.NIL_HANDLE { dom.detach(c.page.doc, H(node.handle)) }
 	return node.handle, .None
 }

@@ -430,3 +430,44 @@ was in a shadow tree).
 
 Host: `EventTarget_lastTarget :: proc(c: ^Call) -> u64`
 
+### `EventTarget_lastRelated`
+
+```
+u64 EventTarget_lastRelated()
+```
+
+... and its relatedTarget (0: null or cleared).
+
+Host: `EventTarget_lastRelated :: proc(c: ^Call) -> u64`
+
+### `Event_setNextRelated`
+
+```
+void Event_setNextRelated(u64 related)
+```
+
+The relatedTarget (a node) of the next EventTarget_dispatchEngineEvent: retargeted along its path.
+
+Host: `Event_setNextRelated :: proc(c: ^Call, related: u64)`
+
+### `Event_relatedNow`
+
+```
+u64 Event_relatedNow(Event event)
+```
+
+The relatedTarget of the event being dispatched as the current listener sees it (retargeted; 0: null).
+
+Host: `Event_relatedNow :: proc(c: ^Call, event: Api_Event) -> u64`
+
+### `Event_inShadowTreeNow`
+
+```
+bool Event_inShadowTreeNow(Event event)
+```
+
+Whether the current listener's node was in a shadow tree when the event's path was built (window.event is then
+left as it was).
+
+Host: `Event_inShadowTreeNow :: proc(c: ^Call, event: Api_Event) -> bool`
+

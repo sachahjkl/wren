@@ -12,7 +12,12 @@ EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, ini
 		type = type, bubbles = .Bubbles in init, cancelable = .Cancelable in init, composed = .Composed in init,
 		engine_id = engine_id, untrusted = true, time_stamp = time_stamp,
 	}
-	if p.jsdom != nil { p.jsdom.shadow.last_target = target }
+	if p.jsdom != nil {
+		p.jsdom.shadow.last_target = target
+		ev.related = p.jsdom.shadow.next_related   // Event_setNextRelated, for this dispatch only
+		p.jsdom.shadow.next_related = 0
+	}
+	p.dp.last_related = ev.related
 	if is_object(target) {
 		if object_get(p, target) == nil { return false, fail(c, .Invalid_Handle, "dispatchEvent: the target is gone") }
 		return object_dispatch(p, target, ev), .None

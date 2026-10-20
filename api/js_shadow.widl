@@ -44,6 +44,9 @@ partial module dom {
   void HTMLSlotElement_assignNodes(Element slot, u64[] nodes) raises;
   /// The handles of every element named `name` in shadow-including tree order (custom element upgrades at define).
   bytes Document_shadowIncludingByName(string name);
+  /// elementsFromPoint(x, y) of the document or of a shadow root: the elements hit, retargeted against `root`,
+  /// innermost first. Handles, 8 bytes each.
+  bytes DocumentOrShadowRoot_elementsFromPointPacked(Node root, f64 x, f64 y);
   /// Fires slotchange at the slots signalled since the last time (the engine's job, wj_slot_queue).
   void Shadow_fireSlotChanges();
   /// Whether `node` is a live node of the page (not destroyed).
@@ -59,6 +62,15 @@ partial module events {
   /// The target of the last event dispatched by EventTarget_dispatchEngineEvent once its dispatch ended (0: null, it
   /// was in a shadow tree).
   u64 EventTarget_lastTarget();
+  /// ... and its relatedTarget (0: null or cleared).
+  u64 EventTarget_lastRelated();
+  /// The relatedTarget (a node) of the next EventTarget_dispatchEngineEvent: retargeted along its path.
+  void Event_setNextRelated(u64 related);
+  /// The relatedTarget of the event being dispatched as the current listener sees it (retargeted; 0: null).
+  u64 Event_relatedNow(Event event);
+  /// Whether the current listener's node was in a shadow tree when the event's path was built (window.event is then
+  /// left as it was).
+  bool Event_inShadowTreeNow(Event event);
 }
 
 partial module dom {

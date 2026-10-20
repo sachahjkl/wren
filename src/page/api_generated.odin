@@ -13399,6 +13399,31 @@ _t_dom_Document_shadowIncludingByName :: proc "c" (env: rawptr, caller: wasm.Cal
 	return nil
 }
 
+// DocumentOrShadowRoot_elementsFromPointPacked :: proc(c: ^Call, root: Api_Node, x: f64, y: f64) -> []u8
+@(private = "file")
+_t_dom_DocumentOrShadowRoot_elementsFromPointPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.DocumentOrShadowRoot_elementsFromPointPacked", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.DocumentOrShadowRoot_elementsFromPointPacked: argument root is not a live Node") }
+		return wasm.trap_new("dom.DocumentOrShadowRoot_elementsFromPointPacked: argument root is not a live Node")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_r := DocumentOrShadowRoot_elementsFromPointPacked(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
 // Shadow_fireSlotChanges :: proc(c: ^Call)
 @(private = "file")
 _t_dom_Shadow_fireSlotChanges :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -13483,6 +13508,73 @@ _t_events_EventTarget_lastTarget :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
+	return nil
+}
+
+// EventTarget_lastRelated :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_events_EventTarget_lastRelated :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := EventTarget_lastRelated(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Event_setNextRelated :: proc(c: ^Call, related: u64)
+@(private = "file")
+_t_events_Event_setNextRelated :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	Event_setNextRelated(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Event_relatedNow :: proc(c: ^Call, event: Api_Event) -> u64
+@(private = "file")
+_t_events_Event_relatedNow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.Event_relatedNow: argument event is not a live Event") }
+		return wasm.trap_new("events.Event_relatedNow: argument event is not a live Event")
+	}
+	_r := Event_relatedNow(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Event_inShadowTreeNow :: proc(c: ^Call, event: Api_Event) -> bool
+@(private = "file")
+_t_events_Event_inShadowTreeNow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.Event_inShadowTreeNow: argument event is not a live Event") }
+		return wasm.trap_new("events.Event_inShadowTreeNow: argument event is not a live Event")
+	}
+	_r := Event_inShadowTreeNow(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
 	return nil
 }
 
@@ -16885,11 +16977,16 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "HTMLSlotElement_assignedPacked", fn = _t_dom_HTMLSlotElement_assignedPacked, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "HTMLSlotElement_assignNodes", fn = _t_dom_HTMLSlotElement_assignNodes, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_shadowIncludingByName", fn = _t_dom_Document_shadowIncludingByName, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "DocumentOrShadowRoot_elementsFromPointPacked", fn = _t_dom_DocumentOrShadowRoot_elementsFromPointPacked, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .F64, .F64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Shadow_fireSlotChanges", fn = _t_dom_Shadow_fireSlotChanges, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
 	{module = "dom", name = "Node_isLive", fn = _t_dom_Node_isLive, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_shadowIncludingElements", fn = _t_dom_Node_shadowIncludingElements, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "Event_composedPathPacked", fn = _t_events_Event_composedPathPacked, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "EventTarget_lastTarget", fn = _t_events_EventTarget_lastTarget, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "events", name = "EventTarget_lastRelated", fn = _t_events_EventTarget_lastRelated, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "events", name = "Event_setNextRelated", fn = _t_events_Event_setNextRelated, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "events", name = "Event_relatedNow", fn = _t_events_Event_relatedNow, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "events", name = "Event_inShadowTreeNow", fn = _t_events_Event_inShadowTreeNow, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Element_attachInternals", fn = _t_dom_Element_attachInternals, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "ElementInternals_shadowRootOf", fn = _t_dom_ElementInternals_shadowRootOf, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "ElementInternals_element", fn = _t_dom_ElementInternals_element, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},

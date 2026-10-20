@@ -107,12 +107,16 @@ selector_list :: proc(p: ^Page, text: string) -> (list: css.Selector_List, ok: b
 @(private)
 SYNTAX_SELECTOR :: "The provided selector is not a valid selector."
 
-// A matching context for scripts: the page's state pseudo-classes (hover, focus...), `scope` for :scope.
+// A matching context for scripts: the page's state pseudo-classes (hover, focus...), `scope` for :scope. In a shadow
+// tree (that of `in_tree`), the host is seen featureless: `:host` matches it, as the tree's own rules see it.
 @(private)
-script_match_ctx :: proc(p: ^Page, scope: base.Handle) -> style.Match_Ctx {
+script_match_ctx :: proc(p: ^Page, scope: base.Handle, in_tree: base.Handle) -> style.Match_Ctx {
 	m: style.Match_Ctx
 	style.match_ctx_init(&m, p.doc, p.style_state, context.temp_allocator)
 	m.scope = scope
+	if dom.has_shadow_trees(p.doc) {
+		if r := dom.containing_shadow_root(p.doc, in_tree); r != base.NIL_HANDLE { m.featureless = dom.get(p.doc, r).shadow }
+	}
 	return m
 }
 
@@ -124,9 +128,9 @@ select_in :: proc(p: ^Page, root: base.Handle, list: css.Selector_List, first: b
 	if len(list) == 0 { return out }
 	scope := root
 	if rn := dom.get(d, root); rn == nil || rn.kind != .Element { scope = base.NIL_HANDLE }
-	m := script_match_ctx(p, scope)
+	m := script_match_ctx(p, scope, root)
 	// the subject has an #id and the search is in the document's tree: the id index gives the candidates
-	if id := subject_id(list); id != "" && dom.is_connected(d, root) {
+	if id := subject_id(list); id != "" && dom.tree_root(d, root) == d.root {
 		for cur in dom.ids_all(d, id) {
 			if cur == root || !dom.is_ancestor_or_self(d, root, cur) { continue }
 			if style.matches_list(&m, cur, list) {
@@ -186,7 +190,7 @@ pack_handles :: proc(hs: []base.Handle) -> []u8 {
 Element_matches :: proc(c: ^Call, element: Api_Element, selectors: string) -> (bool, Api_Error) {
 	list, ok := selector_list(c.page, selectors)
 	if !ok { return false, fail(c, .Syntax, SYNTAX_SELECTOR) }
-	m := script_match_ctx(c.page, H(element.handle))
+	m := script_match_ctx(c.page, H(element.handle), H(element.handle))
 	return style.matches_list(&m, H(element.handle), list), .None
 }
 
@@ -198,7 +202,7 @@ Element_closest :: proc(c: ^Call, element: Api_Element, selectors: string) -> (u
 	list, ok := selector_list(c.page, selectors)
 	if !ok { return 0, fail(c, .Syntax, SYNTAX_SELECTOR) }
 	d := c.page.doc
-	m := script_match_ctx(c.page, H(element.handle))
+	m := script_match_ctx(c.page, H(element.handle), H(element.handle))
 	for cur := H(element.handle); cur != base.NIL_HANDLE; {
 		n := dom.get(d, cur)
 		if n == nil || n.kind != .Element { break }

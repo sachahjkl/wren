@@ -109,6 +109,7 @@ serialize_node :: proc(d: ^dom.Document, b: ^strings.Builder, h: base.Handle, ou
 			strings.write_string(b, info != nil && info.mode == .Closed ? `<template shadowrootmode="closed"` : `<template shadowrootmode="open"`)
 			if info != nil && info.delegates_focus { strings.write_string(b, ` shadowrootdelegatesfocus=""`) }
 			if info != nil && info.serializable { strings.write_string(b, ` shadowrootserializable=""`) }
+			if info != nil && info.slot_assignment == .Manual { strings.write_string(b, ` shadowrootslotassignment="manual"`) }
 			if info != nil && info.clonable { strings.write_string(b, ` shadowrootclonable=""`) }
 			strings.write_byte(b, '>')
 			append(&stack, Step{h = s.h, close = true, template = true})

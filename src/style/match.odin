@@ -462,7 +462,10 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		}
 		return false
 	case .State: return dom.custom_state_has(m.doc, el, s.name)
-	case .Has_Slotted: return n.name == "slot" && len(dom.assigned_nodes_raw(m.doc, el)) > 0
+	case .Has_Slotted:
+		// flattened: a slot whose assigned slot is empty has nothing slotted
+		if n.name != "slot" || len(dom.assigned_nodes_raw(m.doc, el)) == 0 { return false }
+		return len(dom.assigned_nodes(m.doc, el, true)) > 0
 	case .Link, .Any_Link:
 		if n.name != "a" && n.name != "area" { return false }
 		_, ok := attr(n, "href")

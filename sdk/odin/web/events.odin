@@ -111,6 +111,10 @@ foreign _m_events {
 	@(link_name = "EventTarget_create") _EventTarget_create :: proc() -> Object ---
 	@(link_name = "Event_composedPathPacked") _Event_composedPathPacked :: proc(event: Event, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "EventTarget_lastTarget") _EventTarget_lastTarget :: proc() -> u64 ---
+	@(link_name = "EventTarget_lastRelated") _EventTarget_lastRelated :: proc() -> u64 ---
+	@(link_name = "Event_setNextRelated") _Event_setNextRelated :: proc(related: u64) ---
+	@(link_name = "Event_relatedNow") _Event_relatedNow :: proc(event: Event) -> u64 ---
+	@(link_name = "Event_inShadowTreeNow") _Event_inShadowTreeNow :: proc(event: Event) -> i32 ---
 }
 
 // target.addEventListener(type, listener, options). Returns the listener's id (for removeEventListener); adding the
@@ -435,5 +439,26 @@ Event_composedPathPacked_alloc :: proc(event: Event, allocator: runtime.Allocato
 // was in a shadow tree).
 EventTarget_lastTarget :: proc "contextless" () -> u64 {
 	return _EventTarget_lastTarget()
+}
+
+// ... and its relatedTarget (0: null or cleared).
+EventTarget_lastRelated :: proc "contextless" () -> u64 {
+	return _EventTarget_lastRelated()
+}
+
+// The relatedTarget (a node) of the next EventTarget_dispatchEngineEvent: retargeted along its path.
+Event_setNextRelated :: proc "contextless" (related: u64) {
+	_Event_setNextRelated(related)
+}
+
+// The relatedTarget of the event being dispatched as the current listener sees it (retargeted; 0: null).
+Event_relatedNow :: proc "contextless" (event: Event) -> u64 {
+	return _Event_relatedNow(event)
+}
+
+// Whether the current listener's node was in a shadow tree when the event's path was built (window.event is then
+// left as it was).
+Event_inShadowTreeNow :: proc "contextless" (event: Event) -> bool {
+	return _Event_inShadowTreeNow(event) != 0
 }
 

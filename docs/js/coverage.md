@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 556 |
 | exposed by default | 216 |
 | members | 4991 |
-| members implemented | 2626 (52.6 %) |
+| members implemented | 2629 (52.7 %) |
 
 ## By specification
 
@@ -47,7 +47,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (3) | 19 / 126 |
 | `hr-time.idl` | 1 (1) | 13 / 17 |
-| `html.idl` | 160 (96) | 1147 / 1819 |
+| `html.idl` | 160 (96) | 1150 / 1819 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -2484,15 +2484,15 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTemplateElement : HTMLElement
 
-6 / 9 members.
+8 / 9 members.
 
 - `constructor()`: not supported
 - `readonly content`: import `dom.HTMLTemplateElement_content`
 - `htmlFor`: generic (reflects a content attribute)
-- `shadowRootMode`: not supported
+- `shadowRootMode`: C `wjr_HTMLTemplateElement_get_shadowRootMode`
 - `shadowRootDelegatesFocus`: generic (reflects a content attribute)
 - `shadowRootSerializable`: generic (reflects a content attribute)
-- `shadowRootSlotAssignment`: not supported
+- `shadowRootSlotAssignment`: C `wjr_HTMLTemplateElement_get_shadowRootSlotAssignment`
 - `shadowRootClonable`: generic (reflects a content attribute)
 - `shadowRootCustomElementRegistry`: generic (reflects a content attribute)
 
@@ -3249,7 +3249,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Window : EventTarget
 
-180 / 220 members.
+181 / 220 members.
 
 - `readonly cookieStore`: not supported
 - `matchMedia()`: C `wjr_Window_matchMedia`
@@ -3279,7 +3279,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly outerHeight`: import `dom.Window_outerHeight`
 - `readonly devicePixelRatio`: import `dom.Window_devicePixelRatio`
 - `getComputedStyle()`: C `wjr_Window_getComputedStyle`
-- `readonly event`: not supported
+- `readonly event`: C `wjr_Window_get_event`
 - `fetchLater()`: not supported
 - `readonly window`: C `wjr_Window_get_window`
 - `readonly self`: C `wjr_Window_get_self`

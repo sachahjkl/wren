@@ -170,6 +170,48 @@ JSValue wj_event_composed_path(JSContext *ctx, uint64_t host)
     return arr;
 }
 
+/* elementsFromPoint(x, y) of the document or of a shadow root: the elements hit, innermost first, retargeted against
+ * the root; elementFromPoint: the first of them (null when there is none) */
+static JSValue from_point(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv, int iface, bool all, const char *what)
+{
+    wj_obj *o = wj_this(ctx, t, iface);
+    if (!o) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, what, 2, argc); }
+    double x, y;
+    if (!wj_to_double(ctx, argv[0], &x, true) || !wj_to_double(ctx, argv[1], &y, true)) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_DocumentOrShadowRoot_elementsFromPointPacked(o->handle, x, y, wj_scratch.data, wj_scratch.cap));
+    uint32_t count = n > 0 ? (uint32_t)n / 8 : 0;
+    if (!all) { return count ? wj_wrap_node(ctx, dom_read_u64(wj_scratch.data)) : JS_NULL; }
+    JSValue arr = JS_NewArray(ctx);
+    if (!count) { return arr; }
+    uint64_t *hs = malloc(count * sizeof *hs);
+    if (!hs) { return arr; }
+    for (uint32_t i = 0; i < count; i++) { hs[i] = dom_read_u64(wj_scratch.data + 8 * i); }
+    for (uint32_t i = 0; i < count; i++) { JS_SetPropertyUint32(ctx, arr, i, wj_wrap_node(ctx, hs[i])); }
+    free(hs);
+    return arr;
+}
+
+JSValue wjr_Document_elementsFromPoint(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv) { return from_point(ctx, t, argc, argv, I(Document), true, "Document.elementsFromPoint"); }
+
+/* shadowRoot.elementFromPoint / elementsFromPoint (Shadow DOM §4.3 extensions of DocumentOrShadowRoot, in every
+ * engine, not in the IDL of CSSOM View): set on ShadowRoot.prototype at the start of a Window realm */
+static JSValue shadow_element_from_point(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv) { return from_point(ctx, t, argc, argv, I(ShadowRoot), false, "ShadowRoot.elementFromPoint"); }
+static JSValue shadow_elements_from_point(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv) { return from_point(ctx, t, argc, argv, I(ShadowRoot), true, "ShadowRoot.elementsFromPoint"); }
+
+static void install_shadow_root_extras(JSContext *ctx)
+{
+    JSValue ctor = JS_GetPropertyStr(ctx, wj_the_realm.global, "ShadowRoot");
+    JSValue proto = JS_IsObject(ctor) ? JS_GetPropertyStr(ctx, ctor, "prototype") : JS_UNDEFINED;
+    if (JS_IsObject(proto)) {
+        JS_DefinePropertyValueStr(ctx, proto, "elementFromPoint", JS_NewCFunction(ctx, shadow_element_from_point, "elementFromPoint", 2), JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE);
+        JS_DefinePropertyValueStr(ctx, proto, "elementsFromPoint", JS_NewCFunction(ctx, shadow_elements_from_point, "elementsFromPoint", 2), JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE);
+    }
+    JS_FreeValue(ctx, proto);
+    JS_FreeValue(ctx, ctor);
+}
+
 /* slotchange: a job of the engine (queued by the browser when a slot is first signalled: wj_slot_queue), in order with
  * the promise reactions and mutation observer notifications around it, which fires slotchange at the signalled slots */
 static JSValue slot_job(JSContext *ctx, int argc, JSValueConst *argv)
@@ -671,12 +713,40 @@ static JSValue host_is_live(JSContext *ctx, JSValueConst this_val, int argc, JSV
     return JS_NewBool(ctx, wr_Node_isLive((uint64_t)hd) != 0);
 }
 
+extern JSValue wj_token_list_of(JSContext *ctx, JSValueConst element, const char *attr);
+
+static JSValue host_part_list(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    if (argc < 1) { return JS_ThrowTypeError(ctx, "partList: an element"); }
+    return wj_token_list_of(ctx, argv[0], "part");
+}
+
 JSValue wj_shadow_host_object(JSContext *ctx)
 {
     JSValue o = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, o, "partList", JS_NewCFunction(ctx, host_part_list, "partList", 1));
     JS_SetPropertyStr(ctx, o, "install", JS_NewCFunction(ctx, host_install, "install", 1));
     JS_SetPropertyStr(ctx, o, "isSheet", JS_NewCFunction(ctx, host_is_sheet, "isSheet", 1));
     JS_SetPropertyStr(ctx, o, "adopt", JS_NewCFunction(ctx, host_adopt, "adopt", 2));
     JS_SetPropertyStr(ctx, o, "isLive", JS_NewCFunction(ctx, host_is_live, "isLive", 1));
     return o;
+}
+
+/* At the start of a Window realm: the named properties object of the Window (prelude/shadow.js), the members of
+ * ShadowRoot that the IDL lacks. */
+int wj_named_properties_install(JSContext *ctx)
+{
+    install_shadow_root_extras(ctx);
+    if (!shadow_hooks_set) { return 0; }
+    JSValue proto = JS_GetPrototype(ctx, wj_the_realm.global);   /* Window.prototype */
+    if (!JS_IsObject(proto)) { JS_FreeValue(ctx, proto); return 0; }
+    JSValue r = call_hook(ctx, "namedProperties", 1, (JSValueConst *)&proto);
+    JS_FreeValue(ctx, proto);
+    if (JS_IsException(r)) { wj_report_pending(ctx); return 0; }   /* without named access, the realm still works */
+    JS_FreeValue(ctx, r);
+    r = call_hook(ctx, "elementExtras", 0, NULL);
+    if (JS_IsException(r)) { wj_report_pending(ctx); return 0; }
+    JS_FreeValue(ctx, r);
+    return 0;
 }

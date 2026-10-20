@@ -796,6 +796,8 @@ static JSValue token_list(JSContext *ctx, JSValueConst this_val, int iface, cons
 }
 
 JSValue wjr_Element_get_classList(JSContext *ctx, JSValueConst this_val) { return token_list(ctx, this_val, WJ_IFACE_Element, "class"); }
+/* element.part (prelude/shadow.js keeps one per element) */
+JSValue wj_token_list_of(JSContext *ctx, JSValueConst element, const char *attr) { return token_list(ctx, element, WJ_IFACE_Element, attr); }
 JSValue wjr_HTMLAnchorElement_get_relList(JSContext *ctx, JSValueConst this_val) { return token_list(ctx, this_val, WJ_IFACE_HTMLAnchorElement, "rel"); }
 JSValue wjr_HTMLAreaElement_get_relList(JSContext *ctx, JSValueConst this_val) { return token_list(ctx, this_val, WJ_IFACE_HTMLAreaElement, "rel"); }
 JSValue wjr_HTMLLinkElement_get_relList(JSContext *ctx, JSValueConst this_val) { return token_list(ctx, this_val, WJ_IFACE_HTMLLinkElement, "rel"); }

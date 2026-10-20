@@ -30,7 +30,7 @@ commit :: proc(f: ^Forms, h: base.Handle) {
 focus :: proc(f: ^Forms, h_in: base.Handle, by_keyboard := false) -> bool {
 	h := h_in
 	// a host that delegates focus: its focus delegate (unless the focus is in its shadow tree already)
-	if delegates_focus(f, h) && !is_focusable_element(f, h) {
+	if delegates_focus(f, h) {
 		if f.focus != base.NIL_HANDLE && dom.shadow_including_ancestor(f.doc, dom.shadow_root_of(f.doc, h), f.focus) { return true }
 		h = focus_delegate(f, h)
 		if h == base.NIL_HANDLE { return false }

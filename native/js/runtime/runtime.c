@@ -41,6 +41,9 @@ int wj_runtime_start(JSContext *ctx, int kind)
     if (kind == WJ_EXPOSE_WINDOW) {
         JSValue doc = JS_GetPropertyStr(ctx, r->global, "Document");
         if (JS_IsObject(doc)) { JS_DefinePropertyValueStr(ctx, r->global, "HTMLDocument", doc, JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE); } else { JS_FreeValue(ctx, doc); }
+        /* the Window's named properties (elements by id as globals: runtime/shadow.c) */
+        extern int wj_named_properties_install(JSContext *ctx);
+        wj_named_properties_install(ctx);
     }
     return wj_web_start(ctx, kind);
 }

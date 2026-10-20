@@ -22,6 +22,9 @@ Js_Shadow :: struct {
 	disabled:      map[string]u8,          // custom element names whose definition disables: 1 shadow, 2 internals
 	internals:     map[base.Handle]u64,    // elements that attached internals -> their ElementInternals
 	last_target:   u64,                    // EventTarget_lastTarget
+	next_related:  u64,                    // Event_setNextRelated: the next engine event's relatedTarget
+	slot_deferred: bool,                   // the slotchange job went behind the observers' jobs once
+	deferred:      [dynamic]base.Handle,   // ... with these slots (pinned)
 }
 
 @(private)
@@ -29,8 +32,12 @@ shadow_state :: proc(p: ^Page) -> ^Js_Shadow { return &js_dom_state(p).shadow }
 
 @(private)
 js_shadow_destroy :: proc(p: ^Page, s: ^Js_Shadow) {
-	if !p.closed && p.doc != nil { for h in s.signal { dom.unpin(p.doc, h) } }
+	if !p.closed && p.doc != nil {
+		for h in s.signal { dom.unpin(p.doc, h) }
+		for h in s.deferred { dom.unpin(p.doc, h) }
+	}
 	delete(s.signal)
+	delete(s.deferred)
 	for k in s.disabled { delete(k) }
 	delete(s.disabled)
 	delete(s.internals)
@@ -61,19 +68,60 @@ shadow_doc_attached :: proc(p: ^Page) {
 	}
 }
 
-Shadow_fireSlotChanges :: proc(c: ^Call) { shadow_signal_slots(c.page) }
+// The slotchange job. DOM fires slotchange in the mutation observers' microtask, after their callbacks: the jobs of
+// observers queued after this one (records made after the slot was signalled) run first, the job going once more
+// behind them.
+Shadow_fireSlotChanges :: proc(c: ^Call) {
+	p := c.page
+	s := shadow_state(p)
+	if !s.slot_deferred && p.jsdom != nil && len(s.signal) > 0 {
+		for mo in p.jsdom.observers.list {
+			if !mo.pending { continue }
+			if r := p.js; r != nil && !r.failed && r.inst != nil && !r.inst.dead {
+				// the slots signalled so far fire after those observers; a slot signalled by their callbacks again
+				// is a new signal (another job, another slotchange)
+				s.slot_deferred = true
+				append(&s.deferred, ..s.signal[:])
+				clear(&s.signal)
+				p.objects.depth += 1
+				res := wasm.call_raw(r.inst, "wj_slot_queue", nil)
+				p.objects.depth -= 1
+				if res != .Ok { guest_failed(p, r.inst) }
+				return
+			}
+		}
+	}
+	if s.slot_deferred {
+		s.slot_deferred = false
+		fire_slot_changes(p, s.deferred[:])
+		clear(&s.deferred)
+		return
+	}
+	shadow_signal_slots(p)
+}
 
-// Fires slotchange at the signalled slots (from the microtask checkpoint). Returns whether it fired any.
-shadow_signal_slots :: proc(p: ^Page) -> bool {
-	if p.jsdom == nil || len(p.jsdom.shadow.signal) == 0 || p.closed { return false }
-	s := &p.jsdom.shadow
-	list := make([dynamic]base.Handle, 0, len(s.signal), context.temp_allocator)
-	append(&list, ..s.signal[:])
-	clear(&s.signal)
+@(private = "file")
+fire_slot_changes :: proc(p: ^Page, slots: []base.Handle) {
+	list := make([dynamic]base.Handle, 0, len(slots), context.temp_allocator)
+	append(&list, ..slots)
 	for slot in list {
 		if dom.get(p.doc, slot) != nil { dispatch_event(p, slot, dom.Event{type = "slotchange", bubbles = true}) }
 		dom.unpin(p.doc, slot)
 	}
+}
+
+// Fires slotchange at the signalled slots (from the microtask checkpoint). Returns whether it fired any.
+shadow_signal_slots :: proc(p: ^Page) -> bool {
+	if p.jsdom == nil || p.closed { return false }
+	s := &p.jsdom.shadow
+	if len(s.signal) == 0 && len(s.deferred) == 0 { return false }
+	list := make([dynamic]base.Handle, 0, len(s.deferred) + len(s.signal), context.temp_allocator)
+	append(&list, ..s.deferred[:])
+	append(&list, ..s.signal[:])
+	clear(&s.deferred)
+	clear(&s.signal)
+	s.slot_deferred = false
+	fire_slot_changes(p, list[:])
 	return true
 }
 
@@ -292,6 +340,18 @@ Event_composedPathPacked :: proc(c: ^Call, event: Api_Event) -> []u8 {
 EventTarget_lastTarget :: proc(c: ^Call) -> u64 {
 	if c.page.jsdom == nil { return 0 }
 	return c.page.jsdom.shadow.last_target
+}
+
+EventTarget_lastRelated :: proc(c: ^Call) -> u64 { return c.page.dp.last_related }
+
+Event_setNextRelated :: proc(c: ^Call, related: u64) { shadow_state(c.page).next_related = related }
+
+Event_relatedNow :: proc(c: ^Call, event: Api_Event) -> u64 { return event.data.related }
+
+Event_inShadowTreeNow :: proc(c: ^Call, event: Api_Event) -> bool {
+	e := event.data
+	if e.phase == .None || e.path_index < 0 || e.path_index >= len(e.path) { return false }
+	return e.path[e.path_index].in_shadow_tree
 }
 
 ////////////////////////////////

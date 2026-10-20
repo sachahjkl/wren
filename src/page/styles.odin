@@ -122,7 +122,18 @@ sync_styles :: proc(p: ^Page) {
 	// the parser's reveal has the rest of the document detached for now: its stylesheets stay as they are until it
 	// finishes (js_load.odin), instead of being dropped and loaded again; new ones (a script's) are added meanwhile
 	revealing := scripts_revealing(p)
-	links := style.sync_document_sheets(p.engine, p.doc, p.env.location.href, keep_missing = revealing)
+	// a sheet stays when its owner is in the part not revealed yet (not one a script removed)
+	pending :: proc(user: rawptr, owner: base.Handle) -> bool {
+		p := (^Page)(user)
+		d := p.doc
+		if dom.get(d, owner) == nil { return false }
+		r := dom.shadow_including_root(d, owner)
+		if r == d.root { return false }
+		ps := &p.scripts.parser
+		for it in ps.queue[ps.next:] { if it.node == r { return true } }
+		return false
+	}
+	links := style.sync_document_sheets(p.engine, p.doc, p.env.location.href, keep_missing = revealing ? pending : nil, keep_user = p)
 
 	// links that disappeared
 	if !revealing {

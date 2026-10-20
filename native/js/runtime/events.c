@@ -515,6 +515,15 @@ JSValue wj_wrap_target(JSContext *ctx, uint64_t h)
     return wj_wrap_node(ctx, h);
 }
 
+/* window.event (HTML "current event"): the event of the listener running, unless its node is in a shadow tree */
+static JSValue current_event = JS_UNDEFINED;
+
+JSValue wjr_Window_get_event(JSContext *ctx, JSValueConst this_val)
+{
+    WJ_UNUSED(this_val);
+    return JS_DupValue(ctx, current_event);
+}
+
 /* Called by the browser for each listener it runs: user = the listener's slot. */
 WJ_EXPORT("wj_cb_listener") void wj_cb_listener(int32_t user, uint64_t event)
 {
@@ -533,6 +542,9 @@ WJ_EXPORT("wj_cb_listener") void wj_cb_listener(int32_t user, uint64_t event)
         listener_unlink(ctx, owner, l);
         l = NULL;
     }
+    JSValue saved_event = current_event;
+    bool swapped = wj_the_realm.kind != WJ_EXPOSE_WORKER && !wr_Event_inShadowTreeNow(event);
+    if (swapped) { current_event = JS_DupValue(ctx, ev); }
     if (handler) {
         extern void wj_handler_invoke(JSContext *ctx, JSValueConst target, JSValueConst handler_value, JSValueConst ev, uint64_t host_event, int kind);
         wj_handler_invoke(ctx, target, cb, ev, event, handler);
@@ -548,6 +560,7 @@ WJ_EXPORT("wj_cb_listener") void wj_cb_listener(int32_t user, uint64_t event)
         }
         if (JS_IsException(r)) { wj_report_pending(ctx); } else { JS_FreeValue(ctx, r); }
     }
+    if (swapped) { JS_FreeValue(ctx, current_event); current_event = saved_event; }
     wj_obj *eo = wj_obj_of(ev);
     if (eo && eo->impl) { ((wj_event *)eo->impl)->host = 0; }
     JS_FreeValue(ctx, cb);
@@ -579,9 +592,23 @@ JSValue wjr_EventTarget_dispatchEvent(JSContext *ctx, JSValueConst this_val, int
     JS_FreeValue(ctx, e->target);
     e->target = JS_DupValue(ctx, this_val);
     JSValue keep = JS_DupValue(ctx, argv[0]);
+    /* a relatedTarget (MouseEvent, FocusEvent...): retargeted by the browser along the path */
+    bool has_related = false;
+    if (JS_IsObject(e->ext)) {
+        JSValue rel = JS_GetPropertyStr(ctx, e->ext, "relatedTarget");
+        wj_obj *ro = wj_unwrap(rel, WJ_IFACE_Node);
+        if (ro && ro->handle) { wr_Event_setNextRelated(ro->handle); has_related = true; }
+        JS_FreeValue(ctx, rel);
+    }
     uint8_t not_canceled = 0;
     int32_t st = wr_EventTarget_dispatchEngineEvent(o->handle, (const uint8_t *)type, (uint32_t)n, init, (int64_t)(uintptr_t)eo,
                                                     e->time_stamp, &not_canceled);
+    if (has_related && st >= 0) {
+        /* the relatedTarget once dispatched: retargeted, or null when cleared */
+        JSValue r = wj_wrap_target(ctx, wr_EventTarget_lastRelated());
+        if (JS_IsException(r)) { JS_FreeValue(ctx, JS_GetException(ctx)); r = JS_NULL; }
+        JS_SetPropertyStr(ctx, e->ext, "relatedTarget", r);
+    }
     JS_FreeCString(ctx, type);
     e->dispatching = 0;
     e->host = 0;

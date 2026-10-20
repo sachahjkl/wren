@@ -376,6 +376,13 @@ assign_slottables_for_tree :: proc(d: ^Document, root: base.Handle) {
 		touch(d)
 		d.tree_version += 1
 		journal_record(d, .Reslot, s, base.NIL_HANDLE)
+		// the slots `s` is assigned through: their flattened assigned nodes changed too (:has-slotted)
+		for t, hops := get(d, s).slot, 0; t != base.NIL_HANDLE && hops < 256; hops += 1 {
+			journal_record(d, .Reslot, t, base.NIL_HANDLE)
+			tn := get(d, t)
+			if tn == nil { break }
+			t = tn.slot
+		}
 		if d.slot_changed != nil { d.slot_changed(d.slot_user, d, s) }
 	}
 	for s in old_slots {

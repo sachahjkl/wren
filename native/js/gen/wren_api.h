@@ -1172,6 +1172,9 @@ WR_IMPORT("dom", "HTMLSlotElement_assignedPacked") int32_t wr_HTMLSlotElement_as
 WR_IMPORT("dom", "HTMLSlotElement_assignNodes") int32_t wr_HTMLSlotElement_assignNodes(uint64_t slot, const uint64_t *nodes, uint32_t nodes_len);
 // The handles of every element named `name` in shadow-including tree order (custom element upgrades at define).
 WR_IMPORT("dom", "Document_shadowIncludingByName") int32_t wr_Document_shadowIncludingByName(const uint8_t *name, uint32_t name_len, uint8_t *_buf, uint32_t _cap);
+// elementsFromPoint(x, y) of the document or of a shadow root: the elements hit, retargeted against `root`,
+// innermost first. Handles, 8 bytes each.
+WR_IMPORT("dom", "DocumentOrShadowRoot_elementsFromPointPacked") int32_t wr_DocumentOrShadowRoot_elementsFromPointPacked(uint64_t root, double x, double y, uint8_t *_buf, uint32_t _cap);
 // Fires slotchange at the slots signalled since the last time (the engine's job, wj_slot_queue).
 WR_IMPORT("dom", "Shadow_fireSlotChanges") void wr_Shadow_fireSlotChanges(void);
 // Whether `node` is a live node of the page (not destroyed).
@@ -1307,6 +1310,15 @@ WR_IMPORT("events", "Event_composedPathPacked") int32_t wr_Event_composedPathPac
 // The target of the last event dispatched by EventTarget_dispatchEngineEvent once its dispatch ended (0: null, it
 // was in a shadow tree).
 WR_IMPORT("events", "EventTarget_lastTarget") uint64_t wr_EventTarget_lastTarget(void);
+// ... and its relatedTarget (0: null or cleared).
+WR_IMPORT("events", "EventTarget_lastRelated") uint64_t wr_EventTarget_lastRelated(void);
+// The relatedTarget (a node) of the next EventTarget_dispatchEngineEvent: retargeted along its path.
+WR_IMPORT("events", "Event_setNextRelated") void wr_Event_setNextRelated(uint64_t related);
+// The relatedTarget of the event being dispatched as the current listener sees it (retargeted; 0: null).
+WR_IMPORT("events", "Event_relatedNow") uint64_t wr_Event_relatedNow(uint64_t event);
+// Whether the current listener's node was in a shadow tree when the event's path was built (window.event is then
+// left as it was).
+WR_IMPORT("events", "Event_inShadowTreeNow") int32_t wr_Event_inShadowTreeNow(uint64_t event);
 
 /* module eventsource */
 // new EventSource(url, {withCredentials}). Syntax for an invalid URL.

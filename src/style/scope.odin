@@ -549,6 +549,15 @@ shadow_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ctx: Elem_Ctx) {
 		x.ctx = depth
 		append(&p.lists[k], x)
 	}
+	// The contexts' order (CSS Scoping §3.2: shadow-including tree order of the trees, earlier wins for normal
+	// declarations, later for important ones) for one element: the trees of its host chain (::part), its own tree,
+	// the trees of the slots it goes through (outermost first), its shadow tree (:host) last.
+	n_slots := 0
+	for slot := n.slot; slot != base.NIL_HANDLE && n_slots < 256; n_slots += 1 {
+		sn := dom.get(doc, slot)
+		if sn == nil { break }
+		slot = sn.slot
+	}
 	if n.shadow != base.NIL_HANDLE {
 		sc := ctx_for_root(p, n.shadow)
 		if len(sc.set.host_entries) > 0 {
@@ -556,11 +565,13 @@ shadow_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ctx: Elem_Ctx) {
 			for &ent in sc.set.host_entries {
 				k := list_of(ent.complex.pseudo_element)
 				if k < 0 { continue }
-				if matches_complex(m, el, ent.complex) { add(p, ent, k, sc.depth) }
+				if matches_complex(m, el, ent.complex) { add(p, ent, k, ctx.depth + 1 + u16(n_slots)) }
 			}
 		}
 	}
-	for slot, hops := n.slot, 0; slot != base.NIL_HANDLE && hops < 256; hops += 1 {
+	// a slot assigned to a slot is flattened away: ::slotted() sees what it is assigned instead
+	is_flattened_slot := n.slot != base.NIL_HANDLE && n.ns == .HTML && n.name == "slot" && ctx.root != base.NIL_HANDLE
+	for slot, hops := n.slot, 0; slot != base.NIL_HANDLE && hops < 256 && !is_flattened_slot; hops += 1 {
 		sc := ctx_for_root(p, dom.tree_root(doc, slot))
 		if sc.set != nil {
 			for &ent in sc.set.slotted_entries {
@@ -569,7 +580,7 @@ shadow_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ctx: Elem_Ctx) {
 				m.featureless = sc.host
 				if !matches_complex(m, slot, ent.complex) { continue }
 				if ent.complex.slotted != nil && !matches_compound_plain(m, el, ent.complex.slotted^) { continue }
-				add(p, ent, k, sc.depth)
+				add(p, ent, k, ctx.depth + 1 + u16(hops))
 			}
 		}
 		sn := dom.get(doc, slot)
@@ -579,8 +590,14 @@ shadow_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ctx: Elem_Ctx) {
 	if ctx.root != base.NIL_HANDLE {
 		names := dom.part_names(n)
 		host := ctx.host
+		// first its own tree's (`:host::part()`: the host seen featureless), then the trees of its host chain
+		own := true
 		for hops := 0; len(names) > 0 && host != base.NIL_HANDLE && hops < 256; hops += 1 {
-			hc := ctx_for_root(p, dom.tree_root(doc, host))
+			hc := own ? ctx : ctx_for_root(p, dom.tree_root(doc, host))
+			if own && (hc.set == nil || len(hc.set.part_entries) == 0) {
+				own = false
+				hc = ctx_for_root(p, dom.tree_root(doc, host))
+			}
 			rs := hc.set != nil ? hc.set : &p.e.rules
 			for &ent in rs.part_entries {
 				k := list_of(ent.complex.then_pseudo)
@@ -599,6 +616,7 @@ shadow_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ctx: Elem_Ctx) {
 				for s in ent.complex.part_state { if !matches_simple(m, el, n, s) { ok = false; break } }
 				if ok { add(p, ent, k, hc.depth) }
 			}
+			if own { own = false; continue }
 			if hc.root == base.NIL_HANDLE { break }
 			names = export_parts(dom.get(doc, host), names)
 			host = hc.host

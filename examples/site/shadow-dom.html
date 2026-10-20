@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wren - shadow DOM</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .card { border: 1px solid #8884; padding: 12px; border-radius: 8px; }
+  .card > h2 { margin-top: 0; font-size: 1.05em; }
+  .note { opacity: .75; font-size: .9em; }
+  /* document rules: they stop at shadow boundaries, except ::part() and what inherits */
+  p { color: crimson; }
+  w-badge { --accent: #2a7; }
+  w-badge::part(label) { text-transform: uppercase; letter-spacing: .06em; }
+  .dark w-badge::part(label) { background: #234; color: #cfe; }
+  w-tabs::part(tab active) { border-bottom-color: var(--tab-accent, #36c); }
+  :not(:defined) { opacity: .5; }
+</style>
+</head>
+<body>
+<h1>Shadow DOM</h1>
+<p class="note" style="color: inherit">Shadow trees keep a component's markup and styles to themselves. The first cards
+use <strong>declarative shadow DOM</strong> (<code>&lt;template shadowrootmode&gt;</code>): they render with JavaScript
+off (<code>javascript.enabled = false</code>). The last ones are built from script.</p>
+
+<div class="grid">
+
+<div class="card">
+  <h2>Encapsulation</h2>
+  <div id="enc">
+    <template shadowrootmode="open">
+      <style>
+        p { color: seagreen; font-weight: bold; margin: 4px 0; }
+        .box { border: 2px dashed currentColor; padding: 6px; color: slateblue; }
+      </style>
+      <p>This paragraph is in a shadow tree: the document's red <code>p</code> rule does not reach it.</p>
+      <div class="box"><slot>fallback</slot></div>
+    </template>
+    <p>Slotted from the light DOM: styled by the document (red), shown inside the shadow tree's dashed box.</p>
+  </div>
+</div>
+
+<div class="card">
+  <h2>:host, ::slotted(), ::part()</h2>
+  <div class="dark">
+    <w-badge>
+      <template shadowrootmode="open">
+        <style>
+          :host { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 99px;
+                  background: color-mix(in srgb, var(--accent) 20%, transparent); }
+          :host(:hover) { outline: 2px solid var(--accent); }
+          .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+          [part=label] { padding: 1px 6px; border-radius: 4px; }
+          ::slotted(em) { color: var(--accent); font-style: normal; font-weight: bold; }
+        </style>
+        <span class="dot"></span><span part="label">status</span><slot></slot>
+      </template>
+      <em>online</em>
+    </w-badge>
+  </div>
+  <p class="note" style="color: inherit">The custom property <code>--accent</code> set by the document crosses the
+  boundary; <code>::part(label)</code> styles the label from outside (upper case, dark theme through an ancestor's
+  class); <code>::slotted(em)</code> styles the light child.</p>
+</div>
+
+<div class="card">
+  <h2>Named slots, nested shadow trees</h2>
+  <article id="nested">
+    <template shadowrootmode="open">
+      <style>
+        header { font-weight: bold; border-bottom: 1px solid #8886; margin-bottom: 4px; }
+        footer { font-size: .85em; opacity: .7; margin-top: 4px; }
+      </style>
+      <header><slot name="title">Untitled</slot></header>
+      <div><slot></slot></div>
+      <footer><slot name="footer">no footer</slot></footer>
+    </template>
+    <span slot="title">A card with named slots</span>
+    <span>Its body goes to the default slot.</span>
+    <section>
+      <template shadowrootmode="open">
+        <style>:host { display: block; margin-top: 6px; padding: 4px; background: #8882; border-radius: 4px; }</style>
+        A nested shadow tree, with <slot></slot>.
+      </template>
+      <b>its own slotted content</b>
+    </section>
+  </article>
+</div>
+
+<div class="card">
+  <h2>Built from script: tabs (custom element)</h2>
+  <w-tabs id="tabs" style="--tab-accent: #c63">
+    <span slot="tab">One</span><span slot="tab">Two</span><span slot="tab">Three</span>
+    <div>First panel: the tabs are buttons in the shadow tree, the labels are slotted.</div>
+    <div>Second panel, shown with <code>slot.assign()</code> (manual slot assignment).</div>
+    <div>Third panel; focus moves with Tab through the shadow tree.</div>
+  </w-tabs>
+  <p class="note" id="tabs-log" style="color: inherit">JavaScript is off: the element stays undefined (dimmed by
+  <code>:not(:defined)</code>).</p>
+</div>
+
+<div class="card">
+  <h2>Constructable stylesheets, custom states</h2>
+  <w-toggle id="toggle">Click me</w-toggle>
+  <p class="note" style="color: inherit">One <code>CSSStyleSheet</code> shared by every instance through
+  <code>adoptedStyleSheets</code>; the pressed look comes from <code>:state(on)</code> set with
+  <code>ElementInternals.states</code>.</p>
+  <div id="many"></div>
+</div>
+
+<div class="card">
+  <h2>Events across the boundary</h2>
+  <div id="ev"></div>
+  <pre id="ev-log" class="note" style="white-space: pre-wrap; margin: 6px 0 0">(click the button)</pre>
+</div>
+
+</div>
+
+<script>
+// Tabs: a custom element with a shadow tree and manual slot assignment for the visible panel.
+class WTabs extends HTMLElement {
+  constructor() {
+    super();
+    const root = this.attachShadow({mode: "open", slotAssignment: "manual", delegatesFocus: true});
+    root.innerHTML = `<style>
+      :host { display: block; }
+      .bar { display: flex; gap: 4px; border-bottom: 1px solid #8886; }
+      button { font: inherit; border: 0; border-bottom: 3px solid transparent; background: none; padding: 4px 10px; cursor: pointer; color: inherit; }
+      .panel { padding: 8px 2px; }
+    </style><div class="bar" part="bar"></div><div class="panel"><slot name="panel"></slot></div>`;
+    this.bar = root.querySelector(".bar");
+    this.panel = root.querySelector("slot");
+  }
+  connectedCallback() {
+    const labels = [...this.children].filter(c => c.slot === "tab");
+    this.panels = [...this.children].filter(c => c.slot !== "tab");
+    this.bar.textContent = "";
+    labels.forEach((label, i) => {
+      const b = document.createElement("button");
+      b.setAttribute("part", "tab");
+      b.appendChild(document.createTextNode(label.textContent));
+      b.addEventListener("click", () => this.select(i));
+      this.bar.appendChild(b);
+    });
+    this.select(0);
+  }
+  select(i) {
+    [...this.bar.children].forEach((b, k) => b.setAttribute("part", k === i ? "tab active" : "tab"));
+    this.panel.assign(this.panels[i]);
+    document.getElementById("tabs-log").textContent = "Tab " + (i + 1) + " selected (slot.assign); composedPath of the click goes through the shadow tree.";
+  }
+}
+customElements.define("w-tabs", WTabs);
+
+// Toggle: one constructed stylesheet, adopted by every instance; a custom state.
+const toggleSheet = new CSSStyleSheet();
+toggleSheet.replaceSync(`
+  :host { display: inline-block; padding: 4px 12px; border-radius: 6px; border: 1px solid #8888; cursor: pointer; user-select: none; }
+  :host(:state(on)) { background: #36c; color: white; border-color: #36c; }
+`);
+class WToggle extends HTMLElement {
+  constructor() {
+    super();
+    this.internals = this.attachInternals();
+    const root = this.attachShadow({mode: "open"});
+    root.adoptedStyleSheets = [toggleSheet];
+    root.innerHTML = "<slot></slot>";
+    this.addEventListener("click", () => {
+      if (this.internals.states.has("on")) { this.internals.states.delete("on"); } else { this.internals.states.add("on"); }
+    });
+  }
+}
+customElements.define("w-toggle", WToggle);
+const many = document.getElementById("many");
+for (let i = 0; i < 12; i++) {
+  const t = document.createElement("w-toggle");
+  t.textContent = String(i + 1);
+  t.style.margin = "4px 4px 0 0";
+  if (i % 3 === 0) { t.internals.states.add("on"); }
+  many.appendChild(t);
+}
+
+// Events: a closed shadow tree; the document sees the host as the target, the inside sees the button.
+const evHost = document.getElementById("ev");
+const evRoot = evHost.attachShadow({mode: "closed"});
+evRoot.innerHTML = `<button style="font: inherit">A button in a closed shadow tree</button>`;
+const log = document.getElementById("ev-log");
+evRoot.querySelector("button").addEventListener("click", (e) => {
+  log.textContent = "inside: target <" + e.target.localName + ">, path of " + e.composedPath().length + " targets\n";
+});
+document.addEventListener("click", (e) => {
+  if (!evHost.contains(e.target) && e.target !== evHost) { return; }
+  log.textContent += "document: target <" + e.target.localName + " id=" + e.target.id + ">, path of " + e.composedPath().length + " targets (the closed tree is hidden)";
+});
+</script>
+</body>
+</html>

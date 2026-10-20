@@ -321,6 +321,83 @@ section("focus and delegatesFocus", () => {
   before.remove();
   host.remove();
 });
+
+section("elementFromPoint retargeted", () => {
+  const host = document.createElement("div");
+  host.style.cssText = "display:block;width:100px;height:100px";
+  document.body.insertBefore(host, document.body.firstChild);
+  const root = host.attachShadow({mode: "closed"});
+  root.innerHTML = `<p style="margin:0;height:100px">in</p>`;
+  const r = host.getBoundingClientRect();
+  const x = r.left + 5, y = r.top + 5;
+  eq("document.elementFromPoint: the host", document.elementFromPoint(x, y), host);
+  eq("shadowRoot.elementFromPoint: the element of the tree", root.elementFromPoint(x, y), root.firstChild);
+  const all = document.elementsFromPoint(x, y);
+  eq("document.elementsFromPoint starts at the host", all[0], host);
+  eq("document.elementsFromPoint ends at the html element", all[all.length - 1], document.documentElement);
+  eq("shadowRoot.elementsFromPoint: tree element then host", root.elementsFromPoint(x, y).slice(0, 2).join(), [root.firstChild, host].join());
+  host.remove();
+});
+
+section("delegatesFocus host made by a custom element", () => {
+  const tpl = document.createElement("template");
+  tpl.innerHTML = `<ul><li tabindex="0" id="one">One</li><li tabindex="0" id="two">Two</li></ul>`;
+  customElements.define("x-dfocus", class extends HTMLElement {
+    connectedCallback() {
+      this.attachShadow({mode: "open", delegatesFocus: true}).appendChild(document.importNode(tpl.content, true));
+    }
+  });
+  const host = document.createElement("x-dfocus");
+  host.tabIndex = 0;
+  document.body.appendChild(host);
+  eq("the imported template content", host.shadowRoot.querySelectorAll("li").length, 2);
+  host.focus();
+  eq("focus() delegates to the first focusable", host.shadowRoot.activeElement && host.shadowRoot.activeElement.id, "one");
+  host.shadowRoot.querySelector("#two").focus();
+  host.focus();
+  eq("focus() keeps the inner focused element", host.shadowRoot.activeElement && host.shadowRoot.activeElement.id, "two");
+  host.remove();
+});
+
+section("cascade order across trees, sheets coming and going", () => {
+  function make(mode, slotted, host, inline) {
+    const list = document.createElement("my-list");
+    const r = list.attachShadow({mode});
+    r.innerHTML = "<style>" + slotted + "</style><slot></slot>";
+    const item = document.createElement("my-item");
+    if (inline) item.setAttribute("style", inline);
+    list.appendChild(item);
+    item.attachShadow({mode}).innerHTML = "<style>" + host + "</style><slot></slot>";
+    item.appendChild(document.createTextNode("ITEM"));
+    return list;
+  }
+  function run(name, mode, doc, slotted, host, inline) {
+    const st = document.createElement("style");
+    st.textContent = doc;
+    document.head.appendChild(st);
+    const list = make(mode, slotted, host, inline);
+    document.body.appendChild(list);
+    eq(name + " (" + mode + ")", getComputedStyle(list.querySelector("my-item")).color, "rgb(0, 128, 0)");
+    list.remove();
+    st.remove();
+  }
+  run("E2 all important: the last tree wins", "open", "my-item { color: red !important; }", "::slotted(my-item) { color: blue !important; }", ":host { color: green !important; }", "color: yellow !important;");
+  run("A1 document beats ::slotted", "closed", "my-item { color: green; }", "::slotted(my-item) { color: red; }", "", "");
+  run("A3 inline beats document", "closed", "my-item { color: red; }", "", "", "color: green;");
+  run("A4 ::slotted beats :host (earlier tree)", "open", "", "::slotted(my-item) { color: green; }", ":host { color: red; }", "");
+  run("D4 important :host beats ::slotted (later tree)", "open", "", "::slotted(my-item) { color: red !important; }", ":host { color: green !important; }", "");
+});
+
+section("ownerDocument in another document", () => {
+  const doc = document.implementation.createHTMLDocument("t");
+  const el = doc.createElement("div");
+  doc.body.appendChild(el);
+  eq("light element", el.ownerDocument, doc);
+  const root = el.attachShadow({mode: "open"});
+  root.appendChild(doc.createElement("p"));
+  eq("shadow root", root.ownerDocument, doc);
+  eq("shadow tree element", root.firstChild.ownerDocument, doc);
+});
 done();
 }
 </script>

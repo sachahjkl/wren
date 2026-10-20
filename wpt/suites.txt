@@ -24,3 +24,6 @@ xhr
 webstorage
 streams only=.,readable-streams,writable-streams
 workers only=.
+shadow-dom
+css/css-shadow
+custom-elements

@@ -594,6 +594,12 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			structure = true
 			if en.parent == base.NIL_HANDLE {
 				mark(m, en.node, true)   // a slot's (or a new host's) flat children: their inheritance, ::slotted()
+				// a slot's :has-slotted changed: what follows it may match through `+` / `~`
+				if sn := dom.get(doc, en.node); sn != nil && sn.kind == .Element && sn.name == "slot" && in_shadow(m, en.node) {
+					for sib := sn.next; sib != base.NIL_HANDLE; sib = dom.get(doc, sib).next {
+						if is_element_node(doc, sib) { mark(m, sib, true) }
+					}
+				}
 			} else {
 				append(&m.left, en.node)
 			}

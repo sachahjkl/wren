@@ -3435,6 +3435,17 @@ The handles of every element named `name` in shadow-including tree order (custom
 
 Host: `Document_shadowIncludingByName :: proc(c: ^Call, name: string) -> []u8`
 
+### `DocumentOrShadowRoot_elementsFromPointPacked`
+
+```
+bytes DocumentOrShadowRoot_elementsFromPointPacked(Node root, f64 x, f64 y)
+```
+
+elementsFromPoint(x, y) of the document or of a shadow root: the elements hit, retargeted against `root`,
+innermost first. Handles, 8 bytes each.
+
+Host: `DocumentOrShadowRoot_elementsFromPointPacked :: proc(c: ^Call, root: Api_Node, x: f64, y: f64) -> []u8`
+
 ### `Shadow_fireSlotChanges`
 
 ```

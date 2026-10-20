@@ -111,6 +111,7 @@ b_declarative_shadow :: proc "c" (user: rawptr, attrs: [^]Shim_Attr, n_attrs: ui
 		case "shadowrootdelegatesfocus": init.delegates_focus = true
 		case "shadowrootclonable": init.clonable = true
 		case "shadowrootserializable": init.serializable = true
+		case "shadowrootslotassignment": if strings.equal_fold(view(a.value, a.value_len), "manual") { init.slot_assignment = .Manual }
 		}
 	}
 	if !has_mode { return false }

@@ -330,14 +330,15 @@ status_ok :: proc(expected, got: string) -> bool {
 	return false
 }
 
-write_results :: proc(b: ^strings.Builder, results: []^Result) {
+// `messages`: what did not pass is followed by its message (results.txt, for whoever looks into a failure).
+write_results :: proc(b: ^strings.Builder, results: []^Result, messages := false) {
 	for r in results {
-		fmt.sbprintfln(b, "%s: %s", escape(r.path), r.status)
+		if messages && r.status != "OK" && r.message != "" { fmt.sbprintfln(b, "%s: %s  # %s", escape(r.path), r.status, escape(r.message)) } else { fmt.sbprintfln(b, "%s: %s", escape(r.path), r.status) }
 		subs := slice.clone(r.subs[:], context.temp_allocator)
 		slice.sort_by(subs, proc(a, b: Sub) -> bool { return a.name < b.name })
 		for s, i in subs {
 			if i > 0 && subs[i - 1].name == s.name { continue }   // duplicate names: the first
-			fmt.sbprintfln(b, "\t%s: %s", escape(s.name), s.status)
+			if messages && s.status != "PASS" && s.message != "" { fmt.sbprintfln(b, "\t%s: %s  # %s", escape(s.name), s.status, escape(s.message)) } else { fmt.sbprintfln(b, "\t%s: %s", escape(s.name), s.status) }
 		}
 	}
 }
@@ -646,7 +647,7 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 		for s in suites {
 			list := by_folder[s.folder]
 			slice.sort_by(list[:], proc(a, b: ^Result) -> bool { return a.path < b.path })
-			write_results(&b, list[:])
+			write_results(&b, list[:], messages = true)
 		}
 		_ = os.write_entire_file(opts.results, strings.to_string(b))
 	}

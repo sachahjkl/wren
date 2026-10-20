@@ -337,18 +337,32 @@ offset_parent :: proc(p: ^Page, h: base.Handle) -> base.Handle {
 	if st == nil { return base.NIL_HANDLE }
 	cs := style.style_of(st, h)
 	body := jd_body(d)
-	if cs == nil || cs.display == .None || h == body || h == jd_document_element(d) || cs.position == .Fixed { return base.NIL_HANDLE }
+	if cs == nil || cs.display == .None || h == body || h == jd_document_element(d) { return base.NIL_HANDLE }
+	fixed := cs.position == .Fixed
 	self_static := cs.position == .Static
-	for cur := dom.get(d, h).parent; cur != base.NIL_HANDLE; cur = dom.get(d, cur).parent {
+	shadows := dom.has_shadow_trees(d)
+	// the flat-tree ancestors (slots included), but not those of a shadow tree hidden from the element (CSSOM View §7,
+	// as engines do for open trees too); past a fixed box (the element, or a hidden ancestor), only the box that
+	// contains fixed boxes goes on the chain of containing blocks, none: null
+	for cur := dom.flat_parent(d, h); cur != base.NIL_HANDLE; cur = dom.flat_parent(d, cur) {
 		n := dom.get(d, cur)
 		if n.kind != .Element { break }
-		if cur == body { return cur }
 		acs := style.style_of(st, cur)
+		if shadows && dom.retarget(d, cur, h) != cur {
+			if acs == nil { continue }
+			if fixed && len(acs.transform) > 0 { fixed = false } else if !fixed && acs.position == .Fixed { fixed = true }
+			continue
+		}
+		if fixed {
+			if acs != nil && len(acs.transform) > 0 { return cur }
+			continue
+		}
+		if cur == body { return cur }
 		if acs == nil { continue }
 		if acs.position != .Static || len(acs.transform) > 0 { return cur }
 		if self_static && n.ns == .HTML && (n.name == "td" || n.name == "th" || n.name == "table") { return cur }
 	}
-	return body
+	return fixed ? base.NIL_HANDLE : body
 }
 
 @(private)
@@ -376,8 +390,40 @@ Document_elementFromPoint :: proc(c: ^Call, x: f64, y: f64) -> u64 {
 	if l == nil || !l.valid || x < 0 || y < 0 || x > vp.width || y > vp.height { return 0 }
 	s := f32(vp.scale)
 	hit := lay.hit_test(l, {f32(x) * s, f32(y) * s}, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s)
-	if hit.node != base.NIL_HANDLE && jd_is_element(p.doc, hit.node) { return u64(hit.node) }
+	// a text node hit: its flat-tree parent element; retargeted: an element of a shadow tree shows as its host
+	cur := hit.node
+	for cur != base.NIL_HANDLE && !jd_is_element(p.doc, cur) { cur = dom.flat_parent(p.doc, cur) }
+	if cur != base.NIL_HANDLE {
+		return u64(dom.has_shadow_trees(p.doc) ? dom.retarget(p.doc, cur, p.doc.root) : cur)
+	}
 	return u64(jd_document_element(p.doc))
+}
+
+// document.elementsFromPoint / shadowRoot.elementsFromPoint (CSSOM View §6.1 with shadow trees): the element hit and its
+// flat-tree ancestors, each retargeted against `root` (the elements of inner trees show as their hosts, those outside
+// as themselves) and kept once, the document element last. Handles, 8 bytes each.
+DocumentOrShadowRoot_elementsFromPointPacked :: proc(c: ^Call, root: Api_Node, x: f64, y: f64) -> []u8 {
+	p := c.page
+	d := p.doc
+	out := make([dynamic]base.Handle, context.temp_allocator)
+	l, vp := js_layout_now(p)
+	if l == nil || !l.valid || x < 0 || y < 0 || x > vp.width || y > vp.height { return nil }
+	s := f32(vp.scale)
+	hit := lay.hit_test(l, {f32(x) * s, f32(y) * s}, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s)
+	r := H(root.handle)
+	for cur := hit.node; cur != base.NIL_HANDLE; cur = dom.flat_parent(d, cur) {
+		if !jd_is_element(d, cur) { continue }
+		t := dom.retarget(d, cur, r)
+		seen := false
+		for x in out { if x == t { seen = true; break } }
+		if !seen { append(&out, t) }
+	}
+	if de := jd_document_element(d); de != base.NIL_HANDLE {
+		seen := false
+		for x in out { if x == de { seen = true; break } }
+		if !seen { append(&out, de) }
+	}
+	return pack_handles(out[:])
 }
 
 ////////////////////////////////

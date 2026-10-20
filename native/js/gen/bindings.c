@@ -485,6 +485,10 @@ JSValue wjr_HTMLTableElement_get_rows(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTableElement_get_tBodies(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTableRowElement_get_cells(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTableSectionElement_get_rows(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTemplateElement_get_shadowRootMode(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTemplateElement_get_shadowRootSlotAssignment(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTemplateElement_set_shadowRootMode(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLTemplateElement_set_shadowRootSlotAssignment(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLTextAreaElement_get_autocomplete(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTextAreaElement_get_cols(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTextAreaElement_get_labels(JSContext *ctx, JSValueConst this_val);
@@ -1029,6 +1033,7 @@ JSValue wjr_Window_getComputedStyle(JSContext *ctx, JSValueConst this_val, int a
 JSValue wjr_Window_getSelection(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_get_clientInformation(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_customElements(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_get_event(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_frameElement(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_frames(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_history(JSContext *ctx, JSValueConst this_val);
@@ -11145,10 +11150,10 @@ static const wj_member wj_m_HTMLTableSectionElement[] = {
 static const wj_member wj_m_HTMLTemplateElement[] = {
     { "content", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTemplateElement_get_content, NULL, 0 },
     { "htmlFor", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTemplateElement_get_htmlFor, wjg_HTMLTemplateElement_set_htmlFor, 0 },
-    { "shadowRootMode", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "shadowRootMode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLTemplateElement_get_shadowRootMode, wjr_HTMLTemplateElement_set_shadowRootMode, 0 },
     { "shadowRootDelegatesFocus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTemplateElement_get_shadowRootDelegatesFocus, wjg_HTMLTemplateElement_set_shadowRootDelegatesFocus, 0 },
     { "shadowRootSerializable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTemplateElement_get_shadowRootSerializable, wjg_HTMLTemplateElement_set_shadowRootSerializable, 0 },
-    { "shadowRootSlotAssignment", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "shadowRootSlotAssignment", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLTemplateElement_get_shadowRootSlotAssignment, wjr_HTMLTemplateElement_set_shadowRootSlotAssignment, 0 },
     { "shadowRootClonable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTemplateElement_get_shadowRootClonable, wjg_HTMLTemplateElement_set_shadowRootClonable, 0 },
     { "shadowRootCustomElementRegistry", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTemplateElement_get_shadowRootCustomElementRegistry, wjg_HTMLTemplateElement_set_shadowRootCustomElementRegistry, 0 },
 };
@@ -12009,7 +12014,7 @@ static const wj_member wj_m_Window[] = {
     { "outerHeight", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_outerHeight, wj_replaceable_setter, 0 },
     { "devicePixelRatio", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_devicePixelRatio, wj_replaceable_setter, 0 },
     { "getComputedStyle", WJ_M_METHOD, 0, 1, wjr_Window_getComputedStyle, NULL, NULL, 0 },
-    { "event", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
+    { "event", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_Window_get_event, wj_replaceable_setter, 0 },
     { "fetchLater", WJ_M_METHOD, WJ_F_SECURE, 1, NULL, NULL, NULL, 0 },
     { "window", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Window_get_window, NULL, 0 },
     { "self", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_Window_get_self, wj_replaceable_setter, 0 },

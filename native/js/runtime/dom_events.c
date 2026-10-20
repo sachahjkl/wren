@@ -241,7 +241,15 @@ JSValue wjr_MouseEvent_get_altKey(JSContext *ctx, JSValueConst t) { return ext_f
 JSValue wjr_MouseEvent_get_metaKey(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_MouseEvent, "metaKey", JS_FALSE); }
 JSValue wjr_MouseEvent_get_button(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_MouseEvent, "button", NUM0); }
 JSValue wjr_MouseEvent_get_buttons(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_MouseEvent, "buttons", NUM0); }
-JSValue wjr_MouseEvent_get_relatedTarget(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_MouseEvent, "relatedTarget", JS_NULL); }
+/* relatedTarget: while the event is dispatched, as the current listener sees it (retargeted by the browser) */
+static JSValue related_now(JSContext *ctx, JSValueConst t, int iface)
+{
+    uint64_t host = wj_event_host(t);
+    if (host && wj_this(ctx, t, iface)) { extern JSValue wj_wrap_target(JSContext *ctx, uint64_t h); return wj_wrap_target(ctx, wr_Event_relatedNow(host)); }
+    return ext_field(ctx, t, iface, "relatedTarget", JS_NULL);
+}
+
+JSValue wjr_MouseEvent_get_relatedTarget(JSContext *ctx, JSValueConst t) { return related_now(ctx, t, WJ_IFACE_MouseEvent); }
 
 /* getModifierState(key) of mouse and keyboard events */
 static JSValue modifier_state(JSContext *ctx, JSValueConst t, int iface, int argc, JSValueConst *argv)
@@ -320,7 +328,7 @@ JSValue wjr_KeyboardEvent_get_charCode(JSContext *ctx, JSValueConst t)
     return JS_NewInt32(ctx, code);
 }
 
-JSValue wjr_FocusEvent_get_relatedTarget(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_FocusEvent, "relatedTarget", JS_NULL); }
+JSValue wjr_FocusEvent_get_relatedTarget(JSContext *ctx, JSValueConst t) { return related_now(ctx, t, WJ_IFACE_FocusEvent); }
 JSValue wjr_InputEvent_get_data(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_InputEvent, "data", JS_NULL); }
 JSValue wjr_InputEvent_get_isComposing(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_InputEvent, "isComposing", JS_FALSE); }
 JSValue wjr_InputEvent_get_inputType(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_InputEvent, "inputType", JS_NewString(ctx, "")); }

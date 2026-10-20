@@ -131,6 +131,16 @@ JSValue wjr_HTMLTrackElement_set_kind(JSContext *ctx, JSValueConst t, JSValueCon
 JSValue wjr_HTMLTableCellElement_get_scope(JSContext *ctx, JSValueConst t) { return enum_get(ctx, t, I(HTMLTableCellElement), "scope", &E_SCOPE); }
 JSValue wjr_HTMLTableCellElement_set_scope(JSContext *ctx, JSValueConst t, JSValueConst v) { return enum_set(ctx, t, I(HTMLTableCellElement), "scope", v, false); }
 
+/* declarative shadow roots */
+static const dom_kw shadowmode_kw[] = {{"open", NULL}, {"closed", NULL}, {NULL, NULL}};
+static const dom_kw slotassign_kw[] = {{"named", NULL}, {"manual", NULL}, {NULL, NULL}};
+static const dom_enum E_SHADOW_MODE = {shadowmode_kw, "", ""};
+static const dom_enum E_SLOT_ASSIGNMENT = {slotassign_kw, "named", "named"};
+JSValue wjr_HTMLTemplateElement_get_shadowRootMode(JSContext *ctx, JSValueConst t) { return enum_get(ctx, t, I(HTMLTemplateElement), "shadowrootmode", &E_SHADOW_MODE); }
+JSValue wjr_HTMLTemplateElement_set_shadowRootMode(JSContext *ctx, JSValueConst t, JSValueConst v) { return enum_set(ctx, t, I(HTMLTemplateElement), "shadowrootmode", v, false); }
+JSValue wjr_HTMLTemplateElement_get_shadowRootSlotAssignment(JSContext *ctx, JSValueConst t) { return enum_get(ctx, t, I(HTMLTemplateElement), "shadowrootslotassignment", &E_SLOT_ASSIGNMENT); }
+JSValue wjr_HTMLTemplateElement_set_shadowRootSlotAssignment(JSContext *ctx, JSValueConst t, JSValueConst v) { return enum_set(ctx, t, I(HTMLTemplateElement), "shadowrootslotassignment", v, false); }
+
 /* forms */
 JSValue wjr_HTMLFormElement_get_autocomplete(JSContext *ctx, JSValueConst t) { return enum_get(ctx, t, I(HTMLFormElement), "autocomplete", &E_ONOFF); }
 JSValue wjr_HTMLFormElement_set_autocomplete(JSContext *ctx, JSValueConst t, JSValueConst v) { return enum_set(ctx, t, I(HTMLFormElement), "autocomplete", v, false); }
@@ -548,21 +558,7 @@ JSValue wjr_Document_get_visibilityState(JSContext *ctx, JSValueConst t)
     return JS_NewString(ctx, wr_Document_visibilityState() == wr_VisibilityState_Hidden ? "hidden" : "visible");
 }
 
-/* document.elementsFromPoint(x, y): the element hit and its ancestors (the boxes that contain it), innermost first */
-JSValue wjr_Document_elementsFromPoint(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv)
-{
-    if (!wj_this(ctx, t, I(Document))) { return JS_EXCEPTION; }
-    if (argc < 2) { return wj_throw_arity(ctx, "Document.elementsFromPoint", 2, argc); }
-    double x, y;
-    if (!wj_to_double(ctx, argv[0], &x, true) || !wj_to_double(ctx, argv[1], &y, true)) { return JS_EXCEPTION; }
-    JSValue arr = JS_NewArray(ctx);
-    if (JS_IsException(arr)) { return arr; }
-    uint32_t i = 0;
-    for (uint64_t h = wr_Document_elementFromPoint(x, y); h; h = wr_Node_parentElement(h)) {
-        if (JS_SetPropertyUint32(ctx, arr, i++, wj_wrap_node(ctx, h)) < 0) { JS_FreeValue(ctx, arr); return JS_EXCEPTION; }
-    }
-    return arr;
-}
+/* document.elementsFromPoint: runtime/shadow.c (retargeted against the document) */
 
 /* ---- Element ---- */
 

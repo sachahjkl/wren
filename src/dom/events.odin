@@ -53,6 +53,7 @@ Path_Entry :: struct {
 	window:        bool,
 	root_of_closed_tree: bool,
 	slot_in_closed_tree: bool,
+	in_shadow_tree: bool,   // the node's root was a shadow root when the path was built (no window.event there)
 }
 
 // Event.mods bits
@@ -76,6 +77,9 @@ Dispatcher :: struct {
 	// optional: the Window's listeners. The propagation path of an event whose path reaches the document goes on to
 	// the Window (HTML "get the parent" of a Document), except for `load`.
 	window:  Window_Proc,
+	// the event's target and relatedTarget once the last dispatch ended (NIL / 0 when cleared: they were in a shadow tree)
+	last_target:  base.Handle,
+	last_related: u64,
 }
 
 dispatcher_destroy :: proc(dp: ^Dispatcher) {
@@ -232,6 +236,19 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 			}
 		}
 	}
+	// DOM "clear targets", decided on the path as built (listeners moving nodes do not change it): the last struct's
+	// shadow-adjusted target or relatedTarget is in a shadow tree
+	clear_targets := false
+	if has_shadow_trees(d) {
+		for &s in path { if !s.window { s.in_shadow_tree = is_shadow_root(d, tree_root(d, s.node)) } }
+	}
+	for i := len(path) - 1; i >= 0; i -= 1 {
+		s := path[i]
+		if s.shadow_target == base.NIL_HANDLE { continue }
+		clear_targets = is_shadow_root(d, tree_root(d, s.shadow_target))
+		if s.related != 0 && get(d, base.Handle(s.related)) != nil && is_shadow_root(d, tree_root(d, base.Handle(s.related))) { clear_targets = true }
+		break
+	}
 	if e := base.pool_get(&dp.events, eh); e != nil { e.path = path } else { delete(path) }
 
 	run_node :: proc(d: ^Document, dp: ^Dispatcher, eh: base.Handle, node: base.Handle, phase: Phase, capture: bool) -> bool {
@@ -297,16 +314,10 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 	if e == nil { return true, target }
 	e.phase = .None
 	e.current_target = base.NIL_HANDLE
-	// DOM "clear targets": the target or related target as last seen is in a shadow tree
 	final_target = e.target
-	for i := len(e.path) - 1; i >= 0; i -= 1 {
-		s := e.path[i]
-		if s.shadow_target == base.NIL_HANDLE { continue }
-		clear := is_shadow_root(d, tree_root(d, s.shadow_target))
-		if s.related != 0 && get(d, base.Handle(s.related)) != nil && is_shadow_root(d, tree_root(d, base.Handle(s.related))) { clear = true }
-		if clear { final_target = base.NIL_HANDLE }
-		break
-	}
+	final_related := e.related
+	if clear_targets { final_target, final_related = base.NIL_HANDLE, 0 }
+	dp.last_target, dp.last_related = final_target, final_related
 	return !(e.cancelable && e.default_prevented), final_target
 }
 
