@@ -735,7 +735,7 @@ static int factory_set(JSContext *ctx, JSValueConst el, const char *method, cons
 
 JSValue wjr_HTMLImageElement_factory(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
 {
-    WJ_UNUSED(new_target);
+    if (JS_IsUndefined(new_target)) { return JS_ThrowTypeError(ctx, "Failed to construct 'Image': Please use the 'new' operator, this DOM object constructor cannot be called as a function."); }
     JSValue el = factory_element(ctx, "img");
     if (JS_IsException(el)) { return el; }
     static const char *names[] = { "width", "height" };
@@ -748,7 +748,7 @@ JSValue wjr_HTMLImageElement_factory(JSContext *ctx, JSValueConst new_target, in
 
 JSValue wjr_HTMLAudioElement_factory(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
 {
-    WJ_UNUSED(new_target);
+    if (JS_IsUndefined(new_target)) { return JS_ThrowTypeError(ctx, "Failed to construct 'Audio': Please use the 'new' operator, this DOM object constructor cannot be called as a function."); }
     JSValue el = factory_element(ctx, "audio");
     if (JS_IsException(el)) { return el; }
     JSValue autov = JS_NewString(ctx, "auto");
@@ -761,7 +761,7 @@ JSValue wjr_HTMLAudioElement_factory(JSContext *ctx, JSValueConst new_target, in
 
 JSValue wjr_HTMLOptionElement_factory(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
 {
-    WJ_UNUSED(new_target);
+    if (JS_IsUndefined(new_target)) { return JS_ThrowTypeError(ctx, "Failed to construct 'Option': Please use the 'new' operator, this DOM object constructor cannot be called as a function."); }
     JSValue el = factory_element(ctx, "option");
     if (JS_IsException(el)) { return el; }
     int bad = 0;

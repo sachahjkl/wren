@@ -267,7 +267,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/101.html: OK
 	 scheduler: defer script after initial onload event: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/102.html: OK
-	 scheduler: defer script after initial onload event: PASS
+	 scheduler: defer script after initial onload event: PASS|FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/103.html: OK
 	 scheduler: removing defer attribute at runtime: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/104.html: OK

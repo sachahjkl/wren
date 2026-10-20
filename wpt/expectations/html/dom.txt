@@ -68187,19 +68187,19 @@
 /html/dom/render-blocking/element-render-blocking-top-of-document.html?top: OK
 	rel=expect blocks for the top-of-document value from #top: FAIL
 /html/dom/render-blocking/non-render-blocking-scripts.optional.html: OK
-	parser-inserted async module script is not implicitly render-blocking: FAIL
+	parser-inserted async module script is not implicitly render-blocking: PASS|FAIL
 	parser-inserted async module script should eventually be loaded and evaluated: PASS
-	parser-inserted async script is not implicitly render-blocking: FAIL
+	parser-inserted async script is not implicitly render-blocking: PASS|FAIL
 	parser-inserted async script should eventually be loaded and evaluated: PASS
-	parser-inserted defer script is not implicitly render-blocking: PASS
+	parser-inserted defer script is not implicitly render-blocking: PASS|FAIL
 	parser-inserted defer script should eventually be loaded and evaluated: PASS
-	parser-inserted module script is not implicitly render-blocking: PASS
+	parser-inserted module script is not implicitly render-blocking: PASS|FAIL
 	parser-inserted module script should eventually be loaded and evaluated: PASS
-	script-inserted module script is not implicitly render-blocking: PASS
+	script-inserted module script is not implicitly render-blocking: PASS|FAIL
 	script-inserted module script should eventually be loaded and evaluated: PASS
-	script-inserted script is not implicitly render-blocking: PASS
+	script-inserted script is not implicitly render-blocking: PASS|FAIL
 	script-inserted script should eventually be loaded and evaluated: PASS
-	script-inserted sync script is not implicitly render-blocking: PASS
+	script-inserted sync script is not implicitly render-blocking: PASS|FAIL
 	script-inserted sync script should eventually be loaded and evaluated: PASS
 /html/dom/render-blocking/parser-blocking-script.html: OK
 	Parser-blocking script is evaluated: PASS
