@@ -16,6 +16,7 @@ import "core:math"
 import "core:strings"
 import "core:time"
 import "toolkit:draw"
+import "toolkit:font"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:base"
@@ -27,6 +28,17 @@ Tab_Strip :: struct {
 	drag_id:      u64,    // the tab under a drag (0: none)
 	drag_active:  bool,   // ... and it moved past the threshold
 	drag_grab:    f32,    // pointer x minus the dragged tab's left edge
+	area_key:     ui.Key, // the box holding the tabs (their keys derive from it)
+}
+
+// The tab that has the keyboard, -1 when none (by key: works before the strip is built).
+focused_tab_index :: proc(app: ^App) -> int {
+	k := ui.focus_key()
+	if k == 0 || strip.area_key == 0 { return -1 }
+	for t, i in app.tabs {
+		if ui.key_from_string(strip.area_key, fmt.tprintf("###tab_%d", t.id)) == k { return i }
+	}
+	return -1
 }
 
 strip: Tab_Strip
@@ -90,6 +102,12 @@ tab_busy :: proc(t: ^Tab) -> bool {
 	return false
 }
 
+// The loading indicator still turns (browser.tabs.spinner_max_s after the navigation started, it stands still).
+spinner_turning :: proc(t: ^Tab) -> bool {
+	if favs.cfg.spinner_max_ms <= 0 { return true }
+	return f64(time.duration_milliseconds(time.tick_since(t.hold.started))) < favs.cfg.spinner_max_ms
+}
+
 ////////////////////////////////
 // Building
 
@@ -131,6 +149,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 
 		ui.next({width = ui.px(area_w), height = ui.pct(1), axis = .X})
 		area := ui.build_box({.Clip, .Scroll_Self}, "###tabs_area")
+		strip.area_key = area.key
 		if s := ui.signal(area); s.scrolled != {} {
 			// the wheel scrolls the strip by about a tab per notch
 			strip.offset = strip_offset(strip.offset + (s.scrolled.y + s.scrolled.x) * w, n, w, area_w, app.current, false)
@@ -154,12 +173,12 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 			strip.follow_id = app.tabs[app.current].id   // no jump of the scroll while dragging
 			app.frames_requested = max(app.frames_requested, 2)
 		}
-		any_busy := false
+		any_turning := false
 		for t in app.tabs {
 			tab_refresh(app, t, tab_icon_px(app))
-			any_busy ||= tab_busy(t)
+			any_turning ||= tab_busy(t) && spinner_turning(t)
 		}
-		if any_busy { spinner_wake(app) }
+		if any_turning { spinner_wake(app) }
 
 		ui.spacer(ui.px(em * 0.3))
 		ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * 0.4})
@@ -235,8 +254,16 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		if show_close {
 			cs := math.round(em * 1.45)
 			if ui.tab_stops(false) {
-				ui.next({width = ui.px(cs), height = ui.px(cs), radius = cs * 0.5, font_size = em * 0.8})
-				c := ui.icon_button("###close", GLYPH_CLOSE)
+				// a thin cross (the icon font's is a heavy one), round hover like Chrome's
+				ui.next({width = ui.px(cs), height = ui.px(cs), radius = cs * 0.5})
+				cb: ^ui.Box
+				if ui.tags("icon_button") {
+					cb = ui.build_box({.Clickable, .Draw_Background, .Draw_Hot_Effects}, "###close")
+					cross := ui.frame_new(draw.Color)
+					cross^ = ui.color("text")
+					cb.custom, cb.custom_user = close_cross_draw, cross
+				}
+				c := ui.signal(cb)
 				tip(c, "Close tab (Ctrl+W)")
 				if c.clicked { closed = true }
 			}
@@ -263,6 +290,19 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		}
 	}
 	return .None
+}
+
+@(private = "file")
+close_cross_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	col := (^draw.Color)(user)^
+	c := draw.rect_center(b.rect)
+	arm := (b.rect.max.x - b.rect.min.x) * 0.22
+	th := max(math.round(1.25 * ui.scale()), 1)
+	for angle in ([2]f32{math.PI / 4, -math.PI / 4}) {
+		draw.push_transform(dc, draw.affine_around(draw.affine_rotate(angle), c))
+		draw.rect(dc, {{c.x - arm, c.y - th * 0.5}, {c.x + arm, c.y + th * 0.5}}, col, th * 0.5)
+		draw.pop_transform(dc)
+	}
 }
 
 @(private = "file")
@@ -309,11 +349,12 @@ tab_icon_of :: proc(app: ^App, t: ^Tab, size: f32) -> ^Tab_Icon_Draw {
 		if !waiting { d.color = ui.color("accent") }
 		ms := time.duration_milliseconds(time.tick_since(t.hold.started))
 		period: f64 = waiting ? 1600 : 900
-		d.phase = f32(math.mod(ms, period) / period)
+		d.phase = spinner_turning(t) ? f32(math.mod(ms, period) / period) : 0
 		return d
 	}
 	switch {
 	case t.kind == .Config: d.kind = .Gear
+	case t.load != nil && t.load.failed != .None: d.kind = .Globe   // an error page is not the browser's own page
 	case t.page != nil && t.page.env.location.scheme == "about": d.kind = wchrome.icon_px > 0 ? .App : .Globe; d.tex = wchrome.icon
 	case t.page != nil && t.page.env.location.scheme == "file": d.kind = .File
 	case t.icon.url != "":
@@ -334,8 +375,13 @@ tab_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	case .Favicon, .App:
 		draw.image(dc, d.tex, r)
 	case .File, .Gear:
+		// the glyph's ink centred in the icon's square (the pen is on the baseline: chrome.odin chip_icon_draw)
 		glyph := d.kind == .File ? GLYPH_FILE : GLYPH_GEAR
-		draw.text(dc, app.icons, s * 1.15, {r.min.x - s * 0.08, r.min.y - s * 0.12}, d.color, glyph)
+		size := s * 1.1
+		g := font.glyph(&app.fonts, app.icons, size, rune(glyph[0]))
+		w := g.size.x > 0 ? g.size.x : g.advance
+		pen := draw.Vec2{math.round(c.x - w * 0.5 - g.offset.x), math.round(c.y - (g.offset.y + g.size.y * 0.5))}
+		draw.text(dc, app.icons, size, pen, d.color, glyph)
 	case .Globe:
 		// a neutral globe: a ring, the equator and a meridian
 		lw := max(s * 0.09, 1)

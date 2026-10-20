@@ -52,6 +52,8 @@ TAB_PREFS := [?]config.Def{
 		description = "Icons kept decoded (one texture each, shared by the tabs of a site); the least recently shown go first."},
 	{name = "browser.tabs.spinner_fps", kind = .Float, default = {f = 30}, bounded = true, min = 1, max = 240, unit = "Hz",
 		description = "How often the loading indicator of a tab turns while the tab loads. Nothing is drawn for it once the load is over."},
+	{name = "browser.tabs.spinner_max_s", kind = .Float, default = {f = 120}, bounded = true, min = 0, max = 86_400, unit = "s",
+		description = "A tab still loading after this long (a resource that never ends: the load event waits for it) keeps its loading indicator but no longer animates it, so the browser stops drawing for it. 0 = always animate."},
 	{name = "browser.tabs.title_refresh_ms", kind = .Int, default = {i = 250}, bounded = true, min = 0, max = 60_000, unit = "ms",
 		description = "Tab titles and icons follow changes of the document (document.title, <link rel=icon> added by a script) at most this often."},
 }
@@ -66,6 +68,7 @@ Tab_Settings :: struct {
 	icon_max_bytes, icon_max_dim:     int,
 	icon_cache:                       int,
 	spinner_fps:                      f32,
+	spinner_max_ms:                   f64,
 	title_refresh_ms:                 f64,
 }
 
@@ -83,6 +86,7 @@ tab_settings_from_prefs :: proc(p: ^config.Prefs) -> Tab_Settings {
 		icon_max_dim = int(config.int_of(p, "browser.tabs.favicon_max_dimension")),
 		icon_cache = int(config.int_of(p, "browser.tabs.favicon_cache_entries")),
 		spinner_fps = f32(config.float_of(p, "browser.tabs.spinner_fps")),
+		spinner_max_ms = config.float_of(p, "browser.tabs.spinner_max_s") * 1000,
 		title_refresh_ms = f64(config.int_of(p, "browser.tabs.title_refresh_ms")),
 	}
 }
@@ -90,6 +94,7 @@ tab_settings_from_prefs :: proc(p: ^config.Prefs) -> Tab_Settings {
 // What a tab knows of its document's title and icon.
 Tab_Icon :: struct {
 	page:      rawptr,   // the page `url` and the title were read from (a new page starts over)
+	doc:       rawptr,   // ... and its document (adopting a parsed document replaces it; its mutation count starts over)
 	mutations: u64,      // its DOM's mutation count then
 	read_ms:   f64,      // when (loop clock)
 	url:       string,   // owned: the icon's URL, "" = none
@@ -308,13 +313,14 @@ tab_refresh :: proc(app: ^App, t: ^Tab, icon_px: int) {
 	}
 	if !p.render.adopted { return }   // no document yet (the parse runs on a thread)
 	loaded := p.scripts != nil && p.scripts.loaded
-	if rawptr(p) == t.icon.page && p.doc.mutations == t.icon.mutations && loaded == t.icon.loaded { return }
+	same := rawptr(p) == t.icon.page && rawptr(p.doc) == t.icon.doc
+	if same && p.doc.mutations == t.icon.mutations && loaded == t.icon.loaded { return }
 	now := f64(host.now_ns(&app.loop)) / 1e6
-	if rawptr(p) == t.icon.page && now - t.icon.read_ms < favs.cfg.title_refresh_ms {
+	if same && now - t.icon.read_ms < favs.cfg.title_refresh_ms {
 		title_wake(app, t.icon.read_ms + favs.cfg.title_refresh_ms - now)
 		return
 	}
-	t.icon.page, t.icon.mutations, t.icon.read_ms, t.icon.loaded = p, p.doc.mutations, now, loaded
+	t.icon.page, t.icon.doc, t.icon.mutations, t.icon.read_ms, t.icon.loaded = p, p.doc, p.doc.mutations, now, loaded
 
 	title := ""
 	if el := dom.find_first_by_tag(p.doc, "title"); el != base.NIL_HANDLE { title = collapse_title(dom.text_content(p.doc, el)) }

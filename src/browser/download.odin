@@ -241,8 +241,15 @@ unique_file_name :: proc(name: string, taken: proc(name: string, user: rawptr) -
 // Chrome (the page loads it again through the image cache).
 show_image_document :: proc(app: ^App, load: ^Doc_Load) {
 	t := load.tab
-	html := fmt.tprintf(`<!doctype html><html><head><meta charset="utf-8"><title>%s</title><style>html { color-scheme: dark; background: #0e0e0e; } body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; } img { display: block; max-width: 100%%; max-height: 100vh; }</style></head><body><img src="%s" alt=""></body></html>`,
-		escape_html(default_tab_title(t.url)), escape_html(t.url))
+	name := download_file_name("", t.url, "", allocator = context.temp_allocator)
+	html := fmt.tprintf(`<!doctype html><html><head><meta charset="utf-8"><title>%s</title><style>html { color-scheme: dark; background: #0e0e0e; } body { margin: 0; } img { position: absolute; top: 0; right: 0; bottom: 0; left: 0; margin: auto; display: block; max-width: 100%%; max-height: 100%%; }</style></head><body><img src="%s" alt=""></body></html>`,
+		escape_html(name), escape_html(t.url))
+	// (the page is made now, with the document right away: the image response itself made none)
+	if load.page == nil {
+		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, load.final_url, console_sink, t)
+		attach_page(app, t, load.page)
+		t.page = load.page
+	}
 	page.load_html(load.page, transmute([]byte)html)
 	set_status(t, fmt.tprintf("HTTP %d, image", load.status))
 }
@@ -670,7 +677,7 @@ downloads_menu :: proc(app: ^App) {
 				if d.total > 0 { label = fmt.tprintf("Cancel %s (%d %%)###dl%d", short_name(d.name), int(d.received * 100 / max(d.total, 1)), d.id) } else { label = fmt.tprintf("Cancel %s (%s)###dl%d", short_name(d.name), human_bytes(d.received), d.id) }
 				if ui.menu_item(label).clicked { download_cancel(d) }
 			case .Saving:
-				_ = ui.menu_item(fmt.tprintf("Saving %s...###dl%d", short_name(d.name), d.id), enabled = false)
+				_ = ui.menu_item(fmt.tprintf("Saving %s…###dl%d", short_name(d.name), d.id), enabled = false)
 			case .Done:
 				if ui.menu_item(fmt.tprintf("Show %s in its folder###dl%d", short_name(filepath.base(d.path)), d.id)).clicked { show_in_folder(d.path) }
 			case .Failed:

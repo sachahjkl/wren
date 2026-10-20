@@ -77,6 +77,22 @@ HOME_TEMPLATE :: `<!doctype html>
   .card .where { color: #4f5a78; font-size: 13px; margin-top: 8px; }
   .foot { text-align: center; color: #4f5a78; font-size: 13px; padding: 36px 20px 48px; }
   .foot b { color: #8993ad; }
+  @media (prefers-color-scheme: light) {
+    html { background-color: #f5f6fa; }
+    body { color: #2b3245; }
+    .logo { color: #1d2333; }
+    .logo .w { color: #d98200; }
+    .tag { color: #5d6680; }
+    .hint { background-color: #ffffff; border-color: #dce1ec; color: #6b7590; }
+    .hint b { color: #2b3245; }
+    .card { background-color: #ffffff; border-color: #e0e4ee; color: #2b3245; }
+    .card:hover { background-color: #fff8ec; border-color: #d98200; }
+    .card h3 { color: #b86e00; }
+    .card p { color: #5d6680; }
+    .card .where { color: #8a93aa; }
+    .foot { color: #8a93aa; }
+    .foot b { color: #5d6680; }
+  }
 </style>
 </head>
 <body>

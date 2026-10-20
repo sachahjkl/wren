@@ -82,7 +82,7 @@ try {
         [SH]::PostMessage($h, 0x0101, [IntPtr]$code, [IntPtr]0xC0000001) | Out-Null   # WM_KEYUP
         Start-Sleep -Milliseconds $ClickPauseMs
     }
-    # -Actions "drag:x1,y1-x2,y2; rclick:x,y; dclick:x,y; tclick:x,y; click:x,y; key:Ctrl+F; type:some text; wait:ms; shot:path.png;
+    # -Actions "drag:x1,y1-x2,y2; rclick:x,y; midclick:x,y; xback:x,y; dclick:x,y; tclick:x,y; click:x,y; key:Ctrl+F; type:some text; wait:ms; shot:path.png;
     #          hover:x,y; hovershot:path.png" (hover: the real pointer; hovershot: a capture that leaves it where it is)
     # (window-relative pixels like -Click; key: real keyboard input, so modifiers count: Ctrl+Shift+T, Shift+F10, Menu, F6...)
     $named = @{ PageUp = 0x21; PageDown = 0x22; End = 0x23; Home = 0x24; Left = 0x25; Up = 0x26; Right = 0x27; Down = 0x28; Space = 0x20; Tab = 0x09;
@@ -100,7 +100,8 @@ try {
         Start-Sleep -Milliseconds 60
         for ($i = 0; $i -lt $count; $i++) {
             [SH]::PostMessage($h, $down, [IntPtr]$btn, $lp) | Out-Null; Start-Sleep -Milliseconds 40
-            [SH]::PostMessage($h, $up, [IntPtr]::Zero, $lp) | Out-Null; Start-Sleep -Milliseconds 60
+            $upw = if ($down -eq 0x020B) { [IntPtr]($btn -band 0xFFFF0000) } else { [IntPtr]::Zero }   # (an X button names itself in the release too)
+            [SH]::PostMessage($h, $up, $upw, $lp) | Out-Null; Start-Sleep -Milliseconds 60
         }
     }
     foreach ($a in (($Actions -join ';') -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
@@ -110,6 +111,8 @@ try {
             'dclick' { $xy = $arg -split ','; Press 0x0201 0x0202 1 $xy[0] $xy[1] 2 }
             'tclick' { $xy = $arg -split ','; Press 0x0201 0x0202 1 $xy[0] $xy[1] 3 }
             'rclick' { $xy = $arg -split ','; Press 0x0204 0x0205 2 $xy[0] $xy[1] 1 }
+            'midclick' { $xy = $arg -split ','; Press 0x0207 0x0208 0x10 $xy[0] $xy[1] 1 }   # the middle button (closes a tab)
+            'xback' { $xy = $arg -split ','; Press 0x020B 0x020C 0x10020 $xy[0] $xy[1] 1 }   # the mouse's back button (XBUTTON1)
             'drag' {
                 $ends = $arg -split '-'; $p1 = $ends[0] -split ','; $p2 = $ends[1] -split ','
                 $lp = ClientLp $p1[0] $p1[1]

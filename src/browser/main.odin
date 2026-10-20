@@ -427,6 +427,13 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			load.mime = strings.clone(http.mime_essence(r.mime))
 			if cs, ok := http.mime_param(r.mime, "charset"); ok { load.charset = strings.clone(cs) }
 		}
+		set_status(t, fmt.tprintf("HTTP %d", r.status))
+		shown := load.view_source ? strings.concatenate({VIEW_SOURCE, r.url}, context.temp_allocator) : r.url
+		delete(t.url)
+		t.url = strings.clone(shown)
+		if current_tab(app) == t { ui.field_set(&app.address, shown) }
+		// an image is shown by a document the browser writes once the image is in (download.odin show_image_document)
+		if load.action == .Image && !load.view_source { return }
 		// the document exists from here on, with the origin of its *final* URL
 		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, r.url, console_sink, t)
 		attach_page(app, t, load.page)
@@ -435,11 +442,6 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		ro_h := http.get_all(r.headers, "content-security-policy-report-only")
 		rp, _ := http.get_header(r.headers, "referrer-policy")
 		page.apply_response_headers(load.page, csp_h, ro_h, rp)
-		set_status(t, fmt.tprintf("HTTP %d", r.status))
-		shown := load.view_source ? strings.concatenate({VIEW_SOURCE, r.url}, context.temp_allocator) : r.url
-		delete(t.url)
-		t.url = strings.clone(shown)
-		if current_tab(app) == t { ui.field_set(&app.address, shown) }
 	case .Data:
 	case .Done:
 		document_loaded(app, load, ev.data)
@@ -757,6 +759,8 @@ build_ui :: proc(app: ^App) {
 		}
 	}
 	context_menus_build(app)
+	// notices go over the page, not over the title bar's window buttons
+	if app.page_rect.max.y > app.page_rect.min.y { ui.set_toast_area(app.page_rect) }
 	ui.toasts_build()
 }
 
@@ -1102,6 +1106,7 @@ main :: proc() {
 	favicons_init(app)   // favicon.odin
 	downloads_init(app)   // download.odin
 	drop_files_init(app)   // local_paths.odin
+	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
 	hud_init(app)
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
@@ -1142,6 +1147,7 @@ main :: proc() {
 	hud_destroy(app)
 	smooth_shutdown(app)
 	drop_files_destroy(app)
+	app_commands_destroy()
 	window_chrome_destroy(app)
 	pacer_destroy(app)
 	font.set_color_ready_callback(&app.fonts, nil, nil)   // the color glyph thread no longer posts to the loop

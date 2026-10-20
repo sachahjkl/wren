@@ -152,7 +152,9 @@ address_row :: proc(app: ^App, t: ^Tab) {
 		field := ui.Style_Mod{width = ui.pct(1), height = ui.pct(1), radius = em * 0.5}
 		if chip_w > 0 { field.text_pad = chip_w + inset + em * 0.5 }
 		// not being edited: the address shows from its start (scheme and host), as in Chrome, not scrolled to its end
-		if ui.focused_name() != "address" {
+		// (by key: the focused box's name is last frame's, its text may be gone with that frame's memory)
+		address_key = ui.key_from_string(ui.parent_box().key, "###address")
+		if ui.focus_key() != address_key {
 			app.address.cursor, app.address.mark, app.address.scroll_x = 0, 0, 0
 		}
 		ui.next(field)
@@ -222,6 +224,21 @@ page_area_focus :: proc(app: ^App, t: ^Tab, pb: ^ui.Box) {
 
 // Set by the page's context menu: open the page information popup of the security chip.
 page_info_request: bool
+
+// Key of the address field (set when it is built): whether it has the keyboard is asked by key, never by
+// ui.focused_name(), which reads the name of a box of the last frame (freed when the build starts).
+address_key: ui.Key
+
+// Set by Alt+F / Alt+E: open the main menu.
+main_menu_request: bool
+
+// Moves the current tab one place left or right (Ctrl+Shift+Page Up / Page Down).
+tab_move_current :: proc(app: ^App, delta: int) {
+	to := app.current + delta
+	if to < 0 || to >= len(app.tabs) { return }
+	app.current = list_move(app.tabs[:], app.current, to, app.current)
+	app.frames_requested = max(app.frames_requested, 2)
+}
 
 ////////////////////////////////
 // Security chip and page information
@@ -431,7 +448,7 @@ page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 			p := t.page
 			e := &p.env
 			shown := t.url
-			if len(shown) > 38 { shown = strings.concatenate({shown[:35], "..."}, context.temp_allocator) }
+			if len(shown) > 38 { shown = strings.concatenate({shown[:35], "…"}, context.temp_allocator) }
 			info_row("Address", shown, "addr", w)
 			if e.location.scheme != "about" {
 				info_row("Origin", url.origin_serialize(e.origin, context.temp_allocator), "origin", w)
@@ -482,6 +499,11 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 	b := ui.custom("###burger", burger_draw, d, {.Clickable, .Draw_Background, .Draw_Hot_Effects})
 	sig := ui.signal(b)
 	key := ui.key_from_string(b.parent.key, "###main_menu")
+	if main_menu_request {
+		// Alt+F / Alt+E: opened from the keyboard, its first item active
+		main_menu_request = false
+		if !ui.ctx_menu_is_open(key) { ui.ctx_menu_open_rect(key, b.rect, b.key, from_keyboard = true) }
+	}
 	if sig.clicked {
 		if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else {
 			ui.ctx_menu_open_rect(key, b.rect, b.key)
@@ -507,10 +529,10 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			if ui.menu_item("Zoom out", "Ctrl+Minus").clicked { zoom_step(app, t, -1) }
 			if ui.menu_item("Actual size", "Ctrl+0", enabled = zoom_percent(t) != 100).clicked { zoom_set(app, t, 1) }
 		}
-		if ui.menu_item("Find in page...", "Ctrl+F", enabled = web).clicked { find_open(app) }
-		if ui.menu_item("Save page as...", "Ctrl+S", enabled = web && t.page != nil).clicked { save_page(app, t) }
+		if ui.menu_item("Find in page…", "Ctrl+F", enabled = web).clicked { find_open(app) }
+		if ui.menu_item("Save page as…", "Ctrl+S", enabled = web && t.page != nil).clicked { save_page(app, t) }
 		if ui.menu_item("View page source", "Ctrl+U", enabled = web && !strings.has_prefix(t.url, VIEW_SOURCE)).clicked { view_source(app, t) }
-		_ = ui.menu_item("Print...", "Ctrl+P", enabled = false)   // not available (print.odin)
+		_ = ui.menu_item("Print…", "Ctrl+P", enabled = false)   // not available (print.odin)
 		downloads_menu(app)   // download.odin
 		ui.menu_separator()
 		if ui.menu_submenu("View###view_sub") {
@@ -547,7 +569,7 @@ chrome_shortcuts :: proc(app: ^App) {
 	case ui.key_press(.L, ctrl), ui.key_press(.D, {.Alt}): app.focus_address = true
 	case ui.key_press(.F6), ui.key_press(.F6, {.Shift}):
 		// address bar <-> page
-		if ui.focus_key() != 0 && ui.focused_name() == "address" { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { app.focus_address = true }
+		if ui.focus_key() != 0 && ui.focus_key() == address_key { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { app.focus_address = true }
 	case ui.key_press(.F5), ui.key_press(.R, ctrl): if t != nil { reload(app, t) }
 	case ui.key_press(.F5, ctrl), ui.key_press(.R, cs): if t != nil { reload(app, t) }   // no HTTP cache yet: the same reload
 	case ui.key_press(.Left, {.Alt}): if t != nil { go_history(app, t, -1) }
@@ -555,6 +577,9 @@ chrome_shortcuts :: proc(app: ^App) {
 	case ui.key_press(.Home, {.Alt}): if t != nil { navigate(app, t, app.cfg.homepage) }
 	case ui.key_press(.Tab, ctrl), ui.key_press(.Page_Down, ctrl): if n > 0 { tab_select(app, (app.current + 1) % n) }
 	case ui.key_press(.Tab, cs), ui.key_press(.Page_Up, ctrl): if n > 0 { tab_select(app, (app.current + n - 1) % n) }
+	case ui.key_press(.Page_Down, cs): tab_move_current(app, +1)
+	case ui.key_press(.Page_Up, cs): tab_move_current(app, -1)
+	case ui.key_press(.F, {.Alt}), ui.key_press(.E, {.Alt}): main_menu_request = true
 	case ui.key_press(.F, ctrl), ui.key_press(.F3):
 		if t != nil && t.kind == .Config { app.config_view.focus_search = true } else if t != nil && t.kind == .Web { if find.open { find.focus = true } else { find_open(app) } }
 	case ui.key_press(.U, ctrl): view_source(app, t)
@@ -572,12 +597,10 @@ chrome_shortcuts :: proc(app: ^App) {
 	case hud.panel_open && ui.focus_key() == 0 && ui.key_press(.Escape): hud.panel_open = false
 	case ui.key_press(.Menu), ui.key_press(.F10, {.Shift}):
 		// the menu of what has the keyboard: a tab of the strip, else the page (the address bar handles its own)
-		name := ui.focused_name()
-		if strings.has_prefix(name, "tab_") {
+		// (by key: before the build, the focused box's name is last frame's, gone with that frame's memory)
+		if index := focused_tab_index(app); index >= 0 {
 			if b := ui.box_from_key(ui.focus_key()); b != nil {
-				id: u64
-				for c in name[len("tab_"):] { id = id * 10 + u64(c - '0') }
-				for x, index in app.tabs { if x.id == id { tab_context_menu(app, index, {b.rect.min.x, b.rect.max.y}, keyboard = true) } }
+				tab_context_menu(app, index, {b.rect.min.x, b.rect.max.y}, keyboard = true)
 			}
 		} else if t != nil && t.kind == .Web && page_has_keyboard(app) {
 			page_context_menu_keyboard(app, t)

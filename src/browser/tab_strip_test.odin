@@ -36,6 +36,17 @@ dragged_tab_slots :: proc(t: ^testing.T) {
 	testing.expect_value(t, drag_slot(10, 0, 5), 0)
 }
 
+// The browser keys of keyboards (WM_APPCOMMAND).
+@(test)
+browser_keys :: proc(t: ^testing.T) {
+	testing.expect_value(t, browser_command_of_appcommand(1), Browser_Command.Back)
+	testing.expect_value(t, browser_command_of_appcommand(2), Browser_Command.Forward)
+	testing.expect_value(t, browser_command_of_appcommand(3), Browser_Command.Refresh)
+	testing.expect_value(t, browser_command_of_appcommand(4), Browser_Command.Stop)
+	testing.expect_value(t, browser_command_of_appcommand(7), Browser_Command.Home)
+	testing.expect_value(t, browser_command_of_appcommand(8), Browser_Command.None)   // volume mute: not the browser's
+}
+
 // Reordering keeps track of the current tab.
 @(test)
 tab_order_moves :: proc(t: ^testing.T) {
