@@ -253,6 +253,7 @@ mutation_hook :: proc(user: rawptr, d: ^dom.Document, e: ^dom.Journal_Entry) {
 	case .Attribute: kind = 0
 	case .Text: kind = 1
 	case .Insert, .Remove: kind = 2; target = e.parent
+	case .Reslot: return   // not a mutation of the node tree (dom.journal_record does not report it)
 	}
 	if target == base.NIL_HANDLE { return }
 	// the interested observers (DOM "queue a mutation record"): registrations on the target, and with `subtree` on

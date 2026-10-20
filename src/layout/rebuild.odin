@@ -210,6 +210,7 @@ makes_no_box :: proc(c: ^Ctx, h: base.Handle) -> bool {
 // The element is in the document (its ancestors reach the document node).
 @(private)
 attached :: proc(c: ^Ctx, h: base.Handle) -> bool {
+	if c.flat { return dom.in_flat_tree(c.d, h) }
 	for cur := h; cur != base.NIL_HANDLE; {
 		n := dom.get(c.d, cur)
 		if n == nil { return false }
@@ -259,7 +260,10 @@ plan_children :: proc(c: ^Ctx, touched: []base.Handle, plans: ^[dynamic]Child_Pl
 			if _, ok := child_container(l, pl.old_p); !ok || !simple_child_box(l, pl.old) { return false }
 		}
 		if attached(c, h) && !makes_no_box(c, h) && !hidden_now(c, h) {
-			pn := dom.get(c.d, h).parent
+			pn := up(c, h)
+			// a slotted node or the top of a shadow tree: its siblings in the flat tree are not its siblings in the node
+			// tree, which the one-by-one placement reads (box_before): the container is rebuilt whole
+			if c.flat && pn != dom.get(c.d, h).parent { return false }
 			pl.new_p = live_box(l, pn)
 			mode, ok := child_container(l, pl.new_p)
 			if !ok || !simple_child_style(c, h, mode) { return false }

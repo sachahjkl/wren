@@ -116,6 +116,28 @@ new_box :: proc(c: ^Ctx, kind: Box_Kind, cs: ^style.Computed, node: base.Handle,
 @(private)
 add_item :: proc(c: ^Ctx, it: Inline_Item) { append(&c.l.inline_items, it) }
 
+// Boxes are made from the flat tree (CSS Scoping §2.2): a host's children are its shadow root's, a slot's its assigned
+// nodes. Without shadow trees (c.flat false) that is the node tree, read directly.
+@(private)
+kid_first :: #force_inline proc(c: ^Ctx, h: base.Handle, n: ^dom.Node) -> base.Handle { return c.flat ? dom.flat_first_child(c.d, h) : n.first_child }
+@(private)
+kid_last :: #force_inline proc(c: ^Ctx, h: base.Handle, n: ^dom.Node) -> base.Handle { return c.flat ? dom.flat_last_child(c.d, h) : n.last_child }
+@(private)
+kid_next :: #force_inline proc(c: ^Ctx, h: base.Handle, n: ^dom.Node) -> base.Handle { return c.flat ? dom.flat_next(c.d, h) : n.next }
+@(private)
+kid_prev :: #force_inline proc(c: ^Ctx, h: base.Handle, n: ^dom.Node) -> base.Handle { return c.flat ? dom.flat_prev(c.d, h) : n.prev }
+
+// The parent a box of `h` hangs from: the flat parent; for what layout bookkeeping starts from (a shadow root that got
+// children), its host.
+@(private)
+up :: proc(c: ^Ctx, h: base.Handle) -> base.Handle {
+	n := dom.get(c.d, h)
+	if n == nil { return base.NIL_HANDLE }
+	if !c.flat { return n.parent }
+	if n.is_shadow { return n.shadow }
+	return dom.flat_parent(c.d, h)
+}
+
 // Applies the per-element flags that do not depend on where the box sits. `sum`: the summary of the box's style
 // (style_sum.odin), nil: made from the style here.
 @(private)
@@ -150,7 +172,7 @@ has_block_child :: proc(c: ^Ctx, h: base.Handle, cs: ^style.Computed, depth: i32
 	// direct children without allocating; display: contents children are expanded with a stack
 	stack: [dynamic]base.Handle
 	n := dom.get(c.d, h)
-	ch := n.first_child
+	ch := kid_first(c, h, n)
 	for {
 		if ch == base.NIL_HANDLE {
 			if len(stack) == 0 { return false }
@@ -158,7 +180,7 @@ has_block_child :: proc(c: ^Ctx, h: base.Handle, cs: ^style.Computed, depth: i32
 		}
 		xn := dom.get(c.d, ch)
 		if xn == nil { ch = base.NIL_HANDLE; continue }
-		next := xn.next
+		next := kid_next(c, ch, xn)
 		if xn.kind == .Element {
 			display: style.Display
 			position: style.Position
@@ -174,7 +196,7 @@ has_block_child :: proc(c: ^Ctx, h: base.Handle, cs: ^style.Computed, depth: i32
 				if display == .Contents {
 					if stack == nil { stack = make([dynamic]base.Handle, 0, 8, context.temp_allocator) }
 					if next != base.NIL_HANDLE { append(&stack, next) }
-					next = xn.first_child
+					next = kid_first(c, ch, xn)
 				} else if position != .Absolute && position != .Fixed && float == .None {
 					lv := level_of(display)
 					if lv == .Block || lv == .Table_Internal { return true }
@@ -199,7 +221,7 @@ push_children :: proc(c: ^Ctx, stack: ^[dynamic]Frame, h: base.Handle, cs: ^styl
 		g.kind, g.node, g.pcs = .Pseudo, h, cs.after
 		append(stack, g)
 	}
-	for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(c.d, ch).prev {
+	for ch := kid_last(c, h, n); ch != base.NIL_HANDLE; ch = kid_prev(c, ch, dom.get(c.d, ch)) {
 		g := f
 		g.kind, g.node = .Visit, ch
 		append(stack, g)
@@ -366,8 +388,7 @@ group_items :: proc(c: ^Ctx, start := 0) {
 
 @(private)
 text_owner_cs :: proc(c: ^Ctx, h: base.Handle) -> (^style.Computed, base.Handle) {
-	n := dom.get(c.d, h)
-	for p := n.parent; p != base.NIL_HANDLE; p = dom.get(c.d, p).parent {
+	for p := up(c, h); p != base.NIL_HANDLE; p = up(c, p) {
 		if c.sums != nil {
 			if sum_of(c, p) != nil { return c.st.by_node[base.handle_index(p)], p }
 			continue
@@ -802,8 +823,7 @@ make_marker :: proc(c: ^Ctx, bi: i32, h: base.Handle, cf: Frame) {
 
 @(private)
 list_ordinal :: proc(c: ^Ctx, h: base.Handle) -> i32 {
-	n := dom.get(c.d, h)
-	parent := n.parent
+	parent := up(c, h)
 	ctr, ok := c.counters[parent]
 	if !ok {
 		ctr = {1, 1}
@@ -813,7 +833,7 @@ list_ordinal :: proc(c: ^Ctx, h: base.Handle) -> i32 {
 			if reversed {
 				ctr.step = -1
 				count: i32
-				for ch := pn.first_child; ch != base.NIL_HANDLE; ch = dom.get(c.d, ch).next {
+				for ch := kid_first(c, parent, pn); ch != base.NIL_HANDLE; ch = kid_next(c, ch, dom.get(c.d, ch)) {
 					if s := style.style_of(c.st, ch); s != nil && s.display == .List_Item { count += 1 }
 				}
 				ctr.next = count

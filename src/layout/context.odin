@@ -34,6 +34,7 @@ Ctx :: struct {
 	lb_depth: int,
 	grid:     ^Grid_Pass,               // grid layout state of the pass (grid.odin), made on first use
 	rebuilding: i32,                    // the box whose content a partial rebuild is making again (NONE: none)
+	flat:     bool,                     // the document has shadow trees: boxes follow the flat tree (build.odin: kid_*)
 	inc:      ^Inc_Pass,                // an incremental pass: what it tracks while laying out (nil: a full pass)
 	pre:      ^Pre_Pass,                // inline formatting contexts laid out ahead on the layout threads (parallel.odin)
 	// display list made on the layout threads (parallel.odin): a worker's items go to `dl_out` (nil: Layout.items), and

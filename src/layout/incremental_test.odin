@@ -636,3 +636,73 @@ inc_restyle_classes :: proc(t: ^testing.T) {
 	testing.expectf(t, f.partial_styles - before >= 55, "%d of 60 restyles partial", f.partial_styles - before)
 	testing.expect(t, f.l.passes[.Incremental] > 40)
 }
+
+// Shadow trees: boxes follow the flat tree (slotted nodes where their slot is), and changes inside shadow trees, slot
+// assignments and attachShadow keep the incremental layout equal to a full one.
+@(test)
+inc_shadow_trees :: proc(t: ^testing.T) {
+	f := ix_load(`<!doctype html><body><div id=host><template shadowrootmode=open><style>.big { height: 50px }</style>
+		<header id=hd style="height: 20px">head</header><slot name=a></slot><div id=mid style="height: 10px">mid</div><slot></slot></template>
+		<p id=pa slot=a>slotted a</p><p id=pd>default</p><p id=pu slot=nowhere>unassigned</p></div><p id=after>after</p></body>`)
+	defer ix_unload(f)
+	f.set.inc_max_ratio = 1   // a small document: any change is a large part of it
+	ix_frame(f)
+	sid :: proc(f: ^Ix, id: string) -> base.Handle {
+		for h := f.doc.root; h != base.NIL_HANDLE; h = dom.next_shadow_including(f.doc, h, f.doc.root) {
+			if v, ok := dom.get_attribute(f.doc, h, "id"); ok && v == id { return h }
+		}
+		return base.NIL_HANDLE
+	}
+	y_of :: proc(f: ^Ix, id: string) -> f32 {
+		bi := box_index(&f.l, sid(f, id))
+		if bi == NONE { return -1 }
+		return f.l.boxes[bi].pos.y
+	}
+	// order on screen: header, slotted a, mid, default; the unassigned one has no box
+	testing.expect(t, y_of(f, "hd") < y_of(f, "pa") && y_of(f, "pa") < y_of(f, "mid") && y_of(f, "mid") < y_of(f, "pd"))
+	testing.expect_value(t, box_index(&f.l, sid(f, "pu")), NONE)
+	ix_check(t, f, .None)
+
+	mid := sid(f, "mid")
+	dom.set_attribute(f.doc, mid, "class", "big")
+	ix_frame(f)
+	ix_check(t, f)
+	dom.set_text_content(f.doc, sid(f, "hd"), "a longer heading")
+	ix_frame(f)
+	ix_check(t, f)
+	// reassignment: pu to the default slot, pa away
+	dom.remove_attribute(f.doc, sid(f, "pu"), "slot")
+	ix_frame(f)
+	ix_check(t, f)
+	testing.expect(t, box_index(&f.l, sid(f, "pu")) != NONE)
+	dom.set_attribute(f.doc, sid(f, "pa"), "slot", "zzz")
+	ix_frame(f)
+	ix_check(t, f)
+	testing.expect_value(t, box_index(&f.l, sid(f, "pa")), NONE)
+	// insertions into the host and into the shadow root
+	host := sid(f, "host")
+	np := dom.create_element(f.doc, "p")
+	dom.append_child(f.doc, np, dom.create_text(f.doc, "new light"))
+	dom.append_child(f.doc, host, np)
+	ix_frame(f)
+	ix_check(t, f)
+	root := dom.shadow_root_of(f.doc, host)
+	nd := dom.create_element(f.doc, "div")
+	dom.append_child(f.doc, nd, dom.create_text(f.doc, "new shadow"))
+	dom.insert_before(f.doc, root, nd, dom.get(f.doc, root).first_child)
+	ix_frame(f)
+	ix_check(t, f)
+	// attachShadow on a rendered element hides its children
+	after := sid(f, "after")
+	r2, _ := dom.attach_shadow(f.doc, after, {mode = .Open})
+	_ = r2
+	ix_frame(f)
+	ix_check(t, f, .None)
+	testing.expect(t, f.l.inc.fallback == "" || f.l.last_pass == .Incremental || f.l.last_pass == .Full)
+	sp := dom.create_element(f.doc, "span")
+	dom.append_child(f.doc, sp, dom.create_text(f.doc, "shadow text"))
+	dom.append_child(f.doc, r2, sp)
+	ix_frame(f)
+	ix_check(t, f, .None)
+	testing.expect(t, box_index(&f.l, sp) != NONE)
+}

@@ -28,6 +28,7 @@ ctx_make :: proc(l: ^Layout, input: Input, marker: ^u8) -> Ctx {
 		scale = input.scale, vp = input.viewport, sa = virtual.arena_allocator(&l.arena), last_fi = -1,
 		stack_base = uintptr(marker), stack_limit = l.settings.max_stack_bytes, rebuilding = NONE,
 	}
+	c.flat = dom.has_shadow_trees(input.doc)
 	c.font_cache = make(map[Font_Key]i32, 64, context.temp_allocator)
 	c.anon_cs = make(map[Anon_Key]^style.Computed, 16, context.temp_allocator)
 	c.counters = make(map[base.Handle]List_Counter, 16, context.temp_allocator)

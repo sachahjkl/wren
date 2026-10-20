@@ -177,7 +177,7 @@ hidden_now :: proc(c: ^Ctx, h: base.Handle) -> bool {
 		if n.kind == .Element {
 			if cs := style.style_of(c.st, cur); cs == nil || cs.display == .None { return true }
 		}
-		cur = n.parent
+		cur = up(c, cur)
 	}
 	return false
 }
@@ -210,16 +210,13 @@ add_target :: proc(c: ^Ctx, h: base.Handle, roots, dirty: ^[dynamic]i32) -> bool
 				return true   // inside display: none: nothing to lay out
 			}
 		}
-		cur = n.parent
+		cur = up(c, cur)
 	}
 	return true   // detached: nothing rendered
 }
 
 @(private)
-parent_of :: proc(c: ^Ctx, h: base.Handle) -> base.Handle {
-	n := dom.get(c.d, h)
-	return n != nil ? n.parent : base.NIL_HANDLE
-}
+parent_of :: proc(c: ^Ctx, h: base.Handle) -> base.Handle { return up(c, h) }
 
 // Attributes read when building boxes (a change rebuilds the element's box), and those read for the natural size of a
 // replaced element (it is laid out again). Others reach layout through the styles only.
@@ -292,6 +289,9 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 			append(&parents, e.parent)
 		case .Text:
 			if e.parent != base.NIL_HANDLE { append(&containers, e.parent) }
+		case .Reslot:
+			// the flat children of a slot or a new host changed; or a node left its place under a slot or a host
+			append(&containers, e.parent != base.NIL_HANDLE ? e.parent : e.node)
 		case .Attribute:
 			switch attr_kind(e.name) {
 			case .None:
@@ -452,9 +452,8 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 touched_ancestor :: proc(c: ^Ctx, h: base.Handle, touched: map[base.Handle]bool) -> base.Handle {
 	for cur := h; cur != base.NIL_HANDLE; {
 		if cur in touched { return cur }
-		n := dom.get(c.d, cur)
-		if n == nil { return base.NIL_HANDLE }
-		cur = n.parent
+		if dom.get(c.d, cur) == nil { return base.NIL_HANDLE }
+		cur = up(c, cur)
 	}
 	return base.NIL_HANDLE
 }

@@ -26,12 +26,31 @@ Text_Pos :: struct {
 ////////////////////////////////
 // Document order
 
+// Selection positions live in the flat tree (what is on screen: a selection may start in a document and end in a
+// shadow tree): parents, siblings and child indexes are the flat tree's. Without shadow trees, the node tree's.
+@(private = "file")
+fparent :: proc(d: ^dom.Document, h: base.Handle) -> base.Handle {
+	n := dom.get(d, h)
+	if n == nil { return base.NIL_HANDLE }
+	if !dom.has_shadow_trees(d) { return n.parent }
+	if p := dom.flat_parent(d, h); p != base.NIL_HANDLE { return p }
+	return dom.parent_or_host(d, h)   // not in the flat tree: its tree (nothing of it is shown)
+}
+@(private = "file")
+fnext :: proc(d: ^dom.Document, h: base.Handle) -> base.Handle { return dom.has_shadow_trees(d) ? dom.flat_next(d, h) : dom.get(d, h).next }
+@(private = "file")
+fprev :: proc(d: ^dom.Document, h: base.Handle) -> base.Handle { return dom.has_shadow_trees(d) ? dom.flat_prev(d, h) : dom.get(d, h).prev }
+@(private = "file")
+ffirst :: proc(d: ^dom.Document, h: base.Handle) -> base.Handle { return dom.has_shadow_trees(d) ? dom.flat_first_child(d, h) : dom.get(d, h).first_child }
+@(private = "file")
+flast :: proc(d: ^dom.Document, h: base.Handle) -> base.Handle { return dom.has_shadow_trees(d) ? dom.flat_last_child(d, h) : dom.get(d, h).last_child }
+
 @(private = "file")
 child_index :: proc(d: ^dom.Document, h: base.Handle) -> int {
 	n := dom.get(d, h)
-	if n == nil || n.parent == base.NIL_HANDLE { return 0 }
+	if n == nil || fparent(d, h) == base.NIL_HANDLE { return 0 }
 	i := 0
-	for c := n.prev; c != base.NIL_HANDLE; c = dom.get(d, c).prev { i += 1 }
+	for c := fprev(d, h); c != base.NIL_HANDLE; c = fprev(d, c) { i += 1 }
 	return i
 }
 
@@ -39,7 +58,7 @@ child_count :: proc(d: ^dom.Document, h: base.Handle) -> int {
 	n := dom.get(d, h)
 	if n == nil { return 0 }
 	i := 0
-	for c := n.first_child; c != base.NIL_HANDLE; c = dom.get(d, c).next { i += 1 }
+	for c := ffirst(d, h); c != base.NIL_HANDLE; c = fnext(d, c) { i += 1 }
 	return i
 }
 
@@ -53,6 +72,7 @@ node_length :: proc(d: ^dom.Document, h: base.Handle) -> int {
 
 // Is `h` in the tree of the document (not detached, not destroyed)?
 in_document :: proc(d: ^dom.Document, h: base.Handle) -> bool {
+	if dom.has_shadow_trees(d) { return dom.in_flat_tree(d, h) }
 	for cur := h; cur != base.NIL_HANDLE; {
 		if cur == d.root { return true }
 		n := dom.get(d, cur)
@@ -69,9 +89,8 @@ node_compare :: proc(d: ^dom.Document, a, b: base.Handle) -> int {
 		out := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
 		for cur := h; cur != base.NIL_HANDLE; {
 			append(&out, cur)
-			n := dom.get(d, cur)
-			if n == nil { break }
-			cur = n.parent
+			if dom.get(d, cur) == nil { break }
+			cur = fparent(d, cur)
 		}
 		slice.reverse(out[:])
 		return out
@@ -83,7 +102,7 @@ node_compare :: proc(d: ^dom.Document, a, b: base.Handle) -> int {
 	if i == len(cb) { return 1 }
 	if i == 0 { return 0 }          // different trees: no order
 	// siblings under the common ancestor
-	for c := ca[i]; c != base.NIL_HANDLE; c = dom.get(d, c).next { if c == cb[i] { return -1 } }
+	for c := ca[i]; c != base.NIL_HANDLE; c = fnext(d, c) { if c == cb[i] { return -1 } }
 	return 1
 }
 
@@ -94,11 +113,11 @@ pos_compare :: proc(d: ^dom.Document, a, b: Text_Pos) -> int {
 	in_node :: proc(d: ^dom.Document, outer: Text_Pos, inner: base.Handle) -> (int, bool) {
 		child := inner
 		for {
-			n := dom.get(d, child)
-			if n == nil { return 0, false }
-			if n.parent == outer.node { break }
-			if n.parent == base.NIL_HANDLE { return 0, false }
-			child = n.parent
+			if dom.get(d, child) == nil { return 0, false }
+			par := fparent(d, child)
+			if par == outer.node { break }
+			if par == base.NIL_HANDLE { return 0, false }
+			child = par
 		}
 		return child_index(d, child) < outer.offset ? 1 : -1, true   // 1: outer is after inner
 	}
@@ -109,9 +128,8 @@ pos_compare :: proc(d: ^dom.Document, a, b: Text_Pos) -> int {
 
 // Before / after a node, in its parent.
 pos_before :: proc(d: ^dom.Document, h: base.Handle) -> Text_Pos {
-	n := dom.get(d, h)
-	if n == nil { return {} }
-	return {n.parent, child_index(d, h)}
+	if dom.get(d, h) == nil { return {} }
+	return {fparent(d, h), child_index(d, h)}
 }
 
 pos_after :: proc(d: ^dom.Document, h: base.Handle) -> Text_Pos {
@@ -167,12 +185,12 @@ select_mode :: proc(d: ^dom.Document, st: ^style.Styled, el: base.Handle, cache:
 				case .None: mode = .None
 				case .All: mode = .All
 				case .Text: mode = .Text
-				case: cur = n.parent; continue
+				case: cur = fparent(d, cur); continue
 				}
 				break
 			}
 		}
-		cur = n.parent
+		cur = fparent(d, cur)
 	}
 	if cache != nil { cache[el] = mode }
 	return mode
@@ -192,7 +210,7 @@ select_all_root :: proc(d: ^dom.Document, st: ^style.Styled, el: base.Handle) ->
 				if cs.user_select == .All { found = cur } else if cs.user_select == .None || cs.user_select == .Text { break }
 			}
 		}
-		cur = n.parent
+		cur = fparent(d, cur)
 	}
 	return found
 }
@@ -541,7 +559,7 @@ range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, ro
 			#partial switch cs.display {
 			case .Table_Cell:
 				// a tab between cells of a row (not after the last one)
-				for nx := n.next; nx != base.NIL_HANDLE; nx = dom.get(d, nx).next {
+				for nx := fnext(d, s.h); nx != base.NIL_HANDLE; nx = fnext(d, nx) {
 					if ncs := style.style_of(st, nx); ncs != nil && ncs.display == .Table_Cell { emit(&fb, "\t", base.NIL_HANDLE, 0, 0); break }
 				}
 			case .Table_Row: require_breaks(&fb, 1)
@@ -556,9 +574,10 @@ range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, ro
 		case .Text:
 			if pos_compare(d, {s.h, len(n.text)}, start) <= 0 { continue }
 			if pos_compare(d, {s.h, 0}, end) >= 0 { clear(&stack); continue }   // past the end of the range
-			pcs := style.style_of(st, n.parent)
+			tp := fparent(d, s.h)
+			pcs := style.style_of(st, tp)
 			if pcs == nil || pcs.visibility != .Visible { continue }
-			if selectable_only && select_mode(d, st, n.parent, &modes) == .None { continue }
+			if selectable_only && select_mode(d, st, tp, &modes) == .None { continue }
 			lo := start.node == s.h ? start.offset : 0
 			hi := end.node == s.h ? end.offset : len(n.text)
 			emit_text(&fb, n.text, s.h, clamp(lo, 0, len(n.text)), clamp(hi, 0, len(n.text)), pcs)
@@ -578,7 +597,7 @@ range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, ro
 				append(&stack, Step{h = s.h, exit = true})
 			}
 		}
-		for c := n.last_child; c != base.NIL_HANDLE; c = dom.get(d, c).prev { append(&stack, Step{h = c}) }
+		for c := flast(d, s.h); c != base.NIL_HANDLE; c = fprev(d, c) { append(&stack, Step{h = c}) }
 	}
 	return Flat_Text{text = strings.to_string(fb.sb), runs = fb.runs[:]}
 }
@@ -690,7 +709,7 @@ block_of :: proc(d: ^dom.Document, st: ^style.Styled, node: base.Handle) -> base
 			if cs := style.style_of(st, cur); cs != nil && (is_block_level(cs.display) || cs.display == .Table_Cell || cs.display == .Inline_Block || cs.display == .Table_Row) { return cur }
 		}
 		if n.kind == .Document { return cur }
-		cur = n.parent
+		cur = fparent(d, cur)
 	}
 	return d.root
 }
@@ -744,13 +763,14 @@ range_html :: proc(d: ^dom.Document, start, end: Text_Pos, allocator := context.
 	if pos_compare(d, start, end) >= 0 { return "" }
 	// common ancestor container
 	common := start.node
-	for common != base.NIL_HANDLE && !dom.is_ancestor_or_self(d, common, end.node) { common = dom.get(d, common).parent }
+	for common != base.NIL_HANDLE && !flat_contains(d, common, end.node) { common = fparent(d, common) }
 	if common == base.NIL_HANDLE { return "" }
-	if n := dom.get(d, common); n != nil && n.kind == .Text { common = n.parent }
+	if n := dom.get(d, common); n != nil && n.kind == .Text { common = fparent(d, common) }
 	Step :: struct { h: base.Handle, exit: bool }
 	stack := make([dynamic]Step, 0, 64, context.temp_allocator)
 	cn := dom.get(d, common)
-	for c := cn.last_child; c != base.NIL_HANDLE; c = dom.get(d, c).prev { append(&stack, Step{h = c}) }
+	_ = cn
+	for c := flast(d, common); c != base.NIL_HANDLE; c = fprev(d, c) { append(&stack, Step{h = c}) }
 	for len(stack) > 0 {
 		s := pop(&stack)
 		n := dom.get(d, s.h)
@@ -781,8 +801,14 @@ range_html :: proc(d: ^dom.Document, start, end: Text_Pos, allocator := context.
 			for v in VOID_ELEMENTS { if v == n.name { void = true } }
 			if void { continue }
 			append(&stack, Step{h = s.h, exit = true})
-			for c := n.last_child; c != base.NIL_HANDLE; c = dom.get(d, c).prev { append(&stack, Step{h = c}) }
+			for c := flast(d, s.h); c != base.NIL_HANDLE; c = fprev(d, c) { append(&stack, Step{h = c}) }
 		}
 	}
 	return strings.to_string(sb)
+}
+
+@(private = "file")
+flat_contains :: proc(d: ^dom.Document, a, b: base.Handle) -> bool {
+	for cur := b; cur != base.NIL_HANDLE; cur = fparent(d, cur) { if cur == a { return true } }
+	return false
 }
