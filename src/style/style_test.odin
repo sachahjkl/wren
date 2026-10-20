@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:math"
 import "core:strings"
 import "core:testing"
+import "wb:base"
 import "wb:css"
 import "wb:dom"
 import "wb:html"
@@ -571,4 +572,32 @@ overflow_clip_pairs :: proc(t: ^testing.T) {
 	testing.expect(t, at(&f, "b").overflow_x == .Hidden && at(&f, "b").overflow_y == .Scroll)
 	testing.expect(t, at(&f, "c").overflow_x == .Hidden && at(&f, "c").overflow_y == .Auto)
 	testing.expect(t, at(&f, "d").overflow_x == .Visible && at(&f, "d").overflow_y == .Clip)
+}
+// @import of a sheet's own URL is a cycle: refused when it arrives; and loads are bounded per document
+// (style.max_imports) whatever the fan-out.
+@(test)
+imports_are_bounded :: proc(t: ^testing.T) {
+	ss := settings_default()
+	ss.max_imports = 50
+	e := engine_make(ss)
+	settings_destroy(&ss)
+	defer engine_destroy(e)
+	text := `@import "self.css"; @import "self.css"; @import "self.css"; @import "self.css"; @import "self.css"; @import "other.css"; p { color: red }`
+	engine_add_sheet(e, text, base.NIL_HANDLE, "", "http://a/self.css", from_link = true)
+	loads := 0
+	for _ in 0 ..< 20 {
+		pend := engine_take_pending_imports(e)
+		if len(pend) == 0 { break }
+		for pi in pend {
+			loads += 1
+			url := pi.url == "self.css" ? "http://a/self.css" : fmt.tprintf("http://a/other%d.css", loads)
+			engine_resolve_import_by_id(e, pi.sheet_id, pi.slot, text, url)
+		}
+	}
+	testing.expectf(t, loads <= 50, "%d imports loaded", loads)
+	// the direct self-imports are refused: the sheet itself has no imported child that is itself
+	root := e.sheets[len(e.sheets) - 1]
+	for &slot in root.imports {
+		if slot.rule.url == "self.css" { testing.expect(t, slot.child == nil && slot.failed, "a self import is refused") }
+	}
 }
