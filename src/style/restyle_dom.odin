@@ -893,6 +893,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 		}
 		walk(&w, start[:])
 		run_deferred(&w, pool)
+		delete(w.deferred)
 	}
 	// nodes that left the flat tree (unassigned, hidden fallback, inserted where no slot takes them): a full pass would
 	// not style them
