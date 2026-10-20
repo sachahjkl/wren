@@ -131,15 +131,16 @@ inc_note_layout :: proc(c: ^Ctx, bi: i32) {
 	if c.inc.snapping { snap_children(c, bi) }
 }
 
+// "" or what was left behind past layout.incremental.garbage_ratio (the reason of the full pass, for the profile).
 @(private)
-too_much_garbage :: proc(l: ^Layout) -> bool {
+too_much_garbage :: proc(l: ^Layout) -> string {
 	r := l.settings.inc_garbage_ratio
 	s := &l.inc
-	if f32(s.dead_boxes) > r * f32(max(s.live_boxes, 64)) { return true }
-	if f32(s.dead_items) > r * f32(max(s.live_items, 64)) { return true }
-	if f32(l.arena.total_used) > (1 + r) * f32(s.arena_base) + f32(1 << 20) { return true }
-	if f32(len(l.fonts)) > (1 + r) * f32(s.fonts_base) + 64 { return true }
-	return false
+	if f32(s.dead_boxes) > r * f32(max(s.live_boxes, 64)) { return "memory left by partial passes: boxes" }
+	if f32(s.dead_items) > r * f32(max(s.live_items, 64)) { return "memory left by partial passes: display items" }
+	if f32(l.arena.total_used) > (1 + r) * f32(s.arena_base) + f32(1 << 20) { return "memory left by partial passes: text and lists" }
+	if f32(len(l.fonts)) > (1 + r) * f32(s.fonts_base) + 64 { return "memory left by partial passes: fonts" }
+	return ""
 }
 
 ////////////////////////////////
@@ -247,7 +248,7 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	   l.inc.doc != rawptr(input.doc) || l.inc.lh_normal != st.line_height_normal || len(l.boxes) == 0 {
 		return bail(l, "settings, scale or document changed")
 	}
-	if too_much_garbage(l) { return bail(l, "memory left by partial passes") }
+	if why := too_much_garbage(l); why != "" { return bail(l, why) }
 	dom_changes, dom_ok := dom.journal_since(input.doc, l.mutations)
 	if !dom_ok { return bail(l, "mutation journal incomplete") }
 	// the same style records as last time, changed since only as the style journal says: only those are re-pointed

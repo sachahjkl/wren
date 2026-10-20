@@ -383,6 +383,7 @@ Layout :: struct {
 	lines:        [dynamic]Line,
 	frags:        [dynamic]Frag,
 	fonts:        [dynamic]Font_Info,
+	font_lookup:  map[Font_Key]i32,   // fonts by content (families hashed) across the partial passes since the last full one
 	items:        [dynamic]Display_Item,   // paint order
 	spaces:       [dynamic]Space,
 	clips:        [dynamic]Clip,

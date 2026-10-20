@@ -208,6 +208,18 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	}
 	if c.last_fi >= 0 && key == c.last_key { c.last_cs = cs; return c.last_fi }
 	if fi, ok := c.font_cache[key]; ok { c.last_key, c.last_fi, c.last_cs = key, fi, cs; return fi }
+	// the same font made by an earlier pass over these boxes: a partial restyle gives the elements it restyles new
+	// family lists (the key above is by identity), and partial passes must not add a font per restyled element (each
+	// is resolved again, and the table grows until a full pass)
+	// (by content; feature lists are told apart by address, which a later pass may reuse: those are not looked up)
+	ck := key
+	ck.families = rawptr(uintptr(families_hash(cs.font_family)))
+	lasting := key.feat.feat == nil && key.feat.vars == nil
+	if fi, ok := c.l.font_lookup[ck]; lasting && ok && int(fi) < len(c.l.fonts) && same_families(c.l.fonts[fi].families, cs.font_family) {
+		c.font_cache[key] = fi
+		c.last_key, c.last_fi, c.last_cs = key, fi, cs
+		return fi
+	}
 	info: Font_Info
 	info.size = cs.font_size * c.scale
 	info.weight, info.italic = cs.font_weight, key.italic
@@ -225,8 +237,26 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	fi := i32(len(c.l.fonts))
 	append(&c.l.fonts, info)
 	c.font_cache[key] = fi
+	if lasting { c.l.font_lookup[ck] = fi }
 	c.last_key, c.last_fi, c.last_cs = key, fi, cs
 	return fi
+}
+
+@(private)
+families_hash :: proc(fams: []string) -> u64 {
+	h: u64 = 0xcbf29ce484222325
+	for f in fams {
+		for i in 0 ..< len(f) { h = (h ~ u64(f[i])) * 0x100000001b3 }
+		h = (h ~ 0xff) * 0x100000001b3
+	}
+	return h
+}
+
+@(private)
+same_families :: proc(a, b: []string) -> bool {
+	if len(a) != len(b) { return false }
+	for x, i in a { if x != b[i] { return false } }
+	return true
 }
 
 // The face, metrics and space width of a font, from what it was made from (again when the faces change).
