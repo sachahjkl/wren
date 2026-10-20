@@ -1,4 +1,4 @@
-/* prelude.c: parts of the realm written in JavaScript (native/js/prelude/*.js), run once at pre-initialization so
+/* prelude.c: parts of the realm written in JavaScript (the .js files of native/js/prelude), run once at pre-initialization so
  * their functions are in the image every realm starts from. tools/build_js.ps1 turns the files into C strings
  * (prelude_sources.h in the build folder). Each prelude gets what it needs from the browser through native functions
  * defined on the global object for the duration of its run (it deletes them). */

@@ -28,4 +28,9 @@ partial module dom {
   u32 ComputedStyle_count();
   /// The name of the listed property at `index` ("" past the end).
   string ComputedStyle_name(u32 index);
+
+  /// CSS.supports(property, value) (CSS Conditional 3 §8.1): a property the style engine knows whose value it parses.
+  bool CSS_supportsDeclaration(string property, string value);
+  /// CSS.supports(conditionText): a <supports-condition>, or a declaration without its parentheses.
+  bool CSS_supportsCondition(string condition);
 }

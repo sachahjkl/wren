@@ -104,6 +104,19 @@ section("parsed declarations kept between calls", () => {
   eq("follows the attribute", a.style.paddingRight + "|" + a.style.marginTop, "2px|");
 });
 
+section("the CSS namespace", () => {
+  t("CSS.supports(property, value)", CSS.supports("display", "grid") && !CSS.supports("display", "nope") && !CSS.supports("colour", "red"));
+  t("custom properties take any value", CSS.supports("--x", "anything at all") && !CSS.supports("--", "x"));
+  t("CSS.supports(condition)", CSS.supports("(display: flex) and (not (color: nope))") && !CSS.supports("(display: flex) and (color: nope)"));
+  t("a declaration without parentheses", CSS.supports("display: grid") && !CSS.supports("display: nope"));
+  t("selector()", CSS.supports("selector(:has(a))") && !CSS.supports("selector(::nope(a))"));
+  t("no argument: TypeError", (() => { try { CSS.supports(); return false; } catch (e) { return e instanceof TypeError; } })());
+  eq("CSS.escape: digits, spaces, symbols", CSS.escape("1a b#c"), "\\31 a\\ b\\#c");
+  eq("CSS.escape: a lone dash, a dash then a digit", CSS.escape("-") + "|" + CSS.escape("-1x"), "\\-|-\\31 x");
+  eq("CSS.escape: NUL and controls", CSS.escape("\0a\x7f\x01"), "\ufffda\\7f \\1 ");
+  eq("CSS.escape: non-ASCII as it is", CSS.escape("é_-ö"), "é_-ö");
+});
+
 done();
 </script>
 </body></html>

@@ -343,3 +343,65 @@ JSValue wjr_CSSStyleProperties_set_cssFloat(JSContext *ctx, JSValueConst this_va
     dom_impl *d = style_of_this(ctx, this_val);
     return d ? style_set(ctx, d, "float", 5, v, JS_UNDEFINED) : JS_EXCEPTION;
 }
+
+/* ---- the CSS namespace ---- */
+
+/* CSS.supports(property, value) / CSS.supports(conditionText): the overload by argument count (Web IDL) */
+JSValue wjr_CSS_supports(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    if (argc < 1) { return JS_ThrowTypeError(ctx, "Failed to execute 'supports' on 'CSS': 1 argument required, but only 0 present."); }
+    wj_str a, b = {0};
+    if (!wj_to_str(ctx, argv[0], &a, 0, "")) { return JS_EXCEPTION; }
+    bool r;
+    if (argc >= 2) {
+        if (!wj_to_str(ctx, argv[1], &b, 0, "")) { wj_str_free(ctx, &a); return JS_EXCEPTION; }
+        r = wr_CSS_supportsDeclaration((const uint8_t *)a.ptr, (uint32_t)a.len, (const uint8_t *)b.ptr, (uint32_t)b.len) != 0;
+        wj_str_free(ctx, &b);
+    } else {
+        r = wr_CSS_supportsCondition((const uint8_t *)a.ptr, (uint32_t)a.len) != 0;
+    }
+    wj_str_free(ctx, &a);
+    return JS_NewBool(ctx, r);
+}
+
+/* CSS.escape(ident) (CSSOM §6.1, "serialize an identifier") */
+JSValue wjr_CSS_escape(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    if (argc < 1) { return JS_ThrowTypeError(ctx, "Failed to execute 'escape' on 'CSS': 1 argument required, but only 0 present."); }
+    JSValue s = JS_ToString(ctx, argv[0]);
+    if (JS_IsException(s)) { return s; }
+    JSValue out = JS_UNDEFINED;
+    char *buf = NULL;
+    size_t len = 0, cap = 0;
+    const char *utf8 = JS_ToCStringLen(ctx, &len, s);
+    JS_FreeValue(ctx, s);
+    if (!utf8) { return JS_EXCEPTION; }
+    cap = len * 8 + 1;
+    buf = js_malloc(ctx, cap);
+    if (!buf) { JS_FreeCString(ctx, utf8); return JS_EXCEPTION; }
+    size_t o = 0, count = 0;
+    bool first_dash = len > 0 && utf8[0] == '-';
+    for (size_t i = 0; i < len; count++) {
+        unsigned char c = (unsigned char)utf8[i];
+        size_t cl = c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4;
+        if (i + cl > len) { cl = len - i; }
+        if (c == 0) {
+            memcpy(buf + o, "\xEF\xBF\xBD", 3); o += 3;   /* U+FFFD */
+        } else if ((c >= 0x01 && c <= 0x1F) || c == 0x7F || (count == 0 && c >= '0' && c <= '9') || (count == 1 && first_dash && c >= '0' && c <= '9')) {
+            o += (size_t)snprintf(buf + o, cap - o, "\\%x ", c);   /* as a code point */
+        } else if (count == 0 && c == '-' && len == 1) {
+            buf[o++] = '\\'; buf[o++] = '-';
+        } else if (c >= 0x80 || c == '-' || c == '_' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+            memcpy(buf + o, utf8 + i, cl); o += cl;
+        } else {
+            buf[o++] = '\\'; buf[o++] = (char)c;
+        }
+        i += cl;
+    }
+    out = JS_NewStringLen(ctx, buf, o);
+    js_free(ctx, buf);
+    JS_FreeCString(ctx, utf8);
+    return out;
+}

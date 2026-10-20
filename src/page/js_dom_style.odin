@@ -680,3 +680,15 @@ property_canonical :: proc(name: string) -> (string, bool) {
 }
 
 _ :: base
+
+CSS_supportsDeclaration :: proc(c: ^Call, property, value: string) -> bool {
+	p := c.page
+	if p.engine == nil { return false }
+	return style.supports_declaration(p.engine, property, value, style.parse_options(&p.settings.style))
+}
+
+CSS_supportsCondition :: proc(c: ^Call, condition: string) -> bool {
+	p := c.page
+	if p.engine == nil { return false }
+	return style.supports_text(p.engine, condition, style.parse_options(&p.settings.style))
+}

@@ -777,6 +777,23 @@ supports_condition :: proc(e: ^Engine, vs_in: []css.Value) -> bool {
 	return result
 }
 
+// CSS.supports(conditionText) (CSS Conditional 3 §8.1): `text` as a <supports-condition>, else wrapped in parentheses
+// (so that "display: grid" works as "(display: grid)").
+supports_text :: proc(e: ^Engine, text: string, opt: css.Parse_Options) -> bool {
+	if supports_condition(e, css.parse_component_values(text, opt, context.temp_allocator)) { return true }
+	wrapped := strings.concatenate({"(", text, ")"}, context.temp_allocator)
+	return supports_condition(e, css.parse_component_values(wrapped, opt, context.temp_allocator))
+}
+
+// CSS.supports(property, value): a property the engine knows (a custom property: any value) whose value parses.
+supports_declaration :: proc(e: ^Engine, property, value: string, opt: css.Parse_Options) -> bool {
+	if strings.has_prefix(property, "--") { return len(property) > 2 }
+	// the property is taken as it is written: "(property: value)" with an identifier that does not need escaping
+	for ch in property { if !(ch == '-' || ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch >= '0' && ch <= '9') { return false } }
+	text := strings.concatenate({"(", property, ": ", value, ")"}, context.temp_allocator)
+	return supports_condition(e, css.parse_component_values(text, opt, context.temp_allocator))
+}
+
 @(private)
 supports_block :: proc(e: ^Engine, children: []css.Value) -> bool {
 	inner := css.trim_values(children)
