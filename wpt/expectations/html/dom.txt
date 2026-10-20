@@ -2170,8 +2170,8 @@
 	An object with an object descendant is returned by the named getter (id).: FAIL
 	An object with object and embed descendants is returned by the named getter (name).: FAIL
 /html/dom/documents/dom-tree-accessors/nameditem-no-shadowing.tentative.html: OK
-	document.__proto__ is not shadowed: FAIL
-	document.constructor is not shadowed: FAIL
+	document.__proto__ is not shadowed: PASS
+	document.constructor is not shadowed: PASS
 	document.currentScript is not shadowed: PASS
 	document.firstChild is not shadowed: PASS
 	document.foobar works (sanity check): FAIL
@@ -2687,25 +2687,115 @@
 /html/dom/elements/the-innertext-and-outertext-properties/getter-first-letter-marker-multicol.html: OK
 	Test innerText/outerText for a combination of a list item with ::first-letter in multicol: FAIL
 /html/dom/elements/the-innertext-and-outertext-properties/getter.html: ERROR
+	 ("<table><tfoot><tr><td>footer</tfoot><thead><tr><td style='visibility:collapse'>thead</thead><tbody><tr><td>tbody</tbody></table>"): FAIL
+	 <iframe> subdocument ignored ("<div><iframe src='data:text/html,abc'>"): PASS
 	&nbsp; preserved ("<div>&nbsp;"): PASS
+	2 blank lines around <p> even when display:block ("<div>123<p style='display:block'>abc"): PASS
+	2 blank lines around <p> even when display:inline-block ("<div>123<p style='display:inline-block'>abc"): PASS
 	::first-letter float ignored ("<div class='first-letter-float' style='width:0'>abc def"): PASS
 	::first-letter styles applied ("<div class='first-letter-uppercase' style='width:0'>abc def"): FAIL
 	::first-line styles applied ("<div class='first-line-uppercase' style='width:0'>abc def"): FAIL
 	::first-line styles applied ("<div class='first-line-uppercase'>abc"): FAIL
+	<audio> contents ignored ("<audio style='display:block'>abc"): FAIL
+	<audio> contents ignored ("<div><audio>abc"): FAIL
+	<audio> contents ok for element not being rendered ("<audio style='display:block'><source id='target' class='poke' style='display:block'>"): PASS
+	<audio> contents ok for element not being rendered ("<audio style='display:block'><source id='target' class='poke' style='display:none'>"): PASS
+	<b> gets no special treatment ("<div>123<b>abc</b>def"): PASS
+	<br> ("<br>"): PASS
+	<br> content ignored ("<div><br class='poke'>"): PASS
+	<br> induces line break ("<div>abc<br>def"): PASS
+	<br> induces line break even at end of block ("<div>abc<br>"): PASS
 	<br> returned as newline, adjacent spaces collapsed across element boundaries ("<div style='width:1px; word-break:break-word'><x>Hello </x> <br> <x> Kitty</x></div>"): FAIL
 	<br> returned as newline, following space collapsed ("<div style='width:1px; word-break:break-word'>Hello<br> Kitty</div>"): PASS
 	<br> returned as newline, preceding space collapsed ("<div style='width:1px; word-break:break-word'>Hello <br>Kitty</div>"): FAIL
+	<button> contents preserved ("<button>abc"): PASS
+	<button> contents preserved ("<div><button>abc"): PASS
+	<canvas> contents ignored ("<canvas>abc"): FAIL
+	<canvas> contents ignored ("<div><canvas>abc"): FAIL
 	<canvas> should not collapse following space ("<div><canvas></canvas> abc"): FAIL
+	<canvas><div id='target'> contents ok for element not being rendered ("<canvas><div id='target'>abc"): PASS
+	<code> gets no special treatment ("<div>123<code>abc</code>def"): PASS
+	<div> in <option> ("<select><option class='poke-div'>123</select>"): PASS
+	<em> gets no special treatment ("<div>123<em>abc</em>def"): PASS
+	<fieldset> <legend> contents preserved ("<div><fieldset><legend>abc"): PASS
+	<fieldset> <legend> contents preserved ("<fieldset><legend>abc"): PASS
+	<fieldset> contents preserved ("<div><fieldset>abc"): PASS
+	<fieldset> contents preserved ("<fieldset>abc"): PASS
+	<foreignObject> contents preserved ("<svg><foreignObject><span id='target'>abc</span></foreignObject></svg>"): PASS
+	<hr> content rendered ("<div><hr class='poke'>"): PASS
+	<hr> induces line break ("<div>abc<hr>def"): PASS
+	<hr><hr> induces just one line break ("<div>abc<hr><hr>def"): PASS
+	<hr><hr><hr> induces just one line break ("<div>abc<hr><hr><hr>def"): PASS
+	<i> gets no special treatment ("<div>123<i>abc</i>def"): PASS
+	<iframe> contents ignored ("<div><iframe>abc"): FAIL
+	<iframe> contents ignored ("<iframe><div id='target'>abc"): FAIL
+	<iframe> contents ignored ("<iframe>abc"): FAIL
+	<iframe> subdocument ignored ("<iframe src='data:text/html,abc'>"): PASS
+	<img> alt text ignored ("<div><img alt='abc'>"): PASS
+	<img> alt text ignored ("<img alt='abc'>"): PASS
+	<img> contents ignored ("<img src='about:blank' class='poke'>"): FAIL
+	<input> contents ignored ("<div><input type='text' value='abc'>"): PASS
+	<input> contents ignored ("<input type='text' value='abc'>"): PASS
+	<object> contents ignored ("<div><object>abc"): FAIL
+	<ol> list items get no special treatment ("<div><ol><li>abc"): PASS
+	<optgroup> containing <optgroup> ("<select><optgroup class='poke-optgroup'></select>"): FAIL
+	<optgroup> containing <option> ("<select><optgroup><option>abc</select>"): PASS
+	<optgroup> in <div> ("<div>a<optgroup>123</optgroup>bc"): PASS
+	<option> in <div> ("<div>a<option>123</option>bc"): FAIL
+	<pre> trailing newlines don't suppress <p> blank line ("<div><pre>abc\\n\\n</pre><p>def"): PASS
+	<rp> ("<div><ruby>abc<rp>(</rp><rt>def</rt><rp>)</rp></ruby>"): PASS
+	<rp> in a <select> ("<div><select class='poke-rp'></select>"): PASS
+	<rt> and no <rp> ("<div><ruby>abc<rt>def</rt></ruby>"): PASS
+	<select size='1'> contents of options preserved ("<div><select size='1'><option>abc</option><option>def"): FAIL
+	<select size='1'> contents of options preserved ("<select size='1'><option>abc</option><option>def"): FAIL
+	<select size='1'> contents of target option preserved ("<select size='1'><option id='target'>abc</option><option>def"): PASS
+	<select size='2'> contents of options preserved ("<div><select size='2'><option>abc</option><option>def"): FAIL
+	<select size='2'> contents of options preserved ("<select size='2'><option>abc</option><option>def"): FAIL
+	<select size='2'> contents of target option preserved ("<select size='2'><option id='target'>abc</option><option>def"): PASS
+	<select> containing text node child ("<select class='poke'></select>"): FAIL
+	<span> boundaries are irrelevant ("<div style='width:0'>123 <span>abc</span> def"): PASS
+	<span> boundaries are irrelevant ("<div>123 <span>abc</span> def"): PASS
+	<span> boundaries are irrelevant ("<div>123<span>abc</span>def"): PASS
+	<strong> gets no special treatment ("<div>123<strong>abc</strong>def"): PASS
+	<svg> non-rendered text ignored ("<div><svg><stop>abc</stop></svg></div>"): FAIL
+	<svg> text contents preserved ("<div><svg><text>abc</text></svg></div>"): PASS
+	<svg><defs> text contents ignored ("<div><svg><defs><text>abc</text></defs></svg></div>"): FAIL
+	<textarea> contents ignored ("<div><textarea>abc"): FAIL
+	<textarea> contents ignored ("<textarea>abc"): FAIL
+	<tt> gets no special treatment ("<div>123<tt>abc</tt>def"): PASS
+	<ul> list items get no special treatment ("<div><ul><li>abc"): PASS
+	<video> contents ignored ("<div><video>abc"): FAIL
+	<video> contents ignored ("<video>abc"): FAIL
+	<video> contents ok for element not being rendered ("<video style='display:block'><source id='target' class='poke' style='display:block'>"): PASS
+	<video> contents ok for element not being rendered ("<video style='display:block'><source id='target' class='poke' style='display:none'>"): PASS
+	Blank line after <p> ("<div><p>abc</p>def"): PASS
+	Blank line before <p> ("<div>abc<p>def"): PASS
+	Blank line between consecutive <p>s ("<div><p>abc<p>def"): PASS
+	Blank line between consecutive <p>s separated only by collapsible whitespace ("<div><p>abc</p> <p>def"): PASS
+	Blank line between consecutive <p>s separated only by empty block ("<div><p>abc</p><div></div><p>def"): PASS
+	Blank lines around <p> even without margin ("<div>123<p style='margin:0px'>abc</p>def"): PASS
+	Blank lines around a <p> in its own block ("<div>abc<div><p>123</p></div>def"): PASS
+	Blank lines between <p>s separated by non-empty block ("<div><p>abc</p><div>123</div><p>def"): PASS
+	CSS 'order' property ignored ("<div style='display:flex'><div style='order:1'>1</div><div>2</div></div>"): PASS
+	CSS 'order' property ignored ("<div style='display:grid'><div style='order:1'>1</div><div>2</div></div>"): PASS
+	Consecutive empty blocks ignored ("<div>abc<div></div><div></div>def"): PASS
 	Element boundaries ignored for soft break handling (1) ("<div style='width:1px; word-break:break-word'><x>Hello</x> <x>Kitty</x></div>"): PASS
 	Element boundaries ignored for soft break handling (2) ("<div style='width:1px; word-break:break-word'><x>Hello</x><x> Kitty</x></div>"): PASS
 	Element boundaries ignored for soft break handling (3) ("<div style='width:1px; word-break:break-word'><x>Hello </x><x>Kitty</x></div>"): PASS
 	Element boundaries ignored for soft break handling (4) ("<div style='width:1px; word-break:break-word'><x>Hello</x> Kitty</div>"): PASS
 	Element boundaries ignored for soft break handling (5) ("<div style='width:1px; word-break:break-word'><x>Hello </x>Kitty</div>"): PASS
+	Empty block induces single line break ("<div>abc<div></div>def"): PASS
+	Flex items blockified ("<div style='display:flex'><span>1</span><span>2</span></div>"): FAIL
+	Generated content not included ("<div class='before'>"): PASS
+	Generated content on child not included ("<div><div class='before'>"): PASS
+	Grid items blockified ("<div style='display:grid'><span>1</span><span>2</span></div>"): FAIL
+	Ignoring non-rendered table whitespace ("<div><table style='white-space:pre'>  <td>abc</td>  </table>"): FAIL
 	Internal whitespace collapsed ("<div style='white-space:pre-line'>abc  def"): PASS
 	Internal whitespace compressed ("<div>abc  def"): PASS
 	Internal whitespace preserved ("<div style='white-space:pre'>abc  def"): PASS
 	Internal whitespace preserved ("<pre>abc  def"): PASS
 	Internal whitespace preserved ("<span style='white-space:pre'>abc  def"): PASS
+	Invisible <p> doesn't induce extra line breaks ("<div style='visibility:hidden'><p><span style='visibility:visible'>abc</span></p>\\n<div style='visibility:visible'>def</div>"): FAIL
 	Leading whitesapce should not be collapsed ("<div><img> abc"): FAIL
 	Leading whitespace after hard line break removed ("<div>abc<br> def"): PASS
 	Leading whitespace preserved ("<div style='white-space:pre'> abc"): PASS
@@ -2713,15 +2803,50 @@
 	Leading whitespace preserved ("<span style='white-space:pre'> abc"): PASS
 	Leading whitespace removed ("<div style='white-space:pre-line'> abc"): PASS
 	Leading whitespace removed ("<div> abc"): PASS
+	Leading/trailing space removal at display:inline-block boundary ("<div>123<span style='display:inline-block'> abc </span>def"): FAIL
+	Leading/trailing space removal at display:inline-flex boundary ("<div>123<span style='display:inline-flex'> abc </span>def"): FAIL
+	Leading/trailing space removal at display:inline-grid boundary ("<div>123<span style='display:inline-grid'> abc </span>def"): FAIL
+	Lone <rp> ("<div><rp>abc</rp>"): PASS
+	Newline at block boundary ("<div>123<div>abc</div>def"): PASS
+	Newline at display:block boundary ("<div>123<span style='display:block'>abc</span>def"): PASS
+	Newline between cells and caption ("<div><table><tr><td>abc<caption>def</caption></table>"): PASS
+	Newline-separated table rows ("<div><div class='itable'><span class='row'><span class='cell'>abc</span></span>\\n<span class='row'><span class='cell'>def</span></span></div>"): PASS
+	Newline-separated table rows ("<div><div class='table'><span class='row'><span class='cell'>abc</span></span>\\n<span class='row'><span class='cell'>def</span></span></div>"): PASS
+	Newline-separated table rows ("<div><table><tr><td>abc<tr><td>def</table>"): PASS
+	Newlines around table ("<div>abc<div class='table'><span class='cell'>def</span></div>ghi"): PASS
+	Newlines around table ("<div>abc<table><td>def</table>ghi"): PASS
+	No blank lines around <div> with margin ("<div>abc<div style='margin:2em'>def"): PASS
+	No blank lines around <h1> ("<div>123<h1>abc</h1>def"): PASS
+	No blank lines around <h2> ("<div>123<h2>abc</h2>def"): PASS
+	No blank lines around <h3> ("<div>123<h3>abc</h3>def"): PASS
+	No blank lines around <h4> ("<div>123<h4>abc</h4>def"): PASS
+	No blank lines around <h5> ("<div>123<h5>abc</h5>def"): PASS
+	No blank lines around <h6> ("<div>123<h6>abc</h6>def"): PASS
+	No blank lines around <p> alone ("<div><p>abc"): PASS
+	No blank lines around <p> followed by only collapsible whitespace ("<div><p>abc</p> "): PASS
+	No blank lines around <p> preceded by only collapsible whitespace ("<div> <p>abc</p>"): PASS
+	No newline on table-row itself ("<table><tr id=target><td>abc</td><td>def</td></tr><tr id=target><td>ghi</td><td>jkl</td></tr>"): PASS
+	No newlines around inline-table ("<div>abc<div class='itable'><span class='cell'>def</span></div>ghi"): PASS
+	No newlines at display:inline-block boundary ("<div>123<span style='display:inline-block'>abc</span>def"): PASS
 	No removal of leading/trailing whitespace in display:none container ("<div style='display:none'> abc def "): PASS
+	No tab on table-cell itself ("<table><tr><td id=target>abc</td><td>def</td>"): PASS
 	No whitespace compression in display:none container ("<div style='display:none'>abc  def"): PASS
+	One blank line between <p>s, ignoring empty <p>s ("<div><p>abc<p></p><p></p><p>def"): PASS
+	Remove leading/trailing whitespace in opacity:0 container ("<div style='opacity:0'> abc def "): PASS
 	Replaced element <canvas> with display:block should be treated as block-level ("<div>abc <canvas style='display:block'></canvas> def"): PASS
 	Replaced element <img> with display:block should be treated as block-level ("<div>abc <img style='display:block'> def"): PASS
 	Simplest possible test ("<div>abc"): PASS
+	Single newline in two-row inline-table ("<div>abc<div class='itable'><span class='row'><span class='cell'>def</span></span>\\n<span class='row'><span class='cell'>123</span></span></div>ghi"): FAIL
 	Soft breaks ignored in presence of word-break:break-word ("<div style='width:1px; word-break:break-word'>Hello Kitty</div>"): PASS
 	Soft breaks ignored, text-transform applied ("<div style='width:1px; word-break:break-word; text-transform:uppercase'>Hello Kitty</div>"): PASS
 	Soft line break at hyphen ignored ("<div style='width:0'>abc-def"): PASS
 	Soft line breaks ignored ("<div style='width:0'>abc def"): PASS
+	Tab-separated table cells ("<div><div class='itable'><span class='cell'>abc</span>\\n<span class='cell'>def</span></div>"): FAIL
+	Tab-separated table cells ("<div><div class='table'><span class='cell'>abc</span>\\n<span class='cell'>def</span></div>"): FAIL
+	Tab-separated table cells ("<div><table><tr><td>abc<td>def</table>"): PASS
+	Tab-separated table cells in a border-collapse table ("<div><table style='border-collapse:collapse'><tr><td>abc<td>def</table>"): PASS
+	Tab-separated table cells including empty cells ("<div><table><tr><td>abc<td><td>def</table>"): PASS
+	Tab-separated table cells including trailing empty cells ("<div><table><tr><td>abc<td><td></table>"): PASS
 	Trailing space at end of grid-flex should be collapsed ("<div>abc <span style='display:inline-grid'> def </span> ghi"): PASS
 	Trailing space at end of inline-block should be collapsed ("<div>abc <span style='display:inline-block'> def </span> ghi"): PASS
 	Trailing space at end of inline-flex should be collapsed ("<div>abc <span style='display:inline-flex'> def </span> ghi"): PASS
@@ -2752,6 +2877,7 @@
 	Whitespace collapses across element boundaries at soft break (2) ("<div style='width:1px; word-break:break-word'><x>Hello </x> <x>Kitty</x></div>"): PASS
 	Whitespace collapses across element boundaries at soft break (3) ("<div style='width:1px; word-break:break-word'><x>Hello </x><x> Kitty</x></div>"): PASS
 	Whitespace collapses across element boundaries at soft break (4) ("<div style='width:1px; word-break:break-word'><x>Hello </x> <x> Kitty</x></div>"): PASS
+	Whitespace compression in opacity:0 container ("<div style='opacity:0'>abc  def"): PASS
 	Whitespace text node preserved ("<div style='width:0'><span>abc</span> <span>def</span>"): PASS
 	\\n converted to space ("<div>abc\\ndef"): PASS
 	\\n preserved ("<div style='white-space:pre'>abc\\ndef"): PASS
@@ -2768,14 +2894,73 @@
 	\\t preserved ("<div style='white-space:pre'>abc\\tdef"): PASS
 	\\t preserved ("<pre>abc\\tdef"): PASS
 	\\t preserved ("<span style='white-space:pre'>abc\\tdef"): PASS
+	block-in-inline doesn't add unnecessary newlines ("<div>abc<span>123<div>456</div>789</span>def"): PASS
 	child of display:none child of svg ("<div style='display:none'><div id='target'>abc"): PASS
+	comment ignored ("<div>abc<!--comment-->def"): PASS
+	display:block <noscript> is not rendered (it's not parsed!) ("<div><noscript style='display:block'>abc"): PASS
+	display:block <rp> ("<div><rp style='display:block'>abc</rp>def"): PASS
+	display:block <rp> with whitespace ("<div><rp style='display:block'> abc </rp>def"): PASS
+	display:block <script> is rendered ("<div><script style='display:block'>abc"): PASS
+	display:block <style> is rendered ("<div><style style='display:block'>abc"): PASS
+	display:block <template> contents are not rendered (the contents are in a different document) ("<div><template style='display:block'>abc"): PASS
+	display:contents container ("<div style='display:contents'>abc"): PASS
+	display:contents container ("<div><div style='display:contents'>abc"): PASS
+	display:contents not processed via textContent ("<div style='display:contents'>   "): PASS
+	display:contents not processed via textContent ("<div><div style='display:contents'>   "): PASS
+	display:contents rendered ("<div>123<span style='display:contents'>abc"): PASS
 	display:none child not rendered ("<div>123<span style='display:none'>abc"): PASS
 	display:none child of svg ("<div style='display:none' id='target'>abc"): PASS
 	display:none container ("<div style='display:none'>abc"): PASS
 	display:none container with non-display-none p target child ("<div style='display:none'><p id='target'>abc"): PASS
 	display:none container with non-display-none target child ("<div style='display:none'><span id='target'>abc"): PASS
 	display:none p child not rendered ("<div>123<p style='display:none'>abc"): PASS
+	display:table-caption on the element itself ("<div style='display:table-caption'>"): PASS
+	display:table-cell on the element itself ("<div style='display:table-cell'>"): PASS
+	display:table-row on the element itself ("<div style='display:table-row'>"): PASS
+	empty <div> ("<div>"): PASS
+	empty <optgroup> in <div> ("<div>a<optgroup></optgroup>bc"): PASS
+	empty <optgroup> in <select> ("<div>a<select><optgroup></select>bc"): PASS
+	empty <option> in <div> ("<div>a<option></option>bc"): FAIL
+	empty <option> in <select> ("<div>a<select><option></select>bc"): FAIL
+	empty <p> ("<p>"): PASS
+	empty <select> ("<div>a<select></select>bc"): PASS
+	float on the element itself ("<div style='float:left'>123"): PASS
+	floats induce a block boundary ("<div>abc<div style='float:left'>123</div>def"): PASS
+	floats induce a block boundary ("<div>abc<span style='float:left'>123</span>def"): PASS
+	innerText not supported on MathML elements ("<math>abc"): PASS
+	innerText not supported on SVG elements ("<svg>abc"): PASS
 	non-display-none child of svg ("<div id='target'>abc"): PASS
+	opacity:0 child rendered ("<div>123<span style='opacity:0'>abc"): PASS
+	opacity:0 container ("<div style='opacity:0'>abc"): PASS
+	opened <details> content shown ("<div><details open><summary>abc</summary>123"): PASS
+	overflow:hidden ignored ("<div style='overflow:hidden'>abc"): PASS
+	overflow:hidden ignored even with zero height ("<div style='height:0; overflow:hidden'>abc"): PASS
+	overflow:hidden ignored even with zero width ("<div style='width:0; overflow:hidden'>abc"): PASS
+	position:absolute induces a block boundary ("<div>abc<div style='position:absolute'>123</div>def"): PASS
+	position:absolute induces a block boundary ("<div>abc<span style='position:absolute'>123</span>def"): PASS
+	position:absolute on the element itself ("<div style='position:absolute'>123"): PASS
+	position:relative has no effect ("<div>abc<div style='position:relative'>123</div>def"): PASS
+	position:relative has no effect ("<div>abc<span style='position:relative'>123</span>def"): PASS
+	soft hyphen preserved ("<div style='width:0'>abc&shy;def"): PASS
+	soft hyphen preserved ("<div>abc&shy;def"): PASS
+	text-overflow:ellipsis ignored ("<div style='width:0; overflow:hidden; text-overflow:ellipsis'>abc"): PASS
+	text-transform handles Turkish casing ("<div><div lang='tr' style='text-transform:uppercase'>i ı"): FAIL
+	text-transform handles es-zet ("<div><div style='text-transform:uppercase'>Maß"): FAIL
+	text-transform is applied ("<div><div style='text-transform:uppercase'>abc"): PASS
+	tfoot not reordered ("<div><table><tfoot>x</tfoot><tbody>y</tbody></table>"): PASS
+	undefined ("<select><option>one</option><div><optgroup label=optgroup><div><option><span>two"): PASS
+	unopened <details> ignored ("<div><details><summary>abc</summary>123"): FAIL
+	visibility:collapse cell ("<table><tr><td style='visibility:collapse'>abc"): PASS
+	visibility:collapse honored on flex item ("<div style='display:flex'><span style='visibility:collapse'>1</span><span>2</span></div>"): PASS
+	visibility:collapse honored on grid item ("<div style='display:grid'><span style='visibility:collapse'>1</span><span>2</span></div>"): PASS
+	visibility:collapse row ("<table><tr style='visibility:collapse'><td>abc"): PASS
+	visibility:collapse row with visible cell ("<table><tr style='visibility:collapse'><td style='visibility:visible'>abc"): PASS
+	visibility:collapse row-group ("<table><tbody style='visibility:collapse'><tr><td>abc"): PASS
+	visibility:collapse row-group with visible cell ("<table><tbody style='visibility:collapse'><tr><td style='visibility:visible'>abc"): PASS
+	visibility:hidden <rp> ("<div><rp style='visibility:hidden'>abc</rp>"): PASS
+	visibility:hidden child not rendered ("<div>123<span style='visibility:hidden'>abc"): PASS
+	visibility:hidden container ("<div style='visibility:hidden'>abc"): PASS
+	visibility:visible child rendered ("<div style='visibility:hidden'>123<span style='visibility:visible'>abc"): PASS
 /html/dom/elements/the-innertext-and-outertext-properties/innertext-setter.html: OK
 	" preserved: PASS
 	" preserved, detached: PASS
@@ -4124,18 +4309,18 @@
 	CommandEvent interface: existence and properties of interface prototype object: FAIL
 	CommandEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
 	CommandEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	CustomElementRegistry interface object length: FAIL
-	CustomElementRegistry interface object name: FAIL
+	CustomElementRegistry interface object length: PASS
+	CustomElementRegistry interface object name: PASS
 	CustomElementRegistry interface: existence and properties of interface object: FAIL
-	CustomElementRegistry interface: existence and properties of interface prototype object: FAIL
-	CustomElementRegistry interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	CustomElementRegistry interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	CustomElementRegistry interface: operation define(DOMString, CustomElementConstructor, optional ElementDefinitionOptions): FAIL
-	CustomElementRegistry interface: operation get(DOMString): FAIL
-	CustomElementRegistry interface: operation getName(CustomElementConstructor): FAIL
+	CustomElementRegistry interface: existence and properties of interface prototype object: PASS
+	CustomElementRegistry interface: existence and properties of interface prototype object's "constructor" property: PASS
+	CustomElementRegistry interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	CustomElementRegistry interface: operation define(DOMString, CustomElementConstructor, optional ElementDefinitionOptions): PASS
+	CustomElementRegistry interface: operation get(DOMString): PASS
+	CustomElementRegistry interface: operation getName(CustomElementConstructor): PASS
 	CustomElementRegistry interface: operation initialize(Node): FAIL
-	CustomElementRegistry interface: operation upgrade(Node): FAIL
-	CustomElementRegistry interface: operation whenDefined(DOMString): FAIL
+	CustomElementRegistry interface: operation upgrade(Node): PASS
+	CustomElementRegistry interface: operation whenDefined(DOMString): PASS
 	CustomStateSet interface object length: FAIL
 	CustomStateSet interface object name: FAIL
 	CustomStateSet interface: existence and properties of interface object: FAIL
@@ -5482,11 +5667,11 @@
 	HTMLAudioElement interface: existence and properties of interface prototype object: PASS
 	HTMLAudioElement interface: existence and properties of interface prototype object's "constructor" property: PASS
 	HTMLAudioElement interface: existence and properties of interface prototype object's @@unscopables property: PASS
-	HTMLAudioElement interface: named constructor: FAIL
-	HTMLAudioElement interface: named constructor length: FAIL
-	HTMLAudioElement interface: named constructor name: FAIL
-	HTMLAudioElement interface: named constructor object: FAIL
-	HTMLAudioElement interface: named constructor prototype property: FAIL
+	HTMLAudioElement interface: named constructor: PASS
+	HTMLAudioElement interface: named constructor length: PASS
+	HTMLAudioElement interface: named constructor name: PASS
+	HTMLAudioElement interface: named constructor object: PASS
+	HTMLAudioElement interface: named constructor prototype property: PASS
 	HTMLAudioElement interface: named constructor without 'new': PASS
 	HTMLBRElement interface object length: PASS
 	HTMLBRElement interface object name: PASS
@@ -5738,7 +5923,7 @@
 	HTMLElement interface: attribute title: PASS
 	HTMLElement interface: attribute translate: PASS
 	HTMLElement interface: attribute writingSuggestions: FAIL
-	HTMLElement interface: existence and properties of interface object: FAIL
+	HTMLElement interface: existence and properties of interface object: PASS
 	HTMLElement interface: existence and properties of interface prototype object: PASS
 	HTMLElement interface: existence and properties of interface prototype object's "constructor" property: PASS
 	HTMLElement interface: existence and properties of interface prototype object's @@unscopables property: PASS
@@ -5949,11 +6134,11 @@
 	HTMLImageElement interface: existence and properties of interface prototype object: PASS
 	HTMLImageElement interface: existence and properties of interface prototype object's "constructor" property: PASS
 	HTMLImageElement interface: existence and properties of interface prototype object's @@unscopables property: PASS
-	HTMLImageElement interface: named constructor: FAIL
-	HTMLImageElement interface: named constructor length: FAIL
-	HTMLImageElement interface: named constructor name: FAIL
-	HTMLImageElement interface: named constructor object: FAIL
-	HTMLImageElement interface: named constructor prototype property: FAIL
+	HTMLImageElement interface: named constructor: PASS
+	HTMLImageElement interface: named constructor length: PASS
+	HTMLImageElement interface: named constructor name: PASS
+	HTMLImageElement interface: named constructor object: PASS
+	HTMLImageElement interface: named constructor prototype property: PASS
 	HTMLImageElement interface: named constructor without 'new': PASS
 	HTMLImageElement interface: operation decode(): PASS
 	HTMLInputElement includes PopoverTargetAttributes: member names are unique: PASS
@@ -6107,30 +6292,30 @@
 	HTMLMediaElement interface: attribute buffered: FAIL
 	HTMLMediaElement interface: attribute controls: PASS
 	HTMLMediaElement interface: attribute crossOrigin: FAIL
-	HTMLMediaElement interface: attribute currentSrc: FAIL
-	HTMLMediaElement interface: attribute currentTime: FAIL
+	HTMLMediaElement interface: attribute currentSrc: PASS
+	HTMLMediaElement interface: attribute currentTime: PASS
 	HTMLMediaElement interface: attribute defaultMuted: PASS
-	HTMLMediaElement interface: attribute defaultPlaybackRate: FAIL
-	HTMLMediaElement interface: attribute duration: FAIL
-	HTMLMediaElement interface: attribute ended: FAIL
-	HTMLMediaElement interface: attribute error: FAIL
+	HTMLMediaElement interface: attribute defaultPlaybackRate: PASS
+	HTMLMediaElement interface: attribute duration: PASS
+	HTMLMediaElement interface: attribute ended: PASS
+	HTMLMediaElement interface: attribute error: PASS
 	HTMLMediaElement interface: attribute loading: FAIL
 	HTMLMediaElement interface: attribute loop: PASS
-	HTMLMediaElement interface: attribute muted: FAIL
-	HTMLMediaElement interface: attribute networkState: FAIL
-	HTMLMediaElement interface: attribute paused: FAIL
-	HTMLMediaElement interface: attribute playbackRate: FAIL
+	HTMLMediaElement interface: attribute muted: PASS
+	HTMLMediaElement interface: attribute networkState: PASS
+	HTMLMediaElement interface: attribute paused: PASS
+	HTMLMediaElement interface: attribute playbackRate: PASS
 	HTMLMediaElement interface: attribute played: FAIL
 	HTMLMediaElement interface: attribute preload: FAIL
-	HTMLMediaElement interface: attribute preservesPitch: FAIL
-	HTMLMediaElement interface: attribute readyState: FAIL
+	HTMLMediaElement interface: attribute preservesPitch: PASS
+	HTMLMediaElement interface: attribute readyState: PASS
 	HTMLMediaElement interface: attribute seekable: FAIL
-	HTMLMediaElement interface: attribute seeking: FAIL
+	HTMLMediaElement interface: attribute seeking: PASS
 	HTMLMediaElement interface: attribute src: PASS
 	HTMLMediaElement interface: attribute srcObject: FAIL
 	HTMLMediaElement interface: attribute textTracks: FAIL
 	HTMLMediaElement interface: attribute videoTracks: FAIL
-	HTMLMediaElement interface: attribute volume: FAIL
+	HTMLMediaElement interface: attribute volume: PASS
 	HTMLMediaElement interface: constant HAVE_CURRENT_DATA on interface object: PASS
 	HTMLMediaElement interface: constant HAVE_CURRENT_DATA on interface prototype object: PASS
 	HTMLMediaElement interface: constant HAVE_ENOUGH_DATA on interface object: PASS
@@ -6154,12 +6339,12 @@
 	HTMLMediaElement interface: existence and properties of interface prototype object's "constructor" property: PASS
 	HTMLMediaElement interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	HTMLMediaElement interface: operation addTextTrack(TextTrackKind, optional DOMString, optional DOMString): FAIL
-	HTMLMediaElement interface: operation canPlayType(DOMString): FAIL
+	HTMLMediaElement interface: operation canPlayType(DOMString): PASS
 	HTMLMediaElement interface: operation fastSeek(double): FAIL
 	HTMLMediaElement interface: operation getStartDate(): FAIL
-	HTMLMediaElement interface: operation load(): FAIL
-	HTMLMediaElement interface: operation pause(): FAIL
-	HTMLMediaElement interface: operation play(): FAIL
+	HTMLMediaElement interface: operation load(): PASS
+	HTMLMediaElement interface: operation pause(): PASS
+	HTMLMediaElement interface: operation play(): PASS
 	HTMLMenuElement interface object length: PASS
 	HTMLMenuElement interface object name: PASS
 	HTMLMenuElement interface: attribute compact: PASS
@@ -6263,11 +6448,11 @@
 	HTMLOptionElement interface: existence and properties of interface prototype object: PASS
 	HTMLOptionElement interface: existence and properties of interface prototype object's "constructor" property: PASS
 	HTMLOptionElement interface: existence and properties of interface prototype object's @@unscopables property: PASS
-	HTMLOptionElement interface: named constructor: FAIL
-	HTMLOptionElement interface: named constructor length: FAIL
-	HTMLOptionElement interface: named constructor name: FAIL
-	HTMLOptionElement interface: named constructor object: FAIL
-	HTMLOptionElement interface: named constructor prototype property: FAIL
+	HTMLOptionElement interface: named constructor: PASS
+	HTMLOptionElement interface: named constructor length: PASS
+	HTMLOptionElement interface: named constructor name: PASS
+	HTMLOptionElement interface: named constructor object: PASS
+	HTMLOptionElement interface: named constructor prototype property: PASS
 	HTMLOptionElement interface: named constructor without 'new': PASS
 	HTMLOptionsCollection interface object length: PASS
 	HTMLOptionsCollection interface object name: PASS
@@ -6720,7 +6905,8 @@
 	Partial interface HTMLUListElement: original interface defined: PASS
 	idl_test setup: FAIL
 	idl_test validation: PASS
-/html/dom/partial-updates/tentative/chained-streaming-templates-with-custom-element.html: ERROR
+/html/dom/partial-updates/tentative/chained-streaming-templates-with-custom-element.html: OK
+	Chained streaming templates and OwnerDocument: FAIL
 /html/dom/partial-updates/tentative/fragment/buffer-immutability.html: OK
 	Modifying 'for' or 'buffer' attributes dynamically after start tag has no effect on the inclusion behavior: FAIL
 /html/dom/partial-updates/tentative/fragment/buffer-in-place.html: OK
@@ -68187,19 +68373,19 @@
 /html/dom/render-blocking/element-render-blocking-top-of-document.html?top: OK
 	rel=expect blocks for the top-of-document value from #top: FAIL
 /html/dom/render-blocking/non-render-blocking-scripts.optional.html: OK
-	parser-inserted async module script is not implicitly render-blocking: PASS|FAIL
+	parser-inserted async module script is not implicitly render-blocking: PASS
 	parser-inserted async module script should eventually be loaded and evaluated: PASS
-	parser-inserted async script is not implicitly render-blocking: PASS|FAIL
+	parser-inserted async script is not implicitly render-blocking: FAIL
 	parser-inserted async script should eventually be loaded and evaluated: PASS
-	parser-inserted defer script is not implicitly render-blocking: PASS|FAIL
+	parser-inserted defer script is not implicitly render-blocking: PASS
 	parser-inserted defer script should eventually be loaded and evaluated: PASS
-	parser-inserted module script is not implicitly render-blocking: PASS|FAIL
+	parser-inserted module script is not implicitly render-blocking: PASS
 	parser-inserted module script should eventually be loaded and evaluated: PASS
-	script-inserted module script is not implicitly render-blocking: PASS|FAIL
+	script-inserted module script is not implicitly render-blocking: PASS
 	script-inserted module script should eventually be loaded and evaluated: PASS
-	script-inserted script is not implicitly render-blocking: PASS|FAIL
+	script-inserted script is not implicitly render-blocking: PASS
 	script-inserted script should eventually be loaded and evaluated: PASS
-	script-inserted sync script is not implicitly render-blocking: PASS|FAIL
+	script-inserted sync script is not implicitly render-blocking: PASS
 	script-inserted sync script should eventually be loaded and evaluated: PASS
 /html/dom/render-blocking/parser-blocking-script.html: OK
 	Parser-blocking script is evaluated: PASS

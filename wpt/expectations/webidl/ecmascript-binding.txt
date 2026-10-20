@@ -371,7 +371,7 @@
 	Fancy property names don't break the resolve hook on Window: PASS
 	Interface objects deleted multiple times stay deleted: PASS
 /webidl/ecmascript-binding/interface-prototype-constructor-set-receiver.html: OK
-	Direct [[Set]] preserves [[Enumerable]]: false property attribute: FAIL
+	Direct [[Set]] preserves [[Enumerable]]: false property attribute: PASS
 	Prototype chain [[Set]] creates property on receiver: PASS
 /webidl/ecmascript-binding/interface-prototype-object.html: OK
 	[Unscopable] extended attribute makes @@unscopables object on the prototype object, whose prototype is null.: FAIL
@@ -400,7 +400,7 @@
 /webidl/ecmascript-binding/legacy-factor-function-subclass.window.html: OK
 	[LegacyFactoryFunction] can be subclassed and correctly handles NewTarget: FAIL
 /webidl/ecmascript-binding/legacy-factory-function-builtin-properties.window.html: OK
-	Legacy factory function property enumeration order of "length", "name", and "prototype": FAIL
+	Legacy factory function property enumeration order of "length", "name", and "prototype": PASS
 /webidl/ecmascript-binding/legacy-platform-object/DefineOwnProperty.html: OK
 	Test [[DefineOwnProperty]] with indexed property setter support.: FAIL
 	Test [[DefineOwnProperty]] with named property setter support.: FAIL
@@ -464,7 +464,24 @@
 	window.screen setter throws TypeError if called on non-configurable non-writable data property: FAIL
 	window.self setter throws TypeError if called on non-configurable accessor property: FAIL
 /webidl/ecmascript-binding/sequence-conversion.html: ERROR
-/webidl/ecmascript-binding/setter-argument.html: ERROR
+/webidl/ecmascript-binding/setter-argument.html: OK
+	Object attribute setter called with undefined should behave in the same way as no arguments: FAIL
+	Object attribute setter should throw if this value is invalid: PASS
+	Object attribute setter should treat no arguments as undefined: FAIL
+	String attribute setter called with string should just work: FAIL
+	String attribute setter called with undefined should behave in the same way as no arguments: FAIL
+	String attribute setter should throw if this value is invalid: FAIL
+	String attribute setter should treat no arguments as undefined: FAIL
+	[LegacyLenientSetter] setter called with undefined should behave in the same way as no arguments: FAIL
+	[LegacyLenientSetter] setter should treat no arguments as undefined: FAIL
+	[LegacyLenientThis] setter called with undefined should behave in the same way as no arguments: PASS
+	[LegacyLenientThis] setter should not throw even if this value is invalid, regardless of the arguments count: FAIL
+	[LegacyLenientThis] setter should treat no arguments as undefined: PASS
+	[PutForward] setter called with undefined should behave in the same way as no arguments: PASS
+	[PutForward] setter should treat no arguments as undefined: PASS
+	[Replaceable] setter called with other value should just work: PASS
+	[Replaceable] setter called with undefined should behave in the same way as no arguments: PASS
+	[Replaceable] setter should treat no arguments as undefined: PASS
 /webidl/ecmascript-binding/window-named-properties-object.html: OK
 	[[DefineOwnProperty]]: FAIL
 	[[Delete]]: FAIL

@@ -5645,7 +5645,7 @@
 	<meta name=referrer> gets processed and applied in the post-insertion steps: FAIL
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-and-button-from-div.html: OK
 	Script inserted before a form-associated button can observe the button's form, because by the time the script executes, the DOM insertion that associates the button with the form is already done: PASS
-/dom/nodes/insertion-removing-steps/Node-appendChild-script-and-custom-from-fragment.html: ERROR
+/dom/nodes/insertion-removing-steps/Node-appendChild-script-and-custom-from-fragment.html: OK
 	An earlier-inserted script can upgrade a later-inserted custom element, whose upgrading is synchronously observable to the script, since DOM insertion has been completed by the time it runs: FAIL
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-and-default-style-meta-from-fragment.html: ERROR
 	Inserting <meta> that uses alternate stylesheets, applies the style during DOM post-insertion steps: FAIL
@@ -5761,12 +5761,12 @@
 	Node.moveBefore should trigger CSS transition state (left) if needed: TIMEOUT
 /dom/nodes/moveBefore/custom-element-move-reactions.html: OK
 	Reactions to atomic move are called in order of element, not in order of operation: FAIL
-	When connectedCallback is not defined, no crash: FAIL
+	When connectedCallback is not defined, no crash: PASS
 	When connectedMoveCallback is defined, it is called instead of disconnectedCallback/connectedCallback: FAIL
-	When disconnectedCallback is not defined, no crash: FAIL
+	When disconnectedCallback is not defined, no crash: PASS
 	connectedMove runs when custom element is nested within a shadow root: FAIL
-	the disconnected/connected callbacks should be called when no other callback is defined: FAIL
-	the element should stay connected during the callbacks: FAIL
+	the disconnected/connected callbacks should be called when no other callback is defined: PASS
+	the element should stay connected during the callbacks: PASS
 /dom/nodes/moveBefore/fieldset-child-blur-event.html: OK
 	The 'blur' event is not fired on children of HTMLFieldSetElement during moveBefore(): FAIL
 /dom/nodes/moveBefore/fieldset-child-date-input-blur-event.html: OK
@@ -5878,7 +5878,7 @@
 /dom/nodes/moveBefore/popover-preserve.html: OK
 	when reparenting an open popover, it shouldn't be closed automatically: FAIL
 /dom/nodes/moveBefore/preserve-render-blocking-script.html: OK
-	A moved script should keep its render-blocking state: FAIL
+	A moved script should keep its render-blocking state: PASS
 /dom/nodes/moveBefore/preserve-render-blocking-style.html: OK
 	A moved script should keep its render-blocking state: FAIL
 /dom/nodes/moveBefore/relevant-mutations.html: TIMEOUT
@@ -5900,6 +5900,10 @@
 	moveBefore selection is not preserved, especially when underlying range gets inverted: FAIL
 	moveBefore should not reset selection with preceding text: FAIL
 /dom/nodes/moveBefore/slotchange-events.html: ERROR
+	Moving a slot runs the assign slottables algorithm: FAIL
+	Moving a slottable into and out out of a custom element fires 'slotchange' event: FAIL
+	Moving default content into a slot fires 'slotchange' event: FAIL
+	Moving default content out of a slot fires 'slotchange' event: FAIL
 /dom/nodes/moveBefore/style-applies.html: OK
 	Moving a style inside the document should not affect whether it's applied: PASS
 /dom/nodes/moveBefore/stylesheet-cascade-order.html: TIMEOUT

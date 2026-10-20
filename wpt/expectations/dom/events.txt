@@ -547,7 +547,7 @@
 	Equivalence of option values: PASS
 	Supports capture option: PASS
 /dom/events/EventTarget-add-listener-platform-object.html: OK
-	addEventListener with a platform object: FAIL
+	addEventListener with a platform object: PASS
 /dom/events/EventTarget-add-remove-listener.any.html: OK
 	Removing an event listener without explicit capture arg should succeed: PASS
 /dom/events/EventTarget-add-remove-listener.any.worker.html: OK

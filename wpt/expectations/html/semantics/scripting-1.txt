@@ -229,11 +229,11 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/077.html: OK
 	 adding several types of scripts through the DOM and removing some of them confuses scheduler : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/078.html: OK
-	 adding several types of scripts through the DOM and removing some of them confuses scheduler (slow-loading scripts) : FAIL
+	 adding several types of scripts through the DOM and removing some of them confuses scheduler (slow-loading scripts) : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/079.html: OK
 	 setting location to javascript URL from event handler : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/081.html: OK
-	 scheduler: slow loading external script added with DOM (appendChild): PASS
+	 scheduler: slow loading external script added with DOM (appendChild): PASS|FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/082.html: OK
 	 scheduler: multiple slow loading external scripts added with DOM (appendChild): FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/083.html: ERROR
@@ -267,7 +267,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/101.html: OK
 	 scheduler: defer script after initial onload event: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/102.html: OK
-	 scheduler: defer script after initial onload event: PASS|FAIL
+	 scheduler: defer script after initial onload event: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/103.html: OK
 	 scheduler: removing defer attribute at runtime: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/104.html: OK
@@ -311,7 +311,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/111.html: OK
 	 scheduler: removing async attribute at runtime: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/112.html: OK
-	 scheduler: removing async attribute at runtime, script also has defer attribute: FAIL
+	 scheduler: removing async attribute at runtime, script also has defer attribute: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/113.html: OK
 	 scheduler: Altering DOM using innerHTML during parse : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/114.html: OK
@@ -814,7 +814,7 @@
 /html/semantics/scripting-1/the-script-element/module/currentScript-null.html: OK
 	currentScript on script type=module should be all null: PASS
 /html/semantics/scripting-1/the-script-element/module/custom-element-exception.html: OK
-	Test that exceptions from the constructor of a custom element inside a module are propagated as expected.\n: FAIL
+	Test that exceptions from the constructor of a custom element inside a module are propagated as expected.\n: PASS
 /html/semantics/scripting-1/the-script-element/module/duplicated-imports-1.html: OK
 	Duplicated imports with the same specifier: PASS
 /html/semantics/scripting-1/the-script-element/module/duplicated-imports-2.html: OK

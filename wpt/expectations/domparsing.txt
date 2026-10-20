@@ -1134,7 +1134,28 @@
 	beforeHTMLUnsafe on a direct child of a template element throws HierarchyRequestError: FAIL
 	replaceWithHTML on a direct child of a template element throws HierarchyRequestError: FAIL
 	replaceWithHTMLUnsafe on a direct child of a template element throws HierarchyRequestError: FAIL
-/domparsing/stream-html-reentrancy.html: ERROR
+/domparsing/stream-html-reentrancy.html: OK
+	streamAppendHTMLUnsafe: abort() from a custom element reaction is deferred until the current chunk is parsed: FAIL
+	streamAppendHTMLUnsafe: abort() from a streamed inline script after a parser-blocking script is deferred until the current chunk is parsed: FAIL
+	streamAppendHTMLUnsafe: abort() from a streamed inline script is deferred until the current chunk is parsed: FAIL
+	streamAppendHTMLUnsafe: close() from a streamed inline script after a parser-blocking script closes the stream after the current chunk: FAIL
+	streamAppendHTMLUnsafe: write() and close() from a streamed inline script are processed after the current chunk: FAIL
+	streamAppendHTMLUnsafe: write() from a custom element reaction is processed after the current chunk: FAIL
+	streamAppendHTMLUnsafe: write() from a streamed inline script after a parser-blocking script is parsed after the current chunk: FAIL
+	streamHTMLUnsafe: abort() from a custom element reaction is deferred until the current chunk is parsed: FAIL
+	streamHTMLUnsafe: abort() from a streamed inline script after a parser-blocking script is deferred until the current chunk is parsed: FAIL
+	streamHTMLUnsafe: abort() from a streamed inline script is deferred until the current chunk is parsed: FAIL
+	streamHTMLUnsafe: close() from a streamed inline script after a parser-blocking script closes the stream after the current chunk: FAIL
+	streamHTMLUnsafe: write() and close() from a streamed inline script are processed after the current chunk: FAIL
+	streamHTMLUnsafe: write() from a custom element reaction is processed after the current chunk: FAIL
+	streamHTMLUnsafe: write() from a streamed inline script after a parser-blocking script is parsed after the current chunk: FAIL
+	streamPrependHTMLUnsafe: abort() from a custom element reaction is deferred until the current chunk is parsed: FAIL
+	streamPrependHTMLUnsafe: abort() from a streamed inline script after a parser-blocking script is deferred until the current chunk is parsed: FAIL
+	streamPrependHTMLUnsafe: abort() from a streamed inline script is deferred until the current chunk is parsed: FAIL
+	streamPrependHTMLUnsafe: close() from a streamed inline script after a parser-blocking script closes the stream after the current chunk: FAIL
+	streamPrependHTMLUnsafe: write() and close() from a streamed inline script are processed after the current chunk: FAIL
+	streamPrependHTMLUnsafe: write() from a custom element reaction is processed after the current chunk: FAIL
+	streamPrependHTMLUnsafe: write() from a streamed inline script after a parser-blocking script is parsed after the current chunk: FAIL
 /domparsing/style_attribute_html.html: ERROR
 /domparsing/svg-template.html: OK
 	document: FAIL
