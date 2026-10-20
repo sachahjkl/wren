@@ -420,7 +420,7 @@ static bool port_add(JSContext *ctx, JSValueConst item, void *opaque)
 {
     port_list *pl = opaque;
     if (!wj_unwrap(item, WJ_IFACE_MessagePort)) { JS_ThrowTypeError(ctx, "Failed to construct 'MessageEvent': an item of ports is not a MessagePort."); return false; }
-    JS_SetPropertyUint32(ctx, pl->arr, pl->n++, JS_DupValue(ctx, item));
+    wj_array_set(ctx, pl->arr, pl->n++, JS_DupValue(ctx, item));
     return true;
 }
 

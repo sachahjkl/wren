@@ -315,11 +315,9 @@ WJ_EXPORT("wj_module_run") int32_t wj_module_run(uint32_t url, uint32_t url_len)
     } else if (st == JS_PROMISE_PENDING) {
         /* top-level await: a later rejection is reported when it happens */
         JSValue on_reject = JS_NewCFunctionData(ctx, evaluation_rejected, 1, 0, 0, NULL);
-        JSValue then = JS_GetPropertyStr(ctx, promise, "then");
-        JSValue args[2] = { JS_UNDEFINED, on_reject };
-        JSValue r = JS_Call(ctx, then, promise, 2, args);
+        /* the engine's own then (Promise.prototype.then may be a script's by now) */
+        JSValue r = JS_PromiseThen(ctx, promise, JS_UNDEFINED, on_reject);
         if (JS_IsException(r)) { wj_report_pending(ctx); } else { JS_FreeValue(ctx, r); }
-        JS_FreeValue(ctx, then);
         JS_FreeValue(ctx, on_reject);
     }
     JS_FreeValue(ctx, promise);

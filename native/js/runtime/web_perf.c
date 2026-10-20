@@ -291,7 +291,7 @@ static JSValue entries(JSContext *ctx, const char *name, size_t nlen, int type)
         if (JS_IsException(detail) || JS_IsUndefined(detail)) { if (JS_IsException(detail)) { JS_FreeValue(ctx, JS_GetException(ctx)); } detail = JS_NULL; }
         JSValue e = entry_new(ctx, JS_UNDEFINED, et, nm, start, dur, detail);
         if (JS_IsException(e)) { JS_FreeValue(ctx, arr); return e; }
-        JS_SetPropertyUint32(ctx, arr, (uint32_t)i, e);
+        wj_array_set(ctx, arr, (uint32_t)i, e);
     }
     return arr;
 }
@@ -506,7 +506,7 @@ static JSValue filtered(JSContext *ctx, JSValueConst this_val, const char *name,
             keep = s && l == nlen && memcmp(s, name, l) == 0;
             if (s) { JS_FreeCString(ctx, s); }
         }
-        if (keep) { JS_SetPropertyUint32(ctx, out, k++, e); } else { JS_FreeValue(ctx, e); }
+        if (keep) { wj_array_set(ctx, out, k++, e); } else { JS_FreeValue(ctx, e); }
     }
     /* stable sort by start time: entries arrive in time order already, except buffered ones before new ones */
     static const char sort_src[] = "(a => a.sort((x, y) => x.startTime - y.startTime))";
@@ -599,7 +599,7 @@ static void perf_queue_entry(JSContext *ctx, int type, JSValueConst entry)
         if (!o || !(o->types & (1u << type))) { continue; }
         int64_t len = 0;
         JS_GetLength(ctx, o->buffer, &len);
-        JS_SetPropertyInt64(ctx, o->buffer, len, JS_DupValue(ctx, entry));
+        wj_array_set64(ctx, o->buffer, len, JS_DupValue(ctx, entry));
         any = true;
     }
     if (any) { queue_delivery(ctx); }
@@ -686,7 +686,7 @@ JSValue wjr_PerformanceObserver_observe(JSContext *ctx, JSValueConst this_val, i
                     int64_t n = 0, len = 0;
                     JS_GetLength(ctx, old, &n);
                     JS_GetLength(ctx, o->buffer, &len);
-                    for (int64_t i = 0; i < n; i++) { JS_SetPropertyInt64(ctx, o->buffer, len + i, JS_GetPropertyInt64(ctx, old, i)); }
+                    for (int64_t i = 0; i < n; i++) { wj_array_set64(ctx, o->buffer, len + i, JS_GetPropertyInt64(ctx, old, i)); }
                     JS_FreeValue(ctx, old);
                     if (n > 0) { queue_delivery(ctx); }
                 }

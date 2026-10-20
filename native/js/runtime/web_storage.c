@@ -187,7 +187,7 @@ int wjr_Storage_named_keys(JSContext *ctx, JSValueConst obj, JSValue array)
         int32_t len;
         WJ_FETCH_STRING(len, wr_Storage_key(s->area, i, wj_scratch.data, wj_scratch.cap));
         if (len < 0) { break; }
-        JS_SetPropertyUint32(ctx, array, (uint32_t)i, JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)len));
+        wj_array_set(ctx, array, (uint32_t)i, JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)len));
     }
     return 0;
 }

@@ -177,7 +177,7 @@ static JSValue fd_find(JSContext *ctx, JSValueConst this_val, int argc, JSValueC
         JSValue v = entry_value(ctx, o->handle, i);
         if (JS_IsException(v)) { wj_str_free(ctx, &name); JS_FreeValue(ctx, arr); return v; }
         if (!all) { wj_str_free(ctx, &name); return v; }
-        JS_SetPropertyUint32(ctx, arr, k++, v);
+        wj_array_set(ctx, arr, k++, v);
     }
     wj_str_free(ctx, &name);
     return arr;

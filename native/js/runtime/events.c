@@ -66,12 +66,16 @@ static uint32_t listener_callback_index(void) { return (uint32_t)(uintptr_t)&wj_
 /* the browser's handle of an event target: a node, a host object, the global */
 static uint64_t target_handle(wj_obj *o) { return o ? o->handle : 0; }
 
-/* Frees what the wrapper's listeners hold (finalizer: the browser frees its side with the target). */
+/* Frees what the wrapper's listeners hold (finalizer). The target may outlive its wrapper (a node kept by a static
+ * NodeList, a host object the browser still holds): its browser-side listeners go too, or a later event would call
+ * back a slot by then reused by another listener. */
 void wj_listeners_free(JSRuntime *rt, wj_obj *o)
 {
     wj_listener *l = o->listeners;
+    uint64_t h = target_handle(o);
     while (l) {
         wj_listener *next = l->next;
+        if (h && l->host_id) { wr_EventTarget_removeEventListener(h, l->host_id); }
         slot_release(l->slot);
         JS_FreeValueRT(rt, l->callback);
         JS_FreeValueRT(rt, l->type);
@@ -186,11 +190,12 @@ JSValue wjr_EventTarget_addEventListener(JSContext *ctx, JSValueConst this_val, 
     if (!read_options(ctx, wj_arg(argc, (JSValue *)argv, 2), &opt, true)) { JS_FreeValue(ctx, type); return JS_EXCEPTION; }
     if (JS_IsNull(cb) || JS_IsUndefined(cb)) { JS_FreeValue(ctx, type); JS_FreeValue(ctx, opt.signal); return JS_UNDEFINED; }
     if (!JS_IsObject(cb)) { JS_FreeValue(ctx, type); JS_FreeValue(ctx, opt.signal); return JS_ThrowTypeError(ctx, "The callback provided as parameter 2 is not an object."); }
-    if (!JS_IsUndefined(opt.signal)) {
-        JSValue aborted = JS_GetPropertyStr(ctx, opt.signal, "aborted");
-        bool is_aborted = JS_ToBool(ctx, aborted);
-        JS_FreeValue(ctx, aborted);
-        if (is_aborted) { JS_FreeValue(ctx, type); JS_FreeValue(ctx, opt.signal); return JS_UNDEFINED; }
+    /* the signal's own state, not its (patchable) `aborted` getter */
+    extern bool web_signal_aborted(JSValueConst v);
+    if (!JS_IsUndefined(opt.signal) && web_signal_aborted(opt.signal)) {
+        JS_FreeValue(ctx, type);
+        JS_FreeValue(ctx, opt.signal);
+        return JS_UNDEFINED;
     }
     for (wj_listener *l = o->listeners; l; l = l->next) {
         if (!l->handler && l->capture == opt.capture && same_string(ctx, l->type, type) && JS_IsStrictEqual(ctx, l->callback, cb)) {
@@ -269,6 +274,7 @@ typedef struct wj_event {
     double   time_stamp;
     uint8_t  bubbles, cancelable, composed, trusted;
     uint8_t  canceled, stop, stop_immediate, initialized, dispatching;
+    uint8_t  in_passive;      /* DOM "in passive listener flag": a passive listener of it runs, preventDefault does nothing */
 } wj_event;
 
 static void event_free(void *p)
@@ -537,6 +543,7 @@ WJ_EXPORT("wj_cb_listener") void wj_cb_listener(int32_t user, uint64_t event)
     if (JS_IsException(ev)) { wj_report_pending(ctx); JS_FreeValue(ctx, target); return; }
     JSValue cb = JS_DupValue(ctx, l->callback);
     int handler = l->handler;
+    bool passive = l->passive;
     if (l->once) {
         /* the browser forgot it already */
         listener_unlink(ctx, owner, l);
@@ -545,6 +552,10 @@ WJ_EXPORT("wj_cb_listener") void wj_cb_listener(int32_t user, uint64_t event)
     JSValue saved_event = current_event;
     bool swapped = wj_the_realm.kind != WJ_EXPOSE_WORKER && !wr_Event_inShadowTreeNow(event);
     if (swapped) { current_event = JS_DupValue(ctx, ev); }
+    wj_obj *evo = wj_unwrap(ev, WJ_IFACE_Event);
+    wj_event *we = evo ? evo->impl : NULL;
+    uint8_t saved_passive = we ? we->in_passive : 0;
+    if (we) { we->in_passive = passive; }
     if (handler) {
         extern void wj_handler_invoke(JSContext *ctx, JSValueConst target, JSValueConst handler_value, JSValueConst ev, uint64_t host_event, int kind);
         wj_handler_invoke(ctx, target, cb, ev, event, handler);
@@ -560,6 +571,7 @@ WJ_EXPORT("wj_cb_listener") void wj_cb_listener(int32_t user, uint64_t event)
         }
         if (JS_IsException(r)) { wj_report_pending(ctx); } else { JS_FreeValue(ctx, r); }
     }
+    if (we) { we->in_passive = saved_passive; }
     if (swapped) { JS_FreeValue(ctx, current_event); current_event = saved_event; }
     wj_obj *eo = wj_obj_of(ev);
     if (eo && eo->impl) { ((wj_event *)eo->impl)->host = 0; }
@@ -718,15 +730,12 @@ static bool event_canceled(wj_event *e)
     return e->canceled;
 }
 
-/* the passive flag of the running listener: preventDefault does nothing in it */
-static bool in_passive_listener;
-
 JSValue wjr_Event_preventDefault(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(argc); WJ_UNUSED(argv);
     wj_event *e = event_of(ctx, this_val);
     if (!e) { return JS_EXCEPTION; }
-    if (e->cancelable && !in_passive_listener) {
+    if (e->cancelable && !e->in_passive) {
         e->canceled = 1;
         if (e->host) { wr_Event_preventDefault(e->host); }
     }
@@ -891,7 +900,7 @@ int wj_dispatch_own_event(JSContext *ctx, JSValueConst target, JSValueConst even
     return ok;
 }
 
-/* AbortSignal of addEventListener: removing the listener when it aborts (runtime/abort.c may do better). */
+/* AbortSignal of addEventListener: removing the listener when it aborts (runtime/web_abort.c implements it). */
 __attribute__((weak)) void wj_signal_follow_listener(JSContext *ctx, JSValueConst signal, JSValueConst target, wj_listener *l)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(signal); WJ_UNUSED(target); WJ_UNUSED(l);

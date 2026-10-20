@@ -122,7 +122,7 @@ typedef struct wj_interface {
 extern const wj_interface wj_interfaces[];
 extern const int wj_interface_count;
 
-/* the interface index of a name (binary search over the generated table), -1 when unknown */
+/* the interface index of a name (linear scan of the generated table: start-up and cached lookups), -1 when unknown */
 int wj_interface_find(const char *name);
 
 /* ---- platform objects ---- */
@@ -164,7 +164,6 @@ struct wj_obj {
 enum { WJ_KIND_NONE = 0, WJ_KIND_NODE, WJ_KIND_HOST, WJ_KIND_GLOBAL };
 enum {
     WJ_OBJ_OWNED   = 1 << 0,      /* the realm created the host object: released with the wrapper */
-    WJ_OBJ_PINNED  = 1 << 1,      /* kept alive by the realm while the browser may still fire its events */
 };
 
 /* from an impl_mark callback */
@@ -196,7 +195,6 @@ typedef struct wj_realm {
     wj_val      *ctors;           /* per interface: interface object (or undefined) */
     bool         started;
     bool         in_gc_prologue;
-    uint32_t     interrupt_hits;
 } wj_realm;
 
 extern wj_realm wj_the_realm;
@@ -329,5 +327,7 @@ void wj_report_exception(wj_ctx *ctx, wj_val exc);
 /* At every entry from the browser, before running script: sets the recursion budget from the outermost entry only (an
  * entry nested in a browser call keeps the frames below it counted). NULL: the realm's context. */
 void wj_stack_enter(wj_ctx *ctx);
+/* The recursion budget is spent (C code recursing on its own checks it: no exception thrown). */
+bool wj_stack_exhausted(void);
 
 #endif

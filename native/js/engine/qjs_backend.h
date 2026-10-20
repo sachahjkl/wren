@@ -40,4 +40,18 @@ static inline wj_val wj_double(wj_ctx *ctx, double d) { return JS_NewFloat64(ctx
 static inline wj_val wj_string(wj_ctx *ctx, const void *utf8, size_t len) { return JS_NewStringLen(ctx, (const char *)utf8, len); }
 static inline wj_val wj_cstring(wj_ctx *ctx, const char *s) { return JS_NewString(ctx, s); }
 
+/* Element `i` of an array (or holder object) the engine built, `v` taken: a data property defined, never [[Set]], so
+ * an indexed setter a script put on Array.prototype / Object.prototype never runs (it could free what the caller
+ * still uses, or move wj_scratch). -1 throws. */
+static inline int wj_array_set(wj_ctx *ctx, wj_val arr, uint32_t i, wj_val v) { return JS_DefinePropertyValueUint32(ctx, arr, i, v, JS_PROP_C_W_E); }
+static inline int wj_array_set64(wj_ctx *ctx, wj_val arr, int64_t i, wj_val v)
+{
+    if (i >= 0 && i < (int64_t)UINT32_MAX) { return JS_DefinePropertyValueUint32(ctx, arr, (uint32_t)i, v, JS_PROP_C_W_E); }
+    JSAtom a = JS_ValueToAtom(ctx, JS_NewInt64(ctx, i));
+    if (a == JS_ATOM_NULL) { JS_FreeValue(ctx, v); return -1; }
+    int r = JS_DefinePropertyValue(ctx, arr, a, v, JS_PROP_C_W_E);
+    JS_FreeAtom(ctx, a);
+    return r;
+}
+
 #endif

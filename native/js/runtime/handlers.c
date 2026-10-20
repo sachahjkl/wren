@@ -69,34 +69,53 @@ static uncompiled *uncompiled_of(JSValueConst v)
 
 extern size_t wj_script_base_name(char *out, size_t cap);
 
+/* `l` gets `result` (taken) unless a script changed its value while it was compiled (the form getter, a CSP report):
+ * then the newer value stands and is the answer. */
+static JSValue handler_settle(JSContext *ctx, wj_listener *l, JSValueConst src, JSValue result)
+{
+    if (JS_VALUE_GET_PTR(l->callback) != JS_VALUE_GET_PTR(src)) {
+        JS_FreeValue(ctx, result);
+        return uncompiled_of(l->callback) ? JS_NULL : JS_DupValue(ctx, l->callback);
+    }
+    JS_FreeValue(ctx, l->callback);
+    l->callback = JS_DupValue(ctx, result);
+    return result;
+}
+
 /* HTML "getting the current value of the event handler" for a handler from a content attribute: the function, or null
- * (refused by CSP, or it does not compile: reported). Replaces `l`'s value with the result. */
+ * (refused by CSP, or it does not compile: reported). Replaces `l`'s value with the result. `o` (held by the caller)
+ * keeps `l` (a handler's listener lives as long as its target); scripts run meanwhile, so the uncompiled value is held
+ * and its fields copied. */
 static JSValue compile_handler(JSContext *ctx, wj_obj *o, wj_listener *l)
 {
     uncompiled *u = uncompiled_of(l->callback);
     if (!u) { return JS_DupValue(ctx, l->callback); }
+    JSValue src = JS_DupValue(ctx, l->callback);
+    uint64_t element = u->element;
+    int32_t line = u->line;
+    bool on_window = u->on_window, svg = u->svg;
     size_t blen;
     const char *body = JS_ToCStringLen(ctx, &blen, u->body);
-    if (!body) { return JS_EXCEPTION; }
+    if (!body) { JS_FreeValue(ctx, src); return JS_EXCEPTION; }
     JSValue result = JS_NULL;
-    if (!wr_Script_allowInline(u->element, wr_InlineScriptKind_Attribute, (const uint8_t *)body, (uint32_t)blen)) {
+    if (!wr_Script_allowInline(element, wr_InlineScriptKind_Attribute, (const uint8_t *)body, (uint32_t)blen)) {
         JS_FreeCString(ctx, body);
-        JS_FreeValue(ctx, l->callback);
-        l->callback = JS_NULL;
-        return JS_NULL;
+        result = handler_settle(ctx, l, src, JS_NULL);
+        JS_FreeValue(ctx, src);
+        return result;
     }
     size_t tlen;
     const char *type = JS_ToCStringLen(ctx, &tlen, l->type);
-    if (!type) { JS_FreeCString(ctx, body); return JS_EXCEPTION; }
+    if (!type) { JS_FreeCString(ctx, body); JS_FreeValue(ctx, src); return JS_EXCEPTION; }
     const char *params = "event";
     if (o->kind == WJ_KIND_GLOBAL && l->handler == 2) { params = "event, source, lineno, colno, error"; }
-    else if (u->svg) { params = "evt"; }
+    else if (svg) { params = "evt"; }
     /* scopes: the document, the form owner, the element (none for the window's own handlers) */
     JSValue scopes[3];
     int nscopes = 0;
     JSValue doc = JS_GetPropertyStr(ctx, wj_the_realm.global, "document");
     if (JS_IsObject(doc)) { scopes[nscopes++] = doc; } else { JS_FreeValue(ctx, doc); }
-    if (!u->on_window && o->kind == WJ_KIND_NODE) {
+    if (!on_window && o->kind == WJ_KIND_NODE) {
         JSValue form = JS_GetPropertyStr(ctx, o->self, "form");
         if (JS_HasException(ctx)) { JS_FreeValue(ctx, JS_GetException(ctx)); form = JS_UNDEFINED; }
         /* only the form owner of form-associated elements (an HTMLFormElement): a `form` attribute string does not count */
@@ -105,15 +124,19 @@ static JSValue compile_handler(JSContext *ctx, wj_obj *o, wj_listener *l)
     }
     /* (function () { with (arguments[0]) with (arguments[1]) ... return function on<type>(params) {\n body \n}; }) */
     size_t cap = blen + tlen + 256;
-    char *src = malloc(cap);
-    if (!src) { JS_FreeCString(ctx, body); JS_FreeCString(ctx, type); for (int i = 0; i < nscopes; i++) { JS_FreeValue(ctx, scopes[i]); } return JS_ThrowOutOfMemory(ctx); }
+    char *text = malloc(cap);
+    if (!text) {
+        JS_FreeCString(ctx, body); JS_FreeCString(ctx, type); JS_FreeValue(ctx, src);
+        for (int i = 0; i < nscopes; i++) { JS_FreeValue(ctx, scopes[i]); }
+        return JS_ThrowOutOfMemory(ctx);
+    }
     size_t n = 0;
-    n += (size_t)snprintf(src + n, cap - n, "(function(){");
-    for (int i = 0; i < nscopes; i++) { n += (size_t)snprintf(src + n, cap - n, "with(arguments[%d])", i); }
-    n += (size_t)snprintf(src + n, cap - n, "return function on%.*s(%s){\n", (int)tlen, type, params);
-    memcpy(src + n, body, blen);
+    n += (size_t)snprintf(text + n, cap - n, "(function(){");
+    for (int i = 0; i < nscopes; i++) { n += (size_t)snprintf(text + n, cap - n, "with(arguments[%d])", i); }
+    n += (size_t)snprintf(text + n, cap - n, "return function on%.*s(%s){\n", (int)tlen, type, params);
+    memcpy(text + n, body, blen);
     n += blen;
-    n += (size_t)snprintf(src + n, cap - n, "\n};})");
+    n += (size_t)snprintf(text + n, cap - n, "\n};})");
     JS_FreeCString(ctx, body);
     JS_FreeCString(ctx, type);
     char name[1024];
@@ -122,10 +145,10 @@ static JSValue compile_handler(JSContext *ctx, wj_obj *o, wj_listener *l)
         .version = JS_EVAL_OPTIONS_VERSION,
         .eval_flags = JS_EVAL_TYPE_GLOBAL,
         .filename = name,
-        .line_num = u->line > 1 ? u->line - 1 : 1,
+        .line_num = line > 1 ? line - 1 : 1,
     };
-    JSValue maker = JS_Eval2(ctx, src, n, &opt);
-    free(src);
+    JSValue maker = JS_Eval2(ctx, text, n, &opt);
+    free(text);
     if (!JS_IsException(maker)) {
         result = JS_Call(ctx, maker, JS_UNDEFINED, nscopes, scopes);
         JS_FreeValue(ctx, maker);
@@ -138,11 +161,10 @@ static JSValue compile_handler(JSContext *ctx, wj_obj *o, wj_listener *l)
         wj_report_pending(ctx);
         result = JS_NULL;
     }
-    JS_FreeValue(ctx, l->callback);
-    l->callback = JS_DupValue(ctx, result);
+    result = handler_settle(ctx, l, src, result);
+    JS_FreeValue(ctx, src);
     return result;
 }
-
 /* events.c asks for the value of a handler (the IDL getter, or before running it). */
 JSValue wj_handler_compile(JSContext *ctx, wj_obj *o, wj_listener *l)
 {

@@ -255,7 +255,7 @@ JSValue wjr_URLSearchParams_getAll(JSContext *ctx, JSValueConst this_val, int ar
         int32_t n;
         WJ_FETCH_STRING(n, wr_URLSearchParams_getNth(o->handle, (const uint8_t *)name.ptr, (uint32_t)name.len, i, wj_scratch.data, wj_scratch.cap));
         if (n < 0) { break; }
-        JS_SetPropertyUint32(ctx, arr, (uint32_t)i, JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n));
+        wj_array_set(ctx, arr, (uint32_t)i, JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n));
     }
     wj_str_free(ctx, &name);
     return arr;

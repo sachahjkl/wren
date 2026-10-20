@@ -14,9 +14,11 @@ typedef struct web_signal {
     JSValue  reason;       /* undefined until aborted */
     JSValue  sources;      /* array of AbortSignal (AbortSignal.any), or undefined */
     JSValue  dependents;   /* array of AbortSignal following this one, or undefined */
-    JSValue  followers;    /* array of [target, listener address] added with {signal}, or undefined */
+    JSValue  followers;    /* array of [target, the browser's listener id] added with {signal}, or undefined */
     uint32_t pin;          /* a timeout signal is kept alive until it fires */
     uint32_t slot;         /* the internal listener's slot */
+    uint64_t handle;       /* the browser's signal and the internal listener's id there (removed with the wrapper: the */
+    int32_t  listener;     /* signal may outlive it, and the slot is reused) */
 } web_signal;
 
 typedef struct web_controller { JSValue signal; } web_controller;
@@ -48,6 +50,7 @@ static void signal_free(void *p)
     web_signal *s = p;
     JSRuntime *rt = web_rt();
     if (s->slot && s->slot < sig_slots_n) { sig_slots[s->slot] = NULL; }
+    if (s->listener) { wr_EventTarget_removeEventListener(s->handle, s->listener); }
     JS_FreeValueRT(rt, s->reason);
     JS_FreeValueRT(rt, s->sources);
     JS_FreeValueRT(rt, s->dependents);
@@ -96,7 +99,10 @@ static JSValue signal_wrap(JSContext *ctx, uint64_t h)
     s->slot = sig_slot_alloc(wj_obj_of(obj));
     if (s->slot) {
         int32_t id = 0;
-        wr_EventTarget_addEventListener(h, (const uint8_t *)"abort", 5, (uint32_t)(uintptr_t)&wj_cb_signal_abort, (int32_t)s->slot, 0, &id);
+        if (wr_EventTarget_addEventListener(h, (const uint8_t *)"abort", 5, (uint32_t)(uintptr_t)&wj_cb_signal_abort, (int32_t)s->slot, 0, &id) >= 0) {
+            s->handle = h;
+            s->listener = id;
+        }
     }
     return obj;
 }
@@ -117,16 +123,17 @@ static void array_push(JSContext *ctx, JSValue *arr, JSValueConst v)
     if (JS_IsUndefined(*arr)) { *arr = JS_NewArray(ctx); }
     int64_t n = 0;
     JS_GetLength(ctx, *arr, &n);
-    JS_SetPropertyUint32(ctx, *arr, (uint32_t)n, JS_DupValue(ctx, v));
+    wj_array_set(ctx, *arr, (uint32_t)n, JS_DupValue(ctx, v));
 }
 
-/* the listener `l` of `target`, if it still is one */
-static void follower_remove(JSContext *ctx, JSValueConst target, wj_listener *l)
+/* the listener of `target` the browser knows as `host_id`, if it still is one (ids are never reused, unlike the
+ * listeners' addresses) */
+static void follower_remove(JSContext *ctx, JSValueConst target, int32_t host_id)
 {
     wj_obj *o = wj_unwrap(target, -1);
     if (!o) { return; }
     for (wj_listener *x = o->listeners; x; x = x->next) {
-        if (x == l && !x->handler) { wj_listener_remove(ctx, o, x); return; }
+        if (x->host_id == host_id && !x->handler) { wj_listener_remove(ctx, o, x); return; }
     }
 }
 
@@ -140,7 +147,7 @@ static void give_reason(JSContext *ctx, web_signal *s, int depth)
     for (int64_t i = 0; i < n; i++) {
         JSValue d = JS_GetPropertyUint32(ctx, s->dependents, (uint32_t)i);
         web_signal *ds = signal_of(d);
-        if (ds && JS_IsUndefined(ds->reason) && wr_AbortSignal_aborted(wj_obj_of(d)->handle)) {
+        if (ds && JS_IsUndefined(ds->reason) && wr_AbortSignal_aborted(web_signal_handle(d))) {
             ds->reason = JS_DupValue(ctx, s->reason);
             give_reason(ctx, ds, depth + 1);
         }
@@ -174,11 +181,11 @@ WJ_EXPORT("wj_cb_signal_abort") void wj_cb_signal_abort(int32_t user, uint64_t e
         for (int64_t i = 0; i < n; i++) {
             JSValue f = JS_GetPropertyUint32(ctx, followers, (uint32_t)i);
             JSValue target = JS_GetPropertyUint32(ctx, f, 0);
-            JSValue addr = JS_GetPropertyUint32(ctx, f, 1);
-            double a = 0;
-            JS_ToFloat64(ctx, &a, addr);
-            follower_remove(ctx, target, (wj_listener *)(uintptr_t)a);
-            JS_FreeValue(ctx, addr);
+            JSValue id = JS_GetPropertyUint32(ctx, f, 1);
+            int32_t host_id = 0;
+            JS_ToInt32(ctx, &host_id, id);
+            follower_remove(ctx, target, host_id);
+            JS_FreeValue(ctx, id);
             JS_FreeValue(ctx, target);
             JS_FreeValue(ctx, f);
         }
@@ -195,8 +202,8 @@ void wj_signal_follow_listener(JSContext *ctx, JSValueConst signal, JSValueConst
     web_signal *s = signal_of(signal);
     if (!s) { return; }
     JSValue f = JS_NewArray(ctx);
-    JS_SetPropertyUint32(ctx, f, 0, JS_DupValue(ctx, target));
-    JS_SetPropertyUint32(ctx, f, 1, JS_NewFloat64(ctx, (double)(uintptr_t)l));
+    wj_array_set(ctx, f, 0, JS_DupValue(ctx, target));
+    wj_array_set(ctx, f, 1, JS_NewInt32(ctx, l->host_id));
     array_push(ctx, &s->followers, f);
     JS_FreeValue(ctx, f);
 }
@@ -331,11 +338,12 @@ typedef struct any_collect { JSValue list; uint32_t n; } any_collect;
 static bool any_item(JSContext *ctx, JSValueConst item, void *opaque)
 {
     any_collect *c = opaque;
-    if (!signal_of(item) || !wj_obj_of(item)->handle) {
+    wj_obj *o = wj_unwrap(item, WJ_IFACE_AbortSignal);
+    if (!o || !o->impl || !o->handle) {
         JS_ThrowTypeError(ctx, "Failed to execute 'any' on 'AbortSignal': an item is not an AbortSignal");
         return false;
     }
-    JS_SetPropertyUint32(ctx, c->list, c->n++, JS_DupValue(ctx, item));
+    wj_array_set(ctx, c->list, c->n++, JS_DupValue(ctx, item));
     return true;
 }
 
@@ -353,7 +361,7 @@ JSValue wjr_AbortSignal_static_any(JSContext *ctx, JSValueConst this_val, int ar
     if (!handles) { JS_FreeValue(ctx, c.list); return JS_ThrowOutOfMemory(ctx); }
     for (uint32_t i = 0; i < c.n; i++) {
         JSValue s = JS_GetPropertyUint32(ctx, c.list, i);
-        handles[i] = wj_obj_of(s)->handle;
+        handles[i] = web_signal_handle(s);
         JS_FreeValue(ctx, s);
     }
     uint64_t h = 0;

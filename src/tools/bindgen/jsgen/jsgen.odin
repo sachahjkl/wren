@@ -614,7 +614,7 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 	if has_self { append(&call, "self->handle") }
 	for a, i in args {
 		v := fmt.tprintf("a%d", i)
-		bail := fmt.tprintf("{ %sreturn JS_EXCEPTION; }", strings.to_string(freed))
+		bail := fmt.tprintf("{{ %sreturn JS_EXCEPTION; }}", strings.to_string(freed))
 		src := setter ? "argv[0]" : fmt.tprintf("wj_arg(argc, argv, %d)", i)
 		optional := a.a != nil && a.a.optional
 		def := a.a != nil ? a.a.default : webidl.Default{}

@@ -60,16 +60,15 @@ diff --git a/quickjs.c b/quickjs.c
 diff --git a/quickjs.h b/quickjs.h
 --- a/quickjs.h
 +++ b/quickjs.h
-@@ -517,6 +517,8 @@ JS_EXTERN void JS_SetDumpFlags(JSRuntime *rt, uint64_t flags);
+@@ -517,6 +517,7 @@ JS_EXTERN void JS_SetDumpFlags(JSRuntime *rt, uint64_t flags);
  JS_EXTERN uint64_t JS_GetDumpFlags(JSRuntime *rt);
  JS_EXTERN size_t JS_GetGCThreshold(JSRuntime *rt);
  JS_EXTERN void JS_SetGCThreshold(JSRuntime *rt, size_t gc_threshold);
 +JS_EXTERN void JS_SetGCThresholdFloor(JSRuntime *rt, size_t floor); /* Wren */
-+JS_EXTERN void JS_SetGCThresholdFloor(JSRuntime *rt, size_t floor); /* Wren */
  /* use 0 to disable maximum stack size check */
  JS_EXTERN void JS_SetMaxStackSize(JSRuntime *rt, size_t stack_size);
  /* should be called when changing thread to update the stack top value
-@@ -1277,7 +1279,8 @@ JS_EXTERN int JS_EnqueueJob(JSContext *ctx, JSJobFunc *job_func,
+@@ -1277,7 +1278,8 @@ JS_EXTERN int JS_EnqueueJob(JSContext *ctx, JSJobFunc *job_func,
  
  JS_EXTERN bool JS_IsJobPending(JSRuntime *rt);
  JS_EXTERN JSContext *JS_GetPendingJobContext(JSRuntime *rt);

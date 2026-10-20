@@ -418,6 +418,118 @@ for (let i = 0; i < 20000; i++) {
 		page.page_close(p)
 	}
 
+	fmt.println("-- the engine's C code against scripts that run in the middle of it")
+	{
+		p := load(process, `<!doctype html><body><form><input id=i onclick="console.log('stale handler ran')"></form><script>
+// settling a read reads the result's then: a getter releasing the lock (the stream's last reference) mid-read
+(async () => {
+  let reader = new Blob(["abc"]).stream().getReader(), hits = 0;
+  Object.defineProperty(Object.prototype, "then", {configurable: true, get() { if (reader && "done" in this) { hits++; const r = reader; reader = null; r.releaseLock(); } return undefined; }});
+  const pr = reader.read();
+  delete Object.prototype.then;
+  const res = await pr;
+  console.log("stream then", hits, res.done, res.value.length);
+})();
+// structured clone of a value nested deeper than the C stack allows: an exception, not a crash
+let deep = []; for (let k = 0; k < 100000; k++) deep = [deep];
+try { structuredClone(deep); console.log("deep clone no error"); } catch (e) { console.log("deep clone", e.name); }
+// a rejected promise whose reason is a rejected promise, deeply: the console stops at its depth
+let pr = Promise.reject(0); pr.catch(() => {});
+for (let k = 0; k < 20000; k++) { pr = Promise.reject(pr); pr.catch(() => {}); }
+console.log(pr);
+console.log("deep promise logged");
+// a listener removed then another added (its memory may be reused): the signal removes only the first
+{
+  const ac = new AbortController(), t = document.createElement("div"), f = () => {}; let n = 0;
+  t.addEventListener("x", f, {signal: ac.signal}); t.removeEventListener("x", f);
+  t.addEventListener("x", () => n++);
+  ac.abort(); t.dispatchEvent(new Event("x"));
+  console.log("abort follower", n);
+}
+// passive listeners cannot cancel; the signal's own state decides, not its aborted getter
+{
+  const t = document.createElement("div"); let inside = null;
+  t.addEventListener("x", e => { e.preventDefault(); inside = e.defaultPrevented; }, {passive: true});
+  const ev = new Event("x", {cancelable: true});
+  console.log("passive", t.dispatchEvent(ev), inside, ev.defaultPrevented);
+  const d = Object.getOwnPropertyDescriptor(AbortSignal.prototype, "aborted");
+  Object.defineProperty(AbortSignal.prototype, "aborted", {configurable: true, get() { throw new Error("getter"); }});
+  let n = 0, threw = false;
+  try { t.addEventListener("y", () => n++, {signal: new AbortController().signal}); } catch (e) { threw = true; }
+  Object.defineProperty(AbortSignal.prototype, "aborted", d);
+  t.dispatchEvent(new Event("y"));
+  console.log("signal state", threw, n);
+}
+// a content attribute handler cleared by the form getter while it compiles stays cleared
+{
+  const i = document.getElementById("i");
+  const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "form");
+  Object.defineProperty(HTMLInputElement.prototype, "form", {configurable: true, get() { i.onclick = null; return null; }});
+  const h = i.onclick;
+  Object.defineProperty(HTMLInputElement.prototype, "form", d);
+  console.log("handler cleared", h, i.onclick);
+  i.click();
+}
+// arrays the engine builds get their elements defined: an indexed accessor on Array.prototype never runs
+{
+  let ran = 0;
+  Object.defineProperty(Array.prototype, 0, {configurable: true, get() { return "hijacked"; }, set(v) { ran++; }});
+  let path = null;
+  document.body.addEventListener("z", e => { path = e.composedPath(); });
+  document.body.dispatchEvent(new Event("z"));
+  const any = AbortSignal.any([new AbortController().signal]);
+  delete Array.prototype[0];
+  console.log("own elements", ran, Object.hasOwn(path, 0), path[0] === document.body, any instanceof AbortSignal);
+}
+// an index of a collection cannot be deleted; anything else can
+{
+  const nl = document.body.childNodes;
+  console.log("delete index", delete nl[0], 0 in nl, delete nl[999], delete nl.foo);
+}
+// the rejection tracker and module evaluation use the engine's own WeakSet methods and then
+WeakSet.prototype.has = function () { console.log("patched has ran"); return false; };
+const thenOrig = Promise.prototype.then;
+Promise.prototype.then = function (...a) { console.log("patched then ran"); return thenOrig.apply(this, a); };
+const late = Promise.reject(new Error("late"));
+setTimeout(() => setTimeout(() => { thenOrig.call(late, undefined, () => {}); console.log("late handled"); }), 0);
+</script><script type=module>
+await new Promise(r => setTimeout(r, 0));
+console.log("module done");
+</script></body>`)
+		check(logged("stream then 1 false 3"), "a read settled while a then getter releases the stream's last reference")
+		check(logged("deep clone RangeError"), "a structured clone deeper than the C stack throws a RangeError")
+		check(logged("deep promise logged"), "console.log of deeply nested promises stops at its depth")
+		check(logged("abort follower 1"), "an aborted signal removes its own listener, not a later one")
+		check(logged("passive true false false"), "preventDefault in a passive listener does nothing")
+		check(logged("signal state false 1"), "addEventListener reads the signal's state, not its aborted getter")
+		check(logged("handler cleared null null") && !logged("stale handler ran"), "a handler cleared while it compiles is not brought back")
+		check(logged("own elements 0 true true true"), "engine-built arrays define their elements (AbortSignal.any, composedPath)")
+		check(logged("delete index false true true true"), "an existing index of a collection cannot be deleted")
+		check(logged("late handled") && logged("module done"), "the late handler and the module ran")
+		check(!logged("patched has ran") && !logged("patched then ran"), "scripts' WeakSet.prototype.has and Promise.prototype.then are not called by the engine")
+		page.page_close(p)
+	}
+
+	fmt.println("-- a wrapper collected while its node lives on: its listeners leave the browser too")
+	{
+		p := load(process, `<!doctype html><body><script>
+window.list = (() => {
+  const d = document.createElement("div"), s = d.appendChild(document.createElement("span"));
+  s.addEventListener("x", () => console.log("old listener"));
+  return d.querySelectorAll("span");
+})();
+</script></body>`)
+		js.collect(p.js.inst)
+		js.collect(p.js.inst)
+		page.js_run(p, transmute([]byte)string(`
+window.hits = 0;
+for (let k = 0; k < 20; k++) { const o = document.createElement("p"); o.addEventListener("y", () => hits++); (window.keepAlive ??= []).push(o); }
+list[0].dispatchEvent(new Event("x"));
+console.log("other listeners hit", hits);`), "probe.js")
+		check(logged("other listeners hit 0"), "an event at a node whose wrapper died never calls a listener of another target")
+		page.page_close(p)
+	}
+
 	fmt.println("-- cost of a call across the boundary (ns per call, informational)")
 	{
 		p := load(process, `<!doctype html><body><div id=a title=t><span></span></div><script>

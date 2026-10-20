@@ -97,11 +97,11 @@ static JSValue new_error_event(JSContext *ctx, JSValueConst type, JSValueConst m
     JS_FreeValue(ctx, args[1]);
     if (JS_IsException(ev)) { return ev; }
     JSValue f = JS_NewArray(ctx);
-    JS_SetPropertyUint32(ctx, f, EE_MESSAGE, JS_DupValue(ctx, message));
-    JS_SetPropertyUint32(ctx, f, EE_FILENAME, JS_DupValue(ctx, filename));
-    JS_SetPropertyUint32(ctx, f, EE_LINENO, JS_NewInt32(ctx, line));
-    JS_SetPropertyUint32(ctx, f, EE_COLNO, JS_NewInt32(ctx, col));
-    JS_SetPropertyUint32(ctx, f, EE_ERROR, JS_DupValue(ctx, error));
+    wj_array_set(ctx, f, EE_MESSAGE, JS_DupValue(ctx, message));
+    wj_array_set(ctx, f, EE_FILENAME, JS_DupValue(ctx, filename));
+    wj_array_set(ctx, f, EE_LINENO, JS_NewInt32(ctx, line));
+    wj_array_set(ctx, f, EE_COLNO, JS_NewInt32(ctx, col));
+    wj_array_set(ctx, f, EE_ERROR, JS_DupValue(ctx, error));
     JSValue *slot = wj_event_extra(ev);
     if (slot) { JS_FreeValue(ctx, *slot); *slot = f; } else { JS_FreeValue(ctx, f); }
     return ev;
@@ -133,7 +133,7 @@ JSValue wjr_ErrorEvent_constructor(JSContext *ctx, JSValueConst new_target, int 
             if (JS_IsException(s)) { JS_FreeValue(ctx, f); JS_FreeValue(ctx, ev); return s; }
             v = s;
         }
-        JS_SetPropertyUint32(ctx, f, (uint32_t)i, v);
+        wj_array_set(ctx, f, (uint32_t)i, v);
     }
     JSValue *slot = wj_event_extra(ev);
     if (slot) { JS_FreeValue(ctx, *slot); *slot = f; } else { JS_FreeValue(ctx, f); }
@@ -234,8 +234,8 @@ JSValue wjr_PromiseRejectionEvent_constructor(JSContext *ctx, JSValueConst new_t
     JSValue ev = wj_event_construct(ctx, new_target, argc, argv, WJ_IFACE_PromiseRejectionEvent, "PromiseRejectionEvent");
     if (JS_IsException(ev)) { JS_FreeValue(ctx, promise); JS_FreeValue(ctx, reason); return ev; }
     JSValue f = JS_NewArray(ctx);
-    JS_SetPropertyUint32(ctx, f, 0, promise);
-    JS_SetPropertyUint32(ctx, f, 1, reason);
+    wj_array_set(ctx, f, 0, promise);
+    wj_array_set(ctx, f, 1, reason);
     JSValue *slot = wj_event_extra(ev);
     if (slot) { JS_FreeValue(ctx, *slot); *slot = f; } else { JS_FreeValue(ctx, f); }
     return ev;
@@ -259,6 +259,10 @@ typedef struct rej_list { JSValue *items; uint32_t n, cap; } rej_list;
 static rej_list about_to_be_notified;   /* promises (counted) rejected without a handler since the last notification */
 static rej_list handled_later;          /* promises reported unhandled, then handled: rejectionhandled */
 static JSValue outstanding;             /* WeakSet of the promises reported unhandled */
+/* WeakSet.prototype's has, delete and add as the realm started (counted): a script replacing them never runs from
+ * the rejection tracker, which the engine calls in the middle of its promise operations */
+enum { WS_HAS, WS_DELETE, WS_ADD, WS_COUNT };
+static JSValue ws_methods[WS_COUNT];
 static bool check_queued;
 
 static bool list_push(rej_list *l, JSValue v)
@@ -286,12 +290,10 @@ static bool list_remove(JSContext *ctx, rej_list *l, JSValueConst v)
     return false;
 }
 
-static JSValue weakset_call(JSContext *ctx, const char *method, JSValueConst v)
+static JSValue weakset_call(JSContext *ctx, int method, JSValueConst v)
 {
-    if (!JS_IsObject(outstanding)) { return JS_FALSE; }
-    JSValue fn = JS_GetPropertyStr(ctx, outstanding, method);
-    JSValue r = JS_IsFunction(ctx, fn) ? JS_Call(ctx, fn, outstanding, 1, &v) : JS_UNDEFINED;
-    JS_FreeValue(ctx, fn);
+    if (!JS_IsObject(outstanding) || !JS_IsFunction(ctx, ws_methods[method])) { return JS_FALSE; }
+    JSValue r = JS_Call(ctx, ws_methods[method], outstanding, 1, &v);
     if (JS_IsException(r)) { JS_FreeValue(ctx, JS_GetException(ctx)); return JS_FALSE; }
     return r;
 }
@@ -311,11 +313,11 @@ static void rejection_tracker(JSContext *ctx, JSValueConst promise, JSValueConst
         return;
     }
     if (list_remove(ctx, &about_to_be_notified, promise)) { return; }
-    JSValue had = weakset_call(ctx, "has", promise);
+    JSValue had = weakset_call(ctx, WS_HAS, promise);
     bool was_reported = JS_ToBool(ctx, had);
     JS_FreeValue(ctx, had);
     if (!was_reported) { return; }
-    JSValue r = weakset_call(ctx, "delete", promise);
+    JSValue r = weakset_call(ctx, WS_DELETE, promise);
     JS_FreeValue(ctx, r);
     if (list_push(&handled_later, JS_DupValue(ctx, promise))) { queue_check(); }
 }
@@ -323,9 +325,9 @@ static void rejection_tracker(JSContext *ctx, JSValueConst promise, JSValueConst
 static JSValue new_rejection_event(JSContext *ctx, const char *type, JSValueConst promise, JSValueConst reason, bool cancelable)
 {
     JSValue init = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, init, "cancelable", JS_NewBool(ctx, cancelable));
-    JS_SetPropertyStr(ctx, init, "promise", JS_DupValue(ctx, promise));
-    JS_SetPropertyStr(ctx, init, "reason", JS_DupValue(ctx, reason));
+    JS_DefinePropertyValueStr(ctx, init, "cancelable", JS_NewBool(ctx, cancelable), JS_PROP_C_W_E);
+    JS_DefinePropertyValueStr(ctx, init, "promise", JS_DupValue(ctx, promise), JS_PROP_C_W_E);
+    JS_DefinePropertyValueStr(ctx, init, "reason", JS_DupValue(ctx, reason), JS_PROP_C_W_E);
     JSValue args[2] = { JS_NewString(ctx, type), init };
     JSValue ev = wjr_PromiseRejectionEvent_constructor(ctx, wj_the_realm.ctors[WJ_IFACE_PromiseRejectionEvent], 2, args);
     JS_FreeValue(ctx, args[0]);
@@ -410,7 +412,7 @@ WJ_EXPORT("wj_notify_rejections") int32_t wj_notify_rejections(void)
             JS_FreeValue(ctx, JS_GetException(ctx));
         }
         if (not_canceled) { report_unhandled(ctx, reason); }
-        JSValue r = weakset_call(ctx, "add", promise);
+        JSValue r = weakset_call(ctx, WS_ADD, promise);
         JS_FreeValue(ctx, r);
         JS_FreeValue(ctx, reason);
         JS_FreeValue(ctx, promise);
@@ -443,5 +445,12 @@ void wj_errors_start(JSContext *ctx)
     JSValue ws = JS_GetPropertyStr(ctx, wj_the_realm.global, "WeakSet");
     outstanding = JS_IsFunction(ctx, ws) ? JS_CallConstructor(ctx, ws, 0, NULL) : JS_UNDEFINED;
     if (JS_IsException(outstanding)) { JS_FreeValue(ctx, JS_GetException(ctx)); outstanding = JS_UNDEFINED; }
+    static const char *const names[WS_COUNT] = { "has", "delete", "add" };
+    JSValue proto = JS_IsFunction(ctx, ws) ? JS_GetPropertyStr(ctx, ws, "prototype") : JS_UNDEFINED;
+    for (int i = 0; i < WS_COUNT; i++) {
+        ws_methods[i] = JS_IsObject(proto) ? JS_GetPropertyStr(ctx, proto, names[i]) : JS_UNDEFINED;
+        if (JS_IsException(ws_methods[i])) { JS_FreeValue(ctx, JS_GetException(ctx)); ws_methods[i] = JS_UNDEFINED; }
+    }
+    JS_FreeValue(ctx, proto);
     JS_FreeValue(ctx, ws);
 }
