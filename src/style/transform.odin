@@ -183,7 +183,7 @@ parse_transform_function :: proc(cx: ^Cx, f: css.Value) -> (Transform_Op, bool) 
 		return l, ok && l.kind == .Px
 	}
 	zero := px(0)
-	switch strings.to_lower(f.tok.text, context.temp_allocator) {
+	switch css.lower_temp(f.tok.text) {
 	case "matrix":
 		if n != 6 { return {}, false }
 		op := Transform_Op{kind = .Matrix}
@@ -228,7 +228,7 @@ parse_transform_function :: proc(cx: ^Cx, f: css.Value) -> (Transform_Op, bool) 
 		_, ok3 := len_only(cx, vals[2])
 		return op_translate(x, y), ok1 && ok2 && ok3
 	case "scale", "scalex", "scaley", "scalez", "scale3d":
-		name := strings.to_lower(f.tok.text, context.temp_allocator)
+		name := css.lower_temp(f.tok.text)
 		want_min, want_max := 1, 1
 		switch name {
 		case "scale": want_max = 2

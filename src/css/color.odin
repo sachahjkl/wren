@@ -22,7 +22,7 @@ Space_Color :: struct {
 Hue_Interpolation :: enum u8 { Shorter, Longer, Increasing, Decreasing }
 
 color_space_of_name :: proc(name: string) -> (Color_Space, bool) {
-	switch strings.to_lower(name, context.temp_allocator) {
+	switch lower_temp(name) {
 	case "srgb": return .Srgb, true
 	case "srgb-linear": return .Srgb_Linear, true
 	case "display-p3": return .Display_P3, true
@@ -306,7 +306,7 @@ replace_channels :: proc(vs: []Value, chans: ^Channels, a := context.temp_alloca
 
 @(private)
 parse_color_function_sc :: proc(f: Value, env: ^Color_Env) -> (sc: Space_Color, current: bool, ok: bool) {
-	name := strings.to_lower(f.tok.text, context.temp_allocator)
+	name := lower_temp(f.tok.text)
 	args := trim_values(f.children)
 	switch name {
 	case "light-dark":
@@ -433,7 +433,7 @@ parse_color_mix_sc :: proc(args: []Value, env: ^Color_Env) -> (sc: Space_Color, 
 		for v in head[1:] {
 			if is_ws_value(v) { continue }
 			if v.kind != .Token || v.tok.kind != .Ident { return {}, false, false }
-			append(&words, strings.to_lower(v.tok.text, context.temp_allocator))
+			append(&words, lower_temp(v.tok.text))
 		}
 		if len(words) == 0 { return {}, false, false }
 		s, good := color_space_of_name(words[0])

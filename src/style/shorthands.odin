@@ -271,7 +271,7 @@ is_width_item :: proc(v: css.Value) -> bool {
 	case .Token:
 		#partial switch v.tok.kind {
 		case .Dimension, .Number: return true
-		case .Ident: switch strings.to_lower(v.tok.text, context.temp_allocator) { case "thin", "medium", "thick": return true }
+		case .Ident: switch css.lower_temp(v.tok.text) { case "thin", "medium", "thick": return true }
 		}
 	case .Function:
 		return css.is_math_function(v.tok.text)
@@ -441,7 +441,7 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 
 	case .Flex:
 		if len(items) == 1 && items[0].kind == .Token && items[0].tok.kind == .Ident {
-			switch strings.to_lower(items[0].tok.text, context.temp_allocator) {
+			switch css.lower_temp(items[0].tok.text) {
 			case "none":
 				emit(&res, .Flex_Grow, zero_value(a)); emit(&res, .Flex_Shrink, zero_value(a)); emit(&res, .Flex_Basis, auto_value(a))
 				return res[:], true
@@ -489,7 +489,7 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 		col, style, thick: []css.Value
 		for it, i in items {
 			if it.kind == .Token && it.tok.kind == .Ident {
-				switch strings.to_lower(it.tok.text, context.temp_allocator) {
+				switch css.lower_temp(it.tok.text) {
 				case "none", "underline", "overline", "line-through", "blink": append(&lines, it); continue
 				case "solid", "double", "dotted", "dashed", "wavy":
 					if style != nil { return nil, false }

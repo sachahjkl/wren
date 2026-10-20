@@ -249,7 +249,7 @@ parse_dimension :: proc(s: string) -> (value: f64, percent: bool, ok: bool) {
 parse_legacy_color :: proc(input: string) -> (rgb: u32, ok: bool) {
 	s := strings.trim(input, " \t\n\f\r")
 	if s == "" || strings.equal_fold(s, "transparent") { return 0, false }
-	lower := strings.to_lower(s, context.temp_allocator)
+	lower := css.lower_temp(s)
 	for e in css.NAMED_COLORS { if e.name == lower { return e.rgb, true } }
 	hexv :: proc(c: u8) -> (u32, bool) {
 		switch c {
@@ -402,7 +402,7 @@ hint_font_face :: proc(w: ^strings.Builder, v: string) {
 		if name == "" { continue }
 		strings.write_string(w, first ? "font-family:" : ",")
 		first = false
-		switch strings.to_lower(name, context.temp_allocator) {
+		switch css.lower_temp(name) {
 		case "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui":
 			strings.write_string(w, name)
 		case:

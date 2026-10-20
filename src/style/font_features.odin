@@ -1,7 +1,6 @@
 package style
 
 import "base:runtime"
-import "core:strings"
 import "wb:css"
 
 // OpenType features and variations of fonts (CSS Fonts 4 §6, §7): font-feature-settings, font-variation-settings,
@@ -237,7 +236,7 @@ expand_font_variant :: proc(items: []css.Value, a: runtime.Allocator) -> ([]Long
 	}
 	for it in items {
 		if it.kind == .Function {
-			switch strings.to_lower(it.tok.text, context.temp_allocator) {
+			switch css.lower_temp(it.tok.text) {
 			case "stylistic", "historical-forms", "styleset", "character-variant", "swash", "ornaments", "annotation": continue
 			}
 			return nil, false

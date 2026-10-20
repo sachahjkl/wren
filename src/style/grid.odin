@@ -43,7 +43,7 @@ parse_breadth :: proc(cx: ^Cx, v: css.Value, allow_flex: bool) -> (Track_Breadth
 parse_track_size :: proc(cx: ^Cx, v: css.Value) -> (Grid_Track, bool) {
 	if v.kind == .Function {
 		args := css.split_commas(v.children, context.temp_allocator)
-		switch strings.to_lower(v.tok.text, context.temp_allocator) {
+		switch css.lower_temp(v.tok.text) {
 		case "minmax":
 			if len(args) != 2 { return {}, false }
 			a, b := css.trim_values(args[0]), css.trim_values(args[1])

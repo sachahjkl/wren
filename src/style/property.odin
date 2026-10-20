@@ -82,7 +82,7 @@ parse_syntax :: proc(text: string, a := context.allocator) -> (universal: bool, 
 			for ch in s {
 				if !(ch == '-' || ch == '_' || ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch >= '0' && ch <= '9' || ch >= 0x80) { return false, nil, false }
 			}
-			switch strings.to_lower(s, context.temp_allocator) {
+			switch css.lower_temp(s) {
 			case "initial", "inherit", "unset", "revert", "revert-layer", "default": return false, nil, false
 			}
 			part.type, part.ident = .Ident, strings.clone(s, a)
@@ -207,7 +207,7 @@ syntax_one :: proc(cx: ^Cx, part: Syntax_Part, v: css.Value, sb: ^strings.Builde
 		strings.write_string(sb, part.ident)
 	case .Custom_Ident:
 		if v.kind != .Token || v.tok.kind != .Ident { return false }
-		switch strings.to_lower(v.tok.text, context.temp_allocator) {
+		switch css.lower_temp(v.tok.text) {
 		case "initial", "inherit", "unset", "revert", "revert-layer", "default": return false
 		}
 		strings.write_string(sb, v.tok.text)
@@ -263,7 +263,7 @@ syntax_one :: proc(cx: ^Cx, part: Syntax_Part, v: css.Value, sb: ^strings.Builde
 	case .Resolution:
 		if v.kind != .Token || v.tok.kind != .Dimension { return false }
 		f: f64
-		switch strings.to_lower(v.tok.text, context.temp_allocator) {
+		switch css.lower_temp(v.tok.text) {
 		case "dppx", "x": f = 1
 		case "dpi": f = 1.0 / 96
 		case "dpcm": f = 2.54 / 96

@@ -161,7 +161,7 @@ alpha_of :: proc(c: Components) -> f32 {
 @(private)
 hue_degrees :: proc(v: f64, unit: string) -> f64 {
 	d := v
-	switch strings.to_lower(unit, context.temp_allocator) {
+	switch lower_temp(unit) {
 	case "rad": d = v * 180 / math.PI
 	case "grad": d = v * 0.9
 	case "turn": d = v * 360
@@ -252,7 +252,7 @@ parse_color :: proc(input: []Value, env: ^Color_Env) -> (cv: Color_Value, ok: bo
 			c, good := parse_hex_color(t.text)
 			return Color_Value{rgba = c}, good
 		case .Ident:
-			n := strings.to_lower(t.text, context.temp_allocator)
+			n := lower_temp(t.text)
 			switch n {
 			case "currentcolor": return Color_Value{kind = .Current_Color}, true
 			case "transparent": return Color_Value{rgba = {0, 0, 0, 0}}, true
@@ -285,7 +285,7 @@ Unit :: enum u8 { Px, Em, Rem, Ex, Ch, Lh, Vw, Vh, Vmin, Vmax, Percent, Ms, Deg,
 
 // <time> in milliseconds and <angle> in degrees, from a unit as written.
 time_unit_to_ms :: proc(n: f64, unit: string) -> (f64, bool) {
-	switch strings.to_lower(unit, context.temp_allocator) {
+	switch lower_temp(unit) {
 	case "s": return n * 1000, true
 	case "ms": return n, true
 	}
@@ -293,7 +293,7 @@ time_unit_to_ms :: proc(n: f64, unit: string) -> (f64, bool) {
 }
 
 angle_unit_to_deg :: proc(n: f64, unit: string) -> (f64, bool) {
-	switch strings.to_lower(unit, context.temp_allocator) {
+	switch lower_temp(unit) {
 	case "deg": return n, true
 	case "rad": return n * 180 / math.PI, true
 	case "grad": return n * 0.9, true
@@ -304,7 +304,7 @@ angle_unit_to_deg :: proc(n: f64, unit: string) -> (f64, bool) {
 
 // Absolute units are converted when parsed; relative ones are resolved by the style system with its context.
 length_unit_to_px :: proc(n: f64, unit: string, _: f64) -> (px: f64, ok: bool) {
-	switch strings.to_lower(unit, context.temp_allocator) {
+	switch lower_temp(unit) {
 	case "px": return n, true
 	case "cm": return n * 96 / 2.54, true
 	case "mm": return n * 96 / 25.4, true
@@ -317,7 +317,7 @@ length_unit_to_px :: proc(n: f64, unit: string, _: f64) -> (px: f64, ok: bool) {
 }
 
 relative_unit :: proc(unit: string) -> (Unit, bool) {
-	switch strings.to_lower(unit, context.temp_allocator) {
+	switch lower_temp(unit) {
 	case "em": return .Em, true
 	case "rem": return .Rem, true
 	case "ex": return .Ex, true
@@ -464,7 +464,7 @@ calc_has_angle :: proc(n: ^Calc) -> bool {
 
 // A function that parse_calc reads (a <length>, <number>... written as a math function).
 is_math_function :: proc(name: string) -> bool {
-	switch strings.to_lower(name, context.temp_allocator) {
+	switch lower_temp(name) {
 	case "calc", "-webkit-calc", "-moz-calc", "min", "max", "clamp", "abs", "sign", "round", "mod", "rem", "pow", "sqrt",
 	     "hypot", "log", "exp", "sin", "cos", "tan", "asin", "acos", "atan", "atan2":
 		return true
@@ -476,7 +476,7 @@ is_math_function :: proc(name: string) -> bool {
 // hypot(), log(), exp(), sin(), cos(), tan(), asin(), acos(), atan(), atan2() (and parenthesised sums inside them).
 parse_calc :: proc(f: Value, alloc: Arena_Alloc) -> ^Calc {
 	if f.kind != .Function { return nil }
-	name := strings.to_lower(f.tok.text, context.temp_allocator)
+	name := lower_temp(f.tok.text)
 	args :: proc(f: Value, alloc: Arena_Alloc, lo, hi: int) -> ([]^Calc, bool) {
 		parts := split_commas(f.children, context.temp_allocator)
 		if len(parts) < lo || len(parts) > hi { return nil, false }
@@ -640,7 +640,7 @@ calc_leaf :: proc(v: Value, alloc: Arena_Alloc, depth: int) -> ^Calc {
 			if !ok { return nil }
 			n.op, n.num, n.unit = .Dimension, t.num, u
 		case .Ident:
-			switch strings.to_lower(t.text, context.temp_allocator) {
+			switch lower_temp(t.text) {
 			case "pi": n.op, n.num = .Number, math.PI
 			case "e": n.op, n.num = .Number, math.E
 			case "infinity": n.op, n.num = .Number, CALC_INFINITY
@@ -827,7 +827,7 @@ parse_integer :: proc(input: []Value) -> (int, bool) {
 // The text of an identifier value, lower-cased; "" when `vs` is not a single identifier.
 ident_of :: proc(input: []Value) -> string {
 	vs := trim_values(input)
-	if len(vs) == 1 && vs[0].kind == .Token && vs[0].tok.kind == .Ident { return strings.to_lower(vs[0].tok.text, context.temp_allocator) }
+	if len(vs) == 1 && vs[0].kind == .Token && vs[0].tok.kind == .Ident { return lower_temp(vs[0].tok.text) }
 	return ""
 }
 
@@ -912,4 +912,21 @@ write_short_decimal :: proc(sb: ^strings.Builder, v: f64) -> bool {
 		return true
 	}
 	return false
+}
+// `s` in lowercase, for comparing keywords: `s` itself when it has no uppercase ASCII letter and is all ASCII (the
+// usual case: no allocation), else a copy in the temp allocator (ASCII lowered byte by byte, other text by Unicode).
+lower_temp :: proc(s: string) -> string {
+	upper := false
+	for i in 0 ..< len(s) {
+		c := s[i]
+		if c >= 0x80 { return strings.to_lower(s, context.temp_allocator) }
+		if c >= 'A' && c <= 'Z' { upper = true }
+	}
+	if !upper { return s }
+	out := make([]u8, len(s), context.temp_allocator)
+	for i in 0 ..< len(s) {
+		c := s[i]
+		out[i] = c >= 'A' && c <= 'Z' ? c + 32 : c
+	}
+	return string(out)
 }

@@ -830,7 +830,7 @@ supports_condition :: proc(e: ^Engine, vs_in: []css.Value) -> bool {
 		v := vs[i]
 		i += 1
 		if v.kind == .Token && v.tok.kind == .Ident {
-			w := strings.to_lower(v.tok.text, context.temp_allocator)
+			w := css.lower_temp(v.tok.text)
 			if w == "and" || w == "or" { op = w; continue }
 			return false
 		}
@@ -890,7 +890,7 @@ supports_block :: proc(e: ^Engine, children: []css.Value) -> bool {
 	value := css.trim_values(inner[i + 1:])
 	name := inner[0].tok.text
 	if strings.has_prefix(name, "--") { return true }
-	p, sh, known := lookup_property(strings.to_lower(name, context.temp_allocator))
+	p, sh, known := lookup_property(css.lower_temp(name))
 	if !known || len(value) == 0 { return false }
 	if contains_var(value) { return true }
 	if css_wide_keyword(value) != "" { return true }

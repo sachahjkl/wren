@@ -136,14 +136,14 @@ face_family :: proc(vs: []css.Value, a := context.allocator) -> (string, bool) {
 		strings.write_string(&sb, v.tok.text)
 	}
 	name := strings.to_string(sb)
-	switch strings.to_lower(name, context.temp_allocator) {
+	switch css.lower_temp(name) {
 	case "", "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "inherit", "initial", "default": return "", false
 	}
 	return name, true
 }
 
 face_format :: proc(name: string) -> Font_Format {
-	switch strings.to_lower(name, context.temp_allocator) {
+	switch css.lower_temp(name) {
 	case "woff", "woff-variations": return .Woff
 	case "woff2", "woff2-variations": return .Woff2
 	case "truetype", "ttf", "truetype-variations": return .Truetype
@@ -177,7 +177,7 @@ face_sources :: proc(vs: []css.Value, a := context.allocator) -> ([]Font_Source,
 		valid := true
 		for it in items[1:] {
 			if it.kind != .Function { valid = false; break }
-			switch strings.to_lower(it.tok.text, context.temp_allocator) {
+			switch css.lower_temp(it.tok.text) {
 			case "format":
 				args := split_items(it.children)
 				if len(args) != 1 { valid = false; break }
@@ -212,7 +212,7 @@ font_format_supported :: proc(f: Font_Format) -> bool {
 
 // Font technologies (CSS Fonts 4 §11.1, tech()) the font engine renders.
 font_tech_supported :: proc(name: string) -> bool {
-	switch strings.to_lower(name, context.temp_allocator) {
+	switch css.lower_temp(name) {
 	case "variations", "features-opentype", "features-aat", "palettes", "incremental": return true
 	}
 	return false

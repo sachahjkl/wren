@@ -15,7 +15,7 @@ tok_is :: #force_inline proc(v: css.Value, k: css.Token_Kind) -> bool { return v
 
 @(private)
 ident_lower :: proc(v: css.Value) -> string {
-	if v.kind == .Token && v.tok.kind == .Ident { return strings.to_lower(v.tok.text, context.temp_allocator) }
+	if v.kind == .Token && v.tok.kind == .Ident { return css.lower_temp(v.tok.text) }
 	return ""
 }
 
@@ -281,7 +281,7 @@ parse_image :: proc(cx: ^Cx, input: []css.Value) -> (Image, bool) {
 		return {}, false
 	}
 	if v.kind != .Function { return {}, false }
-	name := strings.to_lower(v.tok.text, context.temp_allocator)
+	name := css.lower_temp(v.tok.text)
 	switch name {
 	case "url", "src":
 		for a in v.children { if tok_is(a, .String) { return Image{kind = .Url, url = strings.clone(a.tok.text, cx.alloc)}, true } }
@@ -338,7 +338,7 @@ parse_color_space :: proc(items: []css.Value, i: ^int, hue: ^Hue_Method = nil) -
 
 @(private)
 parse_gradient :: proc(cx: ^Cx, f: css.Value) -> (^Gradient, bool) {
-	name := strings.to_lower(f.tok.text, context.temp_allocator)
+	name := css.lower_temp(f.tok.text)
 	legacy := false
 	if strings.has_prefix(name, "-webkit-") || strings.has_prefix(name, "-moz-") || strings.has_prefix(name, "-o-") {
 		name = name[strings.index_byte(name[1:], '-') + 2:]
@@ -403,7 +403,7 @@ stop_position :: proc(cx: ^Cx, v: css.Value, angular: bool) -> (Length, bool) {
 	if v.kind == .Token && v.tok.kind == .Ident { return {}, false }
 	if v.kind == .Function {
 		// calc() is a position; any other function (rgb()...) is a color
-		switch strings.to_lower(v.tok.text, context.temp_allocator) {
+		switch css.lower_temp(v.tok.text) {
 		case "calc", "min", "max", "clamp", "-webkit-calc": 
 		case: return {}, false
 		}
@@ -586,7 +586,7 @@ gradient_stops :: proc(g: ^Gradient, line: f32, allocator := context.temp_alloca
 parse_content :: proc(cx: ^Cx, input: []css.Value) -> (Content, bool) {
 	vs := css.trim_values(input)
 	if id, ok := ident_raw(vs); ok {
-		switch strings.to_lower(id, context.temp_allocator) {
+		switch css.lower_temp(id) {
 		case "normal": return Content{kind = .Normal}, true
 		case "none": return Content{kind = .None}, true
 		}
@@ -599,7 +599,7 @@ parse_content :: proc(cx: ^Cx, input: []css.Value) -> (Content, bool) {
 			case .String: append(&parts, Content_Part{kind = .Text, text = strings.clone(it.tok.text, cx.alloc)})
 			case .Url: append(&parts, Content_Part{kind = .Url, text = strings.clone(it.tok.text, cx.alloc)})
 			case .Ident:
-				switch strings.to_lower(it.tok.text, context.temp_allocator) {
+				switch css.lower_temp(it.tok.text) {
 				case "open-quote": append(&parts, Content_Part{kind = .Open_Quote})
 				case "close-quote": append(&parts, Content_Part{kind = .Close_Quote})
 				case "no-open-quote": append(&parts, Content_Part{kind = .No_Open_Quote})
@@ -613,7 +613,7 @@ parse_content :: proc(cx: ^Cx, input: []css.Value) -> (Content, bool) {
 			}
 		case .Function:
 			args := css.split_commas(it.children, context.temp_allocator)
-			switch strings.to_lower(it.tok.text, context.temp_allocator) {
+			switch css.lower_temp(it.tok.text) {
 			case "attr":
 				if len(args) < 1 { return {}, false }
 				head := split_items(args[0])
@@ -670,7 +670,7 @@ parse_list_marker_style :: proc(cx: ^Cx, input: []css.Value) -> (List_Marker_Sty
 	if tok_is(v, .String) { return List_Marker_Style{style = .String, text = strings.clone(v.tok.text, cx.alloc)}, true }
 	if v.kind == .Function && strings.equal_fold(v.tok.text, "symbols") { return List_Marker_Style{style = .Decimal}, true }
 	if !tok_is(v, .Ident) { return {}, false }
-	id := strings.to_lower(v.tok.text, context.temp_allocator)
+	id := css.lower_temp(v.tok.text)
 	switch id {
 	case "lower-latin": return {style = .Lower_Alpha}, true
 	case "upper-latin": return {style = .Upper_Alpha}, true
@@ -745,7 +745,7 @@ parse_filters :: proc(cx: ^Cx, vs: []css.Value) -> ([]Filter_Op, bool) {
 	for it in items {
 		if tok_is(it, .Url) { append(&out, Filter_Op{kind = .Url, url = strings.clone(it.tok.text, cx.alloc)}); continue }
 		if it.kind != .Function { return nil, false }
-		name := strings.to_lower(it.tok.text, context.temp_allocator)
+		name := css.lower_temp(it.tok.text)
 		args := split_items(it.children)
 		op: Filter_Op
 		switch name {
@@ -819,7 +819,7 @@ parse_clip_path :: proc(cx: ^Cx, vs: []css.Value) -> (Clip_Path, bool) {
 		if it.kind != .Function || have_shape { return {}, false }
 		have_shape = true
 		args := split_items(it.children)
-		switch strings.to_lower(it.tok.text, context.temp_allocator) {
+		switch css.lower_temp(it.tok.text) {
 		case "url":
 			if len(args) != 1 || !tok_is(args[0], .String) { return {}, false }
 			return Clip_Path{kind = .Url, url = strings.clone(args[0].tok.text, cx.alloc)}, true
@@ -929,7 +929,7 @@ parse_auto_color :: proc(cx: ^Cx, vs: []css.Value) -> (Auto_Color, bool) {
 parse_align :: proc(vs: []css.Value) -> (Content_Align, bool) {
 	a: Content_Align
 	if id, ok := ident_raw(vs); ok {
-		switch strings.to_lower(id, context.temp_allocator) {
+		switch css.lower_temp(id) {
 		case "legacy": return .Normal, true   // justify-items: legacy is `normal` outside the legacy block layout
 		case "left", "self-start", "start": return .Start, true
 		case "right", "self-end", "end": return .End, true
@@ -955,7 +955,7 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	#partial switch p {
 	case .Font_Stretch:
 		if id, ok := ident_raw(vs); ok {
-			lid := strings.to_lower(id, context.temp_allocator)
+			lid := css.lower_temp(id)
 			for k in FONT_STRETCH { if k.name == lid { c.font_stretch = k.v; return true } }
 			return false
 		}
@@ -967,7 +967,7 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Text_Decoration_Thickness, .Text_Underline_Offset:
 		dst := p == .Text_Decoration_Thickness ? &c.text_decoration_thickness : &c.text_underline_offset
 		if id, ok := ident_raw(vs); ok {
-			switch strings.to_lower(id, context.temp_allocator) {
+			switch css.lower_temp(id) {
 			case "auto": dst^ = auto_length; return true
 			case "from-font": if p == .Text_Decoration_Thickness { dst^ = Length{kind = .Normal}; return true }
 			}
@@ -1044,7 +1044,7 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		}
 	case .Quotes:
 		if id, ok := ident_raw(vs); ok {
-			switch strings.to_lower(id, context.temp_allocator) {
+			switch css.lower_temp(id) {
 			case "none": c.quotes = Quotes{kind = .None}; return true
 			case "auto": c.quotes = Quotes{kind = .Auto}; return true
 			case "match-parent":
@@ -1079,7 +1079,7 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		for part, i in parts {
 			id, ok := ident_raw(part)
 			if !ok { return false }
-			lid := strings.to_lower(id, context.temp_allocator)
+			lid := css.lower_temp(id)
 			switch lid { case "auto", "will-change", "none", "all", "initial", "inherit", "unset", "default": return false }
 			out[i] = strings.clone(lid, cx.alloc)
 		}
@@ -1113,7 +1113,7 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Appearance:
 		id, ok := ident_raw(vs)
 		if !ok { return false }
-		switch strings.to_lower(id, context.temp_allocator) {
+		switch css.lower_temp(id) {
 		case "button", "checkbox", "radio", "textarea", "searchfield", "menulist", "listbox", "meter", "progress-bar",
 		     "push-button", "slider-horizontal", "square-button", "media-slider", "caret":
 			c.appearance = .Auto

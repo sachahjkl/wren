@@ -81,7 +81,7 @@ parse_media_query :: proc(vs: []Value, a: Arena_Alloc) -> (q: Media_Query, ok: b
 	q.type = .All
 	// [not|only]? type [and condition]? | condition
 	if vs[0].kind == .Token && vs[0].tok.kind == .Ident {
-		w := strings.to_lower(vs[0].tok.text, context.temp_allocator)
+		w := lower_temp(vs[0].tok.text)
 		if w == "not" || w == "only" {
 			// `not` before a media type negates the query; before "(" it is a condition (three-valued) and is left to the condition parser
 			j := 1
@@ -89,7 +89,7 @@ parse_media_query :: proc(vs: []Value, a: Arena_Alloc) -> (q: Media_Query, ok: b
 			if j < len(vs) && vs[j].kind == .Token && vs[j].tok.kind == .Ident { q.negated = w == "not"; i = j }
 		}
 		if i < len(vs) && vs[i].kind == .Token && vs[i].tok.kind == .Ident && !(i == 0 && strings.equal_fold(vs[i].tok.text, "not")) {
-			t := strings.to_lower(vs[i].tok.text, context.temp_allocator)
+			t := lower_temp(vs[i].tok.text)
 			switch t {
 			case "all": q.type = .All
 			case "screen": q.type = .Screen
@@ -142,7 +142,7 @@ parse_media_condition :: proc(cond: []Value, a: Arena_Alloc) -> (c: Media_Condit
 		for i < len(vs) && is_ws_value(vs[i]) { i += 1 }
 		if i < len(vs) {
 			if vs[i].kind != .Token || vs[i].tok.kind != .Ident { return {}, false }
-			w := strings.to_lower(vs[i].tok.text, context.temp_allocator)
+			w := lower_temp(vs[i].tok.text)
 			if w == "and" { op.kind = .And } else if w == "or" { op.kind = .Or } else { return {}, false }
 			i += 1
 		}
@@ -177,7 +177,7 @@ has_colon :: proc(vs: []Value) -> bool {
 
 @(private)
 feature_of :: proc(name: string) -> (Media_Feature, i8) {
-	n := strings.to_lower(name, context.temp_allocator)
+	n := lower_temp(name)
 	mm: i8
 	webkit := strings.has_prefix(n, "-webkit-")
 	if webkit { n = n[8:] }
@@ -240,11 +240,11 @@ media_number :: proc(v: Value) -> (f64, bool) {
 	case .Dimension:
 		if px, ok := length_unit_to_px(t.num, t.text, 16); ok { return px, true }
 		// relative units in a media query are relative to the initial font size (16px)
-		switch strings.to_lower(t.text, context.temp_allocator) {
+		switch lower_temp(t.text) {
 		case "em", "rem": return t.num * 16, true
 		case "ex", "ch": return t.num * 8, true
 		}
-		switch strings.to_lower(t.text, context.temp_allocator) {
+		switch lower_temp(t.text) {
 		case "dppx", "x": return t.num, true
 		case "dpi": return t.num / 96, true
 		case "dpcm": return t.num * 2.54 / 96, true

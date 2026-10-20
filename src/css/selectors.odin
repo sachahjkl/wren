@@ -275,7 +275,7 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s:
 					if elem, good := pseudo_element_of(vs[2].tok.text); good { return {}, elem, 3, true }
 				}
 				if len(vs) > 2 && vs[2].kind == .Function {
-					fname := strings.to_lower(vs[2].tok.text, context.temp_allocator)
+					fname := lower_temp(vs[2].tok.text)
 					switch fname {
 					case "slotted":
 						// ::slotted(<compound-selector>)
@@ -329,7 +329,7 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s:
 
 @(private)
 pseudo_element_of :: proc(name: string) -> (Pseudo, bool) {
-	switch strings.to_lower(name, context.temp_allocator) {
+	switch lower_temp(name) {
 	case "before": return .Before, true
 	case "after": return .After, true
 	case "first-line": return .First_Line, true
@@ -352,7 +352,7 @@ pseudo_element_of :: proc(name: string) -> (Pseudo, bool) {
 // ::part(), ::slotted(), ::highlight()...: valid functional pseudo-elements that match no box of this engine.
 @(private)
 functional_pseudo_element :: proc(f: Value) -> bool {
-	switch strings.to_lower(f.tok.text, context.temp_allocator) {
+	switch lower_temp(f.tok.text) {
 	case "part", "slotted", "highlight", "cue", "cue-region", "picker", "view-transition-group", "view-transition-image-pair",
 	     "view-transition-old", "view-transition-new", "scroll-button":
 		return true
@@ -505,7 +505,7 @@ parse_nth :: proc(vs: []Value) -> (a, b: int, ok: bool) {
 		case: return 0, 0, false
 		}
 	}
-	s := strings.to_lower(strings.to_string(sb), context.temp_allocator)
+	s := lower_temp(strings.to_string(sb))
 	switch s {
 	case "even": return 2, 0, true
 	case "odd": return 2, 1, true
@@ -566,7 +566,7 @@ parse_attribute :: proc(vs: []Value, a: Arena_Alloc) -> (s: Simple, ok: bool) {
 	i += 1
 	if i < len(items) {
 		if items[i].kind == .Token && items[i].tok.kind == .Ident {
-			switch strings.to_lower(items[i].tok.text, context.temp_allocator) {
+			switch lower_temp(items[i].tok.text) {
 			case "i": s.ci = true
 			case "s": s.ci = false
 			case: return {}, false

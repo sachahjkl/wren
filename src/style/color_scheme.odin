@@ -261,7 +261,7 @@ parse_color_scheme :: proc(vs: []css.Value) -> (Color_Scheme_Value, bool) {
 	names := 0
 	for it in items {
 		if it.kind != .Token || it.tok.kind != .Ident { return {}, false }
-		id := strings.to_lower(it.tok.text, context.temp_allocator)
+		id := css.lower_temp(it.tok.text)
 		switch id {
 		case "normal":
 			if len(items) != 1 { return {}, false }

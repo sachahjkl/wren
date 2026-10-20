@@ -140,7 +140,7 @@ attr_matches :: proc(n: ^dom.Node, s: css.Simple) -> bool {
 	case .Suffix: return want != "" && len(v) >= len(want) && value_equals(v[len(v) - len(want):], want, s.ci)
 	case .Substring:
 		if want == "" { return false }
-		if s.ci { return strings.contains(strings.to_lower(v, context.temp_allocator), strings.to_lower(want, context.temp_allocator)) }
+		if s.ci { return strings.contains(css.lower_temp(v), css.lower_temp(want)) }
 		return strings.contains(v, want)
 	}
 	return false
@@ -251,7 +251,7 @@ is_disabled :: proc(m: ^Match_Ctx, h: base.Handle) -> bool {
 @(private)
 text_input_type :: proc(n: ^dom.Node) -> bool {
 	t, _ := attr(n, "type")
-	switch strings.to_lower(t, context.temp_allocator) {
+	switch css.lower_temp(t) {
 	case "", "text", "search", "url", "tel", "email", "password", "number", "date", "datetime-local", "month", "week", "time": return true
 	}
 	return false
@@ -283,7 +283,7 @@ dir_of :: proc(m: ^Match_Ctx, h: base.Handle) -> string {
 	for cur := h; cur != base.NIL_HANDLE; cur = parent_element(m, cur) {
 		n := node_of(m, cur)
 		if v, ok := attr(n, "dir"); ok {
-			l := strings.to_lower(v, context.temp_allocator)
+			l := css.lower_temp(v)
 			if l == "ltr" || l == "rtl" { return l }
 		}
 	}
