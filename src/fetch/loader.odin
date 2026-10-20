@@ -114,7 +114,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 	if t.early_error == .None {
 		for p in r.headers {
 			if !http.is_token(p.name) || !http.is_valid_header_value(p.value) { t.early_error = .Bad_Header; break }
-			if r.guard == .Request && http.is_forbidden_request_header(p.name) { continue }   // silently ignored, as in browsers
+			if r.guard == .Request && http.is_forbidden_request_header(p.name, p.value) { continue }   // silently ignored, as in browsers
 			http.append_header(&t.headers, p.name, p.value)
 		}
 	}
@@ -622,18 +622,18 @@ on_response_headers :: proc(t: ^Task, ev: ^net.Event) {
 		if v, ok := http.get_header(raw, "strict-transport-security"); ok { hsts_note(&l.profile.hsts, t.target.host, v, now) }
 	}
 
-	// redirects
-	if is_redirect_status(t.status) {
-		if loc, ok := http.get_header(raw, "location"); ok {
-			handle_redirect(t, loc)
+	// CORS: the server must opt in, for a redirect too (Fetch: the CORS check of HTTP fetch comes before the redirect)
+	if t.cors_flag {
+		if ok, why := cors_check(t.origin, credentials_include(t), raw); !ok {
+			fail(t, .Blocked_Cors, fmt.tprintf("blocked by CORS policy: %s", why))
 			return
 		}
 	}
 
-	// CORS: the server must opt in
-	if t.cors_flag {
-		if ok, why := cors_check(t.origin, credentials_include(t), raw); !ok {
-			fail(t, .Blocked_Cors, fmt.tprintf("blocked by CORS policy: %s", why))
+	// redirects
+	if is_redirect_status(t.status) {
+		if loc, ok := http.get_header(raw, "location"); ok {
+			handle_redirect(t, loc)
 			return
 		}
 	}
