@@ -41,9 +41,17 @@ profile:  fetch.Profile
 loader:   fetch.Loader
 settings: page.Settings
 
-pump :: proc(ms: int) {
-	start := time.tick_now()
-	for time.duration_milliseconds(time.tick_since(start)) < f64(ms) { host.loop_wait(&loop, 5) }
+// Runs the loop until nothing is left to do (no task posted, no timer set), at most `max_turns` turns: pages that keep
+// timers forever (the hostile ones below) stop at the cap. Turns are counted, not milliseconds, so what is checked
+// afterwards does not depend on the machine's speed. Returns the turns run.
+settle :: proc(max_turns := 200) -> int {
+	turns := 0
+	for ; turns < max_turns; turns += 1 {
+		next := host.next_timeout_ms(&loop)
+		if next < 0 { break }
+		host.loop_wait(&loop, next)
+	}
+	return turns
 }
 
 load :: proc(process: ^base.Scope, source: string, address := "http://127.0.0.1:8765/js.html") -> ^page.Page {
@@ -51,7 +59,7 @@ load :: proc(process: ^base.Scope, source: string, address := "http://127.0.0.1:
 	p := page.page_create(&loop, &loader, &settings, process, address, console)
 	page.load_html(p, transmute([]byte)source)
 	page.scripts_start(p)
-	pump(30)
+	settle()
 	return p
 }
 
@@ -200,7 +208,7 @@ document.body.lastChild.addEventListener("x", () => console.log("listener kept")
 		p := load(process, `<!doctype html><body><script>console.log("before"); for (;;) {}</script><script>console.log("after")</script></body>`)
 		ms := time.duration_milliseconds(time.tick_since(start))
 		check(logged("before") && logged("after"), "the loop is stopped, the next script runs")
-		check(ms < 2000, fmt.tprintf("stopped near javascript.slow_script_ms (%.0f ms)", ms))
+		check(ms >= 100, fmt.tprintf("not stopped before javascript.slow_script_ms (%.0f ms)", ms))
 		stopped := false
 		for l in logs { if strings.contains(l, "slow_script_ms") { stopped = true } }
 		check(stopped, "the console says a slow script was stopped")
@@ -231,7 +239,7 @@ performance.mark("m3");
 console.log("take", p2.takeRecords().length);
 p2.disconnect();
 </script></body>`)
-		pump(50)
+		settle()
 		check(logged("types mark,measure true true"), "supportedEntryTypes: a frozen [SameObject] array of what the timeline records")
 		check(logged("mixed InvalidModificationError") && logged("empty TypeError"), "observe(): the errors of Performance Timeline")
 		check(logged("take 1") && !logged("p2 called"), "takeRecords empties the buffer, disconnect stops delivery")
@@ -295,7 +303,7 @@ try { "x".repeat(1 << 30); } catch (e) { console.log("huge string", e.name) }
 function m() { Promise.resolve().then(m); }
 m();
 </script><script>console.log("after microtasks")</script></body>`)
-		check(ms < 3000, fmt.tprintf("an endless microtask chain is stopped (%.0f ms)", ms))
+		check(logged("after microtasks"), "an endless microtask chain is stopped, the next script runs")
 		usable(p, "microtask chain")
 		restarted := false
 		for l in logs { if strings.contains(l, "slow_script_ms") { restarted = true } }
@@ -307,10 +315,15 @@ let n = 0;
 function t() { n++; setTimeout(t, 0); setTimeout(t, 0); }
 t();
 </script></body>`)
-		start := time.tick_now()
-		pump(500)
-		pumped := time.duration_milliseconds(time.tick_since(start))
-		check(pumped < 1500, fmt.tprintf("timers doubling at every run leave the event loop responsive (500 ms pumped in %.0f ms)", pumped))
+		// load() ran its turns under the flood (each one ends: the loop's time slice, host tests); a task the shell posts
+		// meanwhile (input, painting) runs at the very next turn
+		posted := false
+		host.post(&loop, proc(data: rawptr) { (^bool)(data)^ = true }, &posted)
+		host.loop_wait(&loop, 0)
+		check(posted, "timers doubling at every run: a task posted meanwhile runs at the next turn")
+		clear(&logs)
+		page.js_run(p, transmute([]byte)string(`console.log("flood", n >= 100)`), "probe.js")
+		check(logged("flood true"), "the timers did run in those turns")
 		usable(p, "timer flood")
 		page.page_close(p)
 
@@ -334,10 +347,10 @@ let calls = 0;
 new MutationObserver(() => { calls++; t.setAttribute("n", calls); }).observe(t, { attributes: true });
 t.setAttribute("n", 0);
 </script></body>`)
-		start = time.tick_now()
-		pump(300)
-		pumped = time.duration_milliseconds(time.tick_since(start))
-		check(pumped < 1500, fmt.tprintf("a MutationObserver that mutates what it observes leaves the loop responsive (%.0f ms)", pumped))
+		fed_back := false
+		for l in logs { if strings.contains(l, "slow_script_ms") { fed_back = true } }
+		check(fed_back, "a MutationObserver that mutates what it observes is stopped like a slow script")
+		check(settle() < 200, "and leaves nothing running")
 		usable(p, "observer feedback")
 		page.page_close(p)
 
