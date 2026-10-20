@@ -2,8 +2,8 @@
 // specification's error recovery); a small C shim replays its tree as events and we build our own DOM from them, so
 // nothing of Lexbor's memory or layout is visible here and it is freed before `parse` returns.
 //
-// Limits: input is assumed UTF-8 (charset sniffing comes with Content-Type handling), `<template>` contents are not
-// replayed, and the node count is capped so a hostile document cannot exhaust memory.
+// The input is UTF-8 (charset.odin decodes documents first); `<template>` contents are replayed into their fragments.
+// The node count of one parse is capped (html.max_nodes): what is past it is dropped.
 package html
 
 import "base:runtime"
@@ -62,14 +62,15 @@ Builder :: struct {
 	mode:      dom.Document_Mode,
 	shadow_ok: bool,   // declarative shadow roots are attached (documents, setHTMLUnsafe; not innerHTML)
 	dsd_pending: bool, // a declarative shadow root was just attached: the template_begin that may follow enters it
+	ctx:       runtime.Context,   // the caller's: the nodes are made with its allocators
 }
 
 @(private)
 b_open2 :: proc "c" (user: rawptr, tag: [^]u8, tag_len: uint, attrs: [^]Shim_Attr, n_attrs: uint, ns: i32) {
 	if ns == 0 && view(tag, tag_len) == "template" && b_declarative_shadow(user, attrs, n_attrs) { return }
 	b_open(user, tag, tag_len, attrs, n_attrs)
-	context = runtime.default_context()
 	bd := (^Builder)(user)
+	context = bd.ctx
 	top := bd.stack[len(bd.stack) - 1]
 	if n := dom.get(bd.doc, top); n != nil && n.kind == .Element {
 		switch ns {
@@ -82,8 +83,8 @@ b_open2 :: proc "c" (user: rawptr, tag: [^]u8, tag_len: uint, attrs: [^]Shim_Att
 
 @(private)
 b_doctype :: proc "c" (user: rawptr, name: [^]u8, name_len: uint, public_id: [^]u8, public_len: uint, system_id: [^]u8, system_len: uint) {
-	context = runtime.default_context()
 	b := (^Builder)(user)
+	context = b.ctx
 	parent := b.stack[len(b.stack) - 1]
 	if b.truncated || parent == base.NIL_HANDLE || b.count >= b.max_nodes { return }
 	dom.append_child(b.doc, parent, dom.create_doctype(b.doc, view(name, name_len), view(public_id, public_len), view(system_id, system_len)))
@@ -96,8 +97,8 @@ b_doctype :: proc "c" (user: rawptr, name: [^]u8, name_len: uint, public_id: [^]
 // mode, a host already, an element that cannot host) it is an ordinary template.
 @(private)
 b_declarative_shadow :: proc "c" (user: rawptr, attrs: [^]Shim_Attr, n_attrs: uint) -> bool {
-	context = runtime.default_context()
 	b := (^Builder)(user)
+	context = b.ctx
 	if !b.shadow_ok || b.truncated || b.count >= b.max_nodes { return false }
 	init: dom.Shadow_Init
 	init.declarative = true
@@ -128,8 +129,8 @@ b_declarative_shadow :: proc "c" (user: rawptr, attrs: [^]Shim_Attr, n_attrs: ui
 // The contents of the template just opened: built in its DocumentFragment (dom.template_content), not under it.
 @(private)
 b_template_begin :: proc "c" (user: rawptr) {
-	context = runtime.default_context()
 	b := (^Builder)(user)
+	context = b.ctx
 	tpl := b.stack[len(b.stack) - 1]
 	if b.dsd_pending {
 		// a declarative shadow root: its contents go into the root itself
@@ -143,8 +144,8 @@ b_template_begin :: proc "c" (user: rawptr) {
 
 @(private)
 b_template_end :: proc "c" (user: rawptr) {
-	context = runtime.default_context()
 	b := (^Builder)(user)
+	context = b.ctx
 	if len(b.stack) > 1 { pop(&b.stack) }
 }
 
@@ -169,8 +170,8 @@ view :: #force_inline proc "contextless" (p: [^]u8, n: uint) -> string {
 
 @(private)
 b_open :: proc "c" (user: rawptr, tag: [^]u8, tag_len: uint, attrs: [^]Shim_Attr, n_attrs: uint) {
-	context = runtime.default_context()
 	b := (^Builder)(user)
+	context = b.ctx
 	b.dsd_pending = false
 	// keep the stack balanced even when truncated: close callbacks always pop
 	if b.truncated || b.count >= b.max_nodes {
@@ -191,16 +192,16 @@ b_open :: proc "c" (user: rawptr, tag: [^]u8, tag_len: uint, attrs: [^]Shim_Attr
 
 @(private)
 b_close :: proc "c" (user: rawptr) {
-	context = runtime.default_context()
 	b := (^Builder)(user)
+	context = b.ctx
 	b.dsd_pending = false
 	if len(b.stack) > 1 { pop(&b.stack) }
 }
 
 @(private)
 b_text :: proc "c" (user: rawptr, s: [^]u8, n: uint) {
-	context = runtime.default_context()
 	b := (^Builder)(user)
+	context = b.ctx
 	parent := b.stack[len(b.stack) - 1]
 	if b.truncated || parent == base.NIL_HANDLE || b.count >= b.max_nodes { return }
 	dom.append_child(b.doc, parent, dom.create_text(b.doc, view(s, n)))
@@ -209,8 +210,8 @@ b_text :: proc "c" (user: rawptr, s: [^]u8, n: uint) {
 
 @(private)
 b_comment :: proc "c" (user: rawptr, s: [^]u8, n: uint) {
-	context = runtime.default_context()
 	b := (^Builder)(user)
+	context = b.ctx
 	parent := b.stack[len(b.stack) - 1]
 	if b.truncated || parent == base.NIL_HANDLE || b.count >= b.max_nodes { return }
 	dom.append_child(b.doc, parent, dom.create_comment(b.doc, view(s, n)))
@@ -226,7 +227,7 @@ Parse_Result :: struct {
 
 // Parses `data` and appends the resulting tree under `parent` (normally the Document node).
 parse_into :: proc(d: ^dom.Document, parent: base.Handle, data: []byte, max_nodes: int) -> Parse_Result {
-	b := Builder{doc = d, max_nodes = max_nodes, shadow_ok = true}
+	b := Builder{doc = d, max_nodes = max_nodes, shadow_ok = true, ctx = context}
 	defer delete(b.stack)
 	append(&b.stack, parent)
 	// the document's mutation hooks see parser-made nodes (scripts of a fragment never run: page/js_load.odin)
@@ -245,7 +246,7 @@ parse_into :: proc(d: ^dom.Document, parent: base.Handle, data: []byte, max_node
 // `declarative_shadow`: <template shadowrootmode> attaches shadow roots (setHTMLUnsafe; innerHTML does not).
 parse_fragment :: proc(d: ^dom.Document, context_tag: string, context_ns: dom.Namespace, mode: dom.Document_Mode, data: []byte, max_nodes: int, declarative_shadow := false) -> (fragment: base.Handle, result: Parse_Result) {
 	fragment = dom.create_fragment(d)
-	b := Builder{doc = d, max_nodes = max_nodes, shadow_ok = declarative_shadow}
+	b := Builder{doc = d, max_nodes = max_nodes, shadow_ok = declarative_shadow, ctx = context}
 	defer delete(b.stack)
 	append(&b.stack, fragment)
 	sink := SINK2
