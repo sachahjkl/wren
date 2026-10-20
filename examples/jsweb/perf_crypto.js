@@ -15,7 +15,8 @@ test("performance", () => {
   ok(ms instanceof PerformanceMeasure, "measure() returns a PerformanceMeasure");
   ok(Math.abs(ms.duration - 5) < 1e-6, "measure between marks");
   const ms2 = performance.measure("opt", { start: "m1", duration: 2, detail: "d" });
-  eq(ms2.duration, 2, "measure with options");
+  // the spec computes end = start + duration, then duration = end - start: not exact in floating point
+  ok(Math.abs(ms2.duration - 2) < 1e-9, "measure with options");
   eq(ms2.detail, "d", "measure detail");
   eq(performance.getEntriesByType("mark").map(e => e.name).join(), "m1,m2", "getEntriesByType");
   eq(performance.getEntriesByName("span")[0].entryType, "measure", "getEntriesByName");
