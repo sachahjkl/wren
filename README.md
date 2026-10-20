@@ -58,7 +58,7 @@ crypto).
 | ![A page of plain JavaScript](docs/screenshots/javascript.png) | ![Shadow DOM](docs/screenshots/shadow-dom.png) |
 | **JavaScript, inside WebAssembly**: a plain HTML and JS page, run by QuickJS-ng compiled to Wasm (`JS` in the status bar) | **Shadow DOM**: declarative shadow roots (they render with JavaScript off), slots, `:host`, `::slotted()`, `::part()`, custom elements |
 | ![odin-lang.org in Wren](docs/screenshots/odin-lang-org.png) | ![A page whose behaviour is a Wasm module](docs/screenshots/wasm-counter.png) |
-| **odin-lang.org**, a real site over HTTPS, its scripts running (the theme is picked by a script) | **A page written in Wasm**: the counter and the clock are an Odin module, no JavaScript at all |
+| **odin-lang.org**, a real site over HTTPS, its scripts running (`JS` in the status bar) | **A page written in Wasm**: the counter and the clock are an Odin module, no JavaScript at all |
 | ![CSS transforms](docs/screenshots/css-transforms.png) | ![CSS Grid](docs/screenshots/css-grid.png) |
 | **Transforms**: rotated text, forms and scroll boxes, nested rounded clips, group opacity, 7,000 animated nodes | **Grid**: areas, `auto-fill` / `minmax`, dense packing, alignment, nesting, subgrid |
 | ![Gradients and shadows](docs/screenshots/css-gradients.png) | ![Masks, background-clip text, legends, color glyphs](docs/screenshots/masks-and-color-glyphs.png) |

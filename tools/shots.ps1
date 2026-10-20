@@ -22,13 +22,15 @@ $shots = @(
     @{ n = 'masks-and-color-glyphs'; u = "$site/paint.html" }
     @{ n = 'text';                   u = "$site/text.html" }
     @{ n = 'wasm-counter';           u = "$site/counter.html" }
-    @{ n = 'sacha-house';            u = 'https://sacha.house'; w = 7000 }
-    @{ n = 'webassembly-org';        u = 'https://webassembly.org/news/2026-01-21-states-of-webassembly/'; w = 7000 }
-    @{ n = 'odin-lang-org';          u = 'https://odin-lang.org'; w = 7000 }
+    @{ n = 'javascript';             u = "$site/js.html" }
+    @{ n = 'shadow-dom';             u = "$site/shadow-dom.html" }
+    @{ n = 'sacha-house';            u = 'https://sacha.house'; w = 10000 }
+    @{ n = 'webassembly-org';        u = 'https://webassembly.org/news/2026-01-21-states-of-webassembly/'; w = 10000 }
+    @{ n = 'odin-lang-org';          u = 'https://odin-lang.org'; w = 10000 }
     @{ n = 'frame-statistics';       u = "$site/transforms.html"; a = 'wait:1500; key:Ctrl+Shift+B; wait:1200' }
     @{ n = 'about-config';           u = 'about:config' }
     @{ n = 'find';                   u = 'https://sacha.house/cv'; w = 6000; a = 'key:Ctrl+F; wait:300; type:Angular; wait:900' }
-    @{ n = 'context-menu';           u = 'https://sacha.house/cv'; w = 6000; a = 'dclick:470,695; wait:300; rclick:470,695; wait:700' }
+    @{ n = 'context-menu';           u = 'https://sacha.house/cv'; w = 6000; a = 'dclick:600,695; wait:300; rclick:600,695; wait:700' }
     @{ n = 'tabs';                   u = 'https://webassembly.org'; w = 5000; a = 'key:Ctrl+T; wait:1000; key:Ctrl+L; wait:500; type:https://sacha.house; wait:300; key:Enter; wait:6000; key:Ctrl+T; wait:1000; key:Ctrl+L; wait:500; type:about:demos; wait:300; key:Enter; wait:1500; click:1500,560; wait:400' }
     @{ n = 'daylight';               u = 'https://sacha.house/cv'; w = 6000; x = @('--pref browser.ui.theme=daylight') }
 )
