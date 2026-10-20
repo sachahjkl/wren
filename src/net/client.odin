@@ -174,7 +174,9 @@ client_apply :: proc(c: ^Client, s: Settings) {
 // Cancels everything, waits for WinHTTP to let go of every job, frees the rest.
 client_destroy :: proc(c: ^Client) {
 	websockets_destroy(c)
+	sync.mutex_lock(&c.mu)
 	c.shutting_down = true
+	sync.mutex_unlock(&c.mu)
 	it: u32
 	handles: [dynamic]base.Handle
 	defer delete(handles)
@@ -389,6 +391,12 @@ release :: proc(c: ^Client, h: base.Handle) -> bool {
 @(private)
 push_event :: proc(c: ^Client, ev: Event) {
 	sync.mutex_lock(&c.mu)
+	if c.shutting_down {   // client_destroy freed (or is freeing) the queue: a late completion is dropped
+		sync.mutex_unlock(&c.mu)
+		ev := ev
+		free_event(&ev)
+		return
+	}
 	append(&c.events, ev)
 	post := !c.drain_pending
 	c.drain_pending = true
