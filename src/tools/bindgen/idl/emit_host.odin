@@ -576,6 +576,8 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 	case d.raises: wl(o, "\t_r, _err := %s(%s)", d.host_name, strings.to_string(args))
 	case: wl(o, "\t_r := %s(%s)", d.host_name, strings.to_string(args))
 	}
+	// custom element reactions the call queued run before it returns ([CEReactions], src/page/js_custom_elements.odin)
+	wl(o, "\tapi_end(&c)")
 	wl(o, "\tif _t := wasm.take_trap(f.inst); _t != nil {{ return _t }}")
 	if d.raises {
 		wl(o, "\tif _err != .None {{")

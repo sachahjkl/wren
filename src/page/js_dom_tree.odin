@@ -765,7 +765,9 @@ Document_createElementChecked :: proc(c: ^Call, local_name: string) -> (u64, Api
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
 	if !valid_element_name(local_name) { return 0, fail(c, .Invalid_Character, "The tag name provided is not a valid name.") }
-	return u64(dom.create_element(d, local_name)), .None
+	h := dom.create_element(d, local_name)
+	custom_elements_created(c.page, h)   // a defined name: constructed before createElement returns
+	return u64(h), .None
 }
 
 // DOM "validate and extract": namespace, prefix and local name of a qualified name.

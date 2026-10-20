@@ -628,6 +628,7 @@ _t_abort_AbortController_create :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := AbortController_create(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -647,6 +648,7 @@ _t_abort_AbortController_signal :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("abort.AbortController_signal: argument controller is not a live AbortController")
 	}
 	_r := AbortController_signal(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -675,6 +677,7 @@ _t_abort_AbortController_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	_p1 := a[1].i64
 	AbortController_abort(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -692,6 +695,7 @@ _t_abort_AbortSignal_aborted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("abort.AbortSignal_aborted: argument signal is not a live AbortSignal")
 	}
 	_r := AbortSignal_aborted(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -711,6 +715,7 @@ _t_abort_AbortSignal_reasonCode :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("abort.AbortSignal_reasonCode: argument signal is not a live AbortSignal")
 	}
 	_r := AbortSignal_reasonCode(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = _r
@@ -733,6 +738,7 @@ _t_abort_AbortSignal_reason :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("abort.AbortSignal_reason: argument signal is not a live AbortSignal")
 	}
 	_r := AbortSignal_reason(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -752,6 +758,7 @@ _t_abort_AbortSignal_throwIfAborted :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("abort.AbortSignal_throwIfAborted: argument signal is not a live AbortSignal")
 	}
 	_r := AbortSignal_throwIfAborted(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = _r
@@ -774,6 +781,7 @@ _t_abort_AbortSignal_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	_p0 := a[0].i64
 	_r := AbortSignal_abort(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -790,6 +798,7 @@ _t_abort_AbortSignal_timeout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if !_rk { return wasm.trap_bounds(&f, "abort.AbortSignal_timeout", "result pointer") }
 	_p0 := a[0].f64
 	_r, _err := AbortSignal_timeout(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -813,6 +822,7 @@ _t_abort_AbortSignal_any :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if !_rk { return wasm.trap_bounds(&f, "abort.AbortSignal_any", "result pointer") }
 	_p0 := ([^]u64)(_s0)[:_n0]
 	_r, _err := AbortSignal_any(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -832,6 +842,7 @@ _t_async_queueMicrotask :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	queueMicrotask(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -843,6 +854,7 @@ _t_async_Promise_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Promise_create(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -869,6 +881,7 @@ _t_async_Promise_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	}
 	_p1 := a[1].i64
 	_err := Promise_resolve(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -898,6 +911,7 @@ _t_async_Promise_reject :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	}
 	_p1 := a[1].i64
 	_err := Promise_reject(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -922,6 +936,7 @@ _t_async_Promise_then :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_p1 := u32(a[1].i32)
 	_p2 := a[2].i32
 	Promise_then(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -939,6 +954,7 @@ _t_async_Promise_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("async.Promise_state: argument promise is not a live Promise")
 	}
 	_r := Promise_state(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -958,6 +974,7 @@ _t_async_Promise_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("async.Promise_value: argument promise is not a live Promise")
 	}
 	_r := Promise_value(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = _r
@@ -980,6 +997,7 @@ _t_async_Promise_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return wasm.trap_new("async.Promise_text: argument promise is not a live Promise")
 	}
 	_r := Promise_text(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -997,6 +1015,7 @@ _t_async_Promise_all :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	if !_k0 { return wasm.trap_bounds(&f, "async.Promise_all", "promises") }
 	_p0 := ([^]u64)(_s0)[:_n0]
 	_r := Promise_all(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -1015,6 +1034,7 @@ _t_async_Object_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return _fail_status(&c, a, .Invalid_Handle, "async.Object_release: argument object is not a live Object")
 	}
 	_err := Object_release(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1040,6 +1060,7 @@ _t_async_Object_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("async.Object_kind: argument object is not a live Object")
 	}
 	_r := Object_kind(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -1059,6 +1080,7 @@ _t_async_Buffer_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	if !_rk { return wasm.trap_bounds(&f, "async.Buffer_create", "result pointer") }
 	_p0 := _s0[:_n0]
 	_r, _err := Buffer_create(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1079,6 +1101,7 @@ _t_async_Buffer_alloc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	if !_rk { return wasm.trap_bounds(&f, "async.Buffer_alloc", "result pointer") }
 	_p0 := a[0].i64
 	_r, _err := Buffer_alloc(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1102,6 +1125,7 @@ _t_async_Buffer_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("async.Buffer_length: argument buffer is not a live Buffer")
 	}
 	_r := Buffer_length(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = _r
@@ -1126,6 +1150,7 @@ _t_async_Buffer_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	}
 	_p1 := a[1].i64
 	_r := Buffer_read(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -1150,6 +1175,7 @@ _t_async_Buffer_write :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	}
 	_p1 := a[1].i64
 	_r := Buffer_write(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -1172,6 +1198,7 @@ _t_async_Buffer_slice :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_p1 := a[1].i64
 	_p2 := a[2].i64
 	_r, _err := Buffer_slice(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1193,6 +1220,7 @@ _t_console_console_log :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	if !_k0 { return wasm.trap_bounds(&f, "console.console_log", "message") }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	console_log(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -1208,6 +1236,7 @@ _t_console_console_warn :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	if !_k0 { return wasm.trap_bounds(&f, "console.console_warn", "message") }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	console_warn(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -1223,6 +1252,7 @@ _t_console_console_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if !_k0 { return wasm.trap_bounds(&f, "console.console_error", "message") }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	console_error(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -1238,6 +1268,7 @@ _t_crypto_Crypto_getRandomValues :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	if !_k0 { return wasm.trap_bounds(&f, "crypto.Crypto_getRandomValues", "destination") }
 	_p0 := _s0[:_n0]
 	_err := Crypto_getRandomValues(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1257,6 +1288,7 @@ _t_crypto_Crypto_randomUUID :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "crypto.Crypto_randomUUID", "result buffer") }
 	_r, _err := Crypto_randomUUID(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -1285,6 +1317,7 @@ _t_crypto_SubtleCrypto_digest :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	_p1 := _s1[:_n1]
 	_r := SubtleCrypto_digest(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -1312,6 +1345,7 @@ _t_crypto_SubtleCrypto_digestBuffer :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("crypto.SubtleCrypto_digestBuffer: argument data is not a live Buffer")
 	}
 	_r := SubtleCrypto_digestBuffer(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -1328,6 +1362,7 @@ _t_document_Document_URL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "document.Document_URL", "result buffer") }
 	_r, _err := Document_URL(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -1347,6 +1382,7 @@ _t_document_Window_origin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "document.Window_origin", "result buffer") }
 	_r := Window_origin(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -1360,6 +1396,7 @@ _t_document_Window_isSecureContext :: proc "c" (env: rawptr, caller: wasm.Caller
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_isSecureContext(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -1376,6 +1413,7 @@ _t_document_Document_cookie_get :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "document.Document_cookie_get", "result buffer") }
 	_r, _err := Document_cookie_get(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -1401,6 +1439,7 @@ _t_document_Document_cookie_set :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return _fail_status(&c, a, .Type, "document.Document_cookie_set: argument cookie is not valid UTF-8")
 	}
 	_r, _err := Document_cookie_set(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1418,6 +1457,7 @@ _t_dom_Document_documentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Document_documentElement(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -1431,6 +1471,7 @@ _t_dom_Document_head :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Document_head(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -1444,6 +1485,7 @@ _t_dom_Document_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Document_body(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -1466,6 +1508,7 @@ _t_dom_Document_createElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_status(&c, a, .Type, "dom.Document_createElement: argument tag is not valid UTF-8")
 	}
 	_r, _err := Document_createElement(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1492,6 +1535,7 @@ _t_dom_Document_createTextNode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_status(&c, a, .Type, "dom.Document_createTextNode: argument text is not valid UTF-8")
 	}
 	_r, _err := Document_createTextNode(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1517,6 +1561,7 @@ _t_dom_Document_getElementById :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return wasm.trap_new("dom.Document_getElementById: argument id is not valid UTF-8")
 	}
 	_r := Document_getElementById(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -1540,6 +1585,7 @@ _t_dom_Node_appendChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_appendChild: argument child is not a live Node")
 	}
 	_err := Node_appendChild(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1571,6 +1617,7 @@ _t_dom_Node_insertBefore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_insertBefore: argument ref is not a live Node")
 	}
 	_err := Node_insertBefore(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1597,6 +1644,7 @@ _t_dom_Node_removeChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_removeChild: argument child is not a live Node")
 	}
 	_err := Node_removeChild(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1618,6 +1666,7 @@ _t_dom_Node_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_release: argument node is not a live Node")
 	}
 	_err := Node_release(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1640,6 +1689,7 @@ _t_dom_Node_parentNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("dom.Node_parentNode: argument node is not a live Node")
 	}
 	_r := Node_parentNode(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -1659,6 +1709,7 @@ _t_dom_Node_firstChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("dom.Node_firstChild: argument node is not a live Node")
 	}
 	_r := Node_firstChild(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -1678,6 +1729,7 @@ _t_dom_Node_lastChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return wasm.trap_new("dom.Node_lastChild: argument node is not a live Node")
 	}
 	_r := Node_lastChild(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -1697,6 +1749,7 @@ _t_dom_Node_previousSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("dom.Node_previousSibling: argument node is not a live Node")
 	}
 	_r := Node_previousSibling(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -1716,6 +1769,7 @@ _t_dom_Node_nextSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("dom.Node_nextSibling: argument node is not a live Node")
 	}
 	_r := Node_nextSibling(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -1735,6 +1789,7 @@ _t_dom_Node_nodeType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("dom.Node_nodeType: argument node is not a live Node")
 	}
 	_r := Node_nodeType(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -1760,6 +1815,7 @@ _t_dom_Node_setTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_setTextContent: argument node is not a live Node")
 	}
 	_err := Node_setTextContent(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1785,6 +1841,7 @@ _t_dom_Node_getTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("dom.Node_getTextContent: argument node is not a live Node")
 	}
 	_r := Node_getTextContent(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -1807,6 +1864,7 @@ _t_dom_Element_tagName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("dom.Element_tagName: argument element is not a live Element")
 	}
 	_r := Element_tagName(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -1839,6 +1897,7 @@ _t_dom_Element_setAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_setAttribute: argument element is not a live Element")
 	}
 	_err := Element_setAttribute(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1870,6 +1929,7 @@ _t_dom_Element_getAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Element_getAttribute: argument element is not a live Element")
 	}
 	_r, _err := Element_getAttribute(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -1898,6 +1958,7 @@ _t_dom_Element_removeAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_removeAttribute: argument element is not a live Element")
 	}
 	_err := Element_removeAttribute(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1920,6 +1981,7 @@ _t_encoding_TextEncoder_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if !_rk { return wasm.trap_bounds(&f, "encoding.TextEncoder_encode", "result pointer") }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	_r, _err := TextEncoder_encode(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -1947,6 +2009,7 @@ _t_encoding_TextEncoder_encodeInto :: proc "c" (env: rawptr, caller: wasm.Caller
 	_p0 := _s0[:_n0]
 	_p1 := _s1[:_n1]
 	_r := TextEncoder_encodeInto(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	intrinsics.unaligned_store((^u64)(&_rs[0]), _r.read)
 	intrinsics.unaligned_store((^u64)(&_rs[8]), _r.written)
@@ -1974,6 +2037,7 @@ _t_encoding_TextDecoder_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	_p1 := transmute(Api_TextDecoderOptions)_e1
 	_r, _err := TextDecoder_create(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -2000,6 +2064,7 @@ _t_encoding_TextDecoder_encoding :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return wasm.trap_new("encoding.TextDecoder_encoding: argument decoder is not a live TextDecoder")
 	}
 	_r := TextDecoder_encoding(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -2019,6 +2084,7 @@ _t_encoding_TextDecoder_flags :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("encoding.TextDecoder_flags: argument decoder is not a live TextDecoder")
 	}
 	_r := TextDecoder_flags(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(transmute(u32)_r)
@@ -2045,6 +2111,7 @@ _t_encoding_TextDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	_p2 := a[3].i32 != 0
 	_r, _err := TextDecoder_decode(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -2075,6 +2142,7 @@ _t_encoding_TextDecoder_decodeBuffer :: proc "c" (env: rawptr, caller: wasm.Call
 	}
 	_p2 := a[2].i32 != 0
 	_r, _err := TextDecoder_decodeBuffer(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -2100,6 +2168,7 @@ _t_encoding_TextDecoder_output :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return wasm.trap_new("encoding.TextDecoder_output: argument decoder is not a live TextDecoder")
 	}
 	_r := TextDecoder_output(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -2130,6 +2199,7 @@ _t_events_EventTarget_addEventListener :: proc "c" (env: rawptr, caller: wasm.Ca
 	}
 	_p4 := transmute(Api_ListenerOptions)_e4
 	_r, _err := EventTarget_addEventListener(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -2149,6 +2219,7 @@ _t_events_EventTarget_removeEventListener :: proc "c" (env: rawptr, caller: wasm
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_err := EventTarget_removeEventListener(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -2180,6 +2251,7 @@ _t_events_EventTarget_dispatchEvent :: proc "c" (env: rawptr, caller: wasm.Calle
 	}
 	_p2 := transmute(Api_EventInit)_e2
 	_r, _err := EventTarget_dispatchEvent(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -2203,6 +2275,7 @@ _t_events_Event_preventDefault :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return wasm.trap_new("events.Event_preventDefault: argument event is not a live Event")
 	}
 	Event_preventDefault(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -2220,6 +2293,7 @@ _t_events_Event_stopPropagation :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("events.Event_stopPropagation: argument event is not a live Event")
 	}
 	Event_stopPropagation(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -2237,6 +2311,7 @@ _t_events_Event_stopImmediatePropagation :: proc "c" (env: rawptr, caller: wasm.
 		return wasm.trap_new("events.Event_stopImmediatePropagation: argument event is not a live Event")
 	}
 	Event_stopImmediatePropagation(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -2254,6 +2329,7 @@ _t_events_Event_target :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("events.Event_target: argument event is not a live Event")
 	}
 	_r := Event_target(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -2273,6 +2349,7 @@ _t_events_Event_currentTarget :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("events.Event_currentTarget: argument event is not a live Event")
 	}
 	_r := Event_currentTarget(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -2295,6 +2372,7 @@ _t_events_Event_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("events.Event_type: argument event is not a live Event")
 	}
 	_r := Event_type(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -2314,6 +2392,7 @@ _t_events_Event_defaultPrevented :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return wasm.trap_new("events.Event_defaultPrevented: argument event is not a live Event")
 	}
 	_r := Event_defaultPrevented(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -2336,6 +2415,7 @@ _t_events_Event_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("events.Event_data: argument event is not a live Event")
 	}
 	_r := Event_data(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -2358,6 +2438,7 @@ _t_events_Event_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("events.Event_text: argument event is not a live Event")
 	}
 	_r := Event_text(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -2377,6 +2458,7 @@ _t_events_Event_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("events.Event_code: argument event is not a live Event")
 	}
 	_r := Event_code(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = _r
@@ -2396,6 +2478,7 @@ _t_events_Event_object :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("events.Event_object: argument event is not a live Event")
 	}
 	_r := Event_object(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -2415,6 +2498,7 @@ _t_events_MouseEvent_clientX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("events.MouseEvent_clientX: argument event is not a live Event")
 	}
 	_r := MouseEvent_clientX(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -2434,6 +2518,7 @@ _t_events_MouseEvent_clientY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("events.MouseEvent_clientY: argument event is not a live Event")
 	}
 	_r := MouseEvent_clientY(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -2453,6 +2538,7 @@ _t_events_MouseEvent_button :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("events.MouseEvent_button: argument event is not a live Event")
 	}
 	_r := MouseEvent_button(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -2472,6 +2558,7 @@ _t_events_KeyboardEvent_keyCode :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("events.KeyboardEvent_keyCode: argument event is not a live Event")
 	}
 	_r := KeyboardEvent_keyCode(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -2495,6 +2582,7 @@ _t_eventsource_EventSource_create :: proc "c" (env: rawptr, caller: wasm.Caller,
 	}
 	_p1 := a[2].i32 != 0
 	_r, _err := EventSource_create(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -2518,6 +2606,7 @@ _t_eventsource_EventSource_readyState :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("eventsource.EventSource_readyState: argument source is not a live EventSource")
 	}
 	_r := EventSource_readyState(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -2540,6 +2629,7 @@ _t_eventsource_EventSource_url :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return wasm.trap_new("eventsource.EventSource_url: argument source is not a live EventSource")
 	}
 	_r := EventSource_url(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -2559,6 +2649,7 @@ _t_eventsource_EventSource_withCredentials :: proc "c" (env: rawptr, caller: was
 		return wasm.trap_new("eventsource.EventSource_withCredentials: argument source is not a live EventSource")
 	}
 	_r := EventSource_withCredentials(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -2578,6 +2669,7 @@ _t_eventsource_EventSource_close :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return wasm.trap_new("eventsource.EventSource_close: argument source is not a live EventSource")
 	}
 	EventSource_close(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -2598,6 +2690,7 @@ _t_eventsource_MessageEvent_origin :: proc "c" (env: rawptr, caller: wasm.Caller
 		return wasm.trap_new("eventsource.MessageEvent_origin: argument event is not a live Event")
 	}
 	_r := MessageEvent_origin(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -2620,6 +2713,7 @@ _t_eventsource_MessageEvent_lastEventId :: proc "c" (env: rawptr, caller: wasm.C
 		return wasm.trap_new("eventsource.MessageEvent_lastEventId: argument event is not a live Event")
 	}
 	_r := MessageEvent_lastEventId(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -2689,6 +2783,7 @@ _t_fetch_Fetch_promise :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	_p6.referrer_policy = Api_ReferrerPolicy(u32(a[13].i32))
 	_p6.no_referrer = a[14].i32 != 0
 	_r, _err := Fetch_promise(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -2764,6 +2859,7 @@ _t_fetch_Fetch_startWithSignal :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_p8.referrer_policy = Api_ReferrerPolicy(u32(a[15].i32))
 	_p8.no_referrer = a[16].i32 != 0
 	_r, _err := Fetch_startWithSignal(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -2787,6 +2883,7 @@ _t_fetch_Response_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("fetch.Response_text: argument response is not a live Response")
 	}
 	_r := Response_text(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -2806,6 +2903,7 @@ _t_fetch_Response_arrayBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("fetch.Response_arrayBuffer: argument response is not a live Response")
 	}
 	_r := Response_arrayBuffer(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -2825,6 +2923,7 @@ _t_fetch_Response_bytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("fetch.Response_bytes: argument response is not a live Response")
 	}
 	_r := Response_bytes(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -2844,6 +2943,7 @@ _t_fetch_Response_bodyUsed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("fetch.Response_bodyUsed: argument response is not a live Response")
 	}
 	_r := Response_bodyUsed(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -2864,6 +2964,7 @@ _t_fetch_Response_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return _fail_status(&c, a, .Invalid_Handle, "fetch.Response_body: argument response is not a live Response")
 	}
 	_r, _err := Response_body(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -2887,6 +2988,7 @@ _t_fetch_Stream_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("fetch.Stream_read: argument stream is not a live ReadableStream")
 	}
 	_r := Stream_read(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -2906,6 +3008,7 @@ _t_fetch_Stream_cancel :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("fetch.Stream_cancel: argument stream is not a live ReadableStream")
 	}
 	Stream_cancel(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -2926,6 +3029,7 @@ _t_forms_forms_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("forms.HTMLInputElement_value: argument control is not a live Element")
 	}
 	_r := forms_value(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -2951,6 +3055,7 @@ _t_forms_forms_setValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return _fail_status(&c, a, .Invalid_Handle, "forms.HTMLInputElement_setValue: argument control is not a live Element")
 	}
 	_err := forms_setValue(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -2976,6 +3081,7 @@ _t_forms_forms_defaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("forms.HTMLInputElement_defaultValue: argument control is not a live Element")
 	}
 	_r := forms_defaultValue(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -3001,6 +3107,7 @@ _t_forms_forms_setDefaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_status(&c, a, .Invalid_Handle, "forms.HTMLInputElement_setDefaultValue: argument control is not a live Element")
 	}
 	_err := forms_setDefaultValue(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -3023,6 +3130,7 @@ _t_forms_forms_checked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("forms.HTMLInputElement_checked: argument control is not a live Element")
 	}
 	_r := forms_checked(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -3042,6 +3150,7 @@ _t_forms_forms_setChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	}
 	_p1 := a[1].i32 != 0
 	_err := forms_setChecked(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -3064,6 +3173,7 @@ _t_forms_forms_defaultChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("forms.HTMLInputElement_defaultChecked: argument control is not a live Element")
 	}
 	_r := forms_defaultChecked(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -3084,6 +3194,7 @@ _t_forms_forms_setDefaultChecked :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	}
 	_p1 := a[1].i32 != 0
 	forms_setDefaultChecked(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -3101,6 +3212,7 @@ _t_forms_forms_indeterminate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("forms.HTMLInputElement_indeterminate: argument control is not a live Element")
 	}
 	_r := forms_indeterminate(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -3121,6 +3233,7 @@ _t_forms_forms_setIndeterminate :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	}
 	_p1 := a[1].i32 != 0
 	forms_setIndeterminate(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -3141,6 +3254,7 @@ _t_forms_forms_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 		return wasm.trap_new("forms.HTMLInputElement_type: argument control is not a live Element")
 	}
 	_r := forms_type(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -3163,6 +3277,7 @@ _t_forms_forms_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 		return wasm.trap_new("forms.HTMLInputElement_name: argument control is not a live Element")
 	}
 	_r := forms_name(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -3182,6 +3297,7 @@ _t_forms_forms_form :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 		return wasm.trap_new("forms.HTMLInputElement_form: argument control is not a live Element")
 	}
 	_r := forms_form(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -3201,6 +3317,7 @@ _t_forms_forms_disabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("forms.HTMLInputElement_disabled: argument control is not a live Element")
 	}
 	_r := forms_disabled(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -3221,6 +3338,7 @@ _t_forms_forms_setDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	_p1 := a[1].i32 != 0
 	forms_setDisabled(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -3238,6 +3356,7 @@ _t_forms_forms_readOnly :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("forms.HTMLInputElement_readOnly: argument control is not a live Element")
 	}
 	_r := forms_readOnly(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -3258,6 +3377,7 @@ _t_forms_forms_setReadOnly :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	_p1 := a[1].i32 != 0
 	forms_setReadOnly(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -3275,6 +3395,7 @@ _t_forms_forms_required :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("forms.HTMLInputElement_required: argument control is not a live Element")
 	}
 	_r := forms_required(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -3295,6 +3416,7 @@ _t_forms_forms_setRequired :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	_p1 := a[1].i32 != 0
 	forms_setRequired(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -3312,6 +3434,7 @@ _t_forms_forms_willValidate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("forms.HTMLInputElement_willValidate: argument control is not a live Element")
 	}
 	_r := forms_willValidate(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -3331,6 +3454,7 @@ _t_forms_forms_validity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("forms.HTMLInputElement_validity: argument control is not a live Element")
 	}
 	_r := forms_validity(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(transmute(u32)_r)
@@ -3353,6 +3477,7 @@ _t_forms_forms_validationMessage :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return wasm.trap_new("forms.HTMLInputElement_validationMessage: argument control is not a live Element")
 	}
 	_r := forms_validationMessage(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -3380,6 +3505,7 @@ _t_forms_forms_setCustomValidity :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return wasm.trap_new("forms.HTMLInputElement_setCustomValidity: argument control is not a live Element")
 	}
 	forms_setCustomValidity(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -3397,6 +3523,7 @@ _t_forms_forms_checkValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("forms.HTMLInputElement_checkValidity: argument control is not a live Element")
 	}
 	_r := forms_checkValidity(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -3416,6 +3543,7 @@ _t_forms_forms_reportValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("forms.HTMLInputElement_reportValidity: argument control is not a live Element")
 	}
 	_r := forms_reportValidity(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -3434,6 +3562,7 @@ _t_forms_forms_select :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_status(&c, a, .Invalid_Handle, "forms.HTMLInputElement_select: argument control is not a live Element")
 	}
 	_err := forms_select(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -3456,6 +3585,7 @@ _t_forms_forms_selectionStart :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("forms.HTMLInputElement_selectionStart: argument control is not a live Element")
 	}
 	_r := forms_selectionStart(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -3475,6 +3605,7 @@ _t_forms_forms_selectionEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("forms.HTMLInputElement_selectionEnd: argument control is not a live Element")
 	}
 	_r := forms_selectionEnd(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -3496,6 +3627,7 @@ _t_forms_forms_selectionDirection :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_size(&c, &f, a, .Invalid_Handle, "forms.HTMLInputElement_selectionDirection: argument control is not a live Element")
 	}
 	_r, _err := forms_selectionDirection(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -3524,6 +3656,7 @@ _t_forms_forms_setSelectionRange :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	}
 	_p3 := Api_SelectionDirection(_e3)
 	_err := forms_setSelectionRange(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -3559,6 +3692,7 @@ _t_forms_forms_setRangeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	}
 	_p4 := Api_SelectionMode(_e4)
 	_err := forms_setRangeText(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -3581,6 +3715,7 @@ _t_forms_forms_maxLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("forms.HTMLInputElement_maxLength: argument control is not a live Element")
 	}
 	_r := forms_maxLength(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -3600,6 +3735,7 @@ _t_forms_forms_minLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("forms.HTMLInputElement_minLength: argument control is not a live Element")
 	}
 	_r := forms_minLength(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -3619,6 +3755,7 @@ _t_forms_forms_stepUp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	}
 	_p1 := a[1].i32
 	_err := forms_stepUp(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -3641,6 +3778,7 @@ _t_forms_forms_stepDown :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	}
 	_p1 := a[1].i32
 	_err := forms_stepDown(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -3663,6 +3801,7 @@ _t_forms_forms_valueAsNumber :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("forms.HTMLInputElement_valueAsNumber: argument control is not a live Element")
 	}
 	_r := forms_valueAsNumber(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -3682,6 +3821,7 @@ _t_forms_forms_setValueAsNumber :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	}
 	_p1 := a[1].f64
 	_err := forms_setValueAsNumber(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -3704,6 +3844,7 @@ _t_forms_forms_valueAsDate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("forms.HTMLInputElement_valueAsDate: argument control is not a live Element")
 	}
 	_r := forms_valueAsDate(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -3723,6 +3864,7 @@ _t_forms_forms_setValueAsDate :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	_p1 := a[1].f64
 	_err := forms_setValueAsDate(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -3745,6 +3887,7 @@ _t_forms_forms_files_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("forms.HTMLInputElement_files_length: argument control is not a live Element")
 	}
 	_r := forms_files_length(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -3767,6 +3910,7 @@ _t_forms_forms_fileName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	}
 	_p1 := a[1].i32
 	_r, _err := forms_fileName(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -3790,6 +3934,7 @@ _t_forms_forms_fileSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	}
 	_p1 := a[1].i32
 	_r := forms_fileSize(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = _r
@@ -3812,6 +3957,7 @@ _t_forms_forms_fileType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	}
 	_p1 := a[1].i32
 	_r, _err := forms_fileType(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -3834,6 +3980,7 @@ _t_forms_HTMLSelectElement_selectedIndex :: proc "c" (env: rawptr, caller: wasm.
 		return wasm.trap_new("forms.HTMLSelectElement_selectedIndex: argument select is not a live Element")
 	}
 	_r := HTMLSelectElement_selectedIndex(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -3853,6 +4000,7 @@ _t_forms_HTMLSelectElement_setSelectedIndex :: proc "c" (env: rawptr, caller: wa
 	}
 	_p1 := a[1].i32
 	_err := HTMLSelectElement_setSelectedIndex(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -3875,6 +4023,7 @@ _t_forms_HTMLSelectElement_length :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return wasm.trap_new("forms.HTMLSelectElement_length: argument select is not a live Element")
 	}
 	_r := HTMLSelectElement_length(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -3895,6 +4044,7 @@ _t_forms_HTMLSelectElement_item :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	}
 	_p1 := a[1].i32
 	_r := HTMLSelectElement_item(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -3914,6 +4064,7 @@ _t_forms_HTMLSelectElement_selectedOptions_length :: proc "c" (env: rawptr, call
 		return wasm.trap_new("forms.HTMLSelectElement_selectedOptions_length: argument select is not a live Element")
 	}
 	_r := HTMLSelectElement_selectedOptions_length(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -3934,6 +4085,7 @@ _t_forms_HTMLSelectElement_selectedOptions_item :: proc "c" (env: rawptr, caller
 	}
 	_p1 := a[1].i32
 	_r := HTMLSelectElement_selectedOptions_item(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -3953,6 +4105,7 @@ _t_forms_HTMLOptionElement_selected :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("forms.HTMLOptionElement_selected: argument option is not a live Element")
 	}
 	_r := HTMLOptionElement_selected(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -3972,6 +4125,7 @@ _t_forms_HTMLOptionElement_setSelected :: proc "c" (env: rawptr, caller: wasm.Ca
 	}
 	_p1 := a[1].i32 != 0
 	_err := HTMLOptionElement_setSelected(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -3994,6 +4148,7 @@ _t_forms_HTMLOptionElement_defaultSelected :: proc "c" (env: rawptr, caller: was
 		return wasm.trap_new("forms.HTMLOptionElement_defaultSelected: argument option is not a live Element")
 	}
 	_r := HTMLOptionElement_defaultSelected(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -4013,6 +4168,7 @@ _t_forms_HTMLOptionElement_setDefaultSelected :: proc "c" (env: rawptr, caller: 
 	}
 	_p1 := a[1].i32 != 0
 	_err := HTMLOptionElement_setDefaultSelected(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -4035,6 +4191,7 @@ _t_forms_HTMLOptionElement_index :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return wasm.trap_new("forms.HTMLOptionElement_index: argument option is not a live Element")
 	}
 	_r := HTMLOptionElement_index(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -4057,6 +4214,7 @@ _t_forms_HTMLOptionElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("forms.HTMLOptionElement_text: argument option is not a live Element")
 	}
 	_r := HTMLOptionElement_text(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -4079,6 +4237,7 @@ _t_forms_HTMLOptionElement_label :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return wasm.trap_new("forms.HTMLOptionElement_label: argument option is not a live Element")
 	}
 	_r := HTMLOptionElement_label(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -4097,6 +4256,7 @@ _t_forms_HTMLFormElement_submit :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return _fail_status(&c, a, .Invalid_Handle, "forms.HTMLFormElement_submit: argument form is not a live Element")
 	}
 	_err := HTMLFormElement_submit(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -4123,6 +4283,7 @@ _t_forms_HTMLFormElement_requestSubmit :: proc "c" (env: rawptr, caller: wasm.Ca
 		return _fail_status(&c, a, .Invalid_Handle, "forms.HTMLFormElement_requestSubmit: argument submitter is not a live Element")
 	}
 	_err := HTMLFormElement_requestSubmit(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -4144,6 +4305,7 @@ _t_forms_HTMLFormElement_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_status(&c, a, .Invalid_Handle, "forms.HTMLFormElement_reset: argument form is not a live Element")
 	}
 	_err := HTMLFormElement_reset(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -4166,6 +4328,7 @@ _t_forms_HTMLFormElement_length :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("forms.HTMLFormElement_length: argument form is not a live Element")
 	}
 	_r := HTMLFormElement_length(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -4186,6 +4349,7 @@ _t_forms_HTMLFormElement_elements :: proc "c" (env: rawptr, caller: wasm.Caller,
 	}
 	_p1 := a[1].i32
 	_r := HTMLFormElement_elements(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -4213,6 +4377,7 @@ _t_forms_HTMLFormElement_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller
 		return wasm.trap_new("forms.HTMLFormElement_namedItem: argument form is not a live Element")
 	}
 	_r := HTMLFormElement_namedItem(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -4232,6 +4397,7 @@ _t_forms_HTMLLabelElement_control :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return wasm.trap_new("forms.HTMLLabelElement_control: argument label is not a live Element")
 	}
 	_r := HTMLLabelElement_control(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -4251,6 +4417,7 @@ _t_forms_HTMLElement_focus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("forms.HTMLElement_focus: argument element is not a live Element")
 	}
 	_r := HTMLElement_focus(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -4270,6 +4437,7 @@ _t_forms_HTMLElement_blur :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("forms.HTMLElement_blur: argument element is not a live Element")
 	}
 	HTMLElement_blur(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -4287,6 +4455,7 @@ _t_forms_HTMLElement_click :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("forms.HTMLElement_click: argument element is not a live Element")
 	}
 	_r := HTMLElement_click(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -4300,6 +4469,7 @@ _t_forms_Document_activeElement :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Document_activeElement(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -4322,6 +4492,7 @@ _t_forms_HTMLDialogElement_returnValue :: proc "c" (env: rawptr, caller: wasm.Ca
 		return wasm.trap_new("forms.HTMLDialogElement_returnValue: argument dialog is not a live Element")
 	}
 	_r := HTMLDialogElement_returnValue(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -4347,6 +4518,7 @@ _t_forms_FormData_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_create: argument submitter is not a live Element")
 	}
 	_r, _err := FormData_create(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -4377,6 +4549,7 @@ _t_forms_FormData_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_append: argument data is not a live FormData")
 	}
 	_err := FormData_append(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -4418,6 +4591,7 @@ _t_forms_FormData_appendBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_appendBlob: argument blob is not a live Buffer")
 	}
 	_err := FormData_appendBlob(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -4447,6 +4621,7 @@ _t_forms_FormData_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_set: argument data is not a live FormData")
 	}
 	_err := FormData_set(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -4477,6 +4652,7 @@ _t_forms_FormData_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("forms.FormData_delete: argument data is not a live FormData")
 	}
 	FormData_delete(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -4502,6 +4678,7 @@ _t_forms_FormData_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return wasm.trap_new("forms.FormData_has: argument data is not a live FormData")
 	}
 	_r := FormData_has(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -4529,6 +4706,7 @@ _t_forms_FormData_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("forms.FormData_count: argument data is not a live FormData")
 	}
 	_r := FormData_count(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -4557,6 +4735,7 @@ _t_forms_FormData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_size(&c, &f, a, .Invalid_Handle, "forms.FormData_get: argument data is not a live FormData")
 	}
 	_r, _err := FormData_get(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -4589,6 +4768,7 @@ _t_forms_FormData_getAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	}
 	_p2 := a[3].i32
 	_r, _err := FormData_getAt(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -4611,6 +4791,7 @@ _t_forms_FormData_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("forms.FormData_size: argument data is not a live FormData")
 	}
 	_r := FormData_size(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -4633,6 +4814,7 @@ _t_forms_FormData_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	}
 	_p1 := a[1].i32
 	_r, _err := FormData_nameAt(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -4658,6 +4840,7 @@ _t_forms_FormData_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	}
 	_p1 := a[1].i32
 	_r, _err := FormData_valueAt(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -4682,6 +4865,7 @@ _t_forms_FormData_isFileAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	_p1 := a[1].i32
 	_r, _err := FormData_isFileAt(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -4706,6 +4890,7 @@ _t_forms_FormData_fileSizeAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	}
 	_p1 := a[1].i32
 	_r := FormData_fileSizeAt(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = _r
@@ -4728,6 +4913,7 @@ _t_forms_FormData_fileTypeAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	}
 	_p1 := a[1].i32
 	_r, _err := FormData_fileTypeAt(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -4804,6 +4990,7 @@ _t_fetch_Fetch_startFormData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_p7.referrer_policy = Api_ReferrerPolicy(u32(a[13].i32))
 	_p7.no_referrer = a[14].i32 != 0
 	_r := Fetch_startFormData(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -4817,6 +5004,7 @@ _t_history_Window_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_self(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -4830,6 +5018,7 @@ _t_history_Document_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Document_self(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -4852,6 +5041,7 @@ _t_history_Location_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	}
 	_p0 := Api_URLComponent(_e0)
 	_r := Location_get(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -4877,6 +5067,7 @@ _t_history_Location_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	}
 	_p0 := Api_URLComponent(_e0)
 	_err := Location_set(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -4900,6 +5091,7 @@ _t_history_Location_assign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return _fail_status(&c, a, .Type, "history.Location_assign: argument url is not valid UTF-8")
 	}
 	_err := Location_assign(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -4923,6 +5115,7 @@ _t_history_Location_replace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return _fail_status(&c, a, .Type, "history.Location_replace: argument url is not valid UTF-8")
 	}
 	_err := Location_replace(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -4939,6 +5132,7 @@ _t_history_Location_reload :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	Location_reload(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -4950,6 +5144,7 @@ _t_history_History_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := History_length(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -4966,6 +5161,7 @@ _t_history_History_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "history.History_state", "result buffer") }
 	_r, _err := History_state(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -5004,6 +5200,7 @@ _t_history_History_pushState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		_p1 = _v1
 	}
 	_err := History_pushState(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -5042,6 +5239,7 @@ _t_history_History_replaceState :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		_p1 = _v1
 	}
 	_err := History_replaceState(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -5059,6 +5257,7 @@ _t_history_History_go :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	c := api_begin(f.inst)
 	_p0 := a[0].i32
 	History_go(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -5076,6 +5275,7 @@ _t_images_HTMLImageElement_naturalWidth :: proc "c" (env: rawptr, caller: wasm.C
 		return wasm.trap_new("images.HTMLImageElement_naturalWidth: argument image is not a live HTMLImageElement")
 	}
 	_r := HTMLImageElement_naturalWidth(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -5095,6 +5295,7 @@ _t_images_HTMLImageElement_naturalHeight :: proc "c" (env: rawptr, caller: wasm.
 		return wasm.trap_new("images.HTMLImageElement_naturalHeight: argument image is not a live HTMLImageElement")
 	}
 	_r := HTMLImageElement_naturalHeight(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -5114,6 +5315,7 @@ _t_images_HTMLImageElement_complete :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("images.HTMLImageElement_complete: argument image is not a live HTMLImageElement")
 	}
 	_r := HTMLImageElement_complete(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -5136,6 +5338,7 @@ _t_images_HTMLImageElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("images.HTMLImageElement_currentSrc: argument image is not a live HTMLImageElement")
 	}
 	_r := HTMLImageElement_currentSrc(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -5155,6 +5358,7 @@ _t_images_HTMLImageElement_decode :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return wasm.trap_new("images.HTMLImageElement_decode: argument image is not a live HTMLImageElement")
 	}
 	_r := HTMLImageElement_decode(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -5174,6 +5378,7 @@ _t_images_Image_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("images.Image_decode: argument data is not a live Buffer")
 	}
 	_r := Image_decode(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -5197,6 +5402,7 @@ _t_js_Engine_console :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	}
 	_p0 := Api_ConsoleLevel(_e0)
 	Engine_console(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -5222,6 +5428,7 @@ _t_js_Engine_reportException :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_p3 := a[6].i32
 	_p4 := a[7].i32
 	Engine_reportException(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -5237,6 +5444,7 @@ _t_js_Engine_storeBytecode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	if !_k0 { return wasm.trap_bounds(&f, "js.Engine_storeBytecode", "code") }
 	_p0 := _s0[:_n0]
 	Engine_storeBytecode(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -5249,6 +5457,7 @@ _t_js_Engine_timezoneOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	c := api_begin(f.inst)
 	_p0 := a[0].f64
 	_r := Engine_timezoneOffset(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -5265,6 +5474,7 @@ _t_js_Engine_timeZone :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "js.Engine_timeZone", "result buffer") }
 	_r := Engine_timeZone(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -5281,6 +5491,7 @@ _t_js_Engine_locale :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "js.Engine_locale", "result buffer") }
 	_r := Engine_locale(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -5300,6 +5511,7 @@ _t_js_Node_wrap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 		return wasm.trap_new("js.Node_wrap: argument node is not a live Node")
 	}
 	_r := Node_wrap(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -5314,6 +5526,7 @@ _t_js_Node_unpin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	Node_unpin(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -5333,6 +5546,120 @@ _t_js_Node_treeRoots :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	_p0 := ([^]u64)(_s0)[:_n0]
 	_p1 := _s1[:_n1]
 	Node_treeRoots(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CustomElements_define :: proc(c: ^Call, name: string)
+@(private = "file")
+_t_dom_CustomElements_define :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.CustomElements_define", "name") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CustomElements_define: argument name is not valid UTF-8") }
+		return wasm.trap_new("dom.CustomElements_define: argument name is not valid UTF-8")
+	}
+	CustomElements_define(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CustomElements_pending :: proc(c: ^Call) -> u32
+@(private = "file")
+_t_dom_CustomElements_pending :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := CustomElements_pending(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// CustomElements_take :: proc(c: ^Call) -> []u8
+@(private = "file")
+_t_dom_CustomElements_take :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.CustomElements_take", "result buffer") }
+	_r := CustomElements_take(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CustomElements_release :: proc(c: ^Call, elements: []u64)
+@(private = "file")
+_t_dom_CustomElements_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.CustomElements_release", "elements") }
+	_p0 := ([^]u64)(_s0)[:_n0]
+	CustomElements_release(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CustomElements_create :: proc(c: ^Call, name: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_CustomElements_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.CustomElements_create", "name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.CustomElements_create", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "dom.CustomElements_create: argument name is not valid UTF-8")
+	}
+	_r, _err := CustomElements_create(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Element_setCustomState :: proc(c: ^Call, element: Api_Element, state: u32)
+@(private = "file")
+_t_dom_Element_setCustomState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_setCustomState: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_setCustomState: argument element is not a live Element")
+	}
+	_p1 := u32(a[1].i32)
+	Element_setCustomState(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -5347,6 +5674,7 @@ _t_dom_Document_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_readyState", "result buffer") }
 	_r := Document_readyState(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -5360,6 +5688,7 @@ _t_dom_Document_currentScript :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Document_currentScript(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -5373,6 +5702,7 @@ _t_dom_Window_document :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_document(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -5396,6 +5726,7 @@ _t_dom_Document_resolveURL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return _fail_size(&c, &f, a, .Type, "dom.Document_resolveURL: argument url is not valid UTF-8")
 	}
 	_r, _err := Document_resolveURL(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -5421,6 +5752,7 @@ _t_dom_Element_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 		return wasm.trap_new("dom.Element_id: argument element is not a live Element")
 	}
 	_r := Element_id(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -5446,6 +5778,7 @@ _t_dom_Element_set_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_set_id: argument element is not a live Element")
 	}
 	_err := Element_set_id(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -5471,6 +5804,7 @@ _t_dom_Element_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("dom.Element_className: argument element is not a live Element")
 	}
 	_r := Element_className(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -5496,6 +5830,7 @@ _t_dom_Element_set_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_set_className: argument element is not a live Element")
 	}
 	_err := Element_set_className(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -5527,6 +5862,7 @@ _t_dom_Collection_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	}
 	_p1 := a[1].i32
 	_r, _err := Collection_create(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -5545,6 +5881,7 @@ _t_dom_Collection_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := Collection_length(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -5560,6 +5897,7 @@ _t_dom_Collection_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
 	_r := Collection_item(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -5582,6 +5920,7 @@ _t_dom_Collection_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	}
 	_p0 := u64(a[0].i64)
 	_r := Collection_namedItem(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -5599,6 +5938,7 @@ _t_dom_Collection_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	if !_ok { return wasm.trap_bounds(&f, "dom.Collection_names", "result buffer") }
 	_p0 := u64(a[0].i64)
 	_r := Collection_names(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -5627,6 +5967,7 @@ _t_dom_ParentNode_querySelectorAllPacked :: proc "c" (env: rawptr, caller: wasm.
 		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.ParentNode_querySelectorAllPacked: argument node is not a live Node")
 	}
 	_r, _err := ParentNode_querySelectorAllPacked(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -5657,6 +5998,7 @@ _t_dom_HTMLFormElement_namedControl :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("dom.HTMLFormElement_namedControl: argument form is not a live Element")
 	}
 	_r := HTMLFormElement_namedControl(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -5684,6 +6026,7 @@ _t_dom_ParentNode_querySelector :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return _fail_status(&c, a, .Invalid_Handle, "dom.ParentNode_querySelector: argument node is not a live Node")
 	}
 	_r, _err := ParentNode_querySelector(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -5715,6 +6058,7 @@ _t_dom_TokenList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("dom.TokenList_length: argument element is not a live Element")
 	}
 	_r := TokenList_length(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -5744,6 +6088,7 @@ _t_dom_TokenList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	}
 	_p2 := u32(a[3].i32)
 	_r, _err := TokenList_item(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -5782,6 +6127,7 @@ _t_dom_TokenList_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("dom.TokenList_contains: argument element is not a live Element")
 	}
 	_r := TokenList_contains(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -5814,6 +6160,7 @@ _t_dom_TokenList_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return _fail_status(&c, a, .Invalid_Handle, "dom.TokenList_add: argument element is not a live Element")
 	}
 	_err := TokenList_add(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -5849,6 +6196,7 @@ _t_dom_TokenList_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return _fail_status(&c, a, .Invalid_Handle, "dom.TokenList_remove: argument element is not a live Element")
 	}
 	_err := TokenList_remove(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -5887,6 +6235,7 @@ _t_dom_TokenList_toggle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	}
 	_p3 := a[5].i32
 	_r, _err := TokenList_toggle(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -5932,6 +6281,7 @@ _t_dom_TokenList_replace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_status(&c, a, .Invalid_Handle, "dom.TokenList_replace: argument element is not a live Element")
 	}
 	_r, _err := TokenList_replace(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -5970,6 +6320,7 @@ _t_dom_TokenList_supports :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return _fail_status(&c, a, .Invalid_Handle, "dom.TokenList_supports: argument element is not a live Element")
 	}
 	_r, _err := TokenList_supports(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6002,6 +6353,7 @@ _t_dom_Dataset_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Dataset_get: argument element is not a live Element")
 	}
 	_r, _err := Dataset_get(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -6037,6 +6389,7 @@ _t_dom_Dataset_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Dataset_set: argument element is not a live Element")
 	}
 	_err := Dataset_set(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6067,6 +6420,7 @@ _t_dom_Dataset_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return wasm.trap_new("dom.Dataset_delete: argument element is not a live Element")
 	}
 	_r := Dataset_delete(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -6089,6 +6443,7 @@ _t_dom_Dataset_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("dom.Dataset_names: argument element is not a live Element")
 	}
 	_r := Dataset_names(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -6110,6 +6465,7 @@ _t_dom_Element_namespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Element_namespaceURI: argument element is not a live Element")
 	}
 	_r, _err := Element_namespaceURI(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -6134,6 +6490,7 @@ _t_dom_Element_prefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Element_prefix: argument element is not a live Element")
 	}
 	_r, _err := Element_prefix(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -6159,6 +6516,7 @@ _t_dom_Element_localName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("dom.Element_localName: argument element is not a live Element")
 	}
 	_r := Element_localName(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -6181,6 +6539,7 @@ _t_dom_Element_qualifiedTagName :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("dom.Element_qualifiedTagName: argument element is not a live Element")
 	}
 	_r := Element_qualifiedTagName(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -6203,6 +6562,7 @@ _t_dom_Element_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 		return wasm.trap_new("dom.Element_slot: argument element is not a live Element")
 	}
 	_r := Element_slot(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -6228,6 +6588,7 @@ _t_dom_Element_set_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_set_slot: argument element is not a live Element")
 	}
 	_err := Element_set_slot(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6250,6 +6611,7 @@ _t_dom_Element_hasAttributes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("dom.Element_hasAttributes: argument element is not a live Element")
 	}
 	_r := Element_hasAttributes(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -6272,6 +6634,7 @@ _t_dom_Element_attributeNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("dom.Element_attributeNames: argument element is not a live Element")
 	}
 	_r := Element_attributeNames(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -6291,6 +6654,7 @@ _t_dom_Element_attributeCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("dom.Element_attributeCount: argument element is not a live Element")
 	}
 	_r := Element_attributeCount(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -6313,6 +6677,7 @@ _t_dom_Element_attributeNameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	_p1 := u32(a[1].i32)
 	_r, _err := Element_attributeNameAt(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -6355,6 +6720,7 @@ _t_dom_Element_getAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Element_getAttributeNS: argument element is not a live Element")
 	}
 	_r, _err := Element_getAttributeNS(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -6390,6 +6756,7 @@ _t_dom_Element_setAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Caller
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_setAttributeChecked: argument element is not a live Element")
 	}
 	_err := Element_setAttributeChecked(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6436,6 +6803,7 @@ _t_dom_Element_setAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_setAttributeNS: argument element is not a live Element")
 	}
 	_err := Element_setAttributeNS(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6478,6 +6846,7 @@ _t_dom_Element_removeAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return wasm.trap_new("dom.Element_removeAttributeNS: argument element is not a live Element")
 	}
 	Element_removeAttributeNS(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -6504,6 +6873,7 @@ _t_dom_Element_toggleAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Cal
 	}
 	_p2 := a[3].i32
 	_r, _err := Element_toggleAttributeChecked(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6535,6 +6905,7 @@ _t_dom_Element_hasAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("dom.Element_hasAttribute: argument element is not a live Element")
 	}
 	_r := Element_hasAttribute(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -6574,6 +6945,7 @@ _t_dom_Element_hasAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("dom.Element_hasAttributeNS: argument element is not a live Element")
 	}
 	_r := Element_hasAttributeNS(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -6601,6 +6973,7 @@ _t_dom_Element_closest :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_closest: argument element is not a live Element")
 	}
 	_r, _err := Element_closest(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6632,6 +7005,7 @@ _t_dom_Element_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_matches: argument element is not a live Element")
 	}
 	_r, _err := Element_matches(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6663,6 +7037,7 @@ _t_dom_Element_webkitMatchesSelector :: proc "c" (env: rawptr, caller: wasm.Call
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_webkitMatchesSelector: argument element is not a live Element")
 	}
 	_r, _err := Element_webkitMatchesSelector(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6699,6 +7074,7 @@ _t_dom_Element_insertAdjacentElement :: proc "c" (env: rawptr, caller: wasm.Call
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_insertAdjacentElement: argument other is not a live Element")
 	}
 	_r, _err := Element_insertAdjacentElement(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6735,6 +7111,7 @@ _t_dom_Element_insertAdjacentText :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_insertAdjacentText: argument element is not a live Element")
 	}
 	_err := Element_insertAdjacentText(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6770,6 +7147,7 @@ _t_dom_Element_insertAdjacentHTML :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_insertAdjacentHTML: argument element is not a live Element")
 	}
 	_err := Element_insertAdjacentHTML(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6795,6 +7173,7 @@ _t_dom_Element_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("dom.Element_innerHTML: argument element is not a live Element")
 	}
 	_r := Element_innerHTML(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -6820,6 +7199,7 @@ _t_dom_Element_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_set_innerHTML: argument element is not a live Element")
 	}
 	_err := Element_set_innerHTML(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6845,6 +7225,7 @@ _t_dom_Element_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("dom.Element_outerHTML: argument element is not a live Element")
 	}
 	_r := Element_outerHTML(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -6870,6 +7251,7 @@ _t_dom_Element_set_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_set_outerHTML: argument element is not a live Element")
 	}
 	_err := Element_set_outerHTML(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6892,6 +7274,7 @@ _t_dom_Element_shadowRoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("dom.Element_shadowRoot: argument element is not a live Element")
 	}
 	_r := Element_shadowRoot(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -6911,6 +7294,7 @@ _t_dom_HTMLElement_hiddenState :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return wasm.trap_new("dom.HTMLElement_hiddenState: argument element is not a live Element")
 	}
 	_r := HTMLElement_hiddenState(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -6933,6 +7317,7 @@ _t_dom_HTMLElement_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("dom.HTMLElement_dir: argument element is not a live Element")
 	}
 	_r := HTMLElement_dir(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -6958,6 +7343,7 @@ _t_dom_HTMLElement_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLElement_set_dir: argument element is not a live Element")
 	}
 	_err := HTMLElement_set_dir(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -6980,6 +7366,7 @@ _t_dom_HTMLElement_translate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("dom.HTMLElement_translate: argument element is not a live Element")
 	}
 	_r := HTMLElement_translate(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -6999,6 +7386,7 @@ _t_dom_HTMLElement_set_translate :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	}
 	_p1 := a[1].i32 != 0
 	_err := HTMLElement_set_translate(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7021,6 +7409,7 @@ _t_dom_HTMLElement_draggable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("dom.HTMLElement_draggable: argument element is not a live Element")
 	}
 	_r := HTMLElement_draggable(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -7040,6 +7429,7 @@ _t_dom_HTMLElement_set_draggable :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	}
 	_p1 := a[1].i32 != 0
 	_err := HTMLElement_set_draggable(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7062,6 +7452,7 @@ _t_dom_HTMLElement_spellcheck :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("dom.HTMLElement_spellcheck: argument element is not a live Element")
 	}
 	_r := HTMLElement_spellcheck(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -7081,6 +7472,7 @@ _t_dom_HTMLElement_set_spellcheck :: proc "c" (env: rawptr, caller: wasm.Caller,
 	}
 	_p1 := a[1].i32 != 0
 	_err := HTMLElement_set_spellcheck(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7106,6 +7498,7 @@ _t_dom_HTMLElement_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("dom.HTMLElement_innerText: argument element is not a live Element")
 	}
 	_r := HTMLElement_innerText(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7131,6 +7524,7 @@ _t_dom_HTMLElement_set_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLElement_set_innerText: argument element is not a live Element")
 	}
 	_err := HTMLElement_set_innerText(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7156,6 +7550,7 @@ _t_dom_HTMLElement_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("dom.HTMLElement_outerText: argument element is not a live Element")
 	}
 	_r := HTMLElement_outerText(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7181,6 +7576,7 @@ _t_dom_HTMLElement_set_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLElement_set_outerText: argument element is not a live Element")
 	}
 	_err := HTMLElement_set_outerText(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7206,6 +7602,7 @@ _t_dom_HTMLElement_accessKeyLabel :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return wasm.trap_new("dom.HTMLElement_accessKeyLabel: argument element is not a live Element")
 	}
 	_r := HTMLElement_accessKeyLabel(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7225,6 +7622,7 @@ _t_dom_HTMLOrSVGOrMathMLElement_tabIndex :: proc "c" (env: rawptr, caller: wasm.
 		return wasm.trap_new("dom.HTMLOrSVGOrMathMLElement_tabIndex: argument element is not a live Element")
 	}
 	_r := HTMLOrSVGOrMathMLElement_tabIndex(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -7244,6 +7642,7 @@ _t_dom_HTMLOrSVGOrMathMLElement_set_tabIndex :: proc "c" (env: rawptr, caller: w
 	}
 	_p1 := a[1].i32
 	_err := HTMLOrSVGOrMathMLElement_set_tabIndex(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7269,6 +7668,7 @@ _t_dom_HTMLOrSVGOrMathMLElement_nonce :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("dom.HTMLOrSVGOrMathMLElement_nonce: argument element is not a live Element")
 	}
 	_r := HTMLOrSVGOrMathMLElement_nonce(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7294,6 +7694,7 @@ _t_dom_HTMLOrSVGOrMathMLElement_set_nonce :: proc "c" (env: rawptr, caller: wasm
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLOrSVGOrMathMLElement_set_nonce: argument element is not a live Element")
 	}
 	_err := HTMLOrSVGOrMathMLElement_set_nonce(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7319,6 +7720,7 @@ _t_dom_ElementContentEditable_contentEditable :: proc "c" (env: rawptr, caller: 
 		return wasm.trap_new("dom.ElementContentEditable_contentEditable: argument element is not a live Element")
 	}
 	_r := ElementContentEditable_contentEditable(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7344,6 +7746,7 @@ _t_dom_ElementContentEditable_set_contentEditable :: proc "c" (env: rawptr, call
 		return _fail_status(&c, a, .Invalid_Handle, "dom.ElementContentEditable_set_contentEditable: argument element is not a live Element")
 	}
 	_err := ElementContentEditable_set_contentEditable(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7366,6 +7769,7 @@ _t_dom_ElementContentEditable_isContentEditable :: proc "c" (env: rawptr, caller
 		return wasm.trap_new("dom.ElementContentEditable_isContentEditable: argument element is not a live Element")
 	}
 	_r := ElementContentEditable_isContentEditable(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -7388,6 +7792,7 @@ _t_dom_HTMLHyperlinkElementUtils_href :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("dom.HTMLHyperlinkElementUtils_href: argument element is not a live Element")
 	}
 	_r := HTMLHyperlinkElementUtils_href(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7413,6 +7818,7 @@ _t_dom_HTMLHyperlinkElementUtils_set_href :: proc "c" (env: rawptr, caller: wasm
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLHyperlinkElementUtils_set_href: argument element is not a live Element")
 	}
 	_err := HTMLHyperlinkElementUtils_set_href(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7438,6 +7844,7 @@ _t_dom_HyperlinkElementUtils_origin :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("dom.HyperlinkElementUtils_origin: argument element is not a live Element")
 	}
 	_r := HyperlinkElementUtils_origin(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7460,6 +7867,7 @@ _t_dom_HyperlinkElementUtils_protocol :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("dom.HyperlinkElementUtils_protocol: argument element is not a live Element")
 	}
 	_r := HyperlinkElementUtils_protocol(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7485,6 +7893,7 @@ _t_dom_HyperlinkElementUtils_set_protocol :: proc "c" (env: rawptr, caller: wasm
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_protocol: argument element is not a live Element")
 	}
 	_err := HyperlinkElementUtils_set_protocol(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7510,6 +7919,7 @@ _t_dom_HyperlinkElementUtils_username :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("dom.HyperlinkElementUtils_username: argument element is not a live Element")
 	}
 	_r := HyperlinkElementUtils_username(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7535,6 +7945,7 @@ _t_dom_HyperlinkElementUtils_set_username :: proc "c" (env: rawptr, caller: wasm
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_username: argument element is not a live Element")
 	}
 	_err := HyperlinkElementUtils_set_username(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7560,6 +7971,7 @@ _t_dom_HyperlinkElementUtils_password :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("dom.HyperlinkElementUtils_password: argument element is not a live Element")
 	}
 	_r := HyperlinkElementUtils_password(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7585,6 +7997,7 @@ _t_dom_HyperlinkElementUtils_set_password :: proc "c" (env: rawptr, caller: wasm
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_password: argument element is not a live Element")
 	}
 	_err := HyperlinkElementUtils_set_password(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7610,6 +8023,7 @@ _t_dom_HyperlinkElementUtils_host :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return wasm.trap_new("dom.HyperlinkElementUtils_host: argument element is not a live Element")
 	}
 	_r := HyperlinkElementUtils_host(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7635,6 +8049,7 @@ _t_dom_HyperlinkElementUtils_set_host :: proc "c" (env: rawptr, caller: wasm.Cal
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_host: argument element is not a live Element")
 	}
 	_err := HyperlinkElementUtils_set_host(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7660,6 +8075,7 @@ _t_dom_HyperlinkElementUtils_hostname :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("dom.HyperlinkElementUtils_hostname: argument element is not a live Element")
 	}
 	_r := HyperlinkElementUtils_hostname(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7685,6 +8101,7 @@ _t_dom_HyperlinkElementUtils_set_hostname :: proc "c" (env: rawptr, caller: wasm
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_hostname: argument element is not a live Element")
 	}
 	_err := HyperlinkElementUtils_set_hostname(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7710,6 +8127,7 @@ _t_dom_HyperlinkElementUtils_port :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return wasm.trap_new("dom.HyperlinkElementUtils_port: argument element is not a live Element")
 	}
 	_r := HyperlinkElementUtils_port(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7735,6 +8153,7 @@ _t_dom_HyperlinkElementUtils_set_port :: proc "c" (env: rawptr, caller: wasm.Cal
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_port: argument element is not a live Element")
 	}
 	_err := HyperlinkElementUtils_set_port(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7760,6 +8179,7 @@ _t_dom_HyperlinkElementUtils_pathname :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("dom.HyperlinkElementUtils_pathname: argument element is not a live Element")
 	}
 	_r := HyperlinkElementUtils_pathname(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7785,6 +8205,7 @@ _t_dom_HyperlinkElementUtils_set_pathname :: proc "c" (env: rawptr, caller: wasm
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_pathname: argument element is not a live Element")
 	}
 	_err := HyperlinkElementUtils_set_pathname(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7810,6 +8231,7 @@ _t_dom_HyperlinkElementUtils_search :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("dom.HyperlinkElementUtils_search: argument element is not a live Element")
 	}
 	_r := HyperlinkElementUtils_search(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7835,6 +8257,7 @@ _t_dom_HyperlinkElementUtils_set_search :: proc "c" (env: rawptr, caller: wasm.C
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_search: argument element is not a live Element")
 	}
 	_err := HyperlinkElementUtils_set_search(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7860,6 +8283,7 @@ _t_dom_HyperlinkElementUtils_hash :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return wasm.trap_new("dom.HyperlinkElementUtils_hash: argument element is not a live Element")
 	}
 	_r := HyperlinkElementUtils_hash(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7885,6 +8309,7 @@ _t_dom_HyperlinkElementUtils_set_hash :: proc "c" (env: rawptr, caller: wasm.Cal
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HyperlinkElementUtils_set_hash: argument element is not a live Element")
 	}
 	_err := HyperlinkElementUtils_set_hash(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7910,6 +8335,7 @@ _t_dom_HTMLAnchorElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("dom.HTMLAnchorElement_text: argument element is not a live Element")
 	}
 	_r := HTMLAnchorElement_text(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -7935,6 +8361,7 @@ _t_dom_HTMLAnchorElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLAnchorElement_set_text: argument element is not a live Element")
 	}
 	_err := HTMLAnchorElement_set_text(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -7957,6 +8384,7 @@ _t_dom_HTMLTemplateElement_content :: proc "c" (env: rawptr, caller: wasm.Caller
 		return wasm.trap_new("dom.HTMLTemplateElement_content: argument element is not a live Element")
 	}
 	_r := HTMLTemplateElement_content(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -7978,6 +8406,7 @@ _t_events_Event_uiData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("events.Event_uiData: argument event is not a live Event")
 	}
 	_r := Event_uiData(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	intrinsics.unaligned_store((^f64)(&_rs[0]), _r.client_x)
 	intrinsics.unaligned_store((^f64)(&_rs[8]), _r.client_y)
@@ -8018,6 +8447,7 @@ _t_events_UiEvent_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return wasm.trap_new("events.UiEvent_key: argument event is not a live Event")
 	}
 	_r := UiEvent_key(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -8040,6 +8470,7 @@ _t_events_UiEvent_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("events.UiEvent_code: argument event is not a live Event")
 	}
 	_r := UiEvent_code(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -8065,6 +8496,7 @@ _t_dom_HTMLInputElement_set_type :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLInputElement_set_type: argument element is not a live Element")
 	}
 	_err := HTMLInputElement_set_type(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8087,6 +8519,7 @@ _t_dom_HTMLInputElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.Cal
 	}
 	_p1 := a[1].i32
 	_err := HTMLInputElement_set_maxLength(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8109,6 +8542,7 @@ _t_dom_HTMLInputElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.Cal
 	}
 	_p1 := a[1].i32
 	_err := HTMLInputElement_set_minLength(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8131,6 +8565,7 @@ _t_dom_HTMLTextAreaElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.
 	}
 	_p1 := a[1].i32
 	_err := HTMLTextAreaElement_set_maxLength(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8153,6 +8588,7 @@ _t_dom_HTMLTextAreaElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.
 	}
 	_p1 := a[1].i32
 	_err := HTMLTextAreaElement_set_minLength(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8181,6 +8617,7 @@ _t_dom_HTMLOptionElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLOptionElement_set_text: argument element is not a live Element")
 	}
 	_err := HTMLOptionElement_set_text(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8203,6 +8640,7 @@ _t_dom_HTMLTableElement_caption :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("dom.HTMLTableElement_caption: argument table is not a live Element")
 	}
 	_r := HTMLTableElement_caption(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -8226,6 +8664,7 @@ _t_dom_HTMLTableElement_set_caption :: proc "c" (env: rawptr, caller: wasm.Calle
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_set_caption: argument value is not a live Element")
 	}
 	_err := HTMLTableElement_set_caption(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8248,6 +8687,7 @@ _t_dom_HTMLTableElement_createCaption :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("dom.HTMLTableElement_createCaption: argument table is not a live Element")
 	}
 	_r := HTMLTableElement_createCaption(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -8267,6 +8707,7 @@ _t_dom_HTMLTableElement_deleteCaption :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("dom.HTMLTableElement_deleteCaption: argument table is not a live Element")
 	}
 	HTMLTableElement_deleteCaption(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -8284,6 +8725,7 @@ _t_dom_HTMLTableElement_tHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("dom.HTMLTableElement_tHead: argument table is not a live Element")
 	}
 	_r := HTMLTableElement_tHead(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -8307,6 +8749,7 @@ _t_dom_HTMLTableElement_set_tHead :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_set_tHead: argument value is not a live Element")
 	}
 	_err := HTMLTableElement_set_tHead(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8329,6 +8772,7 @@ _t_dom_HTMLTableElement_createTHead :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("dom.HTMLTableElement_createTHead: argument table is not a live Element")
 	}
 	_r := HTMLTableElement_createTHead(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -8348,6 +8792,7 @@ _t_dom_HTMLTableElement_deleteTHead :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("dom.HTMLTableElement_deleteTHead: argument table is not a live Element")
 	}
 	HTMLTableElement_deleteTHead(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -8365,6 +8810,7 @@ _t_dom_HTMLTableElement_tFoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("dom.HTMLTableElement_tFoot: argument table is not a live Element")
 	}
 	_r := HTMLTableElement_tFoot(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -8388,6 +8834,7 @@ _t_dom_HTMLTableElement_set_tFoot :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_set_tFoot: argument value is not a live Element")
 	}
 	_err := HTMLTableElement_set_tFoot(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8410,6 +8857,7 @@ _t_dom_HTMLTableElement_createTFoot :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("dom.HTMLTableElement_createTFoot: argument table is not a live Element")
 	}
 	_r := HTMLTableElement_createTFoot(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -8429,6 +8877,7 @@ _t_dom_HTMLTableElement_deleteTFoot :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("dom.HTMLTableElement_deleteTFoot: argument table is not a live Element")
 	}
 	HTMLTableElement_deleteTFoot(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -8446,6 +8895,7 @@ _t_dom_HTMLTableElement_createTBody :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("dom.HTMLTableElement_createTBody: argument table is not a live Element")
 	}
 	_r := HTMLTableElement_createTBody(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -8467,6 +8917,7 @@ _t_dom_HTMLTableElement_insertRow :: proc "c" (env: rawptr, caller: wasm.Caller,
 	}
 	_p1 := a[1].i32
 	_r, _err := HTMLTableElement_insertRow(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8490,6 +8941,7 @@ _t_dom_HTMLTableElement_deleteRow :: proc "c" (env: rawptr, caller: wasm.Caller,
 	}
 	_p1 := a[1].i32
 	_err := HTMLTableElement_deleteRow(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8514,6 +8966,7 @@ _t_dom_HTMLTableSectionElement_insertRow :: proc "c" (env: rawptr, caller: wasm.
 	}
 	_p1 := a[1].i32
 	_r, _err := HTMLTableSectionElement_insertRow(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8537,6 +8990,7 @@ _t_dom_HTMLTableSectionElement_deleteRow :: proc "c" (env: rawptr, caller: wasm.
 	}
 	_p1 := a[1].i32
 	_err := HTMLTableSectionElement_deleteRow(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8561,6 +9015,7 @@ _t_dom_HTMLTableRowElement_insertCell :: proc "c" (env: rawptr, caller: wasm.Cal
 	}
 	_p1 := a[1].i32
 	_r, _err := HTMLTableRowElement_insertCell(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8584,6 +9039,7 @@ _t_dom_HTMLTableRowElement_deleteCell :: proc "c" (env: rawptr, caller: wasm.Cal
 	}
 	_p1 := a[1].i32
 	_err := HTMLTableRowElement_deleteCell(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8606,6 +9062,7 @@ _t_dom_HTMLTableRowElement_rowIndex :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("dom.HTMLTableRowElement_rowIndex: argument row is not a live Element")
 	}
 	_r := HTMLTableRowElement_rowIndex(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -8625,6 +9082,7 @@ _t_dom_HTMLTableRowElement_sectionRowIndex :: proc "c" (env: rawptr, caller: was
 		return wasm.trap_new("dom.HTMLTableRowElement_sectionRowIndex: argument row is not a live Element")
 	}
 	_r := HTMLTableRowElement_sectionRowIndex(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -8644,6 +9102,7 @@ _t_dom_HTMLTableCellElement_cellIndex :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("dom.HTMLTableCellElement_cellIndex: argument cell is not a live Element")
 	}
 	_r := HTMLTableCellElement_cellIndex(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -8666,6 +9125,7 @@ _t_dom_HTMLTitleElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("dom.HTMLTitleElement_text: argument element is not a live Element")
 	}
 	_r := HTMLTitleElement_text(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -8691,6 +9151,7 @@ _t_dom_HTMLTitleElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTitleElement_set_text: argument element is not a live Element")
 	}
 	_err := HTMLTitleElement_set_text(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8716,6 +9177,7 @@ _t_dom_HTMLScriptElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("dom.HTMLScriptElement_text: argument element is not a live Element")
 	}
 	_r := HTMLScriptElement_text(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -8741,6 +9203,7 @@ _t_dom_HTMLScriptElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLScriptElement_set_text: argument element is not a live Element")
 	}
 	_err := HTMLScriptElement_set_text(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8763,6 +9226,7 @@ _t_dom_HTMLInputElement_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("dom.HTMLInputElement_list: argument input is not a live Element")
 	}
 	_r := HTMLInputElement_list(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -8781,6 +9245,7 @@ _t_dom_HTMLDialogElement_show :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLDialogElement_show: argument dialog is not a live Element")
 	}
 	_err := HTMLDialogElement_show(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8802,6 +9267,7 @@ _t_dom_HTMLDialogElement_showModal :: proc "c" (env: rawptr, caller: wasm.Caller
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLDialogElement_showModal: argument dialog is not a live Element")
 	}
 	_err := HTMLDialogElement_showModal(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -8836,6 +9302,7 @@ _t_dom_HTMLDialogElement_close :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return wasm.trap_new("dom.HTMLDialogElement_close: argument dialog is not a live Element")
 	}
 	HTMLDialogElement_close(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -8865,6 +9332,7 @@ _t_dom_HTMLDialogElement_requestClose :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("dom.HTMLDialogElement_requestClose: argument dialog is not a live Element")
 	}
 	HTMLDialogElement_requestClose(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -8884,6 +9352,7 @@ _t_dom_Element_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("dom.Element_boundingRect: argument element is not a live Element")
 	}
 	_r := Element_boundingRect(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	intrinsics.unaligned_store((^f64)(&_rs[0]), _r.x)
 	intrinsics.unaligned_store((^f64)(&_rs[8]), _r.y)
@@ -8908,6 +9377,7 @@ _t_dom_Element_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return wasm.trap_new("dom.Element_clientRectsPacked: argument element is not a live Element")
 	}
 	_r := Element_clientRectsPacked(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -8927,6 +9397,7 @@ _t_dom_Element_clientTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("dom.Element_clientTop: argument element is not a live Element")
 	}
 	_r := Element_clientTop(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -8946,6 +9417,7 @@ _t_dom_Element_clientLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("dom.Element_clientLeft: argument element is not a live Element")
 	}
 	_r := Element_clientLeft(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -8965,6 +9437,7 @@ _t_dom_Element_clientWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("dom.Element_clientWidth: argument element is not a live Element")
 	}
 	_r := Element_clientWidth(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -8984,6 +9457,7 @@ _t_dom_Element_clientHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("dom.Element_clientHeight: argument element is not a live Element")
 	}
 	_r := Element_clientHeight(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9003,6 +9477,7 @@ _t_dom_Element_scrollTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("dom.Element_scrollTop: argument element is not a live Element")
 	}
 	_r := Element_scrollTop(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -9023,6 +9498,7 @@ _t_dom_Element_set_scrollTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	}
 	_p1 := a[1].f64
 	Element_set_scrollTop(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -9040,6 +9516,7 @@ _t_dom_Element_scrollLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("dom.Element_scrollLeft: argument element is not a live Element")
 	}
 	_r := Element_scrollLeft(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -9060,6 +9537,7 @@ _t_dom_Element_set_scrollLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	_p1 := a[1].f64
 	Element_set_scrollLeft(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -9077,6 +9555,7 @@ _t_dom_Element_scrollWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("dom.Element_scrollWidth: argument element is not a live Element")
 	}
 	_r := Element_scrollWidth(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9096,6 +9575,7 @@ _t_dom_Element_scrollHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("dom.Element_scrollHeight: argument element is not a live Element")
 	}
 	_r := Element_scrollHeight(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9118,6 +9598,7 @@ _t_dom_Element_scrollToXY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	_p2 := a[2].f64
 	_p3 := a[3].i32 != 0
 	Element_scrollToXY(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -9137,6 +9618,7 @@ _t_dom_Element_scrollIntoViewAt :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	_p1 := a[1].i32
 	_p2 := a[2].i32
 	Element_scrollIntoViewAt(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -9154,6 +9636,7 @@ _t_dom_HTMLElement_offsetParent :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("dom.HTMLElement_offsetParent: argument element is not a live Element")
 	}
 	_r := HTMLElement_offsetParent(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -9173,6 +9656,7 @@ _t_dom_HTMLElement_offsetTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("dom.HTMLElement_offsetTop: argument element is not a live Element")
 	}
 	_r := HTMLElement_offsetTop(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9192,6 +9676,7 @@ _t_dom_HTMLElement_offsetLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("dom.HTMLElement_offsetLeft: argument element is not a live Element")
 	}
 	_r := HTMLElement_offsetLeft(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9211,6 +9696,7 @@ _t_dom_HTMLElement_offsetWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return wasm.trap_new("dom.HTMLElement_offsetWidth: argument element is not a live Element")
 	}
 	_r := HTMLElement_offsetWidth(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9230,6 +9716,7 @@ _t_dom_HTMLElement_offsetHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("dom.HTMLElement_offsetHeight: argument element is not a live Element")
 	}
 	_r := HTMLElement_offsetHeight(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9245,6 +9732,7 @@ _t_dom_Document_elementFromPoint :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	_p0 := a[0].f64
 	_p1 := a[1].f64
 	_r := Document_elementFromPoint(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -9258,6 +9746,7 @@ _t_dom_Window_innerWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_innerWidth(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9271,6 +9760,7 @@ _t_dom_Window_innerHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_innerHeight(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9284,6 +9774,7 @@ _t_dom_Window_outerWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_outerWidth(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9297,6 +9788,7 @@ _t_dom_Window_outerHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_outerHeight(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9310,6 +9802,7 @@ _t_dom_Window_scrollX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_scrollX(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -9323,6 +9816,7 @@ _t_dom_Window_scrollY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_scrollY(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -9336,6 +9830,7 @@ _t_dom_Window_pageXOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_pageXOffset(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -9349,6 +9844,7 @@ _t_dom_Window_pageYOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_pageYOffset(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -9362,6 +9858,7 @@ _t_dom_Window_devicePixelRatio :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_devicePixelRatio(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -9375,6 +9872,7 @@ _t_dom_Window_screenX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_screenX(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9388,6 +9886,7 @@ _t_dom_Window_screenY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_screenY(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9401,6 +9900,7 @@ _t_dom_Window_screenLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_screenLeft(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9414,6 +9914,7 @@ _t_dom_Window_screenTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Window_screenTop(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9431,6 +9932,7 @@ _t_dom_Window_scrollToXY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_p2 := a[2].i32 != 0
 	_p3 := a[3].i32 != 0
 	Window_scrollToXY(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -9458,6 +9960,7 @@ _t_dom_Range_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	}
 	_p3 := u32(a[3].i32)
 	_r := Range_boundingRect(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	intrinsics.unaligned_store((^f64)(&_rs[0]), _r.x)
 	intrinsics.unaligned_store((^f64)(&_rs[8]), _r.y)
@@ -9490,6 +9993,7 @@ _t_dom_Range_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	_p3 := u32(a[3].i32)
 	_r := Range_clientRectsPacked(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -9505,6 +10009,7 @@ _t_dom_MutationObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	_r := MutationObserver_create(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -9532,6 +10037,7 @@ _t_dom_MutationObserver_observe :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	}
 	_p2 := u32(a[2].i32)
 	_err := MutationObserver_observe(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -9549,6 +10055,7 @@ _t_dom_MutationObserver_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	MutationObserver_disconnect(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -9564,6 +10071,7 @@ _t_dom_MutationObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.Calle
 	if !_ok { return wasm.trap_bounds(&f, "dom.MutationObserver_takeRecords", "result buffer") }
 	_p0 := u64(a[0].i64)
 	_r := MutationObserver_takeRecords(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -9578,6 +10086,7 @@ _t_dom_MutationObserver_release :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	MutationObserver_release(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -9590,6 +10099,7 @@ _t_dom_MutationObserver_live :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := MutationObserver_live(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -9617,6 +10127,7 @@ _t_dom_Range_comparePoints :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	_p3 := u32(a[3].i32)
 	_r := Range_comparePoints(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -9647,6 +10158,7 @@ _t_dom_Range_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	}
 	_p3 := u32(a[3].i32)
 	_r := Range_text(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -9675,6 +10187,7 @@ _t_dom_Range_contents :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_p3 := u32(a[3].i32)
 	_p4 := a[4].i32
 	_r, _err := Range_contents(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -9694,6 +10207,7 @@ _t_dom_Selection_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 32)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Selection_state", "result pointer") }
 	_r := Selection_state(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	intrinsics.unaligned_store((^u64)(&_rs[0]), _r.anchor)
 	intrinsics.unaligned_store((^u32)(&_rs[8]), _r.anchor_offset)
@@ -9722,6 +10236,7 @@ _t_dom_Selection_setRange :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	}
 	_p3 := u32(a[3].i32)
 	_err := Selection_setRange(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -9738,6 +10253,7 @@ _t_dom_Selection_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	Selection_clear(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -9752,6 +10268,7 @@ _t_dom_Selection_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Selection_text", "result buffer") }
 	_r := Selection_text(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -9782,6 +10299,7 @@ _t_dom_InlineStyle_getProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return wasm.trap_new("dom.InlineStyle_getProperty: argument element is not a live Element")
 	}
 	_r := InlineStyle_getProperty(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -9812,6 +10330,7 @@ _t_dom_InlineStyle_priority :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("dom.InlineStyle_priority: argument element is not a live Element")
 	}
 	_r := InlineStyle_priority(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -9851,6 +10370,7 @@ _t_dom_InlineStyle_setProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_status(&c, a, .Invalid_Handle, "dom.InlineStyle_setProperty: argument element is not a live Element")
 	}
 	_err := InlineStyle_setProperty(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -9882,6 +10402,7 @@ _t_dom_InlineStyle_removeProperty :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.InlineStyle_removeProperty: argument element is not a live Element")
 	}
 	_r, _err := InlineStyle_removeProperty(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -9907,6 +10428,7 @@ _t_dom_InlineStyle_cssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("dom.InlineStyle_cssText: argument element is not a live Element")
 	}
 	_r := InlineStyle_cssText(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -9932,6 +10454,7 @@ _t_dom_InlineStyle_setCssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_status(&c, a, .Invalid_Handle, "dom.InlineStyle_setCssText: argument element is not a live Element")
 	}
 	_err := InlineStyle_setCssText(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -9954,6 +10477,7 @@ _t_dom_InlineStyle_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("dom.InlineStyle_length: argument element is not a live Element")
 	}
 	_r := InlineStyle_length(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -9977,6 +10501,7 @@ _t_dom_InlineStyle_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	}
 	_p1 := u32(a[1].i32)
 	_r := InlineStyle_item(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -10015,6 +10540,7 @@ _t_dom_ComputedStyle_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("dom.ComputedStyle_get: argument element is not a live Element")
 	}
 	_r := ComputedStyle_get(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -10028,6 +10554,7 @@ _t_dom_ComputedStyle_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := ComputedStyle_count(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -10045,6 +10572,7 @@ _t_dom_ComputedStyle_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	if !_ok { return wasm.trap_bounds(&f, "dom.ComputedStyle_name", "result buffer") }
 	_p0 := u32(a[0].i32)
 	_r := ComputedStyle_name(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -10074,6 +10602,7 @@ _t_dom_CSS_supportsDeclaration :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return wasm.trap_new("dom.CSS_supportsDeclaration: argument value is not valid UTF-8")
 	}
 	_r := CSS_supportsDeclaration(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -10095,6 +10624,7 @@ _t_dom_CSS_supportsCondition :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("dom.CSS_supportsCondition: argument condition is not valid UTF-8")
 	}
 	_r := CSS_supportsCondition(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -10117,6 +10647,7 @@ _t_dom_Node_nodeName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("dom.Node_nodeName: argument node is not a live Node")
 	}
 	_r := Node_nodeName(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -10139,6 +10670,7 @@ _t_dom_Node_baseURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 		return wasm.trap_new("dom.Node_baseURI: argument node is not a live Node")
 	}
 	_r := Node_baseURI(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -10158,6 +10690,7 @@ _t_dom_Node_isConnected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("dom.Node_isConnected: argument node is not a live Node")
 	}
 	_r := Node_isConnected(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -10177,6 +10710,7 @@ _t_dom_Node_ownerDocument :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("dom.Node_ownerDocument: argument node is not a live Node")
 	}
 	_r := Node_ownerDocument(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -10196,6 +10730,7 @@ _t_dom_Node_parentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("dom.Node_parentElement: argument node is not a live Node")
 	}
 	_r := Node_parentElement(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -10215,6 +10750,7 @@ _t_dom_Node_hasChildNodes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("dom.Node_hasChildNodes: argument node is not a live Node")
 	}
 	_r := Node_hasChildNodes(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -10236,6 +10772,7 @@ _t_dom_Node_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Node_nodeValue: argument node is not a live Node")
 	}
 	_r, _err := Node_nodeValue(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -10264,6 +10801,7 @@ _t_dom_Node_set_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_set_nodeValue: argument node is not a live Node")
 	}
 	_err := Node_set_nodeValue(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -10288,6 +10826,7 @@ _t_dom_Node_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Node_textContent: argument node is not a live Node")
 	}
 	_r, _err := Node_textContent(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -10316,6 +10855,7 @@ _t_dom_Node_set_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_set_textContent: argument node is not a live Node")
 	}
 	_err := Node_set_textContent(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -10338,6 +10878,7 @@ _t_dom_Node_normalize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return wasm.trap_new("dom.Node_normalize: argument node is not a live Node")
 	}
 	Node_normalize(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -10357,6 +10898,7 @@ _t_dom_Node_cloneNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	}
 	_p1 := a[1].i32 != 0
 	_r, _err := Node_cloneNode(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -10386,6 +10928,7 @@ _t_dom_Node_isEqualNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("dom.Node_isEqualNode: argument other is not a live Node")
 	}
 	_r := Node_isEqualNode(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -10411,6 +10954,7 @@ _t_dom_Node_isSameNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("dom.Node_isSameNode: argument other is not a live Node")
 	}
 	_r := Node_isSameNode(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -10436,6 +10980,7 @@ _t_dom_Node_compareDocumentPosition :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("dom.Node_compareDocumentPosition: argument other is not a live Node")
 	}
 	_r := Node_compareDocumentPosition(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -10461,6 +11006,7 @@ _t_dom_Node_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("dom.Node_contains: argument other is not a live Node")
 	}
 	_r := Node_contains(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -10493,6 +11039,7 @@ _t_dom_Node_lookupPrefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Node_lookupPrefix: argument node is not a live Node")
 	}
 	_r, _err := Node_lookupPrefix(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -10528,6 +11075,7 @@ _t_dom_Node_lookupNamespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Node_lookupNamespaceURI: argument node is not a live Node")
 	}
 	_r, _err := Node_lookupNamespaceURI(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -10562,6 +11110,7 @@ _t_dom_Node_isDefaultNamespace :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return wasm.trap_new("dom.Node_isDefaultNamespace: argument node is not a live Node")
 	}
 	_r := Node_isDefaultNamespace(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -10581,6 +11130,7 @@ _t_dom_Node_rootNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("dom.Node_rootNode: argument node is not a live Node")
 	}
 	_r := Node_rootNode(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -10600,6 +11150,7 @@ _t_dom_Node_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 		return wasm.trap_new("dom.Node_length: argument node is not a live Node")
 	}
 	_r := Node_length(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -10628,6 +11179,7 @@ _t_dom_Node_preInsert :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_preInsert: argument child is not a live Node")
 	}
 	_err := Node_preInsert(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -10659,6 +11211,7 @@ _t_dom_Node_replaceChildChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_replaceChildChecked: argument child is not a live Node")
 	}
 	_err := Node_replaceChildChecked(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -10685,6 +11238,7 @@ _t_dom_Node_preRemove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_preRemove: argument child is not a live Node")
 	}
 	_err := Node_preRemove(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -10711,6 +11265,7 @@ _t_dom_Node_insertItems :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	}
 	_p1 := a[1].i32
 	_err := Node_insertItems(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -10731,6 +11286,7 @@ _t_dom_Node_pinAll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Node_pinAll", "nodes") }
 	_p0 := ([^]u64)(_s0)[:_n0]
 	Node_pinAll(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -10746,6 +11302,7 @@ _t_dom_Node_unpinAll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Node_unpinAll", "nodes") }
 	_p0 := ([^]u64)(_s0)[:_n0]
 	Node_unpinAll(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -10763,6 +11320,7 @@ _t_dom_ParentNode_firstElementChild :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("dom.ParentNode_firstElementChild: argument node is not a live Node")
 	}
 	_r := ParentNode_firstElementChild(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -10782,6 +11340,7 @@ _t_dom_ParentNode_lastElementChild :: proc "c" (env: rawptr, caller: wasm.Caller
 		return wasm.trap_new("dom.ParentNode_lastElementChild: argument node is not a live Node")
 	}
 	_r := ParentNode_lastElementChild(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -10801,6 +11360,7 @@ _t_dom_ParentNode_childElementCount :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("dom.ParentNode_childElementCount: argument node is not a live Node")
 	}
 	_r := ParentNode_childElementCount(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -10820,6 +11380,7 @@ _t_dom_ChildNode_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("dom.ChildNode_remove: argument node is not a live Node")
 	}
 	ChildNode_remove(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -10837,6 +11398,7 @@ _t_dom_NonDocumentTypeChildNode_previousElementSibling :: proc "c" (env: rawptr,
 		return wasm.trap_new("dom.NonDocumentTypeChildNode_previousElementSibling: argument node is not a live Node")
 	}
 	_r := NonDocumentTypeChildNode_previousElementSibling(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -10856,6 +11418,7 @@ _t_dom_NonDocumentTypeChildNode_nextElementSibling :: proc "c" (env: rawptr, cal
 		return wasm.trap_new("dom.NonDocumentTypeChildNode_nextElementSibling: argument node is not a live Node")
 	}
 	_r := NonDocumentTypeChildNode_nextElementSibling(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -10883,6 +11446,7 @@ _t_dom_NonElementParentNode_getElementById :: proc "c" (env: rawptr, caller: was
 		return wasm.trap_new("dom.NonElementParentNode_getElementById: argument node is not a live Node")
 	}
 	_r := NonElementParentNode_getElementById(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -10905,6 +11469,7 @@ _t_dom_CharacterData_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("dom.CharacterData_data: argument node is not a live Node")
 	}
 	_r := CharacterData_data(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -10932,6 +11497,7 @@ _t_dom_CharacterData_set_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("dom.CharacterData_set_data: argument node is not a live Node")
 	}
 	CharacterData_set_data(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -10949,6 +11515,7 @@ _t_dom_CharacterData_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("dom.CharacterData_length: argument node is not a live Node")
 	}
 	_r := CharacterData_length(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -10972,6 +11539,7 @@ _t_dom_CharacterData_substringData :: proc "c" (env: rawptr, caller: wasm.Caller
 	_p1 := u32(a[1].i32)
 	_p2 := u32(a[2].i32)
 	_r, _err := CharacterData_substringData(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -11002,6 +11570,7 @@ _t_dom_CharacterData_appendData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("dom.CharacterData_appendData: argument node is not a live Node")
 	}
 	CharacterData_appendData(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -11026,6 +11595,7 @@ _t_dom_CharacterData_insertData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	}
 	_p1 := u32(a[1].i32)
 	_err := CharacterData_insertData(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11049,6 +11619,7 @@ _t_dom_CharacterData_deleteData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	_p1 := u32(a[1].i32)
 	_p2 := u32(a[2].i32)
 	_err := CharacterData_deleteData(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11079,6 +11650,7 @@ _t_dom_CharacterData_replaceData :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	_p1 := u32(a[1].i32)
 	_p2 := u32(a[2].i32)
 	_err := CharacterData_replaceData(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11103,6 +11675,7 @@ _t_dom_Text_splitText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	}
 	_p1 := u32(a[1].i32)
 	_r, _err := Text_splitText(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11129,6 +11702,7 @@ _t_dom_Text_wholeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return wasm.trap_new("dom.Text_wholeText: argument node is not a live Node")
 	}
 	_r := Text_wholeText(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11151,6 +11725,7 @@ _t_dom_DocumentType_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("dom.DocumentType_name: argument node is not a live Node")
 	}
 	_r := DocumentType_name(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11173,6 +11748,7 @@ _t_dom_DocumentType_publicId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("dom.DocumentType_publicId: argument node is not a live Node")
 	}
 	_r := DocumentType_publicId(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11195,6 +11771,7 @@ _t_dom_DocumentType_systemId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("dom.DocumentType_systemId: argument node is not a live Node")
 	}
 	_r := DocumentType_systemId(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11217,6 +11794,7 @@ _t_dom_Document_createElementChecked :: proc "c" (env: rawptr, caller: wasm.Call
 		return _fail_status(&c, a, .Type, "dom.Document_createElementChecked: argument local_name is not valid UTF-8")
 	}
 	_r, _err := Document_createElementChecked(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11254,6 +11832,7 @@ _t_dom_Document_createElementNSChecked :: proc "c" (env: rawptr, caller: wasm.Ca
 		return _fail_status(&c, a, .Type, "dom.Document_createElementNSChecked: argument qualified_name is not valid UTF-8")
 	}
 	_r, _err := Document_createElementNSChecked(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11273,6 +11852,7 @@ _t_dom_Document_createDocumentFragment :: proc "c" (env: rawptr, caller: wasm.Ca
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Document_createDocumentFragment", "result pointer") }
 	_r, _err := Document_createDocumentFragment(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11299,6 +11879,7 @@ _t_dom_Document_createComment :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_status(&c, a, .Type, "dom.Document_createComment: argument data is not valid UTF-8")
 	}
 	_r, _err := Document_createComment(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11325,6 +11906,7 @@ _t_dom_Document_createCDATASection :: proc "c" (env: rawptr, caller: wasm.Caller
 		return _fail_status(&c, a, .Type, "dom.Document_createCDATASection: argument data is not valid UTF-8")
 	}
 	_r, _err := Document_createCDATASection(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11349,6 +11931,7 @@ _t_dom_Document_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Document_adoptNode: argument node is not a live Node")
 	}
 	_r, _err := Document_adoptNode(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11369,6 +11952,7 @@ _t_dom_Document_documentURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_documentURI", "result buffer") }
 	_r := Document_documentURI(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11385,6 +11969,7 @@ _t_dom_Document_compatMode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_compatMode", "result buffer") }
 	_r := Document_compatMode(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11401,6 +11986,7 @@ _t_dom_Document_characterSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_characterSet", "result buffer") }
 	_r := Document_characterSet(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11417,6 +12003,7 @@ _t_dom_Document_charset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_charset", "result buffer") }
 	_r := Document_charset(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11433,6 +12020,7 @@ _t_dom_Document_inputEncoding :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_inputEncoding", "result buffer") }
 	_r := Document_inputEncoding(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11449,6 +12037,7 @@ _t_dom_Document_contentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_contentType", "result buffer") }
 	_r := Document_contentType(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11462,6 +12051,7 @@ _t_dom_Document_doctype :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Document_doctype(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -11478,6 +12068,7 @@ _t_dom_Document_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_title", "result buffer") }
 	_r := Document_title(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11499,6 +12090,7 @@ _t_dom_Document_set_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("dom.Document_set_title: argument value is not valid UTF-8")
 	}
 	Document_set_title(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -11513,6 +12105,7 @@ _t_dom_Document_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_dir", "result buffer") }
 	_r := Document_dir(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11534,6 +12127,7 @@ _t_dom_Document_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("dom.Document_set_dir: argument value is not valid UTF-8")
 	}
 	Document_set_dir(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -11545,6 +12139,7 @@ _t_dom_Document_hasFocus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Document_hasFocus(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -11561,6 +12156,7 @@ _t_dom_Document_referrer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_referrer", "result buffer") }
 	_r := Document_referrer(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11577,6 +12173,7 @@ _t_dom_Document_lastModified :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_lastModified", "result buffer") }
 	_r := Document_lastModified(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11593,6 +12190,7 @@ _t_dom_Document_domain :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_domain", "result buffer") }
 	_r := Document_domain(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -11606,6 +12204,7 @@ _t_dom_Document_scrollingElement :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Document_scrollingElement(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -11624,6 +12223,7 @@ _t_dom_Document_set_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Document_set_body: argument body is not a live Element")
 	}
 	_err := Document_set_body(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11653,6 +12253,7 @@ _t_dom_DOMImplementation_createHTMLDocument :: proc "c" (env: rawptr, caller: wa
 		_p0 = _v0
 	}
 	_r, _err := DOMImplementation_createHTMLDocument(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11693,6 +12294,7 @@ _t_dom_DOMImplementation_createDocumentType :: proc "c" (env: rawptr, caller: wa
 		return _fail_status(&c, a, .Type, "dom.DOMImplementation_createDocumentType: argument system_id is not valid UTF-8")
 	}
 	_r, _err := DOMImplementation_createDocumentType(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11717,6 +12319,7 @@ _t_dom_Document_partOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	}
 	_p1 := a[1].i32
 	_r := Document_partOf(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -11747,6 +12350,7 @@ _t_events_EventTarget_dispatchEngineEvent :: proc "c" (env: rawptr, caller: wasm
 	_p3 := a[4].i64
 	_p4 := a[5].f64
 	_r, _err := EventTarget_dispatchEngineEvent(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11770,6 +12374,7 @@ _t_events_Event_engineId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("events.Event_engineId: argument event is not a live Event")
 	}
 	_r := Event_engineId(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = _r
@@ -11789,6 +12394,7 @@ _t_events_Event_interface :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("events.Event_interface: argument event is not a live Event")
 	}
 	_r := Event_interface(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -11803,6 +12409,7 @@ _t_events_Event_isLive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := Event_isLive(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -11822,6 +12429,7 @@ _t_events_Event_bubbles :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("events.Event_bubbles: argument event is not a live Event")
 	}
 	_r := Event_bubbles(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -11841,6 +12449,7 @@ _t_events_Event_cancelable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("events.Event_cancelable: argument event is not a live Event")
 	}
 	_r := Event_cancelable(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -11860,6 +12469,7 @@ _t_events_Event_eventPhase :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("events.Event_eventPhase: argument event is not a live Event")
 	}
 	_r := Event_eventPhase(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -11879,6 +12489,7 @@ _t_events_Event_timeStamp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("events.Event_timeStamp: argument event is not a live Event")
 	}
 	_r := Event_timeStamp(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -11898,6 +12509,7 @@ _t_events_Event_isTrusted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("events.Event_isTrusted: argument event is not a live Event")
 	}
 	_r := Event_isTrusted(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -11917,6 +12529,7 @@ _t_events_Event_propagationStopped :: proc "c" (env: rawptr, caller: wasm.Caller
 		return wasm.trap_new("events.Event_propagationStopped: argument event is not a live Event")
 	}
 	_r := Event_propagationStopped(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -11930,6 +12543,7 @@ _t_events_EventTarget_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := EventTarget_create(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -11947,6 +12561,7 @@ _t_scripts_Document_writeMarkup :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.Document_writeMarkup", "markup") }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	_err := Document_writeMarkup(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11963,6 +12578,7 @@ _t_scripts_Document_openStream :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_err := Document_openStream(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11979,6 +12595,7 @@ _t_scripts_Document_closeStream :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_err := Document_closeStream(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -11996,6 +12613,7 @@ _t_scripts_HTMLScriptElement_forceAsync :: proc "c" (env: rawptr, caller: wasm.C
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := HTMLScriptElement_forceAsync(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -12011,6 +12629,7 @@ _t_scripts_HTMLScriptElement_setForceAsync :: proc "c" (env: rawptr, caller: was
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32 != 0
 	HTMLScriptElement_setForceAsync(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -12033,6 +12652,7 @@ _t_scripts_Script_allowInline :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	_p1 := Api_InlineScriptKind(_e1)
 	_r := Script_allowInline(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -12050,6 +12670,7 @@ _t_scripts_Script_allowEval :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.Script_allowEval", "source") }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	_r := Script_allowEval(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -12067,6 +12688,7 @@ _t_scripts_Script_javascriptResult :: proc "c" (env: rawptr, caller: wasm.Caller
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.Script_javascriptResult", "html") }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	Script_javascriptResult(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -12081,6 +12703,7 @@ _t_scripts_Script_baseName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "scripts.Script_baseName", "result buffer") }
 	_r := Script_baseName(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -12105,6 +12728,7 @@ _t_scripts_Module_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
 	_r, _err := Module_resolve(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -12128,6 +12752,7 @@ _t_scripts_Module_source :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if !_ok { return wasm.trap_bounds(&f, "scripts.Module_source", "result buffer") }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	_r, _err := Module_source(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -12157,6 +12782,7 @@ _t_scripts_Module_request :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	}
 	_p2 := Api_ModuleType(_e2)
 	_err := Module_request(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -12187,6 +12813,7 @@ _t_scripts_Module_import :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	}
 	_p3 := Api_ModuleType(_e3)
 	_err := Module_import(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -12203,6 +12830,7 @@ _t_scripts_Engine_queueRejectionCheck :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	Engine_queueRejectionCheck(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -12229,6 +12857,7 @@ _t_scripts_Worker_createScript :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	_p2 := Api_WorkerType(_e2)
 	_r, _err := Worker_createScript(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -12251,6 +12880,7 @@ _t_scripts_Worker_postSerialized :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	_p1 := _s1[:_n1]
 	_p0 := u64(a[0].i64)
 	_err := Worker_postSerialized(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -12271,6 +12901,7 @@ _t_scripts_DedicatedWorkerGlobalScope_postSerialized :: proc "c" (env: rawptr, c
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.DedicatedWorkerGlobalScope_postSerialized", "data") }
 	_p0 := _s0[:_n0]
 	_err := DedicatedWorkerGlobalScope_postSerialized(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -12294,6 +12925,7 @@ _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm
 	if !_ok { return wasm.trap_bounds(&f, "scripts.WorkerGlobalScope_importScript", "result buffer") }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	_r, _err := WorkerGlobalScope_importScript(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -12319,6 +12951,7 @@ _t_navigator_Navigator_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	_p0 := Api_NavigatorField(_e0)
 	_r := Navigator_get(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -12332,6 +12965,7 @@ _t_navigator_Navigator_hardwareConcurrency :: proc "c" (env: rawptr, caller: was
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Navigator_hardwareConcurrency(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -12345,6 +12979,7 @@ _t_navigator_Navigator_onLine :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Navigator_onLine(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -12358,6 +12993,7 @@ _t_navigator_Navigator_cookieEnabled :: proc "c" (env: rawptr, caller: wasm.Call
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Navigator_cookieEnabled(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -12392,6 +13028,7 @@ _t_navigator_Beacon_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return wasm.trap_new("navigator.Beacon_send: argument content_type is not valid UTF-8")
 	}
 	_r := Beacon_send(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -12413,6 +13050,7 @@ _t_media_MediaQueryList_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return wasm.trap_new("media.MediaQueryList_create: argument query is not valid UTF-8")
 	}
 	_r := MediaQueryList_create(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -12435,6 +13073,7 @@ _t_media_MediaQueryList_media :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("media.MediaQueryList_media: argument list is not a live MediaQueryList")
 	}
 	_r := MediaQueryList_media(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -12454,6 +13093,7 @@ _t_media_MediaQueryList_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("media.MediaQueryList_matches: argument list is not a live MediaQueryList")
 	}
 	_r := MediaQueryList_matches(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -12473,6 +13113,7 @@ _t_media_Screen_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	}
 	_p0 := Api_ScreenField(_e0)
 	_r := Screen_get(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -12494,6 +13135,7 @@ _t_forms_FormData_fileAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	}
 	_p1 := a[1].i32
 	_r, _err := FormData_fileAt(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -12536,6 +13178,7 @@ _t_forms_FormData_setBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_setBlob: argument blob is not a live Buffer")
 	}
 	_err := FormData_setBlob(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -12566,6 +13209,7 @@ _t_forms_FormData_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_encode: argument data is not a live FormData")
 	}
 	_r, _err := FormData_encode(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -12636,6 +13280,7 @@ _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	_p6.referrer_policy = Api_ReferrerPolicy(u32(a[13].i32))
 	_p6.no_referrer = a[14].i32 != 0
 	_r := Fetch_start(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -12655,6 +13300,7 @@ _t_net_Fetch_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 		return wasm.trap_new("net.Fetch_state: argument request is not a live Fetch")
 	}
 	_r := Fetch_state(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -12674,6 +13320,7 @@ _t_net_Fetch_status :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 		return wasm.trap_new("net.Fetch_status: argument request is not a live Fetch")
 	}
 	_r := Fetch_status(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -12693,6 +13340,7 @@ _t_net_Fetch_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 		return wasm.trap_new("net.Fetch_type: argument request is not a live Fetch")
 	}
 	_r := Fetch_type(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -12712,6 +13360,7 @@ _t_net_Fetch_redirected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("net.Fetch_redirected: argument request is not a live Fetch")
 	}
 	_r := Fetch_redirected(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -12734,6 +13383,7 @@ _t_net_Fetch_headers :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return wasm.trap_new("net.Fetch_headers: argument request is not a live Fetch")
 	}
 	_r := Fetch_headers(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -12756,6 +13406,7 @@ _t_net_Fetch_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 		return wasm.trap_new("net.Fetch_url: argument request is not a live Fetch")
 	}
 	_r := Fetch_url(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -12778,6 +13429,7 @@ _t_net_Fetch_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 		return wasm.trap_new("net.Fetch_error: argument request is not a live Fetch")
 	}
 	_r := Fetch_error(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -12797,6 +13449,7 @@ _t_net_Fetch_errorKind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return wasm.trap_new("net.Fetch_errorKind: argument request is not a live Fetch")
 	}
 	_r := Fetch_errorKind(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -12816,6 +13469,7 @@ _t_net_Fetch_bodyLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("net.Fetch_bodyLength: argument request is not a live Fetch")
 	}
 	_r := Fetch_bodyLength(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -12840,6 +13494,7 @@ _t_net_Fetch_readBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	}
 	_p1 := u64(a[1].i64)
 	_r := Fetch_readBody(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -12858,6 +13513,7 @@ _t_net_Fetch_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 		return _fail_status(&c, a, .Invalid_Handle, "net.Fetch_release: argument request is not a live Fetch")
 	}
 	_err := Fetch_release(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -12874,6 +13530,7 @@ _t_performance_Performance_now :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Performance_now(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -12887,6 +13544,7 @@ _t_performance_Performance_timeOrigin :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Performance_timeOrigin(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -12908,6 +13566,7 @@ _t_performance_Performance_mark :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	}
 	_p1 := a[2].f64
 	_err := Performance_mark(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -12945,6 +13604,7 @@ _t_performance_Performance_measure :: proc "c" (env: rawptr, caller: wasm.Caller
 		return _fail_status(&c, a, .Type, "performance.Performance_measure: argument end_mark is not valid UTF-8")
 	}
 	_err := Performance_measure(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -12970,6 +13630,7 @@ _t_performance_Performance_measureTimes :: proc "c" (env: rawptr, caller: wasm.C
 	_p1 := a[2].f64
 	_p2 := a[3].f64
 	_err := Performance_measureTimes(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13000,6 +13661,7 @@ _t_performance_Performance_entryCount :: proc "c" (env: rawptr, caller: wasm.Cal
 	}
 	_p1 := Api_PerformanceEntryType(_e1)
 	_r := Performance_entryCount(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -13028,6 +13690,7 @@ _t_performance_Performance_entryStartTime :: proc "c" (env: rawptr, caller: wasm
 	_p1 := Api_PerformanceEntryType(_e1)
 	_p2 := a[3].i32
 	_r := Performance_entryStartTime(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -13056,6 +13719,7 @@ _t_performance_Performance_entryDuration :: proc "c" (env: rawptr, caller: wasm.
 	_p1 := Api_PerformanceEntryType(_e1)
 	_p2 := a[3].i32
 	_r := Performance_entryDuration(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -13085,6 +13749,7 @@ _t_performance_Performance_entryName :: proc "c" (env: rawptr, caller: wasm.Call
 	_p1 := Api_PerformanceEntryType(_e1)
 	_p2 := a[3].i32
 	_r, _err := Performance_entryName(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -13116,6 +13781,7 @@ _t_performance_Performance_entryType :: proc "c" (env: rawptr, caller: wasm.Call
 	_p1 := Api_PerformanceEntryType(_e1)
 	_p2 := a[3].i32
 	_r, _err := Performance_entryType(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13141,6 +13807,7 @@ _t_performance_Performance_clearMarks :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("performance.Performance_clearMarks: argument name is not valid UTF-8")
 	}
 	Performance_clearMarks(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -13160,6 +13827,7 @@ _t_performance_Performance_clearMeasures :: proc "c" (env: rawptr, caller: wasm.
 		return wasm.trap_new("performance.Performance_clearMeasures: argument name is not valid UTF-8")
 	}
 	Performance_clearMeasures(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -13178,6 +13846,7 @@ _t_storage_Storage_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	}
 	_p0 := Api_StorageArea(_e0)
 	_r, _err := Storage_length(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13204,6 +13873,7 @@ _t_storage_Storage_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	_p0 := Api_StorageArea(_e0)
 	_p1 := a[1].i32
 	_r, _err := Storage_key(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -13235,6 +13905,7 @@ _t_storage_Storage_getItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	_p0 := Api_StorageArea(_e0)
 	_r, _err := Storage_getItem(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -13264,6 +13935,7 @@ _t_storage_Storage_setItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	_p0 := Api_StorageArea(_e0)
 	_err := Storage_setItem(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13292,6 +13964,7 @@ _t_storage_Storage_removeItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	_p0 := Api_StorageArea(_e0)
 	_err := Storage_removeItem(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13313,6 +13986,7 @@ _t_storage_Storage_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	}
 	_p0 := Api_StorageArea(_e0)
 	_err := Storage_clear(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13342,6 +14016,7 @@ _t_storage_StorageEvent_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	}
 	_p1 := Api_StorageEventField(_e1)
 	_r, _err := StorageEvent_get(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -13365,6 +14040,7 @@ _t_storage_StorageEvent_storageArea :: proc "c" (env: rawptr, caller: wasm.Calle
 		return _fail_status(&c, a, .Invalid_Handle, "storage.StorageEvent_storageArea: argument event is not a live Event")
 	}
 	_r, _err := StorageEvent_storageArea(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13385,6 +14061,7 @@ _t_timers_Timers_setTimeout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_p1 := a[1].i32
 	_p2 := a[2].f64
 	_r := Timers_setTimeout(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -13401,6 +14078,7 @@ _t_timers_Timers_setInterval :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_p1 := a[1].i32
 	_p2 := a[2].f64
 	_r := Timers_setInterval(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -13417,6 +14095,7 @@ _t_timers_Timers_setTimeout64 :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_p1 := a[1].i64
 	_p2 := a[2].f64
 	_r := Timers_setTimeout64(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -13433,6 +14112,7 @@ _t_timers_Timers_setInterval64 :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_p1 := a[1].i64
 	_p2 := a[2].f64
 	_r := Timers_setInterval64(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -13451,6 +14131,7 @@ _t_timers_Timers_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return _fail_status(&c, a, .Invalid_Handle, "timers.Timers_clear: argument timer is not a live Timer")
 	}
 	_err := Timers_clear(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13467,6 +14148,7 @@ _t_timers_Timers_now :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Timers_now(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
@@ -13482,6 +14164,7 @@ _t_timers_requestAnimationFrame :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	_r := requestAnimationFrame(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -13496,6 +14179,7 @@ _t_timers_cancelAnimationFrame :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_err := cancelAnimationFrame(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13515,6 +14199,7 @@ _t_timers_requestIdleCallback :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_p1 := a[1].i32
 	_p2 := a[2].f64
 	_r := requestIdleCallback(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -13529,6 +14214,7 @@ _t_timers_cancelIdleCallback :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_err := cancelIdleCallback(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13545,6 +14231,7 @@ _t_timers_Document_visibilityState :: proc "c" (env: rawptr, caller: wasm.Caller
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Document_visibilityState(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -13578,6 +14265,7 @@ _t_url_URL_parse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 		_p1 = _v1
 	}
 	_r, _err := URL_parse(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13615,6 +14303,7 @@ _t_url_URL_canParse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 		_p1 = _v1
 	}
 	_r := URL_canParse(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -13643,6 +14332,7 @@ _t_url_URL_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	}
 	_p1 := Api_URLComponent(_e1)
 	_r := URL_get(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -13673,6 +14363,7 @@ _t_url_URL_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	}
 	_p1 := Api_URLComponent(_e1)
 	_err := URL_set(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13695,6 +14386,7 @@ _t_url_URL_searchParams :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return wasm.trap_new("url.URL_searchParams: argument url is not a live URL")
 	}
 	_r := URL_searchParams(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -13717,6 +14409,7 @@ _t_url_URLSearchParams_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_status(&c, a, .Type, "url.URLSearchParams_create: argument init is not valid UTF-8")
 	}
 	_r, _err := URLSearchParams_create(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -13740,6 +14433,7 @@ _t_url_URLSearchParams_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("url.URLSearchParams_size: argument params is not a live URLSearchParams")
 	}
 	_r := URLSearchParams_size(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -13767,6 +14461,7 @@ _t_url_URLSearchParams_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("url.URLSearchParams_append: argument params is not a live URLSearchParams")
 	}
 	URLSearchParams_append(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -13804,6 +14499,7 @@ _t_url_URLSearchParams_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return wasm.trap_new("url.URLSearchParams_delete: argument params is not a live URLSearchParams")
 	}
 	URLSearchParams_delete(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -13830,6 +14526,7 @@ _t_url_URLSearchParams_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return _fail_size(&c, &f, a, .Invalid_Handle, "url.URLSearchParams_get: argument params is not a live URLSearchParams")
 	}
 	_r, _err := URLSearchParams_get(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -13860,6 +14557,7 @@ _t_url_URLSearchParams_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return wasm.trap_new("url.URLSearchParams_count: argument params is not a live URLSearchParams")
 	}
 	_r := URLSearchParams_count(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -13889,6 +14587,7 @@ _t_url_URLSearchParams_getNth :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	_p2 := a[3].i32
 	_r, _err := URLSearchParams_getNth(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -13931,6 +14630,7 @@ _t_url_URLSearchParams_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("url.URLSearchParams_has: argument params is not a live URLSearchParams")
 	}
 	_r := URLSearchParams_has(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -13958,6 +14658,7 @@ _t_url_URLSearchParams_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("url.URLSearchParams_set: argument params is not a live URLSearchParams")
 	}
 	URLSearchParams_set(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -13975,6 +14676,7 @@ _t_url_URLSearchParams_sort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("url.URLSearchParams_sort: argument params is not a live URLSearchParams")
 	}
 	URLSearchParams_sort(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -13995,6 +14697,7 @@ _t_url_URLSearchParams_toString :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("url.URLSearchParams_toString: argument params is not a live URLSearchParams")
 	}
 	_r := URLSearchParams_toString(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -14017,6 +14720,7 @@ _t_url_URLSearchParams_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	_p1 := a[1].i32
 	_r, _err := URLSearchParams_nameAt(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -14042,6 +14746,7 @@ _t_url_URLSearchParams_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	_p1 := a[1].i32
 	_r, _err := URLSearchParams_valueAt(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -14058,6 +14763,7 @@ _t_web_Exception_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := Exception_code(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -14074,6 +14780,7 @@ _t_web_Exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "web.Exception_message", "result buffer") }
 	_r := Exception_message(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -14103,6 +14810,7 @@ _t_websocket_WebSocket_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_status(&c, a, .Type, "websocket.WebSocket_create: argument protocols is not valid UTF-8")
 	}
 	_r, _err := WebSocket_create(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -14126,6 +14834,7 @@ _t_websocket_WebSocket_readyState :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return wasm.trap_new("websocket.WebSocket_readyState: argument socket is not a live WebSocket")
 	}
 	_r := WebSocket_readyState(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
@@ -14148,6 +14857,7 @@ _t_websocket_WebSocket_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("websocket.WebSocket_url: argument socket is not a live WebSocket")
 	}
 	_r := WebSocket_url(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -14170,6 +14880,7 @@ _t_websocket_WebSocket_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("websocket.WebSocket_protocol: argument socket is not a live WebSocket")
 	}
 	_r := WebSocket_protocol(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -14192,6 +14903,7 @@ _t_websocket_WebSocket_extensions :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return wasm.trap_new("websocket.WebSocket_extensions: argument socket is not a live WebSocket")
 	}
 	_r := WebSocket_extensions(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
@@ -14211,6 +14923,7 @@ _t_websocket_WebSocket_bufferedAmount :: proc "c" (env: rawptr, caller: wasm.Cal
 		return wasm.trap_new("websocket.WebSocket_bufferedAmount: argument socket is not a live WebSocket")
 	}
 	_r := WebSocket_bufferedAmount(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = _r
@@ -14230,6 +14943,7 @@ _t_websocket_WebSocket_binaryType :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return wasm.trap_new("websocket.WebSocket_binaryType: argument socket is not a live WebSocket")
 	}
 	_r := WebSocket_binaryType(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -14249,6 +14963,7 @@ _t_websocket_WebSocket_setBinaryType :: proc "c" (env: rawptr, caller: wasm.Call
 	}
 	_p1 := a[1].i32
 	_err := WebSocket_setBinaryType(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -14274,6 +14989,7 @@ _t_websocket_WebSocket_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return _fail_status(&c, a, .Invalid_Handle, "websocket.WebSocket_send: argument socket is not a live WebSocket")
 	}
 	_err := WebSocket_send(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -14300,6 +15016,7 @@ _t_websocket_WebSocket_sendBuffer :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_status(&c, a, .Invalid_Handle, "websocket.WebSocket_sendBuffer: argument data is not a live Buffer")
 	}
 	_err := WebSocket_sendBuffer(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -14329,6 +15046,7 @@ _t_websocket_WebSocket_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	}
 	_p1 := a[1].i32
 	_err := WebSocket_close(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -14351,6 +15069,7 @@ _t_websocket_CloseEvent_wasClean :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return wasm.trap_new("websocket.CloseEvent_wasClean: argument event is not a live Event")
 	}
 	_r := CloseEvent_wasClean(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
@@ -14380,6 +15099,7 @@ _t_workers_Worker_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_status(&c, a, .Type, "workers.Worker_create: argument name is not valid UTF-8")
 	}
 	_r, _err := Worker_create(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -14413,6 +15133,7 @@ _t_workers_Worker_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_status(&c, a, .Invalid_Handle, "workers.Worker_postMessage: argument worker is not a live Worker")
 	}
 	_err := Worker_postMessage(&c, _p0, _p1, _p2)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -14434,6 +15155,7 @@ _t_workers_Worker_terminate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return _fail_status(&c, a, .Invalid_Handle, "workers.Worker_terminate: argument worker is not a live Worker")
 	}
 	_err := Worker_terminate(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -14450,6 +15172,7 @@ _t_workers_DedicatedWorkerGlobalScope_self :: proc "c" (env: rawptr, caller: was
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_r := DedicatedWorkerGlobalScope_self(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -14474,6 +15197,7 @@ _t_workers_DedicatedWorkerGlobalScope_postMessage :: proc "c" (env: rawptr, call
 	}
 	_p1 := ([^]u64)(_s1)[:_n1]
 	_err := DedicatedWorkerGlobalScope_postMessage(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -14490,6 +15214,7 @@ _t_workers_DedicatedWorkerGlobalScope_close :: proc "c" (env: rawptr, caller: wa
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	_err := DedicatedWorkerGlobalScope_close(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_status(&c, a, _err, c.message)
@@ -14509,6 +15234,7 @@ _t_workers_DedicatedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: was
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "workers.DedicatedWorkerGlobalScope_name", "result buffer") }
 	_r, _err := DedicatedWorkerGlobalScope_name(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -14528,6 +15254,7 @@ _t_workers_WorkerGlobalScope_location :: proc "c" (env: rawptr, caller: wasm.Cal
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "workers.WorkerGlobalScope_location", "result buffer") }
 	_r, _err := WorkerGlobalScope_location(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
 		return _fail_size(&c, &f, a, _err, c.message)
@@ -14551,6 +15278,7 @@ _t_workers_MessageEvent_transfer :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	}
 	_p1 := a[1].i32
 	_r := MessageEvent_transfer(&c, _p0, _p1)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i64 = i64(_r)
@@ -14872,6 +15600,12 @@ api_imports := [?]wasm.Import{
 	{module = "js", name = "Node_wrap", fn = _t_js_Node_wrap, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Node_unpin", fn = _t_js_Node_unpin, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "js", name = "Node_treeRoots", fn = _t_js_Node_treeRoots, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "CustomElements_define", fn = _t_dom_CustomElements_define, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "CustomElements_pending", fn = _t_dom_CustomElements_pending, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CustomElements_take", fn = _t_dom_CustomElements_take, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CustomElements_release", fn = _t_dom_CustomElements_release, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "CustomElements_create", fn = _t_dom_CustomElements_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_setCustomState", fn = _t_dom_Element_setCustomState, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
 	{module = "dom", name = "Document_readyState", fn = _t_dom_Document_readyState, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_currentScript", fn = _t_dom_Document_currentScript, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Window_document", fn = _t_dom_Window_document, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},

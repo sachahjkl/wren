@@ -277,10 +277,13 @@ reveal_run :: proc(p: ^Page) {
 			reveal_node(p, ps.queue[ps.next])
 			ps.next += 1
 		}
+		// the custom elements parsed before the script are upgraded (and connected) before it runs
+		custom_elements_flush(p)
 		s.flags[it.node] += {.Parser_Inserted}
 		script_prepare(p, it.node, parser_inserted = true)
 	}
 	if p.closed { return }
+	custom_elements_flush(p)
 	if ps.active && ps.pending == nil && ps.stop < 0 && ps.next >= len(ps.queue) && !ps.script_created {
 		parser_finish(p)
 	}

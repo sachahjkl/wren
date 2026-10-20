@@ -138,6 +138,8 @@ enum wr_ConsoleLevel {
 
 /* module dom (partial): types */
 
+/* module dom (partial): types */
+
 /* module events (partial): types */
 // The numeric details of a UI event.
 typedef struct wr_UiEventData {
@@ -572,6 +574,22 @@ WR_IMPORT("dom", "Element_setAttribute") int32_t wr_Element_setAttribute(uint64_
 WR_IMPORT("dom", "Element_getAttribute") int32_t wr_Element_getAttribute(uint64_t element, const uint8_t *name, uint32_t name_len, uint8_t *_buf, uint32_t _cap);
 // element.removeAttribute(name)
 WR_IMPORT("dom", "Element_removeAttribute") int32_t wr_Element_removeAttribute(uint64_t element, const uint8_t *name, uint32_t name_len);
+// customElements.define(name, ...) succeeded: elements of that local name now queue reactions.
+WR_IMPORT("dom", "CustomElements_define") void wr_CustomElements_define(const uint8_t *name, uint32_t name_len);
+// The size CustomElements_take needs now (0: nothing queued): the engine sizes its buffer with it, as the take
+// empties the queue (it must not be called twice to learn its size).
+WR_IMPORT("dom", "CustomElements_pending") uint32_t wr_CustomElements_pending(void);
+// The queued reactions, taken: per reaction u8 kind (1 upgrade, 2 connected, 3 disconnected, 4 attribute changed)
+// and u64 element; an attribute change adds its name, old value and new value (u32 length + UTF-8 each) and a u8
+// of flags (1: there was an old value, 2: there is a new one). Each element stays pinned until
+// CustomElements_release.
+WR_IMPORT("dom", "CustomElements_take") int32_t wr_CustomElements_take(uint8_t *_buf, uint32_t _cap);
+// The engine wrapped the elements of the last take (its wrappers pin them now).
+WR_IMPORT("dom", "CustomElements_release") void wr_CustomElements_release(const uint64_t *elements, uint32_t elements_len);
+// A new element of a defined local name for `new MyElement()`: custom already, nothing queued.
+WR_IMPORT("dom", "CustomElements_create") int32_t wr_CustomElements_create(const uint8_t *name, uint32_t name_len, uint64_t *_ret);
+// The element's custom element state: 0 undefined, 1 custom, 2 failed.
+WR_IMPORT("dom", "Element_setCustomState") void wr_Element_setCustomState(uint64_t element, uint32_t state);
 // document.readyState: "loading", "interactive" or "complete".
 WR_IMPORT("dom", "Document_readyState") int32_t wr_Document_readyState(uint8_t *_buf, uint32_t _cap);
 // document.currentScript: the classic script element running, null otherwise.

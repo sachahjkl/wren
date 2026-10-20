@@ -74,6 +74,11 @@ JSValue wjr_CompositionEvent_constructor(JSContext *ctx, JSValueConst this_val, 
 JSValue wjr_CompositionEvent_get_data(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Crypto_getRandomValues(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Crypto_get_subtle(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CustomElementRegistry_define(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CustomElementRegistry_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CustomElementRegistry_getName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CustomElementRegistry_upgrade(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CustomElementRegistry_whenDefined(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CustomEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CustomEvent_get_detail(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CustomEvent_initCustomEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -292,6 +297,7 @@ uint32_t wjr_HTMLCollection_length_hook(JSContext *ctx, JSValueConst obj);
 JSValue wjr_HTMLCollection_namedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLCollection_named_get(JSContext *ctx, JSValueConst obj, const char *name, size_t len, bool *found);
 JSValue wjr_HTMLDataListElement_get_options(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLElement_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLElement_get_hidden(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLElement_set_hidden(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLFieldSetElement_get_elements(JSContext *ctx, JSValueConst this_val);
@@ -940,6 +946,7 @@ JSValue wjr_Window_cancelIdleCallback(JSContext *ctx, JSValueConst this_val, int
 JSValue wjr_Window_getComputedStyle(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_getSelection(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_get_clientInformation(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_get_customElements(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_frameElement(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_frames(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_history(JSContext *ctx, JSValueConst this_val);
@@ -8463,11 +8470,11 @@ static const wj_member wj_m_CryptoKey[] = {
     { "usages", WJ_M_ATTRIBUTE, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CustomElementRegistry[] = {
-    { "define", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "get", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getName", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "whenDefined", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "upgrade", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "define", WJ_M_METHOD, 0, 2, wjr_CustomElementRegistry_define, NULL, NULL, 0 },
+    { "get", WJ_M_METHOD, 0, 1, wjr_CustomElementRegistry_get, NULL, NULL, 0 },
+    { "getName", WJ_M_METHOD, 0, 1, wjr_CustomElementRegistry_getName, NULL, NULL, 0 },
+    { "whenDefined", WJ_M_METHOD, 0, 1, wjr_CustomElementRegistry_whenDefined, NULL, NULL, 0 },
+    { "upgrade", WJ_M_METHOD, 0, 1, wjr_CustomElementRegistry_upgrade, NULL, NULL, 0 },
     { "initialize", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CustomStateSet[] = {
@@ -11810,7 +11817,7 @@ static const wj_member wj_m_Window[] = {
     { "location", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Window_get_location, wjg_Window_set_location, 0 },
     { "history", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Window_get_history, NULL, 0 },
     { "navigation", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "customElements", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "customElements", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Window_get_customElements, NULL, 0 },
     { "locationbar", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "menubar", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "personalbar", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
@@ -14004,7 +14011,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_CryptoKey, .n_members = 4, .subtree_end = 91,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "CustomElementRegistry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "CustomElementRegistry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_CustomElementRegistry, .n_members = 6, .subtree_end = 92,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -14576,7 +14583,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_Element, .n_members = 153, .subtree_end = 343,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "HTMLElement", .parent = 233, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "HTMLElement", .parent = 233, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_HTMLElement_constructor,
       .members = wj_m_HTMLElement, .n_members = 142, .subtree_end = 306,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

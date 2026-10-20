@@ -286,6 +286,72 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Element_removeAttribute :: proc(c: ^Call, element: Api_Element, name: string) -> Api_Error`
 
+### `CustomElements_define`
+
+```
+void CustomElements_define(string name)
+```
+
+customElements.define(name, ...) succeeded: elements of that local name now queue reactions.
+
+Host: `CustomElements_define :: proc(c: ^Call, name: string)`
+
+### `CustomElements_pending`
+
+```
+u32 CustomElements_pending()
+```
+
+The size CustomElements_take needs now (0: nothing queued): the engine sizes its buffer with it, as the take
+empties the queue (it must not be called twice to learn its size).
+
+Host: `CustomElements_pending :: proc(c: ^Call) -> u32`
+
+### `CustomElements_take`
+
+```
+bytes CustomElements_take()
+```
+
+The queued reactions, taken: per reaction u8 kind (1 upgrade, 2 connected, 3 disconnected, 4 attribute changed)
+and u64 element; an attribute change adds its name, old value and new value (u32 length + UTF-8 each) and a u8
+of flags (1: there was an old value, 2: there is a new one). Each element stays pinned until
+CustomElements_release.
+
+Host: `CustomElements_take :: proc(c: ^Call) -> []u8`
+
+### `CustomElements_release`
+
+```
+void CustomElements_release(u64[] elements)
+```
+
+The engine wrapped the elements of the last take (its wrappers pin them now).
+
+Host: `CustomElements_release :: proc(c: ^Call, elements: []u64)`
+
+### `CustomElements_create`
+
+```
+u64 CustomElements_create(string name) raises
+```
+
+A new element of a defined local name for `new MyElement()`: custom already, nothing queued.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `CustomElements_create :: proc(c: ^Call, name: string) -> (u64, Api_Error)`
+
+### `Element_setCustomState`
+
+```
+void Element_setCustomState(Element element, u32 state)
+```
+
+The element's custom element state: 0 undefined, 1 custom, 2 failed.
+
+Host: `Element_setCustomState :: proc(c: ^Call, element: Api_Element, state: u32)`
+
 ### `Document_readyState`
 
 ```

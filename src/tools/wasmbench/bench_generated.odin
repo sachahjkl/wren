@@ -24,6 +24,7 @@ _t_bench_nop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: u
 	context = runtime.default_context()
 	c := api_begin(f.inst)
 	nop(&c)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
@@ -39,6 +40,7 @@ _t_bench_touch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	if !_k0 { return wasm.trap_bounds(&f, "bench.touch", "data") }
 	_p0 := _s0[:_n0]
 	_r := touch(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r
@@ -59,6 +61,7 @@ _t_bench_touch_string :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return wasm.trap_new("bench.touch_string: argument text is not valid UTF-8")
 	}
 	_r := touch_string(&c, _p0)
+	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = _r

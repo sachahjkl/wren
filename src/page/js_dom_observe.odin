@@ -124,13 +124,21 @@ mo_clear :: proc(p: ^Page, mo: ^Mutation_Observer) {
 	mo.taken = 0
 }
 
-// The document's hook is on while some observer has registrations.
+// The document's hook is on while some observer has registrations, or some custom element is defined.
 @(private)
 mo_hook_update :: proc(p: ^Page) {
 	if p.doc == nil || p.jsdom == nil { return }
-	any_reg := len(p.jsdom.observers.on_node) > 0
-	p.doc.observer = any_reg ? mutation_hook : nil
-	p.doc.observer_user = any_reg ? p : nil
+	on := len(p.jsdom.observers.on_node) > 0 || len(p.jsdom.ce.defined) > 0
+	p.doc.observer = on ? page_mutation_hook : nil
+	p.doc.observer_user = on ? p : nil
+}
+
+@(private)
+page_mutation_hook :: proc(user: rawptr, d: ^dom.Document, e: ^dom.Journal_Entry) {
+	p := (^Page)(user)
+	if p.closed || p.jsdom == nil { return }
+	if len(p.jsdom.observers.on_node) > 0 { mutation_hook(user, d, e) }
+	if len(p.jsdom.ce.defined) > 0 { ce_mutation(p, d, e) }
 }
 
 @(private)

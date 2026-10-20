@@ -28,6 +28,7 @@ Js_Dom_State :: struct {
 	style_names: []string,               // getComputedStyle's property list (built once)
 	style_blocks: Decl_Cache,            // parsed style attributes (js_dom_style.odin)
 	style_probes: Decl_Cache,            // validated setProperty values
+	ce:           Custom_Elements,       // js_custom_elements.odin
 }
 
 @(private)
@@ -52,6 +53,7 @@ js_dom_state :: proc(p: ^Page) -> ^Js_Dom_State {
 		delete(s.style_names)
 		decl_cache_destroy(&s.style_blocks)
 		decl_cache_destroy(&s.style_probes)
+		ce_destroy(p, &s.ce)
 		free(s)
 		p.jsdom = nil
 	}, p)

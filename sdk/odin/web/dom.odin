@@ -56,6 +56,12 @@ foreign _m_dom {
 	@(link_name = "Element_setAttribute") _Element_setAttribute :: proc(element: u64, name: [^]u8, name_len: u32, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "Element_getAttribute") _Element_getAttribute :: proc(element: u64, name: [^]u8, name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Element_removeAttribute") _Element_removeAttribute :: proc(element: u64, name: [^]u8, name_len: u32) -> Error ---
+	@(link_name = "CustomElements_define") _CustomElements_define :: proc(name: [^]u8, name_len: u32) ---
+	@(link_name = "CustomElements_pending") _CustomElements_pending :: proc() -> u32 ---
+	@(link_name = "CustomElements_take") _CustomElements_take :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "CustomElements_release") _CustomElements_release :: proc(elements: [^]u64, elements_len: u32) ---
+	@(link_name = "CustomElements_create") _CustomElements_create :: proc(name: [^]u8, name_len: u32, _ret: ^u64) -> Error ---
+	@(link_name = "Element_setCustomState") _Element_setCustomState :: proc(element: u64, state: u32) ---
 	@(link_name = "Document_readyState") _Document_readyState :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_currentScript") _Document_currentScript :: proc() -> Element ---
 	@(link_name = "Window_document") _Window_document :: proc() -> Node ---
@@ -513,6 +519,65 @@ Element_getAttribute_alloc :: proc(element: $T_element, name: string, allocator:
 // element.removeAttribute(name)
 Element_removeAttribute :: proc "contextless" (element: $T_element, name: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
 	return _Element_removeAttribute(u64(element), raw_data(name), u32(len(name)))
+}
+
+// customElements.define(name, ...) succeeded: elements of that local name now queue reactions.
+CustomElements_define :: proc "contextless" (name: string) {
+	_CustomElements_define(raw_data(name), u32(len(name)))
+}
+
+// The size CustomElements_take needs now (0: nothing queued): the engine sizes its buffer with it, as the take
+// empties the queue (it must not be called twice to learn its size).
+CustomElements_pending :: proc "contextless" () -> u32 {
+	return _CustomElements_pending()
+}
+
+// The queued reactions, taken: per reaction u8 kind (1 upgrade, 2 connected, 3 disconnected, 4 attribute changed)
+// and u64 element; an attribute change adds its name, old value and new value (u32 length + UTF-8 each) and a u8
+// of flags (1: there was an old value, 2: there is a new one). Each element stays pinned until
+// CustomElements_release.
+CustomElements_take :: proc "contextless" (buf: []u8) -> ([]u8, Error) {
+	n := _CustomElements_take(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of CustomElements_take's result.
+CustomElements_take_len :: proc "contextless" () -> (int, Error) {
+	n := _CustomElements_take(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// CustomElements_take's result in a buffer allocated to fit.
+CustomElements_take_alloc :: proc(allocator: runtime.Allocator) -> ([]u8, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _CustomElements_take(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The engine wrapped the elements of the last take (its wrappers pin them now).
+CustomElements_release :: proc "contextless" (elements: []u64) {
+	_CustomElements_release(raw_data(elements), u32(len(elements)))
+}
+
+// A new element of a defined local name for `new MyElement()`: custom already, nothing queued.
+CustomElements_create :: proc "contextless" (name: string) -> (result: u64, err: Error) {
+	err = _CustomElements_create(raw_data(name), u32(len(name)), &result)
+	return
+}
+
+// The element's custom element state: 0 undefined, 1 custom, 2 failed.
+Element_setCustomState :: proc "contextless" (element: $T_element, state: u32) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_Element_setCustomState(u64(element), state)
 }
 
 // document.readyState: "loading", "interactive" or "complete".

@@ -208,7 +208,9 @@ microtask_checkpoint :: proc(p: ^Page) {
 	defer p.objects.draining = false
 	ran := 0
 	limit := p.settings.max_microtasks
-	// the browser's microtasks, then the JavaScript realm's jobs, until neither has any left
+	// custom element reactions the parser's insertions queued; the browser's microtasks, then the JavaScript realm's
+	// jobs, until neither has any left
+	custom_elements_flush(p)
 	for len(p.objects.microtasks) > 0 || (p.js != nil && js_checkpoint(p) && len(p.objects.microtasks) > 0) {
 		if realm_halted(p) { return }   // a terminated worker runs nothing more
 		if ran >= limit {

@@ -1,7 +1,8 @@
 package page
 
 // What the generated bindings (api_generated.odin, from api/*.widl) need from the page:
-//   * Call: the context of one import call; `api_begin` builds it from the calling instance;
+//   * Call: the context of one import call; `api_begin` builds it from the calling instance, `api_end` closes it (the
+//     custom element reactions it queued run then: js_custom_elements.odin);
 //   * api_raise: records the exception of an import that raises (web.Exception_code / Exception_message read it back);
 //   * one lookup per handle the API checks: the live object of that kind, or nil;
 // and one implementation per import (bindings_*.odin), whose prototype is written above its trampoline.
@@ -16,10 +17,13 @@ Call :: struct {
 	inst:    ^wasm.Instance,
 	owner:   u32,      // the instance's index in the page: owner of what the call creates, target of its callbacks
 	message: string,   // detail of the error an implementation returns (optional; must outlive the return)
+	ce_mark: int,      // custom element reactions queued before the call (api_end runs only those it queued)
 }
 
 api_begin :: #force_inline proc "contextless" (inst: ^wasm.Instance) -> Call {
-	return Call{page = (^Page)(inst.user), inst = inst, owner = inst.index}
+	p := (^Page)(inst.user)
+	mark := p != nil && p.jsdom != nil ? len(p.jsdom.ce.queue) : 0
+	return Call{page = p, inst = inst, owner = inst.index, ce_mark = mark}
 }
 
 api_raise :: proc(c: ^Call, code: Api_Error, message: string) {

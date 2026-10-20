@@ -1,0 +1,83 @@
+<!doctype html>
+<html><head><title>Custom elements</title></head>
+<body><x-item id="early" data-v="1">early</x-item>
+<script>
+const log = [], connected = new Set();
+class XItem extends HTMLElement {
+  static get observedAttributes() { return ["data-v"]; }
+  constructor() { super(); log.push("ctor " + this.id); this.made = true; }
+  connectedCallback() { log.push("connected " + this.id); connected.add(this.id); }
+  disconnectedCallback() { log.push("disconnected " + this.id); }
+  attributeChangedCallback(n, o, v) { log.push("attr " + this.id + " " + n + " " + o + "->" + v); }
+  hello() { return "hello " + this.id; }
+}
+let defined = null;
+customElements.whenDefined("x-item").then(c => { defined = c; });
+t("window.customElements", customElements instanceof CustomElementRegistry && customElements === window.customElements);
+t("an element before its definition is not upgraded", !(document.getElementById("early") instanceof XItem));
+eq("get() before define()", customElements.get("x-item"), undefined);
+customElements.define("x-item", XItem);
+const early = document.getElementById("early");
+t("define() upgrades the document's elements of that name", early instanceof XItem && early.made && early.hello() === "hello early");
+eq("upgrade order: constructor, observed attributes, connected", log.join("|"), "ctor early|attr early data-v null->1|connected early");
+t("get() and getName()", customElements.get("x-item") === XItem && customElements.getName(XItem) === "x-item" && customElements.getName(class {}) === null);
+
+log.length = 0;
+const c = document.createElement("x-item");
+c.id = "c";
+t("createElement constructs a defined element before it returns", c instanceof XItem && c.made && log[0] === "ctor ");
+document.body.appendChild(c);
+c.setAttribute("data-v", "2");
+c.setAttribute("other", "x");
+c.remove();
+eq("connected, observed attribute changes, disconnected: before the DOM call returns", log.slice(1).join("|"), "connected c|attr c data-v null->2|disconnected c");
+
+const n = new XItem();
+t("new MyElement() makes an element of the defined name", n instanceof XItem && n.localName === "x-item" && n.made && n instanceof HTMLElement);
+const d = document.createElement("div");
+d.innerHTML = "<x-item id=inner></x-item>";
+t("innerHTML upgrades the elements it parses", d.firstChild instanceof XItem);
+const tpl = document.createElement("template");
+tpl.innerHTML = "<x-item id=inert></x-item>";
+const detached = document.createElement("div");
+detached.innerHTML = "<x-later></x-later>";
+
+throws("a name defined twice", () => customElements.define("x-item", class extends HTMLElement {}), "NotSupportedError");
+throws("a constructor defined twice", () => customElements.define("x-other", XItem), "NotSupportedError");
+throws("an invalid name", () => customElements.define("nodash", class extends HTMLElement {}), "SyntaxError");
+throws("a reserved name", () => customElements.define("font-face", class extends HTMLElement {}), "SyntaxError");
+throws("not a constructor", () => customElements.define("x-arrow", () => {}), "TypeError");
+throws("a callback that is not a function", () => { class B extends HTMLElement {} B.prototype.connectedCallback = 1; customElements.define("x-bad", B); }, "TypeError");
+throws("customized built-ins are not supported", () => customElements.define("x-button", class extends HTMLButtonElement {}, { extends: "button" }), "NotSupportedError");
+throws("HTMLElement alone is not constructible", () => new HTMLElement(), "TypeError");
+throws("a class that is not defined", () => new (class extends HTMLElement {})(), "TypeError");
+
+// a failing constructor: the error is reported (as uncaught: kept off this page's console), the page goes on
+window.addEventListener("error", e => { if (String(e.message).includes("boom")) e.preventDefault(); });
+class XFail extends HTMLElement { constructor() { super(); throw new Error("boom"); } }
+customElements.define("x-fail", XFail);
+const f = document.createElement("x-fail");
+t("a constructor that throws leaves the element failed (not constructed)", f instanceof HTMLElement && f.localName === "x-fail" && !f.made);
+
+(async () => {
+  await later();
+  t("whenDefined resolves with the constructor", defined === XItem);
+  const r = await customElements.whenDefined("x-item");
+  t("whenDefined of a defined name", r === XItem);
+  let rejected = null;
+  try { await customElements.whenDefined("bad"); } catch (e) { rejected = e.name; }
+  eq("whenDefined of an invalid name rejects", rejected, "SyntaxError");
+  if (document.readyState === "loading") await new Promise(r => document.addEventListener("DOMContentLoaded", r));
+  const later1 = document.getElementById("late");
+  t("elements parsed after define() are upgraded and connected", later1 instanceof XItem && connected.has("late"));
+  t("template contents stay inert (their document has no definitions)", !(tpl.content.firstChild instanceof XItem));
+  class XLater extends HTMLElement { constructor() { super(); this.made = true; } }
+  customElements.define("x-later", XLater);
+  t("a detached element waits for its definition", !(detached.firstChild instanceof XLater));
+  customElements.upgrade(detached);
+  t("customElements.upgrade() upgrades a detached tree on demand", detached.firstChild instanceof XLater && detached.firstChild.made);
+  done();
+})();
+</script>
+<x-item id="late"></x-item>
+</body></html>
