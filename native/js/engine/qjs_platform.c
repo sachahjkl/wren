@@ -217,13 +217,18 @@ static void wj_gc_prologue(JSRuntime *rt, void *opaque)
             bool fresh = false;
             JSValue target;
             if (root == 1) {
-                if (JS_IsUndefined(wj_doc_group)) { wj_doc_group = wj_group_new(ctx, 1); }
+                if (JS_IsUndefined(wj_doc_group)) {
+                    JSValue g = wj_group_new(ctx, 1);
+                    if (JS_IsException(g)) { JS_FreeValue(ctx, JS_GetException(ctx)); continue; }
+                    wj_doc_group = g;
+                }
                 target = wj_doc_group;
             } else {
                 target = wj_map_get(&wj_groups, root);
                 if (JS_IsUndefined(target)) { target = wj_group_new(ctx, root); fresh = true; }
             }
-            if (JS_IsException(target)) { continue; }
+            /* out of memory: the wrapper stays in its group until the next collection (safe: it is only kept longer) */
+            if (JS_IsException(target)) { JS_FreeValue(ctx, JS_GetException(ctx)); continue; }
             if (o->group && JS_VALUE_GET_PTR(o->group_val) == JS_VALUE_GET_PTR(target)) { continue; }
             wj_group_remove(ctx, o);
             wj_group_add(ctx, target, o);
