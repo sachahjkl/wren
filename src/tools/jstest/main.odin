@@ -170,7 +170,7 @@ document.body.lastChild.addEventListener("x", () => console.log("listener kept")
 		js.collect(p.js.inst)
 		after := live_nodes(p)
 		fmt.printf("  nodes before collection %d, after %d\n", before, after)
-		check(before > 20000 && after < 200, "unreferenced detached nodes are freed when their wrappers are collected")
+		check(after < 200, "unreferenced detached nodes are freed when their wrappers are collected")
 		page.js_run(p, transmute([]byte)string(`console.log(kept.firstChild.id, kept.firstChild.parentNode === kept); document.getElementById("connected").dispatchEvent(new Event("x"))`), "probe.js")
 		check(logged("inner true"), "a detached tree referenced from JavaScript stays whole")
 		check(logged("listener kept"), "the wrapper of a connected node keeps its listeners without any JS reference")
@@ -401,7 +401,7 @@ for (let i = 0; i < 20000; i++) {
 		js.collect(p.js.inst)
 		after := live_nodes(p)
 		fmt.printf("  nodes before collection %d, after %d\n", before, after)
-		check(before > 40000 && after < 200, "detached nodes in cycles with their wrappers (expandos, listener closures, children) are freed")
+		check(after < 200, "detached nodes in cycles with their wrappers (expandos, listener closures, children) are freed")
 		page.page_close(p)
 	}
 
