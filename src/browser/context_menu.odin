@@ -180,7 +180,7 @@ short :: proc(s: string, n: int) -> string {
 	if strings.count(t, "") <= n { return t }
 	i, count := 0, 0
 	for _, b in t { if count == n { i = b; break }; count += 1 }
-	return strings.concatenate({t[:i], "..."}, context.temp_allocator)
+	return strings.concatenate({t[:i], "…"}, context.temp_allocator)
 }
 
 // Builds the open context menu (call once per frame, after the chrome and the page area).
@@ -249,7 +249,7 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 	if r.image != "" {
 		sep(&groups)
 		if ui.menu_item("Open image in new tab").clicked { open_in_new_tab(app, r.image) }
-		if ui.menu_item("Save image as...").clicked { save_as(app, r.image, suggested_name(r.image, "image")) }
+		if ui.menu_item("Save image as…").clicked { save_as(app, r.image, suggested_name(r.image, "image")) }
 		view := page.image_view(p, r.image_node)
 		if ui.menu_item("Copy image", enabled = view.state == .Ready && view.id != 0).clicked { copy_image(app, view) }
 		if ui.menu_item("Copy image address").clicked { clip_set(r.image) }
@@ -258,7 +258,7 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		sep(&groups)
 		if ui.menu_item("Copy", "Ctrl+C").clicked { copy_selection(app, t) }
 		words := strings.trim_space(r.selection)
-		if ui.menu_item(fmt.tprintf("Search %s for \"%s\"###ctx_search", search_engine_name(&ix), short(words, 28))).clicked {
+		if ui.menu_item(fmt.tprintf("Search %s for “%s”###ctx_search", search_engine_name(&ix), short(words, 28))).clicked {
 			open_in_new_tab(app, search_url(&ix, words))
 		}
 	}
@@ -269,10 +269,10 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		if ui.menu_item("Forward", "Alt+Right", icon = GLYPH_FORWARD, enabled = can_forward).clicked { go_history(app, t, +1); return }
 		if ui.menu_item("Reload", "Ctrl+R", icon = GLYPH_RELOAD).clicked { reload(app, t); return }
 		ui.menu_separator()
-		if ui.menu_item("Save as...", "Ctrl+S", enabled = savable(t)).clicked { save_page(app, t) }
+		if ui.menu_item("Save as…", "Ctrl+S", enabled = savable(t)).clicked { save_page(app, t) }
 		ui.menu_separator()
 		if ui.menu_item("Select all", "Ctrl+A").clicked { page.selection_select_all(p) }
-		if ui.menu_item("Find...", "Ctrl+F").clicked { find_open(app) }
+		if ui.menu_item("Find…", "Ctrl+F").clicked { find_open(app) }
 		ui.menu_separator()
 		if ui.menu_item("View page source", "Ctrl+U", enabled = !strings.has_prefix(t.url, "view-source:")).clicked { view_source(app, t) }
 		if ui.menu_item("Page information", icon = GLYPH_INFO).clicked { page_info_request = true }
@@ -485,7 +485,7 @@ save_dialog_done :: proc(data: rawptr) {
 	job := (^Save_Job)(data)
 	app := job.app
 	if job.path == "" { save_job_free(job); return }
-	set_status_all(app, fmt.tprintf("Downloading %s...", job.url))
+	set_status_all(app, fmt.tprintf("Downloading %s…", job.url))
 	job.task = fetch.start(&app.loader, {
 		request = {url = job.url, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = .Empty},
 		on_event = save_fetch_event, user = job, scope = app.process, collect = true,

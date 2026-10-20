@@ -28,7 +28,7 @@ ABOUT_PAGES := [?]About_Page{
 ABOUT_PAGES_STYLE :: `
   html { background-color: #0d1017; }
   body { margin: 0; color: #c9d1e3; font-family: system-ui; font-size: 15px; }
-  .main { width: 680px; margin: 0 auto; padding: 48px 20px; }
+  .main { max-width: 680px; box-sizing: border-box; margin: 0 auto; padding: 48px 20px; }
   h1 { font-size: 32px; margin: 0 0 6px; color: #f1f4fb; }
   .intro { color: #8993ad; margin: 0 0 22px; }
   .page { margin: 10px 0; padding: 12px 18px; background-color: #131825; border: 1px solid #232b40; border-radius: 12px; }

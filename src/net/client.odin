@@ -82,7 +82,7 @@ Job :: struct {
 	body:         []byte,
 	cur:          []byte,
 	total:        int,
-	max_body:     int,
+	max_body:     int,   // atomic (set_max_body)
 	queued:       int,   // atomic: bytes handed to the main thread and not consumed yet
 	paused:       b32,   // atomic
 	terminal:     bool,
@@ -256,6 +256,14 @@ cancel :: proc(c: ^Client, h: base.Handle) -> bool {
 }
 
 in_flight :: proc(c: ^Client) -> int { return c.requests.count }
+
+// Changes the cap of a request's body while it runs (0 = the network.max_response_bytes setting): a navigation that
+// becomes a download (fetch.task_hand_over). The WinHTTP threads read it atomically.
+set_max_body :: proc(c: ^Client, h: base.Handle, max_body: int) {
+	r := base.pool_get(&c.requests, h)
+	if r == nil || r.job == nil { return }
+	sync.atomic_store(&r.job.max_body, max_body > 0 ? max_body : c.settings.max_body)
+}
 
 ////////////////////////////////
 // Main thread
@@ -540,7 +548,7 @@ status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.
 		job.cur = nil
 		if n == 0 { delete(buf, heap()); finish(job); return }
 		job.total += n
-		if job.total > job.max_body { delete(buf, heap()); fail(job, ERROR_BODY_TOO_LARGE); return }
+		if job.total > sync.atomic_load(&job.max_body) { delete(buf, heap()); fail(job, ERROR_BODY_TOO_LARGE); return }
 		push_from_job(job, Event{kind = .Data, data = buf[:n]})
 		if sync.atomic_add(&job.queued, n) + n >= job.client.settings.high_water {
 			sync.atomic_store(&job.paused, true)

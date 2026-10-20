@@ -7594,6 +7594,15 @@ static JSValue wjg_Window_get_document(JSContext *ctx, JSValueConst this_val)
 }
 
 static JSValue wjg_Window_set_location(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "location", "href", v); }
+/* Window.print() -> dom.Window_print */
+static JSValue wjg_Window_print(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    wr_Window_print();
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_Window_get_onanimationstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "animationstart"); }
 static JSValue wjg_Window_set_onanimationstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "animationstart", v, 0); }
 static JSValue wjg_Window_get_onanimationiteration(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "animationiteration"); }
@@ -12049,7 +12058,7 @@ static const wj_member wj_m_Window[] = {
     { "alert", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "confirm", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "prompt", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "print", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "print", WJ_M_METHOD, 0, 0, wjg_Window_print, NULL, NULL, 0 },
     { "postMessage", WJ_M_METHOD, 0, 1, wjr_Window_postMessage, NULL, NULL, 0 },
     { "captureEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "releaseEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },

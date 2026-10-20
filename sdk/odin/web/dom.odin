@@ -335,6 +335,7 @@ foreign _m_dom {
 	@(link_name = "DOMImplementation_createHTMLDocument") _DOMImplementation_createHTMLDocument :: proc(title: [^]u8, title_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "DOMImplementation_createDocumentType") _DOMImplementation_createDocumentType :: proc(name: [^]u8, name_len: u32, public_id: [^]u8, public_id_len: u32, system_id: [^]u8, system_id_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "Document_partOf") _Document_partOf :: proc(document: u64, which: i32) -> Node ---
+	@(link_name = "Window_print") _Window_print :: proc() ---
 	@(link_name = "Element_attachShadowInit") _Element_attachShadowInit :: proc(element: u64, mode: u32, delegates_focus: i32, slot_assignment: u32, clonable: i32, serializable: i32, _ret: ^Node) -> Error ---
 	@(link_name = "CustomElements_disable") _CustomElements_disable :: proc(name: [^]u8, name_len: u32, shadow: i32, internals: i32) ---
 	@(link_name = "ShadowRoot_mode") _ShadowRoot_mode :: proc(root: u64, _buf: [^]u8, _cap: u32) -> i32 ---
@@ -3803,6 +3804,11 @@ DOMImplementation_createDocumentType :: proc "contextless" (name: string, public
 // 3 doctype. 0 when there is none.
 Document_partOf :: proc "contextless" (document: $T_document, which: i32) -> Node where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 {
 	return _Document_partOf(u64(document), which)
+}
+
+// window.print().
+Window_print :: proc "contextless" () {
+	_Window_print()
 }
 
 // element.attachShadow(init): Not_Supported for an element that cannot host one, a host already (unless its root

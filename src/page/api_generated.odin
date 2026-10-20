@@ -12948,6 +12948,18 @@ _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm
 	return nil
 }
 
+// Window_print :: proc(c: ^Call)
+@(private = "file")
+_t_dom_Window_print :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	Window_print(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // Element_attachShadowInit :: proc(c: ^Call, element: Api_Element, mode: u32, delegates_focus: bool, slot_assignment: u32, clonable: bool, serializable: bool) -> (u64, Api_Error)
 @(private = "file")
 _t_dom_Element_attachShadowInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -16953,6 +16965,7 @@ api_imports := [?]wasm.Import{
 	{module = "scripts", name = "Worker_postSerialized", fn = _t_scripts_Worker_postSerialized, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "DedicatedWorkerGlobalScope_postSerialized", fn = _t_scripts_DedicatedWorkerGlobalScope_postSerialized, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "WorkerGlobalScope_importScript", fn = _t_scripts_WorkerGlobalScope_importScript, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Window_print", fn = _t_dom_Window_print, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
 	{module = "dom", name = "Element_attachShadowInit", fn = _t_dom_Element_attachShadowInit, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "CustomElements_disable", fn = _t_dom_CustomElements_disable, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "ShadowRoot_mode", fn = _t_dom_ShadowRoot_mode, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
