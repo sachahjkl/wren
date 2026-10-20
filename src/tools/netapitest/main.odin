@@ -172,7 +172,7 @@ main :: proc() {
 	{
 		cookies.clear_all(&profile.jar)
 		s := run(p, "ws_text", 10)
-		want := "open:chat;rs=1;echo:hello;origin:" + ORIGIN + ";mode:websocket;ua:Wren/0.1;rs=2;close:4001::1;rs=3;"
+		want := "open:chat;rs=1;echo:hello;origin:" + ORIGIN + ";mode:websocket;ua:Wren/0.2;rs=2;close:4001::1;rs=3;"
 		check(s == want, fmt.tprintf("text echo, negotiated subprotocol, Origin, Fetch Metadata, User-Agent, clean close with a code (got %q)", s))
 		found := false
 		for c in cookies.all(&profile.jar) { if c.name == "wscookie" && c.value == "handshake" { found = true } }

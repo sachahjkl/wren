@@ -6,7 +6,7 @@ import "wb:config"
 
 @(private = "file")
 values_full :: proc() -> (v: [Title_Field]string) {
-	v[.App], v[.Version], v[.Build], v[.Engine] = "Wren", "0.1.0", "release", "Wasmtime 49.0.3"
+	v[.App], v[.Version], v[.Build], v[.Engine] = "Wren", "9.8.7", "release", "Wasmtime 49.0.3"   // made up: not APP_VERSION
 	v[.Fps], v[.Cpu], v[.Gpu], v[.Mem] = "60", "1.2", "0.8", "312"
 	v[.Page], v[.Url] = "Example", "https://example.com/"
 	return
@@ -17,17 +17,17 @@ DEFAULT_FORMAT :: "{app} {version} · {build} · {engine} · {fps} fps · CPU {c
 @(test)
 title_compose_fields_and_parts :: proc(t: ^testing.T) {
 	v := values_full()
-	testing.expect_value(t, title_compose(DEFAULT_FORMAT, " · ", v), "Wren 0.1.0 · release · Wasmtime 49.0.3 · 60 fps · CPU 1.2 ms · GPU 0.8 ms — Example")
+	testing.expect_value(t, title_compose(DEFAULT_FORMAT, " · ", v), "Wren 9.8.7 · release · Wasmtime 49.0.3 · 60 fps · CPU 1.2 ms · GPU 0.8 ms — Example")
 	// no GPU time: its part goes, with the separator before it (the page keeps its own)
 	v[.Gpu] = ""
-	testing.expect_value(t, title_compose(DEFAULT_FORMAT, " · ", v), "Wren 0.1.0 · release · Wasmtime 49.0.3 · 60 fps · CPU 1.2 ms — Example")
+	testing.expect_value(t, title_compose(DEFAULT_FORMAT, " · ", v), "Wren 9.8.7 · release · Wasmtime 49.0.3 · 60 fps · CPU 1.2 ms — Example")
 	// statistics off: only the identity and the page
 	v[.Fps], v[.Cpu] = "", ""
-	testing.expect_value(t, title_compose(DEFAULT_FORMAT, " · ", v), "Wren 0.1.0 · release · Wasmtime 49.0.3 — Example")
+	testing.expect_value(t, title_compose(DEFAULT_FORMAT, " · ", v), "Wren 9.8.7 · release · Wasmtime 49.0.3 — Example")
 	// the first part missing: no leading separator
 	testing.expect_value(t, title_compose("{fps} fps · {page}", " · ", v), "Example")
 	// unknown fields stay as they are; literal text without fields stays
-	testing.expect_value(t, title_compose("{page} | {nope} | v{version}", " · ", v), "Example | {nope} | v0.1.0")
+	testing.expect_value(t, title_compose("{page} | {nope} | v{version}", " · ", v), "Example | {nope} | v9.8.7")
 	// another separator
 	testing.expect_value(t, title_compose("{app} / {gpu} / {page}", " / ", v), "Wren / Example")
 	// nothing at all

@@ -8,7 +8,7 @@
 # engine and bindings without a window), kept as <name>_console.txt and summed up in the JSON line ("js_errors", and
 # "js_apis": the errors grouped by what is missing, see Get-JsErrorClasses). Without -Js, Wren runs with
 # javascript.enabled=false when Edge runs without scripts (-NoScript, -Snapshot), and with its defaults otherwise.
-# -NoScript compares on equal terms with Wren, which runs no JavaScript: Edge runs with scripts disabled and sends Wren's
+# -NoScript compares on equal terms with Wren running without JavaScript: Edge runs with scripts disabled and sends Wren's
 # User-Agent and Accept-Language (the defaults of network.user_agent and network.accept_language), so that servers that
 # pick a page by browser (Google serves its plain HTML page to unknown browsers) send both the same document. Edge's DOM
 # after loading is kept as <name>_edge.html (check which page it got). Some servers still tell them apart by other
@@ -36,7 +36,7 @@ param(
     [switch]$Snapshot,
     [switch]$Js,
     [int]$JsWaitMs = 8000,
-    [string]$UserAgent = 'Wren/0.1',
+    [string]$UserAgent = 'Wren/0.2',
     [string]$AcceptLanguage = 'en-US,en;q=0.9',
     [string]$Exe = ''
 )

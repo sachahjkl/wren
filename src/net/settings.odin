@@ -40,7 +40,7 @@ PREFS := [?]config.Def{
 	{name = "network.http3.enabled", kind = .Bool, default = {b = true}, restart = true, description = "Use HTTP/3 when the server and the OS support it."},
 	{name = "network.proxy.mode", kind = .String, default = {s = "system"}, choices = {"system", "none"}, restart = true,
 		description = "system: the operating system's proxy settings (auto-detection included). none: connect directly."},
-	{name = "network.user_agent", kind = .String, default = {s = "Wren/0.1"}, restart = true, description = "The User-Agent header."},
+	{name = "network.user_agent", kind = .String, default = {s = "Wren/0.2"}, restart = true, description = "The User-Agent header."},
 	{name = "network.max_response_bytes", kind = .Int, default = {i = 256 << 20}, bounded = true, min = 0, max = 1 << 40, bytes = true, unit = "bytes",
 		description = "Default largest response body; a request exceeding it fails. 0 = unlimited."},
 	{name = "network.read_chunk_bytes", kind = .Int, default = {i = 64 << 10}, bounded = true, min = 1024, max = 16 << 20, bytes = true, unit = "bytes",

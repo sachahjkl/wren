@@ -9,8 +9,8 @@ import "wb:page"
 
 // Identity of the program. One place, so a rename touches nothing else.
 APP_NAME    :: "Wren"
-APP_VERSION :: "0.1.0"
-APP_TAGLINE :: "A small browser that runs WebAssembly, and nothing else."
+APP_VERSION :: "0.2.0"
+APP_TAGLINE :: "A small browser where WebAssembly runs everything, JavaScript included."
 
 // The sources the program was built from, injected by build.bat (-define): the short commit hash, "+" when the tree
 // had uncommitted changes, and the commit's date. "dev" / "" when built without git (or by `odin test`).
@@ -46,7 +46,7 @@ describe_build :: proc(k: Build_Kind, gpu_timing_define: bool) -> string {
 
 build_description :: proc() -> string { return describe_build(BUILD_KIND, render.GPU_TIMING) }
 
-// "0.1.0 (1a2b3c4, 2026-10-19)", or "0.1.0 (dev)".
+// "0.2.0 (1a2b3c4, 2026-10-20)", or "0.2.0 (dev)".
 version_long :: proc() -> string {
 	if APP_COMMIT_DATE != "" { return fmt.tprintf("%s (%s, %s)", APP_VERSION, app_commit(), APP_COMMIT_DATE) }
 	return fmt.tprintf("%s (%s)", APP_VERSION, app_commit())
@@ -109,7 +109,7 @@ HOME_TEMPLATE :: `<!doctype html>
     </a>
     <a class="card" href="about:demos">
       <h3>Demos &amp; tests</h3>
-      <p>Every demo and test page that comes with Wren, by theme: CSS, layout, effects, text, images, WebAssembly, network, performance.</p>
+      <p>Every demo and test page that comes with Wren, by theme: CSS, layout, effects, text, images, WebAssembly, JavaScript, network, performance.</p>
       <p class="where">about:demos</p>
     </a>
   </div>
