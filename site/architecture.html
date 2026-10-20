@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Architecture — Wren</title>
-  <meta name="description" content="How Wren is built: ownership, the WebAssembly boundary generated from Web IDL, the Fetch policy layer, the GPU compositor and frame pacing.">
+  <meta name="description" content="How Wren is built: ownership, the WebAssembly boundary generated from Web IDL, JavaScript as a WebAssembly module, the Fetch policy layer, the GPU compositor and frame pacing.">
   <link rel="icon" type="image/png" sizes="32x32" href="img/logo-32.png">
   <link rel="icon" type="image/png" sizes="64x64" href="img/logo-64.png">
   <link rel="stylesheet" href="style.css">
@@ -48,11 +48,12 @@
           <tr><td class="n">net</td><td>Transport only: HTTP(S) on asynchronous WinHTTP, per-host and global queues, back-pressure, cancellation.</td></tr>
           <tr><td class="n">fetch</td><td>The policy layer of the Fetch Standard: modes, CORS and preflights, credentials, redirects, HSTS, referrer policy, mixed content, MIME checks.</td></tr>
           <tr><td class="n">url · cookies · csp · http</td><td>WHATWG URLs and the Public Suffix List, the cookie jar (RFC 6265bis), Content Security Policy 3, headers and MIME types.</td></tr>
-          <tr><td class="n">html · dom</td><td>HTML parsing with Lexbor, charset sniffing; the document tree and event dispatch (capture, target, bubble).</td></tr>
+          <tr><td class="n">html · dom</td><td>HTML parsing with Lexbor, charset sniffing, quirks mode; the document tree, shadow trees and slots, event dispatch with retargeting.</td></tr>
           <tr><td class="n">css · style</td><td>Tokenizer, parser, selectors, media and container queries; the cascade with layers, <code>var()</code>, a rule index, a Bloom filter and partial restyles.</td></tr>
           <tr><td class="n">layout</td><td>Block, inline, flex, grid and tables, bidi and line breaking, incremental relayout, display lists cut into paint chunks.</td></tr>
-          <tr><td class="n">wasm</td><td>Wasmtime: instances, imports defined on the linker with address checks, deadlines, limits, compiled-code caches.</td></tr>
-          <tr><td class="n">page</td><td>One document: its DOM, Wasm instances, requests, timers, origin and CSP; the implementations behind the generated imports.</td></tr>
+          <tr><td class="n">wasm</td><td>Wasmtime: instances, imports defined on the linker with address checks, deadlines, limits, compiled-code caches, the WASI subset the JavaScript engine needs, pre-initialization of its image.</td></tr>
+          <tr><td class="n">js · native/js</td><td>The JavaScript engine: QuickJS-ng compiled to WebAssembly, bindings generated from the specifications' Web IDL, hand-written members; on the browser side, its preferences and the bytecode cache.</td></tr>
+          <tr><td class="n">page</td><td>One document: its DOM, Wasm instances, JavaScript realm and script loading, requests, timers, origin and CSP; the implementations behind the generated imports.</td></tr>
           <tr><td class="n">images · webfont</td><td>Image decoding on threads (WIC, and Rust decoders for SVG, WebP and AVIF), WOFF and WOFF2.</td></tr>
           <tr><td class="n">browser</td><td>The shell: window, tabs, navigation, address bar, painter and compositor, about:config, status bar, profiling.</td></tr>
         </tbody>
@@ -99,8 +100,8 @@
         <code>(T, Error)</code> results. Modules whose memory is 64-bit get the same imports with 64-bit
         addresses.</p></div>
       <div class="card"><h3>Documentation</h3><p><a href="https://github.com/sachahjkl/wren/tree/main/docs/api"><code>docs/api</code></a>:
-        every function of the 21 modules, with the ABI, so that SDKs for other languages can follow.</p></div>
-      <div class="card"><h3>Conformance tests</h3><p>470 generated cases over 261 functions: addresses out of bounds,
+        every function of the 25 modules, with the ABI, so that SDKs for other languages can follow.</p></div>
+      <div class="card"><h3>Conformance tests</h3><p>1,130 generated cases over 587 functions: addresses out of bounds,
         invalid UTF-8, dead handles, enums out of range, buffers too small. A pointer outside the memory is a trap,
         a bad argument is an error or a trap, never undefined behaviour.</p></div>
     </div>
@@ -112,6 +113,30 @@
 </section>
 
 <section class="section alt">
+  <div class="wrap">
+    <h2>JavaScript, as one more module</h2>
+    <p class="intro">Wren has no native JavaScript engine. The scripts of a page run in a WebAssembly module, so they
+      are held to the same rules as every other guest: its own instance, its own memory, a deadline on every call.</p>
+    <div class="cards">
+      <div class="card"><h3>QuickJS-ng in WebAssembly</h3><p>QuickJS-ng 0.17.0, patched, compiled by a pinned Zig
+        to a WASI module. Each page and each JavaScript worker gets its own instance, a realm. A trap loses that realm
+        (the status bar says <code>JS stopped</code>), never the browser.</p></div>
+      <div class="card"><h3>Pre-initialized at build time</h3><p>The interfaces, prototypes and preludes of the web
+        platform are built once, when the browser is built, and saved in the module's memory image, which is
+        embedded in the executable. A new realm starts in about 0.5&nbsp;ms instead of 7.</p></div>
+      <div class="card"><h3>Bindings from the specifications</h3><p><code>bindgen</code> reads the Web IDL of webref
+        and writes the glue with Web IDL's rules: conversions, dictionaries, unions, overloads, reflected attributes,
+        iterables. The engine reaches the browser through the same <code>api/*.widl</code> imports as Wasm pages.
+        A member that is not implemented is absent.</p></div>
+      <div class="card"><h3>Two heaps, one lifetime</h3><p>A wrapper keeps its DOM node alive; the wrappers of one
+        DOM tree are grouped at each collection, so a detached tree that nothing holds any more is freed on both
+        sides. Scripts load as HTML specifies: parser order, <code>defer</code>, <code>async</code>, modules,
+        <code>document.write</code>.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
   <div class="wrap">
     <h2>Rendering</h2>
     <div class="cards">
@@ -131,11 +156,11 @@
   </div>
 </section>
 
-<section class="section">
+<section class="section alt">
   <div class="wrap">
     <h2>Measurements</h2>
     <p class="intro">Medians or percentiles from the repository's tools (<code>wasmbench</code>, <code>perf.ps1</code>,
-      <code>cfg_bench.ps1</code>), on the development machine (RTX 4070 SUPER). Frame budgets are those of a
+      <code>cfg_bench.ps1</code>, <code>js_bench.ps1</code>, <code>test262.ps1</code>), on the development machine (RTX 4070 SUPER). Frame budgets are those of a
       180&nbsp;Hz display: 5.56&nbsp;ms.</p>
     <div class="table-box">
       <table>
@@ -147,6 +172,11 @@
           <tr><td>Instantiating a module already compiled (memory cache)</td><td class="n">0.03 ms</td></tr>
           <tr><td>Loading the same module from the disk cache after a restart</td><td class="n">0.52 ms</td></tr>
           <tr><td>Numeric loop, 50 M iterations: Cranelift, against the interpreter Wren used before</td><td class="n">124 ms vs 3146 ms</td></tr>
+          <tr><td>A new JavaScript realm, from the pre-initialized image (median of 50)</td><td class="n">0.5 ms</td></tr>
+          <tr><td>Octane, JavaScript engine in Wasm / the same engine native / Edge</td><td class="n">1664 / 2169 / 91318</td></tr>
+          <tr><td>From JavaScript: <code>node.nodeType</code>, <code>getElementById</code>, <code>createElement</code> + <code>appendChild</code></td><td class="n">64 / 193 / 1311 ns</td></tr>
+          <tr><td>test262, engine in Wasm: runs passed</td><td class="n">99.92 % of 82,220</td></tr>
+          <tr><td>First frame of the start page after launch (shaders precompiled)</td><td class="n">1.79 → 0.29 s</td></tr>
           <tr><td>Wheel scrolling 10,000 paragraphs, CPU / GPU per frame, 99th percentile</td><td class="n">1.41 / 2.28 ms</td></tr>
           <tr><td>Painting while scrolling over content already seen (median)</td><td class="n">0.013 ms</td></tr>
           <tr><td>The effects page (blurs, backdrops, 18 blend modes), GPU per frame, 99th percentile</td><td class="n">3.2–3.6 → 1.2–1.3 ms</td></tr>
@@ -162,7 +192,7 @@
 
 <footer class="foot">
   <div class="wrap">
-    <span>Wren · a browser where WebAssembly is the only engine</span>
+    <span>Wren · a browser where WebAssembly runs everything</span>
     <span><a href="https://github.com/sachahjkl/wren/releases/latest">Download for Windows</a></span>
   </div>
 </footer>

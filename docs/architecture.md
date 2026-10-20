@@ -66,6 +66,21 @@ A document names its modules with `<script type="application/wasm" src="..." non
 are fetched concurrently and run in document order, each in its own instance sharing the DOM. (The syntax is one
 function, `html.wasm_scripts`, if it ever changes.)
 
+## JavaScript
+
+JavaScript is one more Wasm guest, not a second engine beside Wasm. `native/js` is QuickJS-ng 0.17.0 (patched)
+compiled by Zig to a WASI reactor, with an engine-independent layer (`wj.h`), hand-written members and bindings
+generated from the Web IDL of webref (`src/tools/bindgen`, package `jsgen`). `tools\build_js.ps1` pre-initializes it at
+build time (`src/wasm/preinit.odin`: interfaces, prototypes and preludes already built in the memory image); the image
+is embedded in the exe (`src/js/image`). Each page and each JavaScript worker gets its own instance (a realm), whose
+imports are the same `api/*.widl` functions Wasm pages use, plus `js*.widl` for what only the engine needs. So the
+limits of every guest apply: Wasmtime's sandbox, the memory cap, epoch interruption (`wasm.max_call_ms`), on top of
+the engine's own (`javascript.max_heap_bytes`, `javascript.slow_script_ms`). A trap loses the realm (the status bar says
+`JS stopped`), never the browser. Wrappers hold their DOM nodes; wrappers of one DOM tree are grouped at each
+collection so that a detached tree nothing holds is freed (`src/page/js_realm.odin`). Script loading
+(`src/page/js_load*.odin`) follows HTML's processing model. Details: [`native/js/README.md`](../native/js/README.md); coverage:
+[`docs/js/coverage.md`](js/coverage.md).
+
 ## Image and font decoders
 
 `src/images` decodes on its own threads, never on the interface thread. PNG, JPEG, GIF, BMP, ICO and TIFF go through
