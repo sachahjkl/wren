@@ -16,6 +16,7 @@ Render_Settings :: struct {
 	space: render.Blend_Space,
 	text:  render.Text_Rendering,
 	dither: bool,
+	resize_slack: int,
 }
 
 RENDER_PREFS := [?]config.Def{
@@ -31,6 +32,8 @@ RENDER_PREFS := [?]config.Def{
 		description = "Glyph coverage is raised to this power before the correction: below 1 thickens all text, above 1 thins it."},
 	{name = "render.gradients.dither", kind = .Bool, default = {b = true},
 		description = "Add noise of one 8-bit level to CSS gradients so that slow color ramps show no bands (as Chromium's Skia does). Off: exact colors, possible banding."},
+	{name = "render.swap_chain.resize_slack_px", kind = .Int, default = {i = render.DEFAULT_RESIZE_SLACK}, bounded = true, min = 0, max = 2048, unit = "px",
+		description = "Room the window's frame buffers keep to grow, per axis. Resizing the window within it only changes the region shown (no reallocation, which costs 1.5 to 3.5 ms a step); the buffers are reallocated once per this many pixels crossed, and made smaller when they hold more than twice the pixels shown. 0: buffers of the exact window size, reallocated at every step."},
 }
 
 @(private) render_settings: Render_Settings
@@ -57,6 +60,7 @@ render_settings_from_prefs :: proc(p: ^config.Prefs) -> Render_Settings {
 			coverage_exponent = f32(config.float_of(p, "render.text.coverage_exponent")),
 		},
 		dither = config.bool_of(p, "render.gradients.dither"),
+		resize_slack = int(config.int_of(p, "render.swap_chain.resize_slack_px")),
 	}
 }
 
@@ -79,4 +83,5 @@ render_settings_apply :: proc(app: ^App, s: Render_Settings) {
 	compositor_settings = compositor_settings_from_prefs(&app.prefs)
 	render.set_blend_space(&app.r, s.space)
 	render.set_text_rendering(&app.r, s.text)
+	render.set_resize_slack(&app.r, s.resize_slack)
 }

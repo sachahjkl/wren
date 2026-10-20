@@ -67,14 +67,42 @@ parse_block :: proc(p: ^Page, text: string) -> [dynamic]Style_Decl {
 add_declaration :: proc(p: ^Page, block: ^[dynamic]Style_Decl, d: css.Declaration) -> bool {
 	one := [1]css.Declaration{d}
 	pre, customs := style.compile_declarations(p.engine, one[:], context.temp_allocator)
-	for cd in customs { block_set(block, Style_Decl{name = cd.name, value = css_text_of(cd.value), important = cd.important}) }
+	return add_compiled(p, block, d.name, css_text_of(d.value), d.important, pre, customs, nil)
+}
+
+// The block entries of a compiled declaration `name: value`: its longhands, its custom property, or itself (a
+// shorthand with var()). With `styled`, the compiled pieces (in its memory) are also kept under the text each entry is
+// written as, so that the style attribute written from the block restyles without being parsed (style.inline_style_prime).
+// `value_raw`: `value` is the text as given, serialized here when an entry needs it.
+@(private)
+add_compiled :: proc(p: ^Page, block: ^[dynamic]Style_Decl, name, value_in: string, important: bool, pre: []style.Pre_Decl, customs: []style.Custom_Decl, styled: ^style.Styled, value_raw := false) -> bool {
+	value := value_in
+	if value_raw && len(pre) > 0 && pre[0].short != .None {
+		value = css_text_of(css.parse_component_values(value, style.parse_options(&p.settings.style), context.temp_allocator))
+	}
+	for cd, i in customs {
+		v := css_text_of(cd.value)
+		block_set(block, Style_Decl{name = cd.name, value = v, important = important})
+		if styled != nil { style.inline_declaration_register(p.engine, styled, cd.name, v, nil, customs[i:i + 1]) }
+	}
 	short_done := false
-	for pd in pre {
+	for pd, i in pre {
 		if pd.short != .None {
-			if !short_done { block_set(block, Style_Decl{name = d.name, value = css_text_of(d.value), important = d.important}); short_done = true }
+			if !short_done {
+				block_set(block, Style_Decl{name = name, value = value, important = important})
+				short_done = true
+				if styled != nil {
+					// every longhand of the shorthand kept whole (its value has var()): they come together
+					n := 0
+					for x in pre[i:] { if x.short != pd.short { break }; n += 1 }
+					style.inline_declaration_register(p.engine, styled, name, value, pre[i:i + n], nil)
+				}
+			}
 			continue
 		}
-		block_set(block, Style_Decl{name = style.prop_name(pd.prop), value = css_text_of(pd.value), important = pd.important})
+		v := css_text_of(pd.value)
+		block_set(block, Style_Decl{name = style.prop_name(pd.prop), value = v, important = important})
+		if styled != nil { style.inline_declaration_register(p.engine, styled, style.prop_name(pd.prop), v, pre[i:i + 1], nil) }
 	}
 	return len(pre) > 0 || len(customs) > 0
 }
@@ -243,7 +271,15 @@ write_block :: proc(c: ^Call, element: Api_Element, block: []Style_Decl) -> Api_
 	if err := dom_error(dom.set_attribute(c.page.doc, H(element.handle), "style", text)); err != .None { return err }
 	// kept when the text parses back to this very block: no longhands put together into a shorthand (which parse again
 	// in their own order)
-	if strings.count(text, ";") == len(block) { style_cache_put(c.page, text, block) }
+	if strings.count(text, ";") == len(block) {
+		style_cache_put(c.page, text, block)
+		// the same declarations, compiled, for the restyle this attribute change causes
+		if st := c.page.styled; st != nil && c.page.engine != nil {
+			parts := make([]style.Inline_Part, len(block), context.temp_allocator)
+			for d, i in block { parts[i] = style.Inline_Part{name = d.name, value = d.value, important = d.important} }
+			style.inline_style_prime(c.page.engine, st, text, parts)
+		}
+	}
 	return .None
 }
 
@@ -281,9 +317,16 @@ InlineStyle_setProperty :: proc(c: ^Call, element: Api_Element, name: string, va
 	probe, known := decl_cache_get(&s.style_probes, key)
 	if !known {
 		probe = make([dynamic]Style_Decl, 0, 4, context.temp_allocator)
-		opt := style.parse_options(&c.page.settings.style)
-		decls := css.parse_declarations(strings.concatenate({n, ":", value}, context.temp_allocator), opt, context.temp_allocator)
-		if len(decls) == 1 && !decls[0].important && decls[0].name == n { add_declaration(c.page, &probe, decls[0]) }
+		if st := c.page.styled; st != nil && c.page.engine != nil {
+			// compiled once, into the styles of the page: the restyle of the attribute written below reuses it
+			if pre, customs, ok := style.inline_declaration(c.page.engine, st, n, value); ok {
+				add_compiled(c.page, &probe, n, value, false, pre, customs, st, value_raw = true)
+			}
+		} else {
+			opt := style.parse_options(&c.page.settings.style)
+			decls := css.parse_declarations(strings.concatenate({n, ":", value}, context.temp_allocator), opt, context.temp_allocator)
+			if len(decls) == 1 && !decls[0].important && decls[0].name == n { add_declaration(c.page, &probe, decls[0]) }
+		}
 		decl_cache_put(&s.style_probes, c.page.settings.dom.style_cache_entries, key, probe[:])
 	}
 	if len(probe) == 0 { return .None }

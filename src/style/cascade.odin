@@ -105,6 +105,9 @@ Styled :: struct {
 	removed_any:    bool,
 	forms_scan:     u8,                    // restyle_dom: 0 not looked, 1 no form element in the document, 2 some
 	partial_bytes:  int,                   // memory of the threads of parallel partial restyles (counted as waste)
+	// compiled style attributes and CSSOM declarations by text (inline_cache.odin), in `alloc`
+	inline_rules:   map[string]^Rule,
+	inline_decls:   map[string]Inline_Decl,
 }
 
 // A computed style replaced by a partial restyle: `old` is what was in effect (animated values included), `new` the
@@ -125,6 +128,7 @@ styled_destroy :: proc(s: ^Styled) {
 	delete(s.changes)
 	delete(s.shown)
 	delete(s.scheme_metas)
+	inline_cache_destroy(s)
 	journal_destroy(s)
 	virtual.arena_destroy(&s.arena)
 	free(s)
@@ -148,6 +152,7 @@ styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 	delete(s.changes)
 	delete(s.shown)
 	delete(s.scheme_metas)
+	inline_cache_destroy(s)
 	journal_destroy(s)
 	for a in s.thread_arenas { virtual.arena_destroy(a); free(a) }
 	delete(s.thread_arenas)
@@ -664,14 +669,7 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 	add_hint_entry(p, h, n)
 
 	inline_rule: ^Rule
-	if text, ok := attr(n, "style"); ok && p.e.settings.author_stylesheets && text != "" {
-		decls := css.parse_declarations(text, p.opt, context.temp_allocator)
-		pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats)
-		if len(pre) > 0 || len(customs) > 0 {
-			inline_rule = new(Rule, context.temp_allocator)
-			inline_rule^ = Rule{decls = pre, customs = customs, origin = .Author, layer = UNLAYERED, order = max(u32)}
-		}
-	}
+	if text, ok := attr(n, "style"); ok && p.e.settings.author_stylesheets && text != "" { inline_rule = inline_rule_of(p, text) }
 	// the element's own lists are consumed before ::before / ::after reuse the buffers
 	before_entries, after_entries, selection_entries: [dynamic]Entry
 	if len(p.lists[1]) > 0 { before_entries = make([dynamic]Entry, context.temp_allocator); append(&before_entries, ..p.lists[1][:]) }

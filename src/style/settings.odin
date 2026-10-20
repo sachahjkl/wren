@@ -21,6 +21,7 @@ Settings :: struct {
 	max_var_bytes:       int,       // size of one substituted value
 	restyle_waste_bytes: int,       // memory that partial restyles may leave behind before a full pass compacts it
 	recycle_bytes:       int,       // largest style memory kept from one full pass for the next
+	inline_cache_entries: int,      // compiled style attributes (and CSSOM declarations) kept per pass (inline_cache.odin)
 	ua_stylesheet:       bool,
 	author_stylesheets:  bool,      // false: pages are shown with the browser's styles only
 	author_colors:       bool,      // false: the page's colors are ignored (high-contrast reading)
@@ -103,6 +104,8 @@ PREFS := [?]config.Def{
 		description = "Partial restyles (hover, focus) allocate new computed styles; once this much has piled up the next restyle is a full pass that frees it."},
 	{name = "style.recycle_bytes", kind = .Int, default = {i = 128 << 20}, bounded = true, min = 0, max = 1 << 34, bytes = true, unit = "bytes",
 		description = "Memory of a full style pass kept, already mapped, for the next pass of the same page (faster restyles, at the cost of holding it). 0 = always give it back."},
+	{name = "style.inline_cache.entries", kind = .Int, default = {i = 8192}, bounded = true, min = 0, max = 1 << 24, unit = "style attributes",
+		description = "Compiled style attributes kept by text until the next full restyle, so that restyling an element (or many elements with the same style attribute) does not parse it again, and a value a script sets through element.style is compiled once. The same number of single declarations is kept for scripts. 0 = parse at every restyle."},
 	{name = "style.ua_stylesheet.enabled", kind = .Bool, default = {b = true}, description = "Use the browser's default styles (headings, lists, links...). Without them pages are unstyled."},
 	{name = "style.author_stylesheets.enabled", kind = .Bool, default = {b = true}, description = "Apply the styles that pages bring. Off: every page is shown with browser styles only."},
 	{name = "style.author_colors.enabled", kind = .Bool, default = {b = true}, description = "Let pages set colors. Off: color and background properties from pages are ignored."},
@@ -192,6 +195,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.max_var_bytes = int(config.int_of(p, "style.max_var_bytes"))
 	s.restyle_waste_bytes = int(config.int_of(p, "style.restyle_waste_bytes"))
 	s.recycle_bytes = int(config.int_of(p, "style.recycle_bytes"))
+	s.inline_cache_entries = int(config.int_of(p, "style.inline_cache.entries"))
 	s.ua_stylesheet = config.bool_of(p, "style.ua_stylesheet.enabled")
 	s.author_stylesheets = config.bool_of(p, "style.author_stylesheets.enabled")
 	s.author_colors = config.bool_of(p, "style.author_colors.enabled")
