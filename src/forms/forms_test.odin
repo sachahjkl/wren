@@ -620,3 +620,15 @@ records_are_collected :: proc(t: ^testing.T) {
 	collect(f)
 	testing.expect_value(t, len(f.controls), 0)
 }
+
+// Tab order with a shadow host: a slotted control is in its slot's scope only (it was listed twice, and Tab looped
+// back before reaching what follows the host).
+@(test)
+tab_order_through_slots :: proc(t: ^testing.T) {
+	x := fx_make(`<input id=first><div id=host><template shadowrootmode=open><input id=inner><slot></slot></template><input id=slotted></div><input id=last>`)
+	defer fx_destroy(x)
+	order := tab_order(x.f)
+	ids := make([dynamic]string, context.temp_allocator)
+	for h in order { id, _ := dom.get_attribute(x.doc, h, "id"); append(&ids, id) }
+	testing.expectf(t, len(ids) == 4 && ids[0] == "first" && ids[1] == "inner" && ids[2] == "slotted" && ids[3] == "last", "order %v", ids[:])
+}
