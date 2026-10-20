@@ -38,7 +38,21 @@ Event :: struct {
 	location:        u8,        // KeyboardEvent.location
 	delta:           [3]f64,    // WheelEvent deltaX / deltaY / deltaZ
 	delta_mode:      u8,
-	related:         u64,       // relatedTarget (a node handle), 0 = null
+	related:         u64,       // relatedTarget (a node handle), 0 = null; retargeted for each listener while dispatching
+	composed:        bool,      // crosses shadow boundaries (Event.composed); browser UI events are, see dispatch
+	// while dispatching: the event path (DOM "event path"), and the entry whose listeners run
+	path:            [dynamic]Path_Entry,
+	path_index:      int,
+}
+
+// One struct of DOM's event path. `node` NIL with `window`: the Window.
+Path_Entry :: struct {
+	node:          base.Handle,
+	shadow_target: base.Handle,   // NIL: null (the entry is not a target as seen from its tree)
+	related:       u64,
+	window:        bool,
+	root_of_closed_tree: bool,
+	slot_in_closed_tree: bool,
 }
 
 // Event.mods bits
@@ -66,7 +80,7 @@ Dispatcher :: struct {
 
 dispatcher_destroy :: proc(dp: ^Dispatcher) {
 	it: u32
-	for _, e in base.pool_next(&dp.events, &it) { delete(e.type); delete(e.data); delete(e.text) }
+	for _, e in base.pool_next(&dp.events, &it) { delete(e.type); delete(e.data); delete(e.text); delete(e.path) }
 	base.pool_destroy(&dp.events)
 }
 
@@ -107,33 +121,120 @@ compact_listeners :: proc(n: ^Node) {
 	resize(&n.listeners, w)
 }
 
+// Event types the browser dispatches with `composed` set (UI Events, Pointer Events, Input Events, HTML focus): they
+// cross shadow boundaries. Events scripts make say themselves.
+ui_composed :: proc(type: string) -> bool {
+	switch type {
+	case "click", "dblclick", "auxclick", "mousedown", "mouseup", "mousemove", "mouseover", "mouseout", "contextmenu",
+	     "pointerdown", "pointerup", "pointermove", "pointerover", "pointerout", "pointercancel", "gotpointercapture",
+	     "lostpointercapture", "wheel", "keydown", "keyup", "keypress", "focus", "blur", "focusin", "focusout", "input",
+	     "beforeinput", "compositionstart", "compositionupdate", "compositionend", "touchstart", "touchend", "touchmove",
+	     "touchcancel", "dragstart", "drag", "dragenter", "dragleave", "dragover", "drop", "dragend", "select",
+	     "selectstart", "copy", "cut", "paste":
+		return true
+	}
+	return false
+}
+
 // Runs the capture / target / bubble phases. Returns false if a listener called preventDefault on a cancelable event.
 dispatch :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: Event) -> bool {
-	if get(d, target) == nil { return true }
+	ok, _ := dispatch_ex(d, dp, target, proto)
+	return ok
+}
+
+// DOM "dispatch" with shadow trees: the event path with its shadow-adjusted targets and retargeted related targets,
+// the closed-tree marks composedPath() needs, both passes as the standard runs them (a host on the path is a target as
+// seen from its tree: AT_TARGET for its capture and its other listeners). Returns whether the event was not
+// canceled, and the event's target once dispatched (NIL when it was cleared: the target was in a shadow tree).
+dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: Event) -> (not_canceled: bool, final_target: base.Handle) {
+	if get(d, target) == nil { return true, target }
 	ev := proto
 	ev.type = strings.clone(proto.type)
 	ev.data = strings.clone(proto.data)
 	ev.text = strings.clone(proto.text)
 	ev.target = target
+	ev.path = nil
+	if !proto.untrusted && proto.engine_id == 0 && !proto.composed { ev.composed = ui_composed(proto.type) }
+	original_related := proto.related
 	eh, _ := base.pool_insert(&dp.events, ev)
 	defer {
-		if e := base.pool_get(&dp.events, eh); e != nil { delete(e.type); delete(e.data); delete(e.text) }
+		if e := base.pool_get(&dp.events, eh); e != nil { delete(e.type); delete(e.data); delete(e.text); delete(e.path) }
 		base.pool_remove(&dp.events, eh)
 	}
+	composed := base.pool_get(&dp.events, eh).composed
+	to_window_ok := dp.window != nil && proto.type != "load"
 
-	// propagation path, target first
-	path: [dynamic]base.Handle
-	defer delete(path)
-	for cur := target; cur != base.NIL_HANDLE; {
-		append(&path, cur)
-		n := get(d, cur)
-		if n == nil { break }
-		cur = n.parent
+	closed_root :: proc(d: ^Document, h: base.Handle) -> bool {
+		n := get(d, h)
+		if n == nil || !n.is_shadow { return false }
+		info := shadow_info(d, h)
+		return info != nil && info.mode == .Closed
+	}
+	retarget_rel :: proc(d: ^Document, rel: u64, against: base.Handle) -> u64 {
+		if rel == 0 || get(d, base.Handle(rel)) == nil { return rel }
+		return u64(retarget(d, base.Handle(rel), against))
+	}
+	// DOM "get the parent": (node, is_window); NIL node and false: none
+	get_parent :: proc(d: ^Document, h: base.Handle, composed, window_ok: bool, first: base.Handle) -> (base.Handle, bool) {
+		n := get(d, h)
+		if n == nil { return base.NIL_HANDLE, false }
+		if h == d.root { return base.NIL_HANDLE, window_ok }
+		if n.is_shadow {
+			if !composed && tree_root(d, first) == h { return base.NIL_HANDLE, false }
+			return n.shadow, false
+		}
+		if n.slot != base.NIL_HANDLE { return n.slot, false }
+		return n.parent, false
 	}
 
-	alive :: proc(dp: ^Dispatcher, eh: base.Handle) -> ^Event { return base.pool_get(&dp.events, eh) }
+	// the event path
+	path := make([dynamic]Path_Entry)
+	{
+		cur_target := target
+		rel := retarget_rel(d, original_related, target)
+		if u64(cur_target) != rel || u64(target) == original_related {
+			append(&path, Path_Entry{node = target, shadow_target = target, related = rel, root_of_closed_tree = closed_root(d, target)})
+			slottable := get(d, target).slot != base.NIL_HANDLE
+			slot_in_closed := false
+			parent, is_win := get_parent(d, target, composed, to_window_ok, target)
+			for parent != base.NIL_HANDLE || is_win {
+				if slottable {
+					slottable = false
+					if closed_root(d, tree_root(d, parent)) { slot_in_closed = true }
+				}
+				if is_win {
+					rel = original_related
+					if rel != 0 && get(d, base.Handle(rel)) != nil {
+						// retargeted against the Window: out of every shadow tree
+						r := base.Handle(rel)
+						for {
+							rr := tree_root(d, r)
+							rn := get(d, rr)
+							if rn == nil || !rn.is_shadow { break }
+							r = rn.shadow
+						}
+						rel = u64(r)
+					}
+					append(&path, Path_Entry{window = true, related = rel, slot_in_closed_tree = slot_in_closed})
+					break
+				}
+				rel = retarget_rel(d, original_related, parent)
+				if shadow_including_ancestor(d, tree_root(d, cur_target), parent) {
+					append(&path, Path_Entry{node = parent, related = rel, root_of_closed_tree = closed_root(d, parent), slot_in_closed_tree = slot_in_closed})
+				} else if u64(parent) == rel {
+					break
+				} else {
+					cur_target = parent
+					append(&path, Path_Entry{node = parent, shadow_target = parent, related = rel, root_of_closed_tree = closed_root(d, parent), slot_in_closed_tree = slot_in_closed})
+				}
+				slot_in_closed = false
+				parent, is_win = get_parent(d, parent, composed, to_window_ok, target)
+			}
+		}
+	}
+	if e := base.pool_get(&dp.events, eh); e != nil { e.path = path } else { delete(path) }
 
-	run_node :: proc(d: ^Document, dp: ^Dispatcher, eh: base.Handle, node: base.Handle, phase: Phase, want_capture: Maybe(bool)) -> bool {
+	run_node :: proc(d: ^Document, dp: ^Dispatcher, eh: base.Handle, node: base.Handle, phase: Phase, capture: bool) -> bool {
 		e := base.pool_get(&dp.events, eh)
 		n := get(d, node)
 		if e == nil || n == nil { return true }
@@ -142,8 +243,7 @@ dispatch :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: Even
 		snapshot: [dynamic]Listener
 		defer delete(snapshot)
 		for l in n.listeners {
-			if l.removed || l.type != e.type { continue }
-			if c, has := want_capture.?; has && l.capture != c { continue }
+			if l.removed || l.type != e.type || l.capture != capture { continue }
 			append(&snapshot, l)   // type string aliases the node's; used only inside this call before any invoke
 		}
 		for l in snapshot {
@@ -162,47 +262,90 @@ dispatch :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: Even
 		return true
 	}
 
-	halted :: proc(dp: ^Dispatcher, eh: base.Handle) -> bool {
+	// one struct of the path: target and relatedTarget as seen from it, then its listeners of one pass
+	invoke :: proc(d: ^Document, dp: ^Dispatcher, eh: base.Handle, i: int, capture: bool) -> bool {
 		e := base.pool_get(&dp.events, eh)
-		return e == nil || e.stop || e.stop_immediate
+		if e == nil { return true }
+		s := e.path[i]
+		for j := i; j >= 0; j -= 1 {
+			if e.path[j].shadow_target != base.NIL_HANDLE { e.target = e.path[j].shadow_target; break }
+		}
+		e.related = s.related
+		e.path_index = i
+		phase: Phase = s.shadow_target != base.NIL_HANDLE ? .At_Target : (capture ? .Capturing : .Bubbling)
+		if e.stop { return true }
+		if s.window {
+			e.phase = phase
+			e.current_target = base.NIL_HANDLE
+			return dp.window(dp.user, eh, capture)
+		}
+		return run_node(d, dp, eh, s.node, phase, capture)
 	}
 
-	// the Window after the document, for everything but `load` (HTML: a Document's parent is its Window then)
-	to_window := dp.window != nil && path[len(path) - 1] == d.root && proto.type != "load"
-
-	phases: {
-		if to_window {
-			if e := alive(dp, eh); e != nil { e.phase = .Capturing }
-			if !dp.window(dp.user, eh, true) { return true }
-			if halted(dp, eh) { break phases }
-		}
-		// capture: root down to the target's parent
-		for i := len(path) - 1; i >= 1; i -= 1 {
-			if !run_node(d, dp, eh, path[i], .Capturing, true) { return true }
-			if halted(dp, eh) { break phases }
-		}
-		// target: capture listeners first, then the others (current DOM behaviour)
-		if !run_node(d, dp, eh, path[0], .At_Target, true) { return true }
-		if e := alive(dp, eh); e != nil && !e.stop_immediate {
-			if !run_node(d, dp, eh, path[0], .At_Target, false) { return true }
-		}
-		if halted(dp, eh) { break phases }
-		// bubble
-		if e := alive(dp, eh); e != nil && e.bubbles {
-			for i in 1 ..< len(path) {
-				if !run_node(d, dp, eh, path[i], .Bubbling, false) { return true }
-				if halted(dp, eh) { break phases }
-			}
-			if to_window {
-				if e2 := alive(dp, eh); e2 != nil { e2.phase = .Bubbling }
-				if !dp.window(dp.user, eh, false) { return true }
-			}
-		}
+	n_path := len(path)
+	for i := n_path - 1; i >= 0; i -= 1 {
+		if !invoke(d, dp, eh, i, true) { return true, target }
+	}
+	for i in 0 ..< n_path {
+		e := base.pool_get(&dp.events, eh)
+		if e == nil { break }
+		if e.path[i].shadow_target == base.NIL_HANDLE && !e.bubbles { continue }
+		if !invoke(d, dp, eh, i, false) { return true, target }
 	}
 
-	if e := alive(dp, eh); e != nil {
-		e.phase = .None
-		return !(e.cancelable && e.default_prevented)
+	e := base.pool_get(&dp.events, eh)
+	if e == nil { return true, target }
+	e.phase = .None
+	e.current_target = base.NIL_HANDLE
+	// DOM "clear targets": the target or related target as last seen is in a shadow tree
+	final_target = e.target
+	for i := len(e.path) - 1; i >= 0; i -= 1 {
+		s := e.path[i]
+		if s.shadow_target == base.NIL_HANDLE { continue }
+		clear := is_shadow_root(d, tree_root(d, s.shadow_target))
+		if s.related != 0 && get(d, base.Handle(s.related)) != nil && is_shadow_root(d, tree_root(d, base.Handle(s.related))) { clear = true }
+		if clear { final_target = base.NIL_HANDLE }
+		break
 	}
-	return true
+	return !(e.cancelable && e.default_prevented), final_target
+}
+
+// Event.composedPath() of the event being dispatched (DOM §2.9): the invocation targets around the current one that a
+// listener there may see (closed shadow trees it is not inside are hidden). A NIL handle stands for the Window.
+composed_path :: proc(dp: ^Dispatcher, eh: base.Handle, allocator := context.temp_allocator) -> []base.Handle {
+	e := base.pool_get(&dp.events, eh)
+	out := make([dynamic]base.Handle, allocator)
+	if e == nil || len(e.path) == 0 || e.phase == .None { return out[:] }
+	path := e.path[:]
+	inv :: proc(s: Path_Entry) -> base.Handle { return s.window ? base.NIL_HANDLE : s.node }
+	cur_index := clamp(e.path_index, 0, len(path) - 1)
+	// currentTarget's hidden level, from the outermost struct in
+	hidden := 0
+	for index := len(path) - 1; index >= 0; index -= 1 {
+		if path[index].root_of_closed_tree { hidden += 1 }
+		if index == cur_index { break }
+		if path[index].slot_in_closed_tree { hidden -= 1 }
+	}
+	before := make([dynamic]base.Handle, context.temp_allocator)
+	level, max_level := hidden, hidden
+	for index := cur_index - 1; index >= 0; index -= 1 {
+		if path[index].root_of_closed_tree { level += 1 }
+		if level <= max_level { append(&before, inv(path[index])) }
+		if path[index].slot_in_closed_tree {
+			level -= 1
+			if level < max_level { max_level = level }
+		}
+	}
+	for i := len(before) - 1; i >= 0; i -= 1 { append(&out, before[i]) }
+	append(&out, inv(path[cur_index]))
+	level, max_level = hidden, hidden
+	for index in cur_index + 1 ..< len(path) {
+		if path[index].slot_in_closed_tree { level += 1 }
+		if level <= max_level { append(&out, inv(path[index])) }
+		if path[index].root_of_closed_tree {
+			level -= 1
+			if level < max_level { max_level = level }
+		}
+	}
+	return out[:]
 }

@@ -135,6 +135,12 @@ clone_node :: proc(d: ^Document, h: base.Handle, deep: bool) -> base.Handle {
 			if get(d, c).first_child != base.NIL_HANDLE { append(&stack, Pair{c, cc}) }
 		}
 	}
+	// copied hosts got their children after their shadow roots: assign them now
+	if len(d.shadow_roots) > 0 {
+		for cur := root; cur != base.NIL_HANDLE; cur = next_in_tree(d, cur, root) {
+			if s := get(d, cur).shadow; s != base.NIL_HANDLE && get(d, cur).kind == .Element { assign_slottables_for_tree(d, s) }
+		}
+	}
 	return root
 }
 
@@ -155,6 +161,19 @@ clone_one :: proc(d: ^Document, h: base.Handle) -> base.Handle {
 			dup := clone_node(d, content, true)
 			get(d, dup).held = true
 			d.templates[nh] = dup
+		}
+		// DOM "clone a node": a clonable shadow root is copied with its host, whatever `deep` says
+		if src := get(d, h).shadow; src != base.NIL_HANDLE {
+			if info := shadow_info(d, src); info != nil && info.clonable {
+				init := info.init
+				if root, err := attach_shadow(d, nh, init); err == .None {
+					for c := get(d, src).first_child; c != base.NIL_HANDLE; c = get(d, c).next {
+						raw_append(d, root, clone_node(d, c, true))
+					}
+					if ri := shadow_info(d, root); ri != nil { ri.slots_valid = false }
+					assign_slottables_for_tree(d, root)
+				}
+			}
 		}
 	}
 	return nh

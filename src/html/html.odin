@@ -60,10 +60,13 @@ Builder :: struct {
 	count:     int,
 	truncated: bool,
 	mode:      dom.Document_Mode,
+	shadow_ok: bool,   // declarative shadow roots are attached (documents, setHTMLUnsafe; not innerHTML)
+	dsd_pending: bool, // a declarative shadow root was just attached: the template_begin that may follow enters it
 }
 
 @(private)
 b_open2 :: proc "c" (user: rawptr, tag: [^]u8, tag_len: uint, attrs: [^]Shim_Attr, n_attrs: uint, ns: i32) {
+	if ns == 0 && view(tag, tag_len) == "template" && b_declarative_shadow(user, attrs, n_attrs) { return }
 	b_open(user, tag, tag_len, attrs, n_attrs)
 	context = runtime.default_context()
 	bd := (^Builder)(user)
@@ -87,12 +90,52 @@ b_doctype :: proc "c" (user: rawptr, name: [^]u8, name_len: uint, public_id: [^]
 	b.count += 1
 }
 
+// A <template shadowrootmode> (HTML §13.2.6.4.7 "A start tag whose tag name is template", declarative shadow roots):
+// when the parse allows them and the current node can host one, the template is not inserted; its contents go into
+// a shadow root attached to the current node (which the template_begin that follows enters). Otherwise (no valid
+// mode, a host already, an element that cannot host) it is an ordinary template.
+@(private)
+b_declarative_shadow :: proc "c" (user: rawptr, attrs: [^]Shim_Attr, n_attrs: uint) -> bool {
+	context = runtime.default_context()
+	b := (^Builder)(user)
+	if !b.shadow_ok || b.truncated || b.count >= b.max_nodes { return false }
+	init: dom.Shadow_Init
+	init.declarative = true
+	has_mode := false
+	for i in 0 ..< int(n_attrs) {
+		a := attrs[i]
+		switch view(a.name, a.name_len) {
+		case "shadowrootmode":
+			v := view(a.value, a.value_len)
+			if strings.equal_fold(v, "open") { init.mode = .Open; has_mode = true } else if strings.equal_fold(v, "closed") { init.mode = .Closed; has_mode = true }
+		case "shadowrootdelegatesfocus": init.delegates_focus = true
+		case "shadowrootclonable": init.clonable = true
+		case "shadowrootserializable": init.serializable = true
+		}
+	}
+	if !has_mode { return false }
+	host := b.stack[len(b.stack) - 1]
+	if host == base.NIL_HANDLE || dom.shadow_root_of(b.doc, host) != base.NIL_HANDLE { return false }
+	root, err := dom.attach_shadow(b.doc, host, init)
+	if err != .None { return false }
+	append(&b.stack, root)   // what the template's close pops
+	b.dsd_pending = true
+	b.count += 1
+	return true
+}
+
 // The contents of the template just opened: built in its DocumentFragment (dom.template_content), not under it.
 @(private)
 b_template_begin :: proc "c" (user: rawptr) {
 	context = runtime.default_context()
 	b := (^Builder)(user)
 	tpl := b.stack[len(b.stack) - 1]
+	if b.dsd_pending {
+		// a declarative shadow root: its contents go into the root itself
+		b.dsd_pending = false
+		append(&b.stack, tpl)
+		return
+	}
 	if b.truncated || tpl == base.NIL_HANDLE { append(&b.stack, base.NIL_HANDLE); return }
 	append(&b.stack, dom.template_content(b.doc, tpl))
 }
@@ -127,6 +170,7 @@ view :: #force_inline proc "contextless" (p: [^]u8, n: uint) -> string {
 b_open :: proc "c" (user: rawptr, tag: [^]u8, tag_len: uint, attrs: [^]Shim_Attr, n_attrs: uint) {
 	context = runtime.default_context()
 	b := (^Builder)(user)
+	b.dsd_pending = false
 	// keep the stack balanced even when truncated: close callbacks always pop
 	if b.truncated || b.count >= b.max_nodes {
 		b.truncated = true
@@ -148,6 +192,7 @@ b_open :: proc "c" (user: rawptr, tag: [^]u8, tag_len: uint, attrs: [^]Shim_Attr
 b_close :: proc "c" (user: rawptr) {
 	context = runtime.default_context()
 	b := (^Builder)(user)
+	b.dsd_pending = false
 	if len(b.stack) > 1 { pop(&b.stack) }
 }
 
@@ -180,7 +225,7 @@ Parse_Result :: struct {
 
 // Parses `data` and appends the resulting tree under `parent` (normally the Document node).
 parse_into :: proc(d: ^dom.Document, parent: base.Handle, data: []byte, max_nodes: int) -> Parse_Result {
-	b := Builder{doc = d, max_nodes = max_nodes}
+	b := Builder{doc = d, max_nodes = max_nodes, shadow_ok = true}
 	defer delete(b.stack)
 	append(&b.stack, parent)
 	// the document's mutation hooks see parser-made nodes (scripts of a fragment never run: page/js_load.odin)
@@ -196,9 +241,10 @@ parse_into :: proc(d: ^dom.Document, parent: base.Handle, data: []byte, max_node
 // HTML's fragment parsing algorithm (innerHTML, insertAdjacentHTML...): `data` parsed as the contents of an element
 // named `context_tag` of namespace `context_ns` (lower case), in a document of mode `mode`. The nodes are built into
 // a new DocumentFragment (detached, owned by the caller). ok = false: the parser failed (the fragment is empty).
-parse_fragment :: proc(d: ^dom.Document, context_tag: string, context_ns: dom.Namespace, mode: dom.Document_Mode, data: []byte, max_nodes: int) -> (fragment: base.Handle, result: Parse_Result) {
+// `declarative_shadow`: <template shadowrootmode> attaches shadow roots (setHTMLUnsafe; innerHTML does not).
+parse_fragment :: proc(d: ^dom.Document, context_tag: string, context_ns: dom.Namespace, mode: dom.Document_Mode, data: []byte, max_nodes: int, declarative_shadow := false) -> (fragment: base.Handle, result: Parse_Result) {
 	fragment = dom.create_fragment(d)
-	b := Builder{doc = d, max_nodes = max_nodes}
+	b := Builder{doc = d, max_nodes = max_nodes, shadow_ok = declarative_shadow}
 	defer delete(b.stack)
 	append(&b.stack, fragment)
 	sink := SINK2

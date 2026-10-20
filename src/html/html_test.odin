@@ -122,3 +122,38 @@ garbage_does_not_crash :: proc(t: ^testing.T) {
 	_, r := parse(d, "\x00\xff<<<>>><a b='<c d=\">&#xD800;&#99999999;<svg><p></svg></table><td>")
 	testing.expect(t, r.ok)
 }
+
+@(test)
+declarative_shadow_roots :: proc(t: ^testing.T) {
+	d := dom.document_create()
+	defer dom.document_destroy(d)
+	src := `<!doctype html><body><div id=h><template shadowrootmode=open shadowrootdelegatesfocus><style>p{}</style><slot></slot><span><template shadowrootmode=closed><b>deep</b></template></span></template><p>light</p></div>` +
+		`<div id=e><template shadowrootmode=open></template></div><p id=np><template shadowrootmode=bogus><i></i></template></p>`
+	parse_into(d, d.root, transmute([]byte)src, 10_000)
+	h := dom.find_by_id(d, "h")
+	root := dom.shadow_root_of(d, h)
+	testing.expect(t, root != base.NIL_HANDLE)
+	info := dom.shadow_info(d, root)
+	testing.expect(t, info != nil && info.declarative && info.delegates_focus && info.mode == .Open)
+	// the template is not in the host's children; the light <p> is assigned to the slot
+	hc := dom.get(d, h).first_child
+	testing.expect(t, hc != base.NIL_HANDLE && dom.get(d, hc).name == "p")
+	first := dom.get(d, root).first_child
+	testing.expect(t, first != base.NIL_HANDLE && dom.get(d, first).name == "style")
+	span := dom.get(d, dom.get(d, first).next).next
+	testing.expect(t, span != base.NIL_HANDLE && dom.get(d, span).name == "span")
+	inner := dom.shadow_root_of(d, span)
+	testing.expect(t, inner != base.NIL_HANDLE && dom.shadow_info(d, inner).mode == .Closed)
+	testing.expect(t, dom.assigned_slot(d, hc) != base.NIL_HANDLE)
+	// an empty declarative root, and an ordinary template for a bad mode
+	testing.expect(t, dom.shadow_root_of(d, dom.find_by_id(d, "e")) != base.NIL_HANDLE)
+	np := dom.find_by_id(d, "np")
+	testing.expect_value(t, dom.shadow_root_of(d, np), base.NIL_HANDLE)
+	testing.expect(t, dom.get(d, dom.get(d, np).first_child).name == "template")
+	// fragments (innerHTML) do not attach shadow roots unless asked
+	f, _ := parse_fragment(d, "div", .HTML, .No_Quirks, transmute([]byte)string(`<div><template shadowrootmode=open><i></i></template></div>`), 100)
+	fd := dom.get(d, f).first_child
+	testing.expect_value(t, dom.shadow_root_of(d, fd), base.NIL_HANDLE)
+	f2, _ := parse_fragment(d, "div", .HTML, .No_Quirks, transmute([]byte)string(`<div><template shadowrootmode=open><i></i></template></div>`), 100, declarative_shadow = true)
+	testing.expect(t, dom.shadow_root_of(d, dom.get(d, f2).first_child) != base.NIL_HANDLE)
+}

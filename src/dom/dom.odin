@@ -58,6 +58,12 @@ Node :: struct {
 	generation_of_layout: u32,   // bumped on any change that needs re-layout (see `dirty`)
 	pins:        u32,      // JavaScript wrappers referring to this node (pins.odin)
 	pins_below:  u32,      // pins of this node and its whole subtree: a detached tree with none can be freed
+	// shadow trees (shadow.odin): `shadow` is an element's shadow root, or a shadow root's host; `slot` the slot a
+	// slottable (a host's child) is assigned to, at position `slot_pos` of that slot's assigned nodes
+	shadow:      base.Handle,
+	slot:        base.Handle,
+	slot_pos:    u32,
+	is_shadow:   bool,     // a Fragment that is a shadow root
 }
 
 Document :: struct {
@@ -84,6 +90,14 @@ Document :: struct {
 	observer_user: rawptr,
 	batch:         u32,
 	next_batch:    u32,
+	// shadow trees (shadow.odin): every shadow root with what attachShadow gave it, the assigned nodes of each slot
+	// that has some, manual slot assignments (slottable -> slot), and who to tell when a slot's assignment changes
+	shadow_roots:  map[base.Handle]Shadow_Info,
+	assigned:      map[base.Handle][dynamic]base.Handle,
+	manual_slot:   map[base.Handle]base.Handle,
+	manual_nodes:  map[base.Handle][dynamic]base.Handle,   // slot -> its manually assigned nodes (HTMLSlotElement.assign)
+	slot_changed:  proc(user: rawptr, d: ^Document, slot: base.Handle),
+	slot_user:     rawptr,
 }
 
 Ns_Extra :: struct {
@@ -101,6 +115,7 @@ Error :: enum i32 {
 	Not_Found         = -3,   // reference child is not a child of the parent
 	Invalid_Argument  = -4,
 	Attached          = -5,   // release of a node that is still in the tree
+	Not_Supported     = -6,   // attachShadow on an element that cannot be a host, or is one already
 }
 
 @(private)
@@ -144,6 +159,7 @@ free_document :: proc(d: ^Document) {
 	for _, x in d.ns_extra { delete(x.uri); delete(x.prefix) }
 	delete(d.ns_extra)
 	delete(d.templates)
+	shadow_free_all(d)
 	free(d)
 }
 
@@ -240,6 +256,7 @@ detach :: proc(d: ^Document, h: base.Handle) {
 	touch(d)
 	d.tree_version += 1
 	journal_record(d, .Remove, h, old_parent, prev = old_prev, next = old_next)
+	if len(d.shadow_roots) > 0 { shadow_removed(d, h, old_parent) }
 }
 
 // Inserts `child` before `ref` (NIL_HANDLE = at the end), moving it if it is already in a tree.
@@ -249,6 +266,8 @@ insert_before :: proc(d: ^Document, parent, child, ref: base.Handle) -> Error {
 	if !can_have_children(p) || c.kind == .Document || c.kind == .Fragment { return .Hierarchy }
 	// a childless node can only be its own ancestor: skip the O(depth) walk (building deep trees stays linear)
 	if child == parent || (c.first_child != base.NIL_HANDLE && is_ancestor_or_self(d, child, parent)) { return .Hierarchy }
+	// a host may not go into its own shadow tree (DOM "host-including inclusive ancestor")
+	if len(d.shadow_roots) > 0 && (c.first_child != base.NIL_HANDLE || c.shadow != base.NIL_HANDLE) && host_including_ancestor(d, child, parent) { return .Hierarchy }
 	if ref != base.NIL_HANDLE {
 		r := get(d, ref)
 		if r == nil { return .Invalid_Handle }
@@ -274,6 +293,7 @@ insert_before :: proc(d: ^Document, parent, child, ref: base.Handle) -> Error {
 	touch(d)
 	d.tree_version += 1
 	journal_record(d, .Insert, child, parent, prev = c.prev, next = c.next)
+	if len(d.shadow_roots) > 0 { shadow_inserted(d, child, parent) }
 	notify_inserted(d, child)   // last: it may run scripts (hooks.odin)
 	return .None
 }
@@ -294,7 +314,7 @@ remove_child :: proc(d: ^Document, parent, child: base.Handle) -> Error {
 release :: proc(d: ^Document, h: base.Handle) -> Error {
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
-	if n.parent != base.NIL_HANDLE || h == d.root { return .Attached }
+	if n.parent != base.NIL_HANDLE || h == d.root || n.is_shadow { return .Attached }
 	destroy_unpinned(d, h)
 	return .None
 }
@@ -325,7 +345,10 @@ destroy_subtree :: proc(d: ^Document, h: base.Handle) {
 					if c.pins_below == 0 { append(&stack, content) }
 				}
 			}
+			// its shadow tree goes with it (its pins count in the host's: nothing in it is pinned)
+			if n.shadow != base.NIL_HANDLE { append(&stack, n.shadow); n.shadow = base.NIL_HANDLE }
 		}
+		if len(d.shadow_roots) > 0 || len(d.assigned) > 0 || len(d.manual_slot) > 0 { shadow_forget_node(d, cur, n) }
 		free_node_data(n)
 		base.pool_remove(&d.nodes, cur)
 	}
@@ -351,6 +374,7 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 			if lname == "id" { ids_changed(d, h, old, true, value, true) }
 			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, old, true)
 			delete(old)
+			if len(d.shadow_roots) > 0 { shadow_attribute(d, h, lname) }
 			notify_attribute(d, h, lname)
 			return .None
 		}
@@ -360,6 +384,7 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 	d.attr_version += 1
 	if lname == "id" { ids_changed(d, h, "", false, value, true) }
 	journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, "", false)
+	if len(d.shadow_roots) > 0 { shadow_attribute(d, h, lname) }
 	notify_attribute(d, h, lname)
 	return .None
 }
@@ -407,6 +432,7 @@ remove_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> Error {
 			if lname == "id" { ids_changed(d, h, old, true, "", false) }
 			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, old, true)
 			delete(old_name); delete(old)
+			if len(d.shadow_roots) > 0 { shadow_attribute(d, h, lname) }
 			notify_attribute(d, h, lname)
 			return .None
 		}
