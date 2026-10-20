@@ -179,7 +179,7 @@ realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1, kind := js.Realm_
 	}
 	seed: u64
 	wasm.random_bytes(slice.bytes_from_ptr(&seed, 8))
-	if !js.realm_start(inst, {kind = kind, seed = seed, max_heap_bytes = 1 << 30, gc_threshold = 1 << 20}) {
+	if !js.realm_start(inst, {kind = kind, seed = seed, max_heap_bytes = 1 << 30, gc_threshold = 2 << 20}) {
 		fmt.eprintln("jsengine: wj_realm_start failed:", inst.last_error)
 		wasm.destroy(inst)
 		return

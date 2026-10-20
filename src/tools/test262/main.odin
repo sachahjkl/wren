@@ -478,7 +478,7 @@ run_one :: proc(t: ^Test_Info, buf: []byte, strict: bool) -> (failure: string, t
 	inst.lenient = true
 	seed: u64 = 0x9e3779b97f4a7c15
 	// kind 0: no web interfaces on the global, ECMAScript only
-	if !js.realm_start(inst, {kind = js.Realm_Kind(0), seed = seed, max_heap_bytes = 1 << 30, gc_threshold = 1 << 20}) {
+	if !js.realm_start(inst, {kind = js.Realm_Kind(0), seed = seed, max_heap_bytes = 1 << 30, gc_threshold = 2 << 20}) {
 		return fmt.tprintf("the realm did not start: %s", inst.last_error), true
 	}
 	if addr := js.interrupt_address(inst); addr != 0 {
