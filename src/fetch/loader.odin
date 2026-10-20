@@ -811,15 +811,20 @@ File_Job :: struct {
 	descending: bool,
 	outcome:    File_Outcome,
 	index:      string,          // the index file shown
+	root:       string,          // the tree the file must really be in (a document's own), "" when anything goes
 }
 
 // A navigation may open a file outside the initiator's tree: the browser UI (nil) opens anything, and so does a file:
 // document (a listing's links, a local page linking to its neighbours), unless file: documents may read nothing at all.
 // A web page never does: it can neither open nor list the disk.
-file_navigation_allowed :: proc(env: ^Environment, policy: File_Access) -> bool {
+//
+// A file on another machine (file://server/share/...) is opened from a document of that machine only: Windows connects
+// to the server named, and signs in to it with the user's credentials, for whatever local page names it.
+file_navigation_allowed :: proc(env: ^Environment, policy: File_Access, target_host := "") -> bool {
 	if env == nil { return true }
-	if policy == .None { return false }
-	return env.location.scheme == "file"
+	if policy == .None || env.location.scheme != "file" { return false }
+	if target_host != "" && target_host != "localhost" && !strings.equal_fold(target_host, env.location.host) { return false }
+	return true
 }
 
 @(private)
@@ -829,7 +834,9 @@ file_hop :: proc(t: ^Task) {
 	if !ok { fail(t, .Bad_URL, "invalid file URL"); return }
 	defer delete(path)
 	document := t.mode == .Navigate && t.destination == .Document
-	if !file_access_allowed(t.initiator, path, l.profile.settings.file_access) && !(document && file_navigation_allowed(t.initiator, l.profile.settings.file_access)) {
+	policy := l.profile.settings.file_access
+	navigation := document && file_navigation_allowed(t.initiator, policy, t.target.host)
+	if !navigation && !file_access_allowed(t.initiator, path, policy) {
 		fail(t, .Blocked_File, fmt.tprintf("a document may only read files in its own directory tree (%s)", path)); return
 	}
 	t.taint = .Basic
@@ -844,6 +851,8 @@ file_hop :: proc(t: ^Task) {
 	job.slash = strings.has_suffix(t.target.path, "/")
 	job.files = file_settings_clone(l.profile.settings.files, a)
 	job.sort, job.descending = listing_order(t.target.query, &l.profile.settings.files)
+	// allowed by the tree rule only: the file must still be in the tree once links and junctions are followed
+	if !navigation && t.initiator != nil && policy == .Own_Tree { job.root = strings.clone(t.initiator.file_root, a) }
 	host.run_blocking(l.blocking, file_work, file_done, job)
 }
 
@@ -853,6 +862,14 @@ file_work :: proc(data: rawptr) {
 	context.allocator = runtime.heap_allocator()
 	attrs, st := file_attributes(j.path)
 	if st != .Ok { j.err = strings.clone(file_status_text(st, j.path)); return }
+	if j.root != "" {
+		real, ok := final_path(j.path, context.temp_allocator)
+		real_root, ok_root := final_path(j.root, context.temp_allocator)
+		if !ok || !ok_root || !path_within(real_root, real) {
+			j.err = strings.clone(fmt.tprintf("%s leads out of the document's directory tree (a link or a junction)", j.path))
+			return
+		}
+	}
 	if attrs.folder {
 		if !j.document { j.err = strings.clone(fmt.tprintf("%s is a folder", j.path)); return }
 		if !j.slash { j.outcome = .Redirect; return }
@@ -890,7 +907,7 @@ file_done :: proc(data: rawptr) {
 	j := (^File_Job)(data)
 	a := runtime.heap_allocator()
 	defer {
-		delete(j.path, a); delete(j.data, a); delete(j.err, a); delete(j.index, a)
+		delete(j.path, a); delete(j.data, a); delete(j.err, a); delete(j.index, a); delete(j.root, a)
 		file_settings_destroy(&j.files, a)
 		free(j, a)
 	}

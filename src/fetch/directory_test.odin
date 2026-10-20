@@ -23,7 +23,7 @@ windows_paths_become_file_urls :: proc(t: ^testing.T) {
 	round_trip(t, `C:\dir\page.html`, "file:///C:/dir/page.html")
 	round_trip(t, `C:\my dir\a b#1%.html`, "file:///C:/my%20dir/a%20b%231%25.html")
 	round_trip(t, `D:\Privé\été ☃.txt`, "file:///D:/Priv%C3%A9/%C3%A9t%C3%A9%20%E2%98%83.txt")
-	round_trip(t, `S:\a?b;c&d.html`, "file:///S:/a%3Fb%3Bc%26d.html")
+	round_trip(t, `S:\a%b;c&d.html`, "file:///S:/a%25b%3Bc%26d.html")
 	round_trip(t, `\\server\share\x y\f.txt`, "file://server/share/x%20y/f.txt")
 	round_trip(t, `C:\site`, "file:///C:/site/", directory = true, want_path = `C:\site\`)
 	round_trip(t, `C:\site\`, "file:///C:/site/", want_path = `C:\site\`)
@@ -42,9 +42,9 @@ listing_links_and_redirects :: proc(t: ^testing.T) {
 	testing.expect_value(t, listing_href("été", false), "%C3%A9t%C3%A9")
 	testing.expect_value(t, listing_href("q?.txt", false), "q%3F.txt")
 
-	// every href resolves inside the folder, to the file it names
+	// every href resolves inside the folder, to the file it names (of the names Windows allows: "C:x" and "q?.txt" are refused as paths)
 	base, _ := url.parse_absolute("file:///C:/my%20dir/", context.temp_allocator)
-	for name in ([]string{"a b#1%.txt", "C:x", "été ☃", "q?.txt", "..x", "-"}) {
+	for name in ([]string{"a b#1%.txt", "été ☃", "..x", "-"}) {
 		r, ok := url.parse(listing_href(name, false), &base, context.temp_allocator)
 		testing.expectf(t, ok, "%s resolves", name)
 		p, _ := file_path_from_url(r, context.temp_allocator)
