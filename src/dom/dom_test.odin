@@ -177,3 +177,20 @@ document_scope_frees_everything :: proc(t: ^testing.T) {
 	}
 	base.scope_close(scope)   // the test allocator reports any leak
 }
+
+// Listeners added and removed in a loop on a node that never sees an event: the list stays small (its tombstones
+// were only dropped at the end of a dispatch at the node).
+@(test)
+listener_churn_is_bounded :: proc(t: ^testing.T) {
+	d := document_create()
+	defer document_destroy(d)
+	a := create_element(d, "div")
+	keep, _ := add_listener(d, a, "click", 1, 0, false, false, false)
+	_ = keep
+	for i in 0 ..< 100_000 {
+		id, err := add_listener(d, a, "click", 2, u32(i), false, false, false)
+		testing.expect_value(t, err, Error.None)
+		remove_listener(d, a, id)
+	}
+	testing.expectf(t, len(get(d, a).listeners) <= 4, "%d listener entries", len(get(d, a).listeners))
+}
