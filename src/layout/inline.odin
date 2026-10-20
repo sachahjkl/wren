@@ -233,6 +233,7 @@ Line_Builder :: struct {
 	pen:      f32,           // from `left`
 	empty:    bool,          // nothing placed on the line yet
 	content:  bool,          // the line is not a phantom line
+	at_break: bool,          // the line being finished ends with a <br> (text, for the line height quirk)
 	can_break: bool,         // a wrap opportunity precedes the next unit
 	spaces:   i32,
 	trail_w:  f32,
@@ -631,6 +632,17 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 	root := &c.l.fonts[lb.root_fi]
 	rht, rhb := half_leading(c, root)
 	min_top, max_bot := -root.ascent - rht, root.descent + rhb
+	// the line height calculation quirk (Quirks Mode §3.3; Blink: the strut of an inline box only once text is
+	// placed in it): in quirks and limited-quirks modes the root inline box and inline boxes without padding, border or margin count only
+	// when text sits directly in them (their text fragments do), so an image alone in a table cell gets no strut
+	quirks := c.st != nil && c.st.line_quirk
+	if quirks && !lb.at_break {
+		root_text := false
+		for &f in lb.frags {
+			if f.kind == .Text && f.box == NONE && len(f.text) > 0 { root_text = true; break }
+		}
+		if !root_text { min_top, max_bot = math.F32_MAX, -math.F32_MAX }
+	}
 	clear(&lb.groups)
 	extend :: proc(lb: ^Line_Builder, g: i32, top, bot: f32, min_top, max_bot: ^f32) {
 		if g >= 0 {
@@ -662,6 +674,12 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 			ib.tmp, ib.tmp_al = shift, g
 			f.baseline = shift
 			ht, hb := half_leading(c, fi)
+			if quirks && ib.padding[0] + ib.padding[2] + ib.border[0] + ib.border[2] == 0 &&
+			   ib.padding[1] + ib.padding[3] + ib.border[1] + ib.border[3] + ib.margin[1] + ib.margin[3] == 0 {
+				// (its own top / bottom group still needs a place)
+				if g != pg { extend(lb, g, shift, shift, &min_top, &max_bot) }
+				continue
+			}
 			extend(lb, g, shift - fi.ascent - ht, shift + fi.descent + hb, &min_top, &max_bot)
 		case .Text, .Ellipsis:
 			shift: f32 = 0
@@ -670,6 +688,7 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 			fi := &c.l.fonts[f.fi]
 			ht, hb := half_leading(c, fi)
 			f.baseline = shift
+			if quirks && f.kind == .Text && len(f.text) == 0 { continue }
 			top, bot := shift - fi.ascent - ht, shift + fi.descent + hb
 			if f.kind == .Text && fi.lh_normal { used_fonts_extent(c, &f, fi, shift, &top, &bot) }
 			extend(lb, g, top, bot, &min_top, &max_bot)
@@ -698,6 +717,7 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 			extend(lb, g, shift - bl, shift - bl + mh, &min_top, &max_bot)
 		}
 	}
+	if min_top > max_bot { min_top, max_bot = 0, 0 }   // (quirks: nothing counted)
 	line_h := max_bot - min_top
 	base_y := -min_top
 	for &g in lb.groups {
@@ -1027,7 +1047,9 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (out: []Frag, lin
 		case .Break:
 			commit_unit(&lb, false)
 			lb.content = true
+			lb.at_break = true
 			finish_line(&lb, true, false)
+			lb.at_break = false
 		case .Block:
 			commit_unit(&lb, false)
 			if !lb.empty || lb.content { finish_line(&lb, true, false) }
