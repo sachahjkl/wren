@@ -27,8 +27,7 @@ foreign _m_js {
 	@(link_name = "Engine_timezoneOffset") _Engine_timezoneOffset :: proc(time_ms: f64) -> i32 ---
 	@(link_name = "Engine_timeZone") _Engine_timeZone :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Engine_locale") _Engine_locale :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
-	@(link_name = "Node_interface") _Node_interface :: proc(node: u64) -> u32 ---
-	@(link_name = "Node_pin") _Node_pin :: proc(node: u64) ---
+	@(link_name = "Node_wrap") _Node_wrap :: proc(node: u64) -> u32 ---
 	@(link_name = "Node_unpin") _Node_unpin :: proc(node: u64) ---
 	@(link_name = "Node_treeRoots") _Node_treeRoots :: proc(nodes: [^]u64, nodes_len: u32, roots: [^]u8, roots_len: u32) ---
 }
@@ -113,15 +112,11 @@ Engine_locale_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
 	return {}, .Truncated
 }
 
-// The interface of a node's wrapper: an index into the engine's interface table (gen/bindings.c), chosen from the
-// node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...).
-Node_interface :: proc "contextless" (node: $T_node) -> u32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
-	return _Node_interface(u64(node))
-}
-
-// A JavaScript object now refers to `node`: it stays alive while pinned, even out of the tree.
-Node_pin :: proc "contextless" (node: $T_node) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
-	_Node_pin(u64(node))
+// A JavaScript object (its wrapper) now refers to `node`: pins it (it stays alive while pinned, even out of the tree)
+// and returns the wrapper's interface, an index into the engine's interface table (gen/bindings.c) chosen from the
+// node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...). One call per new wrapper.
+Node_wrap :: proc "contextless" (node: $T_node) -> u32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Node_wrap(u64(node))
 }
 
 // That object is gone (called while the engine collects garbage: a handle that died meanwhile is ignored). A

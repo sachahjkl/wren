@@ -520,12 +520,13 @@ static JSValue wj_make(JSContext *ctx, int iface, uint8_t kind, uint64_t handle,
     if (!o) { JS_FreeValue(ctx, obj); return JS_ThrowOutOfMemory(ctx); }
     o->handle = handle;
     o->iface = (uint16_t)iface;
-    o->kind = kind;
+    o->kind = WJ_KIND_NONE;   /* the handle is the wrapper's (unpinned, released by its finalizer) only once it is made */
     o->self = obj;
     o->group_val = JS_UNDEFINED;
     JS_SetOpaque(obj, o);
     extern int wj_define_unforgeables(JSContext *ctx, JSValueConst obj, int iface);
     if (wj_define_unforgeables(ctx, obj, iface) < 0) { JS_FreeValue(ctx, obj); return JS_EXCEPTION; }
+    o->kind = kind;
     return obj;
 }
 
@@ -541,13 +542,13 @@ wj_val wj_wrap_node(wj_ctx *ctx, uint64_t node)
     if (!node) { return JS_NULL; }
     JSValue v = wj_map_get(&wj_nodes, node);
     if (!JS_IsUndefined(v)) { return JS_DupValue(ctx, v); }
-    uint32_t iface = wr_Node_interface(node);
-    if (iface >= (uint32_t)wj_interface_count) { return JS_ThrowTypeError(ctx, "not a live node"); }
+    uint32_t iface = wr_Node_wrap(node);   /* pins the node */
+    if (iface >= (uint32_t)wj_interface_count) { wr_Node_unpin(node); return JS_ThrowTypeError(ctx, "not a live node"); }
     JSValue obj = wj_make(ctx, (int)iface, WJ_KIND_NODE, node, JS_UNDEFINED);
-    if (JS_IsException(obj)) { return obj; }
+    if (JS_IsException(obj)) { wr_Node_unpin(node); return obj; }
     wj_obj *o = wj_obj_of(obj);
+    /* from here the wrapper's finalizer unpins */
     if (!wj_map_put(&wj_nodes, node, obj)) { JS_FreeValue(ctx, obj); return JS_ThrowOutOfMemory(ctx); }
-    wr_Node_pin(node);
     if (JS_IsUndefined(wj_doc_group)) { wj_doc_group = wj_group_new(ctx, 1); }
     wj_group_add(ctx, wj_doc_group, o);
     return obj;

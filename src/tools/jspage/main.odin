@@ -1,7 +1,7 @@
 // jspage: one page in Wren without a window (src/tools/headless): the document loaded as the browser loads it, its
 // scripts run, its console on stdout. For the measuring scripts: the DOM micro-benchmarks (tools\js_bench.ps1 -Mode dom),
 // the JavaScript errors of real sites (tools\compat_sweep.ps1), start-up and memory of a page (-stats).
-//   jspage [-wait ms] [-until text] [-stats] [-pages n] [--pref name=value]... <url>
+//   jspage [-wait ms] [-until text] [-stats] [-pages n] [-image engine.wasm] [-profile out.json] [--pref name=value]... <url>
 // Console lines: a log as it is, "warn: " / "error: " before the others. -until stops at the first console message that
 // starts with `text` (else at -wait, 10 s by default). The exit status is 0 when the page loaded (and -until was seen),
 // 1 otherwise. -stats then prints "STAT<TAB>name<TAB>value" lines:
@@ -24,6 +24,8 @@ import "wb:tools/headless"
 import "wb:wasm"
 
 until_text: string
+profile_path: string        // -profile: a sampling profile of the page's engine (tools\wasm_profile.ps1)
+profiled: ^wasm.Instance
 seen_until: bool
 first_message_ms: f64 = -1
 quiet: bool
@@ -64,7 +66,7 @@ private_bytes :: proc() -> int {
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: jspage [-wait ms] [-until text] [-stats] [-pages n] [--pref name=value]... <url>")
+	fmt.eprintln("usage: jspage [-wait ms] [-until text] [-stats] [-pages n] [-image engine.wasm] [-profile out.json] [--pref name=value]... <url>")
 	os.exit(2)
 }
 
@@ -83,6 +85,11 @@ main :: proc() {
 		case "-stats": stats = true
 		case "-pages": pages = max(1, parse_int(need(args, &i)))
 		case "--pref": append(&pref_args, "--pref", need(args, &i))
+		case "-image":
+			data, err := os.read_entire_file(need(args, &i), context.allocator)
+			if err != nil { fmt.eprintln("jspage: cannot read the image"); os.exit(2) }
+			page.js_image_override = data
+		case "-profile": profile_path = need(args, &i)
 		case:
 			if strings.has_prefix(args[i], "-") || url != "" { usage() }
 			url = args[i]
@@ -98,9 +105,17 @@ main :: proc() {
 	if !headless.init(&env, &prefs, "build/jspage_profile") { fmt.eprintln("jspage: the page stack could not start"); os.exit(2) }
 	js.cache_start({memory_bytes = 16 << 20, min_source_bytes = 0})
 
+	if profile_path != "" {
+		page.js_on_realm = proc(p: ^page.Page, inst: ^wasm.Instance) {
+			if profiled == nil && wasm.profile_start(inst, page.js_engine_image()) { profiled = inst }
+		}
+	}
 	started = time.tick_now()
 	d := headless.open(&env, url, on_console)
 	headless.pump(d, f64(wait_ms), done)
+	if profiled != nil {
+		if err := wasm.profile_finish(profiled, profile_path); err != "" { fmt.eprintln("jspage: profile:", err) }
+	}
 	status := 0
 	if d.failed != "" { fmt.eprintfln("jspage: %s: %s", url, d.failed); status = 1 }
 	if until_text != "" && !seen_until { fmt.eprintfln("jspage: %q not seen in %d ms", until_text, wait_ms); status = 1 }

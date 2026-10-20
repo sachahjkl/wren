@@ -408,7 +408,7 @@ WJ_EXPORT("wj_realm_start") int32_t wj_realm_start(int32_t kind, int64_t seed, d
     wj_stack_enter(ctx);
     JS_SetRandomState(ctx, (uint64_t)seed);
     if (memory_limit > 0) { JS_SetMemoryLimit(rt, (size_t)memory_limit); }
-    if (gc_threshold > 0) { JS_SetGCThreshold(rt, (size_t)gc_threshold); }
+    if (gc_threshold > 0) { JS_SetGCThreshold(rt, (size_t)gc_threshold); JS_SetGCThresholdFloor(rt, (size_t)gc_threshold); }
     wj_the_realm.kind = kind;
     if (wj_platform_start(ctx, kind) != 0) { return -2; }
     wj_the_realm.started = true;

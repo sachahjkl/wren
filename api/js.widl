@@ -22,11 +22,10 @@ module js {
   /// The language of the user interface ("en-US"), for Intl.
   string Engine_locale();
 
-  /// The interface of a node's wrapper: an index into the engine's interface table (gen/bindings.c), chosen from the
-  /// node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...).
-  u32 Node_interface(Node node);
-  /// A JavaScript object now refers to `node`: it stays alive while pinned, even out of the tree.
-  void Node_pin(Node node);
+  /// A JavaScript object (its wrapper) now refers to `node`: pins it (it stays alive while pinned, even out of the tree)
+  /// and returns the wrapper's interface, an index into the engine's interface table (gen/bindings.c) chosen from the
+  /// node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...). One call per new wrapper.
+  u32 Node_wrap(Node node);
   /// That object is gone (called while the engine collects garbage: a handle that died meanwhile is ignored). A
   /// detached tree no longer pinned anywhere is freed.
   void Node_unpin(u64 node);

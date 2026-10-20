@@ -52,6 +52,8 @@ Wt_State :: struct {
 	pending_trap: string,     // set by `trap` from a host function
 	exports:      map[string]Wt_Export,
 	indirect:     map[rawptr]Wt_Sig,
+	profiler:     wt_guestprofiler,   // profile_start: sampled at every epoch tick
+	profile_last: time.Tick,
 }
 
 @(private)
@@ -264,6 +266,7 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 		inst.wt.timed_out = true
 		return wasmtime_error_new("interrupted: the call ran longer than wasm.max_call_ms")
 	}
+	if inst.wt.profiler != nil { profile_sample(inst) }
 	delta^ = 1
 	kind^ = WT_UPDATE_DEADLINE_CONTINUE
 	return nil
@@ -320,6 +323,7 @@ wt_instantiate :: proc(inst: ^Instance, image: []byte, filter: Import_Filter, di
 @(private)
 wt_free :: proc(inst: ^Instance) {
 	s := &inst.wt
+	if s.profiler != nil { wasmtime_guestprofiler_delete(s.profiler); s.profiler = nil }
 	if s.store != nil { wasmtime_store_delete(s.store) }
 	for k in s.exports { delete(k) }
 	delete(s.exports)

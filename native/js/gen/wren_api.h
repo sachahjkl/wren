@@ -1507,11 +1507,10 @@ WR_IMPORT("js", "Engine_timezoneOffset") int32_t wr_Engine_timezoneOffset(double
 WR_IMPORT("js", "Engine_timeZone") int32_t wr_Engine_timeZone(uint8_t *_buf, uint32_t _cap);
 // The language of the user interface ("en-US"), for Intl.
 WR_IMPORT("js", "Engine_locale") int32_t wr_Engine_locale(uint8_t *_buf, uint32_t _cap);
-// The interface of a node's wrapper: an index into the engine's interface table (gen/bindings.c), chosen from the
-// node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...).
-WR_IMPORT("js", "Node_interface") uint32_t wr_Node_interface(uint64_t node);
-// A JavaScript object now refers to `node`: it stays alive while pinned, even out of the tree.
-WR_IMPORT("js", "Node_pin") void wr_Node_pin(uint64_t node);
+// A JavaScript object (its wrapper) now refers to `node`: pins it (it stays alive while pinned, even out of the tree)
+// and returns the wrapper's interface, an index into the engine's interface table (gen/bindings.c) chosen from the
+// node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...). One call per new wrapper.
+WR_IMPORT("js", "Node_wrap") uint32_t wr_Node_wrap(uint64_t node);
 // That object is gone (called while the engine collects garbage: a handle that died meanwhile is ignored). A
 // detached tree no longer pinned anywhere is freed.
 WR_IMPORT("js", "Node_unpin") void wr_Node_unpin(uint64_t node);

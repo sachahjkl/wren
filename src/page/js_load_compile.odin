@@ -13,7 +13,6 @@ import "core:sync"
 import "core:time"
 import "wb:host"
 import "wb:js"
-import js_image "wb:js/image"
 import "wb:wasm"
 
 @(private)
@@ -137,7 +136,7 @@ compile_main :: proc(_: rawptr) {
 	sync.mutex_unlock(&compiler.mu)
 	opt.soft_call_ms = 0
 	opt.stop = nil
-	inst, err := wasm.instance_create(js_image.IMAGE, ctx_page, nil, opt, "javascript compiler", nil)
+	inst, err := wasm.instance_create(js_engine_image(), ctx_page, nil, opt, "javascript compiler", nil)
 	delete(err)
 	if inst != nil { inst.lenient = true }
 	for {

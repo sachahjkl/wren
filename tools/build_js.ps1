@@ -8,7 +8,7 @@
 # Pinned inputs: Zig (its clang and wasi-libc) and the QuickJS-ng release source by version and SHA-256 below, fetched
 # once into build\tools and build\js\src; native\js\patches\*.patch applied to the source; the generated headers and
 # bindings in native\js\gen (bindgen). The script does nothing when build\js\STAMP matches the hash of every input.
-param([switch]$Force, [string]$Opt = 'O3', [switch]$NoLto, [string]$Out = '', [switch]$NoSnapshot, [string[]]$ExtraFlags = @(),
+param([switch]$Force, [switch]$Names, [string]$Opt = 'O3', [switch]$NoLto, [string]$Out = '', [switch]$NoSnapshot, [string[]]$ExtraFlags = @(),
       [ValidateSet('dlmalloc', 'mimalloc')][string]$Allocator = 'dlmalloc')
 $ErrorActionPreference = 'Stop'
 $ZigVersion = '0.15.2'
@@ -115,7 +115,7 @@ $cflags = @(
     '-target', 'wasm32-wasi', "-$Opt", '-mexec-model=reactor',
     '-mbulk-memory', '-msimd128', '-mnontrapping-fptoint', '-msign-ext', '-mmutable-globals', '-mmultivalue',
     '-DWREN_JS=1', '-DQUICKJS_NG_BUILD', '-D_WASI_EMULATED_SIGNAL', '-DNDEBUG',
-    '-fno-exceptions', '-fvisibility=hidden', '-g0',
+    '-fno-exceptions', '-fvisibility=hidden', $(if ($Names) { '-g' } else { '-g0' }),
     '-I', $qjs, '-I', (Join-Path $native 'engine'), '-I', (Join-Path $native 'gen'), '-I', (Join-Path $native 'runtime'), '-I', $genDir
 )
 if (-not $NoLto) { $cflags += '-flto' }
@@ -135,7 +135,7 @@ $ldflags = @(
     '-lwasi-emulated-signal',
     # the C stack (in linear memory): JavaScript recursion depth is bounded by JS_SetMaxStackSize below this
     '-Wl,-z,stack-size=1048576',
-    '-Wl,--strip-debug', '-Wl,--gc-sections'
+    $(if ($Names) { '-Wl,--gc-sections' } else { '-Wl,--strip-debug' }), '-Wl,--gc-sections'
 )
 New-Item -ItemType Directory -Force $out | Out-Null
 $t0 = Get-Date

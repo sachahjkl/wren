@@ -61,7 +61,7 @@ function not exposed to workers is not instantiated.
 | [`forms`](forms.md) | 185 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
 | [`history`](history.md) | 12 | Window | Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never |
 | [`images`](images.md) | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
-| [`js`](js.md) | 10 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
+| [`js`](js.md) | 9 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
 | [`scripts`](scripts.md) | 18 | Window, Worker | Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write / |
 | [`navigator`](navigator.md) | 5 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
 | [`media`](media.md) | 4 | Window |  |
@@ -74,4 +74,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 9 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-713 imports in 614 functions.
+712 imports in 613 functions.

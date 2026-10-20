@@ -39,9 +39,17 @@ js_engine_digest: wasm.Digest
 @(private)
 js_engine_digest_known: bool
 
+// For measuring tools, set before the first page: another engine image (jspage -image: one that keeps its function
+// names, for profiles), and a procedure called with each new realm's instance (jspage -profile starts sampling it).
+js_image_override: []byte
+js_on_realm: proc(p: ^Page, inst: ^wasm.Instance)
+
+// The engine image pages run.
+js_engine_image :: proc() -> []byte { return js_image_override != nil ? js_image_override : js_image.IMAGE }
+
 // The engine version of cache keys (the image's digest), computed once.
 js_version :: proc() -> string {
-	if js_engine_version == "" { js_engine_version = js.image_version(js_image.IMAGE, context.allocator) }
+	if js_engine_version == "" { js_engine_version = js.image_version(js_engine_image(), context.allocator) }
 	return js_engine_version
 }
 
@@ -49,7 +57,7 @@ js_version :: proc() -> string {
 @(private)
 js_image_digest :: proc() -> ^wasm.Digest {
 	if !js_engine_digest_known {
-		js_engine_digest, js_engine_digest_known = wasm.digest(js_image.IMAGE)
+		js_engine_digest, js_engine_digest_known = wasm.digest(js_engine_image())
 		if !js_engine_digest_known { return nil }
 	}
 	return &js_engine_digest
@@ -75,7 +83,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		// the hard stop comes after the engine had time to unwind (or never, when wasm.max_call_ms says so)
 		if opt.max_call_ms > 0 && opt.max_call_ms < slow * 2 { opt.max_call_ms = slow * 2 }
 	}
-	inst, err := wasm.instance_create(js_image.IMAGE, p, p.scope, opt, "javascript", nil, js_image_digest())
+	inst, err := wasm.instance_create(js_engine_image(), p, p.scope, opt, "javascript", nil, js_image_digest())
 	if inst == nil {
 		r.failed = true
 		log(p, .Error, fmt.tprintf("JavaScript could not start: %s", err))
@@ -83,6 +91,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		return nil
 	}
 	inst.lenient = true
+	if js_on_realm != nil { js_on_realm(p, inst) }
 	inst.index = u32(len(p.instances))
 	append(&p.instances, inst)
 	r.inst = inst

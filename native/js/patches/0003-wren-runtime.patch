@@ -1,0 +1,81 @@
+diff --git a/quickjs.c b/quickjs.c
+--- a/quickjs.c
++++ b/quickjs.c
+@@ -361,6 +361,7 @@ struct JSRuntime {
+     struct list_head tmp_obj_list; /* used during GC */
+     JSGCPhaseEnum gc_phase : 8;
+     size_t malloc_gc_threshold;
++    size_t malloc_gc_floor; /* Wren: the threshold after a collection is never below this */
+ #ifdef ENABLE_DUMPS // JS_DUMP_LEAKS
+     struct list_head string_list; /* list of JSString.link */
+ #endif
+@@ -1701,6 +1702,8 @@ static void js_trigger_gc(JSRuntime *rt, size_t size)
+         JS_RunGC(rt);
+         rt->malloc_gc_threshold = rt->malloc_state.malloc_size +
+             (rt->malloc_state.malloc_size >> 1);
++        if (rt->malloc_gc_threshold < rt->malloc_gc_floor)
++            rt->malloc_gc_threshold = rt->malloc_gc_floor;
+     }
+ }
+ 
+@@ -2470,6 +2473,13 @@ void JS_SetGCThreshold(JSRuntime *rt, size_t gc_threshold)
+     rt->malloc_gc_threshold = gc_threshold;
+ }
+ 
++/* Wren: at least this much allocation between two automatic collections (QuickJS otherwise allows half the live
++   heap: with a small heap, a collection every few hundred kilobytes) */
++void JS_SetGCThresholdFloor(JSRuntime *rt, size_t floor)
++{
++    rt->malloc_gc_floor = floor;
++}
++
+ #define malloc(s) malloc_is_forbidden(s)
+ #define free(p) free_is_forbidden(p)
+ #define realloc(p,s) realloc_is_forbidden(p,s)
+@@ -2527,6 +2537,24 @@ JSContext *JS_GetPendingJobContext(JSRuntime *rt)
+     return NULL;
+ }
+ 
++/* Wren: drops the pending jobs without running them (the page's scripts were stopped for running too long: an
++   endless chain of microtasks must not start again at the next checkpoint). Returns how many were dropped. */
++int JS_DropPendingJobs(JSRuntime *rt)
++{
++    struct list_head *el, *el1;
++    int i, n = 0;
++
++    list_for_each_safe(el, el1, &rt->job_list) {
++        JSJobEntry *e = list_entry(el, JSJobEntry, link);
++        list_del(&e->link);
++        for(i = 0; i < e->argc; i++)
++            JS_FreeValue(e->ctx, e->argv[i]);
++        js_free(e->ctx, e);
++        n++;
++    }
++    return n;
++}
++
+ /* return < 0 if exception, 0 if no job pending, 1 if a job was
+    executed successfully. the context of the job is stored in '*pctx' */
+ int JS_ExecutePendingJob(JSRuntime *rt, JSContext **pctx)
+diff --git a/quickjs.h b/quickjs.h
+--- a/quickjs.h
++++ b/quickjs.h
+@@ -517,6 +517,8 @@ JS_EXTERN void JS_SetDumpFlags(JSRuntime *rt, uint64_t flags);
+ JS_EXTERN uint64_t JS_GetDumpFlags(JSRuntime *rt);
+ JS_EXTERN size_t JS_GetGCThreshold(JSRuntime *rt);
+ JS_EXTERN void JS_SetGCThreshold(JSRuntime *rt, size_t gc_threshold);
++JS_EXTERN void JS_SetGCThresholdFloor(JSRuntime *rt, size_t floor); /* Wren */
++JS_EXTERN void JS_SetGCThresholdFloor(JSRuntime *rt, size_t floor); /* Wren */
+ /* use 0 to disable maximum stack size check */
+ JS_EXTERN void JS_SetMaxStackSize(JSRuntime *rt, size_t stack_size);
+ /* should be called when changing thread to update the stack top value
+@@ -1277,7 +1279,8 @@ JS_EXTERN int JS_EnqueueJob(JSContext *ctx, JSJobFunc *job_func,
+ 
+ JS_EXTERN bool JS_IsJobPending(JSRuntime *rt);
+ JS_EXTERN JSContext *JS_GetPendingJobContext(JSRuntime *rt);
+-JS_EXTERN int JS_ExecutePendingJob(JSRuntime *rt, JSContext **pctx);
++JS_EXTERN int JS_ExecutePendingJob(JSRuntime *rt, JSContext **pctx);
++JS_EXTERN int JS_DropPendingJobs(JSRuntime *rt); /* Wren */
+ 
+ /* Structure to retrieve (de)serialized SharedArrayBuffer objects. */
+ typedef struct JSSABTab {

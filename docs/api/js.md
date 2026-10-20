@@ -87,26 +87,17 @@ The language of the user interface ("en-US"), for Intl.
 
 Host: `Engine_locale :: proc(c: ^Call) -> string`
 
-### `Node_interface`
+### `Node_wrap`
 
 ```
-u32 Node_interface(Node node)
+u32 Node_wrap(Node node)
 ```
 
-The interface of a node's wrapper: an index into the engine's interface table (gen/bindings.c), chosen from the
-node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...).
+A JavaScript object (its wrapper) now refers to `node`: pins it (it stays alive while pinned, even out of the tree)
+and returns the wrapper's interface, an index into the engine's interface table (gen/bindings.c) chosen from the
+node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...). One call per new wrapper.
 
-Host: `Node_interface :: proc(c: ^Call, node: Api_Node) -> u32`
-
-### `Node_pin`
-
-```
-void Node_pin(Node node)
-```
-
-A JavaScript object now refers to `node`: it stays alive while pinned, even out of the tree.
-
-Host: `Node_pin :: proc(c: ^Call, node: Api_Node)`
+Host: `Node_wrap :: proc(c: ^Call, node: Api_Node) -> u32`
 
 ### `Node_unpin`
 

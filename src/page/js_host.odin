@@ -50,9 +50,10 @@ Engine_locale :: proc(c: ^Call) -> string {
 	return l == "" ? "en-US" : l
 }
 
-Node_interface :: proc(c: ^Call, node: Api_Node) -> u32 { return js_node_interface(c.page, node.data) }
-
-Node_pin :: proc(c: ^Call, node: Api_Node) { dom.pin(c.page.doc, H(node.handle)) }
+Node_wrap :: proc(c: ^Call, node: Api_Node) -> u32 {
+	dom.pin(c.page.doc, H(node.handle))
+	return js_node_interface(c.page, node.data)
+}
 
 Node_unpin :: proc(c: ^Call, node: u64) {
 	d := call_doc(c)

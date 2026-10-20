@@ -33,7 +33,7 @@ PREFS := [?]config.Def{
 	{name = "javascript.max_heap_bytes", kind = .Int, default = {i = 1 << 30}, bounded = true, min = 16 << 20, max = 1 << 32, bytes = true, unit = "bytes",
 		description = "Largest JavaScript heap of one page or worker. An allocation past it throws an out-of-memory error in the script (the Wasm memory limit, wasm.max_memory_pages, also bounds it)."},
 	{name = "javascript.gc_threshold_bytes", kind = .Int, default = {i = 8 << 20}, bounded = true, min = 256 << 10, max = 1 << 30, bytes = true, unit = "bytes",
-		description = "Heap growth that triggers the first cycle collection of a realm (then 1.5 times the heap after each one). Larger: fewer pauses, more memory."},
+		description = "Allocation between two cycle collections of a realm: at least this much, or half the live heap when that is more. Larger: fewer pauses, more memory."},
 	{name = "javascript.bindings.expose_unimplemented", kind = .Bool, default = {b = false},
 		description = "Also expose the interfaces of the web platform this browser does not implement at all (their members throw NotSupportedError). Off, they are absent, so feature detection (\"IntersectionObserver\" in window) sees the truth."},
 	{name = "javascript.bindings.unimplemented", kind = .String, default = {s = "absent"}, choices = {"absent", "throw"},

@@ -37,6 +37,7 @@ wt_functype   :: distinct rawptr
 wt_importtype :: distinct rawptr
 wt_externtype :: distinct rawptr
 wt_instance_pre :: distinct rawptr
+wt_guestprofiler :: distinct rawptr
 
 wt_byte_vec :: struct {
 	size: uint,
@@ -146,12 +147,22 @@ wt_unchecked_callback :: #type proc "c" (env: rawptr, caller: wt_caller, args_an
 wt_epoch_callback :: #type proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) -> wt_error
 wt_finalizer :: #type proc "c" (data: rawptr)
 
+wt_profiler_module :: struct {   // wasmtime_guestprofiler_modules_t
+	name: ^wt_byte_vec,
+	mod:  wt_module,
+}
+
 @(default_calling_convention = "c")
 foreign wasmtime_lib {
 	wasm_config_new :: proc() -> wt_config ---
 	wasm_engine_new_with_config :: proc(config: wt_config) -> wt_engine ---
 	wasm_engine_delete :: proc(e: wt_engine) ---
 	wasmtime_engine_increment_epoch :: proc(e: wt_engine) ---
+
+	wasmtime_guestprofiler_new :: proc(e: wt_engine, module_name: ^wt_byte_vec, interval_nanos: u64, modules: [^]wt_profiler_module, n: uint) -> wt_guestprofiler ---
+	wasmtime_guestprofiler_sample :: proc(g: wt_guestprofiler, s: wt_store, delta_nanos: u64) ---
+	wasmtime_guestprofiler_finish :: proc(g: wt_guestprofiler, out: ^wt_byte_vec) -> wt_error ---
+	wasmtime_guestprofiler_delete :: proc(g: wt_guestprofiler) ---
 
 	wasmtime_config_debug_info_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_consume_fuel_set :: proc(c: wt_config, v: bool) ---

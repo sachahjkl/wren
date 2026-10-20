@@ -1,8 +1,9 @@
 // jsengine: the JavaScript engine module (native/js) outside the browser.
 //   jsengine snapshot <raw.wasm> <out.wasm>     pre-initializes the engine (build_js.ps1 runs it)
-//   jsengine run [-image m.wasm] [-raw] [-e code] [file.js ...]
+//   jsengine run [-image m.wasm] [-raw] [-e code] [-profile out.json] [file.js ...]
 //                                               runs scripts in a fresh realm; console output on stdout, uncaught
-//                                               errors on stderr; exit code 1 when one was uncaught
+//                                               errors on stderr; exit code 1 when one was uncaught; -profile samples
+//                                               the engine (Firefox Profiler format; tools\wasm_profile.ps1)
 //   jsengine bench [-image m.wasm] [-raw] [-iterations n] <dir> [names...]
 //                                               runs the benchmarks of <dir> (Octane's base.js harness), one realm each
 //   jsengine startup [-image m.wasm] [-raw] [-n count]
@@ -218,6 +219,7 @@ Common :: struct {
 	evals: [dynamic]string,
 	iterations: int,
 	count: int,
+	profile: string,   // run: write a sampling profile of the engine there
 }
 
 parse_common :: proc(args: []string) -> (c: Common) {
@@ -234,6 +236,7 @@ parse_common :: proc(args: []string) -> (c: Common) {
 		case "-iterations": i += 1; c.iterations = max(1, int(parse_int(args[i])))
 		case "-n": i += 1; c.count = max(1, int(parse_int(args[i])))
 		case "-q": quiet = true
+		case "-profile": i += 1; c.profile = args[i]
 		case "--pref": i += 1
 		case: append(&c.rest, a)
 		}
@@ -254,6 +257,7 @@ cmd_run :: proc(args: []string) {
 	image := read_file(c.image)
 	r, ok := realm_new(image, c.raw)
 	if !ok { os.exit(1) }
+	if c.profile != "" && !wasm.profile_start(r.inst, image) { fmt.eprintln("jsengine: the profiler did not start"); os.exit(1) }
 	for code in c.evals {
 		js.eval_script(r.inst, transmute([]byte)code, "<command line>")
 		js.run_jobs(r.inst)
@@ -263,6 +267,9 @@ cmd_run :: proc(args: []string) {
 		st := js.eval_script(r.inst, src, path)
 		if st == .Trapped { fmt.eprintln("jsengine:", r.inst.last_error); uncaught += 1 }
 		js.run_jobs(r.inst)
+	}
+	if c.profile != "" {
+		if err := wasm.profile_finish(r.inst, c.profile); err != "" { fmt.eprintln("jsengine: profile:", err) }
 	}
 	wasm.destroy(r.inst)
 	os.exit(uncaught > 0 ? 1 : 0)
