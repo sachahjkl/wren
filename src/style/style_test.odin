@@ -634,3 +634,19 @@ nesting_inside_pseudo_classes :: proc(t: ^testing.T) {
 	testing.expectf(t, at(&f, "a").margin[.Top].v == 3 && at(&f, "b").margin[.Top].v != 3, "1 of .x: %v %v", at(&f, "a").margin[.Top], at(&f, "b").margin[.Top])
 	testing.expect(t, at(&f, "d").margin[.Left].v == 4 && at(&f, "c").margin[.Left].v == 0, ".z:is(&) is .z.y, not .y .z.y")
 }
+// Colors or fonts from pages off: the page's declarations are reverted to the browser's own (headings keep their size,
+// links their color), not dropped to the inherited value.
+@(test)
+author_colors_and_fonts_off_revert :: proc(t: ^testing.T) {
+	s := settings_default()
+	s.author_fonts = false
+	s.author_colors = false
+	f := load(`<style>h1 { font-size: 40px; color: red } p { color: red; -webkit-text-fill-color: red }</style><h1 id=h>t</h1><p id=p>x</p>`, s)
+	settings_destroy(&s)
+	defer unload(&f)
+	ref := load(`<h1 id=h>t</h1><p id=p>x</p>`)
+	defer unload(&ref)
+	testing.expectf(t, near(at(&f, "h").font_size, at(&ref, "h").font_size), "h1 %v, the browser's %v", at(&f, "h").font_size, at(&ref, "h").font_size)
+	testing.expect(t, same_color(at(&f, "h").color, at(&ref, "h").color) && same_color(at(&f, "p").color, at(&ref, "p").color), "no page colors")
+	testing.expect(t, at(&f, "p").text_fill_color == at(&ref, "p").text_fill_color, "-webkit-text-fill-color is a color too")
+}

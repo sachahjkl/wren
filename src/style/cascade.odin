@@ -425,7 +425,7 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 @(private)
 is_color_prop :: proc(pr: Prop) -> bool {
 	#partial switch pr {
-	case .Color_Scheme, .Color, .Background_Color, .Background_Image, .Text_Decoration_Color, .Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color, .Outline_Color, .Box_Shadow, .Text_Shadow, .Caret_Color, .Accent_Color:
+	case .Color_Scheme, .Color, .Background_Color, .Background_Image, .Text_Decoration_Color, .Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color, .Outline_Color, .Box_Shadow, .Text_Shadow, .Caret_Color, .Accent_Color, .Text_Fill_Color, .Scrollbar_Color:
 		return true
 	}
 	return false
@@ -503,8 +503,13 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		// layer; a chain of them is followed (bounded: every step leaves a layer or an origin behind)
 		for _ in 0 ..< 64 {
 			if cand.origin == .Author {
-				if !e.settings.author_colors && is_color_prop(pr) { break }
-				if !e.settings.author_fonts && (pr == .Font_Family || pr == .Font_Size) { break }
+				// colors or fonts from pages off: the page's declaration is reverted, to the browser's own value (links keep
+				// LinkText, headings their size) rather than the inherited or initial one
+				if (!e.settings.author_colors && is_color_prop(pr)) || (!e.settings.author_fonts && (pr == .Font_Family || pr == .Font_Size)) {
+					if prev, found := revert_candidate(entries, inline_rule, pr, cand.key, true, parent, p.own_depth); found { cand = prev; continue }
+					apply_unset(&cx, pr)
+					break
+				}
 			}
 			vals := cand.decl.value
 			if cand.decl.has_var {
