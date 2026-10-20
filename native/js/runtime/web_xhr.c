@@ -194,7 +194,8 @@ WJ_EXPORT("wj_cb_xhr") void wj_cb_xhr(int32_t user, uint64_t fetch, int32_t stat
         /* the body, in one copy */
         uint64_t len = wr_Fetch_bodyLength(fetch);
         free(x->body);
-        x->body = malloc(len ? (size_t)len : 1);
+        /* a length past the address space (size_t is 32 bits here) is out of memory, not a truncated buffer */
+        x->body = len < SIZE_MAX ? malloc(len ? (size_t)len : 1) : NULL;
         x->body_len = 0;
         while (x->body && x->body_len < len) {
             uint64_t chunk = len - x->body_len;
@@ -205,7 +206,7 @@ WJ_EXPORT("wj_cb_xhr") void wj_cb_xhr(int32_t user, uint64_t fetch, int32_t stat
         }
         x->body_done = true;
         size_t total = 0;
-        char *cl = x->response_headers ? web_headers_get(x->response_headers, "content-length", &total) : NULL;
+        char *cl = JS_IsObject(x->response_headers) ? web_headers_get(x->response_headers, "content-length", &total) : NULL;
         bool computable = cl != NULL;
         free(cl);
         xhr_release_request(x);

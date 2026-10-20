@@ -281,9 +281,9 @@ JSValue web_headers_sorted(JSContext *ctx, JSValueConst headers)
         if (strcmp(name, "set-cookie") == 0) {
             /* each Set-Cookie on its own */
             JSValue pair = JS_NewArray(ctx);
-            JS_SetPropertyUint32(ctx, pair, 0, JS_NewStringLen(ctx, name, order[i]->nlen));
-            JS_SetPropertyUint32(ctx, pair, 1, JS_NewStringLen(ctx, order[i]->value, order[i]->vlen));
-            JS_SetPropertyUint32(ctx, arr, k++, pair);
+            wj_array_set(ctx, pair, 0, JS_NewStringLen(ctx, name, order[i]->nlen));
+            wj_array_set(ctx, pair, 1, JS_NewStringLen(ctx, order[i]->value, order[i]->vlen));
+            wj_array_set(ctx, arr, k++, pair);
             i++;
             continue;
         }
@@ -294,9 +294,9 @@ JSValue web_headers_sorted(JSContext *ctx, JSValueConst headers)
             web_buf_put(&b, order[j]->value, order[j]->vlen);
         }
         JSValue pair = JS_NewArray(ctx);
-        JS_SetPropertyUint32(ctx, pair, 0, JS_NewStringLen(ctx, name, order[i]->nlen));
-        JS_SetPropertyUint32(ctx, pair, 1, JS_NewStringLen(ctx, b.p ? (const char *)b.p : "", b.len));
-        JS_SetPropertyUint32(ctx, arr, k++, pair);
+        wj_array_set(ctx, pair, 0, JS_NewStringLen(ctx, name, order[i]->nlen));
+        wj_array_set(ctx, pair, 1, JS_NewStringLen(ctx, b.p ? (const char *)b.p : "", b.len));
+        wj_array_set(ctx, arr, k++, pair);
         web_buf_free(&b);
         i = j;
     }
@@ -429,7 +429,7 @@ JSValue wjr_Headers_getSetCookie(JSContext *ctx, JSValueConst this_val, int argc
     JSValue arr = JS_NewArray(ctx);
     uint32_t k = 0;
     for (uint32_t i = 0; i < h->n; i++) {
-        if (strcmp(h->list[i].name, "set-cookie") == 0) { JS_SetPropertyUint32(ctx, arr, k++, JS_NewStringLen(ctx, h->list[i].value, h->list[i].vlen)); }
+        if (strcmp(h->list[i].name, "set-cookie") == 0) { wj_array_set(ctx, arr, k++, JS_NewStringLen(ctx, h->list[i].value, h->list[i].vlen)); }
     }
     return arr;
 }
@@ -912,8 +912,8 @@ static JSValue body_read(JSContext *ctx, JSValueConst this_val, int what)
     case BODY_HOST: {
         b->used = true;
         JSValue data = JS_NewArray(ctx);
-        JS_SetPropertyUint32(ctx, data, 0, JS_DupValue(ctx, this_val));
-        JS_SetPropertyUint32(ctx, data, 1, JS_NewInt32(ctx, what));
+        wj_array_set(ctx, data, 0, JS_DupValue(ctx, this_val));
+        wj_array_set(ctx, data, 1, JS_NewInt32(ctx, what));
         JSValue p = wj_promise_from_host(ctx, wr_Response_arrayBuffer(b->host), WJ_HOST_UNDEFINED, on_host_body, data);
         JS_FreeValue(ctx, data);
         return p;
@@ -1091,7 +1091,7 @@ static JSValue signal_following(JSContext *ctx, JSValueConst signal)
 {
     /* Fetch: the request's signal follows the given one (a dependent signal) */
     JSValue list = JS_NewArray(ctx);
-    JS_SetPropertyUint32(ctx, list, 0, JS_DupValue(ctx, signal));
+    wj_array_set(ctx, list, 0, JS_DupValue(ctx, signal));
     JSValue any = JS_GetPropertyStr(ctx, wj_the_realm.ctors[WJ_IFACE_AbortSignal], "any");
     JSValue r = JS_Call(ctx, any, wj_the_realm.ctors[WJ_IFACE_AbortSignal], 1, (JSValueConst *)&list);
     JS_FreeValue(ctx, any);

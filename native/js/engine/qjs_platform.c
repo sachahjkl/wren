@@ -138,7 +138,8 @@ static JSValue wj_group_new(JSContext *ctx, uint64_t root)
     g->root = root;
     g->self = obj;
     JS_SetOpaque(obj, g);
-    if (root != 1) { wj_map_put(&wj_groups, root, obj); }
+    /* a group nobody can find would be made again at each collection, splitting its tree's wrappers */
+    if (root != 1 && !wj_map_put(&wj_groups, root, obj)) { JS_FreeValue(ctx, obj); return JS_ThrowOutOfMemory(ctx); }
     return obj;
 }
 
@@ -256,6 +257,9 @@ static void wj_obj_finalizer(JSRuntime *rt, JSValueConst val)
     /* finalized with its group (a collected cycle): only the reference is dropped, the group may be finalized already */
     JS_FreeValueRT(rt, o->group_val);
     o->group = NULL;
+    /* before the handle is released: an impl may still tell the browser about it (an internal listener removed) */
+    if (o->impl && o->impl_free) { o->impl_free(o->impl); }
+    o->impl = NULL;
     if (o->kind == WJ_KIND_NODE) {
         JSValue cur = wj_map_get(&wj_nodes, o->handle);
         if (JS_VALUE_GET_PTR(cur) == JS_VALUE_GET_PTR(val)) { wj_map_del(&wj_nodes, o->handle); }
@@ -265,7 +269,6 @@ static void wj_obj_finalizer(JSRuntime *rt, JSValueConst val)
         if (JS_VALUE_GET_PTR(cur) == JS_VALUE_GET_PTR(val)) { wj_map_del(&wj_hosts, o->handle); }
         if (o->flags & WJ_OBJ_OWNED) { wr_Object_release(o->handle); }
     }
-    if (o->impl && o->impl_free) { o->impl_free(o->impl); }
     for (uint16_t i = 0; i < o->n_same; i++) { JS_FreeValueRT(rt, o->same[i]); }
     free(o->same);
     free(o);
@@ -344,20 +347,19 @@ static int wj_indexed_define(JSContext *ctx, JSValueConst obj, JSAtom prop, JSVa
     return JS_DefineProperty(ctx, obj, prop, val, getter, setter, flags | JS_PROP_NO_EXOTIC);
 }
 
+/* Called only when no ordinary own property has the name (the engine deleted those itself): an existing index, or a
+ * visible named property of an interface without a deleter (HTMLCollection), cannot be deleted (Web IDL [[Delete]]). */
 static int wj_indexed_delete(JSContext *ctx, JSValueConst obj, JSAtom prop)
 {
-    uint32_t idx;
-    if (JS_AtomGetArrayIndex(ctx, &idx, prop)) {
-        int r = wj_indexed_get_own(ctx, NULL, obj, prop);
-        return r < 0 ? -1 : !r;   /* an existing index cannot be deleted */
-    }
-    return JS_DeleteProperty(ctx, obj, prop, 0) ;
+    int r = wj_indexed_get_own(ctx, NULL, obj, prop);
+    return r < 0 ? -1 : !r;
 }
 
 static JSClassExoticMethods wj_indexed_exotic = {
     .get_own_property = wj_indexed_get_own,
     .get_own_property_names = wj_indexed_names,
     .define_own_property = wj_indexed_define,
+    .delete_property = wj_indexed_delete,
 };
 
 /* -- legacy platform objects: named (DOMStringMap, Storage) -- */
@@ -549,8 +551,12 @@ wj_val wj_wrap_node(wj_ctx *ctx, uint64_t node)
     wj_obj *o = wj_obj_of(obj);
     /* from here the wrapper's finalizer unpins */
     if (!wj_map_put(&wj_nodes, node, obj)) { JS_FreeValue(ctx, obj); return JS_ThrowOutOfMemory(ctx); }
-    if (JS_IsUndefined(wj_doc_group)) { wj_doc_group = wj_group_new(ctx, 1); }
-    wj_group_add(ctx, wj_doc_group, o);
+    /* out of memory: the wrapper waits outside any group for the next collection to place it (tried again then) */
+    if (JS_IsUndefined(wj_doc_group)) {
+        JSValue g = wj_group_new(ctx, 1);
+        if (JS_IsException(g)) { JS_FreeValue(ctx, JS_GetException(ctx)); } else { wj_doc_group = g; }
+    }
+    if (!JS_IsUndefined(wj_doc_group)) { wj_group_add(ctx, wj_doc_group, o); }
     return obj;
 }
 
@@ -644,7 +650,7 @@ static JSValue wj_same_object_getter(JSContext *ctx, JSValueConst this_val, int 
     int32_t slot = JS_VALUE_GET_INT(data[0]);
     wj_obj *o = wj_obj_of(this_val);
     if (!o && JS_IsObject(this_val) && JS_VALUE_GET_PTR(this_val) == JS_VALUE_GET_PTR(wj_the_realm.global)) { o = &wj_the_realm.global_obj; }
-    if (o && slot < o->n_same && !JS_IsUndefined(o->same[slot]) && o->same[slot] != 0) { return JS_DupValue(ctx, o->same[slot]); }
+    if (o && slot < o->n_same && !JS_IsUndefined(o->same[slot])) { return JS_DupValue(ctx, o->same[slot]); }
     JSValue v = JS_Call(ctx, data[1], this_val, 0, NULL);
     if (JS_IsException(v) || !o) { return v; }
     if (slot >= o->n_same) {
@@ -655,6 +661,8 @@ static JSValue wj_same_object_getter(JSContext *ctx, JSValueConst this_val, int 
         o->same = s;
         o->n_same = n;
     }
+    /* the getter itself asked first (recursion): that result stays the object */
+    if (!JS_IsUndefined(o->same[slot])) { JS_FreeValue(ctx, v); return JS_DupValue(ctx, o->same[slot]); }
     o->same[slot] = JS_DupValue(ctx, v);
     return v;
 }

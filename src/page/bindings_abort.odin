@@ -182,7 +182,7 @@ AbortSignal_timeout :: proc(c: ^Call, ms: f64) -> (u64, Api_Error) {
 // AbortSignal.any(signals)
 AbortSignal_any :: proc(c: ^Call, signals: []u64) -> (u64, Api_Error) {
 	p := c.page
-	if len(signals) > p.settings.web.max_signal_sources { return 0, fail(c, .Range, "RangeError: too many signals (abort.max_signal_sources)") }
+	if len(signals) > p.settings.web.max_signal_sources { return 0, fail(c, .Range, "RangeError: too many signals (dom.abort_signal.max_sources)") }
 	for sh in signals { if signal_get(p, sh) == nil { return 0, fail(c, .Invalid_Handle, "AbortSignal.any: not an AbortSignal") } }
 	h := signal_create(p, c.owner)
 	res := signal_get(p, h)
@@ -198,7 +198,16 @@ AbortSignal_any :: proc(c: ^Call, signals: []u64) -> (u64, Api_Error) {
 	add_source :: proc(p: ^Page, res: ^Abort_Signal, h, src_h: u64) {
 		for s in res.sources { if s == src_h { return } }
 		append(&res.sources, src_h)
-		if src := signal_get(p, src_h); src != nil { append(&src.dependents, h) }
+		if src := signal_get(p, src_h); src != nil {
+			// dependents released since are dropped before the list grows: any() in a loop on one long-lived signal
+			// (a page's own controller) must not grow it forever
+			if len(src.dependents) == cap(src.dependents) {
+				w := 0
+				for d in src.dependents { if signal_get(p, d) != nil { src.dependents[w] = d; w += 1 } }
+				resize(&src.dependents, w)
+			}
+			append(&src.dependents, h)
+		}
 	}
 	for sh in signals {
 		src := signal_get(p, sh)

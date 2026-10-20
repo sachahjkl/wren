@@ -879,31 +879,8 @@ integrity_ok :: proc(p: ^Page, metadata: string, bytes: []byte, opaque: bool) ->
 	return false
 }
 
-// A task of the page's realm, also in a worker (whose realm is not in the registry of live pages): it runs with p ==
-// nil when the page closed first.
 @(private)
-Realm_Task :: struct {
-	page:    ^Page,
-	fn:      Page_Task_Proc,
-	data:    rawptr,
-	cleanup: base.Cleanup_Id,
-	dead:    bool,
-}
-
-@(private)
-post_page_task_any :: proc(p: ^Page, fn: Page_Task_Proc, data: rawptr) {
-	if p.web != nil && p.web.id != 0 { post_page_task(p, fn, data); return }
-	t := new(Realm_Task)
-	t^ = Realm_Task{page = p, fn = fn, data = data}
-	t.cleanup = base.on_close(p.scope, proc(d: rawptr) { (^Realm_Task)(d).dead = true }, t)
-	host.post(p.loop, proc(d: rawptr) {
-		t := (^Realm_Task)(d)
-		defer free(t)
-		if t.dead { t.fn(nil, t.data); return }
-		base.forget_cleanup(t.page.scope, t.cleanup)
-		t.fn(t.page, t.data)
-	}, t)
-}
+post_page_task_any :: proc(p: ^Page, fn: Page_Task_Proc, data: rawptr) { post_page_task(p, fn, data) }
 
 // Reports what a verdict found, and whether it allows the code.
 @(private)

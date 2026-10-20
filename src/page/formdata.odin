@@ -12,12 +12,16 @@ import "wb:forms"
 import "wb:host"
 import "wb:url"
 
-Form_Data :: struct { entries: [dynamic]forms.Entry }
+Form_Data :: struct {
+	entries: [dynamic]forms.Entry,
+	held:    int,   // bytes of its blob entries, counted in p.held like the buffers they were copied from
+}
 
 formdata_vt := Object_VTable{
 	name = "FormData",
 	destroy = proc(p: ^Page, data: rawptr) {
 		fd := (^Form_Data)(data)
+		p.held -= fd.held
 		forms.entries_destroy(&fd.entries)
 		free(fd)
 	},
@@ -40,12 +44,34 @@ formdata_event :: proc(user: rawptr, form: base.Handle, entries: ^[dynamic]forms
 	dispatch_event(p, form, dom.Event{type = "formdata", bubbles = true, object = h})
 	if back := formdata_get(p, h); back != nil {
 		entries^, back.entries = back.entries, nil
+		p.held -= back.held   // the bytes leave the page's objects with the submission
+		back.held = 0
 	}
 	object_release(p, h)
 }
 
 @(private)
 too_many :: proc(p: ^Page, fd: ^Form_Data) -> bool { return len(fd.entries) >= p.settings.forms.max_entries }
+
+// A blob entry of `bytes` (copied), its bytes counted against page.max_fetch_bytes; false past it.
+@(private)
+fd_blob_entry :: proc(p: ^Page, fd: ^Form_Data, name: string, bytes: []byte, filename, mime: string) -> (e: forms.Entry, ok: bool) {
+	if len(bytes) > p.settings.max_fetch_bytes - p.held { return {}, false }
+	data := make([]byte, len(bytes))
+	copy(data, bytes)
+	p.held += len(data)
+	fd.held += len(data)
+	return forms.Entry{name = strings.clone(name), is_file = true, file = forms.File{
+		name = strings.clone(filename == "" ? "blob" : filename), mime = strings.clone(mime), size = i64(len(data)), data = data,
+	}}, true
+}
+
+// Destroys an entry of `fd` (no longer in its list), giving back the bytes it counted.
+@(private)
+fd_entry_destroy :: proc(p: ^Page, fd: ^Form_Data, e: ^forms.Entry) {
+	if e.is_file && e.file.data != nil { p.held -= len(e.file.data); fd.held -= len(e.file.data) }
+	forms.entry_destroy(e)
+}
 
 FormData_create :: proc(c: ^Call, form: Api_Element, submitter: Api_Element) -> (u64, Api_Error) {
 	p := c.page
@@ -76,22 +102,20 @@ FormData_append :: proc(c: ^Call, data: Api_FormData, name, value: string) -> Ap
 FormData_appendBlob :: proc(c: ^Call, data: Api_FormData, name: string, blob: Api_Buffer, filename: string, mime: string) -> Api_Error {
 	fd := data.data
 	if too_many(c.page, fd) { return fail(c, .Invalid_Argument, "too many entries (forms.max_entries)") }
-	bytes := make([]byte, len(blob.data.bytes))
-	copy(bytes, blob.data.bytes[:])
-	append(&fd.entries, forms.Entry{name = strings.clone(name), is_file = true, file = forms.File{
-		name = strings.clone(filename == "" ? "blob" : filename), mime = strings.clone(mime), size = i64(len(bytes)), data = bytes,
-	}})
+	e, ok := fd_blob_entry(c.page, fd, name, blob.data.bytes[:], filename, mime)
+	if !ok { return fail(c, .Quota, "QuotaExceededError: page memory limit") }
+	append(&fd.entries, e)
 	return .None
 }
 
 @(private)
-fd_remove_all :: proc(fd: ^Form_Data, name: string) -> (first: int) {
+fd_remove_all :: proc(p: ^Page, fd: ^Form_Data, name: string) -> (first: int) {
 	first = -1
 	i := 0
 	for i < len(fd.entries) {
 		if fd.entries[i].name == name {
 			if first < 0 { first = i }
-			forms.entry_destroy(&fd.entries[i])
+			fd_entry_destroy(p, fd, &fd.entries[i])
 			ordered_remove(&fd.entries, i)
 			continue
 		}
@@ -103,7 +127,7 @@ fd_remove_all :: proc(fd: ^Form_Data, name: string) -> (first: int) {
 // set(name, value): replaces the first entry of that name and removes the others (appends when there is none).
 FormData_set :: proc(c: ^Call, data: Api_FormData, name, value: string) -> Api_Error {
 	fd := data.data
-	at := fd_remove_all(fd, name)
+	at := fd_remove_all(c.page, fd, name)
 	e := forms.Entry{name = strings.clone(name), value = strings.clone(value)}
 	if at < 0 {
 		if too_many(c.page, fd) { forms.entry_destroy(&e); return fail(c, .Invalid_Argument, "too many entries (forms.max_entries)") }
@@ -114,7 +138,7 @@ FormData_set :: proc(c: ^Call, data: Api_FormData, name, value: string) -> Api_E
 	return .None
 }
 
-FormData_delete :: proc(c: ^Call, data: Api_FormData, name: string) { fd_remove_all(data.data, name) }
+FormData_delete :: proc(c: ^Call, data: Api_FormData, name: string) { fd_remove_all(c.page, data.data, name) }
 
 FormData_has :: proc(c: ^Call, data: Api_FormData, name: string) -> bool {
 	for e in data.data.entries { if e.name == name { return true } }
@@ -261,9 +285,18 @@ Fetch_startFormData :: proc(c: ^Call, target: string, data: Api_FormData, callba
 	for e in fd.entries { append(&job.sub.entries, forms.entry_clone(e)) }
 	job.target, job.method, job.headers, job.options = strings.clone(abs), strings.clone(method), strings.clone(headers), fetch_options_pack(options)
 
-	if !forms.needs_file_reads(job.sub.entries[:]) {
+	if p.loader == nil {   // a worker's requests go through its page, which this API does not relay
+		job.ok, job.message = false, strings.clone("FormData bodies cannot be sent from a worker")
+	} else if !forms.needs_file_reads(job.sub.entries[:]) {
 		body_job_work(job)
-		body_job_finish(job)
+	}
+	if p.loader == nil || !forms.needs_file_reads(job.sub.entries[:]) {
+		// finished in a task of its own: a failure calls the guest back, never from inside this call
+		post_page_task(p, proc(pg: ^Page, data: rawptr) {
+			job := (^Body_Job)(data)
+			if pg == nil { job.cancelled = true }
+			body_job_finish(job)
+		}, job)
 		return u64(h)
 	}
 	job.cleanup = base.on_close(p.scope, proc(data: rawptr) { (^Body_Job)(data).cancelled = true }, job)

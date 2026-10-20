@@ -84,10 +84,9 @@ static void inspect_object(JSContext *ctx, sb *b, JSValueConst v, int depth)
         JSValue name = JS_GetPropertyStr(ctx, v, "name");
         size_t n = 0;
         const char *s = JS_IsString(name) ? JS_ToCStringLen(ctx, &n, name) : NULL;
-        bool is_class = false;
-        sb_str(b, is_class ? "[class " : "[Function");
+        sb_str(b, "[Function");
         if (s && n) { sb_str(b, ": "); sb_put(b, s, n); }
-        else if (!is_class) { sb_str(b, " (anonymous)"); }
+        else { sb_str(b, " (anonymous)"); }
         sb_str(b, "]");
         if (s) { JS_FreeCString(ctx, s); }
         JS_FreeValue(ctx, name);
@@ -114,6 +113,8 @@ static void inspect_object(JSContext *ctx, sb *b, JSValueConst v, int depth)
         JS_FreeValue(ctx, s);
         return;
     }
+    bool array = JS_IsArray(v);
+    if (depth > INSPECT_MAX_DEPTH) { sb_str(b, JS_IsPromise(v) ? "[Promise]" : array ? "[Array]" : "[Object]"); return; }
     if (JS_IsPromise(v)) {
         JSPromiseStateEnum st = JS_PromiseState(ctx, v);
         sb_str(b, "Promise {");
@@ -127,8 +128,6 @@ static void inspect_object(JSContext *ctx, sb *b, JSValueConst v, int depth)
         sb_str(b, " }");
         return;
     }
-    bool array = JS_IsArray(v);
-    if (depth > INSPECT_MAX_DEPTH) { sb_str(b, array ? "[Array]" : "[Object]"); return; }
     if (array) {
         int64_t len = 0;
         if (JS_GetLength(ctx, v, &len) < 0) { JS_FreeValue(ctx, JS_GetException(ctx)); }

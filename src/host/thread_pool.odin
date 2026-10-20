@@ -15,6 +15,8 @@ Thread_Pool :: struct {
 	mu:         sync.Mutex,
 	cond:       sync.Cond,
 	generation: u64,          // bumped for each parallel_for: wakes the threads
+	active:     int,          // helpers between taking a generation and leaving pool_take (under mu)
+	idle:       sync.Cond,    // signalled when active drops to 0
 	stopping:   bool,
 	fn:         Parallel_Proc,
 	data:       rawptr,
@@ -55,6 +57,9 @@ parallel_for :: proc(p: ^Thread_Pool, count: int, fn: Parallel_Proc, data: rawpt
 		return
 	}
 	sync.mutex_lock(&p.mu)
+	// a helper may still be leaving the previous round (it took the last index past its count): the counters are reset
+	// only once none is, or it could take an index of this round before the reset and run that item twice
+	for p.active > 0 { sync.cond_wait(&p.idle, &p.mu) }
 	p.fn, p.data, p.count = fn, data, count
 	p.generation += 1
 	gen := p.generation

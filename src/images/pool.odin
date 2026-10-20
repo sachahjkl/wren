@@ -99,6 +99,7 @@ Decoder :: struct {
 	threads:  [dynamic]^host.Thread,
 	ports:    base.Pool(Port),
 	stopping: bool,
+	held:     bool,   // decoder_hold: the threads take no job (tests queue several jobs before any is taken)
 	seq:      u64,
 	allocator: runtime.Allocator,
 	stats:    Decoder_Stats,
@@ -193,6 +194,18 @@ decoder_stats :: proc() -> Decoder_Stats {
 	sync.mutex_lock(&dec.mu)
 	defer sync.mutex_unlock(&dec.mu)
 	return dec.stats
+}
+
+// While held, the decoding threads take no job (they finish the one they run): what is queued meanwhile is then
+// taken in priority order, whatever the threads' scheduling.
+@(private)
+decoder_hold :: proc(hold: bool) {
+	d := dec
+	if d == nil { return }
+	sync.mutex_lock(&d.mu)
+	d.held = hold
+	sync.cond_broadcast(&d.cond)
+	sync.mutex_unlock(&d.mu)
 }
 
 // Joins the threads; queued and finished jobs are dropped. Every port is closed. Call at shutdown.
@@ -338,7 +351,7 @@ decoder_thread :: proc(data: rawptr) {
 	if first { sync.sema_post(&codecs_ready) }
 	for {
 		sync.mutex_lock(&d.mu)
-		for len(d.queue) == 0 && !d.stopping { sync.cond_wait(&d.cond, &d.mu) }
+		for (len(d.queue) == 0 || d.held) && !d.stopping { sync.cond_wait(&d.cond, &d.mu) }
 		if d.stopping { sync.mutex_unlock(&d.mu); return }
 		best := 0
 		for j, i in d.queue {

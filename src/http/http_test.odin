@@ -68,6 +68,8 @@ forbidden_and_safelisted :: proc(t: ^testing.T) {
 	testing.expect(t, is_forbidden_request_header("sec-fetch-mode"))
 	testing.expect(t, is_forbidden_request_header("Proxy-Authorization"))
 	testing.expect(t, !is_forbidden_request_header("X-Custom"))
+	testing.expect(t, is_forbidden_request_header("X-HTTP-Method-Override", "GET, trace"), "a method override naming a forbidden method")
+	testing.expect(t, !is_forbidden_request_header("X-HTTP-Method-Override", "PATCH"))
 	testing.expect(t, is_forbidden_method("trace"))
 	testing.expect(t, !is_forbidden_method("PATCH"))
 	testing.expect_value(t, normalize_method("get", context.temp_allocator), "GET")

@@ -148,8 +148,12 @@ is_safelisted_method :: proc(m: string) -> bool { return m == "GET" || m == "HEA
 // Methods that carry no side effects (cookie SameSite=Lax decisions).
 is_safe_method :: proc(m: string) -> bool { return m == "GET" || m == "HEAD" || m == "OPTIONS" || m == "TRACE" }
 
-// Headers a script must not set: the browser owns them.
-is_forbidden_request_header :: proc(name: string) -> bool {
+// Headers a script must not set: the browser owns them. With `value`: also the method-override headers naming a forbidden
+// method (X-HTTP-Method-Override: TRACE), which some servers obey as the method (Fetch Standard).
+is_forbidden_request_header :: proc(name: string, value := "") -> bool {
+	if strings.equal_fold(name, "x-http-method") || strings.equal_fold(name, "x-http-method-override") || strings.equal_fold(name, "x-method-override") {
+		for m in strings.split(value, ",", context.temp_allocator) { if is_forbidden_method(strings.trim(m, " \t")) { return true } }
+	}
 	switch {
 	case len(name) >= 6 && strings.equal_fold(name[:6], "proxy-"), len(name) >= 4 && strings.equal_fold(name[:4], "sec-"): return true
 	}

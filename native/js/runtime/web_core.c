@@ -538,8 +538,8 @@ static JSValue web_iter_next(JSContext *ctx, JSValueConst this_val, int argc, JS
     case WEB_ITER_VALUES: JS_FreeValue(ctx, k); value = v; break;
     default:
         value = JS_NewArray(ctx);
-        JS_SetPropertyUint32(ctx, value, 0, k);
-        JS_SetPropertyUint32(ctx, value, 1, v);
+        wj_array_set(ctx, value, 0, k);
+        wj_array_set(ctx, value, 1, v);
         break;
     }
     return iter_result(ctx, value, false);
@@ -651,6 +651,19 @@ static uint32_t tasks_free_n, tasks_free_cap;
 
 void wj_cb_web_task(int64_t user);
 
+/* the slot `i` can be used again (when the free list cannot grow, it is lost: never reused while a timer may name it) */
+static void task_slot_release(uint32_t i)
+{
+    tasks[i].fn = NULL;
+    tasks[i].data = JS_UNDEFINED;
+    if (tasks_free_n == tasks_free_cap) {
+        uint32_t cap = tasks_free_cap ? tasks_free_cap * 2 : 32;
+        uint32_t *n = realloc(tasks_free, cap * sizeof *n);
+        if (n) { tasks_free = n; tasks_free_cap = cap; }
+    }
+    if (tasks_free_n < tasks_free_cap) { tasks_free[tasks_free_n++] = i; }
+}
+
 bool web_queue_task(JSContext *ctx, void (*fn)(JSContext *ctx, JSValueConst data), JSValueConst data)
 {
     uint32_t i;
@@ -670,7 +683,7 @@ bool web_queue_task(JSContext *ctx, void (*fn)(JSContext *ctx, JSValueConst data
     tasks[i].data = JS_DupValue(ctx, data);
     if (!wr_Timers_setTimeout64((uint32_t)(uintptr_t)&wj_cb_web_task, (int64_t)i + 1, 0)) {
         JS_FreeValue(ctx, tasks[i].data);
-        tasks[i].fn = NULL;
+        task_slot_release(i);
         JS_ThrowInternalError(ctx, "the browser refused to queue a task");
         return false;
     }
@@ -685,14 +698,7 @@ WJ_EXPORT("wj_cb_web_task") void wj_cb_web_task(int64_t user)
     uint32_t i = (uint32_t)(user - 1);
     web_task t = tasks[i];
     if (!t.fn) { return; }
-    tasks[i].fn = NULL;
-    tasks[i].data = JS_UNDEFINED;
-    if (tasks_free_n == tasks_free_cap) {
-        uint32_t cap = tasks_free_cap ? tasks_free_cap * 2 : 32;
-        uint32_t *n = realloc(tasks_free, cap * sizeof *n);
-        if (n) { tasks_free = n; tasks_free_cap = cap; }
-    }
-    if (tasks_free_n < tasks_free_cap) { tasks_free[tasks_free_n++] = i; }
+    task_slot_release(i);
     t.fn(ctx, t.data);
     JS_FreeValue(ctx, t.data);
 }

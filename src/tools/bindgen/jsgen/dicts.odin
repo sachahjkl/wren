@@ -141,12 +141,13 @@ emit_dicts :: proc(g: ^Gen, h, c: ^strings.Builder) {
 			#partial switch k {
 			case .Str, .Enum: wl(c, "    wj_str_free(ctx, &d->%s);", f)
 			case .Dict: wl(c, "    wjd_%s_free(ctx, &d->%s);", n, f)
-			case .Value: wl(c, "    JS_FreeValue(ctx, d->%s);", f)
+			case .Value: wl(c, "    JS_FreeValue(ctx, d->%s); d->%s = JS_UNDEFINED;", f, f)
 			}
 		}
 		wl(c, "}")
 		wl(c, "")
-		// _from
+		// _from: what a failure leaves converted is freed (_free is idempotent: a failed member dictionary freed itself)
+		fail := fmt.tprintf("{{ wjd_%s_free(ctx, out); return false; }}", name)
 		wl(c, "bool wjd_%s_from(JSContext *ctx, JSValueConst v, wjd_%s *out)", name, name)
 		wl(c, "{")
 		wl(c, "    memset(out, 0, sizeof *out);")
@@ -155,18 +156,18 @@ emit_dicts :: proc(g: ^Gen, h, c: ^strings.Builder) {
 			if k == .Value { wl(c, "    out->%s = JS_UNDEFINED;", c_ident(mb.name)) }
 		}
 		if d.parent != "" && g.m.dictionaries[d.parent] != nil {
-			wl(c, "    if (!wjd_%s_from(ctx, v, &out->base)) {{ return false; }}", d.parent)
+			wl(c, "    if (!wjd_%s_from(ctx, v, &out->base)) %s", d.parent, fail)
 		}
 		wl(c, "    bool is_object = JS_IsObject(v);")
-		wl(c, "    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) {{ JS_ThrowTypeError(ctx, \"The provided value is not of type '%s'.\"); return false; }}", name)
+		wl(c, "    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) {{ JS_ThrowTypeError(ctx, \"The provided value is not of type '%s'.\"); %s }}", name, fail)
 		for mb in d.members {
 			k, n, bits, restricted := dict_field_kind(g, mb.type)
 			f := c_ident(mb.name)
 			wl(c, "    {")
 			wl(c, "        JSValue x = is_object ? JS_GetPropertyStr(ctx, v, %q) : JS_UNDEFINED;", mb.name)
-			wl(c, "        if (JS_IsException(x)) {{ return false; }}")
+			wl(c, "        if (JS_IsException(x)) %s", fail)
 			if mb.required {
-				wl(c, "        if (JS_IsUndefined(x)) {{ JS_ThrowTypeError(ctx, \"Failed to read the '%s' property from '%s': Required member is undefined.\"); return false; }}", mb.name, name)
+				wl(c, "        if (JS_IsUndefined(x)) {{ JS_ThrowTypeError(ctx, \"Failed to read the '%s' property from '%s': Required member is undefined.\"); %s }}", mb.name, name, fail)
 			}
 			// default when undefined
 			def := mb.default
@@ -182,14 +183,14 @@ emit_dicts :: proc(g: ^Gen, h, c: ^strings.Builder) {
 			case .Str, .Enum:
 				if def.kind == .String { wl(c, "            out->%s.ptr = %q; out->%s.len = %d;", f, def.text, f, len(def.text)) }
 			case .Dict:
-				wl(c, "            if (!wjd_%s_from(ctx, JS_UNDEFINED, &out->%s)) {{ return false; }}", n, f)
+				wl(c, "            if (!wjd_%s_from(ctx, JS_UNDEFINED, &out->%s)) %s", n, f, fail)
 			case .Value:
 				if def.kind == .Null { wl(c, "            out->%s = JS_NULL;", f) }
 			}
 			wl(c, "        } else {")
 			if def.kind == .None { wl(c, "            out->has_%s = true;", f) }
 			range := webidl.attr_has(webidl.resolve(g.m, mb.type).attrs, "EnforceRange") ? "WJ_ENFORCE_RANGE" : webidl.attr_has(webidl.resolve(g.m, mb.type).attrs, "Clamp") ? "WJ_CLAMP" : "0"
-			ok := "            if (!ok) { JS_FreeValue(ctx, x); return false; }"
+			ok := fmt.tprintf("            if (!ok) {{ JS_FreeValue(ctx, x); wjd_%s_free(ctx, out); return false; }}", name)
 			switch k {
 			case .Bool: wl(c, "            out->%s = JS_ToBool(ctx, x);", f); ok = ""
 			case .I32: wl(c, "            bool ok = wj_to_int32(ctx, x, &out->%s, %d, %s);", f, bits, range)

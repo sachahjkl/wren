@@ -31,9 +31,18 @@ Engine_reportException :: proc(c: ^Call, message: string, stack: string, source:
 	log(c.page, .Error, strings.to_string(b))
 }
 
+// The engine's own imports are open to every module of the page (module js): those that change state the engine relies on
+// answer the realm's engine instance only. Another module of the page must not plant bytecode in the cache shared by every
+// page (QuickJS does not verify bytecode it reads back), nor pin or unpin the nodes of the engine's wrappers.
+@(private)
+from_engine :: #force_inline proc(c: ^Call) -> bool {
+	r := c.page.js
+	return r != nil && r.inst != nil && c.inst == r.inst
+}
+
 Engine_storeBytecode :: proc(c: ^Call, code: []u8) {
 	r := c.page.js
-	if r == nil || !r.has_pending_key { return }
+	if !from_engine(c) || !r.has_pending_key { return }
 	js.store(r.pending_key, code)
 	r.has_pending_key = false
 }
@@ -51,13 +60,14 @@ Engine_locale :: proc(c: ^Call) -> string {
 }
 
 Node_wrap :: proc(c: ^Call, node: Api_Node) -> u32 {
+	if !from_engine(c) { return 0 }
 	dom.pin(c.page.doc, H(node.handle))
 	return js_node_interface(c.page, node.data)
 }
 
 Node_unpin :: proc(c: ^Call, node: u64) {
 	d := call_doc(c)
-	if d == nil { return }
+	if d == nil || !from_engine(c) { return }
 	dom.unpin(d, H(node))
 }
 

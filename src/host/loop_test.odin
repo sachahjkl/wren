@@ -4,7 +4,6 @@ import "core:container/priority_queue"
 import "core:sync"
 import "core:testing"
 import "core:thread"
-import "core:time"
 import "wb:base"
 
 @(private = "file")
@@ -19,23 +18,43 @@ Tagged :: struct { c: ^Counter, tag: int }
 @(private = "file")
 record :: proc(data: rawptr) { t := (^Tagged)(data); append(&t.c.order, t.tag) }
 
+// The loop's clock is the test's: time moves only when the test says so.
+@(private = "file")
+advance :: proc(clock: ^i64, ms: f64) { sync.atomic_add(clock, i64(ms * 1e6)) }
+
 @(test)
 timers_fire_in_deadline_order :: proc(t: ^testing.T) {
 	l: Loop
 	loop_init(&l)
 	defer loop_destroy(&l)
+	clock: i64
+	l.manual_ns = &clock
 	c: Counter
 	defer delete(c.order)
 	a, b, d := Tagged{&c, 1}, Tagged{&c, 2}, Tagged{&c, 3}
 	set_timer(&l, 30, 0, record, &d)
 	set_timer(&l, 10, 0, record, &a)
 	set_timer(&l, 20, 0, record, &b)
-	for len(c.order) < 3 { loop_wait(&l, 200) }
+	testing.expect_value(t, next_timeout_ms(&l), 10)
+	advance(&clock, 9.5)
+	testing.expect_value(t, run_ready(&l), 0)
+	testing.expect_value(t, next_timeout_ms(&l), 1)   // rounded up: never woken before the deadline
+	advance(&clock, 0.5)
+	testing.expect_value(t, run_ready(&l), 1)
+	advance(&clock, 100)   // the other two are overdue: they run in deadline order, not in creation order
+	testing.expect_value(t, run_ready(&l), 2)
 	testing.expect_value(t, len(c.order), 3)
 	testing.expect_value(t, c.order[0], 1)
 	testing.expect_value(t, c.order[1], 2)
 	testing.expect_value(t, c.order[2], 3)
 	testing.expect_value(t, next_timeout_ms(&l), -1)
+	// the same deadline: creation order (HTML: timers with the same timeout run in the order they were set)
+	clear(&c.order)
+	tags: [16]Tagged
+	for i in 0 ..< len(tags) { tags[i] = Tagged{&c, i}; set_timer(&l, 4, 0, record, &tags[i]) }
+	advance(&clock, 4)
+	testing.expect_value(t, run_ready(&l), len(tags))
+	for i in 0 ..< len(tags) { testing.expect_value(t, c.order[i], i) }
 }
 
 @(test)
@@ -43,6 +62,8 @@ cleared_and_scoped_timers_never_fire :: proc(t: ^testing.T) {
 	l: Loop
 	loop_init(&l)
 	defer loop_destroy(&l)
+	clock: i64
+	l.manual_ns = &clock
 	c: Counter
 	h := set_timer(&l, 5, 0, bump, &c)
 	testing.expect(t, clear_timer(&l, h))
@@ -51,10 +72,11 @@ cleared_and_scoped_timers_never_fire :: proc(t: ^testing.T) {
 	set_timer(&l, 5, 0, bump, &c, scope)
 	set_timer(&l, 5, 10, bump, &c, scope)
 	base.scope_close(scope)
-	time.sleep(30 * time.Millisecond)
+	advance(&clock, 30)
 	run_ready(&l)
 	testing.expect_value(t, c.n, 0)
 	testing.expect_value(t, l.timers.count, 0)
+	testing.expect_value(t, next_timeout_ms(&l), -1)   // the stale queue entries are dropped
 }
 
 @(test)
@@ -62,11 +84,19 @@ interval_does_not_replay_a_burst :: proc(t: ^testing.T) {
 	l: Loop
 	loop_init(&l)
 	defer loop_destroy(&l)
+	clock: i64
+	l.manual_ns = &clock
 	c: Counter
 	h := set_timer(&l, 5, 5, bump, &c)
-	time.sleep(60 * time.Millisecond)   // the loop was stalled for ~12 periods
+	advance(&clock, 60)   // the loop was stalled for 12 periods
 	run_ready(&l)
 	testing.expect_value(t, c.n, 1)
+	run_ready(&l)
+	testing.expect_value(t, c.n, 1)   // the next tick is counted from now
+	testing.expect(t, next_timeout_ms(&l) > 0, "the next tick is in the future")
+	advance(&clock, 5)
+	run_ready(&l)
+	testing.expect_value(t, c.n, 2)
 	clear_timer(&l, h)
 }
 
@@ -75,9 +105,11 @@ timer_scheduling_timer_with_zero_delay_does_not_spin :: proc(t: ^testing.T) {
 	l: Loop
 	loop_init(&l)
 	defer loop_destroy(&l)
-	State :: struct { l: ^Loop, n: int }
-	s := State{&l, 0}
-	// one run_ready may only run the timers due when it starts
+	clock: i64
+	l.manual_ns = &clock
+	State :: struct { l: ^Loop, n: int, clock: ^i64 }
+	s := State{&l, 0, &clock}
+	// one run_ready may only run the timers due when it starts, even when the clock does not move in between
 	step :: proc(data: rawptr) {
 		s := (^State)(data)
 		s.n += 1
@@ -116,7 +148,7 @@ blocking_jobs_run_off_thread_and_complete_on_loop :: proc(t: ^testing.T) {
 			j.finished^ += 1
 		}, &j)
 	}
-	for finished < len(jobs) { loop_wait(&l, 50) }
+	for finished < len(jobs) { loop_wait(&l) }   // each completion is a post: the wait always ends
 	for j, i in jobs {
 		testing.expect_value(t, j.value, i * 2)
 		testing.expect(t, j.worker_thread != main_id, "work ran on a worker")
@@ -144,14 +176,12 @@ posts_from_many_threads_are_all_delivered_and_wakes_coalesce :: proc(t: ^testing
 			for _ in 0 ..< PER { post(w.l, bump, w.c) }
 		})
 	}
-	deadline := time.tick_now()
-	for c.n < THREADS * PER {
-		loop_wait(&l, 50)
-		if time.duration_seconds(time.tick_since(deadline)) > 10 { break }
-	}
+	// every post that finds no wake pending issues one: a wait never misses the last posts
+	for c.n < THREADS * PER { loop_wait(&l) }
 	for th in threads { thread.join(th); thread.destroy(th) }
 	run_ready(&l)
 	testing.expect_value(t, c.n, THREADS * PER)
+	testing.expect_value(t, next_timeout_ms(&l), -1)   // no wake left pending
 }
 
 // Many due timers that take time: one turn stops at the time slice, the rest run at the next turns (none is lost).
@@ -160,26 +190,33 @@ timer_slice_bounds_a_turn :: proc(t: ^testing.T) {
 	l: Loop
 	loop_init(&l)
 	defer loop_destroy(&l)
+	clock: i64
+	l.manual_ns = &clock
 	l.timer_slice_ns = 2_000_000
-	slow :: proc(data: rawptr) {   // busy for 0.5 ms (Sleep cannot wait less than a millisecond)
-		c := (^Counter)(data); c.n += 1
-		start := time.tick_now()
-		for time.tick_since(start) < 500 * time.Microsecond {}
+	Slow :: struct { n: int, clock: ^i64 }
+	slow :: proc(data: rawptr) {   // each callback "takes" 0.5 ms of the loop's clock
+		s := (^Slow)(data)
+		s.n += 1
+		advance(s.clock, 0.5)
 	}
-	c: Counter
-	for _ in 0 ..< 100 { set_timer(&l, 0, 0, slow, &c) }
-	time.sleep(time.Millisecond)
-	first := run_ready(&l)
-	testing.expectf(t, first > 0 && first < 100, "one turn ran %d of 100 timers", first)
-	testing.expect_value(t, next_timeout_ms(&l), 0)   // the rest are due now
-	for _ in 0 ..< 1000 { if c.n == 100 { break }; run_ready(&l) }
-	testing.expect_value(t, c.n, 100)
+	s := Slow{clock = &clock}
+	for _ in 0 ..< 100 { set_timer(&l, 0, 0, slow, &s) }
+	testing.expect_value(t, run_ready(&l), 4)   // 4 x 0.5 ms fill the 2 ms slice
+	testing.expect_value(t, next_timeout_ms(&l), 0)   // the rest are due now: the turn signalled the next one
+	turns := 1
+	for s.n < 100 && turns < 1000 { run_ready(&l); turns += 1 }
+	testing.expect_value(t, s.n, 100)
+	testing.expect_value(t, turns, 25)
+	// a slow callback still runs alone in its turn: the slice is checked between callbacks
+	l.timer_slice_ns = 100_000
+	s.n = 0
+	for _ in 0 ..< 3 { set_timer(&l, 0, 0, slow, &s) }
+	testing.expect_value(t, run_ready(&l), 1)
 	// slice 0: every due timer in one turn
 	l.timer_slice_ns = 0
-	c.n = 0
-	for _ in 0 ..< 20 { set_timer(&l, 0, 0, slow, &c) }
-	time.sleep(time.Millisecond)
-	testing.expect_value(t, run_ready(&l), 20)
+	s.n = 0
+	for _ in 0 ..< 20 { set_timer(&l, 0, 0, slow, &s) }
+	testing.expect_value(t, run_ready(&l), 22)   // with the 2 left from above
 }
 // Delays that do not fit (NaN, infinities, 1e300 ms) mean "never", not "now"; clearing long timers in a loop does not
 // pile up entries in the queue.

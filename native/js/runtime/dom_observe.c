@@ -55,7 +55,7 @@ static bool mo_attach(JSContext *ctx, JSValueConst target, JSValueConst observer
         JS_FreeValue(ctx, x);
         if (same) { return true; }
     }
-    return JS_SetPropertyUint32(ctx, arr, (uint32_t)n, JS_DupValue(ctx, observer)) >= 0;
+    return wj_array_set(ctx, arr, (uint32_t)n, JS_DupValue(ctx, observer)) >= 0;
 }
 
 static void mo_free(void *p)
@@ -188,7 +188,8 @@ static JSValue take_records(JSContext *ctx, mo_impl *m)
         uint64_t target = dom_read_u64(p + 1), prev = dom_read_u64(p + 9), next = dom_read_u64(p + 17);
         uint32_t na = dom_read_u32(p + 25), nr = dom_read_u32(p + 29);
         p += 33;
-        if ((size_t)(end - p) < (size_t)(na + nr) * 8 + 9) { break; }
+        /* 64-bit sums: counts from the buffer must not wrap around (size_t is 32 bits here) */
+        if ((uint64_t)(end - p) < ((uint64_t)na + nr) * 8 + 9) { break; }
         dom_impl *d;
         JSValue rec = dom_new(ctx, WJ_IFACE_MutationRecord, DOM_VALUES, JS_UNDEFINED, 0, &d);
         if (JS_IsException(rec)) { break; }
@@ -206,7 +207,7 @@ static JSValue take_records(JSContext *ctx, mo_impl *m)
         d->values[MR_PREV] = wj_wrap_node(ctx, prev);
         d->values[MR_NEXT] = wj_wrap_node(ctx, next);
         uint32_t ln = dom_read_u32(p); p += 4;
-        if ((size_t)(end - p) < (size_t)ln + 5) { JS_FreeValue(ctx, rec); break; }
+        if ((uint64_t)(end - p) < (uint64_t)ln + 5) { JS_FreeValue(ctx, rec); break; }
         d->values[MR_NAME] = kind == 0 ? JS_NewStringLen(ctx, (const char *)p, ln) : JS_NULL;
         d->values[MR_NS] = JS_NULL;
         p += ln;
@@ -215,7 +216,7 @@ static JSValue take_records(JSContext *ctx, mo_impl *m)
         if ((size_t)(end - p) < lo) { JS_FreeValue(ctx, rec); break; }
         d->values[MR_OLD] = has_old ? JS_NewStringLen(ctx, (const char *)p, lo) : JS_NULL;
         p += lo;
-        JS_SetPropertyUint32(ctx, arr, k++, rec);
+        wj_array_set(ctx, arr, k++, rec);
     }
     free(buf);
     wr_MutationObserver_release(m->host);

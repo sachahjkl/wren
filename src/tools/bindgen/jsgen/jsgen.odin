@@ -608,10 +608,13 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 		wl(b, "    if (argc < %d) {{ return wj_throw_arity(ctx, %q, %d, argc); }}", required, qual, required)
 	}
 	cleanup := strings.builder_make(context.temp_allocator)
+	// a conversion that throws frees the strings converted before it: `bail` is its early return
+	freed := strings.builder_make(context.temp_allocator)
 	call := make([dynamic]string, context.temp_allocator)
 	if has_self { append(&call, "self->handle") }
 	for a, i in args {
 		v := fmt.tprintf("a%d", i)
+		bail := fmt.tprintf("{{ %sreturn JS_EXCEPTION; }}", strings.to_string(freed))
 		src := setter ? "argv[0]" : fmt.tprintf("wj_arg(argc, argv, %d)", i)
 		optional := a.a != nil && a.a.optional
 		def := a.a != nil ? a.a.default : webidl.Default{}
@@ -633,7 +636,7 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 			cond := optional ? fmt.tprintf("!JS_IsUndefined(%s) && ", src) : ""
 			fnc := a.conv == .I32 ? "wj_to_int32" : "wj_to_uint32"
 			bits := idl_int_bits(rt.name)
-			wl(b, "    if (%s!%s(ctx, %s, &%s, %d, %s)) {{ return JS_EXCEPTION; }}", cond, fnc, src, v, bits, range_mode)
+			wl(b, "    if (%s!%s(ctx, %s, &%s, %d, %s)) %s", cond, fnc, src, v, bits, range_mode, bail)
 			append(&call, v)
 		case .I64, .U64:
 			ctype := a.conv == .I64 ? "int64_t" : "uint64_t"
@@ -641,7 +644,7 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 			wl(b, "    %s %s = %s;", ctype, v, defv)
 			cond := optional ? fmt.tprintf("!JS_IsUndefined(%s) && ", src) : ""
 			fnc := a.conv == .I64 ? "wj_to_int64" : "wj_to_uint64"
-			wl(b, "    if (%s!%s(ctx, %s, &%s, %s)) {{ return JS_EXCEPTION; }}", cond, fnc, src, v, range_mode)
+			wl(b, "    if (%s!%s(ctx, %s, &%s, %s)) %s", cond, fnc, src, v, range_mode, bail)
 			append(&call, v)
 		case .F64, .F32:
 			defv := def.kind == .Number ? def.text : "0"
@@ -649,7 +652,7 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 			wl(b, "    double %s = %s;", v, defv)
 			cond := optional ? fmt.tprintf("!JS_IsUndefined(%s) && ", src) : ""
 			restricted := !strings.has_prefix(rt.name, "unrestricted")
-			wl(b, "    if (%s!wj_to_double(ctx, %s, &%s, %v)) {{ return JS_EXCEPTION; }}", cond, src, v, restricted)
+			wl(b, "    if (%s!wj_to_double(ctx, %s, &%s, %v)) %s", cond, src, v, restricted, bail)
 			append(&call, a.conv == .F32 && p.type.kind == .F32 ? fmt.tprintf("(float)%s", v) : v)
 		case .String, .Usv:
 			flags := make([dynamic]string, context.temp_allocator)
@@ -659,16 +662,17 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 			fl := len(flags) > 0 ? strings.join(flags[:], " | ", context.temp_allocator) : "0"
 			defs := def.kind == .String ? def.text : ""
 			wl(b, "    wj_str %s;", v)
-			wl(b, "    if (!wj_to_str(ctx, %s, &%s, %s, %q)) {{ return JS_EXCEPTION; }}", src, v, fl, defs)
+			wl(b, "    if (!wj_to_str(ctx, %s, &%s, %s, %q)) %s", src, v, fl, defs, bail)
 			if p.optional {
 				append(&call, fmt.tprintf("(const uint8_t *)%s.ptr", v), fmt.tprintf("%s.ptr ? (uint32_t)%s.len : WR_ABSENT", v, v))
 			} else {
 				append(&call, fmt.tprintf("(const uint8_t *)(%s.ptr ? %s.ptr : \"\")", v, v), fmt.tprintf("(uint32_t)%s.len", v))
 			}
 			fmt.sbprintf(&cleanup, "    wj_str_free(ctx, &%s);\n", v)
+			fmt.sbprintf(&freed, "wj_str_free(ctx, &%s); ", v)
 		case .Node, .Host:
 			wl(b, "    uint64_t %s = 0;", v)
-			wl(b, "    if (!wj_to_handle(ctx, %s, %d, %v, &%s, %q)) {{ return JS_EXCEPTION; }}", src, g.index_of[a.iface] or_else -1, rt.nullable || optional, v, fmt.tprintf("%s: argument %d is not of type '%s'", qual, i + 1, a.iface))
+			wl(b, "    if (!wj_to_handle(ctx, %s, %d, %v, &%s, %q)) %s", src, g.index_of[a.iface] or_else -1, rt.nullable || optional, v, fmt.tprintf("%s: argument %d is not of type '%s'", qual, i + 1, a.iface), bail)
 			append(&call, v)
 		}
 	}

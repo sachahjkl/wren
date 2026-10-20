@@ -85,3 +85,22 @@ thread_pool_rounds_back_to_back :: proc(t: ^testing.T) {
 
 @(private = "file")
 sync_add :: proc(s: []int, i: int) -> int { return sync.atomic_add(&s[i], 1) }
+
+Round64 :: struct { hits: [64]i32 }
+
+// Rounds back to back with different counts: every item of every round runs exactly once (a helper still leaving a
+// round must not take an index of the next one before its counters are reset).
+@(test)
+parallel_for_rounds_back_to_back :: proc(t: ^testing.T) {
+	pool := thread_pool_make(4)
+	defer thread_pool_destroy(pool)
+	for round in 0 ..< 3000 {
+		r: Round64
+		count := 1 + (round * 7) % len(r.hits)
+		parallel_for(pool, count, proc(data: rawptr, i: int) { sync.atomic_add(&(^Round64)(data).hits[i], 1) }, &r)
+		for i in 0 ..< len(r.hits) {
+			want := i32(i < count ? 1 : 0)
+			if r.hits[i] != want { testing.expectf(t, false, "round %d item %d ran %d times (count %d)", round, i, r.hits[i], count); return }
+		}
+	}
+}

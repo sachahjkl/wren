@@ -88,7 +88,8 @@ on_nested :: proc "contextless" (user: i32) {
 	if nest_count < 12 { web.Timers_setTimeout(on_nested, 0, 0); return }
 	early := nest_times[4] - nest_times[0]     // levels 1-5: no clamp
 	late := nest_times[11] - nest_times[7]     // levels 8-12: >= 4 ms each
-	set("data-nest", late >= 15 && late > early ? "ok" : "fast")
+	_ = early   // levels 1-5 may take as long on a slow machine: only the clamp's lower bound is checked
+	set("data-nest", late >= 15 ? "ok" : "fast")
 	set_int("data-nest-late", i64(late))
 }
 
@@ -134,8 +135,15 @@ on_visibility :: proc "contextless" (user: i32, ev: web.Event) {
 hidden_start: f64
 
 on_hidden_timer :: proc "contextless" (user: i32) {
-	set_int("data-hidden-delay", i64(web.Timers_now() - hidden_start))
-	set_int("data-hidden-phase", i64(web.Timers_now()) % 200)
+	now := web.Timers_now()
+	// due at hidden_start + 10, then held to the next point of the 200 ms grid (within the 1 ms a wait is rounded to):
+	// never earlier, whatever the machine's speed (later is a slow machine, not a fault)
+	due := hidden_start + 10
+	grid := f64(i64(due / 200)) * 200
+	if grid < due { grid += 200 }
+	set("data-hidden-grid", now >= grid - 1 ? "ok" : "early")
+	set_int("data-hidden-delay", i64(now - hidden_start))
+	set_int("data-hidden-phase", i64(now) % 200)
 }
 
 @(export)

@@ -32,7 +32,7 @@ FILE_PREFS := [?]config.Def{
 	{name = "file.directory.listing", kind = .Bool, default = {b = true},
 		description = "Show the contents of a file: folder that has no index file (name, size, date modified), as other browsers do. Off: opening such a folder is an error."},
 	{name = "file.directory.max_entries", kind = .Int, default = {i = 5000}, bounded = true, min = 1, max = 1_000_000,
-		description = "Entries a folder listing shows; the others are counted, not listed."},
+		description = "Entries a folder listing shows: the first ones the file system returns, then sorted; the others are counted, not listed."},
 	{name = "file.directory.show_hidden", kind = .Bool, default = {b = false},
 		description = "List hidden and system files and folders too (desktop.ini, $RECYCLE.BIN, ...)."},
 	{name = "file.directory.sort", kind = .String, default = {s = "name"}, choices = {"name", "size", "modified", "type"},
@@ -242,6 +242,25 @@ file_attributes :: proc(path: string) -> (File_Attributes, File_Status) {
 		size = i64(u64(data.nFileSizeHigh) << 32 | u64(data.nFileSizeLow)),
 		modified = u64(data.ftLastWriteTime.dwHighDateTime) << 32 | u64(data.ftLastWriteTime.dwLowDateTime),
 	}, .Ok
+}
+
+// The path a file or folder really is, links and junctions followed (GetFinalPathNameByHandle), in the form of
+// file_path_from_url (C:\... or \\server\share\...). False when it cannot be opened.
+final_path :: proc(path: string, allocator := context.allocator) -> (string, bool) {
+	FILE_FLAG_BACKUP_SEMANTICS :: 0x0200_0000   // folders open too
+	h := win.CreateFileW(win_path(path), 0, win.FILE_SHARE_READ | win.FILE_SHARE_WRITE | win.FILE_SHARE_DELETE, nil, win.OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nil)
+	if h == win.INVALID_HANDLE_VALUE { return "", false }
+	defer win.CloseHandle(h)
+	buf: [1024]u16
+	n := win.GetFinalPathNameByHandleW(h, cstring16(&buf[0]), u32(len(buf)), win.VOLUME_NAME_DOS)
+	if n == 0 || int(n) >= len(buf) { return "", false }
+	s, err := win.utf16_to_utf8(buf[:n], context.temp_allocator)
+	if err != nil { return "", false }
+	switch {
+	case strings.has_prefix(s, `\\?\UNC\`): s = strings.concatenate({`\\`, s[8:]}, context.temp_allocator)
+	case strings.has_prefix(s, `\\?\`):     s = s[4:]
+	}
+	return strings.clone(s, allocator), true
 }
 
 ////////////////////////////////
