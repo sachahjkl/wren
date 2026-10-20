@@ -38,16 +38,16 @@
 /dom/nodes/CharacterData-data.html: OK
 	Comment.data = '': PASS
 	Comment.data = '--': PASS
-	Comment.data = 'è³‡æ–™': PASS
-	Comment.data = 'ðŸŒ  test ðŸŒ  TEST': PASS
+	Comment.data = '資料': PASS
+	Comment.data = '🌠 test 🌠 TEST': PASS
 	Comment.data = 0: PASS
 	Comment.data = null: PASS
 	Comment.data = undefined: PASS
 	Comment.data initial value: PASS
 	Text.data = '': PASS
 	Text.data = '--': PASS
-	Text.data = 'è³‡æ–™': PASS
-	Text.data = 'ðŸŒ  test ðŸŒ  TEST': PASS
+	Text.data = '資料': PASS
+	Text.data = '🌠 test 🌠 TEST': PASS
 	Text.data = 0: PASS
 	Text.data = null: PASS
 	Text.data = undefined: PASS
@@ -1443,12 +1443,12 @@
 	createElement("foo:_") in HTML document: PASS
 	createElement("foo:_") in XHTML document: FAIL
 	createElement("foo:_") in XML document: FAIL
-	createElement("foo:fooà¯†") in HTML document: PASS
-	createElement("foo:fooà¯†") in XHTML document: FAIL
-	createElement("foo:fooà¯†") in XML document: FAIL
-	createElement("foo:à¯†") in HTML document: PASS
-	createElement("foo:à¯†") in XHTML document: FAIL
-	createElement("foo:à¯†") in XML document: FAIL
+	createElement("foo:fooெ") in HTML document: PASS
+	createElement("foo:fooெ") in XHTML document: FAIL
+	createElement("foo:fooெ") in XML document: FAIL
+	createElement("foo:ெ") in HTML document: PASS
+	createElement("foo:ெ") in XHTML document: FAIL
+	createElement("foo:ெ") in XML document: FAIL
 	createElement("foo>") in HTML document: PASS
 	createElement("foo>") in XHTML document: FAIL
 	createElement("foo>") in XML document: FAIL
@@ -1458,21 +1458,21 @@
 	createElement("foo}") in HTML document: PASS
 	createElement("foo}") in XHTML document: FAIL
 	createElement("foo}") in XML document: FAIL
-	createElement("fooà¯†") in HTML document: PASS
-	createElement("fooà¯†") in XHTML document: FAIL
-	createElement("fooà¯†") in XML document: FAIL
-	createElement("fooà¯†:foo") in HTML document: PASS
-	createElement("fooà¯†:foo") in XHTML document: FAIL
-	createElement("fooà¯†:foo") in XML document: FAIL
+	createElement("fooெ") in HTML document: PASS
+	createElement("fooெ") in XHTML document: FAIL
+	createElement("fooெ") in XML document: FAIL
+	createElement("fooெ:foo") in HTML document: PASS
+	createElement("fooெ:foo") in XHTML document: FAIL
+	createElement("fooெ:foo") in XML document: FAIL
 	createElement("f}oo") in HTML document: PASS
 	createElement("f}oo") in XHTML document: FAIL
 	createElement("f}oo") in XML document: FAIL
-	createElement("fà¯†") in HTML document: PASS
-	createElement("fà¯†") in XHTML document: FAIL
-	createElement("fà¯†") in XML document: FAIL
-	createElement("marâ„ª") in HTML document: PASS
-	createElement("marâ„ª") in XHTML document: FAIL
-	createElement("marâ„ª") in XML document: FAIL
+	createElement("fெ") in HTML document: PASS
+	createElement("fெ") in XHTML document: FAIL
+	createElement("fெ") in XML document: FAIL
+	createElement("marK") in HTML document: PASS
+	createElement("marK") in XHTML document: FAIL
+	createElement("marK") in XML document: FAIL
 	createElement("math") in HTML document: PASS
 	createElement("math") in XHTML document: FAIL
 	createElement("math") in XML document: FAIL
@@ -1500,18 +1500,18 @@
 	createElement("}foo") in HTML document: PASS
 	createElement("}foo") in XHTML document: FAIL
 	createElement("}foo") in XML document: FAIL
-	createElement("Ä°nput") in HTML document: FAIL
-	createElement("Ä°nput") in XHTML document: FAIL
-	createElement("Ä°nput") in XML document: FAIL
-	createElement("Ä±nput") in HTML document: FAIL
-	createElement("Ä±nput") in XHTML document: FAIL
-	createElement("Ä±nput") in XML document: FAIL
-	createElement("Ì€") in HTML document: PASS
-	createElement("Ì€") in XHTML document: FAIL
-	createElement("Ì€") in XML document: FAIL
-	createElement("Ì€foo") in HTML document: PASS
-	createElement("Ì€foo") in XHTML document: FAIL
-	createElement("Ì€foo") in XML document: FAIL
+	createElement("İnput") in HTML document: FAIL
+	createElement("İnput") in XHTML document: FAIL
+	createElement("İnput") in XML document: FAIL
+	createElement("ınput") in HTML document: FAIL
+	createElement("ınput") in XHTML document: FAIL
+	createElement("ınput") in XML document: FAIL
+	createElement("̀") in HTML document: PASS
+	createElement("̀") in XHTML document: FAIL
+	createElement("̀") in XML document: FAIL
+	createElement("̀foo") in HTML document: PASS
+	createElement("̀foo") in XHTML document: FAIL
+	createElement("̀foo") in XML document: FAIL
 	createElement(null) in HTML document: PASS
 	createElement(null) in XHTML document: FAIL
 	createElement(null) in XML document: FAIL
@@ -1579,11 +1579,11 @@
 	createElementNS test in HTML document: "http://example.com/","a.b:c",null: PASS
 	createElementNS test in HTML document: "http://example.com/","a:0","INVALID_CHARACTER_ERR": PASS
 	createElementNS test in HTML document: "http://example.com/","a:_",null: FAIL
-	createElementNS test in HTML document: "http://example.com/","a:aà¯†",null: PASS
-	createElementNS test in HTML document: "http://example.com/","a:Ì€",null: PASS
-	createElementNS test in HTML document: "http://example.com/","a:Í¾",null: PASS
-	createElementNS test in HTML document: "http://example.com/","a:à¯†",null: PASS
-	createElementNS test in HTML document: "http://example.com/","aà¯†:a",null: PASS
+	createElementNS test in HTML document: "http://example.com/","a:aெ",null: PASS
+	createElementNS test in HTML document: "http://example.com/","a:̀",null: PASS
+	createElementNS test in HTML document: "http://example.com/","a:;",null: PASS
+	createElementNS test in HTML document: "http://example.com/","a:ெ",null: PASS
+	createElementNS test in HTML document: "http://example.com/","aெ:a",null: PASS
 	createElementNS test in HTML document: "http://example.com/","f1oo",null: PASS
 	createElementNS test in HTML document: "http://example.com/","f::oo",null: FAIL
 	createElementNS test in HTML document: "http://example.com/","f:o:o",null: FAIL
@@ -1633,9 +1633,9 @@
 	createElementNS test in HTML document: "http://example.com/","xmlns","NAMESPACE_ERR": PASS
 	createElementNS test in HTML document: "http://example.com/","xmlns:foo","NAMESPACE_ERR": PASS
 	createElementNS test in HTML document: "http://example.com/","xmlns:test","NAMESPACE_ERR": PASS
-	createElementNS test in HTML document: "http://example.com/","Ì€:a",null: PASS
-	createElementNS test in HTML document: "http://example.com/","Í¾:a",null: PASS
-	createElementNS test in HTML document: "http://example.com/","à¯†:a",null: PASS
+	createElementNS test in HTML document: "http://example.com/","̀:a",null: PASS
+	createElementNS test in HTML document: "http://example.com/",";:a",null: PASS
+	createElementNS test in HTML document: "http://example.com/","ெ:a",null: PASS
 	createElementNS test in HTML document: "http://example.com/",null,null: PASS
 	createElementNS test in HTML document: "http://www.w3.org/2000/xmlns/","","INVALID_CHARACTER_ERR": PASS
 	createElementNS test in HTML document: "http://www.w3.org/2000/xmlns/","1foo","INVALID_CHARACTER_ERR": PASS
@@ -1701,8 +1701,8 @@
 	createElementNS test in HTML document: null,"xmlns","NAMESPACE_ERR": PASS
 	createElementNS test in HTML document: null,"xmlns:foo","NAMESPACE_ERR": PASS
 	createElementNS test in HTML document: null,"}foo","INVALID_CHARACTER_ERR": PASS
-	createElementNS test in HTML document: null,"Í¾foo",null: PASS
-	createElementNS test in HTML document: null,"à¯†foo",null: PASS
+	createElementNS test in HTML document: null,";foo",null: PASS
+	createElementNS test in HTML document: null,"ெfoo",null: PASS
 	createElementNS test in HTML document: null,null,null: PASS
 	createElementNS test in HTML document: null,undefined,null: PASS
 	createElementNS test in HTML document: undefined,"","INVALID_CHARACTER_ERR": PASS
@@ -1774,11 +1774,11 @@
 	createElementNS test in XHTML document: "http://example.com/","a.b:c",null: FAIL
 	createElementNS test in XHTML document: "http://example.com/","a:0","INVALID_CHARACTER_ERR": FAIL
 	createElementNS test in XHTML document: "http://example.com/","a:_",null: FAIL
-	createElementNS test in XHTML document: "http://example.com/","a:aà¯†",null: FAIL
-	createElementNS test in XHTML document: "http://example.com/","a:Ì€",null: FAIL
-	createElementNS test in XHTML document: "http://example.com/","a:Í¾",null: FAIL
-	createElementNS test in XHTML document: "http://example.com/","a:à¯†",null: FAIL
-	createElementNS test in XHTML document: "http://example.com/","aà¯†:a",null: FAIL
+	createElementNS test in XHTML document: "http://example.com/","a:aெ",null: FAIL
+	createElementNS test in XHTML document: "http://example.com/","a:̀",null: FAIL
+	createElementNS test in XHTML document: "http://example.com/","a:;",null: FAIL
+	createElementNS test in XHTML document: "http://example.com/","a:ெ",null: FAIL
+	createElementNS test in XHTML document: "http://example.com/","aெ:a",null: FAIL
 	createElementNS test in XHTML document: "http://example.com/","f1oo",null: FAIL
 	createElementNS test in XHTML document: "http://example.com/","f::oo",null: FAIL
 	createElementNS test in XHTML document: "http://example.com/","f:o:o",null: FAIL
@@ -1828,9 +1828,9 @@
 	createElementNS test in XHTML document: "http://example.com/","xmlns","NAMESPACE_ERR": FAIL
 	createElementNS test in XHTML document: "http://example.com/","xmlns:foo","NAMESPACE_ERR": FAIL
 	createElementNS test in XHTML document: "http://example.com/","xmlns:test","NAMESPACE_ERR": FAIL
-	createElementNS test in XHTML document: "http://example.com/","Ì€:a",null: FAIL
-	createElementNS test in XHTML document: "http://example.com/","Í¾:a",null: FAIL
-	createElementNS test in XHTML document: "http://example.com/","à¯†:a",null: FAIL
+	createElementNS test in XHTML document: "http://example.com/","̀:a",null: FAIL
+	createElementNS test in XHTML document: "http://example.com/",";:a",null: FAIL
+	createElementNS test in XHTML document: "http://example.com/","ெ:a",null: FAIL
 	createElementNS test in XHTML document: "http://example.com/",null,null: FAIL
 	createElementNS test in XHTML document: "http://www.w3.org/2000/xmlns/","","INVALID_CHARACTER_ERR": FAIL
 	createElementNS test in XHTML document: "http://www.w3.org/2000/xmlns/","1foo","INVALID_CHARACTER_ERR": FAIL
@@ -1896,8 +1896,8 @@
 	createElementNS test in XHTML document: null,"xmlns","NAMESPACE_ERR": FAIL
 	createElementNS test in XHTML document: null,"xmlns:foo","NAMESPACE_ERR": FAIL
 	createElementNS test in XHTML document: null,"}foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XHTML document: null,"Í¾foo",null: FAIL
-	createElementNS test in XHTML document: null,"à¯†foo",null: FAIL
+	createElementNS test in XHTML document: null,";foo",null: FAIL
+	createElementNS test in XHTML document: null,"ெfoo",null: FAIL
 	createElementNS test in XHTML document: null,null,null: FAIL
 	createElementNS test in XHTML document: null,undefined,null: FAIL
 	createElementNS test in XHTML document: undefined,"","INVALID_CHARACTER_ERR": FAIL
@@ -1969,11 +1969,11 @@
 	createElementNS test in XML document: "http://example.com/","a.b:c",null: FAIL
 	createElementNS test in XML document: "http://example.com/","a:0","INVALID_CHARACTER_ERR": FAIL
 	createElementNS test in XML document: "http://example.com/","a:_",null: FAIL
-	createElementNS test in XML document: "http://example.com/","a:aà¯†",null: FAIL
-	createElementNS test in XML document: "http://example.com/","a:Ì€",null: FAIL
-	createElementNS test in XML document: "http://example.com/","a:Í¾",null: FAIL
-	createElementNS test in XML document: "http://example.com/","a:à¯†",null: FAIL
-	createElementNS test in XML document: "http://example.com/","aà¯†:a",null: FAIL
+	createElementNS test in XML document: "http://example.com/","a:aெ",null: FAIL
+	createElementNS test in XML document: "http://example.com/","a:̀",null: FAIL
+	createElementNS test in XML document: "http://example.com/","a:;",null: FAIL
+	createElementNS test in XML document: "http://example.com/","a:ெ",null: FAIL
+	createElementNS test in XML document: "http://example.com/","aெ:a",null: FAIL
 	createElementNS test in XML document: "http://example.com/","f1oo",null: FAIL
 	createElementNS test in XML document: "http://example.com/","f::oo",null: FAIL
 	createElementNS test in XML document: "http://example.com/","f:o:o",null: FAIL
@@ -2023,9 +2023,9 @@
 	createElementNS test in XML document: "http://example.com/","xmlns","NAMESPACE_ERR": FAIL
 	createElementNS test in XML document: "http://example.com/","xmlns:foo","NAMESPACE_ERR": FAIL
 	createElementNS test in XML document: "http://example.com/","xmlns:test","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","Ì€:a",null: FAIL
-	createElementNS test in XML document: "http://example.com/","Í¾:a",null: FAIL
-	createElementNS test in XML document: "http://example.com/","à¯†:a",null: FAIL
+	createElementNS test in XML document: "http://example.com/","̀:a",null: FAIL
+	createElementNS test in XML document: "http://example.com/",";:a",null: FAIL
+	createElementNS test in XML document: "http://example.com/","ெ:a",null: FAIL
 	createElementNS test in XML document: "http://example.com/",null,null: FAIL
 	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","","INVALID_CHARACTER_ERR": FAIL
 	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","1foo","INVALID_CHARACTER_ERR": FAIL
@@ -2091,8 +2091,8 @@
 	createElementNS test in XML document: null,"xmlns","NAMESPACE_ERR": FAIL
 	createElementNS test in XML document: null,"xmlns:foo","NAMESPACE_ERR": FAIL
 	createElementNS test in XML document: null,"}foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,"Í¾foo",null: FAIL
-	createElementNS test in XML document: null,"à¯†foo",null: FAIL
+	createElementNS test in XML document: null,";foo",null: FAIL
+	createElementNS test in XML document: null,"ெfoo",null: FAIL
 	createElementNS test in XML document: null,null,null: FAIL
 	createElementNS test in XML document: null,undefined,null: FAIL
 	createElementNS test in XML document: undefined,"","INVALID_CHARACTER_ERR": FAIL
@@ -2401,29 +2401,29 @@
 	uievents should be an alias for UIEvent.: PASS
 /dom/nodes/Document-createProcessingInstruction-xhtml.xhtml: OK
 	Document.createProcessingInstruction in XML documents: PASS
-	Should get a ProcessingInstruction for target "AÂ·A" and data "x".: FAIL
+	Should get a ProcessingInstruction for target "A·A" and data "x".: FAIL
 	Should get a ProcessingInstruction for target "a0" and data "x".: FAIL
 	Should get a ProcessingInstruction for target "xml:fail" and data "x".: FAIL
 	Should throw an INVALID_CHARACTER_ERR for target "0" and data "x".: FAIL
 	Should throw an INVALID_CHARACTER_ERR for target "A" and data "?>".: FAIL
-	Should throw an INVALID_CHARACTER_ERR for target "AÃ—" and data "x".: FAIL
+	Should throw an INVALID_CHARACTER_ERR for target "A×" and data "x".: FAIL
 	Should throw an INVALID_CHARACTER_ERR for target "\\\\A" and data "x".: FAIL
 	Should throw an INVALID_CHARACTER_ERR for target "\\f" and data "x".: FAIL
-	Should throw an INVALID_CHARACTER_ERR for target "Â·A" and data "x".: FAIL
-	Should throw an INVALID_CHARACTER_ERR for target "Ã—A" and data "x".: FAIL
+	Should throw an INVALID_CHARACTER_ERR for target "·A" and data "x".: FAIL
+	Should throw an INVALID_CHARACTER_ERR for target "×A" and data "x".: FAIL
 	Should throw an INVALID_CHARACTER_ERR for target 0 and data "x".: FAIL
 /dom/nodes/Document-createProcessingInstruction.html: OK
 	Document.createProcessingInstruction in HTML documents: PASS
-	Should get a ProcessingInstruction for target "AÂ·A" and data "x".: FAIL
+	Should get a ProcessingInstruction for target "A·A" and data "x".: FAIL
 	Should get a ProcessingInstruction for target "a0" and data "x".: FAIL
 	Should get a ProcessingInstruction for target "xml:fail" and data "x".: FAIL
 	Should throw an INVALID_CHARACTER_ERR for target "0" and data "x".: FAIL
 	Should throw an INVALID_CHARACTER_ERR for target "A" and data "?>".: FAIL
-	Should throw an INVALID_CHARACTER_ERR for target "AÃ—" and data "x".: FAIL
+	Should throw an INVALID_CHARACTER_ERR for target "A×" and data "x".: FAIL
 	Should throw an INVALID_CHARACTER_ERR for target "\\\\A" and data "x".: FAIL
 	Should throw an INVALID_CHARACTER_ERR for target "\\f" and data "x".: FAIL
-	Should throw an INVALID_CHARACTER_ERR for target "Â·A" and data "x".: FAIL
-	Should throw an INVALID_CHARACTER_ERR for target "Ã—A" and data "x".: FAIL
+	Should throw an INVALID_CHARACTER_ERR for target "·A" and data "x".: FAIL
+	Should throw an INVALID_CHARACTER_ERR for target "×A" and data "x".: FAIL
 	Should throw an INVALID_CHARACTER_ERR for target 0 and data "x".: FAIL
 /dom/nodes/Document-createTextNode.html: OK
 	createTextNode("-b"): PASS
@@ -2484,7 +2484,7 @@
 	hasOwnProperty, getOwnPropertyDescriptor, getOwnPropertyNames: FAIL
 /dom/nodes/Document-getElementsByTagNameNS.html: OK
 	ABC element in html namespace: FAIL
-	AÃ‡, case sensitivity: FAIL
+	AÇ, case sensitivity: FAIL
 	BODY element in test namespace, no prefix: FAIL
 	BODY element in test namespace, prefix: FAIL
 	Document.getElementsByTagNameNS: PASS
@@ -4029,7 +4029,7 @@
 	hasOwnProperty, getOwnPropertyDescriptor, getOwnPropertyNames: FAIL
 /dom/nodes/Element-getElementsByTagNameNS.html: OK
 	ABC element in html namespace: FAIL
-	AÃ‡, case sensitivity: FAIL
+	AÇ, case sensitivity: FAIL
 	BODY element in test namespace, no prefix: FAIL
 	BODY element in test namespace, prefix: FAIL
 	Element.getElementsByTagNameNS: PASS
@@ -4942,55 +4942,55 @@
 	"\\ud83dsurrogateFirst" should never match with "#\\\\d83d surrogateFirst": FAIL
 	"_underscore" should match with "#_underscore": PASS
 	"aBMPRegular" should match with "#\\\\61 BMPRegular": PASS
-	"abï¿½c" should match with "#ab\\u0000c": PASS
+	"ab�c" should match with "#ab\\u0000c": PASS
 	"continueEscapes00" should match with "#continueEscapes\\\\30 \\\\30 ": PASS
 	"continueEscapes00" should match with "#continueEscapes\\\\30 \\\\30": PASS
 	"continueEscapes00" should match with "#continueEscapes\\\\30\\\\30 ": PASS
 	"continueEscapes00" should match with "#continueEscapes\\\\30\\\\30": PASS
 	"eof\\\\" should never match with "#eof\\\\": FAIL
-	"eofï¿½" should match with "#eof\\\\": FAIL
+	"eof�" should match with "#eof\\\\": FAIL
 	"g" should match with "#\\\\g": PASS
 	"hello" should match with "#hel\\\\6C o": PASS
 	"hello" should match with "#hel\\\\6Co": PASS
-	"largeï¿½" should match with "#large\\\\110000": PASS
-	"largeï¿½" should match with "#large\\\\23456a": PASS
+	"large�" should match with "#large\\\\110000": PASS
+	"large�" should match with "#large\\\\23456a": PASS
 	"nonescaped" should match with "#nonescaped": PASS
-	"nullï¿½" should match with "#null\\\\0": PASS
-	"nullï¿½" should match with "#null\\\\0000": PASS
+	"null�" should match with "#null\\\\0": PASS
+	"null�" should match with "#null\\\\0000": PASS
 	"outOfRange0" should never match with "#outOfRange\\\\110030": PASS
-	"outOfRangeï¿½" should match with "#outOfRange\\\\110000": PASS
-	"outOfRangeï¿½" should match with "#outOfRange\\\\110030": PASS
-	"outOfRangeï¿½" should match with "#outOfRange\\\\555555": PASS
-	"outOfRangeï¿½" should match with "#outOfRange\\\\ffffff": PASS
+	"outOfRange�" should match with "#outOfRange\\\\110000": PASS
+	"outOfRange�" should match with "#outOfRange\\\\110030": PASS
+	"outOfRange�" should match with "#outOfRange\\\\555555": PASS
+	"outOfRange�" should match with "#outOfRange\\\\ffffff": PASS
 	"simple-ident" should match with "#simple-ident": PASS
 	"spaces in\\tident" should match with "#spaces\\\\ in\\\\\\tident": PASS
 	"spaces" should match with "#sp\\\\61\\tc\\\\65\\fs": PASS
 	"spaces" should match with "#spac\\\\65\\r\\ns": PASS
-	"surrogatePairï¿½ï¿½" should match with "#surrogatePair\\\\d83d\\\\dd11": PASS
-	"surrogatePairðŸ”‘" should never match with "#surrogatePair\\\\d83d\\\\dd11": PASS
+	"surrogatePair��" should match with "#surrogatePair\\\\d83d\\\\dd11": PASS
+	"surrogatePair🔑" should never match with "#surrogatePair\\\\d83d\\\\dd11": PASS
 	"surrogateSecond\\udd11" should never match with "#surrogateSecond\\\\dd11": FAIL
-	"surrogateSecondï¿½" should match with "#surrogateSecond\\\\dd11": PASS
-	"surrogateï¿½" should match with "#surrogate\\\\0DBAC": PASS
-	"surrogateï¿½" should match with "#surrogate\\\\D800": PASS
+	"surrogateSecond�" should match with "#surrogateSecond\\\\dd11": PASS
+	"surrogate�" should match with "#surrogate\\\\0DBAC": PASS
+	"surrogate�" should match with "#surrogate\\\\D800": PASS
 	"test" should match with "#te\\\\s\\\\t": PASS
 	"testing123" should match with "#testing123": PASS
-	"testíž™" should match with "#test\\\\D799": PASS
+	"test힙" should match with "#test\\\\D799": PASS
 	"zero\\u0000" should never match with "#zero\\\\0": PASS
 	"zero\\u0000" should never match with "#zero\\\\000000": PASS
-	"zeroï¿½" should match with "#zero\\\\0": PASS
-	"zeroï¿½" should match with "#zero\\\\000000": PASS
-	"Â " should match with "#Â ": PASS
-	"áˆ´" should match with "#áˆ´": PASS
-	"â€ƒ" should match with "#â€ƒ": PASS
-	"î€€" should match with "#\\\\E000": PASS
-	"ï¿½" should match with "#\\u0000": PASS
-	"ï¿½surrogate" should match with "#\\\\00DFFFsurrogate": PASS
-	"ï¿½surrogateFirst" should match with "#\\\\d83d surrogateFirst": PASS
-	"ð’…" should match with "#ð’…": PASS
-	"ðŸ”‘nonBMP" should match with "#\\\\1f511 nonBMP": PASS
-	"ô€€€00" should match with "#\\\\10000000": PASS
-	"ô¿¿" should match with "#\\\\10fFfF": PASS
-	"ô¿¿0" should match with "#\\\\10fFfF0": PASS
+	"zero�" should match with "#zero\\\\0": PASS
+	"zero�" should match with "#zero\\\\000000": PASS
+	" " should match with "# ": PASS
+	"ሴ" should match with "#ሴ": PASS
+	" " should match with "# ": PASS
+	"" should match with "#\\\\E000": PASS
+	"�" should match with "#\\u0000": PASS
+	"�surrogate" should match with "#\\\\00DFFFsurrogate": PASS
+	"�surrogateFirst" should match with "#\\\\d83d surrogateFirst": PASS
+	"𒍅" should match with "#𒍅": PASS
+	"🔑nonBMP" should match with "#\\\\1f511 nonBMP": PASS
+	"􀀀00" should match with "#\\\\10000000": PASS
+	"􏿿" should match with "#\\\\10fFfF": PASS
+	"􏿿0" should match with "#\\\\10fFfF0": PASS
 /dom/nodes/ParentNode-querySelector-host-pseudo-class.html: OK
 	Using :host pseudo-class selector in shadow DOM: PASS
 /dom/nodes/ParentNode-querySelector-hyphen-prefix.html: OK
@@ -5185,7 +5185,7 @@
 	First set attribute is returned by getAttribute: FAIL
 	First set attribute is returned with mapped attribute set first: FAIL
 	First set attribute is returned with mapped attribute set later: FAIL
-	If attrâ€™s element is neither null nor element, throw an InUseAttributeError.: PASS
+	If attr’s element is neither null nor element, throw an InUseAttributeError.: PASS
 	Non-HTML element with upper-case attribute: PASS
 	Only lowercase attributes are returned on HTML elements (mixed case attribute): FAIL
 	Only lowercase attributes are returned on HTML elements (upper case attribute): FAIL
@@ -5241,288 +5241,288 @@
 	createElement ABC: PASS
 	createElement Abc: PASS
 	createElement abc: PASS
-	createElement Ã„: FAIL
-	createElement Ã¤: PASS
+	createElement Ä: FAIL
+	createElement ä: PASS
 	createElementNS ABC: FAIL
 	createElementNS Abc: FAIL
 	createElementNS abc: PASS
 	createElementNS http://FOO,ABC,ABC: FAIL
 	createElementNS http://FOO,ABC,Abc: FAIL
 	createElementNS http://FOO,ABC,abc: PASS
-	createElementNS http://FOO,ABC,Ã„: FAIL
-	createElementNS http://FOO,ABC,Ã¤: PASS
+	createElementNS http://FOO,ABC,Ä: FAIL
+	createElementNS http://FOO,ABC,ä: PASS
 	createElementNS http://FOO,Abc,ABC: FAIL
 	createElementNS http://FOO,Abc,Abc: FAIL
 	createElementNS http://FOO,Abc,abc: PASS
-	createElementNS http://FOO,Abc,Ã„: FAIL
-	createElementNS http://FOO,Abc,Ã¤: PASS
+	createElementNS http://FOO,Abc,Ä: FAIL
+	createElementNS http://FOO,Abc,ä: PASS
 	createElementNS http://FOO,abc,ABC: FAIL
 	createElementNS http://FOO,abc,Abc: FAIL
 	createElementNS http://FOO,abc,abc: PASS
-	createElementNS http://FOO,abc,Ã„: FAIL
-	createElementNS http://FOO,abc,Ã¤: PASS
-	createElementNS http://FOO,Ã„,ABC: FAIL
-	createElementNS http://FOO,Ã„,Abc: FAIL
-	createElementNS http://FOO,Ã„,abc: PASS
-	createElementNS http://FOO,Ã„,Ã„: FAIL
-	createElementNS http://FOO,Ã„,Ã¤: PASS
-	createElementNS http://FOO,Ã¤,ABC: FAIL
-	createElementNS http://FOO,Ã¤,Abc: FAIL
-	createElementNS http://FOO,Ã¤,abc: PASS
-	createElementNS http://FOO,Ã¤,Ã„: FAIL
-	createElementNS http://FOO,Ã¤,Ã¤: PASS
+	createElementNS http://FOO,abc,Ä: FAIL
+	createElementNS http://FOO,abc,ä: PASS
+	createElementNS http://FOO,Ä,ABC: FAIL
+	createElementNS http://FOO,Ä,Abc: FAIL
+	createElementNS http://FOO,Ä,abc: PASS
+	createElementNS http://FOO,Ä,Ä: FAIL
+	createElementNS http://FOO,Ä,ä: PASS
+	createElementNS http://FOO,ä,ABC: FAIL
+	createElementNS http://FOO,ä,Abc: FAIL
+	createElementNS http://FOO,ä,abc: PASS
+	createElementNS http://FOO,ä,Ä: FAIL
+	createElementNS http://FOO,ä,ä: PASS
 	createElementNS http://www.w3.org/1999/xhtml,ABC,ABC: FAIL
 	createElementNS http://www.w3.org/1999/xhtml,ABC,Abc: FAIL
 	createElementNS http://www.w3.org/1999/xhtml,ABC,abc: PASS
-	createElementNS http://www.w3.org/1999/xhtml,ABC,Ã„: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,ABC,Ã¤: PASS
+	createElementNS http://www.w3.org/1999/xhtml,ABC,Ä: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,ABC,ä: PASS
 	createElementNS http://www.w3.org/1999/xhtml,Abc,ABC: FAIL
 	createElementNS http://www.w3.org/1999/xhtml,Abc,Abc: FAIL
 	createElementNS http://www.w3.org/1999/xhtml,Abc,abc: PASS
-	createElementNS http://www.w3.org/1999/xhtml,Abc,Ã„: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,Abc,Ã¤: PASS
+	createElementNS http://www.w3.org/1999/xhtml,Abc,Ä: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,Abc,ä: PASS
 	createElementNS http://www.w3.org/1999/xhtml,abc,ABC: FAIL
 	createElementNS http://www.w3.org/1999/xhtml,abc,Abc: FAIL
 	createElementNS http://www.w3.org/1999/xhtml,abc,abc: PASS
-	createElementNS http://www.w3.org/1999/xhtml,abc,Ã„: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,abc,Ã¤: PASS
-	createElementNS http://www.w3.org/1999/xhtml,Ã„,ABC: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,Ã„,Abc: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,Ã„,abc: PASS
-	createElementNS http://www.w3.org/1999/xhtml,Ã„,Ã„: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,Ã„,Ã¤: PASS
-	createElementNS http://www.w3.org/1999/xhtml,Ã¤,ABC: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,Ã¤,Abc: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,Ã¤,abc: PASS
-	createElementNS http://www.w3.org/1999/xhtml,Ã¤,Ã„: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,Ã¤,Ã¤: PASS
+	createElementNS http://www.w3.org/1999/xhtml,abc,Ä: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,abc,ä: PASS
+	createElementNS http://www.w3.org/1999/xhtml,Ä,ABC: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,Ä,Abc: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,Ä,abc: PASS
+	createElementNS http://www.w3.org/1999/xhtml,Ä,Ä: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,Ä,ä: PASS
+	createElementNS http://www.w3.org/1999/xhtml,ä,ABC: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,ä,Abc: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,ä,abc: PASS
+	createElementNS http://www.w3.org/1999/xhtml,ä,Ä: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,ä,ä: PASS
 	createElementNS http://www.w3.org/2000/svg,ABC,ABC: FAIL
 	createElementNS http://www.w3.org/2000/svg,ABC,Abc: FAIL
 	createElementNS http://www.w3.org/2000/svg,ABC,abc: PASS
-	createElementNS http://www.w3.org/2000/svg,ABC,Ã„: FAIL
-	createElementNS http://www.w3.org/2000/svg,ABC,Ã¤: PASS
+	createElementNS http://www.w3.org/2000/svg,ABC,Ä: FAIL
+	createElementNS http://www.w3.org/2000/svg,ABC,ä: PASS
 	createElementNS http://www.w3.org/2000/svg,Abc,ABC: FAIL
 	createElementNS http://www.w3.org/2000/svg,Abc,Abc: FAIL
 	createElementNS http://www.w3.org/2000/svg,Abc,abc: PASS
-	createElementNS http://www.w3.org/2000/svg,Abc,Ã„: FAIL
-	createElementNS http://www.w3.org/2000/svg,Abc,Ã¤: PASS
+	createElementNS http://www.w3.org/2000/svg,Abc,Ä: FAIL
+	createElementNS http://www.w3.org/2000/svg,Abc,ä: PASS
 	createElementNS http://www.w3.org/2000/svg,abc,ABC: FAIL
 	createElementNS http://www.w3.org/2000/svg,abc,Abc: FAIL
 	createElementNS http://www.w3.org/2000/svg,abc,abc: PASS
-	createElementNS http://www.w3.org/2000/svg,abc,Ã„: FAIL
-	createElementNS http://www.w3.org/2000/svg,abc,Ã¤: PASS
-	createElementNS http://www.w3.org/2000/svg,Ã„,ABC: FAIL
-	createElementNS http://www.w3.org/2000/svg,Ã„,Abc: FAIL
-	createElementNS http://www.w3.org/2000/svg,Ã„,abc: PASS
-	createElementNS http://www.w3.org/2000/svg,Ã„,Ã„: FAIL
-	createElementNS http://www.w3.org/2000/svg,Ã„,Ã¤: PASS
-	createElementNS http://www.w3.org/2000/svg,Ã¤,ABC: FAIL
-	createElementNS http://www.w3.org/2000/svg,Ã¤,Abc: FAIL
-	createElementNS http://www.w3.org/2000/svg,Ã¤,abc: PASS
-	createElementNS http://www.w3.org/2000/svg,Ã¤,Ã„: FAIL
-	createElementNS http://www.w3.org/2000/svg,Ã¤,Ã¤: PASS
-	createElementNS Ã„: FAIL
-	createElementNS Ã¤: PASS
+	createElementNS http://www.w3.org/2000/svg,abc,Ä: FAIL
+	createElementNS http://www.w3.org/2000/svg,abc,ä: PASS
+	createElementNS http://www.w3.org/2000/svg,Ä,ABC: FAIL
+	createElementNS http://www.w3.org/2000/svg,Ä,Abc: FAIL
+	createElementNS http://www.w3.org/2000/svg,Ä,abc: PASS
+	createElementNS http://www.w3.org/2000/svg,Ä,Ä: FAIL
+	createElementNS http://www.w3.org/2000/svg,Ä,ä: PASS
+	createElementNS http://www.w3.org/2000/svg,ä,ABC: FAIL
+	createElementNS http://www.w3.org/2000/svg,ä,Abc: FAIL
+	createElementNS http://www.w3.org/2000/svg,ä,abc: PASS
+	createElementNS http://www.w3.org/2000/svg,ä,Ä: FAIL
+	createElementNS http://www.w3.org/2000/svg,ä,ä: PASS
+	createElementNS Ä: FAIL
+	createElementNS ä: PASS
 	getAttribute ABC: PASS
 	getAttribute Abc: PASS
 	getAttribute abc: PASS
-	getAttribute Ã„: PASS
-	getAttribute Ã¤: PASS
+	getAttribute Ä: PASS
+	getAttribute ä: PASS
 	getAttributeNS ABC: FAIL
 	getAttributeNS Abc: FAIL
 	getAttributeNS abc: PASS
 	getAttributeNS http://FOO,ABC,ABC: FAIL
 	getAttributeNS http://FOO,ABC,Abc: FAIL
 	getAttributeNS http://FOO,ABC,abc: PASS
-	getAttributeNS http://FOO,ABC,Ã„: PASS
-	getAttributeNS http://FOO,ABC,Ã¤: PASS
+	getAttributeNS http://FOO,ABC,Ä: PASS
+	getAttributeNS http://FOO,ABC,ä: PASS
 	getAttributeNS http://FOO,Abc,ABC: FAIL
 	getAttributeNS http://FOO,Abc,Abc: FAIL
 	getAttributeNS http://FOO,Abc,abc: PASS
-	getAttributeNS http://FOO,Abc,Ã„: PASS
-	getAttributeNS http://FOO,Abc,Ã¤: PASS
+	getAttributeNS http://FOO,Abc,Ä: PASS
+	getAttributeNS http://FOO,Abc,ä: PASS
 	getAttributeNS http://FOO,abc,ABC: FAIL
 	getAttributeNS http://FOO,abc,Abc: FAIL
 	getAttributeNS http://FOO,abc,abc: PASS
-	getAttributeNS http://FOO,abc,Ã„: FAIL
-	getAttributeNS http://FOO,abc,Ã¤: PASS
-	getAttributeNS http://FOO,Ã„,ABC: FAIL
-	getAttributeNS http://FOO,Ã„,Abc: FAIL
-	getAttributeNS http://FOO,Ã„,abc: PASS
-	getAttributeNS http://FOO,Ã„,Ã„: FAIL
-	getAttributeNS http://FOO,Ã„,Ã¤: PASS
-	getAttributeNS http://FOO,Ã¤,ABC: FAIL
-	getAttributeNS http://FOO,Ã¤,Abc: FAIL
-	getAttributeNS http://FOO,Ã¤,abc: PASS
-	getAttributeNS http://FOO,Ã¤,Ã„: FAIL
-	getAttributeNS http://FOO,Ã¤,Ã¤: PASS
+	getAttributeNS http://FOO,abc,Ä: FAIL
+	getAttributeNS http://FOO,abc,ä: PASS
+	getAttributeNS http://FOO,Ä,ABC: FAIL
+	getAttributeNS http://FOO,Ä,Abc: FAIL
+	getAttributeNS http://FOO,Ä,abc: PASS
+	getAttributeNS http://FOO,Ä,Ä: FAIL
+	getAttributeNS http://FOO,Ä,ä: PASS
+	getAttributeNS http://FOO,ä,ABC: FAIL
+	getAttributeNS http://FOO,ä,Abc: FAIL
+	getAttributeNS http://FOO,ä,abc: PASS
+	getAttributeNS http://FOO,ä,Ä: FAIL
+	getAttributeNS http://FOO,ä,ä: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,ABC,ABC: FAIL
 	getAttributeNS http://www.w3.org/1999/xhtml,ABC,Abc: FAIL
 	getAttributeNS http://www.w3.org/1999/xhtml,ABC,abc: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,ABC,Ã„: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,ABC,Ã¤: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,ABC,Ä: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,ABC,ä: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,Abc,ABC: FAIL
 	getAttributeNS http://www.w3.org/1999/xhtml,Abc,Abc: FAIL
 	getAttributeNS http://www.w3.org/1999/xhtml,Abc,abc: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,Abc,Ã„: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,Abc,Ã¤: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,Abc,Ä: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,Abc,ä: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,abc,ABC: FAIL
 	getAttributeNS http://www.w3.org/1999/xhtml,abc,Abc: FAIL
 	getAttributeNS http://www.w3.org/1999/xhtml,abc,abc: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,abc,Ã„: FAIL
-	getAttributeNS http://www.w3.org/1999/xhtml,abc,Ã¤: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,Ã„,ABC: FAIL
-	getAttributeNS http://www.w3.org/1999/xhtml,Ã„,Abc: FAIL
-	getAttributeNS http://www.w3.org/1999/xhtml,Ã„,abc: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,Ã„,Ã„: FAIL
-	getAttributeNS http://www.w3.org/1999/xhtml,Ã„,Ã¤: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,Ã¤,ABC: FAIL
-	getAttributeNS http://www.w3.org/1999/xhtml,Ã¤,Abc: FAIL
-	getAttributeNS http://www.w3.org/1999/xhtml,Ã¤,abc: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,Ã¤,Ã„: FAIL
-	getAttributeNS http://www.w3.org/1999/xhtml,Ã¤,Ã¤: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,abc,Ä: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,abc,ä: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,Ä,ABC: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,Ä,Abc: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,Ä,abc: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,Ä,Ä: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,Ä,ä: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,ä,ABC: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,ä,Abc: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,ä,abc: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,ä,Ä: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,ä,ä: PASS
 	getAttributeNS http://www.w3.org/2000/svg,ABC,ABC: FAIL
 	getAttributeNS http://www.w3.org/2000/svg,ABC,Abc: FAIL
 	getAttributeNS http://www.w3.org/2000/svg,ABC,abc: PASS
-	getAttributeNS http://www.w3.org/2000/svg,ABC,Ã„: PASS
-	getAttributeNS http://www.w3.org/2000/svg,ABC,Ã¤: PASS
+	getAttributeNS http://www.w3.org/2000/svg,ABC,Ä: PASS
+	getAttributeNS http://www.w3.org/2000/svg,ABC,ä: PASS
 	getAttributeNS http://www.w3.org/2000/svg,Abc,ABC: FAIL
 	getAttributeNS http://www.w3.org/2000/svg,Abc,Abc: FAIL
 	getAttributeNS http://www.w3.org/2000/svg,Abc,abc: PASS
-	getAttributeNS http://www.w3.org/2000/svg,Abc,Ã„: PASS
-	getAttributeNS http://www.w3.org/2000/svg,Abc,Ã¤: PASS
+	getAttributeNS http://www.w3.org/2000/svg,Abc,Ä: PASS
+	getAttributeNS http://www.w3.org/2000/svg,Abc,ä: PASS
 	getAttributeNS http://www.w3.org/2000/svg,abc,ABC: FAIL
 	getAttributeNS http://www.w3.org/2000/svg,abc,Abc: FAIL
 	getAttributeNS http://www.w3.org/2000/svg,abc,abc: PASS
-	getAttributeNS http://www.w3.org/2000/svg,abc,Ã„: FAIL
-	getAttributeNS http://www.w3.org/2000/svg,abc,Ã¤: PASS
-	getAttributeNS http://www.w3.org/2000/svg,Ã„,ABC: FAIL
-	getAttributeNS http://www.w3.org/2000/svg,Ã„,Abc: FAIL
-	getAttributeNS http://www.w3.org/2000/svg,Ã„,abc: PASS
-	getAttributeNS http://www.w3.org/2000/svg,Ã„,Ã„: FAIL
-	getAttributeNS http://www.w3.org/2000/svg,Ã„,Ã¤: PASS
-	getAttributeNS http://www.w3.org/2000/svg,Ã¤,ABC: FAIL
-	getAttributeNS http://www.w3.org/2000/svg,Ã¤,Abc: FAIL
-	getAttributeNS http://www.w3.org/2000/svg,Ã¤,abc: PASS
-	getAttributeNS http://www.w3.org/2000/svg,Ã¤,Ã„: FAIL
-	getAttributeNS http://www.w3.org/2000/svg,Ã¤,Ã¤: PASS
-	getAttributeNS Ã„: FAIL
-	getAttributeNS Ã¤: PASS
+	getAttributeNS http://www.w3.org/2000/svg,abc,Ä: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,abc,ä: PASS
+	getAttributeNS http://www.w3.org/2000/svg,Ä,ABC: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,Ä,Abc: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,Ä,abc: PASS
+	getAttributeNS http://www.w3.org/2000/svg,Ä,Ä: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,Ä,ä: PASS
+	getAttributeNS http://www.w3.org/2000/svg,ä,ABC: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,ä,Abc: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,ä,abc: PASS
+	getAttributeNS http://www.w3.org/2000/svg,ä,Ä: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,ä,ä: PASS
+	getAttributeNS Ä: FAIL
+	getAttributeNS ä: PASS
 	getElementsByTagName ABC: FAIL
 	getElementsByTagName Abc: FAIL
 	getElementsByTagName a:ABC: FAIL
 	getElementsByTagName a:Abc: FAIL
 	getElementsByTagName a:abc: FAIL
-	getElementsByTagName a:Ã„: PASS
-	getElementsByTagName a:Ã¤: FAIL
+	getElementsByTagName a:Ä: PASS
+	getElementsByTagName a:ä: FAIL
 	getElementsByTagName abc: PASS
-	getElementsByTagName Ã„: PASS
-	getElementsByTagName Ã¤: PASS
+	getElementsByTagName Ä: PASS
+	getElementsByTagName ä: PASS
 	getElementsByTagNameNS ,ABC: PASS
 	getElementsByTagNameNS ,Abc: PASS
 	getElementsByTagNameNS ,abc: PASS
-	getElementsByTagNameNS ,Ã„: PASS
-	getElementsByTagNameNS ,Ã¤: PASS
+	getElementsByTagNameNS ,Ä: PASS
+	getElementsByTagNameNS ,ä: PASS
 	getElementsByTagNameNS http://FOO,ABC: PASS
 	getElementsByTagNameNS http://FOO,Abc: PASS
 	getElementsByTagNameNS http://FOO,abc: PASS
-	getElementsByTagNameNS http://FOO,Ã„: PASS
-	getElementsByTagNameNS http://FOO,Ã¤: PASS
+	getElementsByTagNameNS http://FOO,Ä: PASS
+	getElementsByTagNameNS http://FOO,ä: PASS
 	getElementsByTagNameNS http://www.w3.org/1999/xhtml,ABC: PASS
 	getElementsByTagNameNS http://www.w3.org/1999/xhtml,Abc: PASS
 	getElementsByTagNameNS http://www.w3.org/1999/xhtml,abc: PASS
-	getElementsByTagNameNS http://www.w3.org/1999/xhtml,Ã„: PASS
-	getElementsByTagNameNS http://www.w3.org/1999/xhtml,Ã¤: PASS
+	getElementsByTagNameNS http://www.w3.org/1999/xhtml,Ä: PASS
+	getElementsByTagNameNS http://www.w3.org/1999/xhtml,ä: PASS
 	getElementsByTagNameNS http://www.w3.org/2000/svg,ABC: PASS
 	getElementsByTagNameNS http://www.w3.org/2000/svg,Abc: PASS
 	getElementsByTagNameNS http://www.w3.org/2000/svg,abc: PASS
-	getElementsByTagNameNS http://www.w3.org/2000/svg,Ã„: PASS
-	getElementsByTagNameNS http://www.w3.org/2000/svg,Ã¤: PASS
+	getElementsByTagNameNS http://www.w3.org/2000/svg,Ä: PASS
+	getElementsByTagNameNS http://www.w3.org/2000/svg,ä: PASS
 	setAttribute ABC: PASS
 	setAttribute Abc: PASS
 	setAttribute abc: PASS
-	setAttribute Ã„: PASS
-	setAttribute Ã¤: PASS
+	setAttribute Ä: PASS
+	setAttribute ä: PASS
 	setAttributeNS ABC: FAIL
 	setAttributeNS Abc: FAIL
 	setAttributeNS abc: PASS
 	setAttributeNS http://FOO,ABC,ABC: FAIL
 	setAttributeNS http://FOO,ABC,Abc: FAIL
 	setAttributeNS http://FOO,ABC,abc: FAIL
-	setAttributeNS http://FOO,ABC,Ã„: FAIL
-	setAttributeNS http://FOO,ABC,Ã¤: FAIL
+	setAttributeNS http://FOO,ABC,Ä: FAIL
+	setAttributeNS http://FOO,ABC,ä: FAIL
 	setAttributeNS http://FOO,Abc,ABC: FAIL
 	setAttributeNS http://FOO,Abc,Abc: FAIL
 	setAttributeNS http://FOO,Abc,abc: FAIL
-	setAttributeNS http://FOO,Abc,Ã„: FAIL
-	setAttributeNS http://FOO,Abc,Ã¤: FAIL
+	setAttributeNS http://FOO,Abc,Ä: FAIL
+	setAttributeNS http://FOO,Abc,ä: FAIL
 	setAttributeNS http://FOO,abc,ABC: FAIL
 	setAttributeNS http://FOO,abc,Abc: FAIL
 	setAttributeNS http://FOO,abc,abc: PASS
-	setAttributeNS http://FOO,abc,Ã„: PASS
-	setAttributeNS http://FOO,abc,Ã¤: PASS
-	setAttributeNS http://FOO,Ã„,ABC: FAIL
-	setAttributeNS http://FOO,Ã„,Abc: FAIL
-	setAttributeNS http://FOO,Ã„,abc: PASS
-	setAttributeNS http://FOO,Ã„,Ã„: PASS
-	setAttributeNS http://FOO,Ã„,Ã¤: PASS
-	setAttributeNS http://FOO,Ã¤,ABC: FAIL
-	setAttributeNS http://FOO,Ã¤,Abc: FAIL
-	setAttributeNS http://FOO,Ã¤,abc: PASS
-	setAttributeNS http://FOO,Ã¤,Ã„: PASS
-	setAttributeNS http://FOO,Ã¤,Ã¤: PASS
+	setAttributeNS http://FOO,abc,Ä: PASS
+	setAttributeNS http://FOO,abc,ä: PASS
+	setAttributeNS http://FOO,Ä,ABC: FAIL
+	setAttributeNS http://FOO,Ä,Abc: FAIL
+	setAttributeNS http://FOO,Ä,abc: PASS
+	setAttributeNS http://FOO,Ä,Ä: PASS
+	setAttributeNS http://FOO,Ä,ä: PASS
+	setAttributeNS http://FOO,ä,ABC: FAIL
+	setAttributeNS http://FOO,ä,Abc: FAIL
+	setAttributeNS http://FOO,ä,abc: PASS
+	setAttributeNS http://FOO,ä,Ä: PASS
+	setAttributeNS http://FOO,ä,ä: PASS
 	setAttributeNS http://www.w3.org/1999/xhtml,ABC,ABC: FAIL
 	setAttributeNS http://www.w3.org/1999/xhtml,ABC,Abc: FAIL
 	setAttributeNS http://www.w3.org/1999/xhtml,ABC,abc: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,ABC,Ã„: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,ABC,Ã¤: FAIL
+	setAttributeNS http://www.w3.org/1999/xhtml,ABC,Ä: FAIL
+	setAttributeNS http://www.w3.org/1999/xhtml,ABC,ä: FAIL
 	setAttributeNS http://www.w3.org/1999/xhtml,Abc,ABC: FAIL
 	setAttributeNS http://www.w3.org/1999/xhtml,Abc,Abc: FAIL
 	setAttributeNS http://www.w3.org/1999/xhtml,Abc,abc: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,Abc,Ã„: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,Abc,Ã¤: FAIL
+	setAttributeNS http://www.w3.org/1999/xhtml,Abc,Ä: FAIL
+	setAttributeNS http://www.w3.org/1999/xhtml,Abc,ä: FAIL
 	setAttributeNS http://www.w3.org/1999/xhtml,abc,ABC: FAIL
 	setAttributeNS http://www.w3.org/1999/xhtml,abc,Abc: FAIL
 	setAttributeNS http://www.w3.org/1999/xhtml,abc,abc: PASS
-	setAttributeNS http://www.w3.org/1999/xhtml,abc,Ã„: PASS
-	setAttributeNS http://www.w3.org/1999/xhtml,abc,Ã¤: PASS
-	setAttributeNS http://www.w3.org/1999/xhtml,Ã„,ABC: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,Ã„,Abc: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,Ã„,abc: PASS
-	setAttributeNS http://www.w3.org/1999/xhtml,Ã„,Ã„: PASS
-	setAttributeNS http://www.w3.org/1999/xhtml,Ã„,Ã¤: PASS
-	setAttributeNS http://www.w3.org/1999/xhtml,Ã¤,ABC: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,Ã¤,Abc: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,Ã¤,abc: PASS
-	setAttributeNS http://www.w3.org/1999/xhtml,Ã¤,Ã„: PASS
-	setAttributeNS http://www.w3.org/1999/xhtml,Ã¤,Ã¤: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,abc,Ä: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,abc,ä: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,Ä,ABC: FAIL
+	setAttributeNS http://www.w3.org/1999/xhtml,Ä,Abc: FAIL
+	setAttributeNS http://www.w3.org/1999/xhtml,Ä,abc: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,Ä,Ä: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,Ä,ä: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,ä,ABC: FAIL
+	setAttributeNS http://www.w3.org/1999/xhtml,ä,Abc: FAIL
+	setAttributeNS http://www.w3.org/1999/xhtml,ä,abc: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,ä,Ä: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,ä,ä: PASS
 	setAttributeNS http://www.w3.org/2000/svg,ABC,ABC: FAIL
 	setAttributeNS http://www.w3.org/2000/svg,ABC,Abc: FAIL
 	setAttributeNS http://www.w3.org/2000/svg,ABC,abc: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,ABC,Ã„: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,ABC,Ã¤: FAIL
+	setAttributeNS http://www.w3.org/2000/svg,ABC,Ä: FAIL
+	setAttributeNS http://www.w3.org/2000/svg,ABC,ä: FAIL
 	setAttributeNS http://www.w3.org/2000/svg,Abc,ABC: FAIL
 	setAttributeNS http://www.w3.org/2000/svg,Abc,Abc: FAIL
 	setAttributeNS http://www.w3.org/2000/svg,Abc,abc: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,Abc,Ã„: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,Abc,Ã¤: FAIL
+	setAttributeNS http://www.w3.org/2000/svg,Abc,Ä: FAIL
+	setAttributeNS http://www.w3.org/2000/svg,Abc,ä: FAIL
 	setAttributeNS http://www.w3.org/2000/svg,abc,ABC: FAIL
 	setAttributeNS http://www.w3.org/2000/svg,abc,Abc: FAIL
 	setAttributeNS http://www.w3.org/2000/svg,abc,abc: PASS
-	setAttributeNS http://www.w3.org/2000/svg,abc,Ã„: PASS
-	setAttributeNS http://www.w3.org/2000/svg,abc,Ã¤: PASS
-	setAttributeNS http://www.w3.org/2000/svg,Ã„,ABC: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,Ã„,Abc: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,Ã„,abc: PASS
-	setAttributeNS http://www.w3.org/2000/svg,Ã„,Ã„: PASS
-	setAttributeNS http://www.w3.org/2000/svg,Ã„,Ã¤: PASS
-	setAttributeNS http://www.w3.org/2000/svg,Ã¤,ABC: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,Ã¤,Abc: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,Ã¤,abc: PASS
-	setAttributeNS http://www.w3.org/2000/svg,Ã¤,Ã„: PASS
-	setAttributeNS http://www.w3.org/2000/svg,Ã¤,Ã¤: PASS
-	setAttributeNS Ã„: PASS
-	setAttributeNS Ã¤: PASS
+	setAttributeNS http://www.w3.org/2000/svg,abc,Ä: PASS
+	setAttributeNS http://www.w3.org/2000/svg,abc,ä: PASS
+	setAttributeNS http://www.w3.org/2000/svg,Ä,ABC: FAIL
+	setAttributeNS http://www.w3.org/2000/svg,Ä,Abc: FAIL
+	setAttributeNS http://www.w3.org/2000/svg,Ä,abc: PASS
+	setAttributeNS http://www.w3.org/2000/svg,Ä,Ä: PASS
+	setAttributeNS http://www.w3.org/2000/svg,Ä,ä: PASS
+	setAttributeNS http://www.w3.org/2000/svg,ä,ABC: FAIL
+	setAttributeNS http://www.w3.org/2000/svg,ä,Abc: FAIL
+	setAttributeNS http://www.w3.org/2000/svg,ä,abc: PASS
+	setAttributeNS http://www.w3.org/2000/svg,ä,Ä: PASS
+	setAttributeNS http://www.w3.org/2000/svg,ä,ä: PASS
+	setAttributeNS Ä: PASS
+	setAttributeNS ä: PASS
 /dom/nodes/create-element-realm-after-adoption.html: ERROR
 /dom/nodes/getElementById-namespaced-id.html: OK
 	append a namespaced ID preserves ID lookup and form association: FAIL

@@ -399,6 +399,17 @@ section("the Window's named properties leave undeclared names alone", () => {
   d.remove();
 });
 
+section("built-in rules in shadow trees", () => {
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = host.attachShadow({mode: "open"});
+  root.innerHTML = `<dialog id=d>x</dialog><div id=p popover>y</div><span hidden id=h>z</span>`;
+  eq("a closed dialog", getComputedStyle(root.getElementById("d")).display, "none");
+  eq("a popover not shown", getComputedStyle(root.getElementById("p")).display, "none");
+  eq("hidden", getComputedStyle(root.getElementById("h")).display, "none");
+  host.remove();
+});
+
 section("ownerDocument in another document", () => {
   const doc = document.implementation.createHTMLDocument("t");
   const el = doc.createElement("div");

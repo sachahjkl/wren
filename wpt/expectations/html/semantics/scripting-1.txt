@@ -229,7 +229,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/077.html: OK
 	 adding several types of scripts through the DOM and removing some of them confuses scheduler : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/078.html: OK
-	 adding several types of scripts through the DOM and removing some of them confuses scheduler (slow-loading scripts) : PASS
+	 adding several types of scripts through the DOM and removing some of them confuses scheduler (slow-loading scripts) : FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/079.html: OK
 	 setting location to javascript URL from event handler : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/081.html: OK
@@ -239,13 +239,13 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/083.html: ERROR
 /html/semantics/scripting-1/the-script-element/execution-timing/084.html: ERROR
 /html/semantics/scripting-1/the-script-element/execution-timing/085.html: OK
-	 scheduler: async script and slow-loading defer script: FAIL
+	 scheduler: async script and slow-loading defer script: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/086.html: OK
 	 scheduler: async script and slow-loading async script: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/087.html: OK
 	 scheduler: multiple defer scripts, one slow loading: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/088.html: OK
-	 scheduler: multiple scripts with defer and async attributes: FAIL
+	 scheduler: multiple scripts with defer and async attributes: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/089.html: OK
 	 scheduler: async attribute on inline script: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/090.html: OK
