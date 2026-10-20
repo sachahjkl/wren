@@ -17,6 +17,8 @@ Settings :: struct {
 	max_sheet_bytes:     int,
 	max_import_depth:    int,
 	max_imports:         int,       // @import sheets loaded for one document, all levels together
+	counters_max_listed: int,       // counters(): innermost instances listed
+	counters_max_ops:    int,       // counter names in one counter-reset / counter-increment / counter-set
 	max_selector_compounds: int,
 	max_var_depth:       int,       // var() substitution chain
 	max_var_bytes:       int,       // text var() may substitute for one element
@@ -94,6 +96,10 @@ PREFS := [?]config.Def{
 		description = "Largest stylesheet that is parsed; a bigger one is ignored."},
 	{name = "style.max_import_depth", kind = .Int, default = {i = 8}, bounded = true, min = 0, max = 64,
 		description = "How deep @import may chain. 0 disables @import."},
+	{name = "style.counters.max_listed", kind = .Int, default = {i = 1000}, bounded = true, min = 1, max = 1_000_000, unit = "levels",
+		description = "counters() lists at most this many nested instances of a counter, the innermost ones (on a deeply nested page each level listed every level above it: text growing with the square of the depth)."},
+	{name = "style.counters.max_ops", kind = .Int, default = {i = 1000}, bounded = true, min = 1, max = 1_000_000, unit = "counters",
+		description = "Most counter names one counter-reset, counter-increment or counter-set declaration may list; a longer list is invalid."},
 	{name = "style.max_imports", kind = .Int, default = {i = 256}, bounded = true, min = 0, max = 100_000, unit = "sheets",
 		description = "Most stylesheets loaded through @import for one document, all levels together (a sheet importing itself ten times, eight levels deep, asked for 10^8 loads). A sheet that imports one of the sheets importing it is ignored."},
 	{name = "style.max_selector_compounds", kind = .Int, default = {i = 32}, bounded = true, min = 2, max = 1000,
@@ -191,6 +197,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.max_sheet_bytes = int(config.int_of(p, "style.max_sheet_bytes"))
 	s.max_import_depth = int(config.int_of(p, "style.max_import_depth"))
 	s.max_imports = int(config.int_of(p, "style.max_imports"))
+	s.counters_max_listed = int(config.int_of(p, "style.counters.max_listed"))
+	s.counters_max_ops = int(config.int_of(p, "style.counters.max_ops"))
 	s.max_selector_compounds = int(config.int_of(p, "style.max_selector_compounds"))
 	s.max_var_depth = int(config.int_of(p, "style.max_var_depth"))
 	s.max_var_bytes = int(config.int_of(p, "style.max_var_bytes"))

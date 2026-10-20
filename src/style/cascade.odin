@@ -817,11 +817,11 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host
 	if pool != nil && host.thread_pool_size(pool) > 1 && doc.nodes.count >= min_nodes {
 		// counters and quotes need tree order: the threads compute everything else, then one ordered walk resolves them
 		style_document_parallel(e, s, doc, state, pool)
-		s.counters_used = counters_post_pass(s, doc)
+		s.counters_used = counters_post_pass(s, doc, e.settings.counters_max_listed)
 	} else {
 		p := pass_make(e, s, doc, state)
 		defer pass_destroy(p)
-		counters := counter_state_make()
+		counters := counter_state_make(e.settings.counters_max_listed)
 		p.counters = &counters
 		root := dom.get(doc, doc.root)
 		for c := root.first_child; c != base.NIL_HANDLE; c = dom.get(doc, c).next {
@@ -837,8 +837,8 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host
 // Resolves counters and quotes over styles already computed (after a parallel pass), in tree order, exactly as the
 // sequential pass does while it goes. Returns whether any counter or quote was used.
 @(private)
-counters_post_pass :: proc(s: ^Styled, doc: ^dom.Document) -> bool {
-	counters := counter_state_make()
+counters_post_pass :: proc(s: ^Styled, doc: ^dom.Document, max_listed: int) -> bool {
+	counters := counter_state_make(max_listed)
 	Frame :: struct { h: base.Handle, hidden: bool, exit: bool, c: ^Computed }
 	stack := make([dynamic]Frame, context.temp_allocator)
 	root := dom.get(doc, doc.root)

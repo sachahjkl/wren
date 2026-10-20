@@ -26,10 +26,11 @@ Counter_State :: struct {
 	stack:       [dynamic]Counter_Instance,
 	quote_depth: int,
 	used:        bool,   // some element used a counter or a quote: partial restyles must keep the values consistent
+	max_listed:  int,    // counters(): the innermost instances listed at most (style.counters.max_listed)
 }
 
-counter_state_make :: proc() -> Counter_State {
-	return Counter_State{stack = make([dynamic]Counter_Instance, context.temp_allocator)}
+counter_state_make :: proc(max_listed: int) -> Counter_State {
+	return Counter_State{stack = make([dynamic]Counter_Instance, context.temp_allocator), max_listed = max(max_listed, 1)}
 }
 
 @(private)
@@ -215,9 +216,14 @@ resolve_content :: proc(st: ^Counter_State, doc: ^dom.Document, h: base.Handle, 
 				strings.write_string(&sb, format_counter(st.stack[k].value, p.style, context.temp_allocator))
 				continue
 			}
+			// the innermost max_listed instances only: on a deep tree every level's counters() lists every level
+			// above (quadratic text)
+			skip := -st.max_listed
+			for inst in st.stack { if inst.name == p.text { skip += 1 } }
 			first := true
 			for inst in st.stack {
 				if inst.name != p.text { continue }
+				if skip > 0 { skip -= 1; continue }
 				if !first { strings.write_string(&sb, p.sep) }
 				first = false
 				strings.write_string(&sb, format_counter(inst.value, p.style, context.temp_allocator))

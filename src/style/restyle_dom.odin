@@ -923,7 +923,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	if w.root_font { s.root_font_size = 0 }   // see below: the caller's full pass sets it again
 	rewalked := false
 	if m.rewalk || w.rewalk {
-		if counters_refresh(s, doc) { w.changed += 1; w.layout_changed = true }
+		if counters_refresh(s, doc, e.settings.counters_max_listed) { w.changed += 1; w.layout_changed = true }
 		rewalked = true
 	}
 	if w.motion { sync.atomic_store(&s.motion, true) }
@@ -954,7 +954,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 // Resolves counters and quotes over the whole document, as a full pass does, and replaces the records whose resolved
 // text (marker, generated content) differs. Returns whether any did.
 @(private)
-counters_refresh :: proc(s: ^Styled, doc: ^dom.Document) -> bool {
+counters_refresh :: proc(s: ^Styled, doc: ^dom.Document, max_listed: int) -> bool {
 	Saved :: struct { marker: string, items: [3][]Content_Item }
 	save :: proc(c: ^Computed) -> (sv: Saved) {
 		sv.marker = c.marker_text
@@ -1008,7 +1008,7 @@ counters_refresh :: proc(s: ^Styled, doc: ^dom.Document) -> bool {
 		s.by_node[idx] = nc
 		return true
 	}
-	counters := counter_state_make()
+	counters := counter_state_make(max_listed)
 	changed := false
 	F :: struct { h: base.Handle, hidden: bool, exit: bool }
 	stack := make([dynamic]F, context.temp_allocator)

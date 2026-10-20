@@ -601,3 +601,24 @@ imports_are_bounded :: proc(t: ^testing.T) {
 		if slot.rule.url == "self.css" { testing.expect(t, slot.child == nil && slot.failed, "a self import is refused") }
 	}
 }
+// counters() on a deep tree lists the innermost style.counters.max_listed instances (each level listed every level
+// above: text quadratic in the depth); a counter list longer than style.counters.max_ops is invalid.
+@(test)
+counters_are_bounded :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, "<style>div { counter-reset: c } div::before { content: counters(c, \".\") }</style>")
+	for _ in 0 ..< 300 { strings.write_string(&sb, "<div>") }
+	strings.write_string(&sb, "<div id=deep></div>")
+	s := settings_default()
+	s.counters_max_listed = 50
+	s.counters_max_ops = 3
+	f := load(strings.to_string(sb), s)
+	defer unload(&f)
+	b := at(&f, "deep").before
+	testing.expect(t, b != nil && len(b.content.items) == 1)
+	if b != nil && len(b.content.items) == 1 { testing.expectf(t, len(b.content.items[0].text) == 50 * 2 - 1, "%d bytes", len(b.content.items[0].text)) }
+	g := load(`<style>#a { counter-reset: a b c d } #b { counter-reset: a b c }</style><p id=a></p><p id=b></p>`, s)
+	settings_destroy(&s)
+	defer unload(&g)
+	testing.expect(t, len(at(&g, "a").counter_reset) == 0 && len(at(&g, "b").counter_reset) == 3)
+}

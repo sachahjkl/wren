@@ -729,6 +729,8 @@ parse_counter_ops :: proc(cx: ^Cx, vs: []css.Value, default_value: i32, allow_re
 			i += 1
 		}
 		append(&out, op)
+		// a hostile list of thousands of names, on every element, made every counter operation scan them all
+		if len(out) > cx.settings.counters_max_ops { return nil, false }
 	}
 	if len(out) == 0 { return nil, false }
 	return out[:], true
@@ -796,6 +798,8 @@ parse_filters :: proc(cx: ^Cx, vs: []css.Value) -> ([]Filter_Op, bool) {
 		case: return nil, false
 		}
 		append(&out, op)
+		// a hostile list of thousands of names, on every element, made every counter operation scan them all
+		if len(out) > cx.settings.counters_max_ops { return nil, false }
 	}
 	if len(out) == 0 { return nil, false }
 	return out[:], true
