@@ -22,6 +22,8 @@ Settings :: struct {
 	select_arrow:       f32,       // CSS px kept on the right of a <select> for its arrow
 	marker_gap:         f32,       // em: between an outside list marker and the content
 	sub_shift, super_shift: f32,   // em of the parent: vertical-align sub / super
+	sub_super_extra:    f32,       // device px added to both shifts
+	round_metrics:      bool,      // ascent, descent, line gap and the top half-leading on whole device pixels (Blink)
 	paint_refresh:      bool,      // paint-only style changes refresh the existing layout instead of redoing it
 	opacity_layers:     bool,      // opacity groups are composited from an offscreen layer (else per primitive)
 	grid_max_tracks:    int,       // grid lines are clamped to ± this (explicit and implicit tracks per axis)
@@ -77,8 +79,12 @@ PREFS := [?]config.Def{
 		description = "Space between an outside list marker and the item's text."},
 	{name = "layout.text.sub_shift_em", kind = .Float, default = {f = 0.2}, bounded = true, min = 0, max = 2, unit = "em",
 		description = "How far vertical-align: sub lowers text, in em of the parent."},
-	{name = "layout.text.super_shift_em", kind = .Float, default = {f = 0.34}, bounded = true, min = 0, max = 2, unit = "em",
+	{name = "layout.text.super_shift_em", kind = .Float, default = {f = 1.0 / 3.0}, bounded = true, min = 0, max = 2, unit = "em",
 		description = "How far vertical-align: super raises text, in em of the parent."},
+	{name = "layout.text.sub_super_extra_device_px", kind = .Float, default = {f = 1}, bounded = true, min = 0, max = 16, unit = "device px",
+		description = "Added to the shift of vertical-align: sub and super, in device pixels (Chromium: a fifth of the parent's font size + 1 for sub, a third + 1 for super)."},
+	{name = "layout.text.round_font_metrics", kind = .Bool, default = {b = true},
+		description = "Round each font's ascent, descent and line gap to whole device pixels (line-height: normal is then their sum), and put the odd pixel of the leading below the text, as Chromium does: text sits on the same pixel rows as in Chrome and Edge. Off: the face's exact metrics."},
 	{name = "layout.paint_refresh", kind = .Bool, default = {b = true},
 		description = "When only paint-only values change (transform, opacity, colors, backgrounds, shadows: the usual animations and hover effects), keep the boxes and update matrices, opacities and colors instead of laying the page out again. Off: every style change lays the page out (diagnostics)."},
 	{name = "layout.paint.opacity_layers", kind = .Bool, default = {b = true},
@@ -148,6 +154,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		marker_gap = f32(config.float_of(p, "layout.list.marker_gap_em")),
 		sub_shift = f32(config.float_of(p, "layout.text.sub_shift_em")),
 		super_shift = f32(config.float_of(p, "layout.text.super_shift_em")),
+		sub_super_extra = f32(config.float_of(p, "layout.text.sub_super_extra_device_px")),
+		round_metrics = config.bool_of(p, "layout.text.round_font_metrics"),
 		paint_refresh = config.bool_of(p, "layout.paint_refresh"),
 		opacity_layers = config.bool_of(p, "layout.paint.opacity_layers"),
 		grid_max_tracks = int(config.int_of(p, "layout.grid.max_tracks")),

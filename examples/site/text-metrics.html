@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Métriques du texte et alignement vertical</title>
+<style>
+@font-face { font-family: "Fira Code"; src: url(fonts/firacode-latin.woff2) format("woff2"); }
+body { margin: 0; padding: 16px 24px; font: 16px/1.45 "Segoe UI", sans-serif; color: #1d2330; background: #fbfcff; }
+h1 { font-size: 26px; margin: 0 0 6px; }
+h2 { font-size: 15px; margin: 20px 0 6px; color: #4a5570; text-transform: uppercase; letter-spacing: 0.08em; }
+p.note { margin: 4px 0 8px; color: #4a5570; font-size: 14px; max-width: 980px; }
+.grid { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-start; }
+/* a case: the line box in blue, the content area of the span in yellow, the baseline in red */
+.case { background: #dbe6ff; min-width: 120px; }
+.case > span { background: #ffe9a8; }
+.bl { display: inline-block; width: 24px; height: 0; border-top: 1px solid #e0182d; }
+.label { display: block; font: 11px Consolas, monospace; color: #4a5570; margin-top: 2px; }
+.sq { display: inline-block; width: 10px; height: 10px; background: #c62f2f; }
+.va > div { font: 16px Arial; }
+.va span.t { font-size: 11px; background: #ffe9a8; }
+/* the Wikipedia tabs (Vector 2022): inline-flex, align-items: center, min-height: 32px */
+.tabs { display: flex; align-items: center; justify-content: end; border-bottom: 1px solid #a2a9b1; font: 14px sans-serif; width: 420px; }
+.tabs a { display: inline-flex; align-items: center; min-height: 32px; margin: 0 8px; color: #36c; text-decoration: none; }
+.tabs a.sel { color: #202122; box-shadow: inset 0 -2px #202122; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 32px; padding: 0 12px;
+  border: 1px solid #a2a9b1; border-radius: 2px; background: #f8f9fa; font: bold 14px sans-serif; color: #202122; }
+.icon { display: inline-block; width: 16px; height: 16px; background: #36c; border-radius: 3px; }
+table.cells td { border: 1px solid #ccd3e3; height: 40px; padding: 0 6px; }
+</style>
+</head>
+<body>
+<h1>Métriques du texte et alignement vertical</h1>
+<p class="note">Chaque cas se compare pixel pour pixel à Chrome ou Edge (<code>tools\compare_edge.ps1</code>). En bleu la boîte de
+ligne, en jaune la zone de contenu de l’élément <code>span</code>, en rouge la ligne de base. Comme Chromium, Wren arrondit au
+pixel physique l’ascendante, la descendante et l’interligne de la police (<code>line-height: normal</code> est leur somme), et
+met le pixel impair de l’interlignage sous le texte (<code>layout.text.round_font_metrics</code>).</p>
+
+<h2>line-height: normal, d’après la police</h2>
+<div class="grid">
+  <div class="case" style="font:13px Arial"><span>Arial 13 Hxg</span><i class="bl"></i></div>
+  <div class="case" style="font:16px Arial"><span>Arial 16 Hxg</span><i class="bl"></i></div>
+  <div class="case" style="font:32px Arial"><span>Arial 32</span><i class="bl"></i></div>
+  <div class="case" style="font:16px 'Segoe UI'"><span>Segoe UI 16</span><i class="bl"></i></div>
+  <div class="case" style="font:32px 'Segoe UI'"><span>Segoe 32</span><i class="bl"></i></div>
+  <div class="case" style="font:16px Georgia"><span>Georgia 16</span><i class="bl"></i></div>
+  <div class="case" style="font:16px Consolas"><span>Consolas 16</span><i class="bl"></i></div>
+  <div class="case" style="font:16px Verdana"><span>Verdana 16</span><i class="bl"></i></div>
+  <div class="case" style="font:16px 'Times New Roman'"><span>Times 16</span><i class="bl"></i></div>
+  <div class="case" style="font:16px 'Fira Code'"><span>Fira Code -&gt; !=</span><i class="bl"></i></div>
+</div>
+<p class="note">Arial à 32 px et 175 % : ascendante 50,7 → 51, descendante 11,9 → 12, interligne 1,8 → 2 : une ligne de 65 px
+(la somme exacte, 64,4, donnerait 64).</p>
+
+<h2>line-height numérique ou en longueur</h2>
+<div class="grid">
+  <div class="case" style="font:14px/1 Arial"><span>1</span><i class="bl"></i></div>
+  <div class="case" style="font:14px/1.2 Arial"><span>1.2</span><i class="bl"></i></div>
+  <div class="case" style="font:14px/1.6 Arial"><span>1.6</span><i class="bl"></i></div>
+  <div class="case" style="font:14px/22.4px Arial"><span>22.4px</span><i class="bl"></i></div>
+  <div class="case" style="font:14px/0.8 Arial"><span>0.8 (interlignage négatif)</span><i class="bl"></i></div>
+  <div class="case" style="font:16px Arial"><span style="font-size:30px;line-height:10px">lh 10px</span> autour<i class="bl"></i></div>
+</div>
+
+<h2>vertical-align : un span de 11 px dans une ligne Arial 16 px</h2>
+<div class="grid va">
+  <div class="case">x<span class="t" style="vertical-align:baseline">baseline</span><i class="bl"></i></div>
+  <div class="case">x<span class="t" style="vertical-align:middle">middle</span><i class="bl"></i></div>
+  <div class="case">x<span class="t" style="vertical-align:top">top</span><i class="bl"></i></div>
+  <div class="case">x<span class="t" style="vertical-align:bottom">bottom</span><i class="bl"></i></div>
+  <div class="case">x<span class="t" style="vertical-align:text-top">text-top</span><i class="bl"></i></div>
+  <div class="case">x<span class="t" style="vertical-align:text-bottom">text-bottom</span><i class="bl"></i></div>
+  <div class="case">x<span class="t" style="vertical-align:sub">sub</span><i class="bl"></i></div>
+  <div class="case">x<span class="t" style="vertical-align:super">super</span><i class="bl"></i></div>
+  <div class="case">x<span class="t" style="vertical-align:5px">5px</span><i class="bl"></i></div>
+  <div class="case">x<span class="t" style="vertical-align:-30%">-30%</span><i class="bl"></i></div>
+</div>
+<p class="note"><code>middle</code> centre la boîte, interlignage compris, à une demi-hauteur d’x au-dessus de la ligne de base ;
+<code>sub</code> descend d’un cinquième de la taille du parent plus 1 pixel physique, <code>super</code> monte d’un tiers plus
+1 (Chromium).</p>
+
+<h2>vertical-align : un bloc en ligne de 10 × 10 px</h2>
+<div class="grid va">
+  <div class="case">x<span class="sq"></span> baseline<i class="bl"></i></div>
+  <div class="case">x<span class="sq" style="vertical-align:middle"></span> middle<i class="bl"></i></div>
+  <div class="case">x<span class="sq" style="vertical-align:text-top"></span> text-top<i class="bl"></i></div>
+  <div class="case">x<span class="sq" style="vertical-align:text-bottom"></span> text-bottom<i class="bl"></i></div>
+  <div class="case">x<span class="sq" style="vertical-align:super"></span> super<i class="bl"></i></div>
+  <div class="case">x<span class="sq" style="vertical-align:50%"></span> 50%<i class="bl"></i></div>
+</div>
+
+<h2>Polices mêlées et repli</h2>
+<div class="grid">
+  <div class="case" style="font:16px Arial">Arial <span style="font:26px 'Segoe UI'">Segoe</span> <span style="font:30px Georgia">Georgia</span> <span style="font:12px Consolas">mono</span><i class="bl"></i></div>
+  <div class="case" style="font:16px Arial">Sans emoji<i class="bl"></i></div>
+  <div class="case" style="font:16px Arial">Avec 😀 emoji<i class="bl"></i></div>
+  <div class="case" style="font:16px/1.5 Arial">😀 avec line-height: 1.5<i class="bl"></i></div>
+</div>
+<p class="note">Avec <code>line-height: normal</code>, la police de repli (Segoe UI Emoji) agrandit la ligne : sa propre
+ascendante la remonte (CSS Inline 3, « normal » ; Blink <code>AccumulateUsedFonts</code>). Une hauteur de ligne numérique ne
+compte que la première police.</p>
+
+<h2>Flex, boutons, champs, cellules</h2>
+<div class="grid">
+  <div class="tabs"><a class="sel" href="#"><span>Read</span></a><a href="#"><span>Edit</span></a><a href="#"><span>View history</span></a></div>
+  <span class="btn"><i class="icon"></i><span>28 languages</span></span>
+  <button style="height:32px;padding:0 12px">Search</button>
+  <div class="case" style="font:16px Arial">texte <input value="champ"> <select><option>liste</option></select> <input type="checkbox" checked> <input type="submit" value="Envoyer"><i class="bl"></i></div>
+</div>
+<p class="note">Les onglets de Wikipédia (<code>inline-flex</code>, <code>align-items: center</code>, <code>min-height: 32px</code>) :
+la ligne flexible prend la hauteur minimale du conteneur et le texte y est centré. Le contenu d’un <code>button</code> plus
+haut que lui est centré. Le texte d’un champ est centré dans sa boîte et donne la ligne de base ; une case à cocher repose
+sur son bord inférieur.</p>
+<table class="cells" style="border-collapse:collapse"><tr>
+  <td>middle (par défaut)</td><td style="vertical-align:top">top</td><td style="vertical-align:bottom">bottom</td>
+  <td style="vertical-align:baseline">baseline</td><td style="font-size:26px">grande</td>
+</tr></table>
+
+<h2>Mode quirks</h2>
+<p class="note">Dans un document sans doctype (ou en limited-quirks), une ligne sans texte n’a pas d’entretoise : une image seule
+dans une cellule n’a pas d’espace sous elle, et la boîte en ligne vide ne compte pas (Quirks Mode §3.3). Exemple : l’en-tête de
+Hacker News.</p>
+</body>
+</html>

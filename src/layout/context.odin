@@ -284,13 +284,21 @@ font_resolve :: proc(c: ^Ctx, info: ^Font_Info) {
 	m := c.text.metrics(c.text.user, info.font, info.size)
 	info.ascent, info.descent, info.x_height = m.ascent, m.descent, m.x_height
 	if info.x_height <= 0 { info.x_height = info.size * 0.5 }
+	normal := m.line_height
+	if c.set.round_metrics {
+		// Blink (SimpleFontData::PlatformInit, FontMetrics::AscentDescentWithHacks): ascent, descent and line gap are
+		// each rounded to whole device pixels, and line-height: normal is their sum (Arial at 56 px: 51 + 12 + 2 = 65,
+		// where the exact sum rounds to 64)
+		info.ascent, info.descent = math.round(info.ascent), math.round(info.descent)
+		if m.line_height > 0 { normal = info.ascent + info.descent + math.round(m.line_gap) }
+	}
 	// line-height: normal (CSS Inline 3 §4.2): the face's ascent + descent + line gap, as other browsers do, unless
 	// font.line_height.normal sets a multiple of the font size
 	if info.lh_normal {
 		if c.st.line_height_normal > 0 || m.line_height <= 0 {
 			info.line_h = info.size * (c.st.line_height_normal > 0 ? c.st.line_height_normal : 1.2)
 		} else {
-			info.line_h = m.line_height
+			info.line_h = normal
 		}
 	}
 	info.space = c.text.width(c.text.user, info.font, info.size, " ")

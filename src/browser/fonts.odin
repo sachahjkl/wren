@@ -495,7 +495,11 @@ page_text_api :: proc(pf: ^Page_Fonts, m: ^Measure, settings: ^style.Settings) -
 		metrics = proc(user: rawptr, f: lay.Font, size: f32) -> lay.Font_Metrics {
 			t := (^Text_Ctx)(user)
 			m := font.metrics(t.fonts.state, font.Font_Id(f), size)
-			return {ascent = m.ascent, descent = m.descent, x_height = m.x_height, line_height = m.line_height}
+			return {ascent = m.ascent, descent = m.descent, x_height = m.x_height, line_height = m.line_height, line_gap = m.line_gap}
+		},
+		fallback_metrics = proc(user: rawptr, f: lay.Font, size: f32, text: string, out: []lay.Font_Metrics) -> int {
+			t := (^Text_Ctx)(user)
+			return fallback_face_metrics(t.fonts.state, font.Font_Id(f), size, text, out)
 		},
 		bidi = proc(user: rawptr, text: string, rtl: bool, levels: []u8) {
 			t := (^Text_Ctx)(user)
@@ -523,6 +527,26 @@ page_text_api :: proc(pf: ^Page_Fonts, m: ^Measure, settings: ^style.Settings) -
 		},
 		concurrent = true,   // the toolkit measures, shapes and analyses from any thread
 	}
+}
+
+// Metrics of the faces, other than the first of cascade `id`, that the glyphs of `text` come from (Text_Api
+// fallback_metrics: line-height: normal makes room for them). Each face once, at most len(out).
+fallback_face_metrics :: proc(s: ^font.State, id: font.Font_Id, size: f32, text: string, out: []lay.Font_Metrics) -> int {
+	if len(text) == 0 || len(out) == 0 { return 0 }
+	first := font.primary_face(s, id)
+	sh := font.shape(s, id, size, text, {one_run = true}, context.temp_allocator)
+	seen: [8]font.Font_Id
+	n := 0
+	outer: for g in sh.glyphs {
+		if g.face == first { continue }
+		for k in seen[:min(n, len(seen))] { if k == g.face { continue outer } }
+		if n >= len(out) || n >= len(seen) { break }
+		seen[n] = g.face
+		m := font.metrics(s, g.face, size)
+		out[n] = {ascent = m.ascent, descent = m.descent, x_height = m.x_height, line_height = m.line_height, line_gap = m.line_gap}
+		n += 1
+	}
+	return n
 }
 
 // The shaping of a text fragment as the painter does it (render.odin text_shape_options).

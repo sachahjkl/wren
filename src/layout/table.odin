@@ -1,5 +1,6 @@
 package layout
 
+import "core:math"
 import "wb:base"
 import "wb:dom"
 import "wb:style"
@@ -89,7 +90,9 @@ table_grid :: proc(c: ^Ctx, bi: i32) -> Table_Grid {
 @(private)
 spacing_of :: proc(c: ^Ctx, cs: ^style.Computed) -> (h, v: f32) {
 	if cs.border_collapse { return 0, 0 }
-	return cs.border_spacing[0] * c.scale, cs.border_spacing[1] * c.scale
+	// whole device pixels, as in Chromium (which keeps the zoomed spacing as an integer): the UA's 2px is 3 device px
+	// at 175 %, not 3.5, and rows land where Chrome and Edge put them
+	return math.floor(cs.border_spacing[0] * c.scale), math.floor(cs.border_spacing[1] * c.scale)
 }
 
 // Cell edges: collapsed tables keep one border between neighbours.
@@ -413,12 +416,16 @@ layout_table :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32) -> f32 {
 		if h, ok := definite(c, rb.cs.height, -1); ok { heights[i] = h }
 	}
 	cell_h := make([]f32, len(g.cells), context.temp_allocator)
+	cell_content := make([]f32, len(g.cells), context.temp_allocator)   // what vertical-align moves: without the specified height
 	for &gc, i in g.cells {
 		end := min(int(gc.col + gc.cs), n)
 		cwid := col_x[end] - sh - col_x[gc.col]
 		resolve_cell(c, gc.box, cw, collapse)
 		r := layout_contents(c, gc.box, max(cwid, 0), -1, -1, nil)
-		cell_h[i] = r.h
+		// (a cell's height is a minimum: content taller than it makes the row taller, CSS 2.1 §17.5.3)
+		k := &c.l.boxes[gc.box]
+		cell_content[i] = k.tmp + pb_h(k)
+		cell_h[i] = max(r.h, cell_content[i])
 		if gc.rs == 1 { heights[gc.row] = max(heights[gc.row], r.h) }
 	}
 	for &gc, i in g.cells {
@@ -472,7 +479,7 @@ layout_table :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32) -> f32 {
 		k := &c.l.boxes[gc.box]
 		span_h := row_y[gc.row + gc.rs - 1] + heights[gc.row + gc.rs - 1] - row_y[gc.row]
 		k.pos = {col_x[gc.col] - cx, 0}
-		content := cell_h[i]
+		content := cell_content[i]
 		k.size.y = span_h
 		k.cache_ok = false
 		dy: f32

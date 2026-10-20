@@ -36,6 +36,7 @@ Font_Metrics :: struct {
 	ascent, descent: f32,   // device px above / below the baseline, both positive
 	x_height:        f32,
 	line_height:     f32,   // optional: ascent + descent + line gap of the face (what line-height: normal is), 0 = unknown
+	line_gap:        f32,   // the face's line gap, not rounded (read when line_height > 0)
 }
 
 Text_Api :: struct {
@@ -63,7 +64,12 @@ Text_Api :: struct {
 	// `run.rtl`. Without them, prefix widths (mirrored in right-to-left fragments).
 	caret_x:   proc(user: rawptr, f: Font, size: f32, text: string, run: Text_Run, index: int) -> f32,
 	hit_index: proc(user: rawptr, f: Font, size: f32, text: string, run: Text_Run, x: f32) -> int,
-	// `width`, `bidi` and `line_break` may be called from several threads at once (`font` and `metrics` never are):
+	// Optional. The metrics, at `size`, of the faces other than the first of `f` that the glyphs of `text` come from
+	// (font fallback: an emoji, a script the face lacks), at most len(out) of them; returns how many there are. Lines
+	// of line-height: normal make room for them as Chromium does. Without it, only the first face counts.
+	fallback_metrics: proc(user: rawptr, f: Font, size: f32, text: string, out: []Font_Metrics) -> int,
+	// `width`, `bidi`, `line_break` and `fallback_metrics` may be called from several threads at once (`font` and
+	// `metrics` never are):
 	// lines of independent paragraphs are then built on the layout threads (parallel.odin)
 	concurrent: bool,
 }
@@ -217,7 +223,8 @@ Box :: struct {
 	scroll_space: i32,              // the scroll space this box owns, or NONE
 	depth:     i32,
 	layer:     i32,                 // inline boxes: nearest positioned inline ancestor-or-self (paints its fragments), or NONE
-	tmp:       f32,                 // scratch of the current step (baseline shift of an inline box on the line being built)
+	tmp:       f32,                 // scratch of the current step (baseline shift of an inline box on the line being built;
+	                                // a table cell's content height, from its layout_contents to its table's alignment)
 	tmp_al:    i32,                 // scratch: top/bottom-aligned group of an inline box on the line being built
 }
 
@@ -238,7 +245,11 @@ Inline_Item :: struct {
 	source: base.Handle,            // Text: the DOM text node it shows (NIL: generated content, markers)
 	deco:  style.Decorations,       // Text: decorations of its ancestors up to the formatting context (CSS Text Decoration §2)
 	deco_box: i32,                  // Text: the box the decoration color comes from (NONE: none; read when painted)
+	fb:      Fallback_State,        // Text: whether its text falls back to other faces than its font's first (line-height:
+	fb_font: Font,                  // normal counts them: used_fonts_extent), found for this font
 }
+
+Fallback_State :: enum u8 { Unknown, None, Some }
 
 Font_Info :: struct {
 	font:     Font,
