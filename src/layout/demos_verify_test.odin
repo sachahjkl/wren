@@ -387,3 +387,15 @@ inc_boxless_element_hidden :: proc(t: ^testing.T) {
 		testing.expectf(t, d.l.inc.verify_failures == 0, "%s: %s", s, d.l.inc.verify_report)
 	}
 }
+// A paint-only restyle of an element whose ::before sits in an anonymous block beside block children: that generated
+// box is re-pointed to the new ::before record too (it kept the old one, and its old color).
+@(test)
+inc_pseudo_in_anonymous_block_restyled :: proc(t: ^testing.T) {
+	d := demo_load(`<style>li::before { content: "- " } .hot { color: red }</style><ul><li id=a>two<ol><li>nested</li></ol></li><li>three</li></ul><p>after</p>`)
+	defer demo_unload(d)
+	dom.set_attribute(d.doc, dom.find_by_id(d.doc, "a"), "class", "hot")
+	demo_frame(d, "")
+	dom.set_attribute(d.doc, dom.find_by_id(d.doc, "a"), "style", "padding-top:3px")
+	demo_frame(d, "")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+}

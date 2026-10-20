@@ -618,14 +618,23 @@ remap_journaled :: proc(c: ^Ctx, changes: []style.Journal_Entry) -> bool {
 		if b.ifc_root != NONE { append(&ifcs, b.ifc_root) }
 		if .Ifc in b.flags { append(&ifcs, bi) }
 		anon_below(c, bi, &ifcs)
-		for ch := l.boxes[bi].first; ch != NONE; ch = l.boxes[ch].next {
-			k := &l.boxes[ch]
-			if .Dead in k.flags || .Pseudo not_in k.flags || k.node != h { continue }
-			nc := .Pseudo_After in k.flags ? el.after : el.before
-			if nc == nil { return false }
-			k.cs = nc
-			if .Ifc in k.flags { append(&ifcs, ch) }
-			anon_below(c, ch, &ifcs)
+		// its generated boxes: children of its box, or of the anonymous blocks wrapping its inline content (an inline
+		// ::before beside block children)
+		pseudos := make([dynamic]i32, 0, 8, context.temp_allocator)
+		append(&pseudos, bi)
+		for len(pseudos) > 0 {
+			x := pop(&pseudos)
+			for ch := l.boxes[x].first; ch != NONE; ch = l.boxes[ch].next {
+				k := &l.boxes[ch]
+				if .Dead in k.flags { continue }
+				if .Anonymous in k.flags { append(&pseudos, ch); continue }
+				if .Pseudo not_in k.flags || k.node != h { continue }
+				nc := .Pseudo_After in k.flags ? el.after : el.before
+				if nc == nil { return false }
+				k.cs = nc
+				if .Ifc in k.flags { append(&ifcs, ch) }
+				anon_below(c, ch, &ifcs)
+			}
 		}
 		for r in ifcs {
 			rb := &l.boxes[r]
