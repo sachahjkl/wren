@@ -1,6 +1,7 @@
 package layout
 
 import "core:math"
+import "core:strings"
 import "core:testing"
 import "wb:base"
 import "wb:dom"
@@ -565,4 +566,18 @@ hostile_lengths_stay_finite :: proc(t: ^testing.T) {
 		testing.expectf(t, bad == 0 && finite(f.l.height) && finite(f.l.doc_width), "%s: %d non-finite values, extent %v x %v", s, bad, f.l.doc_width, f.l.height)
 		for y in ([]f32{0, 10, 300, 599}) { _ = hit_test(&f.l, {10, y}, f.vp, 0) }
 	}
+}
+// Rows of wide cells: the table is at most layout.table.max_columns wide (60 000 x colspan=1000 asked for 6e7 columns,
+// gigabytes per sizing).
+@(test)
+table_columns_are_bounded :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, "<table><tr>")
+	for _ in 0 ..< 2000 { strings.write_string(&sb, "<td colspan=1000>x</td>") }
+	strings.write_string(&sb, "</tr><tr><td>a</td></tr></table>")
+	f := load(strings.to_string(sb))
+	defer unload(f)
+	widest := i32(0)
+	for &b in f.l.boxes { if b.kind == .Cell { widest = max(widest, b.col + 1) } }
+	testing.expectf(t, int(widest) <= f.set.table_max_columns, "a cell in column %d", widest)
 }

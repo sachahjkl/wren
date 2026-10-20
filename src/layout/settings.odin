@@ -9,7 +9,6 @@ import "wb:css"
 Settings :: struct {
 	max_depth:          int,       // boxes nested deeper are flattened into their ancestor at this depth
 	max_stack_bytes:    int,       // native stack a layout pass may use before it stops descending
-	band_height:        f32,       // CSS px: height of the bands of the spatial index
 	scrollbar_width:    f32,       // CSS px
 	scrollbar_min_thumb: f32,      // CSS px
 	scrollbar_margin:   f32,       // CSS px between the bar and the padding edge
@@ -17,7 +16,7 @@ Settings :: struct {
 	scrollbar_track:    css.Color,
 	document_scrollbar: bool,
 	placeholder_w, placeholder_h: f32,   // CSS px: a replaced element with no known size (an image not decoded yet)
-	embed_w, embed_h:   f32,       // CSS px: iframe, canvas, video, embed, object
+	embed_w, embed_h:   f32,       // CSS px: iframe, embed, object, video without a natural size (width: audio too)
 	input_size:         int,       // characters of a text field without a size attribute
 	textarea_cols, textarea_rows: int,
 	select_arrow:       f32,       // CSS px kept on the right of a <select> for its arrow
@@ -26,7 +25,8 @@ Settings :: struct {
 	paint_refresh:      bool,      // paint-only style changes refresh the existing layout instead of redoing it
 	opacity_layers:     bool,      // opacity groups are composited from an offscreen layer (else per primitive)
 	grid_max_tracks:    int,       // grid lines are clamped to ± this (explicit and implicit tracks per axis)
-	grid_max_items:     int,       // grid items placed per container; the rest get no box
+	grid_max_items:     int,       // grid items placed per container; the rest are not laid out
+	table_max_columns:  int,       // columns of one table; cells past it share the last column
 	// incremental layout (incremental.odin)
 	incremental:        bool,      // lay out again only what changed
 	inc_max_ratio:      f32,       // share of the boxes to rebuild or invalidate past which a full pass is done
@@ -45,8 +45,8 @@ Settings :: struct {
 PREFS := [?]config.Def{
 	{name = "layout.max_depth", kind = .Int, default = {i = 256}, bounded = true, min = 16, max = 4096,
 		description = "Deepest nesting of boxes laid out as boxes. Deeper elements are flattened: their text joins the box at this depth (protects the native stack against hostile pages)."},
-	{name = "layout.max_stack_bytes", kind = .Int, default = {i = 512 << 10}, bounded = true, min = 64 << 10, max = 64 << 20, bytes = true, unit = "bytes",
-		description = "Native stack one layout pass may use. Past it, deeper boxes get no size instead of crashing the browser. Must stay below the UI thread's stack size."},
+	{name = "layout.max_stack_bytes", kind = .Int, default = {i = 512 << 10}, bounded = true, min = 64 << 10, max = 16 << 20, bytes = true, unit = "bytes",
+		description = "Native stack one layout pass may use, on the interface thread and on each layout thread (both have 32 MiB). Past it, deeper boxes get no size instead of crashing the browser."},
 	{name = "layout.scrollbar.width_px", kind = .Float, default = {f = 6}, bounded = true, min = 1, max = 64, unit = "px",
 		description = "Thickness of the scroll bars drawn over scrollable boxes and the page."},
 	{name = "layout.scrollbar.min_thumb_px", kind = .Float, default = {f = 24}, bounded = true, min = 4, max = 400, unit = "px",
@@ -61,9 +61,9 @@ PREFS := [?]config.Def{
 	{name = "layout.replaced.placeholder_height_px", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 4096, unit = "px",
 		description = "Height of an image whose size is not known yet and not given by width/height attributes."},
 	{name = "layout.replaced.embed_width_px", kind = .Float, default = {f = 300}, bounded = true, min = 0, max = 8192, unit = "px",
-		description = "Default width of iframe, canvas, video, embed and object elements."},
+		description = "Default width of iframe, embed, object and video elements without a natural size, and of audio controls (a canvas without attributes is 300 x 150, as HTML says)."},
 	{name = "layout.replaced.embed_height_px", kind = .Float, default = {f = 150}, bounded = true, min = 0, max = 8192, unit = "px",
-		description = "Default height of iframe, canvas, video, embed and object elements."},
+		description = "Default height of iframe, embed, object and video elements without a natural size."},
 	{name = "layout.form.input_size_chars", kind = .Int, default = {i = 20}, bounded = true, min = 1, max = 1000,
 		description = "Width, in characters, of a text field without a size attribute."},
 	{name = "layout.form.textarea_cols", kind = .Int, default = {i = 20}, bounded = true, min = 1, max = 1000,
@@ -83,13 +83,15 @@ PREFS := [?]config.Def{
 	{name = "layout.paint.opacity_layers", kind = .Bool, default = {b = true},
 		description = "Paint an element with opacity below 1 into an offscreen layer and blend it once, as CSS requires (what overlaps inside it does not show through). Off: each shape is faded on its own (cheaper, inexact where children overlap)."},
 	{name = "layout.grid.max_tracks", kind = .Int, default = {i = 10000}, bounded = true, min = 100, max = 1_000_000,
-		description = "Largest grid line number honored, and most tracks a repeat() expands to. Placements further out are clamped, as CSS Grid allows (a hostile `grid-row: 10000000` or `repeat(10000000, 1px)` stays cheap)."},
+		description = "Largest grid line number honored, and most tracks of an axis (implicit ones and spans included). Placements further out are clamped, as CSS Grid allows (a hostile `grid-row: 10000000` stays cheap). The style engine already reads line numbers and repeat() counts up to 10000 at most."},
 	{name = "layout.grid.max_items", kind = .Int, default = {i = 200_000}, bounded = true, min = 1000, max = 10_000_000,
-		description = "Most children of one grid container that are placed and laid out. The rest get no box."},
+		description = "Most children of one grid container that are placed and laid out. The rest are not laid out (no size, at the container's content origin)."},
+	{name = "layout.table.max_columns", kind = .Int, default = {i = 10_000}, bounded = true, min = 100, max = 1_000_000, unit = "columns",
+		description = "Most columns of one table (each cell's colspan is at most 1000, but rows of them add up: a hostile page of a few kilobytes asked for gigabytes). Cells past it are placed in the last column."},
 	{name = "layout.incremental.enabled", kind = .Bool, default = {b = true},
 		description = "After a change (window resized, page script editing the document, style or animation that moves boxes, image or font arriving), lay out again only the boxes it affects, from journals of the changes. Off: every change lays the whole page out (same result, slower)."},
 	{name = "layout.incremental.max_ratio", kind = .Float, default = {f = 0.5}, bounded = true, min = 0, max = 1,
-		description = "Share of the boxes a change must rebuild or invalidate past which the whole page is laid out instead (a full pass is cheaper than many small ones). 0: always full."},
+		description = "Share of the boxes a change must rebuild or invalidate past which the whole page is laid out instead (a full pass is cheaper than many small ones). 0: a change that rebuilds or invalidates any box is laid out in full (a window resized, an image or font arriving still lay out incrementally)."},
 	{name = "layout.incremental.garbage_ratio", kind = .Float, default = {f = 0.5}, bounded = true, min = 0.05, max = 8,
 		description = "Memory left behind by incremental passes (boxes, texts, fonts replaced), as a share of what is in use, past which the next pass is a full one that starts afresh."},
 	{name = "layout.incremental.journal_entries", kind = .Int, default = {i = 65536}, bounded = true, min = 256, max = 16 << 20,
@@ -126,7 +128,6 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	return Settings{
 		max_depth = int(config.int_of(p, "layout.max_depth")),
 		max_stack_bytes = int(config.int_of(p, "layout.max_stack_bytes")),
-		band_height = 256,   // the shell passes `browser.layout.band_height_px`
 		scrollbar_width = f32(config.float_of(p, "layout.scrollbar.width_px")),
 		scrollbar_min_thumb = f32(config.float_of(p, "layout.scrollbar.min_thumb_px")),
 		scrollbar_margin = f32(config.float_of(p, "layout.scrollbar.margin_px")),
@@ -148,6 +149,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		opacity_layers = config.bool_of(p, "layout.paint.opacity_layers"),
 		grid_max_tracks = int(config.int_of(p, "layout.grid.max_tracks")),
 		grid_max_items = int(config.int_of(p, "layout.grid.max_items")),
+		table_max_columns = int(config.int_of(p, "layout.table.max_columns")),
 		incremental = config.bool_of(p, "layout.incremental.enabled"),
 		inc_max_ratio = f32(config.float_of(p, "layout.incremental.max_ratio")),
 		inc_garbage_ratio = f32(config.float_of(p, "layout.incremental.garbage_ratio")),
