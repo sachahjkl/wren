@@ -1128,7 +1128,12 @@ verify_styles :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, allocator := c
 				}
 				id, _ := attr(n, "id")
 				cls, _ := attr(n, "class")
-				return fmt.aprintf("<%s id=%q class=%q> (node %v): %s differs", n.name, id, cls, h, what, allocator = allocator)
+				where_ := ""
+				if r := dom.containing_shadow_root(doc, h); r != base.NIL_HANDLE {
+					hn := dom.get(doc, dom.get(doc, r).shadow)
+					where_ = fmt.tprintf(" in the shadow tree of <%s>", hn != nil ? hn.name : "?")
+				}
+				return fmt.aprintf("<%s id=%q class=%q> (node %v)%s: %s differs", n.name, id, cls, h, where_, what, allocator = allocator)
 			}
 		}
 		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, ch) }

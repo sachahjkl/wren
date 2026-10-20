@@ -1,0 +1,467 @@
+# web-platform-tests expectations of Wren for css/css-shadow, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/css/css-shadow/css-scoping-shadow-dynamic-remove-style-detached.html: OK
+	Invalidation of style data while ShadowRoot is disconnected.: PASS
+/css/css-shadow/font-face-001.html: OK
+	@font-face applies in the shadow tree: FAIL
+/css/css-shadow/font-face-002.html: OK
+	@font-face from the document applies in the shadow tree: FAIL
+/css/css-shadow/font-face-003.html: OK
+	@font-face from document applies to :host: FAIL
+/css/css-shadow/font-face-004.html: OK
+	@font-face from document applies to a slotted element: FAIL
+/css/css-shadow/font-face-005.html: OK
+	@font-face should not leak out of shadow tree.: FAIL
+/css/css-shadow/font-face-006.html: OK
+	@font-face from document applies to to :host::before/::after.: FAIL
+/css/css-shadow/font-face-007.html: OK
+	@font-face from shadow applies to :host: FAIL
+/css/css-shadow/font-face-008.html: OK
+	@font-face from shadow applies to a slotted element: FAIL
+/css/css-shadow/font-face-009.html: OK
+	@font-face from shadow applies to to :host::before/::after.: FAIL
+/css/css-shadow/has-slotted-changing-001.html: OK
+	calling append invalidates and becomes green: PASS
+	calling replaceChildren invalidates and becomes green, emptying with replaceChildren becomes blue: PASS
+	calling replaceChildren(textnode) invalidates and becomes green: PASS
+	empty node is blue: PASS
+	setting innerHTML to whitespace invalidates and becomes green, then empty string becomes blue: PASS
+/css/css-shadow/has-slotted-changing-002.html: OK
+	empty node is blue: PASS
+	manually assigning a Element is green, emptying assignment is blue: PASS
+	manually assigning a text node is green, emptying assignment is blue: PASS
+/css/css-shadow/has-slotted-functional-changing-001.tentative.html: OK
+	Changing content targetting :has-slotted(...) and :has-slotted through a single shadow root: FAIL
+/css/css-shadow/has-slotted-functional-changing-002.tentative.html: OK
+	Changing content targetting :has-slotted(...) through a single shadow root: FAIL
+/css/css-shadow/has-slotted-functional-changing-003.tentative.html: OK
+	Changing content targetting :has-slotted(...) and :has-slotted through multiple shadow roots: FAIL
+/css/css-shadow/has-slotted-functional-changing-004.tentative.html: OK
+	Changing content targetting :has-slotted(...) through a single shadow root: FAIL
+/css/css-shadow/has-slotted-manual-assignment.html: OK
+	:has-slotted does match when a child is manually assigned: PASS
+	:has-slotted does not match or querySelector with no manual assigned nodes: PASS
+	:has-slotted does not match or querySelector with no manual assigned nodes - 2: PASS
+	:has-slotted no longer matches when no children become manually assigned: PASS
+/css/css-shadow/has-slotted-query-selector.html: OK
+	:has-slotted does not match or querySelector when there are no assigned nodes: PASS
+	:has-slotted does not match or querySelector when there are no assigned nodes (flattened): PASS
+	:has-slotted does not when child nodes are replaced: PASS
+	:has-slotted does not when child nodes are replaced (flattened): PASS
+	:has-slotted must match/querySelector when a text node is assigned: PASS
+	:has-slotted must match/querySelector when a text node is assigned (flattened): PASS
+	:has-slotted must match/querySelector when an element is assigned: PASS
+	:has-slotted must match/querySelector when an element is assigned (flattened): PASS
+/css/css-shadow/host-context-parsing.html: OK
+	":host-context" should be an invalid selector: FAIL
+	":host-context()" should be an invalid selector: FAIL
+	":host-context(.a + .b)" should be an invalid selector: FAIL
+	":host-context(.a + .b, #c > #d)" should be an invalid selector: FAIL
+	":host-context(.a)" should be a valid selector: FAIL
+	":host-context(.a, .b)" should be an invalid selector: FAIL
+	":host-context(div.a)" should be a valid selector: FAIL
+/css/css-shadow/host-descendant-invalidation.html: OK
+	CSS Test: element style is correctly updated for rule with :host: PASS
+/css/css-shadow/host-dom-001.html: OK
+	CSS Test: :host in DOM APIs: PASS
+/css/css-shadow/host-functional-descendant-invalidation.html: OK
+	CSS Test: element style is correctly updated for rule with :host(..): PASS
+/css/css-shadow/host-in-host-context-selector.html: OK
+	CSS Scoping: :host-context(:host): PASS
+/css/css-shadow/host-in-host-selector.html: OK
+	CSS Scoping: :host(:host): PASS
+/css/css-shadow/host-is-featureless.html: OK
+	CSS Scoping: Shadow host is featureless: PASS
+/css/css-shadow/host-parsing.html: OK
+	":host" should be a valid selector: FAIL
+	":host()" should be an invalid selector: FAIL
+	":host(.a + .b)" should be an invalid selector: FAIL
+	":host(.a + .b, #c > #d)" should be an invalid selector: FAIL
+	":host(.a)" should be a valid selector: FAIL
+	":host(.a, .b)" should be an invalid selector: FAIL
+	":host(div.a)" should be a valid selector: FAIL
+/css/css-shadow/hover-invalidates-slotted-descendant.html: OK
+	Ancestor :hover invalidates a descendant slotted into a shadow tree: FAIL
+/css/css-shadow/idlharness.html: OK
+	Element includes ChildNode: member names are unique: PASS
+	Element includes NonDocumentTypeChildNode: member names are unique: PASS
+	Element includes ParentNode: member names are unique: PASS
+	Element includes Slottable: member names are unique: PASS
+	Element interface: attribute part: FAIL
+	Element interface: element must inherit property "part" with the proper type: PASS
+	Element interface: htmlElement must inherit property "part" with the proper type: PASS
+	Element interface: svgElement must inherit property "part" with the proper type: PASS
+	Partial interface Element: member names are unique: PASS
+	Partial interface Element: original interface defined: PASS
+	idl_test setup: PASS
+	idl_test validation: PASS
+/css/css-shadow/keyframes-001.html: OK
+	@keyframes applies in the shadow tree: FAIL
+/css/css-shadow/keyframes-002.html: OK
+	@keyframes from the document should apply in the shadow tree: FAIL
+/css/css-shadow/keyframes-003.html: OK
+	@keyframes applies to the shadow host: FAIL
+/css/css-shadow/keyframes-004.html: OK
+	@keyframes in shadow tree applies to the slotted element: FAIL
+/css/css-shadow/keyframes-005.html: OK
+	@keyframes should not leak out of the shadow tree.: FAIL
+/css/css-shadow/keyframes-006.html: OK
+	@keyframes applies to the shadow host: FAIL
+/css/css-shadow/part/all-hosts.html: OK
+	::part with host selector styles in first host: PASS
+	::part with host selector styles in second host: PASS
+/css/css-shadow/part/both-part-and-exportparts.html: OK
+	::part() rules match elements having both @part and @exportparts: PASS
+/css/css-shadow/part/chaining-invalid-selector.html: OK
+	::part cannot be chained to reach elements in the inner host: PASS
+	Chained ::part selectors are dropped: PASS
+/css/css-shadow/part/complex-matching.html: OK
+	Complex selector for host works: PASS
+/css/css-shadow/part/complex-non-matching.html: OK
+	Non-matching complex selector for host does not style: PASS
+/css/css-shadow/part/different-host.html: OK
+	Part is not styled when host is not selected: PASS
+/css/css-shadow/part/double-forward.html: OK
+	Part in inner host is forwarded through the middle host for styling by document style sheet: PASS
+/css/css-shadow/part/exportparts-multiple.html: OK
+	Forwarding part under multiple names should work: PASS
+/css/css-shadow/part/grouping-with-checked.html: OK
+	Styles applied to ::part(...): PASS
+	Styles applied to ::part(...):checked: PASS
+	Styles applied via grouped selector including matched ::part(...):checked: PASS
+	Styles applied via grouped selector including unmatched ::part(...):checked: PASS
+/css/css-shadow/part/grouping-with-disabled.html: OK
+	Styles applied to ::part(...): PASS
+	Styles applied to ::part(...):disabled: PASS
+	Styles applied via grouped selector including matched ::part(...):disabled: PASS
+	Styles applied via grouped selector including unmatched ::part(...):disabled: PASS
+/css/css-shadow/part/host-part-001.html: OK
+	:host::part works: PASS
+/css/css-shadow/part/host-part-002.html: OK
+	:host::part has correct cascading behavior: PASS
+/css/css-shadow/part/host-part-003.html: OK
+	:host::part() should only match when the part is in the same tree as the rule: PASS
+/css/css-shadow/part/host-part-nesting.html: OK
+	:host::part works in nesting: FAIL
+/css/css-shadow/part/host-stylesheet.html: OK
+	Part in selected host is not styled by ::part in a stylesheet inside the host: PASS
+/css/css-shadow/part/inner-host.html: OK
+	Part in inner host is not styled by document style sheet: PASS
+	Part in outer host is styled by document style sheet: PASS
+/css/css-shadow/part/interaction-with-pseudo-elements.html: OK
+	::after in selected host is styled: PASS
+	::before in selected host is styled: PASS
+	::first-letter in selected host is styled: FAIL
+	::first-line in selected host is styled: FAIL
+	::placeholder in selected host is styled: FAIL
+	::selection in selected host is styled: FAIL
+/css/css-shadow/part/invalidation-change-exportparts-forward.html: OK
+	Part in selected host changed color: PASS
+/css/css-shadow/part/invalidation-change-part-name-forward.html: OK
+	Part in selected host changed color: PASS
+/css/css-shadow/part/invalidation-change-part-name-idl-domtokenlist.html: OK
+	Part in selected host changed color via part IDL DOMTokenList attribute.: PASS
+/css/css-shadow/part/invalidation-change-part-name-idl-setter.html: OK
+	Part in selected host changed color via part IDL attribute setter.: PASS
+/css/css-shadow/part/invalidation-change-part-name.html: OK
+	Part in selected host changed color: PASS
+/css/css-shadow/part/invalidation-complex-selector-forward.html: OK
+	Part in selected host changed color: PASS
+/css/css-shadow/part/invalidation-complex-selector.html: OK
+	Part in selected host changed color: PASS
+/css/css-shadow/part/invalidation-part-pseudo.html: ERROR
+	Invalidation of nested part on hover: NOTRUN
+/css/css-shadow/part/multiple-parts.html: OK
+	Double-part in selected host is styled: PASS
+	Single-part-1 in selected host is not styled: PASS
+	Single-part-2 in selected host is not styled: PASS
+/css/css-shadow/part/multiple-scopes.html: OK
+	correct part selector matches from middle scope: FAIL
+	exported part selector (for outer scope) does not match from middle scope: FAIL
+	exported part selector matches from outer scope: FAIL
+	non-exported part selector does not match from outer scope: FAIL
+	pseudo-element selector alone does not match from middle scope: FAIL
+	pseudo-element selector alone does not match from outer scope: FAIL
+	pseudo-element selector alone matches from inner scope: FAIL
+	selector with ::part(exported name) does not match from inner scope that exports the part: FAIL
+	selector with ::part(original name) does not match from inner scope that exports the part: FAIL
+	successful test setup: PASS
+/css/css-shadow/part/part-mutation-pseudo.html: OK
+	Part in selected host changed color: PASS
+/css/css-shadow/part/part-name-idl.html: OK
+	Access to .part returns an empty DOMTokenList.: PASS
+	Changes in DOMTokenList are refected in attribute.: PASS
+	DOMTokenList created by access is persisted.: PASS
+	Multiple names give a DOMTokenList with multiple entries.: PASS
+/css/css-shadow/part/precedence-part-vs-part.html: OK
+	Style from document overrides style from outer CE: PASS
+/css/css-shadow/part/pseudo-classes-after-part.html: OK
+	"::part(mypart):active" should be a valid selector: FAIL
+	"::part(mypart):active-view-transition" should be a valid selector: FAIL
+	"::part(mypart):active-view-transition-type(mytype)" should be a valid selector: FAIL
+	"::part(mypart):any-link" should be a valid selector: FAIL
+	"::part(mypart):autofill" should be a valid selector: FAIL
+	"::part(mypart):checked" should be a valid selector: FAIL
+	"::part(mypart):default" should be a valid selector: FAIL
+	"::part(mypart):defined" should be a valid selector: FAIL
+	"::part(mypart):dir(ltr)" should be a valid selector: FAIL
+	"::part(mypart):disabled" should be a valid selector: FAIL
+	"::part(mypart):empty" should be an invalid selector: FAIL
+	"::part(mypart):enabled" should be a valid selector: FAIL
+	"::part(mypart):first" should be an invalid selector: FAIL
+	"::part(mypart):first-child" should be an invalid selector: FAIL
+	"::part(mypart):first-of-type" should be an invalid selector: FAIL
+	"::part(mypart):focus" should be a valid selector: FAIL
+	"::part(mypart):focus-visible" should be a valid selector: FAIL
+	"::part(mypart):focus-within" should be a valid selector: FAIL
+	"::part(mypart):fullscreen" should be a valid selector: FAIL
+	"::part(mypart):future" should be a valid selector: FAIL
+	"::part(mypart):has(:hover)" should be an invalid selector: FAIL
+	"::part(mypart):has(p)" should be an invalid selector: FAIL
+	"::part(mypart):host" should be an invalid selector: FAIL
+	"::part(mypart):host-context(:hover)" should be an invalid selector: FAIL
+	"::part(mypart):hover" should be a valid selector: FAIL
+	"::part(mypart):in-range" should be a valid selector: FAIL
+	"::part(mypart):indeterminate" should be a valid selector: FAIL
+	"::part(mypart):invalid" should be a valid selector: FAIL
+	"::part(mypart):is(:first-child)" should be a valid selector: FAIL
+	"::part(mypart):is(:hover)" should be a valid selector: FAIL
+	"::part(mypart):lang(en)" should be a valid selector: FAIL
+	"::part(mypart):last-child" should be an invalid selector: FAIL
+	"::part(mypart):last-of-type" should be an invalid selector: FAIL
+	"::part(mypart):left" should be an invalid selector: FAIL
+	"::part(mypart):link" should be a valid selector: FAIL
+	"::part(mypart):modal" should be a valid selector: FAIL
+	"::part(mypart):not(:first-child)" should be an invalid selector: FAIL
+	"::part(mypart):not(:hover)" should be a valid selector: FAIL
+	"::part(mypart):nth-child(1)" should be an invalid selector: FAIL
+	"::part(mypart):nth-last-child(1)" should be an invalid selector: FAIL
+	"::part(mypart):nth-last-of-type(1)" should be an invalid selector: FAIL
+	"::part(mypart):nth-of-type(1)" should be an invalid selector: FAIL
+	"::part(mypart):only-child" should be an invalid selector: FAIL
+	"::part(mypart):only-of-type" should be an invalid selector: FAIL
+	"::part(mypart):open" should be a valid selector: FAIL
+	"::part(mypart):optional" should be a valid selector: FAIL
+	"::part(mypart):out-of-range" should be a valid selector: FAIL
+	"::part(mypart):past" should be a valid selector: FAIL
+	"::part(mypart):paused" should be a valid selector: FAIL
+	"::part(mypart):picture-in-picture" should be a valid selector: FAIL
+	"::part(mypart):placeholder-shown" should be a valid selector: FAIL
+	"::part(mypart):playing" should be a valid selector: FAIL
+	"::part(mypart):popover-open" should be a valid selector: FAIL
+	"::part(mypart):read-only" should be a valid selector: FAIL
+	"::part(mypart):read-write" should be a valid selector: FAIL
+	"::part(mypart):required" should be a valid selector: FAIL
+	"::part(mypart):right" should be an invalid selector: FAIL
+	"::part(mypart):scope" should be an invalid selector: FAIL
+	"::part(mypart):state(mystate)" should be a valid selector: FAIL
+	"::part(mypart):target" should be a valid selector: FAIL
+	"::part(mypart):user-invalid" should be a valid selector: FAIL
+	"::part(mypart):user-valid" should be a valid selector: FAIL
+	"::part(mypart):valid" should be a valid selector: FAIL
+	"::part(mypart):visited" should be a valid selector: FAIL
+	"::part(mypart):where(:first-child)" should be a valid selector: FAIL
+	"::part(mypart):where(:hover)" should be a valid selector: FAIL
+	"::part(mypart):xr-overlay" should be a valid selector: FAIL
+/css/css-shadow/part/pseudo-elements-after-part.html: OK
+	"::part(mypart)::after" should be a valid selector: FAIL
+	"::part(mypart)::backdrop" should be a valid selector: FAIL
+	"::part(mypart)::before" should be a valid selector: FAIL
+	"::part(mypart)::cue" should be a valid selector: FAIL
+	"::part(mypart)::details-content" should be a valid selector: FAIL
+	"::part(mypart)::file-selector-button" should be a valid selector: FAIL
+	"::part(mypart)::first-letter" should be a valid selector: FAIL
+	"::part(mypart)::first-line" should be a valid selector: FAIL
+	"::part(mypart)::grammar-error" should be a valid selector: FAIL
+	"::part(mypart)::highlight(myhighlight)" should be a valid selector: FAIL
+	"::part(mypart)::marker" should be a valid selector: FAIL
+	"::part(mypart)::notarealpseudoelement" should be an invalid selector: FAIL
+	"::part(mypart)::part(anotherpart)" should be an invalid selector: FAIL
+	"::part(mypart)::placeholder" should be a valid selector: FAIL
+	"::part(mypart)::search-text" should be a valid selector: FAIL
+	"::part(mypart)::selection" should be a valid selector: FAIL
+	"::part(mypart)::spelling-error" should be a valid selector: FAIL
+	"::part(mypart)::target-text" should be a valid selector: FAIL
+	"::part(mypart)::view-transition" should be a valid selector: FAIL
+	"::part(mypart)::view-transition-group(*)" should be a valid selector: FAIL
+	"::part(mypart)::view-transition-image-pair(*)" should be a valid selector: FAIL
+	"::part(mypart)::view-transition-new(*)" should be a valid selector: FAIL
+	"::part(mypart)::view-transition-old(*)" should be a valid selector: FAIL
+	::part styles with ::part(mypart) {\n                  font: 20px/1 Ahem;\n                }\n                ::part(mypart)::first-letter {\n                  font-size: 86px;\n                } and <div part=mypart>X<br>X</div>: FAIL
+	::part styles with ::part(mypart) {\n                  font: 20px/1 Ahem;\n                }\n                ::part(mypart)::first-line {\n                  font-size: 86px;\n                } and <div part=mypart>X<br>X</div>: FAIL
+	::part styles with ::part(mypart)::after {\n                  display: block;\n                  content: "";\n                  height: 77px;\n                } and <div part='mypart'></div>: FAIL
+	::part styles with ::part(mypart)::before {\n                  display: block;\n                  content: "";\n                  height: 46px;\n                } and <div part='mypart'></div>: FAIL
+	::part styles with ::part(mypart)::details-content {\n                  height: 371px;\n                } and <details part='mypart'><summary style="height:47px">summary</summary>details</details>: FAIL
+	::part styles with ::part(mypart)::file-selector-button {\n                  height: 94px;\n                  padding: 0;\n                  margin: 0;\n                  border: none;\n                  appearance: none;\n                } and <input type=file part=mypart>: FAIL
+	::part styles with ::part(mypart)::marker {\n                  font: 63px/1.0 Ahem;\n                  content: "X";\n                } and <li style="list-style-position: inside" part="mypart"></li>: FAIL
+	computed style for ::part()::after: FAIL
+	computed style for ::part()::backdrop: FAIL
+	computed style for ::part()::before: FAIL
+	computed style for ::part()::details-content: FAIL
+	computed style for ::part()::file-selector-button: FAIL
+	computed style for ::part()::first-letter: FAIL
+	computed style for ::part()::first-line: FAIL
+	computed style for ::part()::grammar-error: FAIL
+	computed style for ::part()::highlight(myhighlight): FAIL
+	computed style for ::part()::placeholder: FAIL
+	computed style for ::part()::search-text: FAIL
+	computed style for ::part()::selection: FAIL
+	computed style for ::part()::spelling-error: FAIL
+	computed style for ::part()::target-text: FAIL
+/css/css-shadow/part/serialization.html: ERROR
+/css/css-shadow/part/simple-forward-shorthand.html: OK
+	Part in inner host is forwarded, under the same name, for styling by document style sheet: PASS
+/css/css-shadow/part/simple-forward.html: OK
+	Part in inner host is forwarded for styling by document style sheet: PASS
+/css/css-shadow/part/simple-important-important.html: OK
+	Part in selected host is styled: PASS
+/css/css-shadow/part/simple-important-inline.html: OK
+	Part in selected host is not styled: PASS
+/css/css-shadow/part/simple-important.html: OK
+	Part in selected host is styled: PASS
+/css/css-shadow/part/simple-inline.html: OK
+	Part in selected host is styled: PASS
+/css/css-shadow/part/simple.html: OK
+	Part in selected host is styled: PASS
+/css/css-shadow/part/style-sharing.html: OK
+	Part in selected host does not incorrectly share style with non-part: PASS
+/css/css-shadow/scope-pseudo-in-shadow.html: OK
+	:scope does not match in shadow root: PASS
+/css/css-shadow/shadow-cascade-order-001.html: OK
+	A1. document vs ::slotted, document rule should win for closed mode.: PASS
+	A1. document vs ::slotted, document rule should win for open mode.: PASS
+	A2. document vs :host, document rule should win for closed mode.: PASS
+	A2. document vs :host, document rule should win for open mode.: PASS
+	A3. document vs inline, inline rule should win for closed mode.: PASS
+	A3. document vs inline, inline rule should win for open mode.: PASS
+	A4. ::slotted vs :host, earlier in tree-of-trees rule should win for closed mode.: PASS
+	A4. ::slotted vs :host, earlier in tree-of-trees rule should win for open mode.: PASS
+	A5. ::slotted vs inline, inline rule should win for closed mode.: PASS
+	A5. ::slotted vs inline, inline rule should win for open mode.: PASS
+	A6. :host vs inline, inline rule should win for closed mode.: PASS
+	A6. :host vs inline, inline rule should win for open mode.: PASS
+	B1. document with !important vs ::slotted, document rule should win for closed mode.: PASS
+	B1. document with !important vs ::slotted, document rule should win for open mode.: PASS
+	B2. document with !important vs :host, document rule should win for closed mode.: PASS
+	B2. document with !important vs :host, document rule should win for open mode.: PASS
+	B3. document vs inline with !important, inline rule should win for closed mode.: PASS
+	B3. document vs inline with !important, inline rule should win for open mode.: PASS
+	B4. ::slotted  with !important vs :host, earlier in tree-of-trees rule should win for closed mode.: PASS
+	B4. ::slotted  with !important vs :host, earlier in tree-of-trees rule should win for open mode.: PASS
+	B5. ::slotted vs inline with !important, inline rule should win for closed mode.: PASS
+	B5. ::slotted vs inline with !important, inline rule should win for open mode.: PASS
+	B6. :host vs inline with !important, inline rule should win for closed mode.: PASS
+	B6. :host vs inline with !important, inline rule should win for open mode.: PASS
+	C1. document vs ::slotted with !important, ::slotted rule should win for closed mode.: PASS
+	C1. document vs ::slotted with !important, ::slotted rule should win for open mode.: PASS
+	C2. document vs :host with !important, :host rule should win for closed mode.: PASS
+	C2. document vs :host with !important, :host rule should win for open mode.: PASS
+	C3. document with !important vs inline, document rule should win for closed mode.: PASS
+	C3. document with !important vs inline, document rule should win for open mode.: PASS
+	C4. ::slotted vs :host with !important, later in tree-of-trees rule should win for closed mode.: PASS
+	C4. ::slotted vs :host with !important, later in tree-of-trees rule should win for open mode.: PASS
+	C5. ::slotted with !important vs inline, ::slotted rule should win for closed mode.: PASS
+	C5. ::slotted with !important vs inline, ::slotted rule should win for open mode.: PASS
+	C6. :host with !important vs inline, :host rule should win for closed mode.: PASS
+	C6. :host with !important vs inline, :host rule should win for open mode.: PASS
+	D1. document vs ::slotted both with !important, ::slotted rule should win for closed mode.: PASS
+	D1. document vs ::slotted both with !important, ::slotted rule should win for open mode.: PASS
+	D2. document vs :host both with !important, :host rule should win for closed mode.: PASS
+	D2. document vs :host both with !important, :host rule should win for open mode.: PASS
+	D3. document vs inline both with !important, inline rule should win for closed mode.: PASS
+	D3. document vs inline both with !important, inline rule should win for open mode.: PASS
+	D4. ::slotted vs :host both with !important, later in tree-of-trees rule should win for closed mode.: PASS
+	D4. ::slotted vs :host both with !important, later in tree-of-trees rule should win for open mode.: PASS
+	D5. ::slotted vs inline both with !important, ::slotted rule should win for closed mode.: PASS
+	D5. ::slotted vs inline both with !important, ::slotted rule should win for open mode.: PASS
+	D6. :host vs inline both with !important, :host rule should win for closed mode.: PASS
+	D6. :host vs inline both with !important, :host rule should win for open mode.: PASS
+	E1. all style applied, inline rule should win for closed mode.: PASS
+	E1. all style applied, inline rule should win for open mode.: PASS
+	E2. all styles with !important applied, rule in the last tree-of-trees should win for closed mode.: PASS
+	E2. all styles with !important applied, rule in the last tree-of-trees should win for open mode.: PASS
+	F1. document vs others, document (the first rule in tree-of-trees order) rule should win for closed mode.: PASS
+	F1. document vs others, document (the first rule in tree-of-trees order) rule should win for open mode.: PASS
+	F2. document with !important vs others, document rule should win for closed mode.: PASS
+	F2. document with !important vs others, document rule should win for open mode.: PASS
+	F3. document vs ::slotted with !important, important rule should win for closed mode.: PASS
+	F3. document vs ::slotted with !important, important rule should win for open mode.: PASS
+	F4. document vs ::slotted with !important, important rule should win for closed mode.: PASS
+	F4. document vs ::slotted with !important, important rule should win for open mode.: PASS
+	F5. document vs :host with !important, important rule should win for closed mode.: PASS
+	F5. document vs :host with !important, important rule should win for open mode.: PASS
+	F6. all rules with !important, the last rule in tree-of-trees should win for closed mode.: PASS
+	F6. all rules with !important, the last rule in tree-of-trees should win for open mode.: PASS
+/css/css-shadow/shadow-host-removal-invalidation.html: OK
+	:host rules are properly invalidated when stylesheets are removed: PASS
+/css/css-shadow/shadow-host-style-sharing.html: OK
+	:host with attribute selector should not share across different attributes: PASS
+	:host with class selector should not share across different classes: PASS
+	Different CascadeData must block sharing despite being same element type: PASS
+	Same :host rules but different CascadeData should prevent sharing: PASS
+	Same :host rules but different inherited styles: PASS
+	Same CascadeData but different inline styles should not share: PASS
+/css/css-shadow/shadow-multiple-links.html: OK
+	Multiple stylesheets with the same href in a ShadowRoot should not assert or crash: PASS
+/css/css-shadow/shadow-reassign-dynamic-003.html: OK
+	Computed color after re-slotting.: PASS
+	Initial computed color.: PASS
+/css/css-shadow/shadow-shared-style-cache-001.html: OK
+	Shared style invalidation with removals: PASS
+/css/css-shadow/slot-non-html-display-value.html: OK
+	Non-HTML slot elements shouldn't be display: contents by default.: FAIL
+/css/css-shadow/slotted-invalidation.html: OK
+	CSS Test: Style invalidation for ::slotted(): PASS
+/css/css-shadow/slotted-link.html: OK
+	Check that we match :link and not :visited for slotted anchor.: PASS
+/css/css-shadow/slotted-matches.html: OK
+	::slotted() doesn't reveal the presence of shadow DOM via matches(): PASS
+/css/css-shadow/slotted-nested.html: OK
+	Slotted matches rules against the slot in the right tree: PASS
+	Style invalidation works correctly for nested slots: PASS
+/css/css-shadow/slotted-parsing.html: OK
+	"::slotted" should be an invalid selector: FAIL
+	"::slotted()" should be an invalid selector: FAIL
+	"::slotted(*) span" should be an invalid selector: FAIL
+	"::slotted(*)" should be a valid selector: FAIL
+	"::slotted(*)#id {}" should be an invalid selector: FAIL
+	"::slotted(*).class" should be an invalid selector: FAIL
+	"::slotted(*)::after" should be a valid selector: FAIL
+	"::slotted(*)::before" should be a valid selector: FAIL
+	"::slotted(*)::before::slotted(*)" should be an invalid selector: FAIL
+	"::slotted(*)::details-content" should be a valid selector: FAIL
+	"::slotted(*)::file-selector-button" should be a valid selector: FAIL
+	"::slotted(*)::first-letter" should be an invalid selector: FAIL
+	"::slotted(*)::first-line" should be an invalid selector: FAIL
+	"::slotted(*)::marker" should be a valid selector: FAIL
+	"::slotted(*)::picker-icon" should be a valid selector: FAIL
+	"::slotted(*)::placeholder" should be a valid selector: FAIL
+	"::slotted(*)::scroll-button(up)" should be a valid selector: FAIL
+	"::slotted(*)::scroll-marker" should be a valid selector: FAIL
+	"::slotted(*)::scroll-marker-group" should be a valid selector: FAIL
+	"::slotted(*)::selection" should be an invalid selector: FAIL
+	"::slotted(*)::slotted(*)" should be an invalid selector: FAIL
+	"::slotted(*):has(span)" should be an invalid selector: FAIL
+	"::slotted(*):host" should be an invalid selector: FAIL
+	"::slotted(*):host(div)" should be an invalid selector: FAIL
+	"::slotted(*):hover" should be an invalid selector: FAIL
+	"::slotted(*):is(#id)" should be a valid selector: FAIL
+	"::slotted(*):is()" should be a valid selector: FAIL
+	"::slotted(*):is(:hover)" should be a valid selector: FAIL
+	"::slotted(*):read-only" should be an invalid selector: FAIL
+	"::slotted(*):where(#id)" should be a valid selector: FAIL
+	"::slotted(*):where()" should be a valid selector: FAIL
+	"::slotted(*):where(::before)" should be a valid selector: FAIL
+	"::slotted(*):where(:hover)" should be a valid selector: FAIL
+	"::slotted(*)[attr]" should be an invalid selector: FAIL
+	"::slotted(:not(.a))" should be a valid selector: FAIL
+	"::slotted([attr]:hover)" should be a valid selector: FAIL
+	"::slotted(div)" should be a valid selector: FAIL
+	"::slotted(select)::picker" should be an invalid selector: FAIL
+	"::slotted(select)::picker(select)" should be a valid selector: FAIL
+/css/css-shadow/slotted-slot.html: OK
+	Check that ::slotted does not match slot elements: PASS
+/css/css-shadow/slotted-user-agent-part-invalidation.html: OK
+	CSS Test: Style invalidation for ::slotted() combined with user-agent pseudo-elements: FAIL
+/css/css-shadow/stylesheet-title-002.html: OK
+	Title attribute in stylesheets not in the document tree is ignored: FAIL

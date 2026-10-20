@@ -441,7 +441,7 @@
 /webidl/ecmascript-binding/observable-array-no-leak-of-internals.window.html: OK
 	ObservableArray's internals won't leak: FAIL
 /webidl/ecmascript-binding/observable-array-ownkeys.window.html: OK
-	ObservableArray's ownKeys trap: FAIL
+	ObservableArray's ownKeys trap: PASS
 /webidl/ecmascript-binding/put-forwards.html: OK
 	Does not throw when setter of [PutForwards] attribute returns false: FAIL
 	Exception propagation from getter of [PutForwards] attribute: PASS

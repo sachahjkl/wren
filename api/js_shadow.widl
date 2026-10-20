@@ -70,7 +70,7 @@ partial module events {
   u64 Event_relatedNow(Event event);
   /// Whether the current listener's node was in a shadow tree when the event's path was built (window.event is then
   /// left as it was).
-  bool Event_inShadowTreeNow(Event event);
+  bool Event_inShadowTreeNow(u64 event);
 }
 
 partial module dom {

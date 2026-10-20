@@ -13558,18 +13558,13 @@ _t_events_Event_relatedNow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	return nil
 }
 
-// Event_inShadowTreeNow :: proc(c: ^Call, event: Api_Event) -> bool
+// Event_inShadowTreeNow :: proc(c: ^Call, event: u64) -> bool
 @(private = "file")
 _t_events_Event_inShadowTreeNow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
 	context = runtime.default_context()
 	c := api_begin(f.inst)
-	_p0 := Api_Event{handle = u64(a[0].i64)}
-	_p0.data = lookup_Event(&c, _p0.handle)
-	if _p0.data == nil {
-		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.Event_inShadowTreeNow: argument event is not a live Event") }
-		return wasm.trap_new("events.Event_inShadowTreeNow: argument event is not a live Event")
-	}
+	_p0 := u64(a[0].i64)
 	_r := Event_inShadowTreeNow(&c, _p0)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }

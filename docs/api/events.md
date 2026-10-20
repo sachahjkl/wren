@@ -37,7 +37,7 @@ What dispatchEvent creates.
 |---|---:|---|
 | `Bubbles` | 0 |  |%!(EXTRA false)
 | `Cancelable` | 1 |  |%!(EXTRA false)
-| `Composed` | 2 | The event crosses shadow roots (no effect yet: there are none). |%!(EXTRA false)
+| `Composed` | 2 | The event crosses shadow roots: its path goes on to the hosts (targets retargeted). |%!(EXTRA false)
 
 ### callback `EventListener`
 
@@ -463,11 +463,11 @@ Host: `Event_relatedNow :: proc(c: ^Call, event: Api_Event) -> u64`
 ### `Event_inShadowTreeNow`
 
 ```
-bool Event_inShadowTreeNow(Event event)
+bool Event_inShadowTreeNow(u64 event)
 ```
 
 Whether the current listener's node was in a shadow tree when the event's path was built (window.event is then
 left as it was).
 
-Host: `Event_inShadowTreeNow :: proc(c: ^Call, event: Api_Event) -> bool`
+Host: `Event_inShadowTreeNow :: proc(c: ^Call, event: u64) -> bool`
 

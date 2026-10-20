@@ -348,9 +348,10 @@ Event_setNextRelated :: proc(c: ^Call, related: u64) { shadow_state(c.page).next
 
 Event_relatedNow :: proc(c: ^Call, event: Api_Event) -> u64 { return event.data.related }
 
-Event_inShadowTreeNow :: proc(c: ^Call, event: Api_Event) -> bool {
-	e := event.data
-	if e.phase == .None || e.path_index < 0 || e.path_index >= len(e.path) { return false }
+// (a plain handle: the events the engine makes itself, error events among them, are not the dispatcher's)
+Event_inShadowTreeNow :: proc(c: ^Call, event: u64) -> bool {
+	e := base.pool_get(&c.page.dp.events, base.Handle(event))
+	if e == nil || e.phase == .None || e.path_index < 0 || e.path_index >= len(e.path) { return false }
 	return e.path[e.path_index].in_shadow_tree
 }
 

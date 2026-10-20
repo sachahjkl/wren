@@ -229,7 +229,7 @@
 /dom/events/Event-dispatch-handlers-changed.html: OK
 	 Dispatch additional events inside an event listener : PASS
 /dom/events/Event-dispatch-listener-order.window.html: OK
-	Event-dispatch-listener-order: FAIL
+	Event-dispatch-listener-order: PASS
 /dom/events/Event-dispatch-multiple-cancelBubble.html: OK
 	Multiple dispatchEvent() and cancelBubble: PASS
 /dom/events/Event-dispatch-multiple-stopPropagation.html: OK
@@ -445,8 +445,8 @@
 	returnValue=true should have no effect once the canceled flag was set.: PASS
 /dom/events/Event-stopImmediatePropagation.html: OK
 	Event's stopImmediatePropagation: PASS
-/dom/events/Event-stopPropagation-cancel-bubbling.html: ERROR
-	Event-stopPropagation-cancel-bubbling: FAIL
+/dom/events/Event-stopPropagation-cancel-bubbling.html: OK
+	Event-stopPropagation-cancel-bubbling: PASS
 /dom/events/Event-subclasses-constructors.html: OK
 	CompositionEvent constructor (argument with default values): PASS
 	CompositionEvent constructor (argument with non-default values): PASS
@@ -558,11 +558,11 @@
 	Adding a null event listener should succeed: PASS
 /dom/events/EventTarget-constructible.any.html: OK
 	A constructed EventTarget can be used as expected: PASS
-	A constructed EventTarget implements dispatch correctly: PASS
+	A constructed EventTarget implements dispatch correctly: FAIL
 	EventTarget can be subclassed: PASS
 /dom/events/EventTarget-constructible.any.worker.html: OK
 	A constructed EventTarget can be used as expected: PASS
-	A constructed EventTarget implements dispatch correctly: PASS
+	A constructed EventTarget implements dispatch correctly: FAIL
 	EventTarget can be subclassed: PASS
 /dom/events/EventTarget-dispatchEvent-returnvalue.html: OK
 	Return value of EventTarget.dispatchEvent() affected by preventDefault().: PASS
@@ -619,18 +619,18 @@
 /dom/events/event-disabled-dynamic.html: OK
 	disabled is honored properly in presence of dynamic changes: PASS
 /dom/events/event-global-event-targets.html: OK
-	An event target's _document property does not affect window.event: FAIL
-	window.event is set when dispatching on AbortSignal: FAIL
-	window.event is set when dispatching on EventTarget: FAIL
-	window.event is set when dispatching on FileReader: FAIL
-	window.event is set when dispatching on Performance: FAIL
+	An event target's _document property does not affect window.event: PASS
+	window.event is set when dispatching on AbortSignal: PASS
+	window.event is set when dispatching on EventTarget: PASS
+	window.event is set when dispatching on FileReader: PASS
+	window.event is set when dispatching on Performance: PASS
 /dom/events/event-global-extra.window.html: TIMEOUT
 	Listener from a different global: TIMEOUT
 	window.event and element from another document: FAIL
 	window.event and moving an element post-dispatch: FAIL
 	window.event for constructors from another global: EventTarget: FAIL
 	window.event for constructors from another global: XMLHttpRequest: FAIL
-	window.event should not be affected by nodes moving post-dispatch: FAIL
+	window.event should not be affected by nodes moving post-dispatch: PASS
 /dom/events/event-global-is-still-set-when-coercing-beforeunload-result.html: OK
 	window.event is still set when 'beforeunload' result is coerced to string: FAIL
 /dom/events/event-global-is-still-set-when-reporting-exception-onerror.html: OK
@@ -639,16 +639,16 @@
 	Dispatching does not affect window.event after it's been replaced: PASS
 	Setting window.event replaces it: PASS
 /dom/events/event-global-set-before-handleEvent-lookup.window.html: OK
-	window.event is set before 'handleEvent' lookup: FAIL
+	window.event is set before 'handleEvent' lookup: PASS
 /dom/events/event-global.html: OK
-	event exists on window, which is initially set to undefined: FAIL
-	window.event is only defined during dispatch: FAIL
-	window.event is set to the current event during dispatch: FAIL
-	window.event is set to the current event, which is the event passed to dispatch: FAIL
-	window.event is set to the current event, which is the event passed to dispatch (2): FAIL
-	window.event is undefined if the target is in a shadow tree (event dispatched inside shadow tree): FAIL
-	window.event is undefined if the target is in a shadow tree (event dispatched outside shadow tree): FAIL
-	window.event is undefined inside window.onerror if the target is in a shadow tree (ErrorEvent dispatched inside shadow tree): FAIL
+	event exists on window, which is initially set to undefined: PASS
+	window.event is only defined during dispatch: PASS
+	window.event is set to the current event during dispatch: PASS
+	window.event is set to the current event, which is the event passed to dispatch: PASS
+	window.event is set to the current event, which is the event passed to dispatch (2): PASS
+	window.event is undefined if the target is in a shadow tree (event dispatched inside shadow tree): PASS
+	window.event is undefined if the target is in a shadow tree (event dispatched outside shadow tree): PASS
+	window.event is undefined inside window.onerror if the target is in a shadow tree (ErrorEvent dispatched inside shadow tree): PASS
 /dom/events/event-global.worker.html: OK
 	There's no self.event (that's why we call it window.event) in workers: PASS
 /dom/events/event-handler-attribute-replace-preserves-passive.html: OK
@@ -911,7 +911,13 @@
 	Moving a node to new document should move the registered event listeners together: FAIL
 /dom/events/preventDefault-during-activation-behavior.html: OK
 	behavior of preventDefault during activation behavior: PASS
-/dom/events/relatedTarget.window.html: ERROR
+/dom/events/relatedTarget.window.html: OK
+	Reset if target pointed to a shadow tree: FAIL
+	Reset if target pointed to a shadow tree pre-dispatch: FAIL
+	Reset targets before activation behavior: FAIL
+	Reset targets on early return: FAIL
+	Retarget a shadow-tree relatedTarget: FAIL
+	Retarget a shadow-tree relatedTarget, part 2: PASS
 /dom/events/remove-all-listeners.html: OK
 	Nested usage of once listeners should work.: PASS
 	Removing all listeners and then adding a new one should work.: PASS
@@ -935,12 +941,13 @@
 	scrollX and scrollY being set with the same value.: NOTRUN
 	scrollX and scrollY should fire scroll event.: TIMEOUT
 	scrollX and scrollY when scrolling above maximum Scroll.: NOTRUN
-/dom/events/scrolling/scroll-event-not-fired-on-ancestor-style-change.html: OK
-	Setting and removing 'overflow' on an ancestor fires no scroll event.: FAIL
+/dom/events/scrolling/scroll-event-not-fired-on-ancestor-style-change.html: TIMEOUT
+	Setting and removing 'overflow' on an ancestor fires no scroll event.: TIMEOUT
 /dom/events/scrolling/scroll-events-fired-once-per-frame-across-display-none.html: OK
 	Only one scroll event fires when scrolling, toggling display: none, and scrolling again in the same frame: FAIL
 	Only one scrollend event fires when scrolling, toggling display: none, and scrolling again in the same frame: FAIL
-/dom/events/scrolling/scrollIntoView-in-onscroll-to-sticky.html: ERROR
+/dom/events/scrolling/scrollIntoView-in-onscroll-to-sticky.html: OK
+	scrollIntoView-in-onscroll-to-sticky: FAIL
 /dom/events/scrolling/scrollend-event-fired-after-instant-scroll-in-microtask.html: TIMEOUT
 	scrolling state is false at the end of the test: TIMEOUT
 /dom/events/scrolling/scrollend-event-fired-after-layout-clamping.html: OK
@@ -953,22 +960,38 @@
 	Tests that scrollend is fired after scroll snap animation completion.: FAIL
 /dom/events/scrolling/scrollend-event-fired-for-mandatory-snap-point-after-load.html: OK
 	scrollend event fired after load for mandatory snap point: FAIL
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollBy-auto: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollBy-smooth: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollTo-auto: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollTo-smooth: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollBy-auto: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollBy-smooth: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollTo-auto: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollTo-smooth: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollLeft-auto: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollLeft-smooth: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollTop-auto: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollTop-smooth: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollLeft-auto: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollLeft-smooth: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollTop-auto: ERROR
-/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollTop-smooth: ERROR
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollBy-auto: OK
+	Tests scrollend event for calling scrollBy with behavior 'auto' on root.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollBy-smooth: OK
+	Tests scrollend event for calling scrollBy with behavior 'smooth' on root.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollTo-auto: OK
+	Tests scrollend event for calling scrollTo with behavior 'auto' on root.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=root-scrollTo-smooth: OK
+	Tests scrollend event for calling scrollTo with behavior 'smooth' on root.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollBy-auto: OK
+	Tests scrollend event for calling scrollBy with behavior 'auto' on subframe.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollBy-smooth: OK
+	Tests scrollend event for calling scrollBy with behavior 'smooth' on subframe.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollTo-auto: OK
+	Tests scrollend event for calling scrollTo with behavior 'auto' on subframe.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html?include=subframe-scrollTo-smooth: OK
+	Tests scrollend event for calling scrollTo with behavior 'smooth' on subframe.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollLeft-auto: OK
+	Tests scrollend event for [scrollLeft] behavior:'auto' on root.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollLeft-smooth: OK
+	Tests scrollend event for [scrollLeft] behavior:'smooth' on root.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollTop-auto: OK
+	Tests scrollend event for [scrollTop] behavior:'auto' on root.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=root-scrollTop-smooth: OK
+	Tests scrollend event for [scrollTop] behavior:'smooth' on root.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollLeft-auto: OK
+	Tests scrollend event for [scrollLeft] behavior:'auto' on subframe.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollLeft-smooth: OK
+	Tests scrollend event for [scrollLeft] behavior:'smooth' on subframe.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollTop-auto: OK
+	Tests scrollend event for [scrollTop] behavior:'auto' on subframe.: FAIL
+/dom/events/scrolling/scrollend-event-fired-for-scroll-attr-change.html?include=subframe-scrollTop-smooth: OK
+	Tests scrollend event for [scrollTop] behavior:'smooth' on subframe.: FAIL
 /dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html?include=nested-scrollIntoView: TIMEOUT
 	Tests scrollend event for nested scrollIntoView.: TIMEOUT
 /dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html?include=root-inline-end-block-end-behavior-auto: OK
@@ -982,7 +1005,8 @@
 /dom/events/scrolling/scrollend-event-fired-to-document.html: OK
 	testing, horizontal: FAIL
 	testing, vertical: FAIL
-/dom/events/scrolling/scrollend-event-fired-to-element-with-overscroll-behavior.html: ERROR
+/dom/events/scrolling/scrollend-event-fired-to-element-with-overscroll-behavior.html: OK
+	Tests that the scroll is not propagated beyond div with non-auto overscroll-behavior.: FAIL
 /dom/events/scrolling/scrollend-event-fired-to-window.html: TIMEOUT
 	testing, vertical: TIMEOUT
 /dom/events/scrolling/scrollend-event-fires-for-repeat-key-ending-after-scroll-container-end-is-reached.html: OK
@@ -1015,17 +1039,21 @@
 	scrolled input field should receive scrollend with scrollBy({ behavior: 'smooth' }).: NOTRUN
 	scrolled input field should receive scrollend with scrollTo({ behavior: 'instant' }).: NOTRUN
 	scrolled input field should receive scrollend with scrollTo({ behavior: 'smooth' }).: NOTRUN
-/dom/events/scrolling/scrollend-with-snap-on-fractional-offset.html: ERROR
-/dom/events/scrolling/visibility-hidden-scrolls.html: ERROR
+/dom/events/scrolling/scrollend-with-snap-on-fractional-offset.html: OK
+	snap to fractional offset fires scrollend exactly once.: FAIL
+/dom/events/scrolling/visibility-hidden-scrolls.html: OK
 	Scrolling over a visibility: visible child should scroll a visibility: hidden scroller.: FAIL
 	Scrolling should chain to a visibility: hidden element.: FAIL
 /dom/events/scrolling/wheel-event-composed.html: ERROR
 	wheel event must be composed: TIMEOUT
 /dom/events/scrolling/wheel-event-no-scroll-after-prevent-default.html: OK
 	When `preventDefault` is called on a WheelEvent, scrolling should be prevented.: FAIL
-/dom/events/scrolling/wheel-event-transactions-basic.html?include=scroll-over-scrollable-child: ERROR
-/dom/events/scrolling/wheel-event-transactions-basic.html?include=target-basic: ERROR
-/dom/events/scrolling/wheel-event-transactions-basic.html?include=transaction-not-bound-to-scroll-frame: ERROR
+/dom/events/scrolling/wheel-event-transactions-basic.html?include=scroll-over-scrollable-child: OK
+	Wheel events should be captured to one target #2: FAIL
+/dom/events/scrolling/wheel-event-transactions-basic.html?include=target-basic: OK
+	Wheel events should be captured to one target #1: FAIL
+/dom/events/scrolling/wheel-event-transactions-basic.html?include=transaction-not-bound-to-scroll-frame: OK
+	The wheel event transactions target may not be a scroll frame: FAIL
 /dom/events/scrolling/wheel-event-transactions-multiple-action-chains.html: OK
 	Two separate webdriver action chains should have different wheel event transactions: FAIL
 /dom/events/scrolling/wheel-event-transactions-target-display-change.html?include=contents: OK
@@ -1042,7 +1070,9 @@
 	Resize the initial target and use a passive:false listener: FAIL
 /dom/events/scrolling/wheel-event-transactions-target-resize.html?include=passive-true: OK
 	Resize the initial target and use a passive:true listener: FAIL
-/dom/events/shadow-relatedTarget.html: ERROR
+/dom/events/shadow-relatedTarget.html: OK
+	relatedTarget should not leak at capturing phase, at window object.: PASS
+	relatedTarget should not leak at target.: PASS
 /dom/events/webkit-animation-end-event.html: ERROR
 /dom/events/webkit-animation-iteration-event.html: ERROR
 /dom/events/webkit-animation-start-event.html: ERROR
@@ -1050,4 +1080,4 @@
 /dom/events/window-composed-path.html: OK
 	window target has an empty path after dispatch: PASS
 /dom/events/window-event-restored-after-throwing-onerror.html: OK
-	window.event is restored after a throwing window.onerror handler: FAIL
+	window.event is restored after a throwing window.onerror handler: PASS

@@ -21,7 +21,7 @@ module events {
   flags EventInit : u32 {
     Bubbles,
     Cancelable,
-    /// The event crosses shadow roots (no effect yet: there are none).
+    /// The event crosses shadow roots: its path goes on to the hosts (targets retargeted).
     Composed,
   }
 

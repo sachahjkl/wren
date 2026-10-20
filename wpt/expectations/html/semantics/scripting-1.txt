@@ -233,9 +233,9 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/079.html: OK
 	 setting location to javascript URL from event handler : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/081.html: OK
-	 scheduler: slow loading external script added with DOM (appendChild): PASS|FAIL
+	 scheduler: slow loading external script added with DOM (appendChild): PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/082.html: OK
-	 scheduler: multiple slow loading external scripts added with DOM (appendChild): FAIL
+	 scheduler: multiple slow loading external scripts added with DOM (appendChild): PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/083.html: ERROR
 /html/semantics/scripting-1/the-script-element/execution-timing/084.html: ERROR
 /html/semantics/scripting-1/the-script-element/execution-timing/085.html: OK
@@ -4116,7 +4116,7 @@
 /html/semantics/scripting-1/the-template-element/template-for/template-for-style.html: OK
 	HTML partial updates - patch updates style with plain text: FAIL
 /html/semantics/scripting-1/the-template-element/template-for/template-for-superseded-by-shadowrootmode.html: OK
-	HTML partial updates: shadowrootmode supersedes for: FAIL
+	HTML partial updates: shadowrootmode supersedes for: PASS
 /html/semantics/scripting-1/the-template-element/template-for/template-for-supersedes-invalid-shadowrootmode.html: OK
 	HTML partial updates: invalid shadowrootmode superseded by for: FAIL
 /html/semantics/scripting-1/the-template-element/template-for/template-for-title.html: OK

@@ -160,7 +160,11 @@ JSValue wj_event_composed_path(JSContext *ctx, uint64_t host)
     if (!host) { return arr; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_Event_composedPathPacked(host, wj_scratch.data, wj_scratch.cap));
-    if (n <= 0) { return arr; }
+    if (n <= 0) {
+        /* an event dispatched at the Window or at an EventTarget that is not a node: its path is that target */
+        if (wr_Event_currentTarget(host)) { JS_SetPropertyUint32(ctx, arr, 0, wj_wrap_target(ctx, wr_Event_target(host))); }
+        return arr;
+    }
     uint32_t count = (uint32_t)n / 8;
     uint64_t *hs = malloc(count * sizeof *hs);
     if (!hs) { return arr; }

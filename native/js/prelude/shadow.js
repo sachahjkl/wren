@@ -79,11 +79,16 @@
     const NAMED = new Set(["embed", "form", "img", "object"]);
     const lookup = (name) => {
       if (typeof name !== "string" || name === "") return undefined;
+      if (typeof name.isWellFormed === "function" && !name.isWellFormed()) return undefined;   // lone surrogates
       const d = globalThis.document;
       if (d === undefined || d === null) return undefined;
-      for (const el of d.getElementsByName(name)) if (NAMED.has(el.localName)) return el;
-      const el = d.getElementById(name);
-      return el === null ? undefined : el;
+      try {
+        for (const el of d.getElementsByName(name)) if (NAMED.has(el.localName)) return el;
+        const el = d.getElementById(name);
+        return el === null ? undefined : el;
+      } catch (e) {
+        return undefined;
+      }
     };
     const proxy = new Proxy(target, {
       get(t, p, r) {
@@ -99,7 +104,8 @@
       },
       defineProperty() { return false; },
       deleteProperty() { return false; },
-      setPrototypeOf() { return false; },
+      // an immutable prototype: setting the same one succeeds
+      setPrototypeOf(t, v) { return v === Reflect.getPrototypeOf(t); },
     });
     Object.setPrototypeOf(windowProto, proxy);
   }

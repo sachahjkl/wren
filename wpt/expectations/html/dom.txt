@@ -1822,8 +1822,8 @@
 /html/dom/aria-element-reflection.html: OK
 	Adopting element keeps references.: PASS
 	Attaching element reference before it's inserted into the DOM.: FAIL
-	Caching invariant different attributes.: FAIL
-	Caching invariant different elements.: FAIL
+	Caching invariant different attributes.: PASS
+	Caching invariant different elements.: PASS
 	Changing the ID of an element doesn't lose the reference.: FAIL
 	Cross-document references and moves.: FAIL
 	Deleting a reflected element should return null for the IDL attribute and the content attribute will be empty.: FAIL
@@ -1834,7 +1834,7 @@
 	Passing values of the wrong type should throw a TypeError: FAIL
 	Reparenting an element into a descendant shadow scope hides the element reference.: FAIL
 	Reparenting referenced element cannot cause retargeting of reference.: FAIL
-	Reparenting.: FAIL
+	Reparenting.: PASS
 	Setting an element reference that crosses into a shadow tree is disallowed, but setting one that is in a shadow inclusive ancestor is allowed.: FAIL
 	Setting the IDL attribute to an element which is not the first element in DOM order with its ID causes the content attribute to be an empty string: FAIL
 	aria-activedescendant element reflection: FAIL
@@ -1845,7 +1845,7 @@
 	aria-flowto.: FAIL
 	aria-labelledby.: FAIL
 	aria-owns.: FAIL
-	ariaErrorMessageElement is not defined: FAIL
+	ariaErrorMessageElement is not defined: PASS
 	shadow DOM behaviour for FrozenArray element reflection.: FAIL
 /html/dom/documents/dom-tree-accessors/Document.body.html: OK
 	Body as the root node: PASS
@@ -2383,7 +2383,7 @@
 	dir=auto ancestor considers text in subtree after removing dir=ltr from it: FAIL
 	dir=auto changes for content insertion and removal, in and out of document: FAIL
 	dir=auto changes for slot reassignment: FAIL
-	dir=auto slot is not affected by text in value of input element children: FAIL
+	dir=auto slot is not affected by text in value of input element children: PASS
 	dynamic changes inside of non-HTML elements: FAIL
 	dynamic changes to subtrees excluded as a result of the dir attribute: FAIL
 	dynamic insertion of RTL text in a child element: FAIL
@@ -2425,19 +2425,19 @@
 	entering LTR text doesn't change directionality of a text input without dir=auto: TIMEOUT
 /html/dom/elements/global-attributes/dir-slots-directionality.html: OK
 	Slot assigned node manual removal: FAIL
-	Slots: Directionality: dir=auto in shadow tree with Arabic light tree content: FAIL
-	Slots: Directionality: dir=auto in shadow tree with Arabic shadow tree content: FAIL
-	Slots: Directionality: dir=auto on host with Arabic shadow tree content: FAIL
+	Slots: Directionality: dir=auto in shadow tree with Arabic light tree content: PASS
+	Slots: Directionality: dir=auto in shadow tree with Arabic shadow tree content: PASS
+	Slots: Directionality: dir=auto on host with Arabic shadow tree content: PASS
 	Slots: Directionality: dir=auto on slot with Arabic light tree content: FAIL
 	Slots: Directionality: dir=rtl on host: FAIL
-	Slots: Directionality: dir=rtl on slot: FAIL
+	Slots: Directionality: dir=rtl on slot: PASS
 	children with dir attribute are skipped by dir=auto: FAIL
-	dir=auto slot ignores assigned nodes with dir attribute: FAIL
-	dir=auto slot ignores text in bdi assigned nodes: FAIL
+	dir=auto slot ignores assigned nodes with dir attribute: PASS
+	dir=auto slot ignores text in bdi assigned nodes: PASS
 	dir=auto slot ignores text in value of input element children: FAIL
-	dir=auto slot is not affected by content inside inner slot (version 1): FAIL
-	dir=auto slot is not affected by content inside inner slot (version 2): FAIL
-	dir=auto slot is not affected by value of auto-directionality form associated elements: FAIL
+	dir=auto slot is not affected by content inside inner slot (version 1): PASS
+	dir=auto slot is not affected by content inside inner slot (version 2): PASS
+	dir=auto slot is not affected by value of auto-directionality form associated elements: PASS
 	inner slot is given directionality from slotted content: FAIL
 	slot provides its directionality (from host) to a dir=auto container: FAIL
 	slot with dir attribute is skipped by dir=auto: FAIL
@@ -2474,12 +2474,12 @@
 /html/dom/elements/global-attributes/lang-attribute-document-element-replacement.html: OK
 	Disconnected descendants of a replaced document element should resolve lang from their actual ancestor: FAIL
 /html/dom/elements/global-attributes/lang-attribute-shadow.window.html: OK
-	lang on host and slot: FAIL
-	lang on host and slot and slotted element: FAIL
+	lang on host and slot: PASS
+	lang on host and slot and slotted element: PASS
 	lang on host and slotted element: FAIL
-	lang on slot inherits from parent: FAIL
+	lang on slot inherits from parent: PASS
 	lang only on host: FAIL
-	lang only on slot: FAIL
+	lang only on slot: PASS
 /html/dom/elements/global-attributes/lang-attribute.window.html: OK
 	unnamespaced lang attribute only works on elements in the HTML namespace: FAIL
 /html/dom/elements/global-attributes/mapped-attribute-adopt-001.html: OK
@@ -2524,14 +2524,14 @@
 	Document parent node: PASS
 	DocumentFragment parent node: PASS
 	No parent node: PASS
-	ShadowRoot parent node whose shadow host has translate=no: FAIL
-	ShadowRoot parent node whose shadow host has translate=yes: FAIL
+	ShadowRoot parent node whose shadow host has translate=no: PASS
+	ShadowRoot parent node whose shadow host has translate=yes: PASS
 /html/dom/elements/global-attributes/translate-non-html-translation-mode.html: OK
 	Non-HTML elements default to translate-enabled: PASS
 	Non-HTML elements inherit their parent's no-translation state: PASS
 	Non-HTML elements inherit their parent's translation-enabled state: PASS
-/html/dom/elements/images/bypass-cache-revalidation.html: OK
-	Images can bypass no-cache: FAIL
+/html/dom/elements/images/bypass-cache-revalidation.html: TIMEOUT
+	Images can bypass no-cache: TIMEOUT
 /html/dom/elements/name-content-attribute-and-property.html: OK
 	a element's name property reflects its content attribute: PASS
 	abbr element's name property does not reflect its content attribute: PASS
@@ -2685,7 +2685,7 @@
 	text-transform applied to child element ("<div id='target'><div id='child'>abc"): PASS
 	text-transform applied to parent element ("<div id='parent'><div id='target'>abc"): PASS
 /html/dom/elements/the-innertext-and-outertext-properties/getter-first-letter-marker-multicol.html: OK
-	Test innerText/outerText for a combination of a list item with ::first-letter in multicol: FAIL
+	Test innerText/outerText for a combination of a list item with ::first-letter in multicol: PASS
 /html/dom/elements/the-innertext-and-outertext-properties/getter.html: ERROR
 	 ("<table><tfoot><tr><td>footer</tfoot><thead><tr><td style='visibility:collapse'>thead</thead><tbody><tr><td>tbody</tbody></table>"): FAIL
 	 <iframe> subdocument ignored ("<div><iframe src='data:text/html,abc'>"): PASS
@@ -2835,6 +2835,8 @@
 	Remove leading/trailing whitespace in opacity:0 container ("<div style='opacity:0'> abc def "): PASS
 	Replaced element <canvas> with display:block should be treated as block-level ("<div>abc <canvas style='display:block'></canvas> def"): PASS
 	Replaced element <img> with display:block should be treated as block-level ("<div>abc <img style='display:block'> def"): PASS
+	Shadow DOM contents ignored ("<div class='shadow'>"): FAIL
+	Shadow DOM contents ignored ("<div><div class='shadow'>"): FAIL
 	Simplest possible test ("<div>abc"): PASS
 	Single newline in two-row inline-table ("<div>abc<div class='itable'><span class='row'><span class='cell'>def</span></span>\\n<span class='row'><span class='cell'>123</span></span></div>ghi"): FAIL
 	Soft breaks ignored in presence of word-break:break-word ("<div style='width:1px; word-break:break-word'>Hello Kitty</div>"): PASS
@@ -3089,8 +3091,8 @@
 	innerText on <wbr> element: PASS
 	innerText on <wbr> element, detached: PASS
 /html/dom/elements/the-innertext-and-outertext-properties/innertext-whitespace-pre-line.html: OK
-	innerText has collapsed whitespace but preserved newlines with pre-line: FAIL
-	innerText should be the same for the pre-line and pre examples: FAIL
+	innerText has collapsed whitespace but preserved newlines with pre-line: PASS
+	innerText should be the same for the pre-line and pre examples: PASS
 /html/dom/elements/the-innertext-and-outertext-properties/innertext-with-white-spaces.html?white-space=normal: OK
 	CR after <br> should be invisible if it's collapsible: PASS
 	CR after <div> should be invisible if it's collapsible: PASS
@@ -4321,12 +4323,12 @@
 	CustomElementRegistry interface: operation initialize(Node): FAIL
 	CustomElementRegistry interface: operation upgrade(Node): PASS
 	CustomElementRegistry interface: operation whenDefined(DOMString): PASS
-	CustomStateSet interface object length: FAIL
-	CustomStateSet interface object name: FAIL
-	CustomStateSet interface: existence and properties of interface object: FAIL
-	CustomStateSet interface: existence and properties of interface prototype object: FAIL
-	CustomStateSet interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	CustomStateSet interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	CustomStateSet interface object length: PASS
+	CustomStateSet interface object name: PASS
+	CustomStateSet interface: existence and properties of interface object: PASS
+	CustomStateSet interface: existence and properties of interface prototype object: PASS
+	CustomStateSet interface: existence and properties of interface prototype object's "constructor" property: PASS
+	CustomStateSet interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	CustomStateSet interface: setlike<DOMString>: FAIL
 	DOMParser interface object length: FAIL
 	DOMParser interface object name: FAIL
@@ -4427,19 +4429,19 @@
 	Element interface: operation setHTML(DOMString, optional SetHTMLOptions): FAIL
 	Element interface: operation setHTMLUnsafe((TrustedHTML or DOMString), optional (SetHTMLUnsafeOptions or TrustedHTMLParserOptions)): PASS
 	ElementInternals includes ARIAMixin: member names are unique: PASS
-	ElementInternals interface object length: FAIL
-	ElementInternals interface object name: FAIL
+	ElementInternals interface object length: PASS
+	ElementInternals interface object name: PASS
 	ElementInternals interface: attribute form: FAIL
 	ElementInternals interface: attribute labels: FAIL
-	ElementInternals interface: attribute shadowRoot: FAIL
-	ElementInternals interface: attribute states: FAIL
+	ElementInternals interface: attribute shadowRoot: PASS
+	ElementInternals interface: attribute states: PASS
 	ElementInternals interface: attribute validationMessage: FAIL
 	ElementInternals interface: attribute validity: FAIL
 	ElementInternals interface: attribute willValidate: FAIL
-	ElementInternals interface: existence and properties of interface object: FAIL
-	ElementInternals interface: existence and properties of interface prototype object: FAIL
-	ElementInternals interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	ElementInternals interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	ElementInternals interface: existence and properties of interface object: PASS
+	ElementInternals interface: existence and properties of interface prototype object: PASS
+	ElementInternals interface: existence and properties of interface prototype object's "constructor" property: PASS
+	ElementInternals interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	ElementInternals interface: operation checkValidity(): FAIL
 	ElementInternals interface: operation reportValidity(): FAIL
 	ElementInternals interface: operation setFormValue((File or USVString or FormData)?, optional (File or USVString or FormData)?): FAIL
@@ -5248,15 +5250,15 @@
 	Sanitizer interface: operation setDataAttributes(boolean): FAIL
 	Sanitizer interface: operation setJavascriptURLs(boolean): FAIL
 	ShadowRoot includes DocumentOrShadowRoot: member names are unique: PASS
-	ShadowRoot interface: attribute activeElement: FAIL
-	ShadowRoot interface: attribute innerHTML: FAIL
+	ShadowRoot interface: attribute activeElement: PASS
+	ShadowRoot interface: attribute innerHTML: PASS
 	ShadowRoot interface: operation appendHTML(DOMString, optional SetHTMLOptions): FAIL
 	ShadowRoot interface: operation appendHTMLUnsafe((TrustedHTML or DOMString), optional (SetHTMLUnsafeOptions or TrustedHTMLParserOptions)): FAIL
-	ShadowRoot interface: operation getHTML(optional GetHTMLOptions): FAIL
+	ShadowRoot interface: operation getHTML(optional GetHTMLOptions): PASS
 	ShadowRoot interface: operation prependHTML(DOMString, optional SetHTMLOptions): FAIL
 	ShadowRoot interface: operation prependHTMLUnsafe((TrustedHTML or DOMString), optional (SetHTMLUnsafeOptions or TrustedHTMLParserOptions)): FAIL
 	ShadowRoot interface: operation setHTML(DOMString, optional SetHTMLOptions): FAIL
-	ShadowRoot interface: operation setHTMLUnsafe((TrustedHTML or DOMString), optional (SetHTMLUnsafeOptions or TrustedHTMLParserOptions)): FAIL
+	ShadowRoot interface: operation setHTMLUnsafe((TrustedHTML or DOMString), optional (SetHTMLUnsafeOptions or TrustedHTMLParserOptions)): PASS
 	SharedWorker includes AbstractWorker: member names are unique: PASS
 	SharedWorker interface object length: FAIL
 	SharedWorker interface object name: FAIL
@@ -5523,7 +5525,7 @@
 	Document interface: operation open(USVString, DOMString, DOMString): PASS
 	Document interface: operation open(optional DOMString, optional DOMString): PASS
 	Document interface: operation parseHTML(DOMString, optional SetHTMLOptions): FAIL
-	Document interface: operation parseHTMLUnsafe((TrustedHTML or DOMString), optional (ParseHTMLUnsafeOptions or TrustedHTMLParserOptions)): FAIL
+	Document interface: operation parseHTMLUnsafe((TrustedHTML or DOMString), optional (ParseHTMLUnsafeOptions or TrustedHTMLParserOptions)): PASS
 	Document interface: operation queryCommandEnabled(DOMString): FAIL
 	Document interface: operation queryCommandIndeterm(DOMString): FAIL
 	Document interface: operation queryCommandState(DOMString): FAIL
@@ -5927,7 +5929,7 @@
 	HTMLElement interface: existence and properties of interface prototype object: PASS
 	HTMLElement interface: existence and properties of interface prototype object's "constructor" property: PASS
 	HTMLElement interface: existence and properties of interface prototype object's @@unscopables property: PASS
-	HTMLElement interface: operation attachInternals(): FAIL
+	HTMLElement interface: operation attachInternals(): PASS
 	HTMLElement interface: operation blur(): PASS
 	HTMLElement interface: operation click(): PASS
 	HTMLElement interface: operation focus(optional FocusOptions): PASS
@@ -6598,9 +6600,9 @@
 	HTMLSlotElement interface: existence and properties of interface prototype object: PASS
 	HTMLSlotElement interface: existence and properties of interface prototype object's "constructor" property: PASS
 	HTMLSlotElement interface: existence and properties of interface prototype object's @@unscopables property: PASS
-	HTMLSlotElement interface: operation assign((Element or Text)...): FAIL
-	HTMLSlotElement interface: operation assignedElements(optional AssignedNodesOptions): FAIL
-	HTMLSlotElement interface: operation assignedNodes(optional AssignedNodesOptions): FAIL
+	HTMLSlotElement interface: operation assign((Element or Text)...): PASS
+	HTMLSlotElement interface: operation assignedElements(optional AssignedNodesOptions): PASS
+	HTMLSlotElement interface: operation assignedNodes(optional AssignedNodesOptions): PASS
 	HTMLSourceElement interface object length: PASS
 	HTMLSourceElement interface object name: PASS
 	HTMLSourceElement interface: attribute height: PASS
@@ -6736,9 +6738,9 @@
 	HTMLTemplateElement interface: attribute shadowRootClonable: PASS
 	HTMLTemplateElement interface: attribute shadowRootCustomElementRegistry: PASS
 	HTMLTemplateElement interface: attribute shadowRootDelegatesFocus: PASS
-	HTMLTemplateElement interface: attribute shadowRootMode: FAIL
+	HTMLTemplateElement interface: attribute shadowRootMode: PASS
 	HTMLTemplateElement interface: attribute shadowRootSerializable: PASS
-	HTMLTemplateElement interface: attribute shadowRootSlotAssignment: FAIL
+	HTMLTemplateElement interface: attribute shadowRootSlotAssignment: PASS
 	HTMLTemplateElement interface: existence and properties of interface object: FAIL
 	HTMLTemplateElement interface: existence and properties of interface prototype object: PASS
 	HTMLTemplateElement interface: existence and properties of interface prototype object's "constructor" property: PASS
@@ -68294,45 +68296,55 @@
 	blocking defers until needed element is parsed: FAIL
 /html/dom/render-blocking/element-render-blocking-003.html: OK
 	adding link in the head defers frames: FAIL
-/html/dom/render-blocking/element-render-blocking-004.html: ERROR
-/html/dom/render-blocking/element-render-blocking-005.html: ERROR
-/html/dom/render-blocking/element-render-blocking-006.html: ERROR
+/html/dom/render-blocking/element-render-blocking-004.html: OK
+	removing link in the head makes it no longer blocking: PASS
+/html/dom/render-blocking/element-render-blocking-005.html: OK
+	removing 'blocking' makes it no longer blocking: PASS
+/html/dom/render-blocking/element-render-blocking-006.html: OK
+	adding 'blocking=render' in the head makes it blocking: FAIL
 /html/dom/render-blocking/element-render-blocking-007.html: OK
 	link with non-matching media has no effect: PASS
-/html/dom/render-blocking/element-render-blocking-008.html: ERROR
-/html/dom/render-blocking/element-render-blocking-009.html: ERROR
-/html/dom/render-blocking/element-render-blocking-010.html: ERROR
-/html/dom/render-blocking/element-render-blocking-011.html: ERROR
-/html/dom/render-blocking/element-render-blocking-012.html: ERROR
-/html/dom/render-blocking/element-render-blocking-013.html: ERROR
+/html/dom/render-blocking/element-render-blocking-008.html: OK
+	changing media to matching causes link to have an effect: FAIL
+/html/dom/render-blocking/element-render-blocking-009.html: OK
+	changing media to non-matching makes it non blocking: PASS
+/html/dom/render-blocking/element-render-blocking-010.html: OK
+	changing rel to non-expect makes it non blocking: PASS
+/html/dom/render-blocking/element-render-blocking-011.html: OK
+	changing rel to expect in the head causes it to be blocking: FAIL
+/html/dom/render-blocking/element-render-blocking-012.html: OK
+	adding href in the head makes it blocking: FAIL
+/html/dom/render-blocking/element-render-blocking-013.html: OK
+	removing href makes it no longer blocking: PASS
 /html/dom/render-blocking/element-render-blocking-014.html: OK
 	link in the body has no effect: PASS
-/html/dom/render-blocking/element-render-blocking-015.html: ERROR
+/html/dom/render-blocking/element-render-blocking-015.html: OK
 	removing link the body makes it non blocking: PASS
-/html/dom/render-blocking/element-render-blocking-016.html: ERROR
+/html/dom/render-blocking/element-render-blocking-016.html: OK
 	removing 'blocking' in the body makes it non blocking: PASS
-/html/dom/render-blocking/element-render-blocking-017.html: ERROR
+/html/dom/render-blocking/element-render-blocking-017.html: OK
 	adding 'blocking=render' in the body has no effect: PASS
-/html/dom/render-blocking/element-render-blocking-018.html: ERROR
+/html/dom/render-blocking/element-render-blocking-018.html: OK
 	changing media to matching in the body has no effect: PASS
-/html/dom/render-blocking/element-render-blocking-019.html: ERROR
+/html/dom/render-blocking/element-render-blocking-019.html: OK
 	changing media to non-matching in the body makes it non blocking: PASS
-/html/dom/render-blocking/element-render-blocking-020.html: ERROR
+/html/dom/render-blocking/element-render-blocking-020.html: OK
 	changing rel to non-expect in the body makes it non blocking: PASS
-/html/dom/render-blocking/element-render-blocking-021.html: ERROR
+/html/dom/render-blocking/element-render-blocking-021.html: OK
 	changing rel to expect in the body has no effect: PASS
-/html/dom/render-blocking/element-render-blocking-022.html: ERROR
+/html/dom/render-blocking/element-render-blocking-022.html: OK
 	adding href in the body has no effect: PASS
-/html/dom/render-blocking/element-render-blocking-023.html: ERROR
+/html/dom/render-blocking/element-render-blocking-023.html: OK
 	removing href in the body makes it non blocking: PASS
 /html/dom/render-blocking/element-render-blocking-024.html: OK
 	unknown href causes the whole document to be blocked: FAIL
-/html/dom/render-blocking/element-render-blocking-025.html: ERROR
-	adding an id in the body satisfies render block: FAIL
-/html/dom/render-blocking/element-render-blocking-026.html: ERROR
-	removing id after it was renderer keeps render block satisfied: FAIL
-/html/dom/render-blocking/element-render-blocking-027.html: ERROR
-/html/dom/render-blocking/element-render-blocking-028.html: ERROR
+/html/dom/render-blocking/element-render-blocking-025.html: OK
+	adding an id in the body satisfies render block: PASS
+/html/dom/render-blocking/element-render-blocking-026.html: OK
+	removing id after it was renderer keeps render block satisfied: PASS
+/html/dom/render-blocking/element-render-blocking-027.html: OK
+	unknown href causes the whole document to be blocked (with href changes!): FAIL
+/html/dom/render-blocking/element-render-blocking-028.html: OK
 	removing some links but not all keeps at least the matching link blocking: FAIL
 /html/dom/render-blocking/element-render-blocking-029.html: OK
 	blocking defers frames until full parsing: PASS

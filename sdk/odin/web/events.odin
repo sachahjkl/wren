@@ -27,7 +27,7 @@ ListenerOptions :: bit_set[ListenerOptions_Flag; u32]
 EventInit_Flag :: enum u32 {
 	Bubbles = 0,
 	Cancelable = 1,
-	// The event crosses shadow roots (no effect yet: there are none).
+	// The event crosses shadow roots: its path goes on to the hosts (targets retargeted).
 	Composed = 2,
 }
 EventInit :: bit_set[EventInit_Flag; u32]
@@ -114,7 +114,7 @@ foreign _m_events {
 	@(link_name = "EventTarget_lastRelated") _EventTarget_lastRelated :: proc() -> u64 ---
 	@(link_name = "Event_setNextRelated") _Event_setNextRelated :: proc(related: u64) ---
 	@(link_name = "Event_relatedNow") _Event_relatedNow :: proc(event: Event) -> u64 ---
-	@(link_name = "Event_inShadowTreeNow") _Event_inShadowTreeNow :: proc(event: Event) -> i32 ---
+	@(link_name = "Event_inShadowTreeNow") _Event_inShadowTreeNow :: proc(event: u64) -> i32 ---
 }
 
 // target.addEventListener(type, listener, options). Returns the listener's id (for removeEventListener); adding the
@@ -458,7 +458,7 @@ Event_relatedNow :: proc "contextless" (event: Event) -> u64 {
 
 // Whether the current listener's node was in a shadow tree when the event's path was built (window.event is then
 // left as it was).
-Event_inShadowTreeNow :: proc "contextless" (event: Event) -> bool {
+Event_inShadowTreeNow :: proc "contextless" (event: u64) -> bool {
 	return _Event_inShadowTreeNow(event) != 0
 }
 

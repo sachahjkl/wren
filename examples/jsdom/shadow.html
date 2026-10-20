@@ -388,6 +388,17 @@ section("cascade order across trees, sheets coming and going", () => {
   run("D4 important :host beats ::slotted (later tree)", "open", "", "::slotted(my-item) { color: red !important; }", ":host { color: green !important; }", "");
 });
 
+section("the Window's named properties leave undeclared names alone", () => {
+  let threw = "";
+  try { undeclaredNameXyz; } catch (e) { threw = e.name; }
+  eq("an undeclared identifier throws", threw, "ReferenceError");
+  const d = document.createElement("div");
+  d.id = "namedXyz";
+  document.body.appendChild(d);
+  eq("an element id is a property of the global", namedXyz, d);
+  d.remove();
+});
+
 section("ownerDocument in another document", () => {
   const doc = document.implementation.createHTMLDocument("t");
   const el = doc.createElement("div");
