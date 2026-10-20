@@ -110,7 +110,7 @@ PREFS := [?]config.Def{
 	{name = "layout.threads.min_inline_contexts", kind = .Int, default = {i = 256}, bounded = true, min = 0, max = 1 << 30, unit = "paragraphs",
 		description = "Pages with fewer inline formatting contexts (paragraphs, headings, list items...) are laid out on the interface thread alone: sharing the work out would cost more than it saves."},
 	{name = "layout.threads.min_boxes", kind = .Int, default = {i = 4096}, bounded = true, min = 0, max = 1 << 30, unit = "boxes",
-		description = "A document with fewer elements builds its boxes without the help of the layout threads (they otherwise read the elements' styles ahead), and a stacking context (the page itself, usually) whose content has fewer boxes makes its display list on the interface thread alone."},
+		description = "A document with fewer elements builds its boxes without the help of the layout threads (they otherwise read the elements' styles ahead), and a stacking context (the page itself, usually) whose content has fewer boxes makes its display list on the interface thread alone; so is a display list with fewer items hashed by the compositor alone."},
 	{name = "layout.threads.incremental", kind = .Bool, default = {b = true},
 		description = "The layout threads also help partial layouts that build many paragraphs again (a window being resized changes the width of every paragraph): those are laid out on them ahead of the interface thread, which only places them. Same result as on one thread. Off: partial layouts stay on the interface thread."},
 }
