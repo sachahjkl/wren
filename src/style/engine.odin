@@ -122,6 +122,7 @@ Engine :: struct {
 	journal_max:     int,              // > 0: passes keep a layout journal of at most this many entries (journal.odin)
 	inv:             Inv_Index,        // what DOM mutations reach (invalidation.odin), built on demand per rebuild
 	last_restyle:    Restyle_Stats,    // diagnostics of the last restyle_dom
+	probe_base:      ^Computed,        // initial values for validating declarations (compile_declarations), made once per configuration
 }
 
 ////////////////////////////////
@@ -157,6 +158,7 @@ clone_settings :: proc(s: Settings) -> Settings {
 }
 
 engine_destroy :: proc(e: ^Engine) {
+	free(e.probe_base, runtime.heap_allocator())
 	for s in e.sheets { sheet_free(s) }
 	delete(e.sheets)
 	index_free(&e.index)
@@ -200,6 +202,8 @@ index_free :: proc(ix: ^Index) {
 engine_configure :: proc(e: ^Engine, settings: Settings) {
 	settings_destroy(&e.settings)
 	e.settings = clone_settings(settings)
+	free(e.probe_base, runtime.heap_allocator())
+	e.probe_base = nil
 	engine_reset_builtin_sheets(e)
 	e.dirty = true
 }
@@ -832,8 +836,17 @@ supports_block :: proc(e: ^Engine, children: []css.Value) -> bool {
 
 @(private)
 probe_context :: proc(e: ^Engine, a: runtime.Allocator) -> Cx {
+	// the initial values are computed once per configuration and copied: every validated declaration (each
+	// style.setProperty of a script) used to compute them twice. A shallow copy is enough: applying a declaration
+	// replaces a field's slices, it never writes into them.
+	if e.probe_base == nil {
+		// on the heap whoever calls (the caller's allocator may be a temporary one); kept until the next configuration
+		context.allocator = runtime.heap_allocator()
+		e.probe_base = new(Computed)
+		e.probe_base^ = initial_computed(&e.settings)
+	}
 	c := new(Computed, a)
-	c^ = initial_computed(&e.settings)
+	c^ = e.probe_base^
 	// a root without a parent: what `initial`, `currentcolor` on the root and unset non-inherited values read
 	init := new(Computed, a)
 	init^ = c^

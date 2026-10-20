@@ -145,9 +145,17 @@ consume_number :: proc(l: ^Lexer) -> (v: f64, is_int: bool, signed: bool) {
 			for is_digit(peek(l)) { l.pos += 1 }
 		}
 	}
-	sb := strings.builder_make(context.temp_allocator)
-	for r in l.src[start:l.pos] { strings.write_rune(&sb, r) }
-	s := strings.to_string(sb)
+	// the characters of a number are ASCII: copied to a buffer of the stack, not built rune by rune
+	buf: [64]u8
+	s: string
+	if l.pos - start <= len(buf) {
+		for r, i in l.src[start:l.pos] { buf[i] = u8(r) }
+		s = string(buf[:l.pos - start])
+	} else {
+		sb := strings.builder_make(context.temp_allocator)
+		for r in l.src[start:l.pos] { strings.write_rune(&sb, r) }
+		s = strings.to_string(sb)
+	}
 	if strings.has_prefix(s, "+") { s = s[1:] }
 	v, _ = strconv.parse_f64(s)
 	return

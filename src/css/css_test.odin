@@ -397,3 +397,27 @@ raw_descriptor_values_and_units :: proc(t: ^testing.T) {
 	deg, ok2 := angle_unit_to_deg(0.25, "turn")
 	testing.expect(t, ok2 && deg == 90)
 }
+
+// The fast decimal serialization writes what %g writes, for every value it takes.
+@(test)
+short_decimal_matches_g :: proc(t: ^testing.T) {
+	fixed := [?]f64{0.1, 0.5, 1.5, 123.4, -56.7, 0.0001, 0.05, 2.25, 999999.5, 1000000.5, 3.14159, 1.000001, 99.99, 1234567.5}
+	values := make([dynamic]f64, 0, 20100)
+	defer delete(values)
+	append(&values, ..fixed[:])
+	seed: u64 = 12345
+	for _ in 0 ..< 20000 {
+		seed = seed * 6364136223846793005 + 1442695040888963407
+		digits := f64(seed >> 33 % 10_000_000)
+		decimals := int(seed >> 20 % 8)
+		v := digits / math.pow(10, f64(decimals))
+		if seed & 1 == 1 { v = -v }
+		append(&values, v)
+	}
+	for v in values {
+		a := strings.builder_make(context.temp_allocator)
+		if !write_short_decimal(&a, v) { continue }
+		want := fmt.tprintf("%g", v)
+		testing.expectf(t, strings.to_string(a) == want, "%v: fast %q, %%g %q", v, strings.to_string(a), want)
+	}
+}

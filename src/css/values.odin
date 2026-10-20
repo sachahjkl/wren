@@ -864,7 +864,7 @@ write_values :: proc(sb: ^strings.Builder, vs: []Value) {
 @(private)
 write_token :: proc(sb: ^strings.Builder, t: Token) {
 	fmt_num :: proc(sb: ^strings.Builder, t: Token) {
-		if t.is_int { fmt.sbprintf(sb, "%d", int(t.num)) } else { fmt.sbprintf(sb, "%g", t.num) }
+		if t.is_int { fmt.sbprintf(sb, "%d", int(t.num)) } else if !write_short_decimal(sb, t.num) { fmt.sbprintf(sb, "%g", t.num) }
 	}
 	#partial switch t.kind {
 	case .Ident: strings.write_string(sb, t.text)
@@ -884,4 +884,32 @@ write_token :: proc(sb: ^strings.Builder, t: Token) {
 	case .Semicolon: strings.write_byte(sb, ';')
 	case .Comma: strings.write_byte(sb, ',')
 	}
+}
+
+// Writes `v` with the fewest decimals (at most 6) that give back exactly the same double, the text %g writes for it
+// (shortest round trip) without its slow general path: 123.4 is 1234 / 10, and parsing "123.4" gives that very double.
+// False (nothing written) outside 1e-4 <= |v| < 1e6, where %g writes an exponent, or past 6 decimals.
+@(private)
+write_short_decimal :: proc(sb: ^strings.Builder, v: f64) -> bool {
+	POW10 :: [7]f64{1, 10, 100, 1000, 10000, 100000, 1000000}
+	a := abs(v)
+	if !(a >= 1e-4 && a < 1e6) { return false }   // %g's exponent starts outside
+	pow := POW10
+	for k in 0 ..< len(pow) {
+		scaled := a * pow[k]
+		m := u64(scaled + 0.5)
+		if f64(m) / pow[k] != a { continue }
+		if v < 0 { strings.write_byte(sb, '-') }
+		buf: [24]u8
+		n := len(buf)
+		for i := 0; i == 0 || m > 0 || i <= k; i += 1 {
+			if i == k && k > 0 { n -= 1; buf[n] = '.' }
+			n -= 1
+			buf[n] = u8('0' + m % 10)
+			m /= 10
+		}
+		strings.write_string(sb, string(buf[n:]))
+		return true
+	}
+	return false
 }

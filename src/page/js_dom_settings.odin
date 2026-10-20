@@ -20,8 +20,8 @@ JS_DOM_PREFS := [?]config.Def{
 		description = "Most records one MutationObserver may have waiting for delivery. Past it the oldest are dropped (with a warning in the console): a page that mutates without ever yielding cannot grow the queue without bound."},
 	{name = "javascript.dom.max_client_rects", kind = .Int, default = {i = 100_000}, bounded = true, min = 1, max = 10_000_000, unit = "rectangles",
 		description = "Most rectangles getClientRects returns for one element or range."},
-	{name = "javascript.dom.style_cache_entries", kind = .Int, default = {i = 256}, bounded = true, min = 0, max = 100_000, unit = "style attributes",
-		description = "Parsed style attributes, and validated style.setProperty values, kept per page for element.style (each): reading or changing a declaration in a loop does not parse again. 0 parses every time."},
+	{name = "javascript.dom.style_cache_entries", kind = .Int, default = {i = 4096}, bounded = true, min = 0, max = 100_000, unit = "style attributes",
+		description = "Parsed style attributes, and validated style.setProperty values, kept per page for element.style (each): reading or changing a declaration in a loop does not parse again. Enough for the elements a script animates (each element's current text is one entry: fewer, and an animation of more elements parses every attribute again). 0 parses every time."},
 }
 
 js_dom_settings_from_prefs :: proc(p: ^config.Prefs) -> Js_Dom_Settings {

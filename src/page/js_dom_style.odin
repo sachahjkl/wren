@@ -82,19 +82,19 @@ add_declaration :: proc(p: ^Page, block: ^[dynamic]Style_Decl, d: css.Declaratio
 // Parsed declarations kept by text (javascript.dom.style_cache_entries each): the declarations of style attributes,
 // so that reading or changing element.style in a loop does not parse the attribute again, and the validated
 // declarations of setProperty(name, value) pairs. The key is the text alone (the parse depends on nothing else), shared
-// by every element that has it; the least recently used entry makes room.
+// by every element that has it; an entry not read for a while makes room (CLOCK eviction).
 @(private)
 Decl_Cache :: struct {
 	entries: [dynamic]Decl_Entry,
 	index:   map[string]int,   // text -> entry
-	clock:   u64,
+	hand:    int,              // the clock's hand: the next entry looked at for eviction
 }
 
 @(private)
 Decl_Entry :: struct {
 	text:  string,          // owned
 	decls: []Style_Decl,    // owned, with their strings
-	used:  u64,
+	used:  bool,            // read since the hand last passed (CLOCK, a second chance: an approximate LRU in O(1))
 }
 
 @(private)
@@ -116,20 +116,24 @@ decl_cache_destroy :: proc(dc: ^Decl_Cache) {
 decl_cache_put :: proc(dc: ^Decl_Cache, cap: int, text: string, block: []Style_Decl) {
 	if cap <= 0 { return }
 	if _, has := dc.index[text]; has { return }
-	dc.clock += 1
-	e := Decl_Entry{text = strings.clone(text), decls = make([]Style_Decl, len(block)), used = dc.clock}
+	e := Decl_Entry{text = strings.clone(text), decls = make([]Style_Decl, len(block))}
 	for d, i in block { e.decls[i] = Style_Decl{name = strings.clone(d.name), value = strings.clone(d.value), important = d.important} }
 	if len(dc.entries) < cap {
 		append(&dc.entries, e)
 		dc.index[e.text] = len(dc.entries) - 1
 		return
 	}
-	oldest := 0
-	for x, i in dc.entries { if x.used < dc.entries[oldest].used { oldest = i } }
-	delete_key(&dc.index, dc.entries[oldest].text)
-	decl_entry_free(&dc.entries[oldest])
-	dc.entries[oldest] = e
-	dc.index[e.text] = oldest
+	// the first entry not read since the hand last passed goes (a full turn at most)
+	for dc.entries[dc.hand % len(dc.entries)].used {
+		dc.entries[dc.hand % len(dc.entries)].used = false
+		dc.hand += 1
+	}
+	victim := dc.hand % len(dc.entries)
+	dc.hand += 1
+	delete_key(&dc.index, dc.entries[victim].text)
+	decl_entry_free(&dc.entries[victim])
+	dc.entries[victim] = e
+	dc.index[e.text] = victim
 }
 
 // The declarations kept for `text`, as a temporary copy the caller may change.
@@ -137,8 +141,7 @@ decl_cache_put :: proc(dc: ^Decl_Cache, cap: int, text: string, block: []Style_D
 decl_cache_get :: proc(dc: ^Decl_Cache, text: string) -> (out: [dynamic]Style_Decl, hit: bool) {
 	i := dc.index[text] or_return
 	e := &dc.entries[i]
-	dc.clock += 1
-	e.used = dc.clock
+	e.used = true
 	out = make([dynamic]Style_Decl, len(e.decls), max(len(e.decls) + 1, 8), context.temp_allocator)
 	for d, k in e.decls { out[k] = Style_Decl{name = strings.clone(d.name, context.temp_allocator), value = strings.clone(d.value, context.temp_allocator), important = d.important} }
 	return out, true
