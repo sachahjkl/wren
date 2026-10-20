@@ -102,10 +102,19 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 		if it.cs == nil { continue }
 		if nc, ok := remap[it.cs]; ok { it.cs = nc; continue }
 		if it.node == base.NIL_HANDLE { continue }   // the initial style: the same record for the whole pass
-		// text whose owner generates no box (display: contents)
+		// text whose owner generates no box (display: contents), and items of an unchanged element's ::before /
+		// ::after: their record is the pseudo-element's, not the element's
 		el := style.style_of(st, it.node)
-		if el == nil || !put(&remap, it.cs, el) { return false }
-		it.cs = el
+		nc := el
+		if el != nil {
+			#partial switch it.src {
+			case .Before: nc = el.before
+			case .After: nc = el.after
+			}
+		}
+		if nc == it.cs { continue }
+		if nc == nil || !put(&remap, it.cs, nc) { return false }
+		it.cs = nc
 	}
 	for &it in l.items {
 		if it.cs != nil { if nc, ok := remap[it.cs]; ok { it.cs = nc } }
