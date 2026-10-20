@@ -280,8 +280,10 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 		switch e.kind {
 		case .Insert, .Remove:
 			n := dom.get(input.doc, e.node)
-			if (n != nil && n.kind != .Element) || (n == nil && live_box(l, e.node) == NONE) {
-				// text (or a node gone that had no box): their container's content
+			// text, or an element removed that had no box of its own: their container's content. Such an element may
+			// still have made inline content (a <br>, a <wbr>, the children of display: contents), which only its
+			// container's items hold; a plan would see no box before and none after, and change nothing.
+			if (n != nil && n.kind != .Element) || ((n == nil || e.kind == .Remove) && live_box(l, e.node) == NONE) {
 				append(&containers, e.parent)
 				continue
 			}
