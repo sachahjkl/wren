@@ -20,3 +20,4 @@ partial module dom {
   /// The element's custom element state: 0 undefined, 1 custom, 2 failed.
   void Element_setCustomState(Element element, u32 state);
 }
+

@@ -65,6 +65,8 @@ Web_State :: struct {
 	frames:          [dynamic]Frame_Callback,
 	running_frames:  ^[dynamic]Frame_Callback,
 	next_frame_id:   u64,
+	io_active:       bool,      // some IntersectionObserver watches a target: each rendering update computes them
+	io_pending:      bool,      // ... and one is wanted soon (a target was just observed): a frame is requested
 	idle:            [dynamic]Idle_Callback,
 	next_idle_id:    u64,
 	idle_timer:      base.Handle,

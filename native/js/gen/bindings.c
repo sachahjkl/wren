@@ -370,6 +370,30 @@ JSValue wjr_HTMLLinkElement_set_crossOrigin(JSContext *ctx, JSValueConst this_va
 JSValue wjr_HTMLLinkElement_set_fetchPriority(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLLinkElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMapElement_get_areas(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_canPlayType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLMediaElement_get_currentSrc(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_currentTime(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_defaultPlaybackRate(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_duration(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_ended(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_error(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_muted(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_networkState(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_paused(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_playbackRate(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_preservesPitch(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_readyState(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_seeking(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_volume(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_load(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLMediaElement_pause(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLMediaElement_play(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLMediaElement_set_currentTime(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMediaElement_set_defaultPlaybackRate(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMediaElement_set_muted(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMediaElement_set_playbackRate(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMediaElement_set_preservesPitch(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMediaElement_set_volume(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMeterElement_get_high(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMeterElement_get_labels(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMeterElement_get_low(JSContext *ctx, JSValueConst this_val);
@@ -478,6 +502,26 @@ JSValue wjr_InputEvent_get_data(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_InputEvent_get_dataTransfer(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_InputEvent_get_inputType(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_InputEvent_get_isComposing(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserverEntry_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_IntersectionObserverEntry_get_boundingClientRect(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserverEntry_get_intersectionRatio(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserverEntry_get_intersectionRect(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserverEntry_get_isIntersecting(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserverEntry_get_isVisible(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserverEntry_get_rootBounds(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserverEntry_get_target(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserverEntry_get_time(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserver_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_IntersectionObserver_disconnect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_IntersectionObserver_get_delay(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserver_get_root(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserver_get_rootMargin(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserver_get_scrollMargin(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserver_get_thresholds(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserver_get_trackVisibility(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_IntersectionObserver_observe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_IntersectionObserver_takeRecords(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_IntersectionObserver_unobserve(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_KeyboardEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_KeyboardEvent_getModifierState(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_KeyboardEvent_get_altKey(JSContext *ctx, JSValueConst this_val);
@@ -10626,45 +10670,45 @@ static const wj_member wj_m_HTMLMarqueeElement[] = {
     { "stop", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLMediaElement[] = {
-    { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_error, NULL, 0 },
     { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_src, wjg_HTMLMediaElement_set_src, 0 },
     { "srcObject", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "currentSrc", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "currentSrc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_currentSrc, NULL, 0 },
     { "crossOrigin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "NETWORK_EMPTY", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },
     { "NETWORK_IDLE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 1 },
     { "NETWORK_LOADING", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "NETWORK_NO_SOURCE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
-    { "networkState", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "networkState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_networkState, NULL, 0 },
     { "preload", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "buffered", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "load", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "canPlayType", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "load", WJ_M_METHOD, 0, 0, wjr_HTMLMediaElement_load, NULL, NULL, 0 },
+    { "canPlayType", WJ_M_METHOD, 0, 1, wjr_HTMLMediaElement_canPlayType, NULL, NULL, 0 },
     { "HAVE_NOTHING", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },
     { "HAVE_METADATA", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 1 },
     { "HAVE_CURRENT_DATA", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "HAVE_FUTURE_DATA", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
     { "HAVE_ENOUGH_DATA", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 4 },
-    { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "seeking", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "currentTime", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_readyState, NULL, 0 },
+    { "seeking", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_seeking, NULL, 0 },
+    { "currentTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_currentTime, wjr_HTMLMediaElement_set_currentTime, 0 },
     { "fastSeek", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_duration, NULL, 0 },
     { "getStartDate", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "paused", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "defaultPlaybackRate", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "playbackRate", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "preservesPitch", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "paused", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_paused, NULL, 0 },
+    { "defaultPlaybackRate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_defaultPlaybackRate, wjr_HTMLMediaElement_set_defaultPlaybackRate, 0 },
+    { "playbackRate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_playbackRate, wjr_HTMLMediaElement_set_playbackRate, 0 },
+    { "preservesPitch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_preservesPitch, wjr_HTMLMediaElement_set_preservesPitch, 0 },
     { "played", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "seekable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "ended", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "ended", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_ended, NULL, 0 },
     { "autoplay", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_autoplay, wjg_HTMLMediaElement_set_autoplay, 0 },
     { "loop", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_loop, wjg_HTMLMediaElement_set_loop, 0 },
-    { "play", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "pause", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "play", WJ_M_METHOD, 0, 0, wjr_HTMLMediaElement_play, NULL, NULL, 0 },
+    { "pause", WJ_M_METHOD, 0, 0, wjr_HTMLMediaElement_pause, NULL, NULL, 0 },
     { "controls", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_controls, wjg_HTMLMediaElement_set_controls, 0 },
-    { "volume", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "muted", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "volume", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_volume, wjr_HTMLMediaElement_set_volume, 0 },
+    { "muted", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_muted, wjr_HTMLMediaElement_set_muted, 0 },
     { "defaultMuted", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_defaultMuted, wjg_HTMLMediaElement_set_defaultMuted, 0 },
     { "loading", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "audioTracks", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 69, NULL, NULL, NULL, 0 },
@@ -12344,26 +12388,26 @@ static const wj_member wj_m_ImageData[] = {
     { "colorSpace", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_IntersectionObserver[] = {
-    { "root", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "rootMargin", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "scrollMargin", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "thresholds", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "delay", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "trackVisibility", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "observe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "unobserve", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "disconnect", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "takeRecords", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "root", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserver_get_root, NULL, 0 },
+    { "rootMargin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserver_get_rootMargin, NULL, 0 },
+    { "scrollMargin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserver_get_scrollMargin, NULL, 0 },
+    { "thresholds", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserver_get_thresholds, NULL, 0 },
+    { "delay", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserver_get_delay, NULL, 0 },
+    { "trackVisibility", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserver_get_trackVisibility, NULL, 0 },
+    { "observe", WJ_M_METHOD, 0, 1, wjr_IntersectionObserver_observe, NULL, NULL, 0 },
+    { "unobserve", WJ_M_METHOD, 0, 1, wjr_IntersectionObserver_unobserve, NULL, NULL, 0 },
+    { "disconnect", WJ_M_METHOD, 0, 0, wjr_IntersectionObserver_disconnect, NULL, NULL, 0 },
+    { "takeRecords", WJ_M_METHOD, 0, 0, wjr_IntersectionObserver_takeRecords, NULL, NULL, 0 },
 };
 static const wj_member wj_m_IntersectionObserverEntry[] = {
-    { "time", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "rootBounds", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "boundingClientRect", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "intersectionRect", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "isIntersecting", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "isVisible", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "intersectionRatio", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "time", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserverEntry_get_time, NULL, 0 },
+    { "rootBounds", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserverEntry_get_rootBounds, NULL, 0 },
+    { "boundingClientRect", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserverEntry_get_boundingClientRect, NULL, 0 },
+    { "intersectionRect", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserverEntry_get_intersectionRect, NULL, 0 },
+    { "isIntersecting", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserverEntry_get_isIntersecting, NULL, 0 },
+    { "isVisible", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserverEntry_get_isVisible, NULL, 0 },
+    { "intersectionRatio", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserverEntry_get_intersectionRatio, NULL, 0 },
+    { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserverEntry_get_target, NULL, 0 },
 };
 static const wj_member wj_m_Location[] = {
     { "href", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Location_get_href, wjr_Location_set_href, 0 },
@@ -15287,11 +15331,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_ImageData, .n_members = 5, .subtree_end = 410,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "IntersectionObserver", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "IntersectionObserver", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_IntersectionObserver_constructor,
       .members = wj_m_IntersectionObserver, .n_members = 10, .subtree_end = 411,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "IntersectionObserverEntry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "IntersectionObserverEntry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_IntersectionObserverEntry_constructor,
       .members = wj_m_IntersectionObserverEntry, .n_members = 8, .subtree_end = 412,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

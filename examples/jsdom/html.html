@@ -97,6 +97,14 @@ section("title and script text", () => {
   t("new Image prototype", img instanceof HTMLImageElement && Image.prototype === HTMLImageElement.prototype && Image.length === 0);
   t("new Option", opt.text === "Text" && opt.value === "v" && opt.defaultSelected && !opt.selected);
   eq("new Audio", au.outerHTML, '<audio preload="auto" src="x.mp3"></audio>');
+  t("window.HTMLDocument is Document (HTML §3.1)", window.HTMLDocument === Document && document instanceof HTMLDocument && !Object.keys(window).includes("HTMLDocument"));
+  const v = document.createElement("video");
+  t("a media element without playback", v.paused && v.readyState === 0 && Number.isNaN(v.duration) && v.canPlayType("video/mp4") === "" && v.networkState === 0);
+  v.muted = true; v.volume = 0.5; v.currentTime = 3; v.load(); v.pause();
+  t("what a script sets is read back", v.muted && v.volume === 0.5 && v.currentTime === 3);
+  throws("volume outside [0, 1]", () => { v.volume = 2; }, "IndexSizeError");
+  t("play() returns a promise", v.play() instanceof Promise);
+  v.play().catch(e => { window.__playError = e.name; });
   t("HTMLScriptElement.supports", HTMLScriptElement.supports("module") && HTMLScriptElement.supports("classic") && !HTMLScriptElement.supports("x"));
 });
 

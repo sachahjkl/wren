@@ -681,6 +681,7 @@ foreign _m_storage {
 foreign import _m_timers "timers"
 @(default_calling_convention = "contextless")
 foreign _m_timers {
+	@(link_name = "IntersectionObservers_schedule") c_IntersectionObservers_schedule :: proc(a0: i32) ---
 	@(link_name = "Timers_setTimeout") c_Timers_setTimeout :: proc(a0: i32, a1: i32, a2: f64) -> i64 ---
 	@(link_name = "Timers_setInterval") c_Timers_setInterval :: proc(a0: i32, a1: i32, a2: f64) -> i64 ---
 	@(link_name = "Timers_setTimeout64") c_Timers_setTimeout64 :: proc(a0: i32, a1: i64, a2: f64) -> i64 ---

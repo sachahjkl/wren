@@ -57,6 +57,17 @@ Whether the page is shown.
 
 ## Functions
 
+### `IntersectionObservers_schedule`
+
+```
+void IntersectionObservers_schedule(bool observing)
+```
+
+Some observer watches a target (true), or none does: while true, the browser runs the engine's observations after
+the animation frame callbacks of every rendering update, and asks for one frame at once.
+
+Host: `IntersectionObservers_schedule :: proc(c: ^Call, observing: bool)`
+
 ### `Timers_setTimeout`
 
 ```

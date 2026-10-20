@@ -1,0 +1,66 @@
+<!doctype html>
+<html><head><title>IntersectionObserver</title>
+<style>body { margin: 0 } .box { height: 100px } #space { height: 3000px }</style></head>
+<body><div id="top" class="box">top</div><div id="space"></div><div id="bottom" class="box">bottom</div>
+<div id="hidden" style="display: none">hidden</div>
+<script>
+(async () => {
+  const frame = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+  const seen = [];
+  const io = new IntersectionObserver((entries, observer) => {
+    for (const e of entries) seen.push({ id: e.target.id, on: e.isIntersecting, ratio: e.intersectionRatio, e, observer });
+  }, { rootMargin: "10px 0px", threshold: [0, 0.5, 1] });
+  t("IntersectionObserver", io instanceof IntersectionObserver);
+  eq("root", io.root, null);
+  eq("rootMargin serialized as four sides", io.rootMargin, "10px 0px 10px 0px");
+  eq("thresholds sorted", io.thresholds.join(), "0,0.5,1");
+  t("thresholds frozen, the same array", Object.isFrozen(io.thresholds) && io.thresholds === io.thresholds);
+  throws("callback required", () => new IntersectionObserver(1), "TypeError");
+  throws("threshold outside [0, 1]", () => new IntersectionObserver(() => {}, { threshold: 1.5 }), "RangeError");
+  throws("rootMargin in em", () => new IntersectionObserver(() => {}, { rootMargin: "1em" }), "SyntaxError");
+  throws("root of the wrong type", () => new IntersectionObserver(() => {}, { root: {} }), "TypeError");
+  throws("observe a non-element", () => io.observe(document), "TypeError");
+
+  io.observe(document.getElementById("top"));
+  io.observe(document.getElementById("bottom"));
+  io.observe(document.getElementById("hidden"));
+  io.observe(document.getElementById("top"));   // twice: once
+  await frame();
+  await frame();
+  const by = id => seen.filter(s => s.id === id);
+  eq("one initial entry per target", seen.length, 3);
+  t("the top box intersects the viewport, fully", by("top")[0] && by("top")[0].on && by("top")[0].ratio === 1);
+  t("the bottom box does not", by("bottom")[0] && !by("bottom")[0].on && by("bottom")[0].ratio === 0);
+  t("a box that is not rendered does not", by("hidden")[0] && !by("hidden")[0].on);
+  const e = by("top")[0].e;
+  t("an IntersectionObserverEntry with rectangles", e instanceof IntersectionObserverEntry && e.boundingClientRect instanceof DOMRectReadOnly &&
+    e.boundingClientRect.height === 100 && e.intersectionRect.height === 100 && e.rootBounds.y === -10 && e.target.id === "top" && typeof e.time === "number");
+  t("the callback gets the observer", by("top")[0].observer === io);
+
+  seen.length = 0;
+  await frame();
+  eq("nothing new without change", seen.length, 0);
+
+  window.scrollTo(0, 3000);
+  await frame();
+  await frame();
+  t("after scrolling: the top box leaves", by("top").length === 1 && !by("top")[0].on);
+  t("the bottom box enters", by("bottom").length === 1 && by("bottom")[0].on);
+
+  seen.length = 0;
+  io.unobserve(document.getElementById("bottom"));
+  window.scrollTo(0, 0);
+  await frame();
+  await frame();
+  t("unobserve stops a target's entries", by("bottom").length === 0 && by("top").length === 1 && by("top")[0].on);
+  io.disconnect();
+  eq("takeRecords after disconnect", io.takeRecords().length, 0);
+
+  const init = new IntersectionObserverEntry({ time: 1, rootBounds: null, boundingClientRect: { x: 1, y: 2, width: 3, height: 4 },
+    intersectionRect: { x: 0, y: 0, width: 0, height: 0 }, isIntersecting: false, isVisible: false, intersectionRatio: 0, target: document.body });
+  t("the entry constructor", init.boundingClientRect.width === 3 && init.rootBounds === null && init.target === document.body);
+  throws("a required member missing", () => new IntersectionObserverEntry({ time: 1 }), "TypeError");
+  done();
+})();
+</script>
+</body></html>

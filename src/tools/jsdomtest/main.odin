@@ -101,7 +101,11 @@ open_page :: proc(process: ^base.Scope, source: string, lh: ^Layout_Host, name: 
 	page.js_run(p, transmute([]byte)harness, "harness.js")
 	page.scripts_start(p)
 	start := time.tick_now()
-	for !logged("DONE") && time.duration_milliseconds(time.tick_since(start)) < f64(timeout_ms) { host.loop_wait(&loop, 2) }
+	for !logged("DONE") && time.duration_milliseconds(time.tick_since(start)) < f64(timeout_ms) {
+		// rendering updates, as the shell runs them: animation frame callbacks, then intersection observations
+		if page.wants_animation_frame(p) { page.run_animation_frames(p, f64(host.now_ns(&loop)) / 1e6) }
+		host.loop_wait(&loop, 2)
+	}
 	return p
 }
 

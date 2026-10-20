@@ -151,14 +151,16 @@ cancelAnimationFrame :: proc(c: ^Call, id: u64) -> Api_Error {
 
 // True when the page has animation frame callbacks waiting and is visible: the shell renders a frame for it.
 wants_animation_frame :: proc(p: ^Page) -> bool {
-	return p != nil && !p.closed && p.web.visible && len(p.web.frames) > 0
+	return p != nil && !p.closed && p.web.visible && (len(p.web.frames) > 0 || p.web.io_pending)
 }
 
 // "Run the animation frame callbacks" of HTML's update-the-rendering step. `now_ms` is the frame time on the loop clock
 // (host.now_ns / 1e6); callbacks receive it on the page's performance timeline. Callbacks requested while this runs wait
 // for the next frame. Returns how many ran.
 run_animation_frames :: proc(p: ^Page, now_ms: f64) -> int {
-	if p == nil || p.closed || len(p.web.frames) == 0 { return 0 }
+	if p == nil || p.closed { return 0 }
+	defer intersection_observers_update(p)   // the step after the callbacks: "run the update intersection observations steps"
+	if len(p.web.frames) == 0 { return 0 }
 	w := p.web
 	ts := now_ms - f64(w.origin_ns) / 1e6
 	batch := w.frames
@@ -290,3 +292,22 @@ set_page_visible :: proc(p: ^Page, visible: bool) {
 page_visible :: proc(p: ^Page) -> bool { return p.web.visible }
 
 Document_visibilityState :: proc(c: ^Call) -> Api_VisibilityState { return c.page.web.visible ? .Visible : .Hidden }
+
+////////////////////////////////
+// IntersectionObserver (computed in the engine: native/js/prelude/intersection.js)
+
+// The engine says whether some observer watches a target; an update is wanted at the next rendering update.
+IntersectionObservers_schedule :: proc(c: ^Call, observing: bool) {
+	c.page.web.io_active = observing
+	c.page.web.io_pending = observing
+}
+
+@(private)
+intersection_observers_update :: proc(p: ^Page) {
+	w := p.web
+	if p.closed || !w.io_active { return }
+	w.io_pending = false
+	r := p.js
+	if r == nil || r.failed || r.inst == nil || r.inst.dead { return }
+	js_call(p, r.inst, "wj_io_update", nil)
+}

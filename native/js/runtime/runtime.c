@@ -36,6 +36,12 @@ int wj_runtime_start(JSContext *ctx, int kind)
         JS_FreeValue(ctx, cur);
         JS_FreeAtom(ctx, names[i]);
     }
+    /* HTML §3.1: "for historical reasons" window.HTMLDocument is the Document interface object (writable,
+     * configurable, not enumerable) */
+    if (kind == WJ_EXPOSE_WINDOW) {
+        JSValue doc = JS_GetPropertyStr(ctx, r->global, "Document");
+        if (JS_IsObject(doc)) { JS_DefinePropertyValueStr(ctx, r->global, "HTMLDocument", doc, JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE); } else { JS_FreeValue(ctx, doc); }
+    }
     return wj_web_start(ctx, kind);
 }
 

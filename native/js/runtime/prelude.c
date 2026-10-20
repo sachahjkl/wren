@@ -26,6 +26,8 @@ int wj_run_preludes(JSContext *ctx)
     JS_SetPropertyStr(ctx, global, "__wren_intl_host", JS_NewCFunction(ctx, wj_intl_host, "__wren_intl_host", 0));
     extern JSValue wj_ce_host_object(JSContext *ctx);
     JS_SetPropertyStr(ctx, global, "__wren_ce_host", wj_ce_host_object(ctx));
+    extern JSValue wj_io_host_object(JSContext *ctx);
+    JS_SetPropertyStr(ctx, global, "__wren_io_host", wj_io_host_object(ctx));
     JS_FreeValue(ctx, global);
     for (int i = 0; i < wj_prelude_count; i++) {
         const char *src = wj_prelude_sources[i].source;

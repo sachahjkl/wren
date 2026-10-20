@@ -194,6 +194,8 @@ typedef struct wr_SelectionState {
 
 /* module events (partial): types */
 
+/* module timers (partial): types */
+
 /* module scripts: types */
 // What a Content-Security-Policy check of inline code is about: a script element's text, an event handler
 // attribute (script-src-attr), a javascript: URL.
@@ -1683,6 +1685,9 @@ WR_IMPORT("storage", "StorageEvent_get") int32_t wr_StorageEvent_get(uint64_t ev
 WR_IMPORT("storage", "StorageEvent_storageArea") int32_t wr_StorageEvent_storageArea(uint64_t event, int32_t *_ret);
 
 /* module timers */
+// Some observer watches a target (true), or none does: while true, the browser runs the engine's observations after
+// the animation frame callbacks of every rendering update, and asks for one frame at once.
+WR_IMPORT("timers", "IntersectionObservers_schedule") void wr_IntersectionObservers_schedule(int32_t observing);
 // setTimeout(callback, delay_ms)
 WR_IMPORT("timers", "Timers_setTimeout") uint64_t wr_Timers_setTimeout(uint32_t callback, int32_t user, double delay_ms);
 // setInterval(callback, delay_ms)
