@@ -95,11 +95,37 @@ parse_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List)
 	return out[:], true
 }
 
+// A selector list inside a pseudo-class (:not(), :nth-child(... of S)): `&` resolves to the enclosing rule's selectors, but
+// nothing is prepended (the implicit `& ` belongs to the rule's own selectors: `.x { &:not(.a) }` is `.x:not(.a)`).
+@(private)
+parse_inner_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (list: Selector_List, ok: bool) {
+	items := split_commas(vs, a)
+	out := make([dynamic]Complex, a)
+	for item in items {
+		c, good := parse_complex(trim_values(item), a, parent, false)
+		if !good { return nil, false }
+		append(&out, c)
+	}
+	if len(out) == 0 { return nil, false }
+	return out[:], true
+}
+
+// `&` anywhere in the selector, inside pseudo-class arguments too (`.bar:is(&)`)
+@(private)
+uses_nesting :: proc(c: Complex, depth := 0) -> bool {
+	if depth > 64 { return false }
+	for comp in c.compounds {
+		for s in comp.simples {
+			if s.kind == .Nesting { return true }
+			if s.list != nil { for inner in s.list^ { if uses_nesting(inner, depth + 1) { return true } } }
+		}
+	}
+	return false
+}
+
 @(private)
 with_implicit_nesting :: proc(c: Complex, a: Arena_Alloc, parent: ^Selector_List) -> Complex {
-	for comp in c.compounds {
-		for s in comp.simples { if s.kind == .Nesting { out := c; out.relative = false; return out } }
-	}
+	if uses_nesting(c) { out := c; out.relative = false; return out }
 	lst := new(Selector_List, a)
 	lst^ = parent^
 	first := make([]Simple, 1, a)
@@ -417,7 +443,7 @@ parse_functional_pseudo :: proc(f: Value, a: Arena_Alloc, parent: ^Selector_List
 	s.kind = .Pseudo_Class
 	switch name {
 	case "not":
-		lst, good := parse_selector_list(args, a, parent)
+		lst, good := parse_inner_selector_list(args, a, parent)
 		if !good { return {}, false }
 		s.pseudo = .Not
 		s.list = new(Selector_List, a); s.list^ = lst
@@ -458,7 +484,7 @@ parse_functional_pseudo :: proc(f: Value, a: Arena_Alloc, parent: ^Selector_List
 		if of_idx >= 0 {
 			if name == "nth-of-type" || name == "nth-last-of-type" { return {}, false }
 			formula = trim_values(args[:of_idx])
-			lst, good := parse_selector_list(trim_values(args[of_idx + 1:]), a, parent)
+			lst, good := parse_inner_selector_list(trim_values(args[of_idx + 1:]), a, parent)
 			if !good { return {}, false }
 			s.list = new(Selector_List, a); s.list^ = lst
 		}

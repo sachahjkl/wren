@@ -622,3 +622,15 @@ counters_are_bounded :: proc(t: ^testing.T) {
 	defer unload(&g)
 	testing.expect(t, len(at(&g, "a").counter_reset) == 0 && len(at(&g, "b").counter_reset) == 3)
 }
+// Nested rules: the implicit `& ` is for the rule's own selectors, not for those inside :not() or :nth-child(of S)
+// (`&:not(:last-child)` matched the last child too); a `&` inside :is() counts as an explicit one.
+@(test)
+nesting_inside_pseudo_classes :: proc(t: ^testing.T) {
+	f := load(`<style>.x { &:not(:last-child) { color: red } &:nth-child(1 of .x) { margin-top: 3px } } .y { .z:is(&) { margin-left: 4px } }</style>
+<div><p class=x id=a>1</p><p class=x id=b>2</p></div><div class=y><p class="z" id=c>in</p></div><p class="y z" id=d>self</p>`)
+	defer unload(&f)
+	testing.expect(t, same_color(at(&f, "a").color, {1, 0, 0, 1}), "the first is not the last child")
+	testing.expect(t, !same_color(at(&f, "b").color, {1, 0, 0, 1}), "the last child is the last child")
+	testing.expectf(t, at(&f, "a").margin[.Top].v == 3 && at(&f, "b").margin[.Top].v != 3, "1 of .x: %v %v", at(&f, "a").margin[.Top], at(&f, "b").margin[.Top])
+	testing.expect(t, at(&f, "d").margin[.Left].v == 4 && at(&f, "c").margin[.Left].v == 0, ".z:is(&) is .z.y, not .y .z.y")
+}
