@@ -545,6 +545,12 @@ emit :: proc(re: ^Regex, n: ^Node, limit: int) -> bool {
 		for j in jumps { re.insts[j].x = len(re.insts) }
 	case .Repeat:
 		e := n.children[0]
+		// a body that emits nothing (`(?:)`, `a{0}`) never grows the program, so the size limit could not stop
+		// `(?:(?:){16777216}){16777216}` from looping 2^48 times: repeated, it is still nothing
+		probe := len(re.insts)
+		if !emit(re, e, limit) { return false }
+		if len(re.insts) == probe { return true }
+		resize(&re.insts, probe)
 		for _ in 0 ..< n.min { if !emit(re, e, limit) { return false } }
 		if n.max < 0 {
 			// L1: split L2, L3; L2: e; jmp L1; L3:

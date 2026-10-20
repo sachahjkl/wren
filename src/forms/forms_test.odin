@@ -273,6 +273,17 @@ pattern_engine :: proc(t: ^testing.T) {
 		regex_destroy(re)
 	}
 	testing.expect(t, regex_compile(`a{1000}{1000}`, 10_000) == nil, "program size is capped")
+	// zero-width bodies repeated an enormous number of times compile at once (the size cap never saw them grow)
+	zero_width := [?]struct { pat, s: string }{{`(?:(?:){16777216}){16777216}`, ""}, {`(?:a{0}){16777216}x`, "x"}, {`(?:(?:(?:){99999999}){99999999})*y`, "y"}}
+	for zw in zero_width {
+		re := regex_compile(zw.pat, 10_000)
+		testing.expect(t, re != nil, zw.pat)
+		if re != nil {
+			m, ok := regex_full_match(re, zw.s, 1_000_000)
+			testing.expect(t, ok && m, zw.pat)
+		}
+		regex_destroy(re)
+	}
 }
 
 ////////////////////////////////
