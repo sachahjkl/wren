@@ -265,8 +265,10 @@ hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
 		if sp.clip != NONE && !rect_contains(v.clips[sp.clip], p) { continue }
 		local, ok := view_to_local(l, &v, i32(i), p)
 		if !ok { continue }
-		b := int((local.y - sp.band0) / sp.band_h)
-		if local.y < sp.band0 || b >= int(sp.band_count) { continue }
+		// in f32 first: a point mapped through an extreme transform can be huge or NaN, which int() turns negative
+		fb := (local.y - sp.band0) / sp.band_h
+		if !(fb >= 0 && fb < f32(sp.band_count)) { continue }
+		b := int(fb)
 		g := int(sp.band_first) + b
 		list := l.band_items[l.band_start[g]:l.band_start[g + 1]]
 		for k := len(list) - 1; k >= 0; k -= 1 {

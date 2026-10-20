@@ -266,3 +266,19 @@ transform_refresh_path :: proc(t: ^testing.T) {
 	f.set.paint_refresh = true
 	testing.expect(t, f.l.last_pass == .Full)
 }
+
+// Extreme matrices: a near-singular inverse maps points to huge coordinates, overflowing ones give infinities. Hit
+// testing, wheel scrolling and selection must skip them, not index the spatial index with int(NaN).
+@(test)
+extreme_matrices_hit_nothing :: proc(t: ^testing.T) {
+	for tr in ([]string{"matrix(1e20,0,0,1e-20,0,0)", "matrix(1e39,0,0,1,0,0)", "matrix(1e15,0,0,1e15,0,0) matrix(1e15,0,0,1e15,0,0) matrix(1e15,1,1,1e15,0,0)", "scale(1e-30)"}) {
+		f := tx_load(fmt.tprintf(`<body style="margin:0"><div style="transform:%s;height:300px">text <b>bold</b></div><p>below</p></body>`, tr))
+		defer tx_unload(f)
+		for y in ([]f32{0, 5, 150, 299, 400, 599}) {
+			for x in ([]f32{0, 10, 400, 799}) {
+				_ = hit_test(&f.l, {x, y}, f.vp, 0)
+				_ = scroll_wheel(&f.l, {x, y}, {0, 40}, f.vp, 0)
+			}
+		}
+	}
+}
