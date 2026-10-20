@@ -130,6 +130,7 @@ parse_media_condition :: proc(cond: []Value, a: Arena_Alloc) -> (c: Media_Condit
 	}
 	kids := make([dynamic]Media_Condition, a)
 	op := Media_Condition{kind = .And}
+	saw_op := false   // and / or may not mix without parentheses (MQ4): such a condition is invalid
 	i := 0
 	for i < len(vs) {
 		for i < len(vs) && is_ws_value(vs[i]) { i += 1 }
@@ -143,7 +144,10 @@ parse_media_condition :: proc(cond: []Value, a: Arena_Alloc) -> (c: Media_Condit
 		if i < len(vs) {
 			if vs[i].kind != .Token || vs[i].tok.kind != .Ident { return {}, false }
 			w := strings.to_lower(vs[i].tok.text, context.temp_allocator)
-			if w == "and" { op.kind = .And } else if w == "or" { op.kind = .Or } else { return {}, false }
+			kind := op.kind
+			if w == "and" { kind = .And } else if w == "or" { kind = .Or } else { return {}, false }
+			if saw_op && kind != op.kind { return {}, false }
+			op.kind, saw_op = kind, true
 			i += 1
 		}
 	}
@@ -412,7 +416,7 @@ eval_feature :: proc(c: Media_Condition, env: Media_Env) -> Tri {
 	case .Color: numeric, is_num = f64(env.color_bits / 3), true
 	case .Monochrome: numeric, is_num = 0, true
 	case .Orientation:
-		cur := env.width >= env.height ? "landscape" : "portrait"
+		cur := env.width > env.height ? "landscape" : "portrait"   // portrait when the height is at least the width (MQ4)
 		if c.boolean { return .True }
 		return c.ident == cur ? .True : .False
 	case .Prefers_Color_Scheme:

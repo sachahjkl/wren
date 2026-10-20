@@ -274,6 +274,14 @@ media_queries :: proc(t: ^testing.T) {
 	testing.expect(t, !mq("not (unknown-feature: 1)", env), "...and so is their negation: unknown, not true")
 	testing.expect(t, !mq("(min-width: )", env), "a malformed query is 'not all'")
 	testing.expect(t, mq("(scripting: none)", env), "there is no scripting engine")
+	testing.expect(t, !mq("(min-width: 100px) and (max-width: 200px) or (min-width: 900px)", env), "and / or mixed without parentheses: invalid")
+	testing.expect(t, mq("((min-width: 100px) and (max-width: 200px)) or (min-width: 900px)", env))
+	square := env
+	square.height = square.width
+	testing.expect(t, mq("(orientation: portrait)", square) && !mq("(orientation: landscape)", square), "a square viewport is portrait")
+	s := parse_stylesheet("@import url( \"a.css\" ); @import url(\"b.css\") screen;", OPT)
+	defer { stylesheet_destroy(s); free(s) }
+	testing.expect(t, len(s.rules) == 2 && s.rules[0].url == "a.css" && s.rules[1].url == "b.css", "@import url( \"x\" ) with spaces")
 }
 
 @(private = "file")
