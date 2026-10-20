@@ -378,6 +378,13 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 		h = max(h, c.vp.y - root.margin[0] - root.margin[2] - pb_h(root) - b.margin[0] - b.margin[2])
 	}
 	b.size = {w, h}
+	// a table cell's content height, for vertical-align in its row (layout_table): its specified height is not content
+	if b.kind == .Cell { b.tmp = content_h }
+	// a <button>'s content is centered in a taller button (HTML §15.5.x button layout: the anonymous button content box
+	// is centered in the block axis when it does not overflow; Blink centers it the same way)
+	if .Control in b.flags && b.kind == .Block {
+		if free := h - pb_h(b) - content_h; free > 0.01 { shift_contents(c, bi, free * 0.5) }
+	}
 	if .List_Item in b.flags && b.marker_w != 0 { place_marker(c, bi) }
 	if b.abs_first != NONE { if b.kind == .Grid { grid_abs(c, bi) } else { layout_abs_list(c, bi) } }
 	if .Ifc in b.flags && !pre_no_inline_abs(c, bi) { layout_inline_abs(c, bi) }
@@ -641,7 +648,10 @@ place_marker :: proc(c: ^Ctx, bi: i32) {
 	b = &c.l.boxes[bi]
 	gap := c.set.marker_gap * fi.size
 	base, ok := first_baseline_in(c, bi)
-	if !ok { base = content_y(b) + (fi.line_h - (fi.ascent + fi.descent)) * 0.5 + fi.ascent }
+	if !ok {
+		ht, _ := half_leading(c, fi)
+		base = content_y(b) + ht + fi.ascent
+	}
 	b.marker_w = mw
 	if is_rtl(b.cs) {
 		b.marker_pos = {b.size.x - b.border[1] - b.padding[1] + gap, base}

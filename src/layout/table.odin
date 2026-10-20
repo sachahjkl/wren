@@ -410,12 +410,15 @@ layout_table :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32) -> f32 {
 		if h, ok := definite(c, rb.cs.height, -1); ok { heights[i] = h }
 	}
 	cell_h := make([]f32, len(g.cells), context.temp_allocator)
+	cell_content := make([]f32, len(g.cells), context.temp_allocator)   // what vertical-align moves: without the specified height
 	for &gc, i in g.cells {
 		end := min(int(gc.col + gc.cs), n)
 		cwid := col_x[end] - sh - col_x[gc.col]
 		resolve_cell(c, gc.box, cw, collapse)
 		r := layout_contents(c, gc.box, max(cwid, 0), -1, -1, nil)
 		cell_h[i] = r.h
+		k := &c.l.boxes[gc.box]
+		cell_content[i] = min(k.tmp + pb_h(k), r.h)
 		if gc.rs == 1 { heights[gc.row] = max(heights[gc.row], r.h) }
 	}
 	for &gc, i in g.cells {
@@ -469,7 +472,7 @@ layout_table :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32) -> f32 {
 		k := &c.l.boxes[gc.box]
 		span_h := row_y[gc.row + gc.rs - 1] + heights[gc.row + gc.rs - 1] - row_y[gc.row]
 		k.pos = {col_x[gc.col] - cx, 0}
-		content := cell_h[i]
+		content := cell_content[i]
 		k.size.y = span_h
 		k.cache_ok = false
 		dy: f32

@@ -45,6 +45,7 @@ Painted :: struct {
 	inv:     draw.Affine,   // screen -> that space: pointer positions go through it before meeting `content`
 	size:    f32,           // font size, physical pixels
 	font:    font.Font_Id,
+	line_h:  f32,           // the control's line-height, physical pixels (0: normal)
 	frame:   u64,
 }
 
@@ -378,8 +379,10 @@ layout_field :: proc(app: ^App, f: ^forms.Forms, h: base.Handle, pt: Painted) ->
 	if multiline {
 		origin = {pt.content.min.x - sc.x, pt.content.min.y - sc.y}
 	} else {
-		ch := pt.content.max.y - pt.content.min.y
-		origin = {pt.content.min.x - sc.x, pt.content.min.y + (ch - ft.line_h) * 0.5}
+		// the line's own box (ft.line_h) is placed so that the text lands on the baseline the layout gave the field
+		m := font.metrics(&app.fonts, pt.font, pt.size)
+		base := control_text_baseline(m, pt.line_h, pt.content.min.y, pt.content.max.y - pt.content.min.y)
+		origin = {pt.content.min.x - sc.x, base - m.ascent - (ft.line_h - (m.ascent + m.descent)) * 0.5}
 	}
 	return
 }
@@ -452,12 +455,25 @@ button_label :: proc(f: ^forms.Forms, h: base.Handle) -> string {
 }
 
 @(private = "file")
-centered_text :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, size: f32, r: draw.Rect, color: draw.Color, s: string, align_center := true) {
+centered_text :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, size: f32, r: draw.Rect, color: draw.Color, s: string, align_center := true, line_h: f32 = 0) {
 	m := font.metrics(fonts, fid, size)
 	w := font.text_width(fonts, fid, size, s)
 	x := align_center ? (r.min.x + r.max.x - w) * 0.5 : r.min.x
-	baseline := (r.min.y + r.max.y - (m.ascent + m.descent)) * 0.5 + m.ascent
-	draw.text(dc, fid, size, {x, baseline}, color, s)
+	draw.text(dc, fid, size, {x, control_text_baseline(m, line_h, r.min.y, r.max.y - r.min.y)}, color, s)
+}
+
+// The baseline of a line of text centered in [top, top + h], where the layout puts a control's text (layout
+// control_baseline): the line box of `line_h` (0: line-height normal) centered, the text in it as in any line, with the
+// metrics rounded as layout.text.round_font_metrics says.
+@(private = "file")
+control_text_baseline :: proc(m: font.Metrics, line_h, top, h: f32) -> f32 {
+	a, d, gap := m.ascent, m.descent, m.line_gap
+	round := page_render.settings.round_metrics
+	if round { a, d, gap = math.round(a), math.round(d), math.round(gap) }
+	lh := line_h > 0 ? line_h : round ? a + d + gap : m.line_height
+	ht := (lh - (a + d)) * 0.5
+	if round { ht = math.floor(ht) }
+	return top + (h - lh) * 0.5 + ht + a
 }
 
 // A check mark made of small squares along two strokes (the renderer only draws axis-aligned rects).
@@ -512,7 +528,13 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 	pal := control_palette(cs)
 	xf := draw.current_transform(dc)
 	inv, _ := draw.affine_inverse(xf)
-	pt := Painted{content = content, xform = xf, inv = inv, size = size, font = fid, frame = fview.frame}
+	lh: f32
+	switch cs.line_height.kind {
+	case .Normal:
+	case .Number: lh = size * cs.line_height.v
+	case .Length: lh = cs.line_height.v * scale
+	}
+	pt := Painted{content = content, xform = xf, inv = inv, size = size, font = fid, line_h = lh, frame = fview.frame}
 	if fview.page_id != f.id { clear(&fview.painted); clear(&fview.scroll); fview.page_id = f.id }
 	fview.painted[node] = pt
 	focused := f.focus == node && fview.page_focus
@@ -545,7 +567,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 			}
 			if focused { draw.rect(dc, draw.rect_pad(r, 2 * scale), pal.focus_ring, radius + 2 * scale, max(scale, 1)) }
 		case .Submit, .Reset, .Button, .Image:
-			centered_text(dc, fonts, fid, size, content, fg, button_label(f, node))
+			centered_text(dc, fonts, fid, size, content, fg, button_label(f, node), line_h = lh)
 		case .Range:
 			lim := forms.limits(f, n, .Range)
 			v := forms.value_as_number(f, node)
@@ -572,12 +594,12 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 			b := draw.Rect{content.min, {content.min.x + bw, content.max.y}}
 			draw.rect(dc, b, pal.face, 3 * scale)
 			draw.rect(dc, b, pal.border, 3 * scale, max(scale, 1))
-			centered_text(dc, fonts, fid, size, b, pal.face_text, label)
+			centered_text(dc, fonts, fid, size, b, pal.face_text, label, line_h = lh)
 			fl := forms.files(f, node)
 			names := "No file chosen"
 			if len(fl) == 1 { names = fl[0].name } else if len(fl) > 1 { names = strings.concatenate({itoa(len(fl)), " files"}, context.temp_allocator) }
 			draw.push_clip(dc, {{b.max.x + 6 * scale, content.min.y}, content.max})
-			centered_text(dc, fonts, fid, size, {{b.max.x + 6 * scale, content.min.y}, content.max}, fg, names, false)
+			centered_text(dc, fonts, fid, size, {{b.max.x + 6 * scale, content.min.y}, content.max}, fg, names, false, lh)
 			draw.pop_clip(dc)
 			if focused { draw.rect(dc, draw.rect_pad(b, 2 * scale), pal.focus_ring, 4 * scale, max(scale, 1)) }
 		case:
@@ -591,7 +613,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 			for o in forms.select_options_synced(f, node) { if forms.option_selected(f, o) { label = forms.option_label(f, o); break } }
 			arrow_w := size * 1.2
 			draw.push_clip(dc, {content.min, {content.max.x - arrow_w, content.max.y}})
-			centered_text(dc, fonts, fid, size, content, fg, label, false)
+			centered_text(dc, fonts, fid, size, content, fg, label, false, lh)
 			draw.pop_clip(dc)
 			// a small down-pointing triangle from shrinking bars
 			cx := content.max.x - arrow_w * 0.5
@@ -608,7 +630,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 			paint_list_box(app, dc, fonts, fid, f, node, pt, fg, focused, &pal)
 		}
 	case .Button:
-		centered_text(dc, fonts, fid, size, content, fg, button_label(f, node))
+		centered_text(dc, fonts, fid, size, content, fg, button_label(f, node), line_h = lh)
 	case .None, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Label, .Object, .Datalist, .Dialog:
 	}
 }

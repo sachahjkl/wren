@@ -178,9 +178,9 @@ inline_block_and_vertical_align :: proc(t: ^testing.T) {
 	// top: the box hangs from the line top; the line is as tall as the box
 	expect_rect(t, f, "d3", 0, 62, 800, 92)
 	expect_rect(t, f, "ib3", 0, 62, 20, 92)
-	// super raises by 0.34 em of the parent: the line grows from -8..2 to -11.4..2
+	// super raises by a third of the parent's em + 1 device px (Chromium): the line grows from -8..2 to -12.33..2
 	sup, d4 := rect(f, "sup"), rect(f, "d4")
-	testing.expect(t, near(sup.min.y, d4.min.y) && near(d4.max.y - d4.min.y, 13.4), "superscript is raised")
+	testing.expect(t, near(sup.min.y, d4.min.y) && near(d4.max.y - d4.min.y, 10.0 / 3 + 1 + 10), "superscript is raised")
 	// inline-block with text: its baseline is its last line's
 	d5 := rect(f, "d5")
 	ib5 := rect(f, "ib5")
