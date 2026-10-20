@@ -562,3 +562,13 @@ restyle_state_root_font :: proc(t: ^testing.T) {
 		testing.expect(t, at(&f, "p").width.v == (st.hover != {} ? 20 : 16), "rem follows the root")
 	}
 }
+// overflow-x: clip alone does not make a scroll container (CSS Overflow 3 §3.1: visible / clip pair up).
+@(test)
+overflow_clip_pairs :: proc(t: ^testing.T) {
+	f := load(`<div id=a style="overflow-x:clip"></div><div id=b style="overflow:clip scroll"></div><div id=c style="overflow-x:hidden"></div><div id=d style="overflow-y:clip;overflow-x:visible"></div>`)
+	defer unload(&f)
+	testing.expect(t, at(&f, "a").overflow_x == .Clip && at(&f, "a").overflow_y == .Visible)
+	testing.expect(t, at(&f, "b").overflow_x == .Hidden && at(&f, "b").overflow_y == .Scroll)
+	testing.expect(t, at(&f, "c").overflow_x == .Hidden && at(&f, "c").overflow_y == .Auto)
+	testing.expect(t, at(&f, "d").overflow_x == .Visible && at(&f, "d").overflow_y == .Clip)
+}

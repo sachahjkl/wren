@@ -659,8 +659,12 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	case .Inline_Size: c.contain += {.Inline_Size, .Layout, .Style}
 	}
 	if c.position == .Absolute || c.position == .Fixed || c.float != .None { c.display = blockify(c.display) }
-	if (c.overflow_x == .Visible) != (c.overflow_y == .Visible) {
-		if c.overflow_x == .Visible { c.overflow_x = .Auto } else { c.overflow_y = .Auto }
+	// CSS Overflow 3 §3.1: visible / clip become auto / hidden only when the other axis is neither (overflow-x: clip
+	// alone made the box a scroll container, and broke position: sticky inside it)
+	vis_or_clip :: #force_inline proc(o: Overflow) -> bool { return o == .Visible || o == .Clip }
+	if vis_or_clip(c.overflow_x) != vis_or_clip(c.overflow_y) {
+		o := vis_or_clip(c.overflow_x) ? &c.overflow_x : &c.overflow_y
+		o^ = o^ == .Visible ? .Auto : .Hidden
 	}
 }
 
