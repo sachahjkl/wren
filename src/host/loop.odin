@@ -50,7 +50,13 @@ Loop :: struct {
 
 	timers:     base.Pool(Timer),
 	queue:      priority_queue.Priority_Queue(Timer_Entry),
+	// Longest a turn keeps running due timers once one has run (ns; 0: all of them). The rest run at the next turn, so the
+	// shell can draw and read input between them even when a page floods the loop with timers. browser.loop.timer_slice_ms
+	timer_slice_ns: i64,
 }
+
+// Default of Loop.timer_slice_ns (the browser sets it from browser.loop.timer_slice_ms).
+DEFAULT_TIMER_SLICE_NS :: 8_000_000
 
 // `wake` may be nil: the loop then wakes `loop_wait` only.
 loop_init :: proc(l: ^Loop, wake: proc(user: rawptr) = nil, wake_user: rawptr = nil) {
@@ -60,6 +66,7 @@ loop_init :: proc(l: ^Loop, wake: proc(user: rawptr) = nil, wake_user: rawptr = 
 	l.scratch = make([dynamic]Task, runtime.heap_allocator())
 	l.wake = wake
 	l.wake_user = wake_user
+	l.timer_slice_ns = DEFAULT_TIMER_SLICE_NS
 	priority_queue.init(&l.queue, proc(a, b: Timer_Entry) -> bool { return a.deadline < b.deadline }, priority_queue.default_swap_proc(Timer_Entry))
 }
 
@@ -160,9 +167,12 @@ run_ready :: proc(l: ^Loop) -> int {
 	clear(&l.scratch)
 
 	cutoff := now_ns(l)
+	timers_ran := 0
 	for priority_queue.len(l.queue) > 0 {
 		e := priority_queue.peek(l.queue)
 		if e.deadline > cutoff { break }
+		// time slice used up: the timers still due run at the next turn (next_timeout_ms is then 0)
+		if timers_ran > 0 && l.timer_slice_ns > 0 && now_ns(l) - cutoff >= l.timer_slice_ns { signal(l); break }
 		priority_queue.pop(&l.queue)
 		t := base.pool_get(&l.timers, e.handle)
 		if t == nil || t.deadline != e.deadline { continue }
@@ -177,6 +187,7 @@ run_ready :: proc(l: ^Loop) -> int {
 		}
 		fn(data)
 		ran += 1
+		timers_ran += 1
 	}
 	return ran
 }

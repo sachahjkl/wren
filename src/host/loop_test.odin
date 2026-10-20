@@ -152,3 +152,31 @@ posts_from_many_threads_are_all_delivered_and_wakes_coalesce :: proc(t: ^testing
 	run_ready(&l)
 	testing.expect_value(t, c.n, THREADS * PER)
 }
+
+// Many due timers that take time: one turn stops at the time slice, the rest run at the next turns (none is lost).
+@(test)
+timer_slice_bounds_a_turn :: proc(t: ^testing.T) {
+	l: Loop
+	loop_init(&l)
+	defer loop_destroy(&l)
+	l.timer_slice_ns = 2_000_000
+	slow :: proc(data: rawptr) {   // busy for 0.5 ms (Sleep cannot wait less than a millisecond)
+		c := (^Counter)(data); c.n += 1
+		start := time.tick_now()
+		for time.tick_since(start) < 500 * time.Microsecond {}
+	}
+	c: Counter
+	for _ in 0 ..< 100 { set_timer(&l, 0, 0, slow, &c) }
+	time.sleep(time.Millisecond)
+	first := run_ready(&l)
+	testing.expectf(t, first > 0 && first < 100, "one turn ran %d of 100 timers", first)
+	testing.expect_value(t, next_timeout_ms(&l), 0)   // the rest are due now
+	for _ in 0 ..< 1000 { if c.n == 100 { break }; run_ready(&l) }
+	testing.expect_value(t, c.n, 100)
+	// slice 0: every due timer in one turn
+	l.timer_slice_ns = 0
+	c.n = 0
+	for _ in 0 ..< 20 { set_timer(&l, 0, 0, slow, &c) }
+	time.sleep(time.Millisecond)
+	testing.expect_value(t, run_ready(&l), 20)
+}

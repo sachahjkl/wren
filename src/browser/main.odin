@@ -864,6 +864,7 @@ apply_prefs :: proc(app: ^App) {
 	delete(app.cfg.homepage)
 	delete(app.cfg.ui_theme)
 	app.cfg = settings_from_prefs(&app.prefs)
+	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	arm_autosave(app)
 	app.frames_requested = max(app.frames_requested, 3)
 }
@@ -1010,6 +1011,7 @@ main :: proc() {
 	prof_mark(.Window)
 
 	host.loop_init(&app.loop, wake_window, app.win)
+	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	appearance_init(app)   // before any settings are derived: `system` colors, auto color scheme
 	ns := net.settings_from_prefs(&app.prefs)
 	if !net.client_init(&app.client, &app.loop, ns) { fmt.eprintln("network init failed"); return }
