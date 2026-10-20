@@ -158,6 +158,10 @@ consume_number :: proc(l: ^Lexer) -> (v: f64, is_int: bool, signed: bool) {
 	}
 	if strings.has_prefix(s, "+") { s = s[1:] }
 	v, _ = strconv.parse_f64(s)
+	// beyond what any length, count or index can mean: an overflow (1e999 parses as an infinity) or a huge integer
+	// would give infinities and NaN in later f32 arithmetic and out-of-range int() conversions (z-index:
+	// 99999999999999999999 became negative); such numbers are saturated at the value `infinity` has in calc()
+	if !(abs(v) <= CALC_INFINITY) { v = v < 0 ? -CALC_INFINITY : CALC_INFINITY }
 	return
 }
 
