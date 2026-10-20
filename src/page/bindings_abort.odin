@@ -198,7 +198,16 @@ AbortSignal_any :: proc(c: ^Call, signals: []u64) -> (u64, Api_Error) {
 	add_source :: proc(p: ^Page, res: ^Abort_Signal, h, src_h: u64) {
 		for s in res.sources { if s == src_h { return } }
 		append(&res.sources, src_h)
-		if src := signal_get(p, src_h); src != nil { append(&src.dependents, h) }
+		if src := signal_get(p, src_h); src != nil {
+			// dependents released since are dropped before the list grows: any() in a loop on one long-lived signal
+			// (a page's own controller) must not grow it forever
+			if len(src.dependents) == cap(src.dependents) {
+				w := 0
+				for d in src.dependents { if signal_get(p, d) != nil { src.dependents[w] = d; w += 1 } }
+				resize(&src.dependents, w)
+			}
+			append(&src.dependents, h)
+		}
 	}
 	for sh in signals {
 		src := signal_get(p, sh)

@@ -34,6 +34,8 @@ direct_call :: proc(user: rawptr, inst: ^wasm.Instance, name: cstring, argv: []u
 
 // Copies `data` (plus a NUL when `nul`) into the engine's memory; free with guest_free. 0 when it cannot.
 guest_copy :: proc(inst: ^wasm.Instance, data: []byte, nul := true) -> u32 {
+	// wj_alloc takes an i32: what does not fit (2 GiB and more) cannot be copied in
+	if i64(len(data)) + 1 > i64(max(i32)) { return 0 }
 	n := u32(len(data)) + (nul ? 1 : 0)
 	r, res := wasm.call_i32(inst, "wj_alloc", i32(n))
 	if res != .Ok || r == 0 { return 0 }

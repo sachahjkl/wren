@@ -1,5 +1,6 @@
 package host
 
+import "core:sync"
 import "core:testing"
 
 @(private = "file")
@@ -49,4 +50,24 @@ posts_from_many_threads_all_arrive :: proc(t: ^testing.T) {
 	for f.received < THREADS * EACH { loop_wait(&l, 100) }
 	for th in threads { thread_join(th) }
 	testing.expect_value(t, f.received, THREADS * EACH)
+}
+
+@(private = "file")
+Round :: struct { hits: [64]i32 }
+
+// Rounds back to back with different counts: every item of every round runs exactly once (a helper still leaving a
+// round must not take an index of the next one before its counters are reset).
+@(test)
+parallel_for_rounds_back_to_back :: proc(t: ^testing.T) {
+	pool := thread_pool_make(4)
+	defer thread_pool_destroy(pool)
+	for round in 0 ..< 3000 {
+		r: Round
+		count := 1 + (round * 7) % len(r.hits)
+		parallel_for(pool, count, proc(data: rawptr, i: int) { sync.atomic_add(&(^Round)(data).hits[i], 1) }, &r)
+		for i in 0 ..< len(r.hits) {
+			want := i32(i < count ? 1 : 0)
+			if r.hits[i] != want { testing.expectf(t, false, "round %d item %d ran %d times (count %d)", round, i, r.hits[i], count); return }
+		}
+	}
 }

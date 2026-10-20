@@ -66,7 +66,9 @@ storage_manager_init :: proc(m: ^Storage_Manager, loop: ^host.Loop, blocking: ^h
 // Writes what is not saved yet (synchronously) and frees everything. Pages using the manager must be closed first.
 storage_manager_destroy :: proc(m: ^Storage_Manager) {
 	if !m.ready { return }
-	storage_flush(m, sync_write = true)
+	// a background write still queued may never run (the blocking pool drops what it has not started when it stops):
+	// every area it could be writing is written again here, the commit gate keeps the newest
+	storage_flush(m, sync_write = true, all = m.pending > 0)
 	if m.write_timer != base.NIL_HANDLE { host.clear_timer(m.loop, m.write_timer) }
 	for _, a in m.areas { area_free(a) }
 	delete(m.areas)
@@ -74,11 +76,11 @@ storage_manager_destroy :: proc(m: ^Storage_Manager) {
 	m^ = {}
 }
 
-// Writes every dirty localStorage area now (on the blocking pool unless `sync_write`).
-storage_flush :: proc(m: ^Storage_Manager, sync_write := false) {
+// Writes every dirty localStorage area now (on the blocking pool unless `sync_write`; every one with `all`).
+storage_flush :: proc(m: ^Storage_Manager, sync_write := false, all := false) {
 	if m.dir == "" { return }
 	for _, a in m.areas {
-		if a.kind != .Local || !a.dirty { continue }
+		if a.kind != .Local || !(a.dirty || (all && a.state == .Loaded)) { continue }
 		a.dirty = false
 		area_write(m, a, sync_write)
 	}

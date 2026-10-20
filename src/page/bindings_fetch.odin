@@ -252,7 +252,7 @@ fetch_settle_body :: proc(p: ^Page, f: ^Fetch) {
 	case .Buffer:
 		body := f.body
 		f.body = {}
-		promise_resolve(p, bp, i64(buffer_adopt_counted(p, body, e.body_owner)))
+		promise_resolve_object(p, bp, buffer_adopt_counted(p, body, e.body_owner))
 	}
 }
 
@@ -287,7 +287,7 @@ stream_pump :: proc(p: ^Page, s: ^Body_Stream) {
 			ordered_remove(&s.reads, 0)
 			chunk := s.pending
 			s.pending = {}
-			promise_resolve(p, r, i64(buffer_adopt_counted(p, chunk, s.owner)))
+			promise_resolve_object(p, r, buffer_adopt_counted(p, chunk, s.owner))
 			continue
 		}
 		if s.failed {

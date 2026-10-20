@@ -285,9 +285,18 @@ Fetch_startFormData :: proc(c: ^Call, target: string, data: Api_FormData, callba
 	for e in fd.entries { append(&job.sub.entries, forms.entry_clone(e)) }
 	job.target, job.method, job.headers, job.options = strings.clone(abs), strings.clone(method), strings.clone(headers), fetch_options_pack(options)
 
-	if !forms.needs_file_reads(job.sub.entries[:]) {
+	if p.loader == nil {   // a worker's requests go through its page, which this API does not relay
+		job.ok, job.message = false, strings.clone("FormData bodies cannot be sent from a worker")
+	} else if !forms.needs_file_reads(job.sub.entries[:]) {
 		body_job_work(job)
-		body_job_finish(job)
+	}
+	if p.loader == nil || !forms.needs_file_reads(job.sub.entries[:]) {
+		// finished in a task of its own: a failure calls the guest back, never from inside this call
+		post_page_task(p, proc(pg: ^Page, data: rawptr) {
+			job := (^Body_Job)(data)
+			if pg == nil { job.cancelled = true }
+			body_job_finish(job)
+		}, job)
 		return u64(h)
 	}
 	job.cleanup = base.on_close(p.scope, proc(data: rawptr) { (^Body_Job)(data).cancelled = true }, job)

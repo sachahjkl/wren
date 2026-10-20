@@ -62,6 +62,14 @@ promise_settle :: proc(p: ^Page, h: u64, state: Promise_State, value: i64, text:
 }
 
 promise_resolve :: proc(p: ^Page, h: u64, value: i64, text := "") -> bool { return promise_settle(p, h, .Fulfilled, value, text) }
+
+// Resolves with an object made for the promise (a buffer): when the promise cannot take it (released, or settled by the
+// guest already) the object is released, not left counted against the page until it closes.
+promise_resolve_object :: proc(p: ^Page, h: u64, object: u64, text := "") -> bool {
+	if promise_resolve(p, h, i64(object), text) { return true }
+	object_release(p, object)
+	return false
+}
 promise_reject :: proc(p: ^Page, h: u64, code: i64, message: string) -> bool { return promise_settle(p, h, .Rejected, code, message) }
 
 @(private)
@@ -235,7 +243,16 @@ host_reactions_run :: proc(p: ^Page) {
 	for i < len(p.host_reactions) {
 		r := p.host_reactions[i]
 		pr := promise_get(p, r.promise)
-		if pr == nil { ordered_remove(&p.host_reactions, i); continue }
+		if pr == nil {
+			// released before it settled: the Promise.all can never be fulfilled, it is rejected (not left pending forever)
+			ordered_remove(&p.host_reactions, i)
+			if st := (^All_State)(object_data(p, r.state, &all_vt)); st != nil && !st.done {
+				st.done = true
+				promise_reject(p, st.target, i64(Api_Error.Invalid_Handle), "Promise.all: a promise was released before it settled")
+				object_release(p, r.state)
+			}
+			continue
+		}
 		if pr.state == .Pending { i += 1; continue }
 		ordered_remove(&p.host_reactions, i)
 		all_reaction(p, r.state, r.promise)
@@ -271,13 +288,13 @@ Buffer_length :: proc(c: ^Call, buffer: Api_Buffer) -> i64 { return i64(len(buff
 Buffer_read :: proc(c: ^Call, buffer: Api_Buffer, offset: i64, destination: []u8) -> i32 {
 	b := buffer.data
 	if offset < 0 || offset >= i64(len(b.bytes)) { return 0 }
-	return i32(copy(destination, b.bytes[offset:]))
+	return i32(copy(destination[:min(len(destination), int(max(i32)))], b.bytes[offset:]))   // the count must stay a positive i32
 }
 
 Buffer_write :: proc(c: ^Call, buffer: Api_Buffer, offset: i64, source: []u8) -> i32 {
 	b := buffer.data
 	if offset < 0 || offset >= i64(len(b.bytes)) { return 0 }
-	return i32(copy(b.bytes[offset:], source))
+	return i32(copy(b.bytes[offset:], source[:min(len(source), int(max(i32)))]))
 }
 
 Buffer_slice :: proc(c: ^Call, buffer: Api_Buffer, start, end: i64) -> (u64, Api_Error) {

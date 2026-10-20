@@ -186,7 +186,7 @@ Fetch_bodyLength :: proc(c: ^Call, request: Api_Fetch) -> u64 { return u64(len(r
 Fetch_readBody :: proc(c: ^Call, request: Api_Fetch, offset: u64, buffer: []u8) -> i32 {
 	f := request.data
 	if offset >= u64(len(f.body)) { return 0 }
-	return i32(copy(buffer, f.body[offset:]))
+	return i32(copy(buffer[:min(len(buffer), int(max(i32)))], f.body[offset:]))   // the count must stay a positive i32
 }
 
 Fetch_release :: proc(c: ^Call, request: Api_Fetch) -> Api_Error {
