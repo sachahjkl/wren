@@ -246,7 +246,7 @@ decoding_threads :: proc(t: ^testing.T) {
 	testing.expect(t, port != 0, "port")
 	blob := blob_make(read(t, "anim.gif"))
 	defer blob_release(blob)
-	// one thread: the first job may already run; the rest go by priority
+	// one thread: whichever job it takes first (it may start before every job is queued), the rest go by priority
 	for i in 0 ..< 6 { submit(port, job_make(.Decode, blob, opts(), priority = i32(i), tag = u64(i))) }
 	cancelled := job_make(.Decode, blob, opts(), priority = -5, tag = 99)
 	submit(port, cancelled)
@@ -256,7 +256,9 @@ decoding_threads :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(st.done), 6)
 	for j in st.done { testing.expect(t, j.err == .None && j.image != nil && len(j.image.frames) == 3, "decoded on a thread") }
 	if len(st.order) == 6 {
-		testing.expect(t, st.order[1] == 5 && st.order[2] == 4 && st.order[5] == 1 || st.order[0] == 5, fmt.tprintf("highest priority first (%v)", st.order))
+		descending := true
+		for i in 2 ..< len(st.order) { if st.order[i] > st.order[i - 1] { descending = false } }
+		testing.expect(t, descending, fmt.tprintf("highest priority first after the first job (%v)", st.order))
 	}
 	// a closed port gets nothing more, and its pending jobs are freed
 	for i in 0 ..< 4 { submit(port, job_make(.Probe, blob, opts(), tag = u64(10 + i))) }

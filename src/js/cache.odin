@@ -69,6 +69,7 @@ Cache :: struct {
 	qlock:     sync.Mutex,
 	qcond:     sync.Cond,
 	queue:     [dynamic]Write_Job,
+	writing:   int,   // jobs taken off the queue and not finished (under qlock)
 	stop:      bool,
 	writer:    ^thread.Thread,
 }
@@ -127,16 +128,15 @@ cache_stats :: proc() -> Cache_Stats {
 	return cache.stats
 }
 
-// Waits until the disk writer is idle (tests).
+// Waits until the disk writer is idle: nothing queued and nothing being written (tests).
 cache_flush :: proc() {
 	for {
 		sync.mutex_lock(&cache.qlock)
-		idle := len(cache.queue) == 0
+		idle := len(cache.queue) == 0 && cache.writing == 0
 		sync.mutex_unlock(&cache.qlock)
 		if idle { break }
 		time.sleep(time.Millisecond)
 	}
-	time.sleep(5 * time.Millisecond)
 }
 
 // Whether a script of this size is worth caching.
@@ -309,6 +309,7 @@ writer_main :: proc(_: rawptr) {
 			return
 		}
 		job := pop_front(&cache.queue)
+		cache.writing += 1
 		sync.mutex_unlock(&cache.qlock)
 		if disk_write(job) {
 			sync.mutex_lock(&cache.lock)
@@ -319,6 +320,9 @@ writer_main :: proc(_: rawptr) {
 		delete(job.path)
 		delete(job.payload)
 		free_all(context.temp_allocator)
+		sync.mutex_lock(&cache.qlock)
+		cache.writing -= 1   // after the stats: cache_flush returns once they are up to date
+		sync.mutex_unlock(&cache.qlock)
 	}
 }
 
