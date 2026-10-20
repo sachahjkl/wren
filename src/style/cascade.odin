@@ -187,7 +187,8 @@ style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
 @(private)
 Var_Env :: struct {
 	engine:   ^Engine,
-	alloc:    runtime.Allocator,
+	alloc:    runtime.Allocator,      // what outlives the element: resolved custom property texts
+	scratch:  runtime.Allocator,      // the token trees of substitution (nil: alloc), dropped after the element
 	// while custom properties of the element are being resolved:
 	pending:  map[string]Custom_Cand,
 	resolved: map[string]string,
@@ -265,7 +266,8 @@ var_lookup :: proc(env: ^Var_Env, name: string, depth: int) -> (string, bool) {
 substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, bool) {
 	s := &env.engine.settings
 	if depth > s.max_var_depth { return nil, false }
-	out := make([dynamic]css.Value, env.alloc)
+	sa := env.scratch.procedure != nil ? env.scratch : env.alloc
+	out := make([dynamic]css.Value, sa)
 	for v in vs {
 		switch v.kind {
 		case .Token: append(&out, v)
@@ -302,7 +304,7 @@ substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, 
 			if text, found := var_lookup(env, name, depth); found {
 				env.budget -= len(text)
 				if env.budget < 0 { return nil, false }
-				parsed := css.parse_component_values(text, parse_options(s), env.alloc)
+				parsed := css.parse_component_values(text, parse_options(s), sa)
 				sub, ok := substitute(env, parsed, depth + 1)
 				if !ok { return nil, false }
 				for p in css.trim_values(sub) { append(&out, p) }
@@ -332,6 +334,7 @@ Pass :: struct {
 	changed:  bool,            // ... and report whether some element really changed
 	layout_changed: bool,      // ... in a way that is not paint-only (paint_change.odin)
 	alloc:    runtime.Allocator,   // where computed styles go: the Styled's arena, or this thread's in a parallel pass
+	scratch:  virtual.Arena,       // what styling one element needs only while it runs (var() substitution: build_style)
 	stats:    Compile_Stats,   // merged into the engine by pass_destroy (on the thread that owns the engine)
 	counters: ^Counter_State,  // full pass: counters and quotes, resolved in tree order
 	unscoped: bool,            // partial restyle: a change reaches counters, the caller must do a full pass
@@ -458,7 +461,11 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	container_units(&cx.lc, parent != nil ? parent.containers : nil)
 
 	// custom properties (the maps exist only for elements that declare some)
-	env := Var_Env{engine = e, alloc = a, budget = e.settings.max_var_bytes, cx = &cx}
+	// one budget for every substitution of the element (custom properties and declarations): what var() may cost one
+	// element is bounded, whatever the number of its declarations; the token trees go to the pass's scratch arena
+	scratch := virtual.arena_temp_begin(&p.scratch)
+	defer virtual.arena_temp_end(scratch)
+	env := Var_Env{engine = e, alloc = a, scratch = virtual.arena_allocator(&p.scratch), budget = e.settings.max_var_bytes, cx = &cx}
 	env.parent = c.custom
 	// registered properties that do not inherit stop here: the map is copied without them
 	drops_noninherited := e.registered_noninherited > 0 && c.custom != nil && carries_noninherited(e, c.custom)
@@ -501,13 +508,12 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 			}
 			vals := cand.decl.value
 			if cand.decl.has_var {
-				env.budget = e.settings.max_var_bytes
 				sub, ok := substitute(&env, vals, 0)
 				if !ok { apply_unset(&cx, pr); break }
 				vals = sub
 			}
 			if cand.decl.short != .None {
-				longs, ok := expand_shorthand(cand.decl.short, vals, a)
+				longs, ok := expand_shorthand(cand.decl.short, vals, env.scratch)   // (short: only with var())
 				found := false
 				if ok { for l in longs { if l.prop == pr { vals = l.vals; found = true; break } } }
 				if !found { apply_unset(&cx, pr); break }
@@ -716,6 +722,7 @@ pass_destroy :: proc(p: ^Pass) {
 	match_ctx_destroy(&p.mc)
 	delete(p.touched)
 	for i in 0 ..< 4 { delete(p.lists[i]) }
+	virtual.arena_destroy(&p.scratch)
 	free(p)
 }
 

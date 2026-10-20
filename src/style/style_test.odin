@@ -255,6 +255,22 @@ var_expansion_is_bounded :: proc(t: ^testing.T) {
 	testing.expect(t, same_color(at(&f, "a").color, GREEN), "the document is still styled")
 }
 
+// A large custom property substituted by every element: the token trees of substitution are scratch memory of the
+// element, not part of the pass (each element kept ~100x the text: 200 elements of an 8 KB value were ~0.6 GB).
+@(test)
+var_substitution_memory_is_per_element :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, "<style>:root { --a: ")
+	for _ in 0 ..< 2_000 { strings.write_string(&sb, "a b ") }
+	strings.write_string(&sb, "; --c: green } * { color: var(--a); margin: var(--a); background-color: var(--c) }</style><body>")
+	for _ in 0 ..< 200 { strings.write_string(&sb, "<div class=d></div>") }
+	strings.write_string(&sb, "<p id=p></p></body>")
+	f := load(strings.to_string(sb))
+	defer unload(&f)
+	testing.expect(t, same_color(at(&f, "p").background_color, GREEN), "the document is styled")
+	testing.expectf(t, f.st.arena.total_used < 4 << 20, "%d bytes kept by the pass", f.st.arena.total_used)
+}
+
 @(test)
 selector_matching :: proc(t: ^testing.T) {
 	f := load(`<style>
