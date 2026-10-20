@@ -24,7 +24,8 @@ instantiated by Wasmtime once per realm (a page, a worker), its imports being th
 | `runtime/web*.c`, `promise.c`, `buffer.c` | the web APIs that are not the DOM (fetch, XMLHttpRequest, streams, URL, encoding, abort, Blob, storage, location/history, navigator, performance, crypto, matchMedia, sockets, messaging), on the helpers of `runtime/web.h`: browser promises as JavaScript promises (`wj_promise_from_host`), BufferSource read in place and browser buffers copied once, hidden state of the browser's events, pair iterators, tasks, pins |
 | `gen/` | generated, committed: `wren_api.h` (the browser's imports, from `api/*.widl`), `bindings.c/.h` (interface table, glue) |
 | `webref/` | the official Web IDL, vendored from `@webref/idl` (pinned: `VERSION`, `SHA256SUMS`, refreshed by `tools/update_webref.ps1`) |
-| `patches/` | patches to QuickJS-ng (GC prologue hook, Math.random reseed, array-index atoms, time zone from the host) |
+| `patches/` | patches to QuickJS-ng: 0001 GC prologue hook, Math.random reseed, array-index atoms, time zone from the host, fast C getters; 0002 module loading; 0003 dropping pending jobs (a microtask checkpoint stopped for running too long) and a floor for the collection threshold |
+| `prelude/*.js` | parts of the realm written in JavaScript, compiled into the image without their source: Intl (minimal), custom elements (the registry, upgrades, reactions), IntersectionObserver; each gets the natives it needs from a `__wren_*_host` object it deletes |
 
 Built by `tools/build_js.ps1` (called by `build.bat`): pinned zig 0.15.2 and QuickJS-ng 0.17.0 (SHA-256), `-O3 -flto
 -msimd128 -mbulk-memory`, then **pre-initialized** by `build\jsengine.exe snapshot` (src/wasm/preinit.odin, Wizer-like):
@@ -73,8 +74,8 @@ without a default; `wjd_<Name>_free`). Use them in hand-written members instead 
   returns its zero value instead of trapping. Never pass a pointer outside the engine's memory; keep scratch buffers
   valid across nested calls (`wj_scratch` may move when it grows: copy what you keep).
 * **Wrappers.** One JS object per node / host object (`wj_wrap_node`, `wj_wrap_host`, `wj_wrap_owned` for objects the
-  realm created and releases). A node wrapper pins its node (`Node_pin`): a pinned node is never freed by the
-  browser. Wrappers of one DOM tree keep each other alive (`qjs_platform.c`, GC prologue + `Node_treeRoots`). State
+  realm created and releases). A node wrapper pins its node (`Node_wrap`, which also gives its interface): a pinned node is never freed
+  by the browser. Wrappers of one DOM tree keep each other alive (`qjs_platform.c`, GC prologue + `Node_treeRoots`). State
   kept by a wrapper (listeners, `impl`, `[SameObject]` results) must be marked (`impl_mark`).
 * **Events** are dispatched by the browser (`src/dom/events.odin`); `runtime/events.c` registers JS listeners under
   slots and runs them from `wj_cb_listener`. Event objects created by scripts are dispatched with their identifier.
@@ -84,6 +85,10 @@ without a default; `wjd_<Name>_free`). Use them in hand-written members instead 
 
 ## Tools
 
-* `build\jsengine.exe run [-e code] [file.js]`: a realm without a page (console, errors); `bench <octane dir>`;
-  `startup` (realm creation time and memory); `snapshot` (build step).
+* `build\jsengine.exe run [-e code] [-profile out.json] [file.js]`: a realm without a page (console, errors);
+  `bench <octane dir>`; `startup` (realm creation time and memory); `snapshot` (build step).
+* Profiling the engine: `tools\build_js.ps1 -Names -Out build\js-prof` (an image that keeps its function names), then
+  `jsengine run -image build\js-prof\wren_js.wasm -profile p.json` or `jspage -image build\js-prof\wren_js.wasm -profile p.json <url>`,
+  and `tools\wasm_profile.ps1 p.json` (self and total time per function). Samples are taken at the engine's epoch
+  checks: time spent in the browser is counted to the engine function that resumes after the call.
 * `build\jstest.exe`: headless end-to-end tests of JavaScript in pages (`src/tools/jstest`).
