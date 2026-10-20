@@ -244,8 +244,7 @@ Inline_Item :: struct {
 	node:  base.Handle,             // Text: the element that owns it
 	source: base.Handle,            // Text: the DOM text node it shows (NIL: generated content, markers)
 	deco:  style.Decorations,       // Text: decorations of its ancestors up to the formatting context (CSS Text Decoration §2)
-	deco_color: css.Color,
-	deco_box: i32,                  // Text: the box the decoration color comes from (NONE: none)
+	deco_box: i32,                  // Text: the box the decoration color comes from (NONE: none; read when painted)
 	fb:      Fallback_State,        // Text: whether its text falls back to other faces than its font's first (line-height:
 	fb_font: Font,                  // normal counts them: used_fonts_extent), found for this font
 }
@@ -394,6 +393,7 @@ Layout :: struct {
 	lines:        [dynamic]Line,
 	frags:        [dynamic]Frag,
 	fonts:        [dynamic]Font_Info,
+	font_lookup:  map[Font_Key]i32,   // fonts by content (families hashed) across the partial passes since the last full one
 	items:        [dynamic]Display_Item,   // paint order
 	spaces:       [dynamic]Space,
 	clips:        [dynamic]Clip,

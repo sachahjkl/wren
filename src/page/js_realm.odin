@@ -14,8 +14,10 @@ package page
 //   * The instance is lenient: a host function given a dead handle answers with its zero value instead of trapping
 //     (a trap in the middle of the engine would leave its heap inconsistent).
 
+import "base:runtime"
 import "core:fmt"
 import "core:strings"
+import "core:sync"
 import "wb:base"
 import "wb:config"
 import "wb:dom"
@@ -47,20 +49,30 @@ js_on_realm: proc(p: ^Page, inst: ^wasm.Instance)
 // The engine image pages run.
 js_engine_image :: proc() -> []byte { return js_image_override != nil ? js_image_override : js_image.IMAGE }
 
-// The engine version of cache keys (the image's digest), computed once.
+@(private)
+js_engine_once: sync.Once
+
+// The engine's version and digest, computed once for the process: realms start on the interface thread and on worker
+// threads at the same time.
+@(private)
+js_engine_ids :: proc() {
+	sync.once_do(&js_engine_once, proc() {
+		js_engine_version = js.image_version(js_engine_image(), runtime.heap_allocator())
+		js_engine_digest, js_engine_digest_known = wasm.digest(js_engine_image())
+	})
+}
+
+// The engine version of cache keys (the image's digest).
 js_version :: proc() -> string {
-	if js_engine_version == "" { js_engine_version = js.image_version(js_engine_image(), context.allocator) }
+	js_engine_ids()
 	return js_engine_version
 }
 
-// The image's SHA-256, computed once: the module cache would hash its megabytes at each realm otherwise.
+// The image's SHA-256: the module cache would hash its megabytes at each realm otherwise.
 @(private)
 js_image_digest :: proc() -> ^wasm.Digest {
-	if !js_engine_digest_known {
-		js_engine_digest, js_engine_digest_known = wasm.digest(js_engine_image())
-		if !js_engine_digest_known { return nil }
-	}
-	return &js_engine_digest
+	js_engine_ids()
+	return js_engine_digest_known ? &js_engine_digest : nil
 }
 
 // Whether this page runs scripts (javascript.enabled, per site).
@@ -224,8 +236,10 @@ js_startup :: proc(prefs: ^config.Prefs, profile_dir: string) {
 js_shutdown :: proc() {
 	compile_shutdown()   // the compile threads first: they store into the cache (js_load_compile.odin)
 	js.cache_stop()
-	delete(js_engine_version)
+	delete(js_engine_version, runtime.heap_allocator())
 	js_engine_version = ""
+	js_engine_digest_known = false
+	js_engine_once = {}
 }
 
 // Shows the completion value of `source` in the console ("run JavaScript" from the tab's console).

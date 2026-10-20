@@ -160,7 +160,7 @@ digest_start :: proc(p: ^Page, owner: u32, alg_name: string, data: []byte) -> u6
 settle_digest :: proc(p: ^Page, pr: u64, owner: u32, d: []byte) {
 	b := buffer_create(p, d, owner)
 	if b == 0 { promise_reject(p, pr, WEB_ERR_QUOTA, "QuotaExceededError: page memory limit"); return }
-	promise_resolve(p, pr, i64(b))
+	promise_resolve_object(p, pr, b)
 }
 
 @(private)

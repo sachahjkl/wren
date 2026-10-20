@@ -35,6 +35,7 @@ Timer :: struct {
 
 Timer_Entry :: struct {
 	deadline: i64,
+	seq:      u64,   // creation order: ties run first-in first-out, and a turn never runs a timer created during it
 	handle:   base.Handle,
 }
 
@@ -50,10 +51,19 @@ Loop :: struct {
 
 	timers:     base.Pool(Timer),
 	queue:      priority_queue.Priority_Queue(Timer_Entry),
+	timer_seq:  u64,
 	// Longest a turn keeps running due timers once one has run (ns; 0: all of them). The rest run at the next turn, so the
 	// shell can draw and read input between them even when a page floods the loop with timers. browser.loop.timer_slice_ms
 	timer_slice_ns: i64,
+	stale:      int,   // queue entries of timers cleared before their deadline (dropped when they pile up: compact_timers)
+	// When set, the loop's clock (ns since origin) is read here instead of the monotonic clock: tests move time
+	// explicitly (atomically, any thread) instead of sleeping, so what they check does not depend on the machine's speed.
+	manual_ns: ^i64,
 }
+
+// Longest timer delay (ms, about 31 years): NaN, infinities and larger values are this (never, in practice); beyond,
+// the deadline in ns would overflow and a timer meant for never would fire at once.
+MAX_TIMER_MS :: 1e12
 
 // Default of Loop.timer_slice_ns (the browser sets it from browser.loop.timer_slice_ms).
 DEFAULT_TIMER_SLICE_NS :: 8_000_000
@@ -67,7 +77,7 @@ loop_init :: proc(l: ^Loop, wake: proc(user: rawptr) = nil, wake_user: rawptr = 
 	l.wake = wake
 	l.wake_user = wake_user
 	l.timer_slice_ns = DEFAULT_TIMER_SLICE_NS
-	priority_queue.init(&l.queue, proc(a, b: Timer_Entry) -> bool { return a.deadline < b.deadline }, priority_queue.default_swap_proc(Timer_Entry))
+	priority_queue.init(&l.queue, proc(a, b: Timer_Entry) -> bool { return a.deadline < b.deadline || (a.deadline == b.deadline && a.seq < b.seq) }, priority_queue.default_swap_proc(Timer_Entry))
 }
 
 loop_destroy :: proc(l: ^Loop) {
@@ -78,6 +88,7 @@ loop_destroy :: proc(l: ^Loop) {
 }
 
 now_ns :: proc(l: ^Loop) -> i64 {
+	if l.manual_ns != nil { return sync.atomic_load(l.manual_ns) }
 	return i64(time.tick_diff(l.origin, time.tick_now()))
 }
 
@@ -101,14 +112,21 @@ signal :: proc(l: ^Loop) {
 set_timer :: proc(l: ^Loop, delay_ms: f64, interval_ms: f64, fn: Task_Proc, data: rawptr, scope: ^base.Scope = nil) -> base.Handle {
 	t := Timer{
 		fn = fn, data = data,
-		deadline = now_ns(l) + i64(max(delay_ms, 0) * 1e6),
-		interval = i64(max(interval_ms, 0) * 1e6),
+		deadline = now_ns(l) + timer_ns(delay_ms),
+		interval = timer_ns(interval_ms),
 		scope = scope,
 	}
 	h, p := base.pool_insert(&l.timers, t)
 	if scope != nil { p.cleanup = base.on_close(scope, timer_scope_closed, new_clone(Timer_Owner{l, h})) }
-	priority_queue.push(&l.queue, Timer_Entry{p.deadline, h})
+	l.timer_seq += 1
+	priority_queue.push(&l.queue, Timer_Entry{p.deadline, l.timer_seq, h})
 	return h
+}
+
+@(private)
+timer_ns :: proc(ms: f64) -> i64 {
+	if !(ms > 0) { return 0 }   // NaN too
+	return i64(min(ms, MAX_TIMER_MS) * 1e6)
 }
 
 @(private)
@@ -125,7 +143,26 @@ timer_scope_closed :: proc(data: rawptr) {
 clear_timer :: proc(l: ^Loop, h: base.Handle) -> bool {
 	t, ok := base.pool_remove(&l.timers, h)
 	if ok && t.scope != nil { release_scope_hook(t) }
+	if ok {
+		// its queue entry stays until its deadline: a page clearing long timers in a loop would pile them up
+		l.stale += 1
+		if l.stale > l.timers.count + 64 { compact_timers(l) }
+	}
 	return ok
+}
+
+// The timer queue made again from the live timers only.
+@(private)
+compact_timers :: proc(l: ^Loop) {
+	// the entries of live timers, with their creation order (an entry is current when its timer is alive and has its
+	// deadline: a repeating timer's earlier entries were replaced)
+	keep := make([dynamic]Timer_Entry, 0, l.timers.count, context.temp_allocator)
+	for e in l.queue.queue {
+		if t := base.pool_get(&l.timers, e.handle); t != nil && t.deadline == e.deadline { append(&keep, e) }
+	}
+	priority_queue.clear(&l.queue)
+	for e in keep { priority_queue.push(&l.queue, e) }
+	l.stale = 0
 }
 
 @(private)
@@ -167,10 +204,11 @@ run_ready :: proc(l: ^Loop) -> int {
 	clear(&l.scratch)
 
 	cutoff := now_ns(l)
+	last_seq := l.timer_seq   // timers created by this turn's callbacks wait for the next turn, even when already due
 	timers_ran := 0
 	for priority_queue.len(l.queue) > 0 {
 		e := priority_queue.peek(l.queue)
-		if e.deadline > cutoff { break }
+		if e.deadline > cutoff || e.seq > last_seq { break }
 		// time slice used up: the timers still due run at the next turn (next_timeout_ms is then 0)
 		if timers_ran > 0 && l.timer_slice_ns > 0 && now_ns(l) - cutoff >= l.timer_slice_ns { signal(l); break }
 		priority_queue.pop(&l.queue)
@@ -180,7 +218,8 @@ run_ready :: proc(l: ^Loop) -> int {
 		if t.interval > 0 {
 			// next tick counted from now, not from the missed deadline: a stalled loop must not replay a burst
 			t.deadline = max(e.deadline + t.interval, cutoff + 1)
-			priority_queue.push(&l.queue, Timer_Entry{t.deadline, e.handle})
+			l.timer_seq += 1
+			priority_queue.push(&l.queue, Timer_Entry{t.deadline, l.timer_seq, e.handle})
 		} else {
 			done, _ := base.pool_remove(&l.timers, e.handle)
 			if done.scope != nil { release_scope_hook(done) }

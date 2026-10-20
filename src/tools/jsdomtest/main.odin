@@ -80,11 +80,6 @@ layout_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 	_ = x
 }
 
-pump :: proc(ms: int) {
-	start := time.tick_now()
-	for time.duration_milliseconds(time.tick_since(start)) < f64(ms) { host.loop_wait(&loop, 2) }
-}
-
 logged :: proc(text: string) -> bool {
 	for l in logs { if l == text { return true } }
 	return false
@@ -92,7 +87,8 @@ logged :: proc(text: string) -> bool {
 
 harness: string
 
-// Loads a page with the harness and the layout embedder, runs its scripts, waits for "DONE" (or the timeout).
+// Loads a page with the harness and the layout embedder, runs its scripts, waits for "DONE" (the timeout only ends a
+// page that fails: nothing checked depends on the machine's speed).
 open_page :: proc(process: ^base.Scope, source: string, lh: ^Layout_Host, name: string, timeout_ms := 5000) -> ^page.Page {
 	clear(&logs)
 	p := page.page_create(&loop, &loader, &settings, process, fmt.tprintf("http://127.0.0.1:8765/jsdom/%s", name), console)
@@ -160,7 +156,7 @@ main :: proc() {
 		lh := new(Layout_Host)
 		lh.set = lay.settings_default()
 		t0 := time.tick_now()
-		p := open_page(process, string(src), lh, name, name == "bench.html" ? 120_000 : 10_000)
+		p := open_page(process, string(src), lh, name, name == "bench.html" ? 600_000 : 120_000)
 		ms := time.duration_milliseconds(time.tick_since(t0))
 		report_page(name)
 		switch name {

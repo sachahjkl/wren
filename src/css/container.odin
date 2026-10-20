@@ -26,7 +26,7 @@ parse_container_query :: proc(prelude: []Value, a: Arena_Alloc) -> ^Container_Qu
 	vs := trim_values(prelude)
 	q := new(Container_Query, a)
 	if len(vs) > 0 && vs[0].kind == .Token && vs[0].tok.kind == .Ident {
-		switch strings.to_lower(vs[0].tok.text, context.temp_allocator) {
+		switch lower_temp(vs[0].tok.text) {
 		case "not", "and", "or", "none":
 		case:
 			q.name = strings.clone(vs[0].tok.text, a)
@@ -70,7 +70,7 @@ cq_condition :: proc(input: []Value, a: Arena_Alloc) -> (^Cq_Node, bool) {
 		for i < len(vs) && is_ws_value(vs[i]) { i += 1 }
 		if i < len(vs) {
 			if vs[i].kind != .Token || vs[i].tok.kind != .Ident { return nil, false }
-			w := strings.to_lower(vs[i].tok.text, context.temp_allocator)
+			w := lower_temp(vs[i].tok.text)
 			this: Cq_Kind
 			switch w {
 			case "and": this = .And

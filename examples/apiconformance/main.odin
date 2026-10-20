@@ -377,6 +377,7 @@ foreign _m_dom {
 	@(link_name = "DOMImplementation_createHTMLDocument") c_DOMImplementation_createHTMLDocument :: proc(a0: i32, a1: i32, a2: i32) -> i32 ---
 	@(link_name = "DOMImplementation_createDocumentType") c_DOMImplementation_createDocumentType :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32) -> i32 ---
 	@(link_name = "Document_partOf") c_Document_partOf :: proc(a0: i64, a1: i32) -> i64 ---
+	@(link_name = "Window_print") c_Window_print :: proc() ---
 	@(link_name = "Element_attachShadowInit") c_Element_attachShadowInit :: proc(a0: i64, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32) -> i32 ---
 	@(link_name = "CustomElements_disable") c_CustomElements_disable :: proc(a0: i32, a1: i32, a2: i32, a3: i32) ---
 	@(link_name = "ShadowRoot_mode") c_ShadowRoot_mode :: proc(a0: i64, a1: i32, a2: i32) -> i32 ---

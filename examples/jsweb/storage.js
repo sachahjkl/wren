@@ -46,7 +46,7 @@ test("sessionStorage", () => {
 });
 
 test("storage event for the other page", async () => {
-  await sleep(50);
+  // the listener page was listening before this page was opened (jswebtest)
   localStorage.setItem("shared", "1");
   localStorage.setItem("shared", "2");
   localStorage.removeItem("shared");

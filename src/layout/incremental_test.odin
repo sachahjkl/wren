@@ -444,15 +444,25 @@ inc_disabled_and_garbage :: proc(t: ^testing.T) {
 	f.set.incremental = true
 	ix_frame(f)
 	ix_check(t, f, .None)
-	// many partial rebuilds: memory left behind is bounded by full passes
+	// many partial rebuilds: under the floor (layout.incremental.garbage_floor_bytes) nothing is collected...
 	fulls := f.l.passes[.Full]
 	for i in 0 ..< 200 {
 		dom.set_text_content(f.doc, first_text_node(f, id(f, "p2")), fmt.tprintf("text %d", i))
 		ix_frame(f)
 	}
 	ix_check(t, f, .None)
+	testing.expect_value(t, f.l.passes[.Full], fulls)
+	// ... past it, memory left behind is bounded by full passes
+	f.set.inc_garbage_floor = 0
+	ix_frame(f)   // (settings changed: a full pass)
+	fulls = f.l.passes[.Full]
+	for i in 0 ..< 200 {
+		dom.set_text_content(f.doc, first_text_node(f, id(f, "p2")), fmt.tprintf("text %d", i))
+		ix_frame(f)
+	}
+	ix_check(t, f, .None)
 	testing.expect(t, f.l.passes[.Full] > fulls, "garbage made some full passes")
-	testing.expect(t, f.l.passes[.Incremental] > 150, "most passes stay incremental")
+	testing.expect(t, f.l.passes[.Incremental] > 300, "most passes stay incremental")
 	// verification mode agrees
 	f.set.inc_verify = true
 	run(&f.l, ix_input(f))
@@ -705,4 +715,31 @@ inc_shadow_trees :: proc(t: ^testing.T) {
 	ix_frame(f)
 	ix_check(t, f, .None)
 	testing.expect(t, box_index(&f.l, sp) != NONE)
+}
+
+// Partial restyles give restyled elements new font-family lists: the partial passes that follow find the fonts they
+// already made by content instead of adding one per restyled element (which made the table grow until
+// layout.incremental.garbage_ratio forced a full pass every few hundred milliseconds on an animated page).
+@(test)
+inc_fonts_reused_across_partial_restyles :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>.on { color: red } .c { font-family: "web", serif; padding: 2px }</style><div id=root>`)
+	for i in 0 ..< 200 { fmt.sbprintf(&sb, `<p class=c id=p%d>card <em>item %d</em></p>`, i, i) }
+	strings.write_string(&sb, `</div>`)
+	f := ix_load(strings.to_string(sb))
+	defer ix_unload(f)
+	fonts := len(f.l.fonts)
+	for frame in 0 ..< 30 {
+		for k := frame % 10; k < 200; k += 100 {
+			h := dom.find_by_id(f.doc, fmt.tprintf("p%d", k))
+			dom.set_attribute(f.doc, h, "class", frame % 20 < 10 ? "c on" : "c")
+			// and its text: its content is made again with the new style
+			em := dom.get(f.doc, h).last_child
+			_ = dom.set_text_content(f.doc, em, fmt.tprintf("item %d", frame))
+		}
+		ix_frame(f)
+		if !ix_check(t, f) { return }
+	}
+	testing.expectf(t, len(f.l.fonts) == fonts, "fonts after 30 partial passes: %d, after the full one: %d", len(f.l.fonts), fonts)
+	testing.expect_value(t, f.l.passes[.Full], 1)
 }

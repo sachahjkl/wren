@@ -272,7 +272,11 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 	// (the quirks-mode body's height follows the window's: in the key)
 	if cb_h < 0 && c.st != nil && c.st.quirks && is_quirks_body(c, bi) { key[1] = -2 - c.vp.y }
 	flow_ok := !independent && floats_clear_of(fc, b)
-	if b.cache_ok && b.inc == {} && b.cache_in == key {
+	// a subgrid's items are also laid out by its parent's track sizing (through their proxies) between two layouts of
+	// the subgrid itself: its cached result no longer describes its children (they keep their measuring size)
+	subgrid := b.kind == .Grid && b.parent != NONE && c.l.boxes[b.parent].kind == .Grid && b.cs != nil &&
+		(grid_template(b.cs, 0).kind == .Subgrid || grid_template(b.cs, 1).kind == .Subgrid)
+	if b.cache_ok && b.inc == {} && b.cache_in == key && !subgrid {
 		if independent && !b.cache_flow {
 			b.size.y = b.cache_h
 			return Result{h = b.cache_h}

@@ -351,7 +351,8 @@ main :: proc() {
 	fmt.printf("  cache: %d entries, %d MiB of %d MiB; longest UI turn %.1f ms\n", st.entries, st.bytes >> 20, st.limit >> 20, longest_turn)
 	check(after.decoded - before.decoded >= 400, "200 probes and 200 decodes, on the decoding threads")
 	check(st.bytes <= st.limit + (100 << 20), "the cache stays near its limit: pixels of images no longer shown are dropped")
-	check(longest_turn < 100, fmt.tprintf("the UI thread never blocks (longest turn %.1f ms)", longest_turn))
+	// (the longest UI turn above is a measure, not a check: a slow or busy machine would fail it without a regression;
+	// that decoding stays off the UI thread is what the decoder statistics check)
 	delete(ids)
 	page.page_close(big)
 	cur = nil

@@ -173,6 +173,7 @@ Worker_Host :: struct {
 	relays:     map[u64]^Relay,         // the worker's requests in flight, by the worker's fetch handle
 	counted:    bool,                   // holds a slot of the process-wide count
 	javascript: bool,                   // its script is JavaScript (js_workers.odin), not a Wasm module
+	pins:       int,                    // being worked on (a message, an error event): not freed before it is unpinned
 }
 
 Relay :: struct {
@@ -280,7 +281,7 @@ worker_script_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		r := ev.response
 		h.status = r.status
 		if r.url != "" && r.url != h.url { delete(h.url); h.url = strings.clone(r.url) }
-		if !h.env.origin.opaque {
+		if !h.env.origin.opaque && csp_on(p) {
 			// the worker's own policy comes from its script's response (HTML: "initialize worker policy container")
 			for v in http.get_all(r.headers, "content-security-policy") { csp.parse_header(&h.env.policies, v, .Enforce) }
 			for v in http.get_all(r.headers, "content-security-policy-report-only") { csp.parse_header(&h.env.policies, v, .Report_Only) }
@@ -320,6 +321,10 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	g.javascript = h.javascript
 	// the JavaScript settings' lists are the shell's, changed under the worker's feet: a copy of its own
 	if g.javascript { g.settings.js = js.settings_clone(p.settings.js) } else { g.settings.js = {} }
+	// the other strings the shell owns (freed when its preferences change): copies, or nothing a worker reads
+	g.settings.js_web.platform = strings.clone(p.settings.js_web.platform)
+	g.settings.js_web.vendor = strings.clone(p.settings.js_web.vendor)
+	g.settings.forms.password_mask = ""
 	g.url, g.name = strings.clone(h.url), strings.clone(h.name)
 	g.image = make([]byte, len(image))
 	copy(g.image, image)
@@ -356,7 +361,7 @@ relays_cancel :: proc(h: ^Worker_Host) {
 // Frees the host once nothing refers to it: the guest released the object and the thread (if any) was joined.
 @(private)
 worker_maybe_free :: proc(h: ^Worker_Host) {
-	if h.self != 0 || h.thread != nil || h.state == .Running { return }
+	if h.self != 0 || h.thread != nil || h.state == .Running || h.pins > 0 { return }
 	worker_free(h)
 }
 
@@ -398,7 +403,12 @@ link_page_drain :: proc(data: rawptr) {
 	defer delete(batch)
 	link_take(l, false, &batch)
 	for m in batch {
-		if h := l.host; h != nil { page_receive(h, m) }
+		// pinned while its message is handled: a listener or the JavaScript collector may release the Worker object
+		if h := l.host; h != nil {
+			h.pins += 1
+			page_receive(h, m)
+			if l.host == h { h.pins -= 1; worker_maybe_free(h) }   // else the page closed meanwhile and freed it
+		}
 		msg_free(m)
 	}
 	link_release(l)
@@ -449,8 +459,11 @@ worker_label :: proc(h: ^Worker_Host) -> string {
 worker_fire_error :: proc(h: ^Worker_Host, message, file: string) {
 	p := h.page
 	allowed := true
+	h.pins += 1   // a listener may release the Worker object
 	if h.self != 0 { allowed = object_dispatch(p, h.self, dom.Event{type = "error", cancelable = true, data = message, text = file}) }
 	if allowed { log(p, .Error, fmt.tprintf("[worker %s] uncaught error: %s", worker_label(h), message)) }
+	h.pins -= 1
+	worker_maybe_free(h)
 }
 
 // A request of the worker, made here with the worker's environment; every event goes back to the worker.
@@ -610,6 +623,7 @@ worker_global_vt := Object_VTable{name = "DedicatedWorkerGlobalScope"}
 @(private)
 worker_global_free :: proc(g: ^Worker_Global) {
 	if g.javascript { js.settings_destroy(&g.settings.js) }
+	js_web_settings_destroy(&g.settings.js_web)
 	delete(g.url); delete(g.name); delete(g.image)
 	for m in g.inbox { msg_free(m) }
 	delete(g.inbox)
@@ -776,5 +790,6 @@ worker_fetch_event :: proc(p: ^Page, m: ^Worker_Msg) {
 		u.error, u.detail = fetch.Error_Kind(m.code2), m.text
 	case .Data, .Done:
 	}
+	if f.ext != nil { fetch_ext_event(f, u); return }   // promise / stream / abort signal, as on the page's thread
 	fetch_update(f, u)
 }

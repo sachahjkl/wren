@@ -58,6 +58,12 @@ decode_document :: proc(data: []byte, header_charset: string, default_encoding: 
 			n: uint
 			if prescan_meta { n = wb_html_prescan_charset(raw_data(data), uint(len(data)), raw_data(buf[:]), len(buf)) }
 			if n > 0 { d.encoding, d.source = strings.clone(string(buf[:n]), context.temp_allocator), .Meta } else { d.encoding, d.source = default_encoding, .Default }
+			// a <meta> found by the prescan is in ASCII bytes: the document cannot be UTF-16, whatever it says
+			// (HTML §13.2.3.2 "get an encoding"); x-user-defined means windows-1252 there
+			if d.source == .Meta {
+				if strings.equal_fold(d.encoding, "UTF-16LE") || strings.equal_fold(d.encoding, "UTF-16BE") { d.encoding = "UTF-8" }
+				if strings.equal_fold(d.encoding, "x-user-defined") { d.encoding = "windows-1252" }
+			}
 		}
 	}
 

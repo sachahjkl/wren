@@ -90,8 +90,9 @@ process_data_url :: proc(u: url.URL, allocator := context.allocator) -> (d: Data
 	mime_str := header
 	if strings.has_prefix(mime_str, ";") || mime_str == "" { mime_str = strings.concatenate({"text/plain", mime_str}, context.temp_allocator) }
 	m, mok := http.parse_mime(mime_str, context.temp_allocator)
-	if mok { d.mime = strings.clone(strings.concatenate({m.type, "/", m.subtype}, context.temp_allocator), allocator)
-		if cs, has := http.mime_param(m, "charset"); has { d.mime = strings.concatenate({d.mime, ";charset=", cs}, allocator) }
+	if mok {
+		essence := strings.concatenate({m.type, "/", m.subtype}, context.temp_allocator)
+		if cs, has := http.mime_param(m, "charset"); has { d.mime = strings.concatenate({essence, ";charset=", cs}, allocator) } else { d.mime = strings.clone(essence, allocator) }
 	} else { d.mime = strings.clone("text/plain;charset=US-ASCII", allocator) }
 
 	if is_base64 {
@@ -117,9 +118,56 @@ file_path_from_url :: proc(u: url.URL, allocator := context.allocator) -> (path:
 	// "/C:/x" -> "C:/x"
 	if len(p) >= 3 && p[0] == '/' && p[2] == ':' && ((p[1] >= 'a' && p[1] <= 'z') || (p[1] >= 'A' && p[1] <= 'Z')) { p = p[1:] }
 	if u.host != "" && u.host != "localhost" { p = strings.concatenate({"//", u.host, p}, context.temp_allocator) }
+	if !file_path_safe(p) { return "", false }
 	out, allocated := strings.replace_all(p, "/", "\\", allocator)
 	if !allocated { out = strings.clone(out, allocator) }   // ("C:" has no '/': the result would be the temporary decoding)
 	return out, true
+}
+
+// Whether a decoded file: path names the file it says, as Windows will open it. Refused, whoever asks:
+//   * a "." or ".." segment: the URL parser removed those of the URL, so one left came from an encoded separator (%5C,
+//     %2F) and would climb out of the folder the access check saw (file:///C:/site/a%5C..%5C..%5Csecret);
+//   * a ':' past the drive letter (an alternate data stream, file.txt:hidden) and control characters;
+//   * segments Windows rewrites: trailing dots or spaces ("a.txt." opens a.txt), device names (CON, NUL, COM1, LPT1...,
+//     with an extension or not, which open devices instead of files);
+//   * device paths (\\?\, \\.\), which skip the normalization these rules rely on.
+file_path_safe :: proc(p: string) -> bool {
+	for c, i in transmute([]u8)p {
+		if c < 0x20 || c == 0x7f || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' { return false }
+		if c == ':' && !(i == 1 && ((p[0] >= 'a' && p[0] <= 'z') || (p[0] >= 'A' && p[0] <= 'Z'))) { return false }
+	}
+	rest := p
+	for len(rest) > 0 {
+		end := strings.index_any(rest, "/\\")
+		seg := end < 0 ? rest : rest[:end]
+		rest = end < 0 ? "" : rest[end + 1:]
+		if seg == "" { continue }
+		if seg == "." || seg == ".." { return false }
+		if len(p) >= 2 && p[1] == ':' && len(seg) == 2 && seg[1] == ':' { continue }   // the drive
+		last := seg[len(seg) - 1]
+		if last == '.' || last == ' ' { return false }
+		if is_device_name(seg) { return false }
+	}
+	return true
+}
+
+// CON, PRN, AUX, NUL, COM1-9, LPT1-9 (and their superscript-digit forms), CONIN$, CONOUT$: whatever follows a dot or
+// trailing spaces, Windows opens the device.
+@(private)
+is_device_name :: proc(seg: string) -> bool {
+	base := seg
+	if i := strings.index_byte(base, '.'); i >= 0 { base = base[:i] }
+	base = strings.trim_right(base, " ")
+	upper := strings.to_upper(base, context.temp_allocator)
+	switch upper {
+	case "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$": return true
+	}
+	if len(upper) >= 4 && (strings.has_prefix(upper, "COM") || strings.has_prefix(upper, "LPT")) {
+		digit := upper[3:]
+		if len(digit) == 1 && digit[0] >= '1' && digit[0] <= '9' { return true }
+		if digit == "¹" || digit == "²" || digit == "³" { return true }
+	}
+	return false
 }
 
 // The directory of a file: URL's file, without trailing separator.

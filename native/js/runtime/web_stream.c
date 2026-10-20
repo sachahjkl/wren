@@ -202,10 +202,16 @@ static void resolve_closed(JSContext *ctx, web_stream *s, bool reject)
     JS_FreeValue(ctx, other);
 }
 
+/* Settling a read with a {value, done} object reads its `then` (a getter on Object.prototype runs a script, which can
+ * release the reader, the last reference to the stream): every algorithm that settles holds the stream's object while
+ * it still uses `s` (stream_hold / JS_FreeValue). */
+static JSValue stream_hold(JSContext *ctx, web_stream *s) { return JS_DupValue(ctx, s->self); }
+
 /* the stream is closed for good: pending reads end with done */
 static void finish_close(JSContext *ctx, web_stream *s)
 {
     if (s->state != RS_READABLE) { return; }
+    JSValue keep = stream_hold(ctx, s);
     s->state = RS_CLOSED;
     uint32_t n = s->rn;
     rs_request *reqs = s->reqs;
@@ -218,11 +224,13 @@ static void finish_close(JSContext *ctx, web_stream *s)
     }
     free(reqs);
     resolve_closed(ctx, s, false);
+    JS_FreeValue(ctx, keep);
 }
 
 static void stream_error(JSContext *ctx, web_stream *s, JSValueConst e)
 {
     if (s->state != RS_READABLE) { return; }
+    JSValue keep = stream_hold(ctx, s);
     s->state = RS_ERRORED;
     JS_FreeValue(ctx, s->error);
     s->error = JS_DupValue(ctx, e);
@@ -230,6 +238,7 @@ static void stream_error(JSContext *ctx, web_stream *s, JSValueConst e)
     s->qhead = s->qn = 0;
     reqs_reject_all(ctx, s, e);
     resolve_closed(ctx, s, true);
+    JS_FreeValue(ctx, keep);
 }
 
 static void reqs_reject_all(JSContext *ctx, web_stream *s, JSValueConst e)
@@ -250,6 +259,7 @@ static void reqs_reject_all(JSContext *ctx, web_stream *s, JSValueConst e)
 static void stream_enqueue(JSContext *ctx, web_stream *s, JSValue chunk)
 {
     if (s->state != RS_READABLE || s->close_requested) { JS_FreeValue(ctx, chunk); return; }
+    JSValue keep = stream_hold(ctx, s);
     if (s->rn > 0) {
         rs_request r = s->reqs[0];
         memmove(s->reqs, s->reqs + 1, (s->rn - 1) * sizeof *s->reqs);
@@ -261,6 +271,7 @@ static void stream_enqueue(JSContext *ctx, web_stream *s, JSValue chunk)
         JS_FreeValue(ctx, chunk);
     }
     pull_if_needed(ctx, s);
+    JS_FreeValue(ctx, keep);
 }
 
 static void stream_close(JSContext *ctx, web_stream *s)
@@ -350,9 +361,9 @@ static void pull_if_needed(JSContext *ctx, web_stream *s)
         if (!s->started || JS_IsUndefined(s->pull)) { return; }
         if (s->pulling) { s->pull_again = true; return; }
         s->pulling = true;
+        JSValue keep = stream_hold(ctx, s);
         JSValue r = JS_Call(ctx, s->pull, s->source, 1, (JSValueConst *)&s->controller);
         JSValue p = promise_of(ctx, r);
-        JSValue keep = JS_DupValue(ctx, s->self);
         JSValue d = web_then(ctx, p, on_pull_done, on_source_error, 1, (JSValueConst *)&keep);
         JS_FreeValue(ctx, d);
         JS_FreeValue(ctx, p);
@@ -367,7 +378,11 @@ static void pull_if_needed(JSContext *ctx, web_stream *s)
         break;
     }
     case SRC_TEE:
-        if (s->tee) { tee_pull(ctx, s->tee, s->self); }
+        if (s->tee) {
+            JSValue keep = stream_hold(ctx, s);
+            tee_pull(ctx, s->tee, s->self);
+            JS_FreeValue(ctx, keep);
+        }
         break;
     }
 }
@@ -409,7 +424,13 @@ static JSValue on_tee_chunk(JSContext *ctx, JSValueConst this_val, int argc, JSV
     JS_FreeValue(ctx, v);
     if (t->read_again) {
         t->read_again = false;
-        for (int i = 0; i < 2; i++) { if (t->branch[i]) { tee_pull(ctx, t, t->branch[i]->self); break; } }
+        for (int i = 0; i < 2; i++) {
+            if (!t->branch[i]) { continue; }
+            JSValue keep = stream_hold(ctx, t->branch[i]);
+            tee_pull(ctx, t, keep);
+            JS_FreeValue(ctx, keep);
+            break;
+        }
     }
     return JS_UNDEFINED;
 }
@@ -464,7 +485,7 @@ JSValue web_stream_tee(JSContext *ctx, JSValueConst stream, bool clone_second)
         bs->started = true;
         t->branch[i] = bs;
         t->refs++;
-        JS_SetPropertyUint32(ctx, arr, (uint32_t)i, b);
+        wj_array_set(ctx, arr, (uint32_t)i, b);
     }
     JS_FreeValue(ctx, reader);
     return arr;
@@ -478,7 +499,17 @@ static JSValue on_cancel_done(JSContext *ctx, JSValueConst this_val, int argc, J
     return JS_UNDEFINED;
 }
 
+static JSValue stream_cancel_held(JSContext *ctx, web_stream *s, JSValueConst reason);
+
 static JSValue stream_cancel(JSContext *ctx, web_stream *s, JSValueConst reason)
+{
+    JSValue keep = stream_hold(ctx, s);
+    JSValue p = stream_cancel_held(ctx, s, reason);
+    JS_FreeValue(ctx, keep);
+    return p;
+}
+
+static JSValue stream_cancel_held(JSContext *ctx, web_stream *s, JSValueConst reason)
 {
     s->disturbed = true;
     if (s->state == RS_CLOSED) { return web_promise_resolved(ctx, JS_UNDEFINED); }
@@ -508,8 +539,8 @@ static JSValue stream_cancel(JSContext *ctx, web_stream *s, JSValueConst reason)
         if (t->canceled[0] && t->canceled[1]) {
             /* both branches cancelled: the teed stream is, with both reasons */
             JSValue reasons = JS_NewArray(ctx);
-            JS_SetPropertyUint32(ctx, reasons, 0, JS_DupValue(ctx, t->reasons[0]));
-            JS_SetPropertyUint32(ctx, reasons, 1, JS_DupValue(ctx, t->reasons[1]));
+            wj_array_set(ctx, reasons, 0, JS_DupValue(ctx, t->reasons[0]));
+            wj_array_set(ctx, reasons, 1, JS_DupValue(ctx, t->reasons[1]));
             web_reader *r = reader_of(s->tee_reader);
             if (r && stream_of(r->stream)) {
                 JSValue p = stream_cancel(ctx, stream_of(r->stream), reasons);
@@ -799,12 +830,14 @@ JSValue wjr_ReadableStreamDefaultReader_read(JSContext *ctx, JSValueConst this_v
     if (s->state == RS_CLOSED) { return web_promise_take(ctx, web_iter_result(ctx, JS_UNDEFINED, true)); }
     if (s->state == RS_ERRORED) { return web_promise_rejected(ctx, JS_DupValue(ctx, s->error)); }
     if (queue_size(s) > 0) {
+        JSValue keep = stream_hold(ctx, s);
         JSValue chunk = s->q[s->qhead++];
         JSValue res = web_iter_result(ctx, chunk, false);
         JSValue p = web_promise_resolved(ctx, res);
         JS_FreeValue(ctx, res);
         if (queue_size(s) == 0 && s->close_requested) { finish_close(ctx, s); }
         else { pull_if_needed(ctx, s); }
+        JS_FreeValue(ctx, keep);
         return p;
     }
     if (s->rn == s->rcap) {
@@ -973,7 +1006,7 @@ static JSValue read_all_step(JSContext *ctx, JSValueConst this_val, int argc, JS
     }
     int64_t n = 0;
     JS_GetLength(ctx, chunks, &n);
-    JS_SetPropertyUint32(ctx, chunks, (uint32_t)n, v);
+    wj_array_set(ctx, chunks, (uint32_t)n, v);
     read_all_next(ctx, data);
     return JS_UNDEFINED;
 }

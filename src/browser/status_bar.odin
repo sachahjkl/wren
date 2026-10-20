@@ -57,20 +57,20 @@ page_state :: proc(t: ^Tab) -> Page_State {
 	if t == nil { return {} }
 	if t.kind == .Config { return {"Settings", "weak", t.status} }
 	load := t.load
-	if load != nil && load.task != base.NIL_HANDLE { return {t.page == nil ? "Connecting..." : "Loading...", "", t.status} }
+	if load != nil && load.task != base.NIL_HANDLE { return {t.page == nil ? "Connecting…" : "Loading…", "", t.status} }
 	if load != nil {
-		for s in load.slots { if s.state == .Pending { return {"Loading modules...", "", t.status} } }
+		for s in load.slots { if s.state == .Pending { return {"Loading modules…", "", t.status} } }
 	}
 	if t.page == nil { return {} }
+	if load != nil && load.failed != .None { return {"Error", "bad", t.status} }   // an error page (error_pages.odin)
 	switch t.page.env.location.scheme {
-	case "about": return {t.title == "Error" ? "Error" : "Built-in page", t.title == "Error" ? "bad" : "weak", t.status}
+	case "about": return {"Built-in page", "weak", t.status}
 	case "file":  return {"File", "weak", t.status}
 	}
 	if load != nil && load.status > 0 {
 		tone := load.status < 300 ? "good" : load.status < 400 ? "weak" : "bad"
 		return {fmt.tprintf("HTTP %d", load.status), tone, t.status}
 	}
-	if t.title == "Error" { return {"Failed", "bad", t.status} }
 	return {"Done", "weak", t.status}
 }
 

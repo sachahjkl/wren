@@ -58,6 +58,15 @@ security_of :: proc(t: ^Tab) -> Security {
 		if t.load != nil { return {GLYPH_INFO, "Loading", .Weak, "Loading", "The connection is being established."} }
 		return {GLYPH_INFO, "", .Weak, "", ""}
 	}
+	if t.load != nil {
+		// an error page is a page of the browser at the address that failed: claim nothing of a connection that
+		// failed, except that a failed secure one is not secure
+		switch t.load.failed {
+		case .Tls: return {GLYPH_UNLOCK, "Not secure", .Bad, "Connection is not secure", "The secure connection failed: Windows did not accept the certificate or the encryption of this site. Nothing was sent to it."}
+		case .Other: return {GLYPH_INFO, "", .Weak, "", ""}
+		case .None:
+		}
+	}
 	e := &t.page.env
 	switch {
 	case e.location.scheme == "about":
@@ -142,6 +151,12 @@ address_row :: proc(app: ^App, t: ^Tab) {
 		// rounded like the popovers and menus of the chrome (popups: em * 0.5)
 		field := ui.Style_Mod{width = ui.pct(1), height = ui.pct(1), radius = em * 0.5}
 		if chip_w > 0 { field.text_pad = chip_w + inset + em * 0.5 }
+		// not being edited: the address shows from its start (scheme and host), as in Chrome, not scrolled to its end
+		// (by key: the focused box's name is last frame's, its text may be gone with that frame's memory)
+		address_key = ui.key_from_string(ui.parent_box().key, "###address")
+		if ui.focus_key() != address_key {
+			app.address.cursor, app.address.mark, app.address.scroll_x = 0, 0, 0
+		}
 		ui.next(field)
 		res = ui.line_edit("###address", &app.address, "Search or enter an address")
 		field_radius := res.box != nil ? res.box.radius : em * 0.5
@@ -210,6 +225,21 @@ page_area_focus :: proc(app: ^App, t: ^Tab, pb: ^ui.Box) {
 // Set by the page's context menu: open the page information popup of the security chip.
 page_info_request: bool
 
+// Key of the address field (set when it is built): whether it has the keyboard is asked by key, never by
+// ui.focused_name(), which reads the name of a box of the last frame (freed when the build starts).
+address_key: ui.Key
+
+// Set by Alt+F / Alt+E: open the main menu.
+main_menu_request: bool
+
+// Moves the current tab one place left or right (Ctrl+Shift+Page Up / Page Down).
+tab_move_current :: proc(app: ^App, delta: int) {
+	to := app.current + delta
+	if to < 0 || to >= len(app.tabs) { return }
+	app.current = list_move(app.tabs[:], app.current, to, app.current)
+	app.frames_requested = max(app.frames_requested, 2)
+}
+
 ////////////////////////////////
 // Security chip and page information
 
@@ -220,7 +250,7 @@ security_chip_width: f32
 security_chip_hot: bool
 
 // `inset` >= 0: placed inside the address field, `inset` from its top-left corner, `height` tall.
-Chip_Segment :: struct { color, divider: draw.Color, radius: f32 }
+Chip_Segment :: struct { color, divider, under: draw.Color, radius: f32 }
 
 @(private = "file")
 chip_segment: Chip_Segment
@@ -230,6 +260,8 @@ chip_segment: Chip_Segment
 chip_segment_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	s := (^Chip_Segment)(user)
 	r := b.rect
+	// opaque: the field's text, scrolled to its end while edited, never shows through the chip
+	draw.rect_corners(dc, r, {s.under, s.under, s.under, s.under}, {s.radius, s.radius, 0, 0})
 	if s.color.a > 0 { draw.rect_corners(dc, r, {s.color, s.color, s.color, s.color}, {s.radius, s.radius, 0, 0}) }
 	w := max(math.round(ui.scale()), 1)
 	draw.rect(dc, {{r.max.x - w, r.min.y}, {r.max.x, r.max.y}}, s.divider)
@@ -254,7 +286,13 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 		a: f32 = sec.tone != .Weak ? 0.14 : 0
 		if security_chip_hot { a += 0.08 }
 		chip_segment = {color = a > 0 ? ui.tuned(draw.Color{base.r, base.g, base.b, a}) : {}, radius = radius}
-		if ui.tags("input") { chip_segment.divider = ui.color("border") }
+		window_bg := ui.color("background")
+		window_bg.a = 1
+		if ui.tags("input") {
+			chip_segment.divider = ui.color("border")
+			f := ui.color("background")   // a translucent field: what shows is the field over the window
+			chip_segment.under = draw.mix(window_bg, draw.Color{f.r, f.g, f.b, 1}, f.a)
+		}
 		ui.next({fixed_x = inset, fixed_y = inset, width = ui.px(security_chip_width), height = ui.px(height)})
 		ui.custom("###sec_segment", chip_segment_draw, &chip_segment)
 	} else if sec.tone != .Weak {
@@ -410,7 +448,7 @@ page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 			p := t.page
 			e := &p.env
 			shown := t.url
-			if len(shown) > 38 { shown = strings.concatenate({shown[:35], "..."}, context.temp_allocator) }
+			if len(shown) > 38 { shown = strings.concatenate({shown[:35], "…"}, context.temp_allocator) }
 			info_row("Address", shown, "addr", w)
 			if e.location.scheme != "about" {
 				info_row("Origin", url.origin_serialize(e.origin, context.temp_allocator), "origin", w)
@@ -461,6 +499,11 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 	b := ui.custom("###burger", burger_draw, d, {.Clickable, .Draw_Background, .Draw_Hot_Effects})
 	sig := ui.signal(b)
 	key := ui.key_from_string(b.parent.key, "###main_menu")
+	if main_menu_request {
+		// Alt+F / Alt+E: opened from the keyboard, its first item active
+		main_menu_request = false
+		if !ui.ctx_menu_is_open(key) { ui.ctx_menu_open_rect(key, b.rect, b.key, from_keyboard = true) }
+	}
 	if sig.clicked {
 		if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else {
 			ui.ctx_menu_open_rect(key, b.rect, b.key)
@@ -486,15 +529,17 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			if ui.menu_item("Zoom out", "Ctrl+Minus").clicked { zoom_step(app, t, -1) }
 			if ui.menu_item("Actual size", "Ctrl+0", enabled = zoom_percent(t) != 100).clicked { zoom_set(app, t, 1) }
 		}
-		if ui.menu_item("Find in page...", "Ctrl+F", enabled = web).clicked { find_open(app) }
-		if ui.menu_item("Save page as...", "Ctrl+S", enabled = web && t.page != nil).clicked { save_page(app, t) }
+		if ui.menu_item("Find in page…", "Ctrl+F", enabled = web).clicked { find_open(app) }
+		if ui.menu_item("Save page as…", "Ctrl+S", enabled = web && t.page != nil).clicked { save_page(app, t) }
 		if ui.menu_item("View page source", "Ctrl+U", enabled = web && !strings.has_prefix(t.url, VIEW_SOURCE)).clicked { view_source(app, t) }
+		_ = ui.menu_item("Print…", "Ctrl+P", enabled = false)   // not available (print.odin)
+		downloads_menu(app)   // download.odin
 		ui.menu_separator()
 		if ui.menu_submenu("View###view_sub") {
 			if ui.menu_item("Status bar", "Ctrl+B", checked = hud.cfg.bar_visible).clicked { toggle_status_bar(app) }
 			if ui.menu_item("Frame statistics", "Ctrl+Shift+B", checked = hud.panel_open).clicked { toggle_frame_stats(app) }
 			if ui.menu_item("Statistics in the title", checked = hud.cfg.title_stats).clicked { set_pref_bool(app, "browser.title.stats", !hud.cfg.title_stats) }
-			if ui.menu_item("Console", checked = app.show_console).clicked { app.show_console = !app.show_console }
+			if ui.menu_item("Console", checked = app.show_console).clicked { set_pref_bool(app, "browser.console.visible", !app.show_console) }
 			if ui.menu_item("Full screen", "F11", checked = platform.is_fullscreen(app.win)).clicked { toggle_fullscreen(app) }
 			if ui.menu_item("Tabs in the title bar", checked = wchrome.cfg.integrated).clicked { set_pref_bool(app, "browser.window.integrated_titlebar", !wchrome.cfg.integrated) }
 		}
@@ -524,7 +569,7 @@ chrome_shortcuts :: proc(app: ^App) {
 	case ui.key_press(.L, ctrl), ui.key_press(.D, {.Alt}): app.focus_address = true
 	case ui.key_press(.F6), ui.key_press(.F6, {.Shift}):
 		// address bar <-> page
-		if ui.focus_key() != 0 && ui.focused_name() == "address" { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { app.focus_address = true }
+		if ui.focus_key() != 0 && ui.focus_key() == address_key { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { app.focus_address = true }
 	case ui.key_press(.F5), ui.key_press(.R, ctrl): if t != nil { reload(app, t) }
 	case ui.key_press(.F5, ctrl), ui.key_press(.R, cs): if t != nil { reload(app, t) }   // no HTTP cache yet: the same reload
 	case ui.key_press(.Left, {.Alt}): if t != nil { go_history(app, t, -1) }
@@ -532,10 +577,14 @@ chrome_shortcuts :: proc(app: ^App) {
 	case ui.key_press(.Home, {.Alt}): if t != nil { navigate(app, t, app.cfg.homepage) }
 	case ui.key_press(.Tab, ctrl), ui.key_press(.Page_Down, ctrl): if n > 0 { tab_select(app, (app.current + 1) % n) }
 	case ui.key_press(.Tab, cs), ui.key_press(.Page_Up, ctrl): if n > 0 { tab_select(app, (app.current + n - 1) % n) }
+	case ui.key_press(.Page_Down, cs): tab_move_current(app, +1)
+	case ui.key_press(.Page_Up, cs): tab_move_current(app, -1)
+	case ui.key_press(.F, {.Alt}), ui.key_press(.E, {.Alt}): main_menu_request = true
 	case ui.key_press(.F, ctrl), ui.key_press(.F3):
 		if t != nil && t.kind == .Config { app.config_view.focus_search = true } else if t != nil && t.kind == .Web { if find.open { find.focus = true } else { find_open(app) } }
 	case ui.key_press(.U, ctrl): view_source(app, t)
 	case ui.key_press(.S, ctrl): if t != nil { save_page(app, t) }
+	case ui.key_press(.P, ctrl), ui.key_press(.P, cs): print_request(app)   // print.odin
 	case ui.key_press(.Equal, ctrl), ui.key_press(.Num_Add, ctrl), ui.key_press(.Equal, cs): zoom_step(app, t, 1)
 	case ui.key_press(.Minus, ctrl), ui.key_press(.Num_Subtract, ctrl): zoom_step(app, t, -1)
 	case ui.key_press(.N0, ctrl): zoom_set(app, t, 1)
@@ -548,11 +597,9 @@ chrome_shortcuts :: proc(app: ^App) {
 	case hud.panel_open && ui.focus_key() == 0 && ui.key_press(.Escape): hud.panel_open = false
 	case ui.key_press(.Menu), ui.key_press(.F10, {.Shift}):
 		// the menu of what has the keyboard: a tab of the strip, else the page (the address bar handles its own)
-		name := ui.focused_name()
-		if strings.has_prefix(name, "tabs_") {
+		// (by key: before the build, the focused box's name is last frame's, gone with that frame's memory)
+		if index := focused_tab_index(app); index >= 0 {
 			if b := ui.box_from_key(ui.focus_key()); b != nil {
-				index := 0
-				for c in name[len("tabs_"):] { index = index * 10 + int(c - '0') }
 				tab_context_menu(app, index, {b.rect.min.x, b.rect.max.y}, keyboard = true)
 			}
 		} else if t != nil && t.kind == .Web && page_has_keyboard(app) {
@@ -572,7 +619,7 @@ stop_loading :: proc(app: ^App, t: ^Tab) {
 	stopped := false
 	if load.task != base.NIL_HANDLE { fetch.cancel(&app.loader, load.task); load.task = base.NIL_HANDLE; stopped = true }
 	for s in load.slots { if s.state == .Pending { s.state = .Failed; stopped = true } }
-	if stopped { set_status(t, "stopped") }
+	if stopped { set_status(t, "Stopped"); load.stopped = true }
 	if load.page == nil { t.load = nil }   // nothing arrived: the tab is no longer loading (the scope still owns the load)
 	app.frames_requested = max(app.frames_requested, 2)
 }

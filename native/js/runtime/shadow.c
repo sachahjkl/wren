@@ -124,7 +124,7 @@ static JSValue assigned(JSContext *ctx, JSValueConst t, int argc, JSValueConst *
     uint64_t *hs = count ? malloc(count * sizeof *hs) : NULL;
     for (uint32_t i = 0; i < count && hs; i++) { hs[i] = dom_read_u64(wj_scratch.data + 8 * i); }
     JSValue arr = JS_NewArray(ctx);
-    for (uint32_t i = 0; i < count && hs; i++) { JS_SetPropertyUint32(ctx, arr, i, wj_wrap_node(ctx, hs[i])); }
+    for (uint32_t i = 0; i < count && hs; i++) { wj_array_set(ctx, arr, i, wj_wrap_node(ctx, hs[i])); }
     free(hs);
     return arr;
 }
@@ -137,6 +137,7 @@ JSValue wjr_HTMLSlotElement_assign(JSContext *ctx, JSValueConst t, int argc, JSV
     wj_obj *o = wj_this(ctx, t, I(HTMLSlotElement));
     if (!o) { return JS_EXCEPTION; }
     uint64_t *hs = argc ? malloc((size_t)argc * sizeof *hs) : NULL;
+    if (argc && !hs) { return JS_ThrowOutOfMemory(ctx); }
     for (int i = 0; i < argc; i++) {
         wj_obj *x = wj_unwrap(argv[i], I(Element));
         if (!x) { x = wj_unwrap(argv[i], I(Text)); }
@@ -162,14 +163,14 @@ JSValue wj_event_composed_path(JSContext *ctx, uint64_t host)
     WJ_FETCH_STRING(n, wr_Event_composedPathPacked(host, wj_scratch.data, wj_scratch.cap));
     if (n <= 0) {
         /* an event dispatched at the Window or at an EventTarget that is not a node: its path is that target */
-        if (wr_Event_currentTarget(host)) { JS_SetPropertyUint32(ctx, arr, 0, wj_wrap_target(ctx, wr_Event_target(host))); }
+        if (wr_Event_currentTarget(host)) { wj_array_set(ctx, arr, 0, wj_wrap_target(ctx, wr_Event_target(host))); }
         return arr;
     }
     uint32_t count = (uint32_t)n / 8;
     uint64_t *hs = malloc(count * sizeof *hs);
     if (!hs) { return arr; }
     for (uint32_t i = 0; i < count; i++) { hs[i] = dom_read_u64(wj_scratch.data + 8 * i); }
-    for (uint32_t i = 0; i < count; i++) { JS_SetPropertyUint32(ctx, arr, i, wj_wrap_target(ctx, hs[i])); }
+    for (uint32_t i = 0; i < count; i++) { wj_array_set(ctx, arr, i, wj_wrap_target(ctx, hs[i])); }
     free(hs);
     return arr;
 }
@@ -192,7 +193,7 @@ static JSValue from_point(JSContext *ctx, JSValueConst t, int argc, JSValueConst
     uint64_t *hs = malloc(count * sizeof *hs);
     if (!hs) { return arr; }
     for (uint32_t i = 0; i < count; i++) { hs[i] = dom_read_u64(wj_scratch.data + 8 * i); }
-    for (uint32_t i = 0; i < count; i++) { JS_SetPropertyUint32(ctx, arr, i, wj_wrap_node(ctx, hs[i])); }
+    for (uint32_t i = 0; i < count; i++) { wj_array_set(ctx, arr, i, wj_wrap_node(ctx, hs[i])); }
     free(hs);
     return arr;
 }
@@ -378,7 +379,7 @@ static JSValue states_array(JSContext *ctx, states_impl *s)
     uint32_t k = 0;
     for (int32_t i = 0, start = 0; i < n; i++) {
         if (wj_scratch.data[i] != 0) { continue; }
-        JS_SetPropertyUint32(ctx, arr, k++, JS_NewStringLen(ctx, (const char *)wj_scratch.data + start, (size_t)(i - start)));
+        wj_array_set(ctx, arr, k++, JS_NewStringLen(ctx, (const char *)wj_scratch.data + start, (size_t)(i - start)));
         start = i + 1;
     }
     return arr;
@@ -410,9 +411,9 @@ static JSValue states_iter(JSContext *ctx, JSValueConst t, const char *method)
         for (uint32_t i = 0; i < n; i++) {
             JSValue v = JS_GetPropertyUint32(ctx, arr, i);
             JSValue pair = JS_NewArray(ctx);
-            JS_SetPropertyUint32(ctx, pair, 0, JS_DupValue(ctx, v));
-            JS_SetPropertyUint32(ctx, pair, 1, v);
-            JS_SetPropertyUint32(ctx, pairs, i, pair);
+            wj_array_set(ctx, pair, 0, JS_DupValue(ctx, v));
+            wj_array_set(ctx, pair, 1, v);
+            wj_array_set(ctx, pairs, i, pair);
         }
         JS_FreeValue(ctx, arr);
         arr = pairs;
@@ -573,7 +574,7 @@ static void rules_fill(JSContext *ctx, uint64_t h, JSValueConst arr, JSValueCons
             JS_DefinePropertyValueStr(ctx, rule, "selectorText", JS_NewStringLen(ctx, (const char *)wj_scratch.data, sl), JS_PROP_ENUMERABLE);
         }
         JS_DefinePropertyValueStr(ctx, rule, "parentStyleSheet", JS_DupValue(ctx, t), 0);
-        JS_SetPropertyUint32(ctx, arr, i, rule);
+        wj_array_set(ctx, arr, i, rule);
     }
 }
 

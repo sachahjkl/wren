@@ -47,7 +47,7 @@ THREAD_PREFS := [?]config.Def{
 	{name = "page.threads.style", kind = .Int, default = {i = -1}, bounded = true, min = -1, max = 256,
 		description = "Threads that compute the styles of a large document together with the interface thread (the result is the same as on one thread). -1 = one less than the logical processors, at most 7; 0 = only the interface thread."},
 	{name = "page.threads.style_min_nodes", kind = .Int, default = {i = 4000}, bounded = true, min = 0, max = 1 << 40, unit = "nodes",
-		description = "Documents with fewer nodes are styled on the interface thread alone: sharing the work out would cost more than it saves."},
+		description = "Documents with fewer nodes get their full style pass on the interface thread alone: sharing the work out would cost more than it saves (incremental restyles follow style.incremental.parallel_min)."},
 }
 
 // Helpers of the full style pass, shared by every page (the UI thread runs one pass at a time). Made on first use with

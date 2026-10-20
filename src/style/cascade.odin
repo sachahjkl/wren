@@ -106,6 +106,9 @@ Styled :: struct {
 	removed_any:    bool,
 	forms_scan:     u8,                    // restyle_dom: 0 not looked, 1 no form element in the document, 2 some
 	partial_bytes:  int,                   // memory of the threads of parallel partial restyles (counted as waste)
+	// compiled style attributes and CSSOM declarations by text (inline_cache.odin), in `alloc`
+	inline_rules:   map[string]^Rule,
+	inline_decls:   map[string]Inline_Decl,
 }
 
 // A computed style replaced by a partial restyle: `old` is what was in effect (animated values included), `new` the
@@ -126,6 +129,7 @@ styled_destroy :: proc(s: ^Styled) {
 	delete(s.changes)
 	delete(s.shown)
 	delete(s.scheme_metas)
+	inline_cache_destroy(s)
 	journal_destroy(s)
 	virtual.arena_destroy(&s.arena)
 	free(s)
@@ -149,6 +153,7 @@ styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 	delete(s.changes)
 	delete(s.shown)
 	delete(s.scheme_metas)
+	inline_cache_destroy(s)
 	journal_destroy(s)
 	for a in s.thread_arenas { virtual.arena_destroy(a); free(a) }
 	delete(s.thread_arenas)
@@ -188,7 +193,8 @@ style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
 @(private)
 Var_Env :: struct {
 	engine:   ^Engine,
-	alloc:    runtime.Allocator,
+	alloc:    runtime.Allocator,      // what outlives the element: resolved custom property texts
+	scratch:  runtime.Allocator,      // the token trees of substitution (nil: alloc), dropped after the element
 	// while custom properties of the element are being resolved:
 	pending:  map[string]Custom_Cand,
 	resolved: map[string]string,
@@ -266,7 +272,8 @@ var_lookup :: proc(env: ^Var_Env, name: string, depth: int) -> (string, bool) {
 substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, bool) {
 	s := &env.engine.settings
 	if depth > s.max_var_depth { return nil, false }
-	out := make([dynamic]css.Value, env.alloc)
+	sa := env.scratch.procedure != nil ? env.scratch : env.alloc
+	out := make([dynamic]css.Value, sa)
 	for v in vs {
 		switch v.kind {
 		case .Token: append(&out, v)
@@ -303,7 +310,7 @@ substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, 
 			if text, found := var_lookup(env, name, depth); found {
 				env.budget -= len(text)
 				if env.budget < 0 { return nil, false }
-				parsed := css.parse_component_values(text, parse_options(s), env.alloc)
+				parsed := css.parse_component_values(text, parse_options(s), sa)
 				sub, ok := substitute(env, parsed, depth + 1)
 				if !ok { return nil, false }
 				for p in css.trim_values(sub) { append(&out, p) }
@@ -333,6 +340,7 @@ Pass :: struct {
 	changed:  bool,            // ... and report whether some element really changed
 	layout_changed: bool,      // ... in a way that is not paint-only (paint_change.odin)
 	alloc:    runtime.Allocator,   // where computed styles go: the Styled's arena, or this thread's in a parallel pass
+	scratch:  virtual.Arena,       // what styling one element needs only while it runs (var() substitution: build_style)
 	stats:    Compile_Stats,   // merged into the engine by pass_destroy (on the thread that owns the engine)
 	counters: ^Counter_State,  // full pass: counters and quotes, resolved in tree order
 	unscoped: bool,            // partial restyle: a change reaches counters, the caller must do a full pass
@@ -423,7 +431,7 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 @(private)
 is_color_prop :: proc(pr: Prop) -> bool {
 	#partial switch pr {
-	case .Color_Scheme, .Color, .Background_Color, .Background_Image, .Text_Decoration_Color, .Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color, .Outline_Color, .Box_Shadow, .Text_Shadow, .Caret_Color, .Accent_Color:
+	case .Color_Scheme, .Color, .Background_Color, .Background_Image, .Text_Decoration_Color, .Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color, .Outline_Color, .Box_Shadow, .Text_Shadow, .Caret_Color, .Accent_Color, .Text_Fill_Color, .Scrollbar_Color:
 		return true
 	}
 	return false
@@ -459,7 +467,11 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	container_units(&cx.lc, parent != nil ? parent.containers : nil)
 
 	// custom properties (the maps exist only for elements that declare some)
-	env := Var_Env{engine = e, alloc = a, budget = e.settings.max_var_bytes, cx = &cx}
+	// one budget for every substitution of the element (custom properties and declarations): what var() may cost one
+	// element is bounded, whatever the number of its declarations; the token trees go to the pass's scratch arena
+	scratch := virtual.arena_temp_begin(&p.scratch)
+	defer virtual.arena_temp_end(scratch)
+	env := Var_Env{engine = e, alloc = a, scratch = virtual.arena_allocator(&p.scratch), budget = e.settings.max_var_bytes, cx = &cx}
 	env.parent = c.custom
 	// registered properties that do not inherit stop here: the map is copied without them
 	drops_noninherited := e.registered_noninherited > 0 && c.custom != nil && carries_noninherited(e, c.custom)
@@ -497,18 +509,22 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		// layer; a chain of them is followed (bounded: every step leaves a layer or an origin behind)
 		for _ in 0 ..< 64 {
 			if cand.origin == .Author {
-				if !e.settings.author_colors && is_color_prop(pr) { break }
-				if !e.settings.author_fonts && (pr == .Font_Family || pr == .Font_Size) { break }
+				// colors or fonts from pages off: the page's declaration is reverted, to the browser's own value (links keep
+				// LinkText, headings their size) rather than the inherited or initial one
+				if (!e.settings.author_colors && is_color_prop(pr)) || (!e.settings.author_fonts && (pr == .Font_Family || pr == .Font_Size)) {
+					if prev, found := revert_candidate(entries, inline_rule, pr, cand.key, true, parent, p.own_depth); found { cand = prev; continue }
+					apply_unset(&cx, pr)
+					break
+				}
 			}
 			vals := cand.decl.value
 			if cand.decl.has_var {
-				env.budget = e.settings.max_var_bytes
 				sub, ok := substitute(&env, vals, 0)
 				if !ok { apply_unset(&cx, pr); break }
 				vals = sub
 			}
 			if cand.decl.short != .None {
-				longs, ok := expand_shorthand(cand.decl.short, vals, a)
+				longs, ok := expand_shorthand(cand.decl.short, vals, env.scratch)   // (short: only with var())
 				found := false
 				if ok { for l in longs { if l.prop == pr { vals = l.vals; found = true; break } } }
 				if !found { apply_unset(&cx, pr); break }
@@ -658,9 +674,20 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	case .Inline_Size: c.contain += {.Inline_Size, .Layout, .Style}
 	}
 	if c.position == .Absolute || c.position == .Fixed || c.float != .None { c.display = blockify(c.display) }
-	if (c.overflow_x == .Visible) != (c.overflow_y == .Visible) {
-		if c.overflow_x == .Visible { c.overflow_x = .Auto } else { c.overflow_y = .Auto }
+	// CSS Overflow 3 §3.1: visible / clip become auto / hidden only when the other axis is neither (overflow-x: clip
+	// alone made the box a scroll container, and broke position: sticky inside it)
+	vis_or_clip :: #force_inline proc(o: Overflow) -> bool { return o == .Visible || o == .Clip }
+	if vis_or_clip(c.overflow_x) != vis_or_clip(c.overflow_y) {
+		o := vis_or_clip(c.overflow_x) ? &c.overflow_x : &c.overflow_y
+		o^ = o^ == .Visible ? .Auto : .Hidden
 	}
+}
+
+// The names of custom properties declared by text parsed into the temp allocator (a style attribute, hints) become
+// keys of the element's Custom_Props, which live as long as the style pass: they are copied into the pass's memory.
+@(private)
+own_custom_names :: proc(customs: []Custom_Decl, a: runtime.Allocator) {
+	for &cd in customs { cd.name = strings.clone(cd.name, a) }
 }
 
 @(private)
@@ -669,14 +696,7 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 	add_hint_entry(p, h, n)
 
 	inline_rule: ^Rule
-	if text, ok := attr(n, "style"); ok && p.e.settings.author_stylesheets && text != "" {
-		decls := css.parse_declarations(text, p.opt, context.temp_allocator)
-		pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats)
-		if len(pre) > 0 || len(customs) > 0 {
-			inline_rule = new(Rule, context.temp_allocator)
-			inline_rule^ = Rule{decls = pre, customs = customs, origin = .Author, layer = UNLAYERED, order = max(u32)}
-		}
-	}
+	if text, ok := attr(n, "style"); ok && p.e.settings.author_stylesheets && text != "" { inline_rule = inline_rule_of(p, text) }
 	// the element's own lists are consumed before ::before / ::after reuse the buffers
 	before_entries, after_entries, selection_entries: [dynamic]Entry
 	if len(p.lists[1]) > 0 { before_entries = make([dynamic]Entry, context.temp_allocator); append(&before_entries, ..p.lists[1][:]) }
@@ -713,6 +733,7 @@ pass_destroy :: proc(p: ^Pass) {
 	match_ctx_destroy(&p.mc)
 	delete(p.touched)
 	for i in 0 ..< 4 { delete(p.lists[i]) }
+	virtual.arena_destroy(&p.scratch)
 	free(p)
 }
 
@@ -803,11 +824,11 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host
 	if pool != nil && host.thread_pool_size(pool) > 1 && doc.nodes.count >= min_nodes {
 		// counters and quotes need tree order: the threads compute everything else, then one ordered walk resolves them
 		style_document_parallel(e, s, doc, state, pool)
-		s.counters_used = counters_post_pass(s, doc)
+		s.counters_used = counters_post_pass(s, doc, e.settings.counters_max_listed)
 	} else {
 		p := pass_make(e, s, doc, state)
 		defer pass_destroy(p)
-		counters := counter_state_make()
+		counters := counter_state_make(e.settings.counters_max_listed)
 		p.counters = &counters
 		root := dom.get(doc, doc.root)
 		for c := root.first_child; c != base.NIL_HANDLE; c = dom.get(doc, c).next {
@@ -823,8 +844,8 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host
 // Resolves counters and quotes over styles already computed (after a parallel pass), in tree order, exactly as the
 // sequential pass does while it goes. Returns whether any counter or quote was used.
 @(private)
-counters_post_pass :: proc(s: ^Styled, doc: ^dom.Document) -> bool {
-	counters := counter_state_make()
+counters_post_pass :: proc(s: ^Styled, doc: ^dom.Document, max_listed: int) -> bool {
+	counters := counter_state_make(max_listed)
 	Frame :: struct { h: base.Handle, hidden: bool, exit: bool, c: ^Computed }
 	stack := make([dynamic]Frame, context.temp_allocator)
 	root := dom.get(doc, doc.root)
@@ -1047,13 +1068,20 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 		}
 		old_style := base_style_of(s, r)
 		rctx := node_ctx(p, r)
+		// the root element's font size and line height are what rem and rlh mean everywhere: a change of them (html:hover,
+		// :focus-within) needs a full pass (what was done is harmless: records replaced as a full pass would)
+		root_moved :: proc(s: ^Styled, r: base.Handle, par: base.Handle) -> bool {
+			if par != base.NIL_HANDLE { return false }
+			ns := base_style_of(s, r)
+			return ns != nil && (ns.font_size != s.root_font_size || used_line_height(ns, s.line_height_normal) != s.root_line_height)
+		}
 		if deep {
 			style_subtree(p, r, parent_style, bloom, root_ctx = rctx)
-			if p.unscoped { return false, false }
+			if p.unscoped || root_moved(s, r, par) { return false, false }
 			continue
 		}
 		style_subtree(p, r, parent_style, bloom, descend = false, root_ctx = rctx)
-		if p.unscoped { return false, false }
+		if p.unscoped || root_moved(s, r, par) { return false, false }
 		// the element's own change may reach its descendants through inheritance
 		new_style := base_style_of(s, r)
 		if old_style != nil && new_style != nil && !inherited_equal(old_style, new_style) {

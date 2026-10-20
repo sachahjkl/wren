@@ -266,13 +266,13 @@ demo_href :: proc(app: ^App, d: Demo, base_url: string, allocator := context.tem
 DEMOS_STYLE :: `
   html { background-color: #0d1017; }
   body { margin: 0; color: #c9d1e3; font-family: system-ui; font-size: 15px; }
-  .head { width: 760px; margin: 0 auto; padding: 48px 20px 8px; }
+  .head { max-width: 760px; margin: 0 auto; padding: 48px 20px 8px; }
   h1 { font-size: 40px; margin: 0; color: #f1f4fb; }
   h1 .w { color: #ffb84d; }
   .intro { color: #8993ad; margin: 8px 0 0; }
   .from { margin: 16px 0 0; padding: 10px 16px; background-color: #151a26; border: 1px solid #272f45; border-radius: 10px; color: #8993ad; font-size: 13px; }
   .from code { color: #c9d1e3; }
-  .main { width: 760px; margin: 0 auto; padding: 0 20px 48px; }
+  .main { max-width: 760px; margin: 0 auto; padding: 0 20px 48px; }
   h2 { font-size: 20px; color: #ffb84d; margin: 30px 0 4px; }
   .demo { margin: 10px 0; padding: 12px 18px; background-color: #131825; border: 1px solid #232b40; border-radius: 12px; }
   .demo h3 { margin: 0 0 4px; font-size: 16px; }

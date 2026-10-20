@@ -63,11 +63,20 @@ Doc_Load :: struct {
 	bytes:      int,                     // size of the document's body
 	view_source: bool,                   // a view-source: navigation: the bytes are shown as source (view_source.odin)
 	task:       base.Handle,             // the document's request (Escape stops it)
+	stopped:    bool,                    // Escape stopped it: the tab no longer shows it loading
+	failed:     Load_Failure,            // the tab shows an error page (the security chip says so)
+	pushed:     bool,                    // the navigation added a history entry (a download takes it back: download.odin)
+	action:     Doc_Action,              // what the answer is shown as (download.odin doc_action)
 }
+
+Load_Failure :: enum u8 { None, Other, Tls }
 
 Tab_Kind :: enum u8 { Web, Config }
 
 Tab :: struct {
+	id:       u64,           // unique for the process: keys its boxes of the tab strip (tab_strip.odin)
+	lazy:     bool,          // restored, not loaded yet: `url` loads when the tab is first shown (session.odin)
+	icon:     Tab_Icon,      // its document's icon and title (favicon.odin)
 	kind:     Tab_Kind,      // a web page, or the about:config view
 	scope:    ^base.Scope,   // lives as long as the tab
 	nav:      ^base.Scope,   // lives as long as the current navigation: the page and everything it started
@@ -141,16 +150,26 @@ current_tab :: proc(app: ^App) -> ^Tab { return len(app.tabs) > 0 ? app.tabs[app
 ////////////////////////////////
 // Tabs
 
+@(private = "file") tab_ids: u64
+
 tab_open :: proc(app: ^App, address := "") -> ^Tab {
+	t := tab_new(app)
+	app.current = len(app.tabs) - 1
+	ui.field_set(&app.address, address)
+	navigate(app, t, address)   // an empty address opens the homepage
+	return t
+}
+
+// A tab at the end of the strip, showing nothing yet.
+tab_new :: proc(app: ^App) -> ^Tab {
 	t := new(Tab)
+	tab_ids += 1
+	t.id = tab_ids
 	t.hist = -1
 	t.zoom = 1
 	t.scope = base.scope_make("tab", app.process)
 	t.title = strings.clone("New tab")
 	append(&app.tabs, t)
-	app.current = len(app.tabs) - 1
-	ui.field_set(&app.address, address)
-	navigate(app, t, address)   // an empty address opens the homepage
 	return t
 }
 
@@ -165,6 +184,7 @@ tab_close :: proc(app: ^App, index: int) {
 	page.session_destroy(&t.session)
 	delete(t.url); delete(t.title); delete(t.status)
 	delete(t.fragment_seen)
+	tab_icon_destroy(&t.icon)
 	for h in t.history { delete(h) }
 	delete(t.history)
 	for l in t.console { delete(l) }
@@ -194,15 +214,6 @@ set_status :: proc(t: ^Tab, s: string) {
 	t.status = strings.clone(s)
 }
 
-// Last path segment, or the host: a stand-in until the page has a <title>.
-title_from_url :: proc(u: string) -> string {
-	s := u
-	if i := strings.index(s, "://"); i >= 0 { s = s[i + 3:] }
-	s = strings.trim_right(s, "/\\")
-	if i := strings.last_index_any(s, "/\\"); i >= 0 && i + 1 < len(s) { s = s[i + 1:] }
-	return s == "" ? "New tab" : s
-}
-
 ////////////////////////////////
 // Navigation
 
@@ -223,7 +234,12 @@ normalize_address :: proc(input: string) -> string {
 navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false, record := true, method := "", body: []byte = nil, headers: []fetch.Header_Pair = nil) {
 	target := strings.clone(normalize_address(address), context.temp_allocator)
 	if target == "" { target = strings.clone(app.cfg.homepage, context.temp_allocator) }
-	if record { history_push(t, target) }
+	pushed := false
+	if record {
+		cur := page.session_current(&t.session)
+		pushed = cur == nil || cur.url != target   // (visiting the current entry's URL again adds none)
+		history_push(t, target)
+	}
 	// built-in pages show at once (they paint in their first frame)
 	if target == "about:config" { hold_release(t); show_config(app, t); return }
 	if target == HOME_URL { hold_release(t); show_home(app, t); return }
@@ -231,6 +247,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if target == ABOUT_URL { hold_release(t); show_about_pages(app, t); return }
 	load := new(Doc_Load)
 	load.tab = t
+	load.pushed = pushed
 	shown := target
 	if strings.has_prefix(target, VIEW_SOURCE) {
 		load.view_source = true
@@ -255,7 +272,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	delete(t.url)
 	t.url = strings.clone(shown)
 	delete(t.title)
-	t.title = strings.clone(title_from_url(shown))
+	t.title = default_tab_title(shown, context.allocator)   // until the document says better (favicon.odin)
 	ui.field_set(&app.address, shown)
 	set_status(t, "loading...")
 
@@ -330,7 +347,7 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 
 // Connects a document to its tab: navigation hook, session history, storage.
 attach_page :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
-	page.set_embedder(p, {navigate = page_navigate, user = t, session = &t.session, tab_key = tab_key(t), storage = &app.storage})
+	page.set_embedder(p, {navigate = page_navigate, user = t, session = &t.session, tab_key = tab_key(t), storage = &app.storage, print = page_print})
 	attach_js_layout(app, t, p)   // geometry for scripts (js_layout_shell.odin)
 }
 
@@ -364,25 +381,28 @@ show_config :: proc(app: ^App, t: ^Tab) {
 }
 
 // An HTML page the browser makes up when a load fails, so the tab always shows something readable.
-show_error_page :: proc(app: ^App, load: ^Doc_Load, headline, detail: string) {
+// (error_pages.odin writes it.)
+show_error_page :: proc(app: ^App, load: ^Doc_Load, e: Error_Text) {
 	t := load.tab
 	if load.page == nil {
 		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, "about:blank", console_sink, t)
 		t.page = load.page
 		attach_page(app, t, load.page)
 	}
-	body := fmt.tprintf("<!doctype html><title>Error</title><h1>%s</h1><p>%s</p><p>%s</p>", escape_html(headline), escape_html(detail), escape_html(t.url))
-	page.load_html(load.page, transmute([]byte)body)
+	load.failed = e.kind == .Tls ? .Tls : .Other
+	title := error_tab_title(t.url)
+	page.load_html(load.page, transmute([]byte)error_page_html(e, t.url, title))
 	delete(t.title)
-	t.title = strings.clone("Error")
-	set_status(t, headline)
-	tab_log(t, .Error, fmt.tprintf("%s: %s", headline, detail))
+	t.title = strings.clone(title)
+	set_status(t, e.headline)
+	tab_log(t, .Error, fmt.tprintf("%s: %s", e.headline, e.detail))
 }
 
 escape_html :: proc(s: string) -> string {
 	r, _ := strings.replace_all(s, "&", "&amp;", context.temp_allocator)
 	r, _ = strings.replace_all(r, "<", "&lt;", context.temp_allocator)
 	r, _ = strings.replace_all(r, ">", "&gt;", context.temp_allocator)
+	r, _ = strings.replace_all(r, "\"", "&quot;", context.temp_allocator)
 	return r
 }
 
@@ -394,12 +414,26 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	switch ev.kind {
 	case .Response:
 		r := ev.response
+		// an answer to save rather than show: the request goes on as a download, the tab keeps its page (download.odin)
+		disposition, _ := http.get_header(r.headers, "content-disposition")
+		load.action = doc_action(r.has_mime ? http.mime_essence(r.mime) : "", disposition, r.url)
+		if load.action == .Download && !load.view_source && r.status >= 200 && r.status < 300 {
+			download_from_navigation(app, load, task, r, disposition)
+			return   // (`load` is gone)
+		}
 		load.status = r.status
 		load.final_url = strings.clone(r.url)
 		if r.has_mime {
 			load.mime = strings.clone(http.mime_essence(r.mime))
 			if cs, ok := http.mime_param(r.mime, "charset"); ok { load.charset = strings.clone(cs) }
 		}
+		set_status(t, fmt.tprintf("HTTP %d", r.status))
+		shown := load.view_source ? strings.concatenate({VIEW_SOURCE, r.url}, context.temp_allocator) : r.url
+		delete(t.url)
+		t.url = strings.clone(shown)
+		if current_tab(app) == t { ui.field_set(&app.address, shown) }
+		// an image is shown by a document the browser writes once the image is in (download.odin show_image_document)
+		if load.action == .Image && !load.view_source { return }
 		// the document exists from here on, with the origin of its *final* URL
 		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, r.url, console_sink, t)
 		attach_page(app, t, load.page)
@@ -408,17 +442,12 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		ro_h := http.get_all(r.headers, "content-security-policy-report-only")
 		rp, _ := http.get_header(r.headers, "referrer-policy")
 		page.apply_response_headers(load.page, csp_h, ro_h, rp)
-		set_status(t, fmt.tprintf("HTTP %d", r.status))
-		shown := load.view_source ? strings.concatenate({VIEW_SOURCE, r.url}, context.temp_allocator) : r.url
-		delete(t.url)
-		t.url = strings.clone(shown)
-		if current_tab(app) == t { ui.field_set(&app.address, shown) }
 	case .Data:
 	case .Done:
 		document_loaded(app, load, ev.data)
 	case .Failed:
 		load.task = base.NIL_HANDLE
-		show_error_page(app, load, "This page could not be loaded", ev.detail)
+		show_error_page(app, load, classify_load_error(t.url, ev.error, ev.net_code, ev.detail))
 	}
 }
 
@@ -431,20 +460,21 @@ document_loaded :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 	p := load.page
 	load.task = base.NIL_HANDLE
 	if load.view_source { show_source(app, load, data); return }
-	if looks_like_wasm(data) || load.mime == "application/wasm" {
+	if looks_like_wasm(data) || load.action == .Wasm {
 		// the document is a module
 		_, ok, err := page.load_module(p, data, t.url)
 		if ok { set_status(t, fmt.tprintf("%s: running", t.url)) } else { set_status(t, err); tab_log(t, .Error, err) }
 		page.render_begin(p)   // the document is what the module built
 		return
 	}
-	if load.mime != "" && load.mime != "text/html" && load.mime != "application/xhtml+xml" {
-		if strings.has_prefix(load.mime, "text/") {
-			show_text(app, load, data)
-		} else {
-			show_error_page(app, load, "Cannot display this content", fmt.tprintf("type %s", load.mime))
-		}
+	switch load.action {
+	case .Text: show_text(app, load, data); return
+	case .Image: show_image_document(app, load); return
+	case .Download:
+		// (only an error status gets here: a successful one became a download)
+		show_error_page(app, load, {kind = .Content, headline = "This page can't be shown", explain = fmt.tprintf("The server answered HTTP %d with a file to download.", load.status), detail = fmt.tprintf("type %s", load.mime)})
 		return
+	case .Render, .Wasm:
 	}
 
 	// decoded and parsed off the UI thread (page.threads.*); the page closing first cancels the callback
@@ -457,12 +487,15 @@ document_parsed :: proc(p: ^page.Page, user: rawptr, d: ^page.Parsed_Document) {
 	t := load.tab
 	app := the_app
 	app.frames_requested = max(app.frames_requested, 3)
-	if !d.decoded { show_error_page(app, load, "Cannot decode the document", load.charset); return }
+	if !d.decoded {
+		show_error_page(app, load, {kind = .Content, headline = "This page can't be shown", explain = "Its text could not be decoded.", detail = fmt.tprintf("encoding %q", load.charset)})
+		return
+	}
 	r := page.adopt_document(p, d)
 	if !p.render.adopted { page.render_begin(p) }   // nothing adopted: the blank document is what there is
 	if !r.ok { tab_log(t, .Error, fmt.tprintf("HTML parse failed (%d)", r.status)) }
 	if r.truncated { tab_log(t, .Warn, "document truncated: too many nodes") }
-	if title := html.title(p.doc); title != "" {
+	if title := collapse_title(html.title(p.doc)); title != "" {
 		delete(t.title)
 		t.title = strings.clone(title)
 	}
@@ -682,6 +715,7 @@ find_named_anchor :: proc(d: ^dom.Document, name: string) -> base.Handle {
 }
 
 build_ui :: proc(app: ^App) {
+	session_lazy_load(app)   // session.odin: a restored tab loads when it is first shown
 	chrome_shortcuts(app)
 	em := ui.font_size()
 	t := current_tab(app)
@@ -725,6 +759,8 @@ build_ui :: proc(app: ^App) {
 		}
 	}
 	context_menus_build(app)
+	// notices go over the page, not over the title bar's window buttons
+	if app.page_rect.max.y > app.page_rect.min.y { ui.set_toast_area(app.page_rect) }
 	ui.toasts_build()
 }
 
@@ -831,6 +867,7 @@ profile_load :: proc(app: ^App) {
 profile_save :: proc(app: ^App, force := false) {
 	c, h, pf := profile_paths(app)
 	if app.prefs.dirty || force { config.save_user(&app.prefs, pf) }
+	session_save(app)   // session.odin (when it changed)
 	if !app.cfg.persist_profile { return }
 	if force || app.profile.jar.dirty { cookies.save(&app.profile.jar, c) }
 	if force || app.profile.hsts.dirty { fetch.hsts_save(&app.profile.hsts, h, fetch.now_ms()) }
@@ -864,6 +901,8 @@ apply_prefs :: proc(app: ^App) {
 	delete(app.cfg.homepage)
 	delete(app.cfg.ui_theme)
 	app.cfg = settings_from_prefs(&app.prefs)
+	app.show_console = app.cfg.show_console
+	downloads_apply(app)
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	arm_autosave(app)
 	app.frames_requested = max(app.frames_requested, 3)
@@ -935,7 +974,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_begin(.Build_UI)
 	ui.begin_build(&app.ui_state, {
 		window_size = size, events = events, dt = dt, animations = os_animations_enabled(app),
-		dpi_scale = app.win.dpi_scale, base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
+		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
 		disable_zoom = true,   // Ctrl+Plus / Minus / 0 and Ctrl+wheel zoom the page (zoom.odin), not the chrome
 		window = app.win, frame_ms = pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock
 	})
@@ -1022,7 +1061,7 @@ main :: proc() {
 	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "")
 	app.page_settings = page.settings_from_prefs(&app.prefs)
 	{
-		rs := wasm.runtime_settings_from_prefs(&app.prefs, app.profile_dir)
+		rs := wasm.runtime_settings_from_prefs(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")   // nothing on disk without a kept profile
 		wasm.configure(rs)
 		wasm.runtime_settings_destroy(&rs)
 	}
@@ -1030,7 +1069,7 @@ main :: proc() {
 	page.js_startup(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")
 	app.process = base.scope_make("process")
 	app.config_view.rows = make(map[string]^Row_State)
-	app.show_console = true
+	app.show_console = app.cfg.show_console
 
 	profile_load(app)
 	config.watch(&app.prefs, "", on_pref_change, app)
@@ -1040,7 +1079,7 @@ main :: proc() {
 	prof_mark(.Shell)
 	address := len(rest) > 0 ? command_line_address(rest[0]) : ""   // (a relative path of a file or folder: local_paths.odin)
 	prof_mark(.Navigation)
-	tab_open(app, address)
+	if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address) }   // session.odin
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }
 
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
@@ -1064,7 +1103,10 @@ main :: proc() {
 	pacer_init(app)
 	smooth_init(app)
 	window_chrome_init(app)
+	favicons_init(app)   // favicon.odin
+	downloads_init(app)   // download.odin
 	drop_files_init(app)   // local_paths.odin
+	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
 	hud_init(app)
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
@@ -1090,6 +1132,7 @@ main :: proc() {
 	prof_report()
 	profile_save(app, force = true)
 	base.scope_close(app.process)   // every tab, page and request
+	favicons_destroy(app)
 	images_shell_destroy(app)
 	page.storage_manager_destroy(&app.storage)   // writes what is not saved yet
 	page.shutdown_threads()
@@ -1097,12 +1140,14 @@ main :: proc() {
 	page.images_shutdown()   // the image cache and its decoding threads
 	fetch.loader_destroy(&app.loader)
 	host.blocking_destroy(&app.blocking)
+	downloads_shutdown()   // (no write or dialog of theirs is running any more)
 	net.client_destroy(&app.client)
 	fetch.profile_destroy(&app.profile)
 	appearance_destroy()
 	hud_destroy(app)
 	smooth_shutdown(app)
 	drop_files_destroy(app)
+	app_commands_destroy()
 	window_chrome_destroy(app)
 	pacer_destroy(app)
 	font.set_color_ready_callback(&app.fonts, nil, nil)   // the color glyph thread no longer posts to the loop
@@ -1117,6 +1162,7 @@ main :: proc() {
 	interaction_destroy(app)
 	ui.field_destroy(&app.address)
 	console_eval_destroy()
+	session_destroy()
 	ui.destroy(&app.ui_state)
 	config.prefs_destroy(&app.prefs)
 }

@@ -16,11 +16,15 @@ Settings :: struct {
 	max_rules_total:     int,
 	max_sheet_bytes:     int,
 	max_import_depth:    int,
+	max_imports:         int,       // @import sheets loaded for one document, all levels together
+	counters_max_listed: int,       // counters(): innermost instances listed
+	counters_max_ops:    int,       // counter names in one counter-reset / counter-increment / counter-set
 	max_selector_compounds: int,
 	max_var_depth:       int,       // var() substitution chain
-	max_var_bytes:       int,       // size of one substituted value
+	max_var_bytes:       int,       // text var() may substitute for one element
 	restyle_waste_bytes: int,       // memory that partial restyles may leave behind before a full pass compacts it
 	recycle_bytes:       int,       // largest style memory kept from one full pass for the next
+	inline_cache_entries: int,      // compiled style attributes (and CSSOM declarations) kept per pass (inline_cache.odin)
 	ua_stylesheet:       bool,
 	author_stylesheets:  bool,      // false: pages are shown with the browser's styles only
 	author_colors:       bool,      // false: the page's colors are ignored (high-contrast reading)
@@ -83,26 +87,34 @@ anim_mode_effective :: proc(s: ^Settings) -> Anim_Mode {
 }
 
 PREFS := [?]config.Def{
-	{name = "style.max_nesting_depth", kind = .Int, default = {i = 256}, bounded = true, min = 8, max = 100_000,
-		description = "Deepest nesting of blocks and functions in a stylesheet; deeper ones are skipped (stack protection)."},
+	{name = "style.max_nesting_depth", kind = .Int, default = {i = 256}, bounded = true, min = 8, max = 4096,
+		description = "Deepest nesting of blocks and functions in a stylesheet; deeper ones are skipped (stack protection: parsing, var() and calc() recurse once per level, so the bound stays far below what a thread stack holds)."},
 	{name = "style.max_rules_per_sheet", kind = .Int, default = {i = 200_000}, bounded = true, min = 100, max = 100_000_000,
 		description = "Most rules read from one stylesheet; the rest is ignored."},
 	{name = "style.max_rules_total", kind = .Int, default = {i = 1_000_000}, bounded = true, min = 100, max = 1_000_000_000,
-		description = "Most style rules active in one document, all sheets together."},
+		description = "Most style rules active in one document, all its sheets together (each shadow tree with its own sheets counts on its own)."},
 	{name = "style.max_sheet_bytes", kind = .Int, default = {i = 16 << 20}, bounded = true, min = 1024, max = 1 << 30, bytes = true, unit = "bytes",
 		description = "Largest stylesheet that is parsed; a bigger one is ignored."},
 	{name = "style.max_import_depth", kind = .Int, default = {i = 8}, bounded = true, min = 0, max = 64,
 		description = "How deep @import may chain. 0 disables @import."},
+	{name = "style.counters.max_listed", kind = .Int, default = {i = 1000}, bounded = true, min = 1, max = 1_000_000, unit = "levels",
+		description = "counters() lists at most this many nested instances of a counter, the innermost ones (on a deeply nested page each level listed every level above it: text growing with the square of the depth)."},
+	{name = "style.counters.max_ops", kind = .Int, default = {i = 1000}, bounded = true, min = 1, max = 1_000_000, unit = "counters",
+		description = "Most counter names one counter-reset, counter-increment or counter-set declaration may list; a longer list is invalid."},
+	{name = "style.max_imports", kind = .Int, default = {i = 256}, bounded = true, min = 0, max = 100_000, unit = "sheets",
+		description = "Most stylesheets loaded through @import for one document, all levels together (a sheet importing itself ten times, eight levels deep, asked for 10^8 loads). A sheet that imports one of the sheets importing it is ignored."},
 	{name = "style.max_selector_compounds", kind = .Int, default = {i = 32}, bounded = true, min = 2, max = 1000,
-		description = "Longest complex selector (compound selectors joined by combinators); longer ones are dropped. Matching is recursive and bounded by this."},
+		description = "Longest complex selector (compound selectors joined by combinators); longer ones are dropped. Selectors inside :is(), :not(), :where() and :has() are not counted."},
 	{name = "style.max_var_depth", kind = .Int, default = {i = 32}, bounded = true, min = 1, max = 1000,
 		description = "How many var() references may chain before the value is invalid."},
 	{name = "style.max_var_bytes", kind = .Int, default = {i = 1 << 20}, bounded = true, min = 64, max = 1 << 28, bytes = true, unit = "bytes",
-		description = "Largest value var() may expand to (stops exponential blow-up from nested custom properties)."},
+		description = "Most text var() may substitute while one element is styled, all its custom properties and declarations together; past it the declaration is invalid at computed-value time (stops exponential blow-up from nested custom properties, and bounds the memory one element costs)."},
 	{name = "style.restyle_waste_bytes", kind = .Int, default = {i = 64 << 20}, bounded = true, min = 1 << 20, max = 1 << 36, bytes = true, unit = "bytes",
 		description = "Partial restyles (hover, focus) allocate new computed styles; once this much has piled up the next restyle is a full pass that frees it."},
 	{name = "style.recycle_bytes", kind = .Int, default = {i = 128 << 20}, bounded = true, min = 0, max = 1 << 34, bytes = true, unit = "bytes",
 		description = "Memory of a full style pass kept, already mapped, for the next pass of the same page (faster restyles, at the cost of holding it). 0 = always give it back."},
+	{name = "style.inline_cache.entries", kind = .Int, default = {i = 8192}, bounded = true, min = 0, max = 1 << 24, unit = "style attributes",
+		description = "Compiled style attributes kept by text until the next full restyle, so that restyling an element (or many elements with the same style attribute) does not parse it again, and a value a script sets through element.style is compiled once. The same number of single declarations is kept for scripts. 0 = parse at every restyle."},
 	{name = "style.ua_stylesheet.enabled", kind = .Bool, default = {b = true}, description = "Use the browser's default styles (headings, lists, links...). Without them pages are unstyled."},
 	{name = "style.author_stylesheets.enabled", kind = .Bool, default = {b = true}, description = "Apply the styles that pages bring. Off: every page is shown with browser styles only."},
 	{name = "style.author_colors.enabled", kind = .Bool, default = {b = true}, description = "Let pages set colors. Off: color and background properties from pages are ignored."},
@@ -187,11 +199,15 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.max_rules_total = int(config.int_of(p, "style.max_rules_total"))
 	s.max_sheet_bytes = int(config.int_of(p, "style.max_sheet_bytes"))
 	s.max_import_depth = int(config.int_of(p, "style.max_import_depth"))
+	s.max_imports = int(config.int_of(p, "style.max_imports"))
+	s.counters_max_listed = int(config.int_of(p, "style.counters.max_listed"))
+	s.counters_max_ops = int(config.int_of(p, "style.counters.max_ops"))
 	s.max_selector_compounds = int(config.int_of(p, "style.max_selector_compounds"))
 	s.max_var_depth = int(config.int_of(p, "style.max_var_depth"))
 	s.max_var_bytes = int(config.int_of(p, "style.max_var_bytes"))
 	s.restyle_waste_bytes = int(config.int_of(p, "style.restyle_waste_bytes"))
 	s.recycle_bytes = int(config.int_of(p, "style.recycle_bytes"))
+	s.inline_cache_entries = int(config.int_of(p, "style.inline_cache.entries"))
 	s.ua_stylesheet = config.bool_of(p, "style.ua_stylesheet.enabled")
 	s.author_stylesheets = config.bool_of(p, "style.author_stylesheets.enabled")
 	s.author_colors = config.bool_of(p, "style.author_colors.enabled")

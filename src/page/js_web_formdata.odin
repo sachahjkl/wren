@@ -28,14 +28,11 @@ FormData_fileAt :: proc(c: ^Call, data: Api_FormData, index: i32) -> (u64, Api_E
 
 FormData_setBlob :: proc(c: ^Call, data: Api_FormData, name: string, blob: Api_Buffer, filename: string, mime: string) -> Api_Error {
 	fd := data.data
-	at := fd_remove_all(fd, name)
-	bytes := make([]byte, len(blob.data.bytes))
-	copy(bytes, blob.data.bytes[:])
-	e := forms.Entry{name = strings.clone(name), is_file = true, file = forms.File{
-		name = strings.clone(filename == "" ? "blob" : filename), mime = strings.clone(mime), size = i64(len(bytes)), data = bytes,
-	}}
+	at := fd_remove_all(c.page, fd, name)
+	e, ok := fd_blob_entry(c.page, fd, name, blob.data.bytes[:], filename, mime)
+	if !ok { return fail(c, .Quota, "QuotaExceededError: page memory limit") }
 	if at < 0 {
-		if too_many(c.page, fd) { forms.entry_destroy(&e); return fail(c, .Invalid_Argument, "too many entries (forms.max_entries)") }
+		if too_many(c.page, fd) { fd_entry_destroy(c.page, fd, &e); return fail(c, .Invalid_Argument, "too many entries (forms.max_entries)") }
 		append(&fd.entries, e)
 	} else {
 		inject_at(&fd.entries, at, e)

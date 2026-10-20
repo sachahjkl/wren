@@ -217,6 +217,8 @@ enum wr_WorkerType {
 
 /* module dom (partial): types */
 
+/* module dom (partial): types */
+
 /* module events (partial): types */
 
 /* module dom (partial): types */
@@ -1130,6 +1132,8 @@ WR_IMPORT("dom", "DOMImplementation_createDocumentType") int32_t wr_DOMImplement
 // A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,
 // 3 doctype. 0 when there is none.
 WR_IMPORT("dom", "Document_partOf") uint64_t wr_Document_partOf(uint64_t document, int32_t which);
+// window.print().
+WR_IMPORT("dom", "Window_print") void wr_Window_print(void);
 // element.attachShadow(init): Not_Supported for an element that cannot host one, a host already (unless its root
 // was declared by the parser with the same mode: emptied and returned), or a custom element whose definition
 // disables shadow roots.

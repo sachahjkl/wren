@@ -99,6 +99,28 @@ restyle_dom_descendant_and_child :: proc(t: ^testing.T) {
 	testing.expect_value(t, f.st.serial, before)
 }
 
+// A custom property declared in a style attribute is a key of the element's Custom_Props for as long as the record
+// lives: its name must not point into the temporary memory the attribute was parsed in (freed at the end of the
+// frame), or a later partial restyle keeps a record whose key is garbage (shadow-dom.html, inc_demo_pages).
+@(test)
+restyle_dom_inline_custom_property_names :: proc(t: ^testing.T) {
+	f := rx_load(`<style>b { color: var(--accent, red) }</style><div id=host style="--accent: #00f"><b id=b>x</b></div><p id=other>y</p>`)
+	defer rx_unload(f)
+	// the end of the frame: the temp allocator is reset and its memory reused
+	free_all(context.temp_allocator)
+	junk := make([]u8, 1 << 16, context.temp_allocator)
+	for &c in junk { c = ' ' }
+	dom.set_attribute(f.doc, by_id(f, "other"), "style", "margin: 1px")
+	expect_partial(t, f, "an unrelated inline style")
+	host := style_of(f.st, by_id(f, "host"))
+	testing.expect(t, host != nil && host.custom != nil)
+	if host != nil && host.custom != nil {
+		_, found := host.custom.values["--accent"]
+		testing.expect(t, found, "the key is still --accent")
+	}
+	testing.expect(t, style_of(f.st, by_id(f, "b")).color == {0, 0, 1, 1})
+}
+
 @(test)
 restyle_dom_siblings :: proc(t: ^testing.T) {
 	f := rx_load(`<style>.a + .b { color: red } .a ~ .c { margin-left: 5px } .a + * + .d { padding: 2px }</style>
@@ -419,6 +441,32 @@ restyle_dom_parallel :: proc(t: ^testing.T) {
 	_, ok := restyle_dom(f.eng, f.doc, f.st, pool)
 	testing.expect(t, ok && !f.eng.last_restyle.parallel)
 	testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
+}
+
+// A class on the root element that changes its font size or line height, its subtree large enough for the threads:
+// the root is restyled on this thread, where the change of the root font size is seen (the deferred root was not
+// checked: every rem kept the old size); a change of the root line height (rlh) falls back to a full pass as well.
+@(test)
+restyle_dom_root_font_with_threads :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>html.big { font-size: 32px } html.tall { line-height: 40px } html.big p, html.tall p { color: red } p { width: 1rem; height: 1rlh }</style><body>`)
+	for _ in 0 ..< 400 { strings.write_string(&sb, "<section><p>t</p><p>u</p></section>") }
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	pool := host.thread_pool_make(3)
+	defer host.thread_pool_destroy(pool)
+	f.eng.settings.inc_parallel_min = 100
+	root := dom.find_first_by_tag(f.doc, "html")
+	for cls in ([]string{"big", "", "tall", ""}) {
+		dom.set_attribute(f.doc, root, "class", cls)
+		if _, ok := restyle_dom(f.eng, f.doc, f.st, pool); !ok {
+			old := f.st
+			f.st = compute_styles(f.eng, f.doc, {})
+			styled_destroy(old)
+		}
+		diff := verify_styles(f.eng, f.doc, f.st, context.temp_allocator)
+		testing.expectf(t, diff == "", "class %q: %s", cls, diff)
+	}
 }
 
 ////////////////////////////////

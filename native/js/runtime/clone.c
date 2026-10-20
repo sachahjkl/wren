@@ -184,7 +184,8 @@ typedef struct ser {
     uint32_t   depth;
 } ser;
 
-#define MAX_DEPTH 20000
+/* nesting allowed; recursion is also bounded by the C stack (wj_stack_exhausted) */
+#define MAX_DEPTH 10000
 
 static bool serialize(ser *s, JSValueConst v);
 
@@ -242,10 +243,10 @@ static JSValue collect_cb(JSContext *ctx, JSValueConst this_val, int argc, JSVal
     JS_GetLength(ctx, arr, &n);
     /* Map: (value, key); Set: (value, value) */
     if (magic == 0) {
-        JS_SetPropertyInt64(ctx, arr, n, JS_DupValue(ctx, argc > 1 ? argv[1] : JS_UNDEFINED));
-        JS_SetPropertyInt64(ctx, arr, n + 1, JS_DupValue(ctx, argc > 0 ? argv[0] : JS_UNDEFINED));
+        wj_array_set64(ctx, arr, n, JS_DupValue(ctx, argc > 1 ? argv[1] : JS_UNDEFINED));
+        wj_array_set64(ctx, arr, n + 1, JS_DupValue(ctx, argc > 0 ? argv[0] : JS_UNDEFINED));
     } else {
-        JS_SetPropertyInt64(ctx, arr, n, JS_DupValue(ctx, argc > 0 ? argv[0] : JS_UNDEFINED));
+        wj_array_set64(ctx, arr, n, JS_DupValue(ctx, argc > 0 ? argv[0] : JS_UNDEFINED));
     }
     return JS_UNDEFINED;
 }
@@ -274,6 +275,7 @@ static bool serialize_object(ser *s, JSValueConst v)
         return clone_error(ctx, msg);
     }
     if (++s->depth > MAX_DEPTH) { return clone_error(ctx, "the value is nested too deeply to be cloned."); }
+    if (wj_stack_exhausted()) { JS_ThrowRangeError(ctx, "Maximum call stack size exceeded"); return false; }
     bool ok = true;
     JSValue prim;
     if (JS_IsArrayBuffer(v)) {
@@ -601,6 +603,7 @@ static JSValue deserialize(deser *d)
     uint8_t tag;
     if (!get_u8(d, &tag)) { return malformed(ctx); }
     if (++d->depth > MAX_DEPTH) { return JS_ThrowRangeError(ctx, "serialized value nested too deeply"); }
+    if (wj_stack_exhausted()) { return JS_ThrowRangeError(ctx, "Maximum call stack size exceeded"); }
     JSValue r = JS_UNDEFINED;
     switch (tag) {
     case T_UNDEFINED: r = JS_UNDEFINED; break;

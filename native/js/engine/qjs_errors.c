@@ -1,4 +1,4 @@
-/* errors.c: the exceptions bindings throw (Web IDL "simple exceptions" and DOMException) and the mapping from the
+/* qjs_errors.c: the exceptions bindings throw (Web IDL "simple exceptions" and DOMException) and the mapping from the
  * browser's Error codes (api/web.widl) to them. */
 #include <stdarg.h>
 #include <stdio.h>
@@ -43,7 +43,7 @@ int wj_dom_exception_code(const char *name)
     return 0;
 }
 
-/* runtime/domexception.c makes real DOMException objects; without it (bindings not generated yet) an Error with the
+/* runtime/web_core.c makes real DOMException objects; without it (bindings not generated yet) an Error with the
  * right name stands in. */
 __attribute__((weak)) wj_val wj_new_dom_exception(wj_ctx *ctx, const char *name, const char *message)
 {

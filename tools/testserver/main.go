@@ -119,6 +119,7 @@ func main() {
 	registerJSLoadHandlers(mux)
 	registerJSWebHandlers(mux)
 	registerWPTHandlers(mux)
+	registerDownloadHandlers(mux)
 
 	go func() {
 		log.Fatal(http.ListenAndServe("127.0.0.1:8767", mux))

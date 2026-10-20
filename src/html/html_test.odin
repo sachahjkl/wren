@@ -93,6 +93,9 @@ charset_sniffing_and_decoding :: proc(t: ^testing.T) {
 	check(t, {'a', 0xE9}, "not-an-encoding", "aé", "windows-1252", .Default)                          // unknown label: sniff, then default
 	check(t, {'a', 0xFF, 'b'}, "utf-8", "a\uFFFDb", "UTF-8", .Header)                                 // invalid UTF-8 becomes U+FFFD
 	check(t, {}, "", "", "windows-1252", .Default)
+	// a <meta> that says UTF-16 was read as ASCII bytes: UTF-8; x-user-defined: windows-1252 (HTML "get an encoding")
+	check(t, transmute([]byte)string("<meta charset=utf-16><p>h\xC3\xA9"), "", "<meta charset=utf-16><p>hé", "UTF-8", .Meta)
+	check(t, {'<', 'm', 'e', 't', 'a', ' ', 'c', 'h', 'a', 'r', 's', 'e', 't', '=', 'x', '-', 'u', 's', 'e', 'r', '-', 'd', 'e', 'f', 'i', 'n', 'e', 'd', '>', 0xE9}, "", "<meta charset=x-user-defined>é", "windows-1252", .Meta)
 
 	// a transcoded document parses like any other
 	d, _ := decode_document({'<', 'p', '>', 'c', 'a', 'f', 0xE9}, "windows-1252", "windows-1252", context.temp_allocator)

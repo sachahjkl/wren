@@ -189,7 +189,8 @@ parse_year :: proc(s: string, i: ^int) -> (i64, bool) {
 		y = y * 10 + i64(s[i^] - '0')
 		i^ += 1
 	}
-	if i^ - start < 4 || y <= 0 { return 0, false }
+	// up to 275760, the last year of the ECMAScript time range: beyond, weeks and local date-times overflowed i64 ms
+	if i^ - start < 4 || y <= 0 || y > 275760 { return 0, false }
 	return y, true
 }
 
@@ -394,8 +395,9 @@ string_from_number :: proc(t: Input_Type, v: f64, allocator := context.temp_allo
 		if civil_year(days) < 1 { return "", false }
 		return format_date(days, allocator), true
 	case .Month:
+		if !(abs(v) <= 1e12) { return "", false }
 		m := i64(math.floor(v))
-		if 1970 + m / 12 < 1 || abs(v) > 1e12 { return "", false }
+		if 1970 + floor_div(m, 12) < 1 { return "", false }   // (truncating division let year 0 through: "0000-12")
 		return format_month(m, allocator), true
 	case .Week:
 		if abs(v) > MAX_TIME_MS { return "", false }

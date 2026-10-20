@@ -49,7 +49,7 @@ interpolate_prop :: proc(dst, a, b: ^Computed, p: Prop, t: f64, ctx: ^Interp_Ctx
 		return true
 	case .Z_Index:
 		if a.z_auto || b.z_auto { return a.z_auto && b.z_auto }
-		dst.z_auto, dst.z_index = false, i32(math.round(lerp64(f64(a.z_index), f64(b.z_index), t)))
+		dst.z_auto, dst.z_index = false, i32(clamp(math.round(lerp64(f64(a.z_index), f64(b.z_index), t)), f64(min(i32)), f64(max(i32))))   // an overshooting easing
 		return true
 	case .Tab_Size:
 		// spaces and lengths do not interpolate with each other (CSS Text 3 §4.2: by computed value type)
@@ -518,7 +518,7 @@ add_prop :: proc(dst, underlying, value: ^Computed, p: Prop, ctx: ^Interp_Ctx) -
 		return true
 	case .Z_Index:
 		if underlying.z_auto || value.z_auto { return false }
-		dst.z_auto, dst.z_index = false, underlying.z_index + value.z_index
+		dst.z_auto, dst.z_index = false, i32(clamp(i64(underlying.z_index) + i64(value.z_index), i64(min(i32)), i64(max(i32))))
 		return true
 	}
 	da, db := prop_fields(dst, p)

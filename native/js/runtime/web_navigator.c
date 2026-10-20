@@ -64,7 +64,7 @@ static JSValue languages(JSContext *ctx)
     while (*t) {
         const char *e = strchr(t, ',');
         size_t l = e ? (size_t)(e - t) : strlen(t);
-        if (l) { JS_SetPropertyUint32(ctx, arr, k++, JS_NewStringLen(ctx, t, l)); }
+        if (l) { wj_array_set(ctx, arr, k++, JS_NewStringLen(ctx, t, l)); }
         t += l + (e ? 1 : 0);
     }
     JSValue object = JS_GetPropertyStr(ctx, wj_the_realm.global, "Object");

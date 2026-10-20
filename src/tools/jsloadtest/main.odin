@@ -77,19 +77,31 @@ process:  ^base.Scope
 
 BASE :: "http://127.0.0.1:8765/jsload/test.html"
 
-pump :: proc(ms: int) {
-	start := time.tick_now()
-	for time.duration_milliseconds(time.tick_since(start)) < f64(ms) { host.loop_wait(&loop, 5) }
-}
+// Only ends a run that fails: nothing checked depends on how long the machine took.
+WAIT_FAIL_MS :: 120_000
 
-// Runs the loop until `text` is logged (or `ms` passed). True when it was.
-wait_for :: proc(text: string, ms := 5000) -> bool {
+// Runs the loop until `done(user)`. True when it came.
+wait_until :: proc(done: proc(user: rawptr) -> bool, user: rawptr = nil) -> bool {
 	start := time.tick_now()
-	for !logged(text) {
-		if time.duration_milliseconds(time.tick_since(start)) > f64(ms) { return false }
+	for !done(user) {
+		if time.duration_milliseconds(time.tick_since(start)) > WAIT_FAIL_MS { return false }
 		host.loop_wait(&loop, 5)
 	}
 	return true
+}
+
+// Runs the loop until `text` is logged. True when it was.
+wait_for :: proc(text: string) -> bool {
+	text := text
+	return wait_until(proc(user: rawptr) -> bool { return logged((^string)(user)^) }, &text)
+}
+
+// Runs what is ready now (posted tasks, due timers), turn after turn, until nothing is.
+drain :: proc() {
+	for _ in 0 ..< 1000 {
+		if host.next_timeout_ms(&loop) != 0 { return }
+		host.loop_wait(&loop, 0)
+	}
 }
 
 // Percent-encodes `s` for a query value.
@@ -145,7 +157,7 @@ hits :: proc(path: string) -> int {
 		user = &got, collect = true,
 	})
 	start := time.tick_now()
-	for !got.done && time.duration_milliseconds(time.tick_since(start)) < 3000 { host.loop_wait(&loop, 5) }
+	for !got.done && time.duration_milliseconds(time.tick_since(start)) < WAIT_FAIL_MS { host.loop_wait(&loop, 5) }
 	defer delete(got.body)
 	if len(got.body) == 0 { return -1 }
 	n := 0
@@ -252,7 +264,7 @@ test_write :: proc() {
 const d = document.open(); log("open returns document " + (d === document));
 log("open during parsing is ignored " + (document.body !== null));
 </script></body>`}, context.temp_allocator))
-	wait_for("open during parsing is ignored true", 2000)
+	wait_for("open during parsing is ignored true")
 	check(logged("open returns document true") && logged("open during parsing is ignored true"), "document.open from a parser script does nothing and returns the document")
 	page.page_close(p)
 }
@@ -282,8 +294,8 @@ log("supports " + HTMLScriptElement.supports("module") + " " + HTMLScriptElement
 </script></body>`}, context.temp_allocator)
 	p := load(src)
 	wait_for("ordered 2")
-	wait_for("onerror fired", 2000)
-	wait_for("src set later ran", 2000)
+	wait_for("onerror fired")
+	wait_for("src set later ran")
 	check(logged("async default true"), "a script made by a script is async by default")
 	check(logged("dynamic inline ran") && logged("after append 1"), "an inserted inline script runs before appendChild returns")
 	check(!logged("detached ran"), "a script that is not connected does not run")
@@ -296,7 +308,7 @@ log("supports " + HTMLScriptElement.supports("module") + " " + HTMLScriptElement
 	// what innerHTML does: the fragment parser builds nodes in the document; its scripts never run, its handlers work
 	html.parse_into(p.doc, p.body, transmute([]byte)string(`<script>log("fragment script ran")</script><b id=fb onclick="log('fragment handler ran')">x</b>`), 1000)
 	run_js(p, `document.getElementById("fb").dispatchEvent(new Event("click")); log("fragment checked")`)
-	pump(30)
+	drain()
 	check(logged("fragment checked") && !logged("fragment script ran"), "scripts made by a fragment parser never run")
 	check(logged("fragment handler ran"), "the handlers of a fragment's elements are registered")
 	page.page_close(p)
@@ -325,7 +337,7 @@ log("modules done");
 </head><body></body>`}, context.temp_allocator)
 	p := load(src)
 	wait_for("modules done")
-	wait_for("top-level await done", 2000)
+	wait_for("top-level await done")
 	check(logged("module main bc 42 c true object null"), "a module graph (three modules, a JSON module) runs once fetched; currentScript is null")
 	check(in_order("module c evaluated", "module b evaluated", "module main bc 42 c true object null"), "dependencies are evaluated first, once each")
 	check(logged("bare specifiers mapped c"), "import maps map bare specifiers and prefixes")
@@ -387,10 +399,10 @@ test_javascript_urls :: proc() {
 		return ok && page.follow_javascript_url(p, u)
 	}
 	check(follow(p, "javascript:log('javascript%20url%20ran%20'%20+%20(typeof document))"), "a javascript: URL is handled by the page")
-	wait_for("javascript url ran object", 2000)
+	wait_for("javascript url ran object")
 	check(logged("javascript url ran object"), "its percent-decoded script runs in the document, in a task of its own")
 	follow(p, "javascript:'<p id=fresh>' + 'replaced' + '</p>'")
-	pump(150)
+	wait_until(proc(user: rawptr) -> bool { pg := (^page.Page)(user); return dom.find_by_id(pg.doc, "fresh") != base.NIL_HANDLE }, p)
 	run_js(p, `log("replaced " + !!document.getElementById("fresh") + " " + (document.getElementById("old") === null))`)
 	check(logged("replaced true true"), "a string result becomes the document")
 	page.page_close(p)
@@ -408,6 +420,7 @@ log("nonce ran");
 try { eval("1 + 1"); log("eval ran"); } catch (e) { log("eval refused " + e.constructor.name); }
 try { new Function("return 1"); log("Function ran"); } catch (e) { log("Function refused " + (e instanceof EvalError)); }
 setTimeout("log('string timer ran')", 1);
+setTimeout(() => log("timers checked"), 1);   // same delay, set after: runs after the string timer would have
 const s = document.createElement("script"); s.src = "`, gen(`log("strict-dynamic child ran")`), `"; document.body.appendChild(s);
 </script>
 <script>log("no nonce ran")</script>
@@ -417,8 +430,9 @@ const s = document.createElement("script"); s.src = "`, gen(`log("strict-dynamic
 <script nonce=abc>document.getElementById("b").dispatchEvent(new Event("click")); log("csp done")</script>
 </body>`}, context.temp_allocator)
 	p := load(src, csp = policy)
-	wait_for("strict-dynamic child ran", 2000)
-	pump(100)
+	wait_for("strict-dynamic child ran")
+	wait_for("csp done")   // after the parser-inserted external script, which would have run before it
+	wait_for("timers checked")
 	check(logged("nonce ran"), "a script with the policy's nonce runs")
 	check(!logged("no nonce ran"), "an inline script without nonce or hash is blocked")
 	check(logged("hashed"), "an inline script matching a sha256 hash runs")
@@ -435,7 +449,7 @@ try { log("eval " + eval("6 * 7")); } catch (e) { log("eval refused"); }
 setTimeout("log('string timer ok')", 1);
 document.getElementById("b").dispatchEvent(new Event("click"));
 </script></body>`}, context.temp_allocator), csp = "script-src 'unsafe-inline' 'unsafe-eval'")
-	wait_for("string timer ok", 2000)
+	wait_for("string timer ok")
 	check(logged("eval 42") && logged("string timer ok") && logged("attr ok"), "'unsafe-inline' 'unsafe-eval' allow inline code, eval and string timers")
 	page.page_close(p)
 }
@@ -447,7 +461,7 @@ test_noscript :: proc() {
 log("noscript content is text " + (document.getElementById("ns") === null));
 </script></body>`}, context.temp_allocator)
 	p := load(src)
-	pump(50)
+	wait_until(proc(_: rawptr) -> bool { return logged_prefix("noscript content is text") })
 	check(logged_prefix("noscript content is text true"), "with scripting, <noscript> holds text (its markup), not elements")
 	check(p.engine.settings.scripting, "and the style engine does not render it")
 	page.page_close(p)
@@ -485,9 +499,11 @@ try { queueMicrotask(1); } catch (e) { log("queueMicrotask type " + (e instanceo
 setTimeout(() => log("timers done"), 120);
 </script></body>`}, context.temp_allocator)
 	p := load(src)
-	pump(20)
+	wait_for("sync")
 	page.run_animation_frames(p, f64(host.now_ns(&loop)) / 1e6)
-	wait_for("timers done", 3000)
+	// every positive outcome is waited for: on a stalled machine the interval may end after the 120 ms timer
+	for m in ([]string{"timers done", "interval 3", "string timer", "timeout args x 2", "zero"}) { wait_for(m) }
+	wait_until(proc(_: rawptr) -> bool { return logged_prefix("idle number") })
 	check(logged("ids true true"), "timer ids are positive and increasing")
 	check(in_order("sync", "promise", "microtask"), "microtasks after the script, in order")
 	check(index_of("microtask") < index_of("zero"), "microtasks before timers")
@@ -525,8 +541,9 @@ log("PromiseRejectionEvent ctor " + pre.reason + " " + (pre.promise === late));
 setTimeout(() => log("errors done"), 80);
 </script></body>`}, context.temp_allocator)
 	p := load(src)
-	wait_for("errors done", 3000)
-	pump(30)
+	wait_for("errors done")
+	wait_for("rejectionhandled late")
+	drain()
 	check(logged_prefix("onerror Uncaught TypeError") && logged_contains("| true 1 true true"), "window.onerror gets message, source, line, column, error")
 	check(logged_prefix("error event true true Uncaught TypeError"), "the error event is a trusted ErrorEvent")
 	check(!logged_contains("Uncaught TypeError: cannot read") || true, "onerror returning true keeps it out of the console")
@@ -555,7 +572,7 @@ w.onmessage = (e) => {
     return;
   }
   if (e.data === "closing") { log("worker closing"); return; }
-  if (typeof e.data === "string") { log(e.data); if (e.data === "worker timer fired") w.postMessage("close"); return; }
+  if (typeof e.data === "string") { log(e.data); if (e.data === "worker timer fired") w.postMessage("fetch"); if (e.data.startsWith("worker fetch")) w.postMessage("close"); return; }
   const v = e.data;
   const g = v.got;
   log("echo " + (g.d instanceof Date) + " " + g.d.getTime() + " " + g.m.get(1) + " " + g.s.has(2) + " " + g.r.flags + " " + new Uint8Array(g.buf)[2] + " " + (g.cyc.self === g.cyc) + " lib " + v.lib + " name " + v.name + " " + v.isWorker);
@@ -567,12 +584,13 @@ try { new Worker("http://other.example/x.js"); } catch (e) { log("cross-origin w
 try { w.postMessage(() => 1); } catch (e) { log("function not cloneable " + e.name); }
 </script></body>`}, context.temp_allocator)
 	p := load(src)
-	wait_for("worker closing", 5000)
+	wait_for("worker closing")
 	check(logged("worker ready"), "a JavaScript worker starts and posts a message")
 	check(logged("transferred detaches 0"), "a transferred ArrayBuffer is detached")
 	check(logged("echo true 5 a true gi 3 true lib 7 name w1 true"), "structured clone both ways (Date, Map, Set, RegExp, ArrayBuffer, cycles); importScripts; name")
 	check(logged("worker error true true"), "an uncaught error of the worker is an ErrorEvent at the Worker")
 	check(logged("worker timer fired") && logged("worker rejection w"), "timers and unhandledrejection in the worker")
+	check(logged("worker fetch 200 true AbortError ba78"), "a worker's fetch() resolves, its abort rejects with AbortError, crypto.subtle.digest settles (tasks of the worker's realm)")
 	check(!logged("terminated worker spoke"), "a terminated worker sends nothing")
 	check(logged("cross-origin worker SecurityError"), "a cross-origin worker is refused")
 	check(logged("function not cloneable DataCloneError"), "a function is not cloneable")
@@ -596,7 +614,7 @@ const b = new ArrayBuffer(8);
 structuredClone(b, { transfer: [b] });
 log("transfer " + b.byteLength);
 </script></body>`}, context.temp_allocator))
-	pump(30)
+	wait_for("transfer 0")
 	check(logged("clone true true false x true true true true true t 1"), "structuredClone keeps cycles, holes, extra properties, BigInt, wrappers, -0, undefined, errors")
 	check(logged("views 2.5 2.5 true"), "typed arrays and DataView share their cloned buffer")
 	check(logged("symbol DataCloneError") && logged("node DataCloneError"), "symbols and platform objects throw DataCloneError")
@@ -621,7 +639,7 @@ document.getElementById("b").addEventListener("click", () => log("target"));
 document.getElementById("b").dispatchEvent(new Event("click", { bubbles: true }));
 </script></body>`}, context.temp_allocator)
 	p := load(src)
-	wait_for("window bubble 3 true", 3000)
+	wait_for("window bubble 3 true")
 	check(logged("integrity ok"), "a script matching its integrity runs")
 	check(!logged("tampered ran") && logged("integrity mismatch: error"), "a script that does not match is not run: error event")
 	check(in_order("window capture 1", "target", "window bubble 3 true"), "the window is the last step of a document event's path (capture first, bubble last)")
@@ -644,7 +662,7 @@ measurements :: proc() {
 	}
 	strings.write_string(&sb, `<script>document.addEventListener("DOMContentLoaded", () => log("dcl20"))</script></head><body></body>`)
 	p := load(strings.to_string(sb))
-	wait_for("dcl20", 5000)
+	wait_for("dcl20")
 	t := page.scripts_timing(p)
 	fmt.printf("  MEASURE 20 external scripts: DOMContentLoaded %.1f ms after the document was parsed (scripts %d)\n", t.dcl_ms - t.started_ms, t.scripts_run)
 	check(logged("dcl20"), "20 scripts: DOMContentLoaded")
@@ -652,7 +670,7 @@ measurements :: proc() {
 
 	// the same, already in the bytecode cache and the scripts of the second load in memory
 	p = load(strings.to_string(sb))
-	wait_for("dcl20", 5000)
+	wait_for("dcl20")
 	t = page.scripts_timing(p)
 	fmt.printf("  MEASURE 20 external scripts, second load: DOMContentLoaded %.1f ms after parsing\n", t.dcl_ms - t.started_ms)
 	page.page_close(p)
@@ -664,7 +682,7 @@ measurements :: proc() {
 	st0 := page.compile_stats()
 	t0 := time.tick_now()
 	p = load(big, s = &s)
-	wait_for("bigs done", 10000)
+	wait_for("bigs done")
 	ms_off := time.duration_milliseconds(time.tick_since(t0))
 	st1 := page.compile_stats()
 	page.page_close(p)
@@ -676,13 +694,13 @@ measurements :: proc() {
 	js.cache_clear_memory()
 	t0 = time.tick_now()
 	p = load(`<!doctype html><head><script src="/jsload/big?kb=512&id=c"></script><script src="/jsload/big?kb=512&id=d"></script><script>console.log("bigs done")</script></head>`, s = &s2)
-	wait_for("bigs done", 10000)
+	wait_for("bigs done")
 	fmt.printf("  MEASURE the same compiled on the interface thread: page done in %.1f ms\n", time.duration_milliseconds(time.tick_since(t0)))
 	page.page_close(p)
 
 	// setTimeout: the cost of a call (with its clearTimeout), and a round trip through the event loop
 	p = load(strings.concatenate({`<!doctype html><body>`, PRELUDE, `<script>window.noop = () => {}</script></body>`}, context.temp_allocator))
-	pump(10)
+	drain()
 	t0 = time.tick_now()
 	run_js(p, `for (let i = 0; i < 10000; i++) {}`)
 	empty := time.duration_microseconds(time.tick_since(t0))
@@ -692,7 +710,8 @@ measurements :: proc() {
 	fmt.printf("  MEASURE setTimeout(f, 0) + clearTimeout: %.2f us per pair\n", (pairs - empty) / 10000)
 	run_js(p, `let hops = 0; const hop = () => { if (++hops === 200) log("hops done"); else setTimeout(hop, 0); }; log("hops start"); setTimeout(hop, 0);`)
 	start := time.tick_now()
-	for !logged("hops done") && time.duration_milliseconds(time.tick_since(start)) < 10000 { host.loop_wait(&loop, 0) }
+	// spinning (no wait in the OS, whose timer resolution would be measured instead), bounded only for a failing run
+	for !logged("hops done") && time.duration_milliseconds(time.tick_since(start)) < WAIT_FAIL_MS { host.loop_wait(&loop, 0) }
 	hop_ms := time.duration_milliseconds(time.tick_since(start))
 	fmt.printf("  MEASURE setTimeout(0) round trip: %.3f ms per hop over 200 (HTML clamps to 4 ms past 5 nested levels)\n", hop_ms / 200)
 	check(logged("hops done"), "setTimeout(0) chain")
@@ -702,7 +721,7 @@ measurements :: proc() {
 	p = load(strings.concatenate({`<!doctype html><body>`, PRELUDE, `<script>
 window.n = 0; const go = () => requestAnimationFrame(ts => { log("raf " + (++n)); if (n < 50) go(); }); go();
 </script></body>`}, context.temp_allocator))
-	pump(10)
+	drain()
 	quiet = true
 	total: f64
 	frames := 0

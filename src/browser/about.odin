@@ -62,14 +62,14 @@ HOME_TEMPLATE :: `<!doctype html>
 <title>New tab</title>
 <style>
   html { background-color: #0d1017; }
-  body { margin: 0; color: #c9d1e3; font-family: system-ui; font-size: 16px; }
+  body { margin: 0; padding: 0 20px; color: #c9d1e3; font-family: system-ui; font-size: 16px; }
   .hero { text-align: center; padding: 84px 20px 12px; }
   .logo { font-size: 84px; font-weight: bold; color: #f1f4fb; margin: 0; }
   .logo .w { color: #ffb84d; }
   .tag { font-size: 20px; color: #8993ad; margin: 6px 0 0; }
-  .hint { width: 560px; margin: 34px auto 10px; padding: 13px 24px; background-color: #151a26; border: 1px solid #272f45; border-radius: 26px; color: #6f7a96; text-align: center; }
+  .hint { max-width: 560px; box-sizing: border-box; margin: 34px auto 10px; padding: 13px 24px; background-color: #151a26; border: 1px solid #272f45; border-radius: 26px; color: #6f7a96; text-align: center; }
   .hint b { color: #c9d1e3; }
-  .grid { width: 640px; margin: 26px auto 0; }
+  .grid { max-width: 640px; margin: 26px auto 0; }
   .card { display: block; margin: 14px 0; padding: 18px 24px 18px; background-color: #131825; border: 1px solid #232b40; border-radius: 14px; color: #c9d1e3; text-decoration: none; }
   .card:hover { background-color: #19203a; border-color: #ffb84d; }
   .card h3 { margin: 0 0 4px; font-size: 19px; color: #ffb84d; }
@@ -77,6 +77,22 @@ HOME_TEMPLATE :: `<!doctype html>
   .card .where { color: #4f5a78; font-size: 13px; margin-top: 8px; }
   .foot { text-align: center; color: #4f5a78; font-size: 13px; padding: 36px 20px 48px; }
   .foot b { color: #8993ad; }
+  @media (prefers-color-scheme: light) {
+    html { background-color: #f5f6fa; }
+    body { color: #2b3245; }
+    .logo { color: #1d2333; }
+    .logo .w { color: #d98200; }
+    .tag { color: #5d6680; }
+    .hint { background-color: #ffffff; border-color: #dce1ec; color: #6b7590; }
+    .hint b { color: #2b3245; }
+    .card { background-color: #ffffff; border-color: #e0e4ee; color: #2b3245; }
+    .card:hover { background-color: #fff8ec; border-color: #d98200; }
+    .card h3 { color: #b86e00; }
+    .card p { color: #5d6680; }
+    .card .where { color: #8a93aa; }
+    .foot { color: #8a93aa; }
+    .foot b { color: #5d6680; }
+  }
 </style>
 </head>
 <body>

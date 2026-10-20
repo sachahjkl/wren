@@ -31,7 +31,7 @@ Layout_Journal :: struct {
 
 // Records layout journals in the passes of `e` from now on (max_entries <= 0: off).
 engine_set_journal :: proc(e: ^Engine, max_entries: int) {
-	e.journal_max = max(max_entries, 0)
+	e.journal_max = max_entries > 0 ? max(max_entries, 4) : 0   // (journal_stamp drops half of what is past 3/4)
 }
 
 @(private)

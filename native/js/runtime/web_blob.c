@@ -605,8 +605,8 @@ static JSValue fr_read(JSContext *ctx, JSValueConst this_val, int argc, JSValueC
     JS_FreeValue(ctx, r->error);
     r->error = JS_NULL;
     JSValue data = JS_NewArray(ctx);
-    JS_SetPropertyUint32(ctx, data, 0, JS_DupValue(ctx, this_val));
-    JS_SetPropertyUint32(ctx, data, 1, JS_NewInt32(ctx, (int32_t)r->generation));
+    wj_array_set(ctx, data, 0, JS_DupValue(ctx, this_val));
+    wj_array_set(ctx, data, 1, JS_NewInt32(ctx, (int32_t)r->generation));
     /* loadstart, then the rest from a task of its own (File API "read operation") */
     bool queued = web_queue_task(ctx, fr_run, data);
     JS_FreeValue(ctx, data);

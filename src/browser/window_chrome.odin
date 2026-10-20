@@ -10,8 +10,6 @@ package browser
 // Full screen (F11): no frame, no title bar, no tabs nor address bar; they slide down over the page while the pointer
 // is at the top edge of the screen (browser.window.fullscreen_reveal), and go when it leaves them.
 
-import "core:fmt"
-import "core:math"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
@@ -95,57 +93,10 @@ toggle_fullscreen :: proc(app: ^App) {
 	app.frames_requested = max(app.frames_requested, 3)
 }
 
-// The row of tabs: the window's title bar when it is integrated. Returns true when a tab closed (the build stops).
-tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
-	em := ui.font_size()
-	dpi := app.win.dpi_scale
-	h := ui.dense(em * 2.6)
-	if integrated { h = max(h, math.round(32 * dpi)) }   // never lower than the system's title bar
-	ui.next({width = ui.fill(), height = ui.px(h), axis = .X, cross = .Center})
-	strip := ui.build_box(integrated ? {.Window_Caption} : {}, "###tabstrip")
-	if ui.parent(strip) {
-		if integrated {
-			ui.spacer(ui.px(math.round(10 * dpi)))
-			app_icon(app, math.round(16 * dpi))
-			ui.spacer(ui.px(math.round(6 * dpi)))
-		}
-		// the tabs take what is left once the buttons and a free strip to drag the window are counted; beyond, they
-		// are cut off (their natural width is last frame's)
-		buttons := integrated ? 3 * math.round(ui.CAPTION_BUTTON_WIDTH * dpi) : 0
-		fixed := (integrated ? math.round(32 * dpi) : 0) + 2 * em * 2.4 + buttons + (integrated ? wchrome.cfg.min_drag_em * em : 0)
-		avail := max(f32(app.win.size.x) - fixed, em * 4)
-		natural := avail
-		if prev := ui.prev_box("###tabs_area"); prev != nil { natural = prev.view_bounds.x }
-		ui.next({width = ui.px(min(natural, avail)), height = ui.pct(1), axis = .X, cross = .Center})
-		area := ui.build_box({.Clip}, "###tabs_area")
-		if ui.parent(area) {
-			labels := make([]string, len(app.tabs), ui.frame_allocator())
-			for tab, i in app.tabs { labels[i] = fmt.aprintf("%s###tab%d", tab.title, i, allocator = ui.frame_allocator()) }
-			sel := app.current
-			right, middle: int
-			if ui.tabs("tabs", labels, nil, &sel, &right, &middle) && sel != app.current { tab_select(app, sel) }
-			if right >= 0 { tab_context_menu(app, right, ui.mouse_pos()) }
-			if middle >= 0 { tab_close(app, middle); return true }
-		}
-		ui.next({width = ui.px(em * 2.4), height = ui.px(ui.dense(em * 2.2))})
-		add := ui.icon_button("###newtab", GLYPH_ADD)
-		tip(add, "New tab (Ctrl+T)")
-		if add.clicked { tab_open(app) }
-		ui.next({width = ui.px(em * 2.4), height = ui.px(ui.dense(em * 2.2))})
-		close := ui.icon_button("###closetab", GLYPH_CLOSE)
-		tip(close, "Close tab (Ctrl+W)")
-		if close.clicked { tab_close(app, app.current); return true }
-		ui.spacer(ui.fill())   // drags the window
-		if integrated { _, _ = ui.window_buttons() }
-	}
-	return false
-}
-
 @(private = "file")
 Icon_Draw :: struct { tex: render.Texture, ok: bool }
 
 // The exe's icon: the window title (version, build, statistics) in its tooltip; a click opens the system menu.
-@(private = "file")
 app_icon :: proc(app: ^App, size: f32) {
 	px := int(size)
 	if px != wchrome.icon_px && px != wchrome.icon_failed {
@@ -181,7 +132,7 @@ fullscreen_bars :: proc(app: ^App, t: ^Tab) {
 	} else {
 		// they stay while the pointer is over them, a menu of theirs is open or the address bar has the keyboard
 		over := m.y < wchrome.overlay.max.y + ui.font_size()
-		wchrome.revealed = over || ui.ctx_menu_any_open() || ui.focused_name() == "address"
+		wchrome.revealed = over || ui.ctx_menu_any_open() || (ui.focus_key() != 0 && ui.focus_key() == address_key)
 	}
 	if !wchrome.revealed { wchrome.overlay = {}; return }
 	ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(f32(app.win.size.x)), height = ui.children_sum(), axis = .Y})

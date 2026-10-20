@@ -84,7 +84,7 @@ text_fill :: #force_inline proc(c: ^Computed) -> css.Color {
 mask_box_of :: proc(v: []css.Value, allow_no_clip: bool) -> (Mask_Box, bool) {
 	id, ok := ident_raw(v)
 	if !ok { return {}, false }
-	switch strings.to_lower(id, context.temp_allocator) {
+	switch css.lower_temp(id) {
 	case "border-box", "stroke-box", "view-box", "border": return .Border_Box, true
 	case "padding-box", "padding": return .Padding_Box, true
 	case "content-box", "fill-box", "content": return .Content_Box, true
@@ -97,7 +97,7 @@ mask_box_of :: proc(v: []css.Value, allow_no_clip: bool) -> (Mask_Box, bool) {
 mask_composite_of :: proc(v: []css.Value) -> (Mask_Composite, bool) {
 	id, ok := ident_raw(v)
 	if !ok { return {}, false }
-	switch strings.to_lower(id, context.temp_allocator) {
+	switch css.lower_temp(id) {
 	case "add", "source-over": return .Add, true
 	case "subtract", "source-out": return .Subtract, true
 	case "intersect", "source-in": return .Intersect, true
@@ -218,7 +218,7 @@ expand_mask :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longhand, bo
 					image = one
 				case .Dimension, .Percentage, .Number: append(in_size ? &size : &pos, it)
 				case .Ident:
-					id := strings.to_lower(it.tok.text, context.temp_allocator)
+					id := css.lower_temp(it.tok.text)
 					switch id {
 					case "none":
 						if image != nil { return nil, false }

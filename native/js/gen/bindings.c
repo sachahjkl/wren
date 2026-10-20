@@ -2774,7 +2774,7 @@ static JSValue wjg_Element_getAttributeNS(JSContext *ctx, JSValueConst this_val,
     wj_str a0;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
     wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { wj_str_free(ctx, &a0); return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_Element_getAttributeNS(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len, wj_scratch.data, wj_scratch.cap));
     wj_str_free(ctx, &a0);
@@ -2793,9 +2793,9 @@ static JSValue wjg_Element_setAttributeNS(JSContext *ctx, JSValueConst this_val,
     wj_str a0;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
     wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { wj_str_free(ctx, &a0); return JS_EXCEPTION; }
     wj_str a2;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 2), &a2, 0, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 2), &a2, 0, "")) { wj_str_free(ctx, &a0); wj_str_free(ctx, &a1); return JS_EXCEPTION; }
     int32_t st = wr_Element_setAttributeNS(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len, (const uint8_t *)(a2.ptr ? a2.ptr : ""), (uint32_t)a2.len);
     wj_str_free(ctx, &a0);
     wj_str_free(ctx, &a1);
@@ -2827,7 +2827,7 @@ static JSValue wjg_Element_removeAttributeNS(JSContext *ctx, JSValueConst this_v
     wj_str a0;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
     wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { wj_str_free(ctx, &a0); return JS_EXCEPTION; }
     wr_Element_removeAttributeNS(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
     wj_str_free(ctx, &a0);
     wj_str_free(ctx, &a1);
@@ -2856,7 +2856,7 @@ static JSValue wjg_Element_hasAttributeNS(JSContext *ctx, JSValueConst this_val,
     wj_str a0;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
     wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { wj_str_free(ctx, &a0); return JS_EXCEPTION; }
     int32_t r = wr_Element_hasAttributeNS(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
     wj_str_free(ctx, &a0);
     wj_str_free(ctx, &a1);
@@ -2927,7 +2927,7 @@ static JSValue wjg_Element_insertAdjacentElement(JSContext *ctx, JSValueConst th
     wj_str a0;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
     uint64_t a1 = 0;
-    if (!wj_to_handle(ctx, wj_arg(argc, argv, 1), 233, false, &a1, "Element.insertAdjacentElement: argument 2 is not of type 'Element'")) { return JS_EXCEPTION; }
+    if (!wj_to_handle(ctx, wj_arg(argc, argv, 1), 233, false, &a1, "Element.insertAdjacentElement: argument 2 is not of type 'Element'")) { wj_str_free(ctx, &a0); return JS_EXCEPTION; }
     uint64_t r = 0;
     int32_t st = wr_Element_insertAdjacentElement(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, a1, (void *)&r);
     wj_str_free(ctx, &a0);
@@ -2945,7 +2945,7 @@ static JSValue wjg_Element_insertAdjacentText(JSContext *ctx, JSValueConst this_
     wj_str a0;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
     wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { wj_str_free(ctx, &a0); return JS_EXCEPTION; }
     int32_t st = wr_Element_insertAdjacentText(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
     wj_str_free(ctx, &a0);
     wj_str_free(ctx, &a1);
@@ -2988,7 +2988,7 @@ static JSValue wjg_Element_insertAdjacentHTML(JSContext *ctx, JSValueConst this_
     wj_str a0;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
     wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { wj_str_free(ctx, &a0); return JS_EXCEPTION; }
     int32_t st = wr_Element_insertAdjacentHTML(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
     wj_str_free(ctx, &a0);
     wj_str_free(ctx, &a1);
@@ -7594,6 +7594,15 @@ static JSValue wjg_Window_get_document(JSContext *ctx, JSValueConst this_val)
 }
 
 static JSValue wjg_Window_set_location(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "location", "href", v); }
+/* Window.print() -> dom.Window_print */
+static JSValue wjg_Window_print(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 364);
+    if (!self) { return JS_EXCEPTION; }
+    wr_Window_print();
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_Window_get_onanimationstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "animationstart"); }
 static JSValue wjg_Window_set_onanimationstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 364, "animationstart", v, 0); }
 static JSValue wjg_Window_get_onanimationiteration(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 364, "animationiteration"); }
@@ -7943,7 +7952,7 @@ static JSValue wjg_URLSearchParams_append(JSContext *ctx, JSValueConst this_val,
     wj_str a0;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
     wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { wj_str_free(ctx, &a0); return JS_EXCEPTION; }
     wr_URLSearchParams_append(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
     wj_str_free(ctx, &a0);
     wj_str_free(ctx, &a1);
@@ -7959,7 +7968,7 @@ static JSValue wjg_URLSearchParams_delete(JSContext *ctx, JSValueConst this_val,
     wj_str a0;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
     wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, WJ_STR_OPTIONAL, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, WJ_STR_OPTIONAL, "")) { wj_str_free(ctx, &a0); return JS_EXCEPTION; }
     wr_URLSearchParams_delete(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (const uint8_t *)a1.ptr, a1.ptr ? (uint32_t)a1.len : WR_ABSENT);
     wj_str_free(ctx, &a0);
     wj_str_free(ctx, &a1);
@@ -7991,7 +8000,7 @@ static JSValue wjg_URLSearchParams_has(JSContext *ctx, JSValueConst this_val, in
     wj_str a0;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
     wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, WJ_STR_OPTIONAL, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, WJ_STR_OPTIONAL, "")) { wj_str_free(ctx, &a0); return JS_EXCEPTION; }
     int32_t r = wr_URLSearchParams_has(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (const uint8_t *)a1.ptr, a1.ptr ? (uint32_t)a1.len : WR_ABSENT);
     wj_str_free(ctx, &a0);
     wj_str_free(ctx, &a1);
@@ -8007,7 +8016,7 @@ static JSValue wjg_URLSearchParams_set(JSContext *ctx, JSValueConst this_val, in
     wj_str a0;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
     wj_str a1;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { wj_str_free(ctx, &a0); return JS_EXCEPTION; }
     wr_URLSearchParams_set(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
     wj_str_free(ctx, &a0);
     wj_str_free(ctx, &a1);
@@ -12049,7 +12058,7 @@ static const wj_member wj_m_Window[] = {
     { "alert", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "confirm", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "prompt", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "print", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "print", WJ_M_METHOD, 0, 0, wjg_Window_print, NULL, NULL, 0 },
     { "postMessage", WJ_M_METHOD, 0, 1, wjr_Window_postMessage, NULL, NULL, 0 },
     { "captureEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "releaseEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -16144,15 +16153,15 @@ bool wjd_TaskControllerInit_from(JSContext *ctx, JSValueConst v, wjd_TaskControl
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TaskControllerInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TaskControllerInit'."); { wjd_TaskControllerInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "priority") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TaskControllerInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->priority.ptr = "user-visible"; out->priority.len = 12;
         } else {
             bool ok = wj_to_str(ctx, x, &out->priority, 0, "") && wj_check_enum(ctx, &out->priority, wje_TaskPriority, "TaskPriority");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TaskControllerInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16162,8 +16171,8 @@ bool wjd_TaskControllerInit_from(JSContext *ctx, JSValueConst v, wjd_TaskControl
 void wjd_StaticRangeInit_free(JSContext *ctx, wjd_StaticRangeInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->endContainer);
-    JS_FreeValue(ctx, d->startContainer);
+    JS_FreeValue(ctx, d->endContainer); d->endContainer = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->startContainer); d->startContainer = JS_UNDEFINED;
 }
 
 bool wjd_StaticRangeInit_from(JSContext *ctx, JSValueConst v, wjd_StaticRangeInit *out)
@@ -16172,11 +16181,11 @@ bool wjd_StaticRangeInit_from(JSContext *ctx, JSValueConst v, wjd_StaticRangeIni
     out->endContainer = JS_UNDEFINED;
     out->startContainer = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'StaticRangeInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'StaticRangeInit'."); { wjd_StaticRangeInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "endContainer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'endContainer' property from 'StaticRangeInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_StaticRangeInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'endContainer' property from 'StaticRangeInit': Required member is undefined."); { wjd_StaticRangeInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_endContainer = true;
@@ -16186,20 +16195,20 @@ bool wjd_StaticRangeInit_from(JSContext *ctx, JSValueConst v, wjd_StaticRangeIni
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "endOffset") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'endOffset' property from 'StaticRangeInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_StaticRangeInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'endOffset' property from 'StaticRangeInit': Required member is undefined."); { wjd_StaticRangeInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_endOffset = true;
             bool ok = wj_to_uint32(ctx, x, &out->endOffset, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_StaticRangeInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "startContainer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'startContainer' property from 'StaticRangeInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_StaticRangeInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'startContainer' property from 'StaticRangeInit': Required member is undefined."); { wjd_StaticRangeInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_startContainer = true;
@@ -16209,13 +16218,13 @@ bool wjd_StaticRangeInit_from(JSContext *ctx, JSValueConst v, wjd_StaticRangeIni
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "startOffset") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'startOffset' property from 'StaticRangeInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_StaticRangeInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'startOffset' property from 'StaticRangeInit': Required member is undefined."); { wjd_StaticRangeInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_startOffset = true;
             bool ok = wj_to_uint32(ctx, x, &out->startOffset, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_StaticRangeInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16226,7 +16235,7 @@ void wjd_OptionalEffectTiming_free(JSContext *ctx, wjd_OptionalEffectTiming *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wj_str_free(ctx, &d->direction);
-    JS_FreeValue(ctx, d->duration);
+    JS_FreeValue(ctx, d->duration); d->duration = JS_UNDEFINED;
     wj_str_free(ctx, &d->easing);
     wj_str_free(ctx, &d->fill);
 }
@@ -16236,32 +16245,32 @@ bool wjd_OptionalEffectTiming_from(JSContext *ctx, JSValueConst v, wjd_OptionalE
     memset(out, 0, sizeof *out);
     out->duration = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'OptionalEffectTiming'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'OptionalEffectTiming'."); { wjd_OptionalEffectTiming_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "delay") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OptionalEffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_delay = true;
             bool ok = wj_to_double(ctx, x, &out->delay, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OptionalEffectTiming_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "direction") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OptionalEffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_direction = true;
             bool ok = wj_to_str(ctx, x, &out->direction, 0, "") && wj_check_enum(ctx, &out->direction, wje_PlaybackDirection, "PlaybackDirection");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OptionalEffectTiming_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "duration") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OptionalEffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_duration = true;
@@ -16271,56 +16280,56 @@ bool wjd_OptionalEffectTiming_from(JSContext *ctx, JSValueConst v, wjd_OptionalE
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "easing") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OptionalEffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_easing = true;
             bool ok = wj_to_str(ctx, x, &out->easing, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OptionalEffectTiming_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "endDelay") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OptionalEffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_endDelay = true;
             bool ok = wj_to_double(ctx, x, &out->endDelay, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OptionalEffectTiming_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "fill") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OptionalEffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_fill = true;
             bool ok = wj_to_str(ctx, x, &out->fill, 0, "") && wj_check_enum(ctx, &out->fill, wje_FillMode, "FillMode");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OptionalEffectTiming_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "iterationStart") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OptionalEffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_iterationStart = true;
             bool ok = wj_to_double(ctx, x, &out->iterationStart, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OptionalEffectTiming_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "iterations") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OptionalEffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_iterations = true;
             bool ok = wj_to_double(ctx, x, &out->iterations, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OptionalEffectTiming_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16339,59 +16348,59 @@ bool wjd_EffectTiming_from(JSContext *ctx, JSValueConst v, wjd_EffectTiming *out
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'EffectTiming'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'EffectTiming'."); { wjd_EffectTiming_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "direction") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->direction.ptr = "normal"; out->direction.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->direction, 0, "") && wj_check_enum(ctx, &out->direction, wje_PlaybackDirection, "PlaybackDirection");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_EffectTiming_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "easing") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->easing.ptr = "linear"; out->easing.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->easing, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_EffectTiming_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "fill") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->fill.ptr = "auto"; out->fill.len = 4;
         } else {
             bool ok = wj_to_str(ctx, x, &out->fill, 0, "") && wj_check_enum(ctx, &out->fill, wje_FillMode, "FillMode");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_EffectTiming_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "iterationStart") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->iterationStart = 0.0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->iterationStart, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_EffectTiming_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "iterations") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EffectTiming_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->iterations = 1.0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->iterations, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_EffectTiming_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16409,27 +16418,27 @@ void wjd_KeyframeEffectOptions_free(JSContext *ctx, wjd_KeyframeEffectOptions *d
 bool wjd_KeyframeEffectOptions_from(JSContext *ctx, JSValueConst v, wjd_KeyframeEffectOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_EffectTiming_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EffectTiming_from(ctx, v, &out->base)) { wjd_KeyframeEffectOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'KeyframeEffectOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'KeyframeEffectOptions'."); { wjd_KeyframeEffectOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "composite") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_KeyframeEffectOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->composite.ptr = "replace"; out->composite.len = 7;
         } else {
             bool ok = wj_to_str(ctx, x, &out->composite, 0, "") && wj_check_enum(ctx, &out->composite, wje_CompositeOperation, "CompositeOperation");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_KeyframeEffectOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "pseudoElement") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_KeyframeEffectOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_str(ctx, x, &out->pseudoElement, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_KeyframeEffectOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16445,15 +16454,15 @@ bool wjd_DocumentTimelineOptions_from(JSContext *ctx, JSValueConst v, wjd_Docume
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DocumentTimelineOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DocumentTimelineOptions'."); { wjd_DocumentTimelineOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "originTime") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DocumentTimelineOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->originTime = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->originTime, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DocumentTimelineOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16469,39 +16478,39 @@ bool wjd_AudioBufferOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioBuffer
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioBufferOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioBufferOptions'."); { wjd_AudioBufferOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "length") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'length' property from 'AudioBufferOptions': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_AudioBufferOptions_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'length' property from 'AudioBufferOptions': Required member is undefined."); { wjd_AudioBufferOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_length = true;
             bool ok = wj_to_uint32(ctx, x, &out->length, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioBufferOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "numberOfChannels") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioBufferOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->numberOfChannels = 1;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->numberOfChannels, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioBufferOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "sampleRate") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'sampleRate' property from 'AudioBufferOptions': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_AudioBufferOptions_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'sampleRate' property from 'AudioBufferOptions': Required member is undefined."); { wjd_AudioBufferOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_sampleRate = true;
             bool ok = wj_to_double(ctx, x, &out->sampleRate, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioBufferOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16519,26 +16528,26 @@ bool wjd_BlobPropertyBag_from(JSContext *ctx, JSValueConst v, wjd_BlobPropertyBa
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'BlobPropertyBag'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'BlobPropertyBag'."); { wjd_BlobPropertyBag_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "endings") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_BlobPropertyBag_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->endings.ptr = "transparent"; out->endings.len = 11;
         } else {
             bool ok = wj_to_str(ctx, x, &out->endings, 0, "") && wj_check_enum(ctx, &out->endings, wje_EndingType, "EndingType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_BlobPropertyBag_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "type") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_BlobPropertyBag_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->type.ptr = ""; out->type.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->type, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_BlobPropertyBag_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16554,17 +16563,17 @@ void wjd_FilePropertyBag_free(JSContext *ctx, wjd_FilePropertyBag *d)
 bool wjd_FilePropertyBag_from(JSContext *ctx, JSValueConst v, wjd_FilePropertyBag *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_BlobPropertyBag_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_BlobPropertyBag_from(ctx, v, &out->base)) { wjd_FilePropertyBag_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FilePropertyBag'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FilePropertyBag'."); { wjd_FilePropertyBag_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "lastModified") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FilePropertyBag_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_lastModified = true;
             bool ok = wj_to_int64(ctx, x, &out->lastModified, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FilePropertyBag_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16580,16 +16589,16 @@ bool wjd_QueuingStrategyInit_from(JSContext *ctx, JSValueConst v, wjd_QueuingStr
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'QueuingStrategyInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'QueuingStrategyInit'."); { wjd_QueuingStrategyInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "highWaterMark") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'highWaterMark' property from 'QueuingStrategyInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_QueuingStrategyInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'highWaterMark' property from 'QueuingStrategyInit': Required member is undefined."); { wjd_QueuingStrategyInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_highWaterMark = true;
             bool ok = wj_to_double(ctx, x, &out->highWaterMark, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_QueuingStrategyInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16608,10 +16617,10 @@ bool wjd_PropertyDefinition_from(JSContext *ctx, JSValueConst v, wjd_PropertyDef
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PropertyDefinition'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PropertyDefinition'."); { wjd_PropertyDefinition_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "inherits") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PropertyDefinition_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->inherits = true;
         } else {
@@ -16621,35 +16630,35 @@ bool wjd_PropertyDefinition_from(JSContext *ctx, JSValueConst v, wjd_PropertyDef
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "initialValue") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PropertyDefinition_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_initialValue = true;
             bool ok = wj_to_str(ctx, x, &out->initialValue, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PropertyDefinition_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "name") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'name' property from 'PropertyDefinition': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_PropertyDefinition_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'name' property from 'PropertyDefinition': Required member is undefined."); { wjd_PropertyDefinition_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_name = true;
             bool ok = wj_to_str(ctx, x, &out->name, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PropertyDefinition_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "syntax") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PropertyDefinition_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->syntax.ptr = "*"; out->syntax.len = 1;
         } else {
             bool ok = wj_to_str(ctx, x, &out->syntax, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PropertyDefinition_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16665,10 +16674,10 @@ bool wjd_CSSMatrixComponentOptions_from(JSContext *ctx, JSValueConst v, wjd_CSSM
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CSSMatrixComponentOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CSSMatrixComponentOptions'."); { wjd_CSSMatrixComponentOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "is2D") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CSSMatrixComponentOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_is2D = true;
@@ -16688,10 +16697,10 @@ bool wjd_CacheQueryOptions_from(JSContext *ctx, JSValueConst v, wjd_CacheQueryOp
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CacheQueryOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CacheQueryOptions'."); { wjd_CacheQueryOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "ignoreMethod") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CacheQueryOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->ignoreMethod = JS_ToBool(ctx, x);
@@ -16700,7 +16709,7 @@ bool wjd_CacheQueryOptions_from(JSContext *ctx, JSValueConst v, wjd_CacheQueryOp
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "ignoreSearch") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CacheQueryOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->ignoreSearch = JS_ToBool(ctx, x);
@@ -16709,7 +16718,7 @@ bool wjd_CacheQueryOptions_from(JSContext *ctx, JSValueConst v, wjd_CacheQueryOp
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "ignoreVary") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CacheQueryOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->ignoreVary = JS_ToBool(ctx, x);
@@ -16729,17 +16738,17 @@ void wjd_MultiCacheQueryOptions_free(JSContext *ctx, wjd_MultiCacheQueryOptions 
 bool wjd_MultiCacheQueryOptions_from(JSContext *ctx, JSValueConst v, wjd_MultiCacheQueryOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_CacheQueryOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_CacheQueryOptions_from(ctx, v, &out->base)) { wjd_MultiCacheQueryOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MultiCacheQueryOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MultiCacheQueryOptions'."); { wjd_MultiCacheQueryOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "cacheName") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MultiCacheQueryOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_cacheName = true;
             bool ok = wj_to_str(ctx, x, &out->cacheName, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MultiCacheQueryOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16755,136 +16764,136 @@ bool wjd_DOMMatrix2DInit_from(JSContext *ctx, JSValueConst v, wjd_DOMMatrix2DIni
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DOMMatrix2DInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DOMMatrix2DInit'."); { wjd_DOMMatrix2DInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "a") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_a = true;
             bool ok = wj_to_double(ctx, x, &out->a, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "b") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_b = true;
             bool ok = wj_to_double(ctx, x, &out->b, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "c") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_c = true;
             bool ok = wj_to_double(ctx, x, &out->c, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "d") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_d = true;
             bool ok = wj_to_double(ctx, x, &out->d, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "e") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_e = true;
             bool ok = wj_to_double(ctx, x, &out->e, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "f") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_f = true;
             bool ok = wj_to_double(ctx, x, &out->f, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m11") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_m11 = true;
             bool ok = wj_to_double(ctx, x, &out->m11, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m12") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_m12 = true;
             bool ok = wj_to_double(ctx, x, &out->m12, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m21") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_m21 = true;
             bool ok = wj_to_double(ctx, x, &out->m21, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m22") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_m22 = true;
             bool ok = wj_to_double(ctx, x, &out->m22, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m41") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_m41 = true;
             bool ok = wj_to_double(ctx, x, &out->m41, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m42") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_m42 = true;
             bool ok = wj_to_double(ctx, x, &out->m42, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrix2DInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16902,26 +16911,26 @@ bool wjd_ImageDataSettings_from(JSContext *ctx, JSValueConst v, wjd_ImageDataSet
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ImageDataSettings'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ImageDataSettings'."); { wjd_ImageDataSettings_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "colorSpace") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ImageDataSettings_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_colorSpace = true;
             bool ok = wj_to_str(ctx, x, &out->colorSpace, 0, "") && wj_check_enum(ctx, &out->colorSpace, wje_PredefinedColorSpace, "PredefinedColorSpace");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ImageDataSettings_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "pixelFormat") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ImageDataSettings_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->pixelFormat.ptr = "rgba-unorm8"; out->pixelFormat.len = 11;
         } else {
             bool ok = wj_to_str(ctx, x, &out->pixelFormat, 0, "") && wj_check_enum(ctx, &out->pixelFormat, wje_ImageDataPixelFormat, "ImageDataPixelFormat");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ImageDataSettings_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16937,48 +16946,48 @@ bool wjd_DOMPointInit_from(JSContext *ctx, JSValueConst v, wjd_DOMPointInit *out
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DOMPointInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DOMPointInit'."); { wjd_DOMPointInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "w") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMPointInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->w = 1;
         } else {
             bool ok = wj_to_double(ctx, x, &out->w, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMPointInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "x") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMPointInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->x = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->x, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMPointInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "y") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMPointInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->y = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->y, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMPointInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "z") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMPointInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->z = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->z, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMPointInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -16995,15 +17004,15 @@ bool wjd_ClipboardItemOptions_from(JSContext *ctx, JSValueConst v, wjd_Clipboard
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ClipboardItemOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ClipboardItemOptions'."); { wjd_ClipboardItemOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "presentationStyle") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ClipboardItemOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->presentationStyle.ptr = "unspecified"; out->presentationStyle.len = 11;
         } else {
             bool ok = wj_to_str(ctx, x, &out->presentationStyle, 0, "") && wj_check_enum(ctx, &out->presentationStyle, wje_PresentationStyle, "PresentationStyle");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ClipboardItemOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17021,26 +17030,26 @@ bool wjd_CookieStoreGetOptions_from(JSContext *ctx, JSValueConst v, wjd_CookieSt
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CookieStoreGetOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CookieStoreGetOptions'."); { wjd_CookieStoreGetOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "name") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieStoreGetOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_name = true;
             bool ok = wj_to_str(ctx, x, &out->name, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CookieStoreGetOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "url") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieStoreGetOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_url = true;
             bool ok = wj_to_str(ctx, x, &out->url, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CookieStoreGetOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17057,16 +17066,16 @@ bool wjd_CredentialData_from(JSContext *ctx, JSValueConst v, wjd_CredentialData 
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CredentialData'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CredentialData'."); { wjd_CredentialData_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "id") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'id' property from 'CredentialData': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_CredentialData_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'id' property from 'CredentialData': Required member is undefined."); { wjd_CredentialData_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_id = true;
             bool ok = wj_to_str(ctx, x, &out->id, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CredentialData_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17087,63 +17096,63 @@ void wjd_FederatedCredentialInit_free(JSContext *ctx, wjd_FederatedCredentialIni
 bool wjd_FederatedCredentialInit_from(JSContext *ctx, JSValueConst v, wjd_FederatedCredentialInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_CredentialData_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_CredentialData_from(ctx, v, &out->base)) { wjd_FederatedCredentialInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FederatedCredentialInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FederatedCredentialInit'."); { wjd_FederatedCredentialInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "iconURL") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FederatedCredentialInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_iconURL = true;
             bool ok = wj_to_str(ctx, x, &out->iconURL, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FederatedCredentialInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "name") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FederatedCredentialInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_name = true;
             bool ok = wj_to_str(ctx, x, &out->name, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FederatedCredentialInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "origin") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'origin' property from 'FederatedCredentialInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_FederatedCredentialInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'origin' property from 'FederatedCredentialInit': Required member is undefined."); { wjd_FederatedCredentialInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_origin = true;
             bool ok = wj_to_str(ctx, x, &out->origin, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FederatedCredentialInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "protocol") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FederatedCredentialInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_protocol = true;
             bool ok = wj_to_str(ctx, x, &out->protocol, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FederatedCredentialInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "provider") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'provider' property from 'FederatedCredentialInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_FederatedCredentialInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'provider' property from 'FederatedCredentialInit': Required member is undefined."); { wjd_FederatedCredentialInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_provider = true;
             bool ok = wj_to_str(ctx, x, &out->provider, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FederatedCredentialInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17163,52 +17172,52 @@ void wjd_PasswordCredentialData_free(JSContext *ctx, wjd_PasswordCredentialData 
 bool wjd_PasswordCredentialData_from(JSContext *ctx, JSValueConst v, wjd_PasswordCredentialData *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_CredentialData_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_CredentialData_from(ctx, v, &out->base)) { wjd_PasswordCredentialData_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PasswordCredentialData'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PasswordCredentialData'."); { wjd_PasswordCredentialData_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "iconURL") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PasswordCredentialData_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_iconURL = true;
             bool ok = wj_to_str(ctx, x, &out->iconURL, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PasswordCredentialData_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "name") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PasswordCredentialData_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_name = true;
             bool ok = wj_to_str(ctx, x, &out->name, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PasswordCredentialData_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "origin") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'origin' property from 'PasswordCredentialData': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_PasswordCredentialData_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'origin' property from 'PasswordCredentialData': Required member is undefined."); { wjd_PasswordCredentialData_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_origin = true;
             bool ok = wj_to_str(ctx, x, &out->origin, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PasswordCredentialData_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "password") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'password' property from 'PasswordCredentialData': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_PasswordCredentialData_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'password' property from 'PasswordCredentialData': Required member is undefined."); { wjd_PasswordCredentialData_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_password = true;
             bool ok = wj_to_str(ctx, x, &out->password, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PasswordCredentialData_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17218,8 +17227,8 @@ bool wjd_PasswordCredentialData_from(JSContext *ctx, JSValueConst v, wjd_Passwor
 void wjd_FederatedCredentialRequestOptions_free(JSContext *ctx, wjd_FederatedCredentialRequestOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->protocols);
-    JS_FreeValue(ctx, d->providers);
+    JS_FreeValue(ctx, d->protocols); d->protocols = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->providers); d->providers = JS_UNDEFINED;
 }
 
 bool wjd_FederatedCredentialRequestOptions_from(JSContext *ctx, JSValueConst v, wjd_FederatedCredentialRequestOptions *out)
@@ -17228,10 +17237,10 @@ bool wjd_FederatedCredentialRequestOptions_from(JSContext *ctx, JSValueConst v, 
     out->protocols = JS_UNDEFINED;
     out->providers = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FederatedCredentialRequestOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FederatedCredentialRequestOptions'."); { wjd_FederatedCredentialRequestOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "protocols") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FederatedCredentialRequestOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_protocols = true;
@@ -17241,7 +17250,7 @@ bool wjd_FederatedCredentialRequestOptions_from(JSContext *ctx, JSValueConst v, 
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "providers") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FederatedCredentialRequestOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_providers = true;
@@ -17257,7 +17266,7 @@ void wjd_CredentialRequestOptions_free(JSContext *ctx, wjd_CredentialRequestOpti
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_FederatedCredentialRequestOptions_free(ctx, &d->federated);
     wj_str_free(ctx, &d->mediation);
-    JS_FreeValue(ctx, d->signal);
+    JS_FreeValue(ctx, d->signal); d->signal = JS_UNDEFINED;
     wj_str_free(ctx, &d->uiMode);
 }
 
@@ -17266,33 +17275,33 @@ bool wjd_CredentialRequestOptions_from(JSContext *ctx, JSValueConst v, wjd_Crede
     memset(out, 0, sizeof *out);
     out->signal = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CredentialRequestOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CredentialRequestOptions'."); { wjd_CredentialRequestOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "federated") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CredentialRequestOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
-            if (!wjd_FederatedCredentialRequestOptions_from(ctx, JS_UNDEFINED, &out->federated)) { return false; }
+            if (!wjd_FederatedCredentialRequestOptions_from(ctx, JS_UNDEFINED, &out->federated)) { wjd_CredentialRequestOptions_free(ctx, out); return false; }
         } else {
             out->has_federated = true;
             bool ok = wjd_FederatedCredentialRequestOptions_from(ctx, x, &out->federated);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CredentialRequestOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "mediation") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CredentialRequestOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->mediation.ptr = "optional"; out->mediation.len = 8;
         } else {
             bool ok = wj_to_str(ctx, x, &out->mediation, 0, "") && wj_check_enum(ctx, &out->mediation, wje_CredentialMediationRequirement, "CredentialMediationRequirement");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CredentialRequestOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "password") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CredentialRequestOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->password = JS_ToBool(ctx, x);
@@ -17301,7 +17310,7 @@ bool wjd_CredentialRequestOptions_from(JSContext *ctx, JSValueConst v, wjd_Crede
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "signal") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CredentialRequestOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_signal = true;
@@ -17311,12 +17320,12 @@ bool wjd_CredentialRequestOptions_from(JSContext *ctx, JSValueConst v, wjd_Crede
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "uiMode") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CredentialRequestOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_uiMode = true;
             bool ok = wj_to_str(ctx, x, &out->uiMode, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CredentialRequestOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17328,8 +17337,8 @@ void wjd_CredentialCreationOptions_free(JSContext *ctx, wjd_CredentialCreationOp
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_FederatedCredentialInit_free(ctx, &d->federated);
     wj_str_free(ctx, &d->mediation);
-    JS_FreeValue(ctx, d->password);
-    JS_FreeValue(ctx, d->signal);
+    JS_FreeValue(ctx, d->password); d->password = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->signal); d->signal = JS_UNDEFINED;
 }
 
 bool wjd_CredentialCreationOptions_from(JSContext *ctx, JSValueConst v, wjd_CredentialCreationOptions *out)
@@ -17338,33 +17347,33 @@ bool wjd_CredentialCreationOptions_from(JSContext *ctx, JSValueConst v, wjd_Cred
     out->password = JS_UNDEFINED;
     out->signal = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CredentialCreationOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CredentialCreationOptions'."); { wjd_CredentialCreationOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "federated") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CredentialCreationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
-            if (!wjd_FederatedCredentialInit_from(ctx, JS_UNDEFINED, &out->federated)) { return false; }
+            if (!wjd_FederatedCredentialInit_from(ctx, JS_UNDEFINED, &out->federated)) { wjd_CredentialCreationOptions_free(ctx, out); return false; }
         } else {
             out->has_federated = true;
             bool ok = wjd_FederatedCredentialInit_from(ctx, x, &out->federated);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CredentialCreationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "mediation") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CredentialCreationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->mediation.ptr = "optional"; out->mediation.len = 8;
         } else {
             bool ok = wj_to_str(ctx, x, &out->mediation, 0, "") && wj_check_enum(ctx, &out->mediation, wje_CredentialMediationRequirement, "CredentialMediationRequirement");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CredentialCreationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "password") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CredentialCreationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_password = true;
@@ -17374,7 +17383,7 @@ bool wjd_CredentialCreationOptions_from(JSContext *ctx, JSValueConst v, wjd_Cred
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "signal") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CredentialCreationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_signal = true;
@@ -17395,15 +17404,15 @@ bool wjd_ElementDefinitionOptions_from(JSContext *ctx, JSValueConst v, wjd_Eleme
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ElementDefinitionOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ElementDefinitionOptions'."); { wjd_ElementDefinitionOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "extends") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ElementDefinitionOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_extends = true;
             bool ok = wj_to_str(ctx, x, &out->extends, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ElementDefinitionOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17419,26 +17428,26 @@ bool wjd_QuotaExceededErrorOptions_from(JSContext *ctx, JSValueConst v, wjd_Quot
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'QuotaExceededErrorOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'QuotaExceededErrorOptions'."); { wjd_QuotaExceededErrorOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "quota") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_QuotaExceededErrorOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_quota = true;
             bool ok = wj_to_double(ctx, x, &out->quota, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_QuotaExceededErrorOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "requested") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_QuotaExceededErrorOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_requested = true;
             bool ok = wj_to_double(ctx, x, &out->requested, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_QuotaExceededErrorOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17454,12 +17463,12 @@ void wjd_DOMMatrixInit_free(JSContext *ctx, wjd_DOMMatrixInit *d)
 bool wjd_DOMMatrixInit_from(JSContext *ctx, JSValueConst v, wjd_DOMMatrixInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_DOMMatrix2DInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_DOMMatrix2DInit_from(ctx, v, &out->base)) { wjd_DOMMatrixInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DOMMatrixInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DOMMatrixInit'."); { wjd_DOMMatrixInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "is2D") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrixInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_is2D = true;
@@ -17469,111 +17478,111 @@ bool wjd_DOMMatrixInit_from(JSContext *ctx, JSValueConst v, wjd_DOMMatrixInit *o
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m13") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrixInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->m13 = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->m13, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrixInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m14") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrixInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->m14 = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->m14, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrixInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m23") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrixInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->m23 = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->m23, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrixInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m24") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrixInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->m24 = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->m24, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrixInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m31") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrixInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->m31 = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->m31, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrixInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m32") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrixInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->m32 = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->m32, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrixInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m33") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrixInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->m33 = 1;
         } else {
             bool ok = wj_to_double(ctx, x, &out->m33, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrixInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m34") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrixInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->m34 = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->m34, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrixInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m43") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrixInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->m43 = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->m43, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrixInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "m44") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMMatrixInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->m44 = 1;
         } else {
             bool ok = wj_to_double(ctx, x, &out->m44, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMMatrixInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17589,48 +17598,48 @@ bool wjd_DOMRectInit_from(JSContext *ctx, JSValueConst v, wjd_DOMRectInit *out)
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DOMRectInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DOMRectInit'."); { wjd_DOMRectInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "height") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMRectInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->height = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->height, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMRectInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "width") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMRectInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->width = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->width, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMRectInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "x") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMRectInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->x = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->x, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMRectInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "y") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMRectInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->y = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->y, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMRectInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17650,52 +17659,52 @@ bool wjd_DOMQuadInit_from(JSContext *ctx, JSValueConst v, wjd_DOMQuadInit *out)
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DOMQuadInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DOMQuadInit'."); { wjd_DOMQuadInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "p1") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMQuadInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
-            if (!wjd_DOMPointInit_from(ctx, JS_UNDEFINED, &out->p1)) { return false; }
+            if (!wjd_DOMPointInit_from(ctx, JS_UNDEFINED, &out->p1)) { wjd_DOMQuadInit_free(ctx, out); return false; }
         } else {
             out->has_p1 = true;
             bool ok = wjd_DOMPointInit_from(ctx, x, &out->p1);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMQuadInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "p2") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMQuadInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
-            if (!wjd_DOMPointInit_from(ctx, JS_UNDEFINED, &out->p2)) { return false; }
+            if (!wjd_DOMPointInit_from(ctx, JS_UNDEFINED, &out->p2)) { wjd_DOMQuadInit_free(ctx, out); return false; }
         } else {
             out->has_p2 = true;
             bool ok = wjd_DOMPointInit_from(ctx, x, &out->p2);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMQuadInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "p3") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMQuadInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
-            if (!wjd_DOMPointInit_from(ctx, JS_UNDEFINED, &out->p3)) { return false; }
+            if (!wjd_DOMPointInit_from(ctx, JS_UNDEFINED, &out->p3)) { wjd_DOMQuadInit_free(ctx, out); return false; }
         } else {
             out->has_p3 = true;
             bool ok = wjd_DOMPointInit_from(ctx, x, &out->p3);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMQuadInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "p4") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DOMQuadInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
-            if (!wjd_DOMPointInit_from(ctx, JS_UNDEFINED, &out->p4)) { return false; }
+            if (!wjd_DOMPointInit_from(ctx, JS_UNDEFINED, &out->p4)) { wjd_DOMQuadInit_free(ctx, out); return false; }
         } else {
             out->has_p4 = true;
             bool ok = wjd_DOMPointInit_from(ctx, x, &out->p4);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DOMQuadInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17711,10 +17720,10 @@ bool wjd_ValidityStateFlags_from(JSContext *ctx, JSValueConst v, wjd_ValiditySta
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ValidityStateFlags'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ValidityStateFlags'."); { wjd_ValidityStateFlags_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "badInput") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ValidityStateFlags_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->badInput = JS_ToBool(ctx, x);
@@ -17723,7 +17732,7 @@ bool wjd_ValidityStateFlags_from(JSContext *ctx, JSValueConst v, wjd_ValiditySta
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "customError") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ValidityStateFlags_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->customError = JS_ToBool(ctx, x);
@@ -17732,7 +17741,7 @@ bool wjd_ValidityStateFlags_from(JSContext *ctx, JSValueConst v, wjd_ValiditySta
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "patternMismatch") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ValidityStateFlags_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->patternMismatch = JS_ToBool(ctx, x);
@@ -17741,7 +17750,7 @@ bool wjd_ValidityStateFlags_from(JSContext *ctx, JSValueConst v, wjd_ValiditySta
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "rangeOverflow") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ValidityStateFlags_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->rangeOverflow = JS_ToBool(ctx, x);
@@ -17750,7 +17759,7 @@ bool wjd_ValidityStateFlags_from(JSContext *ctx, JSValueConst v, wjd_ValiditySta
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "rangeUnderflow") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ValidityStateFlags_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->rangeUnderflow = JS_ToBool(ctx, x);
@@ -17759,7 +17768,7 @@ bool wjd_ValidityStateFlags_from(JSContext *ctx, JSValueConst v, wjd_ValiditySta
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "stepMismatch") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ValidityStateFlags_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->stepMismatch = JS_ToBool(ctx, x);
@@ -17768,7 +17777,7 @@ bool wjd_ValidityStateFlags_from(JSContext *ctx, JSValueConst v, wjd_ValiditySta
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "tooLong") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ValidityStateFlags_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->tooLong = JS_ToBool(ctx, x);
@@ -17777,7 +17786,7 @@ bool wjd_ValidityStateFlags_from(JSContext *ctx, JSValueConst v, wjd_ValiditySta
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "tooShort") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ValidityStateFlags_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->tooShort = JS_ToBool(ctx, x);
@@ -17786,7 +17795,7 @@ bool wjd_ValidityStateFlags_from(JSContext *ctx, JSValueConst v, wjd_ValiditySta
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "typeMismatch") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ValidityStateFlags_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->typeMismatch = JS_ToBool(ctx, x);
@@ -17795,7 +17804,7 @@ bool wjd_ValidityStateFlags_from(JSContext *ctx, JSValueConst v, wjd_ValiditySta
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "valueMissing") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ValidityStateFlags_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->valueMissing = JS_ToBool(ctx, x);
@@ -17814,10 +17823,10 @@ bool wjd_EventInit_from(JSContext *ctx, JSValueConst v, wjd_EventInit *out)
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'EventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'EventInit'."); { wjd_EventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "bubbles") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->bubbles = JS_ToBool(ctx, x);
@@ -17826,7 +17835,7 @@ bool wjd_EventInit_from(JSContext *ctx, JSValueConst v, wjd_EventInit *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "cancelable") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->cancelable = JS_ToBool(ctx, x);
@@ -17835,7 +17844,7 @@ bool wjd_EventInit_from(JSContext *ctx, JSValueConst v, wjd_EventInit *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "composed") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->composed = JS_ToBool(ctx, x);
@@ -17856,39 +17865,39 @@ void wjd_AnimationEventInit_free(JSContext *ctx, wjd_AnimationEventInit *d)
 bool wjd_AnimationEventInit_from(JSContext *ctx, JSValueConst v, wjd_AnimationEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_AnimationEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AnimationEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AnimationEventInit'."); { wjd_AnimationEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "animationName") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AnimationEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->animationName.ptr = ""; out->animationName.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->animationName, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AnimationEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "elapsedTime") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AnimationEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->elapsedTime = 0.0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->elapsedTime, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AnimationEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "pseudoElement") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AnimationEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->pseudoElement.ptr = ""; out->pseudoElement.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->pseudoElement, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AnimationEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17899,8 +17908,8 @@ void wjd_AudioProcessingEventInit_free(JSContext *ctx, wjd_AudioProcessingEventI
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->inputBuffer);
-    JS_FreeValue(ctx, d->outputBuffer);
+    JS_FreeValue(ctx, d->inputBuffer); d->inputBuffer = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->outputBuffer); d->outputBuffer = JS_UNDEFINED;
 }
 
 bool wjd_AudioProcessingEventInit_from(JSContext *ctx, JSValueConst v, wjd_AudioProcessingEventInit *out)
@@ -17908,13 +17917,13 @@ bool wjd_AudioProcessingEventInit_from(JSContext *ctx, JSValueConst v, wjd_Audio
     memset(out, 0, sizeof *out);
     out->inputBuffer = JS_UNDEFINED;
     out->outputBuffer = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_AudioProcessingEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioProcessingEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioProcessingEventInit'."); { wjd_AudioProcessingEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "inputBuffer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'inputBuffer' property from 'AudioProcessingEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_AudioProcessingEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'inputBuffer' property from 'AudioProcessingEventInit': Required member is undefined."); { wjd_AudioProcessingEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_inputBuffer = true;
@@ -17924,8 +17933,8 @@ bool wjd_AudioProcessingEventInit_from(JSContext *ctx, JSValueConst v, wjd_Audio
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "outputBuffer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'outputBuffer' property from 'AudioProcessingEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_AudioProcessingEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'outputBuffer' property from 'AudioProcessingEventInit': Required member is undefined."); { wjd_AudioProcessingEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_outputBuffer = true;
@@ -17935,13 +17944,13 @@ bool wjd_AudioProcessingEventInit_from(JSContext *ctx, JSValueConst v, wjd_Audio
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "playbackTime") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'playbackTime' property from 'AudioProcessingEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_AudioProcessingEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'playbackTime' property from 'AudioProcessingEventInit': Required member is undefined."); { wjd_AudioProcessingEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_playbackTime = true;
             bool ok = wj_to_double(ctx, x, &out->playbackTime, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioProcessingEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -17952,8 +17961,8 @@ void wjd_BufferedChangeEventInit_free(JSContext *ctx, wjd_BufferedChangeEventIni
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->addedRanges);
-    JS_FreeValue(ctx, d->removedRanges);
+    JS_FreeValue(ctx, d->addedRanges); d->addedRanges = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->removedRanges); d->removedRanges = JS_UNDEFINED;
 }
 
 bool wjd_BufferedChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_BufferedChangeEventInit *out)
@@ -17961,12 +17970,12 @@ bool wjd_BufferedChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_Buffer
     memset(out, 0, sizeof *out);
     out->addedRanges = JS_UNDEFINED;
     out->removedRanges = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_BufferedChangeEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'BufferedChangeEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'BufferedChangeEventInit'."); { wjd_BufferedChangeEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "addedRanges") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_BufferedChangeEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_addedRanges = true;
@@ -17976,7 +17985,7 @@ bool wjd_BufferedChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_Buffer
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "removedRanges") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_BufferedChangeEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_removedRanges = true;
@@ -17991,8 +18000,8 @@ void wjd_ClipboardChangeEventInit_free(JSContext *ctx, wjd_ClipboardChangeEventI
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->changeId);
-    JS_FreeValue(ctx, d->types);
+    JS_FreeValue(ctx, d->changeId); d->changeId = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->types); d->types = JS_UNDEFINED;
 }
 
 bool wjd_ClipboardChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_ClipboardChangeEventInit *out)
@@ -18000,12 +18009,12 @@ bool wjd_ClipboardChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_Clipb
     memset(out, 0, sizeof *out);
     out->changeId = JS_UNDEFINED;
     out->types = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_ClipboardChangeEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ClipboardChangeEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ClipboardChangeEventInit'."); { wjd_ClipboardChangeEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "changeId") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ClipboardChangeEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->changeId = JS_DupValue(ctx, x);
@@ -18014,7 +18023,7 @@ bool wjd_ClipboardChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_Clipb
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "types") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ClipboardChangeEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->types = JS_DupValue(ctx, x);
@@ -18028,19 +18037,19 @@ void wjd_ClipboardEventInit_free(JSContext *ctx, wjd_ClipboardEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->clipboardData);
+    JS_FreeValue(ctx, d->clipboardData); d->clipboardData = JS_UNDEFINED;
 }
 
 bool wjd_ClipboardEventInit_from(JSContext *ctx, JSValueConst v, wjd_ClipboardEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->clipboardData = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_ClipboardEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ClipboardEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ClipboardEventInit'."); { wjd_ClipboardEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "clipboardData") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ClipboardEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->clipboardData = JS_NULL;
         } else {
@@ -18061,34 +18070,34 @@ void wjd_CloseEventInit_free(JSContext *ctx, wjd_CloseEventInit *d)
 bool wjd_CloseEventInit_from(JSContext *ctx, JSValueConst v, wjd_CloseEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_CloseEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CloseEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CloseEventInit'."); { wjd_CloseEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "code") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CloseEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->code = 0;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->code, 16, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CloseEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "reason") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CloseEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->reason.ptr = ""; out->reason.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->reason, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CloseEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "wasClean") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CloseEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->wasClean = JS_ToBool(ctx, x);
@@ -18103,30 +18112,30 @@ void wjd_CommandEventInit_free(JSContext *ctx, wjd_CommandEventInit *d)
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
     wj_str_free(ctx, &d->command);
-    JS_FreeValue(ctx, d->source);
+    JS_FreeValue(ctx, d->source); d->source = JS_UNDEFINED;
 }
 
 bool wjd_CommandEventInit_from(JSContext *ctx, JSValueConst v, wjd_CommandEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->source = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_CommandEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CommandEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CommandEventInit'."); { wjd_CommandEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "command") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CommandEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->command.ptr = ""; out->command.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->command, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CommandEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "source") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CommandEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->source = JS_NULL;
         } else {
@@ -18141,8 +18150,8 @@ void wjd_CookieChangeEventInit_free(JSContext *ctx, wjd_CookieChangeEventInit *d
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->changed);
-    JS_FreeValue(ctx, d->deleted);
+    JS_FreeValue(ctx, d->changed); d->changed = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->deleted); d->deleted = JS_UNDEFINED;
 }
 
 bool wjd_CookieChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_CookieChangeEventInit *out)
@@ -18150,12 +18159,12 @@ bool wjd_CookieChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_CookieCh
     memset(out, 0, sizeof *out);
     out->changed = JS_UNDEFINED;
     out->deleted = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_CookieChangeEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CookieChangeEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CookieChangeEventInit'."); { wjd_CookieChangeEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "changed") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieChangeEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_changed = true;
@@ -18165,7 +18174,7 @@ bool wjd_CookieChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_CookieCh
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "deleted") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieChangeEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_deleted = true;
@@ -18180,19 +18189,19 @@ void wjd_CustomEventInit_free(JSContext *ctx, wjd_CustomEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->detail);
+    JS_FreeValue(ctx, d->detail); d->detail = JS_UNDEFINED;
 }
 
 bool wjd_CustomEventInit_from(JSContext *ctx, JSValueConst v, wjd_CustomEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->detail = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_CustomEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CustomEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CustomEventInit'."); { wjd_CustomEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "detail") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CustomEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->detail = JS_NULL;
         } else {
@@ -18207,19 +18216,19 @@ void wjd_DeviceChangeEventInit_free(JSContext *ctx, wjd_DeviceChangeEventInit *d
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->devices);
+    JS_FreeValue(ctx, d->devices); d->devices = JS_UNDEFINED;
 }
 
 bool wjd_DeviceChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_DeviceChangeEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->devices = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_DeviceChangeEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DeviceChangeEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DeviceChangeEventInit'."); { wjd_DeviceChangeEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "devices") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DeviceChangeEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->devices = JS_DupValue(ctx, x);
@@ -18233,7 +18242,7 @@ void wjd_ErrorEventInit_free(JSContext *ctx, wjd_ErrorEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->error);
+    JS_FreeValue(ctx, d->error); d->error = JS_UNDEFINED;
     wj_str_free(ctx, &d->filename);
     wj_str_free(ctx, &d->message);
 }
@@ -18242,23 +18251,23 @@ bool wjd_ErrorEventInit_from(JSContext *ctx, JSValueConst v, wjd_ErrorEventInit 
 {
     memset(out, 0, sizeof *out);
     out->error = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_ErrorEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ErrorEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ErrorEventInit'."); { wjd_ErrorEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "colno") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ErrorEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->colno = 0;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->colno, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ErrorEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "error") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ErrorEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_error = true;
@@ -18268,34 +18277,34 @@ bool wjd_ErrorEventInit_from(JSContext *ctx, JSValueConst v, wjd_ErrorEventInit 
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "filename") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ErrorEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->filename.ptr = ""; out->filename.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->filename, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ErrorEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "lineno") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ErrorEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->lineno = 0;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->lineno, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ErrorEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "message") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ErrorEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->message.ptr = ""; out->message.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->message, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ErrorEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -18306,19 +18315,19 @@ void wjd_FontFaceSetLoadEventInit_free(JSContext *ctx, wjd_FontFaceSetLoadEventI
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->fontfaces);
+    JS_FreeValue(ctx, d->fontfaces); d->fontfaces = JS_UNDEFINED;
 }
 
 bool wjd_FontFaceSetLoadEventInit_from(JSContext *ctx, JSValueConst v, wjd_FontFaceSetLoadEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->fontfaces = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_FontFaceSetLoadEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FontFaceSetLoadEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FontFaceSetLoadEventInit'."); { wjd_FontFaceSetLoadEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "fontfaces") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FontFaceSetLoadEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->fontfaces = JS_DupValue(ctx, x);
@@ -18332,20 +18341,20 @@ void wjd_FormDataEventInit_free(JSContext *ctx, wjd_FormDataEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->formData);
+    JS_FreeValue(ctx, d->formData); d->formData = JS_UNDEFINED;
 }
 
 bool wjd_FormDataEventInit_from(JSContext *ctx, JSValueConst v, wjd_FormDataEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->formData = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_FormDataEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FormDataEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FormDataEventInit'."); { wjd_FormDataEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "formData") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'formData' property from 'FormDataEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_FormDataEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'formData' property from 'FormDataEventInit': Required member is undefined."); { wjd_FormDataEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_formData = true;
@@ -18360,19 +18369,19 @@ void wjd_GamepadEventInit_free(JSContext *ctx, wjd_GamepadEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->gamepad);
+    JS_FreeValue(ctx, d->gamepad); d->gamepad = JS_UNDEFINED;
 }
 
 bool wjd_GamepadEventInit_from(JSContext *ctx, JSValueConst v, wjd_GamepadEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->gamepad = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_GamepadEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GamepadEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GamepadEventInit'."); { wjd_GamepadEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "gamepad") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GamepadEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->gamepad = JS_NULL;
         } else {
@@ -18394,28 +18403,28 @@ void wjd_HashChangeEventInit_free(JSContext *ctx, wjd_HashChangeEventInit *d)
 bool wjd_HashChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_HashChangeEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_HashChangeEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'HashChangeEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'HashChangeEventInit'."); { wjd_HashChangeEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "newURL") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_HashChangeEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->newURL.ptr = ""; out->newURL.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->newURL, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_HashChangeEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "oldURL") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_HashChangeEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->oldURL.ptr = ""; out->oldURL.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->oldURL, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_HashChangeEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -18431,27 +18440,27 @@ void wjd_IDBVersionChangeEventInit_free(JSContext *ctx, wjd_IDBVersionChangeEven
 bool wjd_IDBVersionChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_IDBVersionChangeEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_IDBVersionChangeEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IDBVersionChangeEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IDBVersionChangeEventInit'."); { wjd_IDBVersionChangeEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "newVersion") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IDBVersionChangeEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_uint64(ctx, x, &out->newVersion, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IDBVersionChangeEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "oldVersion") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IDBVersionChangeEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->oldVersion = 0;
         } else {
             bool ok = wj_to_uint64(ctx, x, &out->oldVersion, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IDBVersionChangeEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -18468,12 +18477,12 @@ void wjd_MediaQueryListEventInit_free(JSContext *ctx, wjd_MediaQueryListEventIni
 bool wjd_MediaQueryListEventInit_from(JSContext *ctx, JSValueConst v, wjd_MediaQueryListEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_MediaQueryListEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaQueryListEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaQueryListEventInit'."); { wjd_MediaQueryListEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "matches") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaQueryListEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->matches = JS_ToBool(ctx, x);
@@ -18482,12 +18491,12 @@ bool wjd_MediaQueryListEventInit_from(JSContext *ctx, JSValueConst v, wjd_MediaQ
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "media") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaQueryListEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->media.ptr = ""; out->media.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->media, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MediaQueryListEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -18498,20 +18507,20 @@ void wjd_MediaStreamTrackEventInit_free(JSContext *ctx, wjd_MediaStreamTrackEven
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->track);
+    JS_FreeValue(ctx, d->track); d->track = JS_UNDEFINED;
 }
 
 bool wjd_MediaStreamTrackEventInit_from(JSContext *ctx, JSValueConst v, wjd_MediaStreamTrackEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->track = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_MediaStreamTrackEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaStreamTrackEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaStreamTrackEventInit'."); { wjd_MediaStreamTrackEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "track") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'track' property from 'MediaStreamTrackEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_MediaStreamTrackEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'track' property from 'MediaStreamTrackEventInit': Required member is undefined."); { wjd_MediaStreamTrackEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_track = true;
@@ -18526,11 +18535,11 @@ void wjd_MessageEventInit_free(JSContext *ctx, wjd_MessageEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->data);
+    JS_FreeValue(ctx, d->data); d->data = JS_UNDEFINED;
     wj_str_free(ctx, &d->lastEventId);
     wj_str_free(ctx, &d->origin);
-    JS_FreeValue(ctx, d->ports);
-    JS_FreeValue(ctx, d->source);
+    JS_FreeValue(ctx, d->ports); d->ports = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->source); d->source = JS_UNDEFINED;
 }
 
 bool wjd_MessageEventInit_from(JSContext *ctx, JSValueConst v, wjd_MessageEventInit *out)
@@ -18539,12 +18548,12 @@ bool wjd_MessageEventInit_from(JSContext *ctx, JSValueConst v, wjd_MessageEventI
     out->data = JS_UNDEFINED;
     out->ports = JS_UNDEFINED;
     out->source = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_MessageEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MessageEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MessageEventInit'."); { wjd_MessageEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "data") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MessageEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->data = JS_NULL;
         } else {
@@ -18554,29 +18563,29 @@ bool wjd_MessageEventInit_from(JSContext *ctx, JSValueConst v, wjd_MessageEventI
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "lastEventId") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MessageEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->lastEventId.ptr = ""; out->lastEventId.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->lastEventId, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MessageEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "origin") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MessageEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->origin.ptr = ""; out->origin.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->origin, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MessageEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "ports") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MessageEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->ports = JS_DupValue(ctx, x);
@@ -18585,7 +18594,7 @@ bool wjd_MessageEventInit_from(JSContext *ctx, JSValueConst v, wjd_MessageEventI
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "source") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MessageEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->source = JS_NULL;
         } else {
@@ -18600,13 +18609,13 @@ void wjd_NavigateEventInit_free(JSContext *ctx, wjd_NavigateEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->destination);
+    JS_FreeValue(ctx, d->destination); d->destination = JS_UNDEFINED;
     wj_str_free(ctx, &d->downloadRequest);
-    JS_FreeValue(ctx, d->formData);
-    JS_FreeValue(ctx, d->info);
+    JS_FreeValue(ctx, d->formData); d->formData = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->info); d->info = JS_UNDEFINED;
     wj_str_free(ctx, &d->navigationType);
-    JS_FreeValue(ctx, d->signal);
-    JS_FreeValue(ctx, d->sourceElement);
+    JS_FreeValue(ctx, d->signal); d->signal = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->sourceElement); d->sourceElement = JS_UNDEFINED;
 }
 
 bool wjd_NavigateEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigateEventInit *out)
@@ -18617,12 +18626,12 @@ bool wjd_NavigateEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigateEven
     out->info = JS_UNDEFINED;
     out->signal = JS_UNDEFINED;
     out->sourceElement = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_NavigateEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigateEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigateEventInit'."); { wjd_NavigateEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "canIntercept") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigateEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->canIntercept = JS_ToBool(ctx, x);
@@ -18631,8 +18640,8 @@ bool wjd_NavigateEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigateEven
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "destination") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'destination' property from 'NavigateEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_NavigateEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'destination' property from 'NavigateEventInit': Required member is undefined."); { wjd_NavigateEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_destination = true;
@@ -18642,17 +18651,17 @@ bool wjd_NavigateEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigateEven
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "downloadRequest") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigateEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_str(ctx, x, &out->downloadRequest, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NavigateEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "formData") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigateEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->formData = JS_NULL;
         } else {
@@ -18662,7 +18671,7 @@ bool wjd_NavigateEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigateEven
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "hasUAVisualTransition") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigateEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->hasUAVisualTransition = JS_ToBool(ctx, x);
@@ -18671,7 +18680,7 @@ bool wjd_NavigateEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigateEven
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "hashChange") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigateEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->hashChange = JS_ToBool(ctx, x);
@@ -18680,7 +18689,7 @@ bool wjd_NavigateEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigateEven
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "info") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigateEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_info = true;
@@ -18690,19 +18699,19 @@ bool wjd_NavigateEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigateEven
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "navigationType") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigateEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->navigationType.ptr = "push"; out->navigationType.len = 4;
         } else {
             bool ok = wj_to_str(ctx, x, &out->navigationType, 0, "") && wj_check_enum(ctx, &out->navigationType, wje_NavigationType, "NavigationType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NavigateEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "signal") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'signal' property from 'NavigateEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_NavigateEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'signal' property from 'NavigateEventInit': Required member is undefined."); { wjd_NavigateEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_signal = true;
@@ -18712,7 +18721,7 @@ bool wjd_NavigateEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigateEven
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "sourceElement") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigateEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->sourceElement = JS_NULL;
         } else {
@@ -18722,7 +18731,7 @@ bool wjd_NavigateEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigateEven
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "userInitiated") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigateEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->userInitiated = JS_ToBool(ctx, x);
@@ -18736,8 +18745,8 @@ void wjd_NavigationInterceptOptions_free(JSContext *ctx, wjd_NavigationIntercept
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wj_str_free(ctx, &d->focusReset);
-    JS_FreeValue(ctx, d->handler);
-    JS_FreeValue(ctx, d->precommitHandler);
+    JS_FreeValue(ctx, d->handler); d->handler = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->precommitHandler); d->precommitHandler = JS_UNDEFINED;
     wj_str_free(ctx, &d->scroll);
 }
 
@@ -18747,21 +18756,21 @@ bool wjd_NavigationInterceptOptions_from(JSContext *ctx, JSValueConst v, wjd_Nav
     out->handler = JS_UNDEFINED;
     out->precommitHandler = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigationInterceptOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigationInterceptOptions'."); { wjd_NavigationInterceptOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "focusReset") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigationInterceptOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_focusReset = true;
             bool ok = wj_to_str(ctx, x, &out->focusReset, 0, "") && wj_check_enum(ctx, &out->focusReset, wje_NavigationFocusReset, "NavigationFocusReset");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NavigationInterceptOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "handler") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigationInterceptOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_handler = true;
@@ -18771,7 +18780,7 @@ bool wjd_NavigationInterceptOptions_from(JSContext *ctx, JSValueConst v, wjd_Nav
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "precommitHandler") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigationInterceptOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_precommitHandler = true;
@@ -18781,12 +18790,12 @@ bool wjd_NavigationInterceptOptions_from(JSContext *ctx, JSValueConst v, wjd_Nav
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "scroll") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigationInterceptOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_scroll = true;
             bool ok = wj_to_str(ctx, x, &out->scroll, 0, "") && wj_check_enum(ctx, &out->scroll, wje_NavigationScrollBehavior, "NavigationScrollBehavior");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NavigationInterceptOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -18797,8 +18806,8 @@ void wjd_NavigationCurrentEntryChangeEventInit_free(JSContext *ctx, wjd_Navigati
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->from);
-    JS_FreeValue(ctx, d->navigationType);
+    JS_FreeValue(ctx, d->from); d->from = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->navigationType); d->navigationType = JS_UNDEFINED;
 }
 
 bool wjd_NavigationCurrentEntryChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_NavigationCurrentEntryChangeEventInit *out)
@@ -18806,13 +18815,13 @@ bool wjd_NavigationCurrentEntryChangeEventInit_from(JSContext *ctx, JSValueConst
     memset(out, 0, sizeof *out);
     out->from = JS_UNDEFINED;
     out->navigationType = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_NavigationCurrentEntryChangeEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigationCurrentEntryChangeEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigationCurrentEntryChangeEventInit'."); { wjd_NavigationCurrentEntryChangeEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "from") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'from' property from 'NavigationCurrentEntryChangeEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_NavigationCurrentEntryChangeEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'from' property from 'NavigationCurrentEntryChangeEventInit': Required member is undefined."); { wjd_NavigationCurrentEntryChangeEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_from = true;
@@ -18822,7 +18831,7 @@ bool wjd_NavigationCurrentEntryChangeEventInit_from(JSContext *ctx, JSValueConst
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "navigationType") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigationCurrentEntryChangeEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->navigationType = JS_NULL;
         } else {
@@ -18837,20 +18846,20 @@ void wjd_OfflineAudioCompletionEventInit_free(JSContext *ctx, wjd_OfflineAudioCo
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->renderedBuffer);
+    JS_FreeValue(ctx, d->renderedBuffer); d->renderedBuffer = JS_UNDEFINED;
 }
 
 bool wjd_OfflineAudioCompletionEventInit_from(JSContext *ctx, JSValueConst v, wjd_OfflineAudioCompletionEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->renderedBuffer = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_OfflineAudioCompletionEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'OfflineAudioCompletionEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'OfflineAudioCompletionEventInit'."); { wjd_OfflineAudioCompletionEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "renderedBuffer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'renderedBuffer' property from 'OfflineAudioCompletionEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_OfflineAudioCompletionEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'renderedBuffer' property from 'OfflineAudioCompletionEventInit': Required member is undefined."); { wjd_OfflineAudioCompletionEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_renderedBuffer = true;
@@ -18865,19 +18874,19 @@ void wjd_PageRevealEventInit_free(JSContext *ctx, wjd_PageRevealEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->viewTransition);
+    JS_FreeValue(ctx, d->viewTransition); d->viewTransition = JS_UNDEFINED;
 }
 
 bool wjd_PageRevealEventInit_from(JSContext *ctx, JSValueConst v, wjd_PageRevealEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->viewTransition = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_PageRevealEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PageRevealEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PageRevealEventInit'."); { wjd_PageRevealEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "viewTransition") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PageRevealEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->viewTransition = JS_NULL;
         } else {
@@ -18892,8 +18901,8 @@ void wjd_PageSwapEventInit_free(JSContext *ctx, wjd_PageSwapEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->activation);
-    JS_FreeValue(ctx, d->viewTransition);
+    JS_FreeValue(ctx, d->activation); d->activation = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->viewTransition); d->viewTransition = JS_UNDEFINED;
 }
 
 bool wjd_PageSwapEventInit_from(JSContext *ctx, JSValueConst v, wjd_PageSwapEventInit *out)
@@ -18901,12 +18910,12 @@ bool wjd_PageSwapEventInit_from(JSContext *ctx, JSValueConst v, wjd_PageSwapEven
     memset(out, 0, sizeof *out);
     out->activation = JS_UNDEFINED;
     out->viewTransition = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_PageSwapEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PageSwapEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PageSwapEventInit'."); { wjd_PageSwapEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "activation") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PageSwapEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->activation = JS_NULL;
         } else {
@@ -18916,7 +18925,7 @@ bool wjd_PageSwapEventInit_from(JSContext *ctx, JSValueConst v, wjd_PageSwapEven
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "viewTransition") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PageSwapEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->viewTransition = JS_NULL;
         } else {
@@ -18936,12 +18945,12 @@ void wjd_PageTransitionEventInit_free(JSContext *ctx, wjd_PageTransitionEventIni
 bool wjd_PageTransitionEventInit_from(JSContext *ctx, JSValueConst v, wjd_PageTransitionEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_PageTransitionEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PageTransitionEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PageTransitionEventInit'."); { wjd_PageTransitionEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "persisted") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PageTransitionEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->persisted = JS_ToBool(ctx, x);
@@ -18955,19 +18964,19 @@ void wjd_PopStateEventInit_free(JSContext *ctx, wjd_PopStateEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->state);
+    JS_FreeValue(ctx, d->state); d->state = JS_UNDEFINED;
 }
 
 bool wjd_PopStateEventInit_from(JSContext *ctx, JSValueConst v, wjd_PopStateEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->state = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_PopStateEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PopStateEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PopStateEventInit'."); { wjd_PopStateEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "hasUAVisualTransition") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PopStateEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->hasUAVisualTransition = JS_ToBool(ctx, x);
@@ -18976,7 +18985,7 @@ bool wjd_PopStateEventInit_from(JSContext *ctx, JSValueConst v, wjd_PopStateEven
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "state") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PopStateEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->state = JS_NULL;
         } else {
@@ -18996,12 +19005,12 @@ void wjd_ProgressEventInit_free(JSContext *ctx, wjd_ProgressEventInit *d)
 bool wjd_ProgressEventInit_from(JSContext *ctx, JSValueConst v, wjd_ProgressEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_ProgressEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ProgressEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ProgressEventInit'."); { wjd_ProgressEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "lengthComputable") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ProgressEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->lengthComputable = JS_ToBool(ctx, x);
@@ -19010,23 +19019,23 @@ bool wjd_ProgressEventInit_from(JSContext *ctx, JSValueConst v, wjd_ProgressEven
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "loaded") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ProgressEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->loaded = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->loaded, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ProgressEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "total") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ProgressEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->total = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->total, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ProgressEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -19037,8 +19046,8 @@ void wjd_PromiseRejectionEventInit_free(JSContext *ctx, wjd_PromiseRejectionEven
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->promise);
-    JS_FreeValue(ctx, d->reason);
+    JS_FreeValue(ctx, d->promise); d->promise = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->reason); d->reason = JS_UNDEFINED;
 }
 
 bool wjd_PromiseRejectionEventInit_from(JSContext *ctx, JSValueConst v, wjd_PromiseRejectionEventInit *out)
@@ -19046,13 +19055,13 @@ bool wjd_PromiseRejectionEventInit_from(JSContext *ctx, JSValueConst v, wjd_Prom
     memset(out, 0, sizeof *out);
     out->promise = JS_UNDEFINED;
     out->reason = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_PromiseRejectionEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PromiseRejectionEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PromiseRejectionEventInit'."); { wjd_PromiseRejectionEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "promise") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'promise' property from 'PromiseRejectionEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_PromiseRejectionEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'promise' property from 'PromiseRejectionEventInit': Required member is undefined."); { wjd_PromiseRejectionEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_promise = true;
@@ -19062,7 +19071,7 @@ bool wjd_PromiseRejectionEventInit_from(JSContext *ctx, JSValueConst v, wjd_Prom
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "reason") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PromiseRejectionEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_reason = true;
@@ -19084,29 +19093,29 @@ void wjd_SpeechRecognitionErrorEventInit_free(JSContext *ctx, wjd_SpeechRecognit
 bool wjd_SpeechRecognitionErrorEventInit_from(JSContext *ctx, JSValueConst v, wjd_SpeechRecognitionErrorEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_SpeechRecognitionErrorEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SpeechRecognitionErrorEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SpeechRecognitionErrorEventInit'."); { wjd_SpeechRecognitionErrorEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "error") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'error' property from 'SpeechRecognitionErrorEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_SpeechRecognitionErrorEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'error' property from 'SpeechRecognitionErrorEventInit': Required member is undefined."); { wjd_SpeechRecognitionErrorEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_error = true;
             bool ok = wj_to_str(ctx, x, &out->error, 0, "") && wj_check_enum(ctx, &out->error, wje_SpeechRecognitionErrorCode, "SpeechRecognitionErrorCode");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SpeechRecognitionErrorEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "message") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SpeechRecognitionErrorEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->message.ptr = ""; out->message.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->message, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SpeechRecognitionErrorEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -19117,31 +19126,31 @@ void wjd_SpeechRecognitionEventInit_free(JSContext *ctx, wjd_SpeechRecognitionEv
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->results);
+    JS_FreeValue(ctx, d->results); d->results = JS_UNDEFINED;
 }
 
 bool wjd_SpeechRecognitionEventInit_from(JSContext *ctx, JSValueConst v, wjd_SpeechRecognitionEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->results = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_SpeechRecognitionEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SpeechRecognitionEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SpeechRecognitionEventInit'."); { wjd_SpeechRecognitionEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "resultIndex") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SpeechRecognitionEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->resultIndex = 0;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->resultIndex, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SpeechRecognitionEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "results") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'results' property from 'SpeechRecognitionEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_SpeechRecognitionEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'results' property from 'SpeechRecognitionEventInit': Required member is undefined."); { wjd_SpeechRecognitionEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_results = true;
@@ -19157,64 +19166,64 @@ void wjd_SpeechSynthesisEventInit_free(JSContext *ctx, wjd_SpeechSynthesisEventI
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
     wj_str_free(ctx, &d->name);
-    JS_FreeValue(ctx, d->utterance);
+    JS_FreeValue(ctx, d->utterance); d->utterance = JS_UNDEFINED;
 }
 
 bool wjd_SpeechSynthesisEventInit_from(JSContext *ctx, JSValueConst v, wjd_SpeechSynthesisEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->utterance = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_SpeechSynthesisEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SpeechSynthesisEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SpeechSynthesisEventInit'."); { wjd_SpeechSynthesisEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "charIndex") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SpeechSynthesisEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->charIndex = 0;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->charIndex, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SpeechSynthesisEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "charLength") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SpeechSynthesisEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->charLength = 0;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->charLength, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SpeechSynthesisEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "elapsedTime") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SpeechSynthesisEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->elapsedTime = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->elapsedTime, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SpeechSynthesisEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "name") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SpeechSynthesisEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->name.ptr = ""; out->name.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->name, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SpeechSynthesisEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "utterance") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'utterance' property from 'SpeechSynthesisEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_SpeechSynthesisEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'utterance' property from 'SpeechSynthesisEventInit': Required member is undefined."); { wjd_SpeechSynthesisEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_utterance = true;
@@ -19235,18 +19244,18 @@ void wjd_SpeechSynthesisErrorEventInit_free(JSContext *ctx, wjd_SpeechSynthesisE
 bool wjd_SpeechSynthesisErrorEventInit_from(JSContext *ctx, JSValueConst v, wjd_SpeechSynthesisErrorEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_SpeechSynthesisEventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_SpeechSynthesisEventInit_from(ctx, v, &out->base)) { wjd_SpeechSynthesisErrorEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SpeechSynthesisErrorEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SpeechSynthesisErrorEventInit'."); { wjd_SpeechSynthesisErrorEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "error") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'error' property from 'SpeechSynthesisErrorEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_SpeechSynthesisErrorEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'error' property from 'SpeechSynthesisErrorEventInit': Required member is undefined."); { wjd_SpeechSynthesisErrorEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_error = true;
             bool ok = wj_to_str(ctx, x, &out->error, 0, "") && wj_check_enum(ctx, &out->error, wje_SpeechSynthesisErrorCode, "SpeechSynthesisErrorCode");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SpeechSynthesisErrorEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -19260,7 +19269,7 @@ void wjd_StorageEventInit_free(JSContext *ctx, wjd_StorageEventInit *d)
     wj_str_free(ctx, &d->key);
     wj_str_free(ctx, &d->newValue);
     wj_str_free(ctx, &d->oldValue);
-    JS_FreeValue(ctx, d->storageArea);
+    JS_FreeValue(ctx, d->storageArea); d->storageArea = JS_UNDEFINED;
     wj_str_free(ctx, &d->url);
 }
 
@@ -19268,42 +19277,42 @@ bool wjd_StorageEventInit_from(JSContext *ctx, JSValueConst v, wjd_StorageEventI
 {
     memset(out, 0, sizeof *out);
     out->storageArea = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_StorageEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'StorageEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'StorageEventInit'."); { wjd_StorageEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "key") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StorageEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_str(ctx, x, &out->key, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_StorageEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "newValue") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StorageEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_str(ctx, x, &out->newValue, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_StorageEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "oldValue") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StorageEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_str(ctx, x, &out->oldValue, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_StorageEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "storageArea") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StorageEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->storageArea = JS_NULL;
         } else {
@@ -19313,12 +19322,12 @@ bool wjd_StorageEventInit_from(JSContext *ctx, JSValueConst v, wjd_StorageEventI
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "url") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StorageEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->url.ptr = ""; out->url.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->url, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_StorageEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -19329,19 +19338,19 @@ void wjd_SubmitEventInit_free(JSContext *ctx, wjd_SubmitEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->submitter);
+    JS_FreeValue(ctx, d->submitter); d->submitter = JS_UNDEFINED;
 }
 
 bool wjd_SubmitEventInit_from(JSContext *ctx, JSValueConst v, wjd_SubmitEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->submitter = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_SubmitEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SubmitEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SubmitEventInit'."); { wjd_SubmitEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "submitter") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SubmitEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->submitter = JS_NULL;
         } else {
@@ -19362,18 +19371,18 @@ void wjd_TaskPriorityChangeEventInit_free(JSContext *ctx, wjd_TaskPriorityChange
 bool wjd_TaskPriorityChangeEventInit_from(JSContext *ctx, JSValueConst v, wjd_TaskPriorityChangeEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_TaskPriorityChangeEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TaskPriorityChangeEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TaskPriorityChangeEventInit'."); { wjd_TaskPriorityChangeEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "previousPriority") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'previousPriority' property from 'TaskPriorityChangeEventInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_TaskPriorityChangeEventInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'previousPriority' property from 'TaskPriorityChangeEventInit': Required member is undefined."); { wjd_TaskPriorityChangeEventInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_previousPriority = true;
             bool ok = wj_to_str(ctx, x, &out->previousPriority, 0, "") && wj_check_enum(ctx, &out->previousPriority, wje_TaskPriority, "TaskPriority");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TaskPriorityChangeEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -19386,41 +19395,41 @@ void wjd_ToggleEventInit_free(JSContext *ctx, wjd_ToggleEventInit *d)
     wjd_EventInit_free(ctx, &d->base);
     wj_str_free(ctx, &d->newState);
     wj_str_free(ctx, &d->oldState);
-    JS_FreeValue(ctx, d->source);
+    JS_FreeValue(ctx, d->source); d->source = JS_UNDEFINED;
 }
 
 bool wjd_ToggleEventInit_from(JSContext *ctx, JSValueConst v, wjd_ToggleEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->source = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_ToggleEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ToggleEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ToggleEventInit'."); { wjd_ToggleEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "newState") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ToggleEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->newState.ptr = ""; out->newState.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->newState, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ToggleEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "oldState") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ToggleEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->oldState.ptr = ""; out->oldState.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->oldState, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ToggleEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "source") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ToggleEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->source = JS_NULL;
         } else {
@@ -19435,19 +19444,19 @@ void wjd_TrackEventInit_free(JSContext *ctx, wjd_TrackEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->track);
+    JS_FreeValue(ctx, d->track); d->track = JS_UNDEFINED;
 }
 
 bool wjd_TrackEventInit_from(JSContext *ctx, JSValueConst v, wjd_TrackEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->track = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_TrackEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TrackEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TrackEventInit'."); { wjd_TrackEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "track") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TrackEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->track = JS_NULL;
         } else {
@@ -19469,39 +19478,39 @@ void wjd_TransitionEventInit_free(JSContext *ctx, wjd_TransitionEventInit *d)
 bool wjd_TransitionEventInit_from(JSContext *ctx, JSValueConst v, wjd_TransitionEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_TransitionEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TransitionEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TransitionEventInit'."); { wjd_TransitionEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "elapsedTime") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TransitionEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->elapsedTime = 0.0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->elapsedTime, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TransitionEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "propertyName") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TransitionEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->propertyName.ptr = ""; out->propertyName.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->propertyName, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TransitionEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "pseudoElement") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TransitionEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->pseudoElement.ptr = ""; out->pseudoElement.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->pseudoElement, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TransitionEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -19512,30 +19521,30 @@ void wjd_UIEventInit_free(JSContext *ctx, wjd_UIEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->view);
+    JS_FreeValue(ctx, d->view); d->view = JS_UNDEFINED;
 }
 
 bool wjd_UIEventInit_from(JSContext *ctx, JSValueConst v, wjd_UIEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->view = JS_UNDEFINED;
-    if (!wjd_EventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventInit_from(ctx, v, &out->base)) { wjd_UIEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'UIEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'UIEventInit'."); { wjd_UIEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "detail") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_UIEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->detail = 0;
         } else {
             bool ok = wj_to_int32(ctx, x, &out->detail, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_UIEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "view") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_UIEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->view = JS_NULL;
         } else {
@@ -19545,12 +19554,12 @@ bool wjd_UIEventInit_from(JSContext *ctx, JSValueConst v, wjd_UIEventInit *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "which") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_UIEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->which = 0;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->which, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_UIEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -19567,17 +19576,17 @@ void wjd_CompositionEventInit_free(JSContext *ctx, wjd_CompositionEventInit *d)
 bool wjd_CompositionEventInit_from(JSContext *ctx, JSValueConst v, wjd_CompositionEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_UIEventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_UIEventInit_from(ctx, v, &out->base)) { wjd_CompositionEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CompositionEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CompositionEventInit'."); { wjd_CompositionEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "data") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CompositionEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->data.ptr = ""; out->data.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->data, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CompositionEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -19588,19 +19597,19 @@ void wjd_FocusEventInit_free(JSContext *ctx, wjd_FocusEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_UIEventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->relatedTarget);
+    JS_FreeValue(ctx, d->relatedTarget); d->relatedTarget = JS_UNDEFINED;
 }
 
 bool wjd_FocusEventInit_from(JSContext *ctx, JSValueConst v, wjd_FocusEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->relatedTarget = JS_UNDEFINED;
-    if (!wjd_UIEventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_UIEventInit_from(ctx, v, &out->base)) { wjd_FocusEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FocusEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FocusEventInit'."); { wjd_FocusEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "relatedTarget") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FocusEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->relatedTarget = JS_NULL;
         } else {
@@ -19616,9 +19625,9 @@ void wjd_InputEventInit_free(JSContext *ctx, wjd_InputEventInit *d)
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_UIEventInit_free(ctx, &d->base);
     wj_str_free(ctx, &d->data);
-    JS_FreeValue(ctx, d->dataTransfer);
+    JS_FreeValue(ctx, d->dataTransfer); d->dataTransfer = JS_UNDEFINED;
     wj_str_free(ctx, &d->inputType);
-    JS_FreeValue(ctx, d->targetRanges);
+    JS_FreeValue(ctx, d->targetRanges); d->targetRanges = JS_UNDEFINED;
 }
 
 bool wjd_InputEventInit_from(JSContext *ctx, JSValueConst v, wjd_InputEventInit *out)
@@ -19626,22 +19635,22 @@ bool wjd_InputEventInit_from(JSContext *ctx, JSValueConst v, wjd_InputEventInit 
     memset(out, 0, sizeof *out);
     out->dataTransfer = JS_UNDEFINED;
     out->targetRanges = JS_UNDEFINED;
-    if (!wjd_UIEventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_UIEventInit_from(ctx, v, &out->base)) { wjd_InputEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'InputEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'InputEventInit'."); { wjd_InputEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "data") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_InputEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_str(ctx, x, &out->data, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_InputEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "dataTransfer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_InputEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->dataTransfer = JS_NULL;
         } else {
@@ -19651,18 +19660,18 @@ bool wjd_InputEventInit_from(JSContext *ctx, JSValueConst v, wjd_InputEventInit 
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "inputType") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_InputEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->inputType.ptr = ""; out->inputType.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->inputType, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_InputEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "isComposing") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_InputEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->isComposing = JS_ToBool(ctx, x);
@@ -19671,7 +19680,7 @@ bool wjd_InputEventInit_from(JSContext *ctx, JSValueConst v, wjd_InputEventInit 
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "targetRanges") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_InputEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->targetRanges = JS_DupValue(ctx, x);
@@ -19690,12 +19699,12 @@ void wjd_EventModifierInit_free(JSContext *ctx, wjd_EventModifierInit *d)
 bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifierInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_UIEventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_UIEventInit_from(ctx, v, &out->base)) { wjd_EventModifierInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'EventModifierInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'EventModifierInit'."); { wjd_EventModifierInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "altKey") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->altKey = JS_ToBool(ctx, x);
@@ -19704,7 +19713,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "ctrlKey") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->ctrlKey = JS_ToBool(ctx, x);
@@ -19713,7 +19722,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "metaKey") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->metaKey = JS_ToBool(ctx, x);
@@ -19722,7 +19731,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "modifierAltGraph") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->modifierAltGraph = JS_ToBool(ctx, x);
@@ -19731,7 +19740,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "modifierCapsLock") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->modifierCapsLock = JS_ToBool(ctx, x);
@@ -19740,7 +19749,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "modifierFn") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->modifierFn = JS_ToBool(ctx, x);
@@ -19749,7 +19758,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "modifierFnLock") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->modifierFnLock = JS_ToBool(ctx, x);
@@ -19758,7 +19767,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "modifierHyper") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->modifierHyper = JS_ToBool(ctx, x);
@@ -19767,7 +19776,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "modifierNumLock") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->modifierNumLock = JS_ToBool(ctx, x);
@@ -19776,7 +19785,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "modifierScrollLock") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->modifierScrollLock = JS_ToBool(ctx, x);
@@ -19785,7 +19794,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "modifierSuper") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->modifierSuper = JS_ToBool(ctx, x);
@@ -19794,7 +19803,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "modifierSymbol") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->modifierSymbol = JS_ToBool(ctx, x);
@@ -19803,7 +19812,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "modifierSymbolLock") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->modifierSymbolLock = JS_ToBool(ctx, x);
@@ -19812,7 +19821,7 @@ bool wjd_EventModifierInit_from(JSContext *ctx, JSValueConst v, wjd_EventModifie
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "shiftKey") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventModifierInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->shiftKey = JS_ToBool(ctx, x);
@@ -19833,34 +19842,34 @@ void wjd_KeyboardEventInit_free(JSContext *ctx, wjd_KeyboardEventInit *d)
 bool wjd_KeyboardEventInit_from(JSContext *ctx, JSValueConst v, wjd_KeyboardEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_EventModifierInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventModifierInit_from(ctx, v, &out->base)) { wjd_KeyboardEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'KeyboardEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'KeyboardEventInit'."); { wjd_KeyboardEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "charCode") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_KeyboardEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->charCode = 0;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->charCode, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_KeyboardEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "code") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_KeyboardEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->code.ptr = ""; out->code.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->code, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_KeyboardEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "isComposing") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_KeyboardEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->isComposing = JS_ToBool(ctx, x);
@@ -19869,40 +19878,40 @@ bool wjd_KeyboardEventInit_from(JSContext *ctx, JSValueConst v, wjd_KeyboardEven
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "key") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_KeyboardEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->key.ptr = ""; out->key.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->key, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_KeyboardEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "keyCode") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_KeyboardEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->keyCode = 0;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->keyCode, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_KeyboardEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "location") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_KeyboardEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->location = 0;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->location, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_KeyboardEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "repeat") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_KeyboardEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->repeat = JS_ToBool(ctx, x);
@@ -19916,63 +19925,63 @@ void wjd_MouseEventInit_free(JSContext *ctx, wjd_MouseEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventModifierInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->relatedTarget);
+    JS_FreeValue(ctx, d->relatedTarget); d->relatedTarget = JS_UNDEFINED;
 }
 
 bool wjd_MouseEventInit_from(JSContext *ctx, JSValueConst v, wjd_MouseEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->relatedTarget = JS_UNDEFINED;
-    if (!wjd_EventModifierInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventModifierInit_from(ctx, v, &out->base)) { wjd_MouseEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MouseEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MouseEventInit'."); { wjd_MouseEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "button") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MouseEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->button = 0;
         } else {
             bool ok = wj_to_int32(ctx, x, &out->button, 16, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MouseEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "buttons") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MouseEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->buttons = 0;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->buttons, 16, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MouseEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "clientX") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MouseEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->clientX = 0;
         } else {
             bool ok = wj_to_int32(ctx, x, &out->clientX, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MouseEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "clientY") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MouseEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->clientY = 0;
         } else {
             bool ok = wj_to_int32(ctx, x, &out->clientY, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MouseEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "relatedTarget") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MouseEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->relatedTarget = JS_NULL;
         } else {
@@ -19982,23 +19991,23 @@ bool wjd_MouseEventInit_from(JSContext *ctx, JSValueConst v, wjd_MouseEventInit 
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "screenX") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MouseEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->screenX = 0;
         } else {
             bool ok = wj_to_int32(ctx, x, &out->screenX, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MouseEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "screenY") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MouseEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->screenY = 0;
         } else {
             bool ok = wj_to_int32(ctx, x, &out->screenY, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MouseEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -20009,19 +20018,19 @@ void wjd_DragEventInit_free(JSContext *ctx, wjd_DragEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_MouseEventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->dataTransfer);
+    JS_FreeValue(ctx, d->dataTransfer); d->dataTransfer = JS_UNDEFINED;
 }
 
 bool wjd_DragEventInit_from(JSContext *ctx, JSValueConst v, wjd_DragEventInit *out)
 {
     memset(out, 0, sizeof *out);
     out->dataTransfer = JS_UNDEFINED;
-    if (!wjd_MouseEventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_MouseEventInit_from(ctx, v, &out->base)) { wjd_DragEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DragEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DragEventInit'."); { wjd_DragEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "dataTransfer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DragEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->dataTransfer = JS_NULL;
         } else {
@@ -20036,9 +20045,9 @@ void wjd_PointerEventInit_free(JSContext *ctx, wjd_PointerEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_MouseEventInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->coalescedEvents);
+    JS_FreeValue(ctx, d->coalescedEvents); d->coalescedEvents = JS_UNDEFINED;
     wj_str_free(ctx, &d->pointerType);
-    JS_FreeValue(ctx, d->predictedEvents);
+    JS_FreeValue(ctx, d->predictedEvents); d->predictedEvents = JS_UNDEFINED;
 }
 
 bool wjd_PointerEventInit_from(JSContext *ctx, JSValueConst v, wjd_PointerEventInit *out)
@@ -20046,34 +20055,34 @@ bool wjd_PointerEventInit_from(JSContext *ctx, JSValueConst v, wjd_PointerEventI
     memset(out, 0, sizeof *out);
     out->coalescedEvents = JS_UNDEFINED;
     out->predictedEvents = JS_UNDEFINED;
-    if (!wjd_MouseEventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_MouseEventInit_from(ctx, v, &out->base)) { wjd_PointerEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PointerEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PointerEventInit'."); { wjd_PointerEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "altitudeAngle") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_altitudeAngle = true;
             bool ok = wj_to_double(ctx, x, &out->altitudeAngle, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PointerEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "azimuthAngle") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_azimuthAngle = true;
             bool ok = wj_to_double(ctx, x, &out->azimuthAngle, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PointerEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "coalescedEvents") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->coalescedEvents = JS_DupValue(ctx, x);
@@ -20082,18 +20091,18 @@ bool wjd_PointerEventInit_from(JSContext *ctx, JSValueConst v, wjd_PointerEventI
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "height") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->height = 1;
         } else {
             bool ok = wj_to_double(ctx, x, &out->height, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PointerEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "isPrimary") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->isPrimary = JS_ToBool(ctx, x);
@@ -20102,40 +20111,40 @@ bool wjd_PointerEventInit_from(JSContext *ctx, JSValueConst v, wjd_PointerEventI
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "persistentDeviceId") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->persistentDeviceId = 0;
         } else {
             bool ok = wj_to_int32(ctx, x, &out->persistentDeviceId, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PointerEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "pointerId") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->pointerId = 0;
         } else {
             bool ok = wj_to_int32(ctx, x, &out->pointerId, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PointerEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "pointerType") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->pointerType.ptr = ""; out->pointerType.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->pointerType, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PointerEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "predictedEvents") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->predictedEvents = JS_DupValue(ctx, x);
@@ -20144,67 +20153,67 @@ bool wjd_PointerEventInit_from(JSContext *ctx, JSValueConst v, wjd_PointerEventI
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "pressure") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->pressure = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->pressure, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PointerEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "tangentialPressure") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->tangentialPressure = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->tangentialPressure, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PointerEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "tiltX") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_tiltX = true;
             bool ok = wj_to_int32(ctx, x, &out->tiltX, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PointerEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "tiltY") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_tiltY = true;
             bool ok = wj_to_int32(ctx, x, &out->tiltY, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PointerEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "twist") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->twist = 0;
         } else {
             bool ok = wj_to_int32(ctx, x, &out->twist, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PointerEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "width") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PointerEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->width = 1;
         } else {
             bool ok = wj_to_double(ctx, x, &out->width, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PointerEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -20220,56 +20229,56 @@ void wjd_WheelEventInit_free(JSContext *ctx, wjd_WheelEventInit *d)
 bool wjd_WheelEventInit_from(JSContext *ctx, JSValueConst v, wjd_WheelEventInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_MouseEventInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_MouseEventInit_from(ctx, v, &out->base)) { wjd_WheelEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'WheelEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'WheelEventInit'."); { wjd_WheelEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "deltaMode") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_WheelEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->deltaMode = 0;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->deltaMode, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_WheelEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "deltaX") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_WheelEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->deltaX = 0.0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->deltaX, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_WheelEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "deltaY") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_WheelEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->deltaY = 0.0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->deltaY, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_WheelEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "deltaZ") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_WheelEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->deltaZ = 0.0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->deltaZ, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_WheelEventInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "momentum") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_WheelEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->momentum = JS_ToBool(ctx, x);
@@ -20283,9 +20292,9 @@ void wjd_TouchEventInit_free(JSContext *ctx, wjd_TouchEventInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventModifierInit_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->changedTouches);
-    JS_FreeValue(ctx, d->targetTouches);
-    JS_FreeValue(ctx, d->touches);
+    JS_FreeValue(ctx, d->changedTouches); d->changedTouches = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->targetTouches); d->targetTouches = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->touches); d->touches = JS_UNDEFINED;
 }
 
 bool wjd_TouchEventInit_from(JSContext *ctx, JSValueConst v, wjd_TouchEventInit *out)
@@ -20294,12 +20303,12 @@ bool wjd_TouchEventInit_from(JSContext *ctx, JSValueConst v, wjd_TouchEventInit 
     out->changedTouches = JS_UNDEFINED;
     out->targetTouches = JS_UNDEFINED;
     out->touches = JS_UNDEFINED;
-    if (!wjd_EventModifierInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventModifierInit_from(ctx, v, &out->base)) { wjd_TouchEventInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TouchEventInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TouchEventInit'."); { wjd_TouchEventInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "changedTouches") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->changedTouches = JS_DupValue(ctx, x);
@@ -20308,7 +20317,7 @@ bool wjd_TouchEventInit_from(JSContext *ctx, JSValueConst v, wjd_TouchEventInit 
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "targetTouches") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->targetTouches = JS_DupValue(ctx, x);
@@ -20317,7 +20326,7 @@ bool wjd_TouchEventInit_from(JSContext *ctx, JSValueConst v, wjd_TouchEventInit 
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "touches") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchEventInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->touches = JS_DupValue(ctx, x);
@@ -20336,10 +20345,10 @@ bool wjd_EventListenerOptions_from(JSContext *ctx, JSValueConst v, wjd_EventList
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'EventListenerOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'EventListenerOptions'."); { wjd_EventListenerOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "capture") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventListenerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->capture = JS_ToBool(ctx, x);
@@ -20353,19 +20362,19 @@ void wjd_AddEventListenerOptions_free(JSContext *ctx, wjd_AddEventListenerOption
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_EventListenerOptions_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->signal);
+    JS_FreeValue(ctx, d->signal); d->signal = JS_UNDEFINED;
 }
 
 bool wjd_AddEventListenerOptions_from(JSContext *ctx, JSValueConst v, wjd_AddEventListenerOptions *out)
 {
     memset(out, 0, sizeof *out);
     out->signal = JS_UNDEFINED;
-    if (!wjd_EventListenerOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_EventListenerOptions_from(ctx, v, &out->base)) { wjd_AddEventListenerOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AddEventListenerOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AddEventListenerOptions'."); { wjd_AddEventListenerOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "once") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AddEventListenerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->once = JS_ToBool(ctx, x);
@@ -20374,7 +20383,7 @@ bool wjd_AddEventListenerOptions_from(JSContext *ctx, JSValueConst v, wjd_AddEve
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "passive") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AddEventListenerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_passive = true;
@@ -20384,7 +20393,7 @@ bool wjd_AddEventListenerOptions_from(JSContext *ctx, JSValueConst v, wjd_AddEve
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "signal") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AddEventListenerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_signal = true;
@@ -20398,7 +20407,7 @@ bool wjd_AddEventListenerOptions_from(JSContext *ctx, JSValueConst v, wjd_AddEve
 void wjd_TaskSignalAnyInit_free(JSContext *ctx, wjd_TaskSignalAnyInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->priority);
+    JS_FreeValue(ctx, d->priority); d->priority = JS_UNDEFINED;
 }
 
 bool wjd_TaskSignalAnyInit_from(JSContext *ctx, JSValueConst v, wjd_TaskSignalAnyInit *out)
@@ -20406,10 +20415,10 @@ bool wjd_TaskSignalAnyInit_from(JSContext *ctx, JSValueConst v, wjd_TaskSignalAn
     memset(out, 0, sizeof *out);
     out->priority = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TaskSignalAnyInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TaskSignalAnyInit'."); { wjd_TaskSignalAnyInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "priority") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TaskSignalAnyInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->priority = JS_DupValue(ctx, x);
@@ -20430,37 +20439,37 @@ bool wjd_AudioNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioNodeOpti
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioNodeOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioNodeOptions'."); { wjd_AudioNodeOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "channelCount") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioNodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_channelCount = true;
             bool ok = wj_to_uint32(ctx, x, &out->channelCount, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioNodeOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "channelCountMode") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioNodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_channelCountMode = true;
             bool ok = wj_to_str(ctx, x, &out->channelCountMode, 0, "") && wj_check_enum(ctx, &out->channelCountMode, wje_ChannelCountMode, "ChannelCountMode");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioNodeOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "channelInterpretation") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioNodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_channelInterpretation = true;
             bool ok = wj_to_str(ctx, x, &out->channelInterpretation, 0, "") && wj_check_enum(ctx, &out->channelInterpretation, wje_ChannelInterpretation, "ChannelInterpretation");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioNodeOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -20476,50 +20485,50 @@ void wjd_AnalyserOptions_free(JSContext *ctx, wjd_AnalyserOptions *d)
 bool wjd_AnalyserOptions_from(JSContext *ctx, JSValueConst v, wjd_AnalyserOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_AnalyserOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AnalyserOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AnalyserOptions'."); { wjd_AnalyserOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "fftSize") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AnalyserOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->fftSize = 2048;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->fftSize, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AnalyserOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "maxDecibels") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AnalyserOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->maxDecibels = -30;
         } else {
             bool ok = wj_to_double(ctx, x, &out->maxDecibels, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AnalyserOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "minDecibels") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AnalyserOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->minDecibels = -100;
         } else {
             bool ok = wj_to_double(ctx, x, &out->minDecibels, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AnalyserOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "smoothingTimeConstant") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AnalyserOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->smoothingTimeConstant = 0.8;
         } else {
             bool ok = wj_to_double(ctx, x, &out->smoothingTimeConstant, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AnalyserOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -20529,7 +20538,7 @@ bool wjd_AnalyserOptions_from(JSContext *ctx, JSValueConst v, wjd_AnalyserOption
 void wjd_AudioBufferSourceOptions_free(JSContext *ctx, wjd_AudioBufferSourceOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->buffer);
+    JS_FreeValue(ctx, d->buffer); d->buffer = JS_UNDEFINED;
 }
 
 bool wjd_AudioBufferSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioBufferSourceOptions *out)
@@ -20537,10 +20546,10 @@ bool wjd_AudioBufferSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_Audio
     memset(out, 0, sizeof *out);
     out->buffer = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioBufferSourceOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioBufferSourceOptions'."); { wjd_AudioBufferSourceOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "buffer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioBufferSourceOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_buffer = true;
@@ -20550,18 +20559,18 @@ bool wjd_AudioBufferSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_Audio
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "detune") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioBufferSourceOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->detune = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->detune, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioBufferSourceOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "loop") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioBufferSourceOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->loop = JS_ToBool(ctx, x);
@@ -20570,34 +20579,34 @@ bool wjd_AudioBufferSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_Audio
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "loopEnd") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioBufferSourceOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->loopEnd = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->loopEnd, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioBufferSourceOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "loopStart") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioBufferSourceOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->loopStart = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->loopStart, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioBufferSourceOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "playbackRate") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioBufferSourceOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->playbackRate = 1;
         } else {
             bool ok = wj_to_double(ctx, x, &out->playbackRate, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioBufferSourceOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -20613,15 +20622,15 @@ bool wjd_ConstantSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_Constant
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ConstantSourceOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ConstantSourceOptions'."); { wjd_ConstantSourceOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "offset") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ConstantSourceOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->offset = 1;
         } else {
             bool ok = wj_to_double(ctx, x, &out->offset, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ConstantSourceOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -20632,7 +20641,7 @@ void wjd_OscillatorOptions_free(JSContext *ctx, wjd_OscillatorOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_AudioNodeOptions_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->periodicWave);
+    JS_FreeValue(ctx, d->periodicWave); d->periodicWave = JS_UNDEFINED;
     wj_str_free(ctx, &d->type);
 }
 
@@ -20640,34 +20649,34 @@ bool wjd_OscillatorOptions_from(JSContext *ctx, JSValueConst v, wjd_OscillatorOp
 {
     memset(out, 0, sizeof *out);
     out->periodicWave = JS_UNDEFINED;
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_OscillatorOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'OscillatorOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'OscillatorOptions'."); { wjd_OscillatorOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "detune") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OscillatorOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->detune = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->detune, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OscillatorOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "frequency") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OscillatorOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->frequency = 440;
         } else {
             bool ok = wj_to_double(ctx, x, &out->frequency, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OscillatorOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "periodicWave") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OscillatorOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_periodicWave = true;
@@ -20677,12 +20686,12 @@ bool wjd_OscillatorOptions_from(JSContext *ctx, JSValueConst v, wjd_OscillatorOp
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "type") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OscillatorOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->type.ptr = "sine"; out->type.len = 4;
         } else {
             bool ok = wj_to_str(ctx, x, &out->type, 0, "") && wj_check_enum(ctx, &out->type, wje_OscillatorType, "OscillatorType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OscillatorOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -20693,9 +20702,9 @@ void wjd_AudioWorkletNodeOptions_free(JSContext *ctx, wjd_AudioWorkletNodeOption
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_AudioNodeOptions_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->outputChannelCount);
-    JS_FreeValue(ctx, d->parameterData);
-    JS_FreeValue(ctx, d->processorOptions);
+    JS_FreeValue(ctx, d->outputChannelCount); d->outputChannelCount = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->parameterData); d->parameterData = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->processorOptions); d->processorOptions = JS_UNDEFINED;
 }
 
 bool wjd_AudioWorkletNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioWorkletNodeOptions *out)
@@ -20704,34 +20713,34 @@ bool wjd_AudioWorkletNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioW
     out->outputChannelCount = JS_UNDEFINED;
     out->parameterData = JS_UNDEFINED;
     out->processorOptions = JS_UNDEFINED;
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_AudioWorkletNodeOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioWorkletNodeOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioWorkletNodeOptions'."); { wjd_AudioWorkletNodeOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "numberOfInputs") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioWorkletNodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->numberOfInputs = 1;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->numberOfInputs, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioWorkletNodeOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "numberOfOutputs") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioWorkletNodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->numberOfOutputs = 1;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->numberOfOutputs, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioWorkletNodeOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "outputChannelCount") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioWorkletNodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_outputChannelCount = true;
@@ -20741,7 +20750,7 @@ bool wjd_AudioWorkletNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioW
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "parameterData") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioWorkletNodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_parameterData = true;
@@ -20751,7 +20760,7 @@ bool wjd_AudioWorkletNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioW
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "processorOptions") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioWorkletNodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_processorOptions = true;
@@ -20772,61 +20781,61 @@ void wjd_BiquadFilterOptions_free(JSContext *ctx, wjd_BiquadFilterOptions *d)
 bool wjd_BiquadFilterOptions_from(JSContext *ctx, JSValueConst v, wjd_BiquadFilterOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_BiquadFilterOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'BiquadFilterOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'BiquadFilterOptions'."); { wjd_BiquadFilterOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "Q") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_BiquadFilterOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->Q = 1;
         } else {
             bool ok = wj_to_double(ctx, x, &out->Q, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_BiquadFilterOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "detune") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_BiquadFilterOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->detune = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->detune, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_BiquadFilterOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "frequency") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_BiquadFilterOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->frequency = 350;
         } else {
             bool ok = wj_to_double(ctx, x, &out->frequency, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_BiquadFilterOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "gain") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_BiquadFilterOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->gain = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->gain, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_BiquadFilterOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "type") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_BiquadFilterOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->type.ptr = "lowpass"; out->type.len = 7;
         } else {
             bool ok = wj_to_str(ctx, x, &out->type, 0, "") && wj_check_enum(ctx, &out->type, wje_BiquadFilterType, "BiquadFilterType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_BiquadFilterOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -20842,17 +20851,17 @@ void wjd_ChannelMergerOptions_free(JSContext *ctx, wjd_ChannelMergerOptions *d)
 bool wjd_ChannelMergerOptions_from(JSContext *ctx, JSValueConst v, wjd_ChannelMergerOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_ChannelMergerOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ChannelMergerOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ChannelMergerOptions'."); { wjd_ChannelMergerOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "numberOfInputs") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ChannelMergerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->numberOfInputs = 6;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->numberOfInputs, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ChannelMergerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -20868,17 +20877,17 @@ void wjd_ChannelSplitterOptions_free(JSContext *ctx, wjd_ChannelSplitterOptions 
 bool wjd_ChannelSplitterOptions_from(JSContext *ctx, JSValueConst v, wjd_ChannelSplitterOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_ChannelSplitterOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ChannelSplitterOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ChannelSplitterOptions'."); { wjd_ChannelSplitterOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "numberOfOutputs") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ChannelSplitterOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->numberOfOutputs = 6;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->numberOfOutputs, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ChannelSplitterOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -20889,19 +20898,19 @@ void wjd_ConvolverOptions_free(JSContext *ctx, wjd_ConvolverOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_AudioNodeOptions_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->buffer);
+    JS_FreeValue(ctx, d->buffer); d->buffer = JS_UNDEFINED;
 }
 
 bool wjd_ConvolverOptions_from(JSContext *ctx, JSValueConst v, wjd_ConvolverOptions *out)
 {
     memset(out, 0, sizeof *out);
     out->buffer = JS_UNDEFINED;
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_ConvolverOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ConvolverOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ConvolverOptions'."); { wjd_ConvolverOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "buffer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ConvolverOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_buffer = true;
@@ -20911,7 +20920,7 @@ bool wjd_ConvolverOptions_from(JSContext *ctx, JSValueConst v, wjd_ConvolverOpti
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "disableNormalization") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ConvolverOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->disableNormalization = JS_ToBool(ctx, x);
@@ -20930,28 +20939,28 @@ void wjd_DelayOptions_free(JSContext *ctx, wjd_DelayOptions *d)
 bool wjd_DelayOptions_from(JSContext *ctx, JSValueConst v, wjd_DelayOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_DelayOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DelayOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DelayOptions'."); { wjd_DelayOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "delayTime") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DelayOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->delayTime = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->delayTime, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DelayOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "maxDelayTime") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DelayOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->maxDelayTime = 1;
         } else {
             bool ok = wj_to_double(ctx, x, &out->maxDelayTime, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DelayOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -20967,61 +20976,61 @@ void wjd_DynamicsCompressorOptions_free(JSContext *ctx, wjd_DynamicsCompressorOp
 bool wjd_DynamicsCompressorOptions_from(JSContext *ctx, JSValueConst v, wjd_DynamicsCompressorOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_DynamicsCompressorOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DynamicsCompressorOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DynamicsCompressorOptions'."); { wjd_DynamicsCompressorOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "attack") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DynamicsCompressorOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->attack = 0.003;
         } else {
             bool ok = wj_to_double(ctx, x, &out->attack, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DynamicsCompressorOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "knee") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DynamicsCompressorOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->knee = 30;
         } else {
             bool ok = wj_to_double(ctx, x, &out->knee, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DynamicsCompressorOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "ratio") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DynamicsCompressorOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->ratio = 12;
         } else {
             bool ok = wj_to_double(ctx, x, &out->ratio, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DynamicsCompressorOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "release") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DynamicsCompressorOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->release = 0.25;
         } else {
             bool ok = wj_to_double(ctx, x, &out->release, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DynamicsCompressorOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "threshold") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DynamicsCompressorOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->threshold = -24;
         } else {
             bool ok = wj_to_double(ctx, x, &out->threshold, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DynamicsCompressorOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -21037,17 +21046,17 @@ void wjd_GainOptions_free(JSContext *ctx, wjd_GainOptions *d)
 bool wjd_GainOptions_from(JSContext *ctx, JSValueConst v, wjd_GainOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_GainOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GainOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GainOptions'."); { wjd_GainOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "gain") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GainOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->gain = 1.0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->gain, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_GainOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -21058,8 +21067,8 @@ void wjd_IIRFilterOptions_free(JSContext *ctx, wjd_IIRFilterOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_AudioNodeOptions_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->feedback);
-    JS_FreeValue(ctx, d->feedforward);
+    JS_FreeValue(ctx, d->feedback); d->feedback = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->feedforward); d->feedforward = JS_UNDEFINED;
 }
 
 bool wjd_IIRFilterOptions_from(JSContext *ctx, JSValueConst v, wjd_IIRFilterOptions *out)
@@ -21067,13 +21076,13 @@ bool wjd_IIRFilterOptions_from(JSContext *ctx, JSValueConst v, wjd_IIRFilterOpti
     memset(out, 0, sizeof *out);
     out->feedback = JS_UNDEFINED;
     out->feedforward = JS_UNDEFINED;
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_IIRFilterOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IIRFilterOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IIRFilterOptions'."); { wjd_IIRFilterOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "feedback") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'feedback' property from 'IIRFilterOptions': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_IIRFilterOptions_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'feedback' property from 'IIRFilterOptions': Required member is undefined."); { wjd_IIRFilterOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_feedback = true;
@@ -21083,8 +21092,8 @@ bool wjd_IIRFilterOptions_from(JSContext *ctx, JSValueConst v, wjd_IIRFilterOpti
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "feedforward") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'feedforward' property from 'IIRFilterOptions': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_IIRFilterOptions_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'feedforward' property from 'IIRFilterOptions': Required member is undefined."); { wjd_IIRFilterOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_feedforward = true;
@@ -21098,7 +21107,7 @@ bool wjd_IIRFilterOptions_from(JSContext *ctx, JSValueConst v, wjd_IIRFilterOpti
 void wjd_MediaElementAudioSourceOptions_free(JSContext *ctx, wjd_MediaElementAudioSourceOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->mediaElement);
+    JS_FreeValue(ctx, d->mediaElement); d->mediaElement = JS_UNDEFINED;
 }
 
 bool wjd_MediaElementAudioSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_MediaElementAudioSourceOptions *out)
@@ -21106,11 +21115,11 @@ bool wjd_MediaElementAudioSourceOptions_from(JSContext *ctx, JSValueConst v, wjd
     memset(out, 0, sizeof *out);
     out->mediaElement = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaElementAudioSourceOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaElementAudioSourceOptions'."); { wjd_MediaElementAudioSourceOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "mediaElement") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'mediaElement' property from 'MediaElementAudioSourceOptions': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_MediaElementAudioSourceOptions_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'mediaElement' property from 'MediaElementAudioSourceOptions': Required member is undefined."); { wjd_MediaElementAudioSourceOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_mediaElement = true;
@@ -21124,7 +21133,7 @@ bool wjd_MediaElementAudioSourceOptions_from(JSContext *ctx, JSValueConst v, wjd
 void wjd_MediaStreamAudioSourceOptions_free(JSContext *ctx, wjd_MediaStreamAudioSourceOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->mediaStream);
+    JS_FreeValue(ctx, d->mediaStream); d->mediaStream = JS_UNDEFINED;
 }
 
 bool wjd_MediaStreamAudioSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_MediaStreamAudioSourceOptions *out)
@@ -21132,11 +21141,11 @@ bool wjd_MediaStreamAudioSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_
     memset(out, 0, sizeof *out);
     out->mediaStream = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaStreamAudioSourceOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaStreamAudioSourceOptions'."); { wjd_MediaStreamAudioSourceOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "mediaStream") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'mediaStream' property from 'MediaStreamAudioSourceOptions': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_MediaStreamAudioSourceOptions_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'mediaStream' property from 'MediaStreamAudioSourceOptions': Required member is undefined."); { wjd_MediaStreamAudioSourceOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_mediaStream = true;
@@ -21150,7 +21159,7 @@ bool wjd_MediaStreamAudioSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_
 void wjd_MediaStreamTrackAudioSourceOptions_free(JSContext *ctx, wjd_MediaStreamTrackAudioSourceOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->mediaStreamTrack);
+    JS_FreeValue(ctx, d->mediaStreamTrack); d->mediaStreamTrack = JS_UNDEFINED;
 }
 
 bool wjd_MediaStreamTrackAudioSourceOptions_from(JSContext *ctx, JSValueConst v, wjd_MediaStreamTrackAudioSourceOptions *out)
@@ -21158,11 +21167,11 @@ bool wjd_MediaStreamTrackAudioSourceOptions_from(JSContext *ctx, JSValueConst v,
     memset(out, 0, sizeof *out);
     out->mediaStreamTrack = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaStreamTrackAudioSourceOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaStreamTrackAudioSourceOptions'."); { wjd_MediaStreamTrackAudioSourceOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "mediaStreamTrack") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'mediaStreamTrack' property from 'MediaStreamTrackAudioSourceOptions': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_MediaStreamTrackAudioSourceOptions_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'mediaStreamTrack' property from 'MediaStreamTrackAudioSourceOptions': Required member is undefined."); { wjd_MediaStreamTrackAudioSourceOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_mediaStreamTrack = true;
@@ -21184,160 +21193,160 @@ void wjd_PannerOptions_free(JSContext *ctx, wjd_PannerOptions *d)
 bool wjd_PannerOptions_from(JSContext *ctx, JSValueConst v, wjd_PannerOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_PannerOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PannerOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PannerOptions'."); { wjd_PannerOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "coneInnerAngle") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->coneInnerAngle = 360;
         } else {
             bool ok = wj_to_double(ctx, x, &out->coneInnerAngle, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "coneOuterAngle") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->coneOuterAngle = 360;
         } else {
             bool ok = wj_to_double(ctx, x, &out->coneOuterAngle, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "coneOuterGain") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->coneOuterGain = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->coneOuterGain, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "distanceModel") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->distanceModel.ptr = "inverse"; out->distanceModel.len = 7;
         } else {
             bool ok = wj_to_str(ctx, x, &out->distanceModel, 0, "") && wj_check_enum(ctx, &out->distanceModel, wje_DistanceModelType, "DistanceModelType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "maxDistance") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->maxDistance = 10000;
         } else {
             bool ok = wj_to_double(ctx, x, &out->maxDistance, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "orientationX") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->orientationX = 1;
         } else {
             bool ok = wj_to_double(ctx, x, &out->orientationX, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "orientationY") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->orientationY = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->orientationY, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "orientationZ") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->orientationZ = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->orientationZ, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "panningModel") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->panningModel.ptr = "equalpower"; out->panningModel.len = 10;
         } else {
             bool ok = wj_to_str(ctx, x, &out->panningModel, 0, "") && wj_check_enum(ctx, &out->panningModel, wje_PanningModelType, "PanningModelType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "positionX") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->positionX = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->positionX, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "positionY") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->positionY = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->positionY, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "positionZ") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->positionZ = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->positionZ, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "refDistance") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->refDistance = 1;
         } else {
             bool ok = wj_to_double(ctx, x, &out->refDistance, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "rolloffFactor") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->rolloffFactor = 1;
         } else {
             bool ok = wj_to_double(ctx, x, &out->rolloffFactor, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -21353,17 +21362,17 @@ void wjd_StereoPannerOptions_free(JSContext *ctx, wjd_StereoPannerOptions *d)
 bool wjd_StereoPannerOptions_from(JSContext *ctx, JSValueConst v, wjd_StereoPannerOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_StereoPannerOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'StereoPannerOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'StereoPannerOptions'."); { wjd_StereoPannerOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "pan") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StereoPannerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->pan = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->pan, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_StereoPannerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -21374,7 +21383,7 @@ void wjd_WaveShaperOptions_free(JSContext *ctx, wjd_WaveShaperOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_AudioNodeOptions_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->curve);
+    JS_FreeValue(ctx, d->curve); d->curve = JS_UNDEFINED;
     wj_str_free(ctx, &d->oversample);
 }
 
@@ -21382,12 +21391,12 @@ bool wjd_WaveShaperOptions_from(JSContext *ctx, JSValueConst v, wjd_WaveShaperOp
 {
     memset(out, 0, sizeof *out);
     out->curve = JS_UNDEFINED;
-    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_AudioNodeOptions_from(ctx, v, &out->base)) { wjd_WaveShaperOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'WaveShaperOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'WaveShaperOptions'."); { wjd_WaveShaperOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "curve") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_WaveShaperOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_curve = true;
@@ -21397,12 +21406,12 @@ bool wjd_WaveShaperOptions_from(JSContext *ctx, JSValueConst v, wjd_WaveShaperOp
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "oversample") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_WaveShaperOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->oversample.ptr = "none"; out->oversample.len = 4;
         } else {
             bool ok = wj_to_str(ctx, x, &out->oversample, 0, "") && wj_check_enum(ctx, &out->oversample, wje_OverSampleType, "OverSampleType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_WaveShaperOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -21418,10 +21427,10 @@ bool wjd_PeriodicWaveConstraints_from(JSContext *ctx, JSValueConst v, wjd_Period
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PeriodicWaveConstraints'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PeriodicWaveConstraints'."); { wjd_PeriodicWaveConstraints_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "disableNormalization") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PeriodicWaveConstraints_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->disableNormalization = JS_ToBool(ctx, x);
@@ -21434,9 +21443,9 @@ bool wjd_PeriodicWaveConstraints_from(JSContext *ctx, JSValueConst v, wjd_Period
 void wjd_AudioContextOptions_free(JSContext *ctx, wjd_AudioContextOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->latencyHint);
-    JS_FreeValue(ctx, d->renderSizeHint);
-    JS_FreeValue(ctx, d->sinkId);
+    JS_FreeValue(ctx, d->latencyHint); d->latencyHint = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->renderSizeHint); d->renderSizeHint = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->sinkId); d->sinkId = JS_UNDEFINED;
 }
 
 bool wjd_AudioContextOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioContextOptions *out)
@@ -21446,10 +21455,10 @@ bool wjd_AudioContextOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioConte
     out->renderSizeHint = JS_UNDEFINED;
     out->sinkId = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioContextOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioContextOptions'."); { wjd_AudioContextOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "latencyHint") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioContextOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->latencyHint = JS_DupValue(ctx, x);
@@ -21458,7 +21467,7 @@ bool wjd_AudioContextOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioConte
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "renderSizeHint") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioContextOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->renderSizeHint = JS_DupValue(ctx, x);
@@ -21467,18 +21476,18 @@ bool wjd_AudioContextOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioConte
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "sampleRate") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioContextOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_sampleRate = true;
             bool ok = wj_to_double(ctx, x, &out->sampleRate, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioContextOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "sinkId") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AudioContextOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_sinkId = true;
@@ -21499,16 +21508,16 @@ bool wjd_AudioSinkOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioSinkOpti
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioSinkOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AudioSinkOptions'."); { wjd_AudioSinkOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "type") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'type' property from 'AudioSinkOptions': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_AudioSinkOptions_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'type' property from 'AudioSinkOptions': Required member is undefined."); { wjd_AudioSinkOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_type = true;
             bool ok = wj_to_str(ctx, x, &out->type, 0, "") && wj_check_enum(ctx, &out->type, wje_AudioSinkType, "AudioSinkType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AudioSinkOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -21518,7 +21527,7 @@ bool wjd_AudioSinkOptions_from(JSContext *ctx, JSValueConst v, wjd_AudioSinkOpti
 void wjd_OfflineAudioContextOptions_free(JSContext *ctx, wjd_OfflineAudioContextOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->renderSizeHint);
+    JS_FreeValue(ctx, d->renderSizeHint); d->renderSizeHint = JS_UNDEFINED;
 }
 
 bool wjd_OfflineAudioContextOptions_from(JSContext *ctx, JSValueConst v, wjd_OfflineAudioContextOptions *out)
@@ -21526,31 +21535,31 @@ bool wjd_OfflineAudioContextOptions_from(JSContext *ctx, JSValueConst v, wjd_Off
     memset(out, 0, sizeof *out);
     out->renderSizeHint = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'OfflineAudioContextOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'OfflineAudioContextOptions'."); { wjd_OfflineAudioContextOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "length") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OfflineAudioContextOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->length, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OfflineAudioContextOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "numberOfChannels") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OfflineAudioContextOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->numberOfChannels = 1;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->numberOfChannels, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OfflineAudioContextOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "renderSizeHint") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_OfflineAudioContextOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->renderSizeHint = JS_DupValue(ctx, x);
@@ -21559,13 +21568,13 @@ bool wjd_OfflineAudioContextOptions_from(JSContext *ctx, JSValueConst v, wjd_Off
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "sampleRate") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'sampleRate' property from 'OfflineAudioContextOptions': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_OfflineAudioContextOptions_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'sampleRate' property from 'OfflineAudioContextOptions': Required member is undefined."); { wjd_OfflineAudioContextOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_sampleRate = true;
             bool ok = wj_to_double(ctx, x, &out->sampleRate, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_OfflineAudioContextOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -21575,7 +21584,7 @@ bool wjd_OfflineAudioContextOptions_from(JSContext *ctx, JSValueConst v, wjd_Off
 void wjd_ClipboardUnsanitizedFormats_free(JSContext *ctx, wjd_ClipboardUnsanitizedFormats *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->unsanitized);
+    JS_FreeValue(ctx, d->unsanitized); d->unsanitized = JS_UNDEFINED;
 }
 
 bool wjd_ClipboardUnsanitizedFormats_from(JSContext *ctx, JSValueConst v, wjd_ClipboardUnsanitizedFormats *out)
@@ -21583,10 +21592,10 @@ bool wjd_ClipboardUnsanitizedFormats_from(JSContext *ctx, JSValueConst v, wjd_Cl
     memset(out, 0, sizeof *out);
     out->unsanitized = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ClipboardUnsanitizedFormats'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ClipboardUnsanitizedFormats'."); { wjd_ClipboardUnsanitizedFormats_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "unsanitized") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ClipboardUnsanitizedFormats_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_unsanitized = true;
@@ -21600,7 +21609,7 @@ bool wjd_ClipboardUnsanitizedFormats_from(JSContext *ctx, JSValueConst v, wjd_Cl
 void wjd_CloseWatcherOptions_free(JSContext *ctx, wjd_CloseWatcherOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->signal);
+    JS_FreeValue(ctx, d->signal); d->signal = JS_UNDEFINED;
 }
 
 bool wjd_CloseWatcherOptions_from(JSContext *ctx, JSValueConst v, wjd_CloseWatcherOptions *out)
@@ -21608,10 +21617,10 @@ bool wjd_CloseWatcherOptions_from(JSContext *ctx, JSValueConst v, wjd_CloseWatch
     memset(out, 0, sizeof *out);
     out->signal = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CloseWatcherOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CloseWatcherOptions'."); { wjd_CloseWatcherOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "signal") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CloseWatcherOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_signal = true;
@@ -21636,52 +21645,52 @@ bool wjd_CookieInit_from(JSContext *ctx, JSValueConst v, wjd_CookieInit *out)
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CookieInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CookieInit'."); { wjd_CookieInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "domain") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_str(ctx, x, &out->domain, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CookieInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "expires") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_double(ctx, x, &out->expires, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CookieInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "maxAge") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_int64(ctx, x, &out->maxAge, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CookieInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "name") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'name' property from 'CookieInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_CookieInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'name' property from 'CookieInit': Required member is undefined."); { wjd_CookieInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_name = true;
             bool ok = wj_to_str(ctx, x, &out->name, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CookieInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "partitioned") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->partitioned = JS_ToBool(ctx, x);
@@ -21690,35 +21699,35 @@ bool wjd_CookieInit_from(JSContext *ctx, JSValueConst v, wjd_CookieInit *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "path") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->path.ptr = "/"; out->path.len = 1;
         } else {
             bool ok = wj_to_str(ctx, x, &out->path, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CookieInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "sameSite") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->sameSite.ptr = "strict"; out->sameSite.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->sameSite, 0, "") && wj_check_enum(ctx, &out->sameSite, wje_CookieSameSite, "CookieSameSite");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CookieInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "value") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'value' property from 'CookieInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_CookieInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'value' property from 'CookieInit': Required member is undefined."); { wjd_CookieInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_value = true;
             bool ok = wj_to_str(ctx, x, &out->value, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CookieInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -21737,32 +21746,32 @@ bool wjd_CookieStoreDeleteOptions_from(JSContext *ctx, JSValueConst v, wjd_Cooki
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CookieStoreDeleteOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CookieStoreDeleteOptions'."); { wjd_CookieStoreDeleteOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "domain") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieStoreDeleteOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_str(ctx, x, &out->domain, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CookieStoreDeleteOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "name") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'name' property from 'CookieStoreDeleteOptions': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_CookieStoreDeleteOptions_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'name' property from 'CookieStoreDeleteOptions': Required member is undefined."); { wjd_CookieStoreDeleteOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_name = true;
             bool ok = wj_to_str(ctx, x, &out->name, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CookieStoreDeleteOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "partitioned") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieStoreDeleteOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->partitioned = JS_ToBool(ctx, x);
@@ -21771,12 +21780,12 @@ bool wjd_CookieStoreDeleteOptions_from(JSContext *ctx, JSValueConst v, wjd_Cooki
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "path") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CookieStoreDeleteOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->path.ptr = "/"; out->path.len = 1;
         } else {
             bool ok = wj_to_str(ctx, x, &out->path, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CookieStoreDeleteOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -21792,10 +21801,10 @@ bool wjd_EventSourceInit_from(JSContext *ctx, JSValueConst v, wjd_EventSourceIni
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'EventSourceInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'EventSourceInit'."); { wjd_EventSourceInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "withCredentials") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_EventSourceInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->withCredentials = JS_ToBool(ctx, x);
@@ -21815,15 +21824,15 @@ bool wjd_IDBTransactionOptions_from(JSContext *ctx, JSValueConst v, wjd_IDBTrans
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IDBTransactionOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IDBTransactionOptions'."); { wjd_IDBTransactionOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "durability") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IDBTransactionOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->durability.ptr = "default"; out->durability.len = 7;
         } else {
             bool ok = wj_to_str(ctx, x, &out->durability, 0, "") && wj_check_enum(ctx, &out->durability, wje_IDBTransactionDurability, "IDBTransactionDurability");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IDBTransactionOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -21833,7 +21842,7 @@ bool wjd_IDBTransactionOptions_from(JSContext *ctx, JSValueConst v, wjd_IDBTrans
 void wjd_IDBObjectStoreParameters_free(JSContext *ctx, wjd_IDBObjectStoreParameters *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->keyPath);
+    JS_FreeValue(ctx, d->keyPath); d->keyPath = JS_UNDEFINED;
 }
 
 bool wjd_IDBObjectStoreParameters_from(JSContext *ctx, JSValueConst v, wjd_IDBObjectStoreParameters *out)
@@ -21841,10 +21850,10 @@ bool wjd_IDBObjectStoreParameters_from(JSContext *ctx, JSValueConst v, wjd_IDBOb
     memset(out, 0, sizeof *out);
     out->keyPath = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IDBObjectStoreParameters'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IDBObjectStoreParameters'."); { wjd_IDBObjectStoreParameters_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "autoIncrement") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IDBObjectStoreParameters_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->autoIncrement = JS_ToBool(ctx, x);
@@ -21853,7 +21862,7 @@ bool wjd_IDBObjectStoreParameters_from(JSContext *ctx, JSValueConst v, wjd_IDBOb
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "keyPath") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IDBObjectStoreParameters_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->keyPath = JS_NULL;
         } else {
@@ -21867,8 +21876,8 @@ bool wjd_IDBObjectStoreParameters_from(JSContext *ctx, JSValueConst v, wjd_IDBOb
 void wjd_MediaStreamConstraints_free(JSContext *ctx, wjd_MediaStreamConstraints *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->audio);
-    JS_FreeValue(ctx, d->video);
+    JS_FreeValue(ctx, d->audio); d->audio = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->video); d->video = JS_UNDEFINED;
 }
 
 bool wjd_MediaStreamConstraints_from(JSContext *ctx, JSValueConst v, wjd_MediaStreamConstraints *out)
@@ -21877,10 +21886,10 @@ bool wjd_MediaStreamConstraints_from(JSContext *ctx, JSValueConst v, wjd_MediaSt
     out->audio = JS_UNDEFINED;
     out->video = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaStreamConstraints'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaStreamConstraints'."); { wjd_MediaStreamConstraints_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "audio") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaStreamConstraints_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->audio = JS_DupValue(ctx, x);
@@ -21889,7 +21898,7 @@ bool wjd_MediaStreamConstraints_from(JSContext *ctx, JSValueConst v, wjd_MediaSt
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "video") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaStreamConstraints_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->video = JS_DupValue(ctx, x);
@@ -21902,22 +21911,22 @@ bool wjd_MediaStreamConstraints_from(JSContext *ctx, JSValueConst v, wjd_MediaSt
 void wjd_MediaTrackConstraintSet_free(JSContext *ctx, wjd_MediaTrackConstraintSet *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->aspectRatio);
-    JS_FreeValue(ctx, d->autoGainControl);
-    JS_FreeValue(ctx, d->backgroundBlur);
-    JS_FreeValue(ctx, d->channelCount);
-    JS_FreeValue(ctx, d->deviceId);
-    JS_FreeValue(ctx, d->echoCancellation);
-    JS_FreeValue(ctx, d->facingMode);
-    JS_FreeValue(ctx, d->frameRate);
-    JS_FreeValue(ctx, d->groupId);
-    JS_FreeValue(ctx, d->height);
-    JS_FreeValue(ctx, d->latency);
-    JS_FreeValue(ctx, d->noiseSuppression);
-    JS_FreeValue(ctx, d->resizeMode);
-    JS_FreeValue(ctx, d->sampleRate);
-    JS_FreeValue(ctx, d->sampleSize);
-    JS_FreeValue(ctx, d->width);
+    JS_FreeValue(ctx, d->aspectRatio); d->aspectRatio = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->autoGainControl); d->autoGainControl = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->backgroundBlur); d->backgroundBlur = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->channelCount); d->channelCount = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->deviceId); d->deviceId = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->echoCancellation); d->echoCancellation = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->facingMode); d->facingMode = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->frameRate); d->frameRate = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->groupId); d->groupId = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->height); d->height = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->latency); d->latency = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->noiseSuppression); d->noiseSuppression = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->resizeMode); d->resizeMode = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->sampleRate); d->sampleRate = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->sampleSize); d->sampleSize = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->width); d->width = JS_UNDEFINED;
 }
 
 bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaTrackConstraintSet *out)
@@ -21940,10 +21949,10 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     out->sampleSize = JS_UNDEFINED;
     out->width = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaTrackConstraintSet'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaTrackConstraintSet'."); { wjd_MediaTrackConstraintSet_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "aspectRatio") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_aspectRatio = true;
@@ -21953,7 +21962,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "autoGainControl") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_autoGainControl = true;
@@ -21963,7 +21972,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "backgroundBlur") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_backgroundBlur = true;
@@ -21973,7 +21982,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "channelCount") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_channelCount = true;
@@ -21983,7 +21992,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "deviceId") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_deviceId = true;
@@ -21993,7 +22002,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "echoCancellation") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_echoCancellation = true;
@@ -22003,7 +22012,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "facingMode") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_facingMode = true;
@@ -22013,7 +22022,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "frameRate") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_frameRate = true;
@@ -22023,7 +22032,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "groupId") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_groupId = true;
@@ -22033,7 +22042,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "height") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_height = true;
@@ -22043,7 +22052,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "latency") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_latency = true;
@@ -22053,7 +22062,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "noiseSuppression") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_noiseSuppression = true;
@@ -22063,7 +22072,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "resizeMode") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_resizeMode = true;
@@ -22073,7 +22082,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "sampleRate") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_sampleRate = true;
@@ -22083,7 +22092,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "sampleSize") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_sampleSize = true;
@@ -22093,7 +22102,7 @@ bool wjd_MediaTrackConstraintSet_from(JSContext *ctx, JSValueConst v, wjd_MediaT
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "width") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraintSet_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_width = true;
@@ -22108,19 +22117,19 @@ void wjd_MediaTrackConstraints_free(JSContext *ctx, wjd_MediaTrackConstraints *d
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_MediaTrackConstraintSet_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->advanced);
+    JS_FreeValue(ctx, d->advanced); d->advanced = JS_UNDEFINED;
 }
 
 bool wjd_MediaTrackConstraints_from(JSContext *ctx, JSValueConst v, wjd_MediaTrackConstraints *out)
 {
     memset(out, 0, sizeof *out);
     out->advanced = JS_UNDEFINED;
-    if (!wjd_MediaTrackConstraintSet_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_MediaTrackConstraintSet_from(ctx, v, &out->base)) { wjd_MediaTrackConstraints_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaTrackConstraints'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaTrackConstraints'."); { wjd_MediaTrackConstraints_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "advanced") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaTrackConstraints_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_advanced = true;
@@ -22134,7 +22143,7 @@ bool wjd_MediaTrackConstraints_from(JSContext *ctx, JSValueConst v, wjd_MediaTra
 void wjd_StructuredSerializeOptions_free(JSContext *ctx, wjd_StructuredSerializeOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->transfer);
+    JS_FreeValue(ctx, d->transfer); d->transfer = JS_UNDEFINED;
 }
 
 bool wjd_StructuredSerializeOptions_from(JSContext *ctx, JSValueConst v, wjd_StructuredSerializeOptions *out)
@@ -22142,10 +22151,10 @@ bool wjd_StructuredSerializeOptions_from(JSContext *ctx, JSValueConst v, wjd_Str
     memset(out, 0, sizeof *out);
     out->transfer = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'StructuredSerializeOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'StructuredSerializeOptions'."); { wjd_StructuredSerializeOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "transfer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StructuredSerializeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->transfer = JS_DupValue(ctx, x);
@@ -22158,7 +22167,7 @@ bool wjd_StructuredSerializeOptions_from(JSContext *ctx, JSValueConst v, wjd_Str
 void wjd_NavigationUpdateCurrentEntryOptions_free(JSContext *ctx, wjd_NavigationUpdateCurrentEntryOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->state);
+    JS_FreeValue(ctx, d->state); d->state = JS_UNDEFINED;
 }
 
 bool wjd_NavigationUpdateCurrentEntryOptions_from(JSContext *ctx, JSValueConst v, wjd_NavigationUpdateCurrentEntryOptions *out)
@@ -22166,11 +22175,11 @@ bool wjd_NavigationUpdateCurrentEntryOptions_from(JSContext *ctx, JSValueConst v
     memset(out, 0, sizeof *out);
     out->state = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigationUpdateCurrentEntryOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigationUpdateCurrentEntryOptions'."); { wjd_NavigationUpdateCurrentEntryOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "state") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'state' property from 'NavigationUpdateCurrentEntryOptions': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_NavigationUpdateCurrentEntryOptions_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'state' property from 'NavigationUpdateCurrentEntryOptions': Required member is undefined."); { wjd_NavigationUpdateCurrentEntryOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_state = true;
@@ -22184,7 +22193,7 @@ bool wjd_NavigationUpdateCurrentEntryOptions_from(JSContext *ctx, JSValueConst v
 void wjd_NavigationOptions_free(JSContext *ctx, wjd_NavigationOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->info);
+    JS_FreeValue(ctx, d->info); d->info = JS_UNDEFINED;
 }
 
 bool wjd_NavigationOptions_from(JSContext *ctx, JSValueConst v, wjd_NavigationOptions *out)
@@ -22192,10 +22201,10 @@ bool wjd_NavigationOptions_from(JSContext *ctx, JSValueConst v, wjd_NavigationOp
     memset(out, 0, sizeof *out);
     out->info = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigationOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigationOptions'."); { wjd_NavigationOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "info") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_info = true;
@@ -22211,30 +22220,30 @@ void wjd_NavigationNavigateOptions_free(JSContext *ctx, wjd_NavigationNavigateOp
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_NavigationOptions_free(ctx, &d->base);
     wj_str_free(ctx, &d->history);
-    JS_FreeValue(ctx, d->state);
+    JS_FreeValue(ctx, d->state); d->state = JS_UNDEFINED;
 }
 
 bool wjd_NavigationNavigateOptions_from(JSContext *ctx, JSValueConst v, wjd_NavigationNavigateOptions *out)
 {
     memset(out, 0, sizeof *out);
     out->state = JS_UNDEFINED;
-    if (!wjd_NavigationOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_NavigationOptions_from(ctx, v, &out->base)) { wjd_NavigationNavigateOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigationNavigateOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigationNavigateOptions'."); { wjd_NavigationNavigateOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "history") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigationNavigateOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->history.ptr = "auto"; out->history.len = 4;
         } else {
             bool ok = wj_to_str(ctx, x, &out->history, 0, "") && wj_check_enum(ctx, &out->history, wje_NavigationHistoryBehavior, "NavigationHistoryBehavior");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NavigationNavigateOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "state") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigationNavigateOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_state = true;
@@ -22249,19 +22258,19 @@ void wjd_NavigationReloadOptions_free(JSContext *ctx, wjd_NavigationReloadOption
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_NavigationOptions_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->state);
+    JS_FreeValue(ctx, d->state); d->state = JS_UNDEFINED;
 }
 
 bool wjd_NavigationReloadOptions_from(JSContext *ctx, JSValueConst v, wjd_NavigationReloadOptions *out)
 {
     memset(out, 0, sizeof *out);
     out->state = JS_UNDEFINED;
-    if (!wjd_NavigationOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_NavigationOptions_from(ctx, v, &out->base)) { wjd_NavigationReloadOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigationReloadOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NavigationReloadOptions'."); { wjd_NavigationReloadOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "state") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NavigationReloadOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_state = true;
@@ -22281,10 +22290,10 @@ bool wjd_GetRootNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_GetRootNode
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GetRootNodeOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GetRootNodeOptions'."); { wjd_GetRootNodeOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "composed") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GetRootNodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->composed = JS_ToBool(ctx, x);
@@ -22297,7 +22306,7 @@ bool wjd_GetRootNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_GetRootNode
 void wjd_SetHTMLOptions_free(JSContext *ctx, wjd_SetHTMLOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->sanitizer);
+    JS_FreeValue(ctx, d->sanitizer); d->sanitizer = JS_UNDEFINED;
 }
 
 bool wjd_SetHTMLOptions_from(JSContext *ctx, JSValueConst v, wjd_SetHTMLOptions *out)
@@ -22305,10 +22314,10 @@ bool wjd_SetHTMLOptions_from(JSContext *ctx, JSValueConst v, wjd_SetHTMLOptions 
     memset(out, 0, sizeof *out);
     out->sanitizer = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SetHTMLOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SetHTMLOptions'."); { wjd_SetHTMLOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "sanitizer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SetHTMLOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->sanitizer = JS_DupValue(ctx, x);
@@ -22321,7 +22330,7 @@ bool wjd_SetHTMLOptions_from(JSContext *ctx, JSValueConst v, wjd_SetHTMLOptions 
 void wjd_SetHTMLUnsafeOptions_free(JSContext *ctx, wjd_SetHTMLUnsafeOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->sanitizer);
+    JS_FreeValue(ctx, d->sanitizer); d->sanitizer = JS_UNDEFINED;
 }
 
 bool wjd_SetHTMLUnsafeOptions_from(JSContext *ctx, JSValueConst v, wjd_SetHTMLUnsafeOptions *out)
@@ -22329,10 +22338,10 @@ bool wjd_SetHTMLUnsafeOptions_from(JSContext *ctx, JSValueConst v, wjd_SetHTMLUn
     memset(out, 0, sizeof *out);
     out->sanitizer = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SetHTMLUnsafeOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SetHTMLUnsafeOptions'."); { wjd_SetHTMLUnsafeOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "runScripts") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SetHTMLUnsafeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->runScripts = JS_ToBool(ctx, x);
@@ -22341,7 +22350,7 @@ bool wjd_SetHTMLUnsafeOptions_from(JSContext *ctx, JSValueConst v, wjd_SetHTMLUn
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "sanitizer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SetHTMLUnsafeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_sanitizer = true;
@@ -22356,7 +22365,7 @@ void wjd_BoxQuadOptions_free(JSContext *ctx, wjd_BoxQuadOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wj_str_free(ctx, &d->box);
-    JS_FreeValue(ctx, d->relativeTo);
+    JS_FreeValue(ctx, d->relativeTo); d->relativeTo = JS_UNDEFINED;
 }
 
 bool wjd_BoxQuadOptions_from(JSContext *ctx, JSValueConst v, wjd_BoxQuadOptions *out)
@@ -22364,21 +22373,21 @@ bool wjd_BoxQuadOptions_from(JSContext *ctx, JSValueConst v, wjd_BoxQuadOptions 
     memset(out, 0, sizeof *out);
     out->relativeTo = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'BoxQuadOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'BoxQuadOptions'."); { wjd_BoxQuadOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "box") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_BoxQuadOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->box.ptr = "border"; out->box.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->box, 0, "") && wj_check_enum(ctx, &out->box, wje_CSSBoxType, "CSSBoxType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_BoxQuadOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "relativeTo") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_BoxQuadOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_relativeTo = true;
@@ -22400,26 +22409,26 @@ bool wjd_ConvertCoordinateOptions_from(JSContext *ctx, JSValueConst v, wjd_Conve
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ConvertCoordinateOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ConvertCoordinateOptions'."); { wjd_ConvertCoordinateOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "fromBox") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ConvertCoordinateOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->fromBox.ptr = "border"; out->fromBox.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->fromBox, 0, "") && wj_check_enum(ctx, &out->fromBox, wje_CSSBoxType, "CSSBoxType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ConvertCoordinateOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "toBox") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ConvertCoordinateOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->toBox.ptr = "border"; out->toBox.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->toBox, 0, "") && wj_check_enum(ctx, &out->toBox, wje_CSSBoxType, "CSSBoxType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ConvertCoordinateOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -22429,8 +22438,8 @@ bool wjd_ConvertCoordinateOptions_from(JSContext *ctx, JSValueConst v, wjd_Conve
 void wjd_StartViewTransitionOptions_free(JSContext *ctx, wjd_StartViewTransitionOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->types);
-    JS_FreeValue(ctx, d->update);
+    JS_FreeValue(ctx, d->types); d->types = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->update); d->update = JS_UNDEFINED;
 }
 
 bool wjd_StartViewTransitionOptions_from(JSContext *ctx, JSValueConst v, wjd_StartViewTransitionOptions *out)
@@ -22439,10 +22448,10 @@ bool wjd_StartViewTransitionOptions_from(JSContext *ctx, JSValueConst v, wjd_Sta
     out->types = JS_UNDEFINED;
     out->update = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'StartViewTransitionOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'StartViewTransitionOptions'."); { wjd_StartViewTransitionOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "types") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StartViewTransitionOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->types = JS_NULL;
         } else {
@@ -22452,7 +22461,7 @@ bool wjd_StartViewTransitionOptions_from(JSContext *ctx, JSValueConst v, wjd_Sta
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "update") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StartViewTransitionOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->update = JS_NULL;
         } else {
@@ -22466,7 +22475,7 @@ bool wjd_StartViewTransitionOptions_from(JSContext *ctx, JSValueConst v, wjd_Sta
 void wjd_CaretPositionFromPointOptions_free(JSContext *ctx, wjd_CaretPositionFromPointOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->shadowRoots);
+    JS_FreeValue(ctx, d->shadowRoots); d->shadowRoots = JS_UNDEFINED;
 }
 
 bool wjd_CaretPositionFromPointOptions_from(JSContext *ctx, JSValueConst v, wjd_CaretPositionFromPointOptions *out)
@@ -22474,10 +22483,10 @@ bool wjd_CaretPositionFromPointOptions_from(JSContext *ctx, JSValueConst v, wjd_
     memset(out, 0, sizeof *out);
     out->shadowRoots = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CaretPositionFromPointOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CaretPositionFromPointOptions'."); { wjd_CaretPositionFromPointOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "shadowRoots") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CaretPositionFromPointOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->shadowRoots = JS_DupValue(ctx, x);
@@ -22490,7 +22499,7 @@ bool wjd_CaretPositionFromPointOptions_from(JSContext *ctx, JSValueConst v, wjd_
 void wjd_ElementCreationOptions_free(JSContext *ctx, wjd_ElementCreationOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->customElementRegistry);
+    JS_FreeValue(ctx, d->customElementRegistry); d->customElementRegistry = JS_UNDEFINED;
     wj_str_free(ctx, &d->is);
 }
 
@@ -22499,10 +22508,10 @@ bool wjd_ElementCreationOptions_from(JSContext *ctx, JSValueConst v, wjd_Element
     memset(out, 0, sizeof *out);
     out->customElementRegistry = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ElementCreationOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ElementCreationOptions'."); { wjd_ElementCreationOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "customElementRegistry") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ElementCreationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_customElementRegistry = true;
@@ -22512,12 +22521,12 @@ bool wjd_ElementCreationOptions_from(JSContext *ctx, JSValueConst v, wjd_Element
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "is") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ElementCreationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_is = true;
             bool ok = wj_to_str(ctx, x, &out->is, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ElementCreationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -22527,7 +22536,7 @@ bool wjd_ElementCreationOptions_from(JSContext *ctx, JSValueConst v, wjd_Element
 void wjd_ImportNodeOptions_free(JSContext *ctx, wjd_ImportNodeOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->customElementRegistry);
+    JS_FreeValue(ctx, d->customElementRegistry); d->customElementRegistry = JS_UNDEFINED;
 }
 
 bool wjd_ImportNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_ImportNodeOptions *out)
@@ -22535,10 +22544,10 @@ bool wjd_ImportNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_ImportNodeOp
     memset(out, 0, sizeof *out);
     out->customElementRegistry = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ImportNodeOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ImportNodeOptions'."); { wjd_ImportNodeOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "customElementRegistry") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ImportNodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_customElementRegistry = true;
@@ -22548,7 +22557,7 @@ bool wjd_ImportNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_ImportNodeOp
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "selfOnly") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ImportNodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->selfOnly = JS_ToBool(ctx, x);
@@ -22561,7 +22570,7 @@ bool wjd_ImportNodeOptions_from(JSContext *ctx, JSValueConst v, wjd_ImportNodeOp
 void wjd_ParseHTMLUnsafeOptions_free(JSContext *ctx, wjd_ParseHTMLUnsafeOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->sanitizer);
+    JS_FreeValue(ctx, d->sanitizer); d->sanitizer = JS_UNDEFINED;
 }
 
 bool wjd_ParseHTMLUnsafeOptions_from(JSContext *ctx, JSValueConst v, wjd_ParseHTMLUnsafeOptions *out)
@@ -22569,10 +22578,10 @@ bool wjd_ParseHTMLUnsafeOptions_from(JSContext *ctx, JSValueConst v, wjd_ParseHT
     memset(out, 0, sizeof *out);
     out->sanitizer = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ParseHTMLUnsafeOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ParseHTMLUnsafeOptions'."); { wjd_ParseHTMLUnsafeOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "sanitizer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ParseHTMLUnsafeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_sanitizer = true;
@@ -22593,15 +22602,15 @@ bool wjd_AriaNotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_AriaNo
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AriaNotificationOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AriaNotificationOptions'."); { wjd_AriaNotificationOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "priority") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AriaNotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->priority.ptr = "normal"; out->priority.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->priority, 0, "") && wj_check_enum(ctx, &out->priority, wje_AriaNotifyPriority, "AriaNotifyPriority");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_AriaNotificationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -22611,7 +22620,7 @@ bool wjd_AriaNotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_AriaNo
 void wjd_GetHTMLOptions_free(JSContext *ctx, wjd_GetHTMLOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->shadowRoots);
+    JS_FreeValue(ctx, d->shadowRoots); d->shadowRoots = JS_UNDEFINED;
 }
 
 bool wjd_GetHTMLOptions_from(JSContext *ctx, JSValueConst v, wjd_GetHTMLOptions *out)
@@ -22619,10 +22628,10 @@ bool wjd_GetHTMLOptions_from(JSContext *ctx, JSValueConst v, wjd_GetHTMLOptions 
     memset(out, 0, sizeof *out);
     out->shadowRoots = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GetHTMLOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GetHTMLOptions'."); { wjd_GetHTMLOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "serializableShadowRoots") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GetHTMLOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->serializableShadowRoots = JS_ToBool(ctx, x);
@@ -22631,7 +22640,7 @@ bool wjd_GetHTMLOptions_from(JSContext *ctx, JSValueConst v, wjd_GetHTMLOptions 
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "shadowRoots") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GetHTMLOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->shadowRoots = JS_DupValue(ctx, x);
@@ -22650,10 +22659,10 @@ bool wjd_CheckVisibilityOptions_from(JSContext *ctx, JSValueConst v, wjd_CheckVi
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CheckVisibilityOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CheckVisibilityOptions'."); { wjd_CheckVisibilityOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "checkOpacity") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CheckVisibilityOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->checkOpacity = JS_ToBool(ctx, x);
@@ -22662,7 +22671,7 @@ bool wjd_CheckVisibilityOptions_from(JSContext *ctx, JSValueConst v, wjd_CheckVi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "checkVisibilityCSS") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CheckVisibilityOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->checkVisibilityCSS = JS_ToBool(ctx, x);
@@ -22671,7 +22680,7 @@ bool wjd_CheckVisibilityOptions_from(JSContext *ctx, JSValueConst v, wjd_CheckVi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "contentVisibilityAuto") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CheckVisibilityOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->contentVisibilityAuto = JS_ToBool(ctx, x);
@@ -22680,7 +22689,7 @@ bool wjd_CheckVisibilityOptions_from(JSContext *ctx, JSValueConst v, wjd_CheckVi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "opacityProperty") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CheckVisibilityOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->opacityProperty = JS_ToBool(ctx, x);
@@ -22689,7 +22698,7 @@ bool wjd_CheckVisibilityOptions_from(JSContext *ctx, JSValueConst v, wjd_CheckVi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "visibilityProperty") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CheckVisibilityOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->visibilityProperty = JS_ToBool(ctx, x);
@@ -22709,15 +22718,15 @@ bool wjd_ScrollOptions_from(JSContext *ctx, JSValueConst v, wjd_ScrollOptions *o
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ScrollOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ScrollOptions'."); { wjd_ScrollOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "behavior") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ScrollOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->behavior.ptr = "auto"; out->behavior.len = 4;
         } else {
             bool ok = wj_to_str(ctx, x, &out->behavior, 0, "") && wj_check_enum(ctx, &out->behavior, wje_ScrollBehavior, "ScrollBehavior");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ScrollOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -22736,39 +22745,39 @@ void wjd_ScrollIntoViewOptions_free(JSContext *ctx, wjd_ScrollIntoViewOptions *d
 bool wjd_ScrollIntoViewOptions_from(JSContext *ctx, JSValueConst v, wjd_ScrollIntoViewOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_ScrollOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_ScrollOptions_from(ctx, v, &out->base)) { wjd_ScrollIntoViewOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ScrollIntoViewOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ScrollIntoViewOptions'."); { wjd_ScrollIntoViewOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "block") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ScrollIntoViewOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->block.ptr = "start"; out->block.len = 5;
         } else {
             bool ok = wj_to_str(ctx, x, &out->block, 0, "") && wj_check_enum(ctx, &out->block, wje_ScrollLogicalPosition, "ScrollLogicalPosition");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ScrollIntoViewOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "container") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ScrollIntoViewOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->container.ptr = "all"; out->container.len = 3;
         } else {
             bool ok = wj_to_str(ctx, x, &out->container, 0, "") && wj_check_enum(ctx, &out->container, wje_ScrollIntoViewContainer, "ScrollIntoViewContainer");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ScrollIntoViewOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "inline") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ScrollIntoViewOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->inline_.ptr = "nearest"; out->inline_.len = 7;
         } else {
             bool ok = wj_to_str(ctx, x, &out->inline_, 0, "") && wj_check_enum(ctx, &out->inline_, wje_ScrollLogicalPosition, "ScrollLogicalPosition");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ScrollIntoViewOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -22784,28 +22793,28 @@ void wjd_ScrollToOptions_free(JSContext *ctx, wjd_ScrollToOptions *d)
 bool wjd_ScrollToOptions_from(JSContext *ctx, JSValueConst v, wjd_ScrollToOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_ScrollOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_ScrollOptions_from(ctx, v, &out->base)) { wjd_ScrollToOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ScrollToOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ScrollToOptions'."); { wjd_ScrollToOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "left") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ScrollToOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_left = true;
             bool ok = wj_to_double(ctx, x, &out->left, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ScrollToOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "top") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ScrollToOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_top = true;
             bool ok = wj_to_double(ctx, x, &out->top, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ScrollToOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -22815,7 +22824,7 @@ bool wjd_ScrollToOptions_from(JSContext *ctx, JSValueConst v, wjd_ScrollToOption
 void wjd_ShadowRootInit_free(JSContext *ctx, wjd_ShadowRootInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->customElementRegistry);
+    JS_FreeValue(ctx, d->customElementRegistry); d->customElementRegistry = JS_UNDEFINED;
     wj_str_free(ctx, &d->mode);
     wj_str_free(ctx, &d->slotAssignment);
 }
@@ -22825,10 +22834,10 @@ bool wjd_ShadowRootInit_from(JSContext *ctx, JSValueConst v, wjd_ShadowRootInit 
     memset(out, 0, sizeof *out);
     out->customElementRegistry = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ShadowRootInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ShadowRootInit'."); { wjd_ShadowRootInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "clonable") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ShadowRootInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->clonable = JS_ToBool(ctx, x);
@@ -22837,7 +22846,7 @@ bool wjd_ShadowRootInit_from(JSContext *ctx, JSValueConst v, wjd_ShadowRootInit 
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "customElementRegistry") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ShadowRootInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_customElementRegistry = true;
@@ -22847,7 +22856,7 @@ bool wjd_ShadowRootInit_from(JSContext *ctx, JSValueConst v, wjd_ShadowRootInit 
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "delegatesFocus") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ShadowRootInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->delegatesFocus = JS_ToBool(ctx, x);
@@ -22856,19 +22865,19 @@ bool wjd_ShadowRootInit_from(JSContext *ctx, JSValueConst v, wjd_ShadowRootInit 
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "mode") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'mode' property from 'ShadowRootInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_ShadowRootInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'mode' property from 'ShadowRootInit': Required member is undefined."); { wjd_ShadowRootInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_mode = true;
             bool ok = wj_to_str(ctx, x, &out->mode, 0, "") && wj_check_enum(ctx, &out->mode, wje_ShadowRootMode, "ShadowRootMode");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ShadowRootInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "serializable") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ShadowRootInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->serializable = JS_ToBool(ctx, x);
@@ -22877,12 +22886,12 @@ bool wjd_ShadowRootInit_from(JSContext *ctx, JSValueConst v, wjd_ShadowRootInit 
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "slotAssignment") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ShadowRootInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->slotAssignment.ptr = "named"; out->slotAssignment.len = 5;
         } else {
             bool ok = wj_to_str(ctx, x, &out->slotAssignment, 0, "") && wj_check_enum(ctx, &out->slotAssignment, wje_SlotAssignmentMode, "SlotAssignmentMode");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ShadowRootInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -22900,26 +22909,26 @@ bool wjd_FullscreenOptions_from(JSContext *ctx, JSValueConst v, wjd_FullscreenOp
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FullscreenOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FullscreenOptions'."); { wjd_FullscreenOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "keyboardLock") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FullscreenOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->keyboardLock.ptr = "none"; out->keyboardLock.len = 4;
         } else {
             bool ok = wj_to_str(ctx, x, &out->keyboardLock, 0, "") && wj_check_enum(ctx, &out->keyboardLock, wje_FullscreenKeyboardLock, "FullscreenKeyboardLock");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FullscreenOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "navigationUI") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FullscreenOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->navigationUI.ptr = "auto"; out->navigationUI.len = 4;
         } else {
             bool ok = wj_to_str(ctx, x, &out->navigationUI, 0, "") && wj_check_enum(ctx, &out->navigationUI, wje_FullscreenNavigationUI, "FullscreenNavigationUI");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FullscreenOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -22931,30 +22940,30 @@ void wjd_KeyframeAnimationOptions_free(JSContext *ctx, wjd_KeyframeAnimationOpti
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_KeyframeEffectOptions_free(ctx, &d->base);
     wj_str_free(ctx, &d->id);
-    JS_FreeValue(ctx, d->timeline);
+    JS_FreeValue(ctx, d->timeline); d->timeline = JS_UNDEFINED;
 }
 
 bool wjd_KeyframeAnimationOptions_from(JSContext *ctx, JSValueConst v, wjd_KeyframeAnimationOptions *out)
 {
     memset(out, 0, sizeof *out);
     out->timeline = JS_UNDEFINED;
-    if (!wjd_KeyframeEffectOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_KeyframeEffectOptions_from(ctx, v, &out->base)) { wjd_KeyframeAnimationOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'KeyframeAnimationOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'KeyframeAnimationOptions'."); { wjd_KeyframeAnimationOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "id") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_KeyframeAnimationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->id.ptr = ""; out->id.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->id, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_KeyframeAnimationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "timeline") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_KeyframeAnimationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_timeline = true;
@@ -22975,20 +22984,20 @@ bool wjd_GetAnimationsOptions_from(JSContext *ctx, JSValueConst v, wjd_GetAnimat
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GetAnimationsOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GetAnimationsOptions'."); { wjd_GetAnimationsOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "pseudoElement") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GetAnimationsOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_str(ctx, x, &out->pseudoElement, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_GetAnimationsOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "subtree") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GetAnimationsOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->subtree = JS_ToBool(ctx, x);
@@ -23001,7 +23010,7 @@ bool wjd_GetAnimationsOptions_from(JSContext *ctx, JSValueConst v, wjd_GetAnimat
 void wjd_ShowPopoverOptions_free(JSContext *ctx, wjd_ShowPopoverOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->source);
+    JS_FreeValue(ctx, d->source); d->source = JS_UNDEFINED;
 }
 
 bool wjd_ShowPopoverOptions_from(JSContext *ctx, JSValueConst v, wjd_ShowPopoverOptions *out)
@@ -23009,10 +23018,10 @@ bool wjd_ShowPopoverOptions_from(JSContext *ctx, JSValueConst v, wjd_ShowPopover
     memset(out, 0, sizeof *out);
     out->source = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ShowPopoverOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ShowPopoverOptions'."); { wjd_ShowPopoverOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "source") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ShowPopoverOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_source = true;
@@ -23032,12 +23041,12 @@ void wjd_TogglePopoverOptions_free(JSContext *ctx, wjd_TogglePopoverOptions *d)
 bool wjd_TogglePopoverOptions_from(JSContext *ctx, JSValueConst v, wjd_TogglePopoverOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_ShowPopoverOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_ShowPopoverOptions_from(ctx, v, &out->base)) { wjd_TogglePopoverOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TogglePopoverOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TogglePopoverOptions'."); { wjd_TogglePopoverOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "force") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TogglePopoverOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_force = true;
@@ -23057,10 +23066,10 @@ bool wjd_FocusOptions_from(JSContext *ctx, JSValueConst v, wjd_FocusOptions *out
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FocusOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FocusOptions'."); { wjd_FocusOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "focusVisible") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FocusOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_focusVisible = true;
@@ -23070,7 +23079,7 @@ bool wjd_FocusOptions_from(JSContext *ctx, JSValueConst v, wjd_FocusOptions *out
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "preventScroll") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FocusOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->preventScroll = JS_ToBool(ctx, x);
@@ -23089,10 +23098,10 @@ bool wjd_AssignedNodesOptions_from(JSContext *ctx, JSValueConst v, wjd_AssignedN
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AssignedNodesOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'AssignedNodesOptions'."); { wjd_AssignedNodesOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "flatten") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_AssignedNodesOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->flatten = JS_ToBool(ctx, x);
@@ -23111,10 +23120,10 @@ bool wjd_SVGBoundingBoxOptions_from(JSContext *ctx, JSValueConst v, wjd_SVGBound
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SVGBoundingBoxOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SVGBoundingBoxOptions'."); { wjd_SVGBoundingBoxOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "clipped") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SVGBoundingBoxOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->clipped = JS_ToBool(ctx, x);
@@ -23123,7 +23132,7 @@ bool wjd_SVGBoundingBoxOptions_from(JSContext *ctx, JSValueConst v, wjd_SVGBound
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "fill") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SVGBoundingBoxOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->fill = true;
         } else {
@@ -23133,7 +23142,7 @@ bool wjd_SVGBoundingBoxOptions_from(JSContext *ctx, JSValueConst v, wjd_SVGBound
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "markers") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SVGBoundingBoxOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->markers = JS_ToBool(ctx, x);
@@ -23142,7 +23151,7 @@ bool wjd_SVGBoundingBoxOptions_from(JSContext *ctx, JSValueConst v, wjd_SVGBound
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "stroke") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SVGBoundingBoxOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->stroke = JS_ToBool(ctx, x);
@@ -23155,17 +23164,17 @@ bool wjd_SVGBoundingBoxOptions_from(JSContext *ctx, JSValueConst v, wjd_SVGBound
 void wjd_NotificationOptions_free(JSContext *ctx, wjd_NotificationOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->actions);
+    JS_FreeValue(ctx, d->actions); d->actions = JS_UNDEFINED;
     wj_str_free(ctx, &d->badge);
     wj_str_free(ctx, &d->body);
-    JS_FreeValue(ctx, d->data);
+    JS_FreeValue(ctx, d->data); d->data = JS_UNDEFINED;
     wj_str_free(ctx, &d->dir);
     wj_str_free(ctx, &d->icon);
     wj_str_free(ctx, &d->image);
     wj_str_free(ctx, &d->lang);
     wj_str_free(ctx, &d->navigate);
     wj_str_free(ctx, &d->tag);
-    JS_FreeValue(ctx, d->vibrate);
+    JS_FreeValue(ctx, d->vibrate); d->vibrate = JS_UNDEFINED;
 }
 
 bool wjd_NotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_NotificationOptions *out)
@@ -23175,10 +23184,10 @@ bool wjd_NotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_Notificati
     out->data = JS_UNDEFINED;
     out->vibrate = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NotificationOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'NotificationOptions'."); { wjd_NotificationOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "actions") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->actions = JS_DupValue(ctx, x);
@@ -23187,29 +23196,29 @@ bool wjd_NotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_Notificati
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "badge") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_badge = true;
             bool ok = wj_to_str(ctx, x, &out->badge, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NotificationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "body") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->body.ptr = ""; out->body.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->body, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NotificationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "data") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->data = JS_NULL;
         } else {
@@ -23219,62 +23228,62 @@ bool wjd_NotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_Notificati
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "dir") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->dir.ptr = "auto"; out->dir.len = 4;
         } else {
             bool ok = wj_to_str(ctx, x, &out->dir, 0, "") && wj_check_enum(ctx, &out->dir, wje_NotificationDirection, "NotificationDirection");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NotificationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "icon") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_icon = true;
             bool ok = wj_to_str(ctx, x, &out->icon, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NotificationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "image") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_image = true;
             bool ok = wj_to_str(ctx, x, &out->image, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NotificationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "lang") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->lang.ptr = ""; out->lang.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->lang, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NotificationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "navigate") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_navigate = true;
             bool ok = wj_to_str(ctx, x, &out->navigate, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NotificationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "renotify") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->renotify = JS_ToBool(ctx, x);
@@ -23283,7 +23292,7 @@ bool wjd_NotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_Notificati
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "requireInteraction") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->requireInteraction = JS_ToBool(ctx, x);
@@ -23292,7 +23301,7 @@ bool wjd_NotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_Notificati
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "silent") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->silent = JS_ToBool(ctx, x);
@@ -23301,29 +23310,29 @@ bool wjd_NotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_Notificati
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "tag") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->tag.ptr = ""; out->tag.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->tag, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NotificationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "timestamp") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_timestamp = true;
             bool ok = wj_to_uint64(ctx, x, &out->timestamp, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_NotificationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "vibrate") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_NotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_vibrate = true;
@@ -23344,26 +23353,26 @@ bool wjd_ImageEncodeOptions_from(JSContext *ctx, JSValueConst v, wjd_ImageEncode
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ImageEncodeOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ImageEncodeOptions'."); { wjd_ImageEncodeOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "quality") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ImageEncodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_quality = true;
             bool ok = wj_to_double(ctx, x, &out->quality, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ImageEncodeOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "type") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ImageEncodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->type.ptr = "image/png"; out->type.len = 9;
         } else {
             bool ok = wj_to_str(ctx, x, &out->type, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ImageEncodeOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -23373,7 +23382,7 @@ bool wjd_ImageEncodeOptions_from(JSContext *ctx, JSValueConst v, wjd_ImageEncode
 void wjd_PerformanceMarkOptions_free(JSContext *ctx, wjd_PerformanceMarkOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->detail);
+    JS_FreeValue(ctx, d->detail); d->detail = JS_UNDEFINED;
 }
 
 bool wjd_PerformanceMarkOptions_from(JSContext *ctx, JSValueConst v, wjd_PerformanceMarkOptions *out)
@@ -23381,10 +23390,10 @@ bool wjd_PerformanceMarkOptions_from(JSContext *ctx, JSValueConst v, wjd_Perform
     memset(out, 0, sizeof *out);
     out->detail = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PerformanceMarkOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PerformanceMarkOptions'."); { wjd_PerformanceMarkOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "detail") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PerformanceMarkOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_detail = true;
@@ -23394,12 +23403,12 @@ bool wjd_PerformanceMarkOptions_from(JSContext *ctx, JSValueConst v, wjd_Perform
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "startTime") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PerformanceMarkOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_startTime = true;
             bool ok = wj_to_double(ctx, x, &out->startTime, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PerformanceMarkOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -23409,9 +23418,9 @@ bool wjd_PerformanceMarkOptions_from(JSContext *ctx, JSValueConst v, wjd_Perform
 void wjd_PerformanceMeasureOptions_free(JSContext *ctx, wjd_PerformanceMeasureOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->detail);
-    JS_FreeValue(ctx, d->end);
-    JS_FreeValue(ctx, d->start);
+    JS_FreeValue(ctx, d->detail); d->detail = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->end); d->end = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->start); d->start = JS_UNDEFINED;
 }
 
 bool wjd_PerformanceMeasureOptions_from(JSContext *ctx, JSValueConst v, wjd_PerformanceMeasureOptions *out)
@@ -23421,10 +23430,10 @@ bool wjd_PerformanceMeasureOptions_from(JSContext *ctx, JSValueConst v, wjd_Perf
     out->end = JS_UNDEFINED;
     out->start = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PerformanceMeasureOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PerformanceMeasureOptions'."); { wjd_PerformanceMeasureOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "detail") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PerformanceMeasureOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_detail = true;
@@ -23434,18 +23443,18 @@ bool wjd_PerformanceMeasureOptions_from(JSContext *ctx, JSValueConst v, wjd_Perf
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "duration") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PerformanceMeasureOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_duration = true;
             bool ok = wj_to_double(ctx, x, &out->duration, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PerformanceMeasureOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "end") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PerformanceMeasureOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_end = true;
@@ -23455,7 +23464,7 @@ bool wjd_PerformanceMeasureOptions_from(JSContext *ctx, JSValueConst v, wjd_Perf
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "start") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PerformanceMeasureOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_start = true;
@@ -23478,37 +23487,37 @@ bool wjd_RegistrationOptions_from(JSContext *ctx, JSValueConst v, wjd_Registrati
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'RegistrationOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'RegistrationOptions'."); { wjd_RegistrationOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "scope") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RegistrationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_scope = true;
             bool ok = wj_to_str(ctx, x, &out->scope, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RegistrationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "type") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RegistrationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->type.ptr = "classic"; out->type.len = 7;
         } else {
             bool ok = wj_to_str(ctx, x, &out->type, 0, "") && wj_check_enum(ctx, &out->type, wje_WorkerType, "WorkerType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RegistrationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "updateViaCache") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RegistrationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->updateViaCache.ptr = "imports"; out->updateViaCache.len = 7;
         } else {
             bool ok = wj_to_str(ctx, x, &out->updateViaCache, 0, "") && wj_check_enum(ctx, &out->updateViaCache, wje_ServiceWorkerUpdateViaCache, "ServiceWorkerUpdateViaCache");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RegistrationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -23525,15 +23534,15 @@ bool wjd_GetNotificationOptions_from(JSContext *ctx, JSValueConst v, wjd_GetNoti
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GetNotificationOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GetNotificationOptions'."); { wjd_GetNotificationOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "tag") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GetNotificationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->tag.ptr = ""; out->tag.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->tag, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_GetNotificationOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -23552,37 +23561,37 @@ bool wjd_WorkerOptions_from(JSContext *ctx, JSValueConst v, wjd_WorkerOptions *o
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'WorkerOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'WorkerOptions'."); { wjd_WorkerOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "credentials") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_WorkerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->credentials.ptr = "same-origin"; out->credentials.len = 11;
         } else {
             bool ok = wj_to_str(ctx, x, &out->credentials, 0, "") && wj_check_enum(ctx, &out->credentials, wje_RequestCredentials, "RequestCredentials");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_WorkerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "name") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_WorkerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->name.ptr = ""; out->name.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->name, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_WorkerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "type") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_WorkerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->type.ptr = "classic"; out->type.len = 7;
         } else {
             bool ok = wj_to_str(ctx, x, &out->type, 0, "") && wj_check_enum(ctx, &out->type, wje_WorkerType, "WorkerType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_WorkerOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -23598,12 +23607,12 @@ void wjd_SharedWorkerOptions_free(JSContext *ctx, wjd_SharedWorkerOptions *d)
 bool wjd_SharedWorkerOptions_from(JSContext *ctx, JSValueConst v, wjd_SharedWorkerOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_WorkerOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_WorkerOptions_from(ctx, v, &out->base)) { wjd_SharedWorkerOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SharedWorkerOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SharedWorkerOptions'."); { wjd_SharedWorkerOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "extendedLifetime") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SharedWorkerOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->extendedLifetime = JS_ToBool(ctx, x);
@@ -23616,7 +23625,7 @@ bool wjd_SharedWorkerOptions_from(JSContext *ctx, JSValueConst v, wjd_SharedWork
 void wjd_SpeechRecognitionOptions_free(JSContext *ctx, wjd_SpeechRecognitionOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->langs);
+    JS_FreeValue(ctx, d->langs); d->langs = JS_UNDEFINED;
     wj_str_free(ctx, &d->quality);
 }
 
@@ -23625,11 +23634,11 @@ bool wjd_SpeechRecognitionOptions_from(JSContext *ctx, JSValueConst v, wjd_Speec
     memset(out, 0, sizeof *out);
     out->langs = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SpeechRecognitionOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SpeechRecognitionOptions'."); { wjd_SpeechRecognitionOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "langs") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'langs' property from 'SpeechRecognitionOptions': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_SpeechRecognitionOptions_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'langs' property from 'SpeechRecognitionOptions': Required member is undefined."); { wjd_SpeechRecognitionOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_langs = true;
@@ -23639,7 +23648,7 @@ bool wjd_SpeechRecognitionOptions_from(JSContext *ctx, JSValueConst v, wjd_Speec
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "processLocally") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SpeechRecognitionOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->processLocally = JS_ToBool(ctx, x);
@@ -23648,12 +23657,12 @@ bool wjd_SpeechRecognitionOptions_from(JSContext *ctx, JSValueConst v, wjd_Speec
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "quality") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SpeechRecognitionOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->quality.ptr = "command"; out->quality.len = 7;
         } else {
             bool ok = wj_to_str(ctx, x, &out->quality, 0, "") && wj_check_enum(ctx, &out->quality, wje_SpeechRecognitionQuality, "SpeechRecognitionQuality");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SpeechRecognitionOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -23663,11 +23672,11 @@ bool wjd_SpeechRecognitionOptions_from(JSContext *ctx, JSValueConst v, wjd_Speec
 void wjd_RequestInit_free(JSContext *ctx, wjd_RequestInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->body);
+    JS_FreeValue(ctx, d->body); d->body = JS_UNDEFINED;
     wj_str_free(ctx, &d->cache);
     wj_str_free(ctx, &d->credentials);
     wj_str_free(ctx, &d->duplex);
-    JS_FreeValue(ctx, d->headers);
+    JS_FreeValue(ctx, d->headers); d->headers = JS_UNDEFINED;
     wj_str_free(ctx, &d->integrity);
     wj_str_free(ctx, &d->method);
     wj_str_free(ctx, &d->mode);
@@ -23675,8 +23684,8 @@ void wjd_RequestInit_free(JSContext *ctx, wjd_RequestInit *d)
     wj_str_free(ctx, &d->redirect);
     wj_str_free(ctx, &d->referrer);
     wj_str_free(ctx, &d->referrerPolicy);
-    JS_FreeValue(ctx, d->signal);
-    JS_FreeValue(ctx, d->window);
+    JS_FreeValue(ctx, d->signal); d->signal = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->window); d->window = JS_UNDEFINED;
 }
 
 bool wjd_RequestInit_from(JSContext *ctx, JSValueConst v, wjd_RequestInit *out)
@@ -23687,10 +23696,10 @@ bool wjd_RequestInit_from(JSContext *ctx, JSValueConst v, wjd_RequestInit *out)
     out->signal = JS_UNDEFINED;
     out->window = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'RequestInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'RequestInit'."); { wjd_RequestInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "body") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_body = true;
@@ -23700,40 +23709,40 @@ bool wjd_RequestInit_from(JSContext *ctx, JSValueConst v, wjd_RequestInit *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "cache") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_cache = true;
             bool ok = wj_to_str(ctx, x, &out->cache, 0, "") && wj_check_enum(ctx, &out->cache, wje_RequestCache, "RequestCache");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RequestInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "credentials") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_credentials = true;
             bool ok = wj_to_str(ctx, x, &out->credentials, 0, "") && wj_check_enum(ctx, &out->credentials, wje_RequestCredentials, "RequestCredentials");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RequestInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "duplex") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_duplex = true;
             bool ok = wj_to_str(ctx, x, &out->duplex, 0, "") && wj_check_enum(ctx, &out->duplex, wje_RequestDuplex, "RequestDuplex");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RequestInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "headers") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_headers = true;
@@ -23743,18 +23752,18 @@ bool wjd_RequestInit_from(JSContext *ctx, JSValueConst v, wjd_RequestInit *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "integrity") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_integrity = true;
             bool ok = wj_to_str(ctx, x, &out->integrity, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RequestInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "keepalive") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_keepalive = true;
@@ -23764,73 +23773,73 @@ bool wjd_RequestInit_from(JSContext *ctx, JSValueConst v, wjd_RequestInit *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "method") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_method = true;
             bool ok = wj_to_str(ctx, x, &out->method, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RequestInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "mode") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_mode = true;
             bool ok = wj_to_str(ctx, x, &out->mode, 0, "") && wj_check_enum(ctx, &out->mode, wje_RequestMode, "RequestMode");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RequestInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "priority") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_priority = true;
             bool ok = wj_to_str(ctx, x, &out->priority, 0, "") && wj_check_enum(ctx, &out->priority, wje_RequestPriority, "RequestPriority");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RequestInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "redirect") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_redirect = true;
             bool ok = wj_to_str(ctx, x, &out->redirect, 0, "") && wj_check_enum(ctx, &out->redirect, wje_RequestRedirect, "RequestRedirect");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RequestInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "referrer") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_referrer = true;
             bool ok = wj_to_str(ctx, x, &out->referrer, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RequestInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "referrerPolicy") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_referrerPolicy = true;
             bool ok = wj_to_str(ctx, x, &out->referrerPolicy, 0, "") && wj_check_enum(ctx, &out->referrerPolicy, wje_ReferrerPolicy, "ReferrerPolicy");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_RequestInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "signal") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_signal = true;
@@ -23840,7 +23849,7 @@ bool wjd_RequestInit_from(JSContext *ctx, JSValueConst v, wjd_RequestInit *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "window") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_RequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_window = true;
@@ -23860,17 +23869,17 @@ void wjd_DeferredRequestInit_free(JSContext *ctx, wjd_DeferredRequestInit *d)
 bool wjd_DeferredRequestInit_from(JSContext *ctx, JSValueConst v, wjd_DeferredRequestInit *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_RequestInit_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_RequestInit_from(ctx, v, &out->base)) { wjd_DeferredRequestInit_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DeferredRequestInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'DeferredRequestInit'."); { wjd_DeferredRequestInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "activateAfter") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_DeferredRequestInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_activateAfter = true;
             bool ok = wj_to_double(ctx, x, &out->activateAfter, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_DeferredRequestInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -23887,17 +23896,17 @@ void wjd_WindowPostMessageOptions_free(JSContext *ctx, wjd_WindowPostMessageOpti
 bool wjd_WindowPostMessageOptions_from(JSContext *ctx, JSValueConst v, wjd_WindowPostMessageOptions *out)
 {
     memset(out, 0, sizeof *out);
-    if (!wjd_StructuredSerializeOptions_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_StructuredSerializeOptions_from(ctx, v, &out->base)) { wjd_WindowPostMessageOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'WindowPostMessageOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'WindowPostMessageOptions'."); { wjd_WindowPostMessageOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "targetOrigin") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_WindowPostMessageOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->targetOrigin.ptr = "/"; out->targetOrigin.len = 1;
         } else {
             bool ok = wj_to_str(ctx, x, &out->targetOrigin, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_WindowPostMessageOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -23913,15 +23922,15 @@ bool wjd_IdleRequestOptions_from(JSContext *ctx, JSValueConst v, wjd_IdleRequest
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IdleRequestOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IdleRequestOptions'."); { wjd_IdleRequestOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "timeout") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IdleRequestOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_timeout = true;
             bool ok = wj_to_uint32(ctx, x, &out->timeout, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IdleRequestOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -23941,70 +23950,70 @@ bool wjd_ImageBitmapOptions_from(JSContext *ctx, JSValueConst v, wjd_ImageBitmap
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ImageBitmapOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ImageBitmapOptions'."); { wjd_ImageBitmapOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "colorSpaceConversion") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ImageBitmapOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->colorSpaceConversion.ptr = "default"; out->colorSpaceConversion.len = 7;
         } else {
             bool ok = wj_to_str(ctx, x, &out->colorSpaceConversion, 0, "") && wj_check_enum(ctx, &out->colorSpaceConversion, wje_ColorSpaceConversion, "ColorSpaceConversion");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ImageBitmapOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "imageOrientation") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ImageBitmapOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->imageOrientation.ptr = "from-image"; out->imageOrientation.len = 10;
         } else {
             bool ok = wj_to_str(ctx, x, &out->imageOrientation, 0, "") && wj_check_enum(ctx, &out->imageOrientation, wje_ImageOrientation, "ImageOrientation");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ImageBitmapOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "premultiplyAlpha") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ImageBitmapOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->premultiplyAlpha.ptr = "default"; out->premultiplyAlpha.len = 7;
         } else {
             bool ok = wj_to_str(ctx, x, &out->premultiplyAlpha, 0, "") && wj_check_enum(ctx, &out->premultiplyAlpha, wje_PremultiplyAlpha, "PremultiplyAlpha");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ImageBitmapOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "resizeHeight") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ImageBitmapOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_resizeHeight = true;
             bool ok = wj_to_uint32(ctx, x, &out->resizeHeight, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ImageBitmapOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "resizeQuality") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ImageBitmapOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->resizeQuality.ptr = "low"; out->resizeQuality.len = 3;
         } else {
             bool ok = wj_to_str(ctx, x, &out->resizeQuality, 0, "") && wj_check_enum(ctx, &out->resizeQuality, wje_ResizeQuality, "ResizeQuality");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ImageBitmapOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "resizeWidth") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ImageBitmapOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_resizeWidth = true;
             bool ok = wj_to_uint32(ctx, x, &out->resizeWidth, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ImageBitmapOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -24020,10 +24029,10 @@ bool wjd_FileSystemFlags_from(JSContext *ctx, JSValueConst v, wjd_FileSystemFlag
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FileSystemFlags'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FileSystemFlags'."); { wjd_FileSystemFlags_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "create") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FileSystemFlags_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->create = JS_ToBool(ctx, x);
@@ -24032,7 +24041,7 @@ bool wjd_FileSystemFlags_from(JSContext *ctx, JSValueConst v, wjd_FileSystemFlag
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "exclusive") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FileSystemFlags_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->exclusive = JS_ToBool(ctx, x);
@@ -24061,114 +24070,114 @@ bool wjd_FontFaceDescriptors_from(JSContext *ctx, JSValueConst v, wjd_FontFaceDe
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FontFaceDescriptors'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'FontFaceDescriptors'."); { wjd_FontFaceDescriptors_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "ascentOverride") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FontFaceDescriptors_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->ascentOverride.ptr = "normal"; out->ascentOverride.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->ascentOverride, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FontFaceDescriptors_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "descentOverride") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FontFaceDescriptors_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->descentOverride.ptr = "normal"; out->descentOverride.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->descentOverride, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FontFaceDescriptors_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "display") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FontFaceDescriptors_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->display.ptr = "auto"; out->display.len = 4;
         } else {
             bool ok = wj_to_str(ctx, x, &out->display, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FontFaceDescriptors_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "featureSettings") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FontFaceDescriptors_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->featureSettings.ptr = "normal"; out->featureSettings.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->featureSettings, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FontFaceDescriptors_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "lineGapOverride") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FontFaceDescriptors_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->lineGapOverride.ptr = "normal"; out->lineGapOverride.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->lineGapOverride, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FontFaceDescriptors_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "stretch") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FontFaceDescriptors_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->stretch.ptr = "normal"; out->stretch.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->stretch, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FontFaceDescriptors_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "style") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FontFaceDescriptors_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->style.ptr = "normal"; out->style.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->style, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FontFaceDescriptors_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "unicodeRange") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FontFaceDescriptors_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->unicodeRange.ptr = "U+0-10FFFF"; out->unicodeRange.len = 10;
         } else {
             bool ok = wj_to_str(ctx, x, &out->unicodeRange, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FontFaceDescriptors_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "variationSettings") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FontFaceDescriptors_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->variationSettings.ptr = "normal"; out->variationSettings.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->variationSettings, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FontFaceDescriptors_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "weight") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_FontFaceDescriptors_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->weight.ptr = "normal"; out->weight.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->weight, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_FontFaceDescriptors_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -24184,70 +24193,70 @@ bool wjd_GamepadEffectParameters_from(JSContext *ctx, JSValueConst v, wjd_Gamepa
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GamepadEffectParameters'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GamepadEffectParameters'."); { wjd_GamepadEffectParameters_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "duration") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GamepadEffectParameters_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->duration = 0;
         } else {
             bool ok = wj_to_uint64(ctx, x, &out->duration, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_GamepadEffectParameters_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "leftTrigger") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GamepadEffectParameters_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->leftTrigger = 0.0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->leftTrigger, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_GamepadEffectParameters_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "rightTrigger") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GamepadEffectParameters_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->rightTrigger = 0.0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->rightTrigger, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_GamepadEffectParameters_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "startDelay") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GamepadEffectParameters_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->startDelay = 0;
         } else {
             bool ok = wj_to_uint64(ctx, x, &out->startDelay, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_GamepadEffectParameters_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "strongMagnitude") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GamepadEffectParameters_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->strongMagnitude = 0.0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->strongMagnitude, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_GamepadEffectParameters_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "weakMagnitude") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GamepadEffectParameters_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->weakMagnitude = 0.0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->weakMagnitude, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_GamepadEffectParameters_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -24257,7 +24266,7 @@ bool wjd_GamepadEffectParameters_from(JSContext *ctx, JSValueConst v, wjd_Gamepa
 void wjd_HighlightsFromPointOptions_free(JSContext *ctx, wjd_HighlightsFromPointOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->shadowRoots);
+    JS_FreeValue(ctx, d->shadowRoots); d->shadowRoots = JS_UNDEFINED;
 }
 
 bool wjd_HighlightsFromPointOptions_from(JSContext *ctx, JSValueConst v, wjd_HighlightsFromPointOptions *out)
@@ -24265,10 +24274,10 @@ bool wjd_HighlightsFromPointOptions_from(JSContext *ctx, JSValueConst v, wjd_Hig
     memset(out, 0, sizeof *out);
     out->shadowRoots = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'HighlightsFromPointOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'HighlightsFromPointOptions'."); { wjd_HighlightsFromPointOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "shadowRoots") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_HighlightsFromPointOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->shadowRoots = JS_DupValue(ctx, x);
@@ -24282,7 +24291,7 @@ void wjd_IDBGetAllOptions_free(JSContext *ctx, wjd_IDBGetAllOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wj_str_free(ctx, &d->direction);
-    JS_FreeValue(ctx, d->query);
+    JS_FreeValue(ctx, d->query); d->query = JS_UNDEFINED;
 }
 
 bool wjd_IDBGetAllOptions_from(JSContext *ctx, JSValueConst v, wjd_IDBGetAllOptions *out)
@@ -24290,32 +24299,32 @@ bool wjd_IDBGetAllOptions_from(JSContext *ctx, JSValueConst v, wjd_IDBGetAllOpti
     memset(out, 0, sizeof *out);
     out->query = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IDBGetAllOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IDBGetAllOptions'."); { wjd_IDBGetAllOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "count") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IDBGetAllOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_count = true;
             bool ok = wj_to_uint32(ctx, x, &out->count, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IDBGetAllOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "direction") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IDBGetAllOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->direction.ptr = "next"; out->direction.len = 4;
         } else {
             bool ok = wj_to_str(ctx, x, &out->direction, 0, "") && wj_check_enum(ctx, &out->direction, wje_IDBCursorDirection, "IDBCursorDirection");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IDBGetAllOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "query") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IDBGetAllOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->query = JS_NULL;
         } else {
@@ -24335,10 +24344,10 @@ bool wjd_IDBIndexParameters_from(JSContext *ctx, JSValueConst v, wjd_IDBIndexPar
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IDBIndexParameters'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IDBIndexParameters'."); { wjd_IDBIndexParameters_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "multiEntry") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IDBIndexParameters_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->multiEntry = JS_ToBool(ctx, x);
@@ -24347,7 +24356,7 @@ bool wjd_IDBIndexParameters_from(JSContext *ctx, JSValueConst v, wjd_IDBIndexPar
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "unique") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IDBIndexParameters_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->unique = JS_ToBool(ctx, x);
@@ -24360,10 +24369,10 @@ bool wjd_IDBIndexParameters_from(JSContext *ctx, JSValueConst v, wjd_IDBIndexPar
 void wjd_IntersectionObserverInit_free(JSContext *ctx, wjd_IntersectionObserverInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->root);
+    JS_FreeValue(ctx, d->root); d->root = JS_UNDEFINED;
     wj_str_free(ctx, &d->rootMargin);
     wj_str_free(ctx, &d->scrollMargin);
-    JS_FreeValue(ctx, d->threshold);
+    JS_FreeValue(ctx, d->threshold); d->threshold = JS_UNDEFINED;
 }
 
 bool wjd_IntersectionObserverInit_from(JSContext *ctx, JSValueConst v, wjd_IntersectionObserverInit *out)
@@ -24372,21 +24381,21 @@ bool wjd_IntersectionObserverInit_from(JSContext *ctx, JSValueConst v, wjd_Inter
     out->root = JS_UNDEFINED;
     out->threshold = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IntersectionObserverInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IntersectionObserverInit'."); { wjd_IntersectionObserverInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "delay") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IntersectionObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->delay = 0;
         } else {
             bool ok = wj_to_int32(ctx, x, &out->delay, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IntersectionObserverInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "root") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IntersectionObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->root = JS_NULL;
         } else {
@@ -24396,29 +24405,29 @@ bool wjd_IntersectionObserverInit_from(JSContext *ctx, JSValueConst v, wjd_Inter
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "rootMargin") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IntersectionObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->rootMargin.ptr = "0px"; out->rootMargin.len = 3;
         } else {
             bool ok = wj_to_str(ctx, x, &out->rootMargin, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IntersectionObserverInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "scrollMargin") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IntersectionObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->scrollMargin.ptr = "0px"; out->scrollMargin.len = 3;
         } else {
             bool ok = wj_to_str(ctx, x, &out->scrollMargin, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IntersectionObserverInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "threshold") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IntersectionObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->threshold = JS_DupValue(ctx, x);
@@ -24427,7 +24436,7 @@ bool wjd_IntersectionObserverInit_from(JSContext *ctx, JSValueConst v, wjd_Inter
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "trackVisibility") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IntersectionObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->trackVisibility = JS_ToBool(ctx, x);
@@ -24442,8 +24451,8 @@ void wjd_IntersectionObserverEntryInit_free(JSContext *ctx, wjd_IntersectionObse
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_DOMRectInit_free(ctx, &d->boundingClientRect);
     wjd_DOMRectInit_free(ctx, &d->intersectionRect);
-    JS_FreeValue(ctx, d->rootBounds);
-    JS_FreeValue(ctx, d->target);
+    JS_FreeValue(ctx, d->rootBounds); d->rootBounds = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->target); d->target = JS_UNDEFINED;
 }
 
 bool wjd_IntersectionObserverEntryInit_from(JSContext *ctx, JSValueConst v, wjd_IntersectionObserverEntryInit *out)
@@ -24452,49 +24461,49 @@ bool wjd_IntersectionObserverEntryInit_from(JSContext *ctx, JSValueConst v, wjd_
     out->rootBounds = JS_UNDEFINED;
     out->target = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IntersectionObserverEntryInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IntersectionObserverEntryInit'."); { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "boundingClientRect") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'boundingClientRect' property from 'IntersectionObserverEntryInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'boundingClientRect' property from 'IntersectionObserverEntryInit': Required member is undefined."); { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
-            if (!wjd_DOMRectInit_from(ctx, JS_UNDEFINED, &out->boundingClientRect)) { return false; }
+            if (!wjd_DOMRectInit_from(ctx, JS_UNDEFINED, &out->boundingClientRect)) { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
         } else {
             out->has_boundingClientRect = true;
             bool ok = wjd_DOMRectInit_from(ctx, x, &out->boundingClientRect);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "intersectionRatio") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'intersectionRatio' property from 'IntersectionObserverEntryInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'intersectionRatio' property from 'IntersectionObserverEntryInit': Required member is undefined."); { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_intersectionRatio = true;
             bool ok = wj_to_double(ctx, x, &out->intersectionRatio, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "intersectionRect") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'intersectionRect' property from 'IntersectionObserverEntryInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'intersectionRect' property from 'IntersectionObserverEntryInit': Required member is undefined."); { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
-            if (!wjd_DOMRectInit_from(ctx, JS_UNDEFINED, &out->intersectionRect)) { return false; }
+            if (!wjd_DOMRectInit_from(ctx, JS_UNDEFINED, &out->intersectionRect)) { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
         } else {
             out->has_intersectionRect = true;
             bool ok = wjd_DOMRectInit_from(ctx, x, &out->intersectionRect);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "isIntersecting") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'isIntersecting' property from 'IntersectionObserverEntryInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'isIntersecting' property from 'IntersectionObserverEntryInit': Required member is undefined."); { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_isIntersecting = true;
@@ -24504,8 +24513,8 @@ bool wjd_IntersectionObserverEntryInit_from(JSContext *ctx, JSValueConst v, wjd_
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "isVisible") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'isVisible' property from 'IntersectionObserverEntryInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'isVisible' property from 'IntersectionObserverEntryInit': Required member is undefined."); { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_isVisible = true;
@@ -24515,8 +24524,8 @@ bool wjd_IntersectionObserverEntryInit_from(JSContext *ctx, JSValueConst v, wjd_
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "rootBounds") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'rootBounds' property from 'IntersectionObserverEntryInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'rootBounds' property from 'IntersectionObserverEntryInit': Required member is undefined."); { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_rootBounds = true;
@@ -24526,8 +24535,8 @@ bool wjd_IntersectionObserverEntryInit_from(JSContext *ctx, JSValueConst v, wjd_
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "target") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'target' property from 'IntersectionObserverEntryInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'target' property from 'IntersectionObserverEntryInit': Required member is undefined."); { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_target = true;
@@ -24537,13 +24546,13 @@ bool wjd_IntersectionObserverEntryInit_from(JSContext *ctx, JSValueConst v, wjd_
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "time") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'time' property from 'IntersectionObserverEntryInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'time' property from 'IntersectionObserverEntryInit': Required member is undefined."); { wjd_IntersectionObserverEntryInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_time = true;
             bool ok = wj_to_double(ctx, x, &out->time, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_IntersectionObserverEntryInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -24554,7 +24563,7 @@ void wjd_LockOptions_free(JSContext *ctx, wjd_LockOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wj_str_free(ctx, &d->mode);
-    JS_FreeValue(ctx, d->signal);
+    JS_FreeValue(ctx, d->signal); d->signal = JS_UNDEFINED;
 }
 
 bool wjd_LockOptions_from(JSContext *ctx, JSValueConst v, wjd_LockOptions *out)
@@ -24562,10 +24571,10 @@ bool wjd_LockOptions_from(JSContext *ctx, JSValueConst v, wjd_LockOptions *out)
     memset(out, 0, sizeof *out);
     out->signal = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'LockOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'LockOptions'."); { wjd_LockOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "ifAvailable") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_LockOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->ifAvailable = JS_ToBool(ctx, x);
@@ -24574,18 +24583,18 @@ bool wjd_LockOptions_from(JSContext *ctx, JSValueConst v, wjd_LockOptions *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "mode") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_LockOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->mode.ptr = "exclusive"; out->mode.len = 9;
         } else {
             bool ok = wj_to_str(ctx, x, &out->mode, 0, "") && wj_check_enum(ctx, &out->mode, wje_LockMode, "LockMode");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_LockOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "signal") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_LockOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_signal = true;
@@ -24595,7 +24604,7 @@ bool wjd_LockOptions_from(JSContext *ctx, JSValueConst v, wjd_LockOptions *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "steal") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_LockOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->steal = JS_ToBool(ctx, x);
@@ -24610,8 +24619,8 @@ void wjd_MediaMetadataInit_free(JSContext *ctx, wjd_MediaMetadataInit *d)
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wj_str_free(ctx, &d->album);
     wj_str_free(ctx, &d->artist);
-    JS_FreeValue(ctx, d->artwork);
-    JS_FreeValue(ctx, d->chapterInfo);
+    JS_FreeValue(ctx, d->artwork); d->artwork = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->chapterInfo); d->chapterInfo = JS_UNDEFINED;
     wj_str_free(ctx, &d->title);
 }
 
@@ -24621,32 +24630,32 @@ bool wjd_MediaMetadataInit_from(JSContext *ctx, JSValueConst v, wjd_MediaMetadat
     out->artwork = JS_UNDEFINED;
     out->chapterInfo = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaMetadataInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaMetadataInit'."); { wjd_MediaMetadataInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "album") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaMetadataInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->album.ptr = ""; out->album.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->album, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MediaMetadataInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "artist") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaMetadataInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->artist.ptr = ""; out->artist.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->artist, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MediaMetadataInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "artwork") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaMetadataInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->artwork = JS_DupValue(ctx, x);
@@ -24655,7 +24664,7 @@ bool wjd_MediaMetadataInit_from(JSContext *ctx, JSValueConst v, wjd_MediaMetadat
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "chapterInfo") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaMetadataInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->chapterInfo = JS_DupValue(ctx, x);
@@ -24664,12 +24673,12 @@ bool wjd_MediaMetadataInit_from(JSContext *ctx, JSValueConst v, wjd_MediaMetadat
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "title") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaMetadataInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->title.ptr = ""; out->title.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->title, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MediaMetadataInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -24685,37 +24694,37 @@ bool wjd_MediaPositionState_from(JSContext *ctx, JSValueConst v, wjd_MediaPositi
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaPositionState'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MediaPositionState'."); { wjd_MediaPositionState_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "duration") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaPositionState_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_duration = true;
             bool ok = wj_to_double(ctx, x, &out->duration, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MediaPositionState_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "playbackRate") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaPositionState_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_playbackRate = true;
             bool ok = wj_to_double(ctx, x, &out->playbackRate, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MediaPositionState_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "position") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MediaPositionState_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_position = true;
             bool ok = wj_to_double(ctx, x, &out->position, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_MediaPositionState_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -24725,7 +24734,7 @@ bool wjd_MediaPositionState_from(JSContext *ctx, JSValueConst v, wjd_MediaPositi
 void wjd_MutationObserverInit_free(JSContext *ctx, wjd_MutationObserverInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->attributeFilter);
+    JS_FreeValue(ctx, d->attributeFilter); d->attributeFilter = JS_UNDEFINED;
 }
 
 bool wjd_MutationObserverInit_from(JSContext *ctx, JSValueConst v, wjd_MutationObserverInit *out)
@@ -24733,10 +24742,10 @@ bool wjd_MutationObserverInit_from(JSContext *ctx, JSValueConst v, wjd_MutationO
     memset(out, 0, sizeof *out);
     out->attributeFilter = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MutationObserverInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'MutationObserverInit'."); { wjd_MutationObserverInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "attributeFilter") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MutationObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_attributeFilter = true;
@@ -24746,7 +24755,7 @@ bool wjd_MutationObserverInit_from(JSContext *ctx, JSValueConst v, wjd_MutationO
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "attributeOldValue") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MutationObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_attributeOldValue = true;
@@ -24756,7 +24765,7 @@ bool wjd_MutationObserverInit_from(JSContext *ctx, JSValueConst v, wjd_MutationO
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "attributes") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MutationObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_attributes = true;
@@ -24766,7 +24775,7 @@ bool wjd_MutationObserverInit_from(JSContext *ctx, JSValueConst v, wjd_MutationO
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "characterData") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MutationObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_characterData = true;
@@ -24776,7 +24785,7 @@ bool wjd_MutationObserverInit_from(JSContext *ctx, JSValueConst v, wjd_MutationO
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "characterDataOldValue") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MutationObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_characterDataOldValue = true;
@@ -24786,7 +24795,7 @@ bool wjd_MutationObserverInit_from(JSContext *ctx, JSValueConst v, wjd_MutationO
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "childList") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MutationObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->childList = JS_ToBool(ctx, x);
@@ -24795,7 +24804,7 @@ bool wjd_MutationObserverInit_from(JSContext *ctx, JSValueConst v, wjd_MutationO
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "subtree") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_MutationObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->subtree = JS_ToBool(ctx, x);
@@ -24808,7 +24817,7 @@ bool wjd_MutationObserverInit_from(JSContext *ctx, JSValueConst v, wjd_MutationO
 void wjd_ShareData_free(JSContext *ctx, wjd_ShareData *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->files);
+    JS_FreeValue(ctx, d->files); d->files = JS_UNDEFINED;
     wj_str_free(ctx, &d->text);
     wj_str_free(ctx, &d->title);
     wj_str_free(ctx, &d->url);
@@ -24819,10 +24828,10 @@ bool wjd_ShareData_from(JSContext *ctx, JSValueConst v, wjd_ShareData *out)
     memset(out, 0, sizeof *out);
     out->files = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ShareData'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ShareData'."); { wjd_ShareData_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "files") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ShareData_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_files = true;
@@ -24832,34 +24841,34 @@ bool wjd_ShareData_from(JSContext *ctx, JSValueConst v, wjd_ShareData *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "text") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ShareData_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_text = true;
             bool ok = wj_to_str(ctx, x, &out->text, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ShareData_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "title") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ShareData_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_title = true;
             bool ok = wj_to_str(ctx, x, &out->title, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ShareData_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "url") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ShareData_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_url = true;
             bool ok = wj_to_str(ctx, x, &out->url, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ShareData_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -24869,7 +24878,7 @@ bool wjd_ShareData_from(JSContext *ctx, JSValueConst v, wjd_ShareData *out)
 void wjd_PerformanceObserverInit_free(JSContext *ctx, wjd_PerformanceObserverInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->entryTypes);
+    JS_FreeValue(ctx, d->entryTypes); d->entryTypes = JS_UNDEFINED;
     wj_str_free(ctx, &d->type);
 }
 
@@ -24878,10 +24887,10 @@ bool wjd_PerformanceObserverInit_from(JSContext *ctx, JSValueConst v, wjd_Perfor
     memset(out, 0, sizeof *out);
     out->entryTypes = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PerformanceObserverInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PerformanceObserverInit'."); { wjd_PerformanceObserverInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "buffered") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PerformanceObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_buffered = true;
@@ -24891,18 +24900,18 @@ bool wjd_PerformanceObserverInit_from(JSContext *ctx, JSValueConst v, wjd_Perfor
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "durationThreshold") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PerformanceObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_durationThreshold = true;
             bool ok = wj_to_double(ctx, x, &out->durationThreshold, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PerformanceObserverInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "entryTypes") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PerformanceObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_entryTypes = true;
@@ -24912,12 +24921,12 @@ bool wjd_PerformanceObserverInit_from(JSContext *ctx, JSValueConst v, wjd_Perfor
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "type") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PerformanceObserverInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_type = true;
             bool ok = wj_to_str(ctx, x, &out->type, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_PerformanceObserverInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -24928,8 +24937,8 @@ void wjd_PeriodicWaveOptions_free(JSContext *ctx, wjd_PeriodicWaveOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_PeriodicWaveConstraints_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->imag);
-    JS_FreeValue(ctx, d->real);
+    JS_FreeValue(ctx, d->imag); d->imag = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->real); d->real = JS_UNDEFINED;
 }
 
 bool wjd_PeriodicWaveOptions_from(JSContext *ctx, JSValueConst v, wjd_PeriodicWaveOptions *out)
@@ -24937,12 +24946,12 @@ bool wjd_PeriodicWaveOptions_from(JSContext *ctx, JSValueConst v, wjd_PeriodicWa
     memset(out, 0, sizeof *out);
     out->imag = JS_UNDEFINED;
     out->real = JS_UNDEFINED;
-    if (!wjd_PeriodicWaveConstraints_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_PeriodicWaveConstraints_from(ctx, v, &out->base)) { wjd_PeriodicWaveOptions_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PeriodicWaveOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'PeriodicWaveOptions'."); { wjd_PeriodicWaveOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "imag") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PeriodicWaveOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_imag = true;
@@ -24952,7 +24961,7 @@ bool wjd_PeriodicWaveOptions_from(JSContext *ctx, JSValueConst v, wjd_PeriodicWa
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "real") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_PeriodicWaveOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_real = true;
@@ -24966,7 +24975,7 @@ bool wjd_PeriodicWaveOptions_from(JSContext *ctx, JSValueConst v, wjd_PeriodicWa
 void wjd_QueuingStrategy_free(JSContext *ctx, wjd_QueuingStrategy *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->size);
+    JS_FreeValue(ctx, d->size); d->size = JS_UNDEFINED;
 }
 
 bool wjd_QueuingStrategy_from(JSContext *ctx, JSValueConst v, wjd_QueuingStrategy *out)
@@ -24974,21 +24983,21 @@ bool wjd_QueuingStrategy_from(JSContext *ctx, JSValueConst v, wjd_QueuingStrateg
     memset(out, 0, sizeof *out);
     out->size = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'QueuingStrategy'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'QueuingStrategy'."); { wjd_QueuingStrategy_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "highWaterMark") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_QueuingStrategy_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_highWaterMark = true;
             bool ok = wj_to_double(ctx, x, &out->highWaterMark, false);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_QueuingStrategy_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "size") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_QueuingStrategy_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_size = true;
@@ -25009,15 +25018,15 @@ bool wjd_ReadableStreamGetReaderOptions_from(JSContext *ctx, JSValueConst v, wjd
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ReadableStreamGetReaderOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ReadableStreamGetReaderOptions'."); { wjd_ReadableStreamGetReaderOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "mode") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ReadableStreamGetReaderOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_mode = true;
             bool ok = wj_to_str(ctx, x, &out->mode, 0, "") && wj_check_enum(ctx, &out->mode, wje_ReadableStreamReaderMode, "ReadableStreamReaderMode");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ReadableStreamGetReaderOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -25027,8 +25036,8 @@ bool wjd_ReadableStreamGetReaderOptions_from(JSContext *ctx, JSValueConst v, wjd
 void wjd_ReadableWritablePair_free(JSContext *ctx, wjd_ReadableWritablePair *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->readable);
-    JS_FreeValue(ctx, d->writable);
+    JS_FreeValue(ctx, d->readable); d->readable = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->writable); d->writable = JS_UNDEFINED;
 }
 
 bool wjd_ReadableWritablePair_from(JSContext *ctx, JSValueConst v, wjd_ReadableWritablePair *out)
@@ -25037,11 +25046,11 @@ bool wjd_ReadableWritablePair_from(JSContext *ctx, JSValueConst v, wjd_ReadableW
     out->readable = JS_UNDEFINED;
     out->writable = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ReadableWritablePair'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ReadableWritablePair'."); { wjd_ReadableWritablePair_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "readable") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'readable' property from 'ReadableWritablePair': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_ReadableWritablePair_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'readable' property from 'ReadableWritablePair': Required member is undefined."); { wjd_ReadableWritablePair_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_readable = true;
@@ -25051,8 +25060,8 @@ bool wjd_ReadableWritablePair_from(JSContext *ctx, JSValueConst v, wjd_ReadableW
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "writable") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'writable' property from 'ReadableWritablePair': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_ReadableWritablePair_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'writable' property from 'ReadableWritablePair': Required member is undefined."); { wjd_ReadableWritablePair_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_writable = true;
@@ -25066,7 +25075,7 @@ bool wjd_ReadableWritablePair_from(JSContext *ctx, JSValueConst v, wjd_ReadableW
 void wjd_StreamPipeOptions_free(JSContext *ctx, wjd_StreamPipeOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->signal);
+    JS_FreeValue(ctx, d->signal); d->signal = JS_UNDEFINED;
 }
 
 bool wjd_StreamPipeOptions_from(JSContext *ctx, JSValueConst v, wjd_StreamPipeOptions *out)
@@ -25074,10 +25083,10 @@ bool wjd_StreamPipeOptions_from(JSContext *ctx, JSValueConst v, wjd_StreamPipeOp
     memset(out, 0, sizeof *out);
     out->signal = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'StreamPipeOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'StreamPipeOptions'."); { wjd_StreamPipeOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "preventAbort") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StreamPipeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->preventAbort = JS_ToBool(ctx, x);
@@ -25086,7 +25095,7 @@ bool wjd_StreamPipeOptions_from(JSContext *ctx, JSValueConst v, wjd_StreamPipeOp
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "preventCancel") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StreamPipeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->preventCancel = JS_ToBool(ctx, x);
@@ -25095,7 +25104,7 @@ bool wjd_StreamPipeOptions_from(JSContext *ctx, JSValueConst v, wjd_StreamPipeOp
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "preventClose") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StreamPipeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->preventClose = JS_ToBool(ctx, x);
@@ -25104,7 +25113,7 @@ bool wjd_StreamPipeOptions_from(JSContext *ctx, JSValueConst v, wjd_StreamPipeOp
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "signal") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_StreamPipeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_signal = true;
@@ -25124,10 +25133,10 @@ bool wjd_ReadableStreamIteratorOptions_from(JSContext *ctx, JSValueConst v, wjd_
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ReadableStreamIteratorOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ReadableStreamIteratorOptions'."); { wjd_ReadableStreamIteratorOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "preventCancel") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ReadableStreamIteratorOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->preventCancel = JS_ToBool(ctx, x);
@@ -25146,15 +25155,15 @@ bool wjd_ReadableStreamBYOBReaderReadOptions_from(JSContext *ctx, JSValueConst v
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ReadableStreamBYOBReaderReadOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ReadableStreamBYOBReaderReadOptions'."); { wjd_ReadableStreamBYOBReaderReadOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "min") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ReadableStreamBYOBReaderReadOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->min = 1;
         } else {
             bool ok = wj_to_uint64(ctx, x, &out->min, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ReadableStreamBYOBReaderReadOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -25171,15 +25180,15 @@ bool wjd_ResizeObserverOptions_from(JSContext *ctx, JSValueConst v, wjd_ResizeOb
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ResizeObserverOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ResizeObserverOptions'."); { wjd_ResizeObserverOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "box") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ResizeObserverOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->box.ptr = "content-box"; out->box.len = 11;
         } else {
             bool ok = wj_to_str(ctx, x, &out->box, 0, "") && wj_check_enum(ctx, &out->box, wje_ResizeObserverBoxOptions, "ResizeObserverBoxOptions");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ResizeObserverOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -25189,7 +25198,7 @@ bool wjd_ResizeObserverOptions_from(JSContext *ctx, JSValueConst v, wjd_ResizeOb
 void wjd_ResponseInit_free(JSContext *ctx, wjd_ResponseInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->headers);
+    JS_FreeValue(ctx, d->headers); d->headers = JS_UNDEFINED;
     wj_str_free(ctx, &d->statusText);
 }
 
@@ -25198,10 +25207,10 @@ bool wjd_ResponseInit_from(JSContext *ctx, JSValueConst v, wjd_ResponseInit *out
     memset(out, 0, sizeof *out);
     out->headers = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ResponseInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'ResponseInit'."); { wjd_ResponseInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "headers") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ResponseInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_headers = true;
@@ -25211,23 +25220,23 @@ bool wjd_ResponseInit_from(JSContext *ctx, JSValueConst v, wjd_ResponseInit *out
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "status") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ResponseInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->status = 200;
         } else {
             bool ok = wj_to_uint32(ctx, x, &out->status, 16, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ResponseInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "statusText") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_ResponseInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->statusText.ptr = ""; out->statusText.len = 0;
         } else {
             bool ok = wj_to_str(ctx, x, &out->statusText, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_ResponseInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -25237,13 +25246,13 @@ bool wjd_ResponseInit_from(JSContext *ctx, JSValueConst v, wjd_ResponseInit *out
 void wjd_SanitizerConfig_free(JSContext *ctx, wjd_SanitizerConfig *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->attributes);
-    JS_FreeValue(ctx, d->elements);
-    JS_FreeValue(ctx, d->processingInstructions);
-    JS_FreeValue(ctx, d->removeAttributes);
-    JS_FreeValue(ctx, d->removeElements);
-    JS_FreeValue(ctx, d->removeProcessingInstructions);
-    JS_FreeValue(ctx, d->replaceWithChildrenElements);
+    JS_FreeValue(ctx, d->attributes); d->attributes = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->elements); d->elements = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->processingInstructions); d->processingInstructions = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->removeAttributes); d->removeAttributes = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->removeElements); d->removeElements = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->removeProcessingInstructions); d->removeProcessingInstructions = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->replaceWithChildrenElements); d->replaceWithChildrenElements = JS_UNDEFINED;
 }
 
 bool wjd_SanitizerConfig_from(JSContext *ctx, JSValueConst v, wjd_SanitizerConfig *out)
@@ -25257,10 +25266,10 @@ bool wjd_SanitizerConfig_from(JSContext *ctx, JSValueConst v, wjd_SanitizerConfi
     out->removeProcessingInstructions = JS_UNDEFINED;
     out->replaceWithChildrenElements = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SanitizerConfig'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SanitizerConfig'."); { wjd_SanitizerConfig_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "attributes") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerConfig_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_attributes = true;
@@ -25270,7 +25279,7 @@ bool wjd_SanitizerConfig_from(JSContext *ctx, JSValueConst v, wjd_SanitizerConfi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "comments") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerConfig_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_comments = true;
@@ -25280,7 +25289,7 @@ bool wjd_SanitizerConfig_from(JSContext *ctx, JSValueConst v, wjd_SanitizerConfi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "dataAttributes") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerConfig_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_dataAttributes = true;
@@ -25290,7 +25299,7 @@ bool wjd_SanitizerConfig_from(JSContext *ctx, JSValueConst v, wjd_SanitizerConfi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "elements") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerConfig_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_elements = true;
@@ -25300,7 +25309,7 @@ bool wjd_SanitizerConfig_from(JSContext *ctx, JSValueConst v, wjd_SanitizerConfi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "javascriptURLs") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerConfig_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_javascriptURLs = true;
@@ -25310,7 +25319,7 @@ bool wjd_SanitizerConfig_from(JSContext *ctx, JSValueConst v, wjd_SanitizerConfi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "processingInstructions") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerConfig_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_processingInstructions = true;
@@ -25320,7 +25329,7 @@ bool wjd_SanitizerConfig_from(JSContext *ctx, JSValueConst v, wjd_SanitizerConfi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "removeAttributes") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerConfig_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_removeAttributes = true;
@@ -25330,7 +25339,7 @@ bool wjd_SanitizerConfig_from(JSContext *ctx, JSValueConst v, wjd_SanitizerConfi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "removeElements") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerConfig_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_removeElements = true;
@@ -25340,7 +25349,7 @@ bool wjd_SanitizerConfig_from(JSContext *ctx, JSValueConst v, wjd_SanitizerConfi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "removeProcessingInstructions") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerConfig_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_removeProcessingInstructions = true;
@@ -25350,7 +25359,7 @@ bool wjd_SanitizerConfig_from(JSContext *ctx, JSValueConst v, wjd_SanitizerConfi
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "replaceWithChildrenElements") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerConfig_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_replaceWithChildrenElements = true;
@@ -25372,27 +25381,27 @@ bool wjd_SanitizerElementNamespace_from(JSContext *ctx, JSValueConst v, wjd_Sani
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SanitizerElementNamespace'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SanitizerElementNamespace'."); { wjd_SanitizerElementNamespace_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "name") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'name' property from 'SanitizerElementNamespace': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_SanitizerElementNamespace_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'name' property from 'SanitizerElementNamespace': Required member is undefined."); { wjd_SanitizerElementNamespace_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_name = true;
             bool ok = wj_to_str(ctx, x, &out->name, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SanitizerElementNamespace_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "namespace") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerElementNamespace_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->namespace.ptr = "http://www.w3.org/1999/xhtml"; out->namespace.len = 28;
         } else {
             bool ok = wj_to_str(ctx, x, &out->namespace, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SanitizerElementNamespace_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -25403,8 +25412,8 @@ void wjd_SanitizerElementNamespaceWithAttributes_free(JSContext *ctx, wjd_Saniti
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wjd_SanitizerElementNamespace_free(ctx, &d->base);
-    JS_FreeValue(ctx, d->attributes);
-    JS_FreeValue(ctx, d->removeAttributes);
+    JS_FreeValue(ctx, d->attributes); d->attributes = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->removeAttributes); d->removeAttributes = JS_UNDEFINED;
 }
 
 bool wjd_SanitizerElementNamespaceWithAttributes_from(JSContext *ctx, JSValueConst v, wjd_SanitizerElementNamespaceWithAttributes *out)
@@ -25412,12 +25421,12 @@ bool wjd_SanitizerElementNamespaceWithAttributes_from(JSContext *ctx, JSValueCon
     memset(out, 0, sizeof *out);
     out->attributes = JS_UNDEFINED;
     out->removeAttributes = JS_UNDEFINED;
-    if (!wjd_SanitizerElementNamespace_from(ctx, v, &out->base)) { return false; }
+    if (!wjd_SanitizerElementNamespace_from(ctx, v, &out->base)) { wjd_SanitizerElementNamespaceWithAttributes_free(ctx, out); return false; }
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SanitizerElementNamespaceWithAttributes'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SanitizerElementNamespaceWithAttributes'."); { wjd_SanitizerElementNamespaceWithAttributes_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "attributes") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerElementNamespaceWithAttributes_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_attributes = true;
@@ -25427,7 +25436,7 @@ bool wjd_SanitizerElementNamespaceWithAttributes_from(JSContext *ctx, JSValueCon
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "removeAttributes") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerElementNamespaceWithAttributes_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_removeAttributes = true;
@@ -25448,16 +25457,16 @@ bool wjd_SanitizerProcessingInstruction_from(JSContext *ctx, JSValueConst v, wjd
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SanitizerProcessingInstruction'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SanitizerProcessingInstruction'."); { wjd_SanitizerProcessingInstruction_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "target") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'target' property from 'SanitizerProcessingInstruction': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_SanitizerProcessingInstruction_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'target' property from 'SanitizerProcessingInstruction': Required member is undefined."); { wjd_SanitizerProcessingInstruction_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_target = true;
             bool ok = wj_to_str(ctx, x, &out->target, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SanitizerProcessingInstruction_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -25475,26 +25484,26 @@ bool wjd_SanitizerAttributeNamespace_from(JSContext *ctx, JSValueConst v, wjd_Sa
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SanitizerAttributeNamespace'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SanitizerAttributeNamespace'."); { wjd_SanitizerAttributeNamespace_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "name") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'name' property from 'SanitizerAttributeNamespace': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_SanitizerAttributeNamespace_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'name' property from 'SanitizerAttributeNamespace': Required member is undefined."); { wjd_SanitizerAttributeNamespace_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_name = true;
             bool ok = wj_to_str(ctx, x, &out->name, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SanitizerAttributeNamespace_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "namespace") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SanitizerAttributeNamespace_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_str(ctx, x, &out->namespace, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SanitizerAttributeNamespace_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -25505,7 +25514,7 @@ void wjd_SchedulerPostTaskOptions_free(JSContext *ctx, wjd_SchedulerPostTaskOpti
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wj_str_free(ctx, &d->priority);
-    JS_FreeValue(ctx, d->signal);
+    JS_FreeValue(ctx, d->signal); d->signal = JS_UNDEFINED;
 }
 
 bool wjd_SchedulerPostTaskOptions_from(JSContext *ctx, JSValueConst v, wjd_SchedulerPostTaskOptions *out)
@@ -25513,32 +25522,32 @@ bool wjd_SchedulerPostTaskOptions_from(JSContext *ctx, JSValueConst v, wjd_Sched
     memset(out, 0, sizeof *out);
     out->signal = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SchedulerPostTaskOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'SchedulerPostTaskOptions'."); { wjd_SchedulerPostTaskOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "delay") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SchedulerPostTaskOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->delay = 0;
         } else {
             bool ok = wj_to_uint64(ctx, x, &out->delay, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SchedulerPostTaskOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "priority") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SchedulerPostTaskOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_priority = true;
             bool ok = wj_to_str(ctx, x, &out->priority, 0, "") && wj_check_enum(ctx, &out->priority, wje_TaskPriority, "TaskPriority");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_SchedulerPostTaskOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "signal") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_SchedulerPostTaskOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_signal = true;
@@ -25558,10 +25567,10 @@ bool wjd_IsInputPendingOptions_from(JSContext *ctx, JSValueConst v, wjd_IsInputP
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IsInputPendingOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'IsInputPendingOptions'."); { wjd_IsInputPendingOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "includeContinuous") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_IsInputPendingOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->includeContinuous = JS_ToBool(ctx, x);
@@ -25574,7 +25583,7 @@ bool wjd_IsInputPendingOptions_from(JSContext *ctx, JSValueConst v, wjd_IsInputP
 void wjd_GetComposedRangesOptions_free(JSContext *ctx, wjd_GetComposedRangesOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->shadowRoots);
+    JS_FreeValue(ctx, d->shadowRoots); d->shadowRoots = JS_UNDEFINED;
 }
 
 bool wjd_GetComposedRangesOptions_from(JSContext *ctx, JSValueConst v, wjd_GetComposedRangesOptions *out)
@@ -25582,10 +25591,10 @@ bool wjd_GetComposedRangesOptions_from(JSContext *ctx, JSValueConst v, wjd_GetCo
     memset(out, 0, sizeof *out);
     out->shadowRoots = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GetComposedRangesOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'GetComposedRangesOptions'."); { wjd_GetComposedRangesOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "shadowRoots") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_GetComposedRangesOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->shadowRoots = JS_DupValue(ctx, x);
@@ -25599,7 +25608,7 @@ void wjd_CSSStyleSheetInit_free(JSContext *ctx, wjd_CSSStyleSheetInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
     wj_str_free(ctx, &d->baseURL);
-    JS_FreeValue(ctx, d->media);
+    JS_FreeValue(ctx, d->media); d->media = JS_UNDEFINED;
 }
 
 bool wjd_CSSStyleSheetInit_from(JSContext *ctx, JSValueConst v, wjd_CSSStyleSheetInit *out)
@@ -25607,20 +25616,20 @@ bool wjd_CSSStyleSheetInit_from(JSContext *ctx, JSValueConst v, wjd_CSSStyleShee
     memset(out, 0, sizeof *out);
     out->media = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CSSStyleSheetInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'CSSStyleSheetInit'."); { wjd_CSSStyleSheetInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "baseURL") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CSSStyleSheetInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             bool ok = wj_to_str(ctx, x, &out->baseURL, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_CSSStyleSheetInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "disabled") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CSSStyleSheetInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->disabled = JS_ToBool(ctx, x);
@@ -25629,7 +25638,7 @@ bool wjd_CSSStyleSheetInit_from(JSContext *ctx, JSValueConst v, wjd_CSSStyleShee
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "media") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_CSSStyleSheetInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->media = JS_DupValue(ctx, x);
@@ -25649,10 +25658,10 @@ void wjd_JsonWebKey_free(JSContext *ctx, wjd_JsonWebKey *d)
     wj_str_free(ctx, &d->dq);
     wj_str_free(ctx, &d->e);
     wj_str_free(ctx, &d->k);
-    JS_FreeValue(ctx, d->key_ops);
+    JS_FreeValue(ctx, d->key_ops); d->key_ops = JS_UNDEFINED;
     wj_str_free(ctx, &d->kty);
     wj_str_free(ctx, &d->n);
-    JS_FreeValue(ctx, d->oth);
+    JS_FreeValue(ctx, d->oth); d->oth = JS_UNDEFINED;
     wj_str_free(ctx, &d->p);
     wj_str_free(ctx, &d->q);
     wj_str_free(ctx, &d->qi);
@@ -25667,76 +25676,76 @@ bool wjd_JsonWebKey_from(JSContext *ctx, JSValueConst v, wjd_JsonWebKey *out)
     out->key_ops = JS_UNDEFINED;
     out->oth = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'JsonWebKey'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'JsonWebKey'."); { wjd_JsonWebKey_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "alg") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_alg = true;
             bool ok = wj_to_str(ctx, x, &out->alg, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "crv") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_crv = true;
             bool ok = wj_to_str(ctx, x, &out->crv, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "d") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_d = true;
             bool ok = wj_to_str(ctx, x, &out->d, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "dp") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_dp = true;
             bool ok = wj_to_str(ctx, x, &out->dp, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "dq") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_dq = true;
             bool ok = wj_to_str(ctx, x, &out->dq, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "e") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_e = true;
             bool ok = wj_to_str(ctx, x, &out->e, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "ext") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_ext = true;
@@ -25746,18 +25755,18 @@ bool wjd_JsonWebKey_from(JSContext *ctx, JSValueConst v, wjd_JsonWebKey *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "k") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_k = true;
             bool ok = wj_to_str(ctx, x, &out->k, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "key_ops") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_key_ops = true;
@@ -25767,29 +25776,29 @@ bool wjd_JsonWebKey_from(JSContext *ctx, JSValueConst v, wjd_JsonWebKey *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "kty") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_kty = true;
             bool ok = wj_to_str(ctx, x, &out->kty, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "n") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_n = true;
             bool ok = wj_to_str(ctx, x, &out->n, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "oth") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_oth = true;
@@ -25799,67 +25808,67 @@ bool wjd_JsonWebKey_from(JSContext *ctx, JSValueConst v, wjd_JsonWebKey *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "p") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_p = true;
             bool ok = wj_to_str(ctx, x, &out->p, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "q") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_q = true;
             bool ok = wj_to_str(ctx, x, &out->q, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "qi") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_qi = true;
             bool ok = wj_to_str(ctx, x, &out->qi, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "use") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_use = true;
             bool ok = wj_to_str(ctx, x, &out->use, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "x") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_x = true;
             bool ok = wj_to_str(ctx, x, &out->x, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "y") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_JsonWebKey_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_y = true;
             bool ok = wj_to_str(ctx, x, &out->y, 0, "");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_JsonWebKey_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -25875,10 +25884,10 @@ bool wjd_TextDecoderOptions_from(JSContext *ctx, JSValueConst v, wjd_TextDecoder
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TextDecoderOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TextDecoderOptions'."); { wjd_TextDecoderOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "fatal") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TextDecoderOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->fatal = JS_ToBool(ctx, x);
@@ -25887,7 +25896,7 @@ bool wjd_TextDecoderOptions_from(JSContext *ctx, JSValueConst v, wjd_TextDecoder
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "ignoreBOM") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TextDecoderOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->ignoreBOM = JS_ToBool(ctx, x);
@@ -25906,10 +25915,10 @@ bool wjd_TextDecodeOptions_from(JSContext *ctx, JSValueConst v, wjd_TextDecodeOp
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TextDecodeOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TextDecodeOptions'."); { wjd_TextDecodeOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "stream") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TextDecodeOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->stream = JS_ToBool(ctx, x);
@@ -25922,7 +25931,7 @@ bool wjd_TextDecodeOptions_from(JSContext *ctx, JSValueConst v, wjd_TextDecodeOp
 void wjd_TouchInit_free(JSContext *ctx, wjd_TouchInit *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->target);
+    JS_FreeValue(ctx, d->target); d->target = JS_UNDEFINED;
     wj_str_free(ctx, &d->touchType);
 }
 
@@ -25931,155 +25940,155 @@ bool wjd_TouchInit_from(JSContext *ctx, JSValueConst v, wjd_TouchInit *out)
     memset(out, 0, sizeof *out);
     out->target = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TouchInit'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TouchInit'."); { wjd_TouchInit_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "altitudeAngle") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->altitudeAngle = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->altitudeAngle, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "azimuthAngle") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->azimuthAngle = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->azimuthAngle, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "clientX") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->clientX = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->clientX, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "clientY") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->clientY = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->clientY, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "force") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->force = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->force, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "identifier") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'identifier' property from 'TouchInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'identifier' property from 'TouchInit': Required member is undefined."); { wjd_TouchInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_identifier = true;
             bool ok = wj_to_int32(ctx, x, &out->identifier, 32, 0);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "pageX") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->pageX = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->pageX, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "pageY") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->pageY = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->pageY, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "radiusX") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->radiusX = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->radiusX, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "radiusY") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->radiusY = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->radiusY, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "rotationAngle") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->rotationAngle = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->rotationAngle, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "screenX") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->screenX = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->screenX, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "screenY") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->screenY = 0;
         } else {
             bool ok = wj_to_double(ctx, x, &out->screenY, true);
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "target") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
-        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'target' property from 'TouchInit': Required member is undefined."); return false; }
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
+        if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'target' property from 'TouchInit': Required member is undefined."); { wjd_TouchInit_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_target = true;
@@ -26089,12 +26098,12 @@ bool wjd_TouchInit_from(JSContext *ctx, JSValueConst v, wjd_TouchInit *out)
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "touchType") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TouchInit_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->touchType.ptr = "direct"; out->touchType.len = 6;
         } else {
             bool ok = wj_to_str(ctx, x, &out->touchType, 0, "") && wj_check_enum(ctx, &out->touchType, wje_TouchType, "TouchType");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_TouchInit_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }
@@ -26104,10 +26113,10 @@ bool wjd_TouchInit_from(JSContext *ctx, JSValueConst v, wjd_TouchInit *out)
 void wjd_TrustedTypePolicyOptions_free(JSContext *ctx, wjd_TrustedTypePolicyOptions *d)
 {
     WJ_UNUSED(ctx); WJ_UNUSED(d);
-    JS_FreeValue(ctx, d->createHTML);
-    JS_FreeValue(ctx, d->createParserOptions);
-    JS_FreeValue(ctx, d->createScript);
-    JS_FreeValue(ctx, d->createScriptURL);
+    JS_FreeValue(ctx, d->createHTML); d->createHTML = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->createParserOptions); d->createParserOptions = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->createScript); d->createScript = JS_UNDEFINED;
+    JS_FreeValue(ctx, d->createScriptURL); d->createScriptURL = JS_UNDEFINED;
 }
 
 bool wjd_TrustedTypePolicyOptions_from(JSContext *ctx, JSValueConst v, wjd_TrustedTypePolicyOptions *out)
@@ -26118,10 +26127,10 @@ bool wjd_TrustedTypePolicyOptions_from(JSContext *ctx, JSValueConst v, wjd_Trust
     out->createScript = JS_UNDEFINED;
     out->createScriptURL = JS_UNDEFINED;
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TrustedTypePolicyOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'TrustedTypePolicyOptions'."); { wjd_TrustedTypePolicyOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "createHTML") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TrustedTypePolicyOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_createHTML = true;
@@ -26131,7 +26140,7 @@ bool wjd_TrustedTypePolicyOptions_from(JSContext *ctx, JSValueConst v, wjd_Trust
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "createParserOptions") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TrustedTypePolicyOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_createParserOptions = true;
@@ -26141,7 +26150,7 @@ bool wjd_TrustedTypePolicyOptions_from(JSContext *ctx, JSValueConst v, wjd_Trust
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "createScript") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TrustedTypePolicyOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_createScript = true;
@@ -26151,7 +26160,7 @@ bool wjd_TrustedTypePolicyOptions_from(JSContext *ctx, JSValueConst v, wjd_Trust
     }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "createScriptURL") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_TrustedTypePolicyOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
         } else {
             out->has_createScriptURL = true;
@@ -26172,15 +26181,15 @@ bool wjd_WorkletOptions_from(JSContext *ctx, JSValueConst v, wjd_WorkletOptions 
 {
     memset(out, 0, sizeof *out);
     bool is_object = JS_IsObject(v);
-    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'WorkletOptions'."); return false; }
+    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) { JS_ThrowTypeError(ctx, "The provided value is not of type 'WorkletOptions'."); { wjd_WorkletOptions_free(ctx, out); return false; } }
     {
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "credentials") : JS_UNDEFINED;
-        if (JS_IsException(x)) {{ return false; }}
+        if (JS_IsException(x)) { wjd_WorkletOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
             out->credentials.ptr = "same-origin"; out->credentials.len = 11;
         } else {
             bool ok = wj_to_str(ctx, x, &out->credentials, 0, "") && wj_check_enum(ctx, &out->credentials, wje_RequestCredentials, "RequestCredentials");
-            if (!ok) { JS_FreeValue(ctx, x); return false; }
+            if (!ok) { JS_FreeValue(ctx, x); wjd_WorkletOptions_free(ctx, out); return false; }
         }
         JS_FreeValue(ctx, x);
     }

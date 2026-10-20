@@ -140,7 +140,7 @@ attr_matches :: proc(n: ^dom.Node, s: css.Simple) -> bool {
 	case .Suffix: return want != "" && len(v) >= len(want) && value_equals(v[len(v) - len(want):], want, s.ci)
 	case .Substring:
 		if want == "" { return false }
-		if s.ci { return strings.contains(strings.to_lower(v, context.temp_allocator), strings.to_lower(want, context.temp_allocator)) }
+		if s.ci { return strings.contains(css.lower_temp(v), css.lower_temp(want)) }
 		return strings.contains(v, want)
 	}
 	return false
@@ -182,9 +182,38 @@ fill_siblings :: proc(m: ^Match_Ctx, parent: base.Handle) {
 	}
 }
 
+// Positions among element siblings. A small family is counted directly (no map: matching :nth-child over a page of
+// rows used to spend more time filling and growing the maps than matching); a large one is indexed once per parent.
 @(private)
 sibling_info :: proc(m: ^Match_Ctx, h: base.Handle) -> Sib_Info {
+	SMALL :: 32
 	n := node_of(m, h)
+	if !m.filled[n.parent] {
+		info := Sib_Info{index = 1, type_index = 1, index_last = 1, type_index_last = 1}
+		steps := 0
+		for cur := n.prev; cur != base.NIL_HANDLE && steps < SMALL; steps += 1 {
+			s := node_of(m, cur)
+			if s.kind == .Element {
+				info.index += 1
+				if s.name == n.name { info.type_index += 1 }
+			}
+			cur = s.prev
+			if cur == base.NIL_HANDLE { steps = -1; break }
+		}
+		if steps < 0 || n.prev == base.NIL_HANDLE {
+			steps = 0
+			for cur := n.next; cur != base.NIL_HANDLE && steps < SMALL; steps += 1 {
+				s := node_of(m, cur)
+				if s.kind == .Element {
+					info.index_last += 1
+					if s.name == n.name { info.type_index_last += 1 }
+				}
+				cur = s.next
+				if cur == base.NIL_HANDLE { steps = -1; break }
+			}
+			if steps < 0 || n.next == base.NIL_HANDLE { return info }
+		}
+	}
 	fill_siblings(m, n.parent)
 	return m.sibs[h]
 }
@@ -222,7 +251,7 @@ is_disabled :: proc(m: ^Match_Ctx, h: base.Handle) -> bool {
 @(private)
 text_input_type :: proc(n: ^dom.Node) -> bool {
 	t, _ := attr(n, "type")
-	switch strings.to_lower(t, context.temp_allocator) {
+	switch css.lower_temp(t) {
 	case "", "text", "search", "url", "tel", "email", "password", "number", "date", "datetime-local", "month", "week", "time": return true
 	}
 	return false
@@ -254,7 +283,7 @@ dir_of :: proc(m: ^Match_Ctx, h: base.Handle) -> string {
 	for cur := h; cur != base.NIL_HANDLE; cur = parent_element(m, cur) {
 		n := node_of(m, cur)
 		if v, ok := attr(n, "dir"); ok {
-			l := strings.to_lower(v, context.temp_allocator)
+			l := css.lower_temp(v)
 			if l == "ltr" || l == "rtl" { return l }
 		}
 	}
@@ -334,7 +363,7 @@ matches_compound :: proc(m: ^Match_Ctx, el: base.Handle, comp: css.Compound) -> 
 	n := node_of(m, el)
 	if n == nil || n.kind != .Element { return false }
 	if el == m.featureless && !featureless_may_match(comp) { return false }
-	for s in comp.simples { if !matches_simple(m, el, n, s) { return false } }
+	for &s in comp.simples { if !matches_simple(m, el, n, s) { return false } }
 	return true
 }
 

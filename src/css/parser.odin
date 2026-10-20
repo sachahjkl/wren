@@ -458,7 +458,11 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		url := ""
 		for v, i in prelude {
 			if v.kind == .Token && (v.tok.kind == .String || v.tok.kind == .Url) { url = v.tok.text; r.prelude = prelude[i + 1:]; break }
-			if v.kind == .Function && strings.equal_fold(v.tok.text, "url") && len(v.children) > 0 { url = v.children[0].tok.text; r.prelude = prelude[i + 1:]; break }
+			// url( "x.css" ): the spaces around the string are whitespace values
+			if v.kind == .Function && strings.equal_fold(v.tok.text, "url") {
+				args := trim_values(v.children)
+				if len(args) == 1 && args[0].kind == .Token && args[0].tok.kind == .String { url = args[0].tok.text; r.prelude = prelude[i + 1:]; break }
+			}
 		}
 		if url == "" { return nil }
 		r.url = url

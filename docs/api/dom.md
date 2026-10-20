@@ -3231,6 +3231,16 @@ A part of a document node (the page's or one createHTMLDocument made): 0 documen
 
 Host: `Document_partOf :: proc(c: ^Call, document: Api_Node, which: i32) -> u64`
 
+### `Window_print`
+
+```
+void Window_print()
+```
+
+window.print().
+
+Host: `Window_print :: proc(c: ^Call)`
+
 ### `Element_attachShadowInit`
 
 ```

@@ -142,7 +142,7 @@ void wj_report_to_host(wj_ctx *ctx, wj_val exc)
     free(text);
 }
 
-/* Uncaught: the error event of the global first (runtime/errors.c may cancel), then the console. Takes `exc`. */
+/* Uncaught: the error event of the global first (runtime/load_errors.c may cancel), then the console. Takes `exc`. */
 __attribute__((weak)) bool wj_fire_error_event(wj_ctx *ctx, wj_val exc) { WJ_UNUSED(ctx); WJ_UNUSED(exc); return false; }
 
 void wj_report_exception(wj_ctx *ctx, wj_val exc)
@@ -169,6 +169,15 @@ void wj_report_pending(wj_ctx *ctx)
  * recursion through the browser meets the same limit as plain recursion instead of starting over at each level and
  * running past the end of the C stack. The C stack grows down: an entry nested in running frames is below the mark. */
 static uintptr_t wj_stack_mark;
+#define WJ_STACK_BUDGET (768 * 1024)
+
+/* C recursion with no JavaScript frame in between (structured clone of a deeply nested value) never meets QuickJS's
+ * check: it asks here, against the same budget, measured from the same outermost entry. */
+bool wj_stack_exhausted(void)
+{
+    uintptr_t sp = (uintptr_t)__builtin_frame_address(0);
+    return wj_stack_mark != 0 && sp < wj_stack_mark && wj_stack_mark - sp > WJ_STACK_BUDGET;
+}
 
 void wj_stack_enter(JSContext *ctx)
 {
@@ -383,7 +392,7 @@ WJ_EXPORT("wj_preinit") int32_t wj_preinit(void)
     if (!rt) { return -1; }
     /* well below the C stack the module reserves (build_js.ps1: -z stack-size, 1 MiB): 256 KiB stay for what runs past
      * the bound before the engine unwinds (an uncaught RangeError's report, deep in a recursion through the browser) */
-    JS_SetMaxStackSize(rt, 768 * 1024);
+    JS_SetMaxStackSize(rt, WJ_STACK_BUDGET);
     JS_SetInterruptHandler(rt, wj_interrupt_handler, NULL);
     JSContext *ctx = JS_NewContext(rt);
     if (!ctx) { return -2; }

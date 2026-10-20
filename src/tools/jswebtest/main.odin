@@ -124,10 +124,25 @@ selected :: proc(name: string) -> bool {
 	return false
 }
 
-pump_for :: proc(ms: int) {
+// Runs the loop until `done` says so; `seconds` only ends a run that fails (nothing checked depends on how long it took).
+wait_until :: proc(done: proc() -> bool, what: string, seconds := 30.0) -> bool {
 	start := time.tick_now()
-	for time.duration_milliseconds(time.tick_since(start)) < f64(ms) { host.loop_wait(&loop, 5) }
+	for !done() {
+		if time.duration_seconds(time.tick_since(start)) > seconds { fmt.printf("FAIL timeout waiting for %s\n", what); failures += 1; return false }
+		host.loop_wait(&loop, 5)
+	}
+	return true
 }
+
+// Runs what is ready now (posted tasks, due timers), turn after turn, until nothing is.
+drain :: proc() {
+	for _ in 0 ..< 1000 {
+		if host.next_timeout_ms(&loop) != 0 { return }
+		host.loop_wait(&loop, 0)
+	}
+}
+
+listener_log: ^Page_Log
 
 host_objects :: proc(p: ^page.Page) -> int { return p.objects.pool.count }
 
@@ -176,7 +191,8 @@ main :: proc() {
 	if selected("storage") {
 		fmt.println("-- storage (two pages of one origin, the storage event)")
 		listener := open("storage_listener")
-		pump_for(100)
+		listener_log = listener.log
+		wait_until(proc() -> bool { for l in listener_log.lines { if l == "LISTENING" { return true } }; return false }, "the storage listener")
 		writer := open("storage")
 		wait(writer)
 		wait(listener)
@@ -189,8 +205,12 @@ main :: proc() {
 		clear(&navigations)
 		actions := make(map[string]Action, context.temp_allocator)
 		actions["navigations"] = proc(p: ^page.Page, l: ^Page_Log) {
-			pump_for(100)
 			want := []string{fmt.tprintf("Assign %s/jsweb/other", BASE), fmt.tprintf("Replace %s/jsweb/replaced", BASE), "Reload"}
+			wait_until(proc() -> bool {
+				n := 0
+				for w in ([]string{"Assign ", "Replace ", "Reload"}) { for x in navigations { if strings.has_prefix(x, w) { n += 1; break } } }
+				return n == 3
+			}, "the three navigations")
 			for w in want {
 				found := false
 				for n in navigations { if strings.has_prefix(n, w) { found = true } }
@@ -214,7 +234,7 @@ main :: proc() {
 		wait(r)
 		before := host_objects(r.p)
 		js.collect(r.p.js.inst)
-		pump_for(50)
+		drain()
 		after := host_objects(r.p)
 		fmt.printf("  host objects before collection %d, after %d\n", before, after)
 		if before > after && after < 100 { passes += 1 } else { fmt.printf("FAIL [gc] host objects of collected wrappers are released (%d -> %d)\n", before, after); failures += 1 }

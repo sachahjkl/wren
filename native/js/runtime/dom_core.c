@@ -735,7 +735,7 @@ static JSValue nul_list(JSContext *ctx, int32_t n)
     while (p < end) {
         const char *z = memchr(p, 0, (size_t)(end - p));
         if (!z) { z = end; }
-        JS_SetPropertyUint32(ctx, arr, k++, JS_NewStringLen(ctx, p, (size_t)(z - p)));
+        wj_array_set(ctx, arr, k++, JS_NewStringLen(ctx, p, (size_t)(z - p)));
         p = z + 1;
     }
     return arr;
@@ -1015,7 +1015,7 @@ int wjr_DOMStringMap_named_keys(JSContext *ctx, JSValueConst obj, JSValue array)
     while (p < end) {
         const char *z = memchr(p, 0, (size_t)(end - p));
         if (!z) { z = end; }
-        JS_SetPropertyUint32(ctx, array, k++, JS_NewStringLen(ctx, p, (size_t)(z - p)));
+        wj_array_set(ctx, array, k++, JS_NewStringLen(ctx, p, (size_t)(z - p)));
         p = z + 1;
     }
     return 0;

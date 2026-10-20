@@ -90,7 +90,7 @@ parser_rules_and_declarations :: proc(t: ^testing.T) {
 		@unknown foo;
 	`
 	s := parse_stylesheet(src, OPT)
-	defer stylesheet_destroy(s)
+	defer { stylesheet_destroy(s); free(s) }
 	kinds := make([dynamic]Rule_Kind, context.temp_allocator)
 	for r in s.rules { append(&kinds, r.kind) }
 	want := []Rule_Kind{.Import, .Style, .Media, .Font_Face, .Keyframes, .Layer_Statement, .Layer_Block, .Style, .Supports}
@@ -124,13 +124,13 @@ parser_error_recovery :: proc(t: ^testing.T) {
 	testing.expect_value(t, strings.join(names[:], ",", context.temp_allocator), "color,height,margin")
 	// unbalanced blocks
 	s := parse_stylesheet("a { color: red; b { c: d } e { f: g", OPT)
-	defer stylesheet_destroy(s)
+	defer { stylesheet_destroy(s); free(s) }
 	testing.expect(t, len(s.rules) >= 1)
 	// an unclosed string and a stray brace do not hang or crash
 	s2 := parse_stylesheet("a { content: \"x } b { color: red }", OPT)
-	defer stylesheet_destroy(s2)
+	defer { stylesheet_destroy(s2); free(s2) }
 	s3 := parse_stylesheet("} } } a{}", OPT)
-	defer stylesheet_destroy(s3)
+	defer { stylesheet_destroy(s3); free(s3) }
 }
 
 @(test)
@@ -140,20 +140,20 @@ parser_survives_hostile_nesting :: proc(t: ^testing.T) {
 	strings.write_string(&sb, "a { b: ")
 	for _ in 0 ..< 50_000 { strings.write_string(&sb, "(") }
 	s := parse_stylesheet(strings.to_string(sb), OPT)
-	defer stylesheet_destroy(s)
+	defer { stylesheet_destroy(s); free(s) }
 	testing.expect(t, len(s.errors) > 0, "the depth limit was hit and reported")
 	opt := OPT
 	opt.max_rules = 10
 	big := strings.repeat("a{b:c}", 1000, context.temp_allocator)
 	s2 := parse_stylesheet(big, opt)
-	defer stylesheet_destroy(s2)
+	defer { stylesheet_destroy(s2); free(s2) }
 	testing.expect(t, len(s2.rules) <= 10, "the rule limit is enforced")
 }
 
 @(test)
 nesting :: proc(t: ^testing.T) {
 	s := parse_stylesheet(".card { color: red; & .title { font-weight: bold } .x:hover { y: z } @media (min-width: 10px) { color: blue } }", OPT)
-	defer stylesheet_destroy(s)
+	defer { stylesheet_destroy(s); free(s) }
 	testing.expect_value(t, len(s.rules), 1)
 	card := s.rules[0]
 	testing.expect_value(t, len(card.declarations), 1)
@@ -218,7 +218,11 @@ selectors_and_specificity :: proc(t: ^testing.T) {
 	ops := [?]Attr_Op{.Exists, .Equals, .Includes, .Dash_Match, .Prefix, .Suffix, .Substring, .Equals}
 	for op, i in ops { testing.expect_value(t, l3[i].compounds[0].simples[0].op, op) }
 	testing.expect(t, l3[6].compounds[0].simples[0].ci)
-	nths := [?]struct { src: string, a, b: int }{{":nth-child(odd)", 2, 1}, {":nth-child(even)", 2, 0}, {":nth-child(5)", 0, 5}, {":nth-child(n)", 1, 0}, {":nth-child(-n+3)", -1, 3}, {":nth-child(2n - 1)", 2, -1}, {":nth-child(+3n+2)", 3, 2}, {":nth-last-of-type(4n)", 4, 0}}
+	// huge A and B are clamped to ±2^31 (min(int) / -1 traps when an index is matched); no digit separators
+	nths := [?]struct { src: string, a, b: int }{{":nth-child(odd)", 2, 1}, {":nth-child(even)", 2, 0}, {":nth-child(5)", 0, 5}, {":nth-child(n)", 1, 0}, {":nth-child(-n+3)", -1, 3}, {":nth-child(2n - 1)", 2, -1}, {":nth-child(+3n+2)", 3, 2}, {":nth-last-of-type(4n)", 4, 0},
+		{":nth-child(-n-9223372036854775807)", -1, -NTH_LIMIT}, {":nth-child(99999999999999999999n+1)", NTH_LIMIT, 1}, {":nth-child(99999999999999999999)", 0, NTH_LIMIT}}
+	_, sep_ok := sel(":nth-child(2n+1_0)", ar)
+	testing.expect(t, !sep_ok, "digit separators are not CSS")
 	for n in nths {
 		l4, good := sel(n.src, ar)
 		testing.expect(t, good, n.src)
@@ -270,6 +274,14 @@ media_queries :: proc(t: ^testing.T) {
 	testing.expect(t, !mq("not (unknown-feature: 1)", env), "...and so is their negation: unknown, not true")
 	testing.expect(t, !mq("(min-width: )", env), "a malformed query is 'not all'")
 	testing.expect(t, mq("(scripting: none)", env), "there is no scripting engine")
+	testing.expect(t, !mq("(min-width: 100px) and (max-width: 200px) or (min-width: 900px)", env), "and / or mixed without parentheses: invalid")
+	testing.expect(t, mq("((min-width: 100px) and (max-width: 200px)) or (min-width: 900px)", env))
+	square := env
+	square.height = square.width
+	testing.expect(t, mq("(orientation: portrait)", square) && !mq("(orientation: landscape)", square), "a square viewport is portrait")
+	s := parse_stylesheet("@import url( \"a.css\" ); @import url(\"b.css\") screen;", OPT)
+	defer { stylesheet_destroy(s); free(s) }
+	testing.expect(t, len(s.rules) == 2 && s.rules[0].url == "a.css" && s.rules[1].url == "b.css", "@import url( \"x\" ) with spaces")
 }
 
 @(private = "file")
@@ -383,6 +395,19 @@ calc_expressions :: proc(t: ^testing.T) {
 	deep := strings.concatenate({"calc(", strings.repeat("(", 200, context.temp_allocator), "1px", strings.repeat(")", 200, context.temp_allocator), ")"}, context.temp_allocator)
 	_, ok := calc_px(deep)
 	testing.expect(t, !ok)
+	// so are flat chains as long as a tree is deep (each term one level: the readers recursed until the stack overflowed)
+	for op in ([]string{" * 1", " + 1px"}) {
+		long := strings.concatenate({"calc(1px", strings.repeat(op, 100_000, context.temp_allocator), ")"}, context.temp_allocator)
+		_, lok := calc_px(long)
+		testing.expect(t, !lok, "100 000 terms")
+	}
+	check(t, strings.concatenate({"calc(0px", strings.repeat(" + 1px", 300, context.temp_allocator), ")"}, context.temp_allocator), 300)
+	// overflows saturate at `infinity`: no infinity or NaN reaches a value
+	check(t, "calc(1e999px - 1e999px)", 0)
+	check(t, "calc(1e300px * 1e300)", CALC_INFINITY)
+	check(t, "calc(1e999px)", CALC_INFINITY)
+	big := tokenize("99999999999999999999 -1e999", context.temp_allocator)
+	testing.expect(t, big[0].num == CALC_INFINITY && big[2].num == -CALC_INFINITY, "huge numbers saturate in the tokenizer")
 }
 
 @(test)

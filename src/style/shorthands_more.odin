@@ -72,7 +72,7 @@ expand_font :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longhand, bo
 	for i < len(vs) {
 		v := vs[i]
 		if v.kind == .Token && v.tok.kind == .Ident {
-			switch strings.to_lower(v.tok.text, context.temp_allocator) {
+			switch css.lower_temp(v.tok.text) {
 			case "normal": i += 1; skip_ws(vs, &i); continue
 			case "small-caps": variant = vs[i:i + 1]; i += 1; skip_ws(vs, &i); continue
 			case "ultra-condensed", "extra-condensed", "condensed", "semi-condensed", "semi-expanded", "expanded", "extra-expanded", "ultra-expanded":
@@ -140,7 +140,7 @@ expand_background :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longha
 			}
 			#partial switch it.kind {
 			case .Function:
-				switch strings.to_lower(it.tok.text, context.temp_allocator) {
+				switch css.lower_temp(it.tok.text) {
 				case "url", "image", "image-set", "-webkit-image-set", "cross-fade", "element",
 				     "linear-gradient", "radial-gradient", "conic-gradient", "repeating-linear-gradient", "repeating-radial-gradient", "repeating-conic-gradient",
 				     "-webkit-linear-gradient", "-webkit-radial-gradient", "-webkit-repeating-linear-gradient", "-webkit-repeating-radial-gradient",
@@ -163,7 +163,7 @@ expand_background :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longha
 					l.color = items[i:i + 1]
 				case .Dimension, .Percentage, .Number: append(in_size ? &l.size : &l.pos, it)
 				case .Ident:
-					switch strings.to_lower(it.tok.text, context.temp_allocator) {
+					switch css.lower_temp(it.tok.text) {
 					case "none":
 						if l.image != nil { return }
 						l.image = items[i:i + 1]
@@ -449,7 +449,7 @@ is_easing_value :: proc(v: css.Value) -> bool {
 	case "linear", "ease", "ease-in", "ease-out", "ease-in-out", "step-start", "step-end": return true
 	}
 	if v.kind == .Function {
-		switch strings.to_lower(v.tok.text, context.temp_allocator) { case "cubic-bezier", "steps", "linear": return true }
+		switch css.lower_temp(v.tok.text) { case "cubic-bezier", "steps", "linear": return true }
 	}
 	return false
 }

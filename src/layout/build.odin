@@ -5,7 +5,6 @@ import "core:strings"
 import "core:unicode"
 import "core:unicode/utf8"
 import "wb:base"
-import "wb:css"
 import "wb:dom"
 import "wb:style"
 
@@ -35,8 +34,7 @@ Frame :: struct {
 	fcb:    i32,               // containing block of fixed descendants: the root, or the nearest transformed ancestor
 	depth:  i32,
 	deco:   style.Decorations, // text decorations propagated from ancestors
-	deco_color: css.Color,
-	deco_box: i32,             // the box whose text-decoration-color that is (NONE: none)
+	deco_box: i32,             // the box whose text-decoration-color draws them (NONE: none)
 }
 
 @(private)
@@ -247,7 +245,7 @@ child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool, sum: ^Style_Sum
 		g.deco = {}   // decorations do not propagate into atomic inlines, floats and absolutely positioned boxes
 	}
 	g.deco += b.cs.text_decoration
-	if b.cs.text_decoration != {} { g.deco_color, g.deco_box = b.cs.text_decoration_color, bi }
+	if b.cs.text_decoration != {} { g.deco_box = bi }
 	switch b.kind {
 	case .Inline: g.mode = .Inline
 	case .Block, .Cell, .Caption:
@@ -753,7 +751,7 @@ visit_text :: proc(c: ^Ctx, f: Frame, n: ^dom.Node) {
 	text := text_transform(c, n.text, cs.text_transform, &prev)
 	ib := c.l.boxes[g.parent].kind == .Inline ? g.parent : NONE
 	src := owner == base.NIL_HANDLE ? Item_Src.Initial : Item_Src.Element
-	add_item(c, Inline_Item{kind = .Text, src = src, box = ib, ifc = g.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, source = f.node, deco = g.deco, deco_color = g.deco_color, deco_box = g.deco_box})
+	add_item(c, Inline_Item{kind = .Text, src = src, box = ib, ifc = g.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, source = f.node, deco = g.deco, deco_box = g.deco_box})
 }
 
 @(private)
@@ -781,7 +779,7 @@ emit_generated :: proc(c: ^Ctx, owner: base.Handle, cs: ^style.Computed, f: Fram
 	prev := false
 	text = text_transform(c, text, cs.text_transform, &prev)
 	ib := c.l.boxes[f.parent].kind == .Inline ? f.parent : NONE
-	add_item(c, Inline_Item{kind = .Text, src = src, box = ib, ifc = f.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = f.deco, deco_color = f.deco_color, deco_box = f.deco_box})
+	add_item(c, Inline_Item{kind = .Text, src = src, box = ib, ifc = f.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = f.deco, deco_box = f.deco_box})
 }
 
 ////////////////////////////////

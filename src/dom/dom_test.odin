@@ -177,3 +177,60 @@ document_scope_frees_everything :: proc(t: ^testing.T) {
 	}
 	base.scope_close(scope)   // the test allocator reports any leak
 }
+
+// Listeners added and removed in a loop on a node that never sees an event: the list stays small (its tombstones
+// were only dropped at the end of a dispatch at the node).
+@(test)
+listener_churn_is_bounded :: proc(t: ^testing.T) {
+	d := document_create()
+	defer document_destroy(d)
+	a := create_element(d, "div")
+	keep, _ := add_listener(d, a, "click", 1, 0, false, false, false)
+	_ = keep
+	for i in 0 ..< 100_000 {
+		id, err := add_listener(d, a, "click", 2, u32(i), false, false, false)
+		testing.expect_value(t, err, Error.None)
+		remove_listener(d, a, id)
+	}
+	testing.expectf(t, len(get(d, a).listeners) <= 4, "%d listener entries", len(get(d, a).listeners))
+}
+// Templates nested in templates' contents and clonable shadow hosts nested in shadow trees, as deep as a script makes
+// them: cloning walks them with its own stack (it recursed once per level and overflowed the native stack).
+@(test)
+deep_clone_is_iterative :: proc(t: ^testing.T) {
+	d := document_create()
+	defer document_destroy(d)
+	N :: 50_000
+	top := create_element(d, "template")
+	cur := top
+	for _ in 0 ..< N {
+		next := create_element(d, "template")
+		append_child(d, template_content(d, cur), next)
+		cur = next
+	}
+	copy := clone_node(d, top, true)
+	depth := 0
+	for x := copy; x != base.NIL_HANDLE; depth += 1 {
+		c, ok := d.templates[x]
+		if !ok { break }
+		x = get(d, c).first_child
+	}
+	testing.expect_value(t, depth, N)
+	host := create_element(d, "div")
+	h := host
+	for _ in 0 ..< N / 5 {
+		r, err := attach_shadow(d, h, {mode = .Open, clonable = true})
+		if err != .None { break }
+		inner := create_element(d, "div")
+		append_child(d, r, inner)
+		h = inner
+	}
+	hc := clone_node(d, host, false)
+	levels := 0
+	for x := hc; x != base.NIL_HANDLE; levels += 1 {
+		s := get(d, x).shadow
+		if s == base.NIL_HANDLE { break }
+		x = get(d, s).first_child
+	}
+	testing.expect_value(t, levels, N / 5)
+}

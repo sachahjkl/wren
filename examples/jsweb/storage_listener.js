@@ -9,6 +9,7 @@ test("storage events", async () => {
       if (events.length === 3) r();
     });
   });
+  console.log("LISTENING");   // the tool opens the writing page once it reads this
   await done;
   const e = events[0];
   ok(e instanceof StorageEvent, "a StorageEvent");

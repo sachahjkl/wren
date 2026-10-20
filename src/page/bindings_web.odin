@@ -45,13 +45,13 @@ fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	// `user` is the record's slot: an event the loader queued before the record was released (and its task
 	// cancelled) may arrive after another request took the slot. Only the record's own task speaks for it.
 	if f.task != task { return }
-	if f.ext != nil { fetch_ext_event(f, ev); return }   // promise / stream / abort signal (bindings_fetch.odin)
 	u := Fetch_Update{kind = ev.kind, data = ev.data, error = ev.error, detail = ev.detail}
 	if ev.kind == .Response {
 		r := ev.response
 		u.status, u.type, u.redirected, u.usable, u.url = r.status, r.type, r.redirected, r.body_usable, r.url
 		u.headers = serialize_headers(r.headers.list[:])
 	}
+	if f.ext != nil { fetch_ext_event(f, u); return }   // promise / stream / abort signal (bindings_fetch.odin)
 	fetch_update(f, u)
 }
 
@@ -61,13 +61,6 @@ fetch_abort :: proc(p: ^Page, f: ^Fetch) {
 	if f.task == base.NIL_HANDLE { return }
 	if p.worker != nil { worker_fetch_cancel(p, f) } else { fetch.cancel(p.loader, f.task) }
 	f.task = base.NIL_HANDLE
-}
-
-@(private)
-fetch_note_response :: proc(f: ^Fetch, r: ^fetch.Response) {
-	f.state, f.status, f.type, f.redirected, f.usable = 1, r.status, r.type, r.redirected, r.body_usable
-	f.final_url = strings.clone(r.url)
-	f.headers = strings.clone(serialize_headers(r.headers.list[:]))
 }
 
 @(private)
@@ -193,7 +186,7 @@ Fetch_bodyLength :: proc(c: ^Call, request: Api_Fetch) -> u64 { return u64(len(r
 Fetch_readBody :: proc(c: ^Call, request: Api_Fetch, offset: u64, buffer: []u8) -> i32 {
 	f := request.data
 	if offset >= u64(len(f.body)) { return 0 }
-	return i32(copy(buffer, f.body[offset:]))
+	return i32(copy(buffer[:min(len(buffer), int(max(i32)))], f.body[offset:]))   // the count must stay a positive i32
 }
 
 Fetch_release :: proc(c: ^Call, request: Api_Fetch) -> Api_Error {

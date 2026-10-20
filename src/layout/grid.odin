@@ -1126,8 +1126,9 @@ grid_place_items :: proc(c: ^Ctx, g: ^Grid, cw: f32) {
 		}
 		k = &c.l.boxes[it.box]
 		if forced {
-			// a box whose content does not depend on its height keeps the layout it got at this width
-			if k.size.x != w || depends_on_height(c, it.box) { layout_contents(c, it.box, w, ah, h, nil) }
+			// a box whose content does not depend on its height keeps the layout it got at this width (when the track
+			// sizing laid it out: not in fixed tracks, and not a box an incremental pass marked: laid out here)
+			if k.size.x != w || k.inc != {} || depends_on_height(c, it.box) { layout_contents(c, it.box, w, ah, h, nil) }
 		} else if depends_on_height(c, it.box) {
 			r := layout_contents(c, it.box, w, ah, -1, nil)
 			h = r.h

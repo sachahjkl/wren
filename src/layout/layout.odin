@@ -64,6 +64,7 @@ run_full :: proc(l: ^Layout, input: Input) {
 	}
 	if l.scroll == nil { l.scroll = make(map[base.Handle]Vec2) }
 	clear(&l.boxes); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items)
+	clear(&l.font_lookup)
 	clear(&l.node_box)
 	inc_reset(l)
 	note_inputs(l, input)
@@ -140,7 +141,7 @@ reserve_lines :: proc(l: ^Layout) {
 
 // Forgets the result (and, unless kept, the scroll offsets): a new document is coming.
 reset :: proc(l: ^Layout, keep_scroll := false) {
-	clear(&l.boxes); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items)
+	clear(&l.boxes); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items); clear(&l.font_lookup)
 	clear(&l.spaces); clear(&l.clips); clear(&l.groups); clear(&l.band_start); clear(&l.band_items); clear(&l.node_box)
 	if !keep_scroll { clear(&l.scroll) }
 	clear(&l.deco_items)
@@ -156,7 +157,7 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 }
 
 destroy :: proc(l: ^Layout) {
-	delete(l.boxes); delete(l.inline_items); delete(l.lines); delete(l.frags); delete(l.fonts); delete(l.items)
+	delete(l.boxes); delete(l.inline_items); delete(l.lines); delete(l.frags); delete(l.fonts); delete(l.items); delete(l.font_lookup)
 	delete(l.spaces); delete(l.clips); delete(l.groups); delete(l.band_start); delete(l.band_items); delete(l.node_box)
 	delete(l.scroll)
 	delete(l.scratch)

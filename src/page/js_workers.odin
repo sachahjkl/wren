@@ -143,15 +143,13 @@ worker_fetch_sync :: proc(p: ^Page, target: string) -> (final_url: string, body:
 	return strings.clone(rec.final_url != "" ? rec.final_url : target, context.temp_allocator), body, ""
 }
 
-// What the wait swallowed (a wake) is given back: the worker's loop looks at its queues again.
+// What the wait swallowed (a wake) is given back: the worker's loop looks at its queues again. Always: the wait also
+// consumed the wakes of tasks posted to the loop itself (rejection checks, decoded images), not only of the link's queue.
 @(private)
 host_signal_after_wait :: proc(p: ^Page) {
 	g := p.worker
 	sync.atomic_store(&g.link.loop.pending, false)
-	sync.mutex_lock(&g.link.mu)
-	waiting := len(g.link.to_worker) > 0
-	sync.mutex_unlock(&g.link.mu)
-	if waiting { host.signal(&g.link.loop) }
+	host.signal(&g.link.loop)
 }
 
 // The value of a header in "Name: value" CR LF lines ("" when absent).

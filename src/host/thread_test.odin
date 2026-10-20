@@ -1,5 +1,6 @@
 package host
 
+import "core:sync"
 import "core:testing"
 
 @(private = "file")
@@ -49,4 +50,57 @@ posts_from_many_threads_all_arrive :: proc(t: ^testing.T) {
 	for f.received < THREADS * EACH { loop_wait(&l, 100) }
 	for th in threads { thread_join(th) }
 	testing.expect_value(t, f.received, THREADS * EACH)
+}
+
+@(private = "file")
+Round :: struct { hits: []int }
+
+// Rounds back to back, with few items each: a helper leaving one round while the next starts must neither run an item
+// of the new round with the old round's procedure nor claim an item twice (every item runs exactly once per round).
+@(test)
+thread_pool_rounds_back_to_back :: proc(t: ^testing.T) {
+	pool := thread_pool_make(7)
+	defer thread_pool_destroy(pool)
+	hits := make([]int, 16)
+	defer delete(hits)
+	other := make([]int, 16)
+	defer delete(other)
+	bad := 0
+	for r in 0 ..< 20_000 {
+		n := 1 + r % 16
+		a, b := Round{hits[:n]}, Round{other[:n]}
+		which := r % 2 == 0 ? &a : &b
+		parallel_for(pool, n, r % 2 == 0 ? proc(data: rawptr, i: int) {
+			_ = sync_add((^Round)(data).hits, i)
+		} : proc(data: rawptr, i: int) {
+			_ = sync_add((^Round)(data).hits, i)
+		}, which)
+		for i in 0 ..< n {
+			if which.hits[i] != 1 { bad += 1 }
+			which.hits[i] = 0
+		}
+	}
+	testing.expect_value(t, bad, 0)
+}
+
+@(private = "file")
+sync_add :: proc(s: []int, i: int) -> int { return sync.atomic_add(&s[i], 1) }
+
+Round64 :: struct { hits: [64]i32 }
+
+// Rounds back to back with different counts: every item of every round runs exactly once (a helper still leaving a
+// round must not take an index of the next one before its counters are reset).
+@(test)
+parallel_for_rounds_back_to_back :: proc(t: ^testing.T) {
+	pool := thread_pool_make(4)
+	defer thread_pool_destroy(pool)
+	for round in 0 ..< 3000 {
+		r: Round64
+		count := 1 + (round * 7) % len(r.hits)
+		parallel_for(pool, count, proc(data: rawptr, i: int) { sync.atomic_add(&(^Round64)(data).hits[i], 1) }, &r)
+		for i in 0 ..< len(r.hits) {
+			want := i32(i < count ? 1 : 0)
+			if r.hits[i] != want { testing.expectf(t, false, "round %d item %d ran %d times (count %d)", round, i, r.hits[i], count); return }
+		}
+	}
 }

@@ -316,7 +316,8 @@ tab_interval :: proc(c: ^Ctx, it: ^Inline_Item) -> f32 {
 	f := &c.l.fonts[it.fi]
 	t := it.cs.tab_size
 	space := f.space + it.cs.letter_spacing * c.scale
-	if it.cs.tab_spaces || t <= 0 { return space * (t > 0 ? t : 8) }
+	if t <= 0 { return 0 }   // tab-size: 0: tabs are not rendered
+	if it.cs.tab_spaces { return space * t }
 	return t * c.scale
 }
 
@@ -326,6 +327,9 @@ tab_width :: proc(lb: ^Line_Builder, s: Seg, at: f32) -> f32 {
 	it := &c.l.inline_items[s.item]
 	f := &c.l.fonts[it.fi]
 	t := tab_interval(c, it)
+	// no interval (tab-size: 0, font-size: 0, a letter-spacing that cancels the space): a tab has no width (mod by 0
+	// was NaN, and every fragment after it on the line had a NaN position)
+	if !(t > 0.001) { return 0 }
 	w := t - math.mod(at, t)
 	if w < f.space * 0.5 { w += t }
 	return w

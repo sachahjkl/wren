@@ -114,6 +114,11 @@ par_acquire :: proc(setting: int) -> ^host.Thread_Pool {
 @(private)
 par_release :: proc() { sync.mutex_unlock(&par_mu) }
 
+// The layout threads for other work of the UI thread between layout passes (the compositor hashes a new display list
+// on them), or nil (none configured, or in use). Give them back with helpers_release.
+helpers_acquire :: proc(l: ^Layout) -> ^host.Thread_Pool { return par_acquire(l.settings.threads) }
+helpers_release :: proc(pool: ^host.Thread_Pool) { if pool != nil { par_release() } }
+
 // Joins the layout threads. Call once no layout runs any more, before exiting; they are made again if needed.
 shutdown_threads :: proc() {
 	context = runtime.default_context()

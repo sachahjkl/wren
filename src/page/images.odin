@@ -23,6 +23,7 @@ import "core:fmt"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import "core:sync"
 import "wb:base"
 import "wb:csp"
 import "wb:css"
@@ -387,7 +388,7 @@ Page_Images :: struct {
 image_serial: u64
 
 @(private)
-next_serial :: proc() -> u64 { image_serial += 1; return image_serial }
+next_serial :: proc() -> u64 { return sync.atomic_add(&image_serial, 1) + 1 }   // worker realms count too
 
 @(private)
 images_init :: proc(p: ^Page) {
@@ -1249,7 +1250,7 @@ guest_decode_done :: proc(user: rawptr, j: ^images.Job) {
 		promise_reject(p, g.promise, WEB_ERR_QUOTA, "the decoded image does not fit in the page's memory (page.max_fetch_bytes)")
 		return
 	}
-	promise_resolve(p, g.promise, i64(buf), fmt.tprintf("%dx%d", img.width, img.height))
+	promise_resolve_object(p, g.promise, buf, fmt.tprintf("%dx%d", img.width, img.height))
 }
 
 ////////////////////////////////

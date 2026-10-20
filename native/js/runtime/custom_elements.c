@@ -61,23 +61,26 @@ static JSValue host_take(JSContext *ctx, JSValueConst this_val, int argc, JSValu
         i += 9;
         handles[nh++] = h;
         JSValue rec = JS_NewArray(ctx);
-        JS_SetPropertyUint32(ctx, rec, 0, JS_NewInt32(ctx, kind));
-        JS_SetPropertyUint32(ctx, rec, 1, wj_wrap_node(ctx, h));
+        wj_array_set(ctx, rec, 0, JS_NewInt32(ctx, kind));
+        wj_array_set(ctx, rec, 1, wj_wrap_node(ctx, h));
         if (kind == 4) {
-            const char *s[3];
-            uint32_t l[3];
+            /* a truncated record gives empty strings, never bytes past the buffer */
+            const char *s[3] = { "", "", "" };
+            uint32_t l[3] = { 0, 0, 0 };
             for (int f = 0; f < 3 && i + 4 <= (size_t)n; f++) {
-                l[f] = rd_u32(b + i);
+                uint32_t len = rd_u32(b + i);
+                if (len > (size_t)n - i - 4) { i = (size_t)n; break; }
+                l[f] = len;
                 s[f] = (const char *)b + i + 4;
-                i += 4 + l[f];
+                i += 4 + (size_t)len;
             }
             uint8_t flags = i < (size_t)n ? b[i] : 0;
             i++;
-            JS_SetPropertyUint32(ctx, rec, 2, JS_NewStringLen(ctx, s[0], l[0]));
-            JS_SetPropertyUint32(ctx, rec, 3, (flags & 1) ? JS_NewStringLen(ctx, s[1], l[1]) : JS_NULL);
-            JS_SetPropertyUint32(ctx, rec, 4, (flags & 2) ? JS_NewStringLen(ctx, s[2], l[2]) : JS_NULL);
+            wj_array_set(ctx, rec, 2, JS_NewStringLen(ctx, s[0], l[0]));
+            wj_array_set(ctx, rec, 3, (flags & 1) ? JS_NewStringLen(ctx, s[1], l[1]) : JS_NULL);
+            wj_array_set(ctx, rec, 4, (flags & 2) ? JS_NewStringLen(ctx, s[2], l[2]) : JS_NULL);
         }
-        JS_SetPropertyUint32(ctx, out, k++, rec);
+        wj_array_set(ctx, out, k++, rec);
     }
     if (handles) { wr_CustomElements_release(handles, nh); }
     free(handles);
@@ -142,7 +145,7 @@ static JSValue packed_elements(JSContext *ctx, int32_t n)
     uint64_t *hs = malloc(count * sizeof *hs);
     if (!hs) { return arr; }
     for (uint32_t i = 0; i < count; i++) { hs[i] = rd_u64(wj_scratch.data + 8 * i); }
-    for (uint32_t i = 0; i < count; i++) { JS_SetPropertyUint32(ctx, arr, i, wj_wrap_node(ctx, hs[i])); }
+    for (uint32_t i = 0; i < count; i++) { wj_array_set(ctx, arr, i, wj_wrap_node(ctx, hs[i])); }
     free(hs);
     return arr;
 }

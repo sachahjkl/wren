@@ -145,7 +145,7 @@ static void port_task(JSContext *ctx, JSValueConst data)
         else {
             int64_t n = 0;
             JS_GetLength(ctx, pt->queue, &n);
-            JS_SetPropertyUint32(ctx, pt->queue, (uint32_t)n, JS_DupValue(ctx, bytes));
+            wj_array_set(ctx, pt->queue, (uint32_t)n, JS_DupValue(ctx, bytes));
         }
     }
     JS_FreeValue(ctx, port);
@@ -181,8 +181,8 @@ JSValue wjr_MessagePort_postMessage(JSContext *ctx, JSValueConst this_val, int a
     if (JS_IsException(bytes)) { return bytes; }
     if (!pt->closed && JS_IsObject(pt->peer)) {
         JSValue data = JS_NewArray(ctx);
-        JS_SetPropertyUint32(ctx, data, 0, JS_DupValue(ctx, pt->peer));
-        JS_SetPropertyUint32(ctx, data, 1, JS_DupValue(ctx, bytes));
+        wj_array_set(ctx, data, 0, JS_DupValue(ctx, pt->peer));
+        wj_array_set(ctx, data, 1, JS_DupValue(ctx, bytes));
         bool ok = web_queue_task(ctx, port_task, data);
         JS_FreeValue(ctx, data);
         if (!ok) { JS_FreeValue(ctx, bytes); return JS_EXCEPTION; }
@@ -288,8 +288,8 @@ JSValue wjr_Window_postMessage(JSContext *ctx, JSValueConst this_val, int argc, 
     bool ok = true;
     if (deliver_it) {
         JSValue data = JS_NewArray(ctx);
-        JS_SetPropertyUint32(ctx, data, 0, JS_DupValue(ctx, bytes));
-        JS_SetPropertyUint32(ctx, data, 1, JS_DupValue(ctx, own));
+        wj_array_set(ctx, data, 0, JS_DupValue(ctx, bytes));
+        wj_array_set(ctx, data, 1, JS_DupValue(ctx, own));
         ok = web_queue_task(ctx, window_task, data);
         JS_FreeValue(ctx, data);
     }

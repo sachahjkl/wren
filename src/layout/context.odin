@@ -90,15 +90,25 @@ box_of_idx :: #force_inline proc(c: ^Ctx, i: i32) -> ^Box { return &c.l.boxes[i]
 ////////////////////////////////
 // Lengths: computed values are CSS px (or percentages); layout works in device px
 
+// Lengths saturate at ±LAYOUT_MAX device px (about what other engines' layout units hold): a page's 1e30px, or a
+// percentage of one, stays finite through the sums and differences of layout (an infinity there became NaN: Inf - Inf).
+LAYOUT_MAX :: f32(1e9)
+
+@(private)
+sat :: #force_inline proc "contextless" (v: f32) -> f32 {
+	if !(v == v) { return 0 }   // NaN
+	return clamp(v, -LAYOUT_MAX, LAYOUT_MAX)
+}
+
 // `base` is the percentage base in device px; auto and the keywords resolve to `fallback`.
 @(private)
 px_of :: proc(c: ^Ctx, l: style.Length, base: f32, fallback: f32 = 0) -> f32 {
 	#partial switch l.kind {
-	case .Px: return l.v * c.scale
-	case .Percent: return base < 0 ? fallback : base * l.v / 100
+	case .Px: return sat(l.v * c.scale)
+	case .Percent: return base < 0 ? fallback : sat(base * l.v / 100)
 	case .Calc:
 		b := base < 0 ? 0 : base
-		return f32(css.eval_calc(l.calc, css.Length_Context{percent_base = f64(b / c.scale)})) * c.scale
+		return sat(f32(css.eval_calc(l.calc, css.Length_Context{percent_base = f64(b / c.scale)})) * c.scale)
 	}
 	return fallback
 }
@@ -107,7 +117,7 @@ px_of :: proc(c: ^Ctx, l: style.Length, base: f32, fallback: f32 = 0) -> f32 {
 @(private)
 definite :: proc(c: ^Ctx, l: style.Length, base: f32) -> (f32, bool) {
 	#partial switch l.kind {
-	case .Px: return l.v * c.scale, true
+	case .Px: return sat(l.v * c.scale), true
 	case .Percent, .Calc:
 		if base < 0 { return 0, false }
 		return px_of(c, l, base), true
@@ -208,6 +218,18 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	}
 	if c.last_fi >= 0 && key == c.last_key { c.last_cs = cs; return c.last_fi }
 	if fi, ok := c.font_cache[key]; ok { c.last_key, c.last_fi, c.last_cs = key, fi, cs; return fi }
+	// the same font made by an earlier pass over these boxes: a partial restyle gives the elements it restyles new
+	// family lists (the key above is by identity), and partial passes must not add a font per restyled element (each
+	// is resolved again, and the table grows until a full pass)
+	// (by content; feature lists are told apart by address, which a later pass may reuse: those are not looked up)
+	ck := key
+	ck.families = rawptr(uintptr(families_hash(cs.font_family)))
+	lasting := key.feat.feat == nil && key.feat.vars == nil
+	if fi, ok := c.l.font_lookup[ck]; lasting && ok && int(fi) < len(c.l.fonts) && same_families(c.l.fonts[fi].families, cs.font_family) {
+		c.font_cache[key] = fi
+		c.last_key, c.last_fi, c.last_cs = key, fi, cs
+		return fi
+	}
 	info: Font_Info
 	info.size = cs.font_size * c.scale
 	info.weight, info.italic = cs.font_weight, key.italic
@@ -225,8 +247,26 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	fi := i32(len(c.l.fonts))
 	append(&c.l.fonts, info)
 	c.font_cache[key] = fi
+	if lasting { c.l.font_lookup[ck] = fi }
 	c.last_key, c.last_fi, c.last_cs = key, fi, cs
 	return fi
+}
+
+@(private)
+families_hash :: proc(fams: []string) -> u64 {
+	h: u64 = 0xcbf29ce484222325
+	for f in fams {
+		for i in 0 ..< len(f) { h = (h ~ u64(f[i])) * 0x100000001b3 }
+		h = (h ~ 0xff) * 0x100000001b3
+	}
+	return h
+}
+
+@(private)
+same_families :: proc(a, b: []string) -> bool {
+	if len(a) != len(b) { return false }
+	for x, i in a { if x != b[i] { return false } }
+	return true
 }
 
 // The face, metrics and space width of a font, from what it was made from (again when the faces change).

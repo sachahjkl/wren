@@ -1,5 +1,6 @@
 package config
 
+import "core:fmt"
 import "core:os"
 import "core:testing"
 
@@ -187,4 +188,51 @@ policy_file_locks :: proc(t: ^testing.T) {
 	testing.expect_value(t, int_of(&p, "net.max_conns"), 3)
 	testing.expect_value(t, set_from_string(&p, "net.max_conns", "5", .User), Set_Error.Locked)
 	testing.expect(t, entry(&p, ref_of(&p, "net.max_conns")).locked)
+}
+
+// A run with --pref (or under a policy) keeps the user's own value in the profile file; a user change made meanwhile
+// is kept too; reset leaves the command line's value for this run.
+@(test)
+higher_layers_keep_the_user_value :: proc(t: ^testing.T) {
+	dir := os.get_env("TEMP", context.temp_allocator)
+	path := fmt.tprintf("%s\\wb_config_layers_test.txt", dir)
+	defer os.remove(path)
+	_ = os.write_entire_file(path, transmute([]byte)string("\xEF\xBB\xBFwbprefs 1\nnet.max_conns\t5\nui.scale\t2\n"))
+	p := prefs_make()
+	defer prefs_destroy(&p)
+	args := []string{"--pref", "net.max_conns=7"}
+	rest, errs := apply_args(&p, args)
+	delete(rest); delete(errs)
+	applied, _ := load_file(&p, path, .User)
+	testing.expect_value(t, applied, 2)   // the byte-order mark is not part of the magic
+	register(&p, DEFS[:])
+	testing.expect_value(t, int_of(&p, "net.max_conns"), 7)
+	testing.expect(t, save_user(&p, path))
+	q := prefs_make()
+	defer prefs_destroy(&q)
+	register(&q, DEFS[:])
+	load_file(&q, path, .User)
+	testing.expect_value(t, int_of(&q, "net.max_conns"), 5)
+	testing.expect_value(t, float_of(&q, "ui.scale"), 2.0)
+	// a change by the user while the command line decides: refused for this run, kept for the next
+	testing.expect_value(t, set_from_string(&p, "net.max_conns", "9", .User), Set_Error.Locked)
+	testing.expect_value(t, int_of(&p, "net.max_conns"), 7)
+	testing.expect(t, save_user(&p, path))
+	r := prefs_make()
+	defer prefs_destroy(&r)
+	register(&r, DEFS[:])
+	load_file(&r, path, .User)
+	testing.expect_value(t, int_of(&r, "net.max_conns"), 9)
+	// reset: the user value goes, the command line's stays
+	testing.expect_value(t, reset(&p, "net.max_conns"), Set_Error.None)
+	testing.expect_value(t, int_of(&p, "net.max_conns"), 7)
+	testing.expect(t, save_user(&p, path))
+	s := prefs_make()
+	defer prefs_destroy(&s)
+	register(&s, DEFS[:])
+	load_file(&s, path, .User)
+	testing.expect_value(t, int_of(&s, "net.max_conns"), 6)
+	// K / M / G that overflow are out of range, not wrapped
+	_, e := parse_value(DEFS[1], "17179869185G")
+	testing.expect_value(t, e, Set_Error.Out_Of_Range)
 }

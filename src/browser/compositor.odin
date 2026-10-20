@@ -6,6 +6,7 @@ import "wb:base"
 import "wb:config"
 import "wb:css"
 import "wb:dom"
+import "wb:host"
 import lay "wb:layout"
 import "wb:style"
 
@@ -395,12 +396,32 @@ rebuild :: proc(c: ^Comp, l: ^Layout) {
 	resize(&c.item_hash, n)
 	resize(&c.item_cs, n)
 	resize(&c.item_chunk, n)
-	cache := make(map[^style.Computed]u64, 1024, context.temp_allocator)
 	chain := make([dynamic]i32, 0, 8, context.temp_allocator)
-	for i in 0 ..< n {
-		it := &l.items[i]
-		c.item_hash[i] = item_hash(c, l, it, &cache, &chain)
-		c.item_cs[i] = it.cs
+	// (a large list on the layout threads: after a resize or an animation of layout this all comes in one frame)
+	pool := n >= max(l.settings.threads_min_boxes, 1) ? lay.helpers_acquire(l) : nil
+	if pool != nil {
+		Hash_Job :: struct { c: ^Comp, l: ^Layout, n, parts: int }
+		job := Hash_Job{c = c, l = l, n = n, parts = host.thread_pool_size(pool) * 4}
+		host.parallel_for(pool, job.parts, proc(data: rawptr, k: int) {
+			j := (^Hash_Job)(data)
+			cache := make(map[^style.Computed]u64, 256)
+			defer delete(cache)
+			ch := make([dynamic]i32, 0, 8)
+			defer delete(ch)
+			for i in k * j.n / j.parts ..< (k + 1) * j.n / j.parts {
+				it := &j.l.items[i]
+				j.c.item_hash[i] = item_hash(j.c, j.l, it, &cache, &ch)
+				j.c.item_cs[i] = it.cs
+			}
+		}, &job)
+		lay.helpers_release(pool)
+	} else {
+		cache := make(map[^style.Computed]u64, 1024, context.temp_allocator)
+		for i in 0 ..< n {
+			it := &l.items[i]
+			c.item_hash[i] = item_hash(c, l, it, &cache, &chain)
+			c.item_cs[i] = it.cs
+		}
 	}
 	// old chunks by signature
 	old := make(map[u64][dynamic]int, len(c.chunks), context.temp_allocator)

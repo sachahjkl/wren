@@ -105,9 +105,17 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 		if m.bad { break }
 		for i in 0 ..< x.items[1] - x.items[0] {
 			p, q := &a.inline_items[x.items[0] + i], &b.inline_items[y.items[0] + i]
-			if p.kind != q.kind || p.text != q.text || p.node != q.node || p.cs != q.cs || p.src != q.src || !beq(&m, p.box, q.box) ||
-			   p.deco != q.deco || p.deco_color != q.deco_color || !beq(&m, p.deco_box, q.deco_box) || (p.kind == .Text && !font_eq(&m, p.fi, q.fi)) {
-				fail(&m, "%s: inline item %d (%v %q / %v %q)", at, i, p.kind, p.text, q.kind, q.text)
+			what := ""
+			switch {
+			case p.kind != q.kind || p.text != q.text: what = "kind / text"
+			case p.node != q.node || p.src != q.src: what = "node / source"
+			case p.cs != q.cs: what = "style record"
+			case !beq(&m, p.box, q.box): what = "box"
+			case p.deco != q.deco || !beq(&m, p.deco_box, q.deco_box): what = "decorations"
+			case p.kind == .Text && !font_eq(&m, p.fi, q.fi): what = "font"
+			}
+			if what != "" {
+				fail(&m, "%s: inline item %d (%v %q / %v %q): %s", at, i, p.kind, p.text, q.kind, q.text, what)
 				break
 			}
 		}

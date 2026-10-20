@@ -34,7 +34,7 @@ test("sendBeacon", async () => {
   const before = (await (await fetch("/jsweb/beacon-log")).text()).split("|")[0] | 0;
   eq(navigator.sendBeacon("/jsweb/beacon", "beacon data"), true, "queued");
   let log = "";
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 1000; i++) {   // until the server has it: the bound only ends a failing run
     log = await (await fetch("/jsweb/beacon-log")).text();
     if ((log.split("|")[0] | 0) > before) break;
     await sleep(20);

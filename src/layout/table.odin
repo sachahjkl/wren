@@ -68,6 +68,9 @@ table_grid :: proc(c: ^Ctx, bi: i32) -> Table_Grid {
 				rs := k.rowspan
 				if rs == 0 || ri + rs > end { rs = end - ri }
 				cs := k.colspan
+				// the table's width in columns is bounded (layout.table.max_columns): cells past it share the last column
+				maxc := i32(max(c.set.table_max_columns, 1))
+				if col >= maxc { col, cs = maxc - 1, 1 } else { cs = min(cs, maxc - col) }
 				k.row, k.col = ri, col
 				append(&g.cells, Grid_Cell{cell, ri, col, max(rs, 1), cs})
 				for j in col ..< col + cs {

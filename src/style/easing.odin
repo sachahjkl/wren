@@ -27,7 +27,7 @@ parse_easing :: proc(cx: ^Cx, input: []css.Value) -> (Easing, bool) {
 	}
 	if v.kind != .Function { return {}, false }
 	args := css.split_commas(v.children, context.temp_allocator)
-	switch strings.to_lower(v.tok.text, context.temp_allocator) {
+	switch css.lower_temp(v.tok.text) {
 	case "cubic-bezier":
 		if len(args) != 4 { return {}, false }
 		e := Easing{kind = .Cubic_Bezier}
@@ -216,7 +216,7 @@ apply_animation_list :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		for part, i in parts {
 			id, ok := ident_raw(part)
 			if !ok { return false }
-			lid := strings.to_lower(id, context.temp_allocator)
+			lid := css.lower_temp(id)
 			switch lid {
 			case "none":
 				if n != 1 { return false }

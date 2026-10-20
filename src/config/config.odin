@@ -53,6 +53,10 @@ Entry :: struct {
 	value:  Value,
 	source: Source,
 	locked: bool,   // set by policy: the user cannot change it
+	// the user layer's value (text, owned) while a higher layer (command line, policy) decides the effective one: it is
+	// what the profile file keeps, so a run with --pref or under a policy does not erase it
+	user_text: string,
+	has_user:  bool,
 }
 
 Ref :: distinct int
@@ -95,7 +99,7 @@ set_error_text :: proc(e: Set_Error) -> string {
 	switch e {
 	case .None: return ""
 	case .Unknown: return "unknown preference"
-	case .Locked: return "locked by policy"
+	case .Locked: return "set by policy or on the command line for this run"
 	case .Bad_Type: return "not a valid value for this type"
 	case .Out_Of_Range: return "out of range"
 	case .Not_A_Choice: return "not one of the allowed values"
@@ -112,7 +116,7 @@ prefs_make :: proc(allocator := context.allocator) -> Prefs {
 
 prefs_destroy :: proc(p: ^Prefs) {
 	a := p.allocator
-	for &e in p.entries { delete(e.value.s, a) }
+	for &e in p.entries { delete(e.value.s, a); delete(e.user_text, a) }
 	delete(p.entries)
 	delete(p.index)
 	for k, v in p.pending { delete(k, a); for s in v.value { delete(s, a) } }
@@ -173,7 +177,8 @@ sorted_names :: proc(p: ^Prefs, allocator := context.temp_allocator) -> []string
 }
 
 ////////////////////////////////
-// Reads. An unknown name or a kind mismatch is a programming error: it asserts in debug builds and returns the zero value.
+// Reads. An unknown name or a kind mismatch is a programming error: it asserts (and a release build without asserts would
+// fail the bounds check).
 
 get_bool :: proc(p: ^Prefs, r: Ref) -> bool {
 	assert(r != NO_REF && p.entries[int(r)].def.kind == .Bool)
@@ -223,6 +228,7 @@ parse_value :: proc(d: Def, text: string) -> (v: Value, err: Set_Error) {
 		}
 		n, ok := strconv.parse_i64(s, 10)
 		if !ok { return {}, .Bad_Type }
+		if mult > 1 && (n > max(i64) / mult || n < min(i64) / mult) { return {}, .Out_Of_Range }
 		v.i = n * mult
 		if d.bounded && (f64(v.i) < d.min || f64(v.i) > d.max) { return {}, .Out_Of_Range }
 	case .Float:
@@ -259,14 +265,28 @@ set_from_string :: proc(p: ^Prefs, name: string, text: string, source: Source) -
 		return .Unknown
 	}
 	e := &p.entries[i]
+	if source == .User && (e.locked || e.source == .Command_Line || e.source == .Policy) {
+		// a higher layer decides for this run: the user's value is kept for the profile file (validated first)
+		if _, err := parse_value(e.def, text); err != .None { return err }
+		keep_user_text(p, e, text)
+		return .Locked
+	}
 	if e.locked && source != .Policy { return .Locked }
-	if source == .User && e.source == .Command_Line { return .Locked }
 	v, err := parse_value(e.def, text)
 	if err != .None { return err }
+	// a higher layer over the user's value: that value stays the user's
+	if source > .User && e.source == .User { keep_user_text(p, e, value_text(e.def, e.value)) }
 	assign(p, i, v, source)
 	if source == .Policy { e.locked = true }
 	return .None
 }
+@(private)
+keep_user_text :: proc(p: ^Prefs, e: ^Entry, text: string) {
+	s := strings.clone(text, p.allocator)
+	delete(e.user_text, p.allocator)
+	e.user_text, e.has_user = s, true
+}
+
 @(private)
 assign :: proc(p: ^Prefs, i: int, v: Value, source: Source) {
 	e := &p.entries[i]
@@ -294,7 +314,13 @@ reset :: proc(p: ^Prefs, name: string) -> Set_Error {
 	i, ok := p.index[name]
 	if !ok { return .Unknown }
 	e := &p.entries[i]
+	if e.has_user {
+		delete(e.user_text, p.allocator)
+		e.user_text, e.has_user = "", false
+		p.dirty = true
+	}
 	if e.source == .Policy || e.locked { return .Locked }
+	if e.source == .Command_Line { return .None }   // this run keeps the command line's value
 	if e.source == .Default { return .None }
 	assign(p, i, e.def.default, .Default)
 	p.dirty = true
@@ -371,8 +397,10 @@ save_user :: proc(p: ^Prefs, path: string) -> bool {
 	strings.write_byte(&sb, '\n')
 	for name in sorted_names(p) {
 		e := &p.entries[p.index[name]]
-		if e.source != .User { continue }
-		fmt.sbprintf(&sb, "%s\t%s\n", name, escape(value_text(e.def, e.value)))
+		switch {
+		case e.source == .User: fmt.sbprintf(&sb, "%s\t%s\n", name, escape(value_text(e.def, e.value)))
+		case e.has_user:        fmt.sbprintf(&sb, "%s\t%s\n", name, escape(e.user_text))
+		}
 	}
 	// values for preferences that are not registered in this run must survive a round trip
 	for name, pv in p.pending {
@@ -399,7 +427,9 @@ load_file :: proc(p: ^Prefs, path: string, source: Source) -> (applied: int, pro
 	for line in strings.split_lines_iterator(&text) {
 		if first {
 			first = false
-			if line == USER_MAGIC || line == "wbpolicy 1" { continue }
+			// a byte-order mark (a file saved by Notepad) is not part of the magic
+			magic := strings.trim_prefix(line, "\xEF\xBB\xBF")
+			if magic == USER_MAGIC || magic == "wbpolicy 1" { continue }
 			append(&problems, fmt.aprintf("%s: not a preference file", path, allocator = context.temp_allocator))
 			return
 		}

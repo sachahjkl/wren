@@ -75,7 +75,7 @@ static bool transfer_item(JSContext *ctx, JSValueConst item, void *opaque)
         JS_FreeValue(ctx, x);
         if (same) { wj_throw_dom(ctx, "DataCloneError", "ArrayBuffer at index is a duplicate of an earlier ArrayBuffer."); return false; }
     }
-    JS_SetPropertyUint32(ctx, t->list, t->n++, JS_DupValue(ctx, item));
+    wj_array_set(ctx, t->list, t->n++, JS_DupValue(ctx, item));
     return true;
 }
 

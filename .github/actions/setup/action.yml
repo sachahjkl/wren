@@ -1,11 +1,11 @@
 name: Set up the Wren toolchain
 description: >-
-  Odin (pinned release, SHA-256 checked), Rust stable with llvm-tools, Go, the MSVC environment, and the caches of
+  Odin (pinned release, SHA-256 checked), Rust (pinned version) with llvm-tools, Go, the MSVC environment, and the caches of
   what build.bat fetches or builds (Wasmtime, Lexbor, the native/media library, NASM, the cargo registry, Zig and the
   QuickJS-ng source, the JavaScript engine) and of the pinned test suites tools\test_all.ps1 fetches (test262,
   web-platform-tests). Every download is pinned: by SHA-256 in the script that fetches it (Odin here, Wasmtime, NASM,
   Zig, QuickJS-ng, test262), by commit and a SHA-256 list of its files (web-platform-tests: wpt/MANIFEST.txt), by
-  Cargo.lock (crates); Rust stable and Go (go.mod's version) come from their installers.
+  Cargo.lock (crates); Rust (RUST_VERSION below) and Go (go.mod's version) come from their installers.
 
 runs:
   using: composite
@@ -27,11 +27,14 @@ runs:
         Add-Content $env:GITHUB_PATH (Join-Path $dir 'dist')
         & (Join-Path $dir 'dist\odin.exe') version
 
-    - name: Rust stable + llvm-tools
+    # pinned like everything else: a new stable can change codegen or lints of native/media under the same Cargo.lock
+    - name: Rust 1.99.1 + llvm-tools
       shell: pwsh
+      env:
+        RUST_VERSION: '1.99.1'
       run: |
-        rustup toolchain install stable --profile minimal --component llvm-tools --target x86_64-pc-windows-msvc
-        rustup default stable
+        rustup toolchain install $env:RUST_VERSION --profile minimal --component llvm-tools --target x86_64-pc-windows-msvc
+        rustup default $env:RUST_VERSION
         rustc --version
 
     - uses: actions/setup-go@v5
@@ -71,7 +74,7 @@ runs:
           build/media/STAMP
           build/tools/nasm-*
           !build/tools/nasm-*.zip
-        key: media-${{ hashFiles('native/media/src/**', 'native/media/Cargo.toml', 'native/media/Cargo.lock', 'tools/build_media.ps1') }}
+        key: media-rust1.99.1-${{ hashFiles('native/media/src/**', 'native/media/Cargo.toml', 'native/media/Cargo.lock', 'tools/build_media.ps1') }}
 
     # tools\build_js.ps1: Zig (its clang and wasi-libc) and the QuickJS-ng release source, both pinned in the script
     - name: Cache Zig and the QuickJS-ng source
