@@ -4,7 +4,12 @@
  * The browser keeps the marks and measures (performance.max_user_timing_entries); entry objects are made on demand
  * (getEntries* return new objects, as in browsers). A mark's or measure's `detail` is a structured clone kept here,
  * by entry type, name and start time, so that getEntries() gives it back; clearMarks / clearMeasures forget it. Only
- * "mark" and "measure" entries exist (no navigation, resource or paint timing). */
+ * "mark" and "measure" entries exist (no navigation, resource or paint timing).
+ *
+ * PerformanceObserver (Performance Timeline §3): a registered observer is held here (the timeline's list of registered
+ * observers keeps it alive); each new mark or measure goes to the buffer of the observers of its type, delivered by one
+ * task for all of them ("queue the PerformanceObserver task"). Unsupported types are ignored with a console warning,
+ * as browsers do. */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -171,6 +176,8 @@ JSValue wjr_PerformanceMark_constructor(JSContext *ctx, JSValueConst new_target,
 
 static bool perf_this(JSContext *ctx, JSValueConst this_val) { return wj_this(ctx, this_val, WJ_IFACE_Performance) != NULL; }
 
+static void perf_queue_entry(JSContext *ctx, int type, JSValueConst entry);
+
 JSValue wjr_Performance_mark(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     if (!perf_this(ctx, this_val)) { return JS_EXCEPTION; }
@@ -187,6 +194,7 @@ JSValue wjr_Performance_mark(JSContext *ctx, JSValueConst this_val, int argc, JS
     }
     remember_detail(ctx, wr_PerformanceEntryType_Mark, name.ptr, name.len, e->start, e->detail);
     wj_str_free(ctx, &name);
+    perf_queue_entry(ctx, wr_PerformanceEntryType_Mark, m);
     return m;
 }
 
@@ -256,6 +264,7 @@ JSValue wjr_Performance_measure(JSContext *ctx, JSValueConst this_val, int argc,
     remember_detail(ctx, wr_PerformanceEntryType_Measure, name.ptr, name.len, start, detail);
     JSValue r = entry_new(ctx, JS_UNDEFINED, wr_PerformanceEntryType_Measure, JS_NewStringLen(ctx, name.ptr, name.len), start, end - start, detail);
     wj_str_free(ctx, &name);
+    if (!JS_IsException(r)) { perf_queue_entry(ctx, wr_PerformanceEntryType_Measure, r); }
     return r;
 }
 
@@ -388,4 +397,337 @@ JSValue wjr_Performance_toJSON(JSContext *ctx, JSValueConst this_val, int argc, 
     JSValue o = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, o, "timeOrigin", JS_NewFloat64(ctx, wr_Performance_timeOrigin()));
     return o;
+}
+
+/* ---- PerformanceObserver ---- */
+
+enum { OBS_NONE, OBS_MULTIPLE, OBS_SINGLE };
+
+typedef struct perf_observer {
+    JSValue  self;       /* not counted (the registration below counts) */
+    JSValue  callback;
+    JSValue  buffer;     /* Array of the entries not delivered yet */
+    uint32_t types;      /* 1 << entry type, for each type observed */
+    int      mode;       /* how observe() was first called: entryTypes (multiple) or type (single) */
+    bool     registered;
+} perf_observer;
+
+static JSValue *registered;      /* counted: the registered observers */
+static uint32_t n_registered, cap_registered;
+static bool delivery_queued;
+static JSValue supported_types;  /* [SameObject] FrozenArray, made once */
+static bool supported_made;
+
+static void observer_free(void *p)
+{
+    perf_observer *o = p;
+    JSRuntime *rt = web_rt();
+    JS_FreeValueRT(rt, o->callback);
+    JS_FreeValueRT(rt, o->buffer);
+    free(o);
+}
+
+static void observer_mark(void *rt, void *p, void *mark_func)
+{
+    perf_observer *o = p;
+    wj_mark(rt, o->callback, mark_func);
+    wj_mark(rt, o->buffer, mark_func);
+}
+
+static perf_observer *observer_this(JSContext *ctx, JSValueConst this_val) { return web_this_impl(ctx, this_val, WJ_IFACE_PerformanceObserver); }
+
+static void unregister(JSContext *ctx, perf_observer *o)
+{
+    if (!o->registered) { return; }
+    o->registered = false;
+    for (uint32_t i = 0; i < n_registered; i++) {
+        if (JS_VALUE_GET_PTR(registered[i]) != JS_VALUE_GET_PTR(o->self)) { continue; }
+        JSValue v = registered[i];
+        registered[i] = registered[--n_registered];
+        JS_FreeValue(ctx, v);   /* may free the observer: last */
+        return;
+    }
+}
+
+static bool register_observer(JSContext *ctx, perf_observer *o)
+{
+    if (o->registered) { return true; }
+    if (n_registered == cap_registered) {
+        uint32_t cap = cap_registered ? cap_registered * 2 : 8;
+        JSValue *a = realloc(registered, cap * sizeof *a);
+        if (!a) { JS_ThrowOutOfMemory(ctx); return false; }
+        registered = a;
+        cap_registered = cap;
+    }
+    registered[n_registered++] = JS_DupValue(ctx, o->self);
+    o->registered = true;
+    return true;
+}
+
+static JSValue take_buffer(JSContext *ctx, perf_observer *o)
+{
+    JSValue b = o->buffer;
+    o->buffer = JS_NewArray(ctx);
+    return b;
+}
+
+/* PerformanceObserverEntryList: the delivered entries, sorted by start time (as performance.getEntries) */
+static void list_free(void *p) { JS_FreeValueRT(web_rt(), *(JSValue *)p); free(p); }
+static void list_mark(void *rt, void *p, void *mark_func) { wj_mark(rt, *(JSValue *)p, mark_func); }
+
+static JSValue entry_list_new(JSContext *ctx, JSValue entries)
+{
+    JSValue *impl = malloc(sizeof *impl);
+    if (!impl) { JS_FreeValue(ctx, entries); return JS_ThrowOutOfMemory(ctx); }
+    *impl = entries;
+    JSValue obj = wj_new_object_for(ctx, WJ_IFACE_PerformanceObserverEntryList, JS_UNDEFINED, NULL, NULL);
+    if (JS_IsException(obj)) { list_free(impl); return obj; }
+    web_set_impl(obj, impl, list_free, list_mark);
+    return obj;
+}
+
+/* entries of `list` whose name (when given) and type (when given) match, in start time order */
+static JSValue filtered(JSContext *ctx, JSValueConst this_val, const char *name, size_t nlen, int type)
+{
+    JSValue *impl = web_this_impl(ctx, this_val, WJ_IFACE_PerformanceObserverEntryList);
+    if (!impl) { return JS_EXCEPTION; }
+    JSValue out = JS_NewArray(ctx);
+    int64_t n = 0;
+    JS_GetLength(ctx, *impl, &n);
+    uint32_t k = 0;
+    for (int64_t i = 0; i < n; i++) {
+        JSValue e = JS_GetPropertyUint32(ctx, *impl, (uint32_t)i);
+        wj_obj *wo = wj_obj_of(e);
+        perf_entry *pe = wo ? wo->impl : NULL;
+        bool keep = pe != NULL && (type < 0 || pe->type == type);
+        if (keep && name) {
+            size_t l = 0;
+            const char *s = JS_ToCStringLen(ctx, &l, pe->name);
+            keep = s && l == nlen && memcmp(s, name, l) == 0;
+            if (s) { JS_FreeCString(ctx, s); }
+        }
+        if (keep) { JS_SetPropertyUint32(ctx, out, k++, e); } else { JS_FreeValue(ctx, e); }
+    }
+    /* stable sort by start time: entries arrive in time order already, except buffered ones before new ones */
+    static const char sort_src[] = "(a => a.sort((x, y) => x.startTime - y.startTime))";
+    JSValue sorter = JS_Eval(ctx, sort_src, sizeof sort_src - 1, "<performance>", JS_EVAL_TYPE_GLOBAL);
+    if (!JS_IsException(sorter)) {
+        JSValue r = JS_Call(ctx, sorter, JS_UNDEFINED, 1, (JSValueConst *)&out);
+        JS_FreeValue(ctx, r);
+    }
+    JS_FreeValue(ctx, sorter);
+    return out;
+}
+
+JSValue wjr_PerformanceObserverEntryList_getEntries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    return filtered(ctx, this_val, NULL, 0, -1);
+}
+
+JSValue wjr_PerformanceObserverEntryList_getEntriesByType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    if (argc < 1) { return wj_throw_arity(ctx, "PerformanceObserverEntryList.getEntriesByType", 1, argc); }
+    wj_str t;
+    if (!wj_to_str(ctx, argv[0], &t, 0, NULL)) { return JS_EXCEPTION; }
+    int type = type_of(t.ptr, t.len);
+    wj_str_free(ctx, &t);
+    if (type < 0) { return web_this_impl(ctx, this_val, WJ_IFACE_PerformanceObserverEntryList) ? JS_NewArray(ctx) : JS_EXCEPTION; }
+    return filtered(ctx, this_val, NULL, 0, type);
+}
+
+JSValue wjr_PerformanceObserverEntryList_getEntriesByName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    if (argc < 1) { return wj_throw_arity(ctx, "PerformanceObserverEntryList.getEntriesByName", 1, argc); }
+    wj_str n;
+    if (!wj_to_str(ctx, argv[0], &n, 0, NULL)) { return JS_EXCEPTION; }
+    int type = -1;
+    if (argc > 1 && !JS_IsUndefined(argv[1])) {
+        wj_str t;
+        if (!wj_to_str(ctx, argv[1], &t, 0, NULL)) { wj_str_free(ctx, &n); return JS_EXCEPTION; }
+        type = type_of(t.ptr, t.len);
+        wj_str_free(ctx, &t);
+        if (type < 0) { wj_str_free(ctx, &n); return web_this_impl(ctx, this_val, WJ_IFACE_PerformanceObserverEntryList) ? JS_NewArray(ctx) : JS_EXCEPTION; }
+    }
+    JSValue r = filtered(ctx, this_val, n.ptr, n.len, type);
+    wj_str_free(ctx, &n);
+    return r;
+}
+
+/* the PerformanceObserver task: every registered observer with entries gets them, in registration order */
+static void deliver(JSContext *ctx, JSValueConst data)
+{
+    WJ_UNUSED(data);
+    delivery_queued = false;
+    /* a callback may observe, disconnect or make new observers: walk a counted copy */
+    uint32_t n = n_registered;
+    if (n == 0) { return; }
+    JSValue *list = malloc(n * sizeof *list);
+    if (!list) { return; }
+    for (uint32_t i = 0; i < n; i++) { list[i] = JS_DupValue(ctx, registered[i]); }
+    for (uint32_t i = 0; i < n; i++) {
+        wj_obj *wo = wj_obj_of(list[i]);
+        perf_observer *o = wo ? wo->impl : NULL;
+        if (!o) { continue; }
+        int64_t len = 0;
+        JS_GetLength(ctx, o->buffer, &len);
+        if (len == 0) { continue; }
+        JSValue entries = entry_list_new(ctx, take_buffer(ctx, o));
+        if (JS_IsException(entries)) { wj_report_pending(ctx); continue; }
+        JSValue args[3] = { entries, list[i], JS_NewObject(ctx) };
+        JSValue r = JS_Call(ctx, o->callback, list[i], 3, (JSValueConst *)args);
+        if (JS_IsException(r)) { wj_report_pending(ctx); } else { JS_FreeValue(ctx, r); }
+        JS_FreeValue(ctx, args[0]);
+        JS_FreeValue(ctx, args[2]);
+    }
+    for (uint32_t i = 0; i < n; i++) { JS_FreeValue(ctx, list[i]); }
+    free(list);
+}
+
+static void queue_delivery(JSContext *ctx)
+{
+    if (delivery_queued) { return; }
+    delivery_queued = web_queue_task(ctx, deliver, JS_UNDEFINED);
+}
+
+static void perf_queue_entry(JSContext *ctx, int type, JSValueConst entry)
+{
+    bool any = false;
+    for (uint32_t i = 0; i < n_registered; i++) {
+        wj_obj *wo = wj_obj_of(registered[i]);
+        perf_observer *o = wo ? wo->impl : NULL;
+        if (!o || !(o->types & (1u << type))) { continue; }
+        int64_t len = 0;
+        JS_GetLength(ctx, o->buffer, &len);
+        JS_SetPropertyInt64(ctx, o->buffer, len, JS_DupValue(ctx, entry));
+        any = true;
+    }
+    if (any) { queue_delivery(ctx); }
+}
+
+JSValue wjr_PerformanceObserver_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
+{
+    if (JS_IsUndefined(new_target)) { return JS_ThrowTypeError(ctx, "Constructor PerformanceObserver requires 'new'"); }
+    if (argc < 1 || !JS_IsFunction(ctx, argv[0])) { return JS_ThrowTypeError(ctx, "Failed to construct 'PerformanceObserver': The callback provided as parameter 1 is not a function."); }
+    perf_observer *o = calloc(1, sizeof *o);
+    if (!o) { return JS_ThrowOutOfMemory(ctx); }
+    o->callback = JS_DupValue(ctx, argv[0]);
+    o->buffer = JS_NewArray(ctx);
+    JSValue obj = wj_new_object_for(ctx, WJ_IFACE_PerformanceObserver, new_target, NULL, NULL);
+    if (JS_IsException(obj)) { observer_free(o); return obj; }
+    o->self = obj;
+    web_set_impl(obj, o, observer_free, observer_mark);
+    return obj;
+}
+
+static void warn_unsupported(const char *type, size_t n)
+{
+    char msg[160];
+    int k = snprintf(msg, sizeof msg, "The entry type '%.*s' does not exist or isn't supported.", (int)(n > 60 ? 60 : n), type);
+    wj_console_text(wr_ConsoleLevel_Warn, msg, (size_t)(k > 0 ? k : 0));
+}
+
+/* observe(options) (Performance Timeline §3.3.1) */
+JSValue wjr_PerformanceObserver_observe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    perf_observer *o = observer_this(ctx, this_val);
+    if (!o) { return JS_EXCEPTION; }
+    JSValueConst opt = wj_arg(argc, (JSValue *)argv, 0);
+    if (!web_dict_check(ctx, opt, "PerformanceObserverInit")) { return JS_EXCEPTION; }
+    JSValue entry_types, type, buffered;
+    if (!web_dict_get(ctx, opt, "entryTypes", &entry_types)) { return JS_EXCEPTION; }
+    if (!web_dict_get(ctx, opt, "type", &type)) { JS_FreeValue(ctx, entry_types); return JS_EXCEPTION; }
+    if (!web_dict_get(ctx, opt, "buffered", &buffered)) { JS_FreeValue(ctx, entry_types); JS_FreeValue(ctx, type); return JS_EXCEPTION; }
+    bool has_types = !JS_IsUndefined(entry_types), has_type = !JS_IsUndefined(type);
+    bool want_buffered = JS_ToBool(ctx, buffered);
+    JSValue result = JS_UNDEFINED;
+    if (!has_types && !has_type) {
+        result = JS_ThrowTypeError(ctx, "Failed to execute 'observe' on 'PerformanceObserver': An observe() call must include either entryTypes or type arguments.");
+    } else if (has_types && (has_type || !JS_IsUndefined(buffered))) {
+        result = JS_ThrowTypeError(ctx, "Failed to execute 'observe' on 'PerformanceObserver': An observe() call must not include both entryTypes and type arguments.");
+    } else if ((o->mode == OBS_MULTIPLE && has_type) || (o->mode == OBS_SINGLE && has_types)) {
+        result = wj_throw_dom(ctx, "InvalidModificationError", "Failed to execute 'observe' on 'PerformanceObserver': This observer has already been called with a different argument.");
+    } else if (has_types) {
+        /* entryTypes: replaces what is observed */
+        int64_t n = 0;
+        uint32_t types = 0;
+        if (!JS_IsObject(entry_types) || JS_GetLength(ctx, entry_types, &n) < 0) {
+            result = JS_IsException(result) ? result : JS_ThrowTypeError(ctx, "Failed to execute 'observe' on 'PerformanceObserver': entryTypes is not a sequence.");
+        } else {
+            for (int64_t i = 0; i < n && !JS_IsException(result); i++) {
+                JSValue v = JS_GetPropertyInt64(ctx, entry_types, i);
+                wj_str s;
+                if (!wj_to_str(ctx, v, &s, 0, NULL)) { result = JS_EXCEPTION; JS_FreeValue(ctx, v); break; }
+                int t = type_of(s.ptr, s.len);
+                if (t < 0) { warn_unsupported(s.ptr, s.len); } else { types |= 1u << t; }
+                wj_str_free(ctx, &s);
+                JS_FreeValue(ctx, v);
+            }
+            if (!JS_IsException(result) && types != 0) {
+                o->mode = OBS_MULTIPLE;
+                o->types = types;
+                if (!register_observer(ctx, o)) { result = JS_EXCEPTION; }
+            }
+        }
+    } else {
+        wj_str s;
+        if (!wj_to_str(ctx, type, &s, 0, NULL)) { result = JS_EXCEPTION; }
+        else {
+            int t = type_of(s.ptr, s.len);
+            if (t < 0) {
+                warn_unsupported(s.ptr, s.len);
+            } else {
+                o->mode = OBS_SINGLE;
+                o->types |= 1u << t;
+                if (!register_observer(ctx, o)) { result = JS_EXCEPTION; }
+                else if (want_buffered) {
+                    /* the entries already in the timeline, then the task delivers them */
+                    JSValue old = entries(ctx, "", 0, t);
+                    int64_t n = 0, len = 0;
+                    JS_GetLength(ctx, old, &n);
+                    JS_GetLength(ctx, o->buffer, &len);
+                    for (int64_t i = 0; i < n; i++) { JS_SetPropertyInt64(ctx, o->buffer, len + i, JS_GetPropertyInt64(ctx, old, i)); }
+                    JS_FreeValue(ctx, old);
+                    if (n > 0) { queue_delivery(ctx); }
+                }
+            }
+            wj_str_free(ctx, &s);
+        }
+    }
+    JS_FreeValue(ctx, entry_types);
+    JS_FreeValue(ctx, type);
+    JS_FreeValue(ctx, buffered);
+    return result;
+}
+
+JSValue wjr_PerformanceObserver_disconnect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    perf_observer *o = observer_this(ctx, this_val);
+    if (!o) { return JS_EXCEPTION; }
+    JS_FreeValue(ctx, take_buffer(ctx, o));
+    o->types = 0;
+    o->mode = OBS_NONE;
+    unregister(ctx, o);
+    return JS_UNDEFINED;
+}
+
+JSValue wjr_PerformanceObserver_takeRecords(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    perf_observer *o = observer_this(ctx, this_val);
+    return o ? take_buffer(ctx, o) : JS_EXCEPTION;
+}
+
+JSValue wjr_PerformanceObserver_static_get_supportedEntryTypes(JSContext *ctx, JSValueConst this_val)
+{
+    WJ_UNUSED(this_val);
+    if (!supported_made) {
+        static const char src[] = "Object.freeze(['mark', 'measure'])";
+        JSValue v = JS_Eval(ctx, src, sizeof src - 1, "<performance>", JS_EVAL_TYPE_GLOBAL);
+        if (JS_IsException(v)) { return v; }
+        supported_types = v;
+        supported_made = true;
+    }
+    return JS_DupValue(ctx, supported_types);
 }

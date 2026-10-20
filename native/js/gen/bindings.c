@@ -633,6 +633,14 @@ JSValue wjr_PerformanceEntry_toJSON(JSContext *ctx, JSValueConst this_val, int a
 JSValue wjr_PerformanceMark_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PerformanceMark_get_detail(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceMeasure_get_detail(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceObserverEntryList_getEntries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceObserverEntryList_getEntriesByName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceObserverEntryList_getEntriesByType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceObserver_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceObserver_disconnect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceObserver_observe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceObserver_static_get_supportedEntryTypes(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceObserver_takeRecords(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_clearMarks(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_clearMeasures(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_clearResourceTimings(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -12806,15 +12814,15 @@ static const wj_member wj_m_PerformanceNavigation[] = {
     { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceObserver[] = {
-    { "observe", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "disconnect", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "takeRecords", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "supportedEntryTypes", WJ_M_STATIC_ATTRIBUTE, WJ_F_SAME_OBJECT, 230, NULL, NULL, NULL, 0 },
+    { "observe", WJ_M_METHOD, 0, 0, wjr_PerformanceObserver_observe, NULL, NULL, 0 },
+    { "disconnect", WJ_M_METHOD, 0, 0, wjr_PerformanceObserver_disconnect, NULL, NULL, 0 },
+    { "takeRecords", WJ_M_METHOD, 0, 0, wjr_PerformanceObserver_takeRecords, NULL, NULL, 0 },
+    { "supportedEntryTypes", WJ_M_STATIC_ATTRIBUTE, WJ_F_SAME_OBJECT, 230, NULL, wjr_PerformanceObserver_static_get_supportedEntryTypes, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceObserverEntryList[] = {
-    { "getEntries", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "getEntriesByType", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getEntriesByName", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "getEntries", WJ_M_METHOD, 0, 0, wjr_PerformanceObserverEntryList_getEntries, NULL, NULL, 0 },
+    { "getEntriesByType", WJ_M_METHOD, 0, 1, wjr_PerformanceObserverEntryList_getEntriesByType, NULL, NULL, 0 },
+    { "getEntriesByName", WJ_M_METHOD, 0, 1, wjr_PerformanceObserverEntryList_getEntriesByName, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceTiming[] = {
     { "navigationStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -15456,11 +15464,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_PerformanceNavigation, .n_members = 7, .subtree_end = 456,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceObserver", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "PerformanceObserver", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_PerformanceObserver_constructor,
       .members = wj_m_PerformanceObserver, .n_members = 4, .subtree_end = 457,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceObserverEntryList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "PerformanceObserverEntryList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_PerformanceObserverEntryList, .n_members = 3, .subtree_end = 458,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

@@ -210,6 +210,37 @@ document.body.lastChild.addEventListener("x", () => console.log("listener kept")
 		settings = saved
 	}
 
+	fmt.println("-- PerformanceObserver")
+	{
+		p := load(process, `<!doctype html><body><script>
+performance.mark("early");
+var po = new PerformanceObserver((list, obs) => {
+  console.log("po", list.getEntries().map(e => e.entryType + ":" + e.name).join(","), obs === po, list.getEntriesByType("mark").length, list.getEntriesByName("m2").length);
+});
+po.observe({ type: "mark", buffered: true });
+po.observe({ type: "measure" });
+new PerformanceObserver(() => {}).observe({ type: "paint" });
+performance.mark("m2");
+performance.measure("ms", "early", "m2");
+console.log("types", PerformanceObserver.supportedEntryTypes.join(), PerformanceObserver.supportedEntryTypes === PerformanceObserver.supportedEntryTypes, Object.isFrozen(PerformanceObserver.supportedEntryTypes));
+try { po.observe({ entryTypes: ["mark"] }); } catch (e) { console.log("mixed", e.name); }
+try { po.observe({}); } catch (e) { console.log("empty", e.name); }
+var p2 = new PerformanceObserver(() => console.log("p2 called"));
+p2.observe({ entryTypes: ["mark"] });
+performance.mark("m3");
+console.log("take", p2.takeRecords().length);
+p2.disconnect();
+</script></body>`)
+		pump(50)
+		check(logged("types mark,measure true true"), "supportedEntryTypes: a frozen [SameObject] array of what the timeline records")
+		check(logged("mixed InvalidModificationError") && logged("empty TypeError"), "observe(): the errors of Performance Timeline")
+		check(logged("take 1") && !logged("p2 called"), "takeRecords empties the buffer, disconnect stops delivery")
+		check(logged("po mark:early,measure:ms,mark:m2,mark:m3 true 3 1"), "buffered entries, then new marks and measures, delivered by one task in start time order")
+		warned := false
+		for l in logs { if strings.contains(l, "'paint' does not exist") { warned = true } }
+		check(warned, "an unsupported entry type is ignored with a warning")
+		page.page_close(p)
+	}
 	fmt.println("-- hostile scripts: the page survives, the browser stays responsive")
 	{
 		saved := settings
