@@ -443,6 +443,32 @@ restyle_dom_parallel :: proc(t: ^testing.T) {
 	testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
 }
 
+// A class on the root element that changes its font size or line height, its subtree large enough for the threads:
+// the root is restyled on this thread, where the change of the root font size is seen (the deferred root was not
+// checked: every rem kept the old size); a change of the root line height (rlh) falls back to a full pass as well.
+@(test)
+restyle_dom_root_font_with_threads :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>html.big { font-size: 32px } html.tall { line-height: 40px } html.big p, html.tall p { color: red } p { width: 1rem; height: 1rlh }</style><body>`)
+	for _ in 0 ..< 400 { strings.write_string(&sb, "<section><p>t</p><p>u</p></section>") }
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	pool := host.thread_pool_make(3)
+	defer host.thread_pool_destroy(pool)
+	f.eng.settings.inc_parallel_min = 100
+	root := dom.find_first_by_tag(f.doc, "html")
+	for cls in ([]string{"big", "", "tall", ""}) {
+		dom.set_attribute(f.doc, root, "class", cls)
+		if _, ok := restyle_dom(f.eng, f.doc, f.st, pool); !ok {
+			old := f.st
+			f.st = compute_styles(f.eng, f.doc, {})
+			styled_destroy(old)
+		}
+		diff := verify_styles(f.eng, f.doc, f.st, context.temp_allocator)
+		testing.expectf(t, diff == "", "class %q: %s", cls, diff)
+	}
+}
+
 ////////////////////////////////
 // Random mutations
 

@@ -715,14 +715,15 @@ walk :: proc(w: ^Walker, start: []Frame) {
 		cur := base_style_of(s, f.h)
 		inh_changed, other_changed := false, false
 		if f.force || sub || bits & M_SELF != 0 {
-			if w.defer_subtrees && sub && !f.sub {
+			// (never the root element: the root font size and line height are checked below, on this thread)
+			if w.defer_subtrees && sub && !f.sub && f.parent != nil {
 				append(&w.deferred, Frame{h = f.h, parent = f.parent, bloom = f.bloom, force = true, sub = true, ctx = f.ctx})
 				continue
 			}
 			nc, changed, old := restyle_one(w, &f, n)
 			if changed {
 				if old == nil || !inherited_equal(old, nc) { inh_changed = true } else { other_changed = true }
-				if f.parent == nil && nc.font_size != s.root_font_size { w.root_font = true }
+				if f.parent == nil && (nc.font_size != s.root_font_size || used_line_height(nc, s.line_height_normal) != s.root_line_height) { w.root_font = true }
 			}
 			cur = nc
 		}
@@ -1154,6 +1155,7 @@ verify_styles :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, allocator := c
 	}
 	if s.canvas != full.canvas { return strings.clone("the canvas color differs", allocator) }
 	if s.root_font_size != full.root_font_size { return strings.clone("the root font size differs", allocator) }
+	if s.root_line_height != full.root_line_height { return strings.clone("the root line height differs", allocator) }
 	return ""
 }
 
