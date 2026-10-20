@@ -25,10 +25,15 @@ Pseudo :: enum u8 {
 	Valid, Invalid, User_Valid, User_Invalid, In_Range, Out_Of_Range, Indeterminate, Default, Autofill,
 	// other
 	Lang, Dir, Scope, Defined, Open,
-	Never,          // valid, but matches nothing in this engine's documents: :host outside a shadow tree, :popover-open...
+	Never,          // valid, but matches nothing in this engine's documents: :popover-open, :fullscreen...
+	// shadow trees (CSS Scoping): :host, :host(<compound>) (argument in `list`), :host-context(<compound>); :state(x)
+	// (a custom element's custom state, ElementInternals.states; the name in `name`); :has-slotted
+	Host, Host_Context, State, Has_Slotted,
 	// pseudo-elements
 	Before, After, First_Line, First_Letter, Selection, Placeholder, Marker, Backdrop,
-	Other_Element,  // a valid pseudo-element that generates nothing here (::part(), ::file-selector-button, ::-webkit-*...)
+	Slotted,        // ::slotted(<compound>): the argument in Complex.slotted
+	Part,           // ::part(<ident>+): the names in Complex.parts
+	Other_Element,  // a valid pseudo-element that generates nothing here (::file-selector-button, ::-webkit-*...)
 }
 
 Simple :: struct {
@@ -39,7 +44,9 @@ Simple :: struct {
 	value:  string,
 	ci:     bool,        // attribute value compared case-insensitively
 	nth_a, nth_b: int,   // An+B
-	list:   ^Selector_List,   // :not :is :where :has, `of S` of nth-child, and the parent list for `&`
+	list:   ^Selector_List,   // :not :is :where :has :host() :host-context(), `of S` of nth-child, the parent list for `&`;
+	                          // a ::slotted() being parsed: its argument
+	names:  []string,         // a ::part() being parsed: its names
 }
 
 Compound :: struct { simples: []Simple }
@@ -51,6 +58,12 @@ Complex :: struct {
 	relative:       bool,
 	pseudo_element: Pseudo,           // ::before etc., or .None
 	specificity:    Specificity,
+	// ::slotted(<compound>) and ::part(<ident>+): the compound the slotted element must match, the part names, the
+	// pseudo-classes written after ::part() (they test the part), and a pseudo-element after either (::before...)
+	slotted:        ^Compound,
+	parts:          []string,
+	part_state:     []Simple,
+	then_pseudo:    Pseudo,
 }
 
 Selector_List :: []Complex
@@ -165,6 +178,34 @@ parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relat
 			if pe != .None {
 				// a pseudo-element must end the selector
 				c.pseudo_element = pe
+				if pe == .Slotted || pe == .Part {
+					if pe == .Slotted {
+						c.slotted = new(Compound, a)
+						c.slotted^ = s.list^[0].compounds[0]
+					} else {
+						c.parts = s.names
+					}
+					// then pseudo-classes (of the part) and one tree-abiding pseudo-element
+					state := make([dynamic]Simple, a)
+					for i < len(vs) && !is_ws_value(vs[i]) {
+						s2, pe2, n2, g2 := parse_simple(vs[i:], a, parent)
+						if !g2 { return {}, false }
+						i += n2
+						if pe2 != .None {
+							#partial switch pe2 {
+							case .Before, .After, .Marker, .Placeholder, .Selection, .First_Line, .First_Letter:
+							case: return {}, false
+							}
+							if c.then_pseudo != .None { return {}, false }
+							c.then_pseudo = pe2
+							continue
+						}
+						if s2.kind != .Pseudo_Class || c.then_pseudo != .None || pe == .Slotted { return {}, false }
+						append(&state, s2)
+					}
+					c.part_state = state[:]
+					break
+				}
 				for i < len(vs) && !is_ws_value(vs[i]) { // only user-action pseudo-classes may follow
 					s2, _, n2, g2 := parse_simple(vs[i:], a, parent)
 					if !g2 || s2.kind != .Pseudo_Class { return {}, false }
@@ -233,7 +274,30 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s:
 				if len(vs) > 2 && vs[2].kind == .Token && vs[2].tok.kind == .Ident {
 					if elem, good := pseudo_element_of(vs[2].tok.text); good { return {}, elem, 3, true }
 				}
-				if len(vs) > 2 && vs[2].kind == .Function && functional_pseudo_element(vs[2]) { return {}, .Other_Element, 3, true }
+				if len(vs) > 2 && vs[2].kind == .Function {
+					fname := strings.to_lower(vs[2].tok.text, context.temp_allocator)
+					switch fname {
+					case "slotted":
+						// ::slotted(<compound-selector>)
+						arg, good := parse_complex(trim_values(vs[2].children), a, nil, false)
+						if !good || len(arg.compounds) != 1 || arg.pseudo_element != .None { return {}, .None, 0, false }
+						lst := new(Selector_List, a)
+						lst^ = make([]Complex, 1, a)
+						lst^[0] = arg
+						return Simple{list = lst}, .Slotted, 3, true
+					case "part":
+						// ::part(<ident>+)
+						names := make([dynamic]string, a)
+						for pv in vs[2].children {
+							if is_ws_value(pv) { continue }
+							if pv.kind != .Token || pv.tok.kind != .Ident { return {}, .None, 0, false }
+							append(&names, strings.clone(pv.tok.text, a))
+						}
+						if len(names) == 0 { return {}, .None, 0, false }
+						return Simple{names = names[:]}, .Part, 3, true
+					}
+					if functional_pseudo_element(vs[2]) { return {}, .Other_Element, 3, true }
+				}
 				return {}, .None, 0, false
 			}
 			if len(vs) > 1 && vs[1].kind == .Token && vs[1].tok.kind == .Ident {
@@ -337,7 +401,9 @@ simple_pseudo_class :: proc(name: string) -> (Pseudo, bool) {
 	case "defined": return .Defined, true
 	case "open": return .Open, true
 	case "-webkit-any-link": return .Any_Link, true
-	case "host", "has-slotted", "popover-open", "modal", "fullscreen", "-webkit-full-screen", "picture-in-picture",
+	case "host": return .Host, true
+	case "has-slotted": return .Has_Slotted, true
+	case "popover-open", "modal", "fullscreen", "-webkit-full-screen", "picture-in-picture",
 	     "playing", "paused", "seeking", "buffering", "stalled", "muted", "volume-locked", "current", "past", "future",
 	     "target-current", "active-view-transition", "xr-overlay":
 		return .Never, true
@@ -359,8 +425,20 @@ parse_functional_pseudo :: proc(f: Value, a: Arena_Alloc, parent: ^Selector_List
 	case "is", "where", "-webkit-any", "matches", "-webkit-matches":
 		s.pseudo = name == "where" ? .Where : .Is
 		s.list = new(Selector_List, a); s.list^ = parse_forgiving_list(args, a, parent, false)
-	case "host", "host-context", "state", "active-view-transition-type", "current":
-		// shadow-tree and custom-element states: nothing in a document matches them here
+	case "host", "host-context":
+		// :host(<compound-selector>), :host-context(<compound-selector>)
+		arg, good := parse_complex(args, a, nil, false)
+		if !good || len(arg.compounds) != 1 || arg.pseudo_element != .None { return {}, false }
+		s.pseudo = name == "host" ? .Host : .Host_Context
+		s.list = new(Selector_List, a)
+		s.list^ = make([]Complex, 1, a)
+		s.list^[0] = arg
+	case "state":
+		// :state(<ident>): a custom state of a custom element (ElementInternals.states)
+		if len(args) != 1 || args[0].kind != .Token || args[0].tok.kind != .Ident { return {}, false }
+		s.pseudo = .State
+		s.name = strings.clone(args[0].tok.text, a)
+	case "active-view-transition-type", "current":
 		if len(args) == 0 { return {}, false }
 		s.pseudo = .Never
 	case "has":
@@ -509,6 +587,10 @@ complex_specificity :: proc(c: Complex) -> Specificity {
 		for s in comp.simples { sp = specificity_add(sp, simple_specificity(s)) }
 	}
 	if c.pseudo_element != .None { sp.c += 1 }
+	// ::slotted(): a pseudo-element plus its argument; ::part(): a pseudo-element plus what follows it
+	if c.slotted != nil { for s in c.slotted.simples { sp = specificity_add(sp, simple_specificity(s)) } }
+	for s in c.part_state { sp = specificity_add(sp, simple_specificity(s)) }
+	if c.then_pseudo != .None { sp.c += 1 }
 	return sp
 }
 
@@ -532,6 +614,11 @@ simple_specificity :: proc(s: Simple) -> Specificity {
 		#partial switch s.pseudo {
 		case .Where: return {}
 		case .Is, .Not, .Has: return list_max_specificity(s.list)
+		case .Host, .Host_Context:
+			// a pseudo-class, plus its argument
+			sp := Specificity{0, 1, 0}
+			if s.list != nil { sp = specificity_add(sp, list_max_specificity(s.list)) }
+			return sp
 		case .Nth_Child, .Nth_Last_Child:
 			sp := Specificity{0, 1, 0}
 			if s.list != nil { sp = specificity_add(sp, list_max_specificity(s.list)) }

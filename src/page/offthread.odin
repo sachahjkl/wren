@@ -351,10 +351,10 @@ css_apply :: proc(p: ^Page, j: ^Css_Job) {
 		if !still || l.serial != j.serial { return }   // the <link> went away or changed meanwhile
 		s: ^style.Sheet
 		if j.sheet != nil {
-			s = style.engine_add_parsed_sheet(p.engine, j.sheet, j.owner, j.media, j.url, from_link = true)
+			s = style.engine_add_parsed_sheet(p.engine, j.sheet, j.owner, j.media, j.url, from_link = true, scope = l.scope)
 			j.sheet = nil
 		} else {
-			s = style.engine_add_sheet(p.engine, string(j.text), j.owner, j.media, j.url, from_link = true)
+			s = style.engine_add_sheet(p.engine, string(j.text), j.owner, j.media, j.url, from_link = true, scope = l.scope)
 		}
 		if s == nil { log(p, .Warn, strings.concatenate({"stylesheet ", j.url, ": too large or disabled"}, context.temp_allocator)) }
 	}

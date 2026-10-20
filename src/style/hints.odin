@@ -31,7 +31,7 @@ add_hint_entry :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node) {
 	if len(pre) == 0 { return }
 	r := new(Rule, context.temp_allocator)
 	r^ = Rule{decls = pre, customs = customs, origin = .Author, layer = 0, order = 0, hint = true}
-	append(&p.lists[0], Entry{rule = r, complex = &hint_complex})
+	append(&p.lists[0], Entry{rule = r, complex = &hint_complex, ctx = p.own_depth})
 }
 
 // Attributes that are presentational hints of some element; `subtree`: a change to it on this element also changes the

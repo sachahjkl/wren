@@ -393,7 +393,7 @@ meta_scheme_changed :: proc(doc: ^dom.Document, s: ^Styled, entries: []dom.Journ
 		case .Attribute:
 			if en.name != "name" && en.name != "content" { continue }
 			if n := dom.get(doc, en.node); n != nil && n.kind == .Element && n.name == "meta" { suspect = true; break check }
-		case .Text:
+		case .Text, .Reslot:
 		}
 	}
 	if !suspect && removal {

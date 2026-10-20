@@ -28,6 +28,7 @@ Style_Load :: struct {
 	serial:       u64,           // tells a background parse whether this load is still the one it parses for
 	parser:       bool,          // part of the document as parsed (or blocking="render"): may block its first paint
 	failed:       bool,          // nothing will come of it (network error, HTTP error, refused)
+	scope:        base.Handle,   // links: the shadow root the <link> is in (NIL: the document)
 }
 
 @(private)
@@ -132,7 +133,7 @@ sync_styles :: proc(p: ^Page) {
 	// new or changed links
 	for k in links {
 		if old, ok := p.link_loads[k.owner]; ok {
-			if old.href == k.href { continue }
+			if old.href == k.href && old.scope == k.scope { continue }
 			if s := style.engine_sheet_of_owner(p.engine, k.owner); s != nil { style.engine_remove_sheet(p.engine, s) }
 			free_load(p, old)
 			delete_key(&p.link_loads, k.owner)
@@ -142,6 +143,7 @@ sync_styles :: proc(p: ^Page) {
 		l := new(Style_Load)
 		l.page, l.owner, l.url = p, k.owner, abs
 		l.href, l.media = strings.clone(k.href), strings.clone(k.media)
+		l.scope = k.scope
 		l.parser = render_blocking_candidate(p, k.owner)
 		p.link_loads[k.owner] = l
 		co, has_co := dom.get_attribute(p.doc, k.owner, "crossorigin")
@@ -193,7 +195,7 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			if !style.engine_resolve_import_by_id(p.engine, l.sheet_id, l.slot, string(text), l.url) { l.failed = true }
 		} else {
 			if _, still := p.link_loads[l.owner]; !still { return }
-			if s := style.engine_add_sheet(p.engine, string(text), l.owner, l.media, l.url, from_link = true); s == nil {
+			if s := style.engine_add_sheet(p.engine, string(text), l.owner, l.media, l.url, from_link = true, scope = l.scope); s == nil {
 				l.failed = true
 				log(p, .Warn, fmt.tprintf("stylesheet %s: too large or disabled", l.url))
 			}
@@ -233,7 +235,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	now := document_time_ms(p)
 	full := p.styled == nil || p.style_stale || e.dirty || e.restyle_needed
 	partial, dom_partial := false, false
-	if !full && p.styled.mutations != p.doc.mutations {
+	if !full && (p.styled.mutations != p.doc.mutations || e.shadow.dirty) {
 		full = true
 		if e.settings.inc_enabled {
 			owners := make([dynamic]base.Handle, 0, len(p.link_loads), context.temp_allocator)

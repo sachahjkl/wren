@@ -49,6 +49,7 @@ Frame :: struct {
 	bloom:  Bloom,
 	force:  bool,   // restyle this element (its parent changed what it may take from it)
 	sub:    bool,   // inside a subtree restyled whole
+	ctx:    Elem_Ctx,   // the tree it is matched in (scope.odin)
 }
 
 // A changed element seen by a thread of a parallel restyle, applied on the calling thread afterwards.
@@ -88,6 +89,7 @@ fail :: proc(e: ^Engine, why: string) -> (bool, bool) {
 
 @(private)
 connected :: proc(doc: ^dom.Document, h: base.Handle) -> bool {
+	if dom.has_shadow_trees(doc) { return dom.is_connected(doc, h) }
 	for cur := h; cur != base.NIL_HANDLE; {
 		if cur == doc.root { return true }
 		n := dom.get(doc, cur)
@@ -126,6 +128,12 @@ Marker :: struct {
 	removed: [dynamic]base.Handle,   // removed elements still alive (their styles are dropped)
 	removed_any: bool,
 	fail:  string,
+	// shadow trees: the pass that knows the trees' contexts (scope.odin), the invalidation index of each tree's rules,
+	// and nodes that may have left the flat tree (their styles are dropped when they did)
+	shadows: bool,
+	p:     ^Pass,
+	ixs:   map[base.Handle]^Inv_Index,
+	left:  [dynamic]base.Handle,
 }
 
 @(private = "file")
@@ -136,11 +144,64 @@ mark :: proc(m: ^Marker, h: base.Handle, sub: bool) {
 	if nb == bits { return }
 	m.marks[h] = nb
 	if bits != 0 { return }   // its ancestors were flagged with it
+	// the walk goes down the flat tree: so does the trail to the marked element
+	if m.shadows {
+		for p := flat_parent_element(m.doc, h); p != base.NIL_HANDLE; p = flat_parent_element(m.doc, p) {
+			pb := m.marks[p]
+			if pb & M_CHILD != 0 { break }
+			m.marks[p] = pb | M_CHILD
+		}
+		return
+	}
 	for p := parent_element(&m.mc, h); p != base.NIL_HANDLE; p = parent_element(&m.mc, p) {
 		pb := m.marks[p]
 		if pb & M_CHILD != 0 { break }
 		m.marks[p] = pb | M_CHILD
 	}
+}
+
+// The invalidation index of the rules of the tree `h` is in.
+@(private = "file")
+ix_of :: proc(m: ^Marker, h: base.Handle) -> ^Inv_Index {
+	if !m.shadows { return m.ix }
+	ctx := node_ctx(m.p, h)
+	if ctx.root == base.NIL_HANDLE { return m.ix }
+	if ix, ok := m.ixs[ctx.root]; ok { return ix }
+	ix := inv_index_of(m.e, ctx.set)
+	if ix.give_up { m.fail = "selectors nested too deep" }
+	m.ixs[ctx.root] = ix
+	return ix
+}
+
+// Every index whose rules may test the features of element `h`: its tree's, its shadow tree's (:host rules) when it is
+// a host, those of the trees of the slots it is assigned through (::slotted()).
+@(private = "file")
+ixs_for :: proc(m: ^Marker, h: base.Handle) -> []^Inv_Index {
+	out := make([dynamic]^Inv_Index, 0, 2, context.temp_allocator)
+	append(&out, ix_of(m, h))
+	if !m.shadows { return out[:] }
+	n := dom.get(m.doc, h)
+	if n == nil { return out[:] }
+	if n.kind == .Element && n.shadow != base.NIL_HANDLE { append(&out, inv_index_of(m.e, ctx_for_root(m.p, n.shadow).set)) }
+	for s, hops := n.slot, 0; s != base.NIL_HANDLE && hops < 256; hops += 1 {
+		append(&out, ix_of(m, s))
+		sn := dom.get(m.doc, s)
+		if sn == nil { break }
+		s = sn.slot
+	}
+	return out[:]
+}
+
+// The indexes that see the position of `p`'s children: their tree's, and a host's shadow tree's (::slotted(:first-child)).
+@(private = "file")
+ixs_for_children :: proc(m: ^Marker, p, child: base.Handle) -> []^Inv_Index {
+	out := make([dynamic]^Inv_Index, 0, 2, context.temp_allocator)
+	append(&out, ix_of(m, child))
+	if !m.shadows { return out[:] }
+	if n := dom.get(m.doc, p); n != nil && n.kind == .Element && n.shadow != base.NIL_HANDLE {
+		append(&out, inv_index_of(m.e, ctx_for_root(m.p, n.shadow).set))
+	}
+	return out[:]
 }
 
 @(private = "file")
@@ -216,65 +277,74 @@ list_has_has :: proc(list: css.Selector_List, depth := 0) -> bool {
 // :has() arguments use sibling combinators, the earlier siblings of x and of its ancestors). x itself when `self`.
 @(private = "file")
 has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool) {
-	ix := m.ix
+	ix := ix_of(m, x)
 	if !ix.uses_has || len(ix.has_anchors) == 0 { return }
-	test :: proc(m: ^Marker, a: base.Handle) {
-		for &ha in m.ix.has_anchors {
+	test :: proc(m: ^Marker, ix: ^Inv_Index, a: base.Handle) {
+		for &ha in ix.has_anchors {
 			if anchor_could_match(&m.mc, a, ha.compound) { apply(m, a, ha.reach) }
 		}
 	}
-	if self { test(m, x) }
+	if self { test(m, ix, x) }
 	for cur := x; cur != base.NIL_HANDLE; cur = parent_element(&m.mc, cur) {
-		if cur != x { test(m, cur) }
+		if cur != x { test(m, ix, cur) }
 		if ix.has_sibling {
-			for ps := prev_element(&m.mc, cur); ps != base.NIL_HANDLE; ps = prev_element(&m.mc, ps) { test(m, ps) }
+			for ps := prev_element(&m.mc, cur); ps != base.NIL_HANDLE; ps = prev_element(&m.mc, ps) { test(m, ix, ps) }
 		}
 	}
 }
 
 @(private = "file")
 empty_changed :: proc(m: ^Marker, p: base.Handle) {
-	if reach_any(m.ix.empty) { apply(m, p, m.ix.empty) }
-	if m.ix.has_empty { has_invalidate(m, p, false) }
+	for ix in ixs_for(m, p) {
+		if reach_any(ix.empty) { apply(m, p, ix.empty) }
+		if ix.has_empty { has_invalidate(m, p, false) }
+	}
 }
 
 // An element was inserted under `p`, at `at`.
 @(private = "file")
 children_inserted :: proc(m: ^Marker, p, at: base.Handle) {
-	ix := m.ix
-	if reach_any(ix.pos_fwd) {
-		for x := at; x != base.NIL_HANDLE; x = next_element(m, x) { apply(m, x, ix.pos_fwd) }
+	for ix in ixs_for_children(m, p, at) {
+		if reach_any(ix.pos_fwd) {
+			for x := at; x != base.NIL_HANDLE; x = next_element(m, x) { apply(m, x, ix.pos_fwd) }
+		}
+		if reach_any(ix.pos_bwd) {
+			for x := at; x != base.NIL_HANDLE; x = prev_element(&m.mc, x) { apply(m, x, ix.pos_bwd) }
+		}
+		if ix.sib_any && reach_any(ix.sib_rel) {
+			if nx := next_element(m, at); nx != base.NIL_HANDLE { apply(m, nx, ix.sib_rel) }
+		}
 	}
-	if reach_any(ix.pos_bwd) {
-		for x := at; x != base.NIL_HANDLE; x = prev_element(&m.mc, x) { apply(m, x, ix.pos_bwd) }
-	}
-	if ix.sib_any && reach_any(ix.sib_rel) {
-		if nx := next_element(m, at); nx != base.NIL_HANDLE { apply(m, nx, ix.sib_rel) }
-	}
-	empty_changed(m, p)
+	if is_element_node(m.doc, p) { empty_changed(m, p) }
 	has_invalidate(m, at, false)
 }
 
 // An element left `p` (where among the children is not known any more).
 @(private = "file")
 children_removed :: proc(m: ^Marker, p: base.Handle) {
-	ix := m.ix
-	pos := reach_union(ix.pos_fwd, ix.pos_bwd)
-	if reach_any(pos) || ix.sib_any {
-		every := reach_union(pos, ix.sib_rel)
-		every.self = true
-		pn := dom.get(m.doc, p)
-		for ch := pn.first_child; ch != base.NIL_HANDLE; ch = dom.get(m.doc, ch).next {
-			if !is_element_node(m.doc, ch) { continue }
-			apply(m, ch, every)
-			if ix.sib_any { mark(m, ch, every.desc || every.sib_desc) }
+	pn := dom.get(m.doc, p)
+	first := pn.first_child
+	for first != base.NIL_HANDLE && !is_element_node(m.doc, first) { first = dom.get(m.doc, first).next }
+	if first != base.NIL_HANDLE {
+		for ix in ixs_for_children(m, p, first) {
+			pos := reach_union(ix.pos_fwd, ix.pos_bwd)
+			if reach_any(pos) || ix.sib_any {
+				every := reach_union(pos, ix.sib_rel)
+				every.self = true
+				for ch := pn.first_child; ch != base.NIL_HANDLE; ch = dom.get(m.doc, ch).next {
+					if !is_element_node(m.doc, ch) { continue }
+					apply(m, ch, every)
+					if ix.sib_any { mark(m, ch, every.desc || every.sib_desc) }
+				}
+				pn = dom.get(m.doc, p)
+			}
 		}
 	}
-	empty_changed(m, p)
-	if ix.uses_has {
-		has_invalidate(m, p, true)
+	if is_element_node(m.doc, p) { empty_changed(m, p) }
+	if ix := ix_of(m, first != base.NIL_HANDLE ? first : p); ix.uses_has {
+		if is_element_node(m.doc, p) { has_invalidate(m, p, true) }
 		if ix.has_sibling {
-			pn := dom.get(m.doc, p)
+			pn = dom.get(m.doc, p)
 			for ch := pn.first_child; ch != base.NIL_HANDLE; ch = dom.get(m.doc, ch).next {
 				if is_element_node(m.doc, ch) { has_invalidate(m, ch, true) }
 			}
@@ -285,7 +355,11 @@ children_removed :: proc(m: ^Marker, p: base.Handle) {
 // What an inserted element's own features reach beyond its subtree (which is restyled whole anyway).
 @(private = "file")
 inserted_features :: proc(m: ^Marker, h: base.Handle, n: ^dom.Node) {
-	ix := m.ix
+	for ix in ixs_for(m, h) { inserted_features_of(m, ix, h, n) }
+}
+
+@(private = "file")
+inserted_features_of :: proc(m: ^Marker, ix: ^Inv_Index, h: base.Handle, n: ^dom.Node) {
 	r := ix.keyless
 	if t, ok := ix.by_tag[n.name]; ok { r = reach_union(r, t) }
 	for a in n.attrs {
@@ -360,12 +434,37 @@ Attr_Change :: struct { h: base.Handle, name: string, old: string, had_old: bool
 
 @(private = "file")
 attribute_changed :: proc(m: ^Marker, ch: Attr_Change) {
-	ix := m.ix
 	n := dom.get(m.doc, ch.h)
+	h := ch.h
+	if ch.name == STATE_ATTRIBUTE {
+		// custom states (:state()): no value to compare, the rules that test them say what they reach
+		for ix in ixs_for(m, h) {
+			if r, ok := ix.by_attr[ch.name]; ok { apply(m, h, r) }
+			if ch.name in ix.has_attrs { has_invalidate(m, h, false) }
+		}
+		return
+	}
 	cur, has_cur := attr(n, ch.name)
 	if has_cur == ch.had_old && cur == ch.old { return }
+	if (n.name == "style" || n.name == "link") && (!m.shadows || dom.containing_shadow_root(m.doc, h) == base.NIL_HANDLE) {
+		m.fail = "stylesheet element changed"
+		return
+	}
+	switch ch.name {
+	case "part", "exportparts":
+		// ::part() rules of outer trees: the element (or, through exportparts, parts deeper in its shadow tree)
+		if m.shadows { mark(m, h, true) }
+	}
+	for ix in ixs_for(m, h) {
+		attribute_changed_in(m, ix, ch, n, cur, has_cur)
+		if m.fail != "" { return }
+	}
+	if content_reads_attr(base_style_of(m.s, h), ch.name) { mark(m, h, false) }
+}
+
+@(private = "file")
+attribute_changed_in :: proc(m: ^Marker, ix: ^Inv_Index, ch: Attr_Change, n: ^dom.Node, cur: string, has_cur: bool) {
 	h := ch.h
-	if n.name == "style" || n.name == "link" { m.fail = "stylesheet element changed"; return }
 	switch ch.name {
 	case "class":
 		a := make(map[string]bool, 8, context.temp_allocator)
@@ -408,7 +507,6 @@ attribute_changed :: proc(m: ^Marker, ch: Attr_Change) {
 			break
 		}
 	}
-	if content_reads_attr(base_style_of(m.s, h), ch.name) { mark(m, h, false) }
 }
 
 // Marks what the mutations since `s` reach. A non-empty m.fail: the change cannot be scoped.
@@ -418,6 +516,11 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 	ix := m.ix
 	s := m.s
 	controls := ix.uses_controls && s.state.controls.query != nil
+	if m.shadows && !controls && s.state.controls.query != nil {
+		// a shadow tree's rules may ask the forms model too
+		for _, rs in m.e.shadow.of_root { if inv_index_of(m.e, rs).uses_controls { controls = true; break } }
+	}
+	in_shadow :: proc(m: ^Marker, h: base.Handle) -> bool { return m.shadows && dom.containing_shadow_root(m.doc, h) != base.NIL_HANDLE }
 	structure := false
 	attrs := make(map[string]Attr_Change, 16, context.temp_allocator)
 	attr_order := make([dynamic]string, 0, 16, context.temp_allocator)
@@ -435,17 +538,18 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			if !connected(doc, en.node) { continue }   // removed again since (that removal is in the journal)
 			structure = true
 			if controls && form_related_in(doc, en.node) { m.fail = "form controls inserted"; return }
-			if n.name == "style" || n.name == "link" { m.fail = "stylesheet element inserted"; return }
+			if (n.name == "style" || n.name == "link") && !in_shadow(m, en.node) { m.fail = "stylesheet element inserted"; return }
 			// moved here from elsewhere: counter values change on both sides (new elements: see settle)
 			if s.counters_used && !m.rewalk && subtree_feeds(s, doc, en.node) { m.rewalk = true }
 			mark(m, en.node, true)
 			inserted_features(m, en.node, n)
 			children_inserted(m, n.parent, en.node)
+			if m.shadows { append(&m.left, en.node) }   // inserted where the flat tree does not show it: no style
 		case .Remove:
 			if en.parent == doc.root { m.fail = "document element changed"; return }
 			n := dom.get(doc, en.node)
 			was_element := n != nil ? n.kind == .Element : style_of(s, en.node) != nil
-			p_ok := is_element_node(doc, en.parent) && connected(doc, en.parent)
+			p_ok := (is_element_node(doc, en.parent) || dom.is_shadow_root(doc, en.parent)) && connected(doc, en.parent)
 			if !was_element {
 				if p_ok { empty_changed(m, en.parent) }
 				continue
@@ -467,7 +571,7 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 					if s.forms_scan == 2 { m.fail = "element removed from a document with form controls"; return }
 				}
 			} else {
-				if !connected(doc, en.node) { append(&m.removed, en.node) }
+				if !connected(doc, en.node) { append(&m.removed, en.node) } else if m.shadows { append(&m.left, en.node) }
 				if s.counters_used && !m.rewalk && subtree_feeds(s, doc, en.node) { m.rewalk = true }
 				if controls && form_related_in(doc, en.node) { m.fail = "form controls removed"; return }
 			}
@@ -476,7 +580,7 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			n := dom.get(doc, en.node)
 			p := n != nil ? n.parent : en.parent
 			if !is_element_node(doc, p) || !connected(doc, p) { continue }
-			if pn := dom.get(doc, p); pn.name == "style" { m.fail = "stylesheet text changed"; return }
+			if pn := dom.get(doc, p); pn.name == "style" && !in_shadow(m, p) { m.fail = "stylesheet text changed"; return }
 			empty_changed(m, p)
 		case .Attribute:
 			if !is_element_node(doc, en.node) { continue }
@@ -485,6 +589,14 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			if key in attrs { continue }
 			attrs[key] = Attr_Change{h = en.node, name = en.name, old = en.old, had_old = en.had_old}
 			append(&attr_order, key)
+		case .Reslot:
+			if !connected(doc, en.node) { continue }
+			structure = true
+			if en.parent == base.NIL_HANDLE {
+				mark(m, en.node, true)   // a slot's (or a new host's) flat children: their inheritance, ::slotted()
+			} else {
+				append(&m.left, en.node)
+			}
 		}
 	}
 	for k in attr_order {
@@ -494,12 +606,12 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 		attribute_changed(m, ch)
 	}
 	// the dynamic state moves with the tree: hovered, active or focused elements inserted or removed
-	if structure && m.e.state_deps != {} {
+	if structure && (m.e.state_deps != {} || (m.shadows && m.e.shadow.state_deps != {})) {
 		for h in ([3]base.Handle{s.state.hover, s.state.active, s.state.focus}) {
 			if h == base.NIL_HANDLE { continue }
 			if dom.get(doc, h) == nil { m.fail = "state element removed"; return }
 			for &en in entries {
-				if (en.kind == .Insert || en.kind == .Remove) && dom.get(doc, en.node) != nil && dom.is_ancestor_or_self(doc, en.node, h) {
+				if (en.kind == .Insert || en.kind == .Remove || en.kind == .Reslot) && dom.get(doc, en.node) != nil && dom.shadow_including_ancestor(doc, en.node, h) {
 					m.fail = "state element moved"
 					return
 				}
@@ -515,7 +627,7 @@ estimate :: proc(m: ^Marker) -> int {
 	for h, bits in m.marks {
 		if bits & (M_SELF | M_SUB) == 0 { continue }
 		covered := false
-		for p := parent_element(&m.mc, h); p != base.NIL_HANDLE; p = parent_element(&m.mc, p) {
+		for p := flat_parent_element(m.doc, h); p != base.NIL_HANDLE; p = flat_parent_element(m.doc, p) {
 			if m.marks[p] & M_SUB != 0 { covered = true; break }
 		}
 		if covered { continue }
@@ -525,8 +637,7 @@ estimate :: proc(m: ^Marker) -> int {
 		for len(stack) > 0 {
 			x := pop(&stack)
 			n += 1
-			xn := dom.get(m.doc, x)
-			for ch := xn.first_child; ch != base.NIL_HANDLE; ch = dom.get(m.doc, ch).next {
+			for ch := dom.flat_first_child(m.doc, x); ch != base.NIL_HANDLE; ch = dom.flat_next(m.doc, ch) {
 				if is_element_node(m.doc, ch) { append(&stack, ch) }
 			}
 		}
@@ -575,7 +686,7 @@ settle :: proc(w: ^Walker, h: base.Handle, c: ^Computed) -> (cur: ^Computed, cha
 restyle_one :: proc(w: ^Walker, f: ^Frame, n: ^dom.Node) -> (cur: ^Computed, changed: bool, old_base: ^Computed) {
 	w.marked += 1
 	tmp := virtual.arena_temp_begin(w.arena)
-	c := compute_element(w.p, f.h, n, f.parent, &f.bloom)
+	c := compute_element(w.p, f.h, n, f.parent, &f.bloom, f.ctx)
 	cur, changed, old_base = settle(w, f.h, c)
 	if changed { virtual.arena_temp_ignore(tmp) } else { virtual.arena_temp_end(tmp) }
 	return
@@ -598,7 +709,7 @@ walk :: proc(w: ^Walker, start: []Frame) {
 		inh_changed, other_changed := false, false
 		if f.force || sub || bits & M_SELF != 0 {
 			if w.defer_subtrees && sub && !f.sub {
-				append(&w.deferred, Frame{h = f.h, parent = f.parent, bloom = f.bloom, force = true, sub = true})
+				append(&w.deferred, Frame{h = f.h, parent = f.parent, bloom = f.bloom, force = true, sub = true, ctx = f.ctx})
 				continue
 			}
 			nc, changed, old := restyle_one(w, &f, n)
@@ -612,7 +723,7 @@ walk :: proc(w: ^Walker, start: []Frame) {
 		if cur == nil { continue }
 		child_bloom := f.bloom
 		bloom_add_element(&child_bloom, n)
-		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev {
+		for ch := dom.flat_last_child(doc, f.h); ch != base.NIL_HANDLE; ch = dom.flat_prev(doc, ch) {
 			cn := dom.get(doc, ch)
 			if cn.kind != .Element { continue }
 			cb := w.marks^[ch] if w.marks != nil else 0
@@ -622,7 +733,7 @@ walk :: proc(w: ^Walker, start: []Frame) {
 				co := base_style_of(s, ch)
 				force = co == nil || !ps_empty(ps_intersect(co.inherits, noninh))
 			}
-			if force || cb != 0 { append(&stack, Frame{h = ch, parent = cur, bloom = child_bloom, force = force, sub = sub}) }
+			if force || cb != 0 { append(&stack, Frame{h = ch, parent = cur, bloom = child_bloom, force = force, sub = sub, ctx = child_ctx(w.p, f.h, f.ctx, ch)}) }
 		}
 	}
 }
@@ -657,8 +768,8 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 			nc, _, _ := restyle_one(w, &f, n)
 			child_bloom := f.bloom
 			bloom_add_element(&child_bloom, n)
-			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next {
-				if is_element_node(doc, ch) { append(&next, Frame{h = ch, parent = nc, bloom = child_bloom, force = true, sub = true}) }
+			for ch := dom.flat_first_child(doc, f.h); ch != base.NIL_HANDLE; ch = dom.flat_next(doc, ch) {
+				if is_element_node(doc, ch) { append(&next, Frame{h = ch, parent = nc, bloom = child_bloom, force = true, sub = true, ctx = child_ctx(w.p, f.h, f.ctx, ch)}) }
 			}
 		}
 		frontier = next
@@ -710,9 +821,13 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 // computed style differs (s.serial changed then).
 restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thread_Pool = nil) -> (changed: bool, ok: bool) {
 	e.last_restyle = {}
-	if s.mutations == doc.mutations { return false, true }
-	if !e.settings.inc_enabled { return fail(e, "disabled") }
+	shadows := dom.has_shadow_trees(doc)
 	if e.dirty { return fail(e, "rules changed") }
+	if s.mutations == doc.mutations && !e.shadow.dirty && len(e.shadow.changed) == 0 { return false, true }
+	if !e.settings.inc_enabled { return fail(e, "disabled") }
+	// the rule sets of shadow trees whose sheets changed: their hosts are restyled with their flat subtrees
+	if e.shadow.dirty { scopes_resolve(e, doc) }
+	if shadows { _ = shadow_set_of(e, base.NIL_HANDLE) }
 	entries, jok := dom.journal_since(doc, s.mutations)
 	if !jok { return fail(e, "mutation journal incomplete") }
 	if meta_scheme_changed(doc, s, entries) { return fail(e, "page color scheme changed") }   // the root's color-scheme, then everything
@@ -720,10 +835,23 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	ix := inv_index(e)
 	if ix.give_up { return fail(e, "selectors nested too deep") }
 
-	m := Marker{e = e, s = s, doc = doc, ix = ix}
+	m := Marker{e = e, s = s, doc = doc, ix = ix, shadows = shadows}
 	m.marks = make(map[base.Handle]u8, 64, context.temp_allocator)
 	m.removed = make([dynamic]base.Handle, 0, 4, context.temp_allocator)
 	match_ctx_init(&m.mc, doc, s.state, context.temp_allocator)
+	w := Walker{e = e, s = s, doc = doc, marks = &m.marks}
+	w.p = pass_make(e, s, doc, s.state)
+	w.arena = &s.arena
+	defer pass_destroy(w.p)
+	if shadows {
+		m.p = w.p
+		m.ixs = make(map[base.Handle]^Inv_Index, 8, context.temp_allocator)
+		m.left = make([dynamic]base.Handle, 0, 4, context.temp_allocator)
+		for root in e.shadow.changed {
+			if host := dom.host_of(doc, root); host != base.NIL_HANDLE && connected(doc, host) { mark(&m, host, true) }
+		}
+	}
+	clear(&e.shadow.changed)
 	mark_mutations(&m, entries)
 	if m.fail != "" { return fail(e, m.fail) }
 	work := estimate(&m)
@@ -744,14 +872,11 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 				delete_key(&s.overlaid, x)
 			}
 			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+			if n.shadow != base.NIL_HANDLE { append(&stack, n.shadow) }
 		}
 	}
 	if m.removed_any { s.removed_any = true }
 
-	w := Walker{e = e, s = s, doc = doc, marks = &m.marks}
-	w.p = pass_make(e, s, doc, s.state)
-	w.arena = &s.arena
-	defer pass_destroy(w.p)
 	w.defer_subtrees = pool != nil && host.thread_pool_size(pool) > 1 && work >= e.settings.inc_parallel_min
 	if len(m.marks) > 0 {
 		start := make([dynamic]Frame, 0, 4, context.temp_allocator)
@@ -761,6 +886,30 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 		}
 		walk(&w, start[:])
 		run_deferred(&w, pool)
+	}
+	// nodes that left the flat tree (unassigned, hidden fallback, inserted where no slot takes them): a full pass would
+	// not style them
+	for h in m.left {
+		if dom.get(doc, h) == nil || dom.in_flat_tree(doc, h) { continue }
+		stack := make([dynamic]base.Handle, 0, 16, context.temp_allocator)
+		append(&stack, h)
+		for len(stack) > 0 {
+			x := pop(&stack)
+			n := dom.get(doc, x)
+			if n == nil { continue }
+			if n.kind == .Element {
+				idx := int(base.handle_index(x))
+				if idx < len(s.by_node) && s.by_node[idx] != nil && s.by_node[idx].node == x {
+					s.by_node[idx] = nil
+					delete_key(&s.overlaid, x)
+					w.changed += 1
+					w.layout_changed = true
+					s.removed_any = true
+				}
+				if n.shadow != base.NIL_HANDLE { append(&stack, n.shadow) }
+			}
+			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+		}
 	}
 	if w.root_font { s.root_font_size = 0 }   // see below: the caller's full pass sets it again
 	rewalked := false
@@ -883,7 +1032,7 @@ counters_refresh :: proc(s: ^Styled, doc: ^dom.Document) -> bool {
 		if !hidden { now.items[2] = sv.items[2] }   // ::after waits for the exit (a hidden box resolves it at once)
 		if apply_values(s, f.h, c, sv, now) { changed = true }
 		append(&stack, F{h = f.h, hidden = hidden, exit = true})
-		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, F{h = ch, hidden = hidden}) }
+		for ch := dom.flat_last_child(doc, f.h); ch != base.NIL_HANDLE; ch = dom.flat_prev(doc, ch) { append(&stack, F{h = ch, hidden = hidden}) }
 	}
 	s.counters_used = counters.used
 	return changed
@@ -926,6 +1075,7 @@ dom_touches_sheets :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, owners: [
 			if is_sheet_el(dom.get(doc, p)) { return true }
 		case .Attribute:
 			if is_sheet_el(dom.get(doc, en.node)) { return true }
+		case .Reslot:
 		}
 	}
 	if removal {
@@ -949,6 +1099,7 @@ verify_styles :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, allocator := c
 		h := pop(&stack)
 		n := dom.get(doc, h)
 		if n == nil { continue }
+		if n.kind == .Element && n.shadow != base.NIL_HANDLE { append(&stack, n.shadow) }   // shadow trees too
 		if n.kind == .Element {
 			a, b := base_style_of(s, h), style_of(full, h)
 			if !computed_equal(a, b) {

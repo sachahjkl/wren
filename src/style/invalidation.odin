@@ -2,6 +2,7 @@ package style
 
 import "core:strings"
 import "wb:css"
+import "wb:dom"
 
 // Invalidation sets (in the spirit of Blink's and Stylo's): for every feature a selector can test on an element (a class,
 // an id, an attribute, a tag, a structural or attribute-driven pseudo-class), which elements a change of that feature
@@ -141,23 +142,49 @@ flag :: proc(m: ^map[string]bool, key: string) {
 @(private = "file")
 MAX_DEPTH :: 16
 
+// The pseudo-attribute a change of an element's custom states (ElementInternals.states, :state()) is journaled as
+// (dom.custom_state_changed).
+STATE_ATTRIBUTE :: dom.CUSTOM_STATE_ATTRIBUTE
+
 // The invalidation index of the engine's current rules, built when the rules changed since the last call.
-inv_index :: proc(e: ^Engine) -> ^Inv_Index {
-	ix := &e.inv
-	if ix.ready && ix.rebuilds == e.rebuilds { return ix }
+inv_index :: proc(e: ^Engine) -> ^Inv_Index { return inv_index_of(e, &e.rules) }
+
+// The invalidation index of a rule set: the document's (rebuilt with the engine's rules) or a shadow tree's (made once
+// per compiled set). The rules of a shadow tree that reach out of it are read as what they affect inside the tree
+// whose elements' features they test: `:host(.a) .b` and `:host(.a)` from the host (its features are the host's, its
+// reach the host and its flat subtree); `slot.x::slotted(.y)` as `slot.x > .y` (the slot's features reach its flat
+// children, the slotted element's reach itself); `x-a.on::part(p)` as `x-a.on *` (the host's features reach its
+// shadow tree).
+inv_index_of :: proc(e: ^Engine, rs: ^Rule_Set) -> ^Inv_Index {
+	ix := &rs.inv
+	gen := rs == &e.rules ? e.rebuilds : rs.gen
+	if ix.ready && ix.rebuilds == gen { return ix }
 	inv_free(ix)
-	ix.rebuilds = e.rebuilds
+	ix.rebuilds = gen
 	ix.ready = true
 	ix.has_anchors = make([dynamic]Has_Anchor)
 	visit :: proc(ix: ^Inv_Index, list: [dynamic]Entry) {
 		for &ent in list { analyze_complex(ix, ent.complex, Reach{self = true}, false, 0) }
 	}
-	for _, l in e.index.by_id { visit(ix, l) }
-	for _, l in e.index.by_class { visit(ix, l) }
-	for _, l in e.index.by_tag { visit(ix, l) }
-	for _, l in e.index.by_attr { visit(ix, l) }
-	visit(ix, e.index.universal)
+	for _, l in rs.index.by_id { visit(ix, l) }
+	for _, l in rs.index.by_class { visit(ix, l) }
+	for _, l in rs.index.by_tag { visit(ix, l) }
+	for _, l in rs.index.by_attr { visit(ix, l) }
+	visit(ix, rs.index.universal)
+	visit(ix, rs.host_entries)
+	for &ent in rs.slotted_entries {
+		analyze_complex(ix, ent.complex, Reach{desc = true}, false, 0)
+		if ent.complex.slotted != nil { analyze_compound(ix, ent.complex.slotted^, Reach{self = true}) }
+	}
+	for &ent in rs.part_entries { analyze_complex(ix, ent.complex, Reach{desc = true}, false, 0) }
 	return ix
+}
+
+@(private = "file")
+analyze_compound :: proc(ix: ^Inv_Index, comp: css.Compound, total: Reach) {
+	keyed := false
+	for &s in comp.simples { if analyze_simple(ix, &s, comp, total, false, 0) { keyed = true } }
+	if !keyed { ix.keyless = reach_union(ix.keyless, total) }
 }
 
 @(private = "file")
@@ -235,6 +262,9 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 			ix.uses_has = true
 			if !in_has { append(&ix.has_anchors, Has_Anchor{compound = comp, reach = total}) }
 			analyze_list(ix, s.list, total, true, depth)
+		case .Host: analyze_list(ix, s.list, total, in_has, depth)
+		case .Host_Context: analyze_list(ix, s.list, subtree, in_has, depth)
+		case .State: attr_dep(ix, STATE_ATTRIBUTE, total, in_has)
 		case .Link, .Any_Link: attr_dep(ix, "href", total, in_has)
 		case .Open: attr_dep(ix, "open", total, in_has)
 		case .Target: attr_dep(ix, "id", total, in_has)

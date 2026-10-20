@@ -20,6 +20,7 @@ Par_Frame :: struct {
 	h:      base.Handle,
 	parent: ^Computed,
 	bloom:  Bloom,
+	ctx:    Elem_Ctx,
 }
 
 @(private)
@@ -43,18 +44,18 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 	threads := host.thread_pool_size(pool)
 	frontier := make([dynamic]Par_Frame, context.temp_allocator)
 	root := dom.get(doc, doc.root)
-	for c := root.first_child; c != base.NIL_HANDLE; c = dom.get(doc, c).next { append(&frontier, Par_Frame{c, nil, {}}) }
+	for c := root.first_child; c != base.NIL_HANDLE; c = dom.get(doc, c).next { append(&frontier, Par_Frame{c, nil, {}, {}}) }
 	// the root element always on this thread (it sets the root font size); then deeper until subtrees are plenty
 	for depth := 0; len(frontier) > 0 && (depth == 0 || len(frontier) < threads * 8) && depth < 16; depth += 1 {
 		next := make([dynamic]Par_Frame, context.temp_allocator)
 		for f in frontier {
 			n := dom.get(doc, f.h)
 			if n == nil || n.kind != .Element { continue }
-			style_subtree(main, f.h, f.parent, f.bloom, descend = false)
+			style_subtree(main, f.h, f.parent, f.bloom, descend = false, root_ctx = f.ctx)
 			c := s.by_node[int(base.handle_index(f.h))]
 			child_bloom := f.bloom
 			bloom_add_element(&child_bloom, n)
-			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&next, Par_Frame{ch, c, child_bloom}) }
+			for ch := dom.flat_first_child(doc, f.h); ch != base.NIL_HANDLE; ch = dom.flat_next(doc, ch) { append(&next, Par_Frame{ch, c, child_bloom, child_ctx(main, f.h, f.ctx, ch)}) }
 		}
 		frontier = next
 	}
@@ -73,7 +74,7 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 		_ = virtual.arena_init_growing(arena)
 		p.alloc = virtual.arena_allocator(arena)
 		r := j.ranges[i]
-		for f in j.frames[r[0]:r[1]] { style_subtree(p, f.h, f.parent, f.bloom) }
+		for f in j.frames[r[0]:r[1]] { style_subtree(p, f.h, f.parent, f.bloom, root_ctx = f.ctx) }
 		j.passes[i], j.arenas[i] = p, arena
 	}, &job)
 	for i in 0 ..< tasks {

@@ -16,6 +16,7 @@ import "wb:host"
 
 Cascade_Key :: struct {
 	level: u8,
+	ctx:   u16,   // encapsulation context (scope.odin): outer trees win for normal declarations, inner for !important
 	layer: u32,
 	spec:  css.Specificity,
 	order: u32,
@@ -24,13 +25,14 @@ Cascade_Key :: struct {
 @(private)
 key_ge :: proc(a, b: Cascade_Key) -> bool {
 	if a.level != b.level { return a.level > b.level }
+	if a.ctx != b.ctx { return a.ctx > b.ctx }
 	if a.layer != b.layer { return a.layer > b.layer }
 	if a.spec != b.spec { return css.specificity_less(b.spec, a.spec) }
 	return a.order >= b.order
 }
 
 @(private)
-make_key :: proc(r: ^Rule, important: bool, spec: css.Specificity) -> Cascade_Key {
+make_key :: proc(r: ^Rule, important: bool, spec: css.Specificity, ctx: u16 = 0) -> Cascade_Key {
 	k := Cascade_Key{spec = spec, order = r.order}
 	switch r.origin {
 	case .UA: k.level = important ? 5 : 0
@@ -38,6 +40,7 @@ make_key :: proc(r: ^Rule, important: bool, spec: css.Specificity) -> Cascade_Ke
 	case .Author:
 		// layer keys are shifted by one so that presentational hints (key 0) sit below the first cascade layer
 		k.level = important ? 3 : 2
+		k.ctx = important ? ctx : max(u16) - ctx
 		if r.hint {
 			k.layer = 0
 		} else if important {
@@ -332,13 +335,17 @@ Pass :: struct {
 	stats:    Compile_Stats,   // merged into the engine by pass_destroy (on the thread that owns the engine)
 	counters: ^Counter_State,  // full pass: counters and quotes, resolved in tree order
 	unscoped: bool,            // partial restyle: a change reaches counters, the caller must do a full pass
+	// shadow trees (scope.odin): the element being styled's encapsulation depth; contexts of trees and hosts met
+	own_depth: u16,
+	ctx_cache: map[base.Handle]Elem_Ctx,
+	host_ctx:  map[base.Handle]Elem_Ctx,
 }
 
 @(private)
-consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css.Specificity, parent: ^Computed) {
+consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css.Specificity, parent: ^Computed, ctx: u16) {
 	if rule.cq != nil && !container_conditions_hold(rule.cq, parent != nil ? parent.containers : nil, parent != nil ? parent.custom : nil) { return }
 	for &d in rule.decls {
-		k := make_key(rule, d.important, spec)
+		k := make_key(rule, d.important, spec, ctx)
 		cand := &p.ws[d.prop]
 		if !cand.valid {
 			append(&p.touched, d.prop)
@@ -350,7 +357,7 @@ consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css
 	if len(rule.customs) > 0 {
 		if cust^ == nil { cust^ = make(map[string]Custom_Cand, context.temp_allocator) }
 		for &cd in rule.customs {
-			k := make_key(rule, cd.important, spec)
+			k := make_key(rule, cd.important, spec, ctx)
 			old, has := cust[cd.name]
 			if !has || !old.valid || key_ge(k, old.key) { cust[cd.name] = Custom_Cand{&cd, k, true} }
 		}
@@ -358,7 +365,7 @@ consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css
 }
 
 @(private)
-collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Bloom) {
+collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Bloom, ctx: Elem_Ctx) {
 	check :: proc(p: ^Pass, el: base.Handle, list: []Entry, ancestors: ^Bloom) {
 		for &ent in list {
 			slot: int
@@ -372,11 +379,20 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 			rejected := false
 			for k in 0 ..< int(ent.n_anc) { if !bloom_has(ancestors, ent.anc[k]) { rejected = true; break } }
 			if rejected { continue }
-			if matches_complex(&p.mc, el, ent.complex) { append(&p.lists[slot], ent) }
+			if matches_complex(&p.mc, el, ent.complex) {
+				x := ent
+				x.ctx = p.own_depth
+				append(&p.lists[slot], x)
+			}
 		}
 	}
 	for i in 0 ..< 4 { clear(&p.lists[i]) }
-	ix := &p.e.index
+	p.own_depth = ctx.depth
+	rs := ctx.set != nil ? ctx.set : &p.e.rules
+	p.mc.featureless = ctx.host
+	defer p.mc.featureless = base.NIL_HANDLE
+	if dom.has_shadow_trees(p.mc.doc) { shadow_entries(p, el, n, ctx) }
+	ix := &rs.index
 	if id, ok := attr(n, "id"); ok && id != "" {
 		if l, found := ix.by_id[id]; found { check(p, el, l[:], ancestors) }
 	}
@@ -418,8 +434,8 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	e := p.e
 	a := p.alloc
 	cust: map[string]Custom_Cand
-	for ent in entries { consider(p, &cust, ent.rule, ent.complex.specificity, parent) }
-	if inline_rule != nil { consider(p, &cust, inline_rule, css.Specificity{max(u32), 0, 0}, parent) }
+	for ent in entries { consider(p, &cust, ent.rule, ent.complex.specificity, parent, ent.ctx) }
+	if inline_rule != nil { consider(p, &cust, inline_rule, css.Specificity{max(u32), 0, 0}, parent, p.own_depth) }
 	slice.sort(p.touched[:])   // enum order = dependency order (font-size and color first)
 
 	c := new(Computed, a)
@@ -504,7 +520,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 			case "initial": copy_prop(c, s.initial, pr); ps_remove(&c.inherits, pr)
 			case "unset": apply_unset(&cx, pr)
 			case "revert", "revert-layer":
-				if prev, found := revert_candidate(entries, inline_rule, pr, cand.key, kw == "revert", parent); found {
+				if prev, found := revert_candidate(entries, inline_rule, pr, cand.key, kw == "revert", parent, p.own_depth); found {
 					cand = prev
 					continue
 				}
@@ -542,7 +558,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 // The declaration of `pr` that wins once the origin (`revert`) or the cascade layer (`revert-layer`) of `from` is left
 // out: the strongest among those strictly below that boundary.
 @(private)
-revert_candidate :: proc(entries: []Entry, inline_rule: ^Rule, pr: Prop, from: Cascade_Key, whole_origin: bool, parent: ^Computed) -> (best: Cand, found: bool) {
+revert_candidate :: proc(entries: []Entry, inline_rule: ^Rule, pr: Prop, from: Cascade_Key, whole_origin: bool, parent: ^Computed, own_depth: u16) -> (best: Cand, found: bool) {
 	below :: proc(k, from: Cascade_Key, whole_origin: bool) -> bool {
 		if whole_origin {
 			// author levels are 2 (normal) and 3 (important); user 1 and 4; UA 0 and 5: leave the origin out entirely
@@ -550,19 +566,20 @@ revert_candidate :: proc(entries: []Entry, inline_rule: ^Rule, pr: Prop, from: C
 			return origin_of(k.level) < origin_of(from.level) && k.level < from.level
 		}
 		if k.level != from.level { return k.level < from.level }
+		if k.ctx != from.ctx { return k.ctx < from.ctx }
 		return k.layer < from.layer
 	}
-	consider_rule :: proc(r: ^Rule, spec: css.Specificity, pr: Prop, from: Cascade_Key, whole_origin: bool, parent: ^Computed, best: ^Cand, found: ^bool) {
+	consider_rule :: proc(r: ^Rule, spec: css.Specificity, ctx: u16, pr: Prop, from: Cascade_Key, whole_origin: bool, parent: ^Computed, best: ^Cand, found: ^bool) {
 		if r.cq != nil && !container_conditions_hold(r.cq, parent != nil ? parent.containers : nil, parent != nil ? parent.custom : nil) { return }
 		for &d in r.decls {
 			if d.prop != pr { continue }
-			k := make_key(r, d.important, spec)
+			k := make_key(r, d.important, spec, ctx)
 			if !below(k, from, whole_origin) { continue }
 			if !found^ || key_ge(k, best.key) { best^ = Cand{&d, k, r.origin, true}; found^ = true }
 		}
 	}
-	for ent in entries { consider_rule(ent.rule, ent.complex.specificity, pr, from, whole_origin, parent, &best, &found) }
-	if inline_rule != nil { consider_rule(inline_rule, css.Specificity{max(u32), 0, 0}, pr, from, whole_origin, parent, &best, &found) }
+	for ent in entries { consider_rule(ent.rule, ent.complex.specificity, ent.ctx, pr, from, whole_origin, parent, &best, &found) }
+	if inline_rule != nil { consider_rule(inline_rule, css.Specificity{max(u32), 0, 0}, own_depth, pr, from, whole_origin, parent, &best, &found) }
 	return
 }
 
@@ -642,8 +659,8 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 }
 
 @(private)
-compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom) -> ^Computed {
-	collect_entries(p, h, n, ancestors)
+compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom, ctx: Elem_Ctx = {}) -> ^Computed {
+	collect_entries(p, h, n, ancestors, ctx)
 	add_hint_entry(p, h, n)
 
 	inline_rule: ^Rule
@@ -697,13 +714,17 @@ pass_destroy :: proc(p: ^Pass) {
 // Styles `root` and everything below it. `parent` is the computed style of root's parent (nil for the document element);
 // `ancestors` the filter of root's ancestors.
 @(private)
-style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors: Bloom, descend := true) {
+style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors: Bloom, descend := true, root_ctx: Maybe(Elem_Ctx) = nil) {
 	doc := p.mc.doc
 	s := p.s
-	// `exit` frames close an element after its subtree (counter scopes and ::after are resolved there)
-	Frame :: struct { h: base.Handle, parent: ^Computed, bloom: Bloom, hidden: bool, exit: bool, c: ^Computed }
+	shadows := dom.has_shadow_trees(doc)
+	// `exit` frames close an element after its subtree (counter scopes and ::after are resolved there). The walk is
+	// that of the flat tree; `ctx` is the tree each element is matched in (scope.odin).
+	Frame :: struct { h: base.Handle, parent: ^Computed, bloom: Bloom, hidden: bool, exit: bool, c: ^Computed, ctx: Elem_Ctx }
 	stack := make([dynamic]Frame, context.temp_allocator)
-	append(&stack, Frame{h = root, parent = parent, bloom = ancestors, hidden = parent != nil && hidden_above(p, root)})
+	rc, has_rc := root_ctx.?
+	if !has_rc && shadows { rc = node_ctx(p, root) }
+	append(&stack, Frame{h = root, parent = parent, bloom = ancestors, hidden = parent != nil && hidden_above(p, root), ctx = rc})
 	for len(stack) > 0 {
 		f := pop(&stack)
 		if f.exit {
@@ -712,7 +733,7 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 		}
 		n := dom.get(doc, f.h)
 		if n == nil || n.kind != .Element { continue }
-		c := compute_element(p, f.h, n, f.parent, &f.bloom)
+		c := compute_element(p, f.h, n, f.parent, &f.bloom, f.ctx)
 		hidden := f.hidden || c.display == .None
 		idx := int(base.handle_index(f.h))
 		for len(s.by_node) <= idx { append(&s.by_node, nil) }   // never in a parallel pass: sized beforehand
@@ -746,8 +767,14 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 		if p.counters != nil { append(&stack, Frame{h = f.h, hidden = hidden, exit = true, c = c}) }
 		child_bloom := f.bloom
 		bloom_add_element(&child_bloom, n)
-		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev {
-			append(&stack, Frame{h = ch, parent = c, bloom = child_bloom, hidden = hidden})
+		if !shadows {
+			for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev {
+				append(&stack, Frame{h = ch, parent = c, bloom = child_bloom, hidden = hidden})
+			}
+			continue
+		}
+		for ch := dom.flat_last_child(doc, f.h); ch != base.NIL_HANDLE; ch = dom.flat_prev(doc, ch) {
+			append(&stack, Frame{h = ch, parent = c, bloom = child_bloom, hidden = hidden, ctx = child_ctx(p, f.h, f.ctx, ch)})
 		}
 	}
 }
@@ -755,7 +782,7 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 // Some ancestor of `h` has display: none (its subtree generates no boxes).
 @(private)
 hidden_above :: proc(p: ^Pass, h: base.Handle) -> bool {
-	for anc := parent_element(&p.mc, h); anc != base.NIL_HANDLE; anc = parent_element(&p.mc, anc) {
+	for anc := flat_parent_element(p.mc.doc, h); anc != base.NIL_HANDLE; anc = flat_parent_element(p.mc.doc, anc) {
 		if cs := base_style_of(p.s, anc); cs != nil && cs.display == .None { return true }
 	}
 	return false
@@ -765,6 +792,8 @@ hidden_above :: proc(p: ^Pass, h: base.Handle) -> bool {
 // work is shared between threads (parallel.odin); the result is the same.
 compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host.Thread_Pool = nil, min_nodes := 0) -> ^Styled {
 	if e.dirty { engine_rebuild(e, doc) }
+	shadow_prepare(e, doc)
+	clear(&e.shadow.changed)   // a full pass covers whatever changed
 	s := styled_make(e, doc, state)
 	if pool != nil && host.thread_pool_size(pool) > 1 && doc.nodes.count >= min_nodes {
 		// counters and quotes need tree order: the threads compute everything else, then one ordered walk resolves them
@@ -805,7 +834,7 @@ counters_post_pass :: proc(s: ^Styled, doc: ^dom.Document) -> bool {
 		hidden := f.hidden || c.display == .None
 		counters_enter(&counters, doc, f.h, n, c, hidden, s.alloc)
 		append(&stack, Frame{h = f.h, hidden = hidden, exit = true, c = c})
-		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, Frame{h = ch, hidden = hidden}) }
+		for ch := dom.flat_last_child(doc, f.h); ch != base.NIL_HANDLE; ch = dom.flat_prev(doc, ch) { append(&stack, Frame{h = ch, hidden = hidden}) }
 	}
 	return counters.used
 }
@@ -887,7 +916,7 @@ chain_delta :: proc(doc: ^dom.Document, a, b: base.Handle, out: ^map[base.Handle
 			n := dom.get(doc, cur)
 			if n == nil || n.kind != .Element { break }
 			m[cur] = true
-			cur = n.parent
+			cur = dom.flat_parent(doc, cur)
 		}
 		return m
 	}
@@ -907,8 +936,12 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 		s.state.target_id = strings.clone(st.target_id, s.alloc)
 	}
 	if kinds == {} { return false, true }
-	if kinds & e.state_deps == {} { set_state(s, new_state); return false, true }
-	if e.state_uses_has { return false, false }
+	shadows := dom.has_shadow_trees(doc)
+	deps := e.state_deps
+	if shadows { deps += e.shadow.state_deps }
+	if kinds & deps == {} { set_state(s, new_state); return false, true }
+	if e.state_uses_has || (shadows && e.shadow.state_uses_has) { return false, false }
+	if shadows && e.shadow.dirty { return false, false }
 	if int(s.arena.total_used) > int(s.base_used) + e.settings.restyle_waste_bytes { return false, false }
 
 	p := pass_make(e, s, doc, new_state)
@@ -922,6 +955,14 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 		chain_delta(doc, old.focus, new_state.focus, &changed_els)   // :focus-within
 		if old.focus != base.NIL_HANDLE { changed_els[old.focus] = true }   // :focus and :focus-visible are exact
 		if new_state.focus != base.NIL_HANDLE { changed_els[new_state.focus] = true }
+		// ... but for hosts, which match :focus while their shadow tree holds the focus
+		if shadows {
+			for f in ([2]base.Handle{old.focus, new_state.focus}) {
+				for cur := dom.parent_or_host(doc, f); cur != base.NIL_HANDLE; cur = dom.parent_or_host(doc, cur) {
+					if n := dom.get(doc, cur); n != nil && n.kind == .Element && n.shadow != base.NIL_HANDLE { changed_els[cur] = true }
+				}
+			}
+		}
 	}
 	if .Target in kinds {
 		if old.target_id != "" { if h := dom.find_by_id(doc, old.target_id); h != base.NIL_HANDLE { changed_els[h] = true } }
@@ -930,47 +971,82 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 
 	// roots to restyle: the element itself, plus whole subtrees where a rule reaches beyond the element
 	roots := make(map[base.Handle]bool, context.temp_allocator)   // value: restyle the entire subtree
+	// the entries of each tree whose rules may see `x` change: its own tree's, its shadow tree's (a host), and the
+	// ::slotted() / ::part() rules a slot or a host stands for
+	State_Source :: struct { entries: []Entry, featureless: base.Handle }
+	sources :: proc(p: ^Pass, x: base.Handle, shadows: bool) -> []State_Source {
+		out := make([dynamic]State_Source, 0, 2, context.temp_allocator)
+		if !shadows { append(&out, State_Source{p.e.rules.state_entries[:], base.NIL_HANDLE}); return out[:] }
+		ctx := node_ctx(p, x)
+		rs := ctx.set != nil ? ctx.set : &p.e.rules
+		append(&out, State_Source{rs.state_entries[:], ctx.host})
+		if n := dom.get(p.mc.doc, x); n != nil && n.shadow != base.NIL_HANDLE {
+			sc := ctx_for_root(p, n.shadow)
+			append(&out, State_Source{sc.set.state_entries[:], x})
+		}
+		return out[:]
+	}
 	for x in changed_els {
 		if x not_in roots { roots[x] = false }
-		for &ent in e.state_entries {
-			if ent.state & kinds == {} { continue }
-			c := ent.complex
-			last := len(c.compounds) - 1
-			for k in 0 ..< last {
-				ck, _ := compound_state(c.compounds[k])
-				if ck & kinds == {} { continue }
-				if !compound_could_match(&p.mc, x, c.compounds[k]) { continue }
-				sibling := false
-				for j in k ..< last { if c.combinators[j] != .Child && c.combinators[j] != .Descendant { sibling = true } }
-				target := x
-				if sibling { if par := parent_element(&p.mc, x); par != base.NIL_HANDLE { target = par } }
-				roots[target] = true
+		for src in sources(p, x, shadows) {
+			p.mc.featureless = src.featureless
+			for &ent in src.entries {
+				if ent.state & kinds == {} { continue }
+				c := ent.complex
+				last := len(c.compounds) - 1
+				if c.pseudo_element == .Slotted || c.pseudo_element == .Part {
+					// a slot's or a host's state reaching the elements slotted in it or its parts: its flat subtree
+					for comp in c.compounds {
+						ck, _ := compound_state(comp)
+						if ck & kinds != {} && compound_could_match(&p.mc, x, comp) { roots[x] = true; break }
+					}
+					continue
+				}
+				for k in 0 ..< last {
+					ck, _ := compound_state(c.compounds[k])
+					if ck & kinds == {} { continue }
+					if !compound_could_match(&p.mc, x, c.compounds[k]) { continue }
+					sibling := false
+					for j in k ..< last { if c.combinators[j] != .Child && c.combinators[j] != .Descendant { sibling = true } }
+					target := x
+					if sibling {
+						if par := parent_element(&p.mc, x); par != base.NIL_HANDLE {
+							target = par
+						} else if r := dom.containing_shadow_root(doc, x); r != base.NIL_HANDLE {
+							target = dom.host_of(doc, r)   // siblings at the top of a shadow tree: the host's flat subtree
+						}
+					}
+					roots[target] = true
+				}
 			}
 		}
+		p.mc.featureless = base.NIL_HANDLE
 	}
 
 	for r, deep in roots {
 		// a root inside a subtree that is restyled anyway adds nothing
 		covered := false
-		for anc := parent_element(&p.mc, r); anc != base.NIL_HANDLE; anc = parent_element(&p.mc, anc) {
+		for anc := flat_parent_element(doc, r); anc != base.NIL_HANDLE; anc = flat_parent_element(doc, anc) {
 			if roots[anc] { covered = true; break }
 		}
 		if covered { continue }
+		if shadows && !dom.in_flat_tree(doc, r) { continue }   // not rendered: it has no style
 
-		par := parent_element(&p.mc, r)
+		par := flat_parent_element(doc, r)
 		parent_style: ^Computed
 		bloom: Bloom
 		if par != base.NIL_HANDLE {
 			parent_style = base_style_of(s, par)
-			for anc := par; anc != base.NIL_HANDLE; anc = parent_element(&p.mc, anc) { bloom_add_element(&bloom, dom.get(doc, anc)) }
+			for anc := par; anc != base.NIL_HANDLE; anc = flat_parent_element(doc, anc) { bloom_add_element(&bloom, dom.get(doc, anc)) }
 		}
 		old_style := base_style_of(s, r)
+		rctx := node_ctx(p, r)
 		if deep {
-			style_subtree(p, r, parent_style, bloom)
+			style_subtree(p, r, parent_style, bloom, root_ctx = rctx)
 			if p.unscoped { return false, false }
 			continue
 		}
-		style_subtree(p, r, parent_style, bloom, descend = false)
+		style_subtree(p, r, parent_style, bloom, descend = false, root_ctx = rctx)
 		if p.unscoped { return false, false }
 		// the element's own change may reach its descendants through inheritance
 		new_style := base_style_of(s, r)
@@ -978,8 +1054,8 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 			n := dom.get(doc, r)
 			child_bloom := bloom
 			bloom_add_element(&child_bloom, n)
-			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next {
-				style_subtree(p, ch, new_style, child_bloom)
+			for ch := dom.flat_first_child(doc, r); ch != base.NIL_HANDLE; ch = dom.flat_next(doc, ch) {
+				style_subtree(p, ch, new_style, child_bloom, root_ctx = child_ctx(p, r, rctx, ch))
 				if p.unscoped { return false, false }
 			}
 		}

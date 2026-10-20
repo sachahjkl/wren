@@ -32,6 +32,7 @@ ua_stylesheet_text :: proc(s: ^Settings, allocator := context.allocator) -> stri
 
 UA_TEMPLATE :: `html { display: block; color: CanvasText; }
 head, link, meta, script, style, title, base, template, area, datalist, param, source, track, rp { display: none; }
+slot { display: contents; }
 [hidden] { display: none; }
 address, blockquote, center, dialog, div, figure, figcaption, footer, form, header, hr, legend, listing, main, p, plaintext, pre, search, xmp,
 article, aside, h1, h2, h3, h4, h5, h6, hgroup, nav, section, dir, dd, dl, dt, menu, ol, ul, details, summary, fieldset, optgroup, body { display: block; }

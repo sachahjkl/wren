@@ -8,6 +8,7 @@ Linked_Sheet :: struct {
 	owner: base.Handle,   // the <link> element
 	href:  string,        // as written; the caller resolves it against the document URL and fetches it
 	media: string,
+	scope: base.Handle,   // the shadow root the <link> is in (NIL: the document): engine_add_sheet's `scope`
 }
 
 @(private)
@@ -39,52 +40,52 @@ has_token :: proc(list, token: string) -> bool {
 // `engine_add_sheet(..., from_link = true)`.
 sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, allocator := context.temp_allocator) -> []Linked_Sheet {
 	links := make([dynamic]Linked_Sheet, allocator)
-	Style_El :: struct { owner: base.Handle, text, media: string }
+	Style_El :: struct { owner: base.Handle, text, media: string, scope: base.Handle }
 	styles := make([dynamic]Style_El, context.temp_allocator)
-	stack := make([dynamic]base.Handle, context.temp_allocator)
-	append(&stack, doc.root)
-	for len(stack) > 0 {
-		h := pop(&stack)
+	// the document and every shadow tree of it (the sheets of a shadow tree are its own: scope.odin)
+	shadows := dom.has_shadow_trees(doc)
+	for h := doc.root; h != base.NIL_HANDLE; h = dom.next_shadow_including(doc, h, doc.root) {
 		n := dom.get(doc, h)
-		if n.kind == .Element {
-			switch n.name {
-			case "style":
-				if _, off := attr(n, "disabled"); !off && is_css_type(n) {
+		if n.kind != .Element { continue }
+		switch n.name {
+		case "style":
+			if _, off := attr(n, "disabled"); !off && is_css_type(n) {
+				media, _ := attr(n, "media")
+				append(&styles, Style_El{h, dom.text_content(doc, h), media, shadows ? dom.containing_shadow_root(doc, h) : base.NIL_HANDLE})
+			}
+		case "link":
+			rel, _ := attr(n, "rel")
+			href, has_href := attr(n, "href")
+			if has_href && href != "" && has_token(rel, "stylesheet") && !has_token(rel, "alternate") && is_css_type(n) {
+				if _, off := attr(n, "disabled"); !off {
 					media, _ := attr(n, "media")
-					append(&styles, Style_El{h, dom.text_content(doc, h), media})
-				}
-			case "link":
-				rel, _ := attr(n, "rel")
-				href, has_href := attr(n, "href")
-				if has_href && href != "" && has_token(rel, "stylesheet") && !has_token(rel, "alternate") && is_css_type(n) {
-					if _, off := attr(n, "disabled"); !off {
-						media, _ := attr(n, "media")
-						append(&links, Linked_Sheet{h, href, media})
-					}
+					append(&links, Linked_Sheet{h, href, media, shadows ? dom.containing_shadow_root(doc, h) : base.NIL_HANDLE})
 				}
 			}
 		}
-		c := n.last_child
-		for c != base.NIL_HANDLE { append(&stack, c); c = dom.get(doc, c).prev }
 	}
 
 	// drop what no longer matches
 	for i := len(e.sheets) - 1; i >= 0; i -= 1 {
 		s := e.sheets[i]
-		if s.origin != .Author { continue }
+		if s.origin != .Author || s.constructed { continue }
 		keep := false
 		if s.from_link {
-			for l in links { if l.owner == s.owner { keep = true; break } }
+			for l in links { if l.owner == s.owner && l.scope == s.scope { keep = true; break } }
 		} else {
-			for st in styles { if st.owner == s.owner && st.text == s.sheet.source && st.media == s.media_text { keep = true; break } }
+			for st in styles { if st.owner == s.owner && st.scope == s.scope && st.text == s.sheet.source && st.media == s.media_text { keep = true; break } }
 		}
-		if !keep { sheet_free(s); ordered_remove(&e.sheets, i); e.dirty = true }
+		if !keep {
+			sheet_changed(e, s)
+			sheet_free(s)
+			ordered_remove(&e.sheets, i)
+		}
 	}
 	// add the new <style> sheets
 	for st in styles {
 		have := false
-		for s in e.sheets { if s.origin == .Author && !s.from_link && s.owner == st.owner { have = true; break } }
-		if !have { engine_add_sheet(e, st.text, st.owner, st.media, base_url) }
+		for s in e.sheets { if s.origin == .Author && !s.from_link && !s.constructed && s.owner == st.owner { have = true; break } }
+		if !have { engine_add_sheet(e, st.text, st.owner, st.media, base_url, scope = st.scope) }
 	}
 	return links[:]
 }

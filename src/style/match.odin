@@ -43,6 +43,9 @@ Match_Ctx :: struct {
 	filled: map[base.Handle]bool,
 	max_depth: int,
 	ignore_state: bool,                  // state pseudo-classes count as matching: "could this element match?"
+	// matching the rules of a shadow tree: its host, which they see featureless (only :host, :host(), :host-context()
+	// match it), reached as the parent of the tree's top elements (CSS Scoping §3.2); NIL for the document's rules
+	featureless: base.Handle,
 }
 
 match_ctx_init :: proc(m: ^Match_Ctx, d: ^dom.Document, state: State, allocator := context.allocator) {
@@ -289,13 +292,18 @@ match_chain :: proc(m: ^Match_Ctx, el: base.Handle, c: ^css.Complex, idx: int, a
 	}
 	switch c.combinators[idx - 1] {
 	case .Child:
-		p := parent_element(m, el)
+		p := parent_for_match(m, el)
 		return p != base.NIL_HANDLE && match_chain(m, p, c, idx - 1, anchor, depth + 1)
 	case .Descendant:
-		for p := parent_element(m, el); p != base.NIL_HANDLE; p = parent_element(m, p) {
+		for p := parent_for_match(m, el); p != base.NIL_HANDLE; p = parent_for_match(m, p) {
 			if match_chain(m, p, c, idx - 1, anchor, depth + 1) { return true }
 		}
 		return false
+	case .Next_Sibling, .Subsequent_Sibling:
+		if el == m.featureless { return false }   // the host has no siblings in the shadow tree
+	}
+	switch c.combinators[idx - 1] {
+	case .Child, .Descendant:
 	case .Next_Sibling:
 		p := prev_element(m, el)
 		return p != base.NIL_HANDLE && match_chain(m, p, c, idx - 1, anchor, depth + 1)
@@ -328,8 +336,58 @@ relates_to_anchor :: proc(m: ^Match_Ctx, el: base.Handle, comb: css.Combinator, 
 matches_compound :: proc(m: ^Match_Ctx, el: base.Handle, comp: css.Compound) -> bool {
 	n := node_of(m, el)
 	if n == nil || n.kind != .Element { return false }
+	if el == m.featureless {
+		// the host seen from its shadow tree: only a compound with :host / :host() / :host-context() (perhaps in :is())
+		// can match it, and none with a type, id, class or attribute selector
+		host := false
+		for s in comp.simples {
+			#partial switch s.kind {
+			case .Type, .Id, .Class, .Attribute: return false
+			case .Pseudo_Class:
+				#partial switch s.pseudo {
+				case .Host, .Host_Context: host = true
+				case .Is, .Where, .Not: if s.list != nil && list_has_host(s.list^, 0) { host = true }
+				}
+			}
+		}
+		if !host { return false }
+	}
 	for s in comp.simples { if !matches_simple(m, el, n, s) { return false } }
 	return true
+}
+
+// The parent element `el` is matched against by a child or descendant combinator: its parent in its tree, or, at the
+// top of a shadow tree whose rules are being matched, the featureless host. Nothing above the host.
+@(private)
+parent_for_match :: #force_inline proc(m: ^Match_Ctx, el: base.Handle) -> base.Handle {
+	if m.featureless == base.NIL_HANDLE { return parent_element(m, el) }
+	if el == m.featureless { return base.NIL_HANDLE }
+	n := node_of(m, el)
+	if n == nil { return base.NIL_HANDLE }
+	p := node_of(m, n.parent)
+	if p == nil { return base.NIL_HANDLE }
+	if p.kind == .Element { return n.parent }
+	if p.is_shadow && p.shadow == m.featureless { return m.featureless }
+	return base.NIL_HANDLE
+}
+
+// The compound of :host(), :host-context() or ::slotted() matched against `el` as an ordinary element.
+@(private)
+matches_compound_plain :: proc(m: ^Match_Ctx, el: base.Handle, comp: css.Compound) -> bool {
+	saved := m.featureless
+	m.featureless = base.NIL_HANDLE
+	ok := matches_compound(m, el, comp)
+	m.featureless = saved
+	return ok
+}
+
+// :focus (HTML "focused"): the focused element, and a shadow host whose shadow tree holds it.
+@(private)
+focus_matches :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node) -> bool {
+	f := m.state.focus
+	if f == base.NIL_HANDLE { return false }
+	if f == el { return true }
+	return n.shadow != base.NIL_HANDLE && dom.shadow_including_ancestor(m.doc, n.shadow, f)
 }
 
 @(private)
@@ -389,11 +447,22 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 	case .Not: return !matches_list(m, el, s.list^)
 	case .Is, .Where: return matches_list(m, el, s.list^)
 	case .Has: return matches_has(m, el, s.list^)
-	case .Hover: return m.state.hover != base.NIL_HANDLE && dom.is_ancestor_or_self(m.doc, el, m.state.hover)
-	case .Active: return m.state.active != base.NIL_HANDLE && dom.is_ancestor_or_self(m.doc, el, m.state.active)
-	case .Focus: return m.state.focus == el
-	case .Focus_Visible: return m.state.focus == el && m.state.focus_visible
-	case .Focus_Within: return m.state.focus != base.NIL_HANDLE && dom.is_ancestor_or_self(m.doc, el, m.state.focus)
+	case .Hover: return m.state.hover != base.NIL_HANDLE && dom.flat_ancestor_or_self(m.doc, el, m.state.hover)
+	case .Active: return m.state.active != base.NIL_HANDLE && dom.flat_ancestor_or_self(m.doc, el, m.state.active)
+	case .Focus: return focus_matches(m, el, n)
+	case .Focus_Visible: return m.state.focus_visible && focus_matches(m, el, n)
+	case .Focus_Within: return m.state.focus != base.NIL_HANDLE && dom.flat_ancestor_or_self(m.doc, el, m.state.focus)
+	case .Host:
+		if el != m.featureless { return false }
+		return s.list == nil || matches_compound_plain(m, el, s.list^[0].compounds[0])
+	case .Host_Context:
+		if el != m.featureless || s.list == nil { return false }
+		for cur := el; cur != base.NIL_HANDLE; cur = dom.parent_or_host(m.doc, cur) {
+			if is_element(m, cur) && matches_compound_plain(m, cur, s.list^[0].compounds[0]) { return true }
+		}
+		return false
+	case .State: return dom.custom_state_has(m.doc, el, s.name)
+	case .Has_Slotted: return n.name == "slot" && len(dom.assigned_nodes_raw(m.doc, el)) > 0
 	case .Link, .Any_Link:
 		if n.name != "a" && n.name != "area" { return false }
 		_, ok := attr(n, "href")
@@ -468,7 +537,7 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		_, ok := attr(n, "open")
 		return ok
 	case .Never: return false
-	case .Before, .After, .First_Line, .First_Letter, .Selection, .Placeholder, .Marker, .Backdrop, .Other_Element: return false
+	case .Before, .After, .First_Line, .First_Letter, .Selection, .Placeholder, .Marker, .Backdrop, .Slotted, .Part, .Other_Element: return false
 	}
 	return false
 }

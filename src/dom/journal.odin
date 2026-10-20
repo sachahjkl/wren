@@ -17,9 +17,10 @@ Journal_Kind :: enum u8 {
 	Remove,      // `node` was removed from `parent` (it may be destroyed since)
 	Text,        // the data of text or comment node `node` changed
 	Attribute,   // attribute `name` of element `node` was set or removed
-	Reslot,      // the flat-tree children of `node` changed without a node-tree mutation under it: a slot whose assigned
-	             // nodes changed, or an element that became a shadow host (shadow.odin). Readers only: MutationObserver
-	             // does not see it.
+	Reslot,      // the flat tree changed without a node-tree mutation (shadow.odin). `parent` NIL: the flat children of
+	             // `node` changed (a slot whose assigned nodes did, an element that became a shadow host); else `node`
+	             // left its place under `parent` in the flat tree (unassigned, or a fallback child no longer shown).
+	             // Readers only: MutationObserver does not see it.
 }
 
 Journal_Entry :: struct {
@@ -87,7 +88,7 @@ journal_since :: proc(d: ^Document, since: u64) -> ([]Journal_Entry, bool) {
 
 @(private)
 journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Handle, name := "", old := "", had_old := false, prev := base.NIL_HANDLE, next := base.NIL_HANDLE) {
-	if d.observer != nil && kind != .Reslot {
+	if d.observer != nil && kind != .Reslot && !(kind == .Attribute && name == CUSTOM_STATE_ATTRIBUTE) {
 		e := Journal_Entry{kind = kind, node = node, parent = parent, prev = prev, next = next, name = name, old = old, had_old = had_old, batch = d.batch, mutation = d.mutations}
 		d.observer(d.observer_user, d, &e)
 	}

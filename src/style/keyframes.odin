@@ -43,23 +43,27 @@ not_in_keyframes :: proc(p: Prop) -> bool {
 }
 
 @(private)
-compile_keyframes :: proc(e: ^Engine) {
-	if e.keyframe_sets == nil { e.keyframe_sets = make(map[string]^Keyframes_Set) }
+compile_keyframes :: proc(e: ^Engine) { compile_keyframes_into(e, e.keyframes[:], &e.keyframe_sets) }
+
+// The winning @keyframes of each name among efs, compiled into out (in e.alloc).
+@(private)
+compile_keyframes_into :: proc(e: ^Engine, refs: []Keyframes_Ref, out: ^map[string]^Keyframes_Set) {
+	if out^ == nil { out^ = make(map[string]^Keyframes_Set) }
 	winners := make(map[string]int, context.temp_allocator)
 	stronger :: proc(a, b: Keyframes_Ref) -> bool {
 		if a.origin != b.origin { return a.origin > b.origin }
 		if a.layer != b.layer { return a.layer > b.layer }
 		return a.order > b.order
 	}
-	for ref, i in e.keyframes {
+	for ref, i in refs {
 		name := ref.rule.name
 		if name == "" || strings.equal_fold(name, "none") { continue }
-		if prev, ok := winners[name]; ok && !stronger(ref, e.keyframes[prev]) { continue }
+		if prev, ok := winners[name]; ok && !stronger(ref, refs[prev]) { continue }
 		winners[name] = i
 	}
 	probe := probe_context(e, e.alloc)
 	for name, i in winners {
-		rule := e.keyframes[i].rule
+		rule := refs[i].rule
 		set := new(Keyframes_Set, e.alloc)
 		set.name = strings.clone(name, e.alloc)
 		blocks := make([dynamic]Keyframe_Block, e.alloc)
@@ -103,14 +107,15 @@ compile_keyframes :: proc(e: ^Engine) {
 		}
 		slice.stable_sort_by(blocks[:], proc(a, b: Keyframe_Block) -> bool { return a.offset < b.offset })
 		set.frames = blocks[:]
-		e.keyframe_sets[set.name] = set
+		out[set.name] = set
 	}
 }
 
 // The compiled @keyframes of that name (nil when there is none).
 keyframes_lookup :: proc(e: ^Engine, name: string) -> ^Keyframes_Set {
 	if e == nil || name == "" { return nil }
-	return e.keyframe_sets[name] or_else nil
+	if k, ok := e.keyframe_sets[name]; ok { return k }
+	return shadow_keyframes_lookup(e, name)
 }
 
 // The values one keyframe block gives an element: `base` is the element's style, `parent` its parent's. Only the

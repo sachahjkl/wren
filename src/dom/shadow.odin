@@ -185,6 +185,7 @@ attach_shadow :: proc(d: ^Document, host: base.Handle, init: Shadow_Init) -> (ba
 	touch(d)
 	d.tree_version += 1
 	journal_record(d, .Reslot, host, base.NIL_HANDLE)   // its children leave the flat tree
+	for c := get(d, host).first_child; c != base.NIL_HANDLE; c = get(d, c).next { journal_record(d, .Reslot, c, host) }
 	assign_slottables_for_tree(d, root)
 	return root, .None
 }
@@ -351,6 +352,16 @@ assign_slottables_for_tree :: proc(d: ^Document, root: base.Handle) {
 		same := len(old) == len(now)
 		if same { for x, i in old { if x != now[i] { same = false; break } } }
 		if same { return }
+		// readers of the journal learn which nodes left their place in the flat tree (and the slot's fallback
+		// children, when it gets its first assigned nodes)
+		for x in old {
+			kept := false
+			for y in now { if y == x { kept = true; break } }
+			if !kept && get(d, x) != nil { journal_record(d, .Reslot, x, s) }
+		}
+		if len(old) == 0 && len(now) > 0 {
+			for c := get(d, s).first_child; c != base.NIL_HANDLE; c = get(d, c).next { journal_record(d, .Reslot, c, s) }
+		}
 		for x in old { if xn := get(d, x); xn != nil && xn.slot == s { xn.slot = base.NIL_HANDLE; xn.slot_pos = 0 } }
 		if l, ok := d.assigned[s]; ok { delete(l); delete_key(&d.assigned, s) }
 		if len(now) > 0 {
@@ -440,7 +451,9 @@ shadow_removed :: proc(d: ^Document, h, old_parent: base.Handle) {
 				gone := true
 				for t in fresh { if t == s { gone = false; break } }
 				if gone && len(assigned_nodes_raw(d, s)) > 0 {
-					for x in assigned_nodes_raw(d, s) { if xn := get(d, x); xn != nil && xn.slot == s { xn.slot = base.NIL_HANDLE } }
+					for x in assigned_nodes_raw(d, s) {
+						if xn := get(d, x); xn != nil && xn.slot == s { xn.slot = base.NIL_HANDLE; journal_record(d, .Reslot, x, s) }
+					}
 					l := d.assigned[s]
 					delete(l)
 					delete_key(&d.assigned, s)
@@ -483,6 +496,7 @@ shadow_forget_node :: proc(d: ^Document, h: base.Handle, n: ^Node) {
 	if l, ok := d.assigned[h]; ok { delete(l); delete_key(&d.assigned, h) }
 	if l, ok := d.manual_nodes[h]; ok { delete(l); delete_key(&d.manual_nodes, h) }
 	if _, ok := d.manual_slot[h]; ok { delete_key(&d.manual_slot, h) }
+	if l, ok := d.custom_states[h]; ok { for s in l { delete(s) }; delete(l); delete_key(&d.custom_states, h) }
 }
 
 @(private)
@@ -494,6 +508,8 @@ shadow_free_all :: proc(d: ^Document) {
 	for _, l in d.manual_nodes { delete(l) }
 	delete(d.manual_nodes)
 	delete(d.manual_slot)
+	for _, l in d.custom_states { for s in l { delete(s) }; delete(l) }
+	delete(d.custom_states)
 }
 
 ////////////////////////////////
@@ -624,5 +640,43 @@ part_names :: proc(n: ^Node) -> []string {
 		if a.name != "part" { continue }
 		return strings.fields(a.value, context.temp_allocator)
 	}
+	return nil
+}
+
+////////////////////////////////
+// Custom states (ElementInternals.states, CSS :state()): a set of names per element. A change is journaled as an
+// attribute change of a name no attribute can have, so restyles see it; MutationObserver does not.
+
+CUSTOM_STATE_ATTRIBUTE :: ":state"
+
+custom_state_has :: proc(d: ^Document, h: base.Handle, name: string) -> bool {
+	l, ok := d.custom_states[h]
+	if !ok { return false }
+	for s in l { if s == name { return true } }
+	return false
+}
+
+// Adds (`on`) or removes `name`; returns whether the set changed.
+custom_state_set :: proc(d: ^Document, h: base.Handle, name: string, on: bool) -> bool {
+	if get(d, h) == nil { return false }
+	if on == custom_state_has(d, h, name) { return false }
+	if on {
+		l := d.custom_states[h]
+		append(&l, strings.clone(name))
+		d.custom_states[h] = l
+	} else {
+		l := d.custom_states[h]
+		for s, i in l { if s == name { delete(s); ordered_remove(&l, i); break } }
+		if len(l) == 0 { delete(l); delete_key(&d.custom_states, h) } else { d.custom_states[h] = l }
+	}
+	touch(d)
+	d.attr_version += 1
+	journal_record(d, .Attribute, h, base.NIL_HANDLE, CUSTOM_STATE_ATTRIBUTE, "", false)
+	return true
+}
+
+// The custom states of an element (valid until the next change).
+custom_states :: proc(d: ^Document, h: base.Handle) -> []string {
+	if l, ok := d.custom_states[h]; ok { return l[:] }
 	return nil
 }
