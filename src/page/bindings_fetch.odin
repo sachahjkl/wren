@@ -14,7 +14,6 @@ package page
 
 import "core:strings"
 import "wb:base"
-import "wb:fetch"
 import "wb:url"
 
 Body_Kind :: enum u8 { None, Text, Buffer }
@@ -54,7 +53,7 @@ body_stream_vt := Object_VTable{
 			if f := base.pool_get(&p.fetches, s.fetch); f != nil {
 				if f.ext != nil { f.ext.stream = 0 }
 				if f.state < 2 {
-					if f.task != base.NIL_HANDLE { fetch.cancel(p.loader, f.task); f.task = base.NIL_HANDLE }
+					fetch_abort(p, f)   // in a worker the request is the page's: a message cancels it
 					f.state = 2
 					if f.ext != nil { fetch_ext_finished(p, f) }
 				}
@@ -97,7 +96,7 @@ fetch_abort_algorithm :: proc(p: ^Page, data: u64, signal: u64) {
 	f := base.pool_get(&p.fetches, base.Handle(data))
 	if f == nil || f.state >= 2 { return }
 	if f.ext != nil { f.ext.algo = 0 }
-	if f.task != base.NIL_HANDLE { fetch.cancel(p.loader, f.task); f.task = base.NIL_HANDLE }
+	fetch_abort(p, f)   // in a worker the request is the page's: a message cancels it
 	_, code, reason := signal_aborted(p, signal)
 	delete(f.error)
 	f.state, f.error_kind, f.error = 3, .Aborted, strings.clone(reason)
@@ -163,14 +162,14 @@ fetch_call_guest :: proc(p: ^Page, f: ^Fetch) {
 release_fetch :: proc(p: ^Page, h: base.Handle) {
 	f, ok := base.pool_remove(&p.fetches, h)
 	if !ok { return }
-	if f.task != base.NIL_HANDLE { fetch.cancel(p.loader, f.task) }
+	fetch_abort(p, &f)   // in a worker the request is the page's: a message cancels it
 	p.held -= len(f.body)
 	free_fetch(&f)
 }
 
-// Network events of a fetch that has an ext (fetch_event hands them over).
+// Network events of a fetch that has an ext (fetch_event hands them over, and worker_fetch_event in a worker).
 @(private)
-fetch_ext_event :: proc(fp: ^Fetch, ev: ^fetch.Event) {
+fetch_ext_event :: proc(fp: ^Fetch, ev: Fetch_Update) {
 	f := fp
 	p := f.page
 	e := f.ext
@@ -178,7 +177,9 @@ fetch_ext_event :: proc(fp: ^Fetch, ev: ^fetch.Event) {
 	if f.state >= 2 { return }   // aborted meanwhile: late events are ignored
 	switch ev.kind {
 	case .Response:
-		fetch_note_response(f, ev.response)
+		f.state, f.status, f.type, f.redirected, f.usable = 1, ev.status, ev.type, ev.redirected, ev.usable
+		f.final_url = strings.clone(ev.url)
+		f.headers = strings.clone(ev.headers)
 		if e.promise_mode {
 			promise_resolve(p, e.response, i64(u64(self)))
 			return
@@ -193,7 +194,7 @@ fetch_ext_event :: proc(fp: ^Fetch, ev: ^fetch.Event) {
 		}
 		if f.usable && len(data) > 0 {
 			if p.held + len(data) > p.settings.max_fetch_bytes {
-				if f.task != base.NIL_HANDLE { fetch.cancel(p.loader, f.task); f.task = base.NIL_HANDLE }
+				fetch_abort(p, f)   // in a worker the request is the page's: a message cancels it
 				delete(f.error)
 				f.state, f.error, f.error_kind = 3, strings.clone("page fetch memory limit reached"), .Body_Too_Large
 				fetch_ext_finished(p, f)
@@ -405,7 +406,7 @@ Stream_cancel :: proc(c: ^Call, stream: Api_ReadableStream) {
 	p := c.page
 	s := stream.data
 	if f := base.pool_get(&p.fetches, s.fetch); f != nil && f.state < 2 {
-		if f.task != base.NIL_HANDLE { fetch.cancel(p.loader, f.task); f.task = base.NIL_HANDLE }
+		fetch_abort(p, f)   // in a worker the request is the page's: a message cancels it
 		f.state = 2
 		fetch_ext_finished(p, f)
 	}

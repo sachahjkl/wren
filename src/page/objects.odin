@@ -46,6 +46,7 @@ Objects :: struct {
 	microtasks:  [dynamic]Microtask,
 	depth:       int,                // guest calls in progress
 	draining:    bool,
+	checkpoint_posted: bool,         // host_post_checkpoint: a checkpoint task is queued
 }
 
 @(private)

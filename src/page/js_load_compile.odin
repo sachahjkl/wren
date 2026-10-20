@@ -139,6 +139,7 @@ compile_main :: proc(_: rawptr) {
 	inst, err := wasm.instance_create(js_engine_image(), ctx_page, nil, opt, "javascript compiler", nil)
 	delete(err)
 	if inst != nil { inst.lenient = true }
+	ctx_page.js.inst = inst   // Engine_storeBytecode answers the realm's engine only
 	for {
 		sync.sema_wait(&compiler.sema)
 		sync.mutex_lock(&compiler.mu)

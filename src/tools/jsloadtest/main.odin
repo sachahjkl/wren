@@ -572,7 +572,7 @@ w.onmessage = (e) => {
     return;
   }
   if (e.data === "closing") { log("worker closing"); return; }
-  if (typeof e.data === "string") { log(e.data); if (e.data === "worker timer fired") w.postMessage("close"); return; }
+  if (typeof e.data === "string") { log(e.data); if (e.data === "worker timer fired") w.postMessage("fetch"); if (e.data.startsWith("worker fetch")) w.postMessage("close"); return; }
   const v = e.data;
   const g = v.got;
   log("echo " + (g.d instanceof Date) + " " + g.d.getTime() + " " + g.m.get(1) + " " + g.s.has(2) + " " + g.r.flags + " " + new Uint8Array(g.buf)[2] + " " + (g.cyc.self === g.cyc) + " lib " + v.lib + " name " + v.name + " " + v.isWorker);
@@ -590,6 +590,7 @@ try { w.postMessage(() => 1); } catch (e) { log("function not cloneable " + e.na
 	check(logged("echo true 5 a true gi 3 true lib 7 name w1 true"), "structured clone both ways (Date, Map, Set, RegExp, ArrayBuffer, cycles); importScripts; name")
 	check(logged("worker error true true"), "an uncaught error of the worker is an ErrorEvent at the Worker")
 	check(logged("worker timer fired") && logged("worker rejection w"), "timers and unhandledrejection in the worker")
+	check(logged("worker fetch 200 true AbortError ba78"), "a worker's fetch() resolves, its abort rejects with AbortError, crypto.subtle.digest settles (tasks of the worker's realm)")
 	check(!logged("terminated worker spoke"), "a terminated worker sends nothing")
 	check(logged("cross-origin worker SecurityError"), "a cross-origin worker is refused")
 	check(logged("function not cloneable DataCloneError"), "a function is not cloneable")

@@ -68,6 +68,7 @@ Task :: struct {
 	cross_site_seen: bool,
 	stage:           Stage,
 	net_req:         base.Handle,
+	net_user:        rawptr,        // what net_req's callback owns (^Kick or ^Preflight, after stage): freed if it is cancelled
 	status:          int,
 	raw_headers:     http.Headers,
 	has_raw:         bool,
@@ -157,14 +158,14 @@ task_scope_closed :: proc(data: rawptr) {
 	free(k)
 }
 
-// Silent. False if the task already finished.
-cancel :: proc(l: ^Loader, h: base.Handle) -> bool { return release(l, h) }
+// Silent. False if the task already finished (or there is no loader: a worker's requests are made by its page).
+cancel :: proc(l: ^Loader, h: base.Handle) -> bool { return l != nil && release(l, h) }
 
 @(private)
 release :: proc(l: ^Loader, h: base.Handle) -> bool {
 	t, ok := base.pool_remove(&l.tasks, h)
 	if !ok { return false }
-	if t.net_req != base.NIL_HANDLE { net.cancel(l.net, t.net_req) }
+	cancel_net(l, &t)
 	url.destroy(&t.target)
 	url.origin_destroy(&t.origin)
 	http.headers_destroy(&t.headers)
@@ -175,6 +176,19 @@ release :: proc(l: ^Loader, h: base.Handle) -> bool {
 	delete(t.collected)
 	if t.scope != nil { base.run_cleanup(t.scope, t.cleanup) }
 	return true
+}
+
+// Cancels the task's network request (silent: its callback is not called again) and frees what that callback owned.
+@(private)
+cancel_net :: proc(l: ^Loader, t: ^Task) {
+	if t.net_req == base.NIL_HANDLE { return }
+	net.cancel(l.net, t.net_req)
+	t.net_req = base.NIL_HANDLE
+	#partial switch t.stage {
+	case .Preflight: if t.net_user != nil { free_preflight((^Preflight)(t.net_user)) }
+	case .Fetching:  free(t.net_user)
+	}
+	t.net_user = nil
 }
 
 @(private)
@@ -483,6 +497,7 @@ send_preflight :: proc(t: ^Task, unsafe: []string) {
 	pf.task = t.self
 	pf.unsafe = make([]string, len(unsafe))
 	for s, i in unsafe { pf.unsafe[i] = strings.clone(s) }
+	t.net_user = pf
 	t.net_req = net.fetch(l.net, {
 		url = url_no_fragment(t.target), method = "OPTIONS", headers = join_headers(h), on_event = preflight_event, user = pf,
 		collect = true, max_body = 1 << 20, priority = .High,
@@ -505,13 +520,13 @@ preflight_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 		t := base.pool_get(&pf.loader.tasks, pf.task)
 		defer free_preflight(pf)
 		if t == nil { return }
-		t.net_req = base.NIL_HANDLE
+		t.net_req, t.net_user = base.NIL_HANDLE, nil
 		handle_preflight_result(t, pf)
 	case .Failed:
 		t := base.pool_get(&pf.loader.tasks, pf.task)
 		defer free_preflight(pf)
 		if t == nil { return }
-		t.net_req = base.NIL_HANDLE
+		t.net_req, t.net_user = base.NIL_HANDLE, nil
 		fail(t, .Blocked_Preflight, "preflight request failed", ev.error, ev.secure_flags)
 	}
 }
@@ -544,9 +559,11 @@ handle_preflight_result :: proc(t: ^Task, pf: ^Preflight) {
 send_main :: proc(t: ^Task) {
 	l := t.loader
 	t.stage = .Fetching
+	k := new_clone(Kick{l, t.self})
+	t.net_user = k
 	t.net_req = net.fetch(l.net, {
 		url = url_no_fragment(t.target), method = t.method, headers = build_request_headers(t), body = t.body,
-		on_event = main_event, user = new_clone(Kick{l, t.self}), collect = false, max_body = t.max_body,
+		on_event = main_event, user = k, collect = false, max_body = t.max_body,
 		priority = t.destination == .Document || t.destination == .Script || t.destination == .Style ? .High : .Normal,
 	})
 }
@@ -555,10 +572,11 @@ send_main :: proc(t: ^Task) {
 main_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 	k := (^Kick)(user)
 	t := base.pool_get(&k.l.tasks, k.h)
-	// the Kick is freed on the terminal events
+	// the Kick is freed on the terminal events (by cancel_net when the request is cancelled before)
 	terminal := ev.kind == .Done || ev.kind == .Failed
 	defer if terminal { free(k) }
 	if t == nil { return }
+	if terminal { t.net_user = nil }
 	switch ev.kind {
 	case .Headers: on_response_headers(t, ev)
 	case .Data:
@@ -728,7 +746,7 @@ handle_redirect :: proc(t: ^Task, location: string) {
 
 	t.redirect_count += 1
 	t.redirected = true
-	if t.net_req != base.NIL_HANDLE { net.cancel(l.net, t.net_req); t.net_req = base.NIL_HANDLE }
+	cancel_net(l, t)
 	url.destroy(&t.target)
 	t.target = next
 	run_hop(t)
@@ -745,20 +763,21 @@ synthetic :: proc(t: ^Task, status: int, mime: string, body: []byte) {
 	http.append_header(&raw, "Content-Length", fmt.bprintf(buf[:], "%d", len(body)))
 	m, has := http.parse_mime(mime, context.temp_allocator)
 	if why, ok := check_task_mime(t, m, has, false); !ok { fail(t, .Bad_Mime, why); return }
-	send_response(t, status, raw, m, has)
-	if t.collect {
-		append(&t.collected, ..body)
-	}
+	// each callback may cancel the task (and another task may take its slot): it is found again by handle after each
 	h, l := t.self, t.loader
-	if !t.collect && len(body) > 0 {
+	send_response(t, status, raw, m, has)
+	cur := base.pool_get(&l.tasks, h)
+	if cur == nil { return }
+	if cur.collect {
+		append(&cur.collected, ..body)
+	} else if len(body) > 0 {
 		ev := Event{kind = .Data, data = body}
-		deliver(t, &ev)
+		deliver(cur, &ev)
+		if cur = base.pool_get(&l.tasks, h); cur == nil { return }
 	}
-	// the Response callback may have cancelled the task
-	if base.pool_get(&l.tasks, h) == nil { return }
 	done := Event{kind = .Done}
-	if t.collect { done.data = t.collected[:] }
-	deliver(t, &done)
+	if cur.collect { done.data = cur.collected[:] }
+	deliver(cur, &done)
 	release(l, h)
 }
 
