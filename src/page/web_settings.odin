@@ -72,7 +72,7 @@ WEB_PREFS := [?]config.Def{
 	{name = "url.max_length", kind = .Int, default = {i = 2 << 20}, bounded = true, min = 1024, max = 1 << 30, bytes = true, unit = "bytes",
 		description = "Longest URL a script may build with URL, URLSearchParams, location or history; longer input fails with TypeError."},
 	{name = "dom.abort_signal.max_sources", kind = .Int, default = {i = 10_000}, bounded = true, min = 1, max = 10_000_000,
-		description = "Most signals one AbortSignal.any() may follow."},
+		description = "Most signals one AbortSignal.any() may follow; more is a RangeError."},
 }
 
 web_settings_from_prefs :: proc(p: ^config.Prefs) -> Web_Settings {

@@ -32,7 +32,7 @@ FILE_PREFS := [?]config.Def{
 	{name = "file.directory.listing", kind = .Bool, default = {b = true},
 		description = "Show the contents of a file: folder that has no index file (name, size, date modified), as other browsers do. Off: opening such a folder is an error."},
 	{name = "file.directory.max_entries", kind = .Int, default = {i = 5000}, bounded = true, min = 1, max = 1_000_000,
-		description = "Entries a folder listing shows; the others are counted, not listed."},
+		description = "Entries a folder listing shows: the first ones the file system returns, then sorted; the others are counted, not listed."},
 	{name = "file.directory.show_hidden", kind = .Bool, default = {b = false},
 		description = "List hidden and system files and folders too (desktop.ini, $RECYCLE.BIN, ...)."},
 	{name = "file.directory.sort", kind = .String, default = {s = "name"}, choices = {"name", "size", "modified", "type"},

@@ -190,7 +190,7 @@ Location_get :: proc(c: ^Call, component: Api_URLComponent) -> string {
 @(private)
 location_assign :: proc(c: ^Call, s: string, replace: bool) -> Api_Error {
 	p := c.page
-	if len(s) > p.settings.web.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
+	if len(s) > p.settings.web.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (url.max_length)") }
 	target, ok := url.parse(s, &p.env.location, context.temp_allocator)
 	if !ok { return fail(c, .Syntax, "SyntaxError: invalid URL") }
 	location_navigate(p, target, replace)
@@ -210,7 +210,7 @@ Location_set :: proc(c: ^Call, component: Api_URLComponent, value: string) -> Ap
 	p := c.page
 	if component == .Href { return location_assign(c, value, false) }
 	if component == .Origin { return fail(c, .Invalid_Argument, "origin is read-only") }
-	if len(value) > p.settings.web.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
+	if len(value) > p.settings.web.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (url.max_length)") }
 	uc := url.Component(component)
 	nu, res := url.set_component(p.env.location, uc, value, context.temp_allocator)
 	if res != .Ok { return fail(c, .Syntax, "SyntaxError: invalid value") }
@@ -237,7 +237,7 @@ history_change :: proc(c: ^Call, state_arg, url_arg: Maybe(string), replace: boo
 	state, has_state := state_arg.?
 	u, has_url := url_arg.?
 	if has_state && len(state) > s.history_max_state_bytes { return fail(c, .Data_Clone, "DataCloneError: the state is over history.max_state_bytes") }
-	if len(u) > s.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
+	if len(u) > s.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (url.max_length)") }
 	target := p.env.location
 	if has_url {
 		ok: bool

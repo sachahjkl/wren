@@ -77,12 +77,12 @@ parse_base :: proc(base: Maybe(string)) -> (b: url.URL, has, ok: bool) {
 URL_parse :: proc(c: ^Call, input: string, base: Maybe(string)) -> (u64, Api_Error) {
 	p := c.page
 	max_len := p.settings.web.url_max_length
-	if len(input) > max_len || len(base.? or_else "") > max_len { return 0, fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
+	if len(input) > max_len || len(base.? or_else "") > max_len { return 0, fail(c, .Type, "TypeError: the URL is too long (url.max_length)") }
 	b, has, ok := parse_base(base)
 	if !ok { return 0, fail(c, .Type, "TypeError: invalid base URL") }
 	u, uok := url.parse(input, has ? &b : nil)
 	if !uok { return 0, fail(c, .Type, "TypeError: invalid URL") }
-	if len(u.href) > max_len { url.destroy(&u); return 0, fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
+	if len(u.href) > max_len { url.destroy(&u); return 0, fail(c, .Type, "TypeError: the URL is too long (url.max_length)") }
 	o := new(Url_Object)
 	o.u = u
 	return object_create(p, &url_vt, o, c.owner), .None
@@ -105,14 +105,14 @@ URL_set :: proc(c: ^Call, u: Api_URL, component: Api_URLComponent, value: string
 	p := c.page
 	o := u.data
 	if component == .Origin { return fail(c, .Invalid_Argument, "origin is read-only") }
-	if len(value) > p.settings.web.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
+	if len(value) > p.settings.web.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (url.max_length)") }
 	nu, res := url.set_component(o.u, url.Component(component), value)
 	switch res {
 	case .Ok:
 	case .Invalid, .Failed: return fail(c, .Type, "TypeError: invalid URL")
 	case .Read_Only: return .Invalid_Argument
 	}
-	if len(nu.href) > p.settings.web.url_max_length { url.destroy(&nu); return fail(c, .Type, "TypeError: the URL is too long (web.url_max_length)") }
+	if len(nu.href) > p.settings.web.url_max_length { url.destroy(&nu); return fail(c, .Type, "TypeError: the URL is too long (url.max_length)") }
 	url.destroy(&o.u)
 	o.u = nu
 	if component == .Href || component == .Search { url_sync_params(p, o, u.handle) }
@@ -138,7 +138,7 @@ URL_searchParams :: proc(c: ^Call, u: Api_URL) -> u64 {
 // new URLSearchParams(init): a query string, with or without the leading "?".
 URLSearchParams_create :: proc(c: ^Call, init: string) -> (u64, Api_Error) {
 	p := c.page
-	if len(init) > p.settings.web.url_max_length { return 0, fail(c, .Type, "TypeError: too long (web.url_max_length)") }
+	if len(init) > p.settings.web.url_max_length { return 0, fail(c, .Type, "TypeError: too long (url.max_length)") }
 	s := init
 	if len(s) > 0 && s[0] == '?' { s = s[1:] }
 	po := new(Params_Object)

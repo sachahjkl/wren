@@ -13,13 +13,13 @@ Js_Dom_Settings :: struct {
 
 JS_DOM_PREFS := [?]config.Def{
 	{name = "javascript.dom.max_fragment_nodes", kind = .Int, default = {i = 1_000_000}, bounded = true, min = 1_000, max = 100_000_000, unit = "nodes",
-		description = "Most nodes one assignment of innerHTML / outerHTML or one insertAdjacentHTML may create. The rest of the markup is dropped (with a warning in the console), so a script cannot exhaust memory in one call."},
+		description = "Most nodes one HTML fragment parse (innerHTML, outerHTML, insertAdjacentHTML, setHTMLUnsafe, Document.parseHTMLUnsafe) may create. The rest of the markup is dropped (with a warning in the console), so a script cannot exhaust memory in one call."},
 	{name = "javascript.dom.selector_cache_entries", kind = .Int, default = {i = 128}, bounded = true, min = 0, max = 100_000, unit = "selector lists",
 		description = "Parsed selector lists kept per page for querySelector, querySelectorAll, matches and closest: a selector used again (in a loop) is not parsed again. 0 parses every time."},
 	{name = "javascript.dom.max_mutation_records", kind = .Int, default = {i = 1_000_000}, bounded = true, min = 100, max = 1 << 30, unit = "records",
-		description = "Most records one MutationObserver may have waiting for delivery. Past it the oldest are dropped (with a warning in the console): a page that mutates without ever yielding cannot grow the queue without bound."},
+		description = "Most records one MutationObserver may have waiting for delivery. Past it the oldest are dropped (during a delivery, the newest), with a warning in the console: a page that mutates without ever yielding cannot grow the queue without bound."},
 	{name = "javascript.dom.max_client_rects", kind = .Int, default = {i = 100_000}, bounded = true, min = 1, max = 10_000_000, unit = "rectangles",
-		description = "Most rectangles getClientRects returns for one element or range."},
+		description = "Most rectangles Range.getClientRects returns (and Range.getBoundingClientRect unites). An element has at most one."},
 	{name = "javascript.dom.style_cache_entries", kind = .Int, default = {i = 4096}, bounded = true, min = 0, max = 100_000, unit = "style attributes",
 		description = "Parsed style attributes, and validated style.setProperty values, kept per page for element.style (each): reading or changing a declaration in a loop does not parse again. Enough for the elements a script animates (each element's current text is one entry: fewer, and an animation of more elements parses every attribute again). 0 parses every time."},
 }

@@ -40,7 +40,7 @@ JS_LOAD_PREFS := [?]config.Def{
 	{name = "javascript.urls.enabled", kind = .Bool, default = {b = true},
 		description = "Run javascript: URLs (links, location = \"javascript:...\"). Off: they do nothing."},
 	{name = "javascript.compile.offthread_threads", kind = .Int, default = {i = -1}, bounded = true, min = -1, max = 64, unit = "threads",
-		description = "Threads that compile large scripts (javascript.compile.offthread_min_bytes) to bytecode while the page does other work. -1 = one per two logical processors, at most 4; 0 = compile on the interface thread."},
+		description = "Threads that compile large scripts (javascript.compile.offthread_min_bytes) to bytecode while the page does other work. -1 = one per two logical processors, at most 4; 0 = compile on the interface thread. Raising it takes effect at once; lowering it (other than to 0) at the next start."},
 	{name = "javascript.workers.import_scripts_timeout_ms", kind = .Int, default = {i = 60_000}, bounded = true, min = -1, max = 3_600_000, unit = "ms",
 		description = "Longest wait of a worker's importScripts() for one script (it blocks the worker until the script arrives). -1 = no limit."},
 }

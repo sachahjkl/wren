@@ -182,7 +182,7 @@ AbortSignal_timeout :: proc(c: ^Call, ms: f64) -> (u64, Api_Error) {
 // AbortSignal.any(signals)
 AbortSignal_any :: proc(c: ^Call, signals: []u64) -> (u64, Api_Error) {
 	p := c.page
-	if len(signals) > p.settings.web.max_signal_sources { return 0, fail(c, .Range, "RangeError: too many signals (abort.max_signal_sources)") }
+	if len(signals) > p.settings.web.max_signal_sources { return 0, fail(c, .Range, "RangeError: too many signals (dom.abort_signal.max_sources)") }
 	for sh in signals { if signal_get(p, sh) == nil { return 0, fail(c, .Invalid_Handle, "AbortSignal.any: not an AbortSignal") } }
 	h := signal_create(p, c.owner)
 	res := signal_get(p, h)
