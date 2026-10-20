@@ -546,3 +546,19 @@ partial_restyle_matches_a_full_pass :: proc(t: ^testing.T) {
 	testing.expect(t, ok && changed)
 	testing.expect(t, style_of(h.st, dom.find_by_id(h.doc, "b")) == before_b, "unrelated elements keep their computed style")
 }
+// A state that changes the root element's font size or line height (html:hover): rem and rlh everywhere follow, which a
+// partial restyle cannot scope: it refuses, the caller does a full pass.
+@(test)
+restyle_state_root_font :: proc(t: ^testing.T) {
+	f := load(`<style>html:hover { font-size: 20px } html:focus-within { line-height: 40px } p { width: 1rem; height: 1rlh }</style><p id=p tabindex=0>x</p>`)
+	defer unload(&f)
+	html := dom.find_first_by_tag(f.doc, "html")
+	for st in ([]State{{hover = html}, {focus = dom.find_by_id(f.doc, "p")}}) {
+		if _, ok := restyle_state(f.eng, f.doc, f.st, st); ok {
+			testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
+		} else {
+			restyle(&f, st)
+		}
+		testing.expect(t, at(&f, "p").width.v == (st.hover != {} ? 20 : 16), "rem follows the root")
+	}
+}

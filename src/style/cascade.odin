@@ -1056,13 +1056,20 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 		}
 		old_style := base_style_of(s, r)
 		rctx := node_ctx(p, r)
+		// the root element's font size and line height are what rem and rlh mean everywhere: a change of them (html:hover,
+		// :focus-within) needs a full pass (what was done is harmless: records replaced as a full pass would)
+		root_moved :: proc(s: ^Styled, r: base.Handle, par: base.Handle) -> bool {
+			if par != base.NIL_HANDLE { return false }
+			ns := base_style_of(s, r)
+			return ns != nil && (ns.font_size != s.root_font_size || used_line_height(ns, s.line_height_normal) != s.root_line_height)
+		}
 		if deep {
 			style_subtree(p, r, parent_style, bloom, root_ctx = rctx)
-			if p.unscoped { return false, false }
+			if p.unscoped || root_moved(s, r, par) { return false, false }
 			continue
 		}
 		style_subtree(p, r, parent_style, bloom, descend = false, root_ctx = rctx)
-		if p.unscoped { return false, false }
+		if p.unscoped || root_moved(s, r, par) { return false, false }
 		// the element's own change may reach its descendants through inheritance
 		new_style := base_style_of(s, r)
 		if old_style != nil && new_style != nil && !inherited_equal(old_style, new_style) {
