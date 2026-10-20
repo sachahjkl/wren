@@ -540,3 +540,29 @@ hostile_depth :: proc(t: ^testing.T) {
 	relayout(f2)
 	testing.expect(t, f2.l.valid && hit_test(&f2.l, {12, 14}, f2.vp, 0).node != base.NIL_HANDLE, "deep inline content is hit")
 }
+
+// Hostile lengths stay finite through layout: huge widths and percentages of them, a huge canvas, a subnormal aspect
+// ratio, tabs with no interval (font-size: 0, tab-size: 0). No NaN or infinity in boxes, fragments, items or extent.
+@(test)
+hostile_lengths_stay_finite :: proc(t: ^testing.T) {
+	srcs := []string{
+		`<div style="width:1e39px"><p style="width:0%">zero</p><p>auto <span style="margin-left:auto">x</span></p><div style="margin:auto;width:50%">c</div></div>`,
+		`<canvas width="10000000000000000000000000000000000000000" height="1e40"></canvas><p>after</p>`,
+		`<div style="aspect-ratio:1e-39;width:100px">r</div><div style="aspect-ratio:1/1e-39;width:100px">r</div>`,
+		`<pre style="font-size:0">a	b	c</pre><pre style="tab-size:0">a	b</pre><pre style="letter-spacing:-1000px">a	b</pre><p>after</p>`,
+		`<div style="width:calc(1e300px * 1e300);height:1e39px;margin-left:-1e39px">big</div><p style="text-indent:1e38px">t</p>`,
+	}
+	finite :: proc(v: f32) -> bool { return !math.is_nan(v) && !math.is_inf(v) }
+	for s in srcs {
+		f := load(s)
+		defer unload(f)
+		bad := 0
+		for &b in f.l.boxes {
+			if !finite(b.pos.x) || !finite(b.pos.y) || !finite(b.size.x) || !finite(b.size.y) || !finite(b.abs.x) || !finite(b.abs.y) { bad += 1 }
+		}
+		for &fr in f.l.frags { if !finite(fr.x) || !finite(fr.w) || !finite(fr.y) { bad += 1 } }
+		for &it in f.l.items { if !finite(it.rect.min.x) || !finite(it.rect.max.x) || !finite(it.rect.min.y) || !finite(it.rect.max.y) { bad += 1 } }
+		testing.expectf(t, bad == 0 && finite(f.l.height) && finite(f.l.doc_width), "%s: %d non-finite values, extent %v x %v", s, bad, f.l.doc_width, f.l.height)
+		for y in ([]f32{0, 10, 300, 599}) { _ = hit_test(&f.l, {10, y}, f.vp, 0) }
+	}
+}

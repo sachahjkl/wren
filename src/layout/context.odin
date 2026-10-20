@@ -90,15 +90,25 @@ box_of_idx :: #force_inline proc(c: ^Ctx, i: i32) -> ^Box { return &c.l.boxes[i]
 ////////////////////////////////
 // Lengths: computed values are CSS px (or percentages); layout works in device px
 
+// Lengths saturate at ±LAYOUT_MAX device px (about what other engines' layout units hold): a page's 1e30px, or a
+// percentage of one, stays finite through the sums and differences of layout (an infinity there became NaN: Inf - Inf).
+LAYOUT_MAX :: f32(1e9)
+
+@(private)
+sat :: #force_inline proc "contextless" (v: f32) -> f32 {
+	if !(v == v) { return 0 }   // NaN
+	return clamp(v, -LAYOUT_MAX, LAYOUT_MAX)
+}
+
 // `base` is the percentage base in device px; auto and the keywords resolve to `fallback`.
 @(private)
 px_of :: proc(c: ^Ctx, l: style.Length, base: f32, fallback: f32 = 0) -> f32 {
 	#partial switch l.kind {
-	case .Px: return l.v * c.scale
-	case .Percent: return base < 0 ? fallback : base * l.v / 100
+	case .Px: return sat(l.v * c.scale)
+	case .Percent: return base < 0 ? fallback : sat(base * l.v / 100)
 	case .Calc:
 		b := base < 0 ? 0 : base
-		return f32(css.eval_calc(l.calc, css.Length_Context{percent_base = f64(b / c.scale)})) * c.scale
+		return sat(f32(css.eval_calc(l.calc, css.Length_Context{percent_base = f64(b / c.scale)})) * c.scale)
 	}
 	return fallback
 }
@@ -107,7 +117,7 @@ px_of :: proc(c: ^Ctx, l: style.Length, base: f32, fallback: f32 = 0) -> f32 {
 @(private)
 definite :: proc(c: ^Ctx, l: style.Length, base: f32) -> (f32, bool) {
 	#partial switch l.kind {
-	case .Px: return l.v * c.scale, true
+	case .Px: return sat(l.v * c.scale), true
 	case .Percent, .Calc:
 		if base < 0 { return 0, false }
 		return px_of(c, l, base), true

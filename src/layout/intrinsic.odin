@@ -135,7 +135,7 @@ attr_px :: proc(c: ^Ctx, h: base.Handle, name: string) -> (f32, bool) {
 	if end == 0 { return 0, false }
 	n, nok := strconv.parse_f64(t[:end])
 	if !nok || n < 0 { return 0, false }
-	return f32(n), true
+	return f32(min(n, f64(LAYOUT_MAX))), true   // (CSS px, scaled later: still far below an f32 overflow)
 }
 
 @(private)
