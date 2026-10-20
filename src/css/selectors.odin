@@ -1,7 +1,6 @@
 package css
 
 import "core:fmt"
-import "core:strconv"
 import "core:strings"
 
 // Selectors Level 4 (the parts that make sense for a document without namespaces) and CSS Nesting's `&`.
@@ -484,6 +483,28 @@ parse_functional_pseudo :: proc(f: Value, a: Arena_Alloc, parent: ^Selector_List
 	return s, true
 }
 
+// A and B are kept within ±NTH_LIMIT (as Blink clamps them to 32 bits): beyond, no element index can tell the
+// difference, and `index - B` and `(index - B) / A` cannot overflow (min(int) / -1 traps).
+NTH_LIMIT :: 1 << 31
+
+@(private)
+nth_clamp :: proc(num: f64) -> int { return int(clamp(num, -NTH_LIMIT, NTH_LIMIT)) }
+
+// Optionally signed decimal digits (no separators), saturated at ±NTH_LIMIT.
+@(private)
+nth_int :: proc(s: string) -> (int, bool) {
+	t := s
+	neg := false
+	if len(t) > 0 && (t[0] == '+' || t[0] == '-') { neg = t[0] == '-'; t = t[1:] }
+	if len(t) == 0 { return 0, false }
+	v := 0
+	for c in transmute([]u8)t {
+		if c < '0' || c > '9' { return 0, false }
+		v = min(v * 10 + int(c - '0'), NTH_LIMIT)
+	}
+	return neg ? -v : v, true
+}
+
 // An+B microsyntax, from the tokens' text.
 @(private)
 parse_nth :: proc(vs: []Value) -> (a, b: int, ok: bool) {
@@ -495,11 +516,11 @@ parse_nth :: proc(vs: []Value) -> (a, b: int, ok: bool) {
 		case .Whitespace:
 		case .Ident: strings.write_string(&sb, t.text)
 		case .Number:
-			if t.is_int { if t.has_sign && t.num >= 0 { strings.write_byte(&sb, '+') }; fmt.sbprintf(&sb, "%d", int(t.num)) } else { return 0, 0, false }
+			if t.is_int { if t.has_sign && t.num >= 0 { strings.write_byte(&sb, '+') }; fmt.sbprintf(&sb, "%d", nth_clamp(t.num)) } else { return 0, 0, false }
 		case .Dimension:
 			if !t.is_int { return 0, 0, false }
 			if t.has_sign && t.num >= 0 { strings.write_byte(&sb, '+') }
-			fmt.sbprintf(&sb, "%d%s", int(t.num), t.text)
+			fmt.sbprintf(&sb, "%d%s", nth_clamp(t.num), t.text)
 		case .Delim:
 			if t.text == "+" || t.text == "-" { strings.write_string(&sb, t.text) } else { return 0, 0, false }
 		case: return 0, 0, false
@@ -512,7 +533,7 @@ parse_nth :: proc(vs: []Value) -> (a, b: int, ok: bool) {
 	}
 	n := strings.index_byte(s, 'n')
 	if n < 0 {
-		v, good := strconv.parse_int(s, 10)
+		v, good := nth_int(s)
 		return 0, v, good
 	}
 	coef := s[:n]
@@ -520,14 +541,14 @@ parse_nth :: proc(vs: []Value) -> (a, b: int, ok: bool) {
 	case "", "+": a = 1
 	case "-": a = -1
 	case:
-		v, good := strconv.parse_int(coef, 10)
+		v, good := nth_int(coef)
 		if !good { return 0, 0, false }
 		a = v
 	}
 	rest := s[n + 1:]
 	if rest == "" { return a, 0, true }
 	if rest[0] != '+' && rest[0] != '-' { return 0, 0, false }
-	v, good := strconv.parse_int(rest[1:], 10)
+	v, good := nth_int(rest[1:])
 	if !good { return 0, 0, false }
 	return a, rest[0] == '-' ? -v : v, true
 }

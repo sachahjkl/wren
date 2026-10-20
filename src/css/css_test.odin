@@ -218,7 +218,11 @@ selectors_and_specificity :: proc(t: ^testing.T) {
 	ops := [?]Attr_Op{.Exists, .Equals, .Includes, .Dash_Match, .Prefix, .Suffix, .Substring, .Equals}
 	for op, i in ops { testing.expect_value(t, l3[i].compounds[0].simples[0].op, op) }
 	testing.expect(t, l3[6].compounds[0].simples[0].ci)
-	nths := [?]struct { src: string, a, b: int }{{":nth-child(odd)", 2, 1}, {":nth-child(even)", 2, 0}, {":nth-child(5)", 0, 5}, {":nth-child(n)", 1, 0}, {":nth-child(-n+3)", -1, 3}, {":nth-child(2n - 1)", 2, -1}, {":nth-child(+3n+2)", 3, 2}, {":nth-last-of-type(4n)", 4, 0}}
+	// huge A and B are clamped to ±2^31 (min(int) / -1 traps when an index is matched); no digit separators
+	nths := [?]struct { src: string, a, b: int }{{":nth-child(odd)", 2, 1}, {":nth-child(even)", 2, 0}, {":nth-child(5)", 0, 5}, {":nth-child(n)", 1, 0}, {":nth-child(-n+3)", -1, 3}, {":nth-child(2n - 1)", 2, -1}, {":nth-child(+3n+2)", 3, 2}, {":nth-last-of-type(4n)", 4, 0},
+		{":nth-child(-n-9223372036854775807)", -1, -NTH_LIMIT}, {":nth-child(99999999999999999999n+1)", NTH_LIMIT, 1}, {":nth-child(99999999999999999999)", 0, NTH_LIMIT}}
+	_, sep_ok := sel(":nth-child(2n+1_0)", ar)
+	testing.expect(t, !sep_ok, "digit separators are not CSS")
 	for n in nths {
 		l4, good := sel(n.src, ar)
 		testing.expect(t, good, n.src)

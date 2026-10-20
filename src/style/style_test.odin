@@ -460,6 +460,19 @@ hostile_stylesheets :: proc(t: ^testing.T) {
 	testing.expect(t, at(&f, "a") != nil)
 }
 
+// Values that overflow the arithmetic of matching or of computed values: the page is styled, nothing traps.
+@(test)
+hostile_values :: proc(t: ^testing.T) {
+	f := load(`<style>
+		li:nth-child(-n-9223372036854775807) { color: red }
+		li:nth-last-child(-9223372036854775807n-9223372036854775807) { margin-top: 1px }
+		li:nth-child(99999999999999999999n+2) { color: blue }
+	</style><ul><li id=a>1</li><li id=b>2</li><li>3</li></ul>`)
+	defer unload(&f)
+	testing.expect(t, at(&f, "a") != nil)
+	testing.expect(t, same_color(at(&f, "b").color, {0, 0, 1, 1}), "2^31 n + 2 matches the second child")
+}
+
 @(test)
 partial_restyle_matches_a_full_pass :: proc(t: ^testing.T) {
 	f := load(`<style>
