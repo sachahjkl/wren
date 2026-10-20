@@ -38,7 +38,8 @@ has_token :: proc(list, token: string) -> bool {
 //   * a <link rel="stylesheet"> keeps its (separately loaded) sheet while the element exists; the sheet is dropped with it.
 // Returns every <link rel="stylesheet"> currently in the document, for the caller to load and register with
 // `engine_add_sheet(..., from_link = true)`.
-sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, allocator := context.temp_allocator) -> []Linked_Sheet {
+// `keep_missing`: sheets whose owner is not found stay (part of the document is detached for a while).
+sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, allocator := context.temp_allocator, keep_missing := false) -> []Linked_Sheet {
 	links := make([dynamic]Linked_Sheet, allocator)
 	Style_El :: struct { owner: base.Handle, text, media: string, scope: base.Handle }
 	styles := make([dynamic]Style_El, context.temp_allocator)
@@ -66,7 +67,7 @@ sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, a
 	}
 
 	// drop what no longer matches
-	for i := len(e.sheets) - 1; i >= 0; i -= 1 {
+	for i := len(e.sheets) - 1; i >= 0 && !keep_missing; i -= 1 {
 		s := e.sheets[i]
 		if s.origin != .Author || s.constructed { continue }
 		keep := false

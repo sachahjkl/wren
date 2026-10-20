@@ -68,7 +68,8 @@ ce_queue :: proc(p: ^Page, ce: ^Custom_Elements, r: Ce_Reaction) {
 // The reactions an insertion or a removal causes, for every element of the subtree.
 @(private)
 ce_walk :: proc(p: ^Page, ce: ^Custom_Elements, d: ^dom.Document, root: base.Handle, inserted, connected: bool) {
-	for h := root; h != base.NIL_HANDLE; h = dom.next_in_tree(d, h, root) {
+	// shadow-including: the custom elements of shadow trees enter and leave the document with their hosts
+	for h := root; h != base.NIL_HANDLE; h = dom.next_shadow_including(d, h, root) {
 		n := dom.get(d, h)
 		if n == nil || n.kind != .Element || !(n.name in ce.defined) { continue }
 		st := ce.state[h]
@@ -88,7 +89,7 @@ ce_mutation :: proc(p: ^Page, d: ^dom.Document, e: ^dom.Journal_Entry) {
 	#partial switch e.kind {
 	case .Insert:
 		// template contents belong to an inert document: no definition applies there
-		root := dom.tree_root(d, e.node)
+		root := dom.shadow_including_root(d, e.node)
 		if rn := dom.get(d, root); rn != nil && rn.kind == .Fragment && rn.held { return }
 		ce_walk(p, ce, d, e.node, true, root == d.root)
 	case .Remove:
@@ -153,7 +154,7 @@ CustomElements_take :: proc(c: ^Call) -> []u8 {
 		// an element that ended in a template's contents (innerHTML parses into a fragment first) is in an inert
 		// document: no definition applies there
 		if r.kind == CE_UPGRADE {
-			if rn := dom.get(d, dom.tree_root(d, r.element)); rn == nil || (rn.kind == .Fragment && rn.held) {
+			if rn := dom.get(d, dom.shadow_including_root(d, r.element)); rn == nil || (rn.kind == .Fragment && rn.held) {
 				ce_reaction_free(c.page, &r)
 				continue
 			}
@@ -185,6 +186,7 @@ CustomElements_create :: proc(c: ^Call, name: string) -> (u64, Api_Error) {
 	if d == nil { return 0, fail(c, .Invalid_State, "no document") }
 	h := dom.create_element_ns(d, name, .HTML)
 	js_dom_state(c.page).ce.state[h] = CE_STATE_CUSTOM
+	dom.custom_element_set_defined(d, h, true)
 	return u64(h), .None
 }
 
@@ -192,6 +194,7 @@ Element_setCustomState :: proc(c: ^Call, element: Api_Element, state: u32) {
 	ce := &js_dom_state(c.page).ce
 	h := H(element.handle)
 	if state == 0 { delete_key(&ce.state, h) } else { ce.state[h] = u8(state) }
+	dom.custom_element_set_defined(c.page.doc, h, state == u32(CE_STATE_CUSTOM))
 }
 
 // document.createElement(name) of a defined name: the element is upgraded before createElement returns.

@@ -1,0 +1,327 @@
+<!doctype html>
+<html><head><title>Shadow DOM</title>
+<style>
+  body { margin: 0 }
+  x-card { display: block; color: rgb(0, 0, 255) }
+  x-card::part(title) { text-decoration: underline }
+  .light { color: rgb(1, 2, 3) }
+</style></head>
+<body>
+<div id="dsd"><template shadowrootmode="open" shadowrootserializable shadowrootdelegatesfocus><style>p { color: rgb(0, 128, 0) }</style><p id="in">declarative</p><slot></slot></template><span id="dsd-light">light</span></div>
+<div id="dsd-closed"><template shadowrootmode="closed"><b>closed</b></template></div>
+<div id="host"><span class="light" id="l1" slot="a">one</span><span id="l2">two</span>text</div>
+<script>
+// Shadow trees for JavaScript (DOM §4.2.2, HTML slots, declarative shadow roots, CSS Scoping, ElementInternals,
+// constructable stylesheets).
+section("attachShadow and ShadowRoot", () => {
+  const host = document.getElementById("host");
+  eq("no shadow root yet", host.shadowRoot, null);
+  const root = host.attachShadow({mode: "open"});
+  t("a ShadowRoot", root instanceof ShadowRoot && root instanceof DocumentFragment);
+  eq("nodeType 11", root.nodeType, 11);
+  eq("element.shadowRoot", host.shadowRoot, root);
+  eq("root.host", root.host, host);
+  eq("mode", root.mode, "open");
+  eq("delegatesFocus default", root.delegatesFocus, false);
+  eq("slotAssignment default", root.slotAssignment, "named");
+  eq("clonable default", root.clonable, false);
+  throws("a second attachShadow", () => host.attachShadow({mode: "open"}), "NotSupportedError");
+  throws("attachShadow on <img>", () => document.createElement("img").attachShadow({mode: "open"}), "NotSupportedError");
+  throws("mode required", () => document.createElement("div").attachShadow({}), "TypeError");
+  const closed = document.createElement("x-closed").attachShadow({mode: "closed"});
+  eq("closed: mode", closed.mode, "closed");
+  eq("closed: not given away", closed.host.shadowRoot, null);
+  root.innerHTML = `<header id="hd">head</header><slot name="a" id="sa"></slot><section><slot id="sd">fallback</slot></section>`;
+  eq("shadowRoot.innerHTML", root.innerHTML, `<header id="hd">head</header><slot name="a" id="sa"></slot><section><slot id="sd">fallback</slot></section>`);
+  const hd = root.getElementById("hd");
+  t("getElementById in the shadow root", hd !== null && hd.id === "hd");
+  eq("document.getElementById does not see it", document.getElementById("hd"), null);
+  eq("querySelector in the root", root.querySelector("header"), hd);
+  eq("document.querySelector does not see it", document.querySelector("header"), null);
+  eq("getRootNode()", hd.getRootNode(), root);
+  eq("getRootNode({composed})", hd.getRootNode({composed: true}), document);
+  t("isConnected", hd.isConnected);
+  eq("contains stops at the root", host.contains(hd), false);
+  eq("parentNode of a top element", hd.parentNode, root);
+  eq("root.parentNode", root.parentNode, null);
+});
+
+section("slots", () => {
+  const host = document.getElementById("host");
+  const root = host.shadowRoot;
+  const sa = root.getElementById("sa"), sd = root.getElementById("sd");
+  const l1 = document.getElementById("l1"), l2 = document.getElementById("l2");
+  eq("named slot", sa.assignedNodes().length, 1);
+  eq("assignedSlot", l1.assignedSlot, sa);
+  eq("default slot takes element and text", sd.assignedNodes().length, 2);
+  eq("assignedElements", sd.assignedElements().length, 1);
+  eq("text's assignedSlot", sd.assignedNodes()[1].assignedSlot, sd);
+  l1.slot = "zzz";
+  eq("renamed: unassigned", l1.assignedSlot, null);
+  eq("slot emptied", sa.assignedNodes().length, 0);
+  l1.slot = "a";
+  // flatten: a slot slotted into another tree's slot
+  const outer = document.createElement("div");
+  const inner = document.createElement("x-inner");
+  outer.appendChild(inner);
+  const iroot = inner.attachShadow({mode: "open"});
+  const islot = document.createElement("slot");
+  iroot.appendChild(islot);
+  const oroot = outer.attachShadow({mode: "open"});
+  oroot.innerHTML = "<x-inner2></x-inner2>";
+  const fwd = document.createElement("slot");
+  const x2 = oroot.firstChild;
+  const r2 = x2.attachShadow({mode: "open"});
+  const s2 = document.createElement("slot");
+  r2.appendChild(s2);
+  x2.appendChild(fwd);
+  const leaf = document.createElement("i");
+  outer.appendChild(leaf);
+  eq("unflattened: the slot", s2.assignedNodes()[0], fwd);
+  t("flattened: what that slot has", s2.assignedNodes({flatten: true}).indexOf(leaf) >= 0);
+  // manual assignment
+  const m = document.createElement("div");
+  const a = document.createElement("a"), b = document.createElement("b");
+  m.append(a, b);
+  const mroot = m.attachShadow({mode: "open", slotAssignment: "manual"});
+  const ms = document.createElement("slot");
+  mroot.appendChild(ms);
+  eq("manual: nothing by default", ms.assignedNodes().length, 0);
+  ms.assign(b, a);
+  const got = ms.assignedNodes();
+  t("manual: assign() order", got.length === 2 && got[0] === b && got[1] === a);
+  throws("assign: not a node", () => ms.assign({}), "TypeError");
+});
+
+section("composed path and retargeting", () => {
+  const host = document.getElementById("host");
+  const root = host.shadowRoot;
+  const hd = root.getElementById("hd");
+  const seen = [];
+  const rec = (where) => (e) => seen.push([where, e.target, e.eventPhase, e.composedPath().length]);
+  hd.addEventListener("x", rec("hd"));
+  root.addEventListener("x", rec("root"));
+  host.addEventListener("x", rec("host"));
+  document.addEventListener("x", rec("doc"));
+  hd.dispatchEvent(new Event("x", {bubbles: true, composed: true}));
+  eq("composed: four listeners", seen.length, 4);
+  if (seen.length === 4) {
+    eq("inside: the real target", seen[0][1], hd);
+    eq("at the root: still inside", seen[1][1], hd);
+    eq("at the host: retargeted", seen[2][1], host);
+    eq("host phase is AT_TARGET", seen[2][2], Event.AT_TARGET);
+    eq("document: retargeted", seen[3][1], host);
+    eq("open tree: the whole path from outside", seen[3][3], seen[0][3]);
+  }
+  seen.length = 0;
+  const ev = new Event("x", {bubbles: true});
+  hd.dispatchEvent(ev);
+  eq("not composed: stops at the root", seen.length, 2);
+  eq("after dispatch inside a shadow tree: target cleared", ev.target, null);
+  const ev2 = new Event("x", {bubbles: true, composed: true});
+  hd.dispatchEvent(ev2);
+  eq("after a composed dispatch: the outermost retarget", ev2.target, host);
+  eq("composedPath after dispatch", ev2.composedPath().length, 0);
+  // closed trees hide themselves from composedPath
+  const ch = document.createElement("div");
+  document.body.appendChild(ch);
+  const cr = ch.attachShadow({mode: "closed"});
+  const ci = document.createElement("i");
+  cr.appendChild(ci);
+  let outside = null, inside = null;
+  ci.addEventListener("y", (e) => { inside = e.composedPath(); });
+  document.addEventListener("y", (e) => { outside = e.composedPath(); });
+  ci.dispatchEvent(new Event("y", {bubbles: true, composed: true}));
+  t("closed: the inside sees itself", inside && inside[0] === ci);
+  t("closed: outside starts at the host", outside && outside[0] === ch);
+  t("window at the end", outside && outside[outside.length - 1] === window);
+  ch.remove();
+  // slotted node: the path goes through the slot
+  const l2 = document.getElementById("l2");
+  const path = [];
+  l2.addEventListener("z", (e) => { for (const n of e.composedPath()) path.push(n); });
+  l2.dispatchEvent(new Event("z", {bubbles: true}));
+  t("through the slot", path.indexOf(root.getElementById("sd")) === 1);
+});
+
+section("styles: scoping, :host, ::slotted, ::part", () => {
+  const card = document.createElement("x-card");
+  card.innerHTML = `<em id="sl">slotted</em>`;
+  document.body.appendChild(card);
+  const r = card.attachShadow({mode: "open"});
+  r.innerHTML = `<style>:host { padding-left: 7px; color: rgb(255, 0, 0) } :host(.on) { padding-top: 3px } ::slotted(em) { color: rgb(0, 128, 0) } span { color: rgb(9, 9, 9) }</style>` +
+    `<span id="t" part="title">title</span><slot></slot>`;
+  const cs = getComputedStyle(card);
+  eq(":host applies", cs.paddingLeft, "7px");
+  eq("outer normal beats :host", cs.color, "rgb(0, 0, 255)");
+  card.className = "on";
+  eq(":host(.on)", getComputedStyle(card).paddingTop, "3px");
+  eq("::slotted(em)", getComputedStyle(document.getElementById("sl")).color, "rgb(0, 128, 0)");
+  const t1 = r.getElementById("t");
+  eq("the tree's own rule", getComputedStyle(t1).color, "rgb(9, 9, 9)");
+  eq("::part from the document", getComputedStyle(t1).textDecorationLine, "underline");
+  const dsdIn = document.getElementById("dsd").shadowRoot.getElementById("in");
+  eq("declarative root's <style>", getComputedStyle(dsdIn).color, "rgb(0, 128, 0)");
+  eq("document rules stay out", getComputedStyle(document.getElementById("dsd-light")).color, "rgb(0, 0, 0)");
+  card.remove();
+});
+
+section("constructable stylesheets and adoptedStyleSheets", () => {
+  const sheet = new CSSStyleSheet();
+  t("a CSSStyleSheet", sheet instanceof CSSStyleSheet);
+  sheet.replaceSync("p { margin-left: 11px } @import url(x.css); b { margin-left: 2px }");
+  eq("@import dropped", sheet.cssRules.length, 2);
+  eq("cssText", sheet.cssRules[0].cssText, "p { margin-left: 11px }");
+  sheet.insertRule("i { margin-left: 4px }", 0);
+  eq("insertRule", sheet.cssRules.length, 3);
+  sheet.deleteRule(0);
+  eq("deleteRule", sheet.cssRules.length, 2);
+  throws("insertRule past the end", () => sheet.insertRule("a {}", 9), "IndexSizeError");
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = host.attachShadow({mode: "open"});
+  root.innerHTML = "<p id='ap'>adopted</p>";
+  const ap = root.getElementById("ap");
+  eq("before adoption", getComputedStyle(ap).marginLeft, "0px");
+  root.adoptedStyleSheets = [sheet];
+  eq("adopted", getComputedStyle(ap).marginLeft, "11px");
+  t("same array object", root.adoptedStyleSheets === root.adoptedStyleSheets);
+  eq("array length", root.adoptedStyleSheets.length, 1);
+  root.adoptedStyleSheets.pop();
+  eq("pop un-adopts", getComputedStyle(ap).marginLeft, "0px");
+  root.adoptedStyleSheets.push(sheet);
+  eq("push adopts", getComputedStyle(ap).marginLeft, "11px");
+  sheet.replaceSync("p { margin-left: 13px }");
+  eq("replaceSync applies where adopted", getComputedStyle(ap).marginLeft, "13px");
+  throws("only constructed sheets", () => { root.adoptedStyleSheets = [{}]; }, "TypeError");
+  const dp = document.createElement("p");
+  document.body.appendChild(dp);
+  document.adoptedStyleSheets = [sheet];
+  eq("document.adoptedStyleSheets", getComputedStyle(dp).marginLeft, "13px");
+  document.adoptedStyleSheets = [];
+  eq("document un-adopts", getComputedStyle(dp).marginLeft, "0px");
+  sheet.disabled = true;
+  eq("disabled", getComputedStyle(ap).marginLeft, "0px");
+  sheet.disabled = false;
+  dp.remove();
+  host.remove();
+});
+
+section("markup: getHTML, setHTMLUnsafe, parseHTMLUnsafe, clonable", () => {
+  const dsd = document.getElementById("dsd");
+  t("declarative root attached by the parser", dsd.shadowRoot !== null && dsd.shadowRoot.mode === "open");
+  eq("delegatesFocus from the attribute", dsd.shadowRoot.delegatesFocus, true);
+  eq("the template is gone", dsd.querySelector("template"), null);
+  eq("closed declarative root not given", document.getElementById("dsd-closed").shadowRoot, null);
+  const html = dsd.getHTML({serializableShadowRoots: true});
+  t("getHTML serializes the root", html.startsWith(`<template shadowrootmode="open" shadowrootdelegatesfocus="" shadowrootserializable="">`), html);
+  eq("innerHTML does not", dsd.innerHTML, `<span id="dsd-light">light</span>`);
+  const d = document.createElement("div");
+  d.setHTMLUnsafe(`<p><template shadowrootmode="open"><i>x</i></template></p>`);
+  t("setHTMLUnsafe: declarative shadow root", d.firstChild.shadowRoot !== null);
+  const e = document.createElement("div");
+  e.innerHTML = `<p><template shadowrootmode="open"><i>x</i></template></p>`;
+  t("innerHTML: an ordinary template", e.firstChild.shadowRoot === null && e.querySelector("template") !== null);
+  const doc = Document.parseHTMLUnsafe(`<div><template shadowrootmode="open"><b>y</b></template></div>`);
+  t("parseHTMLUnsafe", doc.querySelector("div").shadowRoot !== null);
+  const c = document.createElement("div");
+  c.attachShadow({mode: "open", clonable: true}).innerHTML = "<u>c</u>";
+  const copy = c.cloneNode(false);
+  t("clonable root cloned", copy.shadowRoot !== null && copy.shadowRoot.innerHTML === "<u>c</u>");
+  const nc = document.createElement("div");
+  nc.attachShadow({mode: "open"});
+  eq("not clonable", nc.cloneNode(true).shadowRoot, null);
+  // a declarative root reused by attachShadow of the same mode
+  const p = document.createElement("div");
+  p.setHTMLUnsafe(`<div><template shadowrootmode="open"><i>s</i></template></div>`);
+  const host = p.firstChild;
+  const again = host.attachShadow({mode: "open"});
+  t("declarative root returned emptied", again === host.shadowRoot && again.childNodes.length === 0);
+});
+
+section("slotchange", () => {
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = host.attachShadow({mode: "open"});
+  const s = document.createElement("slot");
+  root.appendChild(s);
+  let fired = 0;
+  s.addEventListener("slotchange", (e) => { fired++; t("slotchange bubbles", e.bubbles); });
+  host.appendChild(document.createElement("b"));
+  host.appendChild(document.createElement("i"));
+  eq("not synchronous", fired, 0);
+  later().then(() => {
+    eq("one slotchange for both", fired, 1);
+    host.remove();
+    step2();
+  });
+});
+
+function step2() {
+section("custom elements in shadow trees, ElementInternals, :state()", () => {
+  const log = [];
+  class XState extends HTMLElement {
+    constructor() { super(); this.i = this.attachInternals(); }
+    connectedCallback() { log.push("connected"); }
+  }
+  customElements.define("x-state", XState);
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = host.attachShadow({mode: "open"});
+  root.innerHTML = `<style>x-state:state(on) { margin-top: 5px } x-undef:not(:defined) { margin-top: 1px }</style><x-state id="xs"></x-state>`;
+  const xs = root.getElementById("xs");
+  t("upgraded inside a shadow tree", xs instanceof XState);
+  eq("connected inside a shadow tree", log.length, 1);
+  xs.i.states.add("on");
+  t("states.has", xs.i.states.has("on"));
+  eq(":state(on)", getComputedStyle(xs).marginTop, "5px");
+  xs.i.states.delete("on");
+  eq(":state() off", getComputedStyle(xs).marginTop, "0px");
+  throws("attachInternals twice", () => xs.attachInternals(), "NotSupportedError");
+  throws("attachInternals on a built-in", () => document.createElement("div").attachInternals(), "NotSupportedError");
+  const sr = xs.attachShadow({mode: "closed"});
+  eq("internals.shadowRoot gives a closed root", xs.i.shadowRoot, sr);
+  xs.i.role = "button";
+  eq("internals.role", xs.i.role, "button");
+  const undef = document.createElement("x-undef");
+  root.appendChild(undef);
+  eq(":not(:defined)", getComputedStyle(undef).marginTop, "1px");
+  class XNoShadow extends HTMLElement { static disabledFeatures = ["shadow"]; }
+  customElements.define("x-noshadow", XNoShadow);
+  throws("disabledFeatures shadow", () => new XNoShadow().attachShadow({mode: "open"}), "NotSupportedError");
+  host.remove();
+});
+
+section("focus and delegatesFocus", () => {
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = host.attachShadow({mode: "open", delegatesFocus: true});
+  root.innerHTML = `<span>x</span><input id="f1"><input id="f2">`;
+  const f1 = root.getElementById("f1");
+  host.focus();
+  eq("delegatesFocus: the first focusable", root.activeElement, f1);
+  eq("document.activeElement is the host", document.activeElement, host);
+  t(":focus matches the host", host.matches(":focus"));
+  t(":focus-within on the host", host.matches(":focus-within"));
+  // focus moving inside the tree: the relatedTarget retargets to the host too, the event stays inside (DOM)
+  let outside = 0;
+  const count = () => { outside++; };
+  document.body.addEventListener("focusin", count);
+  root.getElementById("f2").focus();
+  eq("focusin inside the tree does not leave it", outside, 0);
+  document.body.removeEventListener("focusin", count);
+  // from outside: retargeted to the host
+  const before = document.createElement("input");
+  document.body.insertBefore(before, host);
+  before.focus();
+  let seen;
+  document.body.addEventListener("focusin", (e) => { seen = e.target; }, {once: true});
+  root.getElementById("f1").focus();
+  eq("focusin from outside: retargeted to the host", seen, host);
+  before.remove();
+  host.remove();
+});
+done();
+}
+</script>
+</body></html>

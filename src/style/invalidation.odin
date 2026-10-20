@@ -264,7 +264,7 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 			analyze_list(ix, s.list, total, true, depth)
 		case .Host: analyze_list(ix, s.list, total, in_has, depth)
 		case .Host_Context: analyze_list(ix, s.list, subtree, in_has, depth)
-		case .State: attr_dep(ix, STATE_ATTRIBUTE, total, in_has)
+		case .State, .Defined: attr_dep(ix, STATE_ATTRIBUTE, total, in_has)
 		case .Link, .Any_Link: attr_dep(ix, "href", total, in_has)
 		case .Open: attr_dep(ix, "open", total, in_has)
 		case .Target: attr_dep(ix, "id", total, in_has)

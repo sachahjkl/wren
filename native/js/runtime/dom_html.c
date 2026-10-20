@@ -566,29 +566,7 @@ JSValue wjr_Document_elementsFromPoint(JSContext *ctx, JSValueConst t, int argc,
 
 /* ---- Element ---- */
 
-/* getHTML(): the children's serialization (no shadow roots to serialize) */
-JSValue wjr_Element_getHTML(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv)
-{
-    WJ_UNUSED(argc); WJ_UNUSED(argv);
-    wj_obj *o = wj_this(ctx, t, I(Element));
-    if (!o) { return JS_EXCEPTION; }
-    int32_t n;
-    WJ_FETCH_STRING(n, wr_Element_innerHTML(o->handle, wj_scratch.data, wj_scratch.cap));
-    return dom_string(ctx, n, false, "Element.getHTML");
-}
-
-/* setHTMLUnsafe(html): innerHTML's parsing (no declarative shadow roots) */
-JSValue wjr_Element_setHTMLUnsafe(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv)
-{
-    wj_obj *o = wj_this(ctx, t, I(Element));
-    if (!o) { return JS_EXCEPTION; }
-    if (argc < 1) { return wj_throw_arity(ctx, "Element.setHTMLUnsafe", 1, argc); }
-    wj_str s;
-    if (!wj_to_str(ctx, argv[0], &s, 0, "")) { return JS_EXCEPTION; }
-    int32_t st = wr_Element_set_innerHTML(o->handle, (const uint8_t *)(s.ptr ? s.ptr : ""), (uint32_t)s.len);
-    wj_str_free(ctx, &s);
-    return st < 0 ? wj_throw_status(ctx, st, "Element.setHTMLUnsafe") : JS_UNDEFINED;
-}
+/* getHTML() and setHTMLUnsafe(): runtime/shadow.c (declarative shadow roots) */
 
 /* Pointer capture (Pointer Events §10.1) for the mouse, pointer 1: the state is kept, the shell does not retarget the
  * events to the capturing element. */

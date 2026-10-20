@@ -59,7 +59,7 @@ layout_updates :: proc(p: ^Page) -> u64 { return p.jsdom != nil ? p.jsdom.layout
 
 @(private)
 styles_clean :: proc(p: ^Page) -> bool {
-	if p.styled == nil || p.style_stale || p.engine == nil || p.engine.dirty || p.engine.restyle_needed { return false }
+	if p.styled == nil || p.style_stale || p.engine == nil || p.engine.dirty || p.engine.restyle_needed || p.engine.shadow.dirty { return false }
 	return p.styled.mutations == p.doc.mutations && style.state_equal(p.style_state, p.styled.state)
 }
 

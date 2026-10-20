@@ -45,7 +45,7 @@ not_in_keyframes :: proc(p: Prop) -> bool {
 @(private)
 compile_keyframes :: proc(e: ^Engine) { compile_keyframes_into(e, e.keyframes[:], &e.keyframe_sets) }
 
-// The winning @keyframes of each name among efs, compiled into out (in e.alloc).
+// The winning @keyframes of each name among `refs`, compiled into `out` (in e.alloc).
 @(private)
 compile_keyframes_into :: proc(e: ^Engine, refs: []Keyframes_Ref, out: ^map[string]^Keyframes_Set) {
 	if out^ == nil { out^ = make(map[string]^Keyframes_Set) }

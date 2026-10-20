@@ -408,3 +408,25 @@ new EventTarget(): a host object with nothing but listeners.
 
 Host: `EventTarget_create :: proc(c: ^Call) -> u64`
 
+### `Event_composedPathPacked`
+
+```
+bytes Event_composedPathPacked(Event event)
+```
+
+event.composedPath() of the event being dispatched: what a listener at the current target may see (closed
+shadow trees it is not in are hidden); 8 bytes per handle, the Window's handle for the Window.
+
+Host: `Event_composedPathPacked :: proc(c: ^Call, event: Api_Event) -> []u8`
+
+### `EventTarget_lastTarget`
+
+```
+u64 EventTarget_lastTarget()
+```
+
+The target of the last event dispatched by EventTarget_dispatchEngineEvent once its dispatch ended (0: null, it
+was in a shadow tree).
+
+Host: `EventTarget_lastTarget :: proc(c: ^Call) -> u64`
+

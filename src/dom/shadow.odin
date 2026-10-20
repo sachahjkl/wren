@@ -497,6 +497,7 @@ shadow_forget_node :: proc(d: ^Document, h: base.Handle, n: ^Node) {
 	if l, ok := d.manual_nodes[h]; ok { delete(l); delete_key(&d.manual_nodes, h) }
 	if _, ok := d.manual_slot[h]; ok { delete_key(&d.manual_slot, h) }
 	if l, ok := d.custom_states[h]; ok { for s in l { delete(s) }; delete(l); delete_key(&d.custom_states, h) }
+	delete_key(&d.ce_custom, h)
 }
 
 @(private)
@@ -510,6 +511,7 @@ shadow_free_all :: proc(d: ^Document) {
 	delete(d.manual_slot)
 	for _, l in d.custom_states { for s in l { delete(s) }; delete(l) }
 	delete(d.custom_states)
+	delete(d.ce_custom)
 }
 
 ////////////////////////////////
@@ -679,4 +681,23 @@ custom_state_set :: proc(d: ^Document, h: base.Handle, name: string, on: bool) -
 custom_states :: proc(d: ^Document, h: base.Handle) -> []string {
 	if l, ok := d.custom_states[h]; ok { return l[:] }
 	return nil
+}
+// Custom element state as CSS sees it (:defined): the elements whose definition ran (HTML "custom"). The embedder
+// keeps the full state; it reports this part, which is journaled like a custom state change.
+custom_element_set_defined :: proc(d: ^Document, h: base.Handle, custom: bool) {
+	if get(d, h) == nil { return }
+	had := h in d.ce_custom
+	if had == custom { return }
+	if custom { d.ce_custom[h] = true } else { delete_key(&d.ce_custom, h) }
+	touch(d)
+	d.attr_version += 1
+	journal_record(d, .Attribute, h, base.NIL_HANDLE, CUSTOM_STATE_ATTRIBUTE, "", false)
+}
+
+// :defined (HTML §4.13): every element but those of a valid custom element name whose definition has not run.
+element_is_defined :: proc(d: ^Document, h: base.Handle) -> bool {
+	n := get(d, h)
+	if n == nil || n.kind != .Element || n.ns != .HTML { return true }
+	if strings.index_byte(n.name, '-') < 0 { return true }
+	return h in d.ce_custom || !is_valid_custom_element_name(n.name)
 }

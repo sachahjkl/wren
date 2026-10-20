@@ -12948,6 +12948,947 @@ _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm
 	return nil
 }
 
+// Element_attachShadowInit :: proc(c: ^Call, element: Api_Element, mode: u32, delegates_focus: bool, slot_assignment: u32, clonable: bool, serializable: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Element_attachShadowInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Element_attachShadowInit", "result pointer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_attachShadowInit: argument element is not a live Element")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := a[2].i32 != 0
+	_p3 := u32(a[3].i32)
+	_p4 := a[4].i32 != 0
+	_p5 := a[5].i32 != 0
+	_r, _err := Element_attachShadowInit(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CustomElements_disable :: proc(c: ^Call, name: string, shadow: bool, internals: bool)
+@(private = "file")
+_t_dom_CustomElements_disable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.CustomElements_disable", "name") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CustomElements_disable: argument name is not valid UTF-8") }
+		return wasm.trap_new("dom.CustomElements_disable: argument name is not valid UTF-8")
+	}
+	_p1 := a[2].i32 != 0
+	_p2 := a[3].i32 != 0
+	CustomElements_disable(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// ShadowRoot_mode :: proc(c: ^Call, root: Api_Node) -> string
+@(private = "file")
+_t_dom_ShadowRoot_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.ShadowRoot_mode", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ShadowRoot_mode: argument root is not a live Node") }
+		return wasm.trap_new("dom.ShadowRoot_mode: argument root is not a live Node")
+	}
+	_r := ShadowRoot_mode(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ShadowRoot_delegatesFocus :: proc(c: ^Call, root: Api_Node) -> bool
+@(private = "file")
+_t_dom_ShadowRoot_delegatesFocus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ShadowRoot_delegatesFocus: argument root is not a live Node") }
+		return wasm.trap_new("dom.ShadowRoot_delegatesFocus: argument root is not a live Node")
+	}
+	_r := ShadowRoot_delegatesFocus(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// ShadowRoot_clonable :: proc(c: ^Call, root: Api_Node) -> bool
+@(private = "file")
+_t_dom_ShadowRoot_clonable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ShadowRoot_clonable: argument root is not a live Node") }
+		return wasm.trap_new("dom.ShadowRoot_clonable: argument root is not a live Node")
+	}
+	_r := ShadowRoot_clonable(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// ShadowRoot_serializable :: proc(c: ^Call, root: Api_Node) -> bool
+@(private = "file")
+_t_dom_ShadowRoot_serializable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ShadowRoot_serializable: argument root is not a live Node") }
+		return wasm.trap_new("dom.ShadowRoot_serializable: argument root is not a live Node")
+	}
+	_r := ShadowRoot_serializable(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// ShadowRoot_slotAssignment :: proc(c: ^Call, root: Api_Node) -> string
+@(private = "file")
+_t_dom_ShadowRoot_slotAssignment :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.ShadowRoot_slotAssignment", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ShadowRoot_slotAssignment: argument root is not a live Node") }
+		return wasm.trap_new("dom.ShadowRoot_slotAssignment: argument root is not a live Node")
+	}
+	_r := ShadowRoot_slotAssignment(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ShadowRoot_host :: proc(c: ^Call, root: Api_Node) -> u64
+@(private = "file")
+_t_dom_ShadowRoot_host :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ShadowRoot_host: argument root is not a live Node") }
+		return wasm.trap_new("dom.ShadowRoot_host: argument root is not a live Node")
+	}
+	_r := ShadowRoot_host(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ShadowRoot_innerHTML :: proc(c: ^Call, root: Api_Node) -> string
+@(private = "file")
+_t_dom_ShadowRoot_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.ShadowRoot_innerHTML", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ShadowRoot_innerHTML: argument root is not a live Node") }
+		return wasm.trap_new("dom.ShadowRoot_innerHTML: argument root is not a live Node")
+	}
+	_r := ShadowRoot_innerHTML(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ShadowRoot_set_innerHTML :: proc(c: ^Call, root: Api_Node, value: string) -> Api_Error
+@(private = "file")
+_t_dom_ShadowRoot_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.ShadowRoot_set_innerHTML", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.ShadowRoot_set_innerHTML: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.ShadowRoot_set_innerHTML: argument root is not a live Node")
+	}
+	_err := ShadowRoot_set_innerHTML(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ShadowRoot_activeElement :: proc(c: ^Call, root: Api_Node) -> u64
+@(private = "file")
+_t_dom_ShadowRoot_activeElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ShadowRoot_activeElement: argument root is not a live Node") }
+		return wasm.trap_new("dom.ShadowRoot_activeElement: argument root is not a live Node")
+	}
+	_r := ShadowRoot_activeElement(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Node_getHTML :: proc(c: ^Call, node: Api_Node, serializable_roots: bool, roots: []u64) -> string
+@(private = "file")
+_t_dom_Node_getHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2, 8)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Node_getHTML", "roots") }
+	_on := wasm.addr(&f, a[5])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Node_getHTML", "result buffer") }
+	_p2 := ([^]u64)(_s2)[:_n2]
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_getHTML: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_getHTML: argument node is not a live Node")
+	}
+	_p1 := a[1].i32 != 0
+	_r := Node_getHTML(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Node_setHTMLUnsafe :: proc(c: ^Call, node: Api_Node, html: string) -> Api_Error
+@(private = "file")
+_t_dom_Node_setHTMLUnsafe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_setHTMLUnsafe", "html") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Node_setHTMLUnsafe: argument html is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_setHTMLUnsafe: argument node is not a live Node")
+	}
+	_err := Node_setHTMLUnsafe(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_parseHTMLUnsafeNode :: proc(c: ^Call, html: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_parseHTMLUnsafeNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_parseHTMLUnsafeNode", "html") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_parseHTMLUnsafeNode", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "dom.Document_parseHTMLUnsafeNode: argument html is not valid UTF-8")
+	}
+	_r, _err := Document_parseHTMLUnsafeNode(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Node_rootNodeComposed :: proc(c: ^Call, node: Api_Node, composed: bool) -> u64
+@(private = "file")
+_t_dom_Node_rootNodeComposed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_rootNodeComposed: argument node is not a live Node") }
+		return wasm.trap_new("dom.Node_rootNodeComposed: argument node is not a live Node")
+	}
+	_p1 := a[1].i32 != 0
+	_r := Node_rootNodeComposed(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Slottable_assignedSlot :: proc(c: ^Call, node: Api_Node) -> u64
+@(private = "file")
+_t_dom_Slottable_assignedSlot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Slottable_assignedSlot: argument node is not a live Node") }
+		return wasm.trap_new("dom.Slottable_assignedSlot: argument node is not a live Node")
+	}
+	_r := Slottable_assignedSlot(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLSlotElement_assignedPacked :: proc(c: ^Call, slot: Api_Element, flatten: bool, elements: bool) -> []u8
+@(private = "file")
+_t_dom_HTMLSlotElement_assignedPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLSlotElement_assignedPacked", "result buffer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLSlotElement_assignedPacked: argument slot is not a live Element") }
+		return wasm.trap_new("dom.HTMLSlotElement_assignedPacked: argument slot is not a live Element")
+	}
+	_p1 := a[1].i32 != 0
+	_p2 := a[2].i32 != 0
+	_r := HTMLSlotElement_assignedPacked(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLSlotElement_assignNodes :: proc(c: ^Call, slot: Api_Element, nodes: []u64) -> Api_Error
+@(private = "file")
+_t_dom_HTMLSlotElement_assignNodes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1, 8)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLSlotElement_assignNodes", "nodes") }
+	_p1 := ([^]u64)(_s1)[:_n1]
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLSlotElement_assignNodes: argument slot is not a live Element")
+	}
+	_err := HTMLSlotElement_assignNodes(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_shadowIncludingByName :: proc(c: ^Call, name: string) -> []u8
+@(private = "file")
+_t_dom_Document_shadowIncludingByName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_shadowIncludingByName", "name") }
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Document_shadowIncludingByName", "result buffer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Document_shadowIncludingByName: argument name is not valid UTF-8") }
+		return wasm.trap_new("dom.Document_shadowIncludingByName: argument name is not valid UTF-8")
+	}
+	_r := Document_shadowIncludingByName(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Shadow_fireSlotChanges :: proc(c: ^Call)
+@(private = "file")
+_t_dom_Shadow_fireSlotChanges :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	Shadow_fireSlotChanges(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Node_isLive :: proc(c: ^Call, node: u64) -> bool
+@(private = "file")
+_t_dom_Node_isLive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := Node_isLive(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Node_shadowIncludingElements :: proc(c: ^Call, root: Api_Node) -> []u8
+@(private = "file")
+_t_dom_Node_shadowIncludingElements :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Node_shadowIncludingElements", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_shadowIncludingElements: argument root is not a live Node") }
+		return wasm.trap_new("dom.Node_shadowIncludingElements: argument root is not a live Node")
+	}
+	_r := Node_shadowIncludingElements(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Event_composedPathPacked :: proc(c: ^Call, event: Api_Event) -> []u8
+@(private = "file")
+_t_events_Event_composedPathPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "events.Event_composedPathPacked", "result buffer") }
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.Event_composedPathPacked: argument event is not a live Event") }
+		return wasm.trap_new("events.Event_composedPathPacked: argument event is not a live Event")
+	}
+	_r := Event_composedPathPacked(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// EventTarget_lastTarget :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_events_EventTarget_lastTarget :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_r := EventTarget_lastTarget(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Element_attachInternals :: proc(c: ^Call, element: Api_Element) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Element_attachInternals :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Element_attachInternals", "result pointer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_attachInternals: argument element is not a live Element")
+	}
+	_r, _err := Element_attachInternals(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ElementInternals_shadowRootOf :: proc(c: ^Call, internals: u64) -> u64
+@(private = "file")
+_t_dom_ElementInternals_shadowRootOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := ElementInternals_shadowRootOf(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ElementInternals_element :: proc(c: ^Call, internals: u64) -> u64
+@(private = "file")
+_t_dom_ElementInternals_element :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := ElementInternals_element(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CustomStates_add :: proc(c: ^Call, internals: u64, state: string)
+@(private = "file")
+_t_dom_CustomStates_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.CustomStates_add", "state") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CustomStates_add: argument state is not valid UTF-8") }
+		return wasm.trap_new("dom.CustomStates_add: argument state is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	CustomStates_add(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CustomStates_delete :: proc(c: ^Call, internals: u64, state: string) -> bool
+@(private = "file")
+_t_dom_CustomStates_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.CustomStates_delete", "state") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CustomStates_delete: argument state is not valid UTF-8") }
+		return wasm.trap_new("dom.CustomStates_delete: argument state is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_r := CustomStates_delete(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// CustomStates_has :: proc(c: ^Call, internals: u64, state: string) -> bool
+@(private = "file")
+_t_dom_CustomStates_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.CustomStates_has", "state") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CustomStates_has: argument state is not valid UTF-8") }
+		return wasm.trap_new("dom.CustomStates_has: argument state is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_r := CustomStates_has(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// CustomStates_clear :: proc(c: ^Call, internals: u64)
+@(private = "file")
+_t_dom_CustomStates_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	CustomStates_clear(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CustomStates_list :: proc(c: ^Call, internals: u64) -> string
+@(private = "file")
+_t_dom_CustomStates_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.CustomStates_list", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := CustomStates_list(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CSSStyleSheet_create :: proc(c: ^Call, media: string, disabled: bool, base_url: string) -> u64
+@(private = "file")
+_t_dom_CSSStyleSheet_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_create", "media") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_create", "base_url") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CSSStyleSheet_create: argument media is not valid UTF-8") }
+		return wasm.trap_new("dom.CSSStyleSheet_create: argument media is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CSSStyleSheet_create: argument base_url is not valid UTF-8") }
+		return wasm.trap_new("dom.CSSStyleSheet_create: argument base_url is not valid UTF-8")
+	}
+	_p1 := a[2].i32 != 0
+	_r := CSSStyleSheet_create(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CSSStyleSheet_replaceText :: proc(c: ^Call, sheet: u64, text: string) -> Api_Error
+@(private = "file")
+_t_dom_CSSStyleSheet_replaceText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_replaceText", "text") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.CSSStyleSheet_replaceText: argument text is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_err := CSSStyleSheet_replaceText(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CSSStyleSheet_ruleCount :: proc(c: ^Call, sheet: u64) -> u32
+@(private = "file")
+_t_dom_CSSStyleSheet_ruleCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := CSSStyleSheet_ruleCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// CSSStyleSheet_ruleText :: proc(c: ^Call, sheet: u64, index: u32) -> (string, Api_Error)
+@(private = "file")
+_t_dom_CSSStyleSheet_ruleText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_ruleText", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_p1 := u32(a[1].i32)
+	_r, _err := CSSStyleSheet_ruleText(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CSSStyleSheet_insertRuleAt :: proc(c: ^Call, sheet: u64, rule: string, index: u32) -> (u32, Api_Error)
+@(private = "file")
+_t_dom_CSSStyleSheet_insertRuleAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_insertRuleAt", "rule") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 4)
+	if !_rk { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_insertRuleAt", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.CSSStyleSheet_insertRuleAt: argument rule is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_p2 := u32(a[3].i32)
+	_r, _err := CSSStyleSheet_insertRuleAt(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u32)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CSSStyleSheet_deleteRuleAt :: proc(c: ^Call, sheet: u64, index: u32) -> Api_Error
+@(private = "file")
+_t_dom_CSSStyleSheet_deleteRuleAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := u32(a[1].i32)
+	_err := CSSStyleSheet_deleteRuleAt(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CSSStyleSheet_isDisabled :: proc(c: ^Call, sheet: u64) -> bool
+@(private = "file")
+_t_dom_CSSStyleSheet_isDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := CSSStyleSheet_isDisabled(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// CSSStyleSheet_setDisabled :: proc(c: ^Call, sheet: u64, disabled: bool)
+@(private = "file")
+_t_dom_CSSStyleSheet_setDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32 != 0
+	CSSStyleSheet_setDisabled(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CSSStyleSheet_mediaText :: proc(c: ^Call, sheet: u64) -> string
+@(private = "file")
+_t_dom_CSSStyleSheet_mediaText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_mediaText", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := CSSStyleSheet_mediaText(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CSSStyleSheet_setMediaText :: proc(c: ^Call, sheet: u64, media: string)
+@(private = "file")
+_t_dom_CSSStyleSheet_setMediaText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_setMediaText", "media") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CSSStyleSheet_setMediaText: argument media is not valid UTF-8") }
+		return wasm.trap_new("dom.CSSStyleSheet_setMediaText: argument media is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	CSSStyleSheet_setMediaText(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CSSStyleSheet_isConstructed :: proc(c: ^Call, sheet: u64) -> bool
+@(private = "file")
+_t_dom_CSSStyleSheet_isConstructed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := CSSStyleSheet_isConstructed(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// DocumentOrShadowRoot_adopt :: proc(c: ^Call, root: Api_Node, sheets: []u64) -> Api_Error
+@(private = "file")
+_t_dom_DocumentOrShadowRoot_adopt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1, 8)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.DocumentOrShadowRoot_adopt", "sheets") }
+	_p1 := ([^]u64)(_s1)[:_n1]
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.DocumentOrShadowRoot_adopt: argument root is not a live Node")
+	}
+	_err := DocumentOrShadowRoot_adopt(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Navigator_get :: proc(c: ^Call, field: Api_NavigatorField) -> string
 @(private = "file")
 _t_navigator_Navigator_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -15925,6 +16866,50 @@ api_imports := [?]wasm.Import{
 	{module = "scripts", name = "Worker_postSerialized", fn = _t_scripts_Worker_postSerialized, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "DedicatedWorkerGlobalScope_postSerialized", fn = _t_scripts_DedicatedWorkerGlobalScope_postSerialized, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "WorkerGlobalScope_importScript", fn = _t_scripts_WorkerGlobalScope_importScript, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_attachShadowInit", fn = _t_dom_Element_attachShadowInit, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CustomElements_disable", fn = _t_dom_CustomElements_disable, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "ShadowRoot_mode", fn = _t_dom_ShadowRoot_mode, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ShadowRoot_delegatesFocus", fn = _t_dom_ShadowRoot_delegatesFocus, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "ShadowRoot_clonable", fn = _t_dom_ShadowRoot_clonable, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "ShadowRoot_serializable", fn = _t_dom_ShadowRoot_serializable, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "ShadowRoot_slotAssignment", fn = _t_dom_ShadowRoot_slotAssignment, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ShadowRoot_host", fn = _t_dom_ShadowRoot_host, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ShadowRoot_innerHTML", fn = _t_dom_ShadowRoot_innerHTML, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ShadowRoot_set_innerHTML", fn = _t_dom_ShadowRoot_set_innerHTML, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "ShadowRoot_activeElement", fn = _t_dom_ShadowRoot_activeElement, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Node_getHTML", fn = _t_dom_Node_getHTML, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Node_setHTMLUnsafe", fn = _t_dom_Node_setHTMLUnsafe, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_parseHTMLUnsafeNode", fn = _t_dom_Document_parseHTMLUnsafeNode, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_rootNodeComposed", fn = _t_dom_Node_rootNodeComposed, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Slottable_assignedSlot", fn = _t_dom_Slottable_assignedSlot, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLSlotElement_assignedPacked", fn = _t_dom_HTMLSlotElement_assignedPacked, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLSlotElement_assignNodes", fn = _t_dom_HTMLSlotElement_assignNodes, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_shadowIncludingByName", fn = _t_dom_Document_shadowIncludingByName, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Shadow_fireSlotChanges", fn = _t_dom_Shadow_fireSlotChanges, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Node_isLive", fn = _t_dom_Node_isLive, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_shadowIncludingElements", fn = _t_dom_Node_shadowIncludingElements, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "events", name = "Event_composedPathPacked", fn = _t_events_Event_composedPathPacked, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "events", name = "EventTarget_lastTarget", fn = _t_events_EventTarget_lastTarget, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_attachInternals", fn = _t_dom_Element_attachInternals, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "ElementInternals_shadowRootOf", fn = _t_dom_ElementInternals_shadowRootOf, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ElementInternals_element", fn = _t_dom_ElementInternals_element, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CustomStates_add", fn = _t_dom_CustomStates_add, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "CustomStates_delete", fn = _t_dom_CustomStates_delete, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CustomStates_has", fn = _t_dom_CustomStates_has, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CustomStates_clear", fn = _t_dom_CustomStates_clear, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "CustomStates_list", fn = _t_dom_CustomStates_list, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CSSStyleSheet_create", fn = _t_dom_CSSStyleSheet_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CSSStyleSheet_replaceText", fn = _t_dom_CSSStyleSheet_replaceText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CSSStyleSheet_ruleCount", fn = _t_dom_CSSStyleSheet_ruleCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CSSStyleSheet_ruleText", fn = _t_dom_CSSStyleSheet_ruleText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CSSStyleSheet_insertRuleAt", fn = _t_dom_CSSStyleSheet_insertRuleAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CSSStyleSheet_deleteRuleAt", fn = _t_dom_CSSStyleSheet_deleteRuleAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CSSStyleSheet_isDisabled", fn = _t_dom_CSSStyleSheet_isDisabled, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CSSStyleSheet_setDisabled", fn = _t_dom_CSSStyleSheet_setDisabled, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "CSSStyleSheet_mediaText", fn = _t_dom_CSSStyleSheet_mediaText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CSSStyleSheet_setMediaText", fn = _t_dom_CSSStyleSheet_setMediaText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "CSSStyleSheet_isConstructed", fn = _t_dom_CSSStyleSheet_isConstructed, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "DocumentOrShadowRoot_adopt", fn = _t_dom_DocumentOrShadowRoot_adopt, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Navigator_get", fn = _t_navigator_Navigator_get, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "navigator", name = "Navigator_hardwareConcurrency", fn = _t_navigator_Navigator_hardwareConcurrency, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Navigator_onLine", fn = _t_navigator_Navigator_onLine, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},

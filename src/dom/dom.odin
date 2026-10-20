@@ -99,6 +99,7 @@ Document :: struct {
 	slot_changed:  proc(user: rawptr, d: ^Document, slot: base.Handle),
 	slot_user:     rawptr,
 	custom_states: map[base.Handle][dynamic]string,   // ElementInternals.states (shadow.odin)
+	ce_custom:     map[base.Handle]bool,              // custom elements whose definition ran (:defined)
 }
 
 Ns_Extra :: struct {
@@ -349,7 +350,7 @@ destroy_subtree :: proc(d: ^Document, h: base.Handle) {
 			// its shadow tree goes with it (its pins count in the host's: nothing in it is pinned)
 			if n.shadow != base.NIL_HANDLE { append(&stack, n.shadow); n.shadow = base.NIL_HANDLE }
 		}
-		if len(d.shadow_roots) > 0 || len(d.assigned) > 0 || len(d.manual_slot) > 0 || len(d.custom_states) > 0 { shadow_forget_node(d, cur, n) }
+		if len(d.shadow_roots) > 0 || len(d.assigned) > 0 || len(d.manual_slot) > 0 || len(d.custom_states) > 0 || len(d.ce_custom) > 0 { shadow_forget_node(d, cur, n) }
 		free_node_data(n)
 		base.pool_remove(&d.nodes, cur)
 	}

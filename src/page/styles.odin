@@ -120,15 +120,17 @@ start_style_fetch :: proc(p: ^Page, l: ^Style_Load, crossorigin: string, has_cro
 // Reads the document's stylesheets and starts what has to be loaded. Safe to call after any mutation.
 sync_styles :: proc(p: ^Page) {
 	// the parser's reveal has the rest of the document detached for now: its stylesheets stay as they are until it
-	// finishes (js_load.odin), instead of being dropped and loaded again
-	if scripts_revealing(p) { return }
-	links := style.sync_document_sheets(p.engine, p.doc, p.env.location.href)
+	// finishes (js_load.odin), instead of being dropped and loaded again; new ones (a script's) are added meanwhile
+	revealing := scripts_revealing(p)
+	links := style.sync_document_sheets(p.engine, p.doc, p.env.location.href, keep_missing = revealing)
 
 	// links that disappeared
-	for owner, l in p.link_loads {
-		found := false
-		for k in links { if k.owner == owner { found = true; break } }
-		if !found { free_load(p, l); delete_key(&p.link_loads, owner) }
+	if !revealing {
+		for owner, l in p.link_loads {
+			found := false
+			for k in links { if k.owner == owner { found = true; break } }
+			if !found { free_load(p, l); delete_key(&p.link_loads, owner) }
+		}
 	}
 	// new or changed links
 	for k in links {

@@ -335,6 +335,48 @@ foreign _m_dom {
 	@(link_name = "DOMImplementation_createHTMLDocument") _DOMImplementation_createHTMLDocument :: proc(title: [^]u8, title_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "DOMImplementation_createDocumentType") _DOMImplementation_createDocumentType :: proc(name: [^]u8, name_len: u32, public_id: [^]u8, public_id_len: u32, system_id: [^]u8, system_id_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "Document_partOf") _Document_partOf :: proc(document: u64, which: i32) -> Node ---
+	@(link_name = "Element_attachShadowInit") _Element_attachShadowInit :: proc(element: u64, mode: u32, delegates_focus: i32, slot_assignment: u32, clonable: i32, serializable: i32, _ret: ^Node) -> Error ---
+	@(link_name = "CustomElements_disable") _CustomElements_disable :: proc(name: [^]u8, name_len: u32, shadow: i32, internals: i32) ---
+	@(link_name = "ShadowRoot_mode") _ShadowRoot_mode :: proc(root: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "ShadowRoot_delegatesFocus") _ShadowRoot_delegatesFocus :: proc(root: u64) -> i32 ---
+	@(link_name = "ShadowRoot_clonable") _ShadowRoot_clonable :: proc(root: u64) -> i32 ---
+	@(link_name = "ShadowRoot_serializable") _ShadowRoot_serializable :: proc(root: u64) -> i32 ---
+	@(link_name = "ShadowRoot_slotAssignment") _ShadowRoot_slotAssignment :: proc(root: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "ShadowRoot_host") _ShadowRoot_host :: proc(root: u64) -> Element ---
+	@(link_name = "ShadowRoot_innerHTML") _ShadowRoot_innerHTML :: proc(root: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "ShadowRoot_set_innerHTML") _ShadowRoot_set_innerHTML :: proc(root: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "ShadowRoot_activeElement") _ShadowRoot_activeElement :: proc(root: u64) -> Element ---
+	@(link_name = "Node_getHTML") _Node_getHTML :: proc(node: u64, serializable_roots: i32, roots: [^]u64, roots_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Node_setHTMLUnsafe") _Node_setHTMLUnsafe :: proc(node: u64, html: [^]u8, html_len: u32) -> Error ---
+	@(link_name = "Document_parseHTMLUnsafeNode") _Document_parseHTMLUnsafeNode :: proc(html: [^]u8, html_len: u32, _ret: ^Node) -> Error ---
+	@(link_name = "Node_rootNodeComposed") _Node_rootNodeComposed :: proc(node: u64, composed: i32) -> Node ---
+	@(link_name = "Slottable_assignedSlot") _Slottable_assignedSlot :: proc(node: u64) -> Element ---
+	@(link_name = "HTMLSlotElement_assignedPacked") _HTMLSlotElement_assignedPacked :: proc(slot: u64, flatten: i32, elements: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLSlotElement_assignNodes") _HTMLSlotElement_assignNodes :: proc(slot: u64, nodes: [^]u64, nodes_len: u32) -> Error ---
+	@(link_name = "Document_shadowIncludingByName") _Document_shadowIncludingByName :: proc(name: [^]u8, name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Shadow_fireSlotChanges") _Shadow_fireSlotChanges :: proc() ---
+	@(link_name = "Node_isLive") _Node_isLive :: proc(node: u64) -> i32 ---
+	@(link_name = "Node_shadowIncludingElements") _Node_shadowIncludingElements :: proc(root: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_attachInternals") _Element_attachInternals :: proc(element: u64, _ret: ^u64) -> Error ---
+	@(link_name = "ElementInternals_shadowRootOf") _ElementInternals_shadowRootOf :: proc(internals: u64) -> Node ---
+	@(link_name = "ElementInternals_element") _ElementInternals_element :: proc(internals: u64) -> Element ---
+	@(link_name = "CustomStates_add") _CustomStates_add :: proc(internals: u64, state: [^]u8, state_len: u32) ---
+	@(link_name = "CustomStates_delete") _CustomStates_delete :: proc(internals: u64, state: [^]u8, state_len: u32) -> i32 ---
+	@(link_name = "CustomStates_has") _CustomStates_has :: proc(internals: u64, state: [^]u8, state_len: u32) -> i32 ---
+	@(link_name = "CustomStates_clear") _CustomStates_clear :: proc(internals: u64) ---
+	@(link_name = "CustomStates_list") _CustomStates_list :: proc(internals: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "CSSStyleSheet_create") _CSSStyleSheet_create :: proc(media: [^]u8, media_len: u32, disabled: i32, base_url: [^]u8, base_url_len: u32) -> u64 ---
+	@(link_name = "CSSStyleSheet_replaceText") _CSSStyleSheet_replaceText :: proc(sheet: u64, text: [^]u8, text_len: u32) -> Error ---
+	@(link_name = "CSSStyleSheet_ruleCount") _CSSStyleSheet_ruleCount :: proc(sheet: u64) -> u32 ---
+	@(link_name = "CSSStyleSheet_ruleText") _CSSStyleSheet_ruleText :: proc(sheet: u64, index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "CSSStyleSheet_insertRuleAt") _CSSStyleSheet_insertRuleAt :: proc(sheet: u64, rule: [^]u8, rule_len: u32, index: u32, _ret: ^u32) -> Error ---
+	@(link_name = "CSSStyleSheet_deleteRuleAt") _CSSStyleSheet_deleteRuleAt :: proc(sheet: u64, index: u32) -> Error ---
+	@(link_name = "CSSStyleSheet_isDisabled") _CSSStyleSheet_isDisabled :: proc(sheet: u64) -> i32 ---
+	@(link_name = "CSSStyleSheet_setDisabled") _CSSStyleSheet_setDisabled :: proc(sheet: u64, disabled: i32) ---
+	@(link_name = "CSSStyleSheet_mediaText") _CSSStyleSheet_mediaText :: proc(sheet: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "CSSStyleSheet_setMediaText") _CSSStyleSheet_setMediaText :: proc(sheet: u64, media: [^]u8, media_len: u32) ---
+	@(link_name = "CSSStyleSheet_isConstructed") _CSSStyleSheet_isConstructed :: proc(sheet: u64) -> i32 ---
+	@(link_name = "DocumentOrShadowRoot_adopt") _DocumentOrShadowRoot_adopt :: proc(root: u64, sheets: [^]u64, sheets_len: u32) -> Error ---
 }
 
 // document.documentElement (null in a worker).
@@ -3760,5 +3802,457 @@ DOMImplementation_createDocumentType :: proc "contextless" (name: string, public
 // 3 doctype. 0 when there is none.
 Document_partOf :: proc "contextless" (document: $T_document, which: i32) -> Node where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 {
 	return _Document_partOf(u64(document), which)
+}
+
+// element.attachShadow(init): Not_Supported for an element that cannot host one, a host already (unless its root
+// was declared by the parser with the same mode: emptied and returned), or a custom element whose definition
+// disables shadow roots.
+Element_attachShadowInit :: proc "contextless" (element: $T_element, mode: u32, delegates_focus: bool, slot_assignment: u32, clonable: bool, serializable: bool) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	err = _Element_attachShadowInit(u64(element), mode, i32(1 if delegates_focus else 0), slot_assignment, i32(1 if clonable else 0), i32(1 if serializable else 0), &result)
+	return
+}
+
+// The definition of custom element `name` disables shadow roots or element internals (its disabledFeatures):
+// attachShadow / attachInternals refuse.
+CustomElements_disable :: proc "contextless" (name: string, shadow: bool, internals: bool) {
+	_CustomElements_disable(raw_data(name), u32(len(name)), i32(1 if shadow else 0), i32(1 if internals else 0))
+}
+
+// shadowRoot.mode: "open" or "closed".
+ShadowRoot_mode :: proc "contextless" (root: $T_root, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	n := _ShadowRoot_mode(u64(root), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of ShadowRoot_mode's result.
+ShadowRoot_mode_len :: proc "contextless" (root: $T_root) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	n := _ShadowRoot_mode(u64(root), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// ShadowRoot_mode's result in a buffer allocated to fit.
+ShadowRoot_mode_alloc :: proc(root: $T_root, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _ShadowRoot_mode(u64(root), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// shadowRoot.delegatesFocus
+ShadowRoot_delegatesFocus :: proc "contextless" (root: $T_root) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	return _ShadowRoot_delegatesFocus(u64(root)) != 0
+}
+
+// shadowRoot.clonable
+ShadowRoot_clonable :: proc "contextless" (root: $T_root) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	return _ShadowRoot_clonable(u64(root)) != 0
+}
+
+// shadowRoot.serializable
+ShadowRoot_serializable :: proc "contextless" (root: $T_root) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	return _ShadowRoot_serializable(u64(root)) != 0
+}
+
+// shadowRoot.slotAssignment: "named" or "manual".
+ShadowRoot_slotAssignment :: proc "contextless" (root: $T_root, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	n := _ShadowRoot_slotAssignment(u64(root), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of ShadowRoot_slotAssignment's result.
+ShadowRoot_slotAssignment_len :: proc "contextless" (root: $T_root) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	n := _ShadowRoot_slotAssignment(u64(root), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// ShadowRoot_slotAssignment's result in a buffer allocated to fit.
+ShadowRoot_slotAssignment_alloc :: proc(root: $T_root, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _ShadowRoot_slotAssignment(u64(root), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// shadowRoot.host
+ShadowRoot_host :: proc "contextless" (root: $T_root) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	return _ShadowRoot_host(u64(root))
+}
+
+// shadowRoot.innerHTML
+ShadowRoot_innerHTML :: proc "contextless" (root: $T_root, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	n := _ShadowRoot_innerHTML(u64(root), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of ShadowRoot_innerHTML's result.
+ShadowRoot_innerHTML_len :: proc "contextless" (root: $T_root) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	n := _ShadowRoot_innerHTML(u64(root), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// ShadowRoot_innerHTML's result in a buffer allocated to fit.
+ShadowRoot_innerHTML_alloc :: proc(root: $T_root, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _ShadowRoot_innerHTML(u64(root), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// shadowRoot.innerHTML = markup: parsed in the host's context (no declarative shadow roots), one mutation.
+ShadowRoot_set_innerHTML :: proc "contextless" (root: $T_root, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	return _ShadowRoot_set_innerHTML(u64(root), raw_data(value), u32(len(value)))
+}
+
+// shadowRoot.activeElement: the focused element retargeted against the root (null when it is not in its tree).
+ShadowRoot_activeElement :: proc "contextless" (root: $T_root) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	return _ShadowRoot_activeElement(u64(root))
+}
+
+// element.getHTML(options) / shadowRoot.getHTML(options): the children's serialization, with the shadow roots of
+// hosts that are serializable (when `serializable_roots`) or listed in `roots`, as declarative shadow roots.
+Node_getHTML :: proc "contextless" (node: $T_node, serializable_roots: bool, roots: []u64, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _Node_getHTML(u64(node), i32(1 if serializable_roots else 0), raw_data(roots), u32(len(roots)), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Node_getHTML's result.
+Node_getHTML_len :: proc "contextless" (node: $T_node, serializable_roots: bool, roots: []u64) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _Node_getHTML(u64(node), i32(1 if serializable_roots else 0), raw_data(roots), u32(len(roots)), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Node_getHTML's result in a buffer allocated to fit.
+Node_getHTML_alloc :: proc(node: $T_node, serializable_roots: bool, roots: []u64, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Node_getHTML(u64(node), i32(1 if serializable_roots else 0), raw_data(roots), u32(len(roots)), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.setHTMLUnsafe(html) / shadowRoot.setHTMLUnsafe(html): parsed with declarative shadow roots, one mutation.
+Node_setHTMLUnsafe :: proc "contextless" (node: $T_node, html: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Node_setHTMLUnsafe(u64(node), raw_data(html), u32(len(html)))
+}
+
+// Document.parseHTMLUnsafe(html): a new inert document (as createHTMLDocument makes) with declarative shadow roots.
+Document_parseHTMLUnsafeNode :: proc "contextless" (html: string) -> (result: Node, err: Error) {
+	err = _Document_parseHTMLUnsafeNode(raw_data(html), u32(len(html)), &result)
+	return
+}
+
+// node.getRootNode({composed})
+Node_rootNodeComposed :: proc "contextless" (node: $T_node, composed: bool) -> Node where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Node_rootNodeComposed(u64(node), i32(1 if composed else 0))
+}
+
+// node.assignedSlot: the slot it is assigned to, null when none or in a closed shadow root.
+Slottable_assignedSlot :: proc "contextless" (node: $T_node) -> Element where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _Slottable_assignedSlot(u64(node))
+}
+
+// slot.assignedNodes({flatten}) / assignedElements({flatten}) (`elements`): node handles, 8 bytes each.
+HTMLSlotElement_assignedPacked :: proc "contextless" (slot: $T_slot, flatten: bool, elements: bool, buf: []u8) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_slot)) && size_of(T_slot) == 8 {
+	n := _HTMLSlotElement_assignedPacked(u64(slot), i32(1 if flatten else 0), i32(1 if elements else 0), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of HTMLSlotElement_assignedPacked's result.
+HTMLSlotElement_assignedPacked_len :: proc "contextless" (slot: $T_slot, flatten: bool, elements: bool) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_slot)) && size_of(T_slot) == 8 {
+	n := _HTMLSlotElement_assignedPacked(u64(slot), i32(1 if flatten else 0), i32(1 if elements else 0), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLSlotElement_assignedPacked's result in a buffer allocated to fit.
+HTMLSlotElement_assignedPacked_alloc :: proc(slot: $T_slot, flatten: bool, elements: bool, allocator: runtime.Allocator) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_slot)) && size_of(T_slot) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLSlotElement_assignedPacked(u64(slot), i32(1 if flatten else 0), i32(1 if elements else 0), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// slot.assign(...nodes): the slot's manually assigned nodes.
+HTMLSlotElement_assignNodes :: proc "contextless" (slot: $T_slot, nodes: []u64) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_slot)) && size_of(T_slot) == 8 {
+	return _HTMLSlotElement_assignNodes(u64(slot), raw_data(nodes), u32(len(nodes)))
+}
+
+// The handles of every element named `name` in shadow-including tree order (custom element upgrades at define).
+Document_shadowIncludingByName :: proc "contextless" (name: string, buf: []u8) -> ([]u8, Error) {
+	n := _Document_shadowIncludingByName(raw_data(name), u32(len(name)), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of Document_shadowIncludingByName's result.
+Document_shadowIncludingByName_len :: proc "contextless" (name: string) -> (int, Error) {
+	n := _Document_shadowIncludingByName(raw_data(name), u32(len(name)), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_shadowIncludingByName's result in a buffer allocated to fit.
+Document_shadowIncludingByName_alloc :: proc(name: string, allocator: runtime.Allocator) -> ([]u8, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_shadowIncludingByName(raw_data(name), u32(len(name)), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// Fires slotchange at the slots signalled since the last time (the engine's job, wj_slot_queue).
+Shadow_fireSlotChanges :: proc "contextless" () {
+	_Shadow_fireSlotChanges()
+}
+
+// Whether `node` is a live node of the page (not destroyed).
+Node_isLive :: proc "contextless" (node: u64) -> bool {
+	return _Node_isLive(node) != 0
+}
+
+// The shadow-including descendants of `root` that are elements, in tree order (customElements.upgrade).
+Node_shadowIncludingElements :: proc "contextless" (root: $T_root, buf: []u8) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	n := _Node_shadowIncludingElements(u64(root), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of Node_shadowIncludingElements's result.
+Node_shadowIncludingElements_len :: proc "contextless" (root: $T_root) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	n := _Node_shadowIncludingElements(u64(root), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Node_shadowIncludingElements's result in a buffer allocated to fit.
+Node_shadowIncludingElements_alloc :: proc(root: $T_root, allocator: runtime.Allocator) -> ([]u8, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Node_shadowIncludingElements(u64(root), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.attachInternals(): Not_Supported unless a custom element (or attached already). An ElementInternals.
+Element_attachInternals :: proc "contextless" (element: $T_element) -> (result: u64, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	err = _Element_attachInternals(u64(element), &result)
+	return
+}
+
+// internals.shadowRoot: the host's shadow root when it is available to element internals (else null).
+ElementInternals_shadowRootOf :: proc "contextless" (internals: u64) -> Node {
+	return _ElementInternals_shadowRootOf(internals)
+}
+
+// The element of an ElementInternals.
+ElementInternals_element :: proc "contextless" (internals: u64) -> Element {
+	return _ElementInternals_element(internals)
+}
+
+// CustomStateSet: add / delete (true when it was there) / has / clear / the states (each followed by a NUL byte).
+CustomStates_add :: proc "contextless" (internals: u64, state: string) {
+	_CustomStates_add(internals, raw_data(state), u32(len(state)))
+}
+
+CustomStates_delete :: proc "contextless" (internals: u64, state: string) -> bool {
+	return _CustomStates_delete(internals, raw_data(state), u32(len(state))) != 0
+}
+
+CustomStates_has :: proc "contextless" (internals: u64, state: string) -> bool {
+	return _CustomStates_has(internals, raw_data(state), u32(len(state))) != 0
+}
+
+CustomStates_clear :: proc "contextless" (internals: u64) {
+	_CustomStates_clear(internals)
+}
+
+CustomStates_list :: proc "contextless" (internals: u64, buf: []u8) -> (string, Error) {
+	n := _CustomStates_list(internals, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of CustomStates_list's result.
+CustomStates_list_len :: proc "contextless" (internals: u64) -> (int, Error) {
+	n := _CustomStates_list(internals, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// CustomStates_list's result in a buffer allocated to fit.
+CustomStates_list_alloc :: proc(internals: u64, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _CustomStates_list(internals, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// new CSSStyleSheet(options): a constructed stylesheet (an object of the page).
+CSSStyleSheet_create :: proc "contextless" (media: string, disabled: bool, base_url: string) -> u64 {
+	return _CSSStyleSheet_create(raw_data(media), u32(len(media)), i32(1 if disabled else 0), raw_data(base_url), u32(len(base_url)))
+}
+
+// replaceSync(text) / replace(text): the rules of `text`, @import rules dropped.
+CSSStyleSheet_replaceText :: proc "contextless" (sheet: u64, text: string) -> Error {
+	return _CSSStyleSheet_replaceText(sheet, raw_data(text), u32(len(text)))
+}
+
+// The number of top-level rules, and the text of one (Index_Size past the end).
+CSSStyleSheet_ruleCount :: proc "contextless" (sheet: u64) -> u32 {
+	return _CSSStyleSheet_ruleCount(sheet)
+}
+
+CSSStyleSheet_ruleText :: proc "contextless" (sheet: u64, index: u32, buf: []u8) -> (string, Error) {
+	n := _CSSStyleSheet_ruleText(sheet, index, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of CSSStyleSheet_ruleText's result.
+CSSStyleSheet_ruleText_len :: proc "contextless" (sheet: u64, index: u32) -> (int, Error) {
+	n := _CSSStyleSheet_ruleText(sheet, index, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// CSSStyleSheet_ruleText's result in a buffer allocated to fit.
+CSSStyleSheet_ruleText_alloc :: proc(sheet: u64, index: u32, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _CSSStyleSheet_ruleText(sheet, index, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// insertRule(rule, index): Index_Size past the end, Syntax when `rule` is not one rule; the index.
+CSSStyleSheet_insertRuleAt :: proc "contextless" (sheet: u64, rule: string, index: u32) -> (result: u32, err: Error) {
+	err = _CSSStyleSheet_insertRuleAt(sheet, raw_data(rule), u32(len(rule)), index, &result)
+	return
+}
+
+// deleteRule(index): Index_Size past the end.
+CSSStyleSheet_deleteRuleAt :: proc "contextless" (sheet: u64, index: u32) -> Error {
+	return _CSSStyleSheet_deleteRuleAt(sheet, index)
+}
+
+// sheet.disabled
+CSSStyleSheet_isDisabled :: proc "contextless" (sheet: u64) -> bool {
+	return _CSSStyleSheet_isDisabled(sheet) != 0
+}
+
+CSSStyleSheet_setDisabled :: proc "contextless" (sheet: u64, disabled: bool) {
+	_CSSStyleSheet_setDisabled(sheet, i32(1 if disabled else 0))
+}
+
+// sheet.media.mediaText
+CSSStyleSheet_mediaText :: proc "contextless" (sheet: u64, buf: []u8) -> (string, Error) {
+	n := _CSSStyleSheet_mediaText(sheet, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of CSSStyleSheet_mediaText's result.
+CSSStyleSheet_mediaText_len :: proc "contextless" (sheet: u64) -> (int, Error) {
+	n := _CSSStyleSheet_mediaText(sheet, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// CSSStyleSheet_mediaText's result in a buffer allocated to fit.
+CSSStyleSheet_mediaText_alloc :: proc(sheet: u64, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _CSSStyleSheet_mediaText(sheet, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+CSSStyleSheet_setMediaText :: proc "contextless" (sheet: u64, media: string) {
+	_CSSStyleSheet_setMediaText(sheet, raw_data(media), u32(len(media)))
+}
+
+// Whether `sheet` is a constructed stylesheet of this page.
+CSSStyleSheet_isConstructed :: proc "contextless" (sheet: u64) -> bool {
+	return _CSSStyleSheet_isConstructed(sheet) != 0
+}
+
+// document.adoptedStyleSheets / shadowRoot.adoptedStyleSheets = sheets (constructed sheets, in order):
+// Not_Allowed for a sheet that was not constructed.
+DocumentOrShadowRoot_adopt :: proc "contextless" (root: $T_root, sheets: []u64) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	return _DocumentOrShadowRoot_adopt(u64(root), raw_data(sheets), u32(len(sheets)))
 }
 

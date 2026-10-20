@@ -125,6 +125,7 @@ page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings
 	web_init(p)
 
 	p.doc = dom.document_create(p.scope)
+	shadow_doc_attached(p)
 	p.dp.invoke = invoke_listener
 	p.dp.user = p
 	p.dp.window = window_phase   // js_dom_events.odin: the Window after the document in the propagation path

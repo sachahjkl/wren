@@ -50,10 +50,26 @@ static bool parse_double(const char *s, size_t n, double *out)
     return true;
 }
 
+/* ElementInternals' ARIA attributes (ARIAMixin) reflect no content attribute: the internals hold their values (the
+ * default semantics of the custom element), kept on the object under a hidden key */
+static JSAtom internals_key(wj_ctx *ctx, const char *name)
+{
+    char key[96];
+    snprintf(key, sizeof key, "\x01aria:%s", name);
+    return JS_NewAtom(ctx, key);
+}
+
 wj_val wj_reflect_get(wj_ctx *ctx, wj_val this_val, int iface, const char *name, int kind, double def, int mode, double lo, double hi)
 {
     wj_obj *o = wj_this(ctx, this_val, iface);
     if (!o) { return JS_EXCEPTION; }
+    if (iface == WJ_IFACE_ElementInternals) {
+        JSAtom k = internals_key(ctx, name);
+        JSValue v = JS_GetProperty(ctx, this_val, k);
+        JS_FreeAtom(ctx, k);
+        if (JS_IsUndefined(v)) { return JS_NULL; }
+        return v;
+    }
     int32_t n = attr_get(o->handle, name);
     const char *v = (const char *)wj_scratch.data;
     switch (kind) {
@@ -108,6 +124,15 @@ wj_val wj_reflect_set(wj_ctx *ctx, wj_val this_val, int iface, const char *name,
     WJ_UNUSED(lo); WJ_UNUSED(hi);
     wj_obj *o = wj_this(ctx, this_val, iface);
     if (!o) { return JS_EXCEPTION; }
+    if (iface == WJ_IFACE_ElementInternals) {
+        JSAtom k = internals_key(ctx, name);
+        JSValue s = JS_IsNull(v) || JS_IsUndefined(v) ? JS_NULL : JS_ToString(ctx, v);
+        if (JS_IsException(s)) { JS_FreeAtom(ctx, k); return s; }
+        JS_DefineProperty(ctx, this_val, k, s, JS_UNDEFINED, JS_UNDEFINED, JS_PROP_HAS_VALUE | JS_PROP_HAS_WRITABLE | JS_PROP_WRITABLE | JS_PROP_HAS_CONFIGURABLE | JS_PROP_CONFIGURABLE);
+        JS_FreeValue(ctx, s);
+        JS_FreeAtom(ctx, k);
+        return JS_UNDEFINED;
+    }
     switch (kind) {
     case WJ_REFLECT_BOOL:
         if (JS_ToBool(ctx, v)) { return set_attr(ctx, o->handle, name, "", 0); }

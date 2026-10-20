@@ -1,0 +1,102 @@
+/// Shadow trees for JavaScript (DOM §4.2.2 and §4.8, HTML slots and declarative shadow roots, ElementInternals,
+/// CSSOM constructable stylesheets): src/page/js_shadow.odin, native/js/runtime/shadow.c, native/js/prelude/shadow.js.
+/// Modes: 0 open, 1 closed; slot assignment: 0 named, 1 manual.
+partial module dom {
+  /// element.attachShadow(init): Not_Supported for an element that cannot host one, a host already (unless its root
+  /// was declared by the parser with the same mode: emptied and returned), or a custom element whose definition
+  /// disables shadow roots.
+  Node Element_attachShadowInit(Element element, u32 mode, bool delegates_focus, u32 slot_assignment, bool clonable, bool serializable) raises;
+  /// The definition of custom element `name` disables shadow roots or element internals (its disabledFeatures):
+  /// attachShadow / attachInternals refuse.
+  void CustomElements_disable(string name, bool shadow, bool internals);
+  /// shadowRoot.mode: "open" or "closed".
+  string ShadowRoot_mode(Node root);
+  /// shadowRoot.delegatesFocus
+  bool ShadowRoot_delegatesFocus(Node root);
+  /// shadowRoot.clonable
+  bool ShadowRoot_clonable(Node root);
+  /// shadowRoot.serializable
+  bool ShadowRoot_serializable(Node root);
+  /// shadowRoot.slotAssignment: "named" or "manual".
+  string ShadowRoot_slotAssignment(Node root);
+  /// shadowRoot.host
+  Element ShadowRoot_host(Node root);
+  /// shadowRoot.innerHTML
+  string ShadowRoot_innerHTML(Node root);
+  /// shadowRoot.innerHTML = markup: parsed in the host's context (no declarative shadow roots), one mutation.
+  void ShadowRoot_set_innerHTML(Node root, string value) raises;
+  /// shadowRoot.activeElement: the focused element retargeted against the root (null when it is not in its tree).
+  Element ShadowRoot_activeElement(Node root);
+  /// element.getHTML(options) / shadowRoot.getHTML(options): the children's serialization, with the shadow roots of
+  /// hosts that are serializable (when `serializable_roots`) or listed in `roots`, as declarative shadow roots.
+  string Node_getHTML(Node node, bool serializable_roots, u64[] roots);
+  /// element.setHTMLUnsafe(html) / shadowRoot.setHTMLUnsafe(html): parsed with declarative shadow roots, one mutation.
+  void Node_setHTMLUnsafe(Node node, string html) raises;
+  /// Document.parseHTMLUnsafe(html): a new inert document (as createHTMLDocument makes) with declarative shadow roots.
+  Node Document_parseHTMLUnsafeNode(string html) raises;
+  /// node.getRootNode({composed})
+  Node Node_rootNodeComposed(Node node, bool composed);
+  /// node.assignedSlot: the slot it is assigned to, null when none or in a closed shadow root.
+  Element Slottable_assignedSlot(Node node);
+  /// slot.assignedNodes({flatten}) / assignedElements({flatten}) (`elements`): node handles, 8 bytes each.
+  bytes HTMLSlotElement_assignedPacked(Element slot, bool flatten, bool elements);
+  /// slot.assign(...nodes): the slot's manually assigned nodes.
+  void HTMLSlotElement_assignNodes(Element slot, u64[] nodes) raises;
+  /// The handles of every element named `name` in shadow-including tree order (custom element upgrades at define).
+  bytes Document_shadowIncludingByName(string name);
+  /// Fires slotchange at the slots signalled since the last time (the engine's job, wj_slot_queue).
+  void Shadow_fireSlotChanges();
+  /// Whether `node` is a live node of the page (not destroyed).
+  bool Node_isLive(u64 node);
+  /// The shadow-including descendants of `root` that are elements, in tree order (customElements.upgrade).
+  bytes Node_shadowIncludingElements(Node root);
+}
+
+partial module events {
+  /// event.composedPath() of the event being dispatched: what a listener at the current target may see (closed
+  /// shadow trees it is not in are hidden); 8 bytes per handle, the Window's handle for the Window.
+  bytes Event_composedPathPacked(Event event);
+  /// The target of the last event dispatched by EventTarget_dispatchEngineEvent once its dispatch ended (0: null, it
+  /// was in a shadow tree).
+  u64 EventTarget_lastTarget();
+}
+
+partial module dom {
+  /// element.attachInternals(): Not_Supported unless a custom element (or attached already). An ElementInternals.
+  u64 Element_attachInternals(Element element) raises;
+  /// internals.shadowRoot: the host's shadow root when it is available to element internals (else null).
+  Node ElementInternals_shadowRootOf(u64 internals);
+  /// The element of an ElementInternals.
+  Element ElementInternals_element(u64 internals);
+  /// CustomStateSet: add / delete (true when it was there) / has / clear / the states (each followed by a NUL byte).
+  void CustomStates_add(u64 internals, string state);
+  bool CustomStates_delete(u64 internals, string state);
+  bool CustomStates_has(u64 internals, string state);
+  void CustomStates_clear(u64 internals);
+  string CustomStates_list(u64 internals);
+}
+
+partial module dom {
+  /// new CSSStyleSheet(options): a constructed stylesheet (an object of the page).
+  u64 CSSStyleSheet_create(string media, bool disabled, string base_url);
+  /// replaceSync(text) / replace(text): the rules of `text`, @import rules dropped.
+  void CSSStyleSheet_replaceText(u64 sheet, string text) raises;
+  /// The number of top-level rules, and the text of one (Index_Size past the end).
+  u32 CSSStyleSheet_ruleCount(u64 sheet);
+  string CSSStyleSheet_ruleText(u64 sheet, u32 index) raises;
+  /// insertRule(rule, index): Index_Size past the end, Syntax when `rule` is not one rule; the index.
+  u32 CSSStyleSheet_insertRuleAt(u64 sheet, string rule, u32 index) raises;
+  /// deleteRule(index): Index_Size past the end.
+  void CSSStyleSheet_deleteRuleAt(u64 sheet, u32 index) raises;
+  /// sheet.disabled
+  bool CSSStyleSheet_isDisabled(u64 sheet);
+  void CSSStyleSheet_setDisabled(u64 sheet, bool disabled);
+  /// sheet.media.mediaText
+  string CSSStyleSheet_mediaText(u64 sheet);
+  void CSSStyleSheet_setMediaText(u64 sheet, string media);
+  /// Whether `sheet` is a constructed stylesheet of this page.
+  bool CSSStyleSheet_isConstructed(u64 sheet);
+  /// document.adoptedStyleSheets / shadowRoot.adoptedStyleSheets = sheets (constructed sheets, in order):
+  /// Not_Allowed for a sheet that was not constructed.
+  void DocumentOrShadowRoot_adopt(Node root, u64[] sheets) raises;
+}

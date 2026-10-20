@@ -9,15 +9,19 @@ import "wb:dom"
 EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, init: Api_EventInit, engine_id: i64, time_stamp: f64) -> (bool, Api_Error) {
 	p := c.page
 	ev := dom.Event{
-		type = type, bubbles = .Bubbles in init, cancelable = .Cancelable in init,
+		type = type, bubbles = .Bubbles in init, cancelable = .Cancelable in init, composed = .Composed in init,
 		engine_id = engine_id, untrusted = true, time_stamp = time_stamp,
 	}
+	if p.jsdom != nil { p.jsdom.shadow.last_target = target }
 	if is_object(target) {
 		if object_get(p, target) == nil { return false, fail(c, .Invalid_Handle, "dispatchEvent: the target is gone") }
 		return object_dispatch(p, target, ev), .None
 	}
 	if p.worker != nil || dom.get(p.doc, H(target)) == nil { return false, fail(c, .Invalid_Handle, "dispatchEvent: the target is gone") }
-	return dispatch_event(p, H(target), ev), .None
+	ok, final := dom.dispatch_ex(p.doc, &p.dp, H(target), ev)
+	// the target as the event shows it once dispatched (EventTarget_lastTarget): null when it was in a shadow tree
+	js_dom_state(p).shadow.last_target = u64(final)
+	return ok, .None
 }
 
 Event_engineId :: proc(c: ^Call, event: Api_Event) -> i64 { return event.data.engine_id }

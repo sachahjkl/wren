@@ -313,14 +313,8 @@ JSValue wjr_Node_get_childNodes(JSContext *ctx, JSValueConst this_val)
     return dom_live_list(ctx, this_val, h, 0, "", 0, WJ_IFACE_NodeList);
 }
 
-JSValue wjr_Node_getRootNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    WJ_UNUSED(argc); WJ_UNUSED(argv);
-    wj_obj *o = wj_this(ctx, this_val, WJ_IFACE_Node);
-    if (!o) { return JS_EXCEPTION; }
-    if (!o->handle) { return JS_DupValue(ctx, this_val); }
-    return wj_wrap_node(ctx, wr_Node_rootNode(o->handle));
-}
+/* getRootNode({composed}): runtime/shadow.c */
+
 
 JSValue wjr_Node_appendChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {

@@ -165,7 +165,12 @@ Element_hasAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(
 	return find_attr_ns(element.data, namespace, local_name) != ""
 }
 
-Element_shadowRoot :: proc(c: ^Call, element: Api_Element) -> u64 { return 0 }
+// element.shadowRoot: its shadow root when open (DOM §4.9).
+Element_shadowRoot :: proc(c: ^Call, element: Api_Element) -> u64 {
+	root := element.data.shadow
+	if info := dom.shadow_info(c.page.doc, root); info == nil || info.mode != .Open { return 0 }
+	return u64(root)
+}
 
 HTMLTemplateElement_content :: proc(c: ^Call, element: Api_Element) -> u64 {
 	if element.data.name != "template" || element.data.ns != .HTML { return 0 }

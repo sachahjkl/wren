@@ -108,6 +108,13 @@
         const list = ctor.observedAttributes;
         if (list !== undefined) for (const a of list) def.observed.add(String(a));
       }
+      // disabledFeatures: attachShadow() / attachInternals() refuse for this name
+      const disabled = ctor.disabledFeatures;
+      let noShadow = false, noInternals = false;
+      if (disabled !== undefined && disabled !== null) {
+        for (const f of disabled) { const s = String(f); if (s === "shadow") noShadow = true; else if (s === "internals") noInternals = true; }
+      }
+      def.noShadow = noShadow; def.noInternals = noInternals;
       // read, as the standard does, though form-associated elements are not implemented
       void ctor.formAssociated;
     } finally {
@@ -115,9 +122,10 @@
     }
     byName.set(name, def);
     byCtor.set(ctor, def);
+    if (def.noShadow || def.noInternals) host.disable(name, def.noShadow, def.noInternals);
     host.define(name);
-    // the elements of the document with that name, in tree order
-    for (const el of Array.from(D().qsa.call(document, name))) tryUpgrade(el);
+    // the elements of that name in the document and its shadow trees, in shadow-including tree order
+    for (const el of host.byName(name)) tryUpgrade(el);
     const p = pending.get(name);
     if (p) { pending.delete(name); p.resolve(ctor); }
   }
@@ -166,10 +174,7 @@
 
   // shadow-including inclusive descendants of `root`, in tree order
   function upgradeTree(root) {
-    const list = [];
-    if (root.nodeType === 1) list.push(root);
-    for (const el of Array.from(root.querySelectorAll ? root.querySelectorAll("*") : [])) list.push(el);
-    for (const el of list) tryUpgrade(el);
+    for (const el of host.descendants(root)) tryUpgrade(el);
   }
 
   host.install({

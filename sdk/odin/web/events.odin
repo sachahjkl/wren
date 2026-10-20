@@ -109,6 +109,8 @@ foreign _m_events {
 	@(link_name = "Event_isTrusted") _Event_isTrusted :: proc(event: Event) -> i32 ---
 	@(link_name = "Event_propagationStopped") _Event_propagationStopped :: proc(event: Event) -> i32 ---
 	@(link_name = "EventTarget_create") _EventTarget_create :: proc() -> Object ---
+	@(link_name = "Event_composedPathPacked") _Event_composedPathPacked :: proc(event: Event, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "EventTarget_lastTarget") _EventTarget_lastTarget :: proc() -> u64 ---
 }
 
 // target.addEventListener(type, listener, options). Returns the listener's id (for removeEventListener); adding the
@@ -397,5 +399,41 @@ Event_propagationStopped :: proc "contextless" (event: Event) -> bool {
 // new EventTarget(): a host object with nothing but listeners.
 EventTarget_create :: proc "contextless" () -> Object {
 	return _EventTarget_create()
+}
+
+// event.composedPath() of the event being dispatched: what a listener at the current target may see (closed
+// shadow trees it is not in are hidden); 8 bytes per handle, the Window's handle for the Window.
+Event_composedPathPacked :: proc "contextless" (event: Event, buf: []u8) -> ([]u8, Error) {
+	n := _Event_composedPathPacked(event, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of Event_composedPathPacked's result.
+Event_composedPathPacked_len :: proc "contextless" (event: Event) -> (int, Error) {
+	n := _Event_composedPathPacked(event, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Event_composedPathPacked's result in a buffer allocated to fit.
+Event_composedPathPacked_alloc :: proc(event: Event, allocator: runtime.Allocator) -> ([]u8, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Event_composedPathPacked(event, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The target of the last event dispatched by EventTarget_dispatchEngineEvent once its dispatch ended (0: null, it
+// was in a shadow tree).
+EventTarget_lastTarget :: proc "contextless" () -> u64 {
+	return _EventTarget_lastTarget()
 }
 

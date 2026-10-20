@@ -305,9 +305,10 @@ now :: proc(f: ^Forms) -> f64 {
 }
 
 @(private)
-fire :: proc(f: ^Forms, target: base.Handle, type: string, bubbles := false, cancelable := false, data := "", text := "", object: u64 = 0, x: f64 = 0, y: f64 = 0, code: i64 = 0) -> bool {
+fire :: proc(f: ^Forms, target: base.Handle, type: string, bubbles := false, cancelable := false, data := "", text := "", object: u64 = 0, x: f64 = 0, y: f64 = 0, code: i64 = 0, related: u64 = 0) -> bool {
 	if f.host.dispatch == nil { return true }
-	return f.host.dispatch(f.host.user, target, dom.Event{type = type, bubbles = bubbles, cancelable = cancelable, data = data, text = text, object = object, x = x, y = y, code = code})
+	// `related`: the relatedTarget (focus events), retargeted along the path by the dispatch
+	return f.host.dispatch(f.host.user, target, dom.Event{type = type, bubbles = bubbles, cancelable = cancelable, data = data, text = text, object = object, x = x, y = y, code = code, related = related})
 }
 
 // Something visible changed (value, caret, checkedness...): the painter redraws, and styles are recomputed when a

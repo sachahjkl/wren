@@ -428,7 +428,8 @@ HTMLElement_click :: proc(c: ^Call, element: Api_Element) -> bool { return forms
 
 Document_activeElement :: proc(c: ^Call) -> u64 {
 	p := c.page
-	if f := page_forms(p).focus; f != base.NIL_HANDLE { return u64(f) }
+	// retargeted against the document: a focused element in a shadow tree shows as its host (HTML §6.6.2)
+	if f := page_forms(p).focus; f != base.NIL_HANDLE { return u64(dom.retarget(p.doc, f, p.doc.root)) }
 	return u64(p.body)
 }
 

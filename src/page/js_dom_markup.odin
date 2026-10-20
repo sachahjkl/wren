@@ -68,11 +68,24 @@ serialized_tag :: proc(d: ^dom.Document, h: base.Handle, n: ^dom.Node) -> string
 	return jd_qualified_name(d, h, false)
 }
 
+// What getHTML() serializes besides the node tree: the shadow roots of hosts, as declarative shadow roots (HTML
+// "serialize children": those serializable when `serializable`, and those listed).
+Shadow_Serialize :: struct {
+	serializable: bool,
+	roots:        []base.Handle,
+}
+
 // Serializes the children of `h` (and `h` itself when `outer`) into `b`.
 @(private)
-serialize_node :: proc(d: ^dom.Document, b: ^strings.Builder, h: base.Handle, outer: bool) {
-	Step :: struct { h: base.Handle, close: bool }
+serialize_node :: proc(d: ^dom.Document, b: ^strings.Builder, h: base.Handle, outer: bool, shadow: ^Shadow_Serialize = nil) {
+	Step :: struct { h: base.Handle, close: bool, template: bool }   // template: a shadow root's <template>, then its close
 	stack := make([dynamic]Step, 0, 64, context.temp_allocator)
+	wants_shadow :: proc(d: ^dom.Document, shadow: ^Shadow_Serialize, root: base.Handle) -> bool {
+		if shadow == nil || root == base.NIL_HANDLE { return false }
+		if info := dom.shadow_info(d, root); info != nil && shadow.serializable && info.serializable { return true }
+		for r in shadow.roots { if r == root { return true } }
+		return false
+	}
 	push_children :: proc(d: ^dom.Document, stack: ^[dynamic]Step, h: base.Handle) {
 		n := dom.get(d, h)
 		src := h
@@ -82,11 +95,26 @@ serialize_node :: proc(d: ^dom.Document, b: ^strings.Builder, h: base.Handle, ou
 		}
 		for ch := dom.get(d, src).last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(stack, Step{h = ch}) }
 	}
-	if outer { append(&stack, Step{h = h}) } else { push_children(d, &stack, h) }
+	if outer { append(&stack, Step{h = h}) } else {
+		push_children(d, &stack, h)
+		if n := dom.get(d, h); n != nil && n.kind == .Element && wants_shadow(d, shadow, n.shadow) { append(&stack, Step{h = n.shadow, template = true}) }
+	}
 	for len(stack) > 0 {
 		s := pop(&stack)
 		n := dom.get(d, s.h)
 		if n == nil { continue }
+		if s.template {
+			if s.close { strings.write_string(b, "</template>"); continue }
+			info := dom.shadow_info(d, s.h)
+			strings.write_string(b, info != nil && info.mode == .Closed ? `<template shadowrootmode="closed"` : `<template shadowrootmode="open"`)
+			if info != nil && info.delegates_focus { strings.write_string(b, ` shadowrootdelegatesfocus=""`) }
+			if info != nil && info.serializable { strings.write_string(b, ` shadowrootserializable=""`) }
+			if info != nil && info.clonable { strings.write_string(b, ` shadowrootclonable=""`) }
+			strings.write_byte(b, '>')
+			append(&stack, Step{h = s.h, close = true, template = true})
+			push_children(d, &stack, s.h)
+			continue
+		}
 		if s.close {
 			strings.write_string(b, "</")
 			strings.write_string(b, serialized_tag(d, s.h, n))
@@ -108,6 +136,7 @@ serialize_node :: proc(d: ^dom.Document, b: ^strings.Builder, h: base.Handle, ou
 			if is_void_element(n) { continue }
 			append(&stack, Step{h = s.h, close = true})
 			push_children(d, &stack, s.h)
+			if wants_shadow(d, shadow, n.shadow) { append(&stack, Step{h = n.shadow, template = true}) }   // before the children
 		case .Text:
 			if is_raw_text_parent(dom.get(d, n.parent)) { strings.write_string(b, n.text) } else { write_escaped_text(b, n.text, false) }
 		case .Comment:
@@ -124,9 +153,9 @@ serialize_node :: proc(d: ^dom.Document, b: ^strings.Builder, h: base.Handle, ou
 	}
 }
 
-serialize_html :: proc(d: ^dom.Document, h: base.Handle, outer: bool, allocator := context.temp_allocator) -> string {
+serialize_html :: proc(d: ^dom.Document, h: base.Handle, outer: bool, allocator := context.temp_allocator, shadow: ^Shadow_Serialize = nil) -> string {
 	b := strings.builder_make(allocator)
-	serialize_node(d, &b, h, outer)
+	serialize_node(d, &b, h, outer, shadow)
 	return strings.to_string(b)
 }
 
@@ -136,7 +165,7 @@ Element_outerHTML :: proc(c: ^Call, element: Api_Element) -> string { return ser
 
 // HTML's fragment parsing algorithm with `context` (an element) as the context element: a new fragment.
 @(private)
-parse_fragment_for :: proc(c: ^Call, context_el: base.Handle, markup: string) -> (base.Handle, Api_Error) {
+parse_fragment_for :: proc(c: ^Call, context_el: base.Handle, markup: string, declarative_shadow := false) -> (base.Handle, Api_Error) {
 	d := c.page.doc
 	n := dom.get(d, context_el)
 	tag, ns := "body", dom.Namespace.HTML
@@ -144,7 +173,7 @@ parse_fragment_for :: proc(c: ^Call, context_el: base.Handle, markup: string) ->
 		tag, ns = n.name, n.ns
 		if ns == .None || ns == .Other { tag, ns = "body", .HTML }   // foreign elements of unknown namespaces: as HTML
 	}
-	frag, res := html.parse_fragment(d, tag, ns, d.mode, transmute([]byte)markup, c.page.settings.dom.max_fragment_nodes)
+	frag, res := html.parse_fragment(d, tag, ns, d.mode, transmute([]byte)markup, c.page.settings.dom.max_fragment_nodes, declarative_shadow)
 	if !res.ok {
 		dom.destroy_unpinned(d, frag)
 		return base.NIL_HANDLE, fail(c, .Syntax, "the markup could not be parsed")
@@ -264,7 +293,7 @@ HTMLElement_innerText :: proc(c: ^Call, element: Api_Element) -> string {
 	if st == nil || !dom.is_connected(d, h) { return dom.text_content(d, h) }
 	cs := style.style_of(st, h)
 	if cs == nil || cs.display == .None { return dom.text_content(d, h) }
-	return lay.range_text(d, st, {h, 0}, {h, dom.child_count(d, h)}, root = h).text
+	return lay.range_text(d, st, {h, 0}, {h, lay.child_count(d, h)}, root = h).text
 }
 
 HTMLElement_outerText :: proc(c: ^Call, element: Api_Element) -> string { return HTMLElement_innerText(c, element) }

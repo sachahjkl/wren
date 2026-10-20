@@ -29,6 +29,7 @@ Js_Dom_State :: struct {
 	style_blocks: Decl_Cache,            // parsed style attributes (js_dom_style.odin)
 	style_probes: Decl_Cache,            // validated setProperty values
 	ce:           Custom_Elements,       // js_custom_elements.odin
+	shadow:       Js_Shadow,             // js_shadow.odin
 }
 
 @(private)
@@ -54,6 +55,7 @@ js_dom_state :: proc(p: ^Page) -> ^Js_Dom_State {
 		decl_cache_destroy(&s.style_blocks)
 		decl_cache_destroy(&s.style_probes)
 		ce_destroy(p, &s.ce)
+		js_shadow_destroy(p, &s.shadow)
 		free(s)
 		p.jsdom = nil
 	}, p)

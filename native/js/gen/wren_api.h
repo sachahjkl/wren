@@ -215,6 +215,14 @@ enum wr_WorkerType {
     wr_WorkerType_Module = 1,
 };
 
+/* module dom (partial): types */
+
+/* module events (partial): types */
+
+/* module dom (partial): types */
+
+/* module dom (partial): types */
+
 /* module navigator: types */
 // A string member of Navigator.
 enum wr_NavigatorField {
@@ -1122,6 +1130,88 @@ WR_IMPORT("dom", "DOMImplementation_createDocumentType") int32_t wr_DOMImplement
 // A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,
 // 3 doctype. 0 when there is none.
 WR_IMPORT("dom", "Document_partOf") uint64_t wr_Document_partOf(uint64_t document, int32_t which);
+// element.attachShadow(init): Not_Supported for an element that cannot host one, a host already (unless its root
+// was declared by the parser with the same mode: emptied and returned), or a custom element whose definition
+// disables shadow roots.
+WR_IMPORT("dom", "Element_attachShadowInit") int32_t wr_Element_attachShadowInit(uint64_t element, uint32_t mode, int32_t delegates_focus, uint32_t slot_assignment, int32_t clonable, int32_t serializable, uint64_t *_ret);
+// The definition of custom element `name` disables shadow roots or element internals (its disabledFeatures):
+// attachShadow / attachInternals refuse.
+WR_IMPORT("dom", "CustomElements_disable") void wr_CustomElements_disable(const uint8_t *name, uint32_t name_len, int32_t shadow, int32_t internals);
+// shadowRoot.mode: "open" or "closed".
+WR_IMPORT("dom", "ShadowRoot_mode") int32_t wr_ShadowRoot_mode(uint64_t root, uint8_t *_buf, uint32_t _cap);
+// shadowRoot.delegatesFocus
+WR_IMPORT("dom", "ShadowRoot_delegatesFocus") int32_t wr_ShadowRoot_delegatesFocus(uint64_t root);
+// shadowRoot.clonable
+WR_IMPORT("dom", "ShadowRoot_clonable") int32_t wr_ShadowRoot_clonable(uint64_t root);
+// shadowRoot.serializable
+WR_IMPORT("dom", "ShadowRoot_serializable") int32_t wr_ShadowRoot_serializable(uint64_t root);
+// shadowRoot.slotAssignment: "named" or "manual".
+WR_IMPORT("dom", "ShadowRoot_slotAssignment") int32_t wr_ShadowRoot_slotAssignment(uint64_t root, uint8_t *_buf, uint32_t _cap);
+// shadowRoot.host
+WR_IMPORT("dom", "ShadowRoot_host") uint64_t wr_ShadowRoot_host(uint64_t root);
+// shadowRoot.innerHTML
+WR_IMPORT("dom", "ShadowRoot_innerHTML") int32_t wr_ShadowRoot_innerHTML(uint64_t root, uint8_t *_buf, uint32_t _cap);
+// shadowRoot.innerHTML = markup: parsed in the host's context (no declarative shadow roots), one mutation.
+WR_IMPORT("dom", "ShadowRoot_set_innerHTML") int32_t wr_ShadowRoot_set_innerHTML(uint64_t root, const uint8_t *value, uint32_t value_len);
+// shadowRoot.activeElement: the focused element retargeted against the root (null when it is not in its tree).
+WR_IMPORT("dom", "ShadowRoot_activeElement") uint64_t wr_ShadowRoot_activeElement(uint64_t root);
+// element.getHTML(options) / shadowRoot.getHTML(options): the children's serialization, with the shadow roots of
+// hosts that are serializable (when `serializable_roots`) or listed in `roots`, as declarative shadow roots.
+WR_IMPORT("dom", "Node_getHTML") int32_t wr_Node_getHTML(uint64_t node, int32_t serializable_roots, const uint64_t *roots, uint32_t roots_len, uint8_t *_buf, uint32_t _cap);
+// element.setHTMLUnsafe(html) / shadowRoot.setHTMLUnsafe(html): parsed with declarative shadow roots, one mutation.
+WR_IMPORT("dom", "Node_setHTMLUnsafe") int32_t wr_Node_setHTMLUnsafe(uint64_t node, const uint8_t *html, uint32_t html_len);
+// Document.parseHTMLUnsafe(html): a new inert document (as createHTMLDocument makes) with declarative shadow roots.
+WR_IMPORT("dom", "Document_parseHTMLUnsafeNode") int32_t wr_Document_parseHTMLUnsafeNode(const uint8_t *html, uint32_t html_len, uint64_t *_ret);
+// node.getRootNode({composed})
+WR_IMPORT("dom", "Node_rootNodeComposed") uint64_t wr_Node_rootNodeComposed(uint64_t node, int32_t composed);
+// node.assignedSlot: the slot it is assigned to, null when none or in a closed shadow root.
+WR_IMPORT("dom", "Slottable_assignedSlot") uint64_t wr_Slottable_assignedSlot(uint64_t node);
+// slot.assignedNodes({flatten}) / assignedElements({flatten}) (`elements`): node handles, 8 bytes each.
+WR_IMPORT("dom", "HTMLSlotElement_assignedPacked") int32_t wr_HTMLSlotElement_assignedPacked(uint64_t slot, int32_t flatten, int32_t elements, uint8_t *_buf, uint32_t _cap);
+// slot.assign(...nodes): the slot's manually assigned nodes.
+WR_IMPORT("dom", "HTMLSlotElement_assignNodes") int32_t wr_HTMLSlotElement_assignNodes(uint64_t slot, const uint64_t *nodes, uint32_t nodes_len);
+// The handles of every element named `name` in shadow-including tree order (custom element upgrades at define).
+WR_IMPORT("dom", "Document_shadowIncludingByName") int32_t wr_Document_shadowIncludingByName(const uint8_t *name, uint32_t name_len, uint8_t *_buf, uint32_t _cap);
+// Fires slotchange at the slots signalled since the last time (the engine's job, wj_slot_queue).
+WR_IMPORT("dom", "Shadow_fireSlotChanges") void wr_Shadow_fireSlotChanges(void);
+// Whether `node` is a live node of the page (not destroyed).
+WR_IMPORT("dom", "Node_isLive") int32_t wr_Node_isLive(uint64_t node);
+// The shadow-including descendants of `root` that are elements, in tree order (customElements.upgrade).
+WR_IMPORT("dom", "Node_shadowIncludingElements") int32_t wr_Node_shadowIncludingElements(uint64_t root, uint8_t *_buf, uint32_t _cap);
+// element.attachInternals(): Not_Supported unless a custom element (or attached already). An ElementInternals.
+WR_IMPORT("dom", "Element_attachInternals") int32_t wr_Element_attachInternals(uint64_t element, uint64_t *_ret);
+// internals.shadowRoot: the host's shadow root when it is available to element internals (else null).
+WR_IMPORT("dom", "ElementInternals_shadowRootOf") uint64_t wr_ElementInternals_shadowRootOf(uint64_t internals);
+// The element of an ElementInternals.
+WR_IMPORT("dom", "ElementInternals_element") uint64_t wr_ElementInternals_element(uint64_t internals);
+// CustomStateSet: add / delete (true when it was there) / has / clear / the states (each followed by a NUL byte).
+WR_IMPORT("dom", "CustomStates_add") void wr_CustomStates_add(uint64_t internals, const uint8_t *state, uint32_t state_len);
+WR_IMPORT("dom", "CustomStates_delete") int32_t wr_CustomStates_delete(uint64_t internals, const uint8_t *state, uint32_t state_len);
+WR_IMPORT("dom", "CustomStates_has") int32_t wr_CustomStates_has(uint64_t internals, const uint8_t *state, uint32_t state_len);
+WR_IMPORT("dom", "CustomStates_clear") void wr_CustomStates_clear(uint64_t internals);
+WR_IMPORT("dom", "CustomStates_list") int32_t wr_CustomStates_list(uint64_t internals, uint8_t *_buf, uint32_t _cap);
+// new CSSStyleSheet(options): a constructed stylesheet (an object of the page).
+WR_IMPORT("dom", "CSSStyleSheet_create") uint64_t wr_CSSStyleSheet_create(const uint8_t *media, uint32_t media_len, int32_t disabled, const uint8_t *base_url, uint32_t base_url_len);
+// replaceSync(text) / replace(text): the rules of `text`, @import rules dropped.
+WR_IMPORT("dom", "CSSStyleSheet_replaceText") int32_t wr_CSSStyleSheet_replaceText(uint64_t sheet, const uint8_t *text, uint32_t text_len);
+// The number of top-level rules, and the text of one (Index_Size past the end).
+WR_IMPORT("dom", "CSSStyleSheet_ruleCount") uint32_t wr_CSSStyleSheet_ruleCount(uint64_t sheet);
+WR_IMPORT("dom", "CSSStyleSheet_ruleText") int32_t wr_CSSStyleSheet_ruleText(uint64_t sheet, uint32_t index, uint8_t *_buf, uint32_t _cap);
+// insertRule(rule, index): Index_Size past the end, Syntax when `rule` is not one rule; the index.
+WR_IMPORT("dom", "CSSStyleSheet_insertRuleAt") int32_t wr_CSSStyleSheet_insertRuleAt(uint64_t sheet, const uint8_t *rule, uint32_t rule_len, uint32_t index, uint32_t *_ret);
+// deleteRule(index): Index_Size past the end.
+WR_IMPORT("dom", "CSSStyleSheet_deleteRuleAt") int32_t wr_CSSStyleSheet_deleteRuleAt(uint64_t sheet, uint32_t index);
+// sheet.disabled
+WR_IMPORT("dom", "CSSStyleSheet_isDisabled") int32_t wr_CSSStyleSheet_isDisabled(uint64_t sheet);
+WR_IMPORT("dom", "CSSStyleSheet_setDisabled") void wr_CSSStyleSheet_setDisabled(uint64_t sheet, int32_t disabled);
+// sheet.media.mediaText
+WR_IMPORT("dom", "CSSStyleSheet_mediaText") int32_t wr_CSSStyleSheet_mediaText(uint64_t sheet, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "CSSStyleSheet_setMediaText") void wr_CSSStyleSheet_setMediaText(uint64_t sheet, const uint8_t *media, uint32_t media_len);
+// Whether `sheet` is a constructed stylesheet of this page.
+WR_IMPORT("dom", "CSSStyleSheet_isConstructed") int32_t wr_CSSStyleSheet_isConstructed(uint64_t sheet);
+// document.adoptedStyleSheets / shadowRoot.adoptedStyleSheets = sheets (constructed sheets, in order):
+// Not_Allowed for a sheet that was not constructed.
+WR_IMPORT("dom", "DocumentOrShadowRoot_adopt") int32_t wr_DocumentOrShadowRoot_adopt(uint64_t root, const uint64_t *sheets, uint32_t sheets_len);
 
 /* module encoding */
 // new TextEncoder().encode(text): a buffer of UTF-8. Quota past the page's memory limit.
@@ -1211,6 +1301,12 @@ WR_IMPORT("events", "Event_isTrusted") int32_t wr_Event_isTrusted(uint64_t event
 WR_IMPORT("events", "Event_propagationStopped") int32_t wr_Event_propagationStopped(uint64_t event);
 // new EventTarget(): a host object with nothing but listeners.
 WR_IMPORT("events", "EventTarget_create") uint64_t wr_EventTarget_create(void);
+// event.composedPath() of the event being dispatched: what a listener at the current target may see (closed
+// shadow trees it is not in are hidden); 8 bytes per handle, the Window's handle for the Window.
+WR_IMPORT("events", "Event_composedPathPacked") int32_t wr_Event_composedPathPacked(uint64_t event, uint8_t *_buf, uint32_t _cap);
+// The target of the last event dispatched by EventTarget_dispatchEngineEvent once its dispatch ended (0: null, it
+// was in a shadow tree).
+WR_IMPORT("events", "EventTarget_lastTarget") uint64_t wr_EventTarget_lastTarget(void);
 
 /* module eventsource */
 // new EventSource(url, {withCredentials}). Syntax for an invalid URL.

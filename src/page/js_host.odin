@@ -79,6 +79,8 @@ Node_treeRoots :: proc(c: ^Call, nodes: []u64, roots: []u8) {
 				node := dom.get(d, cur)
 				if node == nil { break }
 				append(&path, cur)
+				// a shadow tree belongs to its host's tree: its wrappers live and die with the host's (shadow-including root)
+				if node.parent == base.NIL_HANDLE && node.is_shadow && node.shadow != base.NIL_HANDLE { cur = node.shadow; continue }
 				if node.parent == base.NIL_HANDLE {
 					root = cur == d.root ? 1 : u64(cur)
 					found = true

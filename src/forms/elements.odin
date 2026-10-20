@@ -483,9 +483,14 @@ select_options :: proc(f: ^Forms, sel: base.Handle, allocator := context.temp_al
 	return out[:]
 }
 
+// What can be focused: a focusable area, or a shadow host that delegates focus (shadow.odin).
+is_focusable :: proc(f: ^Forms, h: base.Handle) -> bool {
+	return is_focusable_element(f, h) || delegates_focus(f, h)
+}
+
 // Focusable areas (§6.6.2): form controls that are not disabled (hidden inputs excluded), links with href, elements
 // with a tabindex, summary... Rendering (display: none) is the shell's business.
-is_focusable :: proc(f: ^Forms, h: base.Handle) -> bool {
+is_focusable_element :: proc(f: ^Forms, h: base.Handle) -> bool {
 	n := element(f, h)
 	if n == nil { return false }
 	switch n.name {
@@ -521,6 +526,11 @@ tabindex :: proc(n: ^dom.Node) -> (int, bool) {
 // in tree order. Elements with a negative tabindex are focusable but not in the order.
 // `visible` (optional) filters out what is not rendered.
 tab_order :: proc(f: ^Forms, visible: proc(user: rawptr, h: base.Handle) -> bool = nil, user: rawptr = nil) -> []base.Handle {
+	if dom.has_shadow_trees(f.doc) {
+		scoped := make([dynamic]base.Handle, context.temp_allocator)
+		tab_order_scoped(f, visible, user, &scoped)
+		return scoped[:]
+	}
 	all := make([dynamic]base.Handle, context.temp_allocator)
 	walk_elements(f, f.doc.root, &all)
 	Item :: struct { h: base.Handle, ti: int, order: int }

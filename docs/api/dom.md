@@ -3231,3 +3231,436 @@ A part of a document node (the page's or one createHTMLDocument made): 0 documen
 
 Host: `Document_partOf :: proc(c: ^Call, document: Api_Node, which: i32) -> u64`
 
+### `Element_attachShadowInit`
+
+```
+Node Element_attachShadowInit(Element element, u32 mode, bool delegates_focus, u32 slot_assignment, bool clonable, bool serializable) raises
+```
+
+element.attachShadow(init): Not_Supported for an element that cannot host one, a host already (unless its root
+was declared by the parser with the same mode: emptied and returned), or a custom element whose definition
+disables shadow roots.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_attachShadowInit :: proc(c: ^Call, element: Api_Element, mode: u32, delegates_focus: bool, slot_assignment: u32, clonable: bool, serializable: bool) -> (u64, Api_Error)`
+
+### `CustomElements_disable`
+
+```
+void CustomElements_disable(string name, bool shadow, bool internals)
+```
+
+The definition of custom element `name` disables shadow roots or element internals (its disabledFeatures):
+attachShadow / attachInternals refuse.
+
+Host: `CustomElements_disable :: proc(c: ^Call, name: string, shadow: bool, internals: bool)`
+
+### `ShadowRoot_mode`
+
+```
+string ShadowRoot_mode(Node root)
+```
+
+shadowRoot.mode: "open" or "closed".
+
+Host: `ShadowRoot_mode :: proc(c: ^Call, root: Api_Node) -> string`
+
+### `ShadowRoot_delegatesFocus`
+
+```
+bool ShadowRoot_delegatesFocus(Node root)
+```
+
+shadowRoot.delegatesFocus
+
+Host: `ShadowRoot_delegatesFocus :: proc(c: ^Call, root: Api_Node) -> bool`
+
+### `ShadowRoot_clonable`
+
+```
+bool ShadowRoot_clonable(Node root)
+```
+
+shadowRoot.clonable
+
+Host: `ShadowRoot_clonable :: proc(c: ^Call, root: Api_Node) -> bool`
+
+### `ShadowRoot_serializable`
+
+```
+bool ShadowRoot_serializable(Node root)
+```
+
+shadowRoot.serializable
+
+Host: `ShadowRoot_serializable :: proc(c: ^Call, root: Api_Node) -> bool`
+
+### `ShadowRoot_slotAssignment`
+
+```
+string ShadowRoot_slotAssignment(Node root)
+```
+
+shadowRoot.slotAssignment: "named" or "manual".
+
+Host: `ShadowRoot_slotAssignment :: proc(c: ^Call, root: Api_Node) -> string`
+
+### `ShadowRoot_host`
+
+```
+Element ShadowRoot_host(Node root)
+```
+
+shadowRoot.host
+
+Host: `ShadowRoot_host :: proc(c: ^Call, root: Api_Node) -> u64`
+
+### `ShadowRoot_innerHTML`
+
+```
+string ShadowRoot_innerHTML(Node root)
+```
+
+shadowRoot.innerHTML
+
+Host: `ShadowRoot_innerHTML :: proc(c: ^Call, root: Api_Node) -> string`
+
+### `ShadowRoot_set_innerHTML`
+
+```
+void ShadowRoot_set_innerHTML(Node root, string value) raises
+```
+
+shadowRoot.innerHTML = markup: parsed in the host's context (no declarative shadow roots), one mutation.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `ShadowRoot_set_innerHTML :: proc(c: ^Call, root: Api_Node, value: string) -> Api_Error`
+
+### `ShadowRoot_activeElement`
+
+```
+Element ShadowRoot_activeElement(Node root)
+```
+
+shadowRoot.activeElement: the focused element retargeted against the root (null when it is not in its tree).
+
+Host: `ShadowRoot_activeElement :: proc(c: ^Call, root: Api_Node) -> u64`
+
+### `Node_getHTML`
+
+```
+string Node_getHTML(Node node, bool serializable_roots, u64[] roots)
+```
+
+element.getHTML(options) / shadowRoot.getHTML(options): the children's serialization, with the shadow roots of
+hosts that are serializable (when `serializable_roots`) or listed in `roots`, as declarative shadow roots.
+
+Host: `Node_getHTML :: proc(c: ^Call, node: Api_Node, serializable_roots: bool, roots: []u64) -> string`
+
+### `Node_setHTMLUnsafe`
+
+```
+void Node_setHTMLUnsafe(Node node, string html) raises
+```
+
+element.setHTMLUnsafe(html) / shadowRoot.setHTMLUnsafe(html): parsed with declarative shadow roots, one mutation.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_setHTMLUnsafe :: proc(c: ^Call, node: Api_Node, html: string) -> Api_Error`
+
+### `Document_parseHTMLUnsafeNode`
+
+```
+Node Document_parseHTMLUnsafeNode(string html) raises
+```
+
+Document.parseHTMLUnsafe(html): a new inert document (as createHTMLDocument makes) with declarative shadow roots.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_parseHTMLUnsafeNode :: proc(c: ^Call, html: string) -> (u64, Api_Error)`
+
+### `Node_rootNodeComposed`
+
+```
+Node Node_rootNodeComposed(Node node, bool composed)
+```
+
+node.getRootNode({composed})
+
+Host: `Node_rootNodeComposed :: proc(c: ^Call, node: Api_Node, composed: bool) -> u64`
+
+### `Slottable_assignedSlot`
+
+```
+Element Slottable_assignedSlot(Node node)
+```
+
+node.assignedSlot: the slot it is assigned to, null when none or in a closed shadow root.
+
+Host: `Slottable_assignedSlot :: proc(c: ^Call, node: Api_Node) -> u64`
+
+### `HTMLSlotElement_assignedPacked`
+
+```
+bytes HTMLSlotElement_assignedPacked(Element slot, bool flatten, bool elements)
+```
+
+slot.assignedNodes({flatten}) / assignedElements({flatten}) (`elements`): node handles, 8 bytes each.
+
+Host: `HTMLSlotElement_assignedPacked :: proc(c: ^Call, slot: Api_Element, flatten: bool, elements: bool) -> []u8`
+
+### `HTMLSlotElement_assignNodes`
+
+```
+void HTMLSlotElement_assignNodes(Element slot, u64[] nodes) raises
+```
+
+slot.assign(...nodes): the slot's manually assigned nodes.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLSlotElement_assignNodes :: proc(c: ^Call, slot: Api_Element, nodes: []u64) -> Api_Error`
+
+### `Document_shadowIncludingByName`
+
+```
+bytes Document_shadowIncludingByName(string name)
+```
+
+The handles of every element named `name` in shadow-including tree order (custom element upgrades at define).
+
+Host: `Document_shadowIncludingByName :: proc(c: ^Call, name: string) -> []u8`
+
+### `Shadow_fireSlotChanges`
+
+```
+void Shadow_fireSlotChanges()
+```
+
+Fires slotchange at the slots signalled since the last time (the engine's job, wj_slot_queue).
+
+Host: `Shadow_fireSlotChanges :: proc(c: ^Call)`
+
+### `Node_isLive`
+
+```
+bool Node_isLive(u64 node)
+```
+
+Whether `node` is a live node of the page (not destroyed).
+
+Host: `Node_isLive :: proc(c: ^Call, node: u64) -> bool`
+
+### `Node_shadowIncludingElements`
+
+```
+bytes Node_shadowIncludingElements(Node root)
+```
+
+The shadow-including descendants of `root` that are elements, in tree order (customElements.upgrade).
+
+Host: `Node_shadowIncludingElements :: proc(c: ^Call, root: Api_Node) -> []u8`
+
+### `Element_attachInternals`
+
+```
+u64 Element_attachInternals(Element element) raises
+```
+
+element.attachInternals(): Not_Supported unless a custom element (or attached already). An ElementInternals.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_attachInternals :: proc(c: ^Call, element: Api_Element) -> (u64, Api_Error)`
+
+### `ElementInternals_shadowRootOf`
+
+```
+Node ElementInternals_shadowRootOf(u64 internals)
+```
+
+internals.shadowRoot: the host's shadow root when it is available to element internals (else null).
+
+Host: `ElementInternals_shadowRootOf :: proc(c: ^Call, internals: u64) -> u64`
+
+### `ElementInternals_element`
+
+```
+Element ElementInternals_element(u64 internals)
+```
+
+The element of an ElementInternals.
+
+Host: `ElementInternals_element :: proc(c: ^Call, internals: u64) -> u64`
+
+### `CustomStates_add`
+
+```
+void CustomStates_add(u64 internals, string state)
+```
+
+CustomStateSet: add / delete (true when it was there) / has / clear / the states (each followed by a NUL byte).
+
+Host: `CustomStates_add :: proc(c: ^Call, internals: u64, state: string)`
+
+### `CustomStates_delete`
+
+```
+bool CustomStates_delete(u64 internals, string state)
+```
+
+Host: `CustomStates_delete :: proc(c: ^Call, internals: u64, state: string) -> bool`
+
+### `CustomStates_has`
+
+```
+bool CustomStates_has(u64 internals, string state)
+```
+
+Host: `CustomStates_has :: proc(c: ^Call, internals: u64, state: string) -> bool`
+
+### `CustomStates_clear`
+
+```
+void CustomStates_clear(u64 internals)
+```
+
+Host: `CustomStates_clear :: proc(c: ^Call, internals: u64)`
+
+### `CustomStates_list`
+
+```
+string CustomStates_list(u64 internals)
+```
+
+Host: `CustomStates_list :: proc(c: ^Call, internals: u64) -> string`
+
+### `CSSStyleSheet_create`
+
+```
+u64 CSSStyleSheet_create(string media, bool disabled, string base_url)
+```
+
+new CSSStyleSheet(options): a constructed stylesheet (an object of the page).
+
+Host: `CSSStyleSheet_create :: proc(c: ^Call, media: string, disabled: bool, base_url: string) -> u64`
+
+### `CSSStyleSheet_replaceText`
+
+```
+void CSSStyleSheet_replaceText(u64 sheet, string text) raises
+```
+
+replaceSync(text) / replace(text): the rules of `text`, @import rules dropped.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `CSSStyleSheet_replaceText :: proc(c: ^Call, sheet: u64, text: string) -> Api_Error`
+
+### `CSSStyleSheet_ruleCount`
+
+```
+u32 CSSStyleSheet_ruleCount(u64 sheet)
+```
+
+The number of top-level rules, and the text of one (Index_Size past the end).
+
+Host: `CSSStyleSheet_ruleCount :: proc(c: ^Call, sheet: u64) -> u32`
+
+### `CSSStyleSheet_ruleText`
+
+```
+string CSSStyleSheet_ruleText(u64 sheet, u32 index) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `CSSStyleSheet_ruleText :: proc(c: ^Call, sheet: u64, index: u32) -> (string, Api_Error)`
+
+### `CSSStyleSheet_insertRuleAt`
+
+```
+u32 CSSStyleSheet_insertRuleAt(u64 sheet, string rule, u32 index) raises
+```
+
+insertRule(rule, index): Index_Size past the end, Syntax when `rule` is not one rule; the index.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `CSSStyleSheet_insertRuleAt :: proc(c: ^Call, sheet: u64, rule: string, index: u32) -> (u32, Api_Error)`
+
+### `CSSStyleSheet_deleteRuleAt`
+
+```
+void CSSStyleSheet_deleteRuleAt(u64 sheet, u32 index) raises
+```
+
+deleteRule(index): Index_Size past the end.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `CSSStyleSheet_deleteRuleAt :: proc(c: ^Call, sheet: u64, index: u32) -> Api_Error`
+
+### `CSSStyleSheet_isDisabled`
+
+```
+bool CSSStyleSheet_isDisabled(u64 sheet)
+```
+
+sheet.disabled
+
+Host: `CSSStyleSheet_isDisabled :: proc(c: ^Call, sheet: u64) -> bool`
+
+### `CSSStyleSheet_setDisabled`
+
+```
+void CSSStyleSheet_setDisabled(u64 sheet, bool disabled)
+```
+
+Host: `CSSStyleSheet_setDisabled :: proc(c: ^Call, sheet: u64, disabled: bool)`
+
+### `CSSStyleSheet_mediaText`
+
+```
+string CSSStyleSheet_mediaText(u64 sheet)
+```
+
+sheet.media.mediaText
+
+Host: `CSSStyleSheet_mediaText :: proc(c: ^Call, sheet: u64) -> string`
+
+### `CSSStyleSheet_setMediaText`
+
+```
+void CSSStyleSheet_setMediaText(u64 sheet, string media)
+```
+
+Host: `CSSStyleSheet_setMediaText :: proc(c: ^Call, sheet: u64, media: string)`
+
+### `CSSStyleSheet_isConstructed`
+
+```
+bool CSSStyleSheet_isConstructed(u64 sheet)
+```
+
+Whether `sheet` is a constructed stylesheet of this page.
+
+Host: `CSSStyleSheet_isConstructed :: proc(c: ^Call, sheet: u64) -> bool`
+
+### `DocumentOrShadowRoot_adopt`
+
+```
+void DocumentOrShadowRoot_adopt(Node root, u64[] sheets) raises
+```
+
+document.adoptedStyleSheets / shadowRoot.adoptedStyleSheets = sheets (constructed sheets, in order):
+Not_Allowed for a sheet that was not constructed.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `DocumentOrShadowRoot_adopt :: proc(c: ^Call, root: Api_Node, sheets: []u64) -> Api_Error`
+

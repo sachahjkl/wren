@@ -27,15 +27,22 @@ commit :: proc(f: ^Forms, h: base.Handle) {
 
 // The focusing steps: blur / focusout on the old element, focus / focusin on the new one. Returns false when `h` cannot
 // take the focus.
-focus :: proc(f: ^Forms, h: base.Handle, by_keyboard := false) -> bool {
+focus :: proc(f: ^Forms, h_in: base.Handle, by_keyboard := false) -> bool {
+	h := h_in
+	// a host that delegates focus: its focus delegate (unless the focus is in its shadow tree already)
+	if delegates_focus(f, h) && !is_focusable_element(f, h) {
+		if f.focus != base.NIL_HANDLE && dom.shadow_including_ancestor(f.doc, dom.shadow_root_of(f.doc, h), f.focus) { return true }
+		h = focus_delegate(f, h)
+		if h == base.NIL_HANDLE { return false }
+	}
 	if !is_focusable(f, h) { return false }
 	if f.focus == h { f.focus_by_key = by_keyboard; return true }
 	old := f.focus
 	if old != base.NIL_HANDLE {
 		commit(f, old)
 		f.focus = base.NIL_HANDLE
-		fire(f, old, "blur", object = u64(h))
-		fire(f, old, "focusout", bubbles = true, object = u64(h))
+		fire(f, old, "blur", object = u64(h), related = u64(h))
+		fire(f, old, "focusout", bubbles = true, object = u64(h), related = u64(h))
 		if f.focus != base.NIL_HANDLE { return f.focus == h }   // a listener moved the focus elsewhere
 	}
 	if !is_focusable(f, h) { notify_focus(f); return false }
@@ -47,8 +54,8 @@ focus :: proc(f: ^Forms, h: base.Handle, by_keyboard := false) -> bool {
 		if by_keyboard && is_text_field(f, h) { select_all(f, h) }
 	}
 	notify_focus(f)
-	fire(f, h, "focus", object = u64(old))
-	fire(f, h, "focusin", bubbles = true, object = u64(old))
+	fire(f, h, "focus", object = u64(old), related = u64(old))
+	fire(f, h, "focusin", bubbles = true, object = u64(old), related = u64(old))
 	return true
 }
 

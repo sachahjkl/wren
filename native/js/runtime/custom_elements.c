@@ -122,12 +122,61 @@ static JSValue host_report(JSContext *ctx, JSValueConst this_val, int argc, JSVa
 }
 
 /* The object the prelude gets, then deletes from the global (prelude.c). */
+/* disable(name, shadow, internals): the definition's disabledFeatures */
+static JSValue host_disable(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    wj_str name;
+    if (argc < 3 || !wj_to_str(ctx, argv[0], &name, 0, NULL)) { return JS_EXCEPTION; }
+    wr_CustomElements_disable((const uint8_t *)name.ptr, (uint32_t)name.len, JS_ToBool(ctx, argv[1]), JS_ToBool(ctx, argv[2]));
+    wj_str_free(ctx, &name);
+    return JS_UNDEFINED;
+}
+
+/* the wrappers of packed handles in wj_scratch (n bytes), as an array */
+static JSValue packed_elements(JSContext *ctx, int32_t n)
+{
+    JSValue arr = JS_NewArray(ctx);
+    if (n <= 0) { return arr; }
+    uint32_t count = (uint32_t)n / 8;
+    uint64_t *hs = malloc(count * sizeof *hs);
+    if (!hs) { return arr; }
+    for (uint32_t i = 0; i < count; i++) { hs[i] = rd_u64(wj_scratch.data + 8 * i); }
+    for (uint32_t i = 0; i < count; i++) { JS_SetPropertyUint32(ctx, arr, i, wj_wrap_node(ctx, hs[i])); }
+    free(hs);
+    return arr;
+}
+
+/* byName(name): the elements of that local name in shadow-including tree order (the upgrades of define()) */
+static JSValue host_by_name(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    wj_str name;
+    if (argc < 1 || !wj_to_str(ctx, argv[0], &name, 0, NULL)) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_shadowIncludingByName((const uint8_t *)name.ptr, (uint32_t)name.len, wj_scratch.data, wj_scratch.cap));
+    wj_str_free(ctx, &name);
+    return packed_elements(ctx, n);
+}
+
+/* descendants(root): root's shadow-including inclusive descendants that are elements (customElements.upgrade) */
+static JSValue host_descendants(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    wj_obj *o = argc > 0 ? wj_unwrap(argv[0], WJ_IFACE_Node) : NULL;
+    if (!o || !o->handle) { return JS_NewArray(ctx); }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Node_shadowIncludingElements(o->handle, wj_scratch.data, wj_scratch.cap));
+    return packed_elements(ctx, n);
+}
+
 JSValue wj_ce_host_object(JSContext *ctx)
 {
     JSValue o = JS_NewObject(ctx);
     static const struct { const char *name; JSCFunction *fn; int length; } fns[] = {
         {"install", host_install, 1}, {"define", host_define, 1}, {"take", host_take, 0}, {"create", host_create, 1},
         {"setState", host_set_state, 2}, {"isConstructor", host_is_constructor, 1}, {"report", host_report, 1},
+        {"disable", host_disable, 3}, {"byName", host_by_name, 1}, {"descendants", host_descendants, 1},
     };
     for (size_t i = 0; i < sizeof fns / sizeof fns[0]; i++) {
         JS_SetPropertyStr(ctx, o, fns[i].name, JS_NewCFunction(ctx, fns[i].fn, fns[i].name, fns[i].length));

@@ -586,6 +586,12 @@ JSValue wjr_EventTarget_dispatchEvent(JSContext *ctx, JSValueConst this_val, int
     e->dispatching = 0;
     e->host = 0;
     eo->handle = 0;
+    if (st >= 0) {
+        /* the target once dispatched: retargeted, or null when it was in a shadow tree (DOM "clear targets") */
+        JS_FreeValue(ctx, e->target);
+        e->target = wj_wrap_target(ctx, wr_EventTarget_lastTarget());
+        if (JS_IsException(e->target)) { JS_FreeValue(ctx, JS_GetException(ctx)); e->target = JS_NULL; }
+    }
     if (st < 0) { JS_FreeValue(ctx, keep); return wj_throw_status(ctx, st, "dispatchEvent"); }
     if (!not_canceled) { e->canceled = 1; }
     JS_FreeValue(ctx, keep);
@@ -628,25 +634,9 @@ JSValue wjr_Event_composedPath(JSContext *ctx, JSValueConst this_val, int argc, 
     WJ_UNUSED(argc); WJ_UNUSED(argv);
     wj_event *e = event_of(ctx, this_val);
     if (!e) { return JS_EXCEPTION; }
-    JSValue arr = JS_NewArray(ctx);
-    if (!e->host) { return arr; }
-    /* the path from the target up (no shadow roots: it is the ancestor chain, then the window) */
-    JSValue t = wj_wrap_target(ctx, wr_Event_target(e->host));
-    uint32_t i = 0;
-    while (JS_IsObject(t)) {
-        JS_SetPropertyUint32(ctx, arr, i++, JS_DupValue(ctx, t));
-        wj_obj *o = wj_obj_of(t);
-        JSValue next = JS_NULL;
-        if (o && o->kind == WJ_KIND_NODE) {
-            uint64_t p = wr_Node_parentNode(o->handle);
-            if (p) { next = wj_wrap_node(ctx, p); }
-            else if (o->iface == WJ_IFACE_Document) { next = JS_DupValue(ctx, wj_the_realm.global); }
-        }
-        JS_FreeValue(ctx, t);
-        t = next;
-    }
-    JS_FreeValue(ctx, t);
-    return arr;
+    /* the browser's event path, closed shadow trees hidden from the current target (runtime/shadow.c) */
+    extern JSValue wj_event_composed_path(JSContext *ctx, uint64_t host);
+    return wj_event_composed_path(ctx, e->host);
 }
 
 JSValue wjr_Event_get_eventPhase(JSContext *ctx, JSValueConst this_val)

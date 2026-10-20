@@ -211,8 +211,15 @@ microtask_checkpoint :: proc(p: ^Page) {
 	// custom element reactions the parser's insertions queued; the browser's microtasks, then the JavaScript realm's
 	// jobs, until neither has any left
 	custom_elements_flush(p)
-	for len(p.objects.microtasks) > 0 || (p.js != nil && js_checkpoint(p) && len(p.objects.microtasks) > 0) {
+	// slotchange (js_shadow.odin) once the jobs and microtasks before it ran: they may signal more
+	for len(p.objects.microtasks) > 0 || (p.js != nil && js_checkpoint(p) && len(p.objects.microtasks) > 0) || shadow_signal_slots(p) {
 		if realm_halted(p) { return }   // a terminated worker runs nothing more
+		if len(p.objects.microtasks) == 0 {
+			// slotchange fired: counted as a microtask (a listener that keeps changing slots cannot loop forever)
+			ran += 1
+			if ran >= limit { host_post_checkpoint(p); break }
+			continue
+		}
 		if ran >= limit {
 			log(p, .Warn, fmt.tprintf("more than %d microtasks in one checkpoint: the rest runs later", limit))
 			host_post_checkpoint(p)
