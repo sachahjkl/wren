@@ -2,8 +2,8 @@ package images
 
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:testing"
-import "core:time"
 import "wb:host"
 
 // The files come from `testserver -gen-images examples/site/images` (tools/testserver/images.go); run from the
@@ -246,25 +246,25 @@ decoding_threads :: proc(t: ^testing.T) {
 	testing.expect(t, port != 0, "port")
 	blob := blob_make(read(t, "anim.gif"))
 	defer blob_release(blob)
-	// one thread: whichever job it takes first (it may start before every job is queued), the rest go by priority
+	// one thread, held while the jobs are queued: it takes them by priority (not by the order of the threads' wake-ups)
+	decoder_hold(true)
 	for i in 0 ..< 6 { submit(port, job_make(.Decode, blob, opts(), priority = i32(i), tag = u64(i))) }
-	cancelled := job_make(.Decode, blob, opts(), priority = -5, tag = 99)
+	cancelled := job_make(.Decode, blob, opts(), priority = 10, tag = 99)
 	submit(port, cancelled)
 	job_cancel(cancelled)
-	start := time.tick_now()
-	for len(st.done) < 6 && time.duration_seconds(time.tick_since(start)) < 10 { host.loop_wait(&loop, 20) }
+	decoder_hold(false)
+	for len(st.done) < 6 { host.loop_wait(&loop) }   // each finished job posts to the loop: the wait always ends
 	testing.expect_value(t, len(st.done), 6)
 	for j in st.done { testing.expect(t, j.err == .None && j.image != nil && len(j.image.frames) == 3, "decoded on a thread") }
-	if len(st.order) == 6 {
-		descending := true
-		for i in 2 ..< len(st.order) { if st.order[i] > st.order[i - 1] { descending = false } }
-		testing.expect(t, descending, fmt.tprintf("highest priority first after the first job (%v)", st.order))
-	}
+	testing.expect(t, slice.equal(st.order[:], []u64{5, 4, 3, 2, 1, 0}), fmt.tprintf("highest priority first, the cancelled job never (%v)", st.order))
 	// a closed port gets nothing more, and its pending jobs are freed
+	decoder_hold(true)
 	for i in 0 ..< 4 { submit(port, job_make(.Probe, blob, opts(), tag = u64(10 + i))) }
 	port_close(port)
 	n := len(st.done)
-	for _ in 0 ..< 10 { host.loop_wait(&loop, 10) }
+	testing.expect_value(t, len(dec.queue), 0)   // held: the thread does not touch the queue
+	decoder_hold(false)
+	host.run_ready(&loop)
 	testing.expect_value(t, len(st.done), n)
 	testing.expect(t, !submit(port, job_make(.Probe, blob, opts())), "submitting to a closed port fails (and frees the job)")
 }

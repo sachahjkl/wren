@@ -4,7 +4,6 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:testing"
-import "core:time"
 
 // The built-in decoders (native.odin). Files: examples/site/media (tools/gen_media_fixtures.ps1 for AVIF / WebP / ICC;
 // the expected pixels of the oriented AVIF files are what libheif shows); run from the repository root.
@@ -250,10 +249,9 @@ svg_hostile :: proc(t: ^testing.T) {
 		strings.write_string(&ub, `</g>`)
 	}
 	strings.write_string(&ub, `</defs><use xlink:href="#u10"/></svg>`)
-	start := time.tick_now()
+	// refused by counting (images.svg limits) before drawing: drawing 10^10 shapes would not return
 	_, _, e4 := svg_decode(strings.to_string(ub))
 	testing.expect_value(t, e4, Error.Too_Complex)
-	testing.expect(t, time.duration_milliseconds(time.tick_since(start)) < 2000, "refused quickly")
 	// extreme depth: refused before any recursion
 	db := strings.builder_make(context.temp_allocator)
 	strings.write_string(&db, `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">`)
