@@ -45,6 +45,8 @@ function Grab($h, $path) {
     $bmp.Save($path, [Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
 }
 
+# (through powershell -File an array comes as one comma-joined string: "--pref,a=b" is split back at its option names)
+$Extra = @($Extra | ForEach-Object { $_ -split ',(?=--)' } | ForEach-Object { if ($_ -match '^(--[a-z-]+),(.*)$') { $Matches[1]; $Matches[2] } else { $_ } })
 $args2 = @($Extra | Where-Object { $_ }) + $(if ($Url) { @($Url) } else { @() })
 $exePath = if ($Exe) { $Exe } else { Join-Path $root 'build\browser.exe' }
 $p = if ($args2.Count) { Start-Process $exePath -ArgumentList $args2 -PassThru } else { Start-Process $exePath -PassThru }
