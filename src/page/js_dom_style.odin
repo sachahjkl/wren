@@ -683,7 +683,14 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 	case "outline-offset": return css_px(cs.outline_offset)
 	case "transform":
 		if len(cs.transform) == 0 { return "none" }
-		return "matrix(1, 0, 0, 1, 0, 0)"
+		// the resolved value is the matrix (CSS Transforms 1 §10.1), percentages against the border box
+		bw, bh: f32
+		if used.ok {
+			bw = used.width + used.padding[1] + used.padding[3] + cs.border_width[.Left] + cs.border_width[.Right]
+			bh = used.height + used.padding[0] + used.padding[2] + cs.border_width[.Top] + cs.border_width[.Bottom]
+		}
+		m := style.ops_matrix(cs.transform, bw, bh)
+		return fmt.tprintf("matrix(%s, %s, %s, %s, %s, %s)", css_num(m[0]), css_num(m[1]), css_num(m[2]), css_num(m[3]), css_num(m[4]), css_num(m[5]))
 	case "transform-origin": return strings.concatenate({css_length(cs.transform_origin[0]), " ", css_length(cs.transform_origin[1])}, context.temp_allocator)
 	}
 	if strings.has_prefix(name, "--") && cs.custom != nil {

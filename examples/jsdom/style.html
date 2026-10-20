@@ -76,6 +76,7 @@ section("computed style", () => {
   eq("follows an inline style change", cs.color, "rgb(1, 2, 3)");
   box.style.removeProperty("color");
   eq("rgba", (() => { box.style.color = "rgba(0, 0, 0, 0.5)"; const v = getComputedStyle(box).color; box.style.removeProperty("color"); return v; })(), "rgba(0, 0, 0, 0.5)");
+  eq("transform as a matrix", (() => { box.style.transform = "translate(10px, 5px) scale(2)"; const v = getComputedStyle(box).transform; box.style.removeProperty("transform"); return v; })(), "matrix(2, 0, 0, 2, 10, 5)");
   throws("not an element", () => getComputedStyle(document), "TypeError");
 });
 
