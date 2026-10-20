@@ -281,7 +281,7 @@ worker_script_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		r := ev.response
 		h.status = r.status
 		if r.url != "" && r.url != h.url { delete(h.url); h.url = strings.clone(r.url) }
-		if !h.env.origin.opaque {
+		if !h.env.origin.opaque && csp_on(p) {
 			// the worker's own policy comes from its script's response (HTML: "initialize worker policy container")
 			for v in http.get_all(r.headers, "content-security-policy") { csp.parse_header(&h.env.policies, v, .Enforce) }
 			for v in http.get_all(r.headers, "content-security-policy-report-only") { csp.parse_header(&h.env.policies, v, .Report_Only) }

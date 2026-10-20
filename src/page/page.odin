@@ -197,10 +197,19 @@ csp_violation :: proc(user: rawptr, v: csp.Violation) {
 	log(p, v.enforced ? .Error : .Warn, fmt.tprintf("Content-Security-Policy%s: %s violated by %s", v.enforced ? "" : " (report only)", v.directive, v.blocked))
 }
 
+// security.csp.enabled: off, no policy is taken from the document (headers, <meta>, a worker's script): the requests,
+// inline scripts, eval and javascript: URLs of the page are then all allowed.
+@(private)
+csp_on :: proc(p: ^Page) -> bool {
+	return p.loader == nil || p.loader.profile == nil || p.loader.profile.settings.csp
+}
+
 // Applies the security headers of the document's own response (Content-Security-Policy[-Report-Only], Referrer-Policy).
 apply_response_headers :: proc(p: ^Page, csp_values, csp_report_only_values: []string, referrer_policy_value: string) {
-	for v in csp_values { csp.parse_header(&p.env.policies, v, .Enforce) }
-	for v in csp_report_only_values { csp.parse_header(&p.env.policies, v, .Report_Only) }
+	if csp_on(p) {
+		for v in csp_values { csp.parse_header(&p.env.policies, v, .Enforce) }
+		for v in csp_report_only_values { csp.parse_header(&p.env.policies, v, .Report_Only) }
+	}
 	if referrer_policy_value != "" {
 		if rp := fetch.parse_referrer_policy(referrer_policy_value); rp != .Default { p.env.referrer_policy = rp }
 	}
@@ -229,7 +238,7 @@ apply_meta :: proc(p: ^Page) {
 		if n == nil { continue }
 		if n.kind == .Element && n.name == "meta" {
 			content, _ := dom.get_attribute(p.doc, cur, "content")
-			if he, ok := dom.get_attribute(p.doc, cur, "http-equiv"); ok && strings.equal_fold(he, "content-security-policy") {
+			if he, ok := dom.get_attribute(p.doc, cur, "http-equiv"); ok && strings.equal_fold(he, "content-security-policy") && csp_on(p) {
 				csp.parse_header(&p.env.policies, content, .Enforce)   // a <meta> policy cannot be report-only
 			}
 			if name, ok := dom.get_attribute(p.doc, cur, "name"); ok && strings.equal_fold(name, "referrer") {

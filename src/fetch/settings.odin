@@ -56,7 +56,7 @@ PREFS := [?]config.Def{
 	{name = "security.mixed_content.upgrade_passive", kind = .Bool, default = {b = true},
 		description = "Load images, audio and video over https instead of blocking them when an https page asks for http."},
 	{name = "network.hsts.enabled", kind = .Bool, default = {b = true}, description = "Remember Strict-Transport-Security and upgrade http to https for those hosts."},
-	{name = "security.csp.enabled", kind = .Bool, default = {b = true}, description = "Enforce Content-Security-Policy headers and <meta> policies on requests and WebSockets (connect-src, script-src, img-src... of what is fetched). The page's own checks (inline scripts and handlers, eval, javascript: URLs) are enforced whatever this says."},
+	{name = "security.csp.enabled", kind = .Bool, default = {b = true}, description = "Enforce the Content-Security-Policy of pages and workers (headers and <meta>): what they may fetch and connect to (connect-src, script-src, img-src...), inline scripts and handlers, eval, javascript: URLs. Off: no policy is taken from pages at all (a debugging aid: pages lose a protection)."},
 	{name = "network.fetch_metadata.enabled", kind = .Bool, default = {b = true}, description = "Send Sec-Fetch-Dest / Mode / Site / User to trustworthy servers."},
 	{name = "security.file_access.policy", kind = .String, default = {s = "own_tree"}, choices = {"own_tree", "none", "all"},
 		description = "What a file: document may read. own_tree: its own directory tree. none: no file at all, not even its own modules. all: any local file (development only)."},
