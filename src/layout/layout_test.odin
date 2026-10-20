@@ -581,3 +581,16 @@ table_columns_are_bounded :: proc(t: ^testing.T) {
 	for &b in f.l.boxes { if b.kind == .Cell { widest = max(widest, b.col + 1) } }
 	testing.expectf(t, int(widest) <= f.set.table_max_columns, "a cell in column %d", widest)
 }
+// Thousands of overlapping page-high boxes: the spatial index stays linear in the items (each was listed in every band
+// it crossed: gigabytes, then u32 sums that wrapped).
+@(test)
+spatial_index_is_linear :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, "<style>div{position:absolute;top:0;height:1e7px;width:1px;background:red}</style>")
+	for _ in 0 ..< 5000 { strings.write_string(&sb, "<div></div>") }
+	f := load(strings.to_string(sb))
+	defer unload(f)
+	testing.expectf(t, len(f.l.band_items) <= 16 * len(f.l.items) + 8192, "%d entries for %d items", len(f.l.band_items), len(f.l.items))
+	h := hit_test(&f.l, {8.5, 300}, f.vp, 0)
+	testing.expect(t, h.item != NONE, "still hit")
+}
