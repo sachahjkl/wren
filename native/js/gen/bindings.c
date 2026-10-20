@@ -272,6 +272,7 @@ JSValue wjr_HTMLAnchorElement_set_referrerPolicy(JSContext *ctx, JSValueConst th
 JSValue wjr_HTMLAreaElement_get_referrerPolicy(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLAreaElement_get_relList(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLAreaElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLAudioElement_factory(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLBaseElement_get_href(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLBaseElement_set_href(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLButtonElement_get_formAction(JSContext *ctx, JSValueConst this_val);
@@ -314,6 +315,7 @@ JSValue wjr_HTMLIFrameElement_get_referrerPolicy(JSContext *ctx, JSValueConst th
 JSValue wjr_HTMLIFrameElement_get_sandbox(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLIFrameElement_set_loading(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLIFrameElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLImageElement_factory(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLImageElement_get_crossOrigin(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLImageElement_get_decoding(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLImageElement_get_fetchPriority(JSContext *ctx, JSValueConst this_val);
@@ -374,6 +376,7 @@ JSValue wjr_HTMLMeterElement_set_min(JSContext *ctx, JSValueConst this_val, JSVa
 JSValue wjr_HTMLMeterElement_set_optimum(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMeterElement_set_value(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLObjectElement_get_validity(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLOptionElement_factory(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLOptionsCollection_add(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLOptionsCollection_get_length(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLOptionsCollection_get_selectedIndex(JSContext *ctx, JSValueConst this_val);
@@ -14670,7 +14673,7 @@ const wj_interface wj_interfaces[] = {
     { .name = "HTMLImageElement", .parent = 234, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLImageElement, .n_members = 28, .subtree_end = 261,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
-      .legacy_alias = NULL, .factory_name = "Image", .factory = NULL, .factory_length = 0 },
+      .legacy_alias = NULL, .factory_name = "Image", .factory = wjr_HTMLImageElement_factory, .factory_length = 0 },
     { .name = "HTMLInputElement", .parent = 234, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLInputElement, .n_members = 61, .subtree_end = 262,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
@@ -14706,7 +14709,7 @@ const wj_interface wj_interfaces[] = {
     { .name = "HTMLAudioElement", .parent = 268, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLAudioElement, .n_members = 0, .subtree_end = 270,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
-      .legacy_alias = NULL, .factory_name = "Audio", .factory = NULL, .factory_length = 0 },
+      .legacy_alias = NULL, .factory_name = "Audio", .factory = wjr_HTMLAudioElement_factory, .factory_length = 0 },
     { .name = "HTMLVideoElement", .parent = 268, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLVideoElement, .n_members = 6, .subtree_end = 271,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
@@ -14742,7 +14745,7 @@ const wj_interface wj_interfaces[] = {
     { .name = "HTMLOptionElement", .parent = 234, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLOptionElement, .n_members = 8, .subtree_end = 279,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
-      .legacy_alias = NULL, .factory_name = "Option", .factory = NULL, .factory_length = 0 },
+      .legacy_alias = NULL, .factory_name = "Option", .factory = wjr_HTMLOptionElement_factory, .factory_length = 0 },
     { .name = "HTMLOutputElement", .parent = 234, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLOutputElement, .n_members = 13, .subtree_end = 280,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,

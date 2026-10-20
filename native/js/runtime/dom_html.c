@@ -702,3 +702,80 @@ JSValue wjr_Element_checkVisibility(JSContext *ctx, JSValueConst t, int argc, JS
     JS_FreeValue(ctx, cs);
     return JS_NewBool(ctx, visible);
 }
+
+/* [LegacyFactoryFunction]s (HTML §4.8.3, §4.8.11, §4.10.10): new Image(w, h), new Audio(src), new Option(text, value,
+ * defaultSelected, selected). The element comes from Document.prototype.createElement on the realm's document (a
+ * script replacing document.createElement does not change them), its attributes and IDL attributes are then set
+ * through the element itself. */
+static JSValue factory_element(JSContext *ctx, const char *tag)
+{
+    JSValue doc = JS_GetPropertyStr(ctx, wj_the_realm.global, "document");
+    if (JS_IsException(doc)) { return doc; }
+    JSValue create = JS_GetPropertyStr(ctx, wj_the_realm.protos[WJ_IFACE_Document], "createElement");
+    JSValue name = JS_NewString(ctx, tag);
+    JSValue el = JS_Call(ctx, create, doc, 1, (JSValueConst *)&name);
+    JS_FreeValue(ctx, name);
+    JS_FreeValue(ctx, create);
+    JS_FreeValue(ctx, doc);
+    return el;
+}
+
+static int factory_set(JSContext *ctx, JSValueConst el, const char *method, const char *attr, JSValueConst value)
+{
+    JSValue fn = JS_GetPropertyStr(ctx, el, method);
+    JSValue args[2] = { JS_NewString(ctx, attr), JS_ToString(ctx, value) };
+    JSValue r = JS_IsException(args[1]) ? JS_EXCEPTION : JS_Call(ctx, fn, el, 2, (JSValueConst *)args);
+    JS_FreeValue(ctx, args[0]);
+    JS_FreeValue(ctx, args[1]);
+    JS_FreeValue(ctx, fn);
+    if (JS_IsException(r)) { return -1; }
+    JS_FreeValue(ctx, r);
+    return 0;
+}
+
+JSValue wjr_HTMLImageElement_factory(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(new_target);
+    JSValue el = factory_element(ctx, "img");
+    if (JS_IsException(el)) { return el; }
+    static const char *names[] = { "width", "height" };
+    for (int i = 0; i < 2 && i < argc; i++) {
+        if (JS_IsUndefined(argv[i])) { continue; }
+        if (factory_set(ctx, el, "setAttribute", names[i], argv[i]) < 0) { JS_FreeValue(ctx, el); return JS_EXCEPTION; }
+    }
+    return el;
+}
+
+JSValue wjr_HTMLAudioElement_factory(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(new_target);
+    JSValue el = factory_element(ctx, "audio");
+    if (JS_IsException(el)) { return el; }
+    JSValue autov = JS_NewString(ctx, "auto");
+    int bad = factory_set(ctx, el, "setAttribute", "preload", autov);
+    JS_FreeValue(ctx, autov);
+    if (!bad && argc > 0 && !JS_IsUndefined(argv[0])) { bad = factory_set(ctx, el, "setAttribute", "src", argv[0]); }
+    if (bad) { JS_FreeValue(ctx, el); return JS_EXCEPTION; }
+    return el;
+}
+
+JSValue wjr_HTMLOptionElement_factory(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(new_target);
+    JSValue el = factory_element(ctx, "option");
+    if (JS_IsException(el)) { return el; }
+    int bad = 0;
+    if (argc > 0 && !JS_IsUndefined(argv[0])) {
+        JSValue s = JS_ToString(ctx, argv[0]);
+        bad = JS_IsException(s) || JS_SetPropertyStr(ctx, el, "textContent", s) < 0;
+    }
+    if (!bad && argc > 1 && !JS_IsUndefined(argv[1])) { bad = factory_set(ctx, el, "setAttribute", "value", argv[1]); }
+    if (!bad && argc > 2 && JS_ToBool(ctx, argv[2])) {
+        JSValue empty = JS_NewString(ctx, "");
+        bad = factory_set(ctx, el, "setAttribute", "selected", empty);
+        JS_FreeValue(ctx, empty);
+    }
+    if (!bad && argc > 3) { bad = JS_SetPropertyStr(ctx, el, "selected", JS_NewBool(ctx, JS_ToBool(ctx, argv[3]))) < 0; }
+    if (bad) { JS_FreeValue(ctx, el); return JS_EXCEPTION; }
+    return el;
+}

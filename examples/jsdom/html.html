@@ -92,6 +92,11 @@ section("title and script text", () => {
   t("script.src resolved", s.src.endsWith("/a.js") && s.src.indexOf("://") > 0);
   // a script made by createElement is "force async" (HTML §4.12.1): async is true until set
   t("script.async", s.async === true && s2.async === true && (s2.async = false, s2.async === false));
+  const img = new Image(30, 20), opt = new Option("Text", "v", true, false), au = new Audio("x.mp3");
+  eq("new Image", img.outerHTML, '<img width="30" height="20">');
+  t("new Image prototype", img instanceof HTMLImageElement && Image.prototype === HTMLImageElement.prototype && Image.length === 0);
+  t("new Option", opt.text === "Text" && opt.value === "v" && opt.defaultSelected && !opt.selected);
+  eq("new Audio", au.outerHTML, '<audio preload="auto" src="x.mp3"></audio>');
   t("HTMLScriptElement.supports", HTMLScriptElement.supports("module") && HTMLScriptElement.supports("classic") && !HTMLScriptElement.supports("x"));
 });
 
