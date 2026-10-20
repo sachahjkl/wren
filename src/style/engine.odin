@@ -100,6 +100,7 @@ Engine :: struct {
 	shadow:    Shadow_Styles,          // the rule sets of shadow trees, adopted sheets (scope.odin)
 	env:       css.Media_Env,
 	media_dependent: bool,             // some active condition depends on the viewport
+	media_seen: [dynamic]Media_Seen,   // the document's media lists the last rebuild evaluated, and their results
 	dirty:     bool,
 	font_faces: [dynamic]Font_Face_Ref,   // @font-face rules in force, with the URL their sources resolve against
 	faces:     [dynamic]Font_Face,        // ... parsed (fontface.odin); strings in `alloc`
@@ -171,6 +172,7 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.keyframe_sets)
 	delete(e.registered)
 	delete(e.container_sizes)
+	delete(e.media_seen)
 	if e.has_spare { virtual.arena_destroy(&e.spare) }
 	settings_destroy(&e.settings)
 	free(e)
@@ -620,7 +622,7 @@ flatten_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCtx) {
 	case .Style: compile_style_rule(e, r, origin, lc)
 	case .Media:
 		if media_depends_on_viewport(r.media) { e.media_dependent = true; e.cur.conditional = true }
-		if css.media_matches(r.media, e.env) { for n in r.rules { flatten_rule(e, n, origin, lc) } }
+		if media_note(e, r.media) { for n in r.rules { flatten_rule(e, n, origin, lc) } }
 	case .Supports:
 		if supports_condition(e, r.supports) { for n in r.rules { flatten_rule(e, n, origin, lc) } }
 	case .Layer_Block:
@@ -653,6 +655,28 @@ flatten_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCtx) {
 	}
 }
 
+// A media list of the document's rules evaluated by a rebuild, and its result then.
+@(private)
+Media_Seen :: struct {
+	list:    css.Media_Query_List,   // in e.alloc: valid until the next rebuild
+	matched: bool,
+}
+
+// Evaluates a media list of the rules being flattened, remembering it (document rules only: shadow rule sets have their
+// own invalidation, Shadow_Styles.media_dependent).
+@(private)
+media_note :: proc(e: ^Engine, list: css.Media_Query_List) -> bool {
+	m := css.media_matches(list, e.env)
+	if e.cur == &e.rules { append(&e.media_seen, Media_Seen{list = list, matched = m}) }
+	return m
+}
+
+@(private)
+media_flipped :: proc(e: ^Engine) -> bool {
+	for s in e.media_seen { if css.media_matches(s.list, e.env) != s.matched { return true } }
+	return false
+}
+
 @(private)
 media_depends_on_viewport :: proc(list: css.Media_Query_List) -> bool {
 	return len(list) > 0   // any condition may depend on the viewport or the color scheme; cheap to rebuild, so be conservative
@@ -663,7 +687,7 @@ flatten_sheet :: proc(e: ^Engine, s: ^Sheet, lc_in: LayerCtx) {
 	if len(s.media) > 0 {
 		e.media_dependent = true
 		e.cur.conditional = true
-		if !css.media_matches(s.media, e.env) { return }
+		if !media_note(e, s.media) { return }
 	}
 	saved_base := e.cur_base_url
 	defer e.cur_base_url = saved_base
@@ -715,6 +739,7 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	e.registered_noninherited = 0
 	e.container_dependent = false
 	e.media_dependent, e.anon_layers, e.kf_order = false, 0, 0
+	clear(&e.media_seen)
 
 	if doc != nil {
 		// shadow-including tree order: the sheets of a shadow tree in its own order
@@ -754,12 +779,15 @@ engine_set_environment :: proc(e: ^Engine, env: css.Media_Env) -> bool {
 	changed := env != e.env
 	old := e.env
 	e.env = env
-	if changed && e.media_dependent { e.dirty = true }
+	// the rules in force change only if some media list the last rebuild evaluated answers otherwise now (a window
+	// resized between two breakpoints keeps them)
+	flipped := changed && e.media_dependent && media_flipped(e)
+	if flipped { e.dirty = true }
 	if changed && e.shadow.media_dependent { e.shadow.dirty = true; e.restyle_needed = true }
 	// styles depend on the viewport only through conditional rules and viewport units, and on the color scheme through
 	// light-dark() and media queries; anything else (a plain width change) needs layout only
 	size_changed := old.width != env.width || old.height != env.height
-	if changed && ((size_changed && (e.media_dependent || e.shadow.media_dependent || e.viewport_units)) || old.prefers_dark != env.prefers_dark ||
+	if changed && ((size_changed && (flipped || e.shadow.media_dependent || e.viewport_units)) || old.prefers_dark != env.prefers_dark ||
 	   old.dppx != env.dppx || old.prefers_reduced_motion != env.prefers_reduced_motion || old.prefers_more_contrast != env.prefers_more_contrast) {
 		e.restyle_needed = true
 	}

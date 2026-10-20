@@ -376,6 +376,35 @@ media_and_supports :: proc(t: ^testing.T) {
 	restyle(&f)
 	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3))
 	testing.expect(t, near(at(&f, "e").margin[.Top].v, 8))
+
+	// a width between the same breakpoints: no media list answers otherwise, the rules and the styles stand
+	f.eng.restyle_needed = false
+	env.width = 700
+	testing.expect(t, engine_set_environment(f.eng, env))
+	testing.expect(t, !f.eng.dirty && !f.eng.restyle_needed, "resized between breakpoints")
+	// across one: rebuilt and restyled
+	env.width = 950
+	engine_set_environment(f.eng, env)
+	testing.expect(t, f.eng.dirty && f.eng.restyle_needed, "resized across a breakpoint")
+	restyle(&f)
+	testing.expect(t, near(at(&f, "a").margin[.Top].v, 2))
+}
+
+// A sheet's own media list (<style media>, <link media>) counts like an @media rule.
+@(test)
+media_lists_of_sheets :: proc(t: ^testing.T) {
+	f := load(`<style media="(max-width: 500px)">#a { margin-top: 3px }</style><div id=a></div>`)
+	defer unload(&f)
+	testing.expect(t, near(at(&f, "a").margin[.Top].v, 0))
+	env := f.eng.env
+	env.width = 900
+	engine_set_environment(f.eng, env)
+	testing.expect(t, !f.eng.dirty, "still wider than 500px")
+	env.width = 400
+	engine_set_environment(f.eng, env)
+	testing.expect(t, f.eng.dirty)
+	restyle(&f)
+	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3))
 }
 
 @(test)
