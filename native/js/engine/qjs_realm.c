@@ -381,8 +381,9 @@ WJ_EXPORT("wj_preinit") int32_t wj_preinit(void)
     JSRuntime *rt = JS_NewRuntime();
 #endif
     if (!rt) { return -1; }
-    /* well below the C stack the module reserves (build_js.ps1: -z stack-size, 2 MiB), keeping room for what runs past it */
-    JS_SetMaxStackSize(rt, 900 * 1024);
+    /* well below the C stack the module reserves (build_js.ps1: -z stack-size, 1 MiB): 256 KiB stay for what runs past
+     * the bound before the engine unwinds (an uncaught RangeError's report, deep in a recursion through the browser) */
+    JS_SetMaxStackSize(rt, 768 * 1024);
     JS_SetInterruptHandler(rt, wj_interrupt_handler, NULL);
     JSContext *ctx = JS_NewContext(rt);
     if (!ctx) { return -2; }

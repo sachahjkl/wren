@@ -133,10 +133,10 @@ if ($Allocator -eq 'mimalloc') {
 }
 $ldflags = @(
     '-lwasi-emulated-signal',
-    # the C stack (in linear memory): JavaScript recursion depth is bounded by JS_SetMaxStackSize (900 KiB); the rest is
+    # the C stack (in linear memory): JavaScript recursion depth is bounded by JS_SetMaxStackSize (768 KiB); the rest is
     # room for what runs past that bound before unwinding (reporting the RangeError of a listener deep in a recursion
-    # through the browser: its error event, the host calls). Pages never written cost nothing.
-    '-Wl,-z,stack-size=2097152',
+    # through the browser: its error event, the host calls). Each realm commits its stack: 1 MiB, not more.
+    '-Wl,-z,stack-size=1048576',
     $(if ($Names) { '-Wl,--gc-sections' } else { '-Wl,--strip-debug' }), '-Wl,--gc-sections'
 )
 New-Item -ItemType Directory -Force $out | Out-Null
