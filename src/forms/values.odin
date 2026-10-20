@@ -255,7 +255,7 @@ sync_type :: proc(f: ^Forms, c: ^Control, n: ^dom.Node) {
 		new_mode := value_mode(t)
 		if old_mode == .Value && new_mode != .Value {
 			// the value is kept in the `value` attribute when it was dirty
-			if c.dirty_value && (new_mode == .Default || new_mode == .Default_On) { dom.set_attribute(f.doc, c.node, "value", c.value) }
+			if c.dirty_value && c.value != "" && (new_mode == .Default || new_mode == .Default_On) { dom.set_attribute(f.doc, c.node, "value", c.value) }   // (HTML: only a non-empty value)
 		} else if old_mode != .Value && new_mode == .Value {
 			v, _ := attr(n, "value")
 			replace_owned(&c.value, v)

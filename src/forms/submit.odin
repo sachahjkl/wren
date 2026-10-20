@@ -269,6 +269,15 @@ multipart_escape :: proc(sb: ^strings.Builder, s: string) {
 	}
 }
 
+// A part's Content-Type: the file's type when it is printable ASCII (File API: Blob.type), else the default (a type with
+// CR / LF would have added header lines inside the body).
+@(private)
+mime_header_value :: proc(mime: string) -> string {
+	if mime == "" { return "application/octet-stream" }
+	for c in transmute([]u8)mime { if c < 0x20 || c > 0x7E { return "application/octet-stream" } }
+	return mime
+}
+
 Read_File_Proc :: #type proc(path: string, max_bytes: int, user: rawptr) -> (data: []byte, ok: bool, message: string)
 
 // Reads a file with the OS (default reader of multipart bodies).
@@ -278,6 +287,8 @@ read_file_default :: proc(path: string, max_bytes: int, user: rawptr) -> (data: 
 	if int(info.size) > max_bytes { return nil, false, fmt.aprintf("%s is larger than forms.upload.max_file_bytes", path) }
 	b, err := os.read_entire_file(path, context.allocator)
 	if err != nil { return nil, false, fmt.aprintf("cannot read %s", path) }
+	// the file may have grown since it was measured
+	if len(b) > max_bytes { delete(b); return nil, false, fmt.aprintf("%s is larger than forms.upload.max_file_bytes", path) }
 	return b, true, ""
 }
 
@@ -298,12 +309,14 @@ multipart :: proc(list: []Entry, boundary: string, s: Settings, read: Read_File_
 			strings.write_string(&sb, "; filename=\"")
 			multipart_escape(&sb, e.file.name)
 			strings.write_string(&sb, "\"\r\nContent-Type: ")
-			strings.write_string(&sb, e.file.mime != "" ? e.file.mime : "application/octet-stream")
+			strings.write_string(&sb, mime_header_value(e.file.mime))
 		}
 		strings.write_string(&sb, "\r\n\r\n")
 		append(&out, ..transmute([]byte)strings.to_string(sb))
 		if e.is_file {
 			if e.file.data != nil {
+				// in-memory files (FormData blobs) obey the per-file limit as files on disk do
+				if len(e.file.data) > s.upload_max_file { delete(out); return nil, false, fmt.aprintf("%s is larger than forms.upload.max_file_bytes", e.file.name) }
 				append(&out, ..e.file.data)
 				total += len(e.file.data)
 			} else if e.file.path != "" {
