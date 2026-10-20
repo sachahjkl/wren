@@ -31,6 +31,7 @@ Settings :: struct {
 	incremental:        bool,      // lay out again only what changed
 	inc_max_ratio:      f32,       // share of the boxes to rebuild or invalidate past which a full pass is done
 	inc_garbage_ratio:  f32,       // memory left over by partial passes (share of what is alive) before a full pass
+	inc_garbage_floor:  int,       // ... once it is over this many bytes
 	inc_journal:        int,       // entries of the mutation and style journals
 	inc_splice:         bool,      // patch the display list of what changed instead of building it again
 	inc_verify:         bool,      // after each incremental pass, a full pass in parallel: both must agree
@@ -91,7 +92,9 @@ PREFS := [?]config.Def{
 	{name = "layout.incremental.max_ratio", kind = .Float, default = {f = 0.5}, bounded = true, min = 0, max = 1,
 		description = "Share of the boxes a change must rebuild or invalidate past which the whole page is laid out instead (a full pass is cheaper than many small ones). 0: always full."},
 	{name = "layout.incremental.garbage_ratio", kind = .Float, default = {f = 0.5}, bounded = true, min = 0.05, max = 8,
-		description = "Memory left behind by incremental passes (boxes, texts, fonts replaced), as a share of what is in use, past which the next pass is a full one that starts afresh."},
+		description = "Memory left behind by incremental passes (boxes, display items, texts, fonts replaced), as a share of what is in use, past which the next pass is a full one that starts afresh (once it is also over layout.incremental.garbage_floor_bytes)."},
+	{name = "layout.incremental.garbage_floor_bytes", kind = .Int, default = {i = 16 << 20}, bounded = true, min = 0, max = 1 << 34, bytes = true, unit = "bytes",
+		description = "Memory incremental passes may leave behind (boxes, display items, texts) before layout.incremental.garbage_ratio is looked at: a small page animated by a script rebuilds the same few boxes every frame, and without a floor its full pass (the frame that misses its refresh) would come several times a second."},
 	{name = "layout.incremental.journal_entries", kind = .Int, default = {i = 65536}, bounded = true, min = 256, max = 16 << 20,
 		description = "Changes remembered between two layouts (document mutations, style changes). More changes at once than this make a full layout."},
 	{name = "layout.incremental.splice_display_list", kind = .Bool, default = {b = true},
@@ -151,6 +154,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		incremental = config.bool_of(p, "layout.incremental.enabled"),
 		inc_max_ratio = f32(config.float_of(p, "layout.incremental.max_ratio")),
 		inc_garbage_ratio = f32(config.float_of(p, "layout.incremental.garbage_ratio")),
+		inc_garbage_floor = int(config.int_of(p, "layout.incremental.garbage_floor_bytes")),
 		inc_journal = int(config.int_of(p, "layout.incremental.journal_entries")),
 		inc_splice = config.bool_of(p, "layout.incremental.splice_display_list"),
 		inc_verify = config.bool_of(p, "layout.incremental.verify"),

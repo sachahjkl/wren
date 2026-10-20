@@ -135,10 +135,12 @@ inc_note_layout :: proc(c: ^Ctx, bi: i32) {
 @(private)
 too_much_garbage :: proc(l: ^Layout) -> string {
 	r := l.settings.inc_garbage_ratio
+	floor := f32(l.settings.inc_garbage_floor)
 	s := &l.inc
-	if f32(s.dead_boxes) > r * f32(max(s.live_boxes, 64)) { return "memory left by partial passes: boxes" }
-	if f32(s.dead_items) > r * f32(max(s.live_items, 64)) { return "memory left by partial passes: display items" }
-	if f32(l.arena.total_used) > (1 + r) * f32(s.arena_base) + f32(1 << 20) { return "memory left by partial passes: text and lists" }
+	over :: #force_inline proc(dead, live, size, r, floor: f32) -> bool { return dead > r * live && dead * size > floor }
+	if over(f32(s.dead_boxes), f32(max(s.live_boxes, 64)), size_of(Box) + size_of(Box_Info), r, floor) { return "memory left by partial passes: boxes" }
+	if over(f32(s.dead_items), f32(max(s.live_items, 64)), size_of(Inline_Item), r, floor) { return "memory left by partial passes: inline items" }
+	if over(f32(l.arena.total_used) - f32(s.arena_base), f32(s.arena_base) + f32(1 << 20), 1, r, floor) { return "memory left by partial passes: text and lists" }
 	if f32(len(l.fonts)) > (1 + r) * f32(s.fonts_base) + 64 { return "memory left by partial passes: fonts" }
 	return ""
 }

@@ -444,15 +444,25 @@ inc_disabled_and_garbage :: proc(t: ^testing.T) {
 	f.set.incremental = true
 	ix_frame(f)
 	ix_check(t, f, .None)
-	// many partial rebuilds: memory left behind is bounded by full passes
+	// many partial rebuilds: under the floor (layout.incremental.garbage_floor_bytes) nothing is collected...
 	fulls := f.l.passes[.Full]
 	for i in 0 ..< 200 {
 		dom.set_text_content(f.doc, first_text_node(f, id(f, "p2")), fmt.tprintf("text %d", i))
 		ix_frame(f)
 	}
 	ix_check(t, f, .None)
+	testing.expect_value(t, f.l.passes[.Full], fulls)
+	// ... past it, memory left behind is bounded by full passes
+	f.set.inc_garbage_floor = 0
+	ix_frame(f)   // (settings changed: a full pass)
+	fulls = f.l.passes[.Full]
+	for i in 0 ..< 200 {
+		dom.set_text_content(f.doc, first_text_node(f, id(f, "p2")), fmt.tprintf("text %d", i))
+		ix_frame(f)
+	}
+	ix_check(t, f, .None)
 	testing.expect(t, f.l.passes[.Full] > fulls, "garbage made some full passes")
-	testing.expect(t, f.l.passes[.Incremental] > 150, "most passes stay incremental")
+	testing.expect(t, f.l.passes[.Incremental] > 300, "most passes stay incremental")
 	// verification mode agrees
 	f.set.inc_verify = true
 	run(&f.l, ix_input(f))
