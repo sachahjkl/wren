@@ -4,6 +4,11 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 ([releases](https://github.com/sachahjkl/wren/releases); `tools/release_notes.ps1` writes them from
 `docs/releases/` and the history).
 
+## 0.2.1 - 2026-10-20
+
+### Fixed
+- Wren crashed about three seconds after start when the mouse pointer was over its window: the mouse input of the first frame read the interface state before it was built (gui_toolkit 0.11.1).
+
 ## 0.2.0 — 2026-10-20
 
 JavaScript, inside WebAssembly: WebAssembly is still the only execution engine.
