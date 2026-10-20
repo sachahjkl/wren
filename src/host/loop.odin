@@ -53,7 +53,12 @@ Loop :: struct {
 	// Longest a turn keeps running due timers once one has run (ns; 0: all of them). The rest run at the next turn, so the
 	// shell can draw and read input between them even when a page floods the loop with timers. browser.loop.timer_slice_ms
 	timer_slice_ns: i64,
+	stale:      int,   // queue entries of timers cleared before their deadline (dropped when they pile up: compact_timers)
 }
+
+// Longest timer delay (ms, about 31 years): NaN, infinities and larger values are this (never, in practice); beyond,
+// the deadline in ns would overflow and a timer meant for never would fire at once.
+MAX_TIMER_MS :: 1e12
 
 // Default of Loop.timer_slice_ns (the browser sets it from browser.loop.timer_slice_ms).
 DEFAULT_TIMER_SLICE_NS :: 8_000_000
@@ -101,14 +106,20 @@ signal :: proc(l: ^Loop) {
 set_timer :: proc(l: ^Loop, delay_ms: f64, interval_ms: f64, fn: Task_Proc, data: rawptr, scope: ^base.Scope = nil) -> base.Handle {
 	t := Timer{
 		fn = fn, data = data,
-		deadline = now_ns(l) + i64(max(delay_ms, 0) * 1e6),
-		interval = i64(max(interval_ms, 0) * 1e6),
+		deadline = now_ns(l) + timer_ns(delay_ms),
+		interval = timer_ns(interval_ms),
 		scope = scope,
 	}
 	h, p := base.pool_insert(&l.timers, t)
 	if scope != nil { p.cleanup = base.on_close(scope, timer_scope_closed, new_clone(Timer_Owner{l, h})) }
 	priority_queue.push(&l.queue, Timer_Entry{p.deadline, h})
 	return h
+}
+
+@(private)
+timer_ns :: proc(ms: f64) -> i64 {
+	if !(ms > 0) { return 0 }   // NaN too
+	return i64(min(ms, MAX_TIMER_MS) * 1e6)
 }
 
 @(private)
@@ -125,7 +136,21 @@ timer_scope_closed :: proc(data: rawptr) {
 clear_timer :: proc(l: ^Loop, h: base.Handle) -> bool {
 	t, ok := base.pool_remove(&l.timers, h)
 	if ok && t.scope != nil { release_scope_hook(t) }
+	if ok {
+		// its queue entry stays until its deadline: a page clearing long timers in a loop would pile them up
+		l.stale += 1
+		if l.stale > l.timers.count + 64 { compact_timers(l) }
+	}
 	return ok
+}
+
+// The timer queue made again from the live timers only.
+@(private)
+compact_timers :: proc(l: ^Loop) {
+	priority_queue.clear(&l.queue)
+	it: u32
+	for h, t in base.pool_next(&l.timers, &it) { priority_queue.push(&l.queue, Timer_Entry{t.deadline, h}) }
+	l.stale = 0
 }
 
 @(private)
