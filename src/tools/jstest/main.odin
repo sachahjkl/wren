@@ -210,6 +210,170 @@ document.body.lastChild.addEventListener("x", () => console.log("listener kept")
 		settings = saved
 	}
 
+	fmt.println("-- hostile scripts: the page survives, the browser stays responsive")
+	{
+		saved := settings
+		settings.js.slow_script_ms = 300
+		settings.js.max_heap_bytes = 64 << 20
+		defer settings = saved
+		usable :: proc(p: ^page.Page, what: string) {
+			clear(&logs)
+			page.js_run(p, transmute([]byte)string(`console.log("usable")`), "probe.js")
+			check(logged("usable"), fmt.tprintf("%s: the realm is usable afterwards", what))
+		}
+		timed :: proc(process: ^base.Scope, source: string) -> (^page.Page, f64) {
+			start := time.tick_now()
+			p := load(process, source)
+			return p, time.duration_milliseconds(time.tick_since(start))
+		}
+
+		p, ms := timed(process, `<!doctype html><body><script>
+function f(n) { return f(n + 1) + 1; }
+try { f(0) } catch (e) { console.log("recursion", e instanceof RangeError) }
+</script></body>`)
+		check(logged("recursion true"), "unbounded JavaScript recursion throws RangeError")
+		usable(p, "recursion")
+		page.page_close(p)
+
+		p, ms = timed(process, `<!doctype html><body><div id=a></div><script>
+const a = document.getElementById("a");
+let depth = 0;
+a.addEventListener("x", () => { depth++; a.dispatchEvent(new Event("x")); });
+try { a.dispatchEvent(new Event("x")); console.log("returned", depth) } catch (e) { console.log("host recursion", e.name, depth > 10) }
+</script></body>`)
+		host_rec := false
+		for l in logs { if strings.has_prefix(l, "host recursion") || strings.has_prefix(l, "returned") { host_rec = true } }
+		check(host_rec, "recursion through the browser (dispatchEvent from a listener) ends without a crash")
+		usable(p, "recursion through the browser")
+		page.page_close(p)
+
+		p, ms = timed(process, `<!doctype html><body><script>
+const keep = [];
+try { for (;;) keep.push(new Array(1 << 16).fill(1.5)); } catch (e) { console.log("oom", e.name || String(e)) }
+keep.length = 0;
+try { "x".repeat(1 << 30); } catch (e) { console.log("huge string", e.name) }
+</script></body>`)
+		oom := false
+		for l in logs { if strings.has_prefix(l, "oom") { oom = true } }
+		check(oom, "allocating past javascript.max_heap_bytes throws, the script can catch it")
+		check(logged("huge string RangeError") || logged("huge string InternalError"), "a 1 GiB string is refused")
+		usable(p, "out of memory")
+		page.page_close(p)
+
+		p, ms = timed(process, `<!doctype html><body><script>
+function m() { Promise.resolve().then(m); }
+m();
+</script><script>console.log("after microtasks")</script></body>`)
+		check(ms < 3000, fmt.tprintf("an endless microtask chain is stopped (%.0f ms)", ms))
+		usable(p, "microtask chain")
+		restarted := false
+		for l in logs { if strings.contains(l, "slow_script_ms") { restarted = true } }
+		check(!restarted, "the stopped microtask chain does not start again at the next checkpoint")
+		page.page_close(p)
+
+		p, ms = timed(process, `<!doctype html><body><script>
+let n = 0;
+function t() { n++; setTimeout(t, 0); setTimeout(t, 0); }
+t();
+</script></body>`)
+		start := time.tick_now()
+		pump(500)
+		pumped := time.duration_milliseconds(time.tick_since(start))
+		check(pumped < 1500, fmt.tprintf("timers doubling at every run leave the event loop responsive (500 ms pumped in %.0f ms)", pumped))
+		usable(p, "timer flood")
+		page.page_close(p)
+
+		p, ms = timed(process, `<!doctype html><body><script>
+const w = s => document.write(s);
+w("<script>w('<script>w(\"<b>deep</b>\")<\/script>')<\/script>");
+let k = 0;
+function nest() { k++; document.write("<script>nest()<\/script>"); }
+nest();
+console.log("nested writes", k < 1000);
+try { for (let i = 0; i < 1e7; i++) document.write("xxxxxxxxxxxxxxxx"); } catch (e) { console.log("write flood", e.name) }
+</script><script>console.log("after writes")</script></body>`)
+		check(logged("nested writes true"), "document.write nested without end is cut at javascript.document_write.max_depth")
+		check(logged("after writes"), "a document.write flood ends (javascript.document_write.max_bytes or the time limit)")
+		usable(p, "document.write")
+		page.page_close(p)
+
+		p, ms = timed(process, `<!doctype html><body><div id=t></div><script>
+const t = document.getElementById("t");
+let calls = 0;
+new MutationObserver(() => { calls++; t.setAttribute("n", calls); }).observe(t, { attributes: true });
+t.setAttribute("n", 0);
+</script></body>`)
+		start = time.tick_now()
+		pump(300)
+		pumped = time.duration_milliseconds(time.tick_since(start))
+		check(pumped < 1500, fmt.tprintf("a MutationObserver that mutates what it observes leaves the loop responsive (%.0f ms)", pumped))
+		usable(p, "observer feedback")
+		page.page_close(p)
+
+		settings.js.slow_script_ms = 20_000
+		p, ms = timed(process, `<!doctype html><body><script>
+let n = document.createElement("div");
+const root = n;
+for (let i = 0; i < 20000; i++) { const c = document.createElement("div"); n.appendChild(c); n = c; }
+n.textContent = "leaf";
+document.body.appendChild(root);
+const html = root.outerHTML;
+const copy = root.cloneNode(true);
+console.log("deep", html.length > 200000, copy.textContent, root.contains(n), document.querySelectorAll("div").length,
+  n.compareDocumentPosition(root) & Node.DOCUMENT_POSITION_CONTAINS ? "contains" : "no", n.closest("body") === document.body);
+root.remove();
+const holder = document.createElement("div");
+holder.innerHTML = "<div>".repeat(50000) + "x";
+console.log("deep markup", holder.textContent);
+</script></body>`)
+		check(logged("deep true leaf true 20001 contains true"), "20 000 nested elements: serialization, clone, contains, selectors, position, closest")
+		check(logged("deep markup x"), "50 000 nested elements from innerHTML")
+		usable(p, "deep tree")
+		page.page_close(p)
+		settings.js.slow_script_ms = 300
+
+		p, ms = timed(process, `<!doctype html><body><p id=old>old</p><script>
+var old = document.getElementById("old"), body = document.body;
+document.open();   // the parser is running this script: does nothing (HTML)
+console.log("open in a parser script", old.isConnected);
+</script></body>`)
+		check(logged("open in a parser script true"), "document.open from a script the parser runs does nothing")
+		clear(&logs)
+		page.js_run(p, transmute([]byte)string(`
+document.open();
+document.write("<body><p id=n>new</p></body>");
+document.close();
+console.log("after open", old.id, old.isConnected, old.textContent, body.isConnected, document.getElementById("n").textContent, old === document.getElementById("n"));
+const p = document.getElementById("n");
+const kept = p.firstChild;
+p.innerHTML = "<i>x</i>";
+console.log("replaced child", kept.data, kept.parentNode);
+p.textContent = "";
+console.log("cleared", p.childNodes.length);
+`), "open.js")
+		check(logged("after open old false old false new false"), "nodes kept by JavaScript survive document.open, and are not confused with new nodes")
+		check(logged("replaced child new null"), "a child replaced by innerHTML stays usable from JavaScript")
+		check(logged("cleared 0"), "textContent = '' empties")
+		usable(p, "document.open")
+		page.page_close(p)
+
+		p, ms = timed(process, `<!doctype html><body><script>
+for (let i = 0; i < 20000; i++) {
+  const d = document.createElement("div");
+  d.self = d;
+  d.box = { node: d };
+  d.addEventListener("click", () => d.textContent);
+  d.appendChild(document.createElement("span")).owner = d;
+}
+</script></body>`)
+		before := live_nodes(p)
+		js.collect(p.js.inst)
+		after := live_nodes(p)
+		fmt.printf("  nodes before collection %d, after %d\n", before, after)
+		check(before > 40000 && after < 200, "detached nodes in cycles with their wrappers (expandos, listener closures, children) are freed")
+		page.page_close(p)
+	}
+
 	fmt.println("-- cost of a call across the boundary (ns per call, informational)")
 	{
 		p := load(process, `<!doctype html><body><div id=a title=t><span></span></div><script>

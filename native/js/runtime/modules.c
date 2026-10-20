@@ -181,7 +181,7 @@ static JSValue rethrow_get(JSContext *ctx, const char *name, size_t len)
 WJ_EXPORT("wj_module_report") void wj_module_report(uint32_t url, uint32_t url_len)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     JSValue e = rethrow_get(ctx, (const char *)(uintptr_t)url, url_len);
     if (!JS_IsUndefined(e)) { wj_report_exception(ctx, e); }
 }
@@ -192,7 +192,7 @@ WJ_EXPORT("wj_module_prepare")
 int32_t wj_module_prepare(uint32_t src, uint32_t src_len, uint32_t url, uint32_t url_len, int32_t type)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     char *name = js_malloc(ctx, url_len + 1);
     if (!name) { return 2; }
     memcpy(name, (const void *)(uintptr_t)url, url_len);
@@ -297,7 +297,7 @@ static JSValue evaluation_rejected(JSContext *ctx, JSValueConst this_val, int ar
 WJ_EXPORT("wj_module_run") int32_t wj_module_run(uint32_t url, uint32_t url_len)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     char *name = js_malloc(ctx, url_len + 1);
     if (!name) { return 1; }
     memcpy(name, (const void *)(uintptr_t)url, url_len);
@@ -389,7 +389,7 @@ WJ_EXPORT("wj_module_import_done")
 void wj_module_import_done(int32_t id, uint32_t url, uint32_t url_len, int32_t ok, uint32_t msg, uint32_t msg_len)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     if (id < 0 || (uint32_t)id >= import_cap || !imports[id].used) { return; }
     pending_import pi = imports[id];
     imports[id].used = false;

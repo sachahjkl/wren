@@ -156,7 +156,7 @@ void wj_cb_xhr(int32_t user, uint64_t fetch, int32_t state);
 WJ_EXPORT("wj_cb_xhr") void wj_cb_xhr(int32_t user, uint64_t fetch, int32_t state)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     if (user <= 0 || (uint32_t)user >= xhr_slots_n || !xhr_slots[user]) { return; }
     web_xhr *x = xhr_slots[user]->impl;
     if (!x || x->fetch != fetch || !x->send_flag) { return; }

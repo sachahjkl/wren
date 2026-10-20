@@ -233,7 +233,7 @@ JSValue wjr_MutationObserver_takeRecords(JSContext *ctx, JSValueConst this_val, 
 WJ_EXPORT("wj_cb_mutation") void wj_cb_mutation(int32_t user)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     if (user <= 0 || user >= mo_slot_cap || JS_IsUndefined(mo_slots[user])) { return; }
     JSValue self = JS_DupValue(ctx, mo_slots[user]);
     mo_impl *m = wj_obj_of(self)->impl;

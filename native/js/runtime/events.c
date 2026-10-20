@@ -519,7 +519,7 @@ JSValue wj_wrap_target(JSContext *ctx, uint64_t h)
 WJ_EXPORT("wj_cb_listener") void wj_cb_listener(int32_t user, uint64_t event)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     if (user <= 0 || (uint32_t)user >= slot_count || !slots[user]) { return; }
     wj_listener *l = slots[user];
     wj_obj *owner = l->owner;

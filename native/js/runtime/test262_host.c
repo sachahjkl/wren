@@ -270,7 +270,7 @@ WJ_EXPORT("wj_t262_setup") int32_t wj_t262_setup(uint32_t name, uint32_t name_le
     JSContext *ctx = wj_the_realm.ctx;
     if (!ctx) { return -1; }
     JSRuntime *rt = JS_GetRuntime(ctx);
-    JS_UpdateStackTop(rt);
+    wj_stack_enter(NULL);
     free(t262_test_name);
     t262_test_name = malloc(name_len + 1);
     if (!t262_test_name) { return -1; }
@@ -295,7 +295,7 @@ WJ_EXPORT("wj_t262_eval") int32_t wj_t262_eval(uint32_t src, uint32_t src_len, u
 {
     JSContext *ctx = wj_the_realm.ctx;
     JSRuntime *rt = JS_GetRuntime(ctx);
-    JS_UpdateStackTop(rt);
+    wj_stack_enter(NULL);
     char file[1024];
     size_t n = name_len < sizeof file - 1 ? name_len : sizeof file - 1;
     memcpy(file, (const void *)(uintptr_t)name, n);

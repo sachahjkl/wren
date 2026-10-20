@@ -174,7 +174,7 @@ int32_t wj_content_handler(uint64_t element, int32_t window_owner, int32_t svg, 
                            uint32_t value, uint32_t value_len, int32_t present, int32_t line)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     const char *attr = (const char *)(uintptr_t)name;
     if (name_len < 3 || attr[0] != 'o' || attr[1] != 'n' || !uncompiled_ready(ctx)) { return 0; }
     const char *type = attr + 2;

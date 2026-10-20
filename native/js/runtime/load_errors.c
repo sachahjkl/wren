@@ -390,7 +390,7 @@ static void report_unhandled(JSContext *ctx, JSValueConst reason)
 WJ_EXPORT("wj_notify_rejections") int32_t wj_notify_rejections(void)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     check_queued = false;
     int32_t fired = 0;
     rej_list list = about_to_be_notified;

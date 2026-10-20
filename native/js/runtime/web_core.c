@@ -680,7 +680,7 @@ bool web_queue_task(JSContext *ctx, void (*fn)(JSContext *ctx, JSValueConst data
 WJ_EXPORT("wj_cb_web_task") void wj_cb_web_task(int64_t user)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     if (user <= 0 || (uint64_t)user > tasks_n) { return; }
     uint32_t i = (uint32_t)(user - 1);
     web_task t = tasks[i];

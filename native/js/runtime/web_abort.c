@@ -153,7 +153,7 @@ WJ_EXPORT("wj_cb_signal_abort") void wj_cb_signal_abort(int32_t user, uint64_t e
 {
     WJ_UNUSED(event);
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     if (user <= 0 || (uint32_t)user >= sig_slots_n || !sig_slots[user]) { return; }
     wj_obj *o = sig_slots[user];
     web_signal *s = o->impl;

@@ -326,4 +326,8 @@ void wj_free(void *p);
 /* Reports an exception as uncaught: the global's error event, then the browser's console. Takes `exc`. */
 void wj_report_exception(wj_ctx *ctx, wj_val exc);
 
+/* At every entry from the browser, before running script: sets the recursion budget from the outermost entry only (an
+ * entry nested in a browser call keeps the frames below it counted). NULL: the realm's context. */
+void wj_stack_enter(wj_ctx *ctx);
+
 #endif

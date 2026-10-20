@@ -55,7 +55,7 @@ static void let_go(JSContext *ctx, uint64_t handle)
 WJ_EXPORT("wj_worker_gone") void wj_worker_gone(uint64_t handle)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     let_go(ctx, handle);
 }
 

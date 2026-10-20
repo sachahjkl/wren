@@ -261,7 +261,7 @@ extern size_t wj_script_base_name(char *out, size_t cap);
 WJ_EXPORT("wj_cb_timer") void wj_cb_timer(int64_t user)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     uint32_t slot;
     cb_rec *r = rec_from_user(user, &slot);
     if (!r || r->kind != REC_TIMER) { return; }
@@ -365,7 +365,7 @@ JSValue wjr_AnimationFrameProvider_cancelAnimationFrame(JSContext *ctx, JSValueC
 WJ_EXPORT("wj_cb_frame") void wj_cb_frame(int32_t user, double time)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     uint32_t slot = (uint32_t)user;
     if (slot >= rec_count || recs[slot].kind != REC_FRAME) { return; }
     JSValue fn = JS_DupValue(ctx, recs[slot].fn);
@@ -434,7 +434,7 @@ static void idle_deadline_free(void *p) { free(p); }
 WJ_EXPORT("wj_cb_idle") void wj_cb_idle(int32_t user, double deadline, int32_t did_timeout)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     uint32_t slot = (uint32_t)user;
     if (slot >= rec_count || recs[slot].kind != REC_IDLE) { return; }
     JSValue fn = JS_DupValue(ctx, recs[slot].fn);

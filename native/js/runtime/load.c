@@ -63,7 +63,7 @@ WJ_EXPORT("wj_load_init") int32_t wj_load_init(void)
 {
     JSContext *ctx = wj_the_realm.ctx;
     if (!ctx) { return -1; }
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     wj_errors_start(ctx);
     wj_modules_start(ctx);
     wj_clone_start(ctx);
@@ -329,7 +329,7 @@ WJ_EXPORT("wj_eval_javascript_url")
 int32_t wj_eval_javascript_url(uint32_t src, uint32_t src_len)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     char name[1024];
     wj_script_base_name(name, sizeof name);
     JSEvalOptions opt = { .version = JS_EVAL_OPTIONS_VERSION, .eval_flags = JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_COMPILE_ONLY, .filename = name, .line_num = 1 };

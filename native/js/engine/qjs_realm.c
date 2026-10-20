@@ -162,6 +162,25 @@ void wj_report_pending(wj_ctx *ctx)
     wj_report_exception(ctx, JS_GetException(ctx));
 }
 
+/* ---- the C stack budget of JavaScript ----
+ * QuickJS bounds recursion from the stack top it was last given (JS_UpdateStackTop). Every entry from the browser calls
+ * this, but only the outermost one moves the top: when the browser calls back into the engine from inside one of its
+ * own calls (a listener calling dispatchEvent, a getter that runs script...), the frames below stay counted, so
+ * recursion through the browser meets the same limit as plain recursion instead of starting over at each level and
+ * running past the end of the C stack. The C stack grows down: an entry nested in running frames is below the mark. */
+static uintptr_t wj_stack_mark;
+
+void wj_stack_enter(JSContext *ctx)
+{
+    if (!ctx) { ctx = wj_the_realm.ctx; }
+    if (!ctx) { return; }
+    uintptr_t sp = (uintptr_t)__builtin_frame_address(0);
+    if (sp >= wj_stack_mark) {
+        JS_UpdateStackTop(JS_GetRuntime(ctx));
+        wj_stack_mark = sp;
+    }
+}
+
 /* ---- jobs (microtasks): run by the browser at each microtask checkpoint ---- */
 
 WJ_EXPORT("wj_run_jobs") int32_t wj_run_jobs(void)
@@ -170,13 +189,15 @@ WJ_EXPORT("wj_run_jobs") int32_t wj_run_jobs(void)
     if (!ctx) { return 0; }
     JSRuntime *rt = JS_GetRuntime(ctx);
     int32_t ran = 0;
-    JS_UpdateStackTop(rt);
+    wj_stack_enter(ctx);
     while (JS_IsJobPending(rt)) {
         JSContext *jctx;
         int r = JS_ExecutePendingJob(rt, &jctx);
         if (r < 0) { wj_report_pending(jctx); }
         ran++;
-        if (wj_interrupt) { break; }
+        /* the checkpoint itself ran past the time limit: what is left would start the same endless chain again at the
+         * next checkpoint, and stall every task after it */
+        if (wj_interrupt) { JS_DropPendingJobs(rt); break; }
     }
     return ran;
 }
@@ -222,7 +243,7 @@ WJ_EXPORT("wj_eval_script")
 int32_t wj_eval_script(uint32_t src, uint32_t src_len, uint32_t url, uint32_t url_len, int32_t line, int32_t flags)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     char name[1024];
     size_t n = url_len < sizeof name - 1 ? url_len : sizeof name - 1;
     memcpy(name, (const void *)(uintptr_t)url, n);
@@ -267,7 +288,7 @@ WJ_EXPORT("wj_eval_bytecode")
 int32_t wj_eval_bytecode(uint32_t code, uint32_t code_len, int32_t flags)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     JSValue fn = JS_ReadObject(ctx, (const uint8_t *)(uintptr_t)code, code_len, JS_READ_OBJ_BYTECODE);
     if (JS_IsException(fn)) {
         JS_FreeValue(ctx, JS_GetException(ctx));
@@ -289,7 +310,7 @@ WJ_EXPORT("wj_compile")
 int32_t wj_compile(uint32_t src, uint32_t src_len, uint32_t url, uint32_t url_len, int32_t line, int32_t flags)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     char name[1024];
     size_t n = url_len < sizeof name - 1 ? url_len : sizeof name - 1;
     memcpy(name, (const void *)(uintptr_t)url, n);
@@ -384,7 +405,7 @@ WJ_EXPORT("wj_realm_start") int32_t wj_realm_start(int32_t kind, int64_t seed, d
     if (wj_the_realm.started) { return 0; }
     JSContext *ctx = wj_the_realm.ctx;
     JSRuntime *rt = JS_GetRuntime(ctx);
-    JS_UpdateStackTop(rt);
+    wj_stack_enter(ctx);
     JS_SetRandomState(ctx, (uint64_t)seed);
     if (memory_limit > 0) { JS_SetMemoryLimit(rt, (size_t)memory_limit); }
     if (gc_threshold > 0) { JS_SetGCThreshold(rt, (size_t)gc_threshold); }

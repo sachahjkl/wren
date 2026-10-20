@@ -92,7 +92,7 @@ JSValue wj_promise_from_host(JSContext *ctx, uint64_t host, int kind, wj_host_se
 WJ_EXPORT("wj_cb_promise") void wj_cb_promise(int32_t user, uint64_t promise, int32_t state)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     if (user <= 0 || (uint32_t)user >= bridges_n || !bridges[user].used || bridges[user].host != promise) { return; }
     bridge b = bridges[user];
     int64_t value = wr_Promise_value(promise);

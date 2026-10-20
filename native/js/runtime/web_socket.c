@@ -88,7 +88,7 @@ static void socket_listen(uint64_t h, uint32_t slot, const char *type)
 WJ_EXPORT("wj_cb_socket") void wj_cb_socket(int32_t user, uint64_t event)
 {
     JSContext *ctx = wj_the_realm.ctx;
-    JS_UpdateStackTop(JS_GetRuntime(ctx));
+    wj_stack_enter(ctx);
     if (user <= 0 || (uint32_t)user >= sock_slots_n || !sock_slots[user]) { return; }
     wj_obj *o = sock_slots[user];
     web_socket *s = o->impl;

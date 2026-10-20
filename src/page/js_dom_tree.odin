@@ -358,7 +358,8 @@ check_insert :: proc(c: ^Call, parent, node, child: base.Handle, replacing: bool
 	p, n := dom.get(d, parent), dom.get(d, node)
 	if p == nil || n == nil { return fail(c, .Invalid_Handle, "the node is gone") }
 	if !is_parent_kind(p) { return fail(c, .Hierarchy, "This node type does not support this method (the parent cannot have children).") }
-	if dom.is_ancestor_or_self(d, node, parent) { return fail(c, .Hierarchy, "The new child element contains the parent.") }
+	// a node without children is an ancestor of nothing: inserting new nodes stays O(1) at any depth
+	if node == parent || (n.first_child != base.NIL_HANDLE && dom.is_ancestor_or_self(d, node, parent)) { return fail(c, .Hierarchy, "The new child element contains the parent.") }
 	if child != base.NIL_HANDLE {
 		ch := dom.get(d, child)
 		if ch == nil || ch.parent != parent {
