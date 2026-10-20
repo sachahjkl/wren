@@ -1,7 +1,7 @@
 package host
 
 // Native threads with an explicit stack size (core:thread always takes the default one). Used for threads that run guest
-// code: the interpreter checks native stack overflow against the real bounds of the thread, so the size is a setting.
+// code: Wasmtime runs it on the thread's own stack (wasm.wasmtime.max_stack_bytes must fit in it), so the size is a setting.
 //
 // The thread starts with the caller's context (its allocator must be thread-safe: the process heap or a locking tracker)
 // and a temporary allocator of its own, destroyed when the procedure returns.
