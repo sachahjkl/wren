@@ -116,6 +116,7 @@ Frame_Rec :: struct {
 	lay_pass:  lay.Pass_Kind,
 	lay_steps: [5]f32,
 	lay_pre:   [2]i32,
+	lay_why:   string,   // why a full pass was not incremental (a literal of package layout)
 	gpu_steps: Gpu_Steps_Frame,   // GPU time by step (gpu_steps.odin), when profiled
 }
 
@@ -192,6 +193,7 @@ prof_layout :: proc(l: ^lay.Layout) {
 	prof.cur_lay.lay_pass = l.last_pass
 	prof.cur_lay.lay_steps = l.stats
 	prof.cur_lay.lay_pre = {i32(l.pre_counts[0]), i32(l.pre_counts[1])}
+	prof.cur_lay.lay_why = l.inc.fallback
 }
 
 filetime_u64 :: proc(ft: win.FILETIME) -> u64 { return u64(ft.dwHighDateTime) << 32 | u64(ft.dwLowDateTime) }
@@ -245,7 +247,7 @@ sampler_proc :: proc(_: ^thread.Thread) {
 prof_record :: proc(app: ^App, items, elements: int) {
 	if !prof.on { return }
 	rec := Frame_Rec{t_ms = f32(f64(qpc() - prof.t0) * 1000 / prof.freq), gpu_index = -1, budget = frame_budget_ms()}
-	rec.lay_pass, rec.lay_steps, rec.lay_pre = prof.cur_lay.lay_pass, prof.cur_lay.lay_steps, prof.cur_lay.lay_pre
+	rec.lay_pass, rec.lay_steps, rec.lay_pre, rec.lay_why = prof.cur_lay.lay_pass, prof.cur_lay.lay_steps, prof.cur_lay.lay_pre, prof.cur_lay.lay_why
 	prof.cur_lay = {}
 	for p in Phase { rec.dur[p] = f32(phase_clock.acc[p]) }
 	rec.items, rec.elements = i32(items), i32(elements)
@@ -436,8 +438,8 @@ report_layout_passes :: proc(sb: ^strings.Builder) {
 		shown += 1
 		total: f32
 		for s in f.lay_steps { total += s }
-		fmt.sbprintf(sb, "  full pass at %8.1f ms: %7.2f ms = tree %.2f + layout %.2f + finish %.2f + display %.2f + bands %.2f; paragraphs ahead %d, taken %d\n",
-			f.t_ms, total, f.lay_steps[0], f.lay_steps[1], f.lay_steps[2], f.lay_steps[3], f.lay_steps[4], f.lay_pre[0], f.lay_pre[1])
+		fmt.sbprintf(sb, "  full pass at %8.1f ms: %7.2f ms = tree %.2f + layout %.2f + finish %.2f + display %.2f + bands %.2f; paragraphs ahead %d, taken %d%s\n",
+			f.t_ms, total, f.lay_steps[0], f.lay_steps[1], f.lay_steps[2], f.lay_steps[3], f.lay_steps[4], f.lay_pre[0], f.lay_pre[1], f.lay_why != "" ? fmt.tprintf(" (not incremental: %s)", f.lay_why) : "")
 	}
 }
 

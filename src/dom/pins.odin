@@ -13,15 +13,18 @@ package dom
 
 import "wb:base"
 
-// Adds `delta` to pins_below of `h` and all its host-including ancestors.
-pins_adjust :: proc(d: ^Document, h: base.Handle, delta: i64) {
+// Adds `delta` to pins_below of `h` and all its host-including ancestors. Returns the last one (`h`'s shadow-including
+// root).
+pins_adjust :: proc(d: ^Document, h: base.Handle, delta: i64) -> (root: base.Handle) {
 	for cur := h; cur != base.NIL_HANDLE; {
 		n := get(d, cur)
 		if n == nil { return }
 		n.pins_below = u32(i64(n.pins_below) + delta)
+		root = cur
 		cur = n.parent
 		if cur == base.NIL_HANDLE && n.is_shadow { cur = n.shadow }
 	}
+	return
 }
 
 pin :: proc(d: ^Document, h: base.Handle) -> bool {
@@ -38,8 +41,7 @@ unpin :: proc(d: ^Document, h: base.Handle) -> base.Handle {
 	n := get(d, h)
 	if n == nil || n.pins == 0 { return base.NIL_HANDLE }
 	n.pins -= 1
-	pins_adjust(d, h, -1)
-	root := shadow_including_root(d, h)
+	root := pins_adjust(d, h, -1)
 	if root == d.root { return base.NIL_HANDLE }
 	r := get(d, root)
 	if r == nil || r.pins_below > 0 || r.held { return base.NIL_HANDLE }

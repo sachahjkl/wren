@@ -295,6 +295,7 @@ $jsb = Join-Path $root 'examples\jsbench'
 Run 'js_anim1000' (FileUrl (Join-Path $jsb 'anim1000.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false '--pref browser.frame.target_hz=180'
 Run 'js_nodes10k' (FileUrl (Join-Path $jsb 'nodes10k.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false '--pref browser.frame.target_hz=180'
 Run 'js_qsa'      (FileUrl (Join-Path $jsb 'qsa_loop.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false '--pref browser.frame.target_hz=180'
+Run 'js_qsa_sample' (FileUrl (Join-Path $jsb 'qsa_loop.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $true '--pref browser.frame.target_hz=180'
 Run 'js_anim1000_sample' (FileUrl (Join-Path $jsb 'anim1000.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $true '--pref browser.frame.target_hz=180'
 # 1000 custom elements with shadow roots (adopted and own sheets, :host, ::slotted(), ::part(), :state()), 50 hosts'
 # state and 20 slotted texts changed each frame: the scoped cascade and its partial restyle

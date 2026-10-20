@@ -46,6 +46,7 @@ Node :: struct {
 	ns:          Namespace,  // elements
 	held:        bool,       // a detached tree its owner keeps (a template's contents): not freed when nothing pins it
 	as_document: bool,       // a Fragment that stands for a document of its own (DOMImplementation.createHTMLDocument)
+	is_shadow:   bool,       // a Fragment that is a shadow root (shadow.odin)
 	parent:      base.Handle,
 	first_child: base.Handle,
 	last_child:  base.Handle,
@@ -59,11 +60,11 @@ Node :: struct {
 	pins:        u32,      // JavaScript wrappers referring to this node (pins.odin)
 	pins_below:  u32,      // pins of this node and its whole subtree: a detached tree with none can be freed
 	// shadow trees (shadow.odin): `shadow` is an element's shadow root, or a shadow root's host; `slot` the slot a
-	// slottable (a host's child) is assigned to, at position `slot_pos` of that slot's assigned nodes
+	// slottable (a host's child) is assigned to, at position `slot_pos` of that slot's assigned nodes (the fields sit
+	// where they add the least to the node's size)
+	slot_pos:    u32,
 	shadow:      base.Handle,
 	slot:        base.Handle,
-	slot_pos:    u32,
-	is_shadow:   bool,     // a Fragment that is a shadow root
 }
 
 Document :: struct {

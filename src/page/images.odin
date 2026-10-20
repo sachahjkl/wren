@@ -729,6 +729,7 @@ images_sync :: proc(p: ^Page) {
 				el.seen = pi.pass
 			}
 			for c := n.last_child; c != base.NIL_HANDLE; c = dom.get(p.doc, c).prev { append(&stack, c) }
+			if n.kind == .Element && n.shadow != base.NIL_HANDLE { append(&stack, n.shadow) }   // shadow trees' images too
 		}
 		gone := make([dynamic]base.Handle, 0, 8, context.temp_allocator)
 		for h, el in pi.elements {

@@ -299,15 +299,12 @@ match_chain :: proc(m: ^Match_Ctx, el: base.Handle, c: ^css.Complex, idx: int, a
 			if match_chain(m, p, c, idx - 1, anchor, depth + 1) { return true }
 		}
 		return false
-	case .Next_Sibling, .Subsequent_Sibling:
-		if el == m.featureless { return false }   // the host has no siblings in the shadow tree
-	}
-	switch c.combinators[idx - 1] {
-	case .Child, .Descendant:
 	case .Next_Sibling:
+		if el == m.featureless { return false }   // the host has no siblings in the shadow tree
 		p := prev_element(m, el)
 		return p != base.NIL_HANDLE && match_chain(m, p, c, idx - 1, anchor, depth + 1)
 	case .Subsequent_Sibling:
+		if el == m.featureless { return false }
 		for p := prev_element(m, el); p != base.NIL_HANDLE; p = prev_element(m, p) {
 			if match_chain(m, p, c, idx - 1, anchor, depth + 1) { return true }
 		}
@@ -336,24 +333,27 @@ relates_to_anchor :: proc(m: ^Match_Ctx, el: base.Handle, comb: css.Combinator, 
 matches_compound :: proc(m: ^Match_Ctx, el: base.Handle, comp: css.Compound) -> bool {
 	n := node_of(m, el)
 	if n == nil || n.kind != .Element { return false }
-	if el == m.featureless {
-		// the host seen from its shadow tree: only a compound with :host / :host() / :host-context() (perhaps in :is())
-		// can match it, and none with a type, id, class or attribute selector
-		host := false
-		for s in comp.simples {
-			#partial switch s.kind {
-			case .Type, .Id, .Class, .Attribute: return false
-			case .Pseudo_Class:
-				#partial switch s.pseudo {
-				case .Host, .Host_Context: host = true
-				case .Is, .Where, .Not: if s.list != nil && list_has_host(s.list^, 0) { host = true }
-				}
-			}
-		}
-		if !host { return false }
-	}
+	if el == m.featureless && !featureless_may_match(comp) { return false }
 	for s in comp.simples { if !matches_simple(m, el, n, s) { return false } }
 	return true
+}
+
+// The host seen from its shadow tree: only a compound with :host / :host() / :host-context() (perhaps in :is()) can
+// match it, and none with a type, id, class or attribute selector. (Out of matches_compound, which stays small.)
+@(private)
+featureless_may_match :: proc(comp: css.Compound) -> bool {
+	host := false
+	for s in comp.simples {
+		#partial switch s.kind {
+		case .Type, .Id, .Class, .Attribute: return false
+		case .Pseudo_Class:
+			#partial switch s.pseudo {
+			case .Host, .Host_Context: host = true
+			case .Is, .Where, .Not: if s.list != nil && list_has_host(s.list^, 0) { host = true }
+			}
+		}
+	}
+	return host
 }
 
 // The parent element `el` is matched against by a child or descendant combinator: its parent in its tree, or, at the
