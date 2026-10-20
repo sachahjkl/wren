@@ -18,12 +18,16 @@ import (
 
 // A hand-written RFC 6455 server (the standard library has none) for the WebSocket tests.
 //
-//	/ws/echo[?frag=N]   echoes text and binary messages with the same opcode (in frames of N bytes with frag).
+//	/ws/echo[?frag=N][&closedelay=ms]
+//	                    echoes text and binary messages with the same opcode (in frames of N bytes with frag).
 //	                    Offers "chat.v2" or "chat" when the client asks for one. Sets the cookie wscookie=handshake.
+//	                    A client's close frame is answered with its code (empty with empty) and TCP ends right after;
+//	                    closedelay waits that long before answering, -1 never answers.
 //	                    Text commands instead of an echo:
 //	                      "header:<Name>"       the value of that handshake request header
 //	                      "ping:<payload>"      the server pings; once the pong is back it sends "pong:<payload>"
 //	                      "close:<code>:<why>"  the server starts the closing handshake with that code and reason
+//	                      "close-cut:<code>"    a close frame, then TCP ends without waiting for the client's
 //	                      "badutf8"             a text frame that is not UTF-8
 //	                      "big:<n>"             a text message of n bytes, in frames of 64 KiB
 //	/ws/drop            after the handshake: one text "bye", then the TCP connection is cut without a close frame
@@ -32,6 +36,7 @@ import (
 //	/ws/forbidden       answers 403 instead of 101
 //	/ws/slow-handshake  waits 3 s before answering
 //	/ws/hits            handshakes accepted so far
+//	/ws/last-close      the payload of the last close frame a client sent to /ws/echo ("empty", "<code>[:<reason>]")
 const wsGUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 const wsMaxFrame = 64 << 20
 
@@ -187,6 +192,21 @@ func wsSendMessage(bw *bufio.Writer, op byte, data []byte, frag int) error {
 	return nil
 }
 
+// The last close frame a client sent to /ws/echo: "empty", "<code>" or "<code>:<reason>", "bad:<n bytes>".
+var wsLastClose atomic.Value
+
+func closeDescription(p []byte) string {
+	switch {
+	case len(p) == 0:
+		return "empty"
+	case len(p) == 1:
+		return "bad:1"
+	case len(p) == 2:
+		return strconv.Itoa(int(binary.BigEndian.Uint16(p)))
+	}
+	return strconv.Itoa(int(binary.BigEndian.Uint16(p))) + ":" + string(p[2:])
+}
+
 func closePayload(code int, reason string) []byte {
 	b := make([]byte, 2, 2+len(reason))
 	binary.BigEndian.PutUint16(b, uint16(code))
@@ -235,6 +255,17 @@ func wsEcho(conn net.Conn, brw *bufio.ReadWriter, r *http.Request, frag int) {
 			continue
 		case opClose:
 			// echo the code (an empty close is answered with an empty close), then end the TCP connection
+			wsLastClose.Store(closeDescription(f.payload))
+			if d := r.URL.Query().Get("closedelay"); d != "" {
+				ms, _ := strconv.Atoi(d)
+				if ms < 0 {
+					// never answer: hold the connection until the client gives up (or 2 minutes)
+					conn.SetReadDeadline(time.Now().Add(2 * time.Minute))
+					io.Copy(io.Discard, br)
+					return
+				}
+				time.Sleep(time.Duration(ms) * time.Millisecond)
+			}
 			if len(f.payload) >= 2 {
 				wsWrite(bw, true, opClose, f.payload[:2])
 			} else {
@@ -279,6 +310,10 @@ func wsEcho(conn net.Conn, brw *bufio.ReadWriter, r *http.Request, frag int) {
 						return
 					}
 				}
+			case strings.HasPrefix(s, "close-cut:"):
+				code, _ := strconv.Atoi(strings.TrimPrefix(s, "close-cut:"))
+				wsWrite(bw, true, opClose, closePayload(code, ""))
+				return // TCP ends at once, without waiting for the client's answer
 			case s == "badutf8":
 				wsWrite(bw, true, opText, []byte{0xC3, 0x28, 0xFF})
 				continue
@@ -348,5 +383,9 @@ func registerWebSocketHandlers(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("/ws/hits", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%d", atomic.LoadInt64(&wsHandshakes))
+	})
+	mux.HandleFunc("/ws/last-close", func(w http.ResponseWriter, r *http.Request) {
+		s, _ := wsLastClose.Load().(string)
+		fmt.Fprint(w, s)
 	})
 }

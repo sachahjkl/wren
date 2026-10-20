@@ -118,6 +118,14 @@ try {
         $o = Get-Content build\nat.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
+    Step 'WebSocket closing handshake test (wsclosetest: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)' {
+        odin build src/tools/wsclosetest -collection:wb=src -vet -out:build/wsclosetest.exe
+        if ($LASTEXITCODE -ne 0) { return }
+        $p = Start-Process .\build\wsclosetest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\wct.txt
+        if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\wct.txt; $global:LASTEXITCODE = 1; return }
+        $o = Get-Content build\wct.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
+    }
     Step 'web platform API test (timers, rAF, abort, fetch streams, encoding, crypto, storage, URL, history)' {
         $p = Start-Process .\build\webapitest.exe -ArgumentList 'build\webapitest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\wt.txt
         if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\wt.txt; $global:LASTEXITCODE = 1; return }

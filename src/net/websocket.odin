@@ -16,7 +16,12 @@ package net
 //   * Sending: one WinHTTP send in flight per socket (the API allows no more); a message larger than `send_fragment` is
 //     sent as several frames. The bytes of a send in flight belong to the job, so aborting never frees them under WinHTTP.
 //   * Closing: the close frame goes out after the messages already queued. A close frame from the peer is answered with
-//     the same code. WinHTTP enforces the close timeout and answers pings by itself.
+//     the same code. Our close frame is sent with WinHttpWebSocketShutdown, never WinHttpWebSocketClose: Close reads
+//     the peer's close frame itself and races the receive we re-armed after the last message (when ours gets the frame,
+//     Close waits for another one until its timeout: about half of the closes issued from a message handler ended in
+//     "error" + 1006). Our one receive stays the only reader, so the peer's close frame always reaches us; the close is
+//     clean once both frames went through, and a transport end after the peer's frame (the server cutting TCP right
+//     after it) stays clean. The close timeout is our own timer. WinHTTP answers pings by itself.
 
 import "base:runtime"
 import "core:strings"
@@ -34,13 +39,14 @@ WS_ERROR_MESSAGE_TOO_BIG   :: 21
 WS_ERROR_INVALID_UTF8      :: 22
 WS_ERROR_TOO_MANY          :: 23
 WS_ERROR_PROTOCOL          :: 24   // e.g. a text fragment continuing a binary message
+WS_ERROR_CLOSE_TIMEOUT     :: 25   // the peer's close frame did not come within close_timeout_ms
 
 // Transport limits of one socket, normally the `websocket.*` preferences (see page/websocket.odin).
 Ws_Limits :: struct {
 	max_total:               int,   // sockets alive at once (all hosts); more fail at once with WS_ERROR_TOO_MANY
 	max_connecting_per_host: int,   // handshakes in progress per host:port; more wait in FIFO order
 	handshake_timeout_ms:    int,   // from the start of the handshake to the 101 response; 0 = none
-	close_timeout_ms:        int,   // WinHTTP's wait for the peer's close frame
+	close_timeout_ms:        int,   // wait for the closing handshake once our close frame is issued; 0 = none
 	keepalive_ms:            int,   // WinHTTP keep-alive interval; 0 = the OS default
 	max_message:             int,   // largest received message
 	receive_chunk:           int,   // size of one WinHTTP receive
@@ -53,7 +59,8 @@ Ws_Event_Kind :: enum u8 {
 	Message,     // one complete message (`data`, `binary`)
 	Sent,        // `sent` bytes left the send queue
 	Closing,     // the peer started the closing handshake (`code`, `reason`)
-	Closed,      // terminal: closing handshake finished (`clean`) or the close timed out
+	Closed,      // terminal: closing handshake finished (`clean`, the peer's `code`), or ended without the peer's close frame
+	             // (not clean, 1006: transport error or WS_ERROR_CLOSE_TIMEOUT in `error`)
 	Failed,      // terminal: `error` is a WinHTTP / WS_ERROR_* code
 }
 
@@ -103,7 +110,6 @@ Ws_Job :: struct {
 	recv:         []byte,
 	queued:       int,          // atomic
 	paused:       b32,          // atomic
-	closing:      b32,          // atomic: our close was issued, a cancelled receive is expected
 	terminal:     b32,          // atomic: the handshake failed already
 	high_water, low_water: int,
 	send_buf:     []byte,       // the message being sent (loop thread, or HANDLE_CLOSING once released)
@@ -134,13 +140,17 @@ Socket :: struct {
 	msg:        [dynamic]byte,
 	msg_open:   bool,
 	msg_binary: bool,
-	close_wanted, close_issued: bool,
+	close_wanted, close_issued: bool,   // issued: our close frame was handed to WinHttpWebSocketShutdown
 	close_code: u16,
 	close_len:  int,
+	close_sent: bool,           // SHUTDOWN_COMPLETE: our close frame left
+	peer_closed: bool,          // the peer's close frame was read (nothing is received after it)
+	peer_code:  u16,
+	peer_reason: string,        // heap
 }
 
 @(private)
-Raw_Kind :: enum u8 { Headers, Handshake_Failed, Fragment, Peer_Close, Write_Done, Close_Done, Error }
+Raw_Kind :: enum u8 { Headers, Handshake_Failed, Fragment, Peer_Close, Write_Done, Shutdown_Done, Error }
 
 @(private)
 Raw :: struct {
@@ -282,10 +292,6 @@ websocket_accept :: proc(c: ^Client, h: base.Handle) -> bool {
 	s.hws = hws
 	sync.atomic_store(&job.hws, uintptr(hws))
 	WinHttpSetStatusCallback(hws, ws_status_callback, WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS, 0)
-	if s.limits.close_timeout_ms > 0 {
-		v := win.DWORD(s.limits.close_timeout_ms)
-		WinHttpSetOption(hws, WINHTTP_OPTION_WEB_SOCKET_CLOSE_TIMEOUT, &v, size_of(v))
-	}
 	if s.limits.keepalive_ms > 0 {
 		v := win.DWORD(s.limits.keepalive_ms)
 		WinHttpSetOption(hws, WINHTTP_OPTION_WEB_SOCKET_KEEPALIVE_INTERVAL, &v, size_of(v))
@@ -443,6 +449,8 @@ ws_timeout :: proc(data: rawptr) {
 		ev := Ws_Event{kind = .Failed, sock = o.h, error = WS_ERROR_HANDSHAKE_TIMEOUT}
 		ws_deliver(s, &ev)
 		ws_release(o.m, o.h)
+	} else if s.close_issued {
+		ws_closed(o.m, o.h, s, WS_ERROR_CLOSE_TIMEOUT)
 	}
 }
 
@@ -497,6 +505,7 @@ ws_release :: proc(m: ^Ws_Manager, h: base.Handle) -> bool {
 	freed_slot := s.counted
 	ws_leave_connecting(m, &s)
 	delete(s.host_key, heap())
+	delete(s.peer_reason, heap())
 	for o in s.out { delete(o.data, heap()) }
 	delete(s.out)
 	delete(s.msg)
@@ -514,6 +523,20 @@ ws_deliver :: proc(s: ^Socket, ev: ^Ws_Event) {
 @(private)
 ws_fail :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket, code: u32, flags: u32 = 0) {
 	ev := Ws_Event{kind = .Failed, sock = h, error = code, secure_flags = flags}
+	ws_deliver(s, &ev)
+	ws_release(m, h)
+}
+
+// Terminal Closed. Clean as soon as the peer's close frame was read (RFC 6455 §7.1.4 / the WebSocket standard: the
+// handshake is complete once a close frame went each way, and whatever happens to the transport afterwards, such as the
+// server cutting TCP before our frame's completion was reported, no longer matters). Otherwise 1006.
+@(private)
+ws_closed :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket, error: u32) {
+	ev := Ws_Event{kind = .Closed, sock = h, code = 1006, error = error}
+	if s.peer_closed {
+		ev.code = s.peer_code == 0 ? WINHTTP_WEB_SOCKET_EMPTY_CLOSE_STATUS : s.peer_code
+		ev.reason, ev.clean, ev.error = s.peer_reason, true, 0
+	}
 	ws_deliver(s, &ev)
 	ws_release(m, h)
 }
@@ -552,18 +575,29 @@ ws_pump_send :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) {
 	}
 }
 
-// Issues the close frame once nothing is being sent (WinHTTP refuses a close while a send is pending).
+// Issues our close frame once nothing is being sent (WinHTTP refuses a shutdown while a send is pending). The receive
+// stays armed: it reads the peer's close frame. 1005 is WinHTTP's "no status": the frame goes out empty.
 @(private)
 ws_try_close :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) {
 	if s.close_issued || s.sending || s.hws == nil { return }
 	if s.close_wanted && (len(s.out) > 0 || s.has_cur) { return }
 	s.close_issued = true
-	job := s.job
-	sync.atomic_store(&job.closing, true)
-	reason: rawptr = s.close_len > 0 ? &job.close_reason[0] : nil
-	if err := WinHttpWebSocketClose(s.hws, s.close_code, reason, win.DWORD(s.close_len)); err != 0 && err != ERROR_IO_PENDING {
-		ws_push(m, Raw{kind = .Error, sock = h, error = err, op = .Close})
+	if s.limits.close_timeout_ms > 0 {
+		ws_clear_timer(m, s)
+		s.timer_data = new_clone(Ws_Owner{m, h})
+		s.timer = host.set_timer(m.client.loop, f64(s.limits.close_timeout_ms), 0, ws_timeout, s.timer_data)
 	}
+	job := s.job
+	reason: rawptr = s.close_len > 0 ? &job.close_reason[0] : nil
+	if err := WinHttpWebSocketShutdown(s.hws, s.close_code, reason, win.DWORD(s.close_len)); err != 0 && err != ERROR_IO_PENDING {
+		ws_push(m, Raw{kind = .Error, sock = h, error = err, op = .Shutdown})
+	}
+}
+
+// The closing handshake is over once our frame left and the peer's arrived.
+@(private)
+ws_close_progress :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) {
+	if s.close_sent && s.peer_closed { ws_closed(m, h, s, 0) }
 }
 
 @(private)
@@ -658,6 +692,8 @@ ws_handle :: proc(m: ^Ws_Manager, r: ^Raw) {
 	case .Peer_Close:
 		was_open := s.state == .Open
 		s.state = .Closing
+		s.peer_closed, s.peer_code = true, r.code
+		s.peer_reason, r.reason = r.reason, ""   // owned by the socket now
 		if !s.close_wanted {
 			// answer with the peer's code (an empty close frame is answered with 1000)
 			s.close_wanted = true
@@ -668,11 +704,12 @@ ws_handle :: proc(m: ^Ws_Manager, r: ^Raw) {
 		for o in s.out { delete(o.data, heap()) }
 		clear(&s.out)
 		if was_open {
-			ev := Ws_Event{kind = .Closing, sock = h, code = r.code, reason = r.reason}
+			ev := Ws_Event{kind = .Closing, sock = h, code = r.code, reason = s.peer_reason}
 			ws_deliver(s, &ev)
 			if s = base.pool_get(&m.sockets, h); s == nil { return }
 		}
 		ws_try_close(m, h, s)
+		ws_close_progress(m, h, s)
 
 	case .Write_Done:
 		s.sending = false
@@ -692,19 +729,17 @@ ws_handle :: proc(m: ^Ws_Manager, r: ^Raw) {
 		ws_pump_send(m, h, s)
 		if s.close_wanted { ws_try_close(m, h, s) }
 
-	case .Close_Done:
-		ev := Ws_Event{kind = .Closed, sock = h, code = r.code == 0 ? WINHTTP_WEB_SOCKET_EMPTY_CLOSE_STATUS : r.code, reason = r.reason, clean = true}
-		ws_deliver(s, &ev)
-		ws_release(m, h)
+	case .Shutdown_Done:
+		s.close_sent = true
+		ws_close_progress(m, h, s)
 
 	case .Error:
-		if r.op == .Close {
-			ev := Ws_Event{kind = .Closed, sock = h, code = 1006, clean = false, error = r.error}
-			ws_deliver(s, &ev)
-			ws_release(m, h)
+		// Once a close frame went either way the end is a close, not a failure: clean after the peer's frame, 1006
+		// when our close is out and the transport ends before the peer's frame.
+		if s.peer_closed || s.close_issued {
+			ws_closed(m, h, s, r.error)
 			return
 		}
-		if r.op == .Receive && s.close_issued { return }   // our close cancels the pending receive
 		ws_fail(m, h, s, r.error)
 	}
 }
@@ -716,7 +751,6 @@ ws_handle :: proc(m: ^Ws_Manager, r: ^Raw) {
 ws_receive :: proc(job: ^Ws_Job, hws: HINTERNET) -> u32 {
 	err := WinHttpWebSocketReceive(hws, raw_data(job.recv), win.DWORD(len(job.recv)), nil, nil)
 	if err == 0 || err == ERROR_IO_PENDING { return 0 }
-	if sync.atomic_load(&job.closing) { return 0 }   // our close is in progress: the receive channel is going away
 	return err
 }
 
@@ -782,11 +816,8 @@ ws_status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: w
 		if !is_ws { return }
 		ws_push_job(job, Raw{kind = .Write_Done, n = int((^Web_Socket_Status)(info).bytes_transferred)})
 
-	case WINHTTP_CALLBACK_STATUS_CLOSE_COMPLETE:
-		c, reason := ws_query_close(h)
-		ws_push_job(job, Raw{kind = .Close_Done, code = c, reason = reason})
-
 	case WINHTTP_CALLBACK_STATUS_SHUTDOWN_COMPLETE:
+		if is_ws { ws_push_job(job, Raw{kind = .Shutdown_Done}) }
 
 	case WINHTTP_CALLBACK_STATUS_REQUEST_ERROR:
 		if is_ws {

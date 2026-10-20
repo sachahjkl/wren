@@ -313,6 +313,7 @@ websocket_error_text :: proc(code, secure_flags: u32, allocator := context.temp_
 	case net.WS_ERROR_INVALID_UTF8:      return "a received WebSocket text message is not valid UTF-8"
 	case net.WS_ERROR_TOO_MANY:          return "too many WebSockets are open (websocket.max_connections_total)"
 	case net.WS_ERROR_PROTOCOL:          return "WebSocket protocol error"
+	case net.WS_ERROR_CLOSE_TIMEOUT:     return "the server did not answer the close frame within websocket.close_timeout_ms"
 	case 12152:                          return "invalid data from the WebSocket server (malformed handshake, frame or UTF-8 text)"
 	}
 	return net.error_text(code, secure_flags, allocator)

@@ -194,6 +194,9 @@ websocket_event :: proc(user: rawptr, sock: base.Handle, ev: ^fetch.Socket_Event
 	case .Closing:
 		if w.state == WS_OPEN { w.state = WS_CLOSING }
 	case .Closed:
+		if !ev.clean {
+			log(p, .Error, strings.concatenate({"WebSocket ", w.href, ": closed without the server's close frame: ", fetch.websocket_error_text(ev.net_code, 0)}, context.temp_allocator))
+		}
 		websocket_finish(w, ev.code, ev.reason, ev.clean, !ev.clean)
 	case .Failed:
 		log(p, .Error, strings.concatenate({"WebSocket ", w.href, ": ", ev.detail}, context.temp_allocator))
