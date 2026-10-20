@@ -182,9 +182,38 @@ fill_siblings :: proc(m: ^Match_Ctx, parent: base.Handle) {
 	}
 }
 
+// Positions among element siblings. A small family is counted directly (no map: matching :nth-child over a page of
+// rows used to spend more time filling and growing the maps than matching); a large one is indexed once per parent.
 @(private)
 sibling_info :: proc(m: ^Match_Ctx, h: base.Handle) -> Sib_Info {
+	SMALL :: 32
 	n := node_of(m, h)
+	if !m.filled[n.parent] {
+		info := Sib_Info{index = 1, type_index = 1, index_last = 1, type_index_last = 1}
+		steps := 0
+		for cur := n.prev; cur != base.NIL_HANDLE && steps < SMALL; steps += 1 {
+			s := node_of(m, cur)
+			if s.kind == .Element {
+				info.index += 1
+				if s.name == n.name { info.type_index += 1 }
+			}
+			cur = s.prev
+			if cur == base.NIL_HANDLE { steps = -1; break }
+		}
+		if steps < 0 || n.prev == base.NIL_HANDLE {
+			steps = 0
+			for cur := n.next; cur != base.NIL_HANDLE && steps < SMALL; steps += 1 {
+				s := node_of(m, cur)
+				if s.kind == .Element {
+					info.index_last += 1
+					if s.name == n.name { info.type_index_last += 1 }
+				}
+				cur = s.next
+				if cur == base.NIL_HANDLE { steps = -1; break }
+			}
+			if steps < 0 || n.next == base.NIL_HANDLE { return info }
+		}
+	}
 	fill_siblings(m, n.parent)
 	return m.sibs[h]
 }
@@ -334,7 +363,7 @@ matches_compound :: proc(m: ^Match_Ctx, el: base.Handle, comp: css.Compound) -> 
 	n := node_of(m, el)
 	if n == nil || n.kind != .Element { return false }
 	if el == m.featureless && !featureless_may_match(comp) { return false }
-	for s in comp.simples { if !matches_simple(m, el, n, s) { return false } }
+	for &s in comp.simples { if !matches_simple(m, el, n, s) { return false } }
 	return true
 }
 
