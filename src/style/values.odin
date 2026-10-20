@@ -180,6 +180,7 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.color_pair = Scheme_Color{s.colors[.Light][.Canvas_Text], s.colors[.Dark][.Canvas_Text]}
 	c.color = c.color_pair.light
 	c.font_size = s.default_font_size
+	c.font_size_src = {keyword = 3}   // medium
 	c.font_weight = 400
 	c.line_height = Line_Height{kind = .Normal}
 	c.text_decoration_color = c.color
@@ -262,6 +263,63 @@ ABSOLUTE_SIZES := [?]struct { name: string, factor: f32 }{
 	{"x-large", 3.0 / 2}, {"xx-large", 2}, {"xxx-large", 3},
 }
 
+// Chromium's sizes of the absolute-size keywords for the default sizes of 16 px (the default) and 13 px (the
+// monospace default), measured in Edge: not the factors of the table above (small is 13 px, not 14.2). Other defaults
+// use the factors, as Chromium does outside its tables.
+@(private)
+KEYWORD_SIZES_16 := [8]f32{9, 10, 13, 16, 18, 24, 32, 48}
+@(private)
+KEYWORD_SIZES_13 := [8]f32{9, 10, 12, 13, 16, 20, 26, 39}
+
+@(private)
+keyword_font_size :: proc(s: ^Settings, i: int, mono: bool) -> f32 {
+	medium := mono ? s.monospace_font_size : s.default_font_size
+	if medium == 16 { return KEYWORD_SIZES_16[i] }
+	if medium == 13 { return KEYWORD_SIZES_13[i] }
+	return ABSOLUTE_SIZES[i].factor * medium
+}
+
+// The family list is the generic `monospace` alone (Chromium's FontDescription::IsMonospace: `Menlo, monospace` or
+// `monospace, monospace` are not).
+is_generic_monospace :: proc(families: []string) -> bool { return len(families) == 1 && families[0] == "monospace" }
+
+// A font size relative to the parent's: em, ex, ch, a percentage.
+@(private)
+font_size_relative :: proc(vs: []css.Value) -> bool {
+	v := css.trim_values(vs)
+	if len(v) != 1 || v[0].kind != .Token { return false }
+	#partial switch v[0].tok.kind {
+	case .Percentage: return true
+	case .Dimension:
+		u := v[0].tok.text
+		return strings.equal_fold(u, "em") || strings.equal_fold(u, "ex") || strings.equal_fold(u, "ch") || strings.equal_fold(u, "cap") || strings.equal_fold(u, "ic")
+	}
+	return false
+}
+
+// After font-family: an element whose family becomes the generic monospace (or stops being it) gets the size that goes
+// with it, as in Chromium (FontBuilder::CheckForGenericFamilyChange): <code> in default text is 13 px, in text of
+// font-size: 14px it stays 14 px, in 1.2em text it is 13/16 of it, and `font-size: small` gives 12 px.
+generic_family_adjust :: proc(cx: ^Cx) {
+	c, p, s := cx.c, cx.parent, cx.settings
+	if p == nil { return }
+	mono := is_generic_monospace(c.font_family)
+	if mono == is_generic_monospace(p.font_family) { return }
+	src := c.font_size_src
+	if src.keyword >= 0 && int(src.keyword) < len(ABSOLUTE_SIZES) {
+		c.font_size = keyword_font_size(s, int(src.keyword), mono)
+	} else if !src.absolute && s.default_font_size > 0 && s.monospace_font_size > 0 {
+		k := s.monospace_font_size / s.default_font_size
+		c.font_size = mono ? c.font_size * k : c.font_size / k
+	} else {
+		return
+	}
+	c.font_size = max(c.font_size, s.minimum_font_size)
+	cx.lc.font_size = f64(c.font_size)
+	cx.lc.x_height = f64(c.font_size) * 0.5
+	cx.lc.ch = f64(c.font_size) * 0.5
+}
+
 @(private)
 parse_font_family :: proc(cx: ^Cx, input: []css.Value) -> ([]string, bool) {
 	out := make([dynamic]string, cx.alloc)
@@ -334,18 +392,26 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	switch p {
 	case .Font_Size:
 		parent_fs := cx.parent != nil ? cx.parent.font_size : s.default_font_size
+		parent_src := cx.parent != nil ? cx.parent.font_size_src : Font_Size_Src{keyword = 3}
 		size: f32
+		src := Font_Size_Src{keyword = -1, absolute = parent_src.absolute}
 		if id, ok := ident_raw(vs); ok {
 			lid := strings.to_lower(id, context.temp_allocator)
+			mono := is_generic_monospace(c.font_family)
 			switch lid {
+			// (relative, as em: no longer a keyword size, as in Chromium)
 			case "larger": size = parent_fs * 1.2
 			case "smaller": size = parent_fs / 1.2
 			case:
 				found := false
-				for a in ABSOLUTE_SIZES { if a.name == lid { size = a.factor * s.default_font_size; found = true } }
+				for a, i in ABSOLUTE_SIZES {
+					if a.name == lid { src = {keyword = i8(i)}; size = keyword_font_size(s, i, mono); found = true }
+				}
 				if !found { return false }
 			}
 		} else {
+			// em, ex, ch and percentages follow the parent (absolute or not); other units are absolute
+			src.absolute = !font_size_relative(vs) || parent_src.absolute
 			saved := cx.lc
 			cx.lc.font_size = f64(parent_fs)
 			l, ok2 := parse_length(cx, vs, {.Percent})
@@ -359,6 +425,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 			}
 		}
 		c.font_size = max(size, s.minimum_font_size)
+		c.font_size_src = src
 		cx.lc.font_size = f64(c.font_size)
 		cx.lc.x_height = f64(c.font_size) * 0.5
 		cx.lc.ch = f64(c.font_size) * 0.5

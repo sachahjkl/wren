@@ -123,7 +123,7 @@ NO_FIELD :: any{}
 prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	switch p {
 	case .Color_Scheme: return fa(&c.color_scheme), fa(&c.used_scheme)
-	case .Font_Size: return fa(&c.font_size), NO_FIELD
+	case .Font_Size: return fa(&c.font_size), fa(&c.font_size_src)
 	case .Color: return fa(&c.color), fa(&c.color_pair)
 	case .Font_Family: return fa(&c.font_family), NO_FIELD
 	case .Font_Weight: return fa(&c.font_weight), NO_FIELD

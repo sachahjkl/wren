@@ -12,7 +12,7 @@ ua_stylesheet_text :: proc(s: ^Settings, allocator := context.allocator) -> stri
 	// Colors are system colors (color_scheme.odin): each element shows those of its used color scheme, and their values
 	// are preferences. Canvas is the canvas color (Styled.canvas), not a background of the root element: a root
 	// background would stop the body's from propagating to the canvas (CSS Backgrounds 3 §2.11.2).
-	values := [?]string{fmt.tprintf("%g", s.body_margin), fmt.tprintf("%g", s.monospace_font_size)}
+	values := [?]string{fmt.tprintf("%g", s.body_margin)}
 	sb := strings.builder_make(allocator)
 	rest := UA_TEMPLATE
 	n := 0
@@ -72,7 +72,8 @@ abbr[title], acronym[title] { text-decoration: underline dotted; }
 q::before { content: open-quote; }
 q::after { content: close-quote; }
 pre, listing, xmp, plaintext { white-space: pre; }
-pre, code, kbd, samp, tt, listing, xmp, plaintext { font-family: monospace; font-size: %vpx; }
+/* (their size follows the family: font.size.monospace for text of the default size, values.odin generic_family_adjust) */
+pre, code, kbd, samp, tt, listing, xmp, plaintext { font-family: monospace; }
 nobr { white-space: nowrap; }
 br { display: inline; }
 center { text-align: -webkit-center; }

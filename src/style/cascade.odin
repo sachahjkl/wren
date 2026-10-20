@@ -532,6 +532,10 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 			break
 		}
 		if pr == .Color_Scheme || pr == .Color { scheme_settle(&cx, s.page_scheme, e.env.prefers_dark) }
+		if pr == .Font_Family {
+			generic_family_adjust(&cx)
+			cx.lc.line_height = f64(used_line_height(c, s.line_height_normal))
+		}
 		if pr == .Font_Size {
 			cx.lc.font_size = f64(c.font_size)
 			cx.lc.x_height = f64(c.font_size) * css.X_HEIGHT_EM

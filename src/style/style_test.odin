@@ -132,6 +132,40 @@ browser_defaults :: proc(t: ^testing.T) {
 	testing.expect_value(t, at(&f, "pre").font_family[0], "monospace")
 }
 
+// Font sizes of the generic monospace and of the absolute-size keywords, as Edge computes them (getComputedStyle).
+@(test)
+monospace_and_keyword_sizes :: proc(t: ^testing.T) {
+	f := load(`<code id=c1>a</code>
+<p style="font-size:14px"><code id=c2>a</code></p>
+<p style="font-size:1.2em"><code id=c3>a</code></p>
+<code id=c5 style="font-family:Consolas, monospace">a</code>
+<div style="font-size:small"><code id=c7>a</code></div>
+<code><span id=c8 style="font-family:Arial">a</span></code>
+<code id=c9 style="font-size:1em">a</code>
+<div style="font-size:large"><code id=c10>a</code></div>
+<code id=c12 style="font-family:monospace, monospace">a</code>
+<div style="font-size:20px"><pre id=c13>a</pre></div>
+<code id=c14 style="font-size:90%">a</code>
+<code><span id=c15 style="font-size:2em">a</span></code>
+<div style="font-size:small"><span style="font-size:1.5em"><code id=c16>a</code></span></div>
+<div style="font-size:calc(10px + 1em)"><code id=c17>a</code></div>
+<div style="font-size:1rem"><code id=c18>a</code></div>
+<div id=k1 style="font-size:xx-small">a</div><div id=k2 style="font-size:small">a</div><div id=k3 style="font-size:large">a</div>
+<div id=k4 style="font-size:x-large"><code id=k5>a</code></div>
+<div style="font-size:small"><span id=k6 style="font-size:larger">a</span><span id=k7 style="font-size:smaller">a</span><code id=k8 style="font-size:larger">a</code></div>
+<div style="font-size:larger"><code id=k9>a</code></div>`)
+	defer unload(&f)
+	want := [?]struct { id: string, px: f32 }{
+		{"c1", 13}, {"c2", 14}, {"c3", 15.6}, {"c5", 16}, {"c7", 12}, {"c8", 16}, {"c9", 13}, {"c10", 16}, {"c12", 16},
+		{"c13", 20}, {"c14", 11.7}, {"c15", 26}, {"c16", 15.84375}, {"c17", 26}, {"c18", 16},
+		{"k1", 9}, {"k2", 13}, {"k3", 18}, {"k4", 24}, {"k5", 20}, {"k6", 15.6}, {"k7", 13 / 1.2}, {"k8", 12.675}, {"k9", 15.6},
+	}
+	for w in want {
+		got := at(&f, w.id).font_size
+		testing.expectf(t, math.abs(got - w.px) < 0.01, "%s: %v px, want %v", w.id, got, w.px)
+	}
+}
+
 @(test)
 inheritance_and_relative_units :: proc(t: ^testing.T) {
 	f := load(`<style>
