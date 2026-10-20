@@ -105,7 +105,13 @@ inc_demo_pages :: proc(t: ^testing.T) {
 	fis, err := os.read_all_directory_by_path(dir, context.allocator)
 	if err != nil { return }   // not run from the repository root
 	defer os.file_info_slice_delete(fis, context.allocator)
-	r := rand.create(20261020)
+	// WREN_DEMOS_SEED / WREN_DEMOS_STEPS: other random sequences, longer ones (to look for divergences; the default is
+	// what the suite runs)
+	seed := u64(20261020)
+	if s := os.get_env("WREN_DEMOS_SEED", context.temp_allocator); s != "" { seed = u64(parse_int(s, 0)) }
+	steps := 60
+	if s := os.get_env("WREN_DEMOS_STEPS", context.temp_allocator); s != "" { steps = max(parse_int(s, 60), 1) }
+	r := rand.create(seed)
 	context.random_generator = rand.default_random_generator(&r)
 	pages := 0
 	// WREN_DEMOS_TRACE=<page name prefix>: each step of those pages is printed, and the document before it written to
@@ -162,7 +168,7 @@ inc_demo_pages :: proc(t: ^testing.T) {
 			"overflow:hidden;height:40px", "margin-top:-12px", "opacity:0.5", "transform:rotate(3deg)", "position:absolute;left:5px"}
 		words := [?]string{"lorem", "ipsum", "dolor", "sit", "amet", "longerwordwithoutbreaks", "x"}
 		failures := 0
-		for iter in 0 ..< 60 {
+		for iter in 0 ..< steps {
 			els := elements(d)
 			if len(els) == 0 { break }
 			h := els[rand.int_max(len(els))]
@@ -356,4 +362,28 @@ inc_decoration_color_follows_restyles :: proc(t: ^testing.T) {
 	red := false
 	for &it in d.l.items { if it.kind == .Text && it.deco != {} { red = it.deco_color.r > 0.9 && it.deco_color.b < 0.1 } }
 	testing.expect(t, red, "the underline is red")
+}
+// A grid item in fixed tracks is not laid out by the track sizing: one whose content changed is laid out when placed
+// (it kept its old layout, its text never laid out and the grid's baseline stale).
+@(test)
+inc_grid_item_in_fixed_tracks :: proc(t: ^testing.T) {
+	d := demo_load(`<div style="display:grid;grid-template-columns:60px 60px;grid-template-rows:30px 30px"><span id=s></span><span></span></div><p>after</p>`)
+	defer demo_unload(d)
+	dom.set_text_content(d.doc, dom.find_by_id(d.doc, "s"), "lorem ipsum")
+	demo_frame(d, "")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+	testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
+}
+
+// An element without a box whose style hides it (a <br> made display: none, a slot) takes away what it made in its
+// container.
+@(test)
+inc_boxless_element_hidden :: proc(t: ^testing.T) {
+	for s in ([]string{`<p>one<br id=x>two</p><p>after</p>`, `<p>a <span id=x style="display:contents"><b>bold</b></span> z</p><p>after</p>`}) {
+		d := demo_load(s)
+		defer demo_unload(d)
+		dom.set_attribute(d.doc, dom.find_by_id(d.doc, "x"), "style", "display:none")
+		demo_frame(d, "")
+		testing.expectf(t, d.l.inc.verify_failures == 0, "%s: %s", s, d.l.inc.verify_report)
+	}
 }

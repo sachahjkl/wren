@@ -187,6 +187,32 @@ live_box :: proc(l: ^Layout, h: base.Handle) -> i32 {
 	return bi
 }
 
+// Did element `h`, which has no box, make something in the current layout: inline items (a <br>, a <wbr>, the text of
+// display: contents) or the boxes of its children (display: contents, a slot)?
+@(private)
+rendered_without_box :: proc(c: ^Ctx, h: base.Handle) -> bool {
+	l := c.l
+	for ch := dom.flat_first_child(c.d, h); ch != base.NIL_HANDLE; ch = dom.flat_next(c.d, ch) {
+		if live_box(l, ch) != NONE { return true }
+	}
+	// the items of the formatting context it would be in
+	for cur := up(c, h); cur != base.NIL_HANDLE; cur = up(c, cur) {
+		bi := live_box(l, cur)
+		if bi == NONE { continue }
+		b := &l.boxes[bi]
+		root := .Ifc in b.flags ? bi : b.ifc_root
+		if root == NONE { return false }
+		r := &l.boxes[root]
+		for i in r.items[0] ..< r.items[1] {
+			it := &l.inline_items[i]
+			if it.node == h { return true }
+			if it.source != base.NIL_HANDLE { if sn := dom.get(c.d, it.source); sn != nil && sn.parent == h { return true } }
+		}
+		return false
+	}
+	return false
+}
+
 // What a change of the children of `h` (an element or the document) rebuilds: the content of the nearest box that
 // can be rebuilt, or a replaced element laid out again (its natural size may follow its content: a <select>). false:
 // only a full pass will do.
@@ -310,7 +336,12 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 		if e.level < .Layout { continue }   // a new record with the same layout values: re-pointed below
 		layout_changes += 1
 		bi := live_box(l, e.node)
-		if bi == NONE && hidden_now(&c, e.node) { continue }   // had no box, has none
+		if bi == NONE && hidden_now(&c, e.node) {
+			// has no box and none now; but what it made without a box of its own (a <br>, the content of display:
+			// contents) is its container's: made again
+			if rendered_without_box(&c, e.node) { if p := parent_of(&c, e.node); p != base.NIL_HANDLE { append(&containers, p) } }
+			continue
+		}
 		if e.level == .Layout && bi != NONE {
 			append(&styled_dirty, bi)
 			continue
