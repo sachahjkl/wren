@@ -273,6 +273,17 @@ pattern_engine :: proc(t: ^testing.T) {
 		regex_destroy(re)
 	}
 	testing.expect(t, regex_compile(`a{1000}{1000}`, 10_000) == nil, "program size is capped")
+	// zero-width bodies repeated an enormous number of times compile at once (the size cap never saw them grow)
+	zero_width := [?]struct { pat, s: string }{{`(?:(?:){16777216}){16777216}`, ""}, {`(?:a{0}){16777216}x`, "x"}, {`(?:(?:(?:){99999999}){99999999})*y`, "y"}}
+	for zw in zero_width {
+		re := regex_compile(zw.pat, 10_000)
+		testing.expect(t, re != nil, zw.pat)
+		if re != nil {
+			m, ok := regex_full_match(re, zw.s, 1_000_000)
+			testing.expect(t, ok && m, zw.pat)
+		}
+		regex_destroy(re)
+	}
 }
 
 ////////////////////////////////
@@ -608,4 +619,41 @@ records_are_collected :: proc(t: ^testing.T) {
 	dom.release(x.doc, i)
 	collect(f)
 	testing.expect_value(t, len(f.controls), 0)
+}
+
+// Tab order with a shadow host: a slotted control is in its slot's scope only (it was listed twice, and Tab looped
+// back before reaching what follows the host).
+@(test)
+tab_order_through_slots :: proc(t: ^testing.T) {
+	x := fx_make(`<input id=first><div id=host><template shadowrootmode=open><input id=inner><slot></slot></template><input id=slotted></div><input id=last>`)
+	defer fx_destroy(x)
+	order := tab_order(x.f)
+	ids := make([dynamic]string, context.temp_allocator)
+	for h in order { id, _ := dom.get_attribute(x.doc, h, "id"); append(&ids, id) }
+	testing.expectf(t, len(ids) == 4 && ids[0] == "first" && ids[1] == "inner" && ids[2] == "slotted" && ids[3] == "last", "order %v", ids[:])
+}
+// Hostile values at the edges of the value types and of multipart bodies.
+@(test)
+values_and_parts_at_the_edges :: proc(t: ^testing.T) {
+	_, ok := string_from_number(.Month, -23629)
+	testing.expect(t, !ok, "year 0 is not a month")
+	_, wok := number_from_string(.Week, "9999999999-W01")
+	testing.expect(t, !wok, "a year past 275760 is no week")
+	_, dok := number_from_string(.Datetime_Local, "292277027-01-01T00:00")
+	testing.expect(t, !dok, "nor a local date and time")
+	s := settings_default()
+	defer settings_destroy(&s)
+	s.upload_max_file = 1024
+	data := make([]byte, 16)
+	defer delete(data)
+	list := []Entry{{name = "f", is_file = true, file = {name = "a.txt", mime = "text/plain\r\nX-Injected: 1", data = data}}}
+	body, bok, _ := multipart(list, "BOUNDARY", s)
+	defer delete(body)
+	testing.expect(t, bok && !strings.contains(string(body), "X-Injected") && strings.contains(string(body), "Content-Type: application/octet-stream"), "a type with CR / LF is not written")
+	big := make([]byte, 2048)
+	defer delete(big)
+	list2 := []Entry{{name = "f", is_file = true, file = {name = "b.bin", data = big}}}
+	_, big_ok, msg := multipart(list2, "BOUNDARY", s)
+	testing.expect(t, !big_ok, "an in-memory file obeys forms.upload.max_file_bytes")
+	delete(msg)
 }

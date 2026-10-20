@@ -19,7 +19,7 @@ Thread_Pool :: struct {
 	fn:         Parallel_Proc,
 	data:       rawptr,
 	count:      int,
-	next:       int,          // atomic: next item to take
+	next:       u64,          // atomic: generation << 32 | next item to take (see pool_take)
 	remaining:  int,          // atomic: items not finished
 	done:       sync.Sema,
 }
@@ -56,21 +56,29 @@ parallel_for :: proc(p: ^Thread_Pool, count: int, fn: Parallel_Proc, data: rawpt
 	}
 	sync.mutex_lock(&p.mu)
 	p.fn, p.data, p.count = fn, data, count
-	sync.atomic_store(&p.next, 0)
-	sync.atomic_store(&p.remaining, count)
 	p.generation += 1
+	gen := p.generation
+	sync.atomic_store(&p.remaining, count)
+	sync.atomic_store(&p.next, (gen & 0xffff_ffff) << 32)
 	sync.cond_broadcast(&p.cond)
 	sync.mutex_unlock(&p.mu)
-	pool_take(p)
+	pool_take(p, gen, fn, data, count)
 	sync.sema_wait(&p.done)   // posted exactly once per round, by whoever finishes the last item (maybe us)
 }
 
+// Items are claimed with a compare-and-swap on a counter tagged with the round's generation: a helper still leaving
+// the previous round (its last claim failed, or it has not looked yet) cannot take an item of the next one with the
+// previous round's procedure, nor claim one twice by adding to a counter that was reset under it.
 @(private)
-pool_take :: proc(p: ^Thread_Pool) {
+pool_take :: proc(p: ^Thread_Pool, gen: u64, fn: Parallel_Proc, data: rawptr, count: int) {
+	tag := (gen & 0xffff_ffff) << 32
 	for {
-		i := sync.atomic_add(&p.next, 1)
-		if i >= p.count { return }
-		p.fn(p.data, i)
+		v := sync.atomic_load(&p.next)
+		if v &~ 0xffff_ffff != tag { return }   // another round now
+		i := int(v & 0xffff_ffff)
+		if i >= count { return }
+		if _, ok := sync.atomic_compare_exchange_weak(&p.next, v, v + 1); !ok { continue }
+		fn(data, i)
 		if sync.atomic_sub(&p.remaining, 1) == 1 { sync.sema_post(&p.done) }
 	}
 }
@@ -84,8 +92,9 @@ pool_thread :: proc(data: rawptr) {
 		for p.generation == seen && !p.stopping { sync.cond_wait(&p.cond, &p.mu) }
 		if p.stopping { sync.mutex_unlock(&p.mu); return }
 		seen = p.generation
+		fn, user, count := p.fn, p.data, p.count
 		sync.mutex_unlock(&p.mu)
-		pool_take(p)
+		pool_take(p, seen, fn, user, count)
 		free_all(context.temp_allocator)
 	}
 }

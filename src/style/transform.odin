@@ -31,10 +31,13 @@ matrix_apply :: proc(m: Matrix, x, y: f32) -> [2]f32 { return {m[0] * x + m[2] *
 
 matrix_invert :: proc(m: Matrix) -> (Matrix, bool) {
 	det := m[0] * m[3] - m[1] * m[2]
-	if abs(det) < 1e-12 { return IDENTITY_MATRIX, false }
+	// `!(x < y)` also takes NaN: a matrix with infinite entries (matrix(1e39, ...) in f32) has no usable inverse
+	if !(abs(det) >= 1e-12) || math.is_inf(det) { return IDENTITY_MATRIX, false }
 	inv := 1 / det
 	a, b, c, d := m[3] * inv, -m[1] * inv, -m[2] * inv, m[0] * inv
-	return Matrix{a, b, c, d, -(a * m[4] + c * m[5]), -(b * m[4] + d * m[5])}, true
+	r := Matrix{a, b, c, d, -(a * m[4] + c * m[5]), -(b * m[4] + d * m[5])}
+	for x in r { if math.is_nan(x) || math.is_inf(x) { return IDENTITY_MATRIX, false } }
+	return r, true
 }
 
 @(private)

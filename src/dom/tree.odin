@@ -117,26 +117,30 @@ compare_document_position :: proc(d: ^Document, reference, other: base.Handle) -
 }
 
 // A copy of a node (and of its subtree when `deep`): kind, names, namespace, attributes, data; not its listeners. The
-// copy is detached (owned by whoever made it).
+// copy is detached (owned by whoever made it). One walk with an explicit stack copies the subtree, the contents of
+// templates and the clonable shadow trees met on the way (nested templates or hosts made by a script must not
+// recurse on the native stack).
 clone_node :: proc(d: ^Document, h: base.Handle, deep: bool) -> base.Handle {
 	if get(d, h) == nil { return base.NIL_HANDLE }
-	root := clone_one(d, h)
-	if !deep { return root }
-	// copies of the parents being filled, in step with the walk of the original
-	Pair :: struct { src, dst: base.Handle }
-	stack := make([dynamic]Pair, context.temp_allocator)
-	append(&stack, Pair{h, root})
-	for len(stack) > 0 {
-		top := pop(&stack)
+	work := make([dynamic]Clone_Work, context.temp_allocator)
+	roots := make([dynamic]base.Handle, context.temp_allocator)   // shadow roots made: slots assigned at the end
+	root := clone_one(d, h, &work, &roots)
+	if deep { append(&work, Clone_Work{h, root}) }
+	for len(work) > 0 {
+		top := pop(&work)
 		n := get(d, top.src)
 		for c := n.first_child; c != base.NIL_HANDLE; c = get(d, c).next {
-			cc := clone_one(d, c)
+			cc := clone_one(d, c, &work, &roots)
 			raw_append(d, top.dst, cc)
-			if get(d, c).first_child != base.NIL_HANDLE { append(&stack, Pair{c, cc}) }
+			if get(d, c).first_child != base.NIL_HANDLE { append(&work, Clone_Work{c, cc}) }
 		}
 	}
-	// copied hosts got their children after their shadow roots: assign them now
-	if len(d.shadow_roots) > 0 {
+	// copied shadow roots and hosts got their children after their shadow roots: assign them now
+	for r in roots {
+		if ri := shadow_info(d, r); ri != nil { ri.slots_valid = false }
+		assign_slottables_for_tree(d, r)
+	}
+	if deep && len(d.shadow_roots) > 0 {
 		for cur := root; cur != base.NIL_HANDLE; cur = next_in_tree(d, cur, root) {
 			if s := get(d, cur).shadow; s != base.NIL_HANDLE && get(d, cur).kind == .Element { assign_slottables_for_tree(d, s) }
 		}
@@ -144,8 +148,12 @@ clone_node :: proc(d: ^Document, h: base.Handle, deep: bool) -> base.Handle {
 	return root
 }
 
+// Children of `src` to copy under `dst`.
 @(private = "file")
-clone_one :: proc(d: ^Document, h: base.Handle) -> base.Handle {
+Clone_Work :: struct { src, dst: base.Handle }
+
+@(private = "file")
+clone_one :: proc(d: ^Document, h: base.Handle, work: ^[dynamic]Clone_Work, roots: ^[dynamic]base.Handle) -> base.Handle {
 	n := get(d, h)
 	c := Node{kind = n.kind, ns = n.ns, name = heap_str(n.name), text = heap_str(n.text)}
 	if len(n.attrs) > 0 {
@@ -158,27 +166,24 @@ clone_one :: proc(d: ^Document, h: base.Handle) -> base.Handle {
 		if d.ids.on { for a in c.attrs { if a.name == "id" { ids_add(d, nh, a.value); break } } }
 		// HTML's cloning steps of <template>: its contents are copied too
 		if content, ok := d.templates[h]; ok && get(d, content) != nil && get(d, content).first_child != base.NIL_HANDLE {
-			dup := clone_node(d, content, true)
+			dup := create_fragment(d)
 			get(d, dup).held = true
 			d.templates[nh] = dup
+			append(work, Clone_Work{content, dup})
 		}
 		// DOM "clone a node": a clonable shadow root is copied with its host, whatever `deep` says
 		if src := get(d, h).shadow; src != base.NIL_HANDLE {
 			if info := shadow_info(d, src); info != nil && info.clonable {
 				init := info.init
 				if root, err := attach_shadow(d, nh, init); err == .None {
-					for c := get(d, src).first_child; c != base.NIL_HANDLE; c = get(d, c).next {
-						raw_append(d, root, clone_node(d, c, true))
-					}
-					if ri := shadow_info(d, root); ri != nil { ri.slots_valid = false }
-					assign_slottables_for_tree(d, root)
+					append(work, Clone_Work{src, root})
+					append(roots, root)
 				}
 			}
 		}
 	}
 	return nh
 }
-
 // Appends `child` (fresh, detached, unpinned) under a detached parent without journaling: building a copy that nobody
 // observes yet.
 @(private = "file")

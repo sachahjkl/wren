@@ -118,9 +118,16 @@ tab_order_scoped :: proc(f: ^Forms, visible: proc(user: rawptr, h: base.Handle) 
 @(private = "file")
 collect_tree :: proc(f: ^Forms, root: base.Handle, out: ^[dynamic]base.Handle) {
 	d := f.doc
+	// a host's light children are in the scope of the slot they are assigned to (or in none): not in the host's tree
+	// (they were met twice, and Tab looped back before reaching what follows the host)
+	if rn := dom.get(d, root); rn != nil && rn.kind == .Element && rn.shadow != base.NIL_HANDLE { return }
 	for cur := dom.next_in_tree(d, root, root); cur != base.NIL_HANDLE; {
 		n := dom.get(d, cur)
 		if n.kind == .Element { append(out, cur) }
+		if n.kind == .Element && n.shadow != base.NIL_HANDLE {
+			cur = dom.next_skipping_children(d, cur, root)
+			continue
+		}
 		// a slot's own children are its fallback: in the tree's scope only when nothing is assigned
 		if n.kind == .Element && n.ns == .HTML && n.name == "slot" && len(dom.assigned_nodes_raw(d, cur)) > 0 {
 			cur = dom.next_skipping_children(d, cur, root)

@@ -1,5 +1,6 @@
 package host
 
+import "core:container/priority_queue"
 import "core:sync"
 import "core:testing"
 import "core:thread"
@@ -179,4 +180,28 @@ timer_slice_bounds_a_turn :: proc(t: ^testing.T) {
 	for _ in 0 ..< 20 { set_timer(&l, 0, 0, slow, &c) }
 	time.sleep(time.Millisecond)
 	testing.expect_value(t, run_ready(&l), 20)
+}
+// Delays that do not fit (NaN, infinities, 1e300 ms) mean "never", not "now"; clearing long timers in a loop does not
+// pile up entries in the queue.
+@(test)
+timer_delays_saturate_and_cleared_timers_go :: proc(t: ^testing.T) {
+	l: Loop
+	loop_init(&l)
+	defer loop_destroy(&l)
+	c: Counter
+	nan := transmute(f64)u64(0x7FF8_0000_0000_0001)
+	inf := transmute(f64)u64(0x7FF0_0000_0000_0000)
+	for d in ([]f64{1e300, inf}) { set_timer(&l, d, 0, bump, &c) }
+	set_timer(&l, 0, 1e300, bump, &c)   // an interval of 1e300 ms: once now, then never
+	set_timer(&l, nan, 0, bump, &c)     // NaN: at once
+	run_ready(&l)
+	testing.expect_value(t, c.n, 2)
+	testing.expect(t, next_timeout_ms(&l) > 1_000_000, "the others are far away")
+	for _ in 0 ..< 100_000 {
+		h := set_timer(&l, 1e9, 0, bump, &c)
+		clear_timer(&l, h)
+	}
+	testing.expectf(t, priority_queue.len(l.queue) < 200, "%d queue entries", priority_queue.len(l.queue))
+	run_ready(&l)
+	testing.expect_value(t, c.n, 2)
 }

@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:math"
 import "core:strings"
 import "core:testing"
+import "wb:base"
 import "wb:css"
 import "wb:dom"
 import "wb:html"
@@ -255,6 +256,22 @@ var_expansion_is_bounded :: proc(t: ^testing.T) {
 	testing.expect(t, same_color(at(&f, "a").color, GREEN), "the document is still styled")
 }
 
+// A large custom property substituted by every element: the token trees of substitution are scratch memory of the
+// element, not part of the pass (each element kept ~100x the text: 200 elements of an 8 KB value were ~0.6 GB).
+@(test)
+var_substitution_memory_is_per_element :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, "<style>:root { --a: ")
+	for _ in 0 ..< 2_000 { strings.write_string(&sb, "a b ") }
+	strings.write_string(&sb, "; --c: green } * { color: var(--a); margin: var(--a); background-color: var(--c) }</style><body>")
+	for _ in 0 ..< 200 { strings.write_string(&sb, "<div class=d></div>") }
+	strings.write_string(&sb, "<p id=p></p></body>")
+	f := load(strings.to_string(sb))
+	defer unload(&f)
+	testing.expect(t, same_color(at(&f, "p").background_color, GREEN), "the document is styled")
+	testing.expectf(t, f.st.arena.total_used < 4 << 20, "%d bytes kept by the pass", f.st.arena.total_used)
+}
+
 @(test)
 selector_matching :: proc(t: ^testing.T) {
 	f := load(`<style>
@@ -489,6 +506,19 @@ hostile_stylesheets :: proc(t: ^testing.T) {
 	testing.expect(t, at(&f, "a") != nil)
 }
 
+// Values that overflow the arithmetic of matching or of computed values: the page is styled, nothing traps.
+@(test)
+hostile_values :: proc(t: ^testing.T) {
+	f := load(`<style>
+		li:nth-child(-n-9223372036854775807) { color: red }
+		li:nth-last-child(-9223372036854775807n-9223372036854775807) { margin-top: 1px }
+		li:nth-child(99999999999999999999n+2) { color: blue }
+	</style><ul><li id=a>1</li><li id=b>2</li><li>3</li></ul>`)
+	defer unload(&f)
+	testing.expect(t, at(&f, "a") != nil)
+	testing.expect(t, same_color(at(&f, "b").color, {0, 0, 1, 1}), "2^31 n + 2 matches the second child")
+}
+
 @(test)
 partial_restyle_matches_a_full_pass :: proc(t: ^testing.T) {
 	f := load(`<style>
@@ -545,4 +575,107 @@ partial_restyle_matches_a_full_pass :: proc(t: ^testing.T) {
 	changed, ok = restyle_state(h.eng, h.doc, h.st, State{hover = dom.find_by_id(h.doc, "a")})
 	testing.expect(t, ok && changed)
 	testing.expect(t, style_of(h.st, dom.find_by_id(h.doc, "b")) == before_b, "unrelated elements keep their computed style")
+}
+// A state that changes the root element's font size or line height (html:hover): rem and rlh everywhere follow, which a
+// partial restyle cannot scope: it refuses, the caller does a full pass.
+@(test)
+restyle_state_root_font :: proc(t: ^testing.T) {
+	f := load(`<style>html:hover { font-size: 20px } html:focus-within { line-height: 40px } p { width: 1rem; height: 1rlh }</style><p id=p tabindex=0>x</p>`)
+	defer unload(&f)
+	html := dom.find_first_by_tag(f.doc, "html")
+	for st in ([]State{{hover = html}, {focus = dom.find_by_id(f.doc, "p")}}) {
+		if _, ok := restyle_state(f.eng, f.doc, f.st, st); ok {
+			testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
+		} else {
+			restyle(&f, st)
+		}
+		testing.expect(t, at(&f, "p").width.v == (st.hover != {} ? 20 : 16), "rem follows the root")
+	}
+}
+// overflow-x: clip alone does not make a scroll container (CSS Overflow 3 §3.1: visible / clip pair up).
+@(test)
+overflow_clip_pairs :: proc(t: ^testing.T) {
+	f := load(`<div id=a style="overflow-x:clip"></div><div id=b style="overflow:clip scroll"></div><div id=c style="overflow-x:hidden"></div><div id=d style="overflow-y:clip;overflow-x:visible"></div>`)
+	defer unload(&f)
+	testing.expect(t, at(&f, "a").overflow_x == .Clip && at(&f, "a").overflow_y == .Visible)
+	testing.expect(t, at(&f, "b").overflow_x == .Hidden && at(&f, "b").overflow_y == .Scroll)
+	testing.expect(t, at(&f, "c").overflow_x == .Hidden && at(&f, "c").overflow_y == .Auto)
+	testing.expect(t, at(&f, "d").overflow_x == .Visible && at(&f, "d").overflow_y == .Clip)
+}
+// @import of a sheet's own URL is a cycle: refused when it arrives; and loads are bounded per document
+// (style.max_imports) whatever the fan-out.
+@(test)
+imports_are_bounded :: proc(t: ^testing.T) {
+	ss := settings_default()
+	ss.max_imports = 50
+	e := engine_make(ss)
+	settings_destroy(&ss)
+	defer engine_destroy(e)
+	text := `@import "self.css"; @import "self.css"; @import "self.css"; @import "self.css"; @import "self.css"; @import "other.css"; p { color: red }`
+	engine_add_sheet(e, text, base.NIL_HANDLE, "", "http://a/self.css", from_link = true)
+	loads := 0
+	for _ in 0 ..< 20 {
+		pend := engine_take_pending_imports(e)
+		if len(pend) == 0 { break }
+		for pi in pend {
+			loads += 1
+			url := pi.url == "self.css" ? "http://a/self.css" : fmt.tprintf("http://a/other%d.css", loads)
+			engine_resolve_import_by_id(e, pi.sheet_id, pi.slot, text, url)
+		}
+	}
+	testing.expectf(t, loads <= 50, "%d imports loaded", loads)
+	// the direct self-imports are refused: the sheet itself has no imported child that is itself
+	root := e.sheets[len(e.sheets) - 1]
+	for &slot in root.imports {
+		if slot.rule.url == "self.css" { testing.expect(t, slot.child == nil && slot.failed, "a self import is refused") }
+	}
+}
+// counters() on a deep tree lists the innermost style.counters.max_listed instances (each level listed every level
+// above: text quadratic in the depth); a counter list longer than style.counters.max_ops is invalid.
+@(test)
+counters_are_bounded :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, "<style>div { counter-reset: c } div::before { content: counters(c, \".\") }</style>")
+	for _ in 0 ..< 300 { strings.write_string(&sb, "<div>") }
+	strings.write_string(&sb, "<div id=deep></div>")
+	s := settings_default()
+	s.counters_max_listed = 50
+	s.counters_max_ops = 3
+	f := load(strings.to_string(sb), s)
+	defer unload(&f)
+	b := at(&f, "deep").before
+	testing.expect(t, b != nil && len(b.content.items) == 1)
+	if b != nil && len(b.content.items) == 1 { testing.expectf(t, len(b.content.items[0].text) == 50 * 2 - 1, "%d bytes", len(b.content.items[0].text)) }
+	g := load(`<style>#a { counter-reset: a b c d } #b { counter-reset: a b c }</style><p id=a></p><p id=b></p>`, s)
+	settings_destroy(&s)
+	defer unload(&g)
+	testing.expect(t, len(at(&g, "a").counter_reset) == 0 && len(at(&g, "b").counter_reset) == 3)
+}
+// Nested rules: the implicit `& ` is for the rule's own selectors, not for those inside :not() or :nth-child(of S)
+// (`&:not(:last-child)` matched the last child too); a `&` inside :is() counts as an explicit one.
+@(test)
+nesting_inside_pseudo_classes :: proc(t: ^testing.T) {
+	f := load(`<style>.x { &:not(:last-child) { color: red } &:nth-child(1 of .x) { margin-top: 3px } } .y { .z:is(&) { margin-left: 4px } }</style>
+<div><p class=x id=a>1</p><p class=x id=b>2</p></div><div class=y><p class="z" id=c>in</p></div><p class="y z" id=d>self</p>`)
+	defer unload(&f)
+	testing.expect(t, same_color(at(&f, "a").color, {1, 0, 0, 1}), "the first is not the last child")
+	testing.expect(t, !same_color(at(&f, "b").color, {1, 0, 0, 1}), "the last child is the last child")
+	testing.expectf(t, at(&f, "a").margin[.Top].v == 3 && at(&f, "b").margin[.Top].v != 3, "1 of .x: %v %v", at(&f, "a").margin[.Top], at(&f, "b").margin[.Top])
+	testing.expect(t, at(&f, "d").margin[.Left].v == 4 && at(&f, "c").margin[.Left].v == 0, ".z:is(&) is .z.y, not .y .z.y")
+}
+// Colors or fonts from pages off: the page's declarations are reverted to the browser's own (headings keep their size,
+// links their color), not dropped to the inherited value.
+@(test)
+author_colors_and_fonts_off_revert :: proc(t: ^testing.T) {
+	s := settings_default()
+	s.author_fonts = false
+	s.author_colors = false
+	f := load(`<style>h1 { font-size: 40px; color: red } p { color: red; -webkit-text-fill-color: red }</style><h1 id=h>t</h1><p id=p>x</p>`, s)
+	settings_destroy(&s)
+	defer unload(&f)
+	ref := load(`<h1 id=h>t</h1><p id=p>x</p>`)
+	defer unload(&ref)
+	testing.expectf(t, near(at(&f, "h").font_size, at(&ref, "h").font_size), "h1 %v, the browser's %v", at(&f, "h").font_size, at(&ref, "h").font_size)
+	testing.expect(t, same_color(at(&f, "h").color, at(&ref, "h").color) && same_color(at(&f, "p").color, at(&ref, "p").color), "no page colors")
+	testing.expect(t, at(&f, "p").text_fill_color == at(&ref, "p").text_fill_color, "-webkit-text-fill-color is a color too")
 }

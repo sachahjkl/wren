@@ -110,6 +110,12 @@ remove_listener :: proc(d: ^Document, target: base.Handle, id: Listener_Id) -> E
 			delete(l.type)
 			n.listeners[i].type = ""
 			n.listeners[i].removed = true
+			// tombstones go when a dispatch ends at the node; one that never sees an event (listeners added and
+			// removed in a loop) drops them here once they are half the list. A dispatch in progress reads a copy and
+			// finds its listeners again by id: compacting under it is safe.
+			dead := 0
+			for x in n.listeners { if x.removed { dead += 1 } }
+			if dead * 2 > len(n.listeners) { compact_listeners(n) }
 			return .None
 		}
 	}
@@ -261,7 +267,9 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 		defer delete(snapshot)
 		for l in n.listeners {
 			if l.removed || l.type != e.type || l.capture != capture { continue }
-			append(&snapshot, l)   // type string aliases the node's; used only inside this call before any invoke
+			snap := l
+			snap.type = ""   // the node's string: a listener may remove (and free) it; the event has the type
+			append(&snapshot, snap)
 		}
 		for l in snapshot {
 			n = get(d, node)

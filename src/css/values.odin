@@ -475,6 +475,13 @@ is_math_function :: proc(name: string) -> bool {
 // Parses calc() and the math functions: min(), max(), clamp(), abs(), sign(), round(), mod(), rem(), pow(), sqrt(),
 // hypot(), log(), exp(), sin(), cos(), tan(), asin(), acos(), atan(), atan2() (and parenthesised sums inside them).
 parse_calc :: proc(f: Value, alloc: Arena_Alloc) -> ^Calc {
+	n := parse_calc_tree(f, alloc)
+	if n != nil && !calc_depth_ok(n) { return nil }
+	return n
+}
+
+@(private)
+parse_calc_tree :: proc(f: Value, alloc: Arena_Alloc) -> ^Calc {
 	if f.kind != .Function { return nil }
 	name := lower_temp(f.tok.text)
 	args :: proc(f: Value, alloc: Arena_Alloc, lo, hi: int) -> ([]^Calc, bool) {
@@ -558,7 +565,25 @@ parse_calc :: proc(f: Value, alloc: Arena_Alloc) -> ^Calc {
 }
 
 @(private)
-CALC_MAX_DEPTH :: 64   // a syntactic bound on nesting, independent of the sheet's own limit
+CALC_MAX_DEPTH :: 64   // parentheses nested in one math function (functions inside it are bounded by the sheet's nesting limit)
+
+// Sums and products are chained left-deep, so a flat `calc(1px*1*1*...)` makes a tree as deep as it has terms, and
+// every reader of the tree (evaluation, types, serialization, in css and in style) recurses on it: deeper trees are
+// invalid (no real stylesheet comes near; 20 000 terms overflowed the stack).
+CALC_MAX_TREE_DEPTH :: 512
+
+@(private)
+calc_depth_ok :: proc(root: ^Calc) -> bool {
+	Item :: struct { n: ^Calc, d: int }
+	stack := make([dynamic]Item, 0, 32, context.temp_allocator)
+	append(&stack, Item{root, 1})
+	for len(stack) > 0 {
+		it := pop(&stack)
+		if it.d > CALC_MAX_TREE_DEPTH { return false }
+		for k in ([3]^Calc{it.n.a, it.n.b, it.n.c}) { if k != nil { append(&stack, Item{k, it.d + 1}) } }
+	}
+	return true
+}
 
 @(private)
 calc_sum :: proc(vs: []Value, alloc: Arena_Alloc, depth: int) -> ^Calc {
@@ -656,7 +681,7 @@ calc_leaf :: proc(v: Value, alloc: Arena_Alloc, depth: int) -> ^Calc {
 		if inner == nil { return nil }
 		return inner
 	case .Function:
-		inner := parse_calc(v, alloc)
+		inner := parse_calc_tree(v, alloc)
 		if inner == nil { return nil }
 		return inner
 	}
@@ -664,7 +689,12 @@ calc_leaf :: proc(v: Value, alloc: Arena_Alloc, depth: int) -> ^Calc {
 }
 
 // Evaluates to px (numbers stay numbers). `c.percent_base` is what 100% means.
-eval_calc :: proc(n: ^Calc, c: Length_Context) -> f64 {
+// Every node's result is made finite (CSS Values 4 §10.9): `calc(1e300px * 1e300)` or `infinity - infinity` reach no
+// property as an infinity or NaN.
+eval_calc :: proc(n: ^Calc, c: Length_Context) -> f64 { return finite(eval_calc_node(n, c)) }
+
+@(private)
+eval_calc_node :: proc(n: ^Calc, c: Length_Context) -> f64 {
 	if n == nil { return 0 }
 	switch n.op {
 	case .Number: return n.num
@@ -731,12 +761,13 @@ eval_calc :: proc(n: ^Calc, c: Length_Context) -> f64 {
 // beyond any real length. `border-radius: calc(infinity * 1px)` (a pill) is the common use.
 CALC_INFINITY :: 1e15
 
-// NaN becomes 0 and infinities the largest finite values, as CSS Values 4 §10.9 asks of a value that reaches a property.
+// NaN becomes 0 and infinities the largest finite values, as CSS Values 4 §10.9 asks of a value that reaches a property;
+// finite values past `infinity` saturate there too (they would overflow f32).
 @(private)
 finite :: proc(x: f64) -> f64 {
 	if math.is_nan(x) { return 0 }
-	if math.is_inf(x, 1) { return CALC_INFINITY }
-	if math.is_inf(x, -1) { return -CALC_INFINITY }
+	if x > CALC_INFINITY { return CALC_INFINITY }
+	if x < -CALC_INFINITY { return -CALC_INFINITY }
 	return x
 }
 

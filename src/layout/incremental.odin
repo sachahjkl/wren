@@ -3,7 +3,6 @@ package layout
 import "core:slice"
 import "core:time"
 import "wb:base"
-import "wb:css"
 import "wb:dom"
 import "wb:style"
 
@@ -44,7 +43,6 @@ Inc_Flags :: bit_set[Inc_Flag; u8]
 Box_Info :: struct {
 	cb, fcb:     i32,              // containing blocks of the frame the box was placed with
 	deco:        style.Decorations,
-	deco_color:  css.Color,
 	deco_box:    i32,
 	ordinal:     i32,              // list items: the number of the marker
 	natural:     [2]f32,           // replaced: natural size used (device px)
@@ -192,6 +190,32 @@ live_box :: proc(l: ^Layout, h: base.Handle) -> i32 {
 	return bi
 }
 
+// Did element `h`, which has no box, make something in the current layout: inline items (a <br>, a <wbr>, the text of
+// display: contents) or the boxes of its children (display: contents, a slot)?
+@(private)
+rendered_without_box :: proc(c: ^Ctx, h: base.Handle) -> bool {
+	l := c.l
+	for ch := dom.flat_first_child(c.d, h); ch != base.NIL_HANDLE; ch = dom.flat_next(c.d, ch) {
+		if live_box(l, ch) != NONE { return true }
+	}
+	// the items of the formatting context it would be in
+	for cur := up(c, h); cur != base.NIL_HANDLE; cur = up(c, cur) {
+		bi := live_box(l, cur)
+		if bi == NONE { continue }
+		b := &l.boxes[bi]
+		root := .Ifc in b.flags ? bi : b.ifc_root
+		if root == NONE { return false }
+		r := &l.boxes[root]
+		for i in r.items[0] ..< r.items[1] {
+			it := &l.inline_items[i]
+			if it.node == h { return true }
+			if it.source != base.NIL_HANDLE { if sn := dom.get(c.d, it.source); sn != nil && sn.parent == h { return true } }
+		}
+		return false
+	}
+	return false
+}
+
 // What a change of the children of `h` (an element or the document) rebuilds: the content of the nearest box that
 // can be rebuilt, or a replaced element laid out again (its natural size may follow its content: a <select>). false:
 // only a full pass will do.
@@ -283,8 +307,10 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 		switch e.kind {
 		case .Insert, .Remove:
 			n := dom.get(input.doc, e.node)
-			if (n != nil && n.kind != .Element) || (n == nil && live_box(l, e.node) == NONE) {
-				// text (or a node gone that had no box): their container's content
+			// text, or an element removed that had no box of its own: their container's content. Such an element may
+			// still have made inline content (a <br>, a <wbr>, the children of display: contents), which only its
+			// container's items hold; a plan would see no box before and none after, and change nothing.
+			if (n != nil && n.kind != .Element) || ((n == nil || e.kind == .Remove) && live_box(l, e.node) == NONE) {
 				append(&containers, e.parent)
 				continue
 			}
@@ -313,7 +339,12 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 		if e.level < .Layout { continue }   // a new record with the same layout values: re-pointed below
 		layout_changes += 1
 		bi := live_box(l, e.node)
-		if bi == NONE && hidden_now(&c, e.node) { continue }   // had no box, has none
+		if bi == NONE && hidden_now(&c, e.node) {
+			// has no box and none now; but what it made without a box of its own (a <br>, the content of display:
+			// contents) is its container's: made again
+			if rendered_without_box(&c, e.node) { if p := parent_of(&c, e.node); p != base.NIL_HANDLE { append(&containers, p) } }
+			continue
+		}
 		if e.level == .Layout && bi != NONE {
 			append(&styled_dirty, bi)
 			continue
@@ -590,14 +621,23 @@ remap_journaled :: proc(c: ^Ctx, changes: []style.Journal_Entry) -> bool {
 		if b.ifc_root != NONE { append(&ifcs, b.ifc_root) }
 		if .Ifc in b.flags { append(&ifcs, bi) }
 		anon_below(c, bi, &ifcs)
-		for ch := l.boxes[bi].first; ch != NONE; ch = l.boxes[ch].next {
-			k := &l.boxes[ch]
-			if .Dead in k.flags || .Pseudo not_in k.flags || k.node != h { continue }
-			nc := .Pseudo_After in k.flags ? el.after : el.before
-			if nc == nil { return false }
-			k.cs = nc
-			if .Ifc in k.flags { append(&ifcs, ch) }
-			anon_below(c, ch, &ifcs)
+		// its generated boxes: children of its box, or of the anonymous blocks wrapping its inline content (an inline
+		// ::before beside block children)
+		pseudos := make([dynamic]i32, 0, 8, context.temp_allocator)
+		append(&pseudos, bi)
+		for len(pseudos) > 0 {
+			x := pop(&pseudos)
+			for ch := l.boxes[x].first; ch != NONE; ch = l.boxes[ch].next {
+				k := &l.boxes[ch]
+				if .Dead in k.flags { continue }
+				if .Anonymous in k.flags { append(&pseudos, ch); continue }
+				if .Pseudo not_in k.flags || k.node != h { continue }
+				nc := .Pseudo_After in k.flags ? el.after : el.before
+				if nc == nil { return false }
+				k.cs = nc
+				if .Ifc in k.flags { append(&ifcs, ch) }
+				anon_below(c, ch, &ifcs)
+			}
 		}
 		for r in ifcs {
 			rb := &l.boxes[r]

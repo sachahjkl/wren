@@ -237,8 +237,7 @@ Inline_Item :: struct {
 	node:  base.Handle,             // Text: the element that owns it
 	source: base.Handle,            // Text: the DOM text node it shows (NIL: generated content, markers)
 	deco:  style.Decorations,       // Text: decorations of its ancestors up to the formatting context (CSS Text Decoration §2)
-	deco_color: css.Color,
-	deco_box: i32,                  // Text: the box the decoration color comes from (NONE: none)
+	deco_box: i32,                  // Text: the box the decoration color comes from (NONE: none; read when painted)
 }
 
 Font_Info :: struct {

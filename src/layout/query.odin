@@ -10,27 +10,36 @@ import "wb:base"
 // Bands per space: items grouped by horizontal band of their own space, so painting and hit testing visit only what is
 // near (a long scrolling list inside a box is indexed in its own coordinates).
 @(private)
+BAND_ENTRIES_PER_ITEM :: 15
+
+@(private)
 build_bands :: proc(l: ^Layout, band_h: f32) {
 	ns := len(l.spaces)
 	ymin := make([]f32, ns, context.temp_allocator)
 	ymax := make([]f32, ns, context.temp_allocator)
 	count := make([]int, ns, context.temp_allocator)
+	tall := make([]f64, ns, context.temp_allocator)   // the heights of the items added up
 	for i in 0 ..< ns { ymin[i], ymax[i] = math.F32_MAX, -math.F32_MAX }
 	for &it in l.items {
 		s := it.space
 		ymin[s] = min(ymin[s], it.rect.min.y)
 		ymax[s] = max(ymax[s], it.rect.max.y)
 		count[s] += 1
+		tall[s] += f64(max(it.rect.max.y - it.rect.min.y, 0))
 	}
 	total: i32
 	for i in 0 ..< ns {
 		sp := &l.spaces[i]
 		if count[i] == 0 { sp.band_first, sp.band_count, sp.band0 = total, 0, 0; continue }
-		nb := int((ymax[i] - ymin[i]) / band_h) + 1
+		// an item is listed in every band it crosses: about tall / bh + count entries. Bands are made taller when items
+		// are (thousands of overlapping page-high boxes listed in thousands of bands each: gigabytes, then u32 sums that
+		// wrapped): at most BAND_ENTRIES_PER_ITEM entries per item on average
+		bh := max(band_h, f32(tall[i] / f64(BAND_ENTRIES_PER_ITEM * count[i] + 4096)))
+		nb := int((ymax[i] - ymin[i]) / bh) + 1
 		nb = clamp(nb, 1, 2 * count[i] + 1)
 		sp.band0 = ymin[i]
 		sp.band_first, sp.band_count = total, i32(nb)
-		sp.band_h = max(band_h, (ymax[i] - ymin[i]) / f32(nb) + 0.001)
+		sp.band_h = max(bh, (ymax[i] - ymin[i]) / f32(nb) + 0.001)
 		total += i32(nb)
 	}
 	clear(&l.band_start)
@@ -265,8 +274,10 @@ hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
 		if sp.clip != NONE && !rect_contains(v.clips[sp.clip], p) { continue }
 		local, ok := view_to_local(l, &v, i32(i), p)
 		if !ok { continue }
-		b := int((local.y - sp.band0) / sp.band_h)
-		if local.y < sp.band0 || b >= int(sp.band_count) { continue }
+		// in f32 first: a point mapped through an extreme transform can be huge or NaN, which int() turns negative
+		fb := (local.y - sp.band0) / sp.band_h
+		if !(fb >= 0 && fb < f32(sp.band_count)) { continue }
+		b := int(fb)
 		g := int(sp.band_first) + b
 		list := l.band_items[l.band_start[g]:l.band_start[g + 1]]
 		for k := len(list) - 1; k >= 0; k -= 1 {

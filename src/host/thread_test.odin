@@ -1,5 +1,6 @@
 package host
 
+import "core:sync"
 import "core:testing"
 
 @(private = "file")
@@ -50,3 +51,37 @@ posts_from_many_threads_all_arrive :: proc(t: ^testing.T) {
 	for th in threads { thread_join(th) }
 	testing.expect_value(t, f.received, THREADS * EACH)
 }
+
+@(private = "file")
+Round :: struct { hits: []int }
+
+// Rounds back to back, with few items each: a helper leaving one round while the next starts must neither run an item
+// of the new round with the old round's procedure nor claim an item twice (every item runs exactly once per round).
+@(test)
+thread_pool_rounds_back_to_back :: proc(t: ^testing.T) {
+	pool := thread_pool_make(7)
+	defer thread_pool_destroy(pool)
+	hits := make([]int, 16)
+	defer delete(hits)
+	other := make([]int, 16)
+	defer delete(other)
+	bad := 0
+	for r in 0 ..< 20_000 {
+		n := 1 + r % 16
+		a, b := Round{hits[:n]}, Round{other[:n]}
+		which := r % 2 == 0 ? &a : &b
+		parallel_for(pool, n, r % 2 == 0 ? proc(data: rawptr, i: int) {
+			_ = sync_add((^Round)(data).hits, i)
+		} : proc(data: rawptr, i: int) {
+			_ = sync_add((^Round)(data).hits, i)
+		}, which)
+		for i in 0 ..< n {
+			if which.hits[i] != 1 { bad += 1 }
+			which.hits[i] = 0
+		}
+	}
+	testing.expect_value(t, bad, 0)
+}
+
+@(private = "file")
+sync_add :: proc(s: []int, i: int) -> int { return sync.atomic_add(&s[i], 1) }

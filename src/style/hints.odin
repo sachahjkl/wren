@@ -29,6 +29,7 @@ add_hint_entry :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node) {
 	decls := css.parse_declarations(text, p.opt, context.temp_allocator)
 	pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats)
 	if len(pre) == 0 { return }
+	own_custom_names(customs, p.alloc)
 	r := new(Rule, context.temp_allocator)
 	r^ = Rule{decls = pre, customs = customs, origin = .Author, layer = 0, order = 0, hint = true}
 	append(&p.lists[0], Entry{rule = r, complex = &hint_complex, ctx = p.own_depth})

@@ -628,6 +628,8 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 			return false
 		}
 		if !have && len(items) != 1 { return false }
+		// within 1e-6..1e6: a width divided by a subnormal ratio is infinite (and NaN further on)
+		if have { ratio = clamp(ratio, 1e-6, 1e6) }
 		c.aspect_ratio = ratio
 		c.aspect_ratio_auto = auto && have
 	case .Object_Fit: return set_enum(vs, &c.object_fit)

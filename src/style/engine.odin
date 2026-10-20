@@ -86,6 +86,7 @@ Sheet :: struct {
 	constructed: bool,                 // a constructable stylesheet (new CSSStyleSheet()): applies where it is adopted
 	version: u64,                      // constructed: bumped by every change of its text
 	disabled: bool,                    // constructed: CSSStyleSheet.disabled
+	parent:  ^Sheet,                   // an imported sheet: the sheet that imports it
 }
 
 Engine :: struct {
@@ -355,15 +356,25 @@ Pending_Import :: struct {
 // fetches it and answers with `engine_resolve_import_by_id` (or never, if the fetch fails).
 engine_take_pending_imports :: proc(e: ^Engine, allocator := context.temp_allocator) -> []Pending_Import {
 	out := make([dynamic]Pending_Import, allocator)
-	walk :: proc(e: ^Engine, s: ^Sheet, out: ^[dynamic]Pending_Import) {
+	// every import requested or loaded counts against style.max_imports (ten @import of itself, eight levels deep,
+	// asked for 10^8 loads; a sheet importing an ancestor is refused when it arrives: resolve_import)
+	count :: proc(s: ^Sheet) -> int {
+		n := 0
+		for &slot in s.imports { if slot.requested || slot.child != nil { n += 1 }; if slot.child != nil { n += count(slot.child) } }
+		return n
+	}
+	used := 0
+	for s in e.sheets { if s.origin == .Author { used += count(s) } }
+	walk :: proc(e: ^Engine, s: ^Sheet, out: ^[dynamic]Pending_Import, used: ^int) {
 		for &slot, i in s.imports {
-			if slot.child != nil { walk(e, slot.child, out); continue }
-			if slot.requested || s.depth >= e.settings.max_import_depth { continue }
+			if slot.child != nil { walk(e, slot.child, out, used); continue }
+			if slot.requested || s.depth >= e.settings.max_import_depth || used^ >= e.settings.max_imports { continue }
 			slot.requested = true
+			used^ += 1
 			append(out, Pending_Import{s.id, i, slot.rule.url, s.base_url})
 		}
 	}
-	for s in e.sheets { if s.origin == .Author { walk(e, s, &out) } }
+	for s in e.sheets { if s.origin == .Author { walk(e, s, &out, &used) } }
 	return out[:]
 }
 
@@ -397,6 +408,14 @@ resolve_import :: proc(e: ^Engine, parent: ^Sheet, slot: ^Import_Slot, sheet: ^c
 		css.stylesheet_destroy(sheet); free(sheet)
 		return false
 	}
+	// a sheet that imports itself or one of the sheets importing it: a cycle (CSS Cascade: ignored)
+	for a := parent; a != nil; a = a.parent {
+		if base_url != "" && a.base_url == base_url {
+			slot.failed = true
+			css.stylesheet_destroy(sheet); free(sheet)
+			return false
+		}
+	}
 	// imported sheets are owned by the slot, not by the engine's list
 	s := new(Sheet)
 	s.sheet = sheet
@@ -404,6 +423,7 @@ resolve_import :: proc(e: ^Engine, parent: ^Sheet, slot: ^Import_Slot, sheet: ^c
 	s.id = e.next_sheet_id
 	s.origin, s.depth = parent.origin, parent.depth + 1
 	s.scope = parent.scope
+	s.parent = parent
 	s.base_url = strings.clone(base_url)
 	s.imports = make([dynamic]Import_Slot)
 	for r in s.sheet.rules { if r.kind == .Import { append(&s.imports, Import_Slot{rule = r}) } }

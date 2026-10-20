@@ -2,6 +2,7 @@ package style
 
 import "base:runtime"
 import "core:fmt"
+import "core:mem"
 import "core:mem/virtual"
 import "core:strings"
 import "core:sync"
@@ -714,14 +715,15 @@ walk :: proc(w: ^Walker, start: []Frame) {
 		cur := base_style_of(s, f.h)
 		inh_changed, other_changed := false, false
 		if f.force || sub || bits & M_SELF != 0 {
-			if w.defer_subtrees && sub && !f.sub {
+			// (never the root element: the root font size and line height are checked below, on this thread)
+			if w.defer_subtrees && sub && !f.sub && f.parent != nil {
 				append(&w.deferred, Frame{h = f.h, parent = f.parent, bloom = f.bloom, force = true, sub = true, ctx = f.ctx})
 				continue
 			}
 			nc, changed, old := restyle_one(w, &f, n)
 			if changed {
 				if old == nil || !inherited_equal(old, nc) { inh_changed = true } else { other_changed = true }
-				if f.parent == nil && nc.font_size != s.root_font_size { w.root_font = true }
+				if f.parent == nil && (nc.font_size != s.root_font_size || used_line_height(nc, s.line_height_normal) != s.root_line_height) { w.root_font = true }
 			}
 			cur = nc
 		}
@@ -892,6 +894,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 		}
 		walk(&w, start[:])
 		run_deferred(&w, pool)
+		delete(w.deferred)
 	}
 	// nodes that left the flat tree (unassigned, hidden fallback, inserted where no slot takes them): a full pass would
 	// not style them
@@ -920,7 +923,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	if w.root_font { s.root_font_size = 0 }   // see below: the caller's full pass sets it again
 	rewalked := false
 	if m.rewalk || w.rewalk {
-		if counters_refresh(s, doc) { w.changed += 1; w.layout_changed = true }
+		if counters_refresh(s, doc, e.settings.counters_max_listed) { w.changed += 1; w.layout_changed = true }
 		rewalked = true
 	}
 	if w.motion { sync.atomic_store(&s.motion, true) }
@@ -951,7 +954,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 // Resolves counters and quotes over the whole document, as a full pass does, and replaces the records whose resolved
 // text (marker, generated content) differs. Returns whether any did.
 @(private)
-counters_refresh :: proc(s: ^Styled, doc: ^dom.Document) -> bool {
+counters_refresh :: proc(s: ^Styled, doc: ^dom.Document, max_listed: int) -> bool {
 	Saved :: struct { marker: string, items: [3][]Content_Item }
 	save :: proc(c: ^Computed) -> (sv: Saved) {
 		sv.marker = c.marker_text
@@ -1005,7 +1008,7 @@ counters_refresh :: proc(s: ^Styled, doc: ^dom.Document) -> bool {
 		s.by_node[idx] = nc
 		return true
 	}
-	counters := counter_state_make()
+	counters := counter_state_make(max_listed)
 	changed := false
 	F :: struct { h: base.Handle, hidden: bool, exit: bool }
 	stack := make([dynamic]F, context.temp_allocator)
@@ -1124,6 +1127,17 @@ verify_styles :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, allocator := c
 								what = fmt.tprintf("::after %q, expected %q", a.after.content.items[0].text, b.after.content.items[0].text)
 							}
 						case a.marker_text != b.marker_text: what = fmt.tprintf("marker %q, expected %q", a.marker_text, b.marker_text)
+						case:
+							// a field no property owns: name it from the struct's type info
+							st := runtime.type_info_base(type_info_of(Computed)).variant.(runtime.Type_Info_Struct)
+							for f, i in computed_fields {
+								pa, pb := rawptr(uintptr(a) + f.offset), rawptr(uintptr(b) + f.offset)
+								same := f.plain ? mem.compare_ptrs(pa, pb, f.size) == 0 : deep_equal(pa, pb, f.ti)
+								if same { continue }
+								what = fmt.tprintf("field %s", st.names[i])
+								if st.names[i] == "custom" { what = fmt.tprintf("custom properties %s", custom_diff(a.custom, b.custom)) }
+								break
+							}
 						}
 					}
 				}
@@ -1141,5 +1155,19 @@ verify_styles :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, allocator := c
 	}
 	if s.canvas != full.canvas { return strings.clone("the canvas color differs", allocator) }
 	if s.root_font_size != full.root_font_size { return strings.clone("the root font size differs", allocator) }
+	if s.root_line_height != full.root_line_height { return strings.clone("the root line height differs", allocator) }
 	return ""
+}
+
+// The first custom property whose value differs between `a` (found) and `b` (expected), for verify_styles.
+@(private = "file")
+custom_diff :: proc(a, b: ^Custom_Props) -> string {
+	if a == nil || b == nil { return fmt.tprintf("(a set %v, expected %v)", a != nil, b != nil) }
+	for k, v in a.values {
+		if w, ok := b.values[k]; !ok || w != v { return fmt.tprintf("%s: %q, expected %q", k, v, ok ? w : "(none)") }
+	}
+	for k, w in b.values {
+		if _, ok := a.values[k]; !ok { return fmt.tprintf("%s: missing, expected %q", k, w) }
+	}
+	return "(same values)"
 }

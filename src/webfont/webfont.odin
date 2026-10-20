@@ -99,7 +99,7 @@ decode :: proc(data: []byte, max_bytes: int, allocator := context.allocator) -> 
 		sfnt, err = unwoff2(data, max_bytes, allocator)
 		return
 	case .Collection:
-		sfnt, err = collection_face(data, 0, allocator)
+		sfnt, err = collection_face(data, 0, max_bytes, allocator)
 		return
 	case .Eot: return nil, format, .Unsupported_Eot
 	case .Unknown:
@@ -246,7 +246,7 @@ unwoff2 :: proc(data: []byte, max_bytes: int, allocator: runtime.Allocator) -> (
 	}
 	out := st.out
 	if sniff(out) == .Collection {
-		face, err := collection_face(out, 0, allocator)
+		face, err := collection_face(out, 0, max_bytes, allocator)
 		delete(out, allocator)
 		return face, err
 	}
@@ -260,8 +260,10 @@ unwoff2 :: proc(data: []byte, max_bytes: int, allocator: runtime.Allocator) -> (
 ////////////////////////////////
 // Collections
 
-// Face `index` of a TrueType Collection, as a standalone sfnt (its tables copied after a new directory).
-collection_face :: proc(ttc: []byte, index: int, allocator := context.allocator) -> ([]byte, Error) {
+// Face `index` of a TrueType Collection, as a standalone sfnt (its tables copied after a new directory), at most
+// `max_bytes` long: table records may overlap, so 4096 of them pointing at one large table would ask for 4096 times
+// the file.
+collection_face :: proc(ttc: []byte, index: int, max_bytes: int, allocator := context.allocator) -> ([]byte, Error) {
 	if len(ttc) < 12 || be32(ttc, 0) != TAG_TTCF { return nil, .Malformed }
 	n := int(be32(ttc, 8))
 	if n == 0 || n > 65536 || 12 + 4 * n > len(ttc) { return nil, .Malformed }
@@ -276,8 +278,10 @@ collection_face :: proc(ttc: []byte, index: int, allocator := context.allocator)
 		t_off, t_len := u64(be32(ttc, rec + 8)), u64(be32(ttc, rec + 12))
 		if t_off + t_len > u64(len(ttc)) { return nil, .Malformed }
 		total += align4(int(t_len))
+		if total > max_bytes { return nil, .Too_Large }
 	}
-	out := make([]byte, total, allocator)
+	out, aerr := make([]byte, total, allocator)
+	if aerr != nil { return nil, .Too_Large }
 	copy(out[:12], ttc[off:off + 12])
 	pos := 12 + 16 * count
 	for i in 0 ..< count {

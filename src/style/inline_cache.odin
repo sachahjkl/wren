@@ -49,6 +49,7 @@ inline_rule_of :: proc(p: ^Pass, text: string) -> ^Rule {
 	if !owner || p.e.settings.inline_cache_entries <= 0 {
 		decls := css.parse_declarations(text, p.opt, context.temp_allocator)
 		pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats)
+		own_custom_names(customs, p.alloc)   // (parsed in temp memory)
 		if len(pre) == 0 && len(customs) == 0 { return nil }
 		r := new(Rule, context.temp_allocator)
 		r^ = Rule{decls = pre, customs = customs, origin = .Author, layer = UNLAYERED, order = max(u32)}

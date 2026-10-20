@@ -266,6 +266,25 @@ collection_first_face :: proc(t: ^testing.T) {
 	testing.expect_value(t, e2, Error.Malformed)
 }
 
+// A face whose 4096 table records all point at one 64 KiB table would be 256 MiB unpacked: refused by the size limit
+// before anything is allocated.
+@(test)
+collection_overlapping_tables_are_bounded :: proc(t: ^testing.T) {
+	COUNT :: 4096
+	TABLE :: 64 * 1024
+	dir := 12 + 4 + 12 + 16 * COUNT
+	ttc := make([]byte, dir + TABLE, context.temp_allocator)
+	put32(ttc, 0, TAG_TTCF); put32(ttc, 4, 0x00010000); put32(ttc, 8, 1); put32(ttc, 12, 16)
+	put32(ttc, 16, 0x00010000); put16(ttc, 20, COUNT)
+	for i in 0 ..< COUNT {
+		rec := 16 + 12 + 16 * i
+		put32(ttc, rec, u32(i)); put32(ttc, rec + 8, u32(dir)); put32(ttc, rec + 12, TABLE)
+	}
+	out, _, e := decode(ttc, 1 << 22)
+	testing.expect_value(t, e, Error.Too_Large)
+	testing.expect(t, out == nil)
+}
+
 @(private = "file")
 string_concat :: proc(parts: ..string) -> string {
 	n := 0
