@@ -3,7 +3,6 @@ package layout
 import "core:slice"
 import "core:time"
 import "wb:base"
-import "wb:css"
 import "wb:dom"
 import "wb:style"
 
@@ -44,7 +43,6 @@ Inc_Flags :: bit_set[Inc_Flag; u8]
 Box_Info :: struct {
 	cb, fcb:     i32,              // containing blocks of the frame the box was placed with
 	deco:        style.Decorations,
-	deco_color:  css.Color,
 	deco_box:    i32,
 	ordinal:     i32,              // list items: the number of the marker
 	natural:     [2]f32,           // replaced: natural size used (device px)

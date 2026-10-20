@@ -111,7 +111,7 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 			case p.node != q.node || p.src != q.src: what = "node / source"
 			case p.cs != q.cs: what = "style record"
 			case !beq(&m, p.box, q.box): what = "box"
-			case p.deco != q.deco || p.deco_color != q.deco_color || !beq(&m, p.deco_box, q.deco_box): what = "decorations"
+			case p.deco != q.deco || !beq(&m, p.deco_box, q.deco_box): what = "decorations"
 			case p.kind == .Text && !font_eq(&m, p.fi, q.fi): what = "font"
 			}
 			if what != "" {

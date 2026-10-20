@@ -17,7 +17,7 @@ import "wb:style"
 note_frame :: proc(c: ^Ctx, bi: i32, g: Frame) {
 	inf := &c.l.inc.info[bi]
 	inf.cb, inf.fcb = g.cb, g.fcb
-	inf.deco, inf.deco_color, inf.deco_box = g.deco, g.deco_color, g.deco_box
+	inf.deco, inf.deco_box = g.deco, g.deco_box
 }
 
 @(private)
@@ -301,7 +301,7 @@ content_frame :: proc(c: ^Ctx, p: i32) -> Frame {
 	b := &c.l.boxes[p]
 	inf := c.l.inc.info[p]
 	g := Frame{kind = .Visit, node = b.node, parent = b.parent, mode = .Block, cb = inf.cb, fcb = inf.fcb, depth = b.depth,
-		ifc = b.ifc_root, deco = inf.deco, deco_color = inf.deco_color, deco_box = inf.deco_box}
+		ifc = b.ifc_root, deco = inf.deco, deco_box = inf.deco_box}
 	return child_frame(c, p, g, true)
 }
 
@@ -363,7 +363,7 @@ rebuild_contents :: proc(c: ^Ctx, bi: i32) {
 	if n == nil { return }
 	inf := l.inc.info[bi]
 	g := Frame{kind = .Visit, node = h, parent = b.parent, mode = .Block, cb = inf.cb, fcb = inf.fcb, depth = b.depth,
-		ifc = b.ifc_root, deco = inf.deco, deco_color = inf.deco_color, deco_box = inf.deco_box}
+		ifc = b.ifc_root, deco = inf.deco, deco_box = inf.deco_box}
 	has_block := false
 	if b.kind == .Block || b.kind == .Cell || b.kind == .Caption {
 		has_block = has_block_child(c, h, cs, b.depth)

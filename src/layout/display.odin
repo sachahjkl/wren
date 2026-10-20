@@ -103,12 +103,14 @@ emit_lines :: proc(p: ^Paint_Ctx, ri: i32, owner: i32) {
 				sb := &c.l.boxes[src]
 				base := sb.abs
 				it := Display_Item{kind = .Text, box = src, rect = Rect{base + {f.x, f.y}, base + {f.x + f.w, f.y + f.h}}, text = f.text, fi = f.fi,
-					baseline = base.y - (f.box != NONE ? 0 : 0) + f.baseline, extra = f.extra, space = sb.space, clip = sb.clip, group = sb.group, item = NONE, level = f.level}
+					baseline = base.y + f.baseline, extra = f.extra, space = sb.space, clip = sb.clip, group = sb.group, item = NONE, level = f.level}
 				if f.box == NONE { it.space, it.clip = r.content_space, r.content_clip }
 				if f.kind == .Text {
 					item := &c.l.inline_items[f.item]
 					if item.cs.visibility != .Visible { continue }
-					it.cs, it.node, it.deco, it.deco_color, it.deco_box = item.cs, item.node, item.deco, item.deco_color, item.deco_box
+					it.cs, it.node, it.deco, it.deco_box = item.cs, item.node, item.deco, item.deco_box
+					// the decorating box's current color (a paint-only restyle changes it without making the items again)
+					if item.deco_box >= 0 { it.deco_color = c.l.boxes[item.deco_box].cs.text_decoration_color }
 					it.item = f.item
 					if item.cs.pointer_events { it.flags += {.Hit} }
 				} else {
