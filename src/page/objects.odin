@@ -44,6 +44,7 @@ Microtask :: struct {
 Objects :: struct {
 	pool:        base.Pool(Object),
 	microtasks:  [dynamic]Microtask,
+	micro_head:  int,                // first microtask not run yet (taking from the front stays O(1))
 	depth:       int,                // guest calls in progress
 	draining:    bool,
 	checkpoint_posted: bool,         // host_post_checkpoint: a checkpoint task is queued
@@ -213,9 +214,12 @@ microtask_checkpoint :: proc(p: ^Page) {
 	// jobs, until neither has any left
 	custom_elements_flush(p)
 	// slotchange (js_shadow.odin) once the jobs and microtasks before it ran: they may signal more
-	for len(p.objects.microtasks) > 0 || (p.js != nil && js_checkpoint(p) && len(p.objects.microtasks) > 0) || shadow_signal_slots(p) {
+	q := &p.objects
+	// what was not run (cut at the limit, a halted realm) stays queued, at the front again
+	defer if q.micro_head > 0 && !p.closed { remove_range(&q.microtasks, 0, q.micro_head); q.micro_head = 0 }
+	for len(q.microtasks) > q.micro_head || (p.js != nil && js_checkpoint(p) && len(q.microtasks) > q.micro_head) || shadow_signal_slots(p) {
 		if realm_halted(p) { return }   // a terminated worker runs nothing more
-		if len(p.objects.microtasks) == 0 {
+		if len(q.microtasks) == q.micro_head {
 			// slotchange fired: counted as a microtask (a listener that keeps changing slots cannot loop forever)
 			ran += 1
 			if ran >= limit { host_post_checkpoint(p); break }
@@ -226,8 +230,9 @@ microtask_checkpoint :: proc(p: ^Page) {
 			host_post_checkpoint(p)
 			break
 		}
-		m := p.objects.microtasks[0]
-		ordered_remove(&p.objects.microtasks, 0)
+		m := q.microtasks[q.micro_head]
+		q.micro_head += 1
+		if q.micro_head == len(q.microtasks) { clear(&q.microtasks); q.micro_head = 0 }
 		ran += 1
 		inst := instance_by_index(p, m.instance)
 		if inst == nil { continue }
