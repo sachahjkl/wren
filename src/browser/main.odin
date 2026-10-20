@@ -1022,7 +1022,7 @@ main :: proc() {
 	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "")
 	app.page_settings = page.settings_from_prefs(&app.prefs)
 	{
-		rs := wasm.runtime_settings_from_prefs(&app.prefs, app.profile_dir)
+		rs := wasm.runtime_settings_from_prefs(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")   // nothing on disk without a kept profile
 		wasm.configure(rs)
 		wasm.runtime_settings_destroy(&rs)
 	}

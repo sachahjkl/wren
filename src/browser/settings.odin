@@ -34,7 +34,7 @@ PREFS := [?]config.Def{
 	{name = "browser.profile.autosave_interval_ms", kind = .Int, default = {i = 30_000}, bounded = true, min = 0, max = 3_600_000, unit = "ms",
 		description = "How often changed cookies, HSTS entries and preferences are written to the profile. 0 = only when the browser closes."},
 	{name = "browser.profile.persist", kind = .Bool, default = {b = true},
-		description = "Keep cookies and HSTS entries between runs. Off: they live in memory only."},
+		description = "Keep cookies, HSTS entries, site storage (localStorage) and the caches of compiled scripts and Wasm modules between runs, in the profile. Off: they live in memory only and nothing is written to the profile but the preferences."},
 	{name = "browser.layout.band_height_px", kind = .Float, default = {f = 256}, bounded = true, min = 16, max = 8192, unit = "px",
 		description = "Height of the bands that index the page for painting and hit testing. Taller bands mean fewer lists, shorter bands fewer items scanned."},
 	{name = "browser.loop.timer_slice_ms", kind = .Float, default = {f = 8}, bounded = true, min = 0, max = 1000, unit = "ms",
