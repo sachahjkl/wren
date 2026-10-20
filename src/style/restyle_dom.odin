@@ -2,6 +2,7 @@ package style
 
 import "base:runtime"
 import "core:fmt"
+import "core:mem"
 import "core:mem/virtual"
 import "core:strings"
 import "core:sync"
@@ -1124,6 +1125,17 @@ verify_styles :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, allocator := c
 								what = fmt.tprintf("::after %q, expected %q", a.after.content.items[0].text, b.after.content.items[0].text)
 							}
 						case a.marker_text != b.marker_text: what = fmt.tprintf("marker %q, expected %q", a.marker_text, b.marker_text)
+						case:
+							// a field no property owns: name it from the struct's type info
+							st := runtime.type_info_base(type_info_of(Computed)).variant.(runtime.Type_Info_Struct)
+							for f, i in computed_fields {
+								pa, pb := rawptr(uintptr(a) + f.offset), rawptr(uintptr(b) + f.offset)
+								same := f.plain ? mem.compare_ptrs(pa, pb, f.size) == 0 : deep_equal(pa, pb, f.ti)
+								if same { continue }
+								what = fmt.tprintf("field %s", st.names[i])
+								if st.names[i] == "custom" { what = fmt.tprintf("custom properties %s", custom_diff(a.custom, b.custom)) }
+								break
+							}
 						}
 					}
 				}
@@ -1142,4 +1154,17 @@ verify_styles :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, allocator := c
 	if s.canvas != full.canvas { return strings.clone("the canvas color differs", allocator) }
 	if s.root_font_size != full.root_font_size { return strings.clone("the root font size differs", allocator) }
 	return ""
+}
+
+// The first custom property whose value differs between `a` (found) and `b` (expected), for verify_styles.
+@(private = "file")
+custom_diff :: proc(a, b: ^Custom_Props) -> string {
+	if a == nil || b == nil { return fmt.tprintf("(a set %v, expected %v)", a != nil, b != nil) }
+	for k, v in a.values {
+		if w, ok := b.values[k]; !ok || w != v { return fmt.tprintf("%s: %q, expected %q", k, v, ok ? w : "(none)") }
+	}
+	for k, w in b.values {
+		if _, ok := a.values[k]; !ok { return fmt.tprintf("%s: missing, expected %q", k, w) }
+	}
+	return "(same values)"
 }

@@ -658,6 +658,13 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	}
 }
 
+// The names of custom properties declared by text parsed into the temp allocator (a style attribute, hints) become
+// keys of the element's Custom_Props, which live as long as the style pass: they are copied into the pass's memory.
+@(private)
+own_custom_names :: proc(customs: []Custom_Decl, a: runtime.Allocator) {
+	for &cd in customs { cd.name = strings.clone(cd.name, a) }
+}
+
 @(private)
 compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom, ctx: Elem_Ctx = {}) -> ^Computed {
 	collect_entries(p, h, n, ancestors, ctx)
@@ -667,6 +674,7 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 	if text, ok := attr(n, "style"); ok && p.e.settings.author_stylesheets && text != "" {
 		decls := css.parse_declarations(text, p.opt, context.temp_allocator)
 		pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats)
+		own_custom_names(customs, p.alloc)
 		if len(pre) > 0 || len(customs) > 0 {
 			inline_rule = new(Rule, context.temp_allocator)
 			inline_rule^ = Rule{decls = pre, customs = customs, origin = .Author, layer = UNLAYERED, order = max(u32)}
