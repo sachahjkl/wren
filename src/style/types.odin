@@ -155,6 +155,7 @@ Computed :: struct {
 	color:      css.Color,
 	font_family: []string,
 	font_size:  f32,
+	font_size_src: Font_Size_Src,   // where font_size came from (values.odin generic_family_adjust): part of font-size
 	font_weight: u16,
 	font_style: Font_Style,
 	line_height: Line_Height,
@@ -306,6 +307,15 @@ Computed :: struct {
 
 // Longhand properties. Order matters: values that others depend on (color-scheme for every color, font-size for em,
 // color for currentcolor) come first.
+// How a font size was given, for the size change of an element whose family becomes (or stops being) the generic
+// `monospace` (as Chromium does): an absolute-size keyword (its index in xx-small..xxx-large, -1: none) is looked up
+// again for the new family; a size from absolute units (`absolute`) stays; others scale by the ratio of the default
+// monospace size to the default size.
+Font_Size_Src :: struct {
+	keyword:  i8,
+	absolute: bool,
+}
+
 Prop :: enum u8 {
 	Color_Scheme, Font_Size, Color,
 	Font_Family, Font_Weight, Font_Style, Font_Stretch, Font_Variant_Caps, Line_Height, Letter_Spacing, Word_Spacing, Text_Align,

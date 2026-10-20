@@ -252,17 +252,25 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 
 	// flexible lengths (§9.7)
 	content_main: f32 = 0
+	main_clamped: f32 = -1   // a column of indefinite height: its used height, from its items clamped by min/max-height
 	for &ln in lines {
 		li := items[ln.first:ln.first + ln.count]
 		gaps := f32(max(ln.count - 1, 0)) * gap_main
 		sum_outer: f32 = gaps
 		for &it in li { sum_outer += it.hyp + it.m[0] + it.m[1] }
 		avail := main_avail >= 0 ? main_avail : sum_outer
+		if main_avail < 0 && !row {
+			// (§9.2 step 2 and §9.8: as Chromium, the items flex into the size min-height or max-height gives the
+			// container: `min-height: 100vh; flex-direction: column` with a `flex: 1` item fills the height)
+			bb := &c.l.boxes[bi]
+			main_clamped = clamp_h(c, bb, sum_outer + pb_h(bb), cb_h) - pb_h(bb)
+			avail = main_clamped
+		}
 		grow := sum_outer < avail
 		for &it in li {
 			it.main = it.hyp
 			it.frozen = (grow ? it.grow == 0 : it.shrink == 0) || (grow && it.base > it.hyp) || (!grow && it.base < it.hyp)
-			if main_avail < 0 { it.frozen = true }
+			if main_avail < 0 && math.abs(avail - sum_outer) < 0.01 { it.frozen = true }
 		}
 		initial_free := avail - gaps
 		for &it in li { initial_free -= (it.frozen ? it.main : it.base) + it.m[0] + it.m[1] }
@@ -301,7 +309,7 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 		for &it in li { used += it.main + it.m[0] + it.m[1] }
 		content_main = max(content_main, used)
 	}
-	main_size := main_avail >= 0 ? main_avail : content_main
+	main_size := main_avail >= 0 ? main_avail : main_clamped >= 0 ? main_clamped : content_main
 
 	// cross sizes (§9.4)
 	for &it in items {
@@ -340,29 +348,40 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 		ln.cross = max(outer, above + below)
 		ln.above = above
 	}
-	if len(lines) == 1 && cross_avail >= 0 { lines[0].cross = cross_avail }
+	if !wrap && cross_avail >= 0 { lines[0].cross = cross_avail }
+	// a row of indefinite height still has the height min-height / max-height give it (§9.4 step 8: a single-line
+	// container's line is clamped to them, then step 15: align-content shares out what the lines leave), so that
+	// `display: inline-flex; align-items: center; min-height: 32px` centers its text as in other browsers
+	cross_used := cross_avail
+	if cross_avail < 0 && row {
+		total := f32(max(len(lines) - 1, 0)) * gap_cross
+		for &ln in lines { total += ln.cross }
+		bb := &c.l.boxes[bi]
+		clamped := clamp_h(c, bb, total + pb_h(bb), cb_h) - pb_h(bb)
+		if math.abs(clamped - total) > 0.01 {
+			cross_used = clamped
+			if !wrap { lines[0].cross = clamped }
+		}
+	}
 
 	// align-content (§9.4 step 15 / CSS Align)
 	{
 		total := f32(max(len(lines) - 1, 0)) * gap_cross
 		for &ln in lines { total += ln.cross }
-		free := cross_avail >= 0 ? cross_avail - total : 0
+		free := cross_used >= 0 ? cross_used - total : 0
 		n := f32(len(lines))
 		offset, between: f32
 		ac := cs.align_content
-		if len(lines) > 1 || !wrap {
-			switch ac {
-			case .Normal, .Stretch:
-				if free > 0 && len(lines) > 1 { for &ln in lines { ln.cross += free / n } }
-			case .Start, .Flex_Start, .Auto, .Baseline:
-			case .End, .Flex_End: offset = free
-			case .Center: offset = free * 0.5
-			case .Space_Between: if free > 0 && n > 1 { between = free / (n - 1) }
-			case .Space_Around: if free > 0 { between = free / n; offset = between * 0.5 } else { offset = free * 0.5 }
-			case .Space_Evenly: if free > 0 { between = free / (n + 1); offset = between } else { offset = free * 0.5 }
-			}
-		} else if free > 0 && (ac == .Normal || ac == .Stretch) {
-			for &ln in lines { ln.cross += free }
+		// (a multi-line container with one line aligns it too; a single-line one has no free space: its line fills it)
+		switch ac {
+		case .Normal, .Stretch:
+			if free > 0 { for &ln in lines { ln.cross += free / n } }
+		case .Start, .Flex_Start, .Auto, .Baseline:
+		case .End, .Flex_End: offset = free
+		case .Center: offset = free * 0.5
+		case .Space_Between: if free > 0 && n > 1 { between = free / (n - 1) }
+		case .Space_Around: if free > 0 { between = free / n; offset = between * 0.5 } else { offset = free * 0.5 }
+		case .Space_Evenly: if free > 0 { between = free / (n + 1); offset = between } else { offset = free * 0.5 }
 		}
 		p := offset
 		for &ln in lines {
@@ -372,7 +391,7 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 	}
 	cross_size: f32
 	for &ln in lines { cross_size = max(cross_size, ln.pos + ln.cross) }
-	if cross_avail >= 0 { cross_size = cross_avail }
+	if cross_used >= 0 { cross_size = cross_used }
 
 	// stretch, then positions in each line
 	for &ln in lines {

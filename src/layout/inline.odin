@@ -1,7 +1,9 @@
 package layout
 
 import "core:math"
+import "core:strings"
 import "core:unicode/utf8"
+import "wb:dom"
 import "wb:style"
 
 // Inline formatting (CSS 2.1 §9.4.2, §10.8; CSS Text 3: white space processing, line breaking, alignment, justification,
@@ -231,6 +233,7 @@ Line_Builder :: struct {
 	pen:      f32,           // from `left`
 	empty:    bool,          // nothing placed on the line yet
 	content:  bool,          // the line is not a phantom line
+	at_break: bool,          // the line being finished ends with a <br> (text, for the line height quirk)
 	can_break: bool,         // a wrap opportunity precedes the next unit
 	spaces:   i32,
 	trail_w:  f32,
@@ -461,16 +464,62 @@ split_unit :: proc(lb: ^Line_Builder) {
 	}
 }
 
+// The half-leading above and below the content area of a font (CSS Inline 3 §4.4: line-height minus ascent + descent,
+// shared). With round_metrics the top half is floored to whole device pixels and the bottom takes the rest, as Blink
+// does (CalculateLeadingSpace): a 32 px line around 31 px of text has 0 above and 1 below.
+@(private)
+half_leading :: #force_inline proc(c: ^Ctx, f: ^Font_Info) -> (top, bottom: f32) {
+	l := f.line_h - (f.ascent + f.descent)
+	top = c.set.round_metrics ? math.floor(l * 0.5) : l * 0.5
+	return top, l - top
+}
+
+// A text fragment of line-height: normal also makes room for the faces its text falls back to (CSS Inline 3 §4.2:
+// "normal" uses the metrics of all the fonts used; Blink's InlineBoxState::AccumulateUsedFonts): each face's ascent
+// and descent with the half-leading of its own normal line height, around the fragment's baseline `shift`. An emoji
+// in Arial text: Segoe UI Emoji's taller ascent raises the line. Whether an item falls back at all is found once per
+// font (ASCII text is taken as covered by the first face).
+@(private)
+used_fonts_extent :: proc(c: ^Ctx, f: ^Frag, fi: ^Font_Info, shift: f32, top, bot: ^f32) {
+	if c.text.fallback_metrics == nil || f.item < 0 { return }
+	it := &c.l.inline_items[f.item]
+	buf: [8]Font_Metrics
+	if it.fb == .Unknown || it.fb_font != fi.font {
+		it.fb, it.fb_font = .None, fi.font
+		ascii := true
+		for i in 0 ..< len(it.text) { if it.text[i] >= 0x80 { ascii = false; break } }
+		if !ascii && c.text.fallback_metrics(c.text.user, fi.font, fi.size, it.text, buf[:]) > 0 { it.fb = .Some }
+	}
+	if it.fb != .Some { return }
+	n := min(c.text.fallback_metrics(c.text.user, fi.font, fi.size, f.text, buf[:]), len(buf))
+	for m in buf[:n] {
+		a, d, lh := m.ascent, m.descent, m.line_height
+		ht: f32
+		if c.set.round_metrics {
+			a, d = math.round(a), math.round(d)
+			lh = a + d + math.round(m.line_gap)
+			ht = math.floor((lh - (a + d)) * 0.5)
+		} else {
+			if lh <= 0 { lh = a + d + m.line_gap }
+			ht = (lh - (a + d)) * 0.5
+		}
+		top^ = min(top^, shift - a - ht)
+		bot^ = max(bot^, shift + d + (lh - (a + d) - ht))
+	}
+}
+
+// Baseline shift of an inline box (positive down) from its parent's baseline `ps` (CSS 2.1 §10.8.1, as Blink's
+// ComputeAlignmentBaselineShift: middle, text-top and text-bottom align the box's leading-inclusive extent).
 @(private)
 va_inline :: proc(c: ^Ctx, va: style.Vertical_Align, ps: f32, pf, f: ^Font_Info) -> f32 {
-	hl := (f.line_h - (f.ascent + f.descent)) * 0.5
+	ht, hb := half_leading(c, f)
 	switch va.kind {
 	case .Baseline, .Top, .Bottom: return ps
-	case .Sub: return ps + c.set.sub_shift * pf.size
-	case .Super: return ps - c.set.super_shift * pf.size
-	case .Text_Top: return ps - pf.ascent + f.ascent + hl
-	case .Text_Bottom: return ps + pf.descent - f.descent - hl
-	case .Middle: return ps - pf.x_height * 0.5 - (f.descent - f.ascent) * 0.5
+	case .Sub: return ps + c.set.sub_shift * pf.size + c.set.sub_super_extra
+	case .Super: return ps - c.set.super_shift * pf.size - c.set.sub_super_extra
+	case .Text_Top: return ps - pf.ascent + f.ascent + ht
+	case .Text_Bottom: return ps + pf.descent - f.descent - hb
+	case .Middle: return ps - pf.x_height * 0.5 - ((f.descent + hb) - (f.ascent + ht)) * 0.5
 	case .Length: return ps - px_of(c, va.amount, f.line_h)
 	}
 	return ps
@@ -480,8 +529,8 @@ va_inline :: proc(c: ^Ctx, va: style.Vertical_Align, ps: f32, pf, f: ^Font_Info)
 va_atomic :: proc(c: ^Ctx, va: style.Vertical_Align, ps: f32, pf: ^Font_Info, mh, bl, own_lh: f32) -> f32 {
 	switch va.kind {
 	case .Baseline, .Top, .Bottom: return ps
-	case .Sub: return ps + c.set.sub_shift * pf.size
-	case .Super: return ps - c.set.super_shift * pf.size
+	case .Sub: return ps + c.set.sub_shift * pf.size + c.set.sub_super_extra
+	case .Super: return ps - c.set.super_shift * pf.size - c.set.sub_super_extra
 	case .Text_Top: return ps - pf.ascent + bl
 	case .Text_Bottom: return ps + pf.descent - (mh - bl)
 	case .Middle: return ps - pf.x_height * 0.5 + bl - mh * 0.5
@@ -500,8 +549,42 @@ atomic_baseline :: proc(c: ^Ctx, k: ^Box) -> f32 {
 		if k.cs.overflow_x == .Visible && k.cs.overflow_y == .Visible && k.last_baseline >= 0 { return k.margin[0] + k.last_baseline }
 	case .Flex, .Grid, .Table:
 		if k.baseline >= 0 { return k.margin[0] + k.pre_h + k.baseline }
+	case .Replaced:
+		if .Control in k.flags {
+			if bl, ok := control_baseline(c, k); ok { return k.margin[0] + bl }
+		}
 	}
 	return mh
+}
+
+// Baseline of a replaced form control from its border-box top, as Blink places it: text fields, drop-down lists and
+// input buttons have a line of their font centered in the content box (the inner editor, the button's label); check
+// boxes and radio buttons sit on their bottom border edge (the bottom margin hangs below the baseline). Others (text
+// areas, list boxes, sliders, color wells, image buttons): no baseline (the bottom margin edge).
+@(private)
+control_baseline :: proc(c: ^Ctx, k: ^Box) -> (f32, bool) {
+	n := dom.get(c.d, k.node)
+	if n == nil || k.fi < 0 { return 0, false }
+	switch n.name {
+	case "input":
+		t, _ := dom.get_attribute(c.d, k.node, "type")
+		t = strings.trim_space(t)
+		switch {
+		case strings.equal_fold(t, "checkbox"), strings.equal_fold(t, "radio"):
+			return k.size.y, true
+		case strings.equal_fold(t, "range"), strings.equal_fold(t, "color"), strings.equal_fold(t, "image"), strings.equal_fold(t, "hidden"):
+			return 0, false
+		}
+	case "select":
+		if _, multi := dom.get_attribute(c.d, k.node, "multiple"); multi { return 0, false }
+		if attr_int(c, k.node, "size", 1) > 1 { return 0, false }
+	case:
+		return 0, false
+	}
+	fi := &c.l.fonts[k.fi]
+	ht, _ := half_leading(c, fi)
+	ch := k.size.y - pb_h(k)
+	return k.border[0] + k.padding[0] + (ch - fi.line_h) * 0.5 + ht + fi.ascent, true
 }
 
 @(private)
@@ -547,8 +630,19 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 
 	// vertical alignment (§10.8)
 	root := &c.l.fonts[lb.root_fi]
-	rhl := (root.line_h - (root.ascent + root.descent)) * 0.5
-	min_top, max_bot := -root.ascent - rhl, root.descent + rhl
+	rht, rhb := half_leading(c, root)
+	min_top, max_bot := -root.ascent - rht, root.descent + rhb
+	// the line height calculation quirk (Quirks Mode §3.3; Blink: the strut of an inline box only once text is
+	// placed in it): in quirks and limited-quirks modes the root inline box and inline boxes without padding, border or margin count only
+	// when text sits directly in them (their text fragments do), so an image alone in a table cell gets no strut
+	quirks := c.st != nil && c.st.line_quirk
+	if quirks && !lb.at_break {
+		root_text := false
+		for &f in lb.frags {
+			if f.kind == .Text && f.box == NONE && len(f.text) > 0 { root_text = true; break }
+		}
+		if !root_text { min_top, max_bot = math.F32_MAX, -math.F32_MAX }
+	}
 	clear(&lb.groups)
 	extend :: proc(lb: ^Line_Builder, g: i32, top, bot: f32, min_top, max_bot: ^f32) {
 		if g >= 0 {
@@ -579,16 +673,25 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 			shift := va_inline(c, va, ps, &c.l.fonts[pfi], fi)
 			ib.tmp, ib.tmp_al = shift, g
 			f.baseline = shift
-			hl := (fi.line_h - (fi.ascent + fi.descent)) * 0.5
-			extend(lb, g, shift - fi.ascent - hl, shift + fi.descent + hl, &min_top, &max_bot)
+			ht, hb := half_leading(c, fi)
+			if quirks && ib.padding[0] + ib.padding[2] + ib.border[0] + ib.border[2] == 0 &&
+			   ib.padding[1] + ib.padding[3] + ib.border[1] + ib.border[3] + ib.margin[1] + ib.margin[3] == 0 {
+				// (its own top / bottom group still needs a place)
+				if g != pg { extend(lb, g, shift, shift, &min_top, &max_bot) }
+				continue
+			}
+			extend(lb, g, shift - fi.ascent - ht, shift + fi.descent + hb, &min_top, &max_bot)
 		case .Text, .Ellipsis:
 			shift: f32 = 0
 			g := i32(-1)
 			if f.box != NONE { shift, g = c.l.boxes[f.box].tmp, c.l.boxes[f.box].tmp_al }
 			fi := &c.l.fonts[f.fi]
-			hl := (fi.line_h - (fi.ascent + fi.descent)) * 0.5
+			ht, hb := half_leading(c, fi)
 			f.baseline = shift
-			extend(lb, g, shift - fi.ascent - hl, shift + fi.descent + hl, &min_top, &max_bot)
+			if quirks && f.kind == .Text && len(f.text) == 0 { continue }
+			top, bot := shift - fi.ascent - ht, shift + fi.descent + hb
+			if f.kind == .Text && fi.lh_normal { used_fonts_extent(c, &f, fi, shift, &top, &bot) }
+			extend(lb, g, top, bot, &min_top, &max_bot)
 		case .Atomic:
 			k := &c.l.boxes[f.box]
 			ps: f32 = 0
@@ -614,6 +717,7 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 			extend(lb, g, shift - bl, shift - bl + mh, &min_top, &max_bot)
 		}
 	}
+	if min_top > max_bot { min_top, max_bot = 0, 0 }   // (quirks: nothing counted)
 	line_h := max_bot - min_top
 	base_y := -min_top
 	for &g in lb.groups {
@@ -943,7 +1047,9 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (out: []Frag, lin
 		case .Break:
 			commit_unit(&lb, false)
 			lb.content = true
+			lb.at_break = true
 			finish_line(&lb, true, false)
+			lb.at_break = false
 		case .Block:
 			commit_unit(&lb, false)
 			if !lb.empty || lb.content { finish_line(&lb, true, false) }

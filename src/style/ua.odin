@@ -12,7 +12,7 @@ ua_stylesheet_text :: proc(s: ^Settings, allocator := context.allocator) -> stri
 	// Colors are system colors (color_scheme.odin): each element shows those of its used color scheme, and their values
 	// are preferences. Canvas is the canvas color (Styled.canvas), not a background of the root element: a root
 	// background would stop the body's from propagating to the canvas (CSS Backgrounds 3 §2.11.2).
-	values := [?]string{fmt.tprintf("%g", s.body_margin), fmt.tprintf("%g", s.monospace_font_size)}
+	values := [?]string{fmt.tprintf("%g", s.body_margin)}
 	sb := strings.builder_make(allocator)
 	rest := UA_TEMPLATE
 	n := 0
@@ -72,7 +72,8 @@ abbr[title], acronym[title] { text-decoration: underline dotted; }
 q::before { content: open-quote; }
 q::after { content: close-quote; }
 pre, listing, xmp, plaintext { white-space: pre; }
-pre, code, kbd, samp, tt, listing, xmp, plaintext { font-family: monospace; font-size: %vpx; }
+/* (their size follows the family: font.size.monospace for text of the default size, values.odin generic_family_adjust) */
+pre, code, kbd, samp, tt, listing, xmp, plaintext { font-family: monospace; }
 nobr { white-space: nowrap; }
 br { display: inline; }
 center { text-align: -webkit-center; }
@@ -80,14 +81,16 @@ img, video, canvas, iframe, embed, object { display: inline-block; }
 img { overflow: clip; }
 iframe { border: 2px inset; }
 button, input, select, textarea, meter, progress { display: inline-block; }
-input, select, textarea, button { font-family: system-ui; font-size: 13.333px; text-align: start; margin: 0; }
+/* (Chromium's -webkit-small-control on Windows: 13.333px Arial; textarea and select: its 1px borders) */
+input, select, textarea, button { font-family: Arial; font-size: 13.333px; text-align: start; margin: 0; }
 /* text fields keep content-box sizing, as in other browsers (quirks mode makes them border-box: hints.odin) */
 select, button, input[type=button i], input[type=submit i], input[type=reset i], input[type=checkbox i], input[type=radio i], input[type=color i], input[type=file i] { box-sizing: border-box; }
 input, textarea, select { background-color: Field; color: FieldText; border: 2px inset light-dark(#767676, #858585); padding: 1px 2px; }
 button, input[type=button], input[type=submit], input[type=reset] { background-color: ButtonFace; color: ButtonText; border: 2px outset ButtonBorder; padding: 1px 6px; text-align: center; cursor: default; }
 input[type=checkbox], input[type=radio] { width: 13px; height: 13px; padding: 0; margin: 3px 3px 3px 4px; }
 input[type=hidden] { display: none; }
-textarea { font-family: monospace; white-space: pre-wrap; overflow: auto; }
+textarea { font-family: monospace; white-space: pre-wrap; overflow: auto; border: 1px solid light-dark(#767676, #858585); padding: 2px; }
+select { border: 1px solid light-dark(#767676, #858585); padding: 0; }
 fieldset { margin-inline: 2px; padding: 0.35em 0.75em 0.625em; border: 2px groove ThreeDFace; }
 legend { padding-inline: 2px; }
 :disabled { color: GrayText; cursor: default; }
