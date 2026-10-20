@@ -62,7 +62,7 @@ run :: proc(d: fetch.Request_Desc) -> Result {
 	r := new(Result)
 	fetch.start(&loader, {request = d, on_event = on_event, user = r, collect = true})
 	start := time.tick_now()
-	for !r.done && time.duration_seconds(time.tick_since(start)) < 15 { host.loop_wait(&loop, 10) }
+	for !r.done && time.duration_seconds(time.tick_since(start)) < 120 {   // the bound only ends a failing run host.loop_wait(&loop, 10) }
 	if !r.done { r.failed, r.detail = true, "timeout" }
 	last = r^
 	return r^

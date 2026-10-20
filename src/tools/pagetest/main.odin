@@ -36,7 +36,7 @@ profile:  fetch.Profile
 loader:   fetch.Loader
 settings: page.Settings
 
-pump_until :: proc(what: string, cond: proc() -> bool, seconds := 10.0) -> bool {
+pump_until :: proc(what: string, cond: proc() -> bool, seconds := 120.0) -> bool {   // the bound only ends a failing run
 	start := time.tick_now()
 	for !cond() {
 		if time.duration_seconds(time.tick_since(start)) > seconds { fmt.printf("  timeout waiting for %s\n", what); return false }

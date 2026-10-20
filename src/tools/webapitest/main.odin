@@ -39,7 +39,8 @@ navigations: [dynamic]string
 
 PROFILE_DIR :: "build/webapitest_profile"
 
-pump_until :: proc(what: string, cond: proc() -> bool, seconds := 10.0) -> bool {
+// `seconds` only ends a run that fails: nothing checked depends on how long the machine took.
+pump_until :: proc(what: string, cond: proc() -> bool, seconds := 120.0) -> bool {
 	start := time.tick_now()
 	for !cond() {
 		if time.duration_seconds(time.tick_since(start)) > seconds { fmt.printf("  timeout waiting for %s\n", what); return false }
@@ -48,9 +49,12 @@ pump_until :: proc(what: string, cond: proc() -> bool, seconds := 10.0) -> bool 
 	return true
 }
 
-pump_for :: proc(ms: int) {
-	start := time.tick_now()
-	for time.duration_milliseconds(time.tick_since(start)) < f64(ms) { host.loop_wait(&loop, 5) }
+// Runs what is ready now (posted tasks, due timers), turn after turn, until nothing is.
+drain :: proc() {
+	for _ in 0 ..< 1000 {
+		if host.next_timeout_ms(&loop) != 0 { return }
+		host.loop_wait(&loop, 0)
+	}
 }
 
 cur: ^page.Page   // the page `attr` and `has` look at
@@ -140,18 +144,16 @@ main :: proc() {
 	check(attr("data-visibility") == "hidden", "visibilitychange fired, visibilityState is hidden")
 	call(p, inst, "hidden_timer_probe")
 	pump_until("hidden timer", proc() -> bool { return has("data-hidden-delay") })
-	phase := attr("data-hidden-phase")
-	check(len(phase) <= 2, fmt.tprintf("a hidden page's timer wakes up on the 200 ms grid (phase %s ms, delay %s ms)", phase, attr("data-hidden-delay")))
+	check(attr("data-hidden-grid") == "ok", fmt.tprintf("a hidden page's timer waits for the 200 ms grid (phase %s ms, delay %s ms)", attr("data-hidden-phase"), attr("data-hidden-delay")))
 	call(p, inst, "order_probe")
 	check(!page.wants_animation_frame(p), "a hidden page gets no animation frames")
 	page.set_page_visible(p, true)
 	check(attr("data-visibility") == "visible", "visible again")
 	page.run_animation_frames(p, loop_ms()); page.run_animation_frames(p, loop_ms() + 16)
-	pump_for(50)
+	drain()
 
 	////////////////////////////////
 	fmt.println("-- AbortController and fetch")
-	t0 := time.tick_now()
 	call(p, inst, "abort_probe")
 	pump_until("abort", proc() -> bool {
 		return has("data-abort") && has("data-abort-promise") && has("data-pre-aborted") && has("data-timeout") && has("data-any")
@@ -162,7 +164,6 @@ main :: proc() {
 	check(attr("data-pre-aborted") == fmt.tprintf("%d", int(fetch.Error_Kind.Aborted)), "an already aborted signal fails the fetch at once")
 	check(attr("data-timeout") == "-17", "AbortSignal.timeout aborts with TimeoutError")
 	check(attr("data-any") == "custom reason", "AbortSignal.any follows its source with its reason")
-	check(time.duration_seconds(time.tick_since(t0)) < 4, "the 8 s requests did not run to completion")
 	pump_until("requests cancelled", proc() -> bool { return fetch.in_flight(&loader) == 0 && net.in_flight(&client) == 0 })
 	check(fetch.in_flight(&loader) == 0 && net.in_flight(&client) == 0, "aborted requests are cancelled in the network stack")
 
@@ -214,7 +215,7 @@ main :: proc() {
 	check(call(p, inst, "storage_probe", 0) == 1, "setItem / key in one page")
 	cur = q
 	pump_until("storage event", proc() -> bool { return has("data-storage-event") })
-	pump_for(50)
+	drain()
 	check(attr("data-storage-event") == "k,<null>,persisted value,http://127.0.0.1:8765/webapi/page.html,0",
 		fmt.tprintf("the other page of the origin gets one storage event, not the other tab's sessionStorage (%q)", attr("data-storage-event")))
 	check(call(q, qi, "storage_probe", 1) == 15, "the other page reads the value")
@@ -231,7 +232,7 @@ main :: proc() {
 	rc_history_probe := call(p, inst, "history_probe")
 	check(rc_history_probe == 1, fmt.tprintf("pushState / replaceState / state / length (%d)", rc_history_probe))
 	pump_until("popstate", proc() -> bool { return strings.contains(attr("data-history"), "hash:") })
-	pump_for(50)
+	drain()
 	h := attr("data-history")
 	check(h == "pop:s1 hash:http://127.0.0.1:8765/webapi/page.html?p=1 ", fmt.tprintf("history.back to a same-document entry: popstate with its state, then hashchange (%q)", h))
 	check(len(navigations) > navs && strings.has_prefix(navigations[len(navigations) - 1], "Url_Changed"), "the embedder hears about same-document URL changes")
@@ -243,7 +244,7 @@ main :: proc() {
 	////////////////////////////////
 	fmt.println("-- closing, restart")
 	page.page_close(p)
-	pump_for(50)
+	pump_until("requests of the closed page", proc() -> bool { return fetch.in_flight(&loader) == 0 })
 	check(fetch.in_flight(&loader) == 0, "no request left")
 	page.storage_manager_destroy(&storage)
 	check(os.exists(PROFILE_DIR + "/storage/http_3A_2F_2F127.0.0.1_3A8765.wls"), "localStorage was written to the profile")

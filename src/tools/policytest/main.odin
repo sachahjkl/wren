@@ -74,7 +74,7 @@ on_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 
 pump :: proc(r: ^Result) {
 	start := time.tick_now()
-	for !r.done && time.duration_seconds(time.tick_since(start)) < 15 { host.loop_wait(&loop, 20) }
+	for !r.done && time.duration_seconds(time.tick_since(start)) < 120 {   // the bound only ends a failing run host.loop_wait(&loop, 20) }
 }
 
 // Runs a request and waits for its end.

@@ -10,10 +10,9 @@ $slow = if ($CI) { 3 } else { 1 }
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 $failed = 0
-$flaky = 0
-# With -CI a failed step runs once more: shared runners are slow and noisy, and a few tests have timing assumptions
-# (thread scheduling order, a close handshake racing a pong). A step that passes on its second run is reported as
-# FLAKY with the output of the failed run, and counted at the end; it does not fail the build.
+# No step is ever run twice: a test checks properties (order, counts, state), never a wall-clock duration, so a slow
+# shared runner takes longer but gets the same result. Waits for something that must come have generous bounds that
+# only end a failing run.
 # A test executable that runs longer than -StepTimeoutSec is stopped, so a hung suite fails instead of blocking the run
 # (Odin's test runner can hang when several tests hit fatal assertions at once).
 function Start-Watchdog {
@@ -33,17 +32,6 @@ function Step($name, [scriptblock]$body) {
     $killed = Receive-Job $script:watchdog -ErrorAction SilentlyContinue
     if ($killed) { $out += "`n" + ($killed -join "`n"); $global:LASTEXITCODE = 1 }
     $ok = $LASTEXITCODE -eq 0 -or $out -match 'All tests were successful'
-    if (-not $ok -and $CI) {
-        $first = $out
-        $out = & $body 2>&1 | Out-String
-        $ok = $LASTEXITCODE -eq 0 -or $out -match 'All tests were successful'
-        if ($ok) {
-            $script:flaky++
-            "FLAKY {0} (failed, then passed on retry; {1} s)" -f $name, [int]((Get-Date) - $t0).TotalSeconds
-            ($first -split "`n" | Where-Object { $_ -match 'FAIL|ERROR|failure|failed' } | Select-Object -First 20) -join "`n"
-            return
-        }
-    }
     "{0} {1}{2}" -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $name, $(if ($CI) { " ($([int]((Get-Date) - $t0).TotalSeconds) s)" } else { '' })
     if (-not $ok) { $script:failed++; if ($CI) { $out } else { ($out -split "`n" | Select-Object -Last 15) -join "`n" } }
 }
@@ -99,7 +87,14 @@ Step 'DOM for JavaScript end-to-end test (jsdomtest: tree, elements, markup, sel
 Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe . }; Pop-Location }
 
 $srv = Start-Process (Join-Path $root 'build\testserver.exe') -PassThru -WindowStyle Hidden
-Start-Sleep -Seconds 1
+# ready when its three ports accept connections (not after a fixed delay: a slow runner may take longer to start it)
+$deadline = (Get-Date).AddSeconds(60)
+foreach ($port in 8765, 8766, 8767) {
+    while ((Get-Date) -lt $deadline) {
+        $c = New-Object System.Net.Sockets.TcpClient
+        try { $c.Connect('127.0.0.1', $port); break } catch { Start-Sleep -Milliseconds 100 } finally { $c.Close() }
+    }
+}
 try {
     Step 'network policy test (CORS, cookies, redirects, CSP, schemes)' {
         $p = Start-Process .\build\policytest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\pol.txt
@@ -210,7 +205,6 @@ if (-not $Quick) {
         $global:LASTEXITCODE = if ($ok -and $LASTEXITCODE -eq 0) { 0 } else { 1 }
     }
 }
-if ($CI) { "flaky steps (passed on retry): $flaky" }
 Stop-Job $script:watchdog; Remove-Job $script:watchdog -Force
 "failed steps: $failed"
 exit $failed
