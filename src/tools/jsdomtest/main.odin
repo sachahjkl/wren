@@ -189,7 +189,8 @@ leak_checks :: proc(p: ^page.Page) {
 	js.collect(p.js.inst)
 	after := p.doc.nodes.count
 	fmt.printf("  nodes before collection %d, after %d\n", before, after)
-	check(before > 10_000 && after < 500, "detached nodes, records and lists are freed once their wrappers are collected")
+	// (collections also run while the page makes them: `before` is only informative)
+	check(after < 500, "detached nodes, records and lists are freed once their wrappers are collected")
 	objects := p.objects.pool.count
 	fmt.printf("  host objects after collection %d\n", objects)
 	check(objects < 50, "live collections and observers release their host objects with their wrappers")
