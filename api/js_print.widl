@@ -1,0 +1,6 @@
+/// Printing. Wren has no printing: window.print() tells the browser (which says so, discreetly) and returns at once;
+/// it never throws (HTML's printing steps simply end when the user agent cannot print).
+partial module dom {
+  /// window.print().
+  void Window_print();
+}

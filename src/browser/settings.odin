@@ -14,6 +14,7 @@ import "wb:wasm"
 
 Settings :: struct {
 	console_max_lines: int,
+	show_console:      bool,
 	autosave_ms:       int,
 	scroll_step:       f32,
 	timer_slice_ms:    f32,
@@ -21,6 +22,7 @@ Settings :: struct {
 	key_page_fraction: f32,
 	homepage:          string,   // owned
 	ui_font_size:      f32,
+	ui_scale:          f32,      // 0 = the display's
 	ui_theme:         string,   // owned: a name of ui.NAMED_PALETTES
 	persist_profile:   bool,
 	layout_band_px:    f32,
@@ -31,6 +33,8 @@ PREFS := [?]config.Def{
 	{name = "browser.homepage", kind = .String, default = {s = "about:home"}, description = "Opened by a new tab and at start-up when no address is given. about:home is the start page, about:config the settings."},
 	{name = "browser.console.max_lines", kind = .Int, default = {i = 500}, bounded = true, min = 10, max = 100_000,
 		description = "Console lines kept per tab."},
+	{name = "browser.console.visible", kind = .Bool, default = {b = false},
+		description = "Show the console strip under the page: the last messages of the page and a field that runs JavaScript in it (Menu > View > Console)."},
 	{name = "browser.profile.autosave_interval_ms", kind = .Int, default = {i = 30_000}, bounded = true, min = 0, max = 3_600_000, unit = "ms",
 		description = "How often changed cookies, HSTS entries and preferences are written to the profile. 0 = only when the browser closes."},
 	{name = "browser.profile.persist", kind = .Bool, default = {b = true},
@@ -49,6 +53,8 @@ PREFS := [?]config.Def{
 		description = "Palette of the browser's own interface (tabs, address bar, menus, status bar). Pages keep their own colors."},
 	{name = "browser.ui.font_size", kind = .Float, default = {f = 15}, bounded = true, min = 8, max = 48, unit = "px", restart = false,
 		description = "Font size of the browser's own interface (tabs, address bar, console)."},
+	{name = "browser.ui.scale", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 4,
+		description = "Scale of the browser's interface and of pages (1 = 96 dpi, 1.5 = 150 %, 2 = 200 %). 0 follows the display's scale setting of Windows (and its changes when the window moves to another display)."},
 	{name = "browser.threads.blocking", kind = .Int, default = {i = 4}, bounded = true, min = 1, max = 256, restart = true,
 		description = "Background threads for work that must not run on the interface thread: reading files, parsing documents and stylesheets (page.threads.*)."},
 }
@@ -72,13 +78,24 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_os_settings_prefs(p)   // os_settings.odin
 	register_demos_prefs(p)   // demos.odin
 	register_local_path_prefs(p)   // local_paths.odin
+	register_tab_prefs(p)   // favicon.odin, tab_strip.odin
+	register_download_prefs(p)   // download.odin
+	register_print_prefs(p)   // print.odin
+	register_session_prefs(p)   // session.odin
 	_ = wasm.PREFS
 	_ = html.PREFS
+}
+
+// The interface's scale: browser.ui.scale, else the display's (window_chrome.odin, main.odin's build).
+ui_scale_of :: proc(app: ^App) -> f32 {
+	if app.cfg.ui_scale > 0 { return app.cfg.ui_scale }
+	return app.win != nil && app.win.dpi_scale > 0 ? app.win.dpi_scale : 1
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	return Settings{
 		console_max_lines = int(config.int_of(p, "browser.console.max_lines")),
+		show_console = config.bool_of(p, "browser.console.visible"),
 		autosave_ms = int(config.int_of(p, "browser.profile.autosave_interval_ms")),
 		scroll_step = f32(config.float_of(p, "browser.scroll.step_px")),
 		timer_slice_ms = f32(config.float_of(p, "browser.loop.timer_slice_ms")),
@@ -87,6 +104,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		homepage = strings.clone(config.string_of(p, "browser.homepage")),
 		ui_font_size = f32(config.float_of(p, "browser.ui.font_size")),
 		ui_theme = strings.clone(config.string_of(p, "browser.ui.theme")),
+		ui_scale = f32(config.float_of(p, "browser.ui.scale")),
 		persist_profile = config.bool_of(p, "browser.profile.persist"),
 		layout_band_px = f32(config.float_of(p, "browser.layout.band_height_px")),
 		blocking_threads = int(config.int_of(p, "browser.threads.blocking")),

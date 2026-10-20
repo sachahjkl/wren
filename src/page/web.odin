@@ -53,6 +53,7 @@ Embedder :: struct {
 	session:  ^Session_History,   // the tab's joint session history; nil = the page keeps a private one
 	tab_key:  string,             // sessionStorage partition (copied); stable for the tab's lifetime
 	storage:  ^Storage_Manager,   // the profile's Web Storage; nil = no Web Storage for this page
+	print:    proc(user: rawptr, p: ^Page),   // window.print() (js_print.odin); nil = nothing to tell
 }
 
 Web_State :: struct {
@@ -79,6 +80,7 @@ Web_State :: struct {
 	perf:            [dynamic]Perf_Entry,
 	perf_warned:     bool,
 	event_details:   [dynamic]Event_Detail,   // StorageEvent / PopStateEvent / HashChangeEvent fields while dispatching
+	print_posted:    bool,      // a window.print() notice is on its way to the embedder (js_print.odin)
 }
 
 // Extra fields of an event being dispatched (dom.Event has two strings; a StorageEvent needs four).

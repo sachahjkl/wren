@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 556 |
 | exposed by default | 216 |
 | members | 4991 |
-| members implemented | 2629 (52.7 %) |
+| members implemented | 2630 (52.7 %) |
 
 ## By specification
 
@@ -47,7 +47,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (3) | 19 / 126 |
 | `hr-time.idl` | 1 (1) | 13 / 17 |
-| `html.idl` | 160 (96) | 1150 / 1819 |
+| `html.idl` | 160 (96) | 1151 / 1819 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -3249,7 +3249,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Window : EventTarget
 
-181 / 220 members.
+182 / 220 members.
 
 - `readonly cookieStore`: not supported
 - `matchMedia()`: C `wjr_Window_matchMedia`
@@ -3315,7 +3315,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `alert()`: not supported
 - `confirm()`: not supported
 - `prompt()`: not supported
-- `print()`: not supported
+- `print()`: import `dom.Window_print`
 - `postMessage()`: C `wjr_Window_postMessage`
 - `postMessage()`: C `wjr_Window_postMessage`
 - `captureEvents()`: not supported
