@@ -116,6 +116,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 	start := js.Start_Options{
 		kind = kind, seed = seed, max_heap_bytes = p.settings.js.max_heap_bytes, gc_threshold = p.settings.js.gc_threshold_bytes,
 		expose_unimplemented = p.settings.js.expose_unimplemented, unimplemented_throw = p.settings.js.unimplemented_throw,
+		no_touch_handlers = kind == .Window && !p.settings.js.touch_handlers,
 	}
 	if !js.realm_start(inst, start) {
 		r.failed = true

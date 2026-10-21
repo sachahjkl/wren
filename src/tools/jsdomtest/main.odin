@@ -173,6 +173,8 @@ main :: proc() {
 		delete(src)
 	}
 
+	if len(os.args) <= 1 { touch_checks(process) }
+
 	if len(benches) > 0 {
 		fmt.println("-- micro-benchmarks (ns per operation)")
 		for b in benches { fmt.printf("  %s\n", b) }
@@ -267,4 +269,23 @@ resize_checks :: proc(p: ^page.Page, lh: ^Layout_Host) {
 	for l in logs { if l == "resize 640x480" { n += 1 } }
 	check(n == 1, fmt.tprintf("a new viewport size fires resize once, innerWidth and innerHeight already the new ones (%d)", n))
 	lh.view = {}
+}
+// javascript.touch_events: without touch handlers 'ontouchstart' in window (Modernizr's touch test) is false
+// everywhere a page looks; with them, they are there; other handlers stay.
+touch_checks :: proc(process: ^base.Scope) {
+	fmt.println("-- javascript.touch_events")
+	saved := settings.js.touch_handlers
+	defer settings.js.touch_handlers = saved
+	probe :: `console.log(["ontouchstart" in window, "ontouchend" in document, "ontouchmove" in document.body, "ontouchcancel" in document.createElementNS("http://www.w3.org/2000/svg", "svg"), "onclick" in window].join(" ")); console.log("DONE")`
+	for on in ([]bool{false, true}) {
+		settings.js.touch_handlers = on
+		lh := new(Layout_Host)
+		lh.set = lay.settings_default()
+		p := open_page(process, strings.concatenate({"<!doctype html><body><script>", probe, "</script>"}, context.temp_allocator), lh, "touch.html")
+		want := on ? "true true true true true" : "false false false false true"
+		check(logged(want), fmt.tprintf("touch handlers %v: %s (%v)", on, want, logs[:]))
+		page.page_close(p)
+		lay.destroy(&lh.l)
+		free(lh)
+	}
 }
