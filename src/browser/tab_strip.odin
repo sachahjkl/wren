@@ -228,7 +228,10 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	if !on { ui.push_tags("weak") }
 	defer if !on { ui.pop_tags() }
 	ui.next({fixed_x = x, fixed_y = 0, width = ui.px(w), height = ui.pct(1), axis = .X, cross = .Center, radius = em * 0.45})
-	b := ui.build_box({.Clickable, .Focusable, .Draw_Hot_Effects, .Clip}, id)
+	// lit under the pointer, also while it is on the tab's close button
+	ui.push_tags("tab")
+	b := ui.build_box({.Clickable, .Focusable, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
+	ui.pop_tags()
 	b.cursor = .Arrow
 	look := ui.frame_new(Tab_Look)
 	look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
