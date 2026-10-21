@@ -190,12 +190,20 @@ tab_close :: proc(app: ^App, index: int) {
 	if shell_defer({kind = .Close_Tab, tab = t.id}) { return }   // (shell_frames.odin: its page may be the one running)
 	closed_tabs_push(t.url)
 	ordered_remove(&app.tabs, index)
+	key := strings.clone(tab_key(t), context.temp_allocator)
+	tab_free(app, t)
+	page.storage_drop_session(&app.storage, key)   // (once its page is gone)
+	if len(app.tabs) == 0 { tab_open(app) } else { app.current = clamp(app.current, 0, len(app.tabs) - 1) }
+	if cur := current_tab(app); cur != nil { ui.field_set(&app.address, cur.url) }
+}
+
+// Frees a tab taken out of the strip (closed, or at exit): its page and everything the shell keeps for it.
+tab_free :: proc(app: ^App, t: ^Tab) {
 	bfcache_drop_tab(t)
 	tab_nav_destroy(app, t)
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone (a held page too)
 	hold_destroy(t)
 	page_fonts_drop(&page_render.fonts, t)   // its web fonts (fonts.odin)
-	page.storage_drop_session(&app.storage, tab_key(t))
 	page.session_destroy(&t.session)
 	delete(t.url); delete(t.title); delete(t.status)
 	delete(t.fragment_seen)
@@ -207,8 +215,6 @@ tab_close :: proc(app: ^App, index: int) {
 	layout_destroy(&t.layout)
 	smooth_destroy(&t.smooth)
 	free(t)
-	if len(app.tabs) == 0 { tab_open(app) } else { app.current = clamp(app.current, 0, len(app.tabs) - 1) }
-	if cur := current_tab(app); cur != nil { ui.field_set(&app.address, cur.url) }
 }
 
 tab_log :: proc(t: ^Tab, level: page.Log_Level, message: string) {
@@ -1049,6 +1055,7 @@ extract_flag :: proc(args: []string, flag: string) -> (value: string, rest: [dyn
 }
 
 main :: proc() {
+	context = base.process_context()   // the tracker of the check build (memcheck.odin)
 	prof_mark(.Main)
 	app := new(App)
 	the_app = app
@@ -1058,7 +1065,7 @@ main :: proc() {
 	profile_override, a1 := extract_flag(args, "--profile")
 	policy_file, a2 := extract_flag(a1[:], "--policy")
 	app.prefs = config.prefs_make()
-	rest, arg_errors := config.apply_args(&app.prefs, a2[:])
+	rest, arg_errors := config.apply_args(&app.prefs, a2[:], context.temp_allocator)   // (read before the first frame)
 	cfg_dir := platform.config_dir(context.temp_allocator)
 	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator)))
 	_ = os.make_directory_all(app.profile_dir)
@@ -1112,7 +1119,7 @@ main :: proc() {
 	address := len(rest) > 0 ? command_line_address(rest[0]) : ""   // (a relative path of a file or folder: local_paths.odin)
 	prof_mark(.Navigation)
 	if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address) }   // session.odin
-	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }
+	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }   // (tab_log keeps its copy)
 
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
 	if !render.init(&app.r, app.win.hwnd, app.win.size) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
@@ -1170,7 +1177,8 @@ main :: proc() {
 	for t in app.tabs { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	profile_save(app, force = true)
 	bfcache_shutdown(app)
-	for t in app.tabs { tab_nav_destroy(app, t) }
+	for t in app.tabs { tab_free(app, t) }   // (their session storage goes with the storage manager below)
+	clear(&app.tabs)
 	urlbar_destroy(app)   // urlbar.odin
 	global_history_shutdown(app)
 	history_ui_destroy()
@@ -1214,5 +1222,19 @@ main :: proc() {
 	session_destroy()
 	palette_destroy()   // palette.odin (and the command registry)
 	ui.destroy(&app.ui_state)
+	ui.theme_destroy(&app.theme)
+	draw.destroy(&app.dc)
+	render.destroy(&app.r)
+	font.destroy(&app.fonts)
+	platform.destroy_window(app.win)
+	page.settings_destroy(&app.page_settings)
+	delete(app.cfg.homepage)
+	delete(app.cfg.ui_theme)
 	config.prefs_destroy(&app.prefs)
+	profile_dir := strings.clone(app.profile_dir, context.temp_allocator)
+	delete(app.profile_dir)
+	delete(app.tabs)
+	free(app)
+	the_app = nil
+	memcheck_exit(profile_dir)   // memcheck.odin: the leak report of the check build
 }
