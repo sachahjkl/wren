@@ -150,6 +150,11 @@ main :: proc() {
 			fmt.printfln("STAT\tjs_heap_kib\t%.0f", js.heap_bytes(d.page.js.inst) / 1024)
 			fmt.printfln("STAT\tjs_memory_kib\t%d", wasm.memory_bytes(d.page.js.inst) / 1024)
 		}
+		if d.page != nil {
+			// what a window's first paint would still wait for (render_blocking.odin)
+			st, why := page.first_paint_state(d.page)
+			fmt.printfln("STAT\tfirst_paint\t%v %s", st, why)
+		}
 		if d.page != nil && d.page.engine != nil {
 			// the style system's memory: parsed sheets, compiled rules, computed styles
 			e := d.page.engine
