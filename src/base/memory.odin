@@ -69,10 +69,10 @@ mem_stats :: proc "contextless" () -> (s: Mem_Stats) {
 }
 
 // Prints what is still allocated (grouped by place of allocation, largest first) and the counters to stdout, and to
-// the file WREN_MEMTRACK_REPORT names when it is set (appended). Returns the number of leaked blocks plus the bad
+// `file` (written anew) or else the file WREN_MEMTRACK_REPORT names when it is set (appended). Returns the number of leaked blocks plus the bad
 // frees: 0 means clean. Call it after everything was shut down (threads joined, pages closed, caches stopped). A normal
 // build reports nothing and returns 0.
-mem_report :: proc(title: string) -> (problems: int) {
+mem_report :: proc(title: string, file := "") -> (problems: int) {
 	when TRACK_MEMORY {
 		context.allocator = runtime.heap_allocator()
 		Group :: struct { loc: runtime.Source_Code_Location, stack: Stack, blocks: int, bytes: int }
@@ -111,7 +111,9 @@ mem_report :: proc(title: string) -> (problems: int) {
 		}
 		text := strings.to_string(b)
 		fmt.print(text)   // stdout: test_all's steps read it (a child's stderr would break their job)
-		if path := os.get_env("WREN_MEMTRACK_REPORT", context.temp_allocator); path != "" {
+		if file != "" {
+			_ = os.write_entire_file(file, transmute([]byte)text)
+		} else if path := os.get_env("WREN_MEMTRACK_REPORT", context.temp_allocator); path != "" {
 			if fd, err := os.open(path, os.O_WRONLY | os.O_CREATE | os.O_APPEND); err == nil {
 				_, _ = os.write_string(fd, text)
 				os.close(fd)
@@ -120,6 +122,30 @@ mem_report :: proc(title: string) -> (problems: int) {
 		return int(st.live_blocks + st.bad_frees)
 	} else {
 		return 0
+	}
+}
+
+// Writes the live blocks (permanent ones excluded) grouped by place of allocation to `file`: "blocks<TAB>bytes<TAB>place"
+// per line. Two snapshots of a running program, compared, show what grows (tools\endurance.ps1 -Snapshots). Nothing in
+// a normal build.
+mem_snapshot :: proc(file: string) {
+	when TRACK_MEMORY {
+		context.allocator = runtime.heap_allocator()
+		Count :: struct { blocks, bytes: int }
+		groups: map[string]Count
+		defer { for k in groups { delete(k) }; delete(groups) }
+		sync.mutex_lock(&tracker.lock)
+		for _, e in tracker.live {
+			if e.permanent { continue }
+			key := fmt.aprintf("%s:%d (%s)", e.loc.file_path, e.loc.line, e.loc.procedure)
+			if g, ok := &groups[key]; ok { g.blocks += 1; g.bytes += e.size; delete(key); continue }
+			groups[key] = Count{1, e.size}
+		}
+		sync.mutex_unlock(&tracker.lock)
+		b := strings.builder_make()
+		defer strings.builder_destroy(&b)
+		for k, g in groups { fmt.sbprintfln(&b, "%d\t%d\t%s", g.blocks, g.bytes, k) }
+		_ = os.write_entire_file(file, b.buf[:])
 	}
 }
 

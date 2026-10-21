@@ -20,7 +20,7 @@ if (-not $NoBuild) {
 }
 
 # Runs the check build on `$script` (lines; {o} is the test server's origin) with a fresh profile; returns its exit code.
-function Invoke-CheckSession($name, [string[]]$script, $statsFile = '') {
+function Invoke-CheckSession($name, [string[]]$script, $statsFile = '', [string[]]$extra = @()) {
     $dir = Join-Path $Out $name
     $profileDir = Join-Path $dir 'profile'
     if (Test-Path $profileDir) { Get-ChildItem $profileDir -Recurse -File | Remove-Item -Force }
@@ -33,7 +33,7 @@ function Invoke-CheckSession($name, [string[]]$script, $statsFile = '') {
         $env:WREN_MEMTRACK_FAIL = '1'
         $env:WREN_MEMTRACK_STACK = if ($Stacks) { '1' } else { '' }
         $env:WREN_MEMCHECK_STATS = $statsFile
-        $p = Start-Process $Exe -ArgumentList @('--profile', $profileDir, "$($srv.Origin)/site/index.html") -PassThru
+        $p = Start-Process $Exe -ArgumentList (@('--profile', $profileDir) + $extra + @("$($srv.Origin)/site/index.html")) -PassThru
         if (-not $p.WaitForExit($TimeoutSec * 1000)) { $p.Kill(); $p.WaitForExit(5000) | Out-Null; Write-Host "FAIL ${name}: the session did not end in $TimeoutSec s"; return 1 }
         $code = $p.ExitCode
     } finally {

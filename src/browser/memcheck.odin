@@ -14,6 +14,7 @@ package browser
 //     wait <ms>           frames go on meanwhile             frames <n>     waits for n frames
 //     stats <label>       a line of WREN_MEMCHECK_STATS (CSV): the tracker's counters, private bytes, working set,
 //                         the process's kernel, GDI and USER handles, the tabs open
+//     snapshot <file>     the live blocks grouped by place of allocation (base.mem_snapshot), to compare two of them
 //     repeat <n> ... end  the commands between, n times (nested repeats too)
 //     quit                closes the window: the normal exit, then the report
 //     # ...               a comment
@@ -82,7 +83,7 @@ process_counters :: proc() -> (c: Process_Counters) {
 // The script driver (check builds)
 
 @(private = "file")
-Step_Kind :: enum u8 { Open, Go, Command, Load, Wait, Frames, Stats, Quit }
+Step_Kind :: enum u8 { Open, Go, Command, Load, Wait, Frames, Stats, Snapshot, Quit }
 
 @(private = "file")
 Step :: struct {
@@ -160,6 +161,7 @@ driver_parse :: proc(lines: []string, i: ^int, times: int) {
 			case "wait":    n, _ := strconv.parse_int(rest); append(&driver.steps, Step{kind = .Wait, n = n})
 			case "frames":  n, _ := strconv.parse_int(rest); append(&driver.steps, Step{kind = .Frames, n = n})
 			case "stats":   append(&driver.steps, Step{kind = .Stats, arg = rest})
+			case "snapshot": append(&driver.steps, Step{kind = .Snapshot, arg = rest})
 			case "quit":    append(&driver.steps, Step{kind = .Quit})
 			}
 			if word == "end" {
@@ -183,7 +185,7 @@ driver_step :: proc(app: ^App) {
 			case .Wait: if time.tick_diff(driver.deadline, time.tick_now()) < 0 { return }
 			case .Frames: driver.frames -= 1; if driver.frames > 0 { return }
 			case .Load: if tab_busy(t) && time.tick_diff(driver.deadline, time.tick_now()) < 0 { return }
-			case .Open, .Go, .Command, .Stats, .Quit:
+			case .Open, .Go, .Command, .Stats, .Snapshot, .Quit:
 			}
 			driver.waiting = false
 			driver.next += 1
@@ -207,6 +209,8 @@ driver_step :: proc(app: ^App) {
 			return
 		case .Stats:
 			driver_stats(app, s.arg)
+		case .Snapshot:
+			base.mem_snapshot(s.arg)
 		case .Quit:
 			driver.active = false
 			win.PostMessageW(app.win.hwnd, win.WM_CLOSE, 0, 0)
