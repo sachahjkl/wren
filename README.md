@@ -456,5 +456,8 @@ Wren is released under the [MIT license](LICENSE). It stands on:
   [web-platform-tests](https://github.com/web-platform-tests/wpt) (BSD-3-Clause; fetched at a pinned commit for the
   tests, not shipped).
 
+- [Slug](https://github.com/EricLengyel/Slug) by Eric Lengyel (MIT; the patent is in the public domain): the shaders and the
+  algorithm of the optional `text.renderer = slug` (glyphs drawn from their outlines on the GPU), through gui_toolkit.
+
 Fonts used by the demo pages and tests come with their licenses next to them (`examples/site/fonts`,
 `native/media/tests/fonts`). [THIRD_PARTY.md](THIRD_PARTY.md) lists every component linked into `wren.exe`.
