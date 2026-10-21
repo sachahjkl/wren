@@ -107,6 +107,8 @@ JSValue wjr_DOMImplementation_createDocument(JSContext *ctx, JSValueConst this_v
 JSValue wjr_DOMImplementation_createDocumentType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DOMImplementation_createHTMLDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DOMImplementation_hasFeature(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMParser_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMParser_parseFromString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DOMRectList_get_length(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_DOMRectList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
 JSValue wjr_DOMRectList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -650,6 +652,8 @@ JSValue wjr_NamedNodeMap_get_length(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_NamedNodeMap_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
 JSValue wjr_NamedNodeMap_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 uint32_t wjr_NamedNodeMap_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_NamedNodeMap_named_get(JSContext *ctx, JSValueConst obj, const char *name, size_t len, bool *found);
+int wjr_NamedNodeMap_named_keys(JSContext *ctx, JSValueConst obj, JSValue array);
 JSValue wjr_NamedNodeMap_removeNamedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_NamedNodeMap_removeNamedItemNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_NamedNodeMap_setNamedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -8827,7 +8831,7 @@ static const wj_member wj_m_DOMMatrix[] = {
     { "setMatrixValue", WJ_M_METHOD, WJ_F_WINDOW_ONLY, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMParser[] = {
-    { "parseFromString", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "parseFromString", WJ_M_METHOD, 0, 2, wjr_DOMParser_parseFromString, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMPointReadOnly[] = {
     { "fromPoint", WJ_M_STATIC_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -14260,7 +14264,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_DOMMatrix, .n_members = 37, .subtree_end = 99,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = "SVGMatrix", .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMParser", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMParser", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_DOMParser_constructor,
       .members = wj_m_DOMParser, .n_members = 1, .subtree_end = 100,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -14872,7 +14876,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_HTMLFontElement, .n_members = 3, .subtree_end = 252,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "HTMLFormElement", .parent = 234, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_OVERRIDE_BUILTINS | WJ_I_INDEXED_ITERATOR | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "HTMLFormElement", .parent = 234, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_OVERRIDE_BUILTINS | WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLFormElement, .n_members = 18, .subtree_end = 253,
       .index_get = wjr_HTMLFormElement_index_get, .length_get = wjr_HTMLFormElement_length_hook, .named_get = wjr_HTMLFormElement_named_get, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -15320,7 +15324,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_WebSocket, .n_members = 16, .subtree_end = 364,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Window", .parent = 166, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_GLOBAL | WJ_I_HAS_UNFORGEABLE, .class_kind = WJ_CLASS_NAMED, .ctor_length = 0, .ctor = NULL,
+    { .name = "Window", .parent = 166, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_GLOBAL | WJ_I_UNENUMERABLE_NAMED | WJ_I_HAS_UNFORGEABLE, .class_kind = WJ_CLASS_NAMED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_Window, .n_members = 214, .subtree_end = 365,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -15428,11 +15432,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_GamepadHapticActuator, .n_members = 3, .subtree_end = 391,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "HTMLAllCollection", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "HTMLAllCollection", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLAllCollection, .n_members = 3, .subtree_end = 392,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "HTMLCollection", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "HTMLCollection", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_HTMLCollection, .n_members = 3, .subtree_end = 395,
       .index_get = wjr_HTMLCollection_index_get, .length_get = wjr_HTMLCollection_length_hook, .named_get = wjr_HTMLCollection_named_get, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -15560,7 +15564,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MimeType, .n_members = 4, .subtree_end = 424,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MimeTypeArray", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "MimeTypeArray", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_MimeTypeArray, .n_members = 3, .subtree_end = 425,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -15572,9 +15576,9 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MutationRecord, .n_members = 9, .subtree_end = 427,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "NamedNodeMap", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "NamedNodeMap", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_NamedNodeMap, .n_members = 8, .subtree_end = 428,
-      .index_get = wjr_NamedNodeMap_index_get, .length_get = wjr_NamedNodeMap_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_NamedNodeMap_index_get, .length_get = wjr_NamedNodeMap_length_hook, .named_get = wjr_NamedNodeMap_named_get, .named_set = NULL, .named_delete = NULL, .named_keys = wjr_NamedNodeMap_named_keys,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NavigationActivation", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_NavigationActivation, .n_members = 3, .subtree_end = 429,
@@ -15712,11 +15716,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_Permissions, .n_members = 1, .subtree_end = 462,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Plugin", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "Plugin", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_Plugin, .n_members = 6, .subtree_end = 463,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PluginArray", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "PluginArray", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_PluginArray, .n_members = 4, .subtree_end = 464,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

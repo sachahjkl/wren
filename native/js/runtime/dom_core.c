@@ -659,6 +659,46 @@ JSValue wjr_DOMImplementation_createDocument(JSContext *ctx, JSValueConst this_v
     return wj_throw_dom(ctx, "NotSupportedError", "XML documents are not supported by this browser.");
 }
 
+/* ---- DOMParser ---- */
+
+JSValue wjr_DOMParser_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    if (JS_IsUndefined(new_target)) { return JS_ThrowTypeError(ctx, "Constructor DOMParser requires 'new'"); }
+    extern wj_val wj_new_object_for(wj_ctx *ctx, int iface, JSValueConst new_target, void *impl, void (*impl_free)(void *));
+    return wj_new_object_for(ctx, WJ_IFACE_DOMParser, new_target, NULL, NULL);
+}
+
+/* parseFromString(string, type): "text/html" parses a whole document into a new inert one (scripts never run in it,
+ * no declarative shadow roots); the XML types need XML documents, which this browser does not have
+ * (NotSupportedError, as createDocument). A type outside DOMParserSupportedType is a TypeError. */
+JSValue wjr_DOMParser_parseFromString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    if (!wj_this(ctx, this_val, WJ_IFACE_DOMParser)) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "DOMParser.parseFromString", 2, argc); }
+    wj_str s, type;
+    if (!wj_to_str(ctx, argv[0], &s, 0, "")) { return JS_EXCEPTION; }
+    if (!wj_to_str(ctx, argv[1], &type, 0, "")) { wj_str_free(ctx, &s); return JS_EXCEPTION; }
+    static const char *const xml_types[] = {"text/xml", "application/xml", "application/xhtml+xml", "image/svg+xml"};
+    bool html = type.len == 9 && memcmp(type.ptr, "text/html", 9) == 0, xml = false;
+    for (size_t i = 0; i < sizeof xml_types / sizeof xml_types[0]; i++) {
+        if (type.len == strlen(xml_types[i]) && memcmp(type.ptr, xml_types[i], type.len) == 0) { xml = true; }
+    }
+    JSValue r;
+    if (html) {
+        uint64_t h = 0;
+        int32_t st = wr_DOMParser_parseHTMLNode((const uint8_t *)(s.ptr ? s.ptr : ""), (uint32_t)s.len, &h);
+        r = wrap_new_node(ctx, st, h, "DOMParser.parseFromString");
+    } else if (xml) {
+        r = wj_throw_dom(ctx, "NotSupportedError", "XML documents are not supported by this browser.");
+    } else {
+        r = JS_ThrowTypeError(ctx, "Failed to execute 'parseFromString' on 'DOMParser': The provided value '%.*s' is not a valid enum value of type DOMParserSupportedType.", (int)(type.len > 64 ? 64 : type.len), type.ptr ? type.ptr : "");
+    }
+    wj_str_free(ctx, &s);
+    wj_str_free(ctx, &type);
+    return r;
+}
+
 JSValue wjr_DOMImplementation_hasFeature(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(argc); WJ_UNUSED(argv);
@@ -1157,6 +1197,41 @@ JSValue wjr_NamedNodeMap_index_get(JSContext *ctx, JSValueConst obj, uint32_t in
     if (JS_IsNull(a)) { return JS_UNDEFINED; }
     *found = !JS_IsException(a);
     return a;
+}
+
+/* named properties: map.name is the Attr of that qualified name (jQuery 1's support test reads
+ * div.attributes["onsubmit"].expando) */
+JSValue wjr_NamedNodeMap_named_get(JSContext *ctx, JSValueConst obj, const char *name, size_t len, bool *found)
+{
+    dom_impl *m = map_of(obj);
+    *found = false;
+    if (!m || len == 0) { return JS_UNDEFINED; }
+    JSValue a = map_attr(ctx, m, name, len);
+    if (JS_IsNull(a)) { return JS_UNDEFINED; }
+    *found = !JS_IsException(a);
+    return a;
+}
+
+/* the supported property names: the attributes' qualified names in order (an HTML element's without the ones with
+ * upper case letters: a lookup lower-cases the name and could not find them) */
+int wjr_NamedNodeMap_named_keys(JSContext *ctx, JSValueConst obj, JSValue array)
+{
+    dom_impl *m = map_of(obj);
+    if (!m) { return 0; }
+    static const char xhtml[] = "http://www.w3.org/1999/xhtml";
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Element_namespaceURI(m->node, wj_scratch.data, wj_scratch.cap));
+    bool html = n == (int32_t)(sizeof xhtml - 1) && memcmp(wj_scratch.data, xhtml, sizeof xhtml - 1) == 0;
+    uint32_t count = wr_Element_attributeCount(m->node), k = 0;
+    for (uint32_t i = 0; i < count; i++) {
+        WJ_FETCH_STRING(n, wr_Element_attributeNameAt(m->node, i, wj_scratch.data, wj_scratch.cap));
+        if (n < 0) { continue; }
+        bool upper = false;
+        for (int32_t j = 0; html && j < n; j++) { if (wj_scratch.data[j] >= 'A' && wj_scratch.data[j] <= 'Z') { upper = true; break; } }
+        if (upper) { continue; }
+        wj_array_set(ctx, array, k++, JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n));
+    }
+    return 0;
 }
 
 JSValue wjr_NamedNodeMap_get_length(JSContext *ctx, JSValueConst this_val)

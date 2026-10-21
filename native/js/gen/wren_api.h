@@ -1132,6 +1132,9 @@ WR_IMPORT("dom", "Document_set_body") int32_t wr_Document_set_body(uint64_t body
 // document.implementation.createHTMLDocument(title): an inert document of its own (nothing loads or runs in it),
 // made of the page's nodes: a doctype, <html>, <head> (with <title> when given) and <body>.
 WR_IMPORT("dom", "DOMImplementation_createHTMLDocument") int32_t wr_DOMImplementation_createHTMLDocument(const uint8_t *title, uint32_t title_len, uint64_t *_ret);
+// new DOMParser().parseFromString(html, "text/html"): a new inert document (as createHTMLDocument makes) holding
+// the whole document parsed from `html` (no declarative shadow roots, nothing loads or runs in it).
+WR_IMPORT("dom", "DOMParser_parseHTMLNode") int32_t wr_DOMParser_parseHTMLNode(const uint8_t *html, uint32_t html_len, uint64_t *_ret);
 // document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.
 WR_IMPORT("dom", "DOMImplementation_createDocumentType") int32_t wr_DOMImplementation_createDocumentType(const uint8_t *name, uint32_t name_len, const uint8_t *public_id, uint32_t public_id_len, const uint8_t *system_id, uint32_t system_id_len, uint64_t *_ret);
 // A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,
