@@ -376,6 +376,8 @@ enum wr_PerformanceEntryType {
     wr_PerformanceEntryType_Measure = 2,
 };
 
+/* module ports: types */
+
 /* module storage: types */
 enum wr_StorageArea {
     wr_StorageArea_Local = 0,
@@ -1716,21 +1718,6 @@ WR_IMPORT("frames", "Frame_open") int32_t wr_Frame_open(const uint8_t *url, uint
 // otherWindow.postMessage(message, targetOrigin, [ports]): the same, with the MessagePorts of the transfer list
 // shipped as port ends (Port_ship / Port_entangle): the receiver's MessageEvent.ports are bound to them.
 WR_IMPORT("frames", "Frame_postMessagePorts") int32_t wr_Frame_postMessagePorts(uint64_t navigable, const uint8_t *data, uint32_t data_len, const uint8_t *target_origin, uint32_t target_origin_len, const uint64_t *ports, uint32_t ports_len);
-// MessagePorts between documents (src/page/ports.odin): a port whose other end is in another realm talks through a
-// pair of port ends the browser routes. A new pair: the first end's id (the second is that id + 1), owned by
-// nobody yet.
-WR_IMPORT("frames", "Port_entangle") uint64_t wr_Port_entangle(void);
-// The calling document owns this end from now on: what was posted to it meanwhile is delivered (each message from a
-// task: the engine's wj_port_message). Invalid_Argument for an end that is gone or owned.
-WR_IMPORT("frames", "Port_bind") int32_t wr_Port_bind(uint64_t end);
-// The calling document gives this end up (it is in a message being sent): what arrives for it waits for its next
-// owner.
-WR_IMPORT("frames", "Port_ship") void wr_Port_ship(uint64_t end);
-// port.postMessage(message, [ports]) on an end: delivered to the other end's owner (queued while it has none).
-// Data_Clone for a message over frames.max_message_bytes.
-WR_IMPORT("frames", "Port_post") int32_t wr_Port_post(uint64_t end, const uint8_t *data, uint32_t data_len, const uint64_t *ports, uint32_t ports_len);
-// port.close(): the pair is disentangled; nothing more is delivered to either end.
-WR_IMPORT("frames", "Port_close") void wr_Port_close(uint64_t end);
 // window.name: its navigable's name.
 WR_IMPORT("frames", "Window_get_name") int32_t wr_Window_get_name(uint8_t *_buf, uint32_t _cap);
 // window.name = value
@@ -1939,6 +1926,26 @@ WR_IMPORT("performance", "Performance_entryType") int32_t wr_Performance_entryTy
 WR_IMPORT("performance", "Performance_clearMarks") void wr_Performance_clearMarks(const uint8_t *name, uint32_t name_len);
 // performance.clearMeasures(name): "" clears all.
 WR_IMPORT("performance", "Performance_clearMeasures") void wr_Performance_clearMeasures(const uint8_t *name, uint32_t name_len);
+
+/* module ports */
+// A new pair of entangled port ends: the first end's id (the second is that id + 1), owned by nobody yet.
+WR_IMPORT("ports", "Port_entangle") uint64_t wr_Port_entangle(void);
+// The calling realm owns this end from now on: what was posted to it meanwhile is delivered (each message from a
+// task: the engine's wj_port_message). Invalid_Argument for an end that is gone or owned.
+WR_IMPORT("ports", "Port_bind") int32_t wr_Port_bind(uint64_t end);
+// The calling realm gives this end up (it is in a message being sent).
+WR_IMPORT("ports", "Port_ship") void wr_Port_ship(uint64_t end);
+// port.postMessage(message, [ports]) on an end: delivered to the other end's owner (queued while it has none).
+// Data_Clone for a message over frames.max_message_bytes.
+WR_IMPORT("ports", "Port_post") int32_t wr_Port_post(uint64_t end, const uint8_t *data, uint32_t data_len, const uint64_t *ports, uint32_t ports_len);
+// port.close(): the pair is disentangled; nothing more is delivered to either end.
+WR_IMPORT("ports", "Port_close") void wr_Port_close(uint64_t end);
+// worker.postMessage(message, transfer) with MessagePorts in the transfer list (shipped as `ports`).
+WR_IMPORT("ports", "Worker_postSerializedPorts") int32_t wr_Worker_postSerializedPorts(uint64_t worker, const uint8_t *data, uint32_t data_len, const uint64_t *ports, uint32_t ports_len);
+// postMessage(message, transfer) in a worker, with MessagePorts.
+WR_IMPORT("ports", "DedicatedWorkerGlobalScope_postSerializedPorts") int32_t wr_DedicatedWorkerGlobalScope_postSerializedPorts(const uint8_t *data, uint32_t data_len, const uint64_t *ports, uint32_t ports_len);
+// The port ends that came with a worker's message event (8 bytes each), given once: the caller binds them.
+WR_IMPORT("ports", "MessageEvent_portEnds") int32_t wr_MessageEvent_portEnds(uint64_t event, uint8_t *_buf, uint32_t _cap);
 
 /* module storage */
 // storage.length

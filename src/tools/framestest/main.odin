@@ -282,6 +282,30 @@ f.addEventListener("load", () => {
 		page.page_close(p)
 	}
 
+	fmt.println("-- MessagePorts to and from a worker")
+	{
+		worker_js := `onmessage = e => {
+  const port = e.ports[0];
+  port.onmessage = m => port.postMessage("worker heard " + m.data);
+  const ch = new MessageChannel();
+  ch.port1.onmessage = m => ch.port1.postMessage("worker channel echo " + m.data);
+  postMessage({kind: "mine"}, [ch.port2]);
+  port.postMessage("worker ready " + e.ports.length);
+};`
+		src := strings.concatenate({testenv.url(SAME + "/jsload/gen?ms=0&code="), enc(worker_js)}, context.temp_allocator)
+		p := load(fill(`<body><script>
+const w = new Worker("%s");
+const ch = new MessageChannel();
+ch.port1.onmessage = e => { log("page port got " + e.data); if (e.data === "worker ready 1") ch.port1.postMessage("ping"); };
+w.onmessage = e => { const p = e.ports[0]; log("page got a worker port " + (p instanceof MessagePort)); p.onmessage = m => log("page " + m.data); p.postMessage("hi"); };
+w.postMessage("take", [ch.port2]);
+</script></body>`, src))
+		check(wait_for("page port got worker ready 1"), "a port transferred to a worker arrives in event.ports there")
+		check(wait_for("page port got worker heard ping"), "messages flow both ways between a page and a worker on a port")
+		check(wait_for("page got a worker port true") && wait_for("page worker channel echo hi"), "a port a worker sends works in the page")
+		page.page_close(p)
+	}
+
 	fmt.println("-- sandbox: scripts, opaque origin")
 	{
 		p := load(`<body>

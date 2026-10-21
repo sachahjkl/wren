@@ -338,8 +338,36 @@ JSValue wjr_EventSource_close(JSContext *ctx, JSValueConst this_val, int argc, J
 __attribute__((weak)) bool wj_clone_is_serialized(const uint8_t *data, size_t len);
 __attribute__((weak)) JSValue wj_clone_deserialize(JSContext *ctx, const uint8_t *data, size_t len);
 
+extern JSValue web_receive_ports(JSContext *ctx, const uint64_t *ends, uint32_t n);
+extern JSValue wj_clone_deserialize_ports(JSContext *ctx, const uint8_t *data, size_t len, JSValueConst ports);
+
+/* The MessagePorts that came with a worker's message event (bound to this realm the first time they are asked for,
+ * kept as the event's "ports"), or undefined when none came. */
+static JSValue message_ports(JSContext *ctx, JSValueConst ev, uint64_t h)
+{
+    JSValue have = web_extra_get(ctx, ev, "ports");
+    if (!JS_IsUndefined(have)) { return have; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_MessageEvent_portEnds(h, wj_scratch.data, wj_scratch.cap));
+    if (n < 8) { return JS_UNDEFINED; }
+    uint32_t count = (uint32_t)n / 8;
+    uint64_t *ends = malloc(count * sizeof *ends);
+    if (!ends) { return JS_ThrowOutOfMemory(ctx); }
+    memcpy(ends, wj_scratch.data, count * sizeof *ends);
+    JSValue ports = web_receive_ports(ctx, ends, count);
+    free(ends);
+    JSValue object = JS_GetPropertyStr(ctx, wj_the_realm.global, "Object");
+    JSValue freeze = JS_GetPropertyStr(ctx, object, "freeze");
+    JSValue frozen = JS_Call(ctx, freeze, object, 1, (JSValueConst *)&ports);
+    JS_FreeValue(ctx, frozen);
+    JS_FreeValue(ctx, freeze);
+    JS_FreeValue(ctx, object);
+    web_extra_set(ctx, ev, "ports", JS_DupValue(ctx, ports));
+    return ports;
+}
+
 /* the browser's Event_data of a message: a deserialized value (worker messages) or the text itself */
-static JSValue message_text_or_value(JSContext *ctx, uint64_t h)
+static JSValue message_text_or_value(JSContext *ctx, uint64_t h, JSValueConst ports)
 {
     int32_t n;
     WJ_FETCH_STRING(n, wr_Event_data(h, wj_scratch.data, wj_scratch.cap));
@@ -351,7 +379,7 @@ static JSValue message_text_or_value(JSContext *ctx, uint64_t h)
     uint8_t *copy = malloc(len ? len : 1);
     if (!copy) { return JS_ThrowOutOfMemory(ctx); }
     memcpy(copy, wj_scratch.data, len);
-    JSValue v = wj_clone_deserialize(ctx, copy, len);
+    JSValue v = wj_clone_deserialize_ports(ctx, copy, len, ports);
     free(copy);
     if (JS_IsException(v)) {
         /* HTML: a message that cannot be deserialized is a messageerror; data is null */
@@ -378,7 +406,12 @@ JSValue wjr_MessageEvent_get_data(JSContext *ctx, JSValueConst this_val)
     uint64_t h = web_event_host(this_val);
     if (!h) { return JS_NULL; }
     JSValue v = pending_take(ctx, h);
-    if (JS_IsUninitialized(v)) { v = message_text_or_value(ctx, h); }
+    if (JS_IsUninitialized(v)) {
+        JSValue ports = message_ports(ctx, this_val, h);
+        if (JS_IsException(ports)) { return ports; }
+        v = message_text_or_value(ctx, h, ports);
+        JS_FreeValue(ctx, ports);
+    }
     if (JS_IsException(v)) { return v; }
     web_extra_set(ctx, this_val, "data", JS_DupValue(ctx, v));
     return v;
@@ -408,6 +441,10 @@ JSValue wjr_MessageEvent_get_ports(JSContext *ctx, JSValueConst this_val)
     if (!wj_this(ctx, this_val, WJ_IFACE_MessageEvent)) { return JS_EXCEPTION; }
     JSValue v = web_extra_get(ctx, this_val, "ports");
     if (!JS_IsUndefined(v)) { return v; }
+    if (web_event_host(this_val)) {
+        v = message_ports(ctx, this_val, web_event_host(this_val));
+        if (!JS_IsUndefined(v)) { return v; }
+    }
     static const char src[] = "Object.freeze([])";
     v = JS_Eval(ctx, src, sizeof src - 1, "<web>", JS_EVAL_TYPE_GLOBAL);
     web_extra_set(ctx, this_val, "ports", JS_DupValue(ctx, v));

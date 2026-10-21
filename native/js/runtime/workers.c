@@ -73,13 +73,22 @@ static bool transfer_argument(JSContext *ctx, int argc, JSValueConst *argv, JSVa
     return true;
 }
 
-static uint8_t *serialize_message(JSContext *ctx, int argc, JSValueConst *argv, size_t *len)
+extern uint8_t *wj_clone_serialize_ports(JSContext *ctx, JSValueConst value, JSValueConst transfer, size_t *len, JSValue *ports);
+extern bool web_ship_ports(JSContext *ctx, JSValueConst ports, uint64_t **ends, uint32_t *n);
+
+/* The message serialized; MessagePorts of the transfer list are shipped (*ends, malloc'ed, *n_ends of them). */
+static uint8_t *serialize_message(JSContext *ctx, int argc, JSValueConst *argv, size_t *len, uint64_t **ends, uint32_t *n_ends)
 {
+    *ends = NULL;
+    *n_ends = 0;
     if (argc < 1) { wj_throw_arity(ctx, "postMessage", 1, argc); return NULL; }
     JSValue transfer;
     if (!transfer_argument(ctx, argc, argv, &transfer)) { return NULL; }
-    uint8_t *bytes = wj_clone_serialize(ctx, argv[0], transfer, len);
+    JSValue ports = JS_UNDEFINED;
+    uint8_t *bytes = wj_clone_serialize_ports(ctx, argv[0], transfer, len, &ports);
     JS_FreeValue(ctx, transfer);
+    if (bytes && !web_ship_ports(ctx, ports, ends, n_ends)) { free(bytes); bytes = NULL; }
+    JS_FreeValue(ctx, ports);
     return bytes;
 }
 
@@ -135,9 +144,12 @@ JSValue wjr_Worker_postMessage(JSContext *ctx, JSValueConst this_val, int argc, 
     wj_obj *o = wj_this(ctx, this_val, WJ_IFACE_Worker);
     if (!o) { return JS_EXCEPTION; }
     size_t len = 0;
-    uint8_t *bytes = serialize_message(ctx, argc, argv, &len);
+    uint64_t *ends;
+    uint32_t n_ends;
+    uint8_t *bytes = serialize_message(ctx, argc, argv, &len, &ends, &n_ends);
     if (!bytes) { return JS_EXCEPTION; }
-    int32_t st = wr_Worker_postSerialized(o->handle, bytes, (uint32_t)len);
+    int32_t st = n_ends ? wr_Worker_postSerializedPorts(o->handle, bytes, (uint32_t)len, ends, n_ends) : wr_Worker_postSerialized(o->handle, bytes, (uint32_t)len);
+    free(ends);
     free(bytes);
     if (st < 0) { return wj_throw_status(ctx, st, "Worker.postMessage"); }
     return JS_UNDEFINED;
@@ -159,9 +171,12 @@ JSValue wjr_DedicatedWorkerGlobalScope_postMessage(JSContext *ctx, JSValueConst 
 {
     WJ_UNUSED(this_val);
     size_t len = 0;
-    uint8_t *bytes = serialize_message(ctx, argc, argv, &len);
+    uint64_t *ends;
+    uint32_t n_ends;
+    uint8_t *bytes = serialize_message(ctx, argc, argv, &len, &ends, &n_ends);
     if (!bytes) { return JS_EXCEPTION; }
-    int32_t st = wr_DedicatedWorkerGlobalScope_postSerialized(bytes, (uint32_t)len);
+    int32_t st = n_ends ? wr_DedicatedWorkerGlobalScope_postSerializedPorts(bytes, (uint32_t)len, ends, n_ends) : wr_DedicatedWorkerGlobalScope_postSerialized(bytes, (uint32_t)len);
+    free(ends);
     free(bytes);
     if (st < 0) { return wj_throw_status(ctx, st, "postMessage"); }
     return JS_UNDEFINED;

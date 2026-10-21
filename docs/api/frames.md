@@ -168,65 +168,6 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Frame_postMessagePorts :: proc(c: ^Call, navigable: u64, data: []u8, target_origin: string, ports: []u64) -> Api_Error`
 
-### `Port_entangle`
-
-```
-u64 Port_entangle()
-```
-
-MessagePorts between documents (src/page/ports.odin): a port whose other end is in another realm talks through a
-pair of port ends the browser routes. A new pair: the first end's id (the second is that id + 1), owned by
-nobody yet.
-
-Host: `Port_entangle :: proc(c: ^Call) -> u64`
-
-### `Port_bind`
-
-```
-void Port_bind(u64 end) raises
-```
-
-The calling document owns this end from now on: what was posted to it meanwhile is delivered (each message from a
-task: the engine's wj_port_message). Invalid_Argument for an end that is gone or owned.
-
-Raises: returns an `Error` (see [web](web.md)).
-
-Host: `Port_bind :: proc(c: ^Call, end: u64) -> Api_Error`
-
-### `Port_ship`
-
-```
-void Port_ship(u64 end)
-```
-
-The calling document gives this end up (it is in a message being sent): what arrives for it waits for its next
-owner.
-
-Host: `Port_ship :: proc(c: ^Call, end: u64)`
-
-### `Port_post`
-
-```
-void Port_post(u64 end, bytes data, u64[] ports) raises
-```
-
-port.postMessage(message, [ports]) on an end: delivered to the other end's owner (queued while it has none).
-Data_Clone for a message over frames.max_message_bytes.
-
-Raises: returns an `Error` (see [web](web.md)).
-
-Host: `Port_post :: proc(c: ^Call, end: u64, data: []u8, ports: []u64) -> Api_Error`
-
-### `Port_close`
-
-```
-void Port_close(u64 end)
-```
-
-port.close(): the pair is disentangled; nothing more is delivered to either end.
-
-Host: `Port_close :: proc(c: ^Call, end: u64)`
-
 ### `Window_get_name`
 
 ```

@@ -26,11 +26,6 @@ foreign _m_frames {
 	@(link_name = "Frame_navigate") _Frame_navigate :: proc(navigable: u64, url: [^]u8, url_len: u32, replace: i32) -> Error ---
 	@(link_name = "Frame_open") _Frame_open :: proc(url: [^]u8, url_len: u32, target: [^]u8, target_len: u32, _ret: ^u64) -> Error ---
 	@(link_name = "Frame_postMessagePorts") _Frame_postMessagePorts :: proc(navigable: u64, data: [^]u8, data_len: u32, target_origin: [^]u8, target_origin_len: u32, ports: [^]u64, ports_len: u32) -> Error ---
-	@(link_name = "Port_entangle") _Port_entangle :: proc() -> u64 ---
-	@(link_name = "Port_bind") _Port_bind :: proc(end: u64) -> Error ---
-	@(link_name = "Port_ship") _Port_ship :: proc(end: u64) ---
-	@(link_name = "Port_post") _Port_post :: proc(end: u64, data: [^]u8, data_len: u32, ports: [^]u64, ports_len: u32) -> Error ---
-	@(link_name = "Port_close") _Port_close :: proc(end: u64) ---
 	@(link_name = "Window_get_name") _Window_get_name :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Window_set_name") _Window_set_name :: proc(value: [^]u8, value_len: u32) ---
 }
@@ -136,36 +131,6 @@ Frame_open :: proc "contextless" (url: string, target: string) -> (result: u64, 
 // shipped as port ends (Port_ship / Port_entangle): the receiver's MessageEvent.ports are bound to them.
 Frame_postMessagePorts :: proc "contextless" (navigable: u64, data: []u8, target_origin: string, ports: []u64) -> Error {
 	return _Frame_postMessagePorts(navigable, raw_data(data), u32(len(data)), raw_data(target_origin), u32(len(target_origin)), raw_data(ports), u32(len(ports)))
-}
-
-// MessagePorts between documents (src/page/ports.odin): a port whose other end is in another realm talks through a
-// pair of port ends the browser routes. A new pair: the first end's id (the second is that id + 1), owned by
-// nobody yet.
-Port_entangle :: proc "contextless" () -> u64 {
-	return _Port_entangle()
-}
-
-// The calling document owns this end from now on: what was posted to it meanwhile is delivered (each message from a
-// task: the engine's wj_port_message). Invalid_Argument for an end that is gone or owned.
-Port_bind :: proc "contextless" (end: u64) -> Error {
-	return _Port_bind(end)
-}
-
-// The calling document gives this end up (it is in a message being sent): what arrives for it waits for its next
-// owner.
-Port_ship :: proc "contextless" (end: u64) {
-	_Port_ship(end)
-}
-
-// port.postMessage(message, [ports]) on an end: delivered to the other end's owner (queued while it has none).
-// Data_Clone for a message over frames.max_message_bytes.
-Port_post :: proc "contextless" (end: u64, data: []u8, ports: []u64) -> Error {
-	return _Port_post(end, raw_data(data), u32(len(data)), raw_data(ports), u32(len(ports)))
-}
-
-// port.close(): the pair is disentangled; nothing more is delivered to either end.
-Port_close :: proc "contextless" (end: u64) {
-	_Port_close(end)
 }
 
 // window.name: its navigable's name.

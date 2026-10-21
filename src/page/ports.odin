@@ -1,16 +1,20 @@
 package page
 
-// MessagePorts between documents (HTML "channel messaging" across realms). Each document runs in its own engine
-// instance: a MessagePort sent to another document cannot be the same object there. When a port goes to another realm
-// (in the transfer list of window.postMessage or of another port's message), the engine turns its pair into a pair of
-// port ends routed by the browser:
+// MessagePorts between realms (HTML "channel messaging" across documents and workers). Each realm runs in its own engine
+// instance: a MessagePort sent to another realm cannot be the same object there. When a port goes to another realm (in
+// the transfer list of window.postMessage, of a worker's message or of another port's message), the engine turns its
+// pair into a pair of port ends routed here (api/ports.widl; native/js/runtime/web_message.c):
 //
-//   realm A: port Q ──Port_post(end a)──▶ router (ends a ⇄ b) ──task──▶ realm B: wj_port_message(end b) ──▶ port P'
+//   realm A: port Q ──Port_post(end a)──▶ router (ends a ⇄ b, queue of b) ──wake──▶ realm B: wj_port_message(end b)
 //
-// An end belongs to one document at a time (Port_bind); while it travels in a message it belongs to none (Port_ship),
-// and what is posted to it waits in its queue until its next owner binds it. Closing either end, or the document that
-// owns it, disentangles the pair. UI thread only: the documents of frames and tabs (a worker's realm has none yet).
+// An end belongs to one realm at a time (Port_bind): a document (its page id, UI thread) or a worker (its link, its own
+// thread). While it travels in a message it belongs to none (Port_ship) and what is posted to it waits in its queue.
+// Delivery is one wake per message: a task on the UI loop for a document, a message on the worker's link for a worker;
+// the wake takes the first message of the queue if the end still belongs to that realm (else its next owner gets it).
+// The router is shared by every thread: one mutex, never held while a realm runs.
 
+import "core:sync"
+import "wb:host"
 import "wb:js"
 
 @(private)
@@ -22,153 +26,208 @@ Port_Msg :: struct {
 @(private)
 Port_End :: struct {
 	id:     u64,
-	peer:   u64,          // 0: disentangled
-	owner:  u64,          // the page id of the document that has it; 0 while in a message
+	peer:   u64,             // 0: disentangled
+	page:   u64,             // owner: a document's page id (UI thread)
+	link:   ^Worker_Link,    // owner: a worker realm
 	queue:  [dynamic]Port_Msg,
-	queued: int,          // bytes waiting
 }
 
 @(private)
-port_ends: map[u64]^Port_End
-@(private)
-next_port_end: u64
-
-@(private)
-port_msg_free :: proc(m: ^Port_Msg) {
-	delete(m.data)
-	for e in m.ports { port_close_end(e) }
-	delete(m.ports)
+Port_Router :: struct {
+	mu:      sync.Mutex,
+	ends:    map[u64]^Port_End,
+	next:    u64,
+	ui_loop: ^host.Loop,
 }
 
 @(private)
-port_end_free :: proc(e: ^Port_End) {
-	delete_key(&port_ends, e.id)
-	for &m in e.queue { port_msg_free(&m) }
+router: Port_Router
+
+// (locked)
+@(private)
+port_close_locked :: proc(id: u64) {
+	e, ok := router.ends[id]
+	if !ok { return }
+	if pe, pok := router.ends[e.peer]; pok { pe.peer = 0 }
+	delete_key(&router.ends, id)
+	for m in e.queue {
+		delete(m.data)
+		for x in m.ports { port_close_locked(x) }
+		delete(m.ports)
+	}
 	delete(e.queue)
 	free(e)
 }
 
-@(private)
 port_close_end :: proc(id: u64) {
-	e, ok := port_ends[id]
-	if !ok { return }
-	if pe, pok := port_ends[e.peer]; pok { pe.peer = 0 }
-	port_end_free(e)
+	sync.mutex_lock(&router.mu)
+	defer sync.mutex_unlock(&router.mu)
+	port_close_locked(id)
 }
 
 // A document closes: the ends it owns go (their peers are disentangled).
 ports_page_closed :: proc(p: ^Page) {
-	if len(port_ends) == 0 || p.web == nil { return }
+	if p.web == nil || p.web.id == 0 { return }
 	id := p.web.id
+	sync.mutex_lock(&router.mu)
+	defer sync.mutex_unlock(&router.mu)
+	if len(router.ends) == 0 { return }
 	dead := make([dynamic]u64, context.temp_allocator)
-	for k, e in port_ends { if e.owner == id { append(&dead, k) } }
-	for k in dead { port_close_end(k) }
+	for k, e in router.ends { if e.page == id { append(&dead, k) } }
+	for k in dead { port_close_locked(k) }
+}
+
+// A worker's thread ends: the ends its realm owns go.
+ports_link_closed :: proc(l: ^Worker_Link) {
+	sync.mutex_lock(&router.mu)
+	defer sync.mutex_unlock(&router.mu)
+	if len(router.ends) == 0 { return }
+	dead := make([dynamic]u64, context.temp_allocator)
+	for k, e in router.ends { if e.link == l { append(&dead, k) } }
+	for k in dead { port_close_locked(k) }
 }
 
 // Process end (process_shutdown).
 ports_shutdown :: proc() {
-	for len(port_ends) > 0 {
-		for k in port_ends { port_close_end(k); break }
+	sync.mutex_lock(&router.mu)
+	for len(router.ends) > 0 {
+		for k in router.ends { port_close_locked(k); break }
 	}
-	delete(port_ends)
-	port_ends = nil
+	delete(router.ends)
+	router.ends = nil
+	sync.mutex_unlock(&router.mu)
 }
 
 @(private)
-Port_Task :: struct { end: u64 }
+Port_Wake :: struct { end: u64 }
 
-// Delivers what waits for `e` to its owner, one message per task (in order: the queue keeps them).
+// One wake for the owner of `e` (locked): it takes the first message of the queue.
 @(private)
-port_flush :: proc(e: ^Port_End) {
-	if e.owner == 0 || len(e.queue) == 0 { return }
-	p := page_by_id(e.owner)
-	if p == nil { return }
-	for _ in e.queue {
-		t := new(Port_Task)
-		t.end = e.id
-		post_page_task(p, proc(pg: ^Page, data: rawptr) {
-			t := (^Port_Task)(data)
-			defer free(t)
-			e, ok := port_ends[t.end]
-			if !ok || len(e.queue) == 0 { return }
-			if pg == nil || pg.closed || e.owner != page_id(pg) { return }   // shipped meanwhile: its next owner gets it
-			m := e.queue[0]
-			ordered_remove(&e.queue, 0)
-			e.queued -= len(m.data)
-			js_port_deliver(pg, t.end, m)
-			delete(m.data)
-			delete(m.ports)
-		}, t)
+port_wake_locked :: proc(e: ^Port_End) {
+	switch {
+	case e.page != 0 && router.ui_loop != nil:
+		w := new(Port_Wake)
+		w.end = e.id
+		host.post(router.ui_loop, port_wake_page, w)
+	case e.link != nil:
+		m := new(Worker_Msg)
+		m.kind, m.id = .Port_Wake, e.id
+		link_send(e.link, true, m)
 	}
+}
+
+// UI thread: a message for an end a document owns.
+@(private)
+port_wake_page :: proc(data: rawptr) {
+	w := (^Port_Wake)(data)
+	end := w.end
+	free(w)
+	sync.mutex_lock(&router.mu)
+	e, ok := router.ends[end]
+	if !ok || e.page == 0 || len(e.queue) == 0 { sync.mutex_unlock(&router.mu); return }
+	p := page_by_id(e.page)
+	if p == nil || p.closed { sync.mutex_unlock(&router.mu); return }
+	if p.web.frozen {
+		// in the back/forward cache: delivered when it is shown again (its tasks wait the same way)
+		sync.mutex_unlock(&router.mu)
+		w2 := new(Port_Wake)
+		w2.end = end
+		post_page_task(p, proc(pg: ^Page, d: rawptr) { if pg == nil { free(d); return }; port_wake_page(d) }, w2)
+		return
+	}
+	m := e.queue[0]
+	ordered_remove(&e.queue, 0)
+	sync.mutex_unlock(&router.mu)
+	js_port_deliver(p, end, m)
+	delete(m.data)
+	delete(m.ports)
+}
+
+// A worker's thread: the same for an end its realm owns.
+ports_wake_worker :: proc(p: ^Page, end: u64) {
+	sync.mutex_lock(&router.mu)
+	e, ok := router.ends[end]
+	if !ok || p.worker == nil || e.link != p.worker.link || len(e.queue) == 0 { sync.mutex_unlock(&router.mu); return }
+	m := e.queue[0]
+	ordered_remove(&e.queue, 0)
+	sync.mutex_unlock(&router.mu)
+	js_port_deliver(p, end, m)
+	delete(m.data)
+	delete(m.ports)
+}
+
+@(private)
+port_owned_by :: proc(e: ^Port_End, p: ^Page) -> bool {
+	if p.worker != nil { return e.link == p.worker.link }
+	return e.page != 0 && e.page == page_id(p)
+}
+
+@(private)
+ports_note_loop :: proc(p: ^Page) {
+	if router.ui_loop == nil { router.ui_loop = p.worker != nil ? p.worker.link.ui_loop : p.loop }
 }
 
 Port_entangle :: proc(c: ^Call) -> u64 {
-	if c.page.worker != nil { return 0 }
-	if port_ends == nil { port_ends = make(map[u64]^Port_End) }
+	sync.mutex_lock(&router.mu)
+	defer sync.mutex_unlock(&router.mu)
+	ports_note_loop(c.page)
+	if router.ends == nil { router.ends = make(map[u64]^Port_End) }
 	a, b := new(Port_End), new(Port_End)
-	next_port_end += 2
-	a.id, b.id = next_port_end - 1, next_port_end
+	router.next += 2
+	a.id, b.id = router.next - 1, router.next
 	a.peer, b.peer = b.id, a.id
-	port_ends[a.id] = a
-	port_ends[b.id] = b
-	frames_of(c.page)   // its cleanup closes the ends the document owns
+	router.ends[a.id] = a
+	router.ends[b.id] = b
 	return a.id
 }
 
 Port_bind :: proc(c: ^Call, end: u64) -> Api_Error {
-	e, ok := port_ends[end]
-	if !ok || e.owner != 0 || c.page.worker != nil { return fail(c, .Invalid_Argument, "no such port end") }
-	e.owner = page_id(c.page)
-	frames_of(c.page)
-	port_flush(e)
+	p := c.page
+	if p.worker == nil { frames_of(p) }   // its cleanup closes the ends the document owns
+	sync.mutex_lock(&router.mu)
+	defer sync.mutex_unlock(&router.mu)
+	ports_note_loop(p)
+	e, ok := router.ends[end]
+	if !ok || e.page != 0 || e.link != nil { return fail(c, .Invalid_Argument, "no such port end") }
+	if p.worker != nil { e.link = p.worker.link } else { e.page = page_id(p) }
+	for _ in e.queue { port_wake_locked(e) }
 	return .None
 }
 
 Port_ship :: proc(c: ^Call, end: u64) {
-	if e, ok := port_ends[end]; ok && e.owner == page_id(c.page) { e.owner = 0 }
+	sync.mutex_lock(&router.mu)
+	defer sync.mutex_unlock(&router.mu)
+	if e, ok := router.ends[end]; ok && port_owned_by(e, c.page) { e.page, e.link = 0, nil }
 }
 
 Port_post :: proc(c: ^Call, end: u64, data: []u8, ports: []u64) -> Api_Error {
-	e, ok := port_ends[end]
-	if !ok || e.owner != page_id(c.page) {
+	max_bytes := c.page.settings.frames.max_message_bytes
+	if max_bytes > 0 && len(data) > max_bytes {
 		for x in ports { port_close_end(x) }
-		return .None   // a closed port: nothing happens
+		return fail(c, .Data_Clone, "DataCloneError: the message is larger than frames.max_message_bytes")
 	}
-	if len(data) > c.page.settings.frames.max_message_bytes { return fail(c, .Data_Clone, "DataCloneError: the message is larger than frames.max_message_bytes") }
-	pe, pok := port_ends[e.peer]
+	sync.mutex_lock(&router.mu)
+	defer sync.mutex_unlock(&router.mu)
+	e, ok := router.ends[end]
+	pe: ^Port_End
+	pok := false
+	if ok && port_owned_by(e, c.page) { pe, pok = router.ends[e.peer] }
 	if !pok {
-		for x in ports { port_close_end(x) }
+		for x in ports { port_close_locked(x) }   // a closed port: nothing happens
 		return .None
 	}
 	m := Port_Msg{data = make([]byte, len(data)), ports = make([]u64, len(ports))}
 	copy(m.data, data)
 	copy(m.ports, ports)
 	append(&pe.queue, m)
-	pe.queued += len(data)
-	if pe.owner != 0 {
-		// one task per message posted now (port_flush posts one per queued message: only this one is new)
-		if p := page_by_id(pe.owner); p != nil {
-			t := new(Port_Task)
-			t.end = pe.id
-			post_page_task(p, proc(pg: ^Page, data: rawptr) {
-				t := (^Port_Task)(data)
-				defer free(t)
-				e, ok := port_ends[t.end]
-				if !ok || len(e.queue) == 0 || pg == nil || pg.closed || e.owner != page_id(pg) { return }
-				m := e.queue[0]
-				ordered_remove(&e.queue, 0)
-				e.queued -= len(m.data)
-				js_port_deliver(pg, t.end, m)
-				delete(m.data)
-				delete(m.ports)
-			}, t)
-		}
-	}
+	port_wake_locked(pe)
 	return .None
 }
 
 Port_close :: proc(c: ^Call, end: u64) {
-	if e, ok := port_ends[end]; ok && (e.owner == page_id(c.page) || e.owner == 0) { port_close_end(end) }
+	sync.mutex_lock(&router.mu)
+	defer sync.mutex_unlock(&router.mu)
+	if e, ok := router.ends[end]; ok && (port_owned_by(e, c.page) || (e.page == 0 && e.link == nil)) { port_close_locked(end) }
 }
 
 // The engine of `p` receives a message for its port bound to `end`: the ports that came with it are bound there.
@@ -187,4 +246,34 @@ js_port_deliver :: proc(p: ^Page, end: u64, m: Port_Msg) {
 	argv := [6]u32{u32(end), u32(end >> 32), d, u32(len(m.data)), pp, u32(len(m.ports))}
 	js_call(p, r.inst, "wj_port_message", argv[:])
 	js_after_task(p, r, "message")
+}
+
+////////////////////////////////
+// Workers' messages with ports
+
+Worker_postSerializedPorts :: proc(c: ^Call, worker: u64, data: []u8, ports: []u64) -> Api_Error {
+	p := c.page
+	if p.worker != nil { for x in ports { port_close_end(x) }; return fail(c, .Invalid_Argument, "a worker posts with DedicatedWorkerGlobalScope_postSerializedPorts") }
+	h := (^Worker_Host)(object_data(p, worker, &worker_vt))
+	if h == nil || h.terminated || h.state == .Closed || h.state == .Exited { for x in ports { port_close_end(x) }; return .None }
+	err := post_message(p, h.link, true, string(data), nil, ports)
+	if err != .None { for x in ports { port_close_end(x) } }
+	return dom_error(err)
+}
+
+DedicatedWorkerGlobalScope_postSerializedPorts :: proc(c: ^Call, data: []u8, ports: []u64) -> Api_Error {
+	p := c.page
+	g := p.worker
+	if g == nil { for x in ports { port_close_end(x) }; return fail(c, .Invalid_Argument, "not in a worker") }
+	err := post_message(p, g.link, false, string(data), nil, ports)
+	if err != .None { for x in ports { port_close_end(x) } }
+	return dom_error(err)
+}
+
+// The ends that came with the message event being dispatched (given once: the engine binds them).
+MessageEvent_portEnds :: proc(c: ^Call, event: Api_Event) -> []u8 {
+	d := message_delivery(c.page, u64(event.handle))
+	if d == nil || d.ports == nil || d.ports_taken { return nil }
+	d.ports_taken = true
+	return ([^]u8)(raw_data(d.ports))[:len(d.ports) * 8]
 }

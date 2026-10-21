@@ -46,6 +46,7 @@ Worker_Msg_Kind :: enum u8 {
 	Fetch_Start,    // worker -> page: id, text = URL, text2 = method, text3 = headers, bytes = body, code = options
 	Fetch_Cancel,   // worker -> page: id
 	Fetch_Event,    // page -> worker: id, code = fetch.Event_Kind (see `relay_event`)
+	Port_Wake,      // router -> worker: a message waits for the port end id (ports.odin)
 }
 
 Worker_Msg :: struct {
@@ -58,6 +59,7 @@ Worker_Msg :: struct {
 	text3:   string,
 	bytes:   []byte,
 	buffers: [dynamic][dynamic]byte,
+	ports:   []u64,  // MessagePort ends travelling with a message (ports.odin); closed if never delivered
 	size:    int,    // counted against workers.max_pending_bytes while queued
 }
 
@@ -66,6 +68,8 @@ msg_free :: proc(m: ^Worker_Msg) {
 	delete(m.text); delete(m.text2); delete(m.text3); delete(m.bytes)
 	for b in m.buffers { delete(b) }
 	delete(m.buffers)
+	for x in m.ports { port_close_end(x) }
+	delete(m.ports)
 	free(m)
 }
 
@@ -192,6 +196,8 @@ Page_Workers :: struct {
 Delivery :: struct {
 	first:   u64,     // Event_object of the message event
 	buffers: []u64,
+	ports:   []u64,   // MessagePort ends that came with it (ports.odin)
+	ports_taken: bool,
 }
 
 // Workers running in the whole process (workers.max_total).
@@ -445,7 +451,7 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 			delete_key(&h.relays, m.id)
 			free(r)
 		}
-	case .Fetch_Event:
+	case .Fetch_Event, .Port_Wake:
 	}
 }
 
@@ -523,7 +529,7 @@ relay_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 // side effects when a handle is not a transferable buffer (or appears twice), the message is larger than
 // workers.max_message_bytes, or the receiver has too much waiting already.
 @(private)
-post_message :: proc(p: ^Page, l: ^Worker_Link, to_worker: bool, text: string, transfer: []u64) -> dom.Error {
+post_message :: proc(p: ^Page, l: ^Worker_Link, to_worker: bool, text: string, transfer: []u64, ports: []u64 = nil) -> dom.Error {
 	size := len(text)
 	for h, i in transfer {
 		b := buffer_get(p, h)
@@ -550,6 +556,7 @@ post_message :: proc(p: ^Page, l: ^Worker_Link, to_worker: bool, text: string, t
 		bytes, _ := buffer_detach(p, h)
 		append(&m.buffers, bytes)
 	}
+	if len(ports) > 0 { m.ports = make([]u64, len(ports)); copy(m.ports, ports) }
 	link_send(l, to_worker, m)   // the check above stands in for the limit: the transfer cannot be undone any more
 	return .None
 }
@@ -570,9 +577,18 @@ deliver_message :: proc(p: ^Page, target: u64, m: ^Worker_Msg, owner: u32) {
 	clear(&m.buffers)   // moved
 	first := len(handles) > 0 ? handles[0] : 0
 	listened := object_has_listener(p, target, "message")
-	append(&p.workers.deliveries, Delivery{first, handles})
+	append(&p.workers.deliveries, Delivery{first = first, buffers = handles, ports = m.ports})
+	ports := m.ports
+	m.ports = nil   // moved: the engine binds them (MessageEvent_portEnds), else they are closed below
 	object_dispatch(p, target, dom.Event{type = "message", data = m.text, object = first, code = i64(len(handles))})
-	for d, i in p.workers.deliveries { if d.first == first && raw_data(d.buffers) == raw_data(handles) { ordered_remove(&p.workers.deliveries, i); break } }
+	for d, i in p.workers.deliveries {
+		if d.first == first && raw_data(d.buffers) == raw_data(handles) {
+			if !d.ports_taken { for x in d.ports { port_close_end(x) } }
+			ordered_remove(&p.workers.deliveries, i)
+			break
+		}
+	}
+	delete(ports)
 	if !listened { for h in handles { object_release(p, h) } }
 }
 
@@ -585,6 +601,16 @@ message_transfer :: proc(p: ^Page, ev: u64, index: int) -> u64 {
 		if d.first == e.object { return index >= 0 && index < len(d.buffers) ? d.buffers[index] : 0 }
 	}
 	return 0
+}
+
+// The delivery of the message event being dispatched (its buffers and ports), nil when none.
+message_delivery :: proc(p: ^Page, ev: u64) -> ^Delivery {
+	e := base.pool_get(&p.dp.events, base.Handle(ev))
+	if e == nil { return nil }
+	for i := len(p.workers.deliveries) - 1; i >= 0; i -= 1 {
+		if p.workers.deliveries[i].first == e.object { return &p.workers.deliveries[i] }
+	}
+	return nil
 }
 
 // From the page: Worker.postMessage. Silently ignored once the worker is terminated or closed, as in browsers.
@@ -646,6 +672,7 @@ worker_main :: proc(data: rawptr) {
 		m := new(Worker_Msg)
 		m.kind = .Exited
 		link_send(l, false, m)
+		ports_link_closed(l)   // the MessagePort ends of its realm (ports.odin)
 		worker_global_free(g)
 		link_release(l)
 	}
@@ -710,6 +737,7 @@ worker_run_inbox :: proc(g: ^Worker_Global) {
 			switch m.kind {
 			case .Message:     deliver_message(p, g.self, m, 0)
 			case .Fetch_Event: worker_fetch_event(p, m)
+			case .Port_Wake:   ports_wake_worker(p, m.id)   // ports.odin
 			case .Error, .Console, .Closed, .Exited, .Fetch_Start, .Fetch_Cancel:
 			}
 		}

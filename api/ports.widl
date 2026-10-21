@@ -1,0 +1,26 @@
+/// MessagePorts between realms (src/page/ports.odin; native/js/runtime/web_message.c, workers.c): a port whose other
+/// side is in another realm (another document, a worker) talks through a pair of port ends the browser routes. An end
+/// belongs to one realm at a time; while it travels in a message it belongs to none, and what is posted to it waits
+/// for its next owner.
+[Exposed=(Window,Worker)]
+module ports {
+  /// A new pair of entangled port ends: the first end's id (the second is that id + 1), owned by nobody yet.
+  u64 Port_entangle();
+  /// The calling realm owns this end from now on: what was posted to it meanwhile is delivered (each message from a
+  /// task: the engine's wj_port_message). Invalid_Argument for an end that is gone or owned.
+  void Port_bind(u64 end) raises;
+  /// The calling realm gives this end up (it is in a message being sent).
+  void Port_ship(u64 end);
+  /// port.postMessage(message, [ports]) on an end: delivered to the other end's owner (queued while it has none).
+  /// Data_Clone for a message over frames.max_message_bytes.
+  void Port_post(u64 end, bytes data, u64[] ports) raises;
+  /// port.close(): the pair is disentangled; nothing more is delivered to either end.
+  void Port_close(u64 end);
+
+  /// worker.postMessage(message, transfer) with MessagePorts in the transfer list (shipped as `ports`).
+  void Worker_postSerializedPorts(u64 worker, bytes data, u64[] ports) raises;
+  /// postMessage(message, transfer) in a worker, with MessagePorts.
+  void DedicatedWorkerGlobalScope_postSerializedPorts(bytes data, u64[] ports) raises;
+  /// The port ends that came with a worker's message event (8 bytes each), given once: the caller binds them.
+  bytes MessageEvent_portEnds(Event event);
+}
