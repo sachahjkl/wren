@@ -173,8 +173,12 @@ try {
                 }
                 if ([SH]::GetForegroundWindow() -ne $h) { throw "the browser window is not in the foreground: keys not sent" }
                 foreach ($m in $mods) { [SH]::keybd_event([byte]$m, 0, 0, [IntPtr]::Zero) }
-                [SH]::keybd_event([byte]$code, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 30
-                [SH]::keybd_event([byte]$code, 0, 2, [IntPtr]::Zero)
+                # the keys of the navigation block are extended keys: without the flag they are the numeric keypad's,
+                # and Shift + a keypad key with Num Lock on comes with a fake Shift release (Shift+Delete would lose
+                # its Shift)
+                $ext = if (@(0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x2D, 0x2E, 0x5D) -contains $code) { 1 } else { 0 }
+                [SH]::keybd_event([byte]$code, 0, $ext, [IntPtr]::Zero); Start-Sleep -Milliseconds 30
+                [SH]::keybd_event([byte]$code, 0, 2 -bor $ext, [IntPtr]::Zero)
                 foreach ($m in $mods) { [SH]::keybd_event([byte]$m, 0, 2, [IntPtr]::Zero) }
             }
             'vkey' {
