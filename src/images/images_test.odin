@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:slice"
 import "core:testing"
+import "core:time"
 import "wb:host"
 
 // The files come from `testserver -gen-images examples/site/images` (tools/testserver/images.go); run from the
@@ -234,7 +235,7 @@ decoding_threads :: proc(t: ^testing.T) {
 	loop: host.Loop
 	host.loop_init(&loop)
 	defer host.loop_destroy(&loop)
-	decoder_start(1)
+	decoder_start(1, idle_ms = 150)   // (idle threads end: checked at the end)
 	defer decoder_stop()
 	st: Pool_Test
 	defer { for j in st.done { job_free(j) }; delete(st.done); delete(st.order) }
@@ -267,4 +268,15 @@ decoding_threads :: proc(t: ^testing.T) {
 	host.run_ready(&loop)
 	testing.expect_value(t, len(st.done), n)
 	testing.expect(t, !submit(port, job_make(.Probe, blob, opts())), "submitting to a closed port fails (and frees the job)")
+
+	// an idle thread ends (its stack goes back to the system); the next job starts one again
+	for i := 0; i < 300 && decoder_threads() > 0; i += 1 { time.sleep(10 * time.Millisecond) }
+	testing.expect_value(t, decoder_threads(), 0)
+	port2 := port_open(&loop, proc(user: rawptr, j: ^Job) { append(&(^Pool_Test)(user).done, j) }, &st)
+	before := len(st.done)
+	testing.expect(t, submit(port2, job_make(.Decode, blob, opts(), tag = 50)))
+	for len(st.done) == before { host.loop_wait(&loop) }
+	testing.expect(t, st.done[len(st.done) - 1].err == .None, "decoded by a thread started for it")
+	testing.expect_value(t, decoder_threads(), 1)
+	port_close(port2)
 }
