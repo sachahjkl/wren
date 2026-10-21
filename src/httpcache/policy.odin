@@ -128,13 +128,20 @@ is_heuristically_cacheable_status :: proc(status: int) -> bool {
 	return false
 }
 
-// Statuses this cache understands well enough to store (RFC 9111 §3: "the response status code is final" and
-// understood). 206 is not stored: partial content would need range merging (a later full request fetches it whole).
-is_storable_status :: proc(status: int) -> bool {
+// Statuses whose semantics this cache knows (RFC 9111 §3.2, must-understand).
+is_understood_status :: proc(status: int) -> bool {
 	switch status {
 	case 200, 203, 204, 300, 301, 302, 303, 307, 308, 404, 405, 410, 414, 501: return true
 	}
 	return false
+}
+
+// RFC 9111 §3: any final status may be stored (whether it may be reused is the freshness rules' business), but 304 and
+// 206: partial content would need range merging, a later full request fetches it whole. With must-understand, only
+// the statuses this cache understands.
+is_storable_status :: proc(status: int, must_understand := false) -> bool {
+	if status < 200 || status > 999 || status == 206 || status == 304 { return false }
+	return !must_understand || is_understood_status(status)
 }
 
 Store_Verdict :: enum u8 {
@@ -153,7 +160,7 @@ Store_Verdict :: enum u8 {
 // neither are kept only when `keep_unvalidated` (back / forward navigations prefer the cache, as other browsers do).
 storable :: proc(method: string, status: int, req_cc, resp_cc: Cache_Control, resp: http.Headers, authorization: bool, keep_unvalidated: bool) -> Store_Verdict {
 	if method != "GET" { return .Method }
-	if !is_storable_status(status) { return .Status }
+	if !is_storable_status(status, resp_cc.must_understand) { return .Status }
 	if req_cc.no_store || resp_cc.no_store { return .No_Store }
 	if authorization && !(resp_cc.public || resp_cc.must_revalidate || resp_cc.s_maxage >= 0) { return .Authorization }
 	if v, ok := http.get_header(resp, "vary"); ok {

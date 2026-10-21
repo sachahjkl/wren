@@ -186,6 +186,8 @@ cache_lookup :: proc(t: ^Task) -> bool {
 		return false
 	}
 	if mode == .No_Store || mode == .Reload { return false }
+	rcc := request_cache_control(t.headers)
+	if rcc.no_store { return false }   // the request's own Cache-Control: no-store (RFC 9111 §5.2.1.5)
 	if !httpcache.is_ready(c) {
 		cache_wait(t, c, nil)
 		return true
@@ -199,6 +201,7 @@ cache_lookup :: proc(t: ^Task) -> bool {
 	if e == nil || !vary_matches(e, req) {
 		c.stats.misses += 1
 		if mode == .Only_If_Cached { cache_miss_fail(t); return true }
+		if rcc.only_if_cached { cache_gateway_timeout(t); return true }
 		return false
 	}
 	resp := httpcache.headers_of(e)
@@ -211,7 +214,7 @@ cache_lookup :: proc(t: ^Task) -> bool {
 		return false
 	case .Default:
 		times := httpcache.Response_Times{e.meta.request_time, e.meta.response_time}
-		j := httpcache.judge(e.meta.status, resp, times, request_cache_control(t.headers), httpcache.now_s(), c.settings.heuristic, c.settings.stale_while_revalidate)
+		j := httpcache.judge(e.meta.status, resp, times, rcc, httpcache.now_s(), c.settings.heuristic, c.settings.stale_while_revalidate)
 		switch j.use {
 		case .Fresh:
 			cache_serve(t, c, e, .Hit)
@@ -221,6 +224,7 @@ cache_lookup :: proc(t: ^Task) -> bool {
 			cache_serve(t, c, e, .Stale)
 			return true
 		case .Validate:
+			if rcc.only_if_cached { cache_gateway_timeout(t); return true }
 			t.cache.validating = httpcache.has_validator(resp)
 			if !t.cache.validating { c.stats.misses += 1 }
 			return false
@@ -233,6 +237,13 @@ cache_lookup :: proc(t: ^Task) -> bool {
 @(private)
 cache_miss_fail :: proc(t: ^Task) {
 	fail(t, .Not_Cached, "only-if-cached: the response is not in the cache")
+}
+
+// RFC 9111 §5.2.1.7: a request with Cache-Control: only-if-cached and nothing usable stored gets a 504.
+@(private)
+cache_gateway_timeout :: proc(t: ^Task) {
+	t.cache.outcome = .Hit
+	synthetic(t, 504, "text/plain;charset=utf-8", nil)
 }
 
 // Waits for the index (e = nil) or for `e` to be read from disk, then looks again.
@@ -359,6 +370,7 @@ cache_on_response :: proc(t: ^Task) -> bool {
 	t.cache.validating = false
 	req := http.parse_header_block(t.cache.sent, context.temp_allocator)
 	req_cc := httpcache.cache_control_of(req)
+	if req_cc.no_store { return false }   // neither stored nor replacing what is
 	resp_cc := httpcache.cache_control_of(t.raw_headers)
 	keep := c.settings.keep_unvalidated_documents && t.destination == .Document
 	verdict := httpcache.storable(t.method, t.status, req_cc, resp_cc, t.raw_headers, http.has_header(t.headers, "authorization"), keep)

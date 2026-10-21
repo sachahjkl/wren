@@ -1,0 +1,306 @@
+# web-platform-tests expectations of Wren for fetch/http-cache, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/fetch/http-cache/304-update.any.html: OK
+	Content-* header: PASS
+	HTTP cache updates returned headers from a ETag 304: PASS
+	HTTP cache updates returned headers from a Last-Modified 304: PASS
+	HTTP cache updates stored headers from a ETag 304: PASS
+	HTTP cache updates stored headers from a Last-Modified 304: PASS
+/fetch/http-cache/304-update.any.worker.html: OK
+	Content-* header: PASS
+	HTTP cache updates returned headers from a ETag 304: PASS
+	HTTP cache updates returned headers from a Last-Modified 304: PASS
+	HTTP cache updates stored headers from a ETag 304: PASS
+	HTTP cache updates stored headers from a Last-Modified 304: PASS
+/fetch/http-cache/cache-mode.any.html: OK
+	Fetch doesn't touch Cache-Control when cache mode is no-cache and Cache-Control is already present: PASS
+	Fetch doesn't touch Cache-Control when cache mode is no-store and Cache-Control is already present: PASS
+	Fetch doesn't touch Pragma when cache mode is no-store and Pragma is already present: PASS
+	Fetch sends Cache-Control: max-age=0 when cache mode is no-cache: PASS
+	Fetch sends Cache-Control: no-cache and Pragma: no-cache when cache mode is no-store: PASS
+/fetch/http-cache/cache-mode.any.worker.html: OK
+	Fetch doesn't touch Cache-Control when cache mode is no-cache and Cache-Control is already present: PASS
+	Fetch doesn't touch Cache-Control when cache mode is no-store and Cache-Control is already present: PASS
+	Fetch doesn't touch Pragma when cache mode is no-store and Pragma is already present: PASS
+	Fetch sends Cache-Control: max-age=0 when cache mode is no-cache: PASS
+	Fetch sends Cache-Control: no-cache and Pragma: no-cache when cache mode is no-store: PASS
+/fetch/http-cache/cc-request.any.html: OK
+	HTTP cache does reuse stale response with Age header when request contains Cache-Control: max-stale that permits its use: PASS
+	HTTP cache does use aged stale response when request contains Cache-Control: max-stale that permits its use: PASS
+	HTTP cache doesn't reuse fresh response when request contains Cache-Control: min-fresh that wants it fresher: PASS
+	HTTP cache doesn't reuse fresh response when request contains Cache-Control: no-cache: PASS
+	HTTP cache doesn't reuse fresh response when request contains Cache-Control: no-store: PASS
+	HTTP cache doesn't reuse fresh response with Age header when request contains Cache-Control: min-fresh that wants it fresher: PASS
+	HTTP cache doesn't use aged but fresh response when request contains Cache-Control: max-age=0: PASS
+	HTTP cache doesn't use aged but fresh response when request contains Cache-Control: max-age=1: PASS
+	HTTP cache doesn't use fresh response with Age header when request contains Cache-Control: max-age that is greater than remaining freshness: PASS
+	HTTP cache generates 504 status code when nothing is in cache and request contains Cache-Control: only-if-cached: PASS
+	HTTP cache validates fresh response with ETag when request contains Cache-Control: no-cache: PASS
+	HTTP cache validates fresh response with Last-Modified when request contains Cache-Control: no-cache: PASS
+/fetch/http-cache/cc-request.any.worker.html: OK
+	HTTP cache does reuse stale response with Age header when request contains Cache-Control: max-stale that permits its use: PASS
+	HTTP cache does use aged stale response when request contains Cache-Control: max-stale that permits its use: PASS
+	HTTP cache doesn't reuse fresh response when request contains Cache-Control: min-fresh that wants it fresher: PASS
+	HTTP cache doesn't reuse fresh response when request contains Cache-Control: no-cache: PASS
+	HTTP cache doesn't reuse fresh response when request contains Cache-Control: no-store: PASS
+	HTTP cache doesn't reuse fresh response with Age header when request contains Cache-Control: min-fresh that wants it fresher: PASS
+	HTTP cache doesn't use aged but fresh response when request contains Cache-Control: max-age=0: PASS
+	HTTP cache doesn't use aged but fresh response when request contains Cache-Control: max-age=1: PASS
+	HTTP cache doesn't use fresh response with Age header when request contains Cache-Control: max-age that is greater than remaining freshness: PASS
+	HTTP cache generates 504 status code when nothing is in cache and request contains Cache-Control: only-if-cached: PASS
+	HTTP cache validates fresh response with ETag when request contains Cache-Control: no-cache: PASS
+	HTTP cache validates fresh response with Last-Modified when request contains Cache-Control: no-cache: PASS
+/fetch/http-cache/credentials.tentative.any.html: OK
+	same-origin: 2xAnonymous, 2xCredentialled, 1xAnonymous: PASS
+	same-origin: 2xCredentialled, 2xAnonymous, 1xCredentialled: PASS
+/fetch/http-cache/credentials.tentative.any.worker.html: ERROR
+/fetch/http-cache/freshness.any.html: OK
+	HTTP cache does not prefer Cache-Control: s-maxage over Cache-Control: max-age: PASS
+	HTTP cache does not reuse a response when the Age header is greater than its freshness lifetime: PASS
+	HTTP cache does not reuse a response with Cache-Control: max-age=0: PASS
+	HTTP cache does not reuse a response with Cache-Control: max-age=0 and a future Expires: PASS
+	HTTP cache does not reuse a response with a past Expires: PASS
+	HTTP cache does not reuse a response with a present Expires: PASS
+	HTTP cache does not reuse a response with an invalid Expires: PASS
+	HTTP cache does not reuse a response with an invalid Expires with Last-Modified now: PASS
+	HTTP cache does not reuse a response with an invalid Expires with past Last-Modified: PASS
+	HTTP cache does not store a response with Cache-Control: no-store: PASS
+	HTTP cache does not store a response with Cache-Control: no-store, even with max-age and Expires: PASS
+	HTTP cache reuses a response with a future Expires: PASS
+	HTTP cache reuses a response with positive Cache-Control: max-age: PASS
+	HTTP cache reuses a response with positive Cache-Control: max-age and a past Expires: PASS
+	HTTP cache reuses a response with positive Cache-Control: max-age and an invalid Expires: PASS
+	HTTP cache stores a response with Cache-Control: no-cache, but revalidates upon use: PASS
+	HTTP cache stores a response with Cache-Control: no-cache, but revalidates upon use, even with max-age and Expires: PASS
+/fetch/http-cache/freshness.any.worker.html: OK
+	HTTP cache does not prefer Cache-Control: s-maxage over Cache-Control: max-age: PASS
+	HTTP cache does not reuse a response when the Age header is greater than its freshness lifetime: PASS
+	HTTP cache does not reuse a response with Cache-Control: max-age=0: PASS
+	HTTP cache does not reuse a response with Cache-Control: max-age=0 and a future Expires: PASS
+	HTTP cache does not reuse a response with a past Expires: PASS
+	HTTP cache does not reuse a response with a present Expires: PASS
+	HTTP cache does not reuse a response with an invalid Expires: PASS
+	HTTP cache does not reuse a response with an invalid Expires with Last-Modified now: PASS
+	HTTP cache does not reuse a response with an invalid Expires with past Last-Modified: PASS
+	HTTP cache does not store a response with Cache-Control: no-store: PASS
+	HTTP cache does not store a response with Cache-Control: no-store, even with max-age and Expires: PASS
+	HTTP cache reuses a response with a future Expires: PASS
+	HTTP cache reuses a response with positive Cache-Control: max-age: PASS
+	HTTP cache reuses a response with positive Cache-Control: max-age and a past Expires: PASS
+	HTTP cache reuses a response with positive Cache-Control: max-age and an invalid Expires: PASS
+	HTTP cache stores a response with Cache-Control: no-cache, but revalidates upon use: PASS
+	HTTP cache stores a response with Cache-Control: no-cache, but revalidates upon use, even with max-age and Expires: PASS
+/fetch/http-cache/heuristic.any.html: OK
+	HTTP cache does not reuse a redirected response with no max-age and no Last-Modified header: PASS
+	HTTP cache does not reuse an unknown response with Last-Modified based upon heuristic freshness when Cache-Control: public is not present: PASS
+	HTTP cache does not use a 201 Created response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache does not use a 202 Accepted response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache does not use a 403 Forbidden response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache does not use a 502 Bad Gateway response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache does not use a 503 Service Unavailable response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache does not use a 504 Gateway Timeout response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 200 OK response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 203 Non-Authoritative Information response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 204 No Content response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 404 Not Found response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 405 Method Not Allowed response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 410 Gone response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 414 URI Too Long response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 501 Not Implemented response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses an unknown response with Last-Modified based upon heuristic freshness when Cache-Control: public is present: PASS
+/fetch/http-cache/heuristic.any.worker.html: OK
+	HTTP cache does not reuse a redirected response with no max-age and no Last-Modified header: PASS
+	HTTP cache does not reuse an unknown response with Last-Modified based upon heuristic freshness when Cache-Control: public is not present: PASS
+	HTTP cache does not use a 201 Created response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache does not use a 202 Accepted response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache does not use a 403 Forbidden response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache does not use a 502 Bad Gateway response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache does not use a 503 Service Unavailable response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache does not use a 504 Gateway Timeout response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 200 OK response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 203 Non-Authoritative Information response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 204 No Content response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 404 Not Found response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 405 Method Not Allowed response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 410 Gone response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 414 URI Too Long response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses a 501 Not Implemented response with Last-Modified based upon heuristic freshness: PASS
+	HTTP cache reuses an unknown response with Last-Modified based upon heuristic freshness when Cache-Control: public is present: PASS
+/fetch/http-cache/invalidate.any.html: OK
+	HTTP cache does not invalidate Content-Location URL after a failed response from an unsafe request: PASS
+	HTTP cache does not invalidate Location URL after a failed response from an unsafe request: PASS
+	HTTP cache does not invalidate after a failed response from an unsafe request: PASS
+	HTTP cache invalidates Content-Location URL after a successful response from a DELETE: PASS
+	HTTP cache invalidates Content-Location URL after a successful response from a POST: PASS
+	HTTP cache invalidates Content-Location URL after a successful response from a PUT: PASS
+	HTTP cache invalidates Content-Location URL after a successful response from an unknown method: PASS
+	HTTP cache invalidates Location URL after a successful response from a DELETE: PASS
+	HTTP cache invalidates Location URL after a successful response from a POST: PASS
+	HTTP cache invalidates Location URL after a successful response from a PUT: PASS
+	HTTP cache invalidates Location URL after a successful response from an unknown method: PASS
+	HTTP cache invalidates after a successful response from a DELETE: PASS
+	HTTP cache invalidates after a successful response from a POST: PASS
+	HTTP cache invalidates after a successful response from a PUT: PASS
+	HTTP cache invalidates after a successful response from an unknown method: PASS
+/fetch/http-cache/invalidate.any.worker.html: OK
+	HTTP cache does not invalidate Content-Location URL after a failed response from an unsafe request: PASS
+	HTTP cache does not invalidate Location URL after a failed response from an unsafe request: PASS
+	HTTP cache does not invalidate after a failed response from an unsafe request: PASS
+	HTTP cache invalidates Content-Location URL after a successful response from a DELETE: PASS
+	HTTP cache invalidates Content-Location URL after a successful response from a POST: PASS
+	HTTP cache invalidates Content-Location URL after a successful response from a PUT: PASS
+	HTTP cache invalidates Content-Location URL after a successful response from an unknown method: PASS
+	HTTP cache invalidates Location URL after a successful response from a DELETE: PASS
+	HTTP cache invalidates Location URL after a successful response from a POST: PASS
+	HTTP cache invalidates Location URL after a successful response from a PUT: PASS
+	HTTP cache invalidates Location URL after a successful response from an unknown method: PASS
+	HTTP cache invalidates after a successful response from a DELETE: PASS
+	HTTP cache invalidates after a successful response from a POST: PASS
+	HTTP cache invalidates after a successful response from a PUT: PASS
+	HTTP cache invalidates after a successful response from an unknown method: PASS
+/fetch/http-cache/no-vary-search.tentative.any.html: OK
+	Ground truth: When key-order is not set, URLs should be compared in an order-sensitive way.: PASS
+	When except is set without params, it should fall back to exact match and URLs with different parameters should be cached as different entries.: PASS
+	When key-order is set , URLs should be compared in an order-insensitive way. Matched cases:: FAIL
+	When key-order is set , URLs should be compared in an order-insensitive way. Not matched cases: PASS
+	When params and except are set, URLs differing in a kept parameter should be cached as different entries.: PASS
+	When params is an inner list combined with except, it should fall back to exact match and URLs with different parameters should be cached as different entries.: PASS
+	When params is set to true, URL differs only by their parameters (other than `dispatch` and `uuid`) should not be cached as different entries.: FAIL
+	When params names a parameter and key-order is set, URLs differing in other parameters should be cached as different entries.: PASS
+	When params names a parameter and key-order is set, URLs differing only in that parameter and parameter order should be cached as the same entry.: FAIL
+	When params names a specific parameter, URLs differing in other parameters should be cached as different entries.: PASS
+	When params names a specific parameter, URLs differing only in that parameter should be cached as the same entry.: FAIL
+	When params names multiple parameters, URLs differing only in those parameters should be cached as the same entry.: FAIL
+	When params=?1 is set explicitly (equivalent to bare params), URLs differing only in their parameters (other than `dispatch` and `uuid`) should be cached as the same entry.: FAIL
+/fetch/http-cache/no-vary-search.tentative.any.worker.html: OK
+	Ground truth: When key-order is not set, URLs should be compared in an order-sensitive way.: PASS
+	When except is set without params, it should fall back to exact match and URLs with different parameters should be cached as different entries.: PASS
+	When key-order is set , URLs should be compared in an order-insensitive way. Matched cases:: FAIL
+	When key-order is set , URLs should be compared in an order-insensitive way. Not matched cases: PASS
+	When params and except are set, URLs differing in a kept parameter should be cached as different entries.: PASS
+	When params is an inner list combined with except, it should fall back to exact match and URLs with different parameters should be cached as different entries.: PASS
+	When params is set to true, URL differs only by their parameters (other than `dispatch` and `uuid`) should not be cached as different entries.: FAIL
+	When params names a parameter and key-order is set, URLs differing in other parameters should be cached as different entries.: PASS
+	When params names a parameter and key-order is set, URLs differing only in that parameter and parameter order should be cached as the same entry.: FAIL
+	When params names a specific parameter, URLs differing in other parameters should be cached as different entries.: PASS
+	When params names a specific parameter, URLs differing only in that parameter should be cached as the same entry.: FAIL
+	When params names multiple parameters, URLs differing only in those parameters should be cached as the same entry.: FAIL
+	When params=?1 is set explicitly (equivalent to bare params), URLs differing only in their parameters (other than `dispatch` and `uuid`) should be cached as the same entry.: FAIL
+/fetch/http-cache/partial.any.html: OK
+	HTTP cache stores complete response and serves smaller ranges from it (absent last-byte-pos): FAIL
+	HTTP cache stores complete response and serves smaller ranges from it (byte-range-spec): FAIL
+	HTTP cache stores complete response and serves smaller ranges from it (suffix-byte-range-spec): FAIL
+	HTTP cache stores complete response and serves smaller ranges from it with only-if-cached: FAIL
+	HTTP cache stores partial content and completes it: FAIL
+	HTTP cache stores partial content and reuses it: FAIL
+	HTTP cache stores partial response and serves smaller ranges from it (absent last-byte-pos): FAIL
+	HTTP cache stores partial response and serves smaller ranges from it (byte-range-spec): FAIL
+	HTTP cache stores partial response and serves smaller ranges from it (suffix-byte-range-spec): FAIL
+/fetch/http-cache/partial.any.worker.html: OK
+	HTTP cache stores complete response and serves smaller ranges from it (absent last-byte-pos): FAIL
+	HTTP cache stores complete response and serves smaller ranges from it (byte-range-spec): FAIL
+	HTTP cache stores complete response and serves smaller ranges from it (suffix-byte-range-spec): FAIL
+	HTTP cache stores complete response and serves smaller ranges from it with only-if-cached: FAIL
+	HTTP cache stores partial content and completes it: FAIL
+	HTTP cache stores partial content and reuses it: FAIL
+	HTTP cache stores partial response and serves smaller ranges from it (absent last-byte-pos): FAIL
+	HTTP cache stores partial response and serves smaller ranges from it (byte-range-spec): FAIL
+	HTTP cache stores partial response and serves smaller ranges from it (suffix-byte-range-spec): FAIL
+/fetch/http-cache/post-patch.any.html: OK
+	HTTP cache uses content after PATCH request with response containing Content-Location and cache-allowing header: FAIL
+	HTTP cache uses content after POST request with response containing Content-Location and cache-allowing header: FAIL
+/fetch/http-cache/post-patch.any.worker.html: OK
+	HTTP cache uses content after PATCH request with response containing Content-Location and cache-allowing header: FAIL
+	HTTP cache uses content after POST request with response containing Content-Location and cache-allowing header: FAIL
+/fetch/http-cache/pragma-no-cache-with-cache-control.html: OK
+	Response with Cache-Control: max-age=2592000, immutable and Pragma: no-cache should be cached: FAIL
+	Response with Cache-Control: max-age=2592000, public and Pragma: no-cache should not be cached: FAIL
+/fetch/http-cache/split-cache.html: OK
+	HTTP cache is not shared between cross-site top-level frames: FAIL
+	HTTP cache is not shared between same-site frames with cross-site top-level frames: FAIL
+	HTTP cache is shared between same-site frames with same-site top-level frames: FAIL
+	HTTP cache is shared between same-site top-level frames: FAIL
+/fetch/http-cache/status.any.html: OK
+	HTTP cache avoids going to the network if it has a fresh 200 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 203 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 204 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 299 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 400 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 404 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 410 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 499 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 500 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 502 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 503 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 504 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 599 response: PASS
+	HTTP cache goes to the network if it has a stale 200 response: PASS
+	HTTP cache goes to the network if it has a stale 203 response: PASS
+	HTTP cache goes to the network if it has a stale 204 response: PASS
+	HTTP cache goes to the network if it has a stale 299 response: PASS
+	HTTP cache goes to the network if it has a stale 400 response: PASS
+	HTTP cache goes to the network if it has a stale 404 response: PASS
+	HTTP cache goes to the network if it has a stale 410 response: PASS
+	HTTP cache goes to the network if it has a stale 499 response: PASS
+	HTTP cache goes to the network if it has a stale 500 response: PASS
+	HTTP cache goes to the network if it has a stale 502 response: PASS
+	HTTP cache goes to the network if it has a stale 503 response: PASS
+	HTTP cache goes to the network if it has a stale 504 response: PASS
+	HTTP cache goes to the network if it has a stale 599 response: PASS
+/fetch/http-cache/status.any.worker.html: OK
+	HTTP cache avoids going to the network if it has a fresh 200 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 203 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 204 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 299 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 400 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 404 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 410 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 499 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 500 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 502 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 503 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 504 response: PASS
+	HTTP cache avoids going to the network if it has a fresh 599 response: PASS
+	HTTP cache goes to the network if it has a stale 200 response: PASS
+	HTTP cache goes to the network if it has a stale 203 response: PASS
+	HTTP cache goes to the network if it has a stale 204 response: PASS
+	HTTP cache goes to the network if it has a stale 299 response: PASS
+	HTTP cache goes to the network if it has a stale 400 response: PASS
+	HTTP cache goes to the network if it has a stale 404 response: PASS
+	HTTP cache goes to the network if it has a stale 410 response: PASS
+	HTTP cache goes to the network if it has a stale 499 response: PASS
+	HTTP cache goes to the network if it has a stale 500 response: PASS
+	HTTP cache goes to the network if it has a stale 502 response: PASS
+	HTTP cache goes to the network if it has a stale 503 response: PASS
+	HTTP cache goes to the network if it has a stale 504 response: PASS
+	HTTP cache goes to the network if it has a stale 599 response: PASS
+/fetch/http-cache/vary.any.html: OK
+	HTTP cache doesn't invalidate existing Vary response: FAIL
+	HTTP cache doesn't pay attention to headers not listed in Vary: PASS
+	HTTP cache doesn't use Vary response when request contains a variant header: PASS
+	HTTP cache doesn't use Vary response when request doesn't match: PASS
+	HTTP cache doesn't use Vary response when request omits variant header: PASS
+	HTTP cache doesn't use Vary response with a field value of '*': PASS
+	HTTP cache doesn't use three-way Vary response when request doesn't match: PASS
+	HTTP cache doesn't use three-way Vary response when request doesn't match, regardless of header order: PASS
+	HTTP cache doesn't use two-way Vary response when request doesn't match: PASS
+	HTTP cache doesn't use two-way Vary response when request omits variant header: PASS
+	HTTP cache reuses Vary response when request matches: PASS
+	HTTP cache reuses three-way Vary response when request matches: PASS
+	HTTP cache reuses two-way Vary response when request matches: PASS
+	HTTP cache uses three-way Vary response when both request and the original request omited a variant header: PASS
+/fetch/http-cache/vary.any.worker.html: OK
+	HTTP cache doesn't invalidate existing Vary response: FAIL
+	HTTP cache doesn't pay attention to headers not listed in Vary: PASS
+	HTTP cache doesn't use Vary response when request contains a variant header: PASS
+	HTTP cache doesn't use Vary response when request doesn't match: PASS
+	HTTP cache doesn't use Vary response when request omits variant header: PASS
+	HTTP cache doesn't use Vary response with a field value of '*': PASS
+	HTTP cache doesn't use three-way Vary response when request doesn't match: PASS
+	HTTP cache doesn't use three-way Vary response when request doesn't match, regardless of header order: PASS
+	HTTP cache doesn't use two-way Vary response when request doesn't match: PASS
+	HTTP cache doesn't use two-way Vary response when request omits variant header: PASS
+	HTTP cache reuses Vary response when request matches: PASS
+	HTTP cache reuses three-way Vary response when request matches: PASS
+	HTTP cache reuses two-way Vary response when request matches: PASS
+	HTTP cache uses three-way Vary response when both request and the original request omited a variant header: PASS

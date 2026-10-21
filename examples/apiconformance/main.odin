@@ -494,8 +494,8 @@ foreign _m_eventsource {
 foreign import _m_fetch "fetch"
 @(default_calling_convention = "contextless")
 foreign _m_fetch {
-	@(link_name = "Fetch_promise") c_Fetch_promise :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32, a7: i32, a8: i64, a9: i64, a10: i32, a11: i32, a12: i32, a13: i32, a14: i32, a15: i32) -> i32 ---
-	@(link_name = "Fetch_startWithSignal") c_Fetch_startWithSignal :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32, a7: i32, a8: i32, a9: i32, a10: i64, a11: i64, a12: i32, a13: i32, a14: i32, a15: i32, a16: i32, a17: i32) -> i32 ---
+	@(link_name = "Fetch_promise") c_Fetch_promise :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32, a7: i32, a8: i64, a9: i64, a10: i32, a11: i32, a12: i32, a13: i32, a14: i32, a15: i32, a16: i32) -> i32 ---
+	@(link_name = "Fetch_startWithSignal") c_Fetch_startWithSignal :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32, a7: i32, a8: i32, a9: i32, a10: i64, a11: i64, a12: i32, a13: i32, a14: i32, a15: i32, a16: i32, a17: i32, a18: i32) -> i32 ---
 	@(link_name = "Response_text") c_Response_text :: proc(a0: i64) -> i64 ---
 	@(link_name = "Response_arrayBuffer") c_Response_arrayBuffer :: proc(a0: i64) -> i64 ---
 	@(link_name = "Response_bytes") c_Response_bytes :: proc(a0: i64) -> i64 ---
@@ -503,7 +503,7 @@ foreign _m_fetch {
 	@(link_name = "Response_body") c_Response_body :: proc(a0: i64, a1: i32) -> i32 ---
 	@(link_name = "Stream_read") c_Stream_read :: proc(a0: i64) -> i64 ---
 	@(link_name = "Stream_cancel") c_Stream_cancel :: proc(a0: i64) ---
-	@(link_name = "Fetch_startFormData") c_Fetch_startFormData :: proc(a0: i32, a1: i32, a2: i64, a3: i32, a4: i32, a5: i32, a6: i32, a7: i32, a8: i32, a9: i32, a10: i32, a11: i32, a12: i32, a13: i32, a14: i32) -> i64 ---
+	@(link_name = "Fetch_startFormData") c_Fetch_startFormData :: proc(a0: i32, a1: i32, a2: i64, a3: i32, a4: i32, a5: i32, a6: i32, a7: i32, a8: i32, a9: i32, a10: i32, a11: i32, a12: i32, a13: i32, a14: i32, a15: i32) -> i64 ---
 }
 
 foreign import _m_forms "forms"
@@ -686,7 +686,7 @@ foreign _m_media {
 foreign import _m_net "net"
 @(default_calling_convention = "contextless")
 foreign _m_net {
-	@(link_name = "Fetch_start") c_Fetch_start :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32, a7: i32, a8: i32, a9: i32, a10: i32, a11: i32, a12: i32, a13: i32, a14: i32) -> i64 ---
+	@(link_name = "Fetch_start") c_Fetch_start :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32, a7: i32, a8: i32, a9: i32, a10: i32, a11: i32, a12: i32, a13: i32, a14: i32, a15: i32) -> i64 ---
 	@(link_name = "Fetch_state") c_Fetch_state :: proc(a0: i64) -> i32 ---
 	@(link_name = "Fetch_status") c_Fetch_status :: proc(a0: i64) -> i32 ---
 	@(link_name = "Fetch_type") c_Fetch_type :: proc(a0: i64) -> i32 ---
@@ -1277,40 +1277,40 @@ foreign _m_workers {
 	return i64(c_MessageEvent_lastEventId(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
 @(export) case_142 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_promise(i32(-16), 64, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Fetch_promise(i32(-16), 64, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_143 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_promise(p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Fetch_promise(p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_144 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_promise(p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Fetch_promise(p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_145 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_promise(p(&GOOD), 1, p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Fetch_promise(p(&GOOD), 1, p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_146 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_promise(p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0x7ABC_0000_0000_0001, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Fetch_promise(p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0x7ABC_0000_0000_0001, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_147 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_promise(p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0x7ABC_0000_0000_0001, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Fetch_promise(p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0x7ABC_0000_0000_0001, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_148 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_startWithSignal(i32(-16), 64, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Fetch_startWithSignal(i32(-16), 64, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_149 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_startWithSignal(p(&BAD), 4, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Fetch_startWithSignal(p(&BAD), 4, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_150 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_startWithSignal(p(&GOOD), 1, 0, 0, p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Fetch_startWithSignal(p(&GOOD), 1, 0, 0, p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_151 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_startWithSignal(p(&GOOD), 1, 0, 0, p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Fetch_startWithSignal(p(&GOOD), 1, 0, 0, p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_152 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_startWithSignal(p(&GOOD), 1, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0x7ABC_0000_0000_0001, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Fetch_startWithSignal(p(&GOOD), 1, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0x7ABC_0000_0000_0001, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_153 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_startWithSignal(p(&GOOD), 1, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0x7ABC_0000_0000_0001, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Fetch_startWithSignal(p(&GOOD), 1, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0x7ABC_0000_0000_0001, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_154 :: proc "contextless" () -> i64 {
 	return i64(c_Response_text(0x7ABC_0000_0000_0001))
@@ -1731,22 +1731,22 @@ foreign _m_workers {
 	return i64(c_FormData_fileTypeAt(0x7ABC_0000_0000_0001, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
 @(export) case_289 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_startFormData(i32(-16), 64, 0, 0, 0, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0))
+	return i64(c_Fetch_startFormData(i32(-16), 64, 0, 0, 0, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0))
 }
 @(export) case_290 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_startFormData(p(&BAD), 4, 0, 0, 0, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0))
+	return i64(c_Fetch_startFormData(p(&BAD), 4, 0, 0, 0, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0))
 }
 @(export) case_291 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_startFormData(p(&GOOD), 1, 0x7ABC_0000_0000_0001, 0, 0, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0))
+	return i64(c_Fetch_startFormData(p(&GOOD), 1, 0x7ABC_0000_0000_0001, 0, 0, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0))
 }
 @(export) case_292 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_startFormData(p(&GOOD), 1, 0, 0, 0, p(&BAD), 4, p(&GOOD), 1, 0, 0, 0, 0, 0, 0))
+	return i64(c_Fetch_startFormData(p(&GOOD), 1, 0, 0, 0, p(&BAD), 4, p(&GOOD), 1, 0, 0, 0, 0, 0, 0, 0))
 }
 @(export) case_293 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_startFormData(p(&GOOD), 1, 0, 0, 0, p(&GOOD), 1, p(&BAD), 4, 0, 0, 0, 0, 0, 0))
+	return i64(c_Fetch_startFormData(p(&GOOD), 1, 0, 0, 0, p(&GOOD), 1, p(&BAD), 4, 0, 0, 0, 0, 0, 0, 0))
 }
 @(export) case_294 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_startFormData(p(&GOOD), 1, 0, 0, 0, p(&GOOD), 1, p(&GOOD), 1, 2147483632, 0, 0, 0, 0, 0))
+	return i64(c_Fetch_startFormData(p(&GOOD), 1, 0, 0, 0, p(&GOOD), 1, p(&GOOD), 1, 2147483632, 0, 0, 0, 0, 0, 0))
 }
 @(export) case_295 :: proc "contextless" () -> i64 {
 	return i64(c_Location_get(0, i32(-16), 64))
@@ -4173,16 +4173,16 @@ foreign _m_workers {
 	return i64(c_FormData_encode(0, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_981 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_start(i32(-16), 64, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0))
+	return i64(c_Fetch_start(i32(-16), 64, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0))
 }
 @(export) case_982 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_start(p(&BAD), 4, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0))
+	return i64(c_Fetch_start(p(&BAD), 4, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0))
 }
 @(export) case_983 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_start(p(&GOOD), 1, 0, 0, p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0))
+	return i64(c_Fetch_start(p(&GOOD), 1, 0, 0, p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0))
 }
 @(export) case_984 :: proc "contextless" () -> i64 {
-	return i64(c_Fetch_start(p(&GOOD), 1, 0, 0, p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, 0, 0, 0, 0, 0))
+	return i64(c_Fetch_start(p(&GOOD), 1, 0, 0, p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, 0, 0, 0, 0, 0, 0))
 }
 @(export) case_985 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_state(0x7ABC_0000_0000_0001))

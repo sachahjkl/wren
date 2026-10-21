@@ -412,7 +412,7 @@ JSValue wjr_XMLHttpRequest_send(JSContext *ctx, JSValueConst this_val, int argc,
                                           (const uint8_t *)method, (uint32_t)strlen(method), hb.p ? hb.p : (const uint8_t *)"", (uint32_t)hb.len,
                                           has_body ? (e.data ? e.data : (const uint8_t *)"") : NULL, has_body ? (uint32_t)e.len : WR_ABSENT, 0, x->signal,
                                           wr_FetchMode_Cors, x->with_credentials ? wr_Credentials_Include : wr_Credentials_Same_Origin,
-                                          wr_RedirectMode_Follow, wr_ReferrerPolicy_Default, 0, &f);
+                                          wr_RedirectMode_Follow, wr_ReferrerPolicy_Default, 0, wr_RequestCache_Default, &f);
     JS_FreeCString(ctx, u);
     JS_FreeCString(ctx, method);
     web_buf_free(&hb);
