@@ -20,6 +20,8 @@ Blocking_Pool :: struct {
 	queue:    [dynamic]Blocking_Job,
 	threads:  [dynamic]^Thread,
 	stopping: bool,
+	running:  int,        // jobs taken by a worker whose `done` is not posted yet
+	idle:     sync.Cond,  // signalled when the queue is empty and no job runs (blocking_flush)
 }
 
 blocking_init :: proc(p: ^Blocking_Pool, loop: ^Loop, workers := 4) {
@@ -44,6 +46,28 @@ blocking_destroy :: proc(p: ^Blocking_Pool) {
 	delete(p.queue)
 }
 
+// Any thread but a worker's. Waits until every queued job has run its `work` and posted its `done` to the loop (run them
+// with host.loop_drain). Before tearing a program down, while the owners of the jobs still live: blocking_destroy drops
+// the jobs still queued, whose data would leak.
+blocking_flush :: proc(p: ^Blocking_Pool) {
+	sync.mutex_lock(&p.mu)
+	for (len(p.queue) > 0 || p.running > 0) && !p.stopping && len(p.threads) > 0 { sync.cond_wait(&p.idle, &p.mu) }
+	sync.mutex_unlock(&p.mu)
+}
+
+// Loop thread. Runs the queued jobs and the loop's posted tasks until neither has anything left (a `done` may queue
+// another job, a job's completion another task): what a program does before tearing its subsystems down.
+blocking_settle :: proc(p: ^Blocking_Pool, max_rounds := 100) {
+	for _ in 0 ..< max_rounds {
+		blocking_flush(p)
+		if loop_drain(p.loop) > 0 { continue }
+		sync.mutex_lock(&p.mu)
+		idle := len(p.queue) == 0 && p.running == 0
+		sync.mutex_unlock(&p.mu)
+		if idle { break }
+	}
+}
+
 // Loop thread (or any thread).
 run_blocking :: proc(p: ^Blocking_Pool, work, done: Task_Proc, data: rawptr) {
 	sync.mutex_lock(&p.mu)
@@ -61,9 +85,14 @@ blocking_worker :: proc(data: rawptr) {
 		if p.stopping { sync.mutex_unlock(&p.mu); return }
 		job := p.queue[0]
 		ordered_remove(&p.queue, 0)
+		p.running += 1
 		sync.mutex_unlock(&p.mu)
 		job.work(job.data)
 		free_all(context.temp_allocator)   // this thread's own (thread_start): nothing outlives a job
 		post(p.loop, job.done, job.data)
+		sync.mutex_lock(&p.mu)
+		p.running -= 1
+		if p.running == 0 && len(p.queue) == 0 { sync.cond_broadcast(&p.idle) }
+		sync.mutex_unlock(&p.mu)
 	}
 }
