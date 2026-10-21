@@ -118,7 +118,7 @@ try {
     }
     # -Actions "drag:x1,y1-x2,y2; rclick:x,y; midclick:x,y; xback:x,y; dclick:x,y; tclick:x,y; click:x,y; key:Ctrl+F; type:some text; wait:ms; shot:path.png;
     #          hover:x,y; hovershot:path.png; mdrag:x1,y1-x2,y2; wheel:x,y,notches[,ctrl|shift]; hwheel:x,y,notches;
-    #          cursorshot:path.png (pshot: the same); rdown:x,y; rmove:x,y; rup"
+    #          cursorshot:path.png (pshot: the same); rdown:x,y; rmove:x,y; rup; quit[:ms]"
     #          (hover: the real pointer; hovershot: a capture that leaves it where it is; mdrag: middle button)
     # (window-relative pixels like -Click; key: real keyboard input, so modifiers count: Ctrl+Shift+T, Shift+F10, Menu, F6...)
     $named = @{ PageUp = 0x21; PageDown = 0x22; End = 0x23; Home = 0x24; Left = 0x25; Up = 0x26; Right = 0x27; Down = 0x28; Space = 0x20; Tab = 0x09;
@@ -141,6 +141,7 @@ try {
         }
     }
     foreach ($a in (($Actions -join ';') -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
+        if ($p.HasExited) { break }
         $kind, $arg = $a -split ':', 2
         switch ($kind) {
             'click'  { $xy = $arg -split ','; Press 0x0201 0x0202 1 $xy[0] $xy[1] 1 }
@@ -256,12 +257,20 @@ try {
             }
             'max' { [SH]::PostMessage($h, 0x0112, [IntPtr]0xF030, [IntPtr]::Zero) | Out-Null }       # WM_SYSCOMMAND SC_MAXIMIZE
             'restore' { [SH]::PostMessage($h, 0x0112, [IntPtr]0xF120, [IntPtr]::Zero) | Out-Null }   # SC_RESTORE
+            # quit[:ms]: a normal exit (WM_CLOSE), waited for (2 min by default); the browser's exit code becomes the script's
+            # (the check build's leak report: build.bat check, WREN_MEMTRACK_FAIL). Nothing after it is sent.
+            'quit' {
+                [SH]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+                if (-not $p.WaitForExit([int]$(if ($arg) { $arg } else { 120000 }))) { throw "the browser did not exit after WM_CLOSE" }
+                $script:quitCode = $p.ExitCode
+            }
         }
         Start-Sleep -Milliseconds $ClickPauseMs
     }
-    if ($Click.Count -gt 0 -or $Keys.Count -gt 0 -or $Actions.Count -gt 0) {
+    if (($Click.Count -gt 0 -or $Keys.Count -gt 0 -or $Actions.Count -gt 0) -and -not $p.HasExited) {
         [SH]::SetCursorPos($r0.R + 15, $r0.T + 200) | Out-Null
         Start-Sleep -Milliseconds $SettleMs
         Grab $h $(if ($Out2) { $Out2 } else { $Out -replace '\.png$', '_after.png' })
     }
 } finally { if ($p -and -not $p.HasExited) { $p.Kill(); $p.WaitForExit(5000) | Out-Null }; Exit-WrenLock $desktop }
+if ($null -ne $script:quitCode) { exit $script:quitCode }
