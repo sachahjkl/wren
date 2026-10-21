@@ -261,7 +261,9 @@ parse_document :: proc(p: ^Page, data: []byte, header_charset: string, done: Doc
 adopt_document :: proc(p: ^Page, d: ^Parsed_Document) -> html.Parse_Result {
 	if d.doc == nil { return d.result }
 	old := p.doc
-	dom.document_attach(d.doc, p.scope)
+	// the new document takes the old one's place among the page's cleanups: freed after what was made since (the
+	// DOM state of scripts, observers...), which may point into it
+	if old != nil { dom.document_take_place(old, d.doc) } else { dom.document_attach(d.doc, p.scope) }
 	p.doc = d.doc
 	d.doc = nil
 	shadow_doc_attached(p)

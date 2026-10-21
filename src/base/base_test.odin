@@ -90,6 +90,23 @@ scope_closes_children_then_cleanups_in_reverse :: proc(t: ^testing.T) {
 	testing.expect_value(t, l.order[1], 1)
 }
 
+// A replacement keeps the replaced resource's place: still released after what was registered since (a page's new
+// document outlives the scripts' DOM state made for the old one, which writes into the document when it goes).
+@(test)
+scope_rebound_cleanup_keeps_its_place :: proc(t: ^testing.T) {
+	l: Log
+	defer delete(l.order)
+	root := scope_make("root")
+	old := on_close(root, log_a, &l)    // the old document
+	on_close(root, log_b, &l)           // made since, points into the document
+	testing.expect(t, rebind_cleanup(root, old, log_c, &l))   // the new document takes the old one's place
+	testing.expect(t, !rebind_cleanup(root, Cleanup_Id(9999), log_c, &l))
+	scope_close(root)
+	testing.expect_value(t, len(l.order), 2)
+	testing.expect_value(t, l.order[0], 2)   // what came since goes first
+	testing.expect_value(t, l.order[1], 3)   // then the new document, in the old one's place
+}
+
 @(test)
 scope_child_closed_early_detaches :: proc(t: ^testing.T) {
 	l: Log
