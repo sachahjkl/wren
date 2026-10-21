@@ -93,6 +93,8 @@ DEMOS := [?]Demo{
 		"Per-character font fallback, color emoji, ligatures, kerning and OpenType features, complex scripts, bidirectional text, <code>unicode-range</code> (digits from another font), spacing and justification (the page is in French).", false, "", false},
 	{.Text, "Text metrics and vertical alignment", "text-metrics.html",
 		"Where text sits in its line, as in Chrome and Edge: <code>line-height: normal</code> from each font's rounded ascent, descent and line gap, numeric line heights, every <code>vertical-align</code> for spans and inline blocks, mixed fonts and emoji fallback, Wikipedia's <code>inline-flex</code> tabs with <code>min-height</code>, buttons, form controls on the baseline and table cells (the page is in French).", false, "", false},
+	{.Text, "Web fonts: font-display after the first paint", "cache/font_block.html",
+		"Text added after the first paint whose web font arrives 3 s later: with <code>font-display: block</code> it stays invisible during the block period instead of showing the fallback font, with <code>swap</code> the fallback shows at once and is swapped (the font is served slowly by the test server).", true, "", false},
 	{.Text, "Selection, menus and keyboard", "interaction.html",
 		"Double and triple click, drag selection across columns, <code>::selection</code>, <code>user-select</code>, a rotated selectable span, context menus, focus rings, find in page (Ctrl+F) and a scroll box.", false, "", false},
 

@@ -15,6 +15,7 @@ import "wb:config"
 import "wb:fetch"
 import "wb:host"
 import "wb:http"
+import "wb:httpcache"
 import "wb:net"
 import "wb:page"
 
@@ -61,6 +62,12 @@ init :: proc(e: ^Env, prefs: ^config.Prefs = nil, profile_dir := "", blocking_th
 	if !net.client_init(&e.client, &e.loop) { return false }
 	host.blocking_init(&e.blocking, &e.loop, blocking_threads)
 	e.profile = fetch.profile_make()
+	{
+		// an HTTP cache in memory, as a browser has (fetch/http-cache)
+		cs := httpcache.settings_default()
+		e.profile.cache = httpcache.create(&e.loop, cs, "")
+		httpcache.settings_destroy(&cs)
+	}
 	fetch.loader_init(&e.loader, &e.loop, &e.client, &e.blocking, &e.profile)
 	e.settings = prefs != nil ? page.settings_from_prefs(prefs) : page.settings_default()
 	if !page.register_imports() { return false }
@@ -76,6 +83,8 @@ init :: proc(e: ^Env, prefs: ^config.Prefs = nil, profile_dir := "", blocking_th
 destroy :: proc(e: ^Env) {
 	base.scope_close(e.process)
 	if e.has_storage { page.storage_manager_destroy(&e.storage) }
+	httpcache.destroy(e.profile.cache)
+	e.profile.cache = nil
 }
 
 @(private)

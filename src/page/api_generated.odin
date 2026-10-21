@@ -369,6 +369,16 @@ Api_ReferrerPolicy :: enum u32 {
 	Unsafe_Url = 8,
 }
 
+// RequestInit.cache: how the request uses the browser's HTTP cache (Fetch Standard cache modes).
+Api_RequestCache :: enum u32 {
+	Default = 0,
+	No_Store = 1,
+	Reload = 2,
+	No_Cache = 3,
+	Force_Cache = 4,
+	Only_If_Cached = 5,
+}
+
 // RequestInit beyond method, headers and body. The zero value is the Fetch API default.
 Api_FetchOptions :: struct {
 	mode: Api_FetchMode,
@@ -376,6 +386,7 @@ Api_FetchOptions :: struct {
 	redirect: Api_RedirectMode,
 	referrer_policy: Api_ReferrerPolicy,
 	no_referrer: bool,
+	cache: Api_RequestCache,
 }
 
 // The entries a query matches (Any: both).
@@ -555,6 +566,9 @@ _valid_RedirectMode :: #force_inline proc "contextless" (v: u32) -> bool { switc
 
 @(private = "file")
 _valid_ReferrerPolicy :: #force_inline proc "contextless" (v: u32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7, 8: return true }; return false }
+
+@(private = "file")
+_valid_RequestCache :: #force_inline proc "contextless" (v: u32) -> bool { switch v { case 0, 1, 2, 3, 4, 5: return true }; return false }
 
 @(private = "file")
 _valid_PerformanceEntryType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
@@ -3128,7 +3142,7 @@ _t_fetch_Fetch_promise :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	_absent3 := wasm.is_absent(&f, a[7])
 	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[6]), 0 if _absent3 else wasm.addr(&f, a[7]))
 	if !_k3 { return wasm.trap_bounds(&f, "fetch.Fetch_promise", "body") }
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[15]), 8)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[16]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "fetch.Fetch_promise", "result pointer") }
 	_p0 := string(_s0[:_n0])
 	if !wasm.valid_utf8(_p0) {
@@ -3172,6 +3186,10 @@ _t_fetch_Fetch_promise :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	}
 	_p6.referrer_policy = Api_ReferrerPolicy(u32(a[13].i32))
 	_p6.no_referrer = a[14].i32 != 0
+	if !_valid_RequestCache(u32(a[15].i32)) {
+		return _fail_status(&c, a, .Invalid_Argument, "fetch.Fetch_promise: field options.cache is not a RequestCache")
+	}
+	_p6.cache = Api_RequestCache(u32(a[15].i32))
 	_r, _err := Fetch_promise(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -3202,7 +3220,7 @@ _t_fetch_Fetch_startWithSignal :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_absent5 := wasm.is_absent(&f, a[9])
 	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[8]), 0 if _absent5 else wasm.addr(&f, a[9]))
 	if !_k5 { return wasm.trap_bounds(&f, "fetch.Fetch_startWithSignal", "body") }
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[17]), 8)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[18]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "fetch.Fetch_startWithSignal", "result pointer") }
 	_p0 := string(_s0[:_n0])
 	if !wasm.valid_utf8(_p0) {
@@ -3248,6 +3266,10 @@ _t_fetch_Fetch_startWithSignal :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	_p8.referrer_policy = Api_ReferrerPolicy(u32(a[15].i32))
 	_p8.no_referrer = a[16].i32 != 0
+	if !_valid_RequestCache(u32(a[17].i32)) {
+		return _fail_status(&c, a, .Invalid_Argument, "fetch.Fetch_startWithSignal: field options.cache is not a RequestCache")
+	}
+	_p8.cache = Api_RequestCache(u32(a[17].i32))
 	_r, _err := Fetch_startWithSignal(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -5379,6 +5401,11 @@ _t_fetch_Fetch_startFormData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	}
 	_p7.referrer_policy = Api_ReferrerPolicy(u32(a[13].i32))
 	_p7.no_referrer = a[14].i32 != 0
+	if !_valid_RequestCache(u32(a[15].i32)) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "fetch.Fetch_startFormData: field options.cache is not a RequestCache") }
+		return wasm.trap_new("fetch.Fetch_startFormData: field options.cache is not a RequestCache")
+	}
+	_p7.cache = Api_RequestCache(u32(a[15].i32))
 	_r := Fetch_startFormData(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -14754,6 +14781,11 @@ _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	}
 	_p6.referrer_policy = Api_ReferrerPolicy(u32(a[13].i32))
 	_p6.no_referrer = a[14].i32 != 0
+	if !_valid_RequestCache(u32(a[15].i32)) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "net.Fetch_start: field options.cache is not a RequestCache") }
+		return wasm.trap_new("net.Fetch_start: field options.cache is not a RequestCache")
+	}
+	_p6.cache = Api_RequestCache(u32(a[15].i32))
 	_r := Fetch_start(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -16872,8 +16904,8 @@ api_imports := [?]wasm.Import{
 	{module = "eventsource", name = "EventSource_close", fn = _t_eventsource_EventSource_close, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "eventsource", name = "MessageEvent_origin", fn = _t_eventsource_MessageEvent_origin, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "eventsource", name = "MessageEvent_lastEventId", fn = _t_eventsource_MessageEvent_lastEventId, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "fetch", name = "Fetch_promise", fn = _t_fetch_Fetch_promise, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "fetch", name = "Fetch_startWithSignal", fn = _t_fetch_Fetch_startWithSignal, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fetch", name = "Fetch_promise", fn = _t_fetch_Fetch_promise, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fetch", name = "Fetch_startWithSignal", fn = _t_fetch_Fetch_startWithSignal, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "fetch", name = "Response_text", fn = _t_fetch_Response_text, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "fetch", name = "Response_arrayBuffer", fn = _t_fetch_Response_arrayBuffer, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "fetch", name = "Response_bytes", fn = _t_fetch_Response_bytes, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
@@ -17063,7 +17095,7 @@ api_imports := [?]wasm.Import{
 	{module = "forms", name = "FormData_isFileAt", fn = _t_forms_FormData_isFileAt, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "forms", name = "FormData_fileSizeAt", fn = _t_forms_FormData_fileSizeAt, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
 	{module = "forms", name = "FormData_fileTypeAt", fn = _t_forms_FormData_fileTypeAt, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "fetch", name = "Fetch_startFormData", fn = _t_fetch_Fetch_startFormData, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "fetch", name = "Fetch_startFormData", fn = _t_fetch_Fetch_startFormData, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "history", name = "Window_self", fn = _t_history_Window_self, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "history", name = "Document_self", fn = _t_history_Document_self, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "history", name = "Location_get", fn = _t_history_Location_get, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
@@ -17467,7 +17499,7 @@ api_imports := [?]wasm.Import{
 	{module = "forms", name = "FormData_fileAt", fn = _t_forms_FormData_fileAt, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "forms", name = "FormData_setBlob", fn = _t_forms_FormData_setBlob, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "forms", name = "FormData_encode", fn = _t_forms_FormData_encode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "net", name = "Fetch_start", fn = _t_net_Fetch_start, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "net", name = "Fetch_start", fn = _t_net_Fetch_start, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "net", name = "Fetch_state", fn = _t_net_Fetch_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_status", fn = _t_net_Fetch_status, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_type", fn = _t_net_Fetch_type, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},

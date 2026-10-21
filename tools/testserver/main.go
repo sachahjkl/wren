@@ -122,6 +122,7 @@ func main() {
 	registerJSLoadHandlers(mux)
 	registerJSWebHandlers(mux)
 	registerDownloadHandlers(mux)
+	registerCacheHandlers(mux)
 
 	// every listener bound before anything is served or announced (ports.go)
 	l := bindPorts(selfSigned())

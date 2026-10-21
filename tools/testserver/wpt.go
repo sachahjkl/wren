@@ -448,6 +448,10 @@ func serveWPT(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, body)
 		return
 	}
+	if rel == "/fetch/http-cache/resources/http-cache.py" {
+		wptHTTPCacheHandler(w, r) // ported to Go (wpt_httpcache.go)
+		return
+	}
 	if strings.HasSuffix(rel, ".py") {
 		http.Error(w, "wptserve Python handlers do not run on Wren's test server", http.StatusNotImplemented)
 		return

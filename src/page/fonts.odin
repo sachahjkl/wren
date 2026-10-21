@@ -49,6 +49,7 @@ Web_Font :: struct {
 	data:          []byte,          // Ready: the sfnt file (TrueType / OpenType)
 	format:        webfont.Format,  // Ready: what the downloaded file was
 	started_ms:    f64,             // when the page asked for it (loop clock): font-display periods count from here
+	cached:        bool,            // the HTTP cache held it fresh when it was asked for: it is waited for (font_block_ms)
 }
 
 Page_Fonts :: struct {
@@ -164,13 +165,13 @@ font_start :: proc(p: ^Page, f: ^Web_Font) -> bool {
 		f.url = src.url
 		f.bad_status = false
 		f.state = .Loading
-		f.task = fetch.start(p.loader, {
-			request = {
-				url = src.url, mode = .Cors, credentials = .Same_Origin, destination = .Font, initiator = &p.env,
-				max_body = p.settings.style.webfont_max_bytes,
-			},
-			on_event = font_event, user = f, scope = p.scope, collect = true,
-		})
+		req := fetch.Request_Desc{
+			url = src.url, mode = .Cors, credentials = .Same_Origin, destination = .Font, initiator = &p.env,
+			max_body = p.settings.style.webfont_max_bytes,
+		}
+		// a font the cache has fresh arrives in milliseconds: the first paint waits for it, whatever font-display says
+		f.cached = fetch.cache_peek(p.loader, req) == .Fresh
+		f.task = fetch.start(p.loader, {request = req, on_event = font_event, user = f, scope = p.scope, collect = true})
 		return true
 	}
 	f.state = .Failed
@@ -197,7 +198,7 @@ font_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	case .Done:
 		f.task = base.NIL_HANDLE
 		if f.bad_status { font_retry(p, f); return }
-		sfnt, format, err := webfont.decode(ev.data, p.settings.style.webfont_max_bytes)
+		sfnt, format, err, _ := webfont.decode_cached(f.url, ev.data, p.settings.style.webfont_max_bytes, p.settings.style.webfont_decoded_cache_bytes)
 		if err != .None {
 			log(p, .Warn, fmt.tprintf("font %s: cannot use it (%v, %v)", f.url, format, err))
 			font_retry(p, f)
@@ -223,6 +224,43 @@ font_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		fonts_pump(p)
 	}
 }
+
+// How long text waits for face  (CSS Fonts 4 §4.9 block period): by font-display, at least
+// style.webfonts.cached_block_period_ms for a font the HTTP cache holds.
+font_block_ms :: proc(s: ^style.Settings, f: ^Web_Font) -> f64 {
+	block: f64
+	switch f.display {
+	case .Auto, .Block: block = s.webfont_block_ms
+	case .Fallback, .Optional: block = s.webfont_short_block_ms
+	case .Swap: block = 0
+	}
+	if f.cached { block = max(block, s.webfont_cached_block_ms) }
+	return block
+}
+
+// The families (lower case) whose text is to be drawn invisible now: a face of theirs is loading in its block period
+// (style.webfonts.invisible_text). `next_ms`: when the earliest of those periods ends (-1: none).
+fonts_blocking_families :: proc(p: ^Page, allocator := context.temp_allocator) -> (families: []string, next_ms: f64) {
+	out := make([dynamic]string, allocator)
+	next_ms = -1
+	s := &p.settings.style
+	if !s.webfont_invisible_text { return out[:], -1 }
+	now := now_ms(p)
+	for _, f in p.fonts.faces {
+		if f.state != .Queued && f.state != .Loading { continue }
+		left := f.started_ms + font_block_ms(s, f) - now
+		if left <= 0 { continue }
+		if next_ms < 0 || left < next_ms { next_ms = left }
+		name := strings.to_lower(strings.trim_space(f.family), allocator)
+		dup := false
+		for o in out { if o == name { dup = true; break } }
+		if !dup { append(&out, name) }
+	}
+	return out[:], next_ms
+}
+
+// Process exit: the decoded fonts kept for every page.
+fonts_shutdown :: proc() { webfont.decoded_cache_clear() }
 
 @(private)
 font_retry :: proc(p: ^Page, f: ^Web_Font) {

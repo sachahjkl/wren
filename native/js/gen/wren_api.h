@@ -343,6 +343,15 @@ enum wr_ReferrerPolicy {
     wr_ReferrerPolicy_Strict_Origin_When_Cross_Origin = 7,
     wr_ReferrerPolicy_Unsafe_Url = 8,
 };
+// RequestInit.cache: how the request uses the browser's HTTP cache (Fetch Standard cache modes).
+enum wr_RequestCache {
+    wr_RequestCache_Default = 0,
+    wr_RequestCache_No_Store = 1,
+    wr_RequestCache_Reload = 2,
+    wr_RequestCache_No_Cache = 3,
+    wr_RequestCache_Force_Cache = 4,
+    wr_RequestCache_Only_If_Cached = 5,
+};
 // RequestInit beyond method, headers and body. The zero value is the Fetch API default.
 typedef struct wr_FetchOptions {
     uint32_t mode;
@@ -350,6 +359,7 @@ typedef struct wr_FetchOptions {
     uint32_t redirect;
     uint32_t referrer_policy;
     uint8_t no_referrer;
+    uint32_t cache;
 } wr_FetchOptions;
 // Called when the response arrives (Response), when the body is complete (Done) or on failure (Failed).
 typedef void (*wr_FetchCallback)(int32_t user, uint64_t request, int32_t state);
@@ -1414,9 +1424,9 @@ WR_IMPORT("eventsource", "MessageEvent_lastEventId") int32_t wr_MessageEvent_las
 /* module fetch */
 // fetch(url, init): the body is `body`, or the bytes of `body_buffer` when given. Type when the signal is not an
 // AbortSignal or the buffer not a buffer.
-WR_IMPORT("fetch", "Fetch_promise") int32_t wr_Fetch_promise(const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint64_t body_buffer, uint64_t signal, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint64_t *_ret);
+WR_IMPORT("fetch", "Fetch_promise") int32_t wr_Fetch_promise(const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint64_t body_buffer, uint64_t signal, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint32_t options_cache, uint64_t *_ret);
 // The callback API (Fetch_start) with an abort signal and an optional buffer body.
-WR_IMPORT("fetch", "Fetch_startWithSignal") int32_t wr_Fetch_startWithSignal(const uint8_t *url, uint32_t url_len, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint64_t body_buffer, uint64_t signal, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint64_t *_ret);
+WR_IMPORT("fetch", "Fetch_startWithSignal") int32_t wr_Fetch_startWithSignal(const uint8_t *url, uint32_t url_len, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint64_t body_buffer, uint64_t signal, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint32_t options_cache, uint64_t *_ret);
 // response.text(): settles with the text (decoded as UTF-8) in the promise's text, its length as value.
 // A callback fetch can be read once it is done (Invalid_State before).
 WR_IMPORT("fetch", "Response_text") uint64_t wr_Response_text(uint64_t response);
@@ -1434,7 +1444,7 @@ WR_IMPORT("fetch", "Stream_read") uint64_t wr_Stream_read(uint64_t stream);
 WR_IMPORT("fetch", "Stream_cancel") void wr_Stream_cancel(uint64_t stream);
 // fetch with a FormData body: the Content-Type (with its boundary) is set unless `headers` name one. Same callback
 // and options as Fetch_start.
-WR_IMPORT("fetch", "Fetch_startFormData") uint64_t wr_Fetch_startFormData(const uint8_t *url, uint32_t url_len, uint64_t data, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, int32_t enctype, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer);
+WR_IMPORT("fetch", "Fetch_startFormData") uint64_t wr_Fetch_startFormData(const uint8_t *url, uint32_t url_len, uint64_t data, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, int32_t enctype, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint32_t options_cache);
 
 /* module forms */
 // control.value
@@ -1808,7 +1818,7 @@ WR_IMPORT("media", "Screen_get") int32_t wr_Screen_get(int32_t field);
 /* module net */
 // fetch(url, {method, headers, body, ...}) with a callback. `headers` are "Name: value" lines (CR LF or LF). A
 // relative URL resolves against the document (or the worker's script).
-WR_IMPORT("net", "Fetch_start") uint64_t wr_Fetch_start(const uint8_t *url, uint32_t url_len, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer);
+WR_IMPORT("net", "Fetch_start") uint64_t wr_Fetch_start(const uint8_t *url, uint32_t url_len, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint32_t options_cache);
 WR_IMPORT("net", "Fetch_state") int32_t wr_Fetch_state(uint64_t request);
 // The HTTP status (0 for an opaque response).
 WR_IMPORT("net", "Fetch_status") int32_t wr_Fetch_status(uint64_t request);

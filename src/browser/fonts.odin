@@ -41,6 +41,8 @@ Page_Fonts :: struct {
 	scope:    rawptr,                              // whose web faces the layout sees
 	emoji, math, fangsong: string,                 // owned: families of the generic families style does not map
 	scanned:  bool,                                // compatibility: start-up preloading happened
+	shared:   Shared_Faces,                        // web faces by content, for every tab and page (web_font_faces.odin)
+	blocking: Blocking_Text,                       // text drawn invisible while its web font loads (web_font_faces.odin)
 }
 
 // Names pages use for fonts that do not exist on Windows.
@@ -67,6 +69,8 @@ page_fonts_destroy :: proc(pf: ^Page_Fonts) {
 	for w in pf.web { append(&owners, w.owner) }
 	for o in pf.owned { append(&owners, o) }
 	for o in owners { page_fonts_drop(pf, o) }
+	shared_faces_destroy(pf)
+	blocking_text_destroy(&pf.blocking)
 	delete(pf.web)
 	delete(pf.owned)
 	page_fonts_forget(pf)
@@ -91,18 +95,17 @@ page_fonts_set_generics :: proc(pf: ^Page_Fonts, emoji, math, fangsong: string) 
 // The web faces of `owner` are the ones the layout sees from now on.
 page_fonts_scope :: proc(pf: ^Page_Fonts, owner: rawptr) { pf.scope = owner }
 
-// A web font face of `owner` (a downloaded, decoded @font-face). Takes a copy of the bytes.
+// A web font face of `owner` (a downloaded, decoded @font-face). The DirectWrite face is shared with every page that
+// has the same bytes under the same descriptors (web_font_faces.odin).
 register_web_face :: proc(pf: ^Page_Fonts, owner: rawptr, f: ^page.Web_Font) -> bool {
 	if len(f.data) == 0 { return false }
-	data := make([]byte, len(f.data))
-	copy(data, f.data)
 	fs := font.Font_Style.Normal
 	#partial switch f.font_style {
 	case .Italic: fs = .Italic
 	case .Oblique: fs = .Oblique
 	}
 	nominal := int(f.weight[0] == f.weight[1] ? f.weight[0] : (f.weight[0] + f.weight[1]) / 2)
-	id, ok := font.load_memory(pf.state, data, true, 0, 0, f.family, nominal, fs)
+	id, ok := shared_face_acquire(pf, f.data, f.family, nominal, fs)
 	if !ok { return false }
 	w := Web_Face{
 		family = strings.to_lower(strings.trim_space(f.family)), weight = f.weight, style = f.font_style, stretch = f.stretch,
@@ -147,7 +150,7 @@ page_fonts_drop :: proc(pf: ^Page_Fonts, owner: rawptr) {
 	for i := len(pf.web) - 1; i >= 0; i -= 1 {
 		w := pf.web[i]
 		if w.owner != owner { continue }
-		font.unload(pf.state, w.id)
+		shared_face_release(pf, w.id)   // (kept loaded for the pages to come: web_font_faces.odin)
 		delete(w.family)
 		delete(w.ranges)
 		ordered_remove(&pf.web, i)
@@ -177,7 +180,7 @@ page_fonts_transfer :: proc(pf: ^Page_Fonts, from, to: rawptr) {
 	page_fonts_forget(pf)
 }
 
-@(private = "file")
+@(private)
 own :: proc(pf: ^Page_Fonts, owner: rawptr, id: font.Font_Id) {
 	if owner == nil || id == 0 { return }
 	list := pf.owned[owner]
@@ -291,7 +294,7 @@ web_entries :: proc(pf: ^Page_Fonts, name: string, req: ^lay.Font_Request, out: 
 		for v in req.variations { append(&vars, font.Axis_Value{v.tag, v.value}) }
 		if len(vars) > 0 {
 			vid := font.with_variations(pf.state, id, vars[:])
-			if vid != id { own(pf, w.owner, vid); id = vid }
+			if vid != id { own_web(pf, w, vid); id = vid }
 		}
 		// synthesis (CSS font-synthesis: weight and style, allowed): bold for 600 and above when the face is lighter,
 		// a slant when italic or oblique is asked of an upright face
@@ -299,7 +302,7 @@ web_entries :: proc(pf: ^Page_Fonts, name: string, req: ^lay.Font_Request, out: 
 		slant := req.style != .Normal && w.style == .Normal && !slanted
 		if bold || slant {
 			sid := font.with_simulations(pf.state, id, bold, slant)
-			if sid != id { own(pf, w.owner, sid); id = sid }
+			if sid != id { own_web(pf, w, sid); id = sid }
 		}
 		// a color font whose color format this system cannot draw (COLR v1 before Windows 11 22H2): its characters come
 		// from the next faces and the system fallback (the system emoji font) rather than as outlines
@@ -369,7 +372,7 @@ resolve_request :: proc(pf: ^Page_Fonts, req: ^lay.Font_Request, settings: ^styl
 	feats := make([]font.Feature, len(req.features), context.temp_allocator)
 	for f, i in req.features { feats[i] = {f.tag, f.value} }
 	id := font.cascade(pf.state, dedup[:], feats)
-	if web { own(pf, pf.scope, id) }
+	if web { own_cascade(pf, id, dedup[:]) }   // (with the shared faces it uses: web_font_faces.odin)
 	pf.resolved[strings.clone(key)] = id
 	return id
 }
@@ -461,6 +464,7 @@ adopt_web_fonts :: proc(t: ^Tab) {
 		if len(f.data) == 0 { continue }
 		if !register_web_face(pf, t, f) { tab_log(t, .Warn, strings.concatenate({"font \"", f.family, "\" could not be read"}, context.temp_allocator)) }
 	}
+	blocking_text_update(pf, t)   // text still waiting for its font is drawn invisible (web_font_faces.odin)
 }
 
 ////////////////////////////////

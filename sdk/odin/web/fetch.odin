@@ -16,8 +16,8 @@ foreign import _m_fetch "fetch"
 
 @(private = "file", default_calling_convention = "contextless")
 foreign _m_fetch {
-	@(link_name = "Fetch_promise") _Fetch_promise :: proc(url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, body_buffer: Buffer, signal: AbortSignal, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, _ret: ^Promise) -> Error ---
-	@(link_name = "Fetch_startWithSignal") _Fetch_startWithSignal :: proc(url: [^]u8, url_len: u32, callback: FetchCallback, user: i32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, body_buffer: Buffer, signal: AbortSignal, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, _ret: ^Fetch) -> Error ---
+	@(link_name = "Fetch_promise") _Fetch_promise :: proc(url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, body_buffer: Buffer, signal: AbortSignal, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, options_cache: RequestCache, _ret: ^Promise) -> Error ---
+	@(link_name = "Fetch_startWithSignal") _Fetch_startWithSignal :: proc(url: [^]u8, url_len: u32, callback: FetchCallback, user: i32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, body_buffer: Buffer, signal: AbortSignal, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, options_cache: RequestCache, _ret: ^Fetch) -> Error ---
 	@(link_name = "Response_text") _Response_text :: proc(response: Response) -> Promise ---
 	@(link_name = "Response_arrayBuffer") _Response_arrayBuffer :: proc(response: Response) -> Promise ---
 	@(link_name = "Response_bytes") _Response_bytes :: proc(response: Response) -> Promise ---
@@ -25,7 +25,7 @@ foreign _m_fetch {
 	@(link_name = "Response_body") _Response_body :: proc(response: Response, _ret: ^ReadableStream) -> Error ---
 	@(link_name = "Stream_read") _Stream_read :: proc(stream: ReadableStream) -> Promise ---
 	@(link_name = "Stream_cancel") _Stream_cancel :: proc(stream: ReadableStream) ---
-	@(link_name = "Fetch_startFormData") _Fetch_startFormData :: proc(url: [^]u8, url_len: u32, data: FormData, callback: FetchCallback, user: i32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, enctype: FormEnctype, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32) -> Fetch ---
+	@(link_name = "Fetch_startFormData") _Fetch_startFormData :: proc(url: [^]u8, url_len: u32, data: FormData, callback: FetchCallback, user: i32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, enctype: FormEnctype, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, options_cache: RequestCache) -> Fetch ---
 }
 
 // fetch(url, init): the body is `body`, or the bytes of `body_buffer` when given. Type when the signal is not an
@@ -34,7 +34,7 @@ Fetch_promise :: proc "contextless" (url: string, method: string = "GET", header
 	_body_p: [^]u8
 	_body_n := max(u32)
 	if v, ok := body.?; ok { _body_p, _body_n = raw_data(v), u32(len(v)) }
-	err = _Fetch_promise(raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), raw_data(headers), u32(len(headers)), _body_p, _body_n, body_buffer, signal, options.mode, options.credentials, options.redirect, options.referrer_policy, i32(1 if options.no_referrer else 0), &result)
+	err = _Fetch_promise(raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), raw_data(headers), u32(len(headers)), _body_p, _body_n, body_buffer, signal, options.mode, options.credentials, options.redirect, options.referrer_policy, i32(1 if options.no_referrer else 0), options.cache, &result)
 	return
 }
 
@@ -43,7 +43,7 @@ Fetch_startWithSignal :: proc "contextless" (url: string, callback: FetchCallbac
 	_body_p: [^]u8
 	_body_n := max(u32)
 	if v, ok := body.?; ok { _body_p, _body_n = raw_data(v), u32(len(v)) }
-	err = _Fetch_startWithSignal(raw_data(url), u32(len(url)), callback, user, raw_data(method), u32(len(method)), raw_data(headers), u32(len(headers)), _body_p, _body_n, body_buffer, signal, options.mode, options.credentials, options.redirect, options.referrer_policy, i32(1 if options.no_referrer else 0), &result)
+	err = _Fetch_startWithSignal(raw_data(url), u32(len(url)), callback, user, raw_data(method), u32(len(method)), raw_data(headers), u32(len(headers)), _body_p, _body_n, body_buffer, signal, options.mode, options.credentials, options.redirect, options.referrer_policy, i32(1 if options.no_referrer else 0), options.cache, &result)
 	return
 }
 
@@ -87,6 +87,6 @@ Stream_cancel :: proc "contextless" (stream: ReadableStream) {
 // fetch with a FormData body: the Content-Type (with its boundary) is set unless `headers` name one. Same callback
 // and options as Fetch_start.
 Fetch_startFormData :: proc "contextless" (url: string, data: FormData, callback: FetchCallback, user: i32 = 0, method: string = "POST", headers: string = "", enctype: FormEnctype = .Multipart, options: FetchOptions = {}) -> Fetch {
-	return _Fetch_startFormData(raw_data(url), u32(len(url)), data, callback, user, raw_data(method), u32(len(method)), raw_data(headers), u32(len(headers)), enctype, options.mode, options.credentials, options.redirect, options.referrer_policy, i32(1 if options.no_referrer else 0))
+	return _Fetch_startFormData(raw_data(url), u32(len(url)), data, callback, user, raw_data(method), u32(len(method)), raw_data(headers), u32(len(headers)), enctype, options.mode, options.credentials, options.redirect, options.referrer_policy, i32(1 if options.no_referrer else 0), options.cache)
 }
 

@@ -88,6 +88,19 @@ RequestInit.referrerPolicy (Default: the document's policy).
 | `Strict_Origin_When_Cross_Origin` | 7 |  |%!(EXTRA false)
 | `Unsafe_Url` | 8 |  |%!(EXTRA false)
 
+### enum `RequestCache` : u32
+
+RequestInit.cache: how the request uses the browser's HTTP cache (Fetch Standard cache modes).
+
+| member | value | |
+|---|---:|---|
+| `Default` | 0 |  |%!(EXTRA false)
+| `No_Store` | 1 |  |%!(EXTRA false)
+| `Reload` | 2 |  |%!(EXTRA false)
+| `No_Cache` | 3 |  |%!(EXTRA false)
+| `Force_Cache` | 4 |  |%!(EXTRA false)
+| `Only_If_Cached` | 5 |  |%!(EXTRA false)
+
 ### struct `FetchOptions`
 
 RequestInit beyond method, headers and body. The zero value is the Fetch API default.
@@ -99,6 +112,7 @@ RequestInit beyond method, headers and body. The zero value is the Fetch API def
 | `redirect` | `RedirectMode` |  |%!(EXTRA false)
 | `referrer_policy` | `ReferrerPolicy` |  |%!(EXTRA false)
 | `no_referrer` | `bool` | referrer: "" (send none). |%!(EXTRA false)
+| `cache` | `RequestCache` | only-if-cached needs mode Same_Origin. |%!(EXTRA false)
 
 ### callback `FetchCallback`
 
