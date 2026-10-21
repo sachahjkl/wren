@@ -20,6 +20,8 @@
 // listed (refresh with -update). -quick runs a fixed sample (a few tests per folder).
 package wpt
 
+import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"

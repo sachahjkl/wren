@@ -12,6 +12,8 @@
 //   private_per_page_kib   private memory per page, -pages more pages (20) open at once, each with its realm
 package jspage
 
+import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+
 import "core:fmt"
 import "core:os"
 import "core:strings"

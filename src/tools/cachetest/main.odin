@@ -6,6 +6,8 @@
 //   cachetest.exe            (run from the repository root with build\testserver.exe running)
 package cachetest
 
+import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+
 import "core:fmt"
 import "core:os"
 import "core:strconv"

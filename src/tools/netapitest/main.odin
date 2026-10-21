@@ -4,6 +4,8 @@
 //   netapitest.exe build\netapitest.wasm
 package netapitest
 
+import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"

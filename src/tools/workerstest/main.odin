@@ -4,6 +4,8 @@
 //   workerstest.exe build\workerstest.wasm examples\site\workerstest_worker.wasm
 package workerstest
 
+import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+
 import "core:encoding/base64"
 import "core:fmt"
 import "core:os"

@@ -2,6 +2,8 @@
 //   runwasm.exe build\hello.wasm
 package runwasm
 
+import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+
 import "base:runtime"
 import "core:fmt"
 import "core:os"
