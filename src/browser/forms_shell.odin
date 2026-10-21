@@ -488,6 +488,34 @@ check_mark :: proc(dc: ^draw.Context, r: draw.Rect, color: draw.Color) {
 	dot_stroke(dc, b, c, t, color)
 }
 
+// A date field's calendar (a frame, its top bar and rows of days) or a time field's clock, in `r`.
+@(private = "file")
+picker_indicator :: proc(dc: ^draw.Context, r: draw.Rect, color: draw.Color, clock: bool, scale: f32) {
+	w := r.max.x - r.min.x
+	t := max(1.25 * scale, 1)
+	inner := draw.rect_pad(r, -w * 0.1)
+	if clock {
+		c := draw.rect_center(inner)
+		rad := (inner.max.x - inner.min.x) * 0.5
+		draw.rect(dc, inner, color, rad, t)
+		dot_stroke(dc, c, {c.x, c.y - rad * 0.6}, t, color)
+		dot_stroke(dc, c, {c.x + rad * 0.45, c.y}, t, color)
+		return
+	}
+	iw := inner.max.x - inner.min.x
+	draw.rect(dc, inner, color, iw * 0.12, t)
+	draw.rect(dc, {inner.min, {inner.max.x, inner.min.y + iw * 0.22}}, color, iw * 0.12)
+	// three rows of three days
+	d := iw * 0.13
+	for row in 0 ..< 3 {
+		for col in 0 ..< 3 {
+			x := inner.min.x + iw * (0.24 + 0.26 * f32(col))
+			y := inner.min.y + iw * (0.4 + 0.2 * f32(row))
+			draw.rect(dc, {{x - d * 0.5, y - d * 0.5}, {x + d * 0.5, y + d * 0.5}}, color)
+		}
+	}
+}
+
 // A drop-down list's arrow: a down-pointing chevron `half_w` either side of `center`, half as high as wide.
 @(private = "file")
 chevron :: proc(dc: ^draw.Context, center: draw.Vec2, half_w, t: f32, color: draw.Color) {
@@ -616,6 +644,25 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 			draw.pop_clip(dc)
 			if focused { draw.rect(dc, draw.rect_pad(b, 2 * scale), pal.focus_ring, 4 * scale, max(scale, 1)) }
 		case:
+			if t in forms.DATE_LIKE {
+				// the picker indicator at the end, then the value: the user's short format unless it is being edited
+				// (date_display.odin)
+				room := page_render.settings.picker_indicator * scale
+				if room > 0 {
+					icon := draw.Rect{{content.max.x - room, (content.min.y + content.max.y - room) * 0.5}, {content.max.x, (content.min.y + content.max.y + room) * 0.5}}
+					picker_indicator(dc, icon, fg, t == .Time, scale)
+					pt.content.max.x = max(pt.content.min.x, pt.content.max.x - room - 4 * scale)
+					fview.painted[node] = pt
+				}
+				if !focused {
+					if shown := date_field_display(t, forms.value(f, node)); shown != "" {
+						draw.push_clip(dc, pt.content)
+						centered_text(dc, fonts, fid, size, pt.content, fg, shown, false, lh)
+						draw.pop_clip(dc)
+						break
+					}
+				}
+			}
 			paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused, &pal)
 		}
 	case .Textarea:
