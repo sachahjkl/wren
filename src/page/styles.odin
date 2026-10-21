@@ -29,6 +29,7 @@ Style_Load :: struct {
 	parser:       bool,          // part of the document as parsed (or blocking="render"): may block its first paint
 	failed:       bool,          // nothing will come of it (network error, HTTP error, refused)
 	scope:        base.Handle,   // links: the shadow root the <link> is in (NIL: the document)
+	held_event:   enum u8 { None, Load, Error },   // settled before the parser revealed the <link> (link_sheet_settled)
 }
 
 @(private)
@@ -123,16 +124,7 @@ sync_styles :: proc(p: ^Page) {
 	// finishes (js_load.odin), instead of being dropped and loaded again; new ones (a script's) are added meanwhile
 	revealing := scripts_revealing(p)
 	// a sheet stays when its owner is in the part not revealed yet (not one a script removed)
-	pending :: proc(user: rawptr, owner: base.Handle) -> bool {
-		p := (^Page)(user)
-		d := p.doc
-		if dom.get(d, owner) == nil { return false }
-		r := dom.shadow_including_root(d, owner)
-		if r == d.root { return false }
-		ps := &p.scripts.parser
-		for it in ps.queue[ps.next:] { if it.node == r { return true } }
-		return false
-	}
+	pending :: proc(user: rawptr, owner: base.Handle) -> bool { return held_by_reveal((^Page)(user), owner) }
 	links := style.sync_document_sheets(p.engine, p.doc, p.env.location.href, keep_missing = revealing ? pending : nil, keep_user = p)
 
 	// links that disappeared
@@ -146,7 +138,11 @@ sync_styles :: proc(p: ^Page) {
 	// new or changed links
 	for k in links {
 		if old, ok := p.link_loads[k.owner]; ok {
-			if old.href == k.href && old.scope == k.scope { continue }
+			if old.href == k.href && old.scope == k.scope {
+				// a new media attribute: the sheet, once it arrives, gets it (a loaded one has it already)
+				if old.media != k.media { delete(old.media); old.media = strings.clone(k.media) }
+				continue
+			}
 			if s := style.engine_sheet_of_owner(p.engine, k.owner); s != nil { style.engine_remove_sheet(p.engine, s) }
 			free_load(p, old)
 			delete_key(&p.link_loads, k.owner)
@@ -197,9 +193,10 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		l.task = base.NIL_HANDLE
 		l.failed = true
 		log(p, .Warn, fmt.tprintf("stylesheet %s: %s", l.url, ev.detail))
+		link_sheet_settled(p, l, false)
 	case .Done:
 		l.task = base.NIL_HANDLE
-		if l.bad_status { return }
+		if l.bad_status { link_sheet_settled(p, l, false); return }
 		if !l.is_import { if _, still := p.link_loads[l.owner]; !still { return } }
 		if parse_sheet_offthread(p, l, ev.data) { return }   // registered when parsed (offthread.odin)
 		text := decode_css(ev.data, p.settings.style.max_sheet_bytes)
@@ -212,10 +209,49 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 				l.failed = true
 				log(p, .Warn, fmt.tprintf("stylesheet %s: too large or disabled", l.url))
 			}
+			link_sheet_settled(p, l, !l.failed)
 		}
 		p.style_stale = true
 		start_pending_imports(p)
 	}
+}
+
+// The <link>'s sheet is in (or will never be): its load or error event, as a task (HTML "process the linked
+// resource"). The sheet's @imports may still be loading: they do not hold the event back.
+// A <link> the parser has not revealed yet (its sheet loads ahead) gets its event once revealed (link_revealed): its
+// event handler attributes are only registered then, and for the page it has not been inserted before.
+@(private)
+link_sheet_settled :: proc(p: ^Page, l: ^Style_Load, ok: bool) {
+	if l.is_import { return }
+	if _, still := p.link_loads[l.owner]; !still { return }
+	if held_by_reveal(p, l.owner) {
+		l.held_event = ok ? .Load : .Error
+		return
+	}
+	queue_element_event(p, l.owner, ok ? "load" : "error")
+}
+
+// The parser revealed `node` (js_load.odin reveal_node): a <link> whose sheet settled meanwhile gets its event now.
+@(private)
+link_revealed :: proc(p: ^Page, node: base.Handle) {
+	l, ok := p.link_loads[node]
+	if !ok || l.held_event == .None { return }
+	ev := l.held_event
+	l.held_event = .None
+	queue_element_event(p, node, ev == .Load ? "load" : "error")
+}
+
+// Whether `node` is in the part of the document the parser's reveal has not attached yet (js_load.odin).
+@(private)
+held_by_reveal :: proc(p: ^Page, node: base.Handle) -> bool {
+	if !scripts_revealing(p) { return false }
+	d := p.doc
+	if dom.get(d, node) == nil { return false }
+	r := dom.shadow_including_root(d, node)
+	if r == d.root { return false }
+	ps := &p.scripts.parser
+	for it in ps.queue[ps.next:] { if it.node == r { return true } }
+	return false
 }
 
 // A stylesheet's bytes as UTF-8: byte-order mark, then an @charset rule, then UTF-8 (the Content-Type charset is not

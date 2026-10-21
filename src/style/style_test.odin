@@ -458,6 +458,27 @@ media_lists_of_sheets :: proc(t: ^testing.T) {
 	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3))
 }
 
+// <link media="print" onload="this.media='all'">: a loaded link sheet follows its media attribute.
+@(test)
+link_sheet_media_attribute :: proc(t: ^testing.T) {
+	f := load(`<link id=l rel=stylesheet href="a.css" media="print"><div id=a></div>`)
+	defer unload(&f)
+	l := dom.find_by_id(f.doc, "l")
+	engine_add_sheet(f.eng, "#a { margin-top: 3px }", l, "print", "http://x/a.css", from_link = true)
+	restyle(&f)
+	testing.expect(t, near(at(&f, "a").margin[.Top].v, 0), "print only")
+	dom.set_attribute(f.doc, l, "media", "all")
+	sync_document_sheets(f.eng, f.doc, "about:test")
+	testing.expect(t, f.eng.dirty)
+	restyle(&f)
+	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3), "the same sheet, now for all media")
+	testing.expect_value(t, len(f.eng.sheets), 2)   // (the UA sheet and the link's: not loaded again)
+	dom.remove_attribute(f.doc, l, "media")
+	sync_document_sheets(f.eng, f.doc, "about:test")
+	restyle(&f)
+	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3), "no media attribute: all")
+}
+
 @(test)
 pseudo_elements_and_nesting :: proc(t: ^testing.T) {
 	f := load(`<style>

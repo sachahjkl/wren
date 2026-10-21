@@ -308,6 +308,7 @@ reveal_node :: proc(p: ^Page, it: Reveal_Item) -> bool {
 		case "body": if p.body == base.NIL_HANDLE { p.body = it.node }
 		}
 		content_handlers_register(p, it.node)
+		if n.name == "link" { link_revealed(p, it.node) }
 	}
 	return true
 }

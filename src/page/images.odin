@@ -982,7 +982,7 @@ element_update :: proc(p: ^Page, el: ^Img_Element) {
 		el.broken_empty = sel.empty || sel.invalid
 		el.notified = false
 		element_reject_decodes(p, el, "the image source changed")
-		if el.broken_empty { queue_image_event(p, el.node, "error"); el.notified = true }
+		if el.broken_empty { queue_element_event(p, el.node, "error"); el.notified = true }
 		p.images.sizes = next_serial()
 		return
 	}
@@ -992,7 +992,7 @@ element_update :: proc(p: ^Page, el: ^Img_Element) {
 		// the same image again (the "list of available images"): done at once, events again
 		el.density = sel.density
 		if el.current.state == .Ready || el.current.state == .Broken {
-			queue_image_event(p, el.node, el.current.state == .Ready ? "load" : "error")
+			queue_element_event(p, el.node, el.current.state == .Ready ? "load" : "error")
 			el.notified = true
 		}
 		return
@@ -1053,7 +1053,7 @@ element_settle :: proc(p: ^Page, el: ^Img_Element) {
 	if r == nil { return }
 	if !el.notified && (r.state == .Ready || r.state == .Broken) {
 		el.notified = true
-		queue_image_event(p, el.node, r.state == .Ready ? "load" : "error")
+		queue_element_event(p, el.node, r.state == .Ready ? "load" : "error")
 		p.images.sizes = next_serial()
 	}
 	if len(el.decodes) == 0 { return }
@@ -1072,8 +1072,11 @@ element_settle :: proc(p: ^Page, el: ^Img_Element) {
 	}
 }
 
+// A load / error event for an element (an image, a <link>'s stylesheet), dispatched as a task. The queue lives with the
+// images' state, started here when no image did.
 @(private)
-queue_image_event :: proc(p: ^Page, node: base.Handle, type: string) {
+queue_element_event :: proc(p: ^Page, node: base.Handle, type: string) {
+	images_init(p)
 	append(&p.images.events, Pending_Image_Event{node, strings.clone(type)})
 	if p.images.event_timer != base.NIL_HANDLE { return }
 	p.images.event_timer = host.set_timer(p.loop, 0, 0, proc(data: rawptr) {
