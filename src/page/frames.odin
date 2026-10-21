@@ -304,6 +304,16 @@ frames_children :: proc(p: ^Page) -> []^Navigable {
 	return f.children[:]
 }
 
+// HTML's "document-tree child navigables": those whose container is not in a shadow tree (window[i], window[name],
+// window.length; a frame in a shadow tree still has its document and talks with postMessage).
+frames_document_tree_children :: proc(p: ^Page) -> []^Navigable {
+	kids := frames_children(p)
+	if len(p.doc.shadow_roots) == 0 { return kids }
+	out := make([dynamic]^Navigable, 0, len(kids), context.temp_allocator)
+	for k in kids { if dom.containing_shadow_root(p.doc, k.element) == base.NIL_HANDLE { append(&out, k) } }
+	return out[:]
+}
+
 @(private)
 frame_create :: proc(p: ^Page, el: base.Handle) {
 	s := &p.settings.frames

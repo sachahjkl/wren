@@ -198,7 +198,7 @@ root.appendChild(f);
 addEventListener("message", e => log(e.data));
 log("shadow frames " + frames.length);
 </script></body>`)
-		check(wait_for("shadow frames 1") && wait_for("in shadow true"), "an iframe inserted into a shadow tree gets its document (window.frames counts it)")
+		check(wait_for("shadow frames 0") && wait_for("in shadow true"), "an iframe inserted into a shadow tree gets its document (not a document-tree child: window.length leaves it out)")
 		page.page_close(p)
 	}
 

@@ -38,13 +38,13 @@ Frame_top :: proc(c: ^Call, navigable: u64) -> u64 {
 Frame_length :: proc(c: ^Call, navigable: u64) -> u32 {
 	n := navigable_by_id(navigable)
 	if n == nil || n.page == nil { return 0 }
-	return u32(len(frames_children(n.page)))
+	return u32(len(frames_document_tree_children(n.page)))
 }
 
 Frame_child :: proc(c: ^Call, navigable: u64, index: u32) -> u64 {
 	n := navigable_by_id(navigable)
 	if n == nil || n.page == nil { return 0 }
-	kids := frames_children(n.page)
+	kids := frames_document_tree_children(n.page)
 	if int(index) >= len(kids) { return 0 }
 	return kids[index].id
 }
@@ -52,7 +52,7 @@ Frame_child :: proc(c: ^Call, navigable: u64, index: u32) -> u64 {
 Frame_named :: proc(c: ^Call, navigable: u64, name: string) -> u64 {
 	n := navigable_by_id(navigable)
 	if n == nil || n.page == nil || name == "" { return 0 }
-	for k in frames_children(n.page) { if k.name == name { return k.id } }
+	for k in frames_document_tree_children(n.page) { if k.name == name { return k.id } }
 	return 0
 }
 
@@ -60,7 +60,7 @@ Frame_childNames :: proc(c: ^Call, navigable: u64) -> string {
 	n := navigable_by_id(navigable)
 	if n == nil || n.page == nil { return "" }
 	sb := strings.builder_make(context.temp_allocator)
-	for k, i in frames_children(n.page) {
+	for k, i in frames_document_tree_children(n.page) {
 		if k.name == "" { continue }
 		if i > 0 && strings.builder_len(sb) > 0 { strings.write_byte(&sb, 0) }
 		strings.write_string(&sb, k.name)
