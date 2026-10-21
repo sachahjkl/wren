@@ -192,11 +192,14 @@ html, body { margin: 0; background: #fff; font-size: 13px; color: #111 }
 .ct { font: bold 30px sans-serif; background: linear-gradient(90deg, #f00, #00f); -webkit-background-clip: text; background-clip: text; color: transparent; padding: 0 4px; display: inline-block }
 fieldset { margin: 6px; border: 3px solid #364fc7; padding: 4px 10px; width: 200px }
 legend { margin-left: 12px; padding: 0 6px; font-size: 16px }
+#fs2 { border-width: 3px; padding: 4px 10px }
+#lg2 { line-height: 20px; color: #fff }
 .long { height: 500px }
 </style></head><body>
 <div class="row"><div class="b" id="fade"></div><div class="b" id="dot"></div><div class="b" id="lum"></div><div class="b" id="xor"></div><div class="b" id="op"></div></div>
 <div class="ct" id="ct">Fire <span>text</span></div>
 <fieldset id="fs"><legend id="lg">Navigation</legend>content of the fieldset</fieldset>
+<fieldset id="fs2"><legend id="lg2">Navigation</legend>x</fieldset>
 <div class="long"></div>
 </body></html>`
 
@@ -262,6 +265,21 @@ masks_clip_text_fieldset :: proc(t: ^testing.T) {
 	testing.expectf(t, px(img, lg.min.x + 1, mid) == {255, 255, 255}, "the border stops at the legend's border box %v", px(img, lg.min.x + 1, mid))
 	above := px(img, fs.min.x + 6, fs.min.y + 1)
 	testing.expectf(t, above == {255, 255, 255}, "above the moved border: nothing %v", above)
+	// a border through the legend's middle at a fractional y (a 20 px legend on a 3 px border: 8.5 px down): the pixel
+	// row the border only partly covers is not drawn behind the legend either (its text is white: all white)
+	fs2, lg2 := rect(f, "fs2"), rect(f, "lg2")
+	shift, _, ok := lay.fieldset_border(&f.l, lay.box_index(&f.l, dom.find_by_id(f.doc, "fs2")))
+	testing.expectf(t, ok && shift != f32(int(shift)), "a fractional shift (%v)", shift)
+	for composited in ([2]bool{false, true}) {
+		pic := cx_paint(f, composited)
+		leaked := 0
+		for y := fs2.min.y; y < lg2.max.y; y += 1 {
+			for x := lg2.min.x + 1; x < lg2.max.x - 1; x += 1 {
+				if px(pic, x, y) != {255, 255, 255} { leaked += 1 }
+			}
+		}
+		testing.expectf(t, leaked == 0, "composited %v: %d pixels of the border behind the legend %v", composited, leaked, lg2)
+	}
 }
 
 @(private = "file")
