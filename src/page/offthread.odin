@@ -347,6 +347,7 @@ css_apply :: proc(p: ^Page, j: ^Css_Job) {
 		} else {
 			style.engine_resolve_import_by_id(p.engine, j.sheet_id, j.slot, string(j.text), j.url)
 		}
+		links_check_imports(p)   // (the imports this one brings have their slots already: they keep the <link> waiting)
 	} else {
 		l, still := p.link_loads[j.owner]
 		if !still || l.serial != j.serial { return }   // the <link> went away or changed meanwhile

@@ -134,6 +134,33 @@ window.addEventListener("load", () => log("window load"));
 	check(logged("bad error") && !logged("bad load"), "an HTTP error fires error, not load")
 	check(!logged("ok error"), "a loaded stylesheet does not fire error")
 	page.page_close(p)
+
+	// inserted by a script into a page that is never styled (no window): loads, and fires its events, all the same
+	src2 := strings.concatenate({`<!doctype html><head>`, PRELUDE, `</head><body><script>
+function add(name, href) {
+  const l = document.createElement("link");
+  l.rel = "stylesheet"; l.href = href;
+  l.onload = () => log(name + " load"); l.onerror = () => log(name + " error");
+  document.head.appendChild(l);
+}
+add("dyn", "`, css_url("p { color: red }"), `");
+add("404", "`, css_url("p {}", 0, 404), `");
+add("mime", "/jsload/gen?type=text/plain&code=p%7B%7D");
+add("scheme", "nonexistent:stylesheet.css");
+add("imp", "`, css_url(fmt.tprintf("@import '%s'; p {}", css_url("b { color: blue }", 300))), `");
+add("impbad", "`, css_url(fmt.tprintf("@import '%s'; p {}", css_url("b {}", 0, 404))), `");
+</script></body>`}, context.temp_allocator)
+	p2 := load(src2)
+	for name in ([]string{"dyn load", "404 error", "mime error", "scheme error", "imp load", "impbad error"}) { wait_for(name) }
+	check(logged("dyn load") && !logged("dyn error"), "a <link> a script inserts loads without the page being styled")
+	check(logged("404 error"), "and an HTTP error fires error")
+	check(logged("mime error") && !logged("mime load"), "a stylesheet served as text/plain (standards mode) fires error")
+	check(logged("scheme error"), "a URL that cannot be fetched fires error")
+	imp_at, base_at := -1, -1
+	for l, i in logs { if l == "imp load" { imp_at = i }; if l == "dyn load" { base_at = i } }
+	check(imp_at > base_at && base_at >= 0, "load waits for the sheet's @import")
+	check(logged("impbad error") && !logged("impbad load"), "a failed @import makes it error")
+	page.page_close(p2)
 }
 
 test_print_media_swap :: proc() {
