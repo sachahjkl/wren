@@ -19,7 +19,9 @@ Settings :: struct {
 	embed_w, embed_h:   f32,       // CSS px: iframe, embed, object, video without a natural size (width: audio too)
 	input_size:         int,       // characters of a text field without a size attribute
 	textarea_cols, textarea_rows: int,
-	select_arrow:       f32,       // CSS px kept on the right of a <select> for its arrow
+	select_arrow:       f32,       // CSS px kept on the right of a drop-down <select> for its arrow (drawn centered in it)
+	select_start:       f32,       // CSS px before a drop-down <select>'s label, inside its content box
+	picker_indicator:   f32,       // CSS px: the calendar / clock icon at the end of date and time fields
 	marker_gap:         f32,       // em: between an outside list marker and the content
 	sub_shift, super_shift: f32,   // em of the parent: vertical-align sub / super
 	sub_super_extra:    f32,       // device px added to both shifts
@@ -73,8 +75,12 @@ PREFS := [?]config.Def{
 		description = "Columns of a <textarea> without a cols attribute."},
 	{name = "layout.form.textarea_rows", kind = .Int, default = {i = 2}, bounded = true, min = 1, max = 1000,
 		description = "Rows of a <textarea> without a rows attribute."},
-	{name = "layout.form.select_arrow_px", kind = .Float, default = {f = 20}, bounded = true, min = 0, max = 200, unit = "px",
-		description = "Room kept on the right of a drop-down list for its arrow."},
+	{name = "layout.form.select_arrow_px", kind = .Float, default = {f = 16}, bounded = true, min = 0, max = 200, unit = "px",
+		description = "Room kept at the end of a drop-down list's content for its arrow, which is drawn centered in that much of the right of its border box (Chromium: 16)."},
+	{name = "layout.form.picker_indicator_px", kind = .Float, default = {f = 16}, bounded = true, min = 0, max = 200, unit = "px",
+		description = "Size of the calendar or clock icon drawn at the end of date and time fields (0: none). The value is shown in the user's short date format when the field is not being edited."},
+	{name = "layout.form.select_padding_start_px", kind = .Float, default = {f = 4}, bounded = true, min = 0, max = 200, unit = "px",
+		description = "Space before the chosen option's label in a drop-down list, added to the page's padding (Chromium: 4)."},
 	{name = "layout.list.marker_gap_em", kind = .Float, default = {f = 0.5}, bounded = true, min = 0, max = 10, unit = "em",
 		description = "Space between an outside list marker and the item's text."},
 	{name = "layout.text.sub_shift_em", kind = .Float, default = {f = 0.2}, bounded = true, min = 0, max = 2, unit = "em",
@@ -151,6 +157,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		textarea_cols = int(config.int_of(p, "layout.form.textarea_cols")),
 		textarea_rows = int(config.int_of(p, "layout.form.textarea_rows")),
 		select_arrow = f32(config.float_of(p, "layout.form.select_arrow_px")),
+		select_start = f32(config.float_of(p, "layout.form.select_padding_start_px")),
+		picker_indicator = f32(config.float_of(p, "layout.form.picker_indicator_px")),
 		marker_gap = f32(config.float_of(p, "layout.list.marker_gap_em")),
 		sub_shift = f32(config.float_of(p, "layout.text.sub_shift_em")),
 		super_shift = f32(config.float_of(p, "layout.text.super_shift_em")),

@@ -347,17 +347,23 @@ css_apply :: proc(p: ^Page, j: ^Css_Job) {
 		} else {
 			style.engine_resolve_import_by_id(p.engine, j.sheet_id, j.slot, string(j.text), j.url)
 		}
+		links_check_imports(p)   // (the imports this one brings have their slots already: they keep the <link> waiting)
 	} else {
 		l, still := p.link_loads[j.owner]
 		if !still || l.serial != j.serial { return }   // the <link> went away or changed meanwhile
 		s: ^style.Sheet
+		// (l.media: the attribute as it is now, it may have changed during the parse)
 		if j.sheet != nil {
-			s = style.engine_add_parsed_sheet(p.engine, j.sheet, j.owner, j.media, j.url, from_link = true, scope = l.scope)
+			s = style.engine_add_parsed_sheet(p.engine, j.sheet, j.owner, l.media, j.url, from_link = true, scope = l.scope)
 			j.sheet = nil
 		} else {
-			s = style.engine_add_sheet(p.engine, string(j.text), j.owner, j.media, j.url, from_link = true, scope = l.scope)
+			s = style.engine_add_sheet(p.engine, string(j.text), j.owner, l.media, j.url, from_link = true, scope = l.scope)
 		}
-		if s == nil { log(p, .Warn, strings.concatenate({"stylesheet ", j.url, ": too large or disabled"}, context.temp_allocator)) }
+		if s == nil {
+			l.failed = true
+			log(p, .Warn, strings.concatenate({"stylesheet ", j.url, ": too large or disabled"}, context.temp_allocator))
+		}
+		link_sheet_settled(p, l, s != nil)
 	}
 	p.style_stale = true
 	start_pending_imports(p)

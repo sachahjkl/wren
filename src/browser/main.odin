@@ -824,9 +824,11 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			t.scroll_target = pressed
 			allowed := forms_pointer_down(app, t, ev, pressed, local)
 			if t.page == nil { return }
+			if ev.button == .Left { page_set_active(t.page, pressed) }   // :active while the button is held
 			if ev.button == .Left { selection_pointer_down(app, t, ev, pressed, allowed) }
 			if ev.button == .Right { page_context_press(app, t, ev.pos) }
 		case .Mouse_Release:
+			if ev.button == .Left { page_set_active(t.page, base.NIL_HANDLE) }
 			if !t.layout.valid { continue }
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
 			released := inside ? hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) : base.NIL_HANDLE
@@ -963,6 +965,7 @@ frame :: proc(app: ^App, idled := false) {
 		return
 	}
 	prof_begin(.Input)
+	page_cursor_events(app, events)   // page_cursor.odin: a press on the page keeps its cursor
 	route_page_input(app, events)
 	events = forms_unconsumed_events(events)   // keys the page used do not reach the chrome
 	events = history_tree_events(app, events)   // the wheel and zoom keys of about:history's tree (history_tree.odin)
@@ -974,6 +977,9 @@ frame :: proc(app: ^App, idled := false) {
 	// page visibility, then the animation frame callbacks of the page about to be painted
 	shown := app.win.size.x > 0 && app.win.size.y > 0
 	for tab, i in app.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == app.current && tab.kind == .Web) } }
+	// smooth scrolling moves the scrollers first: the scroll events of this frame (run_animation_frames) see where they
+	// are painted
+	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }   // smooth_scroll.odin
 	// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
 	if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
 		prof_begin(.Animation)
@@ -982,7 +988,6 @@ frame :: proc(app: ^App, idled := false) {
 		// (the loop counts this frame off after it: 2 = this one and the next)
 		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
 	}
-	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }   // smooth_scroll.odin
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
 	shell_snapshots_frame(app)
@@ -1003,7 +1008,7 @@ frame :: proc(app: ^App, idled := false) {
 	build_ui(app)
 	ui.end_build()
 	prof_end(.Build_UI)
-	platform.set_cursor(app.win, ui.cursor(&app.ui_state))
+	window_cursor_apply(app)   // page_cursor.odin: the page's cursor over the page, else the chrome's
 	if ui.needs_frame(&app.ui_state) { app.frames_requested = max(app.frames_requested, 2) }
 	if t := current_tab(app); t != nil && t.page != nil && t.layout.mutations != t.page.doc.mutations { app.frames_requested = max(app.frames_requested, 2) }
 	if t := current_tab(app); t != nil && t.page != nil && page.animations_active(t.page) { app.frames_requested = max(app.frames_requested, 2) }   // CSS animations: later changes wake the loop by timer
@@ -1129,6 +1134,7 @@ main :: proc() {
 	pacer_init(app)
 	shell_frames_init(app)   // shell_frames.odin: chrome frames while a page holds the thread
 	smooth_init(app)
+	page_cursor_init(app)
 	window_chrome_init(app)
 	favicons_init(app)   // favicon.odin
 	downloads_init(app)   // download.odin
@@ -1136,6 +1142,7 @@ main :: proc() {
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
 	hud_init(app)
+	urlbar_init(app)   // urlbar.odin: the address bar's suggestions
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
 	app.win.user = app
@@ -1163,6 +1170,7 @@ main :: proc() {
 	profile_save(app, force = true)
 	bfcache_shutdown(app)
 	for t in app.tabs { tab_nav_destroy(app, t) }
+	urlbar_destroy(app)   // urlbar.odin
 	global_history_shutdown(app)
 	history_ui_destroy()
 	history_settings_shutdown(app)
@@ -1185,6 +1193,7 @@ main :: proc() {
 	appearance_destroy()
 	hud_destroy(app)
 	smooth_shutdown(app)
+	page_cursor_shutdown(app)
 	drop_files_destroy(app)
 	app_commands_destroy()
 	window_chrome_destroy(app)

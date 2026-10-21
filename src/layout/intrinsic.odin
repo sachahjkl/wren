@@ -1,5 +1,6 @@
 package layout
 
+import "core:math"
 import "core:strconv"
 import "core:strings"
 import "wb:base"
@@ -225,7 +226,8 @@ natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 		rows := 1
 		if _, multi := dom.get_attribute(c.d, h_node, "multiple"); multi { rows = 4 }
 		rows = attr_int(c, h_node, "size", rows)
-		return widest + c.set.select_arrow * s, f32(rows) * f.line_h, true, true
+		// (Blink: the label's width rounded up to a whole layout unit, then its internal padding: 4 + the arrow's 16)
+		return math.ceil(widest) + (c.set.select_start + c.set.select_arrow) * s, f32(rows) * f.line_h, true, true
 	case "input":
 		t, _ := dom.get_attribute(c.d, h_node, "type")
 		t = strings.to_lower(strings.trim_space(t), context.temp_allocator)

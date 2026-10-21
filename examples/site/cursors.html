@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cursors</title>
+<style>
+body { font-family: "Segoe UI", sans-serif; font-size: 14px; margin: 14px 24px; color: #222; line-height: 1.4; }
+h1 { font-size: 24px; margin: 0 0 6px; }
+h2 { font-size: 16px; margin: 12px 0 5px; }
+p.note { margin: 0 0 8px; color: #555; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 5px; }
+.grid div { border: 1px solid #b9c0cc; border-radius: 6px; background: #f3f5f9; padding: 7px 2px; text-align: center;
+  font-family: Consolas, monospace; font-size: 12px; user-select: none; }
+.grid div:hover { background: #dfe8fb; border-color: #5a7fd6; }
+.zones { display: flex; flex-wrap: wrap; gap: 8px; }
+.zones > div { width: 236px; min-height: 64px; border: 1px dashed #8a93a5; border-radius: 6px; padding: 8px; box-sizing: border-box;
+  font-size: 13px; background: #fbfbfd; }
+.zones code { font-size: 12px; }
+#png { cursor: url("images/cursor-target.png") 16 16, crosshair; }
+#svg { cursor: url("images/cursor-pen.svg") 3 29, pointer; }
+#set { cursor: image-set("images/cursor-target.png" 1x, "images/cursor-target@2x.png" 2x) 16 16, crosshair; }
+#huge { cursor: url("images/cursor-huge.png") 100 100, not-allowed; }
+#missing { cursor: url("images/no-such-cursor.png"), grab; }
+#hidden { cursor: none; background: #222; color: #ddd; }
+.row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.row > * { flex: none; }
+.noselect { user-select: none; color: #777; }
+.under { position: relative; width: 240px; height: 84px; background: #e8f3e8; cursor: copy; border-radius: 6px; padding: 6px; box-sizing: border-box; }
+.over { position: absolute; inset: 22px 10px 8px 60px; background: rgba(90,120,220,.25); pointer-events: none; border-radius: 4px; padding: 4px; font-size: 12px; }
+.scroll { width: 220px; height: 52px; overflow: auto; border: 1px solid #999; cursor: help; padding: 4px 8px; box-sizing: border-box; }
+.editable { border: 1px solid #999; padding: 4px 8px; width: 220px; }
+</style>
+</head>
+<body>
+<h1>Cursors</h1>
+<p class="note">Every value of CSS <code>cursor</code>: move the pointer over a cell. Those Windows has are its own (your scheme and size);
+the others (grab, zoom, cell, copy...) are drawn by the browser in the same style.</p>
+
+<div class="grid" id="keywords">
+  <div id="k-auto" style="cursor: auto">auto</div>
+  <div id="k-default" style="cursor: default">default</div>
+  <div id="k-none" style="cursor: none">none</div>
+  <div id="k-context-menu" style="cursor: context-menu">context-menu</div>
+  <div id="k-help" style="cursor: help">help</div>
+  <div id="k-pointer" style="cursor: pointer">pointer</div>
+  <div id="k-progress" style="cursor: progress">progress</div>
+  <div id="k-wait" style="cursor: wait">wait</div>
+  <div id="k-cell" style="cursor: cell">cell</div>
+  <div id="k-crosshair" style="cursor: crosshair">crosshair</div>
+  <div id="k-text" style="cursor: text">text</div>
+  <div id="k-vertical-text" style="cursor: vertical-text">vertical-text</div>
+  <div id="k-alias" style="cursor: alias">alias</div>
+  <div id="k-copy" style="cursor: copy">copy</div>
+  <div id="k-move" style="cursor: move">move</div>
+  <div id="k-no-drop" style="cursor: no-drop">no-drop</div>
+  <div id="k-not-allowed" style="cursor: not-allowed">not-allowed</div>
+  <div id="k-grab" style="cursor: grab">grab</div>
+  <div id="k-grabbing" style="cursor: grabbing">grabbing</div>
+  <div id="k-all-scroll" style="cursor: all-scroll">all-scroll</div>
+  <div id="k-col-resize" style="cursor: col-resize">col-resize</div>
+  <div id="k-row-resize" style="cursor: row-resize">row-resize</div>
+  <div id="k-n-resize" style="cursor: n-resize">n-resize</div>
+  <div id="k-e-resize" style="cursor: e-resize">e-resize</div>
+  <div id="k-s-resize" style="cursor: s-resize">s-resize</div>
+  <div id="k-w-resize" style="cursor: w-resize">w-resize</div>
+  <div id="k-ne-resize" style="cursor: ne-resize">ne-resize</div>
+  <div id="k-nw-resize" style="cursor: nw-resize">nw-resize</div>
+  <div id="k-se-resize" style="cursor: se-resize">se-resize</div>
+  <div id="k-sw-resize" style="cursor: sw-resize">sw-resize</div>
+  <div id="k-ew-resize" style="cursor: ew-resize">ew-resize</div>
+  <div id="k-ns-resize" style="cursor: ns-resize">ns-resize</div>
+  <div id="k-nesw-resize" style="cursor: nesw-resize">nesw-resize</div>
+  <div id="k-nwse-resize" style="cursor: nwse-resize">nwse-resize</div>
+  <div id="k-zoom-in" style="cursor: zoom-in">zoom-in</div>
+  <div id="k-zoom-out" style="cursor: zoom-out">zoom-out</div>
+</div>
+
+<h2>Images as cursors</h2>
+<div class="zones">
+  <div id="png">PNG, hotspot at its center:<br><code>url(cursor-target.png) 16 16, crosshair</code></div>
+  <div id="svg">SVG, hotspot at the pen's tip:<br><code>url(cursor-pen.svg) 3 29, pointer</code></div>
+  <div id="set"><code>image-set()</code>: the red 1x target or, on a screen of 2 device pixels per CSS pixel and more, the blue 2x one</div>
+  <div id="huge">200 px image: larger than 128 CSS pixels, so the fallback <code>not-allowed</code> shows</div>
+  <div id="missing">Missing image: the fallback <code>grab</code></div>
+  <div id="hidden"><code>cursor: none</code>: no pointer over this box</div>
+</div>
+
+<h2>What <code>auto</code> does</h2>
+<div class="row">
+  <p id="text" style="width: 300px; margin: 0">Plain text shows the I-beam, <a id="link" href="layout.html">a link the hand</a>, and
+  <span id="noselect" class="noselect">text that cannot be selected the arrow</span>.</p>
+  <div>
+    <input id="field" value="A text field" style="width: 200px"><br><br>
+    <textarea id="area" rows="2" cols="24">A textarea</textarea>
+  </div>
+  <div>
+    <button id="button">A button</button>
+    <select id="select"><option>A select</option></select>
+    <input id="check" type="checkbox"> <input id="range" type="range"><br><br>
+    <input id="disabled" value="Disabled" disabled style="width: 120px">
+  </div>
+</div>
+<div class="row" style="margin-top: 12px">
+  <div id="editable" class="editable" contenteditable="true">contenteditable: the I-beam everywhere inside</div>
+  <div class="under" id="under">cursor: copy here<div class="over" id="over">pointer-events: none: the copy cursor of what is under shows</div></div>
+  <div class="scroll" id="scroll">cursor: help in a scroll box; its scroll bar shows the arrow. Line 2. Line 3. Line 4. Line 5. Line 6.</div>
+</div>
+<script>
+// tools\cursor_e2e.ps1: ?rects[&y=N] keeps the page scrolled to N and the title saying where each element with an id
+// is (CSS pixels of the viewport), again every 400 ms (the window may be resized meanwhile).
+const q = new URLSearchParams(location.search);
+if (q.has("rects")) {
+  setInterval(() => {
+    scrollTo(0, +(q.get("y") || 0));
+    document.title = "rects " + [...document.querySelectorAll("[id]")].map(e => {
+      const r = e.getBoundingClientRect();
+      return `${e.id}:${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(r.height)}`;
+    }).join(";");
+  }, 400);
+}
+</script>
+</body>
+</html>

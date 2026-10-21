@@ -63,6 +63,8 @@ DEMOS := [?]Demo{
 		"What sites write today: a variable WOFF2 web font, Color 4 and 5 (<code>oklch</code>, relative colors, <code>color-mix</code>), container queries, <code>@property</code> animations, <code>:has()</code> and <code>revert-layer</code>, <code>@supports</code>, math functions and units, <code>&lt;details&gt;</code>. Each section says what to expect.", false, "", false},
 	{.Css, "Transitions and animations", "animations.html",
 		"CSS only: hover transitions that reverse halfway, endless keyframe animations (spin, pulse, alternate, steps), nested <code>counters()</code>, quotes by depth, gradients, and a web font with <code>font-display: swap</code>. <code>style.animations.mode</code> turns motion down.", false, "", false},
+	{.Css, "Cursors", "cursors.html",
+		"Every value of <code>cursor</code> in a grid (Windows' own cursors, and those it lacks drawn in the same style), images as cursors (PNG and SVG with their hotspot, <code>image-set()</code>, fallbacks of an image too large or missing), <code>cursor: none</code>, and what <code>auto</code> shows over text, links, fields, <code>contenteditable</code>, <code>user-select: none</code> and scroll bars.", false, "", false},
 	{.Css, "Color schemes", "firstpaint.html",
 		"A dark theme chosen by <code>prefers-color-scheme</code> from stylesheets in <code>&lt;noscript&gt;</code>, <code>color-scheme</code>, system colors (CanvasText, LinkText, GrayText), <code>light-dark()</code> and form controls in both schemes. Its stylesheets come from the server.", true, "", false},
 
@@ -287,6 +289,7 @@ DEMOS_STYLE :: `
   .demo h3 { margin: 0 0 4px; font-size: 16px; }
   .demo h3 a { color: #f1f4fb; text-decoration: none; }
   .demo h3 a:hover { color: #ffb84d; }
+  .demo h3 a:active { color: #ffd699; }
   .demo h3 .off { color: #8993ad; }
   .demo p { margin: 0; color: #8993ad; line-height: 1.4; }
   .demo code { color: #c9d1e3; background-color: #1b2132; padding: 0 3px; border-radius: 3px; }

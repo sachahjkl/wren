@@ -30,6 +30,7 @@ DEMOS_INDEX_STYLE :: `
   nav a { margin-right: 14px; }
   a { color: light-dark(#0b5cad, #74c0fc); text-decoration: none; }
   a:hover { text-decoration: underline; }
+  a:active { color: light-dark(#06417a, #a5d8ff); }
   h2 { font-size: 20px; color: light-dark(#c26a00, #ffb84d); margin: 32px 0 6px; }
   .demo { margin: 10px 0; padding: 11px 16px; background-color: light-dark(#ffffff, #131825); border: 1px solid light-dark(#dde1ea, #232b40); border-radius: 10px; }
   .demo h3 { margin: 0 0 3px; font-size: 16px; }

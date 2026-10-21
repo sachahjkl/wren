@@ -38,6 +38,7 @@ ABOUT_PAGES_STYLE :: `
   .page h3 { margin: 0 0 4px; font-size: 16px; }
   .page h3 a { color: #ffb84d; text-decoration: none; }
   .page h3 a:hover { text-decoration: underline; }
+  .page h3 a:active { color: #ffd699; }
   .page h3 .t { color: #8993ad; font-weight: normal; margin-left: 10px; font-size: 14px; }
   .page p { margin: 0; color: #8993ad; }
   code { color: #c9d1e3; background-color: #1b2132; padding: 0 3px; border-radius: 3px; }

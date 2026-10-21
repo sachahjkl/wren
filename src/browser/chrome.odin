@@ -158,6 +158,7 @@ address_row :: proc(app: ^App, t: ^Tab) {
 		// not being edited: the address shows from its start (scheme and host), as in Chrome, not scrolled to its end
 		// (by key: the focused box's name is last frame's, its text may be gone with that frame's memory)
 		address_key = ui.key_from_string(ui.parent_box().key, "###address")
+		urlbar_keys(app, t)   // the suggestions' keys, before the field sees them (urlbar.odin)
 		if ui.focus_key() != address_key {
 			app.address.cursor, app.address.mark, app.address.scroll_x = 0, 0, 0
 		}
@@ -175,6 +176,10 @@ address_row :: proc(app: ^App, t: ^Tab) {
 		}
 	}
 	if res.focused { forms_page_blur() }
+	if urlbar_edited(app, t, res) {
+		res.committed = false   // Enter opened the chosen suggestion
+	}
+	urlbar_popup(app, t, res.box)
 	if res.committed && t != nil {
 		address := strings.clone(strings.trim_space(ui.field_string(&app.address)), context.temp_allocator)
 		if address != "" {
@@ -251,11 +256,10 @@ tab_move_current :: proc(app: ^App, delta: int) {
 // Width of the security chip at the last layout (the address field leaves it that much room).
 @(private = "file")
 security_chip_width: f32
-@(private = "file")
-security_chip_hot: bool
+
 
 // `inset` >= 0: placed inside the address field, `inset` from its top-left corner, `height` tall.
-Chip_Segment :: struct { color, divider, under: draw.Color, radius: f32 }
+Chip_Segment :: struct { color, divider, under: draw.Color, radius: f32, state: string }
 
 @(private = "file")
 chip_segment: Chip_Segment
@@ -268,6 +272,10 @@ chip_segment_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	// opaque: the field's text, scrolled to its end while edited, never shows through the chip
 	draw.rect_corners(dc, r, {s.under, s.under, s.under, s.under}, {s.radius, s.radius, 0, 0})
 	if s.color.a > 0 { draw.rect_corners(dc, r, {s.color, s.color, s.color, s.color}, {s.radius, s.radius, 0, 0}) }
+	if s.state != "" {
+		f := ui.state_fill(b, s.state, s.under)
+		draw.rect_corners(dc, r, {f, f, f, f}, {s.radius, s.radius, 0, 0})
+	}
 	w := max(math.round(ui.scale()), 1)
 	draw.rect(dc, {{r.max.x - w, r.min.y}, {r.max.x, r.max.y}}, s.divider)
 }
@@ -289,7 +297,6 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 		flags = {.Clickable}
 		base := sec.tone != .Weak ? var_tone : ui.color("text")
 		a: f32 = sec.tone != .Weak ? 0.14 : 0
-		if security_chip_hot { a += 0.08 }
 		chip_segment = {color = a > 0 ? ui.tuned(draw.Color{base.r, base.g, base.b, a}) : {}, radius = radius}
 		window_bg := ui.color("background")
 		window_bg.a = 1
@@ -311,7 +318,9 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 		b = ui.parent_box()
 		security_chip_width = b.rect.max.x - b.rect.min.x
 		sig := ui.signal(b)
-		security_chip_hot = embedded && sig.hovering
+		// under the pointer / pressed: the theme's step over the segment's tint, as on the chrome's other buttons (the
+		// segment is drawn after the build: this frame's state)
+		if embedded && sig.hovering { chip_segment.state = sig.dragging ? "press_fill" : "hover_fill" }
 		ui.spacer(ui.px(em * 0.5))
 		if ui.tags(tone_tag(sec.tone)) {
 			chip_icon.glyph = sec.glyph
@@ -501,7 +510,9 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 	tone := ui.color("text")
 	d := ui.frame_new(Burger_Draw)
 	d.color = tone
+	ui.push_tags("icon_button")   // (the chrome's other icon buttons' hover and press)
 	b := ui.custom("###burger", burger_draw, d, {.Clickable, .Draw_Background, .Draw_Hot_Effects})
+	ui.pop_tags()
 	sig := ui.signal(b)
 	key := ui.key_from_string(b.parent.key, "###main_menu")
 	if main_menu_request {

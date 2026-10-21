@@ -19,6 +19,7 @@ Settings :: struct {
 	workers:              bool,
 	offthread_min_bytes:  int,        // scripts at least this large are compiled on a background thread
 	cache:                Cache_Settings,
+	jit:                  Jit_Settings,
 }
 
 PREFS := [?]config.Def{
@@ -54,7 +55,10 @@ PREFS := [?]config.Def{
 		description = "Scripts smaller than this are not cached (parsing them costs less than a lookup)."},
 }
 
-register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
+register_prefs :: proc(p: ^config.Prefs) {
+	config.register(p, PREFS[:])
+	config.register(p, JIT_PREFS[:])
+}
 
 settings_from_prefs :: proc(p: ^config.Prefs, profile_dir := "") -> Settings {
 	s := Settings{
@@ -69,6 +73,7 @@ settings_from_prefs :: proc(p: ^config.Prefs, profile_dir := "") -> Settings {
 		console_eval = config.bool_of(p, "javascript.console_eval"),
 		workers = config.bool_of(p, "javascript.workers.enabled"),
 		offthread_min_bytes = int(config.int_of(p, "javascript.compile.offthread_min_bytes")),
+		jit = jit_settings_from_prefs(p),
 	}
 	s.cache = Cache_Settings{
 		memory_bytes = config.int_of(p, "javascript.bytecode_cache.memory_bytes"),

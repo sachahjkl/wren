@@ -250,7 +250,7 @@ forms_content_painter :: proc(user: rawptr, dc: ^draw.Context, doc: ^dom.Documen
 	p := t.page
 	if t.hold.active && t.hold.page != nil && t.hold.page.doc == doc { p = t.hold.page }   // the frame held through a navigation
 	if p == nil || p.doc != doc || p.formctl == nil { return false }
-	paint_control(dc, &app.fonts, font_id != 0 ? font_id : app.ui_font, node, content, cs, p, time.tick_now())
+	paint_control(dc, &app.fonts, font_id != 0 ? font_id : app.ui_font, node, content, border, cs, p, time.tick_now())
 	return true
 }
 
@@ -484,16 +484,57 @@ check_mark :: proc(dc: ^draw.Context, r: draw.Rect, color: draw.Color) {
 	a := draw.Vec2{r.min.x + w * 0.2, r.min.y + w * 0.52}
 	b := draw.Vec2{r.min.x + w * 0.42, r.min.y + w * 0.74}
 	c := draw.Vec2{r.min.x + w * 0.8, r.min.y + w * 0.28}
-	stroke :: proc(dc: ^draw.Context, p, q: draw.Vec2, t: f32, color: draw.Color) {
-		n := int(max(abs(q.x - p.x), abs(q.y - p.y)) / (t * 0.35)) + 1
-		for i in 0 ..= n {
-			k := f32(i) / f32(n)
-			pt := p + (q - p) * k
-			draw.rect(dc, {pt - t * 0.5, pt + t * 0.5}, color, t * 0.5)
+	dot_stroke(dc, a, b, t, color)
+	dot_stroke(dc, b, c, t, color)
+}
+
+// A date field's calendar (a frame, its top bar and rows of days) or a time field's clock, in `r`.
+@(private = "file")
+picker_indicator :: proc(dc: ^draw.Context, r: draw.Rect, color: draw.Color, clock: bool, scale: f32) {
+	w := r.max.x - r.min.x
+	t := max(1.25 * scale, 1)
+	inner := draw.rect_pad(r, -w * 0.1)
+	if clock {
+		c := draw.rect_center(inner)
+		rad := (inner.max.x - inner.min.x) * 0.5
+		draw.rect(dc, inner, color, rad, t)
+		dot_stroke(dc, c, {c.x, c.y - rad * 0.6}, t, color)
+		dot_stroke(dc, c, {c.x + rad * 0.45, c.y}, t, color)
+		return
+	}
+	iw := inner.max.x - inner.min.x
+	draw.rect(dc, inner, color, iw * 0.12, t)
+	draw.rect(dc, {inner.min, {inner.max.x, inner.min.y + iw * 0.22}}, color, iw * 0.12)
+	// three rows of three days
+	d := iw * 0.13
+	for row in 0 ..< 3 {
+		for col in 0 ..< 3 {
+			x := inner.min.x + iw * (0.24 + 0.26 * f32(col))
+			y := inner.min.y + iw * (0.4 + 0.2 * f32(row))
+			draw.rect(dc, {{x - d * 0.5, y - d * 0.5}, {x + d * 0.5, y + d * 0.5}}, color)
 		}
 	}
-	stroke(dc, a, b, t, color)
-	stroke(dc, b, c, t, color)
+}
+
+// A drop-down list's arrow: a down-pointing chevron `half_w` either side of `center`, half as high as wide.
+@(private = "file")
+chevron :: proc(dc: ^draw.Context, center: draw.Vec2, half_w, t: f32, color: draw.Color) {
+	a := draw.Vec2{center.x - half_w, center.y - half_w * 0.5}
+	b := draw.Vec2{center.x, center.y + half_w * 0.5}
+	c := draw.Vec2{center.x + half_w, center.y - half_w * 0.5}
+	dot_stroke(dc, a, b, t, color)
+	dot_stroke(dc, b, c, t, color)
+}
+
+// A stroke of thickness `t` from p to q, as round dots close enough to overlap.
+@(private = "file")
+dot_stroke :: proc(dc: ^draw.Context, p, q: draw.Vec2, t: f32, color: draw.Color) {
+	n := int(max(abs(q.x - p.x), abs(q.y - p.y)) / (t * 0.35)) + 1
+	for i in 0 ..= n {
+		k := f32(i) / f32(n)
+		pt := p + (q - p) * k
+		draw.rect(dc, {pt - t * 0.5, pt + t * 0.5}, color, t * 0.5)
+	}
 }
 
 @(private = "file")
@@ -515,8 +556,8 @@ parse_hex_color :: proc(s: string) -> draw.Color {
 // Draws what is inside a control's content box: value / placeholder / caret / selection for text fields, the mark of a
 // checkbox or radio, the label of a button, the select's chosen option and arrow (or its rows for a list box), the
 // slider of a range, the swatch of a color input, the file button and names. Box background and borders are the
-// painter's. `content` is in physical pixels, screen space.
-paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, node: base.Handle, content: draw.Rect, cs: ^style.Computed, p: ^page.Page, now: time.Tick) {
+// painter's. `content` and `border` (the border box) are in physical pixels, screen space.
+paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, p: ^page.Page, now: time.Tick) {
 	if p == nil || p.formctl == nil || cs == nil { return }
 	app := the_app
 	f := page.page_forms(p)
@@ -603,6 +644,25 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 			draw.pop_clip(dc)
 			if focused { draw.rect(dc, draw.rect_pad(b, 2 * scale), pal.focus_ring, 4 * scale, max(scale, 1)) }
 		case:
+			if t in forms.DATE_LIKE {
+				// the picker indicator at the end, then the value: the user's short format unless it is being edited
+				// (date_display.odin)
+				room := page_render.settings.picker_indicator * scale
+				if room > 0 {
+					icon := draw.Rect{{content.max.x - room, (content.min.y + content.max.y - room) * 0.5}, {content.max.x, (content.min.y + content.max.y + room) * 0.5}}
+					picker_indicator(dc, icon, fg, t == .Time, scale)
+					pt.content.max.x = max(pt.content.min.x, pt.content.max.x - room - 4 * scale)
+					fview.painted[node] = pt
+				}
+				if !focused {
+					if shown := date_field_display(t, forms.value(f, node)); shown != "" {
+						draw.push_clip(dc, pt.content)
+						centered_text(dc, fonts, fid, size, pt.content, fg, shown, false, lh)
+						draw.pop_clip(dc)
+						break
+					}
+				}
+			}
 			paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused, &pal)
 		}
 	case .Textarea:
@@ -611,20 +671,20 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 		if forms.is_dropdown(f, node) {
 			label := ""
 			for o in forms.select_options_synced(f, node) { if forms.option_selected(f, o) { label = forms.option_label(f, o); break } }
-			arrow_w := size * 1.2
-			draw.push_clip(dc, {content.min, {content.max.x - arrow_w, content.max.y}})
-			centered_text(dc, fonts, fid, size, content, fg, label, false, lh)
+			// as Chromium: the label after an internal start padding, the end of the content box kept for the arrow, the
+			// arrow (a chevron half as wide as that room) centered in as much of the right of the border box, whatever
+			// the page's padding
+			ls := page_render.settings
+			start, room := ls.select_start * scale, ls.select_arrow * scale
+			text_r := draw.Rect{{content.min.x + start, content.min.y}, {content.max.x - room, content.max.y}}
+			draw.push_clip(dc, {content.min, {content.max.x - room, content.max.y}})
+			centered_text(dc, fonts, fid, size, text_r, fg, label, false, lh)
 			draw.pop_clip(dc)
-			// a small down-pointing triangle from shrinking bars
-			cx := content.max.x - arrow_w * 0.5
-			cy := (content.min.y + content.max.y) * 0.5
-			hw := size * 0.28
-			steps := max(int(hw / max(scale, 1)), 2)
-			for i in 0 ..< steps {
-				k := f32(i) / f32(steps)
-				w := hw * (1 - k)
-				y := cy - hw * 0.35 + k * hw * 0.7
-				draw.rect(dc, {{cx - w, y}, {cx + w, y + hw * 0.7 / f32(steps) + 0.5}}, fg)
+			if room > 0 {
+				cx := border.max.x - room * 0.5
+				cy := (border.min.y + border.max.y) * 0.5
+				hw := room * 0.25
+				chevron(dc, {cx, cy}, hw, max(1.5 * scale, 1), fg)
 			}
 		} else {
 			paint_list_box(app, dc, fonts, fid, f, node, pt, fg, focused, &pal)

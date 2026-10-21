@@ -170,6 +170,39 @@ cam_fit :: proc(extent, view: [2]f32, em, pad, zmin, zmax: f32) -> Tree_Camera {
 	return {extent * 0.5, clamp(z, zmin, zmax)}
 }
 
+// The whole tree as large as it fits in a view of `view` pixels, `margin` pixels from its edges, without going under
+// `under` (view pixels: the controls over the view's bottom-left corner; an empty rect: nothing). The tree stays
+// centered when it clears `under` that way; else it goes in the larger of the band above `under` and the part of the
+// view beside it, centered there. `need` is the zoom before [zmin, zmax] (does the tree fit at the zoom wanted?).
+cam_fit_clear :: proc(extent, view: [2]f32, em, margin: f32, under: draw.Rect, zmin, zmax: f32) -> (cam: Tree_Camera, need: f32) {
+	if extent.x <= 0 || extent.y <= 0 || view.x <= 0 || view.y <= 0 || em <= 0 { return {extent * 0.5, clamp(zmax, zmin, zmax)}, zmax }
+	zoom_in :: proc(extent, room: [2]f32, em: f32) -> f32 { return max(min(room.x / (extent.x * em), room.y / (extent.y * em)), 0) }
+	// the tree's screen rectangle at zoom z, centered on the point c of the view
+	rect_at :: proc(extent: [2]f32, em, z: f32, c: [2]f32) -> draw.Rect { h := extent * em * z * 0.5; return {c - h, c + h} }
+	clear_of :: proc(r, o: draw.Rect, margin: f32) -> bool {
+		return r.max.x <= o.min.x - margin || r.min.x >= o.max.x + margin || r.max.y <= o.min.y - margin || r.min.y >= o.max.y + margin
+	}
+	full := view - 2 * margin
+	z := zoom_in(extent, full, em)
+	center := view * 0.5
+	has_under := under.max.x > under.min.x && under.max.y > under.min.y
+	if has_under && !clear_of(rect_at(extent, em, min(z, zmax), center), under, margin) {
+		// above: the band from the top margin to the controls
+		above := [2]f32{full.x, under.min.y - 2 * margin}
+		za := above.y > 0 ? zoom_in(extent, above, em) : 0
+		ca := [2]f32{view.x * 0.5, margin + above.y * 0.5}
+		// beside: right of the controls, the whole height
+		beside := [2]f32{view.x - under.max.x - 2 * margin, full.y}
+		zb := beside.x > 0 ? zoom_in(extent, beside, em) : 0
+		cb := [2]f32{under.max.x + margin + beside.x * 0.5, view.y * 0.5}
+		// (a tree that is too small to reach the controls at the zoom allowed stays centered)
+		z, center = za >= zb ? za : zb, za >= zb ? ca : cb
+	}
+	zc := clamp(z, zmin, zmax)
+	// the world point at the view's center puts the tree's center at `center`
+	return {extent * 0.5 - (center - view * 0.5) / (em * zc), zc}, z
+}
+
 // The view's center stays over the tree, the zoom within its bounds.
 cam_clamp :: proc(c: Tree_Camera, extent: [2]f32, zmin, zmax: f32) -> Tree_Camera {
 	return {{clamp(c.center.x, 0, max(extent.x, 0)), clamp(c.center.y, 0, max(extent.y, 0))}, clamp(c.zoom, zmin, zmax)}
@@ -332,6 +365,7 @@ Tree_View_State :: struct {
 	built:      u64,                     // ui build index of the last frame the canvas was built in
 	revealed:   u64,                     // the current entry last brought into view
 	visible:    [dynamic]i32,            // scratch: the nodes in view
+	controls:   draw.Rect,               // the zoom / Fit / Current bar of the last layout, in view pixels
 }
 
 tview: Tree_View_State
@@ -803,9 +837,13 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 		if hit := tree_hit(m, l, tview.cam, vc, em, ui.mouse_pos()); hit >= 0 { hover = m.nodes[hit].id }
 	}
 	if hover != tview.hover { tview.hover, tview.hover_ms = hover, now }
+	// an open hand over the background (it can be dragged), a closed one while it is (a press on the background, or a
+	// press on a node that went past the threshold), the pointing hand over a node (a click goes there)
 	switch {
-	case tview.drag.panning: st.cursor_request = .Move
-	case hover != 0:         st.cursor_request = .Hand
+	case tview.drag.on && (tview.drag.panning || tview.drag.node == 0): st.cursor_request = .Grabbing
+	case tview.drag.on:                                                  st.cursor_request = .Hand
+	case hover != 0:                                                     st.cursor_request = .Hand
+	case sig.hovering:                                                   st.cursor_request = .Grab
 	}
 
 	// what the canvas draws (its custom draw runs after the layout, with this frame's rectangle)
@@ -847,18 +885,23 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 @(private = "file")
 tree_overlay_px :: proc(em: f32) -> f32 { return ui.dense(em * 2.2) + em * 1.6 }
 
-// The view's size for "Fit": the controls' band off at the bottom and, to stay centered, at the top.
+// "Fit": the whole tree as large as the view allows, clear of the controls in its corner (tree_controls records where
+// they were last laid out; before that, where they will be).
 @(private = "file")
-fit_size :: proc(size: [2]f32, em: f32) -> [2]f32 { return {size.x, max(size.y - 2 * tree_overlay_px(em), size.y * 0.5)} }
+tree_fit_camera :: proc(extent, size: [2]f32, em: f32) -> (Tree_Camera, f32) {
+	under := tview.controls
+	if under.max.x <= under.min.x {
+		h := ui.dense(em * 2.2)
+		under = {{em * 0.8, size.y - h - em * 0.8}, {em * 17, size.y - em * 0.8}}
+	}
+	return cam_fit_clear(extent, size, em, em, under, tcfg.zoom_min, tcfg.fit_max)
+}
 
 @(private = "file")
 tree_initial_camera :: proc(m: ^Tree_Model, l: Tree_Layout, size: [2]f32, em: f32) -> Tree_Camera {
 	extent := tree_extent(l, m.rows, m.cols)
-	fs := fit_size(size, em)
-	fit := cam_fit(extent, fs, em, 1.2, tcfg.zoom_min, tcfg.fit_max)
-	fits := extent.x * em * fit.zoom <= fs.x && extent.y * em * fit.zoom <= fs.y
-	need := cam_fit(extent, fs, em, 1.2, 0, max(f32))
-	if fits && need.zoom >= min(1, tcfg.fit_max) { return fit }
+	fit, need := tree_fit_camera(extent, size, em)
+	if need >= min(1, tcfg.fit_max) { return fit }
 	c := Tree_Camera{extent * 0.5, clamp(1, tcfg.zoom_min, tcfg.zoom_max)}
 	if m.current >= 0 {
 		n := m.nodes[m.current]
@@ -897,7 +940,8 @@ tree_zoom_by :: proc(f: f32, vc: [2]f32, em: f32, anims: bool, now: f64) {
 @(private = "file")
 tree_fit :: proc(extent, size: [2]f32, em: f32, anims: bool, now: f64) {
 	if size.x <= 0 { return }
-	tree_go(cam_fit(extent, fit_size(size, em), em, 1.2, tcfg.zoom_min, tcfg.fit_max), anims, now)
+	fit, _ := tree_fit_camera(extent, size, em)
+	tree_go(fit, anims, now)
 }
 
 @(private = "file")
@@ -949,6 +993,8 @@ tree_controls :: proc(m: ^Tree_Model, l: Tree_Layout, extent, size: [2]f32, em: 
 	ui.next({fixed_x = em * 0.8, fixed_y = max(size.y - h - em * 0.8, 0), width = ui.children_sum(), height = ui.px(h), axis = .X, cross = .Center, radius = em * CHROME_BUTTON_RADIUS})
 	if ui.tags("card") {
 		bar := ui.build_box({.Draw_Background, .Draw_Border}, "###h_tree_controls")
+		// (its rectangle of the last layout, in the view: what "Fit" keeps the tree clear of)
+		if bar.rect.max.x > bar.rect.min.x { tview.controls = {bar.rect.min - tview.view_rect.min, bar.rect.max - tview.view_rect.min} }
 		if ui.parent(bar) {
 			vc := size * 0.5 + tview.view_rect.min
 			ui.spacer(ui.px(pad))
@@ -1005,7 +1051,7 @@ tree_minimap :: proc(app: ^App, m: ^Tree_Model, l: Tree_Layout, extent, size: [2
 	d.frame_fill = ui.tuned(d.frame_fill)
 	d.radius = em * CHROME_BUTTON_RADIUS * app.ui_state.rounding
 	d.px = max(1, math.round(ui.scale()))
-	ui.next({fixed_x = pos.x, fixed_y = pos.y, width = ui.px(box.x), height = ui.px(box.y), cursor = .Move})
+	ui.next({fixed_x = pos.x, fixed_y = pos.y, width = ui.px(box.x), height = ui.px(box.y), cursor = .Hand})
 	mb := ui.custom("###h_tree_minimap", minimap_draw, d, {.Clickable})
 	sig := ui.signal(mb)
 	if sig.pressed || sig.dragging {
@@ -1015,7 +1061,8 @@ tree_minimap :: proc(app: ^App, m: ^Tree_Model, l: Tree_Layout, extent, size: [2
 		tview.cam = cam_clamp(tview.cam, extent, tcfg.zoom_min, tcfg.zoom_max)
 		app.frames_requested = max(app.frames_requested, 2)
 	}
-	if sig.hovering { app.ui_state.cursor_request = .Move }
+	// (a click moves the view there, a drag carries it)
+	if sig.dragging { app.ui_state.cursor_request = .Grabbing } else if sig.hovering { app.ui_state.cursor_request = .Hand }
 }
 
 @(private = "file")

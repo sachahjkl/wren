@@ -77,6 +77,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_web_face_prefs(p)   // web_font_faces.odin
 	register_frame_prefs(p)    // pacing.odin
 	register_scroll_prefs(p)   // smooth_scroll.odin
+	register_cursor_prefs(p)   // page_cursor.odin
 	register_window_prefs(p)   // window_chrome.odin
 	register_os_settings_prefs(p)   // os_settings.odin
 	register_demos_prefs(p)   // demos.odin
@@ -88,6 +89,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_history_prefs(p)   // history_settings.odin
 	register_app_command_prefs(p)   // app_commands.odin
 	register_palette_prefs(p)   // palette.odin
+	register_urlbar_prefs(p)   // urlbar.odin
 	register_shell_frame_prefs(p)   // shell_frames.odin
 	register_page_thread_prefs(p)   // page_thread.odin
 	_ = wasm.PREFS

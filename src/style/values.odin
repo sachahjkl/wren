@@ -489,6 +489,11 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 			case "-webkit-right": c.text_align = .Legacy_Right; return true
 			case "justify-all": c.text_align = .Justify; return true
 			case "match-parent": c.text_align = .Start; return true
+			// the UA's th (HTML §15.3.8): centered only when its parent's text-align is the initial value, else that
+			// value inherited (a table with text-align: left has left-aligned header cells)
+			case "-internal-th-center":
+				c.text_align = (cx.parent == nil || cx.parent.text_align == .Start) ? .Center : cx.parent.text_align
+				return true
 			case "legacy-center", "legacy-left", "legacy-right": return false   // (internal names, not CSS keywords)
 			}
 		}
@@ -794,22 +799,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		c.list_style = st
 		c.list_style_type = legacy_list_style(st.style)
 	case .List_Style_Position: return set_enum(vs, &c.list_style_position)
-	case .Cursor:
-		found := false
-		for part in css.split_commas(css.trim_values(vs), context.temp_allocator) {
-			items := css.trim_values(part)
-			if len(items) >= 1 && items[0].kind == .Token && items[0].tok.kind == .Ident {
-				cur: Cursor
-				if id, _ := ident_raw(items[:1]); strings.equal_fold(id, "all-scroll") {
-					cur = .Move
-				} else if !set_enum(items[:1], &cur) {
-					cur = .Auto
-				}
-				c.cursor = cur
-				found = true
-			}
-		}
-		return found
+	case .Cursor: return parse_cursor(cx, vs, c)   // cursor.odin
 	case .Pointer_Events:
 		id, ok := ident_raw(vs)
 		if !ok { return false }

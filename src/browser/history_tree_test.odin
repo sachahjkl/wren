@@ -3,6 +3,7 @@ package browser
 import "core:fmt"
 import "core:testing"
 import "core:time"
+import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:page"
@@ -88,6 +89,7 @@ tree_camera_math :: proc(t: ^testing.T) {
 	testing.expect(t, (ext.x + 2) * em * f.zoom <= 800.01 && f.zoom < 1)
 	small := cam_fit({10, 3}, {800, 600}, em, 1, 0.01, 1)
 	testing.expect_value(t, small.zoom, 1)   // never past the fit maximum
+	fit_clear_cases(t)
 	// clamp, reveal, lerp
 	cl := cam_clamp({{-50, 500}, 9}, ext, 0.1, 4)
 	testing.expect(t, cl.center == {0, 40} && cl.zoom == 4)
@@ -228,4 +230,44 @@ tree_large_model_is_cheap :: proc(t: ^testing.T) {
 	cull_ms := time.duration_milliseconds(time.tick_since(start)) / 100
 	fmt.printf("history tree, 5000 entries: model %.3f ms, cull %.4f ms (%d in view)\n", build_ms, cull_ms, len(out))
 	testing.expect(t, cull_ms < 1)
+}
+
+// "Fit" fills the view and keeps clear of the controls in its bottom-left corner (the vertical layout used to stop at
+// about two thirds of the height: the controls' band was taken off at the top too).
+@(private = "file")
+fit_clear_cases :: proc(t: ^testing.T) {
+	em := f32(27.8)
+	view := [2]f32{1780, 710}
+	under := draw.Rect{{22, 620}, {470, 690}}
+	screen_rect :: proc(c: Tree_Camera, extent, view: [2]f32, em: f32) -> draw.Rect {
+		vc := view * 0.5
+		return {cam_to_screen(c, vc, em, {0, 0}), cam_to_screen(c, vc, em, extent)}
+	}
+	overlaps :: proc(a, b: draw.Rect) -> bool { return a.min.x < b.max.x && a.max.x > b.min.x && a.min.y < b.max.y && a.max.y > b.min.y }
+	// a tall tree (the vertical layout): the whole height, beside the controls
+	tall := [2]f32{52, 50.6}
+	c, need := cam_fit_clear(tall, view, em, em, under, 0.01, 4)
+	r := screen_rect(c, tall, view, em)
+	testing.expectf(t, r.max.y - r.min.y >= 0.9 * view.y, "tall tree fills the height: %v", r)
+	testing.expectf(t, !overlaps(r, under), "clear of the controls: %v", r)
+	testing.expectf(t, r.min.x >= 0 && r.min.y >= 0 && r.max.x <= view.x && r.max.y <= view.y, "inside the view: %v", r)
+	testing.expect(t, need == c.zoom)
+	// a long flat tree (horizontal): the whole width, centered (it does not reach the controls)
+	flat := [2]f32{170, 14}
+	c, _ = cam_fit_clear(flat, view, em, em, under, 0.01, 4)
+	r = screen_rect(c, flat, view, em)
+	testing.expectf(t, r.max.x - r.min.x >= 0.95 * view.x, "flat tree fills the width: %v", r)
+	testing.expect(t, abs(c.center.x - flat.x * 0.5) < 0.01 && abs(c.center.y - flat.y * 0.5) < 0.01, "centered")
+	// a tree that would reach the controls and is wide: above them
+	wide := [2]f32{120, 30}
+	c, _ = cam_fit_clear(wide, view, em, em, under, 0.01, 4)
+	r = screen_rect(c, wide, view, em)
+	testing.expectf(t, !overlaps(r, under) && r.max.y <= under.min.y, "above the controls: %v", r)
+	// a small tree: the fit maximum, centered
+	c, need = cam_fit_clear({10, 3}, view, em, em, under, 0.01, 1)
+	testing.expect(t, c.zoom == 1 && need > 1 && c.center == [2]f32{5, 1.5}, "small tree at the maximum, centered")
+	// no controls: the whole view
+	c, _ = cam_fit_clear(tall, view, em, em, {}, 0.01, 4)
+	r = screen_rect(c, tall, view, em)
+	testing.expectf(t, abs((r.max.y - r.min.y) - (view.y - 2 * em)) < 0.5, "whole height but the margins: %v", r)
 }

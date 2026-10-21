@@ -165,7 +165,14 @@ engine_constructed_set_disabled :: proc(e: ^Engine, id: u64, disabled: bool) {
 
 engine_constructed_set_media :: proc(e: ^Engine, id: u64, media: string) {
 	s := engine_find_sheet(e, id)
-	if s == nil || !s.constructed || s.media_text == media { return }
+	if s == nil || !s.constructed { return }
+	sheet_set_media(e, s, media)
+}
+
+// A new media list for a sheet in place (a constructed sheet's media, the media attribute of a loaded <link>): its rules
+// stay parsed, only whether they apply changes.
+sheet_set_media :: proc(e: ^Engine, s: ^Sheet, media: string) {
+	if s.media_text == media { return }
 	delete(s.media_text)
 	s.media_text = strings.clone(media)
 	s.media = nil

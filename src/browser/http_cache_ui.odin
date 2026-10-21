@@ -130,6 +130,12 @@ CACHE_PAGE_STYLE :: `
   input[type=search] { flex: 1; padding: 6px 10px; background-color: #131825; color: #c9d1e3; border: 1px solid #2c3550; border-radius: 6px; }
   button, .clear { padding: 6px 14px; border-radius: 6px; border: 1px solid #2f5ea8; background-color: #10213f; color: #9cc0f2; text-decoration: none; }
   .clear { border-color: #a83a2f; background-color: #3f1410; color: #f2a59c; }
+  button:hover { background-color: #17305a; }
+  button:active { background-color: #1e3c70; }
+  .clear:hover { background-color: #561c16; }
+  .clear:active { background-color: #6b231b; }
+  input[type=search]:hover { border-color: #3f4b6e; }
+  tr:hover td { background-color: #121826; }
   table { width: 100%; border-collapse: collapse; }
   th { text-align: left; color: #8993ad; font-weight: normal; border-bottom: 1px solid #232b40; padding: 4px 6px; }
   td { border-bottom: 1px solid #1a2133; padding: 4px 6px; vertical-align: top; }

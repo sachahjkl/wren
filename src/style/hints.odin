@@ -178,6 +178,9 @@ hint_text :: proc(doc: ^dom.Document, h: base.Handle, n: ^dom.Node, quirks_rules
 		if v, ok := attr(n, "frameborder"); ok {
 			if px, ok2 := parse_nonneg_int(v); ok2 && px == 0 { strings.write_string(w, "border:none;") }
 		}
+	case "svg":
+		svg_size_hint(w, n, "width")
+		svg_size_hint(w, n, "height")
 	case "video":
 		hint_dimension(w, n, "width", "width", false)
 		hint_dimension(w, n, "height", "height", false)
@@ -353,6 +356,25 @@ hint_dimension :: proc(w: ^strings.Builder, n: ^dom.Node, name, prop: string, no
 	strings.write_string(w, prop)
 	strings.write_byte(w, ':')
 	write_num(w, d, pct ? "%;" : "px;")
+}
+
+// width / height of an <svg> are presentation attributes of the CSS properties (SVG 2 §8.2, Geometry Properties): any
+// CSS length or percentage (1rem, 50%, calc()), a bare number in px. The value goes to the CSS parser as written (an
+// invalid one is dropped there); text that could end the declaration is refused here.
+@(private)
+svg_size_hint :: proc(w: ^strings.Builder, n: ^dom.Node, name: string) {
+	v, ok := attr(n, name)
+	if !ok { return }
+	v = strings.trim_space(v)
+	if v == "" || strings.contains_any(v, ";{}!\\\"'<>") { return }
+	strings.write_string(w, name)
+	strings.write_byte(w, ':')
+	if d, pct, dok := parse_dimension(v); dok && !pct && len(strings.trim_left(v, "0123456789.+")) == 0 {
+		write_num(w, d, "px;")   // a bare number
+		return
+	}
+	strings.write_string(w, v)
+	strings.write_byte(w, ';')
 }
 
 // width / height attributes of an image or video also give it a preferred ratio until its own is known.

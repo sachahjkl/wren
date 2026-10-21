@@ -327,7 +327,12 @@ shell_chrome_frame :: proc(app: ^App) {
 	})
 	build_ui(app)
 	ui.end_build()
-	platform.set_cursor(app.win, ui.cursor(&app.ui_state))
+	// the chrome's cursor over the chrome; over the page, the page's as the last full frame set it (page_cursor.odin
+	// hit-tests the layout, which is not read here)
+	pos := ui.mouse_pos()
+	if !draw.rect_contains(app.page_rect, pos) || ui.hot_key() != 0 || ui.active_key() != 0 || ui.ctx_menu_any_open() {
+		platform.set_cursor(app.win, ui.cursor(&app.ui_state))
+	}
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	ui.draw_tree(&app.ui_state, &app.dc)
