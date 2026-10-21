@@ -101,17 +101,21 @@ function Flush-Steps {
     foreach ($s in ($script:queue | Sort-Object { if ($script:times.ContainsKey($_.Name)) { -$script:times[$_.Name] } else { -60 } })) { $pending.Add($s) }
     $script:queue.Clear()
     $running = @{}
+    $names = @{}
     while ($pending.Count -gt 0 -or $running.Count -gt 0) {
         while ($running.Count -lt $Jobs -and $pending.Count -gt 0) {
             $s = $pending[0]; $pending.RemoveAt(0)
             $j = Start-Job -ScriptBlock $stepJob -ArgumentList $s.Name, $s.Body, $s.Server, $root, $Stack, $slow, [bool]$Quick, [bool]$CI, $BasePort, $s.Vars
             $running[$j.Id] = $j
+            $names[$j.Id] = $s.Name
         }
         foreach ($j in @($running.Values)) {
             if ($j.State -eq 'Running' -or $j.State -eq 'NotStarted') { continue }
-            $r = Receive-Job $j -ErrorAction SilentlyContinue | Where-Object { $_.PSObject.Properties['Ok'] } | Select-Object -Last 1
+            $all = @(Receive-Job $j -ErrorAction SilentlyContinue -ErrorVariable jerr)
+            $r = $all | Where-Object { $_.PSObject.Properties['Ok'] } | Select-Object -Last 1
+            $why = "$($j.ChildJobs[0].JobStateInfo.Reason) $jerr"
             Remove-Job $j -Force; $running.Remove($j.Id)
-            if (-not $r) { Report "(a step ended without a result: job $($j.Id))" $false '' 0; continue }
+            if (-not $r) { Report "$($names[$j.Id]) (ended without a result: job $($j.Id), $($j.State))" $false $why 0; continue }
             $script:times[$r.Name] = $r.Secs
             Report $r.Name $r.Ok $r.Out $r.Secs $r.Port
         }
@@ -133,6 +137,9 @@ $env:TEMP = $env:TMP = (New-Item -ItemType Directory -Force (Join-Path $root 'bu
 $Stack = '-extra-linker-flags:/STACK:33554432'
 # unit tests fail on a leak or a bad free (Odin's runner tracks each test's context.allocator but only warns by default)
 $MemCheck = '-define:ODIN_TEST_FAIL_ON_BAD_MEMORY=true'
+# the end-to-end tools track every allocation of the process (package base's tracker, every thread) and fail when
+# anything is left once they have shut down (src\tools\testenv\memory.odin); never in the builds of the browser
+$Track = '-define:WREN_TRACK_MEMORY=true'
 $script:watchdog = Start-Watchdog
 "test_all: $root, -Jobs $Jobs, test server ports from $BasePort, started $(Get-Date -Format 'HH:mm:ss')"
 # the JavaScript engine every build below embeds (nothing to do when build\js is up to date)
@@ -149,7 +156,7 @@ Step 'test262 in the Wasm engine (-Quick: every 25th test; fails on a failure sr
 Step 'web API conformance (generated cases: bounds, UTF-8, handles, enums, capacity)' {
     odin build examples/apiconformance -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -out:build/apiconformance.wasm -o:size
     if ($LASTEXITCODE -ne 0) { return }
-    odin build src/tools/apiconformance -collection:wb=src -vet -out:build/apiconformance.exe $Stack
+    odin build src/tools/apiconformance -collection:wb=src -vet $Track -out:build/apiconformance.exe $Stack
     if ($LASTEXITCODE -ne 0) { return }
     .\build\apiconformance.exe build\apiconformance.wasm
 }
@@ -165,32 +172,32 @@ Step 'build guest counter.wasm' { odin build examples/counter -target:freestandi
 Step 'build guest formstest.wasm' { odin build examples/formstest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/formstest.wasm -o:size }
 Step 'build guest mutation.wasm' { odin build examples/mutation -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/mutation.wasm -o:size }
 Step 'build guest mutation_class.wasm' { odin build examples/mutation_class -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/mutation_class.wasm -o:size }
-Step 'build formstest' { odin build src/tools/formstest -collection:wb=src -vet -out:build/formstest.exe $Stack }
-Step 'build pagetest' { odin build src/tools/pagetest -collection:wb=src -vet -out:build/pagetest.exe $Stack }
-Step 'JavaScript in pages (jstest: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)' { odin build src/tools/jstest -collection:wb=src -vet -out:build/jstest.exe -o:speed $Stack; if ($LASTEXITCODE -eq 0) { .\build\jstest.exe } }
-Step 'build policytest' { odin build src/tools/policytest -collection:wb=src -vet -out:build/policytest.exe $Stack }
-Step 'build web API test (guest + tool)' { odin build examples/webapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/webapitest.wasm -o:size; if ($LASTEXITCODE -eq 0) { odin build src/tools/webapitest -collection:wb=src -vet -out:build/webapitest.exe $Stack } }
+Step 'build formstest' { odin build src/tools/formstest -collection:wb=src -vet $Track -out:build/formstest.exe $Stack }
+Step 'build pagetest' { odin build src/tools/pagetest -collection:wb=src -vet $Track -out:build/pagetest.exe $Stack }
+Step 'JavaScript in pages (jstest: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)' { odin build src/tools/jstest -collection:wb=src -vet $Track -out:build/jstest.exe -o:speed $Stack; if ($LASTEXITCODE -eq 0) { .\build\jstest.exe } }
+Step 'build policytest' { odin build src/tools/policytest -collection:wb=src -vet $Track -out:build/policytest.exe $Stack }
+Step 'build web API test (guest + tool)' { odin build examples/webapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/webapitest.wasm -o:size; if ($LASTEXITCODE -eq 0) { odin build src/tools/webapitest -collection:wb=src -vet $Track -out:build/webapitest.exe $Stack } }
 Step 'build fetch' { odin build src/tools/fetch -collection:wb=src -vet -out:build/fetch.exe $Stack }
 Step 'file: folders end-to-end test (index file, listing, redirect to /, errors, who may open what; no server)' {
-    odin build src/tools/filetest -collection:wb=src -vet -out:build/filetest.exe $Stack
+    odin build src/tools/filetest -collection:wb=src -vet $Track -out:build/filetest.exe $Stack
     if ($LASTEXITCODE -ne 0) { return }
     $o = .\build\filetest.exe | Out-String; $o
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
 }
 Step 'DOM for JavaScript end-to-end test (jsdomtest: tree, elements, markup, selectors, CSSOM, geometry, UI events, MutationObserver, traversal, ranges, leaks, micro-benchmarks; no server)' {
-    odin build src/tools/jsdomtest -collection:wb=src -vet -out:build/jsdomtest.exe -o:speed $Stack
+    odin build src/tools/jsdomtest -collection:wb=src -vet $Track -out:build/jsdomtest.exe -o:speed $Stack
     if ($LASTEXITCODE -ne 0) { return }
     $o = .\build\jsdomtest.exe | Out-String; $o
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
 }
 Step 'history end-to-end test (historytest: the tree as pages see it, scrollRestoration, pageshow / pagehide persisted, back/forward cache freezing, persisted form state; no server)' {
-    odin build src/tools/historytest -collection:wb=src -vet -out:build/historytest.exe $Stack
+    odin build src/tools/historytest -collection:wb=src -vet $Track -out:build/historytest.exe $Stack
     if ($LASTEXITCODE -ne 0) { return }
     $o = .\build\historytest.exe | Out-String; $o
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
 }
 Step 'Web Authentication end-to-end test (webauthntest: create then get from JavaScript on the virtual authenticator, signature checked; activation, RP ID, aborts, timer, mediation, JSON forms, secure context; no server)' {
-    odin build src/tools/webauthntest -collection:wb=src -vet -out:build/webauthntest.exe $Stack
+    odin build src/tools/webauthntest -collection:wb=src -vet $Track -out:build/webauthntest.exe $Stack
     if ($LASTEXITCODE -ne 0) { return }
     $o = .\build\webauthntest.exe | Out-String; $o
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
@@ -215,7 +222,7 @@ try {
         $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'HTTP cache end-to-end test (cachetest: freshness, revalidation, Vary, cache modes, partitions, invalidation, stale-while-revalidate, disk cache across a restart)' {
-        odin build src/tools/cachetest -collection:wb=src -vet -out:build/cachetest.exe $Stack
+        odin build src/tools/cachetest -collection:wb=src -vet $Track -out:build/cachetest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\cachetest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\cat.txt
         if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\cat.txt; $global:LASTEXITCODE = 1; return }
@@ -231,7 +238,7 @@ try {
     Step 'EventSource / WebSocket end-to-end test (netapitest)' {
         odin build examples/netapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/netapitest.wasm -o:size
         if ($LASTEXITCODE -ne 0) { return }
-        odin build src/tools/netapitest -collection:wb=src -vet -out:build/netapitest.exe $Stack
+        odin build src/tools/netapitest -collection:wb=src -vet $Track -out:build/netapitest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\netapitest.exe -ArgumentList 'build\netapitest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\nat.txt
         if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\nat.txt; $global:LASTEXITCODE = 1; return }
@@ -239,7 +246,7 @@ try {
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'WebSocket closing handshake test (wsclosetest: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)' {
-        odin build src/tools/wsclosetest -collection:wb=src -vet -out:build/wsclosetest.exe
+        odin build src/tools/wsclosetest -collection:wb=src -vet $Track -out:build/wsclosetest.exe
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\wsclosetest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\wct.txt
         if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\wct.txt; $global:LASTEXITCODE = 1; return }
@@ -263,7 +270,7 @@ try {
         if ($LASTEXITCODE -ne 0) { return }
         odin build examples/workerstest_worker -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/workerstest_worker.wasm -o:size
         if ($LASTEXITCODE -ne 0) { return }
-        odin build src/tools/workerstest -collection:wb=src -vet -out:build/workerstest.exe $Stack
+        odin build src/tools/workerstest -collection:wb=src -vet $Track -out:build/workerstest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\workerstest.exe -ArgumentList 'build\workerstest.wasm','examples\site\workerstest_worker.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\wkt.txt
         if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\wkt.txt; $global:LASTEXITCODE = 1; return }
@@ -271,7 +278,7 @@ try {
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'JavaScript loading end-to-end test (script order, document.write, dynamic scripts, modules, handlers, CSP, noscript, timers, errors, workers, cloning)' {
-        odin build src/tools/jsloadtest -collection:wb=src -vet -out:build/jsloadtest.exe $Stack
+        odin build src/tools/jsloadtest -collection:wb=src -vet $Track -out:build/jsloadtest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\jsloadtest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\jlt.txt
         if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\jlt.txt; $global:LASTEXITCODE = 1; return }
@@ -279,7 +286,7 @@ try {
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'site compatibility end-to-end test (sitecompattest: reduced fixtures of real sites: stylesheet load events, media swap, scroll events)' {
-        odin build src/tools/sitecompattest -collection:wb=src -vet -out:build/sitecompattest.exe $Stack
+        odin build src/tools/sitecompattest -collection:wb=src -vet $Track -out:build/sitecompattest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\sitecompattest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\sct.txt
         if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\sct.txt; $global:LASTEXITCODE = 1; return }
@@ -287,7 +294,7 @@ try {
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; jswebtest)' {
-        odin build src/tools/jswebtest -collection:wb=src -vet -out:build/jswebtest.exe $Stack
+        odin build src/tools/jswebtest -collection:wb=src -vet $Track -out:build/jswebtest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\jswebtest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\jswt.txt
         if (-not $p.WaitForExit(300000 * $slow)) { $p.Kill(); Get-Content build\jswt.txt; $global:LASTEXITCODE = 1; return }
@@ -295,7 +302,7 @@ try {
         $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'style run-time test (web fonts, transitions, animations)' {
-        odin build src/tools/styletest -collection:wb=src -vet -out:build/styletest.exe $Stack 2>&1 | Out-String
+        odin build src/tools/styletest -collection:wb=src -vet $Track -out:build/styletest.exe $Stack 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\styletest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\stt.txt
         if (-not $p.WaitForExit(60000 * $slow)) { $p.Kill(); Get-Content build\stt.txt; $global:LASTEXITCODE = 1; return }
@@ -303,7 +310,7 @@ try {
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'image formats end-to-end test (AVIF, WebP, SVG images and backgrounds, inline <svg>, Accept, <picture>)' {
-        odin build src/tools/mediatest -collection:wb=src -vet -out:build/mediatest.exe $Stack
+        odin build src/tools/mediatest -collection:wb=src -vet $Track -out:build/mediatest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\mediatest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\mdt.txt
         if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\mdt.txt; $global:LASTEXITCODE = 1; return }
@@ -313,7 +320,7 @@ try {
     Step 'images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)' {
         odin build examples/imagestest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/imagestest.wasm -o:size
         if ($LASTEXITCODE -ne 0) { return }
-        odin build src/tools/imagestest -collection:wb=src -vet -out:build/imagestest.exe $Stack
+        odin build src/tools/imagestest -collection:wb=src -vet $Track -out:build/imagestest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\imagestest.exe -ArgumentList 'build\imagestest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\imt.txt
         if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\imt.txt; $global:LASTEXITCODE = 1; return }
