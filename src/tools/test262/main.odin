@@ -649,6 +649,7 @@ main :: proc() {
 		case "-jit": jit.enabled = true
 		case "-jit-threshold": jit.call_threshold = max(1, parse_int(need(args, &i)))
 		case "-jit-step": jit.step_only = true
+		case "-jit-sync": jit.background_threads = 0
 		case "-jit-loop": jit.loop_threshold = max(1, parse_int(need(args, &i)))
 		case "--pref": i += 1
 		case:
