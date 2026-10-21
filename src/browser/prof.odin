@@ -37,6 +37,7 @@ foreign kernel32_prof {
 }
 
 CONTEXT_CONTROL_AMD64 :: 0x100001
+CONTEXT_FULL_AMD64 :: 0x10000B
 
 // (Styles, Layout and Paint_Items run inside UI_Draw: the page is a custom box of the UI tree. Animation: the page's
 // animation frame callbacks.)
@@ -147,6 +148,16 @@ foreign dbghelp {
 
 Sample :: struct { rip: u64, phase: Phase }
 
+// WREN_SAMPLE_STACKS=1: each sample also keeps the return addresses of the frames under it (unwound with the images'
+// unwind tables), for the report's inclusive table: which of our functions the time was spent under.
+STACK_DEPTH :: 32
+
+@(default_calling_convention = "system")
+foreign kernel32_prof {
+	RtlLookupFunctionEntry :: proc(pc: u64, image_base: ^u64, history: rawptr) -> rawptr ---
+	RtlVirtualUnwind :: proc(handler_type: u32, image_base: u64, pc: u64, entry: rawptr, ctx: ^win.CONTEXT, handler_data: ^rawptr, establisher: ^u64, pointers: rawptr) -> rawptr ---
+}
+
 Prof :: struct {
 	on:        bool,
 	freq:      f64,
@@ -157,6 +168,7 @@ Prof :: struct {
 	// sampling
 	sampling:  bool,
 	samples:   []Sample,
+	stacks:    [][STACK_DEPTH]u64,   // WREN_SAMPLE_STACKS: return addresses of each sample (0-terminated)
 	n_samples: int,
 	stop:      bool,
 	target:    win.HANDLE,
@@ -222,6 +234,7 @@ prof_init :: proc(app: ^App) {
 		win.DuplicateHandle(win.GetCurrentProcess(), win.GetCurrentThread(), win.GetCurrentProcess(), &h, 0, false, win.DUPLICATE_SAME_ACCESS)
 		prof.target = h
 		prof.samples = make([]Sample, 4_000_000)
+		if os.get_env("WREN_SAMPLE_STACKS", context.temp_allocator) == "1" { prof.stacks = make([][STACK_DEPTH]u64, 600_000) }
 		prof.sampling = true
 		prof.sampler = thread.create(sampler_proc)
 		thread.start(prof.sampler)
@@ -233,12 +246,35 @@ sampler_proc :: proc(_: ^thread.Thread) {
 		win.Sleep(1)
 		if win.SuspendThread(prof.target) == ~u32(0) { continue }
 		ctx: win.CONTEXT
-		ctx.ContextFlags = CONTEXT_CONTROL_AMD64
+		ctx.ContextFlags = prof.stacks != nil ? CONTEXT_FULL_AMD64 : CONTEXT_CONTROL_AMD64
 		if win.GetThreadContext(prof.target, &ctx) && prof.n_samples < len(prof.samples) {
 			prof.samples[prof.n_samples] = Sample{u64(ctx.Rip), phase_clock.cur}
+			if prof.n_samples < len(prof.stacks) { unwind_stack(&ctx, &prof.stacks[prof.n_samples]) }
 			prof.n_samples += 1
 		}
 		win.ResumeThread(prof.target)
+	}
+}
+
+// The return addresses under a suspended thread's context (same process: its stack is readable here). A frame of
+// code without unwind data (a leaf, generated code) is taken as a leaf: the return address on top of the stack.
+unwind_stack :: proc(ctx_in: ^win.CONTEXT, out: ^[STACK_DEPTH]u64) {
+	ctx := ctx_in^
+	for i in 0 ..< STACK_DEPTH {
+		pc := u64(ctx.Rip)
+		if pc == 0 { out[i] = 0; return }
+		base: u64
+		entry := RtlLookupFunctionEntry(pc, &base, nil)
+		if entry == nil {
+			if ctx.Rsp == 0 { out[i] = 0; return }
+			ctx.Rip = (^win.DWORD64)(uintptr(ctx.Rsp))^
+			ctx.Rsp += 8
+		} else {
+			data: rawptr
+			frame: u64
+			RtlVirtualUnwind(0, base, pc, entry, &ctx, &data, &frame, nil)
+		}
+		out[i] = u64(ctx.Rip)
 	}
 }
 
@@ -504,6 +540,27 @@ report_samples :: proc(sb: ^strings.Builder) {
 	top(sb, by_module, 12, total, "  ")
 	fmt.sbprintf(sb, "\n-- hottest functions overall\n")
 	top(sb, by_symbol, 35, total, "  ")
+	if len(prof.stacks) > 0 {
+		// each function counted once per sample it is on the stack of (itself or under it)
+		inclusive := make(map[string]int, context.temp_allocator)
+		seen := make(map[string]bool, context.temp_allocator)
+		n := min(prof.n_samples, len(prof.stacks))
+		for i in 0 ..< n {
+			clear(&seen)
+			add :: proc(addr: u64, cache: ^map[u64]Sym, proc_h: win.HANDLE, buf: []u8, seen: ^map[string]bool, inclusive: ^map[string]int) {
+				sym, ok := cache[addr]
+				if !ok { sym = resolve(addr, proc_h, buf); cache[addr] = sym }
+				key := fmt.tprintf("%s!%s", sym.module, sym.name)
+				if key in seen { return }
+				seen[key] = true
+				inclusive[key] += 1
+			}
+			add(prof.samples[i].rip, &cache, proc_h, buf[:], &seen, &inclusive)
+			for a in prof.stacks[i] { if a == 0 { break }; add(a - 1, &cache, proc_h, buf[:], &seen, &inclusive) }
+		}
+		fmt.sbprintf(sb, "\n-- inclusive (on the stack of the sample), %d samples with stacks\n", n)
+		top(sb, inclusive, 60, n, "  ")
+	}
 	for p in phases {
 		if p == .Idle || p == .None || by_phase[p] < 20 { continue }
 		fmt.sbprintf(sb, "\n-- hottest functions in phase %v (%d samples)\n", p, by_phase[p])
