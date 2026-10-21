@@ -1445,6 +1445,7 @@ Post_Job :: struct {
 // be read) and navigates with it; mailto: goes to the system's mail program.
 shell_navigate_submission :: proc(user: rawptr, p: ^page.Page, s: ^forms.Submission) {
 	app := (^App)(user)
+	if frames_take_submission(app, p, s) { return }
 	t := tab_of_page(app, p)
 	if t == nil { forms.submission_destroy(s); return }
 	if s.mailto {
@@ -1504,6 +1505,50 @@ submit_navigate :: proc(app: ^App, t: ^Tab, from: ^page.Page, s: ^forms.Submissi
 	} else {
 		navigate(app, dest, s.url, from, user_activation = true)
 	}
+}
+
+// A submission that concerns a frame (frames_shell.odin): from a frame's document, or towards a frame its target names.
+// Its sandbox may refuse it (allow-forms); a frame navigates with the submission's method and body (a body with files
+// to read is sent from a tab only); the tab's own document with no frame target is not taken (false).
+@(private = "file")
+frames_take_submission :: proc(app: ^App, p: ^page.Page, s: ^forms.Submission) -> bool {
+	in_frame := frame_view_of(p) != nil
+	target := strings.trim_space(s.target)
+	if !in_frame && (target == "" || strings.equal_fold(target, "_self") || strings.equal_fold(target, "_top") || strings.equal_fold(target, "_blank")) { return false }
+	defer forms.submission_destroy(s)
+	if sb := page.page_sandbox(p); sb.active && .Forms not_in sb.allow {
+		page.log(p, .Error, "Blocked form submission because the form's frame is sandboxed and the 'allow-forms' permission is not set.")
+		return true
+	}
+	if s.mailto { open_external(app, s.url); return true }
+	n := page.frames_find_target(p, target)
+	if n == nil {
+		// _blank, or a name nothing has: a new tab (a GET; a POST's body goes with it only from a tab)
+		tab_open(app, s.url)
+		return true
+	}
+	if n.parent == nil {
+		// the tab's document
+		top := page.page_top(p)
+		t := tab_of_page(app, top)
+		if t == nil { return true }
+		if why := page.navigation_allowed(p, n); why != "" { tab_log(t, .Error, why); return true }
+		if s.method == .Post && !forms.needs_file_reads(s.entries[:]) {
+			if ok, msg := forms.encode_submission(s, app.page_settings.forms); !ok { tab_log(t, .Error, msg); delete(msg); return true }
+		}
+		submit_navigate(app, t, p, s)
+		return true
+	}
+	method, ctype := "", ""
+	if s.method == .Post {
+		if forms.needs_file_reads(s.entries[:]) { page.log(p, .Warn, "a form with files is not sent to a frame"); return true }
+		ok, msg := forms.encode_submission(s, app.page_settings.forms)
+		defer delete(msg)
+		if !ok { page.log(p, .Error, msg); return true }
+		method, ctype = "POST", s.content_type
+	}
+	if why := page.frames_navigate_from(p, n, s.url, false, method, s.body, ctype); why != "" { page.log(p, .Error, why) }
+	return true
 }
 
 // mailto: and other schemes the browser does not handle: the system's handler (on a worker: the shell may block).

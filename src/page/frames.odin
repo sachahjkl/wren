@@ -451,7 +451,7 @@ frame_load_cancel :: proc(n: ^Navigable) {
 
 // Navigates a frame to `href` (absolute). Fragments of the same document stay in it; javascript: runs in the current
 // document; about:blank is made at once; anything else is fetched.
-frame_navigate :: proc(n: ^Navigable, href: string, replace := false) {
+frame_navigate :: proc(n: ^Navigable, href: string, replace := false, method := "", body: []byte = nil, content_type := "") {
 	p := n.parent
 	if p == nil || p.closed { return }
 	target, ok := url.parse(href, nil, context.temp_allocator)
@@ -488,9 +488,11 @@ frame_navigate :: proc(n: ^Navigable, href: string, replace := false) {
 	n.delaying = true
 	rp := fetch.Referrer_Policy.Default
 	if v, has := dom.get_attribute(p.doc, n.element, "referrerpolicy"); has { rp = fetch.parse_referrer_policy(v) }
+	headers: []fetch.Header_Pair
+	if content_type != "" { headers = {{"Content-Type", content_type}} }
 	l.task = fetch.start(p.loader, {
 		request = {url = target.href, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = .Iframe,
-			initiator = &p.env, referrer_policy = rp},
+			initiator = &p.env, referrer_policy = rp, method = method, body = body, headers = headers},
 		on_event = frame_fetch_event, user = l, scope = p.scope, collect = true,
 	})
 }
@@ -871,17 +873,17 @@ navigation_allowed :: proc(src: ^Page, target: ^Navigable) -> string {
 }
 
 // Navigates another navigable on behalf of `src` (window.location of a WindowProxy, window.open to a frame name).
-frames_navigate_from :: proc(src: ^Page, target: ^Navigable, href: string, replace: bool) -> (why: string) {
+frames_navigate_from :: proc(src: ^Page, target: ^Navigable, href: string, replace: bool, method := "", body: []byte = nil, content_type := "") -> (why: string) {
 	if w := navigation_allowed(src, target); w != "" { return w }
 	u, ok := url.parse(href, &src.env.location, context.temp_allocator)
 	if !ok { return "invalid URL" }
 	if target.parent == nil {
-		// a tab's document: its embedder navigates the tab
+		// a tab's document: its embedder navigates the tab (a POST to the top level is the shell's: forms_shell.odin)
 		if tp := target.page; tp != nil { request_navigation(tp, replace ? .Replace : .Assign, u.href) }
 		return ""
 	}
 	h := strings.clone(u.href, context.temp_allocator)
-	frame_navigate(target, h, replace)
+	frame_navigate(target, h, replace, method, body, content_type)
 	return ""
 }
 

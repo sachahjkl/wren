@@ -405,6 +405,22 @@ frames_follow_link :: proc(app: ^App, fv: ^Frame_View, el: base.Handle, href: st
 	if why := page.frames_navigate_from(p, n, resolved.href, false); why != "" { tab_log(fv.host, .Warn, why) }
 }
 
+// A link of a tab's document whose target names one of its frames (or a frame's frame): that frame navigates. False
+// for any other target (the tab's own navigation, _blank...).
+frames_link_target :: proc(app: ^App, t: ^Tab, clicked: base.Handle, href: string) -> bool {
+	p := t.page
+	if p == nil || p.frames == nil { return false }
+	a, _, ok := frame_anchor(p.doc, clicked)
+	if !ok { return false }
+	target, _ := dom.get_attribute(p.doc, a, "target")
+	target = strings.trim_space(target)
+	if target == "" || target[0] == '_' { return false }
+	n := page.frames_find_target(p, target)
+	if n == nil || n.parent == nil { return false }
+	if why := page.frames_navigate_from(p, n, href, false); why != "" { tab_log(t, .Warn, why) }
+	return true
+}
+
 ////////////////////////////////
 // Per frame
 
@@ -422,6 +438,13 @@ frames_tick_doc :: proc(app: ^App, p: ^page.Page, frame_ms: f64) -> bool {
 		c := n.page
 		fv := frame_view_of(c)
 		if fv == nil { continue }
+		// form submissions of the frame's document (forms_shell.odin takes those that concern frames)
+		if c.formctl != nil && c.formctl.embedder.navigate == nil {
+			page.set_forms_embedder(c, page.Forms_Embedder{
+				user = app, navigate = shell_navigate_submission, pick_files = shell_pick_files, pick_color = shell_pick_color,
+				changed = proc(user: rawptr, p: ^page.Page) { (^App)(user).frames_requested = max((^App)(user).frames_requested, 2) },
+			})
+		}
 		shown := fv.painted + 2 >= chrome_frames.frame_no
 		page.set_page_visible(c, shown)
 		if !shown { continue }

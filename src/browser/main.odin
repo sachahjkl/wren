@@ -851,6 +851,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 					if !rok { tab_log(t, .Error, fmt.tprintf("invalid link %q", href)); continue }
 					if page.follow_fragment_link(t.page, resolved) { continue }   // same document: page_draw scrolls to the target
 					if page.follow_javascript_url(t.page, resolved) { continue }  // javascript: runs in the page (js_load_realm.odin)
+					if frames_link_target(app, t, target, resolved.href) { continue }   // target="a frame's name" (frames_shell.odin)
 					navigate(app, t, resolved.href, t.page, user_activation = true)
 					have_move = false
 					return   // the page is gone: the rest of this frame's events belong to the old one
