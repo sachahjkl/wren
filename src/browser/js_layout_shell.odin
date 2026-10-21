@@ -15,9 +15,16 @@ attach_js_layout :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
 	page.set_layout_embedder(p, {user = t, update = js_layout_update, viewport = js_layout_viewport, scroll_to = js_layout_scroll, repaint = js_layout_repaint})
 }
 
-// The page area (physical pixels) a tab's document is laid out for: the one painted last.
+// The page area (physical pixels) a tab's document is laid out for: the one painted last. Before any (a document
+// opened with the window, its scripts running before the first frame) the window's client area stands for it: a
+// viewport of 0 x 0 made pages pick their phone layout (DuckDuckGo); the resize steps tell them when the real area
+// is known (page/resize_steps.odin).
 @(private = "file")
-page_area :: proc(app: ^App) -> draw.Vec2 { return draw.rect_size(app.page_rect) }
+page_area :: proc(app: ^App) -> draw.Vec2 {
+	r := draw.rect_size(app.page_rect)
+	if (r.x <= 0 || r.y <= 0) && app.win != nil { return {f32(app.win.size.x), f32(app.win.size.y)} }
+	return r
+}
 
 @(private = "file")
 js_layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
