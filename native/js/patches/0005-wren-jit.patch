@@ -1,18 +1,36 @@
 diff --git a/quickjs.c b/quickjs.c
 --- a/quickjs.c
 +++ b/quickjs.c
-@@ -895,6 +895,10 @@ typedef struct JSFunctionBytecode {
+@@ -895,8 +895,18 @@ typedef struct JSFunctionBytecode {
      int pc2line_len;
      uint8_t *pc2line_buf;
      char *source;
 +#ifdef WREN_JIT
-+    int32_t wjit_index;   /* WREN: table index of the compiled code (wjit.h); 0 none yet, -1 never */
++    int32_t wjit_index;   /* WREN: table index of the compiled code (native/js/jit); 0 none yet, -1 never */
 +    uint32_t wjit_calls;  /* WREN: calls counted toward the JIT's threshold */
++    void *wjit_data;      /* WREN: the compiled code's inline caches */
 +#endif
  } JSFunctionBytecode;
  
++#ifdef WREN_JIT
++static void wjit_release(JSRuntime *rt, JSFunctionBytecode *b);
++static void wjit_mark(JSRuntime *rt, JSFunctionBytecode *b, JS_MarkFunc *mark_func);
++#endif
++
  typedef struct JSBoundFunction {
-@@ -18142,6 +18146,10 @@ static bool needs_backtrace(JSValue exc)
+     JSValue func_obj;
+     JSValue this_val;
+@@ -7348,6 +7358,9 @@ static void mark_children(JSRuntime *rt, JSGCObjectHeader *gp,
+             }
+             if (b->realm)
+                 mark_func(rt, &b->realm->header);
++#ifdef WREN_JIT
++            wjit_mark(rt, b, mark_func);   /* WREN: the shapes the inline caches hold */
++#endif
+         }
+         break;
+     case JS_GC_OBJ_TYPE_VAR_REF:
+@@ -18142,6 +18155,10 @@ static bool needs_backtrace(JSValue exc)
      return can_store_error_stack(exc) || can_add_backtrace(exc);
  }
  
@@ -23,7 +41,7 @@ diff --git a/quickjs.c b/quickjs.c
  /* argv[] is modified if (flags & JS_CALL_FLAG_COPY_ARGV) = 0. */
  static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
                                 JSValueConst this_obj, JSValueConst new_target,
-@@ -18280,11 +18288,32 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+@@ -18280,6 +18297,28 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
          print_func_name(b);
  #endif
  
@@ -52,12 +70,17 @@ diff --git a/quickjs.c b/quickjs.c
   restart:
      for(;;) {
          int call_argc;
-         JSValue *call_argv;
--
-         SWITCH(pc) {
-         CASE(OP_push_i32):
-             *sp++ = js_int32(get_u32(pc));
-@@ -65099,3 +65128,7 @@ uintptr_t js_std_cmd(int cmd, ...) {
+@@ -37324,6 +37363,9 @@ static void free_function_bytecode(JSRuntime *rt, JSFunctionBytecode *b)
+ {
+     int i;
+ 
++#ifdef WREN_JIT
++    wjit_release(rt, b);
++#endif
+     if (b->byte_code_buf)
+         free_bytecode_atoms(rt, b->byte_code_buf, b->byte_code_len, true);
+ 
+@@ -65099,3 +65141,7 @@ uintptr_t js_std_cmd(int cmd, ...) {
  #undef malloc
  #undef free
  #undef realloc

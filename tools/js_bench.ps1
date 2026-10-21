@@ -14,11 +14,13 @@ param(
     [string[]]$Benchmarks = @(),
     [string[]]$Engines = @('wasm', 'native', 'edge'),
     [string]$OutDir = 'build\bench',
-    [int]$EdgeTimeoutSec = 900
+    [int]$EdgeTimeoutSec = 900,
+    [string[]]$WasmArgs = @()   # extra arguments of build\jsengine.exe bench (-jit, -jit-threshold n...)
 )
 $ErrorActionPreference = 'Continue'
 $Benchmarks = @($Benchmarks | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $Engines = @($Engines | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+$WasmArgs = @($WasmArgs | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $root = Split-Path $PSScriptRoot -Parent
 if (-not [IO.Path]::IsPathRooted($OutDir)) { $OutDir = Join-Path $root $OutDir }
 New-Item -ItemType Directory -Force $OutDir | Out-Null
@@ -143,7 +145,7 @@ function Run-Octane {
         foreach ($n in $names) {
             # (jsengine bench: one realm per run, the median of -iterations; the runs are taken one by one here to keep them all)
             for ($i = 0; $i -lt $Runs; $i++) {
-                $o = & $wasmExe bench -iterations 1 $dir $n 2>&1 | ForEach-Object { "$_" }
+                $o = & $wasmExe bench -iterations 1 @WasmArgs $dir $n 2>&1 | ForEach-Object { "$_" }
                 Add-Content $log "wasm $n $($o -join ' / ')"
                 $line = $o | Where-Object { $_ -match "^$([regex]::Escape($n))\s+(\d+)\s" } | Select-Object -First 1
                 if ($line -and $line -match "^\S+\s+(\d+)") { $scores['wasm'][$n].Add([double]$Matches[1]) }
