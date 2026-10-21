@@ -50,6 +50,7 @@ bfcache_blockers :: proc(p: ^Page) -> Bfcache_Blockers {
 	for _, l in p.link_loads { if l.task != base.NIL_HANDLE { out += {.Request_In_Flight} } }
 	for l in p.import_loads { if l.task != base.NIL_HANDLE { out += {.Request_In_Flight} } }
 	for _, f in p.fonts.faces { if f.state == .Queued || f.state == .Loading { out += {.Request_In_Flight} } }
+	if webauthn_busy(p) { out += {.Request_In_Flight} }   // a passkey dialog is open for it
 	if s := p.scripts; s != nil {
 		for f in s.fetches { if f.task != base.NIL_HANDLE { out += {.Request_In_Flight} } }
 		if s.started && !s.loaded { out += {.Loading} }

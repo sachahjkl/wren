@@ -286,7 +286,7 @@ int wj_web_start(JSContext *ctx, int kind);
 /* The realm's singletons a getter returns every time (location, history, navigator...), kept by the realm. */
 enum {
     WEB_SINGLE_LOCATION, WEB_SINGLE_HISTORY, WEB_SINGLE_NAVIGATOR, WEB_SINGLE_LOCAL_STORAGE, WEB_SINGLE_SESSION_STORAGE,
-    WEB_SINGLE_PERFORMANCE, WEB_SINGLE_CRYPTO, WEB_SINGLE_SUBTLE, WEB_SINGLE_SCREEN, WEB_SINGLE_COUNT,
+    WEB_SINGLE_PERFORMANCE, WEB_SINGLE_CRYPTO, WEB_SINGLE_SUBTLE, WEB_SINGLE_SCREEN, WEB_SINGLE_CREDENTIALS, WEB_SINGLE_COUNT,
 };
 /* The singleton `which`, made by `make` the first time (counted result). */
 JSValue web_singleton(JSContext *ctx, int which, JSValue (*make)(JSContext *ctx));

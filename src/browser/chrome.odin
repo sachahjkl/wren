@@ -199,6 +199,7 @@ address_row :: proc(app: ^App, t: ^Tab) {
 			if z.clicked { zoom_set(app, t, 1) }
 		}
 	}
+	webauthn_chip(app, t)   // a passkey dialog is open for the page (webauthn_shell.odin)
 
 	ui.spacer(ui.px(em * 0.4))
 	main_menu_button(app, t)

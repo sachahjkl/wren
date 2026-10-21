@@ -280,6 +280,7 @@ instance_by_index :: proc(p: ^Page, i: u32) -> ^wasm.Instance {
 
 // Delivers an event to the DOM (from the shell: input, or a synthetic one). False if default was prevented.
 dispatch_event :: proc(p: ^Page, target: base.Handle, ev: dom.Event) -> bool {
+	webauthn_note_input(p, ev)   // HTML transient activation (bindings_webauthn.odin)
 	return dom.dispatch(p.doc, &p.dp, target, ev)
 }
 
