@@ -16,9 +16,15 @@ import "wb:js"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
+import "wb:tools/testenv"
 
 failures: int
 logs: [dynamic]string
+
+logs_clear :: proc() {
+	for l in logs { delete(l) }
+	clear(&logs)
+}
 
 check :: proc(ok: bool, what: string, loc := #caller_location) {
 	if ok { fmt.printf("PASS %s\n", what) } else { fmt.printf("FAIL %s  (line %d)\n", what, loc.line); failures += 1 }
@@ -55,7 +61,7 @@ settle :: proc(max_turns := 200) -> int {
 }
 
 load :: proc(process: ^base.Scope, source: string, address := "http://127.0.0.1:8765/js.html") -> ^page.Page {
-	clear(&logs)
+	logs_clear()
 	p := page.page_create(&loop, &loader, &settings, process, address, console)
 	page.load_html(p, transmute([]byte)source)
 	page.scripts_start(p)
@@ -66,6 +72,7 @@ load :: proc(process: ^base.Scope, source: string, address := "http://127.0.0.1:
 live_nodes :: proc(p: ^page.Page) -> int { return p.doc.nodes.count }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	host.loop_init(&loop)
 	if !net.client_init(&client, &loop) { fmt.eprintln("net init failed"); os.exit(2) }
 	host.blocking_init(&blocking, &loop, 2)
@@ -256,7 +263,7 @@ p2.disconnect();
 		settings.js.max_heap_bytes = 64 << 20
 		defer settings = saved
 		usable :: proc(p: ^page.Page, what: string) {
-			clear(&logs)
+			logs_clear()
 			page.js_run(p, transmute([]byte)string(`console.log("usable")`), "probe.js")
 			check(logged("usable"), fmt.tprintf("%s: the realm is usable afterwards", what))
 		}
@@ -321,7 +328,7 @@ t();
 		host.post(&loop, proc(data: rawptr) { (^bool)(data)^ = true }, &posted)
 		host.loop_wait(&loop, 0)
 		check(posted, "timers doubling at every run: a task posted meanwhile runs at the next turn")
-		clear(&logs)
+		logs_clear()
 		page.js_run(p, transmute([]byte)string(`console.log("flood", n >= 100)`), "probe.js")
 		check(logged("flood true"), "the timers did run in those turns")
 		usable(p, "timer flood")
@@ -382,7 +389,7 @@ document.open();   // the parser is running this script: does nothing (HTML)
 console.log("open in a parser script", old.isConnected);
 </script></body>`)
 		check(logged("open in a parser script true"), "document.open from a script the parser runs does nothing")
-		clear(&logs)
+		logs_clear()
 		page.js_run(p, transmute([]byte)string(`
 document.open();
 document.write("<body><p id=n>new</p></body>");
@@ -559,7 +566,17 @@ bench("document.body", n => { let s; for (let i = 0; i < n; i++) s = document.bo
 	}
 
 	base.scope_close(process)
-	js.cache_stop()
+	host.loop_drain(&loop)
+	page.process_shutdown()
+	fetch.loader_destroy(&loader)
+	host.blocking_destroy(&blocking)
+	net.client_destroy(&client)
+	fetch.profile_destroy(&profile)
+	host.loop_destroy(&loop)
+	page.settings_destroy(&settings)
+	logs_clear()
+	delete(logs)
+	failures += testenv.mem_check("jstest")
 	fmt.printf("\n%d failure(s)\n", failures)
 	os.exit(failures > 0 ? 1 : 0)
 }
