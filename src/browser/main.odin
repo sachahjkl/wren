@@ -1202,6 +1202,7 @@ main :: proc() {
 	page.shutdown_threads()
 	lay.shutdown_threads()
 	page.images_shutdown()   // the image cache and its decoding threads
+	page.fonts_shutdown()    // the decoded web fonts kept for every page
 	fetch.loader_destroy(&app.loader)
 	http_cache_stop(app)   // writes what is pending and the index
 	host.blocking_destroy(&app.blocking)

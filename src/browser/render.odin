@@ -479,6 +479,7 @@ paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw
 	cs := it.cs
 	fi := lay.item_font(l, it)
 	if cs == nil || fi == nil || it.text == "" { return }
+	if web_text_invisible(l, cs) { return }   // its web font is loading, in its block period (web_font_faces.odin)
 	fid := font.Font_Id(fi.font)
 	baseline := it.baseline + off.y
 	opts := text_shape_options(l, cs, it.level, it.extra)
