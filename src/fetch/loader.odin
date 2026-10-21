@@ -18,6 +18,7 @@ Loader :: struct {
 	blocking: ^host.Blocking_Pool,
 	profile:  ^Profile,
 	tasks:    base.Pool(Task),
+	revalidations: [dynamic]^Revalidation,   // stale-while-revalidate refreshes in flight (http_cache.odin)
 }
 
 loader_init :: proc(l: ^Loader, loop: ^host.Loop, client: ^net.Client, blocking: ^host.Blocking_Pool, profile: ^Profile) {
@@ -30,6 +31,7 @@ loader_destroy :: proc(l: ^Loader) {
 	for h, _ in base.pool_next(&l.tasks, &it) { append(&handles, h) }
 	for h in handles { release(l, h) }
 	base.pool_destroy(&l.tasks)
+	revalidations_destroy(l)
 }
 
 in_flight :: proc(l: ^Loader) -> int { return l.tasks.count }
@@ -80,6 +82,8 @@ Task :: struct {
 	cleanup:   base.Cleanup_Id,
 	collect:   bool,
 	collected: [dynamic]byte,
+
+	cache:     Task_Cache,      // the HTTP cache's view of the request (http_cache.odin)
 }
 
 ////////////////////////////////
@@ -119,6 +123,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 		}
 	}
 	if len(r.body) > 0 { t.body = make([]byte, len(r.body)); copy(t.body, r.body) }
+	cache_task_init(&t, r)
 	if r.initiator != nil { t.origin = url.origin_clone(r.initiator.origin) } else { t.origin = url.new_opaque_origin() }
 
 	h, tp := base.pool_insert(&l.tasks, t)
@@ -166,6 +171,7 @@ release :: proc(l: ^Loader, h: base.Handle) -> bool {
 	t, ok := base.pool_remove(&l.tasks, h)
 	if !ok { return false }
 	cancel_net(l, &t)
+	cache_task_release(l, &t)
 	url.destroy(&t.target)
 	url.origin_destroy(&t.origin)
 	http.headers_destroy(&t.headers)
@@ -405,7 +411,11 @@ sec_fetch_site :: proc(t: ^Task) -> string {
 
 // The header block for the real request (everything the browser adds, in one place).
 @(private)
-build_request_headers :: proc(t: ^Task) -> string {
+build_request_headers :: proc(t: ^Task) -> string { return join_headers(request_header_list(t)) }
+
+// The fields of the real request (temp allocator).
+@(private)
+request_header_list :: proc(t: ^Task) -> http.Headers {
 	l := t.loader
 	h := http.headers_clone(t.headers, context.temp_allocator)
 	if !http.has_header(h, "accept") {
@@ -444,7 +454,7 @@ build_request_headers :: proc(t: ^Task) -> string {
 		ctx := cookies.Context{url = t.target, site_context = site_context(t), http_api = true, now_ms = now_ms()}
 		if c := cookies.header_for(&l.profile.jar, ctx, context.temp_allocator); c != "" { http.set_header(&h, "Cookie", c) }
 	}
-	return join_headers(h)
+	return h
 }
 
 @(private)
@@ -559,10 +569,13 @@ handle_preflight_result :: proc(t: ^Task, pf: ^Preflight) {
 send_main :: proc(t: ^Task) {
 	l := t.loader
 	t.stage = .Fetching
+	if cache_lookup(t) { return }   // served from the HTTP cache, waiting for it, or failed (only-if-cached)
+	h := request_header_list(t)
+	cache_request_headers(t, &h)
 	k := new_clone(Kick{l, t.self})
 	t.net_user = k
 	t.net_req = net.fetch(l.net, {
-		url = url_no_fragment(t.target), method = t.method, headers = build_request_headers(t), body = t.body,
+		url = url_no_fragment(t.target), method = t.method, headers = join_headers(h), body = t.body,
 		on_event = main_event, user = k, collect = false, max_body = t.max_body,
 		priority = t.destination == .Document || t.destination == .Script || t.destination == .Style ? .High : .Normal,
 	})
@@ -580,6 +593,7 @@ main_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 	switch ev.kind {
 	case .Headers: on_response_headers(t, ev)
 	case .Data:
+		cache_on_data(t, ev.data)
 		if t.collect {
 			append(&t.collected, ..ev.data)
 		} else {
@@ -588,6 +602,7 @@ main_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 		}
 	case .Done:
 		t.net_req = base.NIL_HANDLE
+		cache_on_done(t)
 		out := Event{kind = .Done}
 		if t.collect { out.data = t.collected[:] }
 		h, l := t.self, t.loader
@@ -621,12 +636,22 @@ on_response_headers :: proc(t: ^Task, ev: ^net.Event) {
 	if t.target.scheme == "https" && l.profile.settings.hsts {
 		if v, ok := http.get_header(raw, "strict-transport-security"); ok { hsts_note(&l.profile.hsts, t.target.host, v, now) }
 	}
+	if cache_on_response(t) { return }   // a 304 for the stored response: the cache answers (http_cache.odin)
+	check_and_send_response(t)
+}
+
+// What every response goes through, from the network or from the cache: the CORS check, redirects, the MIME rules of
+// the destination, then the filtered Response. True when the Response was delivered (its body is to follow); false
+// when the task failed or went on to a redirect.
+@(private)
+check_and_send_response :: proc(t: ^Task) -> bool {
+	raw := t.raw_headers
 
 	// CORS: the server must opt in, for a redirect too (Fetch: the CORS check of HTTP fetch comes before the redirect)
 	if t.cors_flag {
 		if ok, why := cors_check(t.origin, credentials_include(t), raw); !ok {
 			fail(t, .Blocked_Cors, fmt.tprintf("blocked by CORS policy: %s", why))
-			return
+			return false
 		}
 	}
 
@@ -634,7 +659,7 @@ on_response_headers :: proc(t: ^Task, ev: ^net.Event) {
 	if is_redirect_status(t.status) {
 		if loc, ok := http.get_header(raw, "location"); ok {
 			handle_redirect(t, loc)
-			return
+			return false
 		}
 	}
 
@@ -643,15 +668,16 @@ on_response_headers :: proc(t: ^Task, ev: ^net.Event) {
 	if v, ok := http.get_header(raw, "x-content-type-options"); ok { nosniff = strings.equal_fold(strings.trim_space(strings.split(v, ",", context.temp_allocator)[0]), "nosniff") }
 	if why, ok := check_task_mime(t, m, has_mime, nosniff); !ok {
 		fail(t, .Bad_Mime, why)
-		return
+		return false
 	}
 	send_response(t, t.status, raw, m, has_mime)
+	return true
 }
 
 // Builds the filtered Response and delivers it.
 @(private)
 send_response :: proc(t: ^Task, status: int, raw: http.Headers, m: http.Mime, has_mime: bool) {
-	resp := Response{url = t.target.href, redirected = t.redirected, mime = m, has_mime = has_mime}
+	resp := Response{url = t.target.href, redirected = t.redirected, mime = m, has_mime = has_mime, cache = t.cache.outcome}
 	switch t.taint {
 	case .Basic:
 		resp.type, resp.status, resp.body_usable = .Basic, status, true

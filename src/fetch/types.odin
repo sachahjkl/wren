@@ -17,6 +17,7 @@ import "wb:base"
 import "wb:cookies"
 import "wb:csp"
 import "wb:http"
+import "wb:httpcache"
 import "wb:url"
 
 Mode :: enum u8 {
@@ -86,6 +87,7 @@ Request_Desc :: struct {
 	nonce:           string,            // the nonce attribute of the element that caused the request (CSP)
 	script:          Script_Type,       // destination Script / Worker: a Wasm module (default) or JavaScript (script_type.odin)
 	parser_inserted: bool,              // a script the parser inserted (CSP 'strict-dynamic' trusts only the others)
+	cache:           Cache_Mode,        // Request.cache (http_cache.odin)
 }
 
 // The "environment settings object" of a document: who is asking.
@@ -100,6 +102,7 @@ Environment :: struct {
 	policies:        csp.Policy_List,   // the document's CSP (headers + <meta>)
 	on_violation:    proc(user: rawptr, v: csp.Violation),
 	violation_user:  rawptr,
+	cache_override:  Cache_Mode,        // the mode of this document's requests that ask for the default (a reload without the cache)
 }
 
 environment_make :: proc(document_url: url.URL, referrer_policy := Referrer_Policy.Default) -> Environment {
@@ -149,6 +152,7 @@ Profile :: struct {
 	jar:        cookies.Jar,
 	hsts:       Hsts,
 	preflights: Preflight_Cache,
+	cache:      ^httpcache.Cache,   // the HTTP cache (nil: none); created and destroyed by its owner (http_cache.odin)
 }
 
 // Zero settings = the defaults (what about:config shows).
@@ -183,6 +187,7 @@ Response :: struct {
 	mime:       http.Mime,           // from the *unfiltered* Content-Type, always available to the browser
 	has_mime:   bool,
 	body_usable: bool,               // false for opaque responses: only internal consumers (images) may use the bytes
+	cache:      Cache_Outcome,       // from the network, the cache, or the cache after a 304
 }
 
 Event_Kind :: enum u8 { Response, Data, Done, Failed }
@@ -210,6 +215,7 @@ Error_Kind :: enum u8 {
 	Transport,              // `net_code` has the WinHTTP / net error
 	Unsupported,
 	Aborted,
+	Not_Cached,             // cache mode only-if-cached and nothing stored
 }
 
 Event :: struct {

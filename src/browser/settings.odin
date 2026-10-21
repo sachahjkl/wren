@@ -5,6 +5,7 @@ import "wb:config"
 import "wb:cookies"
 import "wb:fetch"
 import "wb:html"
+import "wb:httpcache"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
@@ -63,6 +64,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, PREFS[:])
 	net.register_prefs(p)
 	fetch.register_prefs(p)
+	httpcache.register_prefs(p)
 	cookies.register_prefs(p)
 	page.register_prefs(p)
 	register_layout_prefs(p)

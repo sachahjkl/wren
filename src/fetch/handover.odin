@@ -27,6 +27,8 @@ task_hand_over :: proc(l: ^Loader, h: base.Handle, scope: ^base.Scope, on_event:
 	t.on_event, t.user = on_event, user
 	t.collect = collect
 	clear(&t.collected)
+	t.cache.store = false   // a download is not kept in the HTTP cache
+	clear(&t.cache.body)
 	t.initiator = nil
 	t.max_body = max_body
 	if t.net_req != base.NIL_HANDLE { net.set_max_body(l.net, t.net_req, max_body) }

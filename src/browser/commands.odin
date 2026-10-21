@@ -223,10 +223,10 @@ commands_build :: proc(r: ^Command_Registry) {
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { go_history(app, t, +1) }})
 	add(r, {name = "nav.reload", title = "Reload", category = "Navigation", glyph = GLYPH_RELOAD, keywords = "refresh", keys = keys(&r.arena, {key = .F5}, {key = .R, mods = ctrl}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { reload(app, t) }})
-	// (no HTTP cache yet: the same reload, kept apart so its shortcuts and its place are there when there is one)
+	// the document and everything it loads from the network (cache mode reload); F5 only revalidates the document
 	add(r, {name = "nav.reload_bypass_cache", title = "Reload without the cache", category = "Navigation", glyph = GLYPH_RELOAD, keywords = "hard refresh force",
 		keys = keys(&r.arena, {key = .F5, mods = ctrl}, {key = .R, mods = cs}),
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { reload(app, t) }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { reload(app, t, bypass_cache = true) }})
 	add(r, {name = "nav.stop", title = "Stop loading", category = "Navigation", keywords = "cancel abort",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.load != nil && t.load.task != base.NIL_HANDLE },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { stop_loading(app, t) }})
@@ -315,6 +315,10 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, DEMOS_URL) }})
 	add(r, {name = "browser.about_pages", title = "Built-in pages", category = "Browser", keywords = "about:about list", url = ABOUT_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, ABOUT_URL) }})
+	add(r, {name = "browser.about_cache", title = "HTTP cache", category = "Browser", keywords = "about:cache stored responses statistics", url = CACHE_URL,
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, CACHE_URL) }})
+	add(r, {name = "browser.clear_cache", title = "Clear the cache", category = "Browser", keywords = "http cache empty delete purge stored responses",
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { http_cache_clear(app) }})
 	add(r, {name = "browser.javascript", title = "JavaScript", category = "Browser", keywords = "script js enable disable everywhere global",
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return config.bool_of(&app.prefs, "javascript.enabled") },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "javascript.enabled", !config.bool_of(&app.prefs, "javascript.enabled")) }})
