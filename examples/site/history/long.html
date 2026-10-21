@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>History: a long page</title>
+<style>
+  body { margin: 0; font: 16px system-ui; color: #1d2333; background: #f5f6fa; }
+  header { padding: 16px 24px; }
+  h1 { margin: 0 0 6px; font-size: 26px; }
+  p { margin: 4px 0; color: #5d6680; }
+  form { padding: 0 24px; }
+  input[type=text] { width: 260px; }
+  #box { height: 180px; overflow: auto; margin: 16px 24px; border: 1px solid #c3c9d8; background: #fff; }
+  #box div { height: 1600px; background: repeating-linear-gradient(#fff 0 40px, #eef1f7 40px 80px); }
+  .row { height: 40px; line-height: 40px; padding: 0 24px; border-bottom: 1px solid #dce1ec; }
+  a { color: #b86e00; }
+</style>
+</head>
+<body>
+<header>
+  <h1>A long page</h1>
+  <p>Scroll the page and the box, type in the field, follow the link, come back: everything is where it was.
+  The second part of the page arrives 400 ms after the first, so a restored position has to wait for it.</p>
+  <p><a id="next" href="next.html">Next page</a> &middot; <a href="next.html#x">next page, #x</a></p>
+</header>
+<form><input type="text" id="who" name="who" placeholder="Type something"> <label><input type="checkbox" id="agree" name="agree"> agree</label></form>
+<div id="box"><div></div></div>
+<div id="rows"></div>
+<script>
+  function rows(from, n) {
+    const r = document.getElementById('rows');
+    for (let i = from; i < from + n; i++) {
+      const d = document.createElement('div');
+      d.className = 'row';
+      d.textContent = 'Row ' + i;
+      r.appendChild(d);
+    }
+  }
+  rows(0, 20);
+  setTimeout(() => rows(20, 150), 400);
+  // the automated run (tools/history_e2e.ps1): the first visit scrolls and types by script, then leaves
+  const auto = location.search.includes('auto');
+  const first = !sessionStorage.getItem('visited');
+  addEventListener('load', () => {
+    if (!first || !auto) return;
+    sessionStorage.setItem('visited', '1');
+    setTimeout(() => {
+      who.value = 'typed';
+      agree.checked = true;
+      box.scrollTop = 300;
+      scrollTo(0, 2500);
+      document.title = 'ready';
+      setTimeout(() => { location.href = 'next.html'; }, 400);
+    }, 700);
+  });
+  addEventListener('pageshow', e => {
+    if (!auto || (first && !e.persisted)) return;
+    const p = e.persisted;
+    setTimeout(() => {
+      document.title = 'back persisted=' + p + ' y=' + Math.round(scrollY) + ' box=' + box.scrollTop + ' who=' + who.value + ' agree=' + agree.checked;
+    }, 1500);
+  });
+</script>
+</body>
+</html>

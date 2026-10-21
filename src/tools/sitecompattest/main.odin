@@ -1,7 +1,7 @@
 // End-to-end tests of what real sites do that the unit tests of one package do not see, each a reduced fixture of a site
 // that rendered wrong (the first: clockin.sacha.house, an Angular + Tailwind application): stylesheet loading tricks
 // (<link media=print onload="this.media='all'">), load / error events of <link>. Needs build\testserver.exe on
-// 127.0.0.1:8765 (tools\test_all.ps1 starts it). From the repository root:
+// the run's block of ports (src/tools/testenv; tools\test_all.ps1 starts it). From the repository root:
 //   sitecompattest.exe
 package sitecompattest
 
@@ -17,6 +17,7 @@ import "wb:js"
 import lay "wb:layout"
 import "wb:net"
 import "wb:page"
+import "wb:tools/testenv"
 import "wb:wasm"
 
 failures: int
@@ -81,7 +82,7 @@ PRELUDE :: `<script>function log(s) { console.log(String(s)) }</script>`
 
 load :: proc(source: string) -> ^page.Page {
 	clear(&logs)
-	p := page.page_create(&loop, &loader, &settings, process, BASE, console)
+	p := page.page_create(&loop, &loader, &settings, process, testenv.url(BASE), console)
 	page.load_html(p, transmute([]byte)source)
 	page.scripts_start(p)
 	return p
@@ -214,7 +215,7 @@ test_scroll_events :: proc() {
 	defer { lay.destroy(&lh.l); free(lh) }
 	lh.set = lay.settings_default()
 	clear(&logs)
-	p := page.page_create(&loop, &loader, &settings, process, BASE, console)
+	p := page.page_create(&loop, &loader, &settings, process, testenv.url(BASE), console)
 	page.set_page_visible(p, true)
 	page.set_layout_embedder(p, {user = lh, update = layout_update, viewport = layout_viewport, scroll_to = layout_scroll})
 	page.load_html(p, transmute([]byte)string(`<!doctype html><body style="margin:0"><script>function log(s) { console.log(String(s)) }</script>

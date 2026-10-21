@@ -337,7 +337,6 @@ Tab_Icon_Draw :: struct {
 	size:   f32,
 }
 
-@(private = "file")
 tab_icon_of :: proc(app: ^App, t: ^Tab, size: f32) -> ^Tab_Icon_Draw {
 	d := ui.frame_new(Tab_Icon_Draw)
 	d.size = size
@@ -363,7 +362,6 @@ tab_icon_of :: proc(app: ^App, t: ^Tab, size: f32) -> ^Tab_Icon_Draw {
 	return d
 }
 
-@(private = "file")
 tab_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Tab_Icon_Draw)(user)
 	app := the_app

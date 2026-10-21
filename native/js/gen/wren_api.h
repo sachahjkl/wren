@@ -116,6 +116,11 @@ enum wr_FormEnctype {
 /* module history: types */
 // The Window object (an EventTarget: popstate, hashchange, storage...).
 typedef uint64_t wr_Window;
+// What history.scrollRestoration says: whether the browser restores the scroll positions of an entry shown again.
+enum wr_ScrollRestoration {
+    wr_ScrollRestoration_Auto = 0,
+    wr_ScrollRestoration_Manual = 1,
+};
 
 /* module images: types */
 typedef uint64_t wr_HTMLImageElement;
@@ -1613,6 +1618,10 @@ WR_IMPORT("history", "History_pushState") int32_t wr_History_pushState(const uin
 WR_IMPORT("history", "History_replaceState") int32_t wr_History_replaceState(const uint8_t *state, uint32_t state_len, const uint8_t *url, uint32_t url_len);
 // history.go(delta): back() is go(-1), forward() go(1), go(0) reloads. Asynchronous.
 WR_IMPORT("history", "History_go") void wr_History_go(int32_t delta);
+// history.scrollRestoration, of the current entry.
+WR_IMPORT("history", "History_scrollRestoration") int32_t wr_History_scrollRestoration(void);
+// history.scrollRestoration = mode, for the current entry (and the entries this document adds after it).
+WR_IMPORT("history", "History_set_scrollRestoration") void wr_History_set_scrollRestoration(int32_t mode);
 
 /* module images */
 WR_IMPORT("images", "HTMLImageElement_naturalWidth") int32_t wr_HTMLImageElement_naturalWidth(uint64_t image);

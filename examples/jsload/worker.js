@@ -23,4 +23,6 @@ self.onmessage = (e) => {
   const echo = { got: v, lib: self.libValue, name: self.name, isWorker: typeof document === "undefined" && self instanceof DedicatedWorkerGlobalScope };
   postMessage(echo);
 };
+// the browser's Performance, on the worker's clock (not one frozen in the engine's pre-initialized image)
+postMessage("worker clock " + (self.performance instanceof Performance) + " " + (performance.now() >= 0) + " " + (Math.abs(performance.timeOrigin + performance.now() - Date.now()) < 1000));
 postMessage("ready");

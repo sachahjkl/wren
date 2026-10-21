@@ -1,6 +1,8 @@
 // Local server for exercising the network stack (no dependencies beyond Go's standard library).
 //
-//	go run ./tools/testserver            # http on :8765, https (self-signed) on :8766
+//	go run ./tools/testserver            # http on :8765, https (self-signed) on :8766, http on :8767, WPT on :8768
+//	testserver -base-port N [-scan] [-port-file F] [-parent-pid P]   # another block of ports (ports.go), ending with
+//	                                     # process P (tools\test_env.ps1 Start-WrenTestServer starts it that way)
 //
 //	/                hello
 //	/big?mb=N        N MB of incompressible bytes, streamed
@@ -46,6 +48,7 @@ func selfSigned() tls.Certificate {
 }
 
 func main() {
+	watchParent()
 	if wptOnly() {
 		serveWPTOnly()
 		return
@@ -118,16 +121,15 @@ func main() {
 	registerFirstPaintHandlers(mux)
 	registerJSLoadHandlers(mux)
 	registerJSWebHandlers(mux)
-	registerWPTHandlers(mux)
 	registerDownloadHandlers(mux)
 
-	go func() {
-		log.Fatal(http.ListenAndServe("127.0.0.1:8767", mux))
-	}()
-	go func() {
-		srv := &http.Server{Addr: "127.0.0.1:8766", Handler: mux, TLSConfig: &tls.Config{Certificates: []tls.Certificate{selfSigned()}}}
-		log.Fatal(srv.ListenAndServeTLS("", ""))
-	}()
-	log.Println("http://127.0.0.1:8765  https://127.0.0.1:8766 (self-signed)")
-	log.Fatal(http.ListenAndServe("127.0.0.1:8765", mux))
+	// every listener bound before anything is served or announced (ports.go)
+	l := bindPorts(selfSigned())
+	serveWPTOn(l.wpt, l.wptTLS)
+	go func() { log.Fatal(http.Serve(l.other, mux)) }()
+	go func() { log.Fatal(http.Serve(l.https, mux)) }()
+	writePortFile()
+	log.Printf("http://127.0.0.1:%d  https://127.0.0.1:%d (self-signed)  http://127.0.0.1:%d  web-platform-tests http://127.0.0.1:%d, checkout %s",
+		basePort, basePort+1, basePort+2, wptHTTPPort, wptRoot)
+	log.Fatal(http.Serve(l.http, mux))
 }

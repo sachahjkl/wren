@@ -138,8 +138,9 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	can_forward := t != nil && t.hist + 1 < len(t.history)
 
 	ui.spacer(ui.px(em * 0.5))
-	if nav_button("###nav_back", GLYPH_BACK, "Back (Alt+Left)", can_back) { go_history(app, t, -1) }
-	if nav_button("###nav_forward", GLYPH_FORWARD, "Forward (Alt+Right)", can_forward) { go_history(app, t, +1) }
+	// a right click or a long press lists the entries that way (history_ui.odin)
+	nav_history_button(app, t, "###nav_back", GLYPH_BACK, "Back (Alt+Left); right click: history", can_back, -1)
+	nav_history_button(app, t, "###nav_forward", GLYPH_FORWARD, "Forward (Alt+Right); right click: history", can_forward, +1)
 	if nav_button("###nav_reload", GLYPH_RELOAD, "Reload (F5)", t != nil && t.url != "") { reload(app, t) }
 	ui.spacer(ui.px(em * 0.4))
 
@@ -515,43 +516,45 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 	tip(sig, "Menu")
 
 	if ui.ctx_menu(key) {
-		can_back := t != nil && t.hist > 0
-		can_forward := t != nil && t.hist + 1 < len(t.history)
+		// the items are commands of the registry (commands.odin): same titles, shortcuts and conditions as elsewhere
 		web := t != nil && t.kind == .Web
-		if ui.menu_item("New tab", "Ctrl+T", icon = GLYPH_ADD).clicked { tab_open_new(app); return }
-		if ui.menu_item("Reopen closed tab", "Ctrl+Shift+T", enabled = len(closed_tabs) > 0).clicked { reopen_closed_tab(app); return }
-		if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close(app, app.current); return }
+		if menu_command(app, t, "tab.new") { return }
+		if menu_command(app, t, "tab.reopen_closed") { return }
+		if menu_command(app, t, "tab.close") { return }
 		ui.menu_separator()
-		if ui.menu_item("Back", "Alt+Left", icon = GLYPH_BACK, enabled = can_back).clicked { go_history(app, t, -1) }
-		if ui.menu_item("Forward", "Alt+Right", icon = GLYPH_FORWARD, enabled = can_forward).clicked { go_history(app, t, +1) }
-		if ui.menu_item("Reload", "F5", icon = GLYPH_RELOAD).clicked && t != nil { reload(app, t) }
-		if ui.menu_item("Home", "Alt+Home", icon = GLYPH_HOME).clicked && t != nil { navigate(app, t, app.cfg.homepage) }
+		menu_command(app, t, "nav.back")
+		menu_command(app, t, "nav.forward")
+		menu_command(app, t, "nav.reload")
+		menu_command(app, t, "nav.home")
+		menu_command(app, t, "browser.history")
+		menu_command(app, t, "browser.history_tree")
 		ui.menu_separator()
 		if ui.menu_submenu(fmt.tprintf("Zoom (%d %%)###zoom_sub", zoom_percent(t)), enabled = web) {
-			if ui.menu_item("Zoom in", "Ctrl+Plus").clicked { zoom_step(app, t, 1) }
-			if ui.menu_item("Zoom out", "Ctrl+Minus").clicked { zoom_step(app, t, -1) }
-			if ui.menu_item("Actual size", "Ctrl+0", enabled = zoom_percent(t) != 100).clicked { zoom_set(app, t, 1) }
+			menu_command(app, t, "page.zoom_in")
+			menu_command(app, t, "page.zoom_out")
+			menu_command(app, t, "page.zoom_reset")
 		}
-		if ui.menu_item("Find in page…", "Ctrl+F", enabled = web).clicked { find_open(app) }
-		if ui.menu_item("Save page as…", "Ctrl+S", enabled = web && t.page != nil).clicked { save_page(app, t) }
-		if ui.menu_item("View page source", "Ctrl+U", enabled = web && !strings.has_prefix(t.url, VIEW_SOURCE)).clicked { view_source(app, t) }
-		_ = ui.menu_item("Print…", "Ctrl+P", enabled = false)   // not available (print.odin)
+		menu_command(app, t, "page.find", force_disabled = !web)
+		menu_command(app, t, "page.save")
+		menu_command(app, t, "page.view_source")
+		menu_command(app, t, "page.print", force_disabled = true)   // not available (print.odin)
 		downloads_menu(app)   // download.odin
 		ui.menu_separator()
 		if ui.menu_submenu("View###view_sub") {
-			if ui.menu_item("Status bar", "Ctrl+B", checked = hud.cfg.bar_visible).clicked { toggle_status_bar(app) }
-			if ui.menu_item("Frame statistics", "Ctrl+Shift+B", checked = hud.panel_open).clicked { toggle_frame_stats(app) }
-			if ui.menu_item("Statistics in the title", checked = hud.cfg.title_stats).clicked { set_pref_bool(app, "browser.title.stats", !hud.cfg.title_stats) }
-			if ui.menu_item("Console", checked = app.show_console).clicked { set_pref_bool(app, "browser.console.visible", !app.show_console) }
-			if ui.menu_item("Full screen", "F11", checked = platform.is_fullscreen(app.win)).clicked { toggle_fullscreen(app) }
-			if ui.menu_item("Tabs in the title bar", checked = wchrome.cfg.integrated).clicked { set_pref_bool(app, "browser.window.integrated_titlebar", !wchrome.cfg.integrated) }
+			menu_command(app, t, "view.status_bar")
+			menu_command(app, t, "view.frame_statistics")
+			menu_command(app, t, "view.title_statistics")
+			menu_command(app, t, "view.console")
+			menu_command(app, t, "view.full_screen")
+			menu_command(app, t, "view.tabs_in_title_bar")
 		}
-		if ui.menu_item("Settings", icon = GLYPH_GEAR).clicked && t != nil { navigate(app, t, "about:config") }
+		menu_command(app, t, "browser.command_palette")
+		menu_command(app, t, "browser.settings")
 		ui.menu_separator()
 		ui.next({width = ui.px(em * 14), height = ui.px(ui.dense(em * 1.8))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))
-			if ui.tags("weak") { ui.label(fmt.aprintf("%s %s (%s)###about", APP_NAME, APP_VERSION, app_commit(), allocator = ui.frame_allocator())) }
+			if ui.tags("weak") { ui.label(fmt.aprintf("%s###about", app_identity(), allocator = ui.frame_allocator())) }
 		}
 	}
 }
@@ -562,38 +565,13 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 // The keys the page did not use (forms_shell.odin routes them to the page first; the browser's own shortcuts are never
 // the page's: route_key lets them through).
 chrome_shortcuts :: proc(app: ^App) {
+	// the open command palette has the keyboard (palette.odin)
+	if palette_open() { return }
 	t := current_tab(app)
 	n := len(app.tabs)
-	ctrl, cs := platform.Modifiers{.Ctrl}, platform.Modifiers{.Ctrl, .Shift}
+	ctrl := platform.Modifiers{.Ctrl}
 	switch {
-	case ui.key_press(.T, ctrl): tab_open_new(app)
-	case ui.key_press(.T, cs): reopen_closed_tab(app)
-	case ui.key_press(.W, ctrl), ui.key_press(.F4, ctrl): tab_close(app, app.current)
-	case ui.key_press(.L, ctrl), ui.key_press(.D, {.Alt}): app.focus_address = true
-	case ui.key_press(.F6), ui.key_press(.F6, {.Shift}):
-		// address bar <-> page
-		if ui.focus_key() != 0 && ui.focus_key() == address_key { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { app.focus_address = true }
-	case ui.key_press(.F5), ui.key_press(.R, ctrl): if t != nil { reload(app, t) }
-	case ui.key_press(.F5, ctrl), ui.key_press(.R, cs): if t != nil { reload(app, t) }   // no HTTP cache yet: the same reload
-	case ui.key_press(.Left, {.Alt}): if t != nil { go_history(app, t, -1) }
-	case ui.key_press(.Right, {.Alt}): if t != nil { go_history(app, t, +1) }
-	case ui.key_press(.Home, {.Alt}): if t != nil { navigate(app, t, app.cfg.homepage) }
-	case ui.key_press(.Tab, ctrl), ui.key_press(.Page_Down, ctrl): if n > 0 { tab_select(app, (app.current + 1) % n) }
-	case ui.key_press(.Tab, cs), ui.key_press(.Page_Up, ctrl): if n > 0 { tab_select(app, (app.current + n - 1) % n) }
-	case ui.key_press(.Page_Down, cs): tab_move_current(app, +1)
-	case ui.key_press(.Page_Up, cs): tab_move_current(app, -1)
-	case ui.key_press(.F, {.Alt}), ui.key_press(.E, {.Alt}): main_menu_request = true
-	case ui.key_press(.F, ctrl), ui.key_press(.F3):
-		if t != nil && t.kind == .Config { app.config_view.focus_search = true } else if t != nil && t.kind == .Web { if find.open { find.focus = true } else { find_open(app) } }
-	case ui.key_press(.U, ctrl): view_source(app, t)
-	case ui.key_press(.S, ctrl): if t != nil { save_page(app, t) }
-	case ui.key_press(.P, ctrl), ui.key_press(.P, cs): print_request(app)   // print.odin
-	case ui.key_press(.Equal, ctrl), ui.key_press(.Num_Add, ctrl), ui.key_press(.Equal, cs): zoom_step(app, t, 1)
-	case ui.key_press(.Minus, ctrl), ui.key_press(.Num_Subtract, ctrl): zoom_step(app, t, -1)
-	case ui.key_press(.N0, ctrl): zoom_set(app, t, 1)
-	case ui.key_press(.F11): toggle_fullscreen(app)   // window_chrome.odin
-	case ui.key_press(.B, ctrl): toggle_status_bar(app)
-	case ui.key_press(.B, cs): toggle_frame_stats(app)
+	case commands_dispatch(app):   // the registry's shortcuts (commands.odin)
 	case t != nil && t.load != nil && t.load.task != base.NIL_HANDLE && ui.focus_key() == 0 && ui.key_press(.Escape):
 		// stops a load in progress (the document's request, and the modules still downloading)
 		stop_loading(app, t)

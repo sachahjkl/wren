@@ -698,6 +698,8 @@ JSValue wjr_Node_removeChild(JSContext *ctx, JSValueConst this_val, int argc, JS
 JSValue wjr_Node_replaceChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Node_set_nodeValue(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Node_set_textContent(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_PageTransitionEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PageTransitionEvent_get_persisted(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ParentNode_append(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ParentNode_get_children(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ParentNode_moveBefore(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -9127,7 +9129,7 @@ static const wj_member wj_m_PageSwapEvent[] = {
     { "viewTransition", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PageTransitionEvent[] = {
-    { "persisted", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "persisted", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PageTransitionEvent_get_persisted, NULL, 0 },
 };
 static const wj_member wj_m_PopStateEvent[] = {
     { "state", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PopStateEvent_get_state, NULL, 0 },
@@ -14422,7 +14424,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_PageSwapEvent, .n_members = 2, .subtree_end = 140,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PageTransitionEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "PageTransitionEvent", .parent = 114, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_PageTransitionEvent_constructor,
       .members = wj_m_PageTransitionEvent, .n_members = 1, .subtree_end = 141,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

@@ -66,6 +66,13 @@ DEMOS := [?]Demo{
 	{.Css, "Color schemes", "firstpaint.html",
 		"A dark theme chosen by <code>prefers-color-scheme</code> from stylesheets in <code>&lt;noscript&gt;</code>, <code>color-scheme</code>, system colors (CanvasText, LinkText, GrayText), <code>light-dark()</code> and form controls in both schemes. Its stylesheets come from the server.", true, "", false},
 
+	{.E2e, "History: a long page", "history/long.html",
+		"Scroll the page and its box, fill the form, follow the link, come back: from the back/forward cache at once, or loaded again and restored once tall enough (its second part arrives late). <code>tools\\history_e2e.ps1</code> does it in the window and times both.", false, "", false},
+	{.E2e, "History: the next page", "history/next.html",
+		"The page the long one links to: the back button's menu (right click) lists the way back.", false, "", false},
+	{.E2e, "History: branches", "history/other.html",
+		"Go back twice, then somewhere else: the old way stays as a branch of the tab's history tree (Ctrl+H, Tab history), where a click goes back to it.", false, "", false},
+
 	{.Layout, "Layout engine", "layout.html",
 		"Flexbox, floats and clearance, positioning and stacking order, tables, lists, overflow and scroll boxes, borders, preformatted text.", false, "", false},
 	{.Layout, "CSS Grid", "grid.html",

@@ -5,7 +5,11 @@
 # The cursor is parked outside the window for the first capture. Aborts if another window covers the target.
 # -Extra: more arguments for the browser before the address (e.g. "--pref","browser.ui.theme=daylight").
 # -Exe: another build of the browser (default build\browser.exe).
-param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300, [int]$Width = 0, [int]$Height = 0, [string[]]$Keys = @(), [string[]]$Actions = @(), [string[]]$Extra = @(), [string]$Exe = "")
+# The desktop: the window is topmost, captured from the screen, and may get the real pointer and keyboard; the script holds
+# desktop.lock (tools\test_env.ps1) from the start of the browser to its end, waiting at most -LockTimeoutSec for it
+# (another run's capture: a few seconds). Callers take no lock. A page of the test server: start one with
+# Start-WrenTestServer (tools\test_env.ps1) and pass its origin, rather than relying on a server on 8765.
+param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300, [int]$Width = 0, [int]$Height = 0, [string[]]$Keys = @(), [string[]]$Actions = @(), [string[]]$Extra = @(), [string]$Exe = "", [int]$LockTimeoutSec = 600)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Add-Type @"
@@ -49,8 +53,11 @@ function Grab($h, $path) {
 $Extra = @($Extra | ForEach-Object { $_ -split ',(?=--)' } | ForEach-Object { if ($_ -match '^(--[a-z-]+),(.*)$') { $Matches[1]; $Matches[2] } else { $_ } })
 $args2 = @($Extra | Where-Object { $_ }) + $(if ($Url) { @($Url) } else { @() })
 $exePath = if ($Exe) { $Exe } else { Join-Path $root 'build\browser.exe' }
-$p = if ($args2.Count) { Start-Process $exePath -ArgumentList $args2 -PassThru } else { Start-Process $exePath -PassThru }
+. (Join-Path $PSScriptRoot 'test_env.ps1')
+$desktop = Enter-WrenLock desktop "screenshot.ps1 $Url" $LockTimeoutSec
+$p = $null
 try {
+    $p = if ($args2.Count) { Start-Process $exePath -ArgumentList $args2 -PassThru } else { Start-Process $exePath -PassThru }
     $sw = [Diagnostics.Stopwatch]::StartNew()
     while (-not $p.HasExited -and $p.MainWindowHandle -eq 0 -and $sw.ElapsedMilliseconds -lt 10000) { Start-Sleep -Milliseconds 20; $p.Refresh() }
     $h = $p.MainWindowHandle
@@ -186,4 +193,4 @@ try {
         Start-Sleep -Milliseconds $SettleMs
         Grab $h $(if ($Out2) { $Out2 } else { $Out -replace '\.png$', '_after.png' })
     }
-} finally { if (-not $p.HasExited) { $p.Kill() } }
+} finally { if ($p -and -not $p.HasExited) { $p.Kill(); $p.WaitForExit(5000) | Out-Null }; Exit-WrenLock $desktop }

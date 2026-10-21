@@ -54,6 +54,10 @@ Embedder :: struct {
 	tab_key:  string,             // sessionStorage partition (copied); stable for the tab's lifetime
 	storage:  ^Storage_Manager,   // the profile's Web Storage; nil = no Web Storage for this page
 	print:    proc(user: rawptr, p: ^Page),   // window.print() (js_print.odin); nil = nothing to tell
+	// The document leaves `entry` for another of its own entries (pushState, a fragment, a traversal): its persisted
+	// state is saved now. Then `entered` after a same-document traversal: restore it. nil = nothing.
+	leaving:  proc(user: rawptr, p: ^Page, entry: ^History_Entry),
+	entered:  proc(user: rawptr, p: ^Page, entry: ^History_Entry),
 }
 
 Web_State :: struct {
@@ -82,6 +86,9 @@ Web_State :: struct {
 	perf_warned:     bool,
 	event_details:   [dynamic]Event_Detail,   // StorageEvent / PopStateEvent / HashChangeEvent fields while dispatching
 	print_posted:    bool,      // a window.print() notice is on its way to the embedder (js_print.odin)
+	frozen:          bool,      // in the back/forward cache: no task, timer or idle callback runs (bfcache.odin)
+	frozen_timers:   [dynamic]base.Handle,   // timers that came due while frozen, run when thawed
+	frozen_tasks:    [dynamic]rawptr,        // ^Page_Task posted while frozen, run when thawed
 }
 
 // Extra fields of an event being dispatched (dom.Event has two strings; a StorageEvent needs four).
@@ -128,6 +135,13 @@ web_destroy :: proc(p: ^Page) {
 	if w.live { delete_key(&live_pages, w.id) }
 	if w.idle_timer != base.NIL_HANDLE { host.clear_timer(p.loop, w.idle_timer) }
 	storage_page_closed(p)
+	for d in w.frozen_tasks {
+		t := (^Page_Task)(d)
+		t.fn(nil, t.data)   // the page is gone: the task frees its data
+		free(t)
+	}
+	delete(w.frozen_tasks)
+	delete(w.frozen_timers)
 	delete(w.frames)
 	delete(w.idle)
 	delete(w.history_state)
@@ -239,8 +253,13 @@ Realm_Task :: struct {
 @(private)
 run_page_task :: proc(data: rawptr) {
 	t := (^Page_Task)(data)
+	p := page_by_id(t.id)
+	if p != nil && p.web.frozen {
+		append(&p.web.frozen_tasks, rawptr(t))   // runs when the page is shown again (page_thaw)
+		return
+	}
 	defer free(t)
-	t.fn(page_by_id(t.id), t.data)
+	t.fn(p, t.data)
 }
 
 ////////////////////////////////

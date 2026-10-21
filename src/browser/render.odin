@@ -262,14 +262,16 @@ paint_box :: proc(l: ^Layout, dc: ^draw.Context, v: ^lay.View, it: ^lay.Display_
 		return
 	}
 	// the border interrupted behind the legend's border box: three clips that do not overlap (left of the gap, right
-	// of it, under the top border between them), so a translucent border is not drawn twice
+	// of it, under the top border between them), so a translucent border is not drawn twice. The border runs through the
+	// legend's middle, often at a fractional y: the scissor truncates the clip to whole pixels, so the one under the top
+	// border starts a pixel lower, past the row the border's edge only partly covers (else a line through the legend).
 	dx := r.min.x - it.rect.min.x
 	g0, g1 := gap[0] + dx, gap[1] + dx
 	big := draw.rect_pad(r, 4)
 	parts := [3]draw.Rect{
 		{big.min, {g0, big.max.y}},
 		{{g1, big.min.y}, big.max},
-		{{g0, r.min.y + widths[0]}, {g1, big.max.y}},
+		{{g0, r.min.y + widths[0] + 1}, {g1, big.max.y}},
 	}
 	for p in parts {
 		if p.max.x <= p.min.x || p.max.y <= p.min.y { continue }

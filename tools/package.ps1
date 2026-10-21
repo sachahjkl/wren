@@ -1,4 +1,4 @@
-# Makes the release package of Wren from a finished build (build.bat): build\dist\wren-<version>-windows-x64.zip and
+# Makes the release package of Wren from a finished build (build.bat release): build\dist\wren-<version>-windows-x64.zip and
 # its SHA-256 in build\dist\SHA256SUMS.txt.
 #   powershell -NoProfile -File tools\package.ps1 [-Version 0.2.0]
 # The demo pages go in demos\ next to wren.exe: that is where about:demos looks for them first (src\browser\demos.odin),
@@ -8,7 +8,9 @@
 # load, built here), examples\jsload and examples\jsweb (served by the test server), testserver.exe and demo.bat
 # (starts the server and opens about:demos), README.txt, LICENSE, THIRD_PARTY.md and licenses\. The JavaScript engine
 # is not a file of its own: its pre-initialized image is embedded in wren.exe (src\js\image).
-param([string]$Version = '')
+# -Dev packages a development build (CI's smoke test) as wren-<version>-dev-windows-x64.zip; without it, the build must
+# be a release one (build.bat release, written in build\browser.channel).
+param([string]$Version = '', [switch]$Dev)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -18,9 +20,14 @@ if (-not $Version) {
     if (-not $m) { throw 'APP_VERSION not found in src\browser\about.odin' }
     $Version = $m.Matches[0].Groups[1].Value
 }
-if (-not (Test-Path build\browser.exe)) { throw 'build\browser.exe is missing: run build.bat first' }
+if (-not (Test-Path build\browser.exe)) { throw 'build\browser.exe is missing: run build.bat release first' }
+# a package is a release: never a development build (blueprint icon, "development build" in the browser)
+$channel = if (Test-Path build\browser.channel) { [IO.File]::ReadAllText("$root\build\browser.channel").Trim() } else { '' }
+if ($Dev) {
+    if ($channel -ne 'dev') { throw "build\browser.exe is a '$channel' build, not a development one (-Dev)" }
+} elseif ($channel -ne 'release') { throw "build\browser.exe is a '$channel' build, not a release one: run build.bat release first" }
 
-$name = "wren-$Version-windows-x64"
+$name = if ($Dev) { "wren-$Version-dev-windows-x64" } else { "wren-$Version-windows-x64" }
 $dist = Join-Path $root 'build\dist'
 $out = Join-Path $dist $name
 if (Test-Path $out) { [IO.Directory]::Delete($out, $true) }   # build\dist holds only what this script makes (no junction)

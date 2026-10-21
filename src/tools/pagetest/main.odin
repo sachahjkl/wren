@@ -16,6 +16,7 @@ import "wb:html"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
+import "wb:tools/testenv"
 
 failures: int
 logs: [dynamic]string
@@ -72,7 +73,7 @@ main :: proc() {
 
 	////////////////////////////////
 	fmt.println("-- one module: DOM, events, timers, fetch")
-	p := page.page_create(&loop, &loader, &settings, process, "http://127.0.0.1:8765/page.html", console)
+	p := page.page_create(&loop, &loader, &settings, process, testenv.url("http://127.0.0.1:8765/page.html"), console)
 	the_page = p
 	check(!p.env.origin.opaque && p.env.secure_context, "http://127.0.0.1 is a secure context with a tuple origin")
 
@@ -130,7 +131,7 @@ main :: proc() {
 	check(res2 == .Ok && n == len("probe=1"), "document.cookie set and read by the guest")
 	check(cookies.count(&profile.jar) == 1, "the cookie lives in the profile's jar")
 	o, _ := wasm.call_i32(inst, "origin_probe")
-	check(o == len("http://127.0.0.1:8765"), "the guest can read its own origin")
+	check(int(o) == len(testenv.url("http://127.0.0.1:8765")), "the guest can read its own origin")
 
 	wasm.call_raw(inst, "start_cors_probe", {0})
 	pump_until("cors probe", proc() -> bool { return attr(dom.find_by_id(the_page.doc, "app"), "data-cors") != "" })
@@ -163,7 +164,7 @@ main :: proc() {
 	fmt.println("-- an HTML document with two modules")
 	// the second module is e2e itself: both instances share the DOM; table indices collide on purpose
 	decoded, _ := html.decode_document(html_bytes, "utf-8", settings.html.default_encoding)
-	hp := page.page_create(&loop, &loader, &settings, process, "http://127.0.0.1:8765/site/counter.html", console)
+	hp := page.page_create(&loop, &loader, &settings, process, testenv.url("http://127.0.0.1:8765/site/counter.html"), console)
 	the_page = hp
 	rr := page.load_html(hp, decoded.text)
 	check(rr.ok && rr.nodes > 20, "HTML document parsed by Lexbor into the DOM")

@@ -1,5 +1,5 @@
 // The web-platform-tests server (src/tools/wpt, tools/wpt.ps1): the pinned WPT checkout (build/wpt/wpt) served at its
-// own origin, http://127.0.0.1:8768/, since WPT paths are absolute (/resources/testharness.js), with the parts of
+// own origin, http://127.0.0.1:8768/ on the default block of ports (ports.go), since WPT paths are absolute (/resources/testharness.js), with the parts of
 // wptserve the measured folders need:
 //
 //   - generated test pages: x.any.js -> x.any.html (window), x.any.worker.html + x.any.worker.js (dedicated worker);
@@ -15,7 +15,7 @@
 //   - Python handlers (*.py) do not run: 501. The tests that need them fail, and are counted as failing.
 //
 // Cross-origin tests: the "www" domains are localhost (the same listener under another host name, so another origin);
-// https: 127.0.0.1:8769 with a self-signed certificate. With -wpt-port N the ports are N and N+1; with -wpt-only the
+// https: 127.0.0.1:8769 (the next port) with a self-signed certificate. With -wpt-port N the ports are N and N+1; with -wpt-only the
 // server serves nothing else (tools\wpt.ps1 runs the whole suite that way, on ports no other test uses).
 // The checkout: WREN_WPT_ROOT, else build/wpt/wpt (from the repository root, as the tests run), else next to the
 // executable (build\testserver.exe -> build\wpt\wpt). No checkout: the listener answers 503 with how to get one.
@@ -39,10 +39,11 @@ import (
 
 const wptWWWHost = "localhost"
 
-// -wpt-port N: the WPT origin is 127.0.0.1:N (https: N+1). -wpt-only: nothing else is served (tools\wpt.ps1 runs the
-// full suite on ports of its own, without holding the shared ones).
+// -wpt-port N: the WPT origin is 127.0.0.1:N (https: N+1); by default the fourth and fifth ports of the block
+// (ports.go: 8768 / 8769 on the default block). -wpt-only: nothing else is served (tools\wpt.ps1 runs the full suite
+// on ports of its own); there -scan takes the next free pair (N+10...) and -port-file F receives the http port.
 var (
-	wptHTTPPort  = argInt("-wpt-port", 8768)
+	wptHTTPPort  = argInt("-wpt-port", basePort+3)
 	wptHTTPSPort = wptHTTPPort + 1
 )
 
@@ -57,19 +58,39 @@ func argInt(name string, def int) int {
 	return def
 }
 
-func wptOnly() bool {
-	for _, a := range os.Args {
-		if a == "-wpt-only" {
-			return true
-		}
-	}
-	return false
-}
+func wptOnly() bool { return hasArg("-wpt-only") }
 
 // The WPT origin alone (-wpt-only).
 func serveWPTOnly() {
-	registerWPTHandlers(nil)
+	cert := selfSigned()
+	tries := 1
+	if hasArg("-scan") {
+		tries = scanTries
+	}
+	first := wptHTTPPort
+	var plain, secure net.Listener
+	var err error
+	for i := 0; i < tries; i++ {
+		wptHTTPPort = first + i*scanStep
+		wptHTTPSPort = wptHTTPPort + 1
+		if plain, err = net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", wptHTTPPort)); err != nil {
+			continue
+		}
+		if secure, err = net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", wptHTTPSPort)); err != nil {
+			plain.Close()
+			continue
+		}
+		break
+	}
+	if err != nil {
+		log.Fatalf("testserver: no free pair of ports for web-platform-tests from %d: %v", first, err)
+	}
+	if f := argString("-port-file"); f != "" {
+		os.WriteFile(f+".tmp", []byte(strconv.Itoa(wptHTTPPort)), 0o644)
+		os.Rename(f+".tmp", f)
+	}
 	log.Printf("web-platform-tests: http://127.0.0.1:%d  https://127.0.0.1:%d (self-signed), checkout %s", wptHTTPPort, wptHTTPSPort, wptRoot)
+	serveWPTOn(plain, tls.NewListener(secure, &tls.Config{Certificates: []tls.Certificate{cert}}))
 	select {}
 }
 
@@ -95,15 +116,11 @@ var (
 	wptReport = findWPTFile("WREN_WPT_REPORT", "wpt", "testharnessreport.js")
 )
 
-func registerWPTHandlers(_ *http.ServeMux) {
+// The WPT origin on its two listeners (the TLS one already wrapped), each served from its own goroutine.
+func serveWPTOn(plain, secure net.Listener) {
 	h := http.HandlerFunc(serveWPT)
-	go func() {
-		log.Fatal(http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", wptHTTPPort), h))
-	}()
-	go func() {
-		srv := &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", wptHTTPSPort), Handler: h, TLSConfig: &tls.Config{Certificates: []tls.Certificate{selfSigned()}}}
-		log.Fatal(srv.ListenAndServeTLS("", ""))
-	}()
+	go func() { log.Fatal(http.Serve(plain, h)) }()
+	go func() { log.Fatal(http.Serve(secure, h)) }()
 }
 
 var wptTypes = map[string]string{

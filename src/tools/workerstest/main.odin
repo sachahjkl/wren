@@ -17,6 +17,7 @@ import "wb:host"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
+import "wb:tools/testenv"
 
 failures: int
 logs: [dynamic]string
@@ -122,7 +123,7 @@ main :: proc() {
 	if !page.register_imports() { fmt.eprintln("register failed"); os.exit(2) }
 	process := base.scope_make("process")
 
-	p := page.page_create(&loop, &loader, &settings, process, "http://127.0.0.1:8765/page.html", console)
+	p := page.page_create(&loop, &loader, &settings, process, testenv.url("http://127.0.0.1:8765/page.html"), console)
 	the_page = p
 	inst, ok, e := page.load_module(p, image, "workerstest")
 	the_inst = inst
@@ -154,7 +155,7 @@ main :: proc() {
 	clear_logs()
 	send(0, "name")
 	line, _ := wait_log("msg:0:name:")
-	check(line == "msg:0:name:0|http://127.0.0.1:8765/site/workerstest_worker.wasm|http://127.0.0.1:8765", fmt.tprintf("name, location and origin of the worker (%q)", line))
+	check(line == testenv.url("msg:0:name:0|http://127.0.0.1:8765/site/workerstest_worker.wasm|http://127.0.0.1:8765"), fmt.tprintf("name, location and origin of the worker (%q)", line))
 	send(0, "console")
 	_, ok = wait_log("msg:0:logged")
 	_, ok2 := find_log("[worker 0] hello from the worker")
@@ -193,11 +194,11 @@ main :: proc() {
 	line, _ = wait_log("msg:0:fetch:")
 	check(line == "msg:0:fetch:done:200:0:10:status 200", fmt.tprintf("same-origin fetch (relative URL, against the worker's location) (%q)", line))
 	clear_logs()
-	send(0, "fetch:http://127.0.0.1:8767/cors/none")
+	send(0, testenv.url("fetch:http://127.0.0.1:8767/cors/none"))
 	line, _ = wait_log("msg:0:fetch:")
 	check(strings.has_prefix(line, fmt.tprintf("msg:0:fetch:failed:0:%d:", int(fetch.Error_Kind.Blocked_Cors))), fmt.tprintf("cross-origin without CORS is refused (%q)", line))
 	clear_logs()
-	send(0, "fetch:http://127.0.0.1:8767/cors/reflect")
+	send(0, testenv.url("fetch:http://127.0.0.1:8767/cors/reflect"))
 	line, _ = wait_log("msg:0:fetch:")
 	check(line == "msg:0:fetch:done:200:0:7:reflect", fmt.tprintf("CORS with the worker's origin succeeds (%q)", line))
 
@@ -222,7 +223,7 @@ main :: proc() {
 	////////////////////////////////
 	fmt.println("-- refused or failing workers")
 	clear_logs()
-	check(!make_worker(1, "http://127.0.0.1:8767/site/workerstest_worker.wasm"), "a cross-origin worker is refused (SecurityError)")
+	check(!make_worker(1, testenv.url("http://127.0.0.1:8767/site/workerstest_worker.wasm")), "a cross-origin worker is refused (SecurityError)")
 	check(make_worker(2, "/site/missing.wasm"), "a missing module is accepted at first")
 	line, ok = wait_log("error:2:")
 	check(ok && strings.contains(line, "missing.wasm"), fmt.tprintf("then fails with an error event (%q)", line))
@@ -297,7 +298,7 @@ main :: proc() {
 	send(11, "origin")
 	line, _ = wait_log("msg:11:origin:")
 	check(line == "msg:11:origin:null", fmt.tprintf("a data: worker has an opaque origin (%q)", line))
-	send(11, "fetch:http://127.0.0.1:8765/status/200")
+	send(11, testenv.url("fetch:http://127.0.0.1:8765/status/200"))
 	line, _ = wait_log("msg:11:fetch:")
 	check(strings.has_prefix(line, fmt.tprintf("msg:11:fetch:failed:0:%d:", int(fetch.Error_Kind.Blocked_Cors))), fmt.tprintf("its requests are cross-origin to the page (%q)", line))
 	call1("terminate", 11)
@@ -305,7 +306,7 @@ main :: proc() {
 	////////////////////////////////
 	fmt.println("-- CSP worker-src")
 	for policy in ([2]string{"worker-src 'none'", "script-src 'none'"}) {
-		cp := page.page_create(&loop, &loader, &settings, process, "http://127.0.0.1:8765/csp.html", console)
+		cp := page.page_create(&loop, &loader, &settings, process, testenv.url("http://127.0.0.1:8765/csp.html"), console)
 		page.apply_response_headers(cp, {policy}, nil, "")
 		ci, _, _ := page.load_module(cp, image, "csp")
 		clear_logs()
@@ -373,7 +374,7 @@ main :: proc() {
 	fmt.println("-- closing a page with busy workers")
 	check(pump_until(proc() -> bool { return hosts() == 1 && page.workers_running() == 1 }), "the 16 released workers are joined")
 	running := page.workers_running()
-	cp := page.page_create(&loop, &loader, &settings, process, "http://127.0.0.1:8765/close.html", console)
+	cp := page.page_create(&loop, &loader, &settings, process, testenv.url("http://127.0.0.1:8765/close.html"), console)
 	ci, _, _ := page.load_module(cp, image, "close")
 	clear_logs()
 	for i in 0 ..< 4 { make_worker(i, WORKER, cp, ci) }

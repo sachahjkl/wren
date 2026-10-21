@@ -58,6 +58,7 @@ timer_fire :: proc(data: rawptr) {
 	t := (^Timer)(data)
 	p := t.page
 	t.handle = base.NIL_HANDLE   // the loop's one-shot is spent
+	if p.web.frozen { append(&p.web.frozen_timers, t.self); return }   // in the back/forward cache: runs when thawed
 	s := &p.settings.web
 	if !p.web.visible && s.throttle_background && !t.throttled {
 		if wait := background_wait_ms(f64(host.now_ns(p.loop)) / 1e6, s.background_align_ms); wait >= 1 {
@@ -151,14 +152,14 @@ cancelAnimationFrame :: proc(c: ^Call, id: u64) -> Api_Error {
 
 // True when the page has animation frame callbacks waiting and is visible: the shell renders a frame for it.
 wants_animation_frame :: proc(p: ^Page) -> bool {
-	return p != nil && !p.closed && p.web.visible && (len(p.web.frames) > 0 || p.web.io_pending || p.web.scroll_pending)
+	return p != nil && !p.closed && p.web.visible && !p.web.frozen && (len(p.web.frames) > 0 || p.web.io_pending || p.web.scroll_pending)
 }
 
 // "Run the animation frame callbacks" of HTML's update-the-rendering step. `now_ms` is the frame time on the loop clock
 // (host.now_ns / 1e6); callbacks receive it on the page's performance timeline. Callbacks requested while this runs wait
 // for the next frame. Returns how many ran.
 run_animation_frames :: proc(p: ^Page, now_ms: f64) -> int {
-	if p == nil || p.closed { return 0 }
+	if p == nil || p.closed || p.web.frozen { return 0 }
 	run_scroll_steps(p)   // the step before: scroll events of what scrolled since the last frame (scroll_events.odin)
 	if p.closed { return 0 }
 	defer intersection_observers_update(p)   // the step after the callbacks: "run the update intersection observations steps"
@@ -236,7 +237,7 @@ idle_scan :: proc(data: rawptr) {
 	p := (^Page)(data)
 	w := p.web
 	w.idle_timer = base.NIL_HANDLE
-	if p.closed || len(w.idle) == 0 { return }
+	if p.closed || len(w.idle) == 0 || w.frozen { return }   // (frozen: page_thaw schedules the scan again)
 	s := &p.settings.web
 	now := host.now_ns(p.loop)
 

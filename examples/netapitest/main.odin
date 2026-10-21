@@ -3,6 +3,7 @@
 package netapitest
 
 import "web:web"
+import "../testports"
 
 S_ES_BASIC        :: 1
 S_ES_RECONNECT    :: 2
@@ -145,16 +146,16 @@ es_start :: proc "contextless" (id: i32, url: string, with_credentials := false,
 	es_listen(h, id, ..names)
 }
 
-@(export) es_basic :: proc "contextless" () { es_start(S_ES_BASIC, "http://127.0.0.1:8765/sse/basic", false, "ping", "done") }
+@(export) es_basic :: proc "contextless" () { es_start(S_ES_BASIC, testports.url("http://127.0.0.1:8765/sse/basic"), false, "ping", "done") }
 @(export) es_reconnect :: proc "contextless" () { es_start(S_ES_RECONNECT, "/sse/reconnect") }
 @(export) es_wrong_type :: proc "contextless" () { es_start(S_ES_WRONG, "/sse/wrong-type") }
 @(export) es_status :: proc "contextless" () { es_start(S_ES_STATUS, "/sse/status?code=500") }
 @(export) es_headers :: proc "contextless" () { es_start(S_ES_HEADERS, "/sse/headers") }
-@(export) es_cross :: proc "contextless" () { es_start(S_ES_CROSS, "http://localhost:8765/sse/basic", true, "ping") }
+@(export) es_cross :: proc "contextless" () { es_start(S_ES_CROSS, testports.url("http://localhost:8765/sse/basic"), true, "ping") }
 
 @(export)
 es_blocked :: proc "contextless" (kind: i32) {
-	es_start(S_ES_BLOCKED, kind == 0 ? "http://localhost:8767/sse/basic" : "http://example.invalid/sse/basic")
+	es_start(S_ES_BLOCKED, kind == 0 ? testports.url("http://localhost:8767/sse/basic") : "http://example.invalid/sse/basic")
 }
 
 @(export)
@@ -162,7 +163,7 @@ es_syntax :: proc "contextless" () -> i32 {
 	if _, err := web.EventSource_create("http://["); err != .Syntax { return -1 }
 	h, _ := web.EventSource_create("/sse/basic")
 	b: [128]u8
-	ok := text_of(web.EventSource_url(h, b[:])) == "http://127.0.0.1:8765/sse/basic" && web.EventSource_readyState(h) == .Connecting
+	ok := text_of(web.EventSource_url(h, b[:])) == testports.url("http://127.0.0.1:8765/sse/basic") && web.EventSource_readyState(h) == .Connecting
 	web.EventSource_close(h)
 	ok = ok && web.EventSource_readyState(h) == .Closed
 	web.Object_release(h)
@@ -311,25 +312,25 @@ ws_on_message :: proc "contextless" (id: i32, ev: web.Event) {
 	}
 }
 
-@(export) ws_text :: proc "contextless" () { ws_start(S_WS_TEXT, "ws://127.0.0.1:8765/ws/echo", "foo,chat") }
-@(export) ws_cookie :: proc "contextless" () { ws_start(S_WS_COOKIE, "ws://127.0.0.1:8765/ws/echo") }
-@(export) ws_binary :: proc "contextless" () { ws_start(S_WS_BINARY, "ws://127.0.0.1:8765/ws/echo") }
-@(export) ws_big :: proc "contextless" () { ws_start(S_WS_BIG, "ws://127.0.0.1:8765/ws/echo?frag=65536") }
-@(export) ws_server_close :: proc "contextless" () { ws_start(S_WS_SERVER_CLOSE, "ws://127.0.0.1:8765/ws/echo") }
-@(export) ws_drop :: proc "contextless" () { ws_start(S_WS_DROP, "ws://127.0.0.1:8765/ws/drop") }
-@(export) ws_bad_proto :: proc "contextless" () { ws_start(S_WS_BAD_PROTO, "ws://127.0.0.1:8765/ws/bad-proto", "chat") }
-@(export) ws_deflate :: proc "contextless" () { ws_start(S_WS_DEFLATE, "ws://127.0.0.1:8765/ws/deflate") }
-@(export) ws_forbidden :: proc "contextless" () { ws_start(S_WS_FORBIDDEN, "ws://127.0.0.1:8765/ws/forbidden") }
-@(export) ws_ping :: proc "contextless" () { ws_start(S_WS_PING, "ws://127.0.0.1:8765/ws/echo") }
-@(export) ws_bad_utf8 :: proc "contextless" () { ws_start(S_WS_BAD_UTF8, "ws://127.0.0.1:8765/ws/echo") }
-@(export) ws_after_close :: proc "contextless" () { ws_start(S_WS_AFTER_CLOSE, "ws://127.0.0.1:8765/ws/echo") }
-@(export) ws_wss :: proc "contextless" () { ws_start(S_WS_WSS, "wss://127.0.0.1:8766/ws/echo") }
-@(export) ws_too_big :: proc "contextless" () { ws_start(S_WS_TOO_BIG, "ws://127.0.0.1:8765/ws/echo") }
-@(export) ws_slow :: proc "contextless" () { ws_start(S_WS_SLOW, "ws://127.0.0.1:8765/ws/slow-handshake") }
+@(export) ws_text :: proc "contextless" () { ws_start(S_WS_TEXT, testports.url("ws://127.0.0.1:8765/ws/echo"), "foo,chat") }
+@(export) ws_cookie :: proc "contextless" () { ws_start(S_WS_COOKIE, testports.url("ws://127.0.0.1:8765/ws/echo")) }
+@(export) ws_binary :: proc "contextless" () { ws_start(S_WS_BINARY, testports.url("ws://127.0.0.1:8765/ws/echo")) }
+@(export) ws_big :: proc "contextless" () { ws_start(S_WS_BIG, testports.url("ws://127.0.0.1:8765/ws/echo?frag=65536")) }
+@(export) ws_server_close :: proc "contextless" () { ws_start(S_WS_SERVER_CLOSE, testports.url("ws://127.0.0.1:8765/ws/echo")) }
+@(export) ws_drop :: proc "contextless" () { ws_start(S_WS_DROP, testports.url("ws://127.0.0.1:8765/ws/drop")) }
+@(export) ws_bad_proto :: proc "contextless" () { ws_start(S_WS_BAD_PROTO, testports.url("ws://127.0.0.1:8765/ws/bad-proto"), "chat") }
+@(export) ws_deflate :: proc "contextless" () { ws_start(S_WS_DEFLATE, testports.url("ws://127.0.0.1:8765/ws/deflate")) }
+@(export) ws_forbidden :: proc "contextless" () { ws_start(S_WS_FORBIDDEN, testports.url("ws://127.0.0.1:8765/ws/forbidden")) }
+@(export) ws_ping :: proc "contextless" () { ws_start(S_WS_PING, testports.url("ws://127.0.0.1:8765/ws/echo")) }
+@(export) ws_bad_utf8 :: proc "contextless" () { ws_start(S_WS_BAD_UTF8, testports.url("ws://127.0.0.1:8765/ws/echo")) }
+@(export) ws_after_close :: proc "contextless" () { ws_start(S_WS_AFTER_CLOSE, testports.url("ws://127.0.0.1:8765/ws/echo")) }
+@(export) ws_wss :: proc "contextless" () { ws_start(S_WS_WSS, testports.url("wss://127.0.0.1:8766/ws/echo")) }
+@(export) ws_too_big :: proc "contextless" () { ws_start(S_WS_TOO_BIG, testports.url("ws://127.0.0.1:8765/ws/echo")) }
+@(export) ws_slow :: proc "contextless" () { ws_start(S_WS_SLOW, testports.url("ws://127.0.0.1:8765/ws/slow-handshake")) }
 
 @(export)
 ws_blocked :: proc "contextless" (kind: i32) {
-	ws_start(S_WS_BLOCKED, kind == 0 ? "ws://localhost:8767/ws/echo" : "ws://example.invalid:8765/ws/echo")
+	ws_start(S_WS_BLOCKED, kind == 0 ? testports.url("ws://localhost:8767/ws/echo") : testports.url("ws://example.invalid:8765/ws/echo"))
 }
 
 // A WebSocket, or 0 when the constructor refused the arguments.
@@ -341,20 +342,20 @@ make_ws :: proc "contextless" (target: string, protocols := "") -> web.WebSocket
 // The synchronous rules of the constructor, send and close. Returns 1, or the negative number of the failed check.
 @(export)
 ws_rules :: proc "contextless" () -> i32 {
-	if make_ws("ftp://127.0.0.1:8765/") != 0 { return -1 }
-	if make_ws("ws://127.0.0.1:8765/#x") != 0 { return -2 }
-	if make_ws("ws://127.0.0.1:8765/", "a,a") != 0 { return -3 }
-	if make_ws("ws://127.0.0.1:8765/", "a b") != 0 { return -4 }
-	if make_ws("ws://127.0.0.1:8765/", ",") != 0 { return -5 }
+	if make_ws(testports.url("ftp://127.0.0.1:8765/")) != 0 { return -1 }
+	if make_ws(testports.url("ws://127.0.0.1:8765/#x")) != 0 { return -2 }
+	if make_ws(testports.url("ws://127.0.0.1:8765/"), "a,a") != 0 { return -3 }
+	if make_ws(testports.url("ws://127.0.0.1:8765/"), "a b") != 0 { return -4 }
+	if make_ws(testports.url("ws://127.0.0.1:8765/"), ",") != 0 { return -5 }
 	u: [128]u8
-	h2 := make_ws("http://127.0.0.1:8765/ws/echo")
-	if text_of(web.WebSocket_url(h2, u[:])) != "ws://127.0.0.1:8765/ws/echo" { return -12 }
+	h2 := make_ws(testports.url("http://127.0.0.1:8765/ws/echo"))
+	if text_of(web.WebSocket_url(h2, u[:])) != testports.url("ws://127.0.0.1:8765/ws/echo") { return -12 }
 	web.Object_release(h2)   // released while connecting: dropped silently
 	h3 := make_ws("/ws/echo")
-	if text_of(web.WebSocket_url(h3, u[:])) != "ws://127.0.0.1:8765/ws/echo" { return -13 }
+	if text_of(web.WebSocket_url(h3, u[:])) != testports.url("ws://127.0.0.1:8765/ws/echo") { return -13 }
 	web.Object_release(h3)
 
-	h := ws_start(S_WS_RULES, "ws://127.0.0.1:8765/ws/echo")
+	h := ws_start(S_WS_RULES, testports.url("ws://127.0.0.1:8765/ws/echo"))
 	if web.WebSocket_readyState(h) != .Connecting { return -6 }
 	if web.WebSocket_send(h, "x") != .Invalid_State { return -7 }
 	if web.WebSocket_close(h, 1001) != .Invalid_Access { return -8 }
@@ -376,7 +377,7 @@ hold :: proc "contextless" () {
 		steps[S_HOLD] += 1
 		if steps[S_HOLD] == 2 { publish(S_HOLD) }
 	}, 0)
-	ws_start(S_HOLD, "ws://127.0.0.1:8765/ws/echo")
+	ws_start(S_HOLD, testports.url("ws://127.0.0.1:8765/ws/echo"))
 }
 
 ////////////////////////////////
@@ -391,7 +392,7 @@ stress :: proc "contextless" (n: i32) {
 	stress_n = int(n)
 	stress_buf = pattern_buffer(STRESS_SIZE)
 	for _ in 0 ..< n {
-		h := make_ws("ws://127.0.0.1:8765/ws/echo")
+		h := make_ws(testports.url("ws://127.0.0.1:8765/ws/echo"))
 		web.EventTarget_addEventListener(h, "open", ws_on_open, S_STRESS)
 		web.EventTarget_addEventListener(h, "message", ws_on_message, S_STRESS)
 		web.EventTarget_addEventListener(h, "error", ws_on_error, S_STRESS)

@@ -1,5 +1,5 @@
-/* web_location.c: Location and History (HTML) on the page's session history (module history), PopStateEvent and
- * HashChangeEvent.
+/* web_location.c: Location and History (HTML) on the page's session history (module history), PopStateEvent,
+ * HashChangeEvent and PageTransitionEvent (pageshow / pagehide, persisted: the back/forward cache).
  *
  * window.location and document.location are one Location object per realm; its members are [LegacyUnforgeable] (own
  * properties of the object). Setting href (or assign / replace / a component) navigates: a fragment stays in the
@@ -205,7 +205,6 @@ typedef struct web_history {
     char   *text;            /* the browser's state it was made from (NULL: null state) */
     size_t  text_len;
     bool    known;
-    bool    manual;          /* scrollRestoration */
 } web_history;
 
 static void history_free(void *p)
@@ -317,22 +316,46 @@ JSValue wjr_History_forward(JSContext *ctx, JSValueConst this_val, int argc, JSV
     return JS_UNDEFINED;
 }
 
+/* history.scrollRestoration belongs to the session history entry: the browser keeps it */
 JSValue wjr_History_get_scrollRestoration(JSContext *ctx, JSValueConst this_val)
 {
-    web_history *h = history_this(ctx, this_val);
-    return h ? JS_NewString(ctx, h->manual ? "manual" : "auto") : JS_EXCEPTION;
+    if (!history_this(ctx, this_val)) { return JS_EXCEPTION; }
+    return JS_NewString(ctx, wr_History_scrollRestoration() == wr_ScrollRestoration_Manual ? "manual" : "auto");
 }
 
 JSValue wjr_History_set_scrollRestoration(JSContext *ctx, JSValueConst this_val, JSValueConst v)
 {
-    web_history *h = history_this(ctx, this_val);
-    if (!h) { return JS_EXCEPTION; }
+    if (!history_this(ctx, this_val)) { return JS_EXCEPTION; }
     const char *s = JS_ToCString(ctx, v);
     if (!s) { return JS_EXCEPTION; }
     /* an enum attribute: other values are ignored */
-    if (strcmp(s, "manual") == 0) { h->manual = true; } else if (strcmp(s, "auto") == 0) { h->manual = false; }
+    if (strcmp(s, "manual") == 0) { wr_History_set_scrollRestoration(wr_ScrollRestoration_Manual); }
+    else if (strcmp(s, "auto") == 0) { wr_History_set_scrollRestoration(wr_ScrollRestoration_Auto); }
     JS_FreeCString(ctx, s);
     return JS_UNDEFINED;
+}
+
+/* ---- PageTransitionEvent ---- */
+
+JSValue wjr_PageTransitionEvent_get_persisted(JSContext *ctx, JSValueConst this_val)
+{
+    if (!wj_this(ctx, this_val, WJ_IFACE_PageTransitionEvent)) { return JS_EXCEPTION; }
+    JSValue v = web_extra_get(ctx, this_val, "persisted");
+    if (!JS_IsUndefined(v)) { return v; }
+    uint64_t h = web_event_host(this_val);
+    /* the browser's pageshow / pagehide: Event_code 1 when the document comes from (or goes into) the back/forward cache */
+    return JS_NewBool(ctx, h && wr_Event_code(h) != 0);
+}
+
+JSValue wjr_PageTransitionEvent_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
+{
+    JSValue ev = wj_event_construct(ctx, new_target, argc, argv, WJ_IFACE_PageTransitionEvent, "PageTransitionEvent");
+    if (JS_IsException(ev)) { return ev; }
+    wjd_PageTransitionEventInit init = { 0 };
+    if (!wjd_PageTransitionEventInit_from(ctx, wj_arg(argc, (JSValue *)argv, 1), &init)) { JS_FreeValue(ctx, ev); return JS_EXCEPTION; }
+    web_extra_set(ctx, ev, "persisted", JS_NewBool(ctx, init.persisted));
+    wjd_PageTransitionEventInit_free(ctx, &init);
+    return ev;
 }
 
 /* ---- PopStateEvent, HashChangeEvent ---- */
