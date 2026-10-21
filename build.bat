@@ -58,29 +58,36 @@ git diff --quiet HEAD -- 2>nul || set "WREN_COMMIT=%WREN_COMMIT%+"
 :have_version
 set "COLL=%COLL% -define:WREN_COMMIT=%WREN_COMMIT%"
 if defined WREN_DATE set "COLL=%COLL% -define:WREN_COMMIT_DATE=%WREN_DATE%"
+:: the toolkit's render backend (WREN_RENDER=wgpu|d3d11; default d3d11): a wgpu build writes build\browser_prof_wgpu.exe etc. and links wgpu-native
+:: as a DLL (wgpu_native.dll, next to the program: Wren already links another Rust static library, the image decoders, and two cannot coexist),
+:: with the DXC DLLs next to it (toolkit tools\fetch_wgpu.ps1) so that Direct3D 12 compiles the shaders in 0.3 s instead of 2.8 s
+set "WREN_SUFFIX="
+if "%WREN_RENDER%"=="wgpu" set "WREN_SUFFIX=_wgpu"
+if "%WREN_RENDER%"=="wgpu" set "COLL=%COLL% -define:TOOLKIT_RENDER=wgpu -define:WGPU_SHARED=true"
+if "%WREN_RENDER%"=="wgpu" powershell -NoProfile -ExecutionPolicy Bypass -File ext\gui_toolkit\tools\fetch_wgpu.ps1 -Dest build >nul || (echo fetching the wgpu dependencies failed & exit /b 1)
 if "%1"=="debug" goto debug
 if "%1"=="profile" goto profile
 if "%1"=="check" goto check
-odin build src/browser -out:build/browser.exe %COLL% -o:speed -vet -subsystem:windows
+odin build src/browser -out:build/browser%WREN_SUFFIX%.exe %COLL% -o:speed -vet -subsystem:windows
 goto done
 :profile
 :: (no Direct3D debug layer: GPU and present times as in a release build)
-odin build src/browser -out:build/browser_prof.exe %COLL% -o:speed -debug -define:PROFILE=true -define:D3D_DEBUG=false -vet -subsystem:windows
+odin build src/browser -out:build/browser_prof%WREN_SUFFIX%.exe %COLL% -o:speed -debug -define:PROFILE=true -define:D3D_DEBUG=false -vet -subsystem:windows
 if errorlevel 1 exit /b 1
-echo built build\browser_prof.exe
+echo built build\browser_prof%WREN_SUFFIX%.exe
 exit /b 0
 :check
 :: the check build: debug information, Odin's bounds checks and assertions, the contracts checked in debug builds only
 :: (thread ownership), and every allocation of the process tracked (src\base\memory.odin). At exit the blocks still
 :: allocated go to <profile>\memtrack.txt (or WREN_MEMTRACK_REPORT); WREN_MEMTRACK_FAIL=1 makes them exit code 3,
 :: WREN_MEMTRACK_STACK=1 records each block's call stack. Never shipped: the tracker serializes every allocation.
-odin build src/browser -out:build/browser_check.exe %COLL% -debug -define:WREN_TRACK_MEMORY=true -vet -subsystem:windows
+odin build src/browser -out:build/browser_check%WREN_SUFFIX%.exe %COLL% -debug -define:WREN_TRACK_MEMORY=true -vet -subsystem:windows
 if errorlevel 1 exit /b 1
-echo built build\browser_check.exe
+echo built build\browser_check%WREN_SUFFIX%.exe
 exit /b 0
 :debug
-odin build src/browser -out:build/browser.exe %COLL% -debug -vet -subsystem:windows
+odin build src/browser -out:build/browser%WREN_SUFFIX%.exe %COLL% -debug -vet -subsystem:windows
 :done
 if errorlevel 1 exit /b 1
 >build\browser.channel echo %WREN_CHANNEL%
-echo built build\browser.exe (%WREN_CHANNEL%)
+echo built build\browser%WREN_SUFFIX%.exe (%WREN_CHANNEL%)
