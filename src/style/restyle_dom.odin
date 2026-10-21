@@ -391,6 +391,35 @@ is_form_attr :: proc(name: string) -> bool {
 	return false
 }
 
+// Whether the rules (the document's, or a shadow tree's) ask the forms model questions about groups of controls, with a
+// forms model to answer them.
+@(private = "file")
+control_groups_used :: proc(e: ^Engine, ix: ^Inv_Index, s: ^Styled) -> bool {
+	if s.state.controls.query == nil { return false }
+	if ix.uses_control_groups { return true }
+	if dom_has_shadows(e) {
+		for _, rs in e.shadow.of_root { if inv_index_of(e, rs).uses_control_groups { return true } }
+	}
+	return false
+}
+
+@(private = "file")
+dom_has_shadows :: proc(e: ^Engine) -> bool { return len(e.shadow.of_root) > 0 }
+
+@(private = "file")
+legend_in :: proc(doc: ^dom.Document, h: base.Handle) -> bool {
+	stack := make([dynamic]base.Handle, 0, 16, context.temp_allocator)
+	append(&stack, h)
+	for len(stack) > 0 {
+		x := pop(&stack)
+		n := dom.get(doc, x)
+		if n == nil || n.kind != .Element { continue }
+		if n.name == "legend" { return true }
+		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+	}
+	return false
+}
+
 @(private = "file")
 form_related_in :: proc(doc: ^dom.Document, h: base.Handle) -> bool {
 	stack := make([dynamic]base.Handle, 0, 16, context.temp_allocator)
@@ -502,8 +531,8 @@ attribute_changed_in :: proc(m: ^Marker, ix: ^Inv_Index, ch: Attr_Change, n: ^do
 		for f in FORM_RELATED {
 			if n.name != f { continue }
 			// the forms model answers from groups and forms (radio groups, form validity, default button): another
-			// control's state may follow
-			if m.s.state.controls.query != nil { m.fail = "form control attribute changed"; return }
+			// control's state may follow (only questions of the element itself: its subtree below)
+			if control_groups_used(m.e, ix, m.s) { m.fail = "form control attribute changed"; return }
 			apply(m, h, ix.controls)
 			break
 		}
@@ -516,11 +545,11 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 	doc := m.doc
 	ix := m.ix
 	s := m.s
-	controls := ix.uses_controls && s.state.controls.query != nil
-	if m.shadows && !controls && s.state.controls.query != nil {
-		// a shadow tree's rules may ask the forms model too
-		for _, rs in m.e.shadow.of_root { if inv_index_of(m.e, rs).uses_controls { controls = true; break } }
-	}
+	// `controls`: rules ask the forms model something one control's neighbours decide (control_groups_used); with only
+	// element-local questions (:disabled, :required...) a control's insertion or removal restyles its own subtree, and a
+	// <legend> (the first one of a disabled fieldset enables what it holds) its parent's
+	controls := control_groups_used(m.e, ix, s)
+	local_controls := !controls && s.state.controls.query != nil
 	in_shadow :: proc(m: ^Marker, h: base.Handle) -> bool { return m.shadows && dom.containing_shadow_root(m.doc, h) != base.NIL_HANDLE }
 	structure := false
 	attrs := make(map[string]Attr_Change, 16, context.temp_allocator)
@@ -539,6 +568,7 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			if !connected(doc, en.node) { continue }   // removed again since (that removal is in the journal)
 			structure = true
 			if controls && form_related_in(doc, en.node) { m.fail = "form controls inserted"; return }
+			if local_controls && legend_in(doc, en.node) { mark(m, n.parent, true) }
 			if (n.name == "style" || n.name == "link") && !in_shadow(m, en.node) { m.fail = "stylesheet element inserted"; return }
 			// moved here from elsewhere: counter values change on both sides (new elements: see settle)
 			if s.counters_used && !m.rewalk && subtree_feeds(s, doc, en.node) { m.rewalk = true }
@@ -570,11 +600,15 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 						}
 					}
 					if s.forms_scan == 2 { m.fail = "element removed from a document with form controls"; return }
+				} else if local_controls && p_ok {
+					// (gone, so unknown: it may have been a fieldset's first legend)
+					if pn := dom.get(doc, en.parent); pn != nil && pn.kind == .Element && pn.name == "fieldset" { mark(m, en.parent, true) }
 				}
 			} else {
 				if !connected(doc, en.node) { append(&m.removed, en.node) } else if m.shadows { append(&m.left, en.node) }
 				if s.counters_used && !m.rewalk && subtree_feeds(s, doc, en.node) { m.rewalk = true }
 				if controls && form_related_in(doc, en.node) { m.fail = "form controls removed"; return }
+				if local_controls && p_ok && legend_in(doc, en.node) { mark(m, en.parent, true) }
 			}
 			if p_ok { children_removed(m, en.parent) }
 		case .Text:
