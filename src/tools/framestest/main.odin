@@ -14,6 +14,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:time"
+import win "core:sys/windows"
 import "wb:base"
 import "wb:dom"
 import "wb:fetch"
@@ -146,6 +147,63 @@ fill :: proc(t: string, args: ..string) -> string {
 }
 
 LOG :: `<script>function log(s) { console.log(String(s)) }</script>`
+
+foreign import psapi "system:Psapi.lib"
+PROCESS_MEMORY_COUNTERS_EX :: struct {
+	cb: u32, PageFaultCount: u32,
+	PeakWorkingSetSize, WorkingSetSize, QuotaPeakPagedPoolUsage, QuotaPagedPoolUsage: uint,
+	QuotaPeakNonPagedPoolUsage, QuotaNonPagedPoolUsage, PagefileUsage, PeakPagefileUsage, PrivateUsage: uint,
+}
+@(default_calling_convention = "system")
+foreign psapi {
+	GetProcessMemoryInfo :: proc(process: win.HANDLE, counters: ^PROCESS_MEMORY_COUNTERS_EX, cb: u32) -> win.BOOL ---
+}
+
+private_bytes :: proc() -> int {
+	c: PROCESS_MEMORY_COUNTERS_EX
+	c.cb = size_of(c)
+	GetProcessMemoryInfo(win.GetCurrentProcess(), &c, c.cb)
+	return int(c.PrivateUsage)
+}
+
+// Numbers, not checks: the time a frame takes to have a running document, and the memory it holds.
+measurements :: proc() {
+	fmt.println("-- measurements")
+	N :: 20
+	// warm-up: the engine's code and the first realm's costs are not a frame's
+	{
+		p := load(`<body><iframe srcdoc="<script>parent.postMessage('w', '*')</script>"></iframe><script>addEventListener("message", () => log("warm"))</script></body>`)
+		wait_for("warm")
+		page.page_close(p)
+		run_for(200)
+	}
+	before := private_bytes()
+	t0 := time.tick_now()
+	p := load(fill(`<body><script>
+let n = 0;
+addEventListener("message", () => { if (++n === %s) log("all frames ran"); });
+const t = performance.now();
+for (let i = 0; i < %s; i++) {
+  const f = document.createElement("iframe");
+  f.srcdoc = "<p>frame " + i + "</p><script>parent.postMessage(1, '*')<\/script>";
+  document.body.appendChild(f);
+}
+log("inserted in " + (performance.now() - t).toFixed(2) + " ms");
+</script></body>`, fmt.tprint(N), fmt.tprint(N)))
+	ok := wait_for("all frames ran")
+	ms := time.duration_milliseconds(time.tick_since(t0))
+	after := private_bytes()
+	for l in logs { if strings.has_prefix(l, "inserted in") { fmt.printfln("measure: %d srcdoc frames %s (synchronous part: navigables, realms)", N, l) } }
+	fmt.printfln("measure: %d srcdoc frames with a script each, until all ran: %.1f ms (%.2f ms per frame)%s", N, ms, ms / N, ok ? "" : " (not all ran)")
+	fmt.printfln("measure: private bytes +%.1f MiB for %d frames (%.2f MiB per frame, document and JavaScript realm)", f64(after - before) / (1 << 20), N, f64(after - before) / (1 << 20) / N)
+	page.page_close(p)
+	run_for(300)
+	t1 := time.tick_now()
+	p = load(fill(`<body><iframe src="%s"></iframe><script>addEventListener("message", e => log("cross " + e.data))</script></body>`, doc(OTHER, `<script>parent.postMessage("up", "*")</script>`)))
+	wait_for("cross up")
+	fmt.printfln("measure: one cross-origin frame over the test server, page start to its first message: %.1f ms", time.duration_milliseconds(time.tick_since(t1)))
+	page.page_close(p)
+}
 
 main :: proc() {
 	context = testenv.context_of_process()
@@ -422,6 +480,8 @@ addEventListener("message", e => log("nav " + e.data));
 		check(c != nil && page.feature_enabled(c, .Publickey_Credentials_Get), "a same-origin frame has the 'self' features")
 		page.page_close(p)
 	}
+
+	measurements()
 
 	base.scope_close(process)
 	host.blocking_settle(&blocking)
