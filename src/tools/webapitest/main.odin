@@ -16,6 +16,7 @@ import "wb:host"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
+import "wb:tools/testenv"
 
 failures: int
 
@@ -112,7 +113,7 @@ main :: proc() {
 	process = base.scope_make("process")
 
 	session: page.Session_History
-	p, inst := new_page("http://127.0.0.1:8765/webapi/page.html", image, "tab-1", &session)
+	p, inst := new_page(testenv.url("http://127.0.0.1:8765/webapi/page.html"), image, "tab-1", &session)
 	cur = p
 
 	////////////////////////////////
@@ -210,13 +211,13 @@ main :: proc() {
 
 	////////////////////////////////
 	fmt.println("-- Web Storage")
-	q, qi := new_page("http://127.0.0.1:8765/other.html", image, "tab-2")
+	q, qi := new_page(testenv.url("http://127.0.0.1:8765/other.html"), image, "tab-2")
 	call(q, qi, "storage_listen")
 	check(call(p, inst, "storage_probe", 0) == 1, "setItem / key in one page")
 	cur = q
 	pump_until("storage event", proc() -> bool { return has("data-storage-event") })
 	drain()
-	check(attr("data-storage-event") == "k,<null>,persisted value,http://127.0.0.1:8765/webapi/page.html,0",
+	check(attr("data-storage-event") == testenv.url("k,<null>,persisted value,http://127.0.0.1:8765/webapi/page.html,0"),
 		fmt.tprintf("the other page of the origin gets one storage event, not the other tab's sessionStorage (%q)", attr("data-storage-event")))
 	check(call(q, qi, "storage_probe", 1) == 15, "the other page reads the value")
 	check(call(p, inst, "storage_probe", 2) == page.WEB_ERR_QUOTA, "a write past the quota fails with QuotaExceededError")
@@ -234,12 +235,12 @@ main :: proc() {
 	pump_until("popstate", proc() -> bool { return strings.contains(attr("data-history"), "hash:") })
 	drain()
 	h := attr("data-history")
-	check(h == "pop:s1 hash:http://127.0.0.1:8765/webapi/page.html?p=1 ", fmt.tprintf("history.back to a same-document entry: popstate with its state, then hashchange (%q)", h))
+	check(h == testenv.url("pop:s1 hash:http://127.0.0.1:8765/webapi/page.html?p=1 "), fmt.tprintf("history.back to a same-document entry: popstate with its state, then hashchange (%q)", h))
 	check(len(navigations) > navs && strings.has_prefix(navigations[len(navigations) - 1], "Url_Changed"), "the embedder hears about same-document URL changes")
 	navs = len(navigations)
 	check(call(p, inst, "location_probe") == 1, "location.assign to a fragment stays in the document")
 	pump_until("navigation request", proc() -> bool { return len(navigations) > 0 && strings.has_prefix(navigations[len(navigations) - 1], "Assign") })
-	check(navigations[len(navigations) - 1] == "Assign http://127.0.0.1:8765/elsewhere.html", fmt.tprintf("a cross-document navigation goes to the embedder (%s)", navigations[len(navigations) - 1]))
+	check(navigations[len(navigations) - 1] == testenv.url("Assign http://127.0.0.1:8765/elsewhere.html"), fmt.tprintf("a cross-document navigation goes to the embedder (%s)", navigations[len(navigations) - 1]))
 
 	////////////////////////////////
 	fmt.println("-- closing, restart")
@@ -247,9 +248,9 @@ main :: proc() {
 	pump_until("requests of the closed page", proc() -> bool { return fetch.in_flight(&loader) == 0 })
 	check(fetch.in_flight(&loader) == 0, "no request left")
 	page.storage_manager_destroy(&storage)
-	check(os.exists(PROFILE_DIR + "/storage/http_3A_2F_2F127.0.0.1_3A8765.wls"), "localStorage was written to the profile")
+	check(os.exists(fmt.tprintf("%s/storage/http_3A_2F_2F127.0.0.1_3A%d.wls", PROFILE_DIR, testenv.port())), "localStorage was written to the profile")
 	page.storage_manager_init(&storage, &loop, &blocking, PROFILE_DIR)
-	r, ri := new_page("http://127.0.0.1:8765/after-restart.html", image, "tab-9")
+	r, ri := new_page(testenv.url("http://127.0.0.1:8765/after-restart.html"), image, "tab-9")
 	check(call(r, ri, "storage_probe", 1) == 15, "localStorage survives a restart of the storage manager")
 	page.page_close(r)
 	page.session_destroy(&session)

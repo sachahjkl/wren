@@ -2,6 +2,7 @@
 package e2e
 
 import "web:web"
+import "../testports"
 
 State :: struct {
 	app:    web.Element,
@@ -66,7 +67,7 @@ on_cors :: proc "contextless" (user: i32, req: web.Fetch, st: web.FetchState) {
 
 @(export)
 start_cors_probe :: proc "contextless" (open: i32) {
-	if open != 0 { web.Fetch_start("http://localhost:8765/cors/open", on_cors) } else { web.Fetch_start("http://localhost:8765/cors/none", on_cors) }
+	if open != 0 { web.Fetch_start(testports.url("http://localhost:8765/cors/open"), on_cors) } else { web.Fetch_start(testports.url("http://localhost:8765/cors/none"), on_cors) }
 }
 
 @(export)
@@ -96,8 +97,8 @@ wb_main :: proc "contextless" () {
 	web.Node_appendChild(body, state.app)
 	web.EventTarget_addEventListener(state.app, "click", on_click, 7)
 	web.Timers_setTimeout(on_timer, 1, 20)
-	web.Fetch_start("http://127.0.0.1:8765/", on_fetch)
-	web.Fetch_start("https://127.0.0.1:8766/", on_fetch)   // self-signed: must fail
+	web.Fetch_start(testports.url("http://127.0.0.1:8765/"), on_fetch)
+	web.Fetch_start(testports.url("https://127.0.0.1:8766/"), on_fetch)   // self-signed: must fail
 	web.console_log("wb_main done")
 }
 

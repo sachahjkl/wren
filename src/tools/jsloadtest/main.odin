@@ -4,7 +4,8 @@
 // event handler attributes, javascript: URLs, Content-Security-Policy (nonces, hashes, eval), <noscript>, timers,
 // animation frames, idle callbacks, uncaught errors and unhandled rejections, workers and structured cloning; with
 // the measurements of the brief (DOMContentLoaded after parsing with 20 scripts, off-thread compilation, setTimeout(0),
-// animation frame latency). Needs build\testserver.exe on 127.0.0.1:8765 (tools\test_all.ps1 starts it). From the
+// animation frame latency). Needs build\testserver.exe on 127.0.0.1:8765, or on the block of WREN_TEST_BASE_PORT
+// (src/tools/testenv; tools\test_all.ps1 starts it). From the
 // repository root:
 //   jsloadtest.exe
 package jsloadtest
@@ -23,6 +24,7 @@ import "wb:net"
 import "wb:page"
 import "wb:url"
 import "wb:wasm"
+import "wb:tools/testenv"
 
 failures: int
 logs: [dynamic]string
@@ -75,7 +77,7 @@ loader:   fetch.Loader
 settings: page.Settings
 process:  ^base.Scope
 
-BASE :: "http://127.0.0.1:8765/jsload/test.html"
+BASE :: "http://127.0.0.1:8765/jsload/test.html"   // on the run's block of ports through testenv.url
 
 // Only ends a run that fails: nothing checked depends on how long the machine took.
 WAIT_FAIL_MS :: 120_000
@@ -130,7 +132,7 @@ PRELUDE :: `<script>function log(s) { console.log(String(s)) }</script>`
 
 load :: proc(source: string, address := BASE, csp := "", s: ^page.Settings = nil) -> ^page.Page {
 	clear(&logs)
-	p := page.page_create(&loop, &loader, s != nil ? s : &settings, process, address, console)
+	p := page.page_create(&loop, &loader, s != nil ? s : &settings, process, testenv.url(address), console)
 	if csp != "" { page.apply_response_headers(p, {csp}, {}, "") }
 	page.load_html(p, transmute([]byte)source)
 	page.scripts_start(p)
@@ -146,7 +148,7 @@ hits :: proc(path: string) -> int {
 	Got :: struct { done: bool, body: [dynamic]byte }
 	got: Got
 	fetch.start(&loader, {
-		request = {url = strings.concatenate({"http://127.0.0.1:8765/jsload/hits?path=", enc(path)}, context.temp_allocator)},
+		request = {url = strings.concatenate({testenv.url("http://127.0.0.1:8765/jsload/hits?path="), enc(path)}, context.temp_allocator)},
 		on_event = proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			g := (^Got)(user)
 			#partial switch ev.kind {
@@ -469,7 +471,7 @@ log("noscript content is text " + (document.getElementById("ns") === null));
 	s := settings
 	s.js.enabled = false
 	clear(&logs)
-	p2 := page.page_create(&loop, &loader, &s, process, BASE, console)
+	p2 := page.page_create(&loop, &loader, &s, process, testenv.url(BASE), console)
 	page.load_html(p2, transmute([]byte)string(`<!doctype html><body><noscript><p id=ns>no script</p></noscript></body>`))
 	found := dom.find_by_id(p2.doc, "ns") != base.NIL_HANDLE
 	check(found && !p2.engine.settings.scripting, "without JavaScript, <noscript> content is parsed and rendered")

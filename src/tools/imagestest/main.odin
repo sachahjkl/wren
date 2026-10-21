@@ -20,6 +20,7 @@ import "wb:images"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
+import "wb:tools/testenv"
 
 failures: int
 
@@ -41,7 +42,7 @@ process:  ^base.Scope
 cur:      ^page.Page          // the page `attr` and the pumps look at
 longest_turn: f64             // longest single turn of the loop on this (UI) thread, ms
 
-SITE :: "http://127.0.0.1:8765"
+SITE :: "http://127.0.0.1:8765"   // on the run's block of ports through testenv.url
 
 // One turn: what the shell does each frame (styles, images), then whatever the loop has ready.
 turn :: proc() {
@@ -116,7 +117,7 @@ http_get :: proc(u: string) -> string {
 }
 
 count :: proc(path: string) -> int {
-	n, _ := strconv.parse_int(http_get(fmt.tprintf("%s/images/count?path=%s", SITE, path)))
+	n, _ := strconv.parse_int(http_get(fmt.tprintf("%s/images/count?path=%s", testenv.url(SITE), path)))
 	return n
 }
 
@@ -148,11 +149,11 @@ main :: proc() {
 	settings = page.settings_default()
 	if !page.register_imports() { fmt.eprintln("register failed"); os.exit(2) }
 	process = base.scope_make("process")
-	check(http_get(SITE + "/images/reset") == "ok", "test server counters reset")
+	check(http_get(testenv.url(SITE + "/images/reset")) == "ok", "test server counters reset")
 
 	////////////////////////////////
 	fmt.println("-- the page: events, sizes, sources")
-	p := open_page(SITE + "/site/images.html", string(html))
+	p := open_page(testenv.url(SITE + "/site/images.html"), testenv.url(string(html)))
 	cur = p
 	inst, ok, merr := page.load_module(p, image, "imagestest")
 	check(ok, fmt.tprintf("guest runs %s", merr))
@@ -187,10 +188,10 @@ main :: proc() {
 		check(w == s.w && h == s.h, fmt.tprintf("#%s natural size %dx%d (want %dx%d)", s.id, w, h, s.w, s.h))
 	}
 	src :: proc(inst: ^wasm.Instance, id: string) -> string { call(inst, "current_src", id_index(id)); return attr("data-src") }
-	check(src(inst, "simple") == SITE + "/images/f/red.png", "currentSrc is the absolute URL")
-	check(src(inst, "srcset") == SITE + "/images/f/blue-2x.png", fmt.tprintf("srcset: the 2x candidate at 2 dppx (%s)", src(inst, "srcset")))
-	check(src(inst, "wdesc") == SITE + "/images/f/blue-2x.png", fmt.tprintf("srcset with w descriptors and sizes (%s)", src(inst, "wdesc")))
-	check(src(inst, "pic") == SITE + "/images/f/icon.ico", fmt.tprintf("<picture>: unknown type and unmatched media skipped (%s)", src(inst, "pic")))
+	check(src(inst, "simple") == testenv.url(SITE + "/images/f/red.png"), "currentSrc is the absolute URL")
+	check(src(inst, "srcset") == testenv.url(SITE + "/images/f/blue-2x.png"), fmt.tprintf("srcset: the 2x candidate at 2 dppx (%s)", src(inst, "srcset")))
+	check(src(inst, "wdesc") == testenv.url(SITE + "/images/f/blue-2x.png"), fmt.tprintf("srcset with w descriptors and sizes (%s)", src(inst, "wdesc")))
+	check(src(inst, "pic") == testenv.url(SITE + "/images/f/icon.ico"), fmt.tprintf("<picture>: unknown type and unmatched media skipped (%s)", src(inst, "pic")))
 	check(src(inst, "empty") == "", "no currentSrc for src=\"\"")
 	check(call(inst, "complete", id_index("simple")) == 1 && call(inst, "complete", id_index("broken")) == 1, "complete: loaded and broken images")
 	check(call(inst, "complete", id_index("lazy")) == 0, "complete: a lazy image that has not loaded")
@@ -266,7 +267,7 @@ main :: proc() {
 	fmt.println("-- changing the source")
 	check(call(inst, "change_src", 0) == 0, "right after a new src: not complete")
 	pump_until("second load", proc() -> bool { return strings.count(attr("data-events"), "simple:load") == 2 })
-	check(src(inst, "simple") == SITE + "/images/f/blue.bmp?again" && call(inst, "natural_width", 0) == 5, "the new image is current")
+	check(src(inst, "simple") == testenv.url(SITE + "/images/f/blue.bmp?again") && call(inst, "natural_width", 0) == 5, "the new image is current")
 	call(inst, "change_src", 1)
 	pump_until("error after change", proc() -> bool { return strings.contains(attr("data-events"), "simple:error") })
 	ev2 := attr("data-events")
@@ -283,7 +284,7 @@ main :: proc() {
 
 	////////////////////////////////
 	fmt.println("-- cancellation, shared cache")
-	q := open_page(SITE + "/site/slow.html", `<!doctype html><img id=slow src="/images/slow/noise.png">`)
+	q := open_page(testenv.url(SITE + "/site/slow.html"), `<!doctype html><img id=slow src="/images/slow/noise.png">`)
 	cur = q
 	pump_until("slow request", proc() -> bool { return count("/images/slow/noise.png") == 1 })
 	pump_for(300)
@@ -294,17 +295,17 @@ main :: proc() {
 	pump_until("idle", proc() -> bool { return fetch.in_flight(&loader) == 0 }, 5)
 	check(fetch.in_flight(&loader) == 0, "no request left")
 
-	s := open_page(SITE + "/site/again.html", `<!doctype html><img id=again src="/images/f/red.png">`)
+	s := open_page(testenv.url(SITE + "/site/again.html"), `<!doctype html><img id=again src="/images/f/red.png">`)
 	cur = s
 	pump_until("shared", proc() -> bool { return page.image_view(cur, node("again")).state == .Ready })
 	check(page.image_view(s, node("again")).state == .Ready && count("/images/f/red.png") == 1, "another page of the site takes the cached image: no request")
 	check(page.images_stats(s).shared == 1, "counted as shared")
 	page.page_close(s)
-	o := open_page("http://localhost:8765/site/other.html", `<!doctype html><img id=again src="/images/f/red.png">`)
+	o := open_page(testenv.url("http://localhost:8765/site/other.html"), `<!doctype html><img id=again src="/images/f/red.png">`)
 	cur = o
 	pump_until("other site", proc() -> bool { return page.image_view(cur, node("again")).state == .Ready })
 	check(count("/images/f/red.png") == 2, "another top-level site does not see the cache of the first: it downloads")
-	csp := page.page_create(&loop, &loader, &settings, process, SITE + "/site/csp.html", console)
+	csp := page.page_create(&loop, &loader, &settings, process, testenv.url(SITE + "/site/csp.html"), console)
 	page.apply_response_headers(csp, {"img-src 'none'"}, nil, "")
 	page.load_html(csp, transmute([]byte)string(`<!doctype html><img id=again src="/images/f/red.png">`))
 	page.page_close(o)
@@ -319,7 +320,7 @@ main :: proc() {
 	b := strings.builder_make()
 	strings.write_string(&b, "<!doctype html><body>")
 	for i in 0 ..< 200 { fmt.sbprintf(&b, `<img id=g%d src="/images/gen?w=1000&h=1000&seed=%d">`, i, i) }
-	big := open_page(SITE + "/site/many.html", strings.to_string(b))
+	big := open_page(testenv.url(SITE + "/site/many.html"), strings.to_string(b))
 	strings.builder_destroy(&b)
 	cur = big
 	longest_turn = 0
