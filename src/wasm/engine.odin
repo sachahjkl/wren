@@ -340,7 +340,7 @@ wt_free :: proc(inst: ^Instance) {
 	delete(s.exports)
 	delete(s.indirect)
 	delete(s.free_slots)
-	delete(s.pending_trap)
+	delete(s.pending_trap, base.process_allocator())   // (host.odin: trap)
 	inst.wt = {}
 }
 
@@ -478,6 +478,7 @@ wt_sig_of :: proc(ctx: wt_context, f: ^wt_func) -> (sig: Wt_Sig) {
 
 @(private)
 wt_export :: proc(inst: ^Instance, name: cstring) -> ^Wt_Export {
+	context.allocator = inst.allocator
 	s := &inst.wt
 	key := string(name)
 	if e, found := &s.exports[key]; found { return e }
@@ -524,6 +525,7 @@ wt_call_indirect :: proc(inst: ^Instance, table_index: u32, buf: []u32, argc: in
 	key := wasmtime_func_to_raw(s.ctx, &f)
 	sig, found := s.indirect[key]
 	if !found {
+		context.allocator = inst.allocator
 		sig = wt_sig_of(s.ctx, &f)
 		s.indirect[key] = sig
 	}

@@ -56,6 +56,9 @@ Instance :: struct {
 	// Argument errors of host functions that do not raise (a dead handle...) give the zero result and an exception
 	// record instead of a trap: a module whose own state a trap would corrupt (the JavaScript engine) checks instead.
 	lenient:           bool,
+	// What the instance owns (its name, last_error, the caches of exports and signatures) comes from its creator's
+	// allocator, whatever context a later call runs in (a host call, the preemption hook, another thread's).
+	allocator:         runtime.Allocator,
 	wt:                Wt_State,
 }
 
@@ -117,6 +120,7 @@ instance_create :: proc(image: []byte, user: rawptr, scope: ^base.Scope, opt: Op
 		return nil, fmt.aprintf("%s: too many module instances alive (wasm.max_instances = %d)", name, limit)
 	}
 	inst = new(Instance)
+	inst.allocator = context.allocator
 	inst.name = strings.clone(name)
 	inst.user = user
 	inst.scope = scope
@@ -143,6 +147,7 @@ scope_closed :: proc(data: rawptr) { instance_free((^Instance)(data)) }
 
 @(private)
 instance_free :: proc(inst: ^Instance) {
+	context.allocator = inst.allocator
 	inst.dead = true
 	wt_free(inst)
 	sync.atomic_sub(&live_instances, 1)
@@ -197,6 +202,7 @@ MAX_CELLS :: 64
 
 @(private)
 set_error :: proc(inst: ^Instance, msg: string) {
+	context.allocator = inst.allocator
 	inst.over_budget += 1
 	delete(inst.last_error)
 	inst.last_error = strings.clone(msg)

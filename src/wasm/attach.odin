@@ -291,6 +291,7 @@ detach_function :: proc(inst: ^Instance, index: u32) {
 	s := &inst.wt
 	v := wt_val{kind = WT_FUNCREF}
 	if e := wasmtime_table_set(s.ctx, &s.table, u64(index), &v); e != nil { wasmtime_error_delete(e); return }
+	context.allocator = inst.allocator
 	append(&s.free_slots, index)
 }
 
