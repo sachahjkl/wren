@@ -231,6 +231,7 @@ cd wren
 build.bat            &:: optimized build -> build\browser.exe
 build.bat debug      &:: debug build
 build.bat profile    &:: optimized + PDB + the built-in profiler -> build\browser_prof.exe
+build.bat check      &:: debug build tracking every allocation, a leak report at exit -> build\browser_check.exe
 build.bat release    &:: optimized build of the release channel (what the release workflow packages)
 ```
 
@@ -274,7 +275,21 @@ JavaScript bindings are up to date (`bindgen -check`), runs the generated API co
 toolkit's pixel tests on an offscreen WARP renderer, and end-to-end tests that drive real pages, Wasm guests and
 scripts against the local test server (network policy, DOM and events, web platform APIs, forms, workers, EventSource
 and WebSocket, style animations, images and image formats, local files, the JavaScript engine, its DOM, script
-loading and web APIs). None of them opens a window or needs the internet.
+loading and web APIs). None of them needs the internet, and with `-Quick` none opens a window.
+
+**Memory.** Every unit test fails on a leak or a bad free (Odin's test runner, `ODIN_TEST_FAIL_ON_BAD_MEMORY`). The
+end-to-end tools are built with `-define:WREN_TRACK_MEMORY=true`: every allocation of the process, whatever the thread
+(the Wasm host calls and the network callbacks included), goes through one tracker (`src/base/memory.odin`), and a
+tool fails when anything is still allocated once it has shut down (`src/tools/testenv/memory.odin`). Code without an
+Odin context of its own starts from `base.process_context()`; what is kept for the life of the process on purpose
+comes from `base.permanent_allocator()` and is never reported. `build.bat check` builds the browser the same way,
+with a script driver (`WREN_MEMCHECK_SCRIPT`, `src/browser/memcheck.odin`) that runs whole sessions without the
+desktop's input: [`tools\memcheck_e2e.ps1`](tools/memcheck_e2e.ps1) (tabs, scripts, images, forms, the
+back/forward cache, the palette, history, then a normal exit with nothing left) and
+[`tools\endurance.ps1`](tools/endurance.ps1) (400 tabs and 2,000 navigations: the tracked bytes, the private bytes
+and the kernel, GDI and USER handles must stop growing). [`tools\asan.ps1`](tools/asan.ps1) builds the unit tests
+and the browser with AddressSanitizer. `-CI` and full runs include the check build's session and a short endurance
+run.
 
 Two standard conformance suites run too, pinned by commit and checked against committed expectations, so that any
 regression fails the run:
