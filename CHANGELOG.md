@@ -4,6 +4,10 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 ([releases](https://github.com/sachahjkl/wren/releases); `tools/release_notes.ps1` writes them from
 `docs/releases/` and the history).
 
+## 0.3.0 - 2026-10-21
+
+The highlights are in [docs/releases/v0.3.0.md](docs/releases/v0.3.0.md): a JavaScript JIT that produces WebAssembly, iframes, a browser that never waits for a busy page, an HTTP cache, passkeys, history as a tree, a command palette and address bar suggestions, immediate hover feedback and CSS cursors, memory leaks failing the tests and memory given back when idle.
+
 ## 0.2.1 - 2026-10-20
 
 ### Fixed
