@@ -40,6 +40,14 @@ set_preempt_hook :: proc(hook: Preempt_Hook, user: rawptr, tick_ms := 0) {
 // True while the hook runs (on its thread): no guest call may start.
 preempting :: proc() -> bool { return preempt.preempting }
 
+// The embedder does the hook's kind of work elsewhere (in the middle of a long native pass of its own): guest calls of
+// the hook's thread are refused meanwhile. Returns the previous setting, to put back.
+refuse_calls :: proc(on: bool) -> (previous: bool) {
+	previous = preempt.preempting
+	preempt.preempting = on
+	return
+}
+
 // Times the hook ran.
 preempt_count :: proc() -> u64 { return preempt.ran }
 

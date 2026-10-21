@@ -314,6 +314,37 @@ memory_limit :: proc(t: ^testing.T) {
 	runtime_destroy()
 }
 
+// The embedder's preemption hook (preempt.odin): called during a long call of its thread, refusing guest calls meanwhile,
+// and its time given back to the call's deadline.
+@(test)
+preemption :: proc(t: ^testing.T) {
+	setup(t)
+	o := options_default()
+	o.max_call_ms = 150
+	inst := make_instance(t, wat(t, MODULE), o)
+	if inst == nil { return }
+	defer destroy(inst)
+	Probe :: struct { inst: ^Instance, calls: int, refused: bool, slept_ms: f64 }
+	probe := Probe{inst = inst}
+	set_preempt_hook(proc(user: rawptr) {
+		p := (^Probe)(user)
+		p.calls += 1
+		_, res := call_i32(p.inst, "add", 1, 2)   // a guest call from the hook: refused
+		if res != .Ok { p.refused = true }
+		if p.calls <= 5 { time.sleep(20 * time.Millisecond); p.slept_ms += 20 }   // the hook's time is not the call's
+	}, &probe, tick_ms = 2)
+	defer set_preempt_hook(nil, nil)
+	t0 := time.tick_now()
+	_, res := call_i32(inst, "spin")
+	dt := time.duration_milliseconds(time.tick_since(t0))
+	testing.expectf(t, res == .Trapped && strings.contains(inst.last_error, "wasm.max_call_ms"), "the deadline still ends the call (%s)", inst.last_error)
+	testing.expectf(t, probe.calls >= 10, "the hook ran at every tick of the call (%d times in %.0f ms)", probe.calls, dt)
+	testing.expect(t, probe.refused, "a guest call from the hook is refused")
+	testing.expectf(t, dt >= 150 + probe.slept_ms * 0.9, "the hook's %.0f ms are given back to the deadline (%.0f ms)", probe.slept_ms, dt)
+	r, res2 := call_i32(inst, "add", 1, 2)
+	testing.expect(t, res2 == .Ok && r == 3, "calls run again once the hook returned")
+}
+
 @(test)
 interruption :: proc(t: ^testing.T) {
 	setup(t)

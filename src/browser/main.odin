@@ -656,70 +656,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		hold_paint(app, t, dc, b.rect, expected_canvas(app))
 		return
 	}
-	hold_commit(t)
-	scale := page_scale(app)
-	size := draw.rect_size(b.rect)
-	// an incremental layout reads what the style passes changed (layout.incremental.*)
-	ls := &page_render.settings
-	page.set_layout_journal(t.page, ls.incremental ? ls.inc_journal : 0)
-	// CSS animations and transitions sample the frame's time (pacing.odin), the live clock again between frames
-	page.set_frame_time(t.page, pacer.frame_ms)
-	pinned := t.page
-	defer page.set_frame_time(pinned, 0, unpin = true)
-	prof_begin(.Styles)
-	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
-	prof_end(.Styles)
-	hud_styles(t.page, styled)
-	first := !t.page.render.painted
-	if first {
-		// render-blocking stylesheets and fonts first (page/render_blocking.odin): meanwhile the old frame, or the canvas
-		if state, _ := page.first_paint_state(t.page); state != .Ready {
-			hold_paint(app, t, dc, b.rect, styled.canvas)
-			first_paint_wake(app, t)
-			return
-		}
-	}
-	draw.rect(dc, b.rect, to_draw(styled.canvas))
-	adopt_web_fonts(t)
-	images_before_layout(t)
-	fonts_gen := u64(t.web_fonts)
-	if layout_stale(&t.layout, t.page.doc, styled, size, scale, t.image_sizes, fonts_gen) {
-		prof_begin(.Layout)
-		failures := t.layout.inc.verify_failures
-		layout_document(&t.layout, t.page.doc, styled, &app.measure, &app.page_settings.style, size, scale, app.cfg.layout_band_px, t.image_sizes, fonts_gen)
-		prof_end(.Layout)
-		prof_layout(&t.layout)
-		if t.layout.inc.verify_failures != failures {
-			tab_log(t, .Warn, fmt.tprintf("layout.incremental.verify: incremental layout differs from a full one: %s", t.layout.inc.verify_report))
-		}
-	}
-	styled = settle_container_queries(app, t, styled, size, scale, fonts_gen)
-	images_after_layout(t, size, scale)
-	if first {
-		// the first useful paint: something to see, or nothing left to wait for once the hold is over
-		if t.hold.active && !layout_contentful(&t.layout) && hold_wait_ms(t) > 0 {
-			hold_paint(app, t, dc, b.rect, styled.canvas)
-			first_paint_wake(app, t)
-			return
-		}
-		page.first_paint_done(t.page)
-		hold_release(t)
-		prof_first_paint(t)
-	}
-	restore_tick(app, t, size)   // history_restore.odin: an entry shown again comes back where it was
-	scroll_to_fragment(t, size)
-	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
-	draw.push_clip(dc, b.rect)
-	prof_begin(.Paint_Items)
-	images_paint_begin_frame(app)
-	selection_paint_begin(app, t)
-	paint(&t.layout, dc, t.page.doc, b.rect.min, size, t.scroll, b.rect)
-	forms_paint_overlays(app, dc, b.rect)
-	images_after_paint(app)
-	shell_capture(app, t, dc, b.rect, to_draw(styled.canvas))   // shell_frames.odin: shown while the page is busy
-	prof_end(.Paint_Items)
-	draw.pop_clip(dc)
-	timing_painted(t)
+	page_paint(app, t, dc, b.rect)   // page_frame.odin
 }
 
 // HTML "scroll to the fragment": when the document URL changes (load, link to #id, location.hash, history), the view
@@ -1021,7 +958,7 @@ frame :: proc(app: ^App, idled := false) {
 	// was one, and the status bar counted it, and armed its settle wake again: two frames every half second, forever.)
 	// (a timed wake of the toolkit's, a caret blink or a tooltip delay, always draws)
 	if idled && len(events) == 0 && ran == 0 && app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && ui.wake_ms(&app.ui_state) == 0 && !app.win.paint_requested {
-		shell_page_phase_end(app)
+		shell_page_phase_end(app, nil)
 		free_all(context.temp_allocator)
 		return
 	}
@@ -1031,6 +968,7 @@ frame :: proc(app: ^App, idled := false) {
 	events = history_tree_events(app, events)   // the wheel and zoom keys of about:history's tree (history_tree.odin)
 	forms_shell_frame(app)
 	selection_shell_frame(app)
+	events = shell_after_input(app, events)   // (what is left is the chrome's: chrome frames from here on build with it)
 	prof_end(.Input)
 
 	// page visibility, then the animation frame callbacks of the page about to be painted
@@ -1044,9 +982,10 @@ frame :: proc(app: ^App, idled := false) {
 		// (the loop counts this frame off after it: 2 = this one and the next)
 		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
 	}
-	shell_page_phase_end(app)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
-	shell_snapshots_frame(app)
 	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }   // smooth_scroll.odin
+	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
+	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
+	shell_snapshots_frame(app)
 
 	render.resize(&app.r, app.win.size)
 	size := draw.Vec2{f32(app.win.size.x), f32(app.win.size.y)}
@@ -1233,6 +1172,7 @@ main :: proc() {
 	images_shell_destroy(app)
 	page.storage_manager_destroy(&app.storage)   // writes what is not saved yet
 	page.shutdown_threads()
+	page_thread_destroy()   // page_thread.odin
 	lay.shutdown_threads()
 	page.images_shutdown()   // the image cache and its decoding threads
 	page.fonts_shutdown()    // the decoded web fonts kept for every page
