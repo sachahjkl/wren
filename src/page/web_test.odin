@@ -1,12 +1,12 @@
 package page
 
-import "core:os"
 import "core:strings"
 import "core:testing"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
 import "wb:url"
+import "wb:tools/testenv"
 
 @(test)
 timer_nesting_clamp :: proc(t: ^testing.T) {
@@ -143,8 +143,8 @@ storage_quota_order_events_persistence :: proc(t: ^testing.T) {
 	fixture_init(&f)
 	defer fixture_destroy(&f)
 	dir := "build/test_storage_profile"
-	os.remove_all(dir)
-	defer os.remove_all(dir)
+	testenv.remove_tree(dir)
+	defer testenv.remove_tree(dir)
 
 	m := new(Storage_Manager)
 	defer free(m)
