@@ -689,6 +689,24 @@ setTimeout(() => log("timeout"), 1500);
 	for l in logs { if l == "moved load" { moved += 1 } }
 	check(moved == 1, fmt.tprintf("a link pointed elsewhere before its sheet came fires load once, for the new sheet (%d)", moved))
 	page.page_close(p)
+
+	// render-blocking: the parser's <link> holds the first paint back, one a script inserts does not
+	src2 := strings.concatenate({`<!doctype html><head>`, PRELUDE, `<link rel=stylesheet href="`, css("p { color: red }", 300, "parser"),
+		`" onload="log('parser link load')"></head><body><script>
+const l = document.createElement("link");
+l.rel = "stylesheet"; l.href = "`, css("p { color: blue }", 3000, "late"), `";
+document.head.appendChild(l);
+log("inserted");
+</script></body>`}, context.temp_allocator)
+	p2 := load(src2)
+	st, why := page.first_paint_state(p2)
+	check(st == .Blocked && strings.contains(why, "parser"), fmt.tprintf("the parser's stylesheet blocks the first paint (%v %s)", st, why))
+	// (the inline script waits for that stylesheet: javascript.load.scripts_wait_for_stylesheets)
+	wait_for("parser link load")
+	wait_for("inserted")
+	st, why = page.first_paint_state(p2)
+	check(st == .Ready, fmt.tprintf("a stylesheet a script inserted does not block it (%v %s)", st, why))
+	page.page_close(p2)
 }
 
 measurements :: proc() {

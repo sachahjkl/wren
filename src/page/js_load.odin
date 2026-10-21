@@ -120,6 +120,8 @@ Page_Scripts :: struct {
 	pumping:      bool,
 	modules:      ^Module_State,           // js_load_modules.odin
 	timing:       Script_Timing,
+	// <link> elements scripts inserted before the first paint: they do not block it (render_blocking.odin)
+	inserted_links: map[base.Handle]bool,
 }
 
 // When the document's life cycle steps happened (loop clock, ms): measurements and tests.
@@ -187,6 +189,7 @@ scripts_free :: proc(data: rawptr) {
 	for f in s.fetches { script_fetch_free(p, f) }
 	delete(s.fetches)
 	delete(s.flags)
+	delete(s.inserted_links)
 	delete(s.parser.queue)
 	delete(s.deferred)
 	delete(s.in_order)
@@ -935,7 +938,11 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 		c := dom.get(d, cur)
 		if c == nil { continue }
 		if is_script_element(c) { append(&found, cur) }
-		if c.kind == .Element && c.name == "link" && connected { link_changed(p) }
+		if c.kind == .Element && c.name == "link" && connected {
+			// (document.write's markup goes through the parser: its links are the parser's)
+			if !p.render.painted && s.write_depth == 0 { s.inserted_links[cur] = true }
+			link_changed(p)
+		}
 		for ch := c.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(&stack, ch) }
 	}
 	for el in found {
