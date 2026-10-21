@@ -37,8 +37,8 @@ Settings :: struct {
 PREFS := [?]config.Def{
 	{name = "network.redirect.max", kind = .Int, default = {i = 20}, bounded = true, min = 0, max = 1000,
 		description = "Redirects followed for one request before it fails (the Fetch Standard says 20)."},
-	{name = "privacy.third_party_cookies", kind = .String, default = {s = "block"}, choices = {"block", "allow"},
-		description = "block: cookies are neither sent nor stored for requests that are cross-site to the page you are on."},
+	{name = "privacy.third_party_cookies", kind = .String, default = {s = "allow"}, choices = {"block", "allow"},
+		description = "allow (Chromium's default): a frame or a request of another site than the page you are on sends and stores its cookies, SameSite rules apply (captchas, embedded videos, payment and sign-in widgets need theirs). block: cookies are neither sent nor stored for requests that are cross-site to the page you are on."},
 	{name = "network.accept_language", kind = .String, default = {s = "en-US,en;q=0.9"}, description = "The Accept-Language request header."},
 	{name = "network.referrer.default_policy", kind = .String, default = {s = "strict-origin-when-cross-origin"},
 		choices = {"no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"},

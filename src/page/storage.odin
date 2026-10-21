@@ -368,7 +368,7 @@ storage_area_of :: proc(p: ^Page, kind: Storage_Kind) -> (^Storage_Area, i32) {
 	if kind == .Local && !s.storage_local { return nil, WEB_ERR_SECURITY }
 	if kind == .Session && !s.storage_session { return nil, WEB_ERR_SECURITY }
 	if p.env.origin.opaque { return nil, WEB_ERR_SECURITY }
-	origin := url.origin_serialize(p.env.origin, context.temp_allocator)
+	origin := storage_origin_key(p)   // the origin, partitioned by the top-level site for a third-party frame (frames.odin)
 	id := origin if kind == .Local else strings.concatenate({p.web.embedder.tab_key, "\x00", origin}, context.temp_allocator)
 	a, ok := m.areas[id]
 	if !ok { a = area_new(m, id, origin, kind) }
@@ -457,7 +457,7 @@ storage_broadcast :: proc(src: ^Page, a: ^Storage_Area, key, old_value, new_valu
 	m := src.web.embedder.storage
 	for q in live_page_list() {
 		if q == src || q.web.embedder.storage != m || q.env.origin.opaque { continue }
-		if !url.same_origin(q.env.origin, src.env.origin) { continue }
+		if !url.same_origin(q.env.origin, src.env.origin) || storage_origin_key(q) != storage_origin_key(src) { continue }
 		if a.kind == .Session && q.web.embedder.tab_key != src.web.embedder.tab_key { continue }
 		t := new(Storage_Event_Task)
 		t^ = Storage_Event_Task{kind = a.kind, key = strings.clone(key), old_value = strings.clone(old_value),
@@ -480,11 +480,11 @@ storage_broadcast :: proc(src: ^Page, a: ^Storage_Area, key, old_value, new_valu
 storage_page_closed :: proc(p: ^Page) {
 	m := p.web.embedder.storage
 	if m == nil || !m.ready || p.env.origin.opaque { return }
-	origin := url.origin_serialize(p.env.origin, context.temp_allocator)
+	origin := storage_origin_key(p)
 	a, ok := m.areas[origin]
 	if !ok || a.dirty || a.state != .Loaded || m.pending > 0 { return }   // a write in flight: the file may be older than memory
 	for q in live_page_list() {
-		if q != p && q.web.embedder.storage == m && !q.env.origin.opaque && url.same_origin(q.env.origin, p.env.origin) { return }
+		if q != p && q.web.embedder.storage == m && !q.env.origin.opaque && url.same_origin(q.env.origin, p.env.origin) && storage_origin_key(q) == origin { return }
 	}
 	delete_key(&m.areas, origin)
 	area_free(a)

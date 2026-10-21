@@ -281,6 +281,12 @@ webauthn_start :: proc(c: ^Call, kind: webauthn.Ceremony_Kind, options: string, 
 	p := c.page
 	pr := promise_create(p, c.owner)
 	if !webauthn_gate(p, pr, signal) { return pr }
+	// Permissions Policy (frames.odin): a cross-origin frame uses passkeys only when its embedder delegates them
+	feature := kind == .Create ? Feature.Publickey_Credentials_Create : Feature.Publickey_Credentials_Get
+	if !feature_enabled(p, feature) {
+		reject_later(p, pr, i64(Api_Error.Not_Allowed), kind == .Create ? "NotAllowedError: 'publickey-credentials-create' is not allowed in this document (Permissions Policy: the frame's allow attribute)" : "NotAllowedError: 'publickey-credentials-get' is not allowed in this document (Permissions Policy: the frame's allow attribute)")
+		return pr
+	}
 	switch mediation {
 	case .Conditional:
 		// get: Credential Management §2.5.1 step 9 (TypeError); create: WebAuthn §5.1.3 step 20 (NotAllowedError)

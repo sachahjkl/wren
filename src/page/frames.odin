@@ -186,6 +186,17 @@ feature_enabled :: proc(p: ^Page, f: Feature) -> bool {
 	return f in p.frames.features
 }
 
+// The key of the document's Web Storage (temp): its origin, followed by "^" and the top-level site when it is a frame
+// whose site is not the tab's (frames.storage_partitioning, Chromium's and Firefox's storage partitioning).
+storage_origin_key :: proc(p: ^Page) -> string {
+	origin := url.origin_serialize(p.env.origin, context.temp_allocator)
+	if !p.settings.frames.storage_partition || p.frames == nil || p.frames.nav == nil || p.frames.nav.parent == nil { return origin }
+	if url.same_site(p.env.site, p.env.top_level_site) { return origin }
+	top := p.env.top_level_site
+	if top.opaque { return strings.concatenate({origin, "^null"}, context.temp_allocator) }
+	return strings.concatenate({origin, "^", top.scheme, "://", top.domain}, context.temp_allocator)
+}
+
 ////////////////////////////////
 // Containers: insertion, removal, attributes
 
