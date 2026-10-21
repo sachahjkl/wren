@@ -105,5 +105,19 @@ the others (grab, zoom, cell, copy...) are drawn by the browser in the same styl
   <div class="under" id="under">cursor: copy here<div class="over" id="over">pointer-events: none: the copy cursor of what is under shows</div></div>
   <div class="scroll" id="scroll">cursor: help in a scroll box; its scroll bar shows the arrow. Line 2. Line 3. Line 4. Line 5. Line 6.</div>
 </div>
+<script>
+// tools\cursor_e2e.ps1: ?rects[&y=N] keeps the page scrolled to N and the title saying where each element with an id
+// is (CSS pixels of the viewport), again every 400 ms (the window may be resized meanwhile).
+const q = new URLSearchParams(location.search);
+if (q.has("rects")) {
+  setInterval(() => {
+    scrollTo(0, +(q.get("y") || 0));
+    document.title = "rects " + [...document.querySelectorAll("[id]")].map(e => {
+      const r = e.getBoundingClientRect();
+      return `${e.id}:${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(r.height)}`;
+    }).join(";");
+  }, 400);
+}
+</script>
 </body>
 </html>
