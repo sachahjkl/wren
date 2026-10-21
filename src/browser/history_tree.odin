@@ -175,6 +175,21 @@ cam_clamp :: proc(c: Tree_Camera, extent: [2]f32, zmin, zmax: f32) -> Tree_Camer
 	return {{clamp(c.center.x, 0, max(extent.x, 0)), clamp(c.center.y, 0, max(extent.y, 0))}, clamp(c.zoom, zmin, zmax)}
 }
 
+// The view kept over the tree: along an axis where the tree (with `pad` world units around it) is larger than the
+// view, no empty space past its ends; where it is smaller, centered.
+cam_contain :: proc(c: Tree_Camera, extent, view: [2]f32, em, pad: f32) -> Tree_Camera {
+	half := view / (em * c.zoom) * 0.5
+	out := c
+	for i in 0 ..< 2 {
+		if extent[i] + pad * 2 > half[i] * 2 {
+			out.center[i] = clamp(c.center[i], half[i] - pad, extent[i] + pad - half[i])
+		} else {
+			out.center[i] = extent[i] * 0.5
+		}
+	}
+	return out
+}
+
 // The smallest move that brings the world rectangle [a, b] (with `margin` world units) into a view of `view` pixels.
 cam_reveal :: proc(c: Tree_Camera, view: [2]f32, em: f32, a, b: [2]f32, margin: f32) -> Tree_Camera {
 	half := view / (em * c.zoom) * 0.5
@@ -211,6 +226,15 @@ tree_cull :: proc(nodes: []Tree_Node, l: Tree_Layout, lo, hi: [2]f32, out: ^[dyn
 		if p.x > hi.x || p.y > hi.y || p.x + n.x < lo.x || p.y + n.y < lo.y { continue }
 		append(out, i32(i))
 	}
+}
+
+// The font size text is laid out at for an ideal size `px`: steps of about 8 % from `base` (the size at a zoom of 1,
+// which is thus exact), never above the ideal, in whole pixels. Each size is rasterized once; during a zoom the steps
+// keep that to a few dozen sizes instead of one per pixel.
+text_size_step :: proc(px, base: f32) -> f32 {
+	if px <= 0 || base <= 0 { return 1 }
+	k := math.floor(math.ln(px / base) / math.ln(f32(1.08)) + 0.001)
+	return max(min(math.round(base * math.pow(f32(1.08), k)), math.floor(px + 0.001)), 1)
 }
 
 // How much of a node is drawn, from the size of an em on screen.
@@ -475,8 +499,8 @@ tree_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	}
 
 	// nodes
-	fs := max(math.round(s), 1)
-	fs2 := max(math.round(s * 0.8), 1)
+	fs := text_size_step(s, d.em)
+	fs2 := text_size_step(s * 0.8, d.em * 0.8)
 	m1 := font.metrics(d.fonts, d.face, fs)
 	m2 := font.metrics(d.fonts, d.face, fs2)
 	radius := detail == .Block ? min(0.35 * s, 2 * d.scale) : 0.35 * s * d.rounding
@@ -809,7 +833,7 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 	d.scale = ui.scale()
 	d.rounding = st.rounding
 	d.icon_px = f32(tab_icon_px(app))
-	view.custom, view.custom_user = tree_draw, d
+	if tview.cam_ok { view.custom, view.custom_user = tree_draw, d }   // (no camera before the view has a size)
 
 	if ui.parent(view) {
 		tree_controls(m, l, extent, size, em, anims, now)
@@ -832,7 +856,8 @@ tree_initial_camera :: proc(m: ^Tree_Model, l: Tree_Layout, size: [2]f32, em: f3
 		n := m.nodes[m.current]
 		c.center = tree_node_pos(l, n.col, n.row) + NODE_SIZE * 0.5
 	}
-	return cam_clamp(c, extent, tcfg.zoom_min, tcfg.zoom_max)
+	// (the current entry is often the last one: the rest of the tree fills the view rather than empty space)
+	return cam_contain(c, extent, size, em, 1.2)
 }
 
 // Where the camera is going (the end of the move in progress, else where it is).

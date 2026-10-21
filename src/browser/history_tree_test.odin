@@ -94,6 +94,9 @@ tree_camera_math :: proc(t: ^testing.T) {
 	testing.expect(t, abs(r.center.x - (112.5 - half)) < 0.01 && r.center.y == c.center.y)
 	inside := cam_reveal(c, {800, 600}, em, {18, 9}, {19, 10}, 0)
 	testing.expect(t, inside == c)
+	// contain: a long tree shows no empty space past its end; a short one is centered across
+	ct := cam_contain({{300, 20}, 1}, {300, 40}, {800, 600}, em, 1)
+	testing.expect(t, abs(ct.center.x - (301 - 800 / em * 0.5)) < 0.01 && ct.center.y == 20)
 	mid := cam_lerp({{0, 0}, 1}, {{10, 0}, 4}, 0.5)
 	testing.expect(t, abs(mid.zoom - 2) < 0.001 && mid.center.x == 5)
 	testing.expect(t, ease_out(0) == 0 && ease_out(1) == 1 && ease_out(0.5) > 0.5)
@@ -135,6 +138,18 @@ tree_culling_and_detail :: proc(t: ^testing.T) {
 		tree_cull(m.nodes[:], l, {-500, -500}, {-400, -400}, &out)
 		testing.expect_value(t, len(out), 0)
 	}
+	// text sizes: exact at a zoom of 1, never above the ideal, few distinct sizes over a continuous zoom
+	testing.expect_value(t, text_size_step(15, 15), 15)
+	testing.expect_value(t, text_size_step(30, 15), 30)
+	sizes := make(map[f32]bool, 64, context.temp_allocator)
+	prev: f32 = 0
+	for px := f32(6); px < 60; px += 0.1 {
+		fs := text_size_step(px, 15)
+		testing.expect(t, fs <= px + 0.01 && fs >= prev, fmt.tprint(px, fs, prev))
+		prev = fs
+		sizes[fs] = true
+	}
+	testing.expect(t, len(sizes) < 40, fmt.tprint(len(sizes)))   // (54 whole pixels in that range)
 	testing.expect_value(t, tree_detail(15), Tree_Detail.Full)
 	testing.expect_value(t, tree_detail(9), Tree_Detail.Title)
 	testing.expect_value(t, tree_detail(5), Tree_Detail.Icon)

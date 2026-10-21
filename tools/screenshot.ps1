@@ -85,7 +85,8 @@ try {
         Start-Sleep -Milliseconds $ClickPauseMs
     }
     # -Actions "drag:x1,y1-x2,y2; rclick:x,y; midclick:x,y; xback:x,y; dclick:x,y; tclick:x,y; click:x,y; key:Ctrl+F; type:some text; wait:ms; shot:path.png;
-    #          hover:x,y; hovershot:path.png" (hover: the real pointer; hovershot: a capture that leaves it where it is)
+    #          hover:x,y; hovershot:path.png; mdrag:x1,y1-x2,y2; wheel:x,y,notches[,ctrl|shift]; hwheel:x,y,notches"
+    #          (hover: the real pointer; hovershot: a capture that leaves it where it is; mdrag: middle button)
     # (window-relative pixels like -Click; key: real keyboard input, so modifiers count: Ctrl+Shift+T, Shift+F10, Menu, F6...)
     $named = @{ PageUp = 0x21; PageDown = 0x22; End = 0x23; Home = 0x24; Left = 0x25; Up = 0x26; Right = 0x27; Down = 0x28; Space = 0x20; Tab = 0x09;
         Enter = 0x0D; Escape = 0x1B; Esc = 0x1B; Delete = 0x2E; Backspace = 0x08; Menu = 0x5D; Plus = 0xBB; Minus = 0xBD; Insert = 0x2D }
@@ -115,17 +116,20 @@ try {
             'rclick' { $xy = $arg -split ','; Press 0x0204 0x0205 2 $xy[0] $xy[1] 1 }
             'midclick' { $xy = $arg -split ','; Press 0x0207 0x0208 0x10 $xy[0] $xy[1] 1 }   # the middle button (closes a tab)
             'xback' { $xy = $arg -split ','; Press 0x020B 0x020C 0x10020 $xy[0] $xy[1] 1 }   # the mouse's back button (XBUTTON1)
-            'drag' {
+            { $_ -eq 'drag' -or $_ -eq 'mdrag' } {
+                # (mdrag: with the middle button)
+                $mid = $_ -eq 'mdrag'
+                $down = if ($mid) { 0x0207 } else { 0x0201 }; $upm = if ($mid) { 0x0208 } else { 0x0202 }; $mk = if ($mid) { 0x10 } else { 1 }
                 $ends = $arg -split '-'; $p1 = $ends[0] -split ','; $p2 = $ends[1] -split ','
                 $lp = ClientLp $p1[0] $p1[1]
                 [SH]::PostMessage($h, 0x0200, [IntPtr]::Zero, $lp) | Out-Null; Start-Sleep -Milliseconds 60
-                [SH]::PostMessage($h, 0x0201, [IntPtr]1, $lp) | Out-Null; Start-Sleep -Milliseconds 60
+                [SH]::PostMessage($h, $down, [IntPtr]$mk, $lp) | Out-Null; Start-Sleep -Milliseconds 60
                 for ($s = 1; $s -le 12; $s++) {
                     $x = [int]$p1[0] + ([int]$p2[0] - [int]$p1[0]) * $s / 12; $y = [int]$p1[1] + ([int]$p2[1] - [int]$p1[1]) * $s / 12
-                    [SH]::PostMessage($h, 0x0200, [IntPtr]1, (ClientLp $x $y)) | Out-Null; Start-Sleep -Milliseconds 30
+                    [SH]::PostMessage($h, 0x0200, [IntPtr]$mk, (ClientLp $x $y)) | Out-Null; Start-Sleep -Milliseconds 30
                 }
                 Start-Sleep -Milliseconds 100
-                [SH]::PostMessage($h, 0x0202, [IntPtr]::Zero, (ClientLp $p2[0] $p2[1])) | Out-Null
+                [SH]::PostMessage($h, $upm, [IntPtr]::Zero, (ClientLp $p2[0] $p2[1])) | Out-Null
             }
             'key' {
                 $parts = $arg -split '\+'
@@ -175,6 +179,22 @@ try {
                 if ([SH]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [SH]::GetWindowRect($h, [ref]$r) | Out-Null }
                 [SH]::SetCursorPos($(if ([int]$xy[0] -lt 0) { $r.R } else { $r.L }) + [int]$xy[0], $r.T + [int]$xy[1]) | Out-Null; Start-Sleep -Milliseconds 120
                 for ($i = 0; $i -lt 2; $i++) { [SH]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 30; [SH]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 60 }
+            }
+            # wheel:x,y,delta[,ctrl|shift] / hwheel:x,y,delta: a wheel turn at a window-relative point, in notches (fractions
+            # too, as a touchpad sends; negative: towards the user / to the left); ctrl / shift travel with the message (MK_*)
+            # as a real wheel's do, which is also how Windows sends a touchpad's pinch (Ctrl+wheel)
+            { $_ -eq 'wheel' -or $_ -eq 'hwheel' } {
+                $f = $arg -split ','
+                $r = New-Object SH+RECT
+                if ([SH]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [SH]::GetWindowRect($h, [ref]$r) | Out-Null }
+                $sx = $r.L + [int]$f[0]; $sy = $r.T + [int]$f[1]
+                $lpc = ClientLp $f[0] $f[1]
+                [SH]::PostMessage($h, 0x0200, [IntPtr]::Zero, $lpc) | Out-Null; Start-Sleep -Milliseconds 40
+                $mk = 0; if ($f.Count -gt 3) { if ($f[3] -eq 'ctrl') { $mk = 0x8 } elseif ($f[3] -eq 'shift') { $mk = 0x4 } }
+                $d = [int]([double]$f[2] * 120); if ($_ -eq 'wheel') { $d = -$d }   # (+delta: content moves on, as Event.delta)
+                $wp = [IntPtr][long]((($d -band 0xFFFF) -shl 16) -bor $mk)
+                $lp = [IntPtr][long]((($sy -band 0xFFFF) -shl 16) -bor ($sx -band 0xFFFF))   # (screen coordinates)
+                [SH]::PostMessage($h, $(if ($_ -eq 'wheel') { 0x020A } else { 0x020E }), $wp, $lp) | Out-Null
             }
             'max' { [SH]::PostMessage($h, 0x0112, [IntPtr]0xF030, [IntPtr]::Zero) | Out-Null }       # WM_SYSCOMMAND SC_MAXIMIZE
             'restore' { [SH]::PostMessage($h, 0x0112, [IntPtr]0xF120, [IntPtr]::Zero) | Out-Null }   # SC_RESTORE
