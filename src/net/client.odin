@@ -126,7 +126,7 @@ Client :: struct {
 // `settings` zero value = the defaults (what about:config shows).
 client_init :: proc(c: ^Client, loop: ^host.Loop, settings: Settings = {}) -> bool {
 	c.loop = loop
-	c.settings = settings.max_total == 0 ? settings_default() : settings
+	c.settings = settings.max_total == 0 ? settings_default(context.temp_allocator) : settings
 	c.settings.user_agent = strings.clone(c.settings.user_agent)   // the client owns its copy
 	c.events = make([dynamic]Event, heap())    // appended to from WinHTTP threads
 	c.scratch = make([dynamic]Event, heap())
