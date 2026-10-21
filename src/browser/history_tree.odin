@@ -300,7 +300,7 @@ Drag :: struct {
 	panning: bool,
 	start, last: [2]f32,
 	node:    u64,               // the entry pressed (0: the background)
-	samples: [6][3]f32,         // (x, y, ms) of the last moves: the glide's speed
+	samples: [6][3]f64,         // (x, y, ms) of the last moves: the glide's speed
 	n:       int,
 }
 
@@ -384,9 +384,8 @@ history_tree_toolbar :: proc(app: ^App) {
 
 tree_set_layout :: proc(app: ^App, l: Tree_Layout) {
 	if l == tcfg.layout { return }
-	if config.set_from_string(&app.prefs, "browser.history.tree_layout", l == .Vertical ? "vertical" : "horizontal", .User) != .None {
-		tcfg.layout = l   // (locked by a policy: for this session only)
-	}
+	// (locked by a policy, the preference stays: the layout changes for this session only)
+	_ = config.set_from_string(&app.prefs, "browser.history.tree_layout", l == .Vertical ? "vertical" : "horizontal", .User)
 	tcfg.layout = l
 	app.frames_requested = max(app.frames_requested, 2)
 }
@@ -739,7 +738,7 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 					dr.last = mouse
 				}
 				if dr.panning {
-					dr.samples[dr.n % len(dr.samples)] = {mouse.x, mouse.y, f32(now)}
+					dr.samples[dr.n % len(dr.samples)] = {f64(mouse.x), f64(mouse.y), now}
 					dr.n += 1
 				}
 				busy = true
@@ -917,16 +916,16 @@ tree_glide_start :: proc(dr: ^Drag, now: f64) {
 	count := min(dr.n, len(dr.samples))
 	if count < 2 { return }
 	last := dr.samples[(dr.n - 1) % len(dr.samples)]
-	if now - f64(last[2]) > 60 { return }
+	if now - last[2] > 60 { return }
 	first := last
 	for i in 1 ..< count {
 		s := dr.samples[(dr.n - 1 - i) % len(dr.samples)]
-		if f64(last[2] - s[2]) > 80 { break }
+		if last[2] - s[2] > 80 { break }
 		first = s
 	}
 	span := (last[2] - first[2]) / 1000
 	if span <= 0.004 { return }
-	tview.vel = {(last[0] - first[0]) / span, (last[1] - first[1]) / span}
+	tview.vel = {f32((last[0] - first[0]) / span), f32((last[1] - first[1]) / span)}
 	tview.gliding = true
 }
 
