@@ -189,9 +189,10 @@ wt_ticker_main :: proc(_: rawptr) {
 			sync.futex_wait(&wt.running, 0)
 			continue
 		}
-		time.sleep(time.Duration(wt.rs.epoch_tick_ms) * time.Millisecond)
+		ticker_sleep(ticker_period_ms())   // preempt.odin
 		wasmtime_engine_increment_epoch(wt.engine)
 	}
+	ticker_sleep_destroy()
 }
 
 // A function import the browser cannot satisfy (unknown name, or known with another type) traps when called: the
@@ -272,6 +273,10 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 		return wasmtime_error_new("interrupted: the call ran longer than wasm.max_call_ms")
 	}
 	if inst.wt.profiler != nil { profile_sample(inst) }
+	if preempt.hook != nil {
+		context = runtime.default_context()
+		preempt_tick(inst)   // preempt.odin: the embedder's turn on this thread
+	}
 	delta^ = 1
 	kind^ = WT_UPDATE_DEADLINE_CONTINUE
 	return nil
@@ -403,6 +408,11 @@ wt_enter :: proc(inst: ^Instance) -> bool {
 	s := &inst.wt
 	if inst.opt.stop != nil && sync.atomic_load(inst.opt.stop) {
 		set_error(inst, "interrupted: the module is being stopped")
+		return false
+	}
+	if preempt.preempting && sync.current_thread_id() == preempt.thread {
+		// (preempt.odin) the embedder runs between two instructions of another call of this thread
+		set_error(inst, "refused: the browser is between two instructions of another call on this thread")
 		return false
 	}
 	if inst.depth == 0 {

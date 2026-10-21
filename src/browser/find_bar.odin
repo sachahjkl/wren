@@ -104,6 +104,7 @@ fold :: proc(s: string, exact: bool) -> (out: string, back: []i32) {
 // (Re)computes the matches when the text searched, the page or its content changed.
 @(private = "file")
 find_update :: proc(app: ^App, t: ^Tab) {
+	if shell_nested() { return }   // a chrome frame (shell_frames.odin): the page may be mid-pass; searched afterwards
 	if t == nil || t.page == nil || t.kind != .Web { find_clear_matches(); find.page = nil; return }
 	p := t.page
 	q := ui.field_string(&find.field)
