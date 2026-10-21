@@ -19,7 +19,7 @@ psl_once: sync.Once
 // Rules are keyed by their ASCII (punycode) form without the leading "*." or "!".
 @(private)
 psl_init :: proc() {
-	context.allocator = base.process_allocator()   // process-lifetime cache
+	context.allocator = base.permanent_allocator()   // built once, kept until the process ends
 	psl_rules = make(map[string]Rule, 16384, context.allocator)
 	data := PSL_DATA
 	for line in strings.split_lines_iterator(&data) {
@@ -38,12 +38,16 @@ psl_init :: proc() {
 	}
 }
 
-// IDNA ToASCII through the URL parser; plain ASCII is lower-cased without a round trip.
+// IDNA ToASCII through the URL parser; plain ASCII is lower-cased without a round trip, and is the embedded list itself
+// when it already is (the list is lower case: no copy).
 @(private)
 to_ascii_host :: proc(s: string) -> string {
-	ascii := true
-	for c in s { if c >= 0x80 { ascii = false; break } }
-	if ascii { return strings.to_lower(s) }
+	ascii, lower := true, true
+	for c in s {
+		if c >= 0x80 { ascii = false; break }
+		if c >= 'A' && c <= 'Z' { lower = false }
+	}
+	if ascii { return lower ? s : strings.to_lower(s) }
 	u, ok := parse(strings.concatenate({"https://", s, "/"}, context.temp_allocator), nil, context.temp_allocator)
 	if !ok { return "" }
 	return strings.clone(u.host)
