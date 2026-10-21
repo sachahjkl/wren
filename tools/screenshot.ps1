@@ -118,7 +118,7 @@ try {
     }
     # -Actions "drag:x1,y1-x2,y2; rclick:x,y; midclick:x,y; xback:x,y; dclick:x,y; tclick:x,y; click:x,y; key:Ctrl+F; type:some text; wait:ms; shot:path.png;
     #          hover:x,y; hovershot:path.png; mdrag:x1,y1-x2,y2; wheel:x,y,notches[,ctrl|shift]; hwheel:x,y,notches;
-    #          cursorshot:path.png; rdown:x,y; rmove:x,y; rup"
+    #          cursorshot:path.png (pshot: the same); rdown:x,y; rmove:x,y; rup"
     #          (hover: the real pointer; hovershot: a capture that leaves it where it is; mdrag: middle button)
     # (window-relative pixels like -Click; key: real keyboard input, so modifiers count: Ctrl+Shift+T, Shift+F10, Menu, F6...)
     $named = @{ PageUp = 0x21; PageDown = 0x22; End = 0x23; Home = 0x24; Left = 0x25; Up = 0x26; Right = 0x27; Down = 0x28; Space = 0x20; Tab = 0x09;
@@ -176,8 +176,12 @@ try {
                 }
                 if ([SH]::GetForegroundWindow() -ne $h) { throw "the browser window is not in the foreground: keys not sent" }
                 foreach ($m in $mods) { [SH]::keybd_event([byte]$m, 0, 0, [IntPtr]::Zero) }
-                [SH]::keybd_event([byte]$code, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 30
-                [SH]::keybd_event([byte]$code, 0, 2, [IntPtr]::Zero)
+                # the keys of the navigation block are extended keys: without the flag they are the numeric keypad's,
+                # and Shift + a keypad key with Num Lock on comes with a fake Shift release (Shift+Delete would lose
+                # its Shift)
+                $ext = if (@(0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x2D, 0x2E, 0x5D) -contains $code) { 1 } else { 0 }
+                [SH]::keybd_event([byte]$code, 0, $ext, [IntPtr]::Zero); Start-Sleep -Milliseconds 30
+                [SH]::keybd_event([byte]$code, 0, 2 -bor $ext, [IntPtr]::Zero)
                 foreach ($m in $mods) { [SH]::keybd_event([byte]$m, 0, 2, [IntPtr]::Zero) }
             }
             'vkey' {
@@ -200,7 +204,7 @@ try {
             }
             'hovershot' { Start-Sleep -Milliseconds $SettleMs; Grab $h $arg }
             # cursorshot:path: a capture with the pointer drawn in (the cursor the system shows now, at its place)
-            'cursorshot' { Start-Sleep -Milliseconds $SettleMs; Grab $h $arg $true }
+            { $_ -eq 'cursorshot' -or $_ -eq 'pshot' } { Start-Sleep -Milliseconds $SettleMs; Grab $h $arg $true }
             # the real left button: rdown:x,y presses there, rmove:x,y moves (in 8 steps) with it held, rup releases
             'rdown' {
                 $xy = $arg -split ','; $r = New-Object SH+RECT

@@ -874,9 +874,11 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			t.scroll_target = pressed
 			allowed := forms_pointer_down(app, t, ev, pressed, local)
 			if t.page == nil { return }
+			if ev.button == .Left { page_set_active(t.page, pressed) }   // :active while the button is held
 			if ev.button == .Left { selection_pointer_down(app, t, ev, pressed, allowed) }
 			if ev.button == .Right { page_context_press(app, t, ev.pos) }
 		case .Mouse_Release:
+			if ev.button == .Left { page_set_active(t.page, base.NIL_HANDLE) }
 			if !t.layout.valid { continue }
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
 			released := inside ? hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) : base.NIL_HANDLE
@@ -1173,6 +1175,7 @@ main :: proc() {
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
 	hud_init(app)
+	urlbar_init(app)   // urlbar.odin: the address bar's suggestions
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
 	app.win.user = app
@@ -1199,6 +1202,7 @@ main :: proc() {
 	profile_save(app, force = true)
 	bfcache_shutdown(app)
 	for t in app.tabs { tab_nav_destroy(app, t) }
+	urlbar_destroy(app)   // urlbar.odin
 	global_history_shutdown(app)
 	history_ui_destroy()
 	history_settings_shutdown(app)

@@ -100,6 +100,7 @@ HOME_TEMPLATE :: `<!doctype html>
   .grid { max-width: 640px; margin: 26px auto 0; }
   .card { display: block; margin: 14px 0; padding: 18px 24px 18px; background-color: #131825; border: 1px solid #232b40; border-radius: 14px; color: #c9d1e3; text-decoration: none; }
   .card:hover { background-color: #19203a; border-color: #ffb84d; }
+  .card:active { background-color: #20294a; }
   .card h3 { margin: 0 0 4px; font-size: 19px; color: #ffb84d; }
   .card p { margin: 0; color: #8993ad; }
   .card .where { color: #4f5a78; font-size: 13px; margin-top: 8px; }
@@ -116,6 +117,7 @@ HOME_TEMPLATE :: `<!doctype html>
     .hint b { color: #2b3245; }
     .card { background-color: #ffffff; border-color: #e0e4ee; color: #2b3245; }
     .card:hover { background-color: #fff8ec; border-color: #d98200; }
+    .card:active { background-color: #ffefd2; }
     .card h3 { color: #b86e00; }
     .card p { color: #5d6680; }
     .card .where { color: #8a93aa; }

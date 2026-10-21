@@ -289,6 +289,7 @@ DEMOS_STYLE :: `
   .demo h3 { margin: 0 0 4px; font-size: 16px; }
   .demo h3 a { color: #f1f4fb; text-decoration: none; }
   .demo h3 a:hover { color: #ffb84d; }
+  .demo h3 a:active { color: #ffd699; }
   .demo h3 .off { color: #8993ad; }
   .demo p { margin: 0; color: #8993ad; line-height: 1.4; }
   .demo code { color: #c9d1e3; background-color: #1b2132; padding: 0 3px; border-radius: 3px; }
