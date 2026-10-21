@@ -131,24 +131,43 @@ parse_cursor :: proc(cx: ^Cx, vs: []css.Value, c: ^Computed) -> bool {
 	kw, ok := cursor_keyword(last[0])
 	if !ok { return false }
 	images := make([dynamic]Cursor_Image, 0, len(parts) - 1, cx.alloc)
+	// url(), image-set(), or light-dark() of two of them (CSS Color 5: the branch of the element's used color scheme)
+	image_of :: proc(cx: ^Cx, v: css.Value, nested := false) -> ([]Cursor_Image_Src, bool) {
+		if u, ok := cursor_url_of(v); ok {
+			srcs := make([]Cursor_Image_Src, 1, cx.alloc)
+			srcs[0] = {url = strings.clone(u, cx.alloc), density = 1}
+			return srcs, true
+		}
+		if v.kind != .Function { return nil, false }
+		if strings.equal_fold(v.tok.text, "image-set") || strings.equal_fold(v.tok.text, "-webkit-image-set") { return cursor_image_set(cx, v) }
+		if strings.equal_fold(v.tok.text, "light-dark") && !nested {
+			args := css.split_commas(v.children, context.temp_allocator)
+			if len(args) != 2 { return nil, false }
+			branch: [2][]Cursor_Image_Src
+			for a, i in args {
+				it := css.trim_values(a)
+				if len(it) != 1 { return nil, false }
+				s, ok := image_of(cx, it[0], true)
+				if !ok { return nil, false }
+				branch[i] = s
+			}
+			return branch[cx.cenv.dark ? 1 : 0], true
+		}
+		return nil, false
+	}
 	for part in parts[:len(parts) - 1] {
 		items := split_items(part)
 		if len(items) != 1 && len(items) != 3 { return false }
 		img: Cursor_Image
-		if u, uok := cursor_url_of(items[0]); uok {
-			srcs := make([]Cursor_Image_Src, 1, cx.alloc)
-			srcs[0] = {url = strings.clone(u, cx.alloc), density = 1}
-			img.srcs = srcs
-		} else if items[0].kind == .Function && (strings.equal_fold(items[0].tok.text, "image-set") || strings.equal_fold(items[0].tok.text, "-webkit-image-set")) {
-			srcs, sok := cursor_image_set(cx, items[0])
-			if !sok { return false }
-			img.srcs = srcs
-		} else {
-			return false
-		}
+		srcs, iok := image_of(cx, items[0])
+		if !iok { return false }
+		img.srcs = srcs
 		if len(items) == 3 {
-			if !tok_is(items[1], .Number) || !tok_is(items[2], .Number) { return false }
-			img.hotspot = {f32(items[1].tok.num), f32(items[2].tok.num)}
+			// <number>s, calc() included (not lengths, not percentages)
+			x, xok := number_of(items[1])
+			y, yok := number_of(items[2])
+			if !xok || !yok { return false }
+			img.hotspot = {f32(x), f32(y)}
 			img.has_hotspot = true
 		}
 		append(&images, img)

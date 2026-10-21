@@ -71,8 +71,11 @@ cursor_values :: proc(t: ^testing.T) {
 		#j { cursor: -WEBKIT-ZOOM-OUT }
 		#p { cursor: help } #p span { }
 		#q { cursor: url(q.png) 1 2, copy }
+		#k { cursor: light-dark(url(l.png), image-set("d.png" 1x)) 1 calc(2 + 3), pointer }
+		#kd { color-scheme: dark; cursor: light-dark(url(l.png), url(d.png)), pointer }
+		#m { cursor: pointer; cursor: url(x.png) 10% 4, move }   /* percentages: invalid */
 	</style>
-	<p id=a></p><p id=b></p><p id=c></p><p id=d></p><p id=e></p><p id=f></p><p id=g></p><p id=h></p><p id=i></p><p id=j></p>
+	<p id=a></p><p id=b></p><p id=c></p><p id=d></p><p id=e></p><p id=f></p><p id=g></p><p id=h></p><p id=i></p><p id=j></p><p id=k></p><p id=kd></p><p id=m></p>
 	<div id=p><span id=kid>x</span></div><div id=q><span id=qkid>x</span></div><p id=z></p>`)
 	defer close_doc(&d)
 
@@ -108,7 +111,7 @@ cursor_values :: proc(t: ^testing.T) {
 		srcs := dd.cursor_images[0].srcs
 		testing.expectf(t, len(srcs) == 1 && srcs[0].url == "e.png" && srcs[0].density == 2, "192dpi = 2x, the unknown type left out (%v)", srcs)
 	}
-	for id in ([]string{"e", "f", "g", "h", "i"}) {
+	for id in ([]string{"e", "f", "g", "h", "i", "m"}) {
 		x := el(&d, id)
 		testing.expectf(t, x.cursor == .Pointer && x.cursor_images == nil, "#%s: invalid, the earlier declaration stands (%v)", id, x.cursor)
 	}
@@ -117,4 +120,9 @@ cursor_values :: proc(t: ^testing.T) {
 	qk := el(&d, "qkid")
 	testing.expect(t, qk.cursor == .Copy && len(qk.cursor_images) == 1 && qk.cursor_images[0].srcs[0].url == "q.png", "images inherited with the keyword")
 	testing.expect(t, el(&d, "z").cursor == .Auto, "initial: auto")
+	k := el(&d, "k")
+	testing.expect(t, len(k.cursor_images) == 1 && k.cursor_images[0].srcs[0].url == "l.png" && k.cursor_images[0].hotspot == {1, 5}, "light-dark(): the light branch; calc() in the hotspot")
+	kd := el(&d, "kd")
+	testing.expect(t, len(kd.cursor_images) == 1 && kd.cursor_images[0].srcs[0].url == "d.png", "light-dark(): the dark branch in a dark element")
+	testing.expect(t, el(&d, "m").cursor == .Pointer, "a percentage hotspot: invalid")
 }

@@ -1,0 +1,350 @@
+# web-platform-tests expectations of Wren for css/css-ui, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/css/css-ui/parsing/box-sizing-computed.html: OK
+	Property box-sizing value 'border-box': PASS
+	Property box-sizing value 'content-box': PASS
+/css/css-ui/parsing/box-sizing-invalid.html: OK
+	e.style['box-sizing'] = "auto" should not set the property value: PASS
+	e.style['box-sizing'] = "content-box border-box" should not set the property value: PASS
+	e.style['box-sizing'] = "fill-box" should not set the property value: PASS
+	e.style['box-sizing'] = "margin-box" should not set the property value: PASS
+	e.style['box-sizing'] = "padding-box" should not set the property value: PASS
+	e.style['box-sizing'] = "view-box" should not set the property value: PASS
+/css/css-ui/parsing/box-sizing-valid.html: OK
+	e.style['box-sizing'] = "border-box" should set the property value: PASS
+	e.style['box-sizing'] = "content-box" should set the property value: PASS
+/css/css-ui/parsing/canonical-order-outline-sub-properties-001.html: OK
+	testing outline: 4px: FAIL
+	testing outline: 4px dotted black: FAIL
+	testing outline: 4px dotted invert: FAIL
+	testing outline: 5px blue: FAIL
+	testing outline: 5px blue dashed: FAIL
+	testing outline: 5px invert: FAIL
+	testing outline: 5px invert dashed: FAIL
+	testing outline: 6px dashed: FAIL
+	testing outline: black 4px: FAIL
+	testing outline: black solid 6px: FAIL
+	testing outline: blue: FAIL
+	testing outline: blue 4px dotted: FAIL
+	testing outline: blue solid: FAIL
+	testing outline: dashed 5px black: FAIL
+	testing outline: dashed 5px invert: FAIL
+	testing outline: dotted blue: FAIL
+	testing outline: dotted invert: FAIL
+	testing outline: invert: FAIL
+	testing outline: invert 4px: FAIL
+	testing outline: invert 4px dotted: FAIL
+	testing outline: invert solid: FAIL
+	testing outline: invert solid 6px: FAIL
+	testing outline: solid: FAIL
+	testing outline: solid 5px: FAIL
+	testing outline: solid blue 6px: FAIL
+	testing outline: solid invert 6px: FAIL
+/css/css-ui/parsing/caret-color-computed.html: OK
+	Property caret-color value 'auto auto': FAIL
+	Property caret-color value 'auto currentcolor': FAIL
+	Property caret-color value 'auto rgb(0, 255, 0)': FAIL
+	Property caret-color value 'auto': FAIL
+	Property caret-color value 'currentColor': FAIL
+	Property caret-color value 'currentcolor currentcolor': FAIL
+	Property caret-color value 'currentcolor red': FAIL
+	Property caret-color value 'red rgb(0, 255, 0)': FAIL
+	Property caret-color value 'red transparent': FAIL
+	Property caret-color value 'red': FAIL
+	Property caret-color value 'rgb(0, 255, 0) auto': FAIL
+	Property caret-color value 'transparent': FAIL
+/css/css-ui/parsing/caret-color-invalid.html: OK
+	e.style['caret-color'] = "50%" should not set the property value: PASS
+	e.style['caret-color'] = "auto !" should not set the property value: PASS
+	e.style['caret-color'] = "auto auto auto" should not set the property value: PASS
+	e.style['caret-color'] = "invert" should not set the property value: PASS
+	e.style['caret-color'] = "none" should not set the property value: PASS
+	e.style['caret-color'] = "red  50%" should not set the property value: PASS
+	e.style['caret-color'] = "red  invert" should not set the property value: PASS
+	e.style['caret-color'] = "red  none" should not set the property value: PASS
+	e.style['caret-color'] = "red /" should not set the property value: PASS
+	e.style['caret-color'] = "red green blue yellow" should not set the property value: PASS
+	e.style['caret-color'] = "red green blue" should not set the property value: PASS
+	e.style['caret-color'] = "red, green" should not set the property value: PASS
+/css/css-ui/parsing/caret-color-valid.html: OK
+	e.style['caret-color'] = "auto auto" should set the property value: FAIL
+	e.style['caret-color'] = "auto rgba(10, 20, 30, 0.4)" should set the property value: FAIL
+	e.style['caret-color'] = "auto transparent" should set the property value: FAIL
+	e.style['caret-color'] = "auto" should set the property value: PASS
+	e.style['caret-color'] = "currentcolor auto" should set the property value: FAIL
+	e.style['caret-color'] = "currentcolor currentcolor" should set the property value: FAIL
+	e.style['caret-color'] = "inherit" should set the property value: PASS
+	e.style['caret-color'] = "initial" should set the property value: PASS
+	e.style['caret-color'] = "revert" should set the property value: PASS
+	e.style['caret-color'] = "revert-layer" should set the property value: PASS
+	e.style['caret-color'] = "rgba(10, 20, 30, 0.4) auto" should set the property value: FAIL
+	e.style['caret-color'] = "rgba(10, 20, 30, 0.4)" should set the property value: PASS
+	e.style['caret-color'] = "transparent transparent" should set the property value: FAIL
+	e.style['caret-color'] = "transparent" should set the property value: PASS
+	e.style['caret-color'] = "unset" should set the property value: PASS
+/css/css-ui/parsing/cursor-computed.html: OK
+	Property cursor value 'alias': PASS
+	Property cursor value 'all-scroll': PASS
+	Property cursor value 'auto': PASS
+	Property cursor value 'cell': PASS
+	Property cursor value 'col-resize': PASS
+	Property cursor value 'conic-gradient(from 3.1416rad at 20% 20%, red, blue), crosshair': FAIL
+	Property cursor value 'context-menu': PASS
+	Property cursor value 'copy': PASS
+	Property cursor value 'crosshair': PASS
+	Property cursor value 'default': PASS
+	Property cursor value 'e-resize': PASS
+	Property cursor value 'ew-resize': PASS
+	Property cursor value 'grab': PASS
+	Property cursor value 'grabbing': PASS
+	Property cursor value 'help': PASS
+	Property cursor value 'linear-gradient(200grad, red 10%, blue calc(75% - 2px)), auto': FAIL
+	Property cursor value 'move': PASS
+	Property cursor value 'n-resize': PASS
+	Property cursor value 'ne-resize': PASS
+	Property cursor value 'nesw-resize': PASS
+	Property cursor value 'no-drop': PASS
+	Property cursor value 'none': PASS
+	Property cursor value 'not-allowed': PASS
+	Property cursor value 'ns-resize': PASS
+	Property cursor value 'nw-resize': PASS
+	Property cursor value 'nwse-resize': PASS
+	Property cursor value 'pointer': PASS
+	Property cursor value 'progress': PASS
+	Property cursor value 'radial-gradient(farthest-side at calc(5px + 10%), red, blue), pointer': FAIL
+	Property cursor value 'row-resize': PASS
+	Property cursor value 's-resize': PASS
+	Property cursor value 'se-resize': PASS
+	Property cursor value 'sw-resize': PASS
+	Property cursor value 'text': PASS
+	Property cursor value 'vertical-text': PASS
+	Property cursor value 'w-resize': PASS
+	Property cursor value 'wait': PASS
+	Property cursor value 'zoom-in': PASS
+	Property cursor value 'zoom-out': PASS
+/css/css-ui/parsing/cursor-invalid.html: OK
+	e.style['cursor'] = "1 2 url(\\"https://example.com/\\"), copy" should not set the property value: PASS
+	e.style['cursor'] = "en-resize" should not set the property value: PASS
+	e.style['cursor'] = "light-dark(linear-gradient(red), none), pointer" should not set the property value: PASS
+	e.style['cursor'] = "light-dark(radial-gradient(red), url(\\"https://example.com/\\")), pointer" should not set the property value: PASS
+	e.style['cursor'] = "light-dark(url(\\"https://example.com/\\"), linear-gradient(red)), pointer" should not set the property value: PASS
+	e.style['cursor'] = "linear-gradient(red), pointer" should not set the property value: PASS
+	e.style['cursor'] = "url(\\"https://example.com/\\") 1px 2px, copy" should not set the property value: PASS
+	e.style['cursor'] = "url(\\"https://example.com/\\") alias" should not set the property value: PASS
+	e.style['cursor'] = "url(\\"https://example.com/\\"), url(\\"https://example.com/\\") 3% 4%, move" should not set the property value: PASS
+	e.style['cursor'] = "url(\\"https://example.com/\\"), url(\\"https://example.com/\\") 3, move" should not set the property value: PASS
+/css/css-ui/parsing/cursor-valid.html: OK
+	e.style['cursor'] = "alias" should set the property value: PASS
+	e.style['cursor'] = "all-scroll" should set the property value: PASS
+	e.style['cursor'] = "auto" should set the property value: PASS
+	e.style['cursor'] = "cell" should set the property value: PASS
+	e.style['cursor'] = "col-resize" should set the property value: PASS
+	e.style['cursor'] = "context-menu" should set the property value: PASS
+	e.style['cursor'] = "copy" should set the property value: PASS
+	e.style['cursor'] = "crosshair" should set the property value: PASS
+	e.style['cursor'] = "default" should set the property value: PASS
+	e.style['cursor'] = "e-resize" should set the property value: PASS
+	e.style['cursor'] = "ew-resize" should set the property value: PASS
+	e.style['cursor'] = "grab" should set the property value: PASS
+	e.style['cursor'] = "grabbing" should set the property value: PASS
+	e.style['cursor'] = "help" should set the property value: PASS
+	e.style['cursor'] = "image-set(\\"https://example.com/\\" 1x) 5 6, grab" should set the property value: FAIL
+	e.style['cursor'] = "image-set(\\"https://example.com/\\" 1x, \\"https://example.com/highres\\" 2x) 5 6, grab" should set the property value: FAIL
+	e.style['cursor'] = "light-dark(image-set(\\"https://example.com/\\" 1x), url(\\"https://example.com/\\")) 5 6, grab" should set the property value: FAIL
+	e.style['cursor'] = "light-dark(url(\\"https://example.com/light\\"), url(\\"https://example.com/dark\\")) 5 6, grab" should set the property value: PASS
+	e.style['cursor'] = "light-dark(url(\\"https://example.com/light\\"), url(\\"https://example.com/dark\\")), pointer" should set the property value: PASS
+	e.style['cursor'] = "move" should set the property value: PASS
+	e.style['cursor'] = "n-resize" should set the property value: PASS
+	e.style['cursor'] = "ne-resize" should set the property value: PASS
+	e.style['cursor'] = "nesw-resize" should set the property value: PASS
+	e.style['cursor'] = "no-drop" should set the property value: PASS
+	e.style['cursor'] = "none" should set the property value: PASS
+	e.style['cursor'] = "not-allowed" should set the property value: PASS
+	e.style['cursor'] = "ns-resize" should set the property value: PASS
+	e.style['cursor'] = "nw-resize" should set the property value: PASS
+	e.style['cursor'] = "nwse-resize" should set the property value: PASS
+	e.style['cursor'] = "pointer" should set the property value: PASS
+	e.style['cursor'] = "progress" should set the property value: PASS
+	e.style['cursor'] = "row-resize" should set the property value: PASS
+	e.style['cursor'] = "s-resize" should set the property value: PASS
+	e.style['cursor'] = "se-resize" should set the property value: PASS
+	e.style['cursor'] = "sw-resize" should set the property value: PASS
+	e.style['cursor'] = "text" should set the property value: PASS
+	e.style['cursor'] = "url(\\"https://example.com/\\") 1 calc(2 + 0), copy" should set the property value: FAIL
+	e.style['cursor'] = "url(\\"https://example.com/\\") 5 6, grab" should set the property value: PASS
+	e.style['cursor'] = "url(\\"https://example.com/\\"), alias" should set the property value: PASS
+	e.style['cursor'] = "url(\\"https://example.com/\\"), light-dark(url(\\"https://example.com/light\\"), url(\\"https://example.com/dark\\")) 3 4, move" should set the property value: PASS
+	e.style['cursor'] = "url(\\"https://example.com/\\"), url(\\"https://example.com/\\") 3 -4, move" should set the property value: PASS
+	e.style['cursor'] = "vertical-text" should set the property value: PASS
+	e.style['cursor'] = "w-resize" should set the property value: PASS
+	e.style['cursor'] = "wait" should set the property value: PASS
+	e.style['cursor'] = "zoom-in" should set the property value: PASS
+	e.style['cursor'] = "zoom-out" should set the property value: PASS
+/css/css-ui/parsing/field-sizing-computed.html: OK
+	Property field-sizing value 'content': FAIL
+	Property field-sizing value 'fixed': FAIL
+/css/css-ui/parsing/field-sizing-invalid.html: OK
+	e.style['field-sizing'] = "100%" should not set the property value: PASS
+	e.style['field-sizing'] = "10px" should not set the property value: PASS
+	e.style['field-sizing'] = "auto" should not set the property value: PASS
+	e.style['field-sizing'] = "legacy" should not set the property value: PASS
+	e.style['field-sizing'] = "none" should not set the property value: PASS
+	e.style['field-sizing'] = "normal auto" should not set the property value: PASS
+	e.style['field-sizing'] = "normal" should not set the property value: PASS
+/css/css-ui/parsing/field-sizing-valid.html: OK
+	e.style['field-sizing'] = "content" should set the property value: FAIL
+	e.style['field-sizing'] = "fixed" should set the property value: FAIL
+/css/css-ui/parsing/interactivity-computed.html: ERROR
+	Property interactivity value 'auto': FAIL
+	Property interactivity value 'inert': FAIL
+/css/css-ui/parsing/interactivity.html: OK
+	e.style['interactivity'] = "auto inert" should not set the property value: PASS
+	e.style['interactivity'] = "auto" should set the property value: FAIL
+	e.style['interactivity'] = "inert" should set the property value: FAIL
+	e.style['interactivity'] = "inherit" should set the property value: FAIL
+	e.style['interactivity'] = "initial" should set the property value: FAIL
+	e.style['interactivity'] = "none" should not set the property value: PASS
+	e.style['interactivity'] = "normal" should not set the property value: PASS
+	e.style['interactivity'] = "revert" should set the property value: FAIL
+	e.style['interactivity'] = "unset" should set the property value: FAIL
+/css/css-ui/parsing/outline-color-computed.html: OK
+	Property outline-color value 'currentColor': PASS
+	Property outline-color value 'red': PASS
+	auto computes to itself or to currentColor depending on the value of outline-style: FAIL
+/css/css-ui/parsing/outline-color-invalid.html: OK
+	e.style['outline-color'] = "50%" should not set the property value: PASS
+	e.style['outline-color'] = "invert" should not set the property value: PASS
+	e.style['outline-color'] = "none" should not set the property value: PASS
+/css/css-ui/parsing/outline-color-valid.html: OK
+	e.style['outline-color'] = "auto" should set the property value: FAIL
+	e.style['outline-color'] = "rgba(10, 20, 30, 0.4)" should set the property value: PASS
+/css/css-ui/parsing/outline-invalid.html: OK
+	e.style['outline'] = "double invert groove" should not set the property value: PASS
+	e.style['outline'] = "invert solid rgba(10, 20, 30, 0.4)" should not set the property value: PASS
+	e.style['outline'] = "invert solid" should not set the property value: PASS
+	e.style['outline'] = "thin outset thick" should not set the property value: PASS
+/css/css-ui/parsing/outline-offset-computed.html: OK
+	Property outline-offset value '0.5em': PASS
+	Property outline-offset value '10px': PASS
+	Property outline-offset value '2.5px': PASS
+	Property outline-offset value 'calc(10px + 0.5em)': PASS
+	Property outline-offset value 'calc(10px - 0.5em)': PASS
+	Property outline-offset value 'inset': FAIL
+	outline-offset is independent of the value of outline-style: PASS
+/css/css-ui/parsing/outline-offset-invalid.html: OK
+	e.style['outline-offset'] = "1%" should not set the property value: PASS
+	e.style['outline-offset'] = "2px 3px" should not set the property value: PASS
+	e.style['outline-offset'] = "3px inset" should not set the property value: PASS
+	e.style['outline-offset'] = "auto" should not set the property value: PASS
+	e.style['outline-offset'] = "inset 3px" should not set the property value: PASS
+/css/css-ui/parsing/outline-offset-valid.html: OK
+	e.style['outline-offset'] = "0" should set the property value: FAIL
+	e.style['outline-offset'] = "1px" should set the property value: PASS
+	e.style['outline-offset'] = "2em" should set the property value: PASS
+	e.style['outline-offset'] = "calc(3rem + 4vw)" should set the property value: PASS
+	e.style['outline-offset'] = "inset" should set the property value: FAIL
+/css/css-ui/parsing/outline-shorthand.html: ERROR
+/css/css-ui/parsing/outline-style-computed.html: OK
+	Property outline-style value 'auto': FAIL
+	Property outline-style value 'dashed': PASS
+	Property outline-style value 'dotted': PASS
+	Property outline-style value 'double': PASS
+	Property outline-style value 'groove': PASS
+	Property outline-style value 'inset': PASS
+	Property outline-style value 'none': PASS
+	Property outline-style value 'outset': PASS
+	Property outline-style value 'ridge': PASS
+	Property outline-style value 'solid': PASS
+/css/css-ui/parsing/outline-style-invalid.html: OK
+	e.style['outline-style'] = "dotted dashed" should not set the property value: PASS
+	e.style['outline-style'] = "hidden" should not set the property value: FAIL
+	e.style['outline-style'] = "solid double groove ridge" should not set the property value: PASS
+/css/css-ui/parsing/outline-style-valid.html: OK
+	e.style['outline-style'] = "auto" should set the property value: PASS
+	e.style['outline-style'] = "dashed" should set the property value: PASS
+	e.style['outline-style'] = "dotted" should set the property value: PASS
+	e.style['outline-style'] = "double" should set the property value: PASS
+	e.style['outline-style'] = "groove" should set the property value: PASS
+	e.style['outline-style'] = "inset" should set the property value: PASS
+	e.style['outline-style'] = "none" should set the property value: PASS
+	e.style['outline-style'] = "outset" should set the property value: PASS
+	e.style['outline-style'] = "ridge" should set the property value: PASS
+	e.style['outline-style'] = "solid" should set the property value: PASS
+/css/css-ui/parsing/outline-valid.html: OK
+	e.style['outline'] = "0" should set the property value: FAIL
+	e.style['outline'] = "1px" should set the property value: FAIL
+	e.style['outline'] = "3px ridge rgba(10, 20, 30, 0.4)" should set the property value: FAIL
+	e.style['outline'] = "auto" should set the property value: FAIL
+	e.style['outline'] = "calc(2em + 3ex)" should set the property value: FAIL
+	e.style['outline'] = "dashed thin" should set the property value: FAIL
+	e.style['outline'] = "dashed" should set the property value: FAIL
+	e.style['outline'] = "dotted" should set the property value: FAIL
+	e.style['outline'] = "double" should set the property value: FAIL
+	e.style['outline'] = "groove" should set the property value: FAIL
+	e.style['outline'] = "inset" should set the property value: FAIL
+	e.style['outline'] = "medium rgba(10, 20, 30, 0.4)" should set the property value: FAIL
+	e.style['outline'] = "medium" should set the property value: FAIL
+	e.style['outline'] = "none" should set the property value: FAIL
+	e.style['outline'] = "outset" should set the property value: FAIL
+	e.style['outline'] = "rgba(10, 20, 30, 0.4)" should set the property value: FAIL
+	e.style['outline'] = "ridge" should set the property value: FAIL
+	e.style['outline'] = "solid" should set the property value: FAIL
+	e.style['outline'] = "thick" should set the property value: FAIL
+	e.style['outline'] = "thin" should set the property value: FAIL
+/css/css-ui/parsing/outline-width-computed.html: OK
+	Property outline-width value '0.5em': PASS
+	Property outline-width value '10px': PASS
+	Property outline-width value '2.5px': PASS
+	Property outline-width value 'calc(10px + 0.5em)': PASS
+	Property outline-width value 'calc(10px - 0.5em)': PASS
+	Property outline-width value 'medium': PASS
+	Property outline-width value 'thick': PASS
+	Property outline-width value 'thin': PASS
+	outline-width is independent of the value of outline-style: FAIL
+/css/css-ui/parsing/outline-width-invalid.html: OK
+	e.style['outline-width'] = "1%" should not set the property value: PASS
+	e.style['outline-width'] = "auto" should not set the property value: PASS
+	e.style['outline-width'] = "thin medium thick medium thin" should not set the property value: PASS
+/css/css-ui/parsing/outline-width-valid.html: OK
+	e.style['outline-width'] = "0" should set the property value: FAIL
+	e.style['outline-width'] = "1px" should set the property value: PASS
+	e.style['outline-width'] = "2em" should set the property value: PASS
+	e.style['outline-width'] = "calc(2em + 3ex)" should set the property value: PASS
+	e.style['outline-width'] = "medium" should set the property value: PASS
+	e.style['outline-width'] = "thick" should set the property value: PASS
+	e.style['outline-width'] = "thin" should set the property value: PASS
+/css/css-ui/parsing/resize-computed.html: OK
+	Property resize value 'both': FAIL
+	Property resize value 'both' in ::before: FAIL
+	Property resize value 'horizontal': FAIL
+	Property resize value 'none': FAIL
+	Property resize value 'vertical': FAIL
+	Property resize value 'vertical' in ::after: FAIL
+/css/css-ui/parsing/resize-invalid.html: OK
+	e.style['resize'] = "-internal-textarea-auto" should not set the property value: PASS
+	e.style['resize'] = "auto" should not set the property value: PASS
+	e.style['resize'] = "both 0" should not set the property value: PASS
+	e.style['resize'] = "horizontal vertical" should not set the property value: PASS
+/css/css-ui/parsing/resize-valid.html: OK
+	e.style['resize'] = "both" should set the property value: PASS
+	e.style['resize'] = "horizontal" should set the property value: PASS
+	e.style['resize'] = "none" should set the property value: PASS
+	e.style['resize'] = "vertical" should set the property value: PASS
+/css/css-ui/parsing/user-select-computed-contain.html: OK
+	Property user-select value 'contain': FAIL
+/css/css-ui/parsing/user-select-computed.html: OK
+	Property user-select value 'all': PASS
+	Property user-select value 'auto': PASS
+	Property user-select value 'none': PASS
+	Property user-select value 'text': PASS
+/css/css-ui/parsing/user-select-invalid.html: OK
+	e.style['user-select'] = "text contain" should not set the property value: PASS
+	e.style['user-select'] = "visible" should not set the property value: PASS
+/css/css-ui/parsing/user-select-valid-contain.html: OK
+	e.style['user-select'] = "contain" should set the property value: FAIL
+/css/css-ui/parsing/user-select-valid.html: OK
+	e.style['user-select'] = "all" should set the property value: PASS
+	e.style['user-select'] = "auto" should set the property value: PASS
+	e.style['user-select'] = "none" should set the property value: PASS
+	e.style['user-select'] = "text" should set the property value: PASS
+/css/css-ui/parsing/webkit-appearance-alias.html: ERROR
