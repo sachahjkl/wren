@@ -1,0 +1,217 @@
+# web-platform-tests expectations of Wren for html/browsers/history, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/html/browsers/history/joint-session-history/joint-session-history-iframe-state.html: OK
+	Joint session history should not override parent's state.: FAIL
+/html/browsers/history/joint-session-history/joint-session-history-only-fully-active.html: TIMEOUT
+	Do only fully active documents count for session history?: TIMEOUT
+/html/browsers/history/joint-session-history/joint-session-history-remove-iframe.html: TIMEOUT
+	Joint session history length does not include entries from a removed iframe.: TIMEOUT
+/html/browsers/history/the-history-interface/001.html: TIMEOUT
+/html/browsers/history/the-history-interface/002.html: TIMEOUT
+/html/browsers/history/the-history-interface/004.html: OK
+	.go commands should be queued until the thread has ended: PASS
+	browser needs to support hashchange events for this testcase: PASS
+	history position should be calculated when executing, not when calling the .go command: PASS
+	queued .go commands should all be executed when the queue is processed: PASS
+/html/browsers/history/the-history-interface/005.html: OK
+	<body onpopstate="..."> should register a listener for the popstate event: PASS
+	history.pushState support is needed for this testcase: PASS
+	window.onpopstate should register a listener for the popstate event: PASS
+/html/browsers/history/the-history-interface/006.html: OK
+	history.state should initially be null: PASS
+	history.state should still be null after onload: PASS
+	history.state should still be null onload: PASS
+	popstate event should not fire after onload fires: PASS
+	popstate event should not fire before onload fires: PASS
+	writing to history.state should be silently ignored and not throw an error: PASS
+/html/browsers/history/the-history-interface/007.html: OK
+	history.pushState support is needed for this testcase: PASS
+	history.state should initially be null: PASS
+	history.state should reflect pushed state: PASS
+	history.state should reflect the navigated state after onload: PASS
+	history.state should reflect the navigated state onload: FAIL
+	popstate event should fire before onload fires: FAIL
+	popstate event should not fire after onload fires: FAIL
+	the correct state should be restored when navigating during initial load: FAIL
+/html/browsers/history/the-history-interface/008.html: TIMEOUT
+/html/browsers/history/the-history-interface/009.html: TIMEOUT
+/html/browsers/history/the-history-interface/010.html: TIMEOUT
+/html/browsers/history/the-history-interface/011.html: OK
+	pushState should be able to set the location state: PASS
+	pushed location should be reflected immediately: PASS
+	pushed location should be retained after the page has loaded: PASS
+/html/browsers/history/the-history-interface/012.html: OK
+	replaceState should be able to set the location state: PASS
+	replaced location should be reflected immediately: PASS
+	replaced location should be retained after the page has loaded: PASS
+/html/browsers/history/the-history-interface/back-pushstate-back-history-state.html: OK
+	history.state is null after pushState+back+pushState+back: PASS
+/html/browsers/history/the-history-interface/combination_history_001.html: OK
+	Combine pushState and replaceSate methods: PASS
+/html/browsers/history/the-history-interface/combination_history_002.html: OK
+	After calling of pushState method, check length: PASS
+/html/browsers/history/the-history-interface/combination_history_003.html: OK
+	After calling of pushState and replaceState methods, check length: PASS
+/html/browsers/history/the-history-interface/combination_history_004.html: OK
+	After calling of back method, check length: PASS
+/html/browsers/history/the-history-interface/combination_history_005.html: OK
+	After calling of forward method, check length: PASS
+/html/browsers/history/the-history-interface/combination_history_006.html: OK
+	After calling of go method, check length: PASS
+/html/browsers/history/the-history-interface/combination_history_007.html: OK
+	After calling of back and pushState method, check length: PASS
+/html/browsers/history/the-history-interface/history-associated-with-document.window.html: TIMEOUT
+	Discarding the browsing context must not change window.history: FAIL
+	Navigating from the initial about:blank must replace window.history: FAIL
+	document.open() must not replace window.history: TIMEOUT
+/html/browsers/history/the-history-interface/history-state-after-bfcache.window.html: OK
+	Navigating back to a bfcached page does not reset history.state: FAIL
+/html/browsers/history/the-history-interface/history_back.html: OK
+	history back: PASS
+/html/browsers/history/the-history-interface/history_back_1.html: OK
+	history.back() with session history: FAIL
+/html/browsers/history/the-history-interface/history_back_cross_realm_method.html: OK
+	history.back() uses this's associated document's browsing context to determine if navigation is allowed: FAIL
+/html/browsers/history/the-history-interface/history_forward.html: OK
+	history forward: PASS
+/html/browsers/history/the-history-interface/history_forward_1.html: OK
+	history.forward() with session history: FAIL
+/html/browsers/history/the-history-interface/history_forward_cross_realm_method.html: OK
+	history.forward() uses this's associated document's browsing context to determine if navigation is allowed: FAIL
+/html/browsers/history/the-history-interface/history_go_cross_realm_method.html: OK
+	history.go() uses this's associated document's browsing context to determine if navigation is allowed: FAIL
+/html/browsers/history/the-history-interface/history_go_minus.html: OK
+	history go minus: PASS
+/html/browsers/history/the-history-interface/history_go_no_argument.html: OK
+	history.go(): FAIL
+/html/browsers/history/the-history-interface/history_go_plus.html: OK
+	history go plus: PASS
+/html/browsers/history/the-history-interface/history_go_to_uri.html: OK
+	history.go() negative tests: FAIL
+/html/browsers/history/the-history-interface/history_go_too_many_calls.optional.html: TIMEOUT
+	fully active check should be before rate limit check: NOTRUN
+	history go too many calls: TIMEOUT
+/html/browsers/history/the-history-interface/history_go_undefined.html: OK
+	history.forward() with session history: FAIL
+/html/browsers/history/the-history-interface/history_go_zero.html: OK
+	history.go(0): FAIL
+/html/browsers/history/the-history-interface/history_go_zero_which_document.window.html: OK
+	history.go(0) on an iframe must reload the iframe's document, not the parent document: FAIL
+/html/browsers/history/the-history-interface/history_properties_only_fully_active.html: OK
+	history properties should throw SecurityError when not in a fully active Document: FAIL
+/html/browsers/history/the-history-interface/history_pushstate.html: OK
+	history pushState: PASS
+/html/browsers/history/the-history-interface/history_pushstate_err.html: OK
+	history pushState SECURITY_ERR: PASS
+/html/browsers/history/the-history-interface/history_pushstate_nooptionalparam.html: OK
+	history pushState NoOptionalParam: PASS
+/html/browsers/history/the-history-interface/history_pushstate_too_many_calls.optional.html: OK
+	history pushState too many calls: FAIL
+/html/browsers/history/the-history-interface/history_pushstate_too_many_calls_ordering.optional.html: TIMEOUT
+	pushState checks fully active before checking the rate limit: NOTRUN
+	pushState checks whether the URL can be rewritten before checking the rate limit: NOTRUN
+	pushState parses the URL before checking the rate limit: NOTRUN
+	pushState serializes state before checking the rate limit: TIMEOUT
+/html/browsers/history/the-history-interface/history_pushstate_url.html: OK
+	history pushState sets url: PASS
+/html/browsers/history/the-history-interface/history_pushstate_url_rewriting.html: TIMEOUT
+	about:blank to about:blank should  work: NOTRUN
+	about:blank to about:blank#newhash should  work: NOTRUN
+	about:blank to about:blank?newsearch should not work: NOTRUN
+	about:blank to about:srcdoc should not work: NOTRUN
+	about:blank to http://127.0.0.1:8778/blank should not work: NOTRUN
+	about:srcdoc to about:srcdoc should  work: NOTRUN
+	about:srcdoc to about:srcdoc#newhash should  work: NOTRUN
+	about:srcdoc to about:srcdoc?newsearch should not work: NOTRUN
+	about:srcdoc to http://127.0.0.1:8778/srcdoc should not work: NOTRUN
+	blob:(a blob URL for this origin) to blob:(a blob URL for this origin) should  work: NOTRUN
+	blob:(a blob URL for this origin) to blob:(a blob URL for this origin)#newhash should  work: NOTRUN
+	blob:(a blob URL for this origin) to blob:(a blob URL for this origin)?newsearch should not work: NOTRUN
+	blob:(a blob URL for this origin) to blob:(another blob URL for this origin) should not work: NOTRUN
+	blob:(a blob URL for this origin) to blob:http://127.0.0.1:8778/syntheticblob should not work: NOTRUN
+	blob:(a blob URL for this origin) to blob:newpath should not work: NOTRUN
+	data:(script to run this test) to data:(script to run this test) should  work: NOTRUN
+	data:(script to run this test) to data:(script to run this test)#newhash should  work: NOTRUN
+	data:(script to run this test) to data:(script to run this test)?newsearch should not work: NOTRUN
+	data:(script to run this test) to data:newpath should not work: NOTRUN
+	http://127.0.0.1:8778/common/blank.html to about:blank should not work: NOTRUN
+	http://127.0.0.1:8778/common/blank.html to about:srcdoc should not work: NOTRUN
+	http://127.0.0.1:8778/common/blank.html to blob:(a blob URL for this origin) should not work: NOTRUN
+	http://127.0.0.1:8778/common/blank.html to http://127.0.0.1:8778/common/blank.html#newhash should  work: TIMEOUT
+	http://127.0.0.1:8778/common/blank.html to http://127.0.0.1:8778/common/blank.html?newsearch should  work: NOTRUN
+	http://127.0.0.1:8778/common/blank.html to http://127.0.0.1:8778/newpath should  work: NOTRUN
+	http://127.0.0.1:8778/common/blank.html to http://username:password@127.0.0.1:8778/common/blank.html should not work: NOTRUN
+	http://127.0.0.1:8778/common/blank.html to javascript:'foo' should not work: NOTRUN
+	javascript:'foo' to javascript:'foo' should not work: NOTRUN
+	javascript:'foo' to javascript:'foo'#newhash should not work: NOTRUN
+	javascript:'foo' to javascript:'foo'?newsearch should not work: NOTRUN
+	sandboxed http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html should  work: NOTRUN
+	sandboxed http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html#newhash should  work: NOTRUN
+	sandboxed http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html?newsearch should  work: NOTRUN
+	sandboxed http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://127.0.0.1:8778/newpath should  work: NOTRUN
+	sandboxed http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://username:password@127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html should not work: NOTRUN
+/html/browsers/history/the-history-interface/history_replacestate.html: OK
+	history replaceState: PASS
+/html/browsers/history/the-history-interface/history_replacestate_err.html: OK
+	history replaceState SECURITY_ERR: PASS
+/html/browsers/history/the-history-interface/history_replacestate_nooptionalparam.html: OK
+	history replaceStateNoOptionalParam: PASS
+/html/browsers/history/the-history-interface/history_replacestate_too_many_calls.optional.html: OK
+	history replaceState too many calls: FAIL
+/html/browsers/history/the-history-interface/history_replacestate_too_many_calls_ordering.optional.html: TIMEOUT
+	replaceState checks fully active before checking the rate limit: NOTRUN
+	replaceState checks whether the URL can be rewritten before checking the rate limit: NOTRUN
+	replaceState parses the URL before checking the rate limit: NOTRUN
+	replaceState serializes state before checking the rate limit: TIMEOUT
+/html/browsers/history/the-history-interface/history_state.html: OK
+	history state: PASS
+/html/browsers/history/the-history-interface/iframe_history_go_0.html: TIMEOUT
+	iframe's history.go(0) performs a location.reload(): TIMEOUT
+/html/browsers/history/the-history-interface/joint_session_history/001.html: ERROR
+	Navigating first iframe: NOTRUN
+	Navigating second iframe: NOTRUN
+	Session history length on adding new iframe: NOTRUN
+	Session history length on initial load: NOTRUN
+	Traversing history back (1): NOTRUN
+	Traversing history back (2): NOTRUN
+	Traversing history forward: NOTRUN
+/html/browsers/history/the-history-interface/joint_session_history/002.html: ERROR
+	Navigating second iframe: NOTRUN
+	Session history length on adding new iframe: NOTRUN
+	Session history length on initial load: NOTRUN
+/html/browsers/history/the-history-interface/pushstate-replacestate-empty-string/pushstate-base.html: OK
+	history.pushState() with an empty string URL and base URL different from document's URL: PASS
+/html/browsers/history/the-history-interface/pushstate-replacestate-empty-string/pushstate-whitespace.html: OK
+	history.pushState() with a whitespace URL: PASS
+/html/browsers/history/the-history-interface/pushstate-replacestate-empty-string/pushstate.html: OK
+	history.pushState() with an empty string URL: FAIL
+/html/browsers/history/the-history-interface/pushstate-replacestate-empty-string/replacestate-base.html: OK
+	history.replaceState() with an empty string URL and base URL different from document's URL: PASS
+/html/browsers/history/the-history-interface/pushstate-replacestate-empty-string/replacestate-whitespace.html: OK
+	history.replaceState() with a whitespace URL: PASS
+/html/browsers/history/the-history-interface/pushstate-replacestate-empty-string/replacestate.html: OK
+	history.replaceState() with an empty string URL: FAIL
+/html/browsers/history/the-history-interface/traverse-during-beforeunload.html: OK
+	Traversing the history during beforeunload: FAIL
+/html/browsers/history/the-history-interface/traverse-during-unload.html: OK
+	Traversing the history during unload: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_1.html: OK
+	Multiple history traversals from the same task: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_2.html: OK
+	Multiple history traversals, last would be aborted: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_3.html: OK
+	Multiple history traversals, last would be aborted: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_4.html: OK
+	Multiple history traversals, last would be aborted: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_5.html: OK
+	Multiple history traversals, last would be aborted: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_unload_1.html: OK
+	Traversing the history, unload event is fired on doucment: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_write_after_load_1.html: OK
+	Traverse the history after document.write after the load event: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_write_after_load_2.html: OK
+	Traverse the history back and forward when a history entry is written after the load event: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_write_onload_1.html: OK
+	Traverse the history when a history entry is written in the load event: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_write_onload_2.html: OK
+	Traverse the history back and forward when a history entry is written in the load event: FAIL

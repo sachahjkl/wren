@@ -249,9 +249,9 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.kind == .Web && zoom_percent(t) != 100 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { zoom_set(app, t, 1) }})
 	add(r, {name = "page.find", title = "Find in page…", category = "Page", keywords = "search text", keys = keys(&r.arena, {key = .F, mods = ctrl}, {key = .F3}),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && (t.kind == .Web || t.kind == .Config) },
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && (t.kind == .Web || t.kind == .Config || t.kind == .History) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
-			if t.kind == .Config { app.config_view.focus_search = true } else if find.open { find.focus = true } else { find_open(app) }
+			if t.kind == .Config { app.config_view.focus_search = true } else if t.kind == .History { hview.focus_search = true } else if find.open { find.focus = true } else { find_open(app) }
 		}})
 	add(r, {name = "page.save", title = "Save page as…", category = "Page", keywords = "download file", keys = keys(&r.arena, {key = .S, mods = ctrl}),
 		enabled = web_page, run = proc(app: ^App, t: ^Tab, c: ^Command) { save_page(app, t) }})
@@ -305,6 +305,10 @@ commands_build :: proc(r: ^Command_Registry) {
 		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { palette_toggle(app) }})
 	add(r, {name = "browser.main_menu", title = "Open the main menu", category = "Browser", keys = keys(&r.arena, {key = .F, mods = alt}, {key = .E, mods = alt}),
 		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { main_menu_request = true }})
+	add(r, {name = "browser.history", title = "History", category = "Browser", keywords = "about:history visited pages past", url = HISTORY_URL, keys = keys(&r.arena, {key = .H, mods = ctrl}),
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, false) }})
+	add(r, {name = "browser.history_tree", title = "Tab history tree", category = "Browser", keywords = "branches back forward graph session",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, true) }})
 	add(r, {name = "browser.settings", title = "Settings", category = "Browser", glyph = GLYPH_GEAR, keywords = "about:config preferences options", url = "about:config",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, "about:config") }})
 	add(r, {name = "browser.demos", title = "Demos", category = "Browser", keywords = "about:demos examples", url = DEMOS_URL,

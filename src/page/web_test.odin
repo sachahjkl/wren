@@ -88,7 +88,7 @@ session_history_model :: proc(t: ^testing.T) {
 	testing.expect(t, ok && e.url == "https://a/2" && e.has_state && e.state == "s")
 	_, ok = session_go(&sh, -5)
 	testing.expect(t, !ok && sh.index == 1)
-	session_push(&sh, "https://a/x", 2)   // drops the forward entry
+	session_push(&sh, "https://a/x", 2)   // the forward entry becomes another branch: the web no longer sees it
 	testing.expect_value(t, session_length(&sh), 3)
 	testing.expect_value(t, session_current(&sh).url, "https://a/x")
 	session_replace(&sh, "https://a/y", "st", true)

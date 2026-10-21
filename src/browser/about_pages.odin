@@ -20,6 +20,7 @@ About_Page :: struct {
 ABOUT_PAGES := [?]About_Page{
 	{HOME_URL, "Start page", "What a new tab shows (<code>browser.homepage</code>): links to the settings and the demos."},
 	{DEMOS_URL, "Demos and tests", "Every demo and test page that comes with Wren, by theme, with what each one shows."},
+	{HISTORY_URL, "History", "Every page visited (Ctrl+H), by day, searchable, and the history tree of each tab: going back then elsewhere keeps the old way as a branch."},
 	{"about:config", "Configuration", "Every setting of the browser, searchable and editable; nothing is hard-wired."},
 	{ABOUT_URL, "Built-in pages", "This list, under the version of the browser. <code>about:</code> alone opens it too."},
 	{"about:blank", "Blank page", "An empty document."},

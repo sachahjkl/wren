@@ -396,14 +396,7 @@ download_open_temp :: proc(d: ^Download) -> bool {
 download_restore_tab :: proc(app: ^App, load: ^Doc_Load) {
 	t := load.tab
 	if load.pushed {
-		sh := &t.session
-		if sh.index >= 0 && sh.index < len(sh.entries) {
-			e := sh.entries[sh.index]
-			delete(e.url); delete(e.state)
-			ordered_remove(&sh.entries, sh.index)
-			sh.index -= 1
-			if sh.index < 0 && len(sh.entries) > 0 { sh.index = 0 }
-		}
+		page.session_drop_current(&t.session)
 		sync_history(t)
 	}
 	if t.hold.active && t.hold.page != nil {
@@ -412,7 +405,9 @@ download_restore_tab :: proc(app: ^App, load: ^Doc_Load) {
 		t.nav, t.page = h.nav, h.page
 		t.layout, h.layout = h.layout, t.layout
 		t.scroll = h.scroll
-		h.active, h.nav, h.page = false, nil, nil
+		h.active, h.nav, h.page, h.bf_entry = false, nil, nil, 0
+		t.nav_state.left = nil
+		page.page_thaw(t.page)   // frozen for the back/forward cache when it was left (bfcache.odin)
 		t.load = nil
 		base.scope_close(old)   // the navigation's scope: its Doc_Load (the request is the download's now)
 		delete(t.url)
@@ -424,8 +419,9 @@ download_restore_tab :: proc(app: ^App, load: ^Doc_Load) {
 		if current_tab(app) == t { ui.field_set(&app.address, t.url == HOME_URL ? "" : t.url) }
 		return
 	}
+	if cur := page.session_current(&t.session); cur != nil && bfcache_restore(app, t, cur) { return }
 	if e := page_session_current(t); e != "" {
-		navigate(app, t, e, record = false)
+		navigate(app, t, e, record = false, restore = true)
 		return
 	}
 	if len(app.tabs) > 1 {
@@ -436,9 +432,9 @@ download_restore_tab :: proc(app: ^App, load: ^Doc_Load) {
 
 @(private = "file")
 page_session_current :: proc(t: ^Tab) -> string {
-	sh := &t.session
-	if sh.index < 0 || sh.index >= len(sh.entries) { return "" }
-	return strings.clone(sh.entries[sh.index].url, context.temp_allocator)
+	cur := page.session_current(&t.session)
+	if cur == nil { return "" }
+	return strings.clone(cur.url, context.temp_allocator)
 }
 
 @(private = "file")

@@ -138,8 +138,9 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	can_forward := t != nil && t.hist + 1 < len(t.history)
 
 	ui.spacer(ui.px(em * 0.5))
-	if nav_button("###nav_back", GLYPH_BACK, "Back (Alt+Left)", can_back) { go_history(app, t, -1) }
-	if nav_button("###nav_forward", GLYPH_FORWARD, "Forward (Alt+Right)", can_forward) { go_history(app, t, +1) }
+	// a right click or a long press lists the entries that way (history_ui.odin)
+	nav_history_button(app, t, "###nav_back", GLYPH_BACK, "Back (Alt+Left); right click: history", can_back, -1)
+	nav_history_button(app, t, "###nav_forward", GLYPH_FORWARD, "Forward (Alt+Right); right click: history", can_forward, +1)
 	if nav_button("###nav_reload", GLYPH_RELOAD, "Reload (F5)", t != nil && t.url != "") { reload(app, t) }
 	ui.spacer(ui.px(em * 0.4))
 
@@ -525,6 +526,8 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		menu_command(app, t, "nav.forward")
 		menu_command(app, t, "nav.reload")
 		menu_command(app, t, "nav.home")
+		menu_command(app, t, "browser.history")
+		menu_command(app, t, "browser.history_tree")
 		ui.menu_separator()
 		if ui.menu_submenu(fmt.tprintf("Zoom (%d %%)###zoom_sub", zoom_percent(t)), enabled = web) {
 			menu_command(app, t, "page.zoom_in")

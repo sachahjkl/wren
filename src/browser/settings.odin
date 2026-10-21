@@ -82,6 +82,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_download_prefs(p)   // download.odin
 	register_print_prefs(p)   // print.odin
 	register_session_prefs(p)   // session.odin
+	register_history_prefs(p)   // history_settings.odin
 	register_app_command_prefs(p)   // app_commands.odin
 	register_palette_prefs(p)   // palette.odin
 	_ = wasm.PREFS

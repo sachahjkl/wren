@@ -84,6 +84,12 @@ Step 'DOM for JavaScript end-to-end test (jsdomtest: tree, elements, markup, sel
     $o = .\build\jsdomtest.exe | Out-String; $o
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
 }
+Step 'history end-to-end test (historytest: the tree as pages see it, scrollRestoration, pageshow / pagehide persisted, back/forward cache freezing, persisted form state; no server)' {
+    odin build src/tools/historytest -collection:wb=src -vet -out:build/historytest.exe $Stack
+    if ($LASTEXITCODE -ne 0) { return }
+    $o = .\build\historytest.exe | Out-String; $o
+    $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
+}
 Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe . }; Pop-Location }
 
 $srv = Start-Process (Join-Path $root 'build\testserver.exe') -PassThru -WindowStyle Hidden

@@ -91,6 +91,7 @@ notify_url_changed :: proc(p: ^Page) {
 navigate_fragment :: proc(p: ^Page, target: url.URL, replace: bool) {
 	old := strings.clone(p.env.location.href, context.temp_allocator)
 	sh := p.web.session
+	if !replace { entry_leaving(p) }
 	if replace { session_replace(sh, target.href) } else { session_push(sh, target.href, p.web.id, dedupe = false, max_entries = p.settings.web.history_max_entries) }
 	set_document_url(p, target.href)
 	set_history_state(p, "", false)
@@ -141,17 +142,31 @@ location_navigate :: proc(p: ^Page, target: url.URL, replace: bool) {
 
 Traverse_Result :: enum u8 { None, Same_Document, Other_Document }
 
+// The embedder saves what the current entry shows before the document moves to another of its entries.
+@(private)
+entry_leaving :: proc(p: ^Page) {
+	emb := p.web.embedder
+	if cur := session_current(p.web.session); cur != nil && emb.leaving != nil { emb.leaving(emb.user, p, cur) }
+}
+
 // history.go(delta) / back / forward. An entry of this document is reached here (popstate, and hashchange when only the
 // fragment differs); for another document's entry nothing changes and the caller navigates (the shell does it for its
 // back / forward buttons, the page asks the embedder for history.go).
 history_traverse :: proc(p: ^Page, delta: int) -> Traverse_Result {
 	if p == nil || p.closed || delta == 0 { return .None }
+	return history_traverse_to(p, session_peek(p.web.session, delta))
+}
+
+// The same towards any entry of the tab's history tree (the interface's tree view): it becomes the current one, and the
+// path to it the active one, when it belongs to this document.
+history_traverse_to :: proc(p: ^Page, target: ^History_Entry) -> Traverse_Result {
+	if p == nil || p.closed || target == nil { return .None }
 	sh := p.web.session
-	target := session_peek(sh, delta)
-	if target == nil { return .None }
+	if target == session_current(sh) { return .None }
 	if target.doc != p.web.id { return .Other_Document }
 	old := strings.clone(p.env.location.href, context.temp_allocator)
-	sh.index += delta
+	entry_leaving(p)
+	session_goto(sh, target)
 	href := strings.clone(target.url, context.temp_allocator)
 	state := strings.clone(target.state, context.temp_allocator)
 	has_state := target.has_state
@@ -161,6 +176,7 @@ history_traverse :: proc(p: ^Page, delta: int) -> Traverse_Result {
 	fire_window_event(p, dom.Event{type = "popstate", data = state, code = has_state ? 1 : 0})
 	if p.closed { return .Same_Document }
 	pop_event_detail(p)
+	if emb := p.web.embedder; emb.entered != nil && session_current(sh) == target { emb.entered(emb.user, p, target) }
 	ou, _ := url.parse(old, nil, context.temp_allocator)
 	nu, _ := url.parse(href, nil, context.temp_allocator)
 	if url.without_fragment(ou) == url.without_fragment(nu) { queue_hashchange(p, old, href) }
@@ -250,6 +266,7 @@ history_change :: proc(c: ^Call, state_arg, url_arg: Maybe(string), replace: boo
 	if replace {
 		session_replace(sh, href, state, has_state)
 	} else {
+		entry_leaving(p)
 		session_push(sh, href, p.web.id, state, has_state, dedupe = false, max_entries = s.history_max_entries)
 	}
 	set_document_url(p, href)
@@ -260,6 +277,17 @@ history_change :: proc(c: ^Call, state_arg, url_arg: Maybe(string), replace: boo
 
 History_pushState :: proc(c: ^Call, state, target: Maybe(string)) -> Api_Error { return history_change(c, state, target, false) }
 History_replaceState :: proc(c: ^Call, state, target: Maybe(string)) -> Api_Error { return history_change(c, state, target, true) }
+
+// history.scrollRestoration: a property of the current entry (HTML "scroll restoration mode"); pushState copies it to
+// the entry it adds.
+History_scrollRestoration :: proc(c: ^Call) -> Api_ScrollRestoration {
+	cur := session_current(c.page.web.session)
+	return cur != nil && cur.scroll_manual ? .Manual : .Auto
+}
+
+History_set_scrollRestoration :: proc(c: ^Call, mode: Api_ScrollRestoration) {
+	if cur := session_current(c.page.web.session); cur != nil { cur.scroll_manual = mode == .Manual }
+}
 
 // history.go(delta); back() is go(-1), forward() go(1), go(0) reloads. Asynchronous, as in HTML.
 History_go :: proc(c: ^Call, delta: i32) {

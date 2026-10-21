@@ -27,3 +27,4 @@ workers only=.
 shadow-dom
 css/css-shadow
 custom-elements
+html/browsers/history only=the-history-interface,joint-session-history
