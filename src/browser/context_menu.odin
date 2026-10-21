@@ -283,7 +283,7 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 	if r.tab < 0 || r.tab >= len(app.tabs) { ui.ctx_menu_close(); return }
 	t := app.tabs[r.tab]
-	if ui.menu_item("New tab", "Ctrl+T", icon = GLYPH_ADD).clicked { tab_open(app); return }
+	if ui.menu_item("New tab", "Ctrl+T", icon = GLYPH_ADD).clicked { tab_open_new(app); return }
 	ui.menu_separator()
 	if ui.menu_item("Reload", "Ctrl+R", icon = GLYPH_RELOAD, enabled = t.kind == .Web || t.kind == .Config).clicked { reload(app, t) }
 	if ui.menu_item("Duplicate").clicked { open_in_new_tab(app, t.url) }

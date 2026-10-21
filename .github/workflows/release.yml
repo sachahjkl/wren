@@ -35,7 +35,7 @@ jobs:
 
       - name: Build (release)
         shell: cmd
-        run: call build.bat
+        run: call build.bat release
 
       - name: Tests (tools\test_all.ps1 -CI)
         shell: cmd

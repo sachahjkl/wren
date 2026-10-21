@@ -8,7 +8,9 @@
  *     everything else to the browser (module fetch: Fetch_promise), which applies the page's policy (CORS, cookies,
  *     referrer, CSP, mixed content). The promise is fulfilled with a Response when the headers arrive; a network error
  *     rejects it with a TypeError, an abort with the signal's reason (also for body reads afterwards).
- * Not supported: cache modes (the browser's cache decides), integrity (not checked), keepalive (a request does not
+ * Request.cache goes to the browser's HTTP cache (its index matches RequestCache: default, no-store, reload, no-cache,
+ * force-cache, only-if-cached).
+ * Not supported: integrity (not checked), keepalive (a request does not
  * outlive its page), a referrer URL (only "" and the default), request bodies streamed while sent (a ReadableStream
  * body is read whole first). */
 #include <math.h>
@@ -1630,7 +1632,7 @@ static JSValue fetch_start(JSContext *ctx, web_request *r, const uint8_t *body, 
                                   r->mode == MODE_SAME_ORIGIN ? wr_FetchMode_Same_Origin : r->mode == MODE_NO_CORS ? wr_FetchMode_No_Cors : wr_FetchMode_Cors,
                                   r->credentials == CRED_OMIT ? wr_Credentials_Omit : r->credentials == CRED_INCLUDE ? wr_Credentials_Include : wr_Credentials_Same_Origin,
                                   r->redirect == REDIRECT_ERROR ? wr_RedirectMode_Error : r->redirect == REDIRECT_MANUAL ? wr_RedirectMode_Manual : wr_RedirectMode_Follow,
-                                  r->referrer_policy, no_referrer ? 1 : 0, &pr);
+                                  r->referrer_policy, no_referrer ? 1 : 0, (uint32_t)r->cache, &pr);
     JS_FreeCString(ctx, u);
     JS_FreeCString(ctx, m);
     web_buf_free(&hb);

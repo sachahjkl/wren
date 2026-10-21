@@ -15,7 +15,9 @@ import "wb:style"
 //     @imports of those and of <style> elements; a sheet whose media does not match does not block; a <link> or
 //     <style> a script adds blocks only with blocking="render";
 //   * web fonts used by the page while in their block period (auto / block: style.webfonts.block_period_ms; fallback /
-//     optional: style.webfonts.short_block_period_ms). Text is not drawn invisible in place: the first paint waits.
+//     optional: style.webfonts.short_block_period_ms; a font the HTTP cache holds fresh, even swap:
+//     style.webfonts.cached_block_period_ms). The first paint waits; after it, text waiting for its font is drawn
+//     invisible (fonts_blocking_families, the shell's fonts.odin).
 // Stylesheets block at most style.render_blocking.timeout_ms. Parsing itself is not blocked. The shell asks
 // `first_paint_state` before painting a new document and says `first_paint_done` once it has.
 
@@ -110,13 +112,7 @@ pending_blocking_font :: proc(p: ^Page, now: f64) -> string {
 	s := &p.settings.style
 	for _, f in p.fonts.faces {
 		if f.state != .Queued && f.state != .Loading { continue }
-		block: f64
-		switch f.display {
-		case .Auto, .Block: block = s.webfont_block_ms
-		case .Fallback, .Optional: block = s.webfont_short_block_ms
-		case .Swap: block = 0
-		}
-		if now - f.started_ms < block { return f.family }
+		if now - f.started_ms < font_block_ms(s, f) { return f.family }   // (fonts.odin: font-display, the HTTP cache)
 	}
 	return ""
 }
@@ -145,8 +141,7 @@ first_paint_next_deadline_ms :: proc(p: ^Page) -> f64 {
 	consider(&best, p.render.adopted_ms + s.render_block_ms, now)
 	for _, f in p.fonts.faces {
 		if f.state != .Queued && f.state != .Loading { continue }
-		block := f.display == .Auto || f.display == .Block ? s.webfont_block_ms : (f.display == .Swap ? 0 : s.webfont_short_block_ms)
-		consider(&best, f.started_ms + block, now)
+		consider(&best, f.started_ms + font_block_ms(s, f), now)
 	}
 	return best
 }

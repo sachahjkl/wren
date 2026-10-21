@@ -66,6 +66,13 @@ DEMOS := [?]Demo{
 	{.Css, "Color schemes", "firstpaint.html",
 		"A dark theme chosen by <code>prefers-color-scheme</code> from stylesheets in <code>&lt;noscript&gt;</code>, <code>color-scheme</code>, system colors (CanvasText, LinkText, GrayText), <code>light-dark()</code> and form controls in both schemes. Its stylesheets come from the server.", true, "", false},
 
+	{.E2e, "History: a long page", "history/long.html",
+		"Scroll the page and its box, fill the form, follow the link, come back: from the back/forward cache at once, or loaded again and restored once tall enough (its second part arrives late). <code>tools\\history_e2e.ps1</code> does it in the window and times both.", false, "", false},
+	{.E2e, "History: the next page", "history/next.html",
+		"The page the long one links to: the back button's menu (right click) lists the way back.", false, "", false},
+	{.E2e, "History: branches", "history/other.html",
+		"Go back twice, then somewhere else: the old way stays as a branch of the tab's history tree (Ctrl+H, Tab history), where a click goes back to it.", false, "", false},
+
 	{.Layout, "Layout engine", "layout.html",
 		"Flexbox, floats and clearance, positioning and stacking order, tables, lists, overflow and scroll boxes, borders, preformatted text.", false, "", false},
 	{.Layout, "CSS Grid", "grid.html",
@@ -86,6 +93,8 @@ DEMOS := [?]Demo{
 		"Per-character font fallback, color emoji, ligatures, kerning and OpenType features, complex scripts, bidirectional text, <code>unicode-range</code> (digits from another font), spacing and justification (the page is in French).", false, "", false},
 	{.Text, "Text metrics and vertical alignment", "text-metrics.html",
 		"Where text sits in its line, as in Chrome and Edge: <code>line-height: normal</code> from each font's rounded ascent, descent and line gap, numeric line heights, every <code>vertical-align</code> for spans and inline blocks, mixed fonts and emoji fallback, Wikipedia's <code>inline-flex</code> tabs with <code>min-height</code>, buttons, form controls on the baseline and table cells (the page is in French).", false, "", false},
+	{.Text, "Web fonts: font-display after the first paint", "cache/font_block.html",
+		"Text added after the first paint whose web font arrives 3 s later: with <code>font-display: block</code> it stays invisible during the block period instead of showing the fallback font, with <code>swap</code> the fallback shows at once and is swapped (the font is served slowly by the test server).", true, "", false},
 	{.Text, "Selection, menus and keyboard", "interaction.html",
 		"Double and triple click, drag selection across columns, <code>::selection</code>, <code>user-select</code>, a rotated selectable span, context menus, focus rings, find in page (Ctrl+F) and a scroll box.", false, "", false},
 

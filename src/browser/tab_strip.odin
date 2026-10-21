@@ -181,10 +181,10 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		if any_turning { spinner_wake(app) }
 
 		ui.spacer(ui.px(em * 0.3))
-		ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * 0.4})
+		ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * CHROME_BUTTON_RADIUS})
 		add := ui.icon_button("###newtab", GLYPH_ADD)
 		tip(add, "New tab (Ctrl+T)")
-		if add.clicked { tab_open(app) }
+		if add.clicked { tab_open_new(app) }
 		ui.spacer(ui.fill())   // drags the window
 		if integrated { _, _ = ui.window_buttons() }
 	}
@@ -337,7 +337,6 @@ Tab_Icon_Draw :: struct {
 	size:   f32,
 }
 
-@(private = "file")
 tab_icon_of :: proc(app: ^App, t: ^Tab, size: f32) -> ^Tab_Icon_Draw {
 	d := ui.frame_new(Tab_Icon_Draw)
 	d.size = size
@@ -363,7 +362,6 @@ tab_icon_of :: proc(app: ^App, t: ^Tab, size: f32) -> ^Tab_Icon_Draw {
 	return d
 }
 
-@(private = "file")
 tab_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Tab_Icon_Draw)(user)
 	app := the_app

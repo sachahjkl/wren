@@ -18,6 +18,7 @@ import "wb:html"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
+import "wb:tools/testenv"
 
 failures: int
 
@@ -98,7 +99,7 @@ main :: proc() {
 	process := base.scope_make("process")
 
 	fmt.println("-- the page and its form")
-	p := page.page_create(&loop, &loader, &settings, process, "http://127.0.0.1:8765/site/forms.html", console)
+	p := page.page_create(&loop, &loader, &settings, process, testenv.url("http://127.0.0.1:8765/site/forms.html"), console)
 	the_page = p
 	decoded, _ := html.decode_document(html_bytes, "utf-8", settings.html.default_encoding)
 	page.load_html(p, decoded.text)
@@ -172,7 +173,7 @@ main :: proc() {
 	check(strings.contains(status_attr("data-events"), "submit@f<send>"), "submit event with its submitter")
 	if len(submissions) > 0 {
 		s := submissions[0]
-		check(s.method == .Post && s.enctype == .Multipart && s.url == "http://127.0.0.1:8765/forms/echo", fmt.tprintf("POST multipart to the action (%v %v %s)", s.method, s.enctype, s.url))
+		check(s.method == .Post && s.enctype == .Multipart && s.url == testenv.url("http://127.0.0.1:8765/forms/echo"), fmt.tprintf("POST multipart to the action (%v %v %s)", s.method, s.enctype, s.url))
 		body := perform(s)
 		check(echo.status == 200 && strings.contains(body, "field action=send\n") && strings.contains(body, fmt.tprintf("file up=theme.css;text/css;%d;", len(theme))), "the server received the multipart submission and the file")
 	}
@@ -181,7 +182,7 @@ main :: proc() {
 	pump_until("GET navigation", proc() -> bool { return len(submissions) > 1 })
 	if len(submissions) > 1 {
 		s := submissions[1]
-		check(s.method == .Get && strings.has_prefix(s.url, "http://127.0.0.1:8765/forms/echo?name=Ada+Byron&email=ada%40example.com"), fmt.tprintf("GET replaces the query: %s", s.url))
+		check(s.method == .Get && strings.has_prefix(s.url, testenv.url("http://127.0.0.1:8765/forms/echo?name=Ada+Byron&email=ada%40example.com")), fmt.tprintf("GET replaces the query: %s", s.url))
 		body := perform(s)
 		check(strings.contains(body, "method=GET\n") && strings.contains(body, "field bio=Hello\\r\\nworld\n") && strings.contains(body, "field up=theme.css\n"), "the server received the GET submission")
 	}

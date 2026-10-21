@@ -67,11 +67,13 @@ Doc_Load :: struct {
 	failed:     Load_Failure,            // the tab shows an error page (the security chip says so)
 	pushed:     bool,                    // the navigation added a history entry (a download takes it back: download.odin)
 	action:     Doc_Action,              // what the answer is shown as (download.odin doc_action)
+	cache:      fetch.Cache_Mode,        // the document's cache mode; Reload: its subresources too (http_cache_ui.odin)
+	from_cache: fetch.Cache_Outcome,     // where the document came from (the status bar says so)
 }
 
 Load_Failure :: enum u8 { None, Other, Tls }
 
-Tab_Kind :: enum u8 { Web, Config }
+Tab_Kind :: enum u8 { Web, Config, History }   // History: about:history (history_ui.odin)
 
 Tab :: struct {
 	id:       u64,           // unique for the process: keys its boxes of the tab strip (tab_strip.odin)
@@ -99,6 +101,7 @@ Tab :: struct {
 	hold:     Paint_Hold,        // the previous page, shown until the new one paints (first_paint.odin)
 	zoom:     f32,               // page zoom (zoom.odin); 1 = 100 %
 	smooth:   Smooth_Scroll,     // scroll animations and scroll bar drags (smooth_scroll.odin)
+	nav_state: Tab_Nav,          // restoring entries, leaving pages, the back/forward cache (history_restore.odin, bfcache.odin)
 }
 
 Session_History :: page.Session_History   // (a field named `page` hides the package in the struct above)
@@ -160,6 +163,14 @@ tab_open :: proc(app: ^App, address := "") -> ^Tab {
 	return t
 }
 
+// A new tab the user asked for (Ctrl+T, the + of the strip, the menus): the homepage, with the address field focused
+// to type in, as in Chromium.
+tab_open_new :: proc(app: ^App) -> ^Tab {
+	t := tab_open(app)
+	app.focus_address = true
+	return t
+}
+
 // A tab at the end of the strip, showing nothing yet.
 tab_new :: proc(app: ^App) -> ^Tab {
 	t := new(Tab)
@@ -170,6 +181,7 @@ tab_new :: proc(app: ^App) -> ^Tab {
 	t.scope = base.scope_make("tab", app.process)
 	t.title = strings.clone("New tab")
 	append(&app.tabs, t)
+	tab_history_limits(app, t)
 	return t
 }
 
@@ -177,6 +189,8 @@ tab_close :: proc(app: ^App, index: int) {
 	t := app.tabs[index]
 	closed_tabs_push(t.url)
 	ordered_remove(&app.tabs, index)
+	bfcache_drop_tab(t)
+	tab_nav_destroy(app, t)
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone (a held page too)
 	hold_destroy(t)
 	page_fonts_drop(&page_render.fonts, t)   // its web fonts (fonts.odin)
@@ -231,9 +245,14 @@ normalize_address :: proc(input: string) -> string {
 // Starts loading `address` in `t`. `from` is the page the navigation comes from (a link click), nil for the address bar.
 // `record`: false when the navigation walks the history (back, forward, reload) instead of extending it.
 // `method` / `body` / `headers`: a form submission (POST); the history keeps the address only.
-navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false, record := true, method := "", body: []byte = nil, headers: []fetch.Header_Pair = nil) {
+// `restore`: the navigation shows the current entry again (back, forward, a reload, a restored tab): what it showed when it
+// was left comes back with it (history_restore.odin).
+navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false, record := true, method := "", body: []byte = nil, headers: []fetch.Header_Pair = nil, restore := false, cache := fetch.Cache_Mode.Default) {
 	target := strings.clone(normalize_address(address), context.temp_allocator)
 	if target == "" { target = strings.clone(app.cfg.homepage, context.temp_allocator) }
+	cache_prof_leave(t)   // (profile build: what the page cost, http_cache_ui.odin)
+	leave_page(app, t)   // the entry being left keeps what it shows; the page may go to the back/forward cache
+	t.nav_state.no_store = false
 	pushed := false
 	if record {
 		cur := page.session_current(&t.session)
@@ -241,13 +260,22 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 		history_push(t, target)
 	}
 	// built-in pages show at once (they paint in their first frame)
-	if target == "about:config" { hold_release(t); show_config(app, t); return }
-	if target == HOME_URL { hold_release(t); show_home(app, t); return }
-	if target == DEMOS_URL { hold_release(t); show_demos(app, t); return }
-	if target == ABOUT_URL { hold_release(t); show_about_pages(app, t); return }
+	entry := page.session_current(&t.session)
+	restore_stop(app, t)
+	if restore && entry != nil && hcfg.restore_zoom && entry.persisted.zoom > 0 { t.zoom = entry.persisted.zoom }
+	if restore { timing_begin(t, false, target) }
+	defer if restore { restore_begin(app, t, entry, .New_Document) }
+	if is_builtin_address(target) { hold_release(t); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
+	if target == "about:config" { show_config(app, t); return }
+	if is_history_address(target) { show_history(app, t, target); return }
+	if target == HOME_URL { show_home(app, t); return }
+	if target == DEMOS_URL { show_demos(app, t); return }
+	if target == ABOUT_URL { show_about_pages(app, t); return }
+	if is_cache_address(target) { hold_release(t); bfcache_take(app, t); show_cache_page(app, t, target, from); return }   // http_cache_ui.odin
 	load := new(Doc_Load)
 	load.tab = t
 	load.pushed = pushed
+	load.cache = cache
 	shown := target
 	if strings.has_prefix(target, VIEW_SOURCE) {
 		load.view_source = true
@@ -280,7 +308,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 		request = {
 			url = target, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = .Document,
 			initiator = load.has_initiator ? &load.initiator : nil, user_activation = user_activation,
-			method = method, body = body, headers = headers,
+			method = method, body = body, headers = headers, cache = cache,
 		},
 		on_event = document_event, user = load, scope = t.nav, collect = true,
 	})
@@ -300,17 +328,25 @@ sync_history :: proc(t: ^Tab) {
 }
 
 go_history :: proc(app: ^App, t: ^Tab, delta: int) {
-	if t == nil { return }
+	if t == nil || delta == 0 { return }
+	go_entry(app, t, page.session_peek(&t.session, delta))
+}
+
+// Makes `e` (any entry of the tab's history tree: the path to it becomes the active one) the current entry: popstate
+// when it is the document's, else the page it had from the back/forward cache, else it loads again.
+go_entry :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
+	if t == nil || e == nil || e == page.session_current(&t.session) { return }
 	// an entry of the current document: popstate, no load
-	if t.page != nil && t.kind == .Web && page.history_traverse(t.page, delta) == .Same_Document {
+	if t.page != nil && t.kind == .Web && page.history_traverse_to(t.page, e) == .Same_Document {
 		sync_history(t)
 		same_document_url(app, t, t.page.env.location.href)
 		return
 	}
-	e, ok := page.session_go(&t.session, delta)
-	if !ok { return }
+	leave_page(app, t)
+	page.session_goto(&t.session, e)
 	sync_history(t)
-	navigate(app, t, strings.clone(e.url, context.temp_allocator), record = false)
+	if bfcache_restore(app, t, e) { return }
+	navigate(app, t, strings.clone(e.url, context.temp_allocator), record = false, restore = true, cache = history_cache_mode(app))
 }
 
 same_document_url :: proc(app: ^App, t: ^Tab, address: string) {
@@ -331,6 +367,8 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 	case .Assign:
 		navigate(app, t, strings.clone(req.url, context.temp_allocator), p)
 	case .Replace:
+		leave_page(app, t, keep = false, save = false)
+		if cur := page.session_current(&t.session); cur != nil { page.persisted_clear(&cur.persisted) }   // another document in the entry
 		page.session_replace(&t.session, req.url)
 		sync_history(t)
 		navigate(app, t, strings.clone(req.url, context.temp_allocator), p, record = false)
@@ -341,18 +379,24 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 	case .Url_Changed:
 		sync_history(t)
 		same_document_url(app, t, req.url)
+		global_history_visit(app, t, req.url, t.title)
 	}
 	app.frames_requested = max(app.frames_requested, 2)
 }
 
 // Connects a document to its tab: navigation hook, session history, storage.
 attach_page :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
-	page.set_embedder(p, {navigate = page_navigate, user = t, session = &t.session, tab_key = tab_key(t), storage = &app.storage, print = page_print})
+	page.set_embedder(p, {navigate = page_navigate, user = t, session = &t.session, tab_key = tab_key(t), storage = &app.storage, print = page_print, leaving = page_entry_leaving, entered = page_entry_entered})
+	if cur := page.session_current(&t.session); cur != nil { bfcache_forget(t, cur.id) }   // a new document for the entry: an older one cached for it is stale
 	attach_js_layout(app, t, p)   // geometry for scripts (js_layout_shell.odin)
 }
 
-reload :: proc(app: ^App, t: ^Tab) {
-	navigate(app, t, strings.clone(t.url, context.temp_allocator), record = false)
+// A reload keeps the entry's positions and forms (as other browsers do); the page itself does not go to the back/forward
+// cache (a new document replaces it). The document is revalidated with its server (no-cache); `bypass_cache` (Ctrl+F5):
+// it and everything it loads come from the network (reload).
+reload :: proc(app: ^App, t: ^Tab, bypass_cache := false) {
+	leave_page(app, t, keep = false)
+	navigate(app, t, strings.clone(t.url, context.temp_allocator), record = false, restore = true, cache = bypass_cache ? .Reload : .No_Cache)
 }
 
 load_closed :: proc(data: rawptr) {
@@ -427,7 +471,8 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			load.mime = strings.clone(http.mime_essence(r.mime))
 			if cs, ok := http.mime_param(r.mime, "charset"); ok { load.charset = strings.clone(cs) }
 		}
-		set_status(t, fmt.tprintf("HTTP %d", r.status))
+		load.from_cache = r.cache
+		set_status(t, fmt.tprintf("HTTP %d%s", r.status, cache_status_suffix(r.cache)))
 		shown := load.view_source ? strings.concatenate({VIEW_SOURCE, r.url}, context.temp_allocator) : r.url
 		delete(t.url)
 		t.url = strings.clone(shown)
@@ -435,9 +480,14 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		// an image is shown by a document the browser writes once the image is in (download.odin show_image_document)
 		if load.action == .Image && !load.view_source { return }
 		// the document exists from here on, with the origin of its *final* URL
+		if cc, ok := http.get_header(r.headers, "cache-control"); ok && strings.contains(strings.to_lower(cc, context.temp_allocator), "no-store") { t.nav_state.no_store = true }
+		// a redirect: the entry is the final address
+		if cur := page.session_current(&t.session); cur != nil && !load.view_source && cur.url != r.url { page.session_replace(&t.session, r.url, set_state = false); sync_history(t) }
 		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, r.url, console_sink, t)
+		if load.cache == .Reload { load.page.env.cache_override = .Reload }   // Ctrl+F5: everything it loads, from the network
 		attach_page(app, t, load.page)
 		t.page = load.page
+		if !load.view_source && r.status < 400 { global_history_visit(app, t, r.url, "") }
 		csp_h := http.get_all(r.headers, "content-security-policy")
 		ro_h := http.get_all(r.headers, "content-security-policy-report-only")
 		rp, _ := http.get_header(r.headers, "referrer-policy")
@@ -499,7 +549,7 @@ document_parsed :: proc(p: ^page.Page, user: rawptr, d: ^page.Parsed_Document) {
 		delete(t.title)
 		t.title = strings.clone(title)
 	}
-	set_status(t, fmt.tprintf("HTTP %d, %d bytes (%s), %d nodes", load.status, load.bytes, d.encoding, r.nodes))
+	set_status(t, fmt.tprintf("HTTP %d%s, %d bytes (%s), %d nodes", load.status, cache_status_suffix(load.from_cache), load.bytes, d.encoding, r.nodes))
 	start_scripts(app, load)
 	page.scripts_start(p)   // JavaScript (js_scripts.odin)
 }
@@ -644,6 +694,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		hold_release(t)
 		prof_first_paint(t)
 	}
+	restore_tick(app, t, size)   // history_restore.odin: an entry shown again comes back where it was
 	scroll_to_fragment(t, size)
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
 	draw.push_clip(dc, b.rect)
@@ -655,6 +706,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	images_after_paint(app)
 	prof_end(.Paint_Items)
 	draw.pop_clip(dc)
+	timing_painted(t)
 }
 
 // HTML "scroll to the fragment": when the document URL changes (load, link to #id, location.hash, history), the view
@@ -735,6 +787,8 @@ build_ui :: proc(app: ^App) {
 			ui.next({width = ui.fill(), height = ui.fill()})
 			if t != nil && t.kind == .Config {
 				config_page(&app.config_view, &app.prefs)
+			} else if t != nil && t.kind == .History {
+				history_page(app, t)   // history_ui.odin
 			} else {
 				// a Tab stop of the chrome: reaching it hands the keyboard to the page (forms_focus_from_chrome)
 				pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
@@ -759,6 +813,7 @@ build_ui :: proc(app: ^App) {
 		}
 	}
 	context_menus_build(app)
+	palette_build(app)   // palette.odin: the command palette, over everything else
 	// notices go over the page, not over the title bar's window buttons
 	if app.page_rect.max.y > app.page_rect.min.y { ui.set_toast_area(app.page_rect) }
 	ui.toasts_build()
@@ -893,6 +948,7 @@ apply_prefs :: proc(app: ^App) {
 	fetch.settings_destroy(&app.profile.settings)
 	app.profile.settings = fetch.settings_from_prefs(&app.prefs)
 	app.profile.jar.settings = cookies.settings_from_prefs(&app.prefs)
+	http_cache_apply(app)
 
 	page.settings_destroy(&app.page_settings)
 	app.page_settings = page.settings_from_prefs(&app.prefs)
@@ -940,6 +996,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_begin(.Input)
 	route_page_input(app, events)
 	events = forms_unconsumed_events(events)   // keys the page used do not reach the chrome
+	events = history_tree_events(app, events)   // the wheel and zoom keys of about:history's tree (history_tree.odin)
 	forms_shell_frame(app)
 	selection_shell_frame(app)
 	prof_end(.Input)
@@ -1057,6 +1114,7 @@ main :: proc() {
 	net.settings_destroy(&ns)
 	host.blocking_init(&app.blocking, &app.loop, app.cfg.blocking_threads)
 	app.profile = fetch.profile_make(fetch.settings_from_prefs(&app.prefs), cookies.settings_from_prefs(&app.prefs))
+	http_cache_start(app)   // http_cache_ui.odin: the profile's HTTP cache (its index loads on a thread meanwhile)
 	fetch.loader_init(&app.loader, &app.loop, &app.client, &app.blocking, &app.profile)
 	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "")
 	app.page_settings = page.settings_from_prefs(&app.prefs)
@@ -1069,6 +1127,8 @@ main :: proc() {
 	page.js_startup(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")
 	app.process = base.scope_make("process")
 	app.config_view.rows = make(map[string]^Row_State)
+	history_settings_init(app)   // history_settings.odin: before the first tab
+	global_history_init(app)
 	app.show_console = app.cfg.show_console
 
 	profile_load(app)
@@ -1105,6 +1165,7 @@ main :: proc() {
 	window_chrome_init(app)
 	favicons_init(app)   // favicon.odin
 	downloads_init(app)   // download.odin
+	webauthn_shell_init(app)   // webauthn_shell.odin
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
 	hud_init(app)
@@ -1130,15 +1191,24 @@ main :: proc() {
 	}
 
 	prof_report()
+	for t in app.tabs { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	profile_save(app, force = true)
+	bfcache_shutdown(app)
+	for t in app.tabs { tab_nav_destroy(app, t) }
+	global_history_shutdown(app)
+	history_ui_destroy()
+	history_settings_shutdown(app)
 	base.scope_close(app.process)   // every tab, page and request
+	webauthn_shell_destroy(app)   // passkey requests: their threads joined
 	favicons_destroy(app)
 	images_shell_destroy(app)
 	page.storage_manager_destroy(&app.storage)   // writes what is not saved yet
 	page.shutdown_threads()
 	lay.shutdown_threads()
 	page.images_shutdown()   // the image cache and its decoding threads
+	page.fonts_shutdown()    // the decoded web fonts kept for every page
 	fetch.loader_destroy(&app.loader)
+	http_cache_stop(app)   // writes what is pending and the index
 	host.blocking_destroy(&app.blocking)
 	downloads_shutdown()   // (no write or dialog of theirs is running any more)
 	net.client_destroy(&app.client)
@@ -1163,6 +1233,7 @@ main :: proc() {
 	ui.field_destroy(&app.address)
 	console_eval_destroy()
 	session_destroy()
+	palette_destroy()   // palette.odin (and the command registry)
 	ui.destroy(&app.ui_state)
 	config.prefs_destroy(&app.prefs)
 }

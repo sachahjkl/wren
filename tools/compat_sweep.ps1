@@ -6,8 +6,7 @@
 # browsers running scripts (compare_edge -Js: Wren with javascript.enabled, Edge as it is) and collects Wren's
 # JavaScript errors on the page, grouped by what is missing (NotSupportedError "X.y is not supported", ReferenceError,
 # TypeError...). With both modes the table is the before / after of JavaScript.
-# Each comparison is made under the shared lock of the worktrees (S:\wb_wt\shared.lock: Wren's window and the test
-# server ports are shared between agents), taken and released per site and mode.
+# No lock here: Wren's capture (tools\screenshot.ps1) holds desktop.lock while its window lives, Edge runs headless.
 # Writes <OutDir>\summary.csv and summary.md (per site: fraction of differing pixels, mean channel difference, the
 # JavaScript errors; then the missing APIs over the panel) and, per site, the captures of compare_edge (<name>_side.png,
 # <name>_diff.png..., <name>_js_*.png and <name>_js_console.txt for the js mode). summary.json keeps every measure:
@@ -23,8 +22,7 @@ param(
     [string[]]$SnapshotSites = @('https://www.google.com/'),
     [string[]]$Modes = @('noscript'),
     [int]$WaitMs = 7000,
-    [switch]$Rebuild,
-    [string]$LockPath = 'S:\wb_wt\shared.lock'
+    [switch]$Rebuild
 )
 $ErrorActionPreference = 'Stop'
 # (powershell -File passes "a,b" as one string)
@@ -47,13 +45,9 @@ foreach ($site in $Sites) {
         if ($mode -eq 'js') { $cmpArgs += '-Js' }
         else { $cmpArgs += if ($SnapshotSites -contains $site) { '-Snapshot' } else { '-NoScript' } }
         if ($Exe) { $cmpArgs += @('-Exe', $Exe) }
-        $lock = $null
-        while ($true) { try { $lock = [IO.File]::Open($LockPath, 'OpenOrCreate', 'ReadWrite', 'None'); break } catch { Start-Sleep -Milliseconds 500 } }
-        try {
-            $ErrorActionPreference = 'Continue'   # a site that fails is reported, the sweep goes on
-            $out = & powershell @cmpArgs 2>&1 | Out-String
-            $ErrorActionPreference = 'Stop'
-        } finally { $lock.Close() }
+        $ErrorActionPreference = 'Continue'   # a site that fails is reported, the sweep goes on
+        $out = & powershell @cmpArgs 2>&1 | Out-String
+        $ErrorActionPreference = 'Stop'
         $json = ($out -split "`n" | Where-Object { $_ -match '^\{"name"' } | Select-Object -Last 1)
         if ($json) {
             $m = $json | ConvertFrom-Json

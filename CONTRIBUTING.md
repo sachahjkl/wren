@@ -5,6 +5,14 @@
 - Build with `build.bat` (it builds with `-vet`), and `build.bat profile` for the profiling build.
 - Run `powershell -NoProfile -File tools\test_all.ps1 -Quick`: every step must say PASS. CI runs the same suite with
   `-CI` on `windows-2025` ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+- Several runs at once on one machine (worktrees) are fine: `test_all.ps1` takes no lock. Its test server listens on
+  a block of ports of the run (`-BasePort`, default derived from the worktree's path; `-CI`: 8765), the tools read it
+  from `WREN_TEST_BASE_PORT` (`src/tools/testenv`, guests: `examples/testports`), and steps run `-Jobs` at a time, each
+  server-backed step with a server of its own. Write test addresses with the default ports
+  (`testenv.url("http://127.0.0.1:8765/x")`): they move with the block. Scripts that use the real desktop
+  (`screenshot.ps1`, `history_e2e.ps1`) or measure performance (`perf.ps1`, `js_bench.ps1`, `cfg_bench.ps1`) take
+  `desktop.lock` / `bench.lock` themselves, only for that part (`tools/test_env.ps1`, which also starts a test server
+  on a free block: `Start-WrenTestServer`). A step that needs either goes through those scripts or `Use-WrenLock`.
 - A new web API starts in `api/<module>.widl`; `build.bat` regenerates the bindings, the SDK and the docs, and
   `test_all.ps1` fails when a generated file is out of date.
 - A new preference is a `config.Def` in the package's `settings.odin`, registered with the others
@@ -33,11 +41,12 @@ submodules, `native/media/Cargo.lock`, `native/js/webref/VERSION` and `wpt/MANIF
    git push origin vX.Y.Z
    ```
 
-3. [.github/workflows/release.yml](.github/workflows/release.yml) checks that the tag matches `APP_VERSION`, builds,
+3. [.github/workflows/release.yml](.github/workflows/release.yml) checks that the tag matches `APP_VERSION`, builds (`build.bat release`),
    runs the tests, packages `wren-X.Y.Z-windows-x64.zip` (`tools/package.ps1`) with `SHA256SUMS.txt`, and publishes
    the GitHub release.
 
-To try the package locally: `build.bat` then `powershell -File tools\package.ps1` (output in `build\dist`).
+To try the package locally: `build.bat release` then `powershell -File tools\package.ps1` (output in `build\dist`);
+a development build (plain `build.bat`) packages only with `-Dev`.
 
 ## Submodules
 

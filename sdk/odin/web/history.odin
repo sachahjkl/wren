@@ -8,6 +8,12 @@ import "base:runtime"
 // The Window object (an EventTarget: popstate, hashchange, storage...).
 Window :: distinct Object
 
+// What history.scrollRestoration says: whether the browser restores the scroll positions of an entry shown again.
+ScrollRestoration :: enum i32 {
+	Auto = 0,
+	Manual = 1,
+}
+
 foreign import _m_history "history"
 
 @(private = "file", default_calling_convention = "contextless")
@@ -24,6 +30,8 @@ foreign _m_history {
 	@(link_name = "History_pushState") _History_pushState :: proc(state: [^]u8, state_len: u32, url: [^]u8, url_len: u32) -> Error ---
 	@(link_name = "History_replaceState") _History_replaceState :: proc(state: [^]u8, state_len: u32, url: [^]u8, url_len: u32) -> Error ---
 	@(link_name = "History_go") _History_go :: proc(delta: i32) ---
+	@(link_name = "History_scrollRestoration") _History_scrollRestoration :: proc() -> ScrollRestoration ---
+	@(link_name = "History_set_scrollRestoration") _History_set_scrollRestoration :: proc(mode: ScrollRestoration) ---
 }
 
 // window (the same object every time).
@@ -145,5 +153,15 @@ History_replaceState :: proc "contextless" (state: Maybe(string) = nil, url: May
 // history.go(delta): back() is go(-1), forward() go(1), go(0) reloads. Asynchronous.
 History_go :: proc "contextless" (delta: i32 = 0) {
 	_History_go(delta)
+}
+
+// history.scrollRestoration, of the current entry.
+History_scrollRestoration :: proc "contextless" () -> ScrollRestoration {
+	return _History_scrollRestoration()
+}
+
+// history.scrollRestoration = mode, for the current entry (and the entries this document adds after it).
+History_set_scrollRestoration :: proc "contextless" (mode: ScrollRestoration) {
+	_History_set_scrollRestoration(mode)
 }
 

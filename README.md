@@ -231,7 +231,11 @@ cd wren
 build.bat            &:: optimized build -> build\browser.exe
 build.bat debug      &:: debug build
 build.bat profile    &:: optimized + PDB + the built-in profiler -> build\browser_prof.exe
+build.bat release    &:: optimized build of the release channel (what the release workflow packages)
 ```
+
+Every build but `build.bat release` is a development build: a blueprint icon instead of the amber one (exe, window,
+taskbar, tab strip), and "development build" with the commit on the start page and in the menu.
 
 What `build.bat` does, each step skipped when it is already up to date:
 
@@ -283,7 +287,9 @@ regression fails the run:
   which 106,188 subtests pass ([`wpt/expectations`](wpt/expectations)).
 
 `-CI` is `-Quick` for shared build machines: end-to-end timeouts are tripled and a failed step's whole output is
-shown. No step is ever run twice: tests check properties, never wall-clock durations. [GitHub
+shown, one step at a time on the default ports. Locally, steps run several at a time (`-Jobs n`) and the test server
+listens on ports of the run (`-BasePort n`), so several checkouts can test at once. No step is ever run twice: tests
+check properties, never wall-clock durations. [GitHub
 Actions](.github/workflows/ci.yml) runs it on `windows-2025` for every push and pull request.
 
 ## Writing a page for Wren

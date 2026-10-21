@@ -13,6 +13,15 @@ Exposed to: Window. Source: `api/history.widl`.
 
 The Window object (an EventTarget: popstate, hashchange, storage...).
 
+### enum `ScrollRestoration` : i32
+
+What history.scrollRestoration says: whether the browser restores the scroll positions of an entry shown again.
+
+| member | value | |
+|---|---:|---|
+| `Auto` | 0 |  |%!(EXTRA false)
+| `Manual` | 1 |  |%!(EXTRA false)
+
 ## Functions
 
 ### `Window_self`
@@ -147,4 +156,24 @@ void History_go(i32 delta = 0)
 history.go(delta): back() is go(-1), forward() go(1), go(0) reloads. Asynchronous.
 
 Host: `History_go :: proc(c: ^Call, delta: i32)`
+
+### `History_scrollRestoration`
+
+```
+ScrollRestoration History_scrollRestoration()
+```
+
+history.scrollRestoration, of the current entry.
+
+Host: `History_scrollRestoration :: proc(c: ^Call) -> Api_ScrollRestoration`
+
+### `History_set_scrollRestoration`
+
+```
+void History_set_scrollRestoration(ScrollRestoration mode)
+```
+
+history.scrollRestoration = mode, for the current entry (and the entries this document adds after it).
+
+Host: `History_set_scrollRestoration :: proc(c: ^Call, mode: Api_ScrollRestoration)`
 

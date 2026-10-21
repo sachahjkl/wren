@@ -16,3 +16,4 @@ native/media/target/
 policies.txt
 .vs/
 .vscode/
+src/browser/wren_dev.res

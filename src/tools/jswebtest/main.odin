@@ -2,7 +2,7 @@
 // examples/jsweb/*.js run in a page of the test server's origin, with a small harness (examples/jsweb/harness.js) whose
 // results come back through the console: "ok <what>", "FAIL <what>", "MEASURE <name> <value>", "SIGNAL <name>" (the
 // script waits for this tool to act on the page, then resumes) and "DONE". Needs build\testserver.exe running (ports
-// 8765-8767). Run from the repository root:
+// 8765-8767, or the block of WREN_TEST_BASE_PORT: src/tools/testenv). Run from the repository root:
 //   jswebtest.exe [name...]
 package jswebtest
 
@@ -17,8 +17,9 @@ import "wb:js"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
+import "wb:tools/testenv"
 
-BASE :: "http://127.0.0.1:8765"
+BASE :: "http://127.0.0.1:8765"   // on the run's block of ports through testenv.url (addresses and scripts)
 PAGE :: BASE + "/jsweb/page"
 DIR :: "examples/jsweb"
 PROFILE_DIR :: "build/jswebtest_profile"
@@ -75,9 +76,9 @@ open :: proc(name: string, address := PAGE, tab_key := "tab-1") -> Running {
 	if err != nil { fmt.printf("FAIL cannot read %s/%s.js\n", DIR, name); failures += 1; return {} }
 	l := new(Page_Log)
 	l.name = name
-	p := page.page_create(&loop, &loader, &settings, process, address, console, l)
+	p := page.page_create(&loop, &loader, &settings, process, testenv.url(address), console, l)
 	page.set_embedder(p, {navigate = navigate_hook, session = &session, tab_key = tab_key, storage = &storage})
-	html := strings.concatenate({"<!doctype html><meta charset=utf-8><title>", name, "</title><body><script>", harness, "</script><script>", string(src), "</script></body>"})
+	html := strings.concatenate({"<!doctype html><meta charset=utf-8><title>", name, "</title><body><script>", harness, "</script><script>", testenv.url(string(src)), "</script></body>"})
 	page.load_html(p, transmute([]byte)html)
 	page.scripts_start(p)
 	return {p, l}
@@ -205,7 +206,7 @@ main :: proc() {
 		clear(&navigations)
 		actions := make(map[string]Action, context.temp_allocator)
 		actions["navigations"] = proc(p: ^page.Page, l: ^Page_Log) {
-			want := []string{fmt.tprintf("Assign %s/jsweb/other", BASE), fmt.tprintf("Replace %s/jsweb/replaced", BASE), "Reload"}
+			want := []string{fmt.tprintf("Assign %s/jsweb/other", testenv.url(BASE)), fmt.tprintf("Replace %s/jsweb/replaced", testenv.url(BASE)), "Reload"}
 			wait_until(proc() -> bool {
 				n := 0
 				for w in ([]string{"Assign ", "Replace ", "Reload"}) { for x in navigations { if strings.has_prefix(x, w) { n += 1; break } } }

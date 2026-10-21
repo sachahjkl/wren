@@ -4,6 +4,7 @@
 package webapitest
 
 import "web:web"
+import "../testports"
 
 r: web.Element   // the result element
 
@@ -216,13 +217,13 @@ abort_probe :: proc "contextless" () {
 	controller = web.AbortController_create()
 	sig := web.AbortController_signal(controller)
 	web.EventTarget_addEventListener(sig, "abort", on_abort_event)
-	web.Fetch_startWithSignal("http://127.0.0.1:8765/webapi/slow?ms=8000", on_slow, 0, signal = sig)
-	pr, _ := web.Fetch_promise("http://127.0.0.1:8765/webapi/slow?ms=8000", signal = sig)
+	web.Fetch_startWithSignal(testports.url("http://127.0.0.1:8765/webapi/slow?ms=8000"), on_slow, 0, signal = sig)
+	pr, _ := web.Fetch_promise(testports.url("http://127.0.0.1:8765/webapi/slow?ms=8000"), signal = sig)
 	web.Promise_then(pr, on_promise_response)
 
 	// already aborted: fails at once with Aborted, nothing is sent
 	pre := web.AbortSignal_abort()
-	web.Fetch_startWithSignal("http://127.0.0.1:8765/webapi/slow?ms=8000", on_pre_aborted, 0, signal = pre)
+	web.Fetch_startWithSignal(testports.url("http://127.0.0.1:8765/webapi/slow?ms=8000"), on_pre_aborted, 0, signal = pre)
 
 	// AbortSignal.timeout(): TimeoutError
 	ts, _ := web.AbortSignal_timeout(30)
@@ -326,7 +327,7 @@ fetch_probe :: proc "contextless" () {
 	web.Object_release(buf)   // the request copied it
 	split_dec, _ = web.TextDecoder_create("utf-8")
 	fetch_then(web.Fetch_promise("/webapi/split"), on_split_response)
-	fetch_then(web.Fetch_promise("https://127.0.0.1:8766/"), on_network_error)
+	fetch_then(web.Fetch_promise(testports.url("https://127.0.0.1:8766/")), on_network_error)
 }
 
 ////////////////////////////////

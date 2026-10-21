@@ -5,6 +5,7 @@ import "wb:config"
 import "wb:cookies"
 import "wb:fetch"
 import "wb:html"
+import "wb:httpcache"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
@@ -63,6 +64,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, PREFS[:])
 	net.register_prefs(p)
 	fetch.register_prefs(p)
+	httpcache.register_prefs(p)
 	cookies.register_prefs(p)
 	page.register_prefs(p)
 	register_layout_prefs(p)
@@ -72,6 +74,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_interaction_prefs(p)
 	register_hud_prefs(p)
 	register_font_prefs(p)
+	register_web_face_prefs(p)   // web_font_faces.odin
 	register_frame_prefs(p)    // pacing.odin
 	register_scroll_prefs(p)   // smooth_scroll.odin
 	register_window_prefs(p)   // window_chrome.odin
@@ -82,7 +85,9 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_download_prefs(p)   // download.odin
 	register_print_prefs(p)   // print.odin
 	register_session_prefs(p)   // session.odin
+	register_history_prefs(p)   // history_settings.odin
 	register_app_command_prefs(p)   // app_commands.odin
+	register_palette_prefs(p)   // palette.odin
 	_ = wasm.PREFS
 	_ = html.PREFS
 }

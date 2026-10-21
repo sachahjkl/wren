@@ -333,6 +333,7 @@ tab_refresh :: proc(app: ^App, t: ^Tab, icon_px: int) {
 		t.icon.url = strings.clone(icon)
 	}
 	if icon != "" { favicon_request(app, t, icon) }
+	history_title_seen(app, t)   // the entry and the browsing history take the title and icon (history_ui.odin)
 }
 
 @(private = "file")

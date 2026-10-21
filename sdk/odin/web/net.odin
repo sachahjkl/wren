@@ -63,6 +63,16 @@ ReferrerPolicy :: enum u32 {
 	Unsafe_Url = 8,
 }
 
+// RequestInit.cache: how the request uses the browser's HTTP cache (Fetch Standard cache modes).
+RequestCache :: enum u32 {
+	Default = 0,
+	No_Store = 1,
+	Reload = 2,
+	No_Cache = 3,
+	Force_Cache = 4,
+	Only_If_Cached = 5,
+}
+
 // RequestInit beyond method, headers and body. The zero value is the Fetch API default.
 FetchOptions :: struct {
 	mode: FetchMode,
@@ -71,6 +81,8 @@ FetchOptions :: struct {
 	referrer_policy: ReferrerPolicy,
 	// referrer: "" (send none).
 	no_referrer: bool,
+	// only-if-cached needs mode Same_Origin.
+	cache: RequestCache,
 }
 
 // Called when the response arrives (Response), when the body is complete (Done) or on failure (Failed).
@@ -80,7 +92,7 @@ foreign import _m_net "net"
 
 @(private = "file", default_calling_convention = "contextless")
 foreign _m_net {
-	@(link_name = "Fetch_start") _Fetch_start :: proc(url: [^]u8, url_len: u32, callback: FetchCallback, user: i32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32) -> Fetch ---
+	@(link_name = "Fetch_start") _Fetch_start :: proc(url: [^]u8, url_len: u32, callback: FetchCallback, user: i32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, options_cache: RequestCache) -> Fetch ---
 	@(link_name = "Fetch_state") _Fetch_state :: proc(request: u64) -> FetchState ---
 	@(link_name = "Fetch_status") _Fetch_status :: proc(request: u64) -> i32 ---
 	@(link_name = "Fetch_type") _Fetch_type :: proc(request: u64) -> ResponseType ---
@@ -100,7 +112,7 @@ Fetch_start :: proc "contextless" (url: string, callback: FetchCallback, user: i
 	_body_p: [^]u8
 	_body_n := max(u32)
 	if v, ok := body.?; ok { _body_p, _body_n = raw_data(v), u32(len(v)) }
-	return _Fetch_start(raw_data(url), u32(len(url)), callback, user, raw_data(method), u32(len(method)), raw_data(headers), u32(len(headers)), _body_p, _body_n, options.mode, options.credentials, options.redirect, options.referrer_policy, i32(1 if options.no_referrer else 0))
+	return _Fetch_start(raw_data(url), u32(len(url)), callback, user, raw_data(method), u32(len(method)), raw_data(headers), u32(len(headers)), _body_p, _body_n, options.mode, options.credentials, options.redirect, options.referrer_policy, i32(1 if options.no_referrer else 0), options.cache)
 }
 
 Fetch_state :: proc "contextless" (request: $T_request) -> FetchState where intrinsics.type_is_integer(intrinsics.type_core_type(T_request)) && size_of(T_request) == 8 {

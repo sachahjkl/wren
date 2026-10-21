@@ -180,7 +180,7 @@ status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
 		case .Requests:
 			n := fetch.in_flight(&app.loader)
 			add(&items, {kind = item, text = fmt.tprintf("%s request%s", fmt_count(n), n == 1 ? "" : "s"), short = fmt.tprintf("%s req.", fmt_count(n)),
-				id = "###sb_req", tone = n > 0 ? "" : "weak", tip = "Requests in flight", priority = 60})
+				id = "###sb_req", tone = n > 0 ? "" : "weak", tip = cache_requests_tip(t), priority = 60})
 		case .Cookies:
 			if p == nil || p.env.location.host == "" { continue }
 			n := cookies.count_for_host(&app.profile.jar, p.env.location.host)
@@ -356,7 +356,7 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 				ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
 				what := n.frames > 0 ? fmt.tprintf("last %s s, %d frames", fmt_ms(f32(hud.cfg.window_ms / 1000), c), n.frames) : "idle: no frames drawn lately"
 				ui.label(fmt.tprintf("Frame statistics, %s###fs_title", what))
-				ui.next({width = ui.px(em * 1.9), height = ui.px(em * 1.9)})
+				ui.next({width = ui.px(em * 1.9), height = ui.px(em * 1.9), radius = em * CHROME_BUTTON_RADIUS})
 				close := ui.icon_button("###fs_close", GLYPH_CLOSE)
 				tip(close, "Close (Ctrl+Shift+B)")
 				if close.clicked { hud.panel_open = false }
@@ -505,6 +505,7 @@ set_pref_bool :: proc(app: ^App, name: string, v: bool) {
 // The panel takes the clicks and the wheel that land on it (the page under it does not get them).
 hud_captures :: proc(pos: draw.Vec2) -> bool {
 	if fullscreen_bars_capture(pos) { return true }   // and so do the bars of full screen (window_chrome.odin)
+	if palette_captures(pos) { return true }   // and the command palette while it is open (palette.odin)
 	if !hud.panel_open { return false }
 	r, ok := ui.popover_rect(PANEL_ID)
 	return ok && draw.rect_contains(r, pos)

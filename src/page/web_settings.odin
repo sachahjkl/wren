@@ -26,6 +26,7 @@ Web_Settings :: struct {
 	perf_max_entries:        int,
 	history_max_entries:     int,
 	history_max_state_bytes: int,
+	history_max_nodes:       int,
 	url_max_length:          int,
 	max_signal_sources:      int,
 }
@@ -66,7 +67,9 @@ WEB_PREFS := [?]config.Def{
 	{name = "performance.max_user_timing_entries", kind = .Int, default = {i = 10_000}, bounded = true, min = 1, max = 100_000_000,
 		description = "Most performance.mark / measure entries kept per page; the oldest are dropped past it."},
 	{name = "history.max_entries", kind = .Int, default = {i = 50}, bounded = true, min = 1, max = 100_000,
-		description = "Entries kept in a tab's session history; the oldest are dropped past it."},
+		description = "Entries of a tab's session history that pages see (history.length, back and forward): the path through the tab's history tree to the current entry and on along the branches visited last. Past it the oldest are hidden from pages (the tree keeps them, up to history.tree.max_nodes)."},
+	{name = "history.tree.max_nodes", kind = .Int, default = {i = 1000}, bounded = true, min = 1, max = 1_000_000,
+		description = "Entries kept in a tab's history tree, every branch included. Past it the entries visited least recently go, those off the current path first."},
 	{name = "history.max_state_bytes", kind = .Int, default = {i = 16 << 20}, bounded = true, min = 0, max = 1 << 30, bytes = true, unit = "bytes",
 		description = "Largest history.pushState / replaceState state; a bigger one fails with DataCloneError."},
 	{name = "url.max_length", kind = .Int, default = {i = 2 << 20}, bounded = true, min = 1024, max = 1 << 30, bytes = true, unit = "bytes",
@@ -96,6 +99,7 @@ web_settings_from_prefs :: proc(p: ^config.Prefs) -> Web_Settings {
 		perf_max_entries        = int(config.int_of(p, "performance.max_user_timing_entries")),
 		history_max_entries     = int(config.int_of(p, "history.max_entries")),
 		history_max_state_bytes = int(config.int_of(p, "history.max_state_bytes")),
+		history_max_nodes       = int(config.int_of(p, "history.tree.max_nodes")),
 		url_max_length          = int(config.int_of(p, "url.max_length")),
 		max_signal_sources      = int(config.int_of(p, "dom.abort_signal.max_sources")),
 	}

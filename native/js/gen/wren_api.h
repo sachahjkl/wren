@@ -29,6 +29,34 @@ typedef void (*wr_PromiseReaction)(int32_t user, uint64_t promise, int32_t state
 
 /* module console: types */
 
+/* module credentials: types */
+// A PublicKeyCredential: the authenticator's answer, with its response (attestation or assertion).
+typedef uint64_t wr_PublicKeyCredential;
+// CredentialMediationRequirement.
+enum wr_CredentialMediation {
+    wr_CredentialMediation_Optional = 0,
+    wr_CredentialMediation_Silent = 1,
+    wr_CredentialMediation_Required = 2,
+    wr_CredentialMediation_Conditional = 3,
+};
+// The binary members of a credential and its response.
+enum wr_CredentialBytes {
+    // rawId
+    wr_CredentialBytes_Raw_Id = 0,
+    // response.clientDataJSON
+    wr_CredentialBytes_Client_Data_JSON = 1,
+    // response.attestationObject (create only)
+    wr_CredentialBytes_Attestation_Object = 2,
+    // response.authenticatorData (get), response.getAuthenticatorData() (create)
+    wr_CredentialBytes_Authenticator_Data = 3,
+    // response.signature (get only)
+    wr_CredentialBytes_Signature = 4,
+    // response.userHandle (get only, when the authenticator returned one)
+    wr_CredentialBytes_User_Handle = 5,
+    // response.getPublicKey(): DER SubjectPublicKeyInfo (create only, for ES256 / ES384 / ES512 / RS* / PS* / EdDSA)
+    wr_CredentialBytes_Public_Key = 6,
+};
+
 /* module crypto: types */
 
 /* module document: types */
@@ -116,6 +144,11 @@ enum wr_FormEnctype {
 /* module history: types */
 // The Window object (an EventTarget: popstate, hashchange, storage...).
 typedef uint64_t wr_Window;
+// What history.scrollRestoration says: whether the browser restores the scroll positions of an entry shown again.
+enum wr_ScrollRestoration {
+    wr_ScrollRestoration_Auto = 0,
+    wr_ScrollRestoration_Manual = 1,
+};
 
 /* module images: types */
 typedef uint64_t wr_HTMLImageElement;
@@ -310,6 +343,15 @@ enum wr_ReferrerPolicy {
     wr_ReferrerPolicy_Strict_Origin_When_Cross_Origin = 7,
     wr_ReferrerPolicy_Unsafe_Url = 8,
 };
+// RequestInit.cache: how the request uses the browser's HTTP cache (Fetch Standard cache modes).
+enum wr_RequestCache {
+    wr_RequestCache_Default = 0,
+    wr_RequestCache_No_Store = 1,
+    wr_RequestCache_Reload = 2,
+    wr_RequestCache_No_Cache = 3,
+    wr_RequestCache_Force_Cache = 4,
+    wr_RequestCache_Only_If_Cached = 5,
+};
 // RequestInit beyond method, headers and body. The zero value is the Fetch API default.
 typedef struct wr_FetchOptions {
     uint32_t mode;
@@ -317,6 +359,7 @@ typedef struct wr_FetchOptions {
     uint32_t redirect;
     uint32_t referrer_policy;
     uint8_t no_referrer;
+    uint32_t cache;
 } wr_FetchOptions;
 // Called when the response arrives (Response), when the body is complete (Done) or on failure (Failed).
 typedef void (*wr_FetchCallback)(int32_t user, uint64_t request, int32_t state);
@@ -516,6 +559,47 @@ WR_IMPORT("console", "console_log") void wr_console_log(const uint8_t *message, 
 WR_IMPORT("console", "console_warn") void wr_console_warn(const uint8_t *message, uint32_t message_len);
 // console.error(message)
 WR_IMPORT("console", "console_error") void wr_console_error(const uint8_t *message, uint32_t message_len);
+
+/* module credentials */
+// navigator.credentials.create({publicKey}): settles with a PublicKeyCredential, or 0 (null) for silent mediation.
+// Conditional mediation is not supported (Not_Allowed).
+WR_IMPORT("credentials", "CredentialsContainer_create") uint64_t wr_CredentialsContainer_create(const uint8_t *options, uint32_t options_len, int32_t mediation, uint64_t signal);
+// navigator.credentials.get({publicKey}): settles with a PublicKeyCredential, or 0 (null) for silent mediation.
+// Conditional mediation is not supported (Type, as Credential Management says).
+WR_IMPORT("credentials", "CredentialsContainer_get") uint64_t wr_CredentialsContainer_get(const uint8_t *options, uint32_t options_len, int32_t mediation, uint64_t signal);
+// navigator.credentials.preventSilentAccess(): nothing to forget for public key credentials (they always involve
+// the user); settles once the document is checked.
+WR_IMPORT("credentials", "CredentialsContainer_preventSilentAccess") uint64_t wr_CredentialsContainer_preventSilentAccess(void);
+// Whether the API is on for this document (security.webauthn.enabled and a secure context).
+WR_IMPORT("credentials", "PublicKeyCredential_enabled") int32_t wr_PublicKeyCredential_enabled(void);
+// PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable() (Windows Hello is set up).
+WR_IMPORT("credentials", "PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable") uint64_t wr_PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable(void);
+// PublicKeyCredential.isConditionalMediationAvailable(): false (no autofill of passkeys yet).
+WR_IMPORT("credentials", "PublicKeyCredential_isConditionalMediationAvailable") uint64_t wr_PublicKeyCredential_isConditionalMediationAvailable(void);
+// PublicKeyCredential.getClientCapabilities(): settles with the record as JSON text ({"hybridTransport":true,...},
+// keys in ascending order, extensions as "extension:<id>").
+WR_IMPORT("credentials", "PublicKeyCredential_getClientCapabilities") uint64_t wr_PublicKeyCredential_getClientCapabilities(void);
+// The RP ID check of the signal methods (signalUnknownCredential...): Security when `rp_id` is not a registrable
+// domain suffix of, nor equal to, the document's domain. The signals themselves reach no authenticator on this
+// platform: their promises settle with undefined once checked, as for an authenticator that ignores them.
+WR_IMPORT("credentials", "PublicKeyCredential_checkRpId") int32_t wr_PublicKeyCredential_checkRpId(const uint8_t *rp_id, uint32_t rp_id_len);
+// true for an assertion (get), false for a new credential (create).
+WR_IMPORT("credentials", "PublicKeyCredential_isAssertion") int32_t wr_PublicKeyCredential_isAssertion(uint64_t credential);
+// id: rawId in base64url.
+WR_IMPORT("credentials", "PublicKeyCredential_id") int32_t wr_PublicKeyCredential_id(uint64_t credential, uint8_t *_buf, uint32_t _cap);
+// A binary member as a new buffer. Not_Found when the credential has none (userHandle absent, getPublicKey() null,
+// a member of the other kind of response).
+WR_IMPORT("credentials", "PublicKeyCredential_bytes") int32_t wr_PublicKeyCredential_bytes(uint64_t credential, int32_t which, uint64_t *_ret);
+// authenticatorAttachment ("platform", "cross-platform"); Not_Found for null.
+WR_IMPORT("credentials", "PublicKeyCredential_authenticatorAttachment") int32_t wr_PublicKeyCredential_authenticatorAttachment(uint64_t credential, uint8_t *_buf, uint32_t _cap);
+// response.getTransports(), comma separated, in lexicographical order.
+WR_IMPORT("credentials", "PublicKeyCredential_transports") int32_t wr_PublicKeyCredential_transports(uint64_t credential, uint8_t *_buf, uint32_t _cap);
+// response.getPublicKeyAlgorithm() (a COSE algorithm identifier); 0 for an assertion.
+WR_IMPORT("credentials", "PublicKeyCredential_publicKeyAlgorithm") int32_t wr_PublicKeyCredential_publicKeyAlgorithm(uint64_t credential);
+// getClientExtensionResults() in its JSON form (AuthenticationExtensionsClientOutputsJSON).
+WR_IMPORT("credentials", "PublicKeyCredential_clientExtensionResults") int32_t wr_PublicKeyCredential_clientExtensionResults(uint64_t credential, uint8_t *_buf, uint32_t _cap);
+// toJSON(): RegistrationResponseJSON or AuthenticationResponseJSON, as text.
+WR_IMPORT("credentials", "PublicKeyCredential_toJSON") int32_t wr_PublicKeyCredential_toJSON(uint64_t credential, uint8_t *_buf, uint32_t _cap);
 
 /* module crypto */
 // crypto.getRandomValues(destination). Quota past crypto.max_random_bytes.
@@ -1340,9 +1424,9 @@ WR_IMPORT("eventsource", "MessageEvent_lastEventId") int32_t wr_MessageEvent_las
 /* module fetch */
 // fetch(url, init): the body is `body`, or the bytes of `body_buffer` when given. Type when the signal is not an
 // AbortSignal or the buffer not a buffer.
-WR_IMPORT("fetch", "Fetch_promise") int32_t wr_Fetch_promise(const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint64_t body_buffer, uint64_t signal, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint64_t *_ret);
+WR_IMPORT("fetch", "Fetch_promise") int32_t wr_Fetch_promise(const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint64_t body_buffer, uint64_t signal, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint32_t options_cache, uint64_t *_ret);
 // The callback API (Fetch_start) with an abort signal and an optional buffer body.
-WR_IMPORT("fetch", "Fetch_startWithSignal") int32_t wr_Fetch_startWithSignal(const uint8_t *url, uint32_t url_len, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint64_t body_buffer, uint64_t signal, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint64_t *_ret);
+WR_IMPORT("fetch", "Fetch_startWithSignal") int32_t wr_Fetch_startWithSignal(const uint8_t *url, uint32_t url_len, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint64_t body_buffer, uint64_t signal, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint32_t options_cache, uint64_t *_ret);
 // response.text(): settles with the text (decoded as UTF-8) in the promise's text, its length as value.
 // A callback fetch can be read once it is done (Invalid_State before).
 WR_IMPORT("fetch", "Response_text") uint64_t wr_Response_text(uint64_t response);
@@ -1360,7 +1444,7 @@ WR_IMPORT("fetch", "Stream_read") uint64_t wr_Stream_read(uint64_t stream);
 WR_IMPORT("fetch", "Stream_cancel") void wr_Stream_cancel(uint64_t stream);
 // fetch with a FormData body: the Content-Type (with its boundary) is set unless `headers` name one. Same callback
 // and options as Fetch_start.
-WR_IMPORT("fetch", "Fetch_startFormData") uint64_t wr_Fetch_startFormData(const uint8_t *url, uint32_t url_len, uint64_t data, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, int32_t enctype, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer);
+WR_IMPORT("fetch", "Fetch_startFormData") uint64_t wr_Fetch_startFormData(const uint8_t *url, uint32_t url_len, uint64_t data, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, int32_t enctype, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint32_t options_cache);
 
 /* module forms */
 // control.value
@@ -1613,6 +1697,10 @@ WR_IMPORT("history", "History_pushState") int32_t wr_History_pushState(const uin
 WR_IMPORT("history", "History_replaceState") int32_t wr_History_replaceState(const uint8_t *state, uint32_t state_len, const uint8_t *url, uint32_t url_len);
 // history.go(delta): back() is go(-1), forward() go(1), go(0) reloads. Asynchronous.
 WR_IMPORT("history", "History_go") void wr_History_go(int32_t delta);
+// history.scrollRestoration, of the current entry.
+WR_IMPORT("history", "History_scrollRestoration") int32_t wr_History_scrollRestoration(void);
+// history.scrollRestoration = mode, for the current entry (and the entries this document adds after it).
+WR_IMPORT("history", "History_set_scrollRestoration") void wr_History_set_scrollRestoration(int32_t mode);
 
 /* module images */
 WR_IMPORT("images", "HTMLImageElement_naturalWidth") int32_t wr_HTMLImageElement_naturalWidth(uint64_t image);
@@ -1739,7 +1827,7 @@ WR_IMPORT("media", "Screen_get") int32_t wr_Screen_get(int32_t field);
 /* module net */
 // fetch(url, {method, headers, body, ...}) with a callback. `headers` are "Name: value" lines (CR LF or LF). A
 // relative URL resolves against the document (or the worker's script).
-WR_IMPORT("net", "Fetch_start") uint64_t wr_Fetch_start(const uint8_t *url, uint32_t url_len, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer);
+WR_IMPORT("net", "Fetch_start") uint64_t wr_Fetch_start(const uint8_t *url, uint32_t url_len, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint32_t options_cache);
 WR_IMPORT("net", "Fetch_state") int32_t wr_Fetch_state(uint64_t request);
 // The HTTP status (0 for an opaque response).
 WR_IMPORT("net", "Fetch_status") int32_t wr_Fetch_status(uint64_t request);

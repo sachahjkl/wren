@@ -17,6 +17,7 @@ import "wb:images"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
+import "wb:tools/testenv"
 
 failures: int
 
@@ -37,7 +38,7 @@ settings: page.Settings
 process:  ^base.Scope
 cur:      ^page.Page
 
-SITE :: "http://127.0.0.1:8765"
+SITE :: "http://127.0.0.1:8765"   // on the run's block of ports through testenv.url
 
 turn :: proc() {
 	host.loop_wait(&loop, 5)
@@ -122,7 +123,7 @@ main :: proc() {
 	process = base.scope_make("process")
 
 	fmt.println("-- the page")
-	p := page.page_create(&loop, &loader, &settings, process, SITE + "/site/media.html", console)
+	p := page.page_create(&loop, &loader, &settings, process, testenv.url(SITE + "/site/media.html"), console)
 	page.load_html(p, html)
 	cur = p
 	pump_until("every image", proc() -> bool {
@@ -147,7 +148,7 @@ main :: proc() {
 	check(near(px(r, 2, 2), {0, 0, 255, 255}, 8) && near(px(r, 13, 29), {0, 255, 0, 255}, 8), "irot applied (blue top left, lime bottom right)")
 	a := pixels(page.image_view(p, node("avif8")).id, 32, 16)
 	check(near(px(a, 27, 12), {255, 255, 255, 128}, 8), fmt.tprintf("AVIF alpha (%v)", px(a, 27, 12)))
-	accept := http_get(SITE + "/media/accept?name=quad8a.avif")
+	accept := http_get(testenv.url(SITE + "/media/accept?name=quad8a.avif"))
 	check(strings.has_prefix(accept, "image/avif,image/webp,image/svg+xml"), fmt.tprintf("Accept of image requests: %q", accept))
 	check(page.image_view(p, node("neg")).natural == {32, 16}, "content negotiation on Accept: the server sent AVIF")
 	check(page.image_view(p, node("pic")).natural == {32, 16}, "<picture>: the image/avif source is chosen")

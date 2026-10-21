@@ -8,6 +8,7 @@
 # one (its version is printed). Each figure is the median of -Runs runs (a fresh realm or process each); Octane scores
 # are Octane's own (higher is better, geometric mean of each benchmark's runs).
 # Outputs in -OutDir: octane.md, dom.md, startup.md (Markdown tables) and the raw lines of every run (*.log).
+# Holds bench.lock (tools\test_env.ps1) for the measurements: the other worktrees' measurements wait.
 param(
     [ValidateSet('octane', 'dom', 'startup', 'all')][string]$Mode = 'octane',
     [int]$Runs = 3,
@@ -327,6 +328,11 @@ function Run-Startup {
     $text
 }
 
-if ($Mode -in 'octane', 'all') { Run-Octane }
-if ($Mode -in 'dom', 'all') { Run-Dom }
-if ($Mode -in 'startup', 'all') { Run-Startup }
+# one measurement at a time on the machine: the other worktrees' runs wait for bench.lock (tools\test_env.ps1)
+. (Join-Path $PSScriptRoot 'test_env.ps1')
+$bench = Enter-WrenLock bench "js_bench.ps1 -Mode $Mode"
+try {
+    if ($Mode -in 'octane', 'all') { Run-Octane }
+    if ($Mode -in 'dom', 'all') { Run-Dom }
+    if ($Mode -in 'startup', 'all') { Run-Startup }
+} finally { Exit-WrenLock $bench }

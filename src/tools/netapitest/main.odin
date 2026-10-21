@@ -17,6 +17,7 @@ import "wb:fetch"
 import "wb:host"
 import "wb:net"
 import "wb:page"
+import "wb:tools/testenv"
 
 failures: int
 log_count: int
@@ -106,7 +107,7 @@ private_bytes :: proc() -> int {
 	return int(pmc.PagefileUsage)
 }
 
-ORIGIN :: "http://127.0.0.1:8765"
+ORIGIN :: "http://127.0.0.1:8765"   // on the run's block of ports through testenv.url
 
 main :: proc() {
 	if len(os.args) < 2 { fmt.eprintln("usage: netapitest netapitest.wasm"); os.exit(2) }
@@ -127,30 +128,30 @@ main :: proc() {
 	if !page.register_imports() { fmt.eprintln("register failed"); os.exit(2) }
 	process = base.scope_make("process")
 
-	p := new_page(ORIGIN + "/netapi.html")
+	p := new_page(testenv.url(ORIGIN + "/netapi.html"))
 
 	////////////////////////////////
 	fmt.println("-- EventSource")
 	{
-		basic_hits := http_get(ORIGIN + "/sse/hits?name=basic")
+		basic_hits := http_get(testenv.url(ORIGIN + "/sse/hits?name=basic"))
 		s := run(p, "es_basic", 1)
-		want := "open;message:hello::" + ORIGIN + ";ping:p1:1:" + ORIGIN + ";message:line1\nline2:2:" + ORIGIN + ";done:3:2:" + ORIGIN + ";closed=2"
+		want := testenv.url("open;message:hello::" + ORIGIN + ";ping:p1:1:" + ORIGIN + ";message:line1\nline2:2:" + ORIGIN + ";done:3:2:" + ORIGIN + ";closed=2")
 		check(s == want, fmt.tprintf("messages, named events, ids, CR/CRLF, BOM, comments, origin (got %q)", s))
 		pump_for(400)
 		page.call_export(p, p.instances[0], "publish_now", {1})
 		again, _ := result(p, 1)
 		check(again == want, "nothing is delivered after close()")
 		check(fetch.in_flight(&loader) == 0, "close() cancelled the request")
-		check(atoi(http_get(ORIGIN + "/sse/hits?name=basic")) == atoi(basic_hits) + 1, "one connection, no reconnection after close()")
+		check(atoi(http_get(testenv.url(ORIGIN + "/sse/hits?name=basic"))) == atoi(basic_hits) + 1, "one connection, no reconnection after close()")
 
 		s = run(p, "es_reconnect", 2)
 		check(s == "open;msg:first:41;error(0);open;msg:resumed:41:42;", fmt.tprintf("reconnection after the end of the stream, with Last-Event-ID (got %q)", s))
 
-		before := atoi(http_get(ORIGIN + "/sse/hits?name=wrong-type"))
+		before := atoi(http_get(testenv.url(ORIGIN + "/sse/hits?name=wrong-type")))
 		s = run(p, "es_wrong_type", 3)
 		check(s == "error(2);", fmt.tprintf("a response that is not text/event-stream fails the EventSource (got %q)", s))
 		pump_for(800)
-		check(atoi(http_get(ORIGIN + "/sse/hits?name=wrong-type")) == before + 1, "...and it never reconnects")
+		check(atoi(http_get(testenv.url(ORIGIN + "/sse/hits?name=wrong-type"))) == before + 1, "...and it never reconnects")
 
 		s = run(p, "es_status", 4)
 		check(s == "error(2);", fmt.tprintf("a non-200 status fails the EventSource (got %q)", s))
@@ -161,7 +162,7 @@ main :: proc() {
 		check(h["sec-fetch-mode"] == "cors" && h["sec-fetch-dest"] == "empty" && h["last-event-id"] == "", "mode cors, destination empty, no Last-Event-ID on the first request")
 
 		s = run(p, "es_cross", 6)
-		check(s == "open;ping:p1:1:http://localhost:8765;wc=1", fmt.tprintf("cross-origin with credentials: CORS and MessageEvent.origin (got %q)", s))
+		check(s == testenv.url("open;ping:p1:1:http://localhost:8765;wc=1"), fmt.tprintf("cross-origin with credentials: CORS and MessageEvent.origin (got %q)", s))
 
 		r, _ := wasm_i32(p, "es_syntax")
 		check(r == 1, fmt.tprintf("SyntaxError, relative URL, url getter, readyState, release (%d)", r))
@@ -172,7 +173,7 @@ main :: proc() {
 	{
 		cookies.clear_all(&profile.jar)
 		s := run(p, "ws_text", 10)
-		want := "open:chat;rs=1;echo:hello;origin:" + ORIGIN + ";mode:websocket;ua:Wren/0.2;rs=2;close:4001::1;rs=3;"
+		want := testenv.url("open:chat;rs=1;echo:hello;origin:" + ORIGIN + ";mode:websocket;ua:Wren/0.2;rs=2;close:4001::1;rs=3;")
 		check(s == want, fmt.tprintf("text echo, negotiated subprotocol, Origin, Fetch Metadata, User-Agent, clean close with a code (got %q)", s))
 		found := false
 		for c in cookies.all(&profile.jar) { if c.name == "wscookie" && c.value == "handshake" { found = true } }
@@ -240,15 +241,15 @@ main :: proc() {
 	////////////////////////////////
 	fmt.println("-- policies")
 	{
-		hits := http_get(ORIGIN + "/ws/hits")
-		cp := page.page_create(&loop, &loader, &settings, process, ORIGIN + "/csp.html", console)
+		hits := http_get(testenv.url(ORIGIN + "/ws/hits"))
+		cp := page.page_create(&loop, &loader, &settings, process, testenv.url(ORIGIN + "/csp.html"), console)
 		page.apply_response_headers(cp, {"connect-src 'self'"}, {}, "")
 		page.load_module(cp, guest, "netapitest-csp")
 		s := run(cp, "ws_blocked", 24, {0})
 		check(s == "error;close:1006::0;", fmt.tprintf("CSP connect-src blocks a WebSocket to another origin (got %q)", s))
 		s = run(cp, "es_blocked", 7, {0})
 		check(s == "error(2);", fmt.tprintf("CSP connect-src blocks an EventSource to another origin (got %q)", s))
-		check(http_get(ORIGIN + "/ws/hits") == hits, "nothing reached the server")
+		check(http_get(testenv.url(ORIGIN + "/ws/hits")) == hits, "nothing reached the server")
 		page.page_close(cp)
 
 		mp := new_page("https://example.test/app.html")
@@ -262,7 +263,7 @@ main :: proc() {
 	////////////////////////////////
 	fmt.println("-- closing a page with live connections")
 	{
-		hp := new_page(ORIGIN + "/hold.html")
+		hp := new_page(testenv.url(ORIGIN + "/hold.html"))
 		s := run(hp, "hold", 25)
 		check(strings.contains(s, "es-open;") && strings.contains(s, "ws-open;"), fmt.tprintf("an EventSource and a WebSocket are open (got %q)", s))
 		check(net.websocket_count(&client) == 1 && fetch.in_flight(&loader) == 1, "one socket and one stream in flight")
@@ -281,7 +282,7 @@ main :: proc() {
 		saved := settings.websocket.limits
 		defer settings.websocket.limits = saved
 		if parallel > 0 { settings.websocket.limits.max_connecting_per_host = parallel }
-		sp := new_page(ORIGIN + "/stress.html")
+		sp := new_page(testenv.url(ORIGIN + "/stress.html"))
 		mem_before := private_bytes()
 		start := time.tick_now()
 		current = sp

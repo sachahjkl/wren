@@ -119,11 +119,12 @@ Fetch_start :: proc(c: ^Call, url: string, callback: u32, user: i32, method: str
 }
 
 // The options as the request code keeps them (bits 0-1 mode, 2-3 credentials, 4-5 redirect, 6-9 referrer policy,
-// 10 no referrer): what a worker's request relays to the UI thread.
+// 10 no referrer, 11-13 cache mode): what a worker's request relays to the UI thread.
 @(private)
 fetch_options_pack :: proc(o: Api_FetchOptions) -> u32 {
 	v := u32(o.mode) | u32(o.credentials) << 2 | u32(o.redirect) << 4 | u32(o.referrer_policy) << 6
 	if o.no_referrer { v |= 1 << 10 }
+	v |= (u32(o.cache) & 7) << 11
 	return v
 }
 
@@ -163,10 +164,12 @@ guest_request :: proc(abs, method, headers: string, body: []byte, o: u32, initia
 	switch (o >> 4) & 3 { case 1: redirect = .Error; case 2: redirect = .Manual }
 	policy := fetch.Referrer_Policy((o >> 6) & 0xF)
 	if policy > .Unsafe_Url { policy = .Default }
+	cache := fetch.Cache_Mode((o >> 11) & 7)
+	if cache > .Only_If_Cached { cache = .Default }
 	return fetch.Request_Desc{
 		url = abs, method = method, headers = pairs[:], body = body,
 		mode = mode, credentials = creds, redirect = redirect, destination = .Empty,
-		referrer_policy = policy, no_referrer = o & (1 << 10) != 0,
+		referrer_policy = policy, no_referrer = o & (1 << 10) != 0, cache = cache,
 		initiator = initiator, guard = .Request,
 	}
 }

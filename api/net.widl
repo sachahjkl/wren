@@ -21,6 +21,9 @@ module net {
   /// RequestInit.referrerPolicy (Default: the document's policy).
   enum ReferrerPolicy : u32 { Default, No_Referrer, No_Referrer_When_Downgrade, Same_Origin, Origin, Strict_Origin, Origin_When_Cross_Origin, Strict_Origin_When_Cross_Origin, Unsafe_Url }
 
+  /// RequestInit.cache: how the request uses the browser's HTTP cache (Fetch Standard cache modes).
+  enum RequestCache : u32 { Default, No_Store, Reload, No_Cache, Force_Cache, Only_If_Cached }
+
   /// RequestInit beyond method, headers and body. The zero value is the Fetch API default.
   struct FetchOptions {
     FetchMode mode;
@@ -29,6 +32,8 @@ module net {
     ReferrerPolicy referrer_policy;
     /// referrer: "" (send none).
     bool no_referrer;
+    /// only-if-cached needs mode Same_Origin.
+    RequestCache cache;
   }
 
   /// Called when the response arrives (Response), when the body is complete (Done) or on failure (Failed).

@@ -56,6 +56,9 @@ build_descriptions :: proc(t: ^testing.T) {
 	testing.expect_value(t, describe_build(.Release, false), "release")
 	testing.expect_value(t, describe_build(.Debug, false), "debug")
 	testing.expect_value(t, describe_build(.Profile, true), "profile +gpu-timing")
+	testing.expect_value(t, describe_build(.Release, false, dev = true), "dev")
+	testing.expect_value(t, describe_build(.Debug, false, dev = true), "dev debug")
+	testing.expect_value(t, describe_build(.Profile, true, dev = true), "dev profile +gpu-timing")
 	testing.expect_value(t, build_kind_name(BUILD_KIND), PROFILE ? "profile" : (ODIN_DEBUG ? "debug" : "release"))
 	testing.expect(t, app_commit() != "" && app_commit()[0] != 'g' || app_commit() == "dev")
 }
