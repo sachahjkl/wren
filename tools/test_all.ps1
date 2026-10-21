@@ -152,9 +152,9 @@ foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp',
 
 Step 'unit tests: wasm' { odin test src/wasm $MemCheck -collection:wb=src -vet -define:ODIN_TEST_THREADS=1 -out:build/wasm_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'unit tests: bindgen (description language, determinism)' { odin test src/tools/bindgen/idl $MemCheck -collection:wb=src -vet -out:build/bindgen_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
-Step 'process allocators: no runtime.default_context / heap_allocator / default_allocator outside src\base\memory.odin (base.process_context, process_allocator, permanent_allocator: what the check builds track)' {
+Step 'process allocators: no runtime.default_context / heap_allocator / default_allocator outside src\base\memory.odin (base.process_context, process_allocator, permanent_allocator: what the check builds track; a line that must not use the tracker says why after // memcheck:)' {
     $hits = @(Get-ChildItem src -Recurse -Filter *.odin | Where-Object { $_.Name -notlike '*_test.odin' -and $_.FullName -notlike '*\src\base\memory.odin' } |
-        Select-String -Pattern 'runtime\.(default_context|heap_allocator|default_allocator)\(\)' | ForEach-Object { "$($_.Path):$($_.LineNumber): $($_.Line.Trim())" })
+        Select-String -Pattern 'runtime\.(default_context|heap_allocator|default_allocator)\(\)' | Where-Object { $_.Line -notmatch '// memcheck: ' } | ForEach-Object { "$($_.Path):$($_.LineNumber): $($_.Line.Trim())" })
     $hits
     $global:LASTEXITCODE = $hits.Count
 }

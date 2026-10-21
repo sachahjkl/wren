@@ -71,6 +71,19 @@ forget_cleanup :: proc(s: ^Scope, id: Cleanup_Id) -> bool {
 	return false
 }
 
+// Hands cleanup `id`'s place in the order to `fn(data)`: a resource that replaces another (a page's new document)
+// is released when the old one would have been, before what was registered before it and after what came since,
+// which may hold pointers into it. Returns false if `id` was not registered.
+rebind_cleanup :: proc(s: ^Scope, id: Cleanup_Id, fn: Cleanup_Proc, data: rawptr) -> bool {
+	for &c in s.cleanups {
+		if c.id == id {
+			c.fn, c.data = fn, data
+			return true
+		}
+	}
+	return false
+}
+
 // Runs the cleanup now and unregisters it.
 run_cleanup :: proc(s: ^Scope, id: Cleanup_Id) -> bool {
 	for i := len(s.cleanups) - 1; i >= 0; i -= 1 {

@@ -14,6 +14,8 @@
 // Only the engine's own imports are provided (console, errors, time zone, clock): anything of the web API traps.
 package jsengine
 
+import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
@@ -105,6 +107,11 @@ engine_locale :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	return put_string(env, caller, a, "en-US")
 }
 
+exception_message_none :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	a[0] = {}
+	return nil
+}
+
 exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	a[0] = {}
 	return nil
@@ -143,7 +150,9 @@ engine_jit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uin
 engine_jit_poll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	context = base.process_context()
 	f := wasm.frame(env, caller)
-	r := js.jit_poll(f.inst, a[0].i32)
+	index, pending, err := wasm.attach_poll(f.inst, a[0].i32)
+	r: i32 = pending ? -1 : err != "" ? 0 : i32(index)
+	if err != "" && jit_stats_wanted { fmt.eprintln("jit: attach failed:", err) }
 	a[0] = {}
 	a[0].i32 = r
 	return nil
@@ -161,6 +170,8 @@ IMPORTS := [?]wasm.Import{
 	{module = "web", name = "Exception_message", fn = exception_message, params = {.I32, .I32}, results = {.I32}},
 	{module = "performance", name = "Performance_now", fn = performance_now, params = {}, results = {.F64}},
 	{module = "document", name = "Window_isSecureContext", fn = secure_context, params = {}, results = {.I32}},
+	// (no Web Authentication in the shell: navigator.credentials and PublicKeyCredential are absent)
+	{module = "credentials", name = "PublicKeyCredential_enabled", fn = exception_message_none, params = {}, results = {.I32}},
 }
 
 usage :: proc() -> ! {
@@ -224,6 +235,8 @@ print_jit_stats :: proc(inst: ^wasm.Instance) {
 	fmt.eprintfln("jit: %d compiled, %d failed, %d refused; modules %d KiB for %d KiB of bytecode; Cranelift %.1f ms, link %.1f ms",
 		int(st.compiled), int(st.failed), int(st.refused), int(st.module_bytes) / 1024, int(st.bytecode_bytes) / 1024,
 		f64(a.compile_ns) / 1e6, f64(a.link_ns) / 1e6)
+	cs := wasm.cache_stats()
+	fmt.eprintfln("wasm cache: %d compiled, %d from memory, %d from disk", cs.compiles, cs.memory_hits, cs.disk_hits)
 	fmt.eprintfln("jit: %d entries (%d at a loop): %d returns, %d exceptions, %d deopts; %d steps",
 		int(st.entries), int(st.osr_entries), int(st.exits_return), int(st.exits_exception), int(st.exits_deopt), int(st.steps))
 	if !wasm.has_export(inst, "wj_jit_step_count") { return }
@@ -334,7 +347,7 @@ cmd_verify :: proc(args: []string) {
 		defer jit.enabled = saved
 		before := uncaught
 		r, ok := realm_new(image, false)
-		if !ok { return "", -1 }
+		if !ok { fmt.eprintln("jsengine verify: the realm did not start"); os.exit(1) }
 		strings.builder_reset(&console_out)
 		st := js.eval_script(r.inst, src, path)
 		js.run_jobs(r.inst)

@@ -4,6 +4,8 @@
 //   styletest.exe
 package styletest
 
+import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+
 import "core:fmt"
 import "core:math"
 import "core:os"

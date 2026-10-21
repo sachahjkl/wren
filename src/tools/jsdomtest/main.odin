@@ -7,6 +7,8 @@
 //   jsdomtest.exe [page.html...]
 package jsdomtest
 
+import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"

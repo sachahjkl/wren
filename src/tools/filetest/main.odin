@@ -4,6 +4,8 @@
 //   filetest.exe            (run from the repository root)
 package filetest
 
+import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+
 import "core:fmt"
 import vmem "core:mem/virtual"
 import "core:os"

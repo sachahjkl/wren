@@ -143,6 +143,23 @@ document_attach :: proc(d: ^Document, scope: ^base.Scope) {
 	d.cleanup = base.on_close(scope, scope_closed, d)
 }
 
+// `next` (made without a scope) takes the place of `old` in its scope; `old` keeps no scope (free it with document_destroy
+// once nothing uses it). `next` is released when
+// `old` would have been: before what the scope held before the old document, after what came since and may point
+// into the document (attaching it afterwards freed it first, and the page's DOM state for scripts wrote into it).
+document_take_place :: proc(old, next: ^Document) {
+	assert(next.scope == nil, "document already has a scope")
+	assert(old.scope != nil, "the document it replaces has no scope: use document_attach")
+	if old.scope != nil && base.rebind_cleanup(old.scope, old.cleanup, scope_closed, next) {
+		next.scope, next.cleanup = old.scope, old.cleanup
+		old.scope = nil
+	} else if old.scope != nil {
+		document_attach(next, old.scope)
+		base.forget_cleanup(old.scope, old.cleanup)
+		old.scope = nil
+	}
+}
+
 document_destroy :: proc(d: ^Document) {
 	if d.scope != nil { base.forget_cleanup(d.scope, d.cleanup) }
 	free_document(d)

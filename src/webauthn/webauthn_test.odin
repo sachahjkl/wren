@@ -3,6 +3,7 @@ package webauthn
 import "core:encoding/hex"
 import "core:encoding/json"
 import "core:strings"
+import "core:sync"
 import "core:testing"
 import "core:thread"
 import "core:time"
@@ -246,8 +247,14 @@ test_settings :: proc() -> Settings {
 	return s
 }
 
+// The virtual authenticator is one state for the process (its mode, delay and credentials): the tests that use it run
+// one at a time (the test runner runs tests on several threads; one test's reset made another's ceremony refused).
+@(private = "file") virtual_test_lock: sync.Mutex
+
 @(test)
 virtual_ceremonies :: proc(t: ^testing.T) {
+	sync.mutex_lock(&virtual_test_lock)
+	defer sync.mutex_unlock(&virtual_test_lock)
 	virtual_reset()
 	defer virtual_reset()
 	s := test_settings()
@@ -329,6 +336,8 @@ virtual_ceremonies :: proc(t: ^testing.T) {
 
 @(test)
 virtual_cancellation :: proc(t: ^testing.T) {
+	sync.mutex_lock(&virtual_test_lock)
+	defer sync.mutex_unlock(&virtual_test_lock)
 	virtual_reset()
 	defer virtual_reset()
 	s := test_settings()

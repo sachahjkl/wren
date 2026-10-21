@@ -599,11 +599,13 @@ enum { WF_STEP, WF_FREE, WF_POLL, WF_TO_BOOL, WF_GET_FIELD, WF_PUT_FIELD, WF_CAL
 enum {
     LP_JF = 0, LP_ENTRY = 1,
     L_CTX = 2, L_SB, L_VB, L_AB, L_VR, L_R, L_I0, L_I1,   /* i32: 2..9 */
-    L_A0 = 10, L_A1, L_A2, L_A3, L_A4, L_A5, L_A6, L_A7,  /* i64: 10..17 */
-    L_F0 = 18, L_F1 = 19,                                  /* f64 */
+    L_BC, L_ICB,                                           /* i32: the bytecode, the inline caches (position independence) */
+    L_A0 = 12, L_A1, L_A2, L_A3, L_A4, L_A5, L_A6, L_A7,  /* i64: 12..19 */
+    L_F0 = 20, L_F1 = 21,                                  /* f64 */
 };
-#define WJIT_N_I32 8
+#define WJIT_N_I32 10
 #define WJIT_N_I64 8
+_Static_assert(L_BC == 2 + WJIT_N_I32 - 2 && L_A0 == 2 + WJIT_N_I32 && L_F0 == L_A0 + WJIT_N_I64, "the locals' declaration matches their numbering");
 #define WJIT_N_F64 2
 
 /* ---- code emission ------------------------------------------------------------------------------------------- */
@@ -691,12 +693,21 @@ static void e_free(WJitC *c, int l)
     e_op(c, W_END);
 }
 
-static uint32_t pc_abs(WJitC *c, int pos) { return (uint32_t)(uintptr_t)(c->bc + pos); }
+/* The module is independent of where the function lives: the same bytecode gives the same module, shared by every
+   realm (wasm module cache, memory and disk). Addresses are made from the frame: the pc of `pos` is the bytecode
+   base (L_BC) plus pos, an inline cache the caches' base (L_ICB) plus its offset, a constant read from the pool. */
+static void e_pc(WJitC *c, int pos) { e_lget(c, L_BC); e_i32(c, pos); e_op(c, W_I32_ADD); }
+static void e_ic(WJitC *c, WJitIC *ic)
+{
+    e_lget(c, L_ICB);
+    e_i32(c, (int32_t)((uintptr_t)ic - (uintptr_t)c->data->ic));
+    e_op(c, W_I32_ADD);
+}
 
 /* leaves the function: jf->pc = pc(pos), jf->sp = slot(d), return code */
 static void e_exit(WJitC *c, int code, int pos, int d)
 {
-    e_lget(c, LP_JF); e_i32(c, (int32_t)pc_abs(c, pos)); e_mem(c, W_I32_STORE, 2, offsetof(WJitFrame, pc));
+    e_lget(c, LP_JF); e_pc(c, pos); e_mem(c, W_I32_STORE, 2, offsetof(WJitFrame, pc));
     e_lget(c, LP_JF); e_lget(c, L_SB); e_i32(c, (int32_t)SLOT(d)); e_op(c, W_I32_ADD); e_mem(c, W_I32_STORE, 2, offsetof(WJitFrame, sp));
     e_i32(c, code); e_op(c, W_RETURN);
 }
@@ -704,7 +715,7 @@ static void e_exit(WJitC *c, int code, int pos, int d)
 /* the op at pos through wjit_step, the operand stack at depth d; returns from the function unless it completed */
 static void e_step(WJitC *c, int pos, int d)
 {
-    e_lget(c, LP_JF); e_i32(c, (int32_t)pc_abs(c, pos));
+    e_lget(c, LP_JF); e_pc(c, pos);
     e_lget(c, L_SB); e_i32(c, (int32_t)SLOT(d)); e_op(c, W_I32_ADD);
     e_call(c, WF_STEP); e_ltee(c, L_R);
     e_block(c, W_IF); e_lget(c, L_R); e_op(c, W_RETURN); e_op(c, W_END);
@@ -1010,11 +1021,14 @@ static int wjit_structure(WJitC *c)
 
 #define JSV_INT_TAG_ZERO 0
 
-/* pushes JS value constant at slot d */
-static void e_push_const(WJitC *c, int d, JSValue v)
+/* pushes constant idx of the pool at slot d (a counted one is read from the pool: no address in the code) */
+static void e_push_const(WJitC *c, int d, uint32_t idx)
 {
+    JSValue v = c->b->cpool[idx];
     if (JS_VALUE_HAS_REF_COUNT(v)) {
-        e_i64(c, (int64_t)v); e_lset(c, L_A0);
+        e_lget(c, LP_JF); e_mem(c, W_I32_LOAD, 2, offsetof(WJitFrame, b));
+        e_mem(c, W_I32_LOAD, 2, offsetof(JSFunctionBytecode, cpool));
+        e_mem(c, W_I64_LOAD, 3, idx * 8); e_lset(c, L_A0);
         e_dup(c, L_A0);
         e_store_slot_from(c, d, L_A0);
     } else {
@@ -1343,12 +1357,12 @@ static WJitIC *wjit_next_ic(WJitC *c)
 }
 
 /* a call to a helper (jf, slot(d), pc, [extra]) returning a status; leaves the function unless it is WJIT_OK */
-static void e_helper(WJitC *c, int f, int pos, int d, uint32_t extra, int has_extra)
+static void e_helper(WJitC *c, int f, int pos, int d, WJitIC *ic, int has_extra)
 {
     e_lget(c, LP_JF);
     e_lget(c, L_SB); e_i32(c, (int32_t)SLOT(d)); e_op(c, W_I32_ADD);
-    e_i32(c, (int32_t)pc_abs(c, pos));
-    if (has_extra) e_i32(c, (int32_t)extra);
+    e_pc(c, pos);
+    if (has_extra) e_ic(c, ic);
     e_call(c, f); e_ltee(c, L_R);
     e_block(c, W_IF); e_lget(c, L_R); e_op(c, W_RETURN); e_op(c, W_END);
 }
@@ -1412,8 +1426,8 @@ static int wjit_emit_op(WJitC *c, int blk, int pos)
     case OP_null: e_store_const_slot(c, d, JS_NULL); return 0;
     case OP_push_false: e_store_const_slot(c, d, JS_FALSE); return 0;
     case OP_push_true: e_store_const_slot(c, d, JS_TRUE); return 0;
-    case OP_push_const: e_push_const(c, d, c->b->cpool[get_u32(bc + pos + 1)]); return 0;
-    case OP_push_const8: e_push_const(c, d, c->b->cpool[bc[pos + 1]]); return 0;
+    case OP_push_const: e_push_const(c, d, get_u32(bc + pos + 1)); return 0;
+    case OP_push_const8: e_push_const(c, d, bc[pos + 1]); return 0;
 
     case OP_get_loc: case OP_put_loc: case OP_set_loc: idx = get_u16(bc + pos + 1); kind = 1; break;
     case OP_get_loc8: case OP_put_loc8: case OP_set_loc8: idx = bc[pos + 1]; kind = 1; break;
@@ -1660,27 +1674,27 @@ static int wjit_emit_op(WJitC *c, int blk, int pos)
           e_block(c, W_BLOCK);
             e_block(c, W_BLOCK);
               e_lget(c, L_I0); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, shape));
-              e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, own));
+              e_ic(c, ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, own));
               e_op(c, W_I32_NE); e_br(c, W_BR_IF, 0);
               e_lget(c, L_I0); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, prop)); e_lset(c, L_I1);
               e_br(c, W_BR, 1);
             e_op(c, W_END);
             /* (receiver's shape) && depth 1 && data && the prototype's shape */
             e_lget(c, L_I0); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, shape));
-            e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, shape));
+            e_ic(c, ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, shape));
             e_op(c, W_I32_NE); e_br(c, W_BR_IF, 1);
-            e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, kind));   /* kind | depth << 16 */
+            e_ic(c, ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, kind));   /* kind | depth << 16 */
             e_i32(c, 1 << 16); e_op(c, W_I32_NE); e_br(c, W_BR_IF, 1);
             e_lget(c, L_I0); e_mem(c, 0x2d /* i32.load8_u */, 0, (uint32_t)wjit_exotic_off); e_i32(c, wjit_exotic_mask);
             e_op(c, W_I32_AND); e_br(c, W_BR_IF, 1);
-            e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, holder)); e_lset(c, L_I1);
+            e_ic(c, ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, holder)); e_lset(c, L_I1);
             e_lget(c, L_I1); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, shape));
-            e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, holder_shape));
+            e_ic(c, ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, holder_shape));
             e_op(c, W_I32_NE); e_br(c, W_BR_IF, 1);
             e_lget(c, L_I1); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, prop)); e_lset(c, L_I1);
           e_op(c, W_END);
           e_lget(c, L_I1);
-          e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, index)); e_i32(c, 3); e_op(c, W_I32_SHL);
+          e_ic(c, ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, index)); e_i32(c, 3); e_op(c, W_I32_SHL);
           e_op(c, W_I32_ADD); e_mem(c, W_I64_LOAD, 3, 0); e_lset(c, L_A1);
           e_dup(c, L_A1);
           if (op == OP_get_field2) {
@@ -1690,7 +1704,7 @@ static int wjit_emit_op(WJitC *c, int blk, int pos)
               e_free(c, L_A0);
           }
         e_fast_end_slow(c);
-          e_helper(c, WF_GET_FIELD, pos, d, (uint32_t)(uintptr_t)ic, 1);
+          e_helper(c, WF_GET_FIELD, pos, d, ic, 1);
         e_fast_done(c);
         return 0;
     }
@@ -1702,17 +1716,17 @@ static int wjit_emit_op(WJitC *c, int blk, int pos)
           e_load_slot_to(c, d - 2, L_A0);
           e_obj_or_br(c, L_A0);
           e_lget(c, L_I0); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, shape));
-          e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, own));
+          e_ic(c, ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, own));
           e_op(c, W_I32_NE); e_br(c, W_BR_IF, 0);
           e_lget(c, L_I0); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, prop));
-          e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, index)); e_i32(c, 3); e_op(c, W_I32_SHL);
+          e_ic(c, ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, index)); e_i32(c, 3); e_op(c, W_I32_SHL);
           e_op(c, W_I32_ADD); e_lset(c, L_I1);
           e_lget(c, L_I1); e_mem(c, W_I64_LOAD, 3, 0); e_lset(c, L_A2);
           e_lget(c, L_I1); e_ld64(c, L_SB, SLOT(d - 1)); e_mem(c, W_I64_STORE, 3, 0);
           e_free(c, L_A2);
           e_free(c, L_A0);
         e_fast_end_slow(c);
-          e_helper(c, WF_PUT_FIELD, pos, d, (uint32_t)(uintptr_t)ic, 1);
+          e_helper(c, WF_PUT_FIELD, pos, d, ic, 1);
         e_fast_done(c);
         return 0;
     }
@@ -1754,10 +1768,10 @@ static int wjit_emit_op(WJitC *c, int blk, int pos)
 
     case OP_call: case OP_call0: case OP_call1: case OP_call2: case OP_call3: case OP_call_method:
     case OP_call_constructor:
-        e_helper(c, WF_CALL, pos, d, 0, 0);
+        e_helper(c, WF_CALL, pos, d, NULL, 0);
         return 0;
     case OP_tail_call: case OP_tail_call_method:
-        e_helper(c, WF_CALL, pos, d, 0, 0);
+        e_helper(c, WF_CALL, pos, d, NULL, 0);
         e_op(c, W_UNREACHABLE);   /* (wjit_call returned WJIT_RET or WJIT_EXC: e_helper left) */
         return 0;
 
@@ -1765,7 +1779,7 @@ static int wjit_emit_op(WJitC *c, int blk, int pos)
         WJitIC *ic = wjit_next_ic(c);
         if (!ic)
             goto step;
-        e_helper(c, WF_GET_VAR, pos, d, (uint32_t)(uintptr_t)ic, 1);
+        e_helper(c, WF_GET_VAR, pos, d, ic, 1);
         return 0;
     }
 
@@ -1820,6 +1834,11 @@ static int wjit_emit_body(WJitC *c)
     e_lget(c, LP_JF); e_mem(c, W_I32_LOAD, 2, offsetof(WJitFrame, var_buf)); e_lset(c, L_VB);
     e_lget(c, LP_JF); e_mem(c, W_I32_LOAD, 2, offsetof(WJitFrame, arg_buf)); e_lset(c, L_AB);
     e_lget(c, LP_JF); e_mem(c, W_I32_LOAD, 2, offsetof(WJitFrame, var_refs)); e_lset(c, L_VR);
+    e_lget(c, LP_JF); e_mem(c, W_I32_LOAD, 2, offsetof(WJitFrame, b)); e_mem(c, W_I32_LOAD, 2, offsetof(JSFunctionBytecode, byte_code_buf)); e_lset(c, L_BC);
+    if (c->data) {
+        e_lget(c, LP_JF); e_mem(c, W_I32_LOAD, 2, offsetof(WJitFrame, b)); e_mem(c, W_I32_LOAD, 2, offsetof(JSFunctionBytecode, wjit_data));
+        e_i32(c, (int32_t)offsetof(WJitData, ic)); e_op(c, W_I32_ADD); e_lset(c, L_ICB);
+    }
     c->nstack = 0;
     /* entries at loop headers (entry = the header's pc offset; 0 = the function's start): one block per entry,
        from here to the header, the latest outermost; everything before the header is inside them */

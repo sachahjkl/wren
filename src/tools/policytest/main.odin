@@ -3,6 +3,8 @@
 //   policytest.exe            (run from the repository root with build\testserver.exe running)
 package policytest
 
+import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+
 import "core:encoding/json"
 import "core:fmt"
 import vmem "core:mem/virtual"

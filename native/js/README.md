@@ -107,6 +107,9 @@ browser compiles with Cranelift on background threads and attaches next to the e
   elements, property reads and writes through inline caches keyed by hashed shapes, global reads); every other
   operation runs the interpreter's own code (`wjit_step`, whose body is JS_CallInternal's switch extracted at build
   time by `tools/build_js.ps1` into `wjit_step_body.h`).
+- Modules are position-independent (the bytecode, the inline caches and the constants are addressed from the frame):
+  the same function gives the same module, compiled once per process through the wasm module cache and kept in the
+  profile's authenticated disk cache (`src/wasm/module_cache.odin`).
 - `patches/0005-wren-jit.patch` holds the hooks in quickjs.c; regenerate it with `jit/make_patch.ps1`.
 - Preferences `javascript.jit.*` (on by default; `enabled=false` interprets everything). Testing:
   `build\jsengine.exe verify -jit -jit-threshold 1 -jit-loop 1 -jit-sync file.js` (interpreted vs compiled output),

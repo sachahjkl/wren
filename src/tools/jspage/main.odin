@@ -12,6 +12,8 @@
 //   private_per_page_kib   private memory per page, -pages more pages (20) open at once, each with its realm
 package jspage
 
+import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -24,6 +26,7 @@ import "wb:tools/headless"
 import "wb:wasm"
 
 until_text: string
+wasm_cache_dir: string
 profile_path: string        // -profile: a sampling profile of the page's engine (tools\wasm_profile.ps1)
 profiled: ^wasm.Instance
 seen_until: bool
@@ -66,7 +69,7 @@ private_bytes :: proc() -> int {
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: jspage [-wait ms] [-until text] [-stats] [-pages n] [-image engine.wasm] [-profile out.json] [--pref name=value]... <url>")
+	fmt.eprintln("usage: jspage [-wait ms] [-until text] [-stats] [-pages n] [-image engine.wasm] [-profile out.json] [-wasm-cache dir] [--pref name=value]... <url>")
 	os.exit(2)
 }
 
@@ -90,6 +93,7 @@ main :: proc() {
 			if err != nil { fmt.eprintln("jspage: cannot read the image"); os.exit(2) }
 			page.js_image_override = data
 		case "-profile": profile_path = need(args, &i)
+		case "-wasm-cache": wasm_cache_dir = need(args, &i)
 		case:
 			if strings.has_prefix(args[i], "-") || url != "" { usage() }
 			url = args[i]
@@ -100,7 +104,9 @@ main :: proc() {
 	page.register_prefs(&prefs)
 	_, errs := config.apply_args(&prefs, pref_args[:])
 	for e in errs { fmt.eprintln("jspage:", e) }
-	wasm.configure_from_args(pref_args[:])
+	// -wasm-cache dir: the authenticated disk cache of compiled modules (the engine, the JIT's functions) in dir, as a
+	// browser profile has it: a second run compiles nothing it compiled before
+	wasm.configure_from_args(pref_args[:], wasm_cache_dir)
 	env: headless.Env
 	if !headless.init(&env, &prefs, "build/jspage_profile") { fmt.eprintln("jspage: the page stack could not start"); os.exit(2) }
 	js.cache_start({memory_bytes = 16 << 20, min_source_bytes = 0})
