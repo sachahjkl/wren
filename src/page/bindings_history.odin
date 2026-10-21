@@ -146,12 +146,18 @@ Traverse_Result :: enum u8 { None, Same_Document, Other_Document }
 // back / forward buttons, the page asks the embedder for history.go).
 history_traverse :: proc(p: ^Page, delta: int) -> Traverse_Result {
 	if p == nil || p.closed || delta == 0 { return .None }
+	return history_traverse_to(p, session_peek(p.web.session, delta))
+}
+
+// The same towards any entry of the tab's history tree (the interface's tree view): it becomes the current one, and the
+// path to it the active one, when it belongs to this document.
+history_traverse_to :: proc(p: ^Page, target: ^History_Entry) -> Traverse_Result {
+	if p == nil || p.closed || target == nil { return .None }
 	sh := p.web.session
-	target := session_peek(sh, delta)
-	if target == nil { return .None }
+	if target == session_current(sh) { return .None }
 	if target.doc != p.web.id { return .Other_Document }
 	old := strings.clone(p.env.location.href, context.temp_allocator)
-	sh.index += delta
+	session_goto(sh, target)
 	href := strings.clone(target.url, context.temp_allocator)
 	state := strings.clone(target.state, context.temp_allocator)
 	has_state := target.has_state
@@ -260,6 +266,17 @@ history_change :: proc(c: ^Call, state_arg, url_arg: Maybe(string), replace: boo
 
 History_pushState :: proc(c: ^Call, state, target: Maybe(string)) -> Api_Error { return history_change(c, state, target, false) }
 History_replaceState :: proc(c: ^Call, state, target: Maybe(string)) -> Api_Error { return history_change(c, state, target, true) }
+
+// history.scrollRestoration: a property of the current entry (HTML "scroll restoration mode"); pushState copies it to
+// the entry it adds.
+History_scrollRestoration :: proc(c: ^Call) -> Api_ScrollRestoration {
+	cur := session_current(c.page.web.session)
+	return cur != nil && cur.scroll_manual ? .Manual : .Auto
+}
+
+History_set_scrollRestoration :: proc(c: ^Call, mode: Api_ScrollRestoration) {
+	if cur := session_current(c.page.web.session); cur != nil { cur.scroll_manual = mode == .Manual }
+}
 
 // history.go(delta); back() is go(-1), forward() go(1), go(0) reloads. Asynchronous, as in HTML.
 History_go :: proc(c: ^Call, delta: i32) {

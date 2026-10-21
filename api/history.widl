@@ -30,4 +30,10 @@ module history {
   void History_replaceState(optional string state, optional string url) raises;
   /// history.go(delta): back() is go(-1), forward() go(1), go(0) reloads. Asynchronous.
   void History_go(i32 delta = 0);
+  /// What history.scrollRestoration says: whether the browser restores the scroll positions of an entry shown again.
+  enum ScrollRestoration : i32 { Auto, Manual }
+  /// history.scrollRestoration, of the current entry.
+  ScrollRestoration History_scrollRestoration();
+  /// history.scrollRestoration = mode, for the current entry (and the entries this document adds after it).
+  void History_set_scrollRestoration(ScrollRestoration mode);
 }

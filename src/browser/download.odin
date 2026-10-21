@@ -397,14 +397,7 @@ download_open_temp :: proc(d: ^Download) -> bool {
 download_restore_tab :: proc(app: ^App, load: ^Doc_Load) {
 	t := load.tab
 	if load.pushed {
-		sh := &t.session
-		if sh.index >= 0 && sh.index < len(sh.entries) {
-			e := sh.entries[sh.index]
-			delete(e.url); delete(e.state)
-			ordered_remove(&sh.entries, sh.index)
-			sh.index -= 1
-			if sh.index < 0 && len(sh.entries) > 0 { sh.index = 0 }
-		}
+		page.session_drop_current(&t.session)
 		sync_history(t)
 	}
 	if t.hold.active && t.hold.page != nil {
@@ -437,9 +430,9 @@ download_restore_tab :: proc(app: ^App, load: ^Doc_Load) {
 
 @(private = "file")
 page_session_current :: proc(t: ^Tab) -> string {
-	sh := &t.session
-	if sh.index < 0 || sh.index >= len(sh.entries) { return "" }
-	return strings.clone(sh.entries[sh.index].url, context.temp_allocator)
+	cur := page.session_current(&t.session)
+	if cur == nil { return "" }
+	return strings.clone(cur.url, context.temp_allocator)
 }
 
 @(private = "file")
