@@ -2,6 +2,7 @@ package js
 
 // The bytecode cache (memory LRU, authenticated disk entries, corrupted files), per-site enabling, the time zone.
 
+import "base:runtime"
 import "core:fmt"
 import "core:math"
 import "core:os"
@@ -35,7 +36,7 @@ cache_memory_and_disk :: proc(t: ^testing.T) {
 	testing.expect(t, st.disk_writes >= 2)
 	// a corrupted file is refused and deleted
 	path := disk_path(k2)
-	defer delete(path)
+	defer delete(path, runtime.default_allocator())   // the cache's own allocator (it outlives every caller's)
 	data, _ := os.read_entire_file(path, context.temp_allocator)
 	data[len(data) - 1] ~= 0xff
 	_ = os.write_entire_file(path, data)
