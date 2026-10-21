@@ -15,6 +15,8 @@
 //   }
 package idl
 
+import vmem "core:mem/virtual"
+
 Pos :: struct {
 	file: string,
 	line: int,
@@ -151,6 +153,7 @@ Api :: struct {
 	callbacks: [dynamic]^Decl,
 	diags:     [dynamic]Diag,
 	error_enum: ^Decl,           // `enum Error`: the codes of `raises`
+	arena:     vmem.Arena,       // owns all of the above (load, destroy)
 }
 
 attr_find :: proc(attrs: []Attr, name: string) -> (Attr, bool) {

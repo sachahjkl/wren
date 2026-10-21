@@ -3,15 +3,25 @@ package idl
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import vmem "core:mem/virtual"
 
 // Parses every (file name, contents) pair, in the order given, and checks the whole description. The result is usable
 // for generation only when `api.diags` is empty.
+// Everything the description is made of (declarations, types, diagnostics, ABIs) lives in the api's arena: `destroy`
+// frees it at once. The file texts stay the caller's (names and docs are slices of them).
 load :: proc(files: []File_Source) -> ^Api {
 	api := new(Api)
+	context.allocator = vmem.arena_allocator(&api.arena)
 	api.types = make(map[string]^Decl)
 	for f in files { parse_file(api, f.name, f.text) }
 	if len(api.diags) == 0 { check(api) }
 	return api
+}
+
+destroy :: proc(api: ^Api) {
+	if api == nil { return }
+	vmem.arena_destroy(&api.arena)
+	free(api)
 }
 
 File_Source :: struct {
