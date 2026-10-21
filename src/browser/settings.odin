@@ -88,6 +88,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_history_prefs(p)   // history_settings.odin
 	register_app_command_prefs(p)   // app_commands.odin
 	register_palette_prefs(p)   // palette.odin
+	register_shell_frame_prefs(p)   // shell_frames.odin
 	_ = wasm.PREFS
 	_ = html.PREFS
 }

@@ -187,6 +187,7 @@ tab_new :: proc(app: ^App) -> ^Tab {
 
 tab_close :: proc(app: ^App, index: int) {
 	t := app.tabs[index]
+	if shell_defer({kind = .Close_Tab, tab = t.id}) { return }   // (shell_frames.odin: its page may be the one running)
 	closed_tabs_push(t.url)
 	ordered_remove(&app.tabs, index)
 	bfcache_drop_tab(t)
@@ -248,6 +249,9 @@ normalize_address :: proc(input: string) -> string {
 // `restore`: the navigation shows the current entry again (back, forward, a reload, a restored tab): what it showed when it
 // was left comes back with it (history_restore.odin).
 navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false, record := true, method := "", body: []byte = nil, headers: []fetch.Header_Pair = nil, restore := false, cache := fetch.Cache_Mode.Default) {
+	// asked by the chrome during a chrome frame (shell_frames.odin): once the page holding the thread is done (a form's
+	// method and body come from page input, which is never handled there)
+	if shell_nested() { shell_defer({kind = .Navigate, tab = t.id, text = strings.clone(address), flag = user_activation, record = record, restore = restore, cache = cache}); return }
 	target := strings.clone(normalize_address(address), context.temp_allocator)
 	if target == "" { target = strings.clone(app.cfg.homepage, context.temp_allocator) }
 	cache_prof_leave(t)   // (profile build: what the page cost, http_cache_ui.odin)
@@ -329,6 +333,7 @@ sync_history :: proc(t: ^Tab) {
 
 go_history :: proc(app: ^App, t: ^Tab, delta: int) {
 	if t == nil || delta == 0 { return }
+	if shell_defer({kind = .History, tab = t.id, delta = delta}) { return }   // (shell_frames.odin)
 	go_entry(app, t, page.session_peek(&t.session, delta))
 }
 
@@ -336,6 +341,7 @@ go_history :: proc(app: ^App, t: ^Tab, delta: int) {
 // when it is the document's, else the page it had from the back/forward cache, else it loads again.
 go_entry :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 	if t == nil || e == nil || e == page.session_current(&t.session) { return }
+	if shell_defer({kind = .Entry, tab = t.id, entry = e.id}) { return }   // (shell_frames.odin)
 	// an entry of the current document: popstate, no load
 	if t.page != nil && t.kind == .Web && page.history_traverse_to(t.page, e) == .Same_Document {
 		sync_history(t)
@@ -395,6 +401,7 @@ attach_page :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
 // cache (a new document replaces it). The document is revalidated with its server (no-cache); `bypass_cache` (Ctrl+F5):
 // it and everything it loads come from the network (reload).
 reload :: proc(app: ^App, t: ^Tab, bypass_cache := false) {
+	if shell_defer({kind = .Reload, tab = t.id, flag = bypass_cache}) { return }   // (shell_frames.odin)
 	leave_page(app, t, keep = false)
 	navigate(app, t, strings.clone(t.url, context.temp_allocator), record = false, restore = true, cache = bypass_cache ? .Reload : .No_Cache)
 }
@@ -633,6 +640,11 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	app := the_app
 	app.page_rect = b.rect
 	t := current_tab(app)
+	if shell_nested() {
+		// a chrome frame (shell_frames.odin): the page holds the thread; its last frame, nothing of it runs
+		if t == nil || t.kind != .Web || !shell_paint_page(app, t, dc, b.rect) { draw.rect(dc, b.rect, to_draw(expected_canvas(app))) }
+		return
+	}
 	for other in app.tabs { if other != t { hold_release(other) } }   // a frame held in a tab not shown is of no use
 	if t == nil || t.kind != .Web {
 		draw.rect(dc, b.rect, to_draw(expected_canvas(app)))
@@ -704,6 +716,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	paint(&t.layout, dc, t.page.doc, b.rect.min, size, t.scroll, b.rect)
 	forms_paint_overlays(app, dc, b.rect)
 	images_after_paint(app)
+	shell_capture(app, t, dc, b.rect, to_draw(styled.canvas))   // shell_frames.odin: shown while the page is busy
 	prof_end(.Paint_Items)
 	draw.pop_clip(dc)
 	timing_painted(t)
@@ -964,9 +977,25 @@ apply_prefs :: proc(app: ^App) {
 	app.frames_requested = max(app.frames_requested, 3)
 }
 
-on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) { apply_prefs((^App)(user)) }
+on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) {
+	if shell_defer({kind = .Prefs}) { return }   // (shell_frames.odin: pages' settings are not replaced under a running page)
+	apply_prefs((^App)(user))
+}
 ////////////////////////////////
 // Loop
+
+// The chrome's palette (browser.ui.theme) applied, and the base style of its boxes: every frame, full or chrome only.
+chrome_frame_style :: proc(app: ^App) -> ui.Style {
+	pal, pal_ok := ui.palette_named(app.cfg.ui_theme)   // browser.ui.theme
+	if !pal_ok { pal = ui.PALETTE_GRAPHITE }
+	ui.apply_palette(&app.theme, pal, render.blend_space(&app.r))
+	platform.set_dark_title(app.win, pal.dark)
+	return ui.Style{
+		pref = {.X = ui.text_size(), .Y = ui.px(36)},
+		font = app.ui_font, font_size = app.cfg.ui_font_size, text_pad = 7,
+		cursor = .Arrow,
+	}
+}
 
 frame :: proc(app: ^App, idled := false) {
 	prof_frame_begin()
@@ -976,6 +1005,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_end(.Wait)
 	prof_begin(.Events)
 	events := platform.poll_events(app.win, false)
+	events = shell_frame_begin(app, events)   // shell_frames.odin: input held back by chrome frames first; the page phase
 	pacer_begin_frame(app, events)
 	if len(events) > 0 { app.frames_requested = max(app.frames_requested, 4) }
 	prof_end(.Events)
@@ -985,11 +1015,13 @@ frame :: proc(app: ^App, idled := false) {
 	ran := host.run_ready(&app.loop)
 	if ran > 0 { app.frames_requested = max(app.frames_requested, 2) }
 	images_shell_frame(app)
+	events = shell_after_loop(app, events)   // (chrome frames made under the loop's scripts took the chrome's input)
 	prof_end(.Loop)
 	// a wake that brought nothing (a timer of the system for the window, a message of no consequence): no frame. (It
 	// was one, and the status bar counted it, and armed its settle wake again: two frames every half second, forever.)
 	// (a timed wake of the toolkit's, a caret blink or a tooltip delay, always draws)
 	if idled && len(events) == 0 && ran == 0 && app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && ui.wake_ms(&app.ui_state) == 0 && !app.win.paint_requested {
+		shell_page_phase_end(app)
 		free_all(context.temp_allocator)
 		return
 	}
@@ -1012,21 +1044,15 @@ frame :: proc(app: ^App, idled := false) {
 		// (the loop counts this frame off after it: 2 = this one and the next)
 		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
 	}
+	shell_page_phase_end(app)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
+	shell_snapshots_frame(app)
 	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }   // smooth_scroll.odin
 
 	render.resize(&app.r, app.win.size)
 	size := draw.Vec2{f32(app.win.size.x), f32(app.win.size.y)}
 	dt := pacer.dt
 
-	pal, pal_ok := ui.palette_named(app.cfg.ui_theme)   // browser.ui.theme
-	if !pal_ok { pal = ui.PALETTE_GRAPHITE }
-	ui.apply_palette(&app.theme, pal, render.blend_space(&app.r))
-	platform.set_dark_title(app.win, pal.dark)
-	base_style := ui.Style{
-		pref = {.X = ui.text_size(), .Y = ui.px(36)},
-		font = app.ui_font, font_size = app.cfg.ui_font_size, text_pad = 7,
-		cursor = .Arrow,
-	}
+	base_style := chrome_frame_style(app)
 	window_chrome_frame(app)   // window_chrome.odin
 	prof_begin(.Build_UI)
 	ui.begin_build(&app.ui_state, {
@@ -1043,6 +1069,7 @@ frame :: proc(app: ^App, idled := false) {
 	if t := current_tab(app); t != nil && t.page != nil && t.layout.mutations != t.page.doc.mutations { app.frames_requested = max(app.frames_requested, 2) }
 	if t := current_tab(app); t != nil && t.page != nil && page.animations_active(t.page) { app.frames_requested = max(app.frames_requested, 2) }   // CSS animations: later changes wake the loop by timer
 
+	shell_before_draw(app)   // (a chrome frame used the screen's slot)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	prof_begin(.UI_Draw)
@@ -1161,6 +1188,7 @@ main :: proc() {
 
 	prof_init(app)
 	pacer_init(app)
+	shell_frames_init(app)   // shell_frames.odin: chrome frames while a page holds the thread
 	smooth_init(app)
 	window_chrome_init(app)
 	favicons_init(app)   // favicon.odin
@@ -1191,6 +1219,7 @@ main :: proc() {
 	}
 
 	prof_report()
+	shell_frames_destroy(app)   // (no chrome frame from here on: the pages' last scripts run unpreempted)
 	for t in app.tabs { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	profile_save(app, force = true)
 	bfcache_shutdown(app)

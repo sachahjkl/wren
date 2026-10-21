@@ -1,3 +1,4 @@
+#+vet !unused-imports
 package browser
 
 // Latency of the shell under load (profile build, WREN_PROF set): every frame's input poll and present on the QPC
@@ -38,6 +39,10 @@ latency_probe_presented :: proc(app: ^App, kind: u8 = 0) {
 	lat_cur = {}
 }
 
+// A chrome frame made inside a full frame (shell_frames.odin) records itself without losing the full frame's poll.
+latency_probe_save :: proc() -> Latency_Frame { v := lat_cur; lat_cur = {}; return v }
+latency_probe_restore :: proc(v: Latency_Frame) { lat_cur = v }
+
 latency_probe_report :: proc() {
 	if !prof.on { return }
 	sb := strings.builder_make(context.temp_allocator)
@@ -52,5 +57,7 @@ latency_probe_report :: proc() {
 latency_probe_polled :: proc(events: int) {}
 latency_probe_presented :: proc(app: ^App, kind: u8 = 0) {}
 latency_probe_report :: proc() {}
+latency_probe_save :: proc() -> Latency_Frame { return {} }
+latency_probe_restore :: proc(v: Latency_Frame) {}
 
 }
