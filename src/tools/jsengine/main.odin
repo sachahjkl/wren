@@ -123,7 +123,22 @@ performance_now :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 	return nil
 }
 
+jit: js.Jit_Settings
+jit_stats_wanted: bool
+
+engine_jit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	context = runtime.default_context()
+	f := wasm.frame(env, caller)
+	code, ok := guest_string(&f, a[0], a[1])
+	if !ok { return wasm.trap_bounds(&f, "js.Engine_jitCompile", "module") }
+	r := js.jit_attach(f.inst, transmute([]byte)code, jit)
+	a[0] = {}
+	a[0].i32 = r
+	return nil
+}
+
 IMPORTS := [?]wasm.Import{
+	{module = "js", name = "Engine_jitCompile", fn = engine_jit, params = {.I32, .I32}, results = {.I32}},
 	{module = "js", name = "Engine_console", fn = engine_console, params = {.I32, .I32, .I32}},
 	{module = "js", name = "Engine_reportException", fn = engine_report, params = {.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}},
 	{module = "js", name = "Engine_storeBytecode", fn = engine_store, params = {.I32, .I32}},
@@ -184,7 +199,34 @@ realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1, kind := js.Realm_
 		wasm.destroy(inst)
 		return
 	}
+	if jit.enabled && !js.jit_configure(inst, jit) { fmt.eprintln("jsengine: the engine has no JIT") }
 	return Realm{inst = inst}, true
+}
+
+print_jit_stats :: proc(inst: ^wasm.Instance) {
+	if !jit_stats_wanted { return }
+	st, ok := js.jit_stats(inst)
+	if !ok { return }
+	a := wasm.attach_stats()
+	fmt.eprintfln("jit: %d compiled, %d failed, %d refused; modules %d KiB for %d KiB of bytecode; Cranelift %.1f ms, link %.1f ms",
+		int(st.compiled), int(st.failed), int(st.refused), int(st.module_bytes) / 1024, int(st.bytecode_bytes) / 1024,
+		f64(a.compile_ns) / 1e6, f64(a.link_ns) / 1e6)
+	fmt.eprintfln("jit: %d entries: %d returns, %d exceptions, %d deopts; %d steps",
+		int(st.entries), int(st.exits_return), int(st.exits_exception), int(st.exits_deopt), int(st.steps))
+	if !wasm.has_export(inst, "wj_jit_step_count") { return }
+	Op_Count :: struct { op: int, n: u32 }
+	ops := make([dynamic]Op_Count, context.temp_allocator)
+	for op in 0 ..< 256 {
+		n, res := wasm.call_i32(inst, "wj_jit_step_count", i32(op))
+		if res == .Ok && n != 0 { append(&ops, Op_Count{op, u32(n)}) }
+	}
+	slice.sort_by(ops[:], proc(a, b: Op_Count) -> bool { return a.n > b.n })
+	b := strings.builder_make(context.temp_allocator)
+	for o, i in ops {
+		if i >= 16 { break }
+		fmt.sbprintf(&b, " %d:%d", o.op, o.n)
+	}
+	fmt.eprintfln("jit: steps by opcode:%s", strings.to_string(b))
 }
 
 main :: proc() {
@@ -206,6 +248,9 @@ cmd_snapshot :: proc(args: []string) {
 	t0 := time.tick_now()
 	out, stats, err := wasm.preinitialize(raw, {"_initialize", "wj_preinit"})
 	if err != "" { fmt.eprintln("jsengine snapshot:", err); os.exit(1) }
+	// the JIT grows the engine's table (wasm.attach_function)
+	out, err = wasm.unbound_tables(out)
+	if err != "" { fmt.eprintln("jsengine snapshot:", err); os.exit(1) }
 	if werr := os.write_entire_file(args[1], out); werr != nil { fmt.eprintln("jsengine snapshot: cannot write", args[1]); os.exit(1) }
 	fmt.printfln("snapshot: memory %d KiB, %d segments (%d KiB of data), %d globals, %.1f ms -> %s (%d KiB)",
 		stats.memory_bytes / 1024, stats.segments, stats.data_bytes / 1024, stats.globals,
@@ -223,6 +268,7 @@ Common :: struct {
 }
 
 parse_common :: proc(args: []string) -> (c: Common) {
+	jit = js.jit_settings_default()
 	c.iterations = 1
 	c.count = 20
 	exe_dir := filepath.dir(os.args[0])
@@ -237,6 +283,10 @@ parse_common :: proc(args: []string) -> (c: Common) {
 		case "-n": i += 1; c.count = max(1, int(parse_int(args[i])))
 		case "-q": quiet = true
 		case "-profile": i += 1; c.profile = args[i]
+		case "-jit": jit.enabled = true
+		case "-jit-threshold": i += 1; jit.call_threshold = max(1, int(parse_int(args[i])))
+		case "-jit-step": jit.step_only = true
+		case "-jit-stats": jit_stats_wanted = true
 		case "--pref": i += 1
 		case: append(&c.rest, a)
 		}
@@ -271,6 +321,7 @@ cmd_run :: proc(args: []string) {
 	if c.profile != "" {
 		if err := wasm.profile_finish(r.inst, c.profile); err != "" { fmt.eprintln("jsengine: profile:", err) }
 	}
+	print_jit_stats(r.inst)
 	wasm.destroy(r.inst)
 	os.exit(uncaught > 0 ? 1 : 0)
 }
@@ -337,6 +388,7 @@ cmd_bench :: proc(args: []string) {
 			}
 			append(&scores, score)
 			append(&times, ms)
+			print_jit_stats(r.inst)
 			wasm.destroy(r.inst)
 		}
 		slice.sort(scores[:])

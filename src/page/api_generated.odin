@@ -5498,6 +5498,24 @@ _t_js_Engine_locale :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	return nil
 }
 
+// Engine_jitCompile :: proc(c: ^Call, module: []u8) -> i32
+@(private = "file")
+_t_js_Engine_jitCompile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "js.Engine_jitCompile", "module") }
+	_p0 := _s0[:_n0]
+	_r := Engine_jitCompile(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
 // Node_wrap :: proc(c: ^Call, node: Api_Node) -> u32
 @(private = "file")
 _t_js_Node_wrap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -16650,6 +16668,7 @@ api_imports := [?]wasm.Import{
 	{module = "js", name = "Engine_timezoneOffset", fn = _t_js_Engine_timezoneOffset, realms = 3, params = []wasm.Val_Kind{.F64}, results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Engine_timeZone", fn = _t_js_Engine_timeZone, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "js", name = "Engine_locale", fn = _t_js_Engine_locale, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "js", name = "Engine_jitCompile", fn = _t_js_Engine_jitCompile, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Node_wrap", fn = _t_js_Node_wrap, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Node_unpin", fn = _t_js_Node_unpin, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "js", name = "Node_treeRoots", fn = _t_js_Node_treeRoots, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},

@@ -87,6 +87,19 @@ The language of the user interface ("en-US"), for Intl.
 
 Host: `Engine_locale :: proc(c: ^Call) -> string`
 
+### `Engine_jitCompile`
+
+```
+i32 Engine_jitCompile(bytes module)
+```
+
+Machine code for a hot function (the engine's JIT, native/js/jit): `module` is a WebAssembly module whose imports
+are the engine's own exports (module "e") and that exports one function "f". The browser compiles it, instantiates
+it next to the engine (same store, same memory) and puts "f" in the engine's function table: the result is that
+table index, 0 when it refused (javascript.jit.* limits, invalid module, not the realm's engine).
+
+Host: `Engine_jitCompile :: proc(c: ^Call, module: []u8) -> i32`
+
 ### `Node_wrap`
 
 ```

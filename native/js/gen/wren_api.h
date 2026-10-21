@@ -1643,6 +1643,11 @@ WR_IMPORT("js", "Engine_timezoneOffset") int32_t wr_Engine_timezoneOffset(double
 WR_IMPORT("js", "Engine_timeZone") int32_t wr_Engine_timeZone(uint8_t *_buf, uint32_t _cap);
 // The language of the user interface ("en-US"), for Intl.
 WR_IMPORT("js", "Engine_locale") int32_t wr_Engine_locale(uint8_t *_buf, uint32_t _cap);
+// Machine code for a hot function (the engine's JIT, native/js/jit): `module` is a WebAssembly module whose imports
+// are the engine's own exports (module "e") and that exports one function "f". The browser compiles it, instantiates
+// it next to the engine (same store, same memory) and puts "f" in the engine's function table: the result is that
+// table index, 0 when it refused (javascript.jit.* limits, invalid module, not the realm's engine).
+WR_IMPORT("js", "Engine_jitCompile") int32_t wr_Engine_jitCompile(const uint8_t *module, uint32_t module_len);
 // A JavaScript object (its wrapper) now refers to `node`: pins it (it stays alive while pinned, even out of the tree)
 // and returns the wrapper's interface, an index into the engine's interface table (gen/bindings.c) chosen from the
 // node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...). One call per new wrapper.

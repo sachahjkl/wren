@@ -120,6 +120,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		log(p, .Error, fmt.tprintf("JavaScript could not start: %s", inst.last_error))
 		return nil
 	}
+	if p.settings.js.jit.enabled { js.jit_configure(inst, p.settings.js.jit) }
 	if addr := js.interrupt_address(inst); addr != 0 {
 		if b := wasm.guest_bytes(inst, u64(addr), 4); b != nil {
 			r.interrupt = (^i32)(raw_data(b))

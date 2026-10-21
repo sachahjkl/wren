@@ -27,6 +27,7 @@ foreign _m_js {
 	@(link_name = "Engine_timezoneOffset") _Engine_timezoneOffset :: proc(time_ms: f64) -> i32 ---
 	@(link_name = "Engine_timeZone") _Engine_timeZone :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Engine_locale") _Engine_locale :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Engine_jitCompile") _Engine_jitCompile :: proc(module: [^]u8, module_len: u32) -> i32 ---
 	@(link_name = "Node_wrap") _Node_wrap :: proc(node: u64) -> u32 ---
 	@(link_name = "Node_unpin") _Node_unpin :: proc(node: u64) ---
 	@(link_name = "Node_treeRoots") _Node_treeRoots :: proc(nodes: [^]u64, nodes_len: u32, roots: [^]u8, roots_len: u32) ---
@@ -110,6 +111,14 @@ Engine_locale_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
 		cap = int(n)
 	}
 	return {}, .Truncated
+}
+
+// Machine code for a hot function (the engine's JIT, native/js/jit): `module` is a WebAssembly module whose imports
+// are the engine's own exports (module "e") and that exports one function "f". The browser compiles it, instantiates
+// it next to the engine (same store, same memory) and puts "f" in the engine's function table: the result is that
+// table index, 0 when it refused (javascript.jit.* limits, invalid module, not the realm's engine).
+Engine_jitCompile :: proc "contextless" (module: []u8) -> i32 {
+	return _Engine_jitCompile(raw_data(module), u32(len(module)))
 }
 
 // A JavaScript object (its wrapper) now refers to `node`: pins it (it stays alive while pinned, even out of the tree)

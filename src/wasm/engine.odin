@@ -54,6 +54,8 @@ Wt_State :: struct {
 	indirect:     map[rawptr]Wt_Sig,
 	profiler:     wt_guestprofiler,   // profile_start: sampled at every epoch tick
 	profile_last: time.Tick,
+	attached:     int,            // functions attach_function added (attach.odin)
+	free_slots:   [dynamic]u32,   // table slots detach_function cleared
 }
 
 @(private)
@@ -328,6 +330,7 @@ wt_free :: proc(inst: ^Instance) {
 	for k in s.exports { delete(k) }
 	delete(s.exports)
 	delete(s.indirect)
+	delete(s.free_slots)
 	delete(s.pending_trap)
 	inst.wt = {}
 }
