@@ -6,7 +6,9 @@
 //   cachetest.exe            (run from the repository root with build\testserver.exe running)
 package cachetest
 
+import "base:runtime"
 import "core:fmt"
+import vmem "core:mem/virtual"
 import "core:os"
 import "core:strconv"
 import "core:strings"
@@ -49,8 +51,13 @@ Result :: struct {
 	redirected:   bool,
 }
 
+// what the checks keep (results, addresses), until the end of the run
+results: vmem.Arena
+kept :: proc() -> runtime.Allocator { return vmem.arena_allocator(&results) }
+
 on_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	r := (^Result)(user)
+	context.allocator = kept()
 	switch ev.kind {
 	case .Response:
 		r.status, r.cache, r.redirected = ev.response.status, ev.response.cache, ev.response.redirected
@@ -72,7 +79,7 @@ pump_until :: proc(r: ^Result) {
 }
 
 run :: proc(d: fetch.Request_Desc) -> Result {
-	r := new(Result)
+	r := new(Result, kept())
 	fetch.start(&loader, {request = d, on_event = on_event, user = r, collect = true})
 	pump_until(r)
 	if !r.done { r.failed, r.detail = true, "timeout" }
@@ -96,8 +103,8 @@ get :: proc(target: string, cache := fetch.Cache_Mode.Default, from: ^fetch.Envi
 
 // /cache/r/NAME?QUERY and its counter key
 res :: proc(name, query: string) -> (full: string, key: string) {
-	key = fmt.aprintf("/cache/r/%s?%s", name, query)
-	return testenv.url(strings.concatenate({A, key})), key
+	key = fmt.aprintf("/cache/r/%s?%s", name, query, allocator = kept())
+	return testenv.url(strings.concatenate({A, key}, kept())), key
 }
 
 // How many requests the server got for `key`, and how many it answered 304.
@@ -164,6 +171,7 @@ writes_settled :: proc() {
 }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	host.loop_init(&loop)
 	if !net.client_init(&client, &loop) { fmt.eprintln("net init failed"); os.exit(2) }
 	host.blocking_init(&blocking, &loop, 2)
@@ -359,11 +367,11 @@ main :: proc() {
 		writes_settled()
 		damaged: string
 		if e := httpcache.find(profile.cache, httpcache.first(profile.cache).key); e != nil && e.url == u2 {
-			damaged = fmt.aprintf("%s\\%016x.wce", cache_dir(), e.serial)
+			damaged = fmt.aprintf("%s\\%016x.wce", cache_dir(), e.serial, allocator = kept())
 		}
 		close_cache()
 		if damaged != "" {
-			if b, err := os.read_entire_file(damaged, context.allocator); err == nil { b[len(b) - 1] ~= 0x55; _ = os.write_entire_file(damaged, b) }
+			if b, err := os.read_entire_file(damaged, kept()); err == nil { b[len(b) - 1] ~= 0x55; _ = os.write_entire_file(damaged, b) }
 		}
 		open_cache(true)
 		r2 := get(u)
@@ -378,13 +386,16 @@ main :: proc() {
 		open_cache(false)
 	}
 
-	fmt.printf("\n%d check(s), %d failure(s)\n", checks, failures)
 	close_cache()
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	for e in envs { fetch.environment_destroy(e); free(e) }
+	delete(envs)
+	vmem.arena_destroy(&results)
 	fetch.profile_destroy(&profile)
 	host.loop_destroy(&loop)
+	failures += testenv.mem_check("cachetest")
+	fmt.printf("\n%d check(s), %d failure(s)\n", checks, failures)
 	os.exit(failures == 0 ? 0 : 1)
 }
