@@ -33,11 +33,12 @@ submodules, `native/media/Cargo.lock`, `native/js/webref/VERSION` and `wpt/MANIF
    git push origin vX.Y.Z
    ```
 
-3. [.github/workflows/release.yml](.github/workflows/release.yml) checks that the tag matches `APP_VERSION`, builds,
+3. [.github/workflows/release.yml](.github/workflows/release.yml) checks that the tag matches `APP_VERSION`, builds (`build.bat release`),
    runs the tests, packages `wren-X.Y.Z-windows-x64.zip` (`tools/package.ps1`) with `SHA256SUMS.txt`, and publishes
    the GitHub release.
 
-To try the package locally: `build.bat` then `powershell -File tools\package.ps1` (output in `build\dist`).
+To try the package locally: `build.bat release` then `powershell -File tools\package.ps1` (output in `build\dist`);
+a development build (plain `build.bat`) packages only with `-Dev`.
 
 ## Submodules
 

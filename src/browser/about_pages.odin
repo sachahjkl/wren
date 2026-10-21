@@ -1,5 +1,6 @@
 package browser
 
+import "core:fmt"
 import "core:strings"
 import "toolkit:ui"
 import "wb:base"
@@ -20,7 +21,7 @@ ABOUT_PAGES := [?]About_Page{
 	{HOME_URL, "Start page", "What a new tab shows (<code>browser.homepage</code>): links to the settings and the demos."},
 	{DEMOS_URL, "Demos and tests", "Every demo and test page that comes with Wren, by theme, with what each one shows."},
 	{"about:config", "Configuration", "Every setting of the browser, searchable and editable; nothing is hard-wired."},
-	{ABOUT_URL, "Built-in pages", "This list. <code>about:</code> alone opens it too."},
+	{ABOUT_URL, "Built-in pages", "This list, under the version of the browser. <code>about:</code> alone opens it too."},
 	{"about:blank", "Blank page", "An empty document."},
 }
 
@@ -38,13 +39,24 @@ ABOUT_PAGES_STYLE :: `
   .page h3 .t { color: #8993ad; font-weight: normal; margin-left: 10px; font-size: 14px; }
   .page p { margin: 0; color: #8993ad; }
   code { color: #c9d1e3; background-color: #1b2132; padding: 0 3px; border-radius: 3px; }
+  .build { display: flex; align-items: center; margin: 0 0 28px; }
+  .build img { width: 64px; height: 64px; margin-right: 16px; }
+  .build .name { margin: 0; font-size: 20px; font-weight: bold; color: #f1f4fb; }
+  .build .what { margin: 2px 0 0; color: #8993ad; }
+  .dev { display: inline-block; margin: 8px 0 0; padding: 3px 12px 3px 4px; border: 1px solid #2f5ea8; border-radius: 14px; background-color: #10213f; color: #9cc0f2; font-size: 13px; }
+  .dev b { display: inline-block; margin-right: 8px; padding: 0 8px; border-radius: 10px; background-color: #2363b8; color: #ffffff; font-size: 11px; letter-spacing: 1px; }
 `
 
 about_pages_html :: proc() -> string {
 	sb := strings.builder_make(context.temp_allocator)
 	strings.write_string(&sb, "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Built-in pages</title>\n<style>")
 	strings.write_string(&sb, ABOUT_PAGES_STYLE)
-	strings.write_string(&sb, "</style>\n</head>\n<body>\n<div class=\"main\">\n<h1>Built-in pages</h1>\n<p class=\"intro\">The pages of the browser itself. <code>view-source:</code> before an address shows a page's source; a path of this computer (<code>C:\\...</code>, <code>\\\\server\\share</code>) opens the file, or the folder's <code>index.html</code>, or its listing.</p>\n")
+	strings.write_string(&sb, "</style>\n</head>\n<body>\n<div class=\"main\">\n")
+	// which build this is: the logo of its channel, the version, the commit (a development build says so)
+	fmt.sbprintf(&sb, "<div class=\"build\"><img src=\"%s\" width=\"64\" height=\"64\" alt=\"\"><div><p class=\"name\">%s %s</p><p class=\"what\">Commit %s%s &middot; build: %s</p>%s</div></div>\n",
+		app_logo_url(), APP_NAME, APP_VERSION, app_commit(), APP_COMMIT_DATE != "" ? fmt.tprintf(", %s", APP_COMMIT_DATE) : "",
+		build_description(), dev_badge_html(with_commit = false))
+	strings.write_string(&sb, "<h1>Built-in pages</h1>\n<p class=\"intro\">The pages of the browser itself. <code>view-source:</code> before an address shows a page's source; a path of this computer (<code>C:\\...</code>, <code>\\\\server\\share</code>) opens the file, or the folder's <code>index.html</code>, or its listing.</p>\n")
 	for p in ABOUT_PAGES {
 		strings.write_string(&sb, "<div class=\"page\"><h3><a href=\"")
 		strings.write_string(&sb, p.url)

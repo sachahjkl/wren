@@ -551,7 +551,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		ui.next({width = ui.px(em * 14), height = ui.px(ui.dense(em * 1.8))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))
-			if ui.tags("weak") { ui.label(fmt.aprintf("%s %s (%s)###about", APP_NAME, APP_VERSION, app_commit(), allocator = ui.frame_allocator())) }
+			if ui.tags("weak") { ui.label(fmt.aprintf("%s###about", app_identity(), allocator = ui.frame_allocator())) }
 		}
 	}
 }

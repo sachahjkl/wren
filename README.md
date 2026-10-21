@@ -231,7 +231,11 @@ cd wren
 build.bat            &:: optimized build -> build\browser.exe
 build.bat debug      &:: debug build
 build.bat profile    &:: optimized + PDB + the built-in profiler -> build\browser_prof.exe
+build.bat release    &:: optimized build of the release channel (what the release workflow packages)
 ```
+
+Every build but `build.bat release` is a development build: a blueprint icon instead of the amber one (exe, window,
+taskbar, tab strip), and "development build" with the commit on the start page and in the menu.
 
 What `build.bat` does, each step skipped when it is already up to date:
 
