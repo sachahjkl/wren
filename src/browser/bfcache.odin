@@ -272,6 +272,7 @@ bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool 
 	if current_tab(app) == t { ui.field_set(&app.address, t.url) }
 	bf_entry_free(e, close = false)
 	bf.restores += 1
+	global_history_visit(app, t, t.url, t.title)
 	timing_begin(t, true, t.url)
 	page.page_thaw(t.page, visible = current_tab(app) == t)
 	app.frames_requested = max(app.frames_requested, 3)

@@ -32,6 +32,7 @@ Visit :: struct {
 	at_ms: i64,      // Unix time
 	url:   string,   // owned
 	title: string,   // owned
+	icon:  string,   // owned: the page's icon's URL ("": none)
 }
 
 Global_History :: struct {
@@ -53,7 +54,7 @@ ghist: Global_History
 now_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1e6 }
 
 visits_destroy :: proc(list: ^[dynamic]Visit) {
-	for v in list { delete(v.url); delete(v.title) }
+	for v in list { delete(v.url); delete(v.title); delete(v.icon) }
 	delete(list^)
 	list^ = nil
 }
@@ -126,6 +127,8 @@ history_serialize :: proc(visits: []Visit, allocator := context.temp_allocator) 
 		field_escape(&sb, v.url)
 		strings.write_byte(&sb, '\t')
 		field_escape(&sb, v.title)
+		strings.write_byte(&sb, '\t')
+		field_escape(&sb, v.icon)
 		strings.write_byte(&sb, '\n')
 	}
 	return strings.to_string(sb)
@@ -145,7 +148,7 @@ history_parse :: proc(text: string, max_visits: int, oldest_ms: i64, max_url_byt
 			continue
 		}
 		if !strings.has_prefix(line, "v\t") { continue }
-		f := strings.split_n(line[2:], "\t", 4, context.temp_allocator)
+		f := strings.split_n(line[2:], "\t", 5, context.temp_allocator)
 		if len(f) < 3 { continue }
 		id, iok := strconv.parse_u64(f[0])
 		at, aok := strconv.parse_i64(f[1])
@@ -153,7 +156,7 @@ history_parse :: proc(text: string, max_visits: int, oldest_ms: i64, max_url_byt
 		if oldest_ms > 0 && at < oldest_ms { continue }
 		u := field_unescape(f[2], allocator)
 		if _, pok := url.parse_absolute(u, context.temp_allocator); !pok || len(u) > max_url_bytes { delete(u, allocator); continue }
-		append(&visits, Visit{id = id, at_ms = at, url = u, title = field_unescape(len(f) > 3 ? f[3] : "", allocator)})
+		append(&visits, Visit{id = id, at_ms = at, url = u, title = field_unescape(len(f) > 3 ? f[3] : "", allocator), icon = field_unescape(len(f) > 4 ? f[4] : "", allocator)})
 		next_id = max(next_id, id)
 	}
 	if first { return visits, 0, false }
@@ -162,7 +165,7 @@ history_parse :: proc(text: string, max_visits: int, oldest_ms: i64, max_url_byt
 		for j := i; j > 0 && visits[j - 1].at_ms > visits[j].at_ms; j -= 1 { visits[j - 1], visits[j] = visits[j], visits[j - 1] }
 	}
 	for len(visits) > max(max_visits, 0) {
-		delete(visits[0].url, allocator); delete(visits[0].title, allocator)
+		delete(visits[0].url, allocator); delete(visits[0].title, allocator); delete(visits[0].icon, allocator)
 		ordered_remove(&visits, 0)
 	}
 	return visits, next_id, true
@@ -173,7 +176,7 @@ history_trim :: proc(visits: ^[dynamic]Visit, max_visits: int, oldest_ms: i64) -
 	n := 0
 	for n < len(visits) && ((oldest_ms > 0 && visits[n].at_ms < oldest_ms) || len(visits) - n > max_visits) { n += 1 }
 	if n == 0 { return false }
-	for v in visits[:n] { delete(v.url); delete(v.title) }
+	for v in visits[:n] { delete(v.url); delete(v.title); delete(v.icon) }
 	remove_range(visits, 0, n)
 	return true
 }
@@ -197,7 +200,7 @@ history_delete :: proc(visits: ^[dynamic]Visit, ids: []u64, from_ms: i64 = 0, to
 	for v in visits {
 		hit := false
 		if ids != nil { for id in ids { if id == v.id { hit = true; break } } } else { hit = v.at_ms >= from_ms && v.at_ms < to_ms }
-		if hit { delete(v.url); delete(v.title); gone += 1; continue }
+		if hit { delete(v.url); delete(v.title); delete(v.icon); gone += 1; continue }
 		visits[k] = v
 		k += 1
 	}
@@ -302,14 +305,15 @@ global_history_visit :: proc(app: ^App, t: ^Tab, address, title: string) {
 	global_history_changed(app)
 }
 
-// The document of `t` has this title: the address's last visit takes it.
-global_history_title :: proc(app: ^App, t: ^Tab, title: string) {
+// The document of `t` has this title and icon: the address's last visit takes them.
+global_history_title :: proc(app: ^App, t: ^Tab, title: string, icon := "") {
 	a := t.nav_state.last_visit
 	if a == "" || title == "" { return }
 	for i := len(ghist.visits) - 1; i >= max(len(ghist.visits) - 64, 0); i -= 1 {
 		v := &ghist.visits[i]
 		if v.url != a { continue }
 		if v.title != title { delete(v.title); v.title = strings.clone(title); global_history_changed(app) }
+		if v.icon != icon { delete(v.icon); v.icon = strings.clone(icon); global_history_changed(app) }
 		return
 	}
 }

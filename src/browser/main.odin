@@ -256,7 +256,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	defer if restore { restore_begin(app, t, entry, .New_Document) }
 	if is_builtin_address(target) { hold_release(t); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
 	if target == "about:config" { show_config(app, t); return }
-	if target == HISTORY_URL { show_history(app, t); return }
+	if is_history_address(target) { show_history(app, t, target); return }
 	if target == HOME_URL { show_home(app, t); return }
 	if target == DEMOS_URL { show_demos(app, t); return }
 	if target == ABOUT_URL { show_about_pages(app, t); return }

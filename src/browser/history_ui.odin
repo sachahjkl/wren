@@ -27,7 +27,7 @@ import "wb:page"
 HISTORY_URL :: "about:history"
 
 is_builtin_address :: proc(a: string) -> bool {
-	return a == "about:config" || a == HISTORY_URL || a == HOME_URL || a == DEMOS_URL || a == ABOUT_URL
+	return a == "about:config" || is_history_address(a) || a == HOME_URL || a == DEMOS_URL || a == ABOUT_URL
 }
 
 History_Row_Kind :: enum u8 { Day, Visit }
@@ -53,6 +53,8 @@ History_View :: struct {
 	tree_tab:    u64,               // Tab.id whose tree is shown
 	menu_visit:  u64,               // the visit whose row menu is open
 	focus_search: bool,
+	revealed_tab, revealed_entry: u64,   // the tree view last scrolled to this tab's entry
+	keep_tree:   bool,              // open_history chose the tree's tab: the new tab keeps it
 }
 
 hview: History_View
@@ -69,8 +71,11 @@ history_ui_destroy :: proc() {
 	hview = {}
 }
 
-// about:history is a view of the browser, like about:config: no page, no origin.
-show_history :: proc(app: ^App, t: ^Tab) {
+// about:history, about:history#tree (the tab's tree part).
+is_history_address :: proc(a: string) -> bool { return a == HISTORY_URL || strings.has_prefix(a, HISTORY_URL + "#") }
+
+// about:history is a view of the browser, like about:config: no page, no origin. Typed in a tab, it shows that tab's tree.
+show_history :: proc(app: ^App, t: ^Tab, address := HISTORY_URL) {
 	base.scope_close(t.nav)
 	t.nav = base.scope_make("navigation", t.scope)
 	t.page, t.load, t.kind = nil, nil, .History
@@ -78,23 +83,32 @@ show_history :: proc(app: ^App, t: ^Tab) {
 	t.scroll_target = base.NIL_HANDLE
 	for l in t.console { delete(l) }
 	clear(&t.console)
-	delete(t.url); t.url = strings.clone(HISTORY_URL)
+	delete(t.url); t.url = strings.clone(address)
 	delete(t.title); t.title = strings.clone("History")
 	set_status(t, HISTORY_URL)
-	ui.field_set(&app.address, HISTORY_URL)
-	if tab_by_id(app, hview.tree_tab) == nil { hview.tree_tab = t.id }
+	ui.field_set(&app.address, address)
+	if address == HISTORY_URL + "#tree" { hview.mode = 1 }
+	page.session_set_title(&t.session, "History")
+	if !hview.keep_tree || tab_by_id(app, hview.tree_tab) == nil { hview.tree_tab = t.id }
+	hview.keep_tree = false
 	hview.focus_search = hview.mode == 0
 }
 
 // Ctrl+H, the menus: about:history in a new tab (or the tab already showing it), on the part asked for; the tree is
 // `from`'s.
 open_history :: proc(app: ^App, from: ^Tab, tree: bool) {
-	if from != nil { hview.tree_tab = from.id }
+	if from != nil { hview.tree_tab, hview.keep_tree = from.id, true }
 	hview.mode = tree ? 1 : 0
 	for x, i in app.tabs {
-		if x.kind == .History { tab_select(app, i); return }
+		if x.kind == .History {
+			hview.keep_tree = false
+			tab_select(app, i)
+			a := tree ? HISTORY_URL + "#tree" : HISTORY_URL
+			if x.url != a { delete(x.url); x.url = strings.clone(a); ui.field_set(&app.address, a) }
+			return
+		}
 	}
-	tab_open(app, HISTORY_URL)
+	tab_open(app, tree ? HISTORY_URL + "#tree" : HISTORY_URL)
 }
 
 // The tab's document title changed (favicon.odin tab_refresh): its entry and its last visit take it.
@@ -105,7 +119,7 @@ history_title_seen :: proc(app: ^App, t: ^Tab) {
 		page.session_set_title(&t.session, t.title)
 		page.session_set_icon(&t.session, t.icon.url)
 	}
-	global_history_title(app, t, t.title)
+	global_history_title(app, t, t.title, t.icon.url)
 }
 
 ////////////////////////////////
@@ -290,7 +304,14 @@ history_page :: proc(app: ^App, t: ^Tab) {
 				ui.spacer(ui.px(em * 1.0))
 				ui.next({width = ui.px(em * 20), height = ui.px(ui.dense(em * 2))})
 				labels := []string{"Browsing history", "Tab history"}
-				ui.segmented("###h_mode", labels, &hview.mode)
+				if ui.segmented("###h_mode", labels, &hview.mode) {
+					// the address says which part is shown (a reload keeps it)
+					a := hview.mode == 1 ? HISTORY_URL + "#tree" : HISTORY_URL
+					delete(t.url); t.url = strings.clone(a)
+					if current_tab(app) == t { ui.field_set(&app.address, a) }
+					page.session_replace(&t.session, a, set_state = false)
+					sync_history(t)
+				}
 				ui.spacer(ui.px(em * 1.0))
 				if hview.mode == 0 { browsing_toolbar(app, t) } else { tree_toolbar(app, t) }
 				ui.spacer(ui.px(em * 0.8))
@@ -306,7 +327,7 @@ history_page :: proc(app: ^App, t: ^Tab) {
 browsing_toolbar :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-	res := ui.line_edit("###h_search", &hview.search, "Search the history (Ctrl+F)")
+	res := ui.line_edit("###h_search", &hview.search, "Search history")
 	if hview.focus_search && res.box != nil { hview.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&hview.search) }
 	if res.focused && ui.key_press(.Down) { ui.set_focus(hview.list.key); if hview.list.sel < 0 { ui.list_select(&hview.list.list, 1) } }
 	ui.spacer(ui.px(em * 0.6))
@@ -362,7 +383,14 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 				ui.next({height = ui.px(ui.dense(em * 2.2))})
 				row := ui.list_row(&hview.list.list, i, hview.labels[i])
 				if ui.parent(row.box) {
-					ui.spacer(ui.px(em * 1.2))
+					ui.spacer(ui.px(em * 0.6))
+					ui.next({width = ui.px(em * 1.6), height = ui.pct(1)})
+					if vis.icon != "" {
+						addr := ui.frame_new(string)
+						addr^ = strings.clone(vis.icon, ui.frame_allocator())
+						ui.custom(fmt.tprintf("###hi_%d", vis.id), entry_icon_draw, addr)
+					} else { ui.spacer(ui.px(em * 1.6)) }
+					ui.spacer(ui.px(em * 0.4))
 					lt := local_time(vis.at_ms)
 					if ui.tags("weak") {
 						ui.next({width = ui.px(em * 3.6), height = ui.pct(1)})
@@ -454,14 +482,14 @@ tree_toolbar :: proc(app: ^App, t: ^Tab) {
 		ui.label("Tab###h_tab_lbl")
 	}
 	ui.spacer(ui.px(em * 0.4))
-	ui.next({width = ui.px(em * 18), height = ui.px(ui.dense(em * 2))})
+	ui.next({width = ui.px(em * 13), height = ui.px(ui.dense(em * 2))})
 	if ui.dropdown("###h_tab", names[:], &sel) && sel < len(app.tabs) { hview.tree_tab = app.tabs[sel].id }
 	ui.spacer(ui.fill())
 	tt := tab_by_id(app, hview.tree_tab)
 	if tt != nil {
 		if ui.tags("weak") {
 			ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 2))})
-			ui.label(fmt.tprintf("%d entries, %d on the current path, %d in the back/forward cache###h_tree_count", tt.session.count, page.session_length(&tt.session), bfcache_count(tt)))
+			ui.label(fmt.tprintf("%d entries \u00b7 %d on the path \u00b7 %d cached###h_tree_count", tt.session.count, page.session_length(&tt.session), bfcache_count(tt)))
 		}
 	}
 }
@@ -533,15 +561,41 @@ tree_view :: proc(app: ^App, from: ^Tab) {
 	ui.next({axis = .Y, width = ui.fill(), height = ui.fill()})
 	view := ui.build_box({.Clip, .View_Scroll_X, .View_Scroll_Y, .View_Clamp_X, .View_Clamp_Y, .Allow_Overflow_X, .Allow_Overflow_Y}, "###h_tree")
 	_ = ui.signal(view)
+	// the current entry comes into view when the tree is shown (or another tab's, or the entry changed)
+	if cur := page.session_current(sh); cur != nil && (hview.revealed_tab != t.id || hview.revealed_entry != cur.id) {
+		for p in places {
+			if p.entry != cur { continue }
+			em := ui.font_size()
+			xy := tree_pos(p.col, p.row, ui.dense(em * NODE_W), ui.dense(em * NODE_H), ui.dense(em * GAP_X), ui.dense(em * GAP_Y), ui.dense(em * PAD))
+			size := view.rect.max - view.rect.min
+			if size.x > 0 {
+				// as little as it takes, with a node's margin past it
+				view.view_target = {max(xy.x + NODE_W * em + GAP_X * em - size.x, 0), max(xy.y + NODE_H * em + GAP_Y * em * 2 - size.y, 0)}
+				hview.revealed_tab, hview.revealed_entry = t.id, cur.id
+			}
+		}
+	}
 	if ui.parent(view) { tree_canvas(app, t, sh, places, rows, cols) }
+}
+
+// "host:port" of an address (a file's name for file:, the address itself otherwise).
+address_host :: proc(a: string) -> string {
+	s := a
+	if strings.has_prefix(s, "file:") { return default_tab_title(s) }
+	i := strings.index(s, "://")
+	if i < 0 { return s }
+	s = s[i + 3:]
+	if j := strings.index_any(s, "/?#"); j >= 0 { s = s[:j] }
+	if k := strings.last_index_byte(s, '@'); k >= 0 { s = s[k + 1:] }
+	return s
 }
 
 @(private = "file")
 tree_canvas :: proc(app: ^App, t: ^Tab, sh: ^page.Session_History, places: []Tree_Place, rows, cols: int) {
 	em := ui.font_size()
-	node_w, node_h := ui.dense(em * 13), ui.dense(em * 2.6)
-	gap_x, gap_y := ui.dense(em * 2.2), ui.dense(em * 0.9)
-	pad := ui.dense(em * 1.2)
+	node_w, node_h := ui.dense(em * NODE_W), ui.dense(em * NODE_H)
+	gap_x, gap_y := ui.dense(em * GAP_X), ui.dense(em * GAP_Y)
+	pad := ui.dense(em * PAD)
 	total := [2]f32{pad * 2 + f32(cols) * node_w + f32(max(cols - 1, 0)) * gap_x, pad * 2 + f32(rows) * node_h + f32(max(rows - 1, 0)) * gap_y}
 	if len(places) == 0 {
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 4))})
@@ -552,6 +606,13 @@ tree_canvas :: proc(app: ^App, t: ^Tab, sh: ^page.Session_History, places: []Tre
 	canvas := ui.build_box({}, "###h_canvas")
 	if ui.parent(canvas) { tree_nodes(app, t, sh, places, total, node_w, node_h, gap_x, gap_y, pad) }
 }
+
+// Sizes of the tree view, in em.
+@(private = "file") NODE_W :: 11.5
+@(private = "file") NODE_H :: 2.6
+@(private = "file") GAP_X :: 1.8
+@(private = "file") GAP_Y :: 0.8
+@(private = "file") PAD :: 1.2
 
 @(private = "file")
 tree_pos :: proc(col, row: int, node_w, node_h, gap_x, gap_y, pad: f32) -> [2]f32 {
@@ -609,14 +670,13 @@ tree_nodes :: proc(app: ^App, t: ^Tab, sh: ^page.Session_History, places: []Tree
 						if ui.style({font_size = em * 0.8}) {
 							ui.next({width = ui.fill(), height = ui.px(node_h * 0.34), text_pad = 0})
 							lt := local_time(e.visited_ms)
-							cached := bfcache_has(t, e.id) ? "  \u00b7  cached" : ""
-							ui.label(fmt.tprintf("%s  %02d:%02d%s###hnu_%d", safe_label(default_tab_title(e.url), 26), lt.hour, lt.minute, cached, e.id))
+							ui.label(fmt.tprintf("%02d:%02d  \u00b7  %s###hnu_%d", lt.hour, lt.minute, safe_label(address_host(e.url), 30), e.id))
 						}
 					}
 				}
 				ui.spacer(ui.px(em * 0.4))
 			}
-			tip(sig, safe_label(e.url, 100))
+			tip(sig, bfcache_has(t, e.id) ? fmt.tprintf("%s  (kept in the back/forward cache)", safe_label(e.url, 100)) : safe_label(e.url, 100))
 		}
 		if clicked {
 			for x, i in app.tabs { if x == t { tab_select(app, i) } }
