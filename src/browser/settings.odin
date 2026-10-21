@@ -74,6 +74,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_font_prefs(p)
 	register_frame_prefs(p)    // pacing.odin
 	register_scroll_prefs(p)   // smooth_scroll.odin
+	register_cursor_prefs(p)   // page_cursor.odin
 	register_window_prefs(p)   // window_chrome.odin
 	register_os_settings_prefs(p)   // os_settings.odin
 	register_demos_prefs(p)   // demos.odin

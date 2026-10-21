@@ -88,6 +88,7 @@ select, button, input[type=button i], input[type=submit i], input[type=reset i],
 input, textarea, select { background-color: Field; color: FieldText; border: 2px inset light-dark(#767676, #858585); padding: 1px 2px; }
 button, input[type=button], input[type=submit], input[type=reset] { background-color: ButtonFace; color: ButtonText; border: 2px outset ButtonBorder; padding: 1px 6px; text-align: center; cursor: default; }
 input[type=checkbox], input[type=radio] { width: 13px; height: 13px; padding: 0; margin: 3px 3px 3px 4px; }
+select, input[type=checkbox i], input[type=radio i], input[type=range i], input[type=color i] { cursor: default; }
 input[type=hidden] { display: none; }
 textarea { font-family: monospace; white-space: pre-wrap; overflow: auto; border: 1px solid light-dark(#767676, #858585); padding: 2px; }
 select { border: 1px solid light-dark(#767676, #858585); padding: 0; }

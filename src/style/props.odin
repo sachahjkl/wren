@@ -229,7 +229,7 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Box_Shadow: return fa(&c.box_shadow), NO_FIELD
 	case .List_Style_Type: return fa(&c.list_style_type), fa(&c.list_style)
 	case .List_Style_Position: return fa(&c.list_style_position), NO_FIELD
-	case .Cursor: return fa(&c.cursor), NO_FIELD
+	case .Cursor: return fa(&c.cursor), fa(&c.cursor_images)
 	case .Pointer_Events: return fa(&c.pointer_events), NO_FIELD
 	case .User_Select: return fa(&c.user_select), NO_FIELD
 	case .Content: return fa(&c.content), NO_FIELD

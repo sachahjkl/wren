@@ -985,6 +985,7 @@ frame :: proc(app: ^App, idled := false) {
 		return
 	}
 	prof_begin(.Input)
+	page_cursor_events(app, events)   // page_cursor.odin: a press on the page keeps its cursor
 	route_page_input(app, events)
 	events = forms_unconsumed_events(events)   // keys the page used do not reach the chrome
 	events = history_tree_events(app, events)   // the wheel and zoom keys of about:history's tree (history_tree.odin)
@@ -1029,7 +1030,7 @@ frame :: proc(app: ^App, idled := false) {
 	build_ui(app)
 	ui.end_build()
 	prof_end(.Build_UI)
-	platform.set_cursor(app.win, ui.cursor(&app.ui_state))
+	window_cursor_apply(app)   // page_cursor.odin: the page's cursor over the page, else the chrome's
 	if ui.needs_frame(&app.ui_state) { app.frames_requested = max(app.frames_requested, 2) }
 	if t := current_tab(app); t != nil && t.page != nil && t.layout.mutations != t.page.doc.mutations { app.frames_requested = max(app.frames_requested, 2) }
 	if t := current_tab(app); t != nil && t.page != nil && page.animations_active(t.page) { app.frames_requested = max(app.frames_requested, 2) }   // CSS animations: later changes wake the loop by timer
@@ -1152,6 +1153,7 @@ main :: proc() {
 	prof_init(app)
 	pacer_init(app)
 	smooth_init(app)
+	page_cursor_init(app)
 	window_chrome_init(app)
 	favicons_init(app)   // favicon.odin
 	downloads_init(app)   // download.odin
@@ -1204,6 +1206,7 @@ main :: proc() {
 	appearance_destroy()
 	hud_destroy(app)
 	smooth_shutdown(app)
+	page_cursor_shutdown(app)
 	drop_files_destroy(app)
 	app_commands_destroy()
 	window_chrome_destroy(app)
