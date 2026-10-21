@@ -1,7 +1,7 @@
 // jspage: one page in Wren without a window (src/tools/headless): the document loaded as the browser loads it, its
 // scripts run, its console on stdout. For the measuring scripts: the DOM micro-benchmarks (tools\js_bench.ps1 -Mode dom),
 // the JavaScript errors of real sites (tools\compat_sweep.ps1), start-up and memory of a page (-stats).
-//   jspage [-wait ms] [-until text] [-stats [-allocs]] [-pages n] [-init code] [-eval code] [-image engine.wasm] [-profile out.json] [--pref name=value]... <url>
+//   jspage [-wait ms] [-until text] [-stats [-allocs]] [-pages n] [-init code] [-eval code] [-viewport WxH] [-image engine.wasm] [-profile out.json] [--pref name=value]... <url>
 // Console lines: a log as it is, "warn: " / "error: " before the others. -until stops at the first console message that
 // starts with `text` (else at -wait, 10 s by default). The exit status is 0 when the page loaded (and -until was seen),
 // 1 otherwise. -stats then prints "STAT<TAB>name<TAB>value" lines:
@@ -25,6 +25,7 @@ import "core:time"
 import win "core:sys/windows"
 import "wb:config"
 import "wb:js"
+import lay "wb:layout"
 import "wb:page"
 import "wb:tools/headless"
 import "wb:wasm"
@@ -36,6 +37,7 @@ seen_until: bool
 allocs: bool
 eval_code: string   // -eval: a script run in the page after -wait (its console.log lines are printed)
 init_code: string   // -init: a script run in each realm before the page's own (to watch what they do)
+viewport: [2]f64    // -viewport WxH: the size scripts see (innerWidth...); nothing is laid out
 first_message_ms: f64 = -1
 quiet: bool
 started: time.Tick
@@ -75,7 +77,7 @@ private_bytes :: proc() -> int {
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: jspage [-wait ms] [-until text] [-stats [-allocs]] [-pages n] [-init code] [-eval code] [-image engine.wasm] [-profile out.json] [--pref name=value]... <url>")
+	fmt.eprintln("usage: jspage [-wait ms] [-until text] [-stats [-allocs]] [-pages n] [-init code] [-eval code] [-viewport WxH] [-image engine.wasm] [-profile out.json] [--pref name=value]... <url>")
 	os.exit(2)
 }
 
@@ -102,6 +104,11 @@ main :: proc() {
 		case "-allocs": allocs = true
 		case "-eval": eval_code = need(args, &i)
 		case "-init": init_code = need(args, &i)
+		case "-viewport":
+			v := need(args, &i)
+			x := strings.index_byte(v, 'x')
+			if x < 0 { usage() }
+			viewport = {f64(parse_int(v[:x])), f64(parse_int(v[x + 1:]))}
 		case:
 			if strings.has_prefix(args[i], "-") || url != "" { usage() }
 			url = args[i]
@@ -123,8 +130,16 @@ main :: proc() {
 	if !headless.init(&env, &prefs, "build/jspage_profile") { fmt.eprintln("jspage: the page stack could not start"); os.exit(2) }
 	js.cache_start({memory_bytes = 16 << 20, min_source_bytes = 0})
 
-	if init_code != "" {
-		page.js_on_realm_started = proc(p: ^page.Page) { page.js_run(p, transmute([]byte)init_code, "jspage:init") }
+	if init_code != "" || viewport != {} {
+		page.js_on_realm_started = proc(p: ^page.Page) {
+			if viewport != {} {
+				page.set_layout_embedder(p, {
+					update = proc(user: rawptr, p: ^page.Page) -> ^lay.Layout { return nil },
+					viewport = proc(user: rawptr, p: ^page.Page) -> page.Viewport { return {width = viewport[0], height = viewport[1], scale = 1} },
+				})
+			}
+			if init_code != "" { page.js_run(p, transmute([]byte)init_code, "jspage:init") }
+		}
 	}
 	if profile_path != "" {
 		page.js_on_realm = proc(p: ^page.Page, inst: ^wasm.Instance) {
