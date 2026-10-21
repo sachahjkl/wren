@@ -41,8 +41,8 @@ function Start-Watchdog {
     }
 }
 
-function Report($name, $ok, $out, $secs) {
-    "{0} {1}{2}" -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $name, $(if ($CI -or $Jobs -gt 1) { " ($secs s)" } else { '' })
+function Report($name, $ok, $out, $secs, $port = 0) {
+    "{0} {1}{2}" -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $name, $(if ($CI -or $Jobs -gt 1) { " ($secs s$(if ($port) { ", server on $port" }))" } else { '' })
     if (-not $ok) { $script:failed++; if ($CI) { $out } else { ($out -split "`n" | Select-Object -Last 15) -join "`n" } }
 }
 
@@ -92,8 +92,7 @@ $stepJob = {
         $out = & ([scriptblock]::Create($bodyText)) 2>&1 | Out-String
         $code = $LASTEXITCODE
     } catch { $out += "`n$_" } finally { Stop-WrenTestServer $srv }
-    if ($srv) { $out = "(test server on $($srv.BasePort))`n$out" }
-    [pscustomobject]@{ Name = $name; Ok = ($code -eq 0 -or $out -match 'All tests were successful'); Out = $out; Secs = [int]((Get-Date) - $t0).TotalSeconds }
+    [pscustomobject]@{ Name = $name; Ok = ($code -eq 0 -or $out -match 'All tests were successful'); Out = $out; Secs = [int]((Get-Date) - $t0).TotalSeconds; Port = $(if ($srv) { $srv.BasePort } else { 0 }) }
 }
 
 # Runs the queued steps, -Jobs at a time, the longest (last time) first; prints each result as it comes.
@@ -114,7 +113,7 @@ function Flush-Steps {
             Remove-Job $j -Force; $running.Remove($j.Id)
             if (-not $r) { Report "(a step ended without a result: job $($j.Id))" $false '' 0; continue }
             $script:times[$r.Name] = $r.Secs
-            Report $r.Name $r.Ok $r.Out $r.Secs
+            Report $r.Name $r.Ok $r.Out $r.Secs $r.Port
         }
         $killed = Receive-Job $script:watchdog -ErrorAction SilentlyContinue
         if ($killed) { $killed }
@@ -133,6 +132,7 @@ $env:TEMP = $env:TMP = (New-Item -ItemType Directory -Force (Join-Path $root 'bu
 # stack, wasm.wasmtime.max_stack_bytes) is linked with a 32 MiB default thread stack
 $Stack = '-extra-linker-flags:/STACK:33554432'
 $script:watchdog = Start-Watchdog
+"test_all: $root, -Jobs $Jobs, test server ports from $BasePort, started $(Get-Date -Format 'HH:mm:ss')"
 # the JavaScript engine every build below embeds (nothing to do when build\js is up to date)
 Step 'JavaScript engine (tools\build_js.ps1; nothing to do when up to date)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_js.ps1 | Out-Null }
 if ($Jobs -gt 1) { Flush-Steps }
