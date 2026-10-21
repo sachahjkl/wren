@@ -47,6 +47,8 @@ depends_on_height :: proc(c: ^Ctx, ki: i32) -> bool {
 	k := &c.l.boxes[ki]
 	if k.kind == .Flex || k.kind == .Grid || k.kind == .Table { return true }
 	if k.abs_first != NONE { return true }
+	// a <button> centers its content in its height (layout_block)
+	if .Control in k.flags && k.kind == .Block { return true }
 	for ch := k.first; ch != NONE; ch = c.l.boxes[ch].next {
 		cs := c.l.boxes[ch].cs
 		if style.has_percent(cs.height) || style.has_percent(cs.min_height) || style.has_percent(cs.max_height) { return true }

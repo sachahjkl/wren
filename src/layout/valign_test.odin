@@ -234,6 +234,24 @@ flex_min_height_centers :: proc(t: ^testing.T) {
 	expect_y(t, f, "e", "e_s", (17.5 - 32) * 0.5, (17.5 - 32) * 0.5 + 32)
 }
 
+// A <button> stretched by its grid area or flex line centers its content in the stretched height, as in one given that
+// height (the "Se connecter" button of clockin.sacha.house's sign-in form, in a grid row as tall as the text field).
+@(test)
+stretched_buttons_center :: proc(t: ^testing.T) {
+	f := vx_load(`<!doctype html><body style="margin:0;font:16px main">
+<div id=g style="display:grid;grid-template-columns:1fr 1fr"><i style="display:block;height:40px"></i><button id=g_b style="font:16px main;padding:0;border:0"><span id=g_s>Go</span></button></div>
+<div id=f style="display:flex"><i style="display:block;height:40px;width:10px"></i><button id=f_b style="font:16px main;padding:0;border:0"><span id=f_s>Go</span></button></div>
+</body>`)
+	defer vx_unload(f)
+	for id in ([]string{"g", "f"}) {
+		b := vx_rect(f, id == "g" ? "g_b" : "f_b")
+		s := vx_rect(f, id == "g" ? "g_s" : "f_s")
+		testing.expectf(t, math.abs(b.max.y - b.min.y - 70) < 0.01, "%s: stretched to 70: %v", id, b.max.y - b.min.y)
+		// the 32 px line centered in 70: 19 above (as the button of a specified height in buttons_cells_controls)
+		testing.expectf(t, math.abs(s.min.y - b.min.y - 19) < 0.6, "%s: content at %v, not centered", id, s.min.y - b.min.y)
+	}
+}
+
 @(test)
 buttons_cells_controls :: proc(t: ^testing.T) {
 	f := vx_load(`<!doctype html><body style="margin:0;font:16px main">
