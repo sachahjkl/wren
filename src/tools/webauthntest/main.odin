@@ -21,6 +21,7 @@ import "wb:net"
 import "wb:page"
 import "wb:wasm"
 import "wb:webauthn"
+import "wb:tools/testenv"
 
 failures: int
 passes: int
@@ -99,6 +100,7 @@ addEventListener('load', () => console.log('loaded'));
 </script>`
 
 main :: proc() {
+	context = testenv.context_of_process()
 	host.loop_init(&loop)
 	if !net.client_init(&client, &loop) { fmt.eprintln("net init failed"); os.exit(2) }
 	host.blocking_init(&blocking, &loop, 2)
@@ -303,8 +305,17 @@ main :: proc() {
 	settings.authn.enabled = true
 
 	base.scope_close(process)
-	page.webauthn_shutdown()
-	js.cache_stop()
+	host.blocking_settle(&blocking)
+	page.process_shutdown()
+	fetch.loader_destroy(&loader)
+	host.blocking_destroy(&blocking)
+	net.client_destroy(&client)
+	fetch.profile_destroy(&profile)
+	host.loop_destroy(&loop)
+	page.settings_destroy(&settings)
+	for l in logs { delete(l) }
+	delete(logs)
+	failures += testenv.mem_check("webauthntest")
 	fmt.printf("\n%d checks passed, %d failure(s)\n", passes, failures)
 	os.exit(failures > 0 ? 1 : 0)
 }

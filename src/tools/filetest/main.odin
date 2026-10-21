@@ -7,6 +7,7 @@ package filetest
 import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
+import vmem "core:mem/virtual"
 import "core:os"
 import "core:strings"
 import win "core:sys/windows"
@@ -16,6 +17,7 @@ import "wb:fetch"
 import "wb:host"
 import "wb:http"
 import "wb:net"
+import "wb:tools/testenv"
 import "wb:url"
 
 failures, checks: int
@@ -42,8 +44,12 @@ Result :: struct {
 	mime:      string,
 }
 
+// the results' texts, kept until the end of the run
+results: vmem.Arena
+
 on_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	r := (^Result)(user)
+	context.allocator = vmem.arena_allocator(&results)
 	switch ev.kind {
 	case .Response:
 		r.status, r.redirected = ev.response.status, ev.response.redirected
@@ -61,7 +67,7 @@ on_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 }
 
 run :: proc(d: fetch.Request_Desc) -> Result {
-	r := new(Result)
+	r := new(Result, vmem.arena_allocator(&results))
 	fetch.start(&loader, {request = d, on_event = on_event, user = r, collect = true})
 	start := time.tick_now()
 	for !r.done && time.duration_seconds(time.tick_since(start)) < 120 { host.loop_wait(&loop, 10) }   // the bound only ends a failing run
@@ -87,6 +93,7 @@ env :: proc(doc_url: string) -> ^fetch.Environment {
 write :: proc(path, text: string) { _ = os.write_entire_file(path, transmute([]byte)text) }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	host.loop_init(&loop)
 	if !net.client_init(&client, &loop) { fmt.eprintln("net init failed"); os.exit(2) }
 	host.blocking_init(&blocking, &loop, 2)
@@ -202,12 +209,15 @@ main :: proc() {
 		profile.settings.files.max_entries = 5000
 	}
 
-	fmt.printf("\n%d checks, %d failure(s)\n", checks, failures)
-	for e in envs { fetch.environment_destroy(e) }
+	for e in envs { fetch.environment_destroy(e); free(e) }
+	delete(envs)
+	vmem.arena_destroy(&results)
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	fetch.profile_destroy(&profile)
 	host.loop_destroy(&loop)
+	failures += testenv.mem_check("filetest")
+	fmt.printf("\n%d checks, %d failure(s)\n", checks, failures)
 	os.exit(failures)
 }

@@ -554,6 +554,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		ui.menu_separator()
 		if ui.menu_submenu("View###view_sub") {
 			menu_command(app, t, "view.status_bar")
+			menu_command(app, t, "view.smooth_scrolling")
 			menu_command(app, t, "view.frame_statistics")
 			menu_command(app, t, "view.title_statistics")
 			menu_command(app, t, "view.console")

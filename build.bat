@@ -47,6 +47,7 @@ set "COLL=%COLL% -define:WREN_COMMIT=%WREN_COMMIT%"
 if defined WREN_DATE set "COLL=%COLL% -define:WREN_COMMIT_DATE=%WREN_DATE%"
 if "%1"=="debug" goto debug
 if "%1"=="profile" goto profile
+if "%1"=="check" goto check
 odin build src/browser -out:build/browser.exe %COLL% -o:speed -vet -subsystem:windows
 goto done
 :profile
@@ -54,6 +55,15 @@ goto done
 odin build src/browser -out:build/browser_prof.exe %COLL% -o:speed -debug -define:PROFILE=true -define:D3D_DEBUG=false -vet -subsystem:windows
 if errorlevel 1 exit /b 1
 echo built build\browser_prof.exe
+exit /b 0
+:check
+:: the check build: debug information, Odin's bounds checks and assertions, the contracts checked in debug builds only
+:: (thread ownership), and every allocation of the process tracked (src\base\memory.odin). At exit the blocks still
+:: allocated go to <profile>\memtrack.txt (or WREN_MEMTRACK_REPORT); WREN_MEMTRACK_FAIL=1 makes them exit code 3,
+:: WREN_MEMTRACK_STACK=1 records each block's call stack. Never shipped: the tracker serializes every allocation.
+odin build src/browser -out:build/browser_check.exe %COLL% -debug -define:WREN_TRACK_MEMORY=true -vet -subsystem:windows
+if errorlevel 1 exit /b 1
+echo built build\browser_check.exe
 exit /b 0
 :debug
 odin build src/browser -out:build/browser.exe %COLL% -debug -vet -subsystem:windows

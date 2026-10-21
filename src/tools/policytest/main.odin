@@ -7,6 +7,7 @@ import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
 
 import "core:encoding/json"
 import "core:fmt"
+import vmem "core:mem/virtual"
 import "core:os"
 import "core:strings"
 import "core:time"
@@ -55,8 +56,12 @@ Result :: struct {
 	mime:      string,
 }
 
+// the results (texts, headers), kept until the end of the run
+results: vmem.Arena
+
 on_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	r := (^Result)(user)
+	context.allocator = vmem.arena_allocator(&results)
 	switch ev.kind {
 	case .Response:
 		r.got_response = true
@@ -83,7 +88,7 @@ pump :: proc(r: ^Result) {
 
 // Runs a request and waits for its end.
 run :: proc(d: fetch.Request_Desc) -> Result {
-	r := new(Result)
+	r := new(Result, vmem.arena_allocator(&results))
 	fetch.start(&loader, {request = d, on_event = on_event, user = r, collect = true})
 	pump(r)
 	if !r.done { r.failed, r.detail = true, "timeout" }
@@ -122,6 +127,7 @@ reset_state :: proc() {
 }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	host.loop_init(&loop)
 	if !net.client_init(&client, &loop) { fmt.eprintln("net init failed"); os.exit(2) }
 	host.blocking_init(&blocking, &loop, 2)
@@ -420,7 +426,7 @@ main :: proc() {
 	fmt.println("-- cancellation")
 	{
 		scope := base.scope_make("doc")
-		r := new(Result)
+		r := new(Result, vmem.arena_allocator(&results))
 		fetch.start(&loader, {request = {url = testenv.url(A + "/slow"), mode = .Same_Origin, initiator = doc}, on_event = on_event, user = r, scope = scope})
 		for _ in 0 ..< 5 { host.loop_wait(&loop, 20) }
 		check(fetch.in_flight(&loader) == 1, "a task is in flight")
@@ -431,12 +437,15 @@ main :: proc() {
 		check(!r.done && r.got_response == seen_response, "no event is delivered after cancellation")
 	}
 
-	fmt.printf("\n%d checks, %d failure(s)\n", checks, failures)
-	for e in envs { fetch.environment_destroy(e) }
+	for e in envs { fetch.environment_destroy(e); free(e) }
+	delete(envs)
+	vmem.arena_destroy(&results)
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	fetch.profile_destroy(&profile)
 	host.loop_destroy(&loop)
+	failures += testenv.mem_check("policytest")
+	fmt.printf("\n%d checks, %d failure(s)\n", checks, failures)
 	os.exit(failures)
 }

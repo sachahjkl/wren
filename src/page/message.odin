@@ -8,6 +8,7 @@ package page
 
 import "base:runtime"
 import "wb:dom"
+import "wb:base"
 
 // What a guest hands over / receives: text and buffer handles of its own page.
 Message :: struct {
@@ -29,7 +30,7 @@ message_capture :: proc(p: ^Page, text: string, buffers: []u64) -> (Message_Payl
 		if buffer_get(p, h) == nil { return {}, .Invalid_Handle }
 		for j in 0 ..< i { if buffers[j] == h { return {}, .Invalid_Argument } }
 	}
-	a := runtime.heap_allocator()
+	a := base.process_allocator()
 	m: Message_Payload
 	if len(text) > 0 {
 		t := make([]byte, len(text), a)
@@ -70,7 +71,7 @@ message_deliver :: proc(p: ^Page, m: ^Message_Payload, owner: u32, allocator := 
 }
 
 message_destroy :: proc(m: ^Message_Payload) {
-	a := runtime.heap_allocator()
+	a := base.process_allocator()
 	delete(m.text, a)
 	for b in m.buffers { delete(b, a) }
 	delete(m.buffers, a)

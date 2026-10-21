@@ -109,6 +109,7 @@ call1 :: proc(name: cstring, a: int, b := 0, p := the_page, inst := the_inst) ->
 hosts :: proc() -> int { return len(the_page.workers.hosts) }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	if len(os.args) < 3 { fmt.eprintln("usage: workerstest workerstest.wasm workerstest_worker.wasm"); os.exit(2) }
 	image, err := os.read_entire_file(os.args[1], context.allocator)
 	worker_image, werr := os.read_entire_file(os.args[2], context.allocator)
@@ -395,15 +396,20 @@ main :: proc() {
 	pump_until(proc() -> bool { return page.workers_running() == 0 })
 	check(page.workers_running() == 0, "no worker left")
 	base.scope_close(process)
-	page.shutdown_threads()
 	for _ in 0 ..< 10 { host.loop_wait(&loop, 10) }
+	host.blocking_settle(&blocking)
+	page.process_shutdown()
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	fetch.profile_destroy(&profile)
 	host.loop_destroy(&loop)
-	wasm.runtime_destroy()
+	page.settings_destroy(&settings)
+	for l in logs { delete(l) }
+	delete(logs)
+	delete(image); delete(worker_image)
 	win.timeEndPeriod(1)
+	failures += testenv.mem_check("workerstest")
 	fmt.printf("\n%d failure(s)\n", failures)
 	os.exit(failures)
 }

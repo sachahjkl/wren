@@ -137,6 +137,7 @@ event_count :: proc(events, id: string) -> (loads, errors: int) {
 }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	if len(os.args) < 2 { fmt.eprintln("usage: imagestest imagestest.wasm"); os.exit(2) }
 	image, err := os.read_entire_file(os.args[1], context.allocator)
 	if err != nil { fmt.eprintln("cannot read the module"); os.exit(2) }
@@ -364,13 +365,17 @@ main :: proc() {
 	base.scope_close(process)
 	page.images_shutdown()
 	check(!images.decoder_running(), "decoding threads stopped")
+	host.blocking_settle(&blocking)
+	page.process_shutdown()
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	fetch.profile_destroy(&profile)
 	host.loop_destroy(&loop)
-	wasm.runtime_destroy()
+	page.settings_destroy(&settings)
 	delete(events)
+	delete(html); delete(image)
+	failures += testenv.mem_check("imagestest")
 	fmt.printf("\n%d failure(s)\n", failures)
 	os.exit(failures)
 }

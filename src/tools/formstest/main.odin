@@ -86,6 +86,7 @@ perform :: proc(s: ^forms.Submission) -> string {
 }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	if len(os.args) < 3 { fmt.eprintln("usage: formstest forms.html formstest.wasm"); os.exit(2) }
 	html_bytes, herr := os.read_entire_file(os.args[1], context.allocator)
 	guest, gerr := os.read_entire_file(os.args[2], context.allocator)
@@ -210,13 +211,17 @@ main :: proc() {
 	delete(submissions)
 	delete(echo.body)
 	base.scope_close(process)
+	host.blocking_settle(&blocking)
+	page.process_shutdown()
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	fetch.profile_destroy(&profile)
 	host.loop_destroy(&loop)
-	wasm.runtime_destroy()
 	page.settings_destroy(&settings)
+	delete(decoded.text)
+	delete(html_bytes); delete(guest)
+	failures += testenv.mem_check("formstest")
 	fmt.printf("\n%d failure(s)\n", failures)
 	os.exit(failures)
 }

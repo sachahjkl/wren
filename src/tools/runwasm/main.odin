@@ -4,7 +4,6 @@ package runwasm
 
 import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
 
-import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:time"
@@ -13,7 +12,7 @@ import "wb:wasm"
 
 // console.console_log(message: usvstring), written against the raw interface the generated bindings use.
 log_native :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	f := wasm.frame(env, caller)
 	n := wasm.addr(&f, a[1])
 	p, ok := wasm.span(&f, wasm.addr(&f, a[0]), n)

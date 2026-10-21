@@ -18,7 +18,6 @@ import "wb:host"
 import "wb:images"
 import "wb:net"
 import "wb:page"
-import "wb:wasm"
 import "wb:tools/testenv"
 
 failures: int
@@ -113,6 +112,7 @@ READY_IDS := [?]string{"avif8", "avif10", "avif444", "rot90", "mirror", "transve
 	"webpalpha", "webpanim", "adobe", "pic", "neg", "svg1", "svg3", "svgratio"}
 
 main :: proc() {
+	context = testenv.context_of_process()
 	html, herr := os.read_entire_file("examples/site/media.html", context.allocator)
 	if herr != nil { fmt.eprintln("cannot read examples/site/media.html"); os.exit(2) }
 	host.loop_init(&loop)
@@ -224,12 +224,16 @@ main :: proc() {
 	base.scope_close(process)
 	page.images_shutdown()
 	check(!images.decoder_running(), "decoding threads stopped")
+	host.blocking_settle(&blocking)
+	page.process_shutdown()
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	fetch.profile_destroy(&profile)
 	host.loop_destroy(&loop)
-	wasm.runtime_destroy()
+	page.settings_destroy(&settings)
+	delete(html)
+	failures += testenv.mem_check("mediatest")
 	fmt.printf("\n%d failure(s)\n", failures)
 	os.exit(failures)
 }

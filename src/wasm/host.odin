@@ -16,10 +16,10 @@ package wasm
 // (module_cache.odin, `ensure_pre`), with the callback's `env` = WIDE so the same code reads i64 addresses.
 
 import "base:intrinsics"
-import "base:runtime"
 import "core:fmt"
 import "core:strings"
 import "core:unicode/utf8"
+import "wb:base"
 
 Val_Kind :: enum u8 { I32, I64, F32, F64 }
 
@@ -61,7 +61,7 @@ import_key :: proc(module, name: string, allocator := context.temp_allocator) ->
 register :: proc(imports: []Import) -> bool {
 	sync_lock()
 	defer sync_unlock()
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	fresh := make([dynamic]^Import, 0, len(imports), context.temp_allocator)
 	seen := make(map[string]bool, len(imports), context.temp_allocator)
 	ok := true
@@ -95,7 +95,7 @@ register :: proc(imports: []Import) -> bool {
 			wide_params = clone_kinds(src.wide_params), wide_results = clone_kinds(src.wide_results),
 		}
 		append(&registry, im)
-		registry_index[import_key(im.module, im.name, runtime.default_allocator())] = im
+		registry_index[import_key(im.module, im.name, base.process_allocator())] = im
 		if wt.engine != nil { ok &&= define_import(wt.linker, im, false) }
 	}
 	if wt.engine != nil { wt.linker_gen += 1 }
@@ -127,7 +127,7 @@ registry_find :: proc(module, name: string) -> ^Import {
 
 @(private)
 registry_destroy :: proc() {
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	for im in registry {
 		delete(im.module); delete(im.name)
 		delete(im.params); delete(im.results); delete(im.wide_params); delete(im.wide_results)
@@ -269,7 +269,7 @@ take_trap :: #force_inline proc(inst: ^Instance) -> Trap {
 	msg := inst.wt.pending_trap
 	inst.wt.pending_trap = ""
 	t := wasmtime_trap_new(raw_data(msg), len(msg))
-	delete(msg, runtime.default_allocator())
+	delete(msg, base.process_allocator())
 	return t
 }
 
@@ -277,14 +277,14 @@ take_trap :: #force_inline proc(inst: ^Instance) -> Trap {
 // is discarded).
 trap :: proc(inst: ^Instance, message: string) {
 	if inst == nil { return }
-	delete(inst.wt.pending_trap, runtime.default_allocator())
-	inst.wt.pending_trap = strings.clone(message, runtime.default_allocator())
+	delete(inst.wt.pending_trap, base.process_allocator())
+	inst.wt.pending_trap = strings.clone(message, base.process_allocator())
 }
 
 // The exception record of an instance: the last error a host function raised to it (DOMException-like).
 set_exception :: proc(inst: ^Instance, code: i32, message: string) {
 	inst.exception_code = code
 	if inst.exception_message == message { return }
-	delete(inst.exception_message, runtime.default_allocator())
-	inst.exception_message = strings.clone(message, runtime.default_allocator())
+	delete(inst.exception_message, base.process_allocator())
+	inst.exception_message = strings.clone(message, base.process_allocator())
 }

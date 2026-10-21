@@ -12,7 +12,6 @@ package browser
 // Nothing is measured when nothing shows it: with the status bar hidden and no statistics in the title, the phase
 // clock, the GPU timestamp queries and the Wasm call clock are off.
 
-import "base:runtime"
 import "core:fmt"
 import "core:math"
 import "core:strings"
@@ -26,6 +25,7 @@ import "wb:config"
 import lay "wb:layout"
 import "wb:style"
 import "wb:wasm"
+import "wb:base"
 
 HUD_PREFS := [?]config.Def{
 	{name = "browser.status_bar.visible", kind = .Bool, default = {b = true},
@@ -432,7 +432,7 @@ hud_arm_settle :: proc() {
 
 @(private = "file")
 hud_settle_timer :: proc "system" (hwnd: win.HWND, msg: win.UINT, id: win.UINT_PTR, ms: win.DWORD) {
-	context = runtime.default_context()
+	context = base.process_context()
 	win.KillTimer(nil, id)
 	if id != hud.settle { return }
 	hud.settle = 0

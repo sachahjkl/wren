@@ -56,6 +56,9 @@ Instance :: struct {
 	// Argument errors of host functions that do not raise (a dead handle...) give the zero result and an exception
 	// record instead of a trap: a module whose own state a trap would corrupt (the JavaScript engine) checks instead.
 	lenient:           bool,
+	// What the instance owns (its name, last_error, the caches of exports and signatures) comes from its creator's
+	// allocator, whatever context a later call runs in (a host call, the preemption hook, another thread's).
+	allocator:         runtime.Allocator,
 	wt:                Wt_State,
 }
 
@@ -76,7 +79,7 @@ live_instances: int   // atomic
 configure :: proc(rs: Runtime_Settings) {
 	sync.mutex_lock(&runtime_lock)
 	defer sync.mutex_unlock(&runtime_lock)
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	runtime_settings_destroy(&settings)
 	settings = clone_settings(rs)
 	settings_set = true
@@ -94,7 +97,7 @@ runtime_init :: proc() -> bool {
 runtime_destroy :: proc() {
 	sync.mutex_lock(&runtime_lock)
 	defer sync.mutex_unlock(&runtime_lock)
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	wt_stop()
 	registry_destroy()
 	runtime_settings_destroy(&settings)
@@ -117,6 +120,7 @@ instance_create :: proc(image: []byte, user: rawptr, scope: ^base.Scope, opt: Op
 		return nil, fmt.aprintf("%s: too many module instances alive (wasm.max_instances = %d)", name, limit)
 	}
 	inst = new(Instance)
+	inst.allocator = context.allocator
 	inst.name = strings.clone(name)
 	inst.user = user
 	inst.scope = scope
@@ -143,12 +147,13 @@ scope_closed :: proc(data: rawptr) { instance_free((^Instance)(data)) }
 
 @(private)
 instance_free :: proc(inst: ^Instance) {
+	context.allocator = inst.allocator
 	inst.dead = true
 	wt_free(inst)
 	sync.atomic_sub(&live_instances, 1)
 	delete(inst.name)
 	delete(inst.last_error)
-	delete(inst.exception_message, runtime.default_allocator())
+	delete(inst.exception_message, base.process_allocator())
 	free(inst)
 }
 
@@ -197,6 +202,7 @@ MAX_CELLS :: 64
 
 @(private)
 set_error :: proc(inst: ^Instance, msg: string) {
+	context.allocator = inst.allocator
 	inst.over_budget += 1
 	delete(inst.last_error)
 	inst.last_error = strings.clone(msg)
@@ -211,4 +217,5 @@ guest_bytes :: proc(inst: ^Instance, offset: u64, length: u64) -> []byte {
 	return p[:length]
 }
 
-default_context :: proc "contextless" () -> runtime.Context { return runtime.default_context() }
+// The context of the host calls (the Wasm import trampolines, generated): the process's (base.process_context).
+default_context :: #force_inline proc "contextless" () -> runtime.Context { return base.process_context() }

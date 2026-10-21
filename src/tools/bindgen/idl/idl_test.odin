@@ -5,6 +5,7 @@ package idl
 
 import "core:strings"
 import "core:testing"
+import vmem "core:mem/virtual"
 
 @(private = "file")
 BASE :: `
@@ -26,6 +27,7 @@ load_text :: proc(texts: ..string) -> ^Api {
 @(private = "file")
 expect_error :: proc(t: ^testing.T, want: string, texts: ..string, loc := #caller_location) {
 	api := load_text(..texts)
+	defer destroy(api)
 	found := false
 	for d in api.diags { if strings.contains(d.msg, want) { found = true } }
 	if !found {
@@ -54,6 +56,7 @@ module things {
   export void start(i32 n);
 }
 `)
+	defer destroy(api)
 	testing.expectf(t, len(api.diags) == 0, "no diagnostics: %v", api.diags)
 	if len(api.diags) > 0 { return }
 	testing.expect_value(t, len(api.functions), 6)
@@ -110,9 +113,15 @@ generation_is_deterministic :: proc(t: ^testing.T) {
 	text := `module m { enum E : i32 { A, B } handle H : Object = H_Data via lookup_H; string f(H h, E e, optional string s) raises; void g(bytes b); }`
 	cfg := Host_Config{package_name = "p", wasm_import = "wb:wasm", call_type = "Call", begin = "b", raise = "r", scrub = "s", invoke = "i", call_export = "x", invoke_ctx = "rawptr", collection = "wb:"}
 	a := load_text(BASE, text)
+	defer destroy(a)
 	b := load_text(BASE, text)
+	defer destroy(b)
 	testing.expect(t, len(a.diags) == 0 && len(b.diags) == 0, "valid")
 	if len(a.diags) > 0 { return }
+	// the generated texts are the caller's: this test's arena
+	out: vmem.Arena
+	defer vmem.arena_destroy(&out)
+	context.allocator = vmem.arena_allocator(&out)
 	testing.expect(t, emit_host(a, cfg) == emit_host(b, cfg), "host output is stable")
 	for m, i in a.modules { testing.expect(t, emit_guest_module(a, {"web"}, m) == emit_guest_module(b, {"web"}, b.modules[i]), "guest output is stable") }
 	da, db := emit_docs(a, cfg), emit_docs(b, cfg)

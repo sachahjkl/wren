@@ -25,6 +25,11 @@ import "wb:wasm"
 failures: int
 logs: [dynamic]string
 
+logs_clear :: proc() {
+	for l in logs { delete(l) }
+	clear(&logs)
+}
+
 check :: proc(ok: bool, what: string, loc := #caller_location) {
 	if ok { fmt.printf("PASS %s\n", what) } else { fmt.printf("FAIL %s  (line %d)\n", what, loc.line); failures += 1 }
 }
@@ -83,7 +88,7 @@ css_url :: proc(text: string, ms := 0, status := 0) -> string {
 PRELUDE :: `<script>function log(s) { console.log(String(s)) }</script>`
 
 load :: proc(source: string) -> ^page.Page {
-	clear(&logs)
+	logs_clear()
 	p := page.page_create(&loop, &loader, &settings, process, testenv.url(BASE), console)
 	page.load_html(p, transmute([]byte)source)
 	page.scripts_start(p)
@@ -91,6 +96,7 @@ load :: proc(source: string) -> ^page.Page {
 }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	host.loop_init(&loop)
 	if !net.client_init(&client, &loop) { fmt.eprintln("net init failed"); os.exit(2) }
 	host.blocking_init(&blocking, &loop, 2)
@@ -107,8 +113,17 @@ main :: proc() {
 	test_scroll_events()
 
 	base.scope_close(process)
-	page.compile_shutdown()
-	js.cache_stop()
+	host.blocking_settle(&blocking)
+	page.process_shutdown()
+	fetch.loader_destroy(&loader)
+	host.blocking_destroy(&blocking)
+	net.client_destroy(&client)
+	fetch.profile_destroy(&profile)
+	host.loop_destroy(&loop)
+	page.settings_destroy(&settings)
+	logs_clear()
+	delete(logs)
+	failures += testenv.mem_check("sitecompattest")
 	fmt.printf("\n%d failure(s)\n", failures)
 	os.exit(failures > 0 ? 1 : 0)
 }
@@ -243,7 +258,7 @@ test_scroll_events :: proc() {
 	lh := new(Layout_Host)
 	defer { lay.destroy(&lh.l); free(lh) }
 	lh.set = lay.settings_default()
-	clear(&logs)
+	logs_clear()
 	p := page.page_create(&loop, &loader, &settings, process, testenv.url(BASE), console)
 	page.set_page_visible(p, true)
 	page.set_layout_embedder(p, {user = lh, update = layout_update, viewport = layout_viewport, scroll_to = layout_scroll})

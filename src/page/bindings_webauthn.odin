@@ -15,7 +15,6 @@ package page
 //     the operation).
 //   * Nothing about credentials is logged; the console only gets the error names a page would see anyway.
 
-import "base:runtime"
 import "core:strings"
 import "core:time"
 import "wb:base"
@@ -72,8 +71,8 @@ webauthn_doc :: proc(p: ^Page, create := false) -> ^Webauthn_Doc {
 	if id == 0 { return nil }
 	if d, ok := webauthn_docs[id]; ok { return d }
 	if !create { return nil }
-	if webauthn_docs == nil { webauthn_docs = make(map[u64]^Webauthn_Doc, runtime.heap_allocator()) }
-	d := new(Webauthn_Doc, runtime.heap_allocator())
+	if webauthn_docs == nil { webauthn_docs = make(map[u64]^Webauthn_Doc, base.process_allocator()) }
+	d := new(Webauthn_Doc, base.process_allocator())
 	d.page_id = id
 	webauthn_docs[id] = d
 	d.cleanup = base.on_close(p.scope, webauthn_doc_closed, d)
@@ -86,13 +85,14 @@ webauthn_doc :: proc(p: ^Page, create := false) -> ^Webauthn_Doc {
 webauthn_doc_closed :: proc(data: rawptr) {
 	d := (^Webauthn_Doc)(data)
 	delete_key(&webauthn_docs, d.page_id)
+	if len(webauthn_docs) == 0 { delete(webauthn_docs); webauthn_docs = nil }   // made again by the next document
 	if op := d.active; op != nil {
 		webauthn.cancel(op.platform, &op.c.cancel, .Not_Allowed)
 		// the page's timers go with its scope; the op lives on until its thread returns (webauthn_finished)
 		op.timer, op.retry = base.NIL_HANDLE, base.NIL_HANDLE
 		op.page_id = 0
 	}
-	free(d, runtime.heap_allocator())
+	free(d, base.process_allocator())
 }
 
 // HTML "activation-triggering input event": keydown (not Escape), mousedown, pointerdown of a mouse, pointerup of
@@ -152,7 +152,7 @@ webauthn_shutdown :: proc(grace_ms := 3000) {
 		if !host.thread_finished(op.thread) { continue }
 		host.thread_join(op.thread)
 		webauthn.ceremony_destroy(op.c)
-		free(op, runtime.heap_allocator())
+		free(op, base.process_allocator())
 	}
 	delete(webauthn_ops)
 	webauthn_ops = nil
@@ -176,7 +176,7 @@ webauthn_credential_vt := Object_VTable{
 	destroy = proc(p: ^Page, data: rawptr) {
 		w := (^Webauthn_Credential)(data)
 		webauthn.ceremony_destroy(w.c)
-		free(w, runtime.heap_allocator())
+		free(w, base.process_allocator())
 	},
 }
 
@@ -184,7 +184,7 @@ lookup_PublicKeyCredential :: proc(c: ^Call, h: u64) -> ^Webauthn_Credential { r
 
 @(private="file")
 credential_create :: proc(p: ^Page, cer: ^webauthn.Ceremony, owner: u32) -> u64 {
-	w := new(Webauthn_Credential, runtime.heap_allocator())
+	w := new(Webauthn_Credential, base.process_allocator())
 	w.c = cer
 	a := webauthn.ceremony_allocator(cer)
 	r := &cer.result
@@ -201,11 +201,11 @@ credential_create :: proc(p: ^Page, cer: ^webauthn.Ceremony, owner: u32) -> u64 
 @(private="file")
 reject_later :: proc(p: ^Page, pr: u64, code: i64, message: string) {
 	R :: struct { pr: u64, code: i64, msg: string }
-	r := new(R, runtime.heap_allocator())
-	r^ = {pr, code, strings.clone(message, runtime.heap_allocator())}
+	r := new(R, base.process_allocator())
+	r^ = {pr, code, strings.clone(message, base.process_allocator())}
 	post_page_task(p, proc(pg: ^Page, data: rawptr) {
 		r := (^R)(data)
-		defer { delete(r.msg, runtime.heap_allocator()); free(r, runtime.heap_allocator()) }
+		defer { delete(r.msg, base.process_allocator()); free(r, base.process_allocator()) }
 		if pg != nil { promise_reject(pg, r.pr, r.code, r.msg) }
 	}, r)
 }
@@ -213,11 +213,11 @@ reject_later :: proc(p: ^Page, pr: u64, code: i64, message: string) {
 @(private="file")
 resolve_later :: proc(p: ^Page, pr: u64, value: i64, text := "") {
 	R :: struct { pr: u64, value: i64, text: string }
-	r := new(R, runtime.heap_allocator())
-	r^ = {pr, value, strings.clone(text, runtime.heap_allocator())}
+	r := new(R, base.process_allocator())
+	r^ = {pr, value, strings.clone(text, base.process_allocator())}
 	post_page_task(p, proc(pg: ^Page, data: rawptr) {
 		r := (^R)(data)
-		defer { delete(r.text, runtime.heap_allocator()); free(r, runtime.heap_allocator()) }
+		defer { delete(r.text, base.process_allocator()); free(r, base.process_allocator()) }
 		if pg != nil { promise_resolve(pg, r.pr, r.value, r.text) }
 	}, r)
 }
@@ -320,7 +320,7 @@ webauthn_start :: proc(c: ^Call, kind: webauthn.Ceremony_Kind, options: string, 
 		return pr
 	}
 
-	op := new(Webauthn_Op, runtime.heap_allocator())
+	op := new(Webauthn_Op, base.process_allocator())
 	op^ = Webauthn_Op{page_id = page_id(p), loop = p.loop, promise = pr, owner = c.owner, c = cer, platform = pl, signal = signal.handle}
 	op.rp_id = kind == .Create ? cer.make.rp_id : cer.get.rp_id
 	timeout := kind == .Create ? cer.make.timeout_ms : cer.get.timeout_ms
@@ -392,7 +392,7 @@ webauthn_finished :: proc(data: rawptr) {
 	op := (^Webauthn_Op)(data)
 	host.thread_join(op.thread)
 	for x, i in webauthn_ops { if x == op { unordered_remove(&webauthn_ops, i); break } }
-	defer free(op, runtime.heap_allocator())
+	defer free(op, base.process_allocator())
 	p := op.page_id != 0 ? page_by_id(op.page_id) : nil
 	if p == nil {
 		webauthn.ceremony_destroy(op.c)
@@ -460,7 +460,7 @@ Caps_Job :: struct {
 caps_start :: proc(c: ^Call, kind: Caps_Kind) -> u64 {
 	p := c.page
 	pr := promise_create(p, c.owner)
-	j := new(Caps_Job, runtime.heap_allocator())
+	j := new(Caps_Job, base.process_allocator())
 	j^ = Caps_Job{page = page_id(p), promise = pr, kind = kind, settings = p.settings.authn}
 	j.settings.enterprise_rp_ids = nil
 	work :: proc(data: rawptr) {
@@ -472,7 +472,7 @@ caps_start :: proc(c: ^Call, kind: Caps_Kind) -> u64 {
 	}
 	done :: proc(data: rawptr) {
 		j := (^Caps_Job)(data)
-		defer free(j, runtime.heap_allocator())
+		defer free(j, base.process_allocator())
 		pg := page_by_id(j.page)
 		if pg == nil { return }
 		s := &j.settings

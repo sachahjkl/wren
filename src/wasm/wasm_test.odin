@@ -14,6 +14,7 @@ import "core:sync"
 import "core:testing"
 import "core:thread"
 import "core:time"
+import "wb:tools/testenv"
 
 @(private = "file")
 wat :: proc(t: ^testing.T, text: string) -> []byte {
@@ -435,7 +436,7 @@ cache_files :: proc(dir: string) -> [dynamic]string {
 @(test)
 disk_cache :: proc(t: ^testing.T) {
 	dir := temp_dir(t, "cache")
-	defer os.remove_all(dir)
+	defer testenv.remove_tree(dir)
 	setup(t, dir)
 	image := wat(t, MODULE)
 

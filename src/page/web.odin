@@ -9,7 +9,6 @@ package page
 //   * the error codes beyond dom.Error (Web IDL exceptions and DOMException names), the same for every area;
 //   * the Embedder: what the shell supplies (navigation, the tab's session history, the profile's storage).
 
-import "base:runtime"
 import "core:time"
 import "wb:base"
 import "wb:host"
@@ -118,7 +117,7 @@ web_init :: proc(p: ^Page, live := true) {
 	p.web = w
 	w.live = live
 	if live {
-		if live_pages == nil { live_pages = make(map[u64]^Page, runtime.heap_allocator()) }
+		if live_pages == nil { live_pages = make(map[u64]^Page, base.process_allocator()) }
 		next_page_id += 1
 		w.id = next_page_id
 	}
@@ -135,7 +134,10 @@ web_init :: proc(p: ^Page, live := true) {
 web_destroy :: proc(p: ^Page) {
 	w := p.web
 	if w == nil { return }
-	if w.live { delete_key(&live_pages, w.id) }
+	if w.live {
+		delete_key(&live_pages, w.id)
+		if len(live_pages) == 0 { delete(live_pages); live_pages = nil }   // made again by the next page
+	}
 	if w.idle_timer != base.NIL_HANDLE { host.clear_timer(p.loop, w.idle_timer) }
 	storage_page_closed(p)
 	for d in w.frozen_tasks {

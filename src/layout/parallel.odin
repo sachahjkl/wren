@@ -1,11 +1,11 @@
 package layout
 
 import "base:intrinsics"
-import "base:runtime"
 import "core:sync"
 import "core:thread"
 import "wb:host"
 import "wb:style"
+import "wb:base"
 
 // Parallel pre-layout of inline formatting contexts, for full passes over large documents (a page load) and for
 // incremental passes that lay many paragraphs out again (a change of the viewport width: a window being resized). Line
@@ -102,7 +102,7 @@ par_acquire :: proc(setting: int) -> ^host.Thread_Pool {
 	if !sync.mutex_try_lock(&par_mu) { return nil }
 	if n != par_pool_size || par_pool == nil {
 		// the threads outlive the caller: they get the process heap, not the caller's allocators (a test's tracker)
-		context = runtime.default_context()
+		context = base.process_context()
 		host.thread_pool_destroy(par_pool)
 		par_pool = host.thread_pool_make(n)
 		par_pool_size = n
@@ -121,7 +121,7 @@ helpers_release :: proc(pool: ^host.Thread_Pool) { if pool != nil { par_release(
 
 // Joins the layout threads. Call once no layout runs any more, before exiting; they are made again if needed.
 shutdown_threads :: proc() {
-	context = runtime.default_context()
+	context = base.process_context()
 	sync.mutex_lock(&par_mu)
 	host.thread_pool_destroy(par_pool)
 	par_pool, par_pool_size = nil, 0

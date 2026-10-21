@@ -277,6 +277,11 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "view.status_bar", title = "Status bar", category = "View", keys = keys(&r.arena, {key = .B, mods = ctrl}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return hud.cfg.bar_visible },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_status_bar(app) }})
+	add(r, {name = "view.smooth_scrolling", title = "Smooth scrolling", category = "View", keywords = "animated scroll wheel motion browser.scroll.smooth.enabled",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return smooth_cfg.enabled },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) {
+			if err := config.set_from_string(&app.prefs, "browser.scroll.smooth.enabled", smooth_cfg.enabled ? "false" : "true", .User); err != .None { ui.toast(.Warn, "browser.scroll.smooth.enabled: %s", config.set_error_text(err)) }
+		}})
 	add(r, {name = "view.frame_statistics", title = "Frame statistics", category = "View", keywords = "fps performance hud timing", keys = keys(&r.arena, {key = .B, mods = cs}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return hud.panel_open },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_frame_stats(app) }})

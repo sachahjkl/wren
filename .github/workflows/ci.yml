@@ -47,6 +47,19 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      # what the memory checks of test_all found (the check build's leak reports, the endurance curves)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: memory-checks-${{ github.sha }}
+          path: |
+            build/memcheck/*/profile/memtrack.txt
+            build/endurance/stats.csv
+            build/endurance/endurance.svg
+            build/endurance/endurance/profile/memtrack.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Package (smoke test of tools\package.ps1)
         shell: cmd
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1 -Dev

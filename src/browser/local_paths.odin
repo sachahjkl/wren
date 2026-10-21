@@ -1,12 +1,12 @@
 package browser
 
-import "base:runtime"
 import "core:strings"
 import win "core:sys/windows"
 import "toolkit:ui"
 import "wb:config"
 import "wb:fetch"
 import "wb:host"
+import "wb:base"
 
 ////////////////////////////////
 // Paths of this computer as addresses: what is typed or pasted in the address bar (`C:\dir\page.html`, `S:/site`, `C:`,
@@ -124,7 +124,7 @@ drop_files_destroy :: proc(app: ^App) {
 @(private = "file")
 drop_subclass :: proc "system" (hwnd: win.HWND, msg: win.UINT, wparam: win.WPARAM, lparam: win.LPARAM, id: win.UINT_PTR, ref: win.DWORD_PTR) -> win.LRESULT {
 	if msg != win.WM_DROPFILES { return DefSubclassProc(hwnd, msg, wparam, lparam) }
-	context = runtime.default_context()
+	context = base.process_context()
 	hdrop := win.HDROP(wparam)
 	d := new(Dropped)
 	count := win.DragQueryFileW(hdrop, 0xFFFF_FFFF, nil, 0)

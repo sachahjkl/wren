@@ -56,6 +56,7 @@ attr :: proc(h: base.Handle, name: string) -> string {
 }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	if len(os.args) < 4 { fmt.eprintln("usage: pagetest e2e.wasm counter.html counter.wasm"); os.exit(2) }
 	e2e, err := os.read_entire_file(os.args[1], context.allocator)
 	html_bytes, herr := os.read_entire_file(os.args[2], context.allocator)
@@ -205,12 +206,18 @@ main :: proc() {
 	page.page_close(sp)
 
 	base.scope_close(process)
+	page.process_shutdown()
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	fetch.profile_destroy(&profile)
 	host.loop_destroy(&loop)
-	wasm.runtime_destroy()
+	page.settings_destroy(&settings)
+	delete(decoded.text)
+	delete(e2e); delete(html_bytes); delete(counter)
+	for l in logs { delete(l) }
+	delete(logs)
+	failures += testenv.mem_check("pagetest")
 	fmt.printf("\n%d failure(s)\n", failures)
 	os.exit(failures)
 }

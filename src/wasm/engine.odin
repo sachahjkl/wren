@@ -13,12 +13,12 @@ package wasm
 //     the thread has less than that plus wasm.wasmtime.host_stack_reserve_bytes left (a real overflow would kill the
 //     process).
 
-import "base:runtime"
 import "core:fmt"
 import "core:strings"
 import "core:sync"
 import "core:thread"
 import "core:time"
+import "wb:base"
 
 MAX_SIG_VALUES :: 32
 
@@ -105,7 +105,7 @@ config_text :: proc(rs: Runtime_Settings, allocator := context.temp_allocator) -
 wt_start :: proc(rs: Runtime_Settings) -> bool {
 	if wt.engine != nil { return true }
 	if wt.start_failed { return false }
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	f := effective_features(rs)
 	c := wasm_config_new()
 	wasmtime_config_strategy_set(c, rs.compiler == .Winch ? WT_STRATEGY_WINCH : WT_STRATEGY_CRANELIFT)
@@ -208,7 +208,7 @@ wt_stub_call :: proc "c" (env: rawptr, caller: wt_caller, args: [^]wt_val_raw, n
 
 @(private)
 wt_stub_free :: proc "c" (env: rawptr) {
-	context = runtime.default_context()
+	context = base.process_context()
 	s := (^Stub)(env)
 	delete(s.message)
 	free(s)
@@ -274,7 +274,7 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 	}
 	if inst.wt.profiler != nil { profile_sample(inst) }
 	if preempt.hook != nil {
-		context = runtime.default_context()
+		context = base.process_context()
 		preempt_tick(inst)   // preempt.odin: the embedder's turn on this thread
 	}
 	delta^ = 1
@@ -340,7 +340,7 @@ wt_free :: proc(inst: ^Instance) {
 	delete(s.exports)
 	delete(s.indirect)
 	delete(s.free_slots)
-	delete(s.pending_trap)
+	delete(s.pending_trap, base.process_allocator())   // (host.odin: trap)
 	inst.wt = {}
 }
 
@@ -478,6 +478,7 @@ wt_sig_of :: proc(ctx: wt_context, f: ^wt_func) -> (sig: Wt_Sig) {
 
 @(private)
 wt_export :: proc(inst: ^Instance, name: cstring) -> ^Wt_Export {
+	context.allocator = inst.allocator
 	s := &inst.wt
 	key := string(name)
 	if e, found := &s.exports[key]; found { return e }
@@ -524,6 +525,7 @@ wt_call_indirect :: proc(inst: ^Instance, table_index: u32, buf: []u32, argc: in
 	key := wasmtime_func_to_raw(s.ctx, &f)
 	sig, found := s.indirect[key]
 	if !found {
+		context.allocator = inst.allocator
 		sig = wt_sig_of(s.ctx, &f)
 		s.indirect[key] = sig
 	}

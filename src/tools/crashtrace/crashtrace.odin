@@ -53,7 +53,7 @@ code_name :: proc(code: u32) -> string {
 
 @(private = "file")
 on_crash :: proc "system" (info: ^win.EXCEPTION_POINTERS) -> win.LONG {
-	context = runtime.default_context()
+	context = runtime.default_context()   // memcheck: not the tracker (the crashing thread may hold its lock)
 	rec := info.ExceptionRecord
 	ctx := info.ContextRecord^   // unwound in a copy
 	process := win.GetCurrentProcess()

@@ -64,6 +64,7 @@ hview: History_View
 history_ui_destroy :: proc() {
 	ui.field_destroy(&hview.search)
 	ui.vlist_destroy(&hview.list)
+	history_rows_free()
 	delete(hview.rows); delete(hview.ids); delete(hview.labels); delete(hview.selectable)
 	strings.builder_destroy(&hview.text)
 	delete(hview.model_query)

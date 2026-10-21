@@ -171,7 +171,7 @@ decoder_start :: proc(threads: int, stack_bytes := DECODER_STACK_DEFAULT) {
 	sync.mutex_lock(&dec_mu)
 	defer sync.mutex_unlock(&dec_mu)
 	if dec != nil { return }
-	context.allocator = runtime.heap_allocator()
+	context.allocator = base.process_allocator()
 	d := new(Decoder)
 	d.allocator = context.allocator
 	d.queue = make([dynamic]^Job)
@@ -266,7 +266,7 @@ port_close :: proc(id: Port_Id) {
 
 // A job to fill and submit. `data` is retained by the job.
 job_make :: proc(kind: Job_Kind, data: ^Blob, opts: Decode_Options, priority: i32 = 0, user: rawptr = nil, tag: u64 = 0) -> ^Job {
-	context.allocator = runtime.heap_allocator()
+	context.allocator = base.process_allocator()
 	j := new(Job)
 	j.kind, j.data, j.opts, j.priority, j.user, j.tag = kind, blob_retain(data), opts, priority, user, tag
 	j.opts.mime = clone_string(opts.mime)
@@ -276,7 +276,7 @@ job_make :: proc(kind: Job_Kind, data: ^Blob, opts: Decode_Options, priority: i3
 // Frees a job and whatever result it still holds.
 job_free :: proc(j: ^Job) {
 	if j == nil { return }
-	context.allocator = runtime.heap_allocator()
+	context.allocator = base.process_allocator()
 	blob_release(j.data)
 	image_destroy(j.image)
 	delete(j.opts.mime)
@@ -366,7 +366,7 @@ decoder_thread :: proc(data: rawptr) {
 
 		start := time.tick_now()
 		{
-			context.allocator = runtime.heap_allocator()
+			context.allocator = base.process_allocator()
 			// without WIC (no COM on this thread) the built-in formats still decode
 			j.image, j.info, j.err = run_blob(have_codec ? &codec : nil, j.data, j.opts, j.kind == .Probe)
 		}

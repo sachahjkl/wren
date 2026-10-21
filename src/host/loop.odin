@@ -11,7 +11,6 @@
 // programs and tests.
 package host
 
-import "base:runtime"
 import "core:container/priority_queue"
 import "core:sync"
 import "core:time"
@@ -86,8 +85,8 @@ DEFAULT_TIMER_SLICE_NS :: 8_000_000
 loop_init :: proc(l: ^Loop, wake: proc(user: rawptr) = nil, wake_user: rawptr = nil) {
 	l.origin = time.tick_now()
 	// `post` is called from foreign threads whose context allocator is the process heap: keep these arrays there.
-	l.posted = make([dynamic]Task, runtime.heap_allocator())
-	l.scratch = make([dynamic]Task, runtime.heap_allocator())
+	l.posted = make([dynamic]Task, base.process_allocator())
+	l.scratch = make([dynamic]Task, base.process_allocator())
 	l.wake = wake
 	l.wake_user = wake_user
 	l.timer_slice_ns = DEFAULT_TIMER_SLICE_NS
@@ -246,6 +245,22 @@ run_ready :: proc(l: ^Loop) -> int {
 		timers_ran += 1
 	}
 	return ran
+}
+
+// Loop thread. Runs the posted tasks until none is left (those they post too, `max_turns` rounds at most), not the
+// timers. Before tearing a program down, once its pages are closed: a posted task owns its data and frees it when it
+// runs (a page task whose page is gone only releases), so a loop destroyed with tasks still queued leaks them.
+loop_drain :: proc(l: ^Loop, max_turns := 1000) -> (ran: int) {
+	for _ in 0 ..< max_turns {
+		sync.mutex_lock(&l.mu)
+		empty := len(l.posted) == 0
+		l.posted, l.scratch = l.scratch, l.posted
+		sync.mutex_unlock(&l.mu)
+		if empty { break }
+		for task in l.scratch { task.fn(task.data); ran += 1 }
+		clear(&l.scratch)
+	}
+	return
 }
 
 // Headless embedding: blocks until a post/signal or the next timer (or `max_ms` when >= 0), then runs what is ready.

@@ -17,6 +17,13 @@
   `test_all.ps1` fails when a generated file is out of date.
 - A new preference is a `config.Def` in the package's `settings.odin`, registered with the others
   (`src/browser/settings.odin`); `src/browser/prefs_test.odin` checks it.
+- Memory: unit tests fail on a leak or a bad free, end-to-end tools when anything is left once they have shut down
+  (`testenv.mem_check`, after `host.blocking_settle`, `page.process_shutdown` and the destroys). Code that runs
+  without an Odin context of its own (a thread, a C callback, a Wasm host call) starts from `base.process_context()`,
+  memory shared between threads or kept by a cache comes from `base.process_allocator()`, never from
+  `runtime.default_context()` / `runtime.heap_allocator()`: in the check builds those are the tracker. Data kept on
+  purpose until the process ends comes from `base.permanent_allocator()`. A global map or list goes away with its
+  last entry. `tools\endurance.ps1` shows what keeps growing while the browser runs.
 - Comments say why, in English, as dense as the code around them. Commit messages are in English.
 
 ## Toolchain versions

@@ -83,8 +83,11 @@ run_case :: proc(c: ^Case) -> string {
 	start := time.tick_now()
 	// the bound only ends a failing run: every case finishes by itself (the close timeout included)
 	for !r.done && time.duration_seconds(time.tick_since(start)) < 60 { host.loop_wait(&loop, 10) }
-	if !r.done { net.websocket_abort(&client, r.sock); return "timeout" }
-	return strings.to_string(r.log)
+	if !r.done { net.websocket_abort(&client, r.sock); return "timeout" }   // (r is left to a late event)
+	log := strings.clone(strings.to_string(r.log), context.temp_allocator)
+	strings.builder_destroy(&r.log)
+	free(r)
+	return log
 }
 
 Get_State :: struct { done: bool, body: string }
@@ -99,7 +102,11 @@ http_get :: proc(target: string) -> string {
 	}})
 	start := time.tick_now()
 	for !st.done && time.duration_seconds(time.tick_since(start)) < 60 { host.loop_wait(&loop, 10) }
-	return st.body
+	if !st.done { return "" }   // (st is left to a late event)
+	body := strings.clone(st.body, context.temp_allocator)
+	delete(st.body)
+	free(st)
+	return body
 }
 
 // Runs `c` n times; every run must log `want` (and the server must have read `wire` as our close frame, when given).
@@ -123,6 +130,7 @@ repeat :: proc(what: string, c: Case, want: string, n: int, wire := "") {
 }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	n := 50
 	if len(os.args) > 1 { n, _ = strconv.parse_int(os.args[1]) }
 	host.loop_init(&loop)
@@ -159,6 +167,9 @@ main :: proc() {
 
 	check(net.websocket_count(&client) == 0, "no socket left")
 	net.client_destroy(&client)
+	host.loop_drain(&loop)
+	host.loop_destroy(&loop)
+	failures += testenv.mem_check("wsclosetest")
 	fmt.printf("\n%d failure(s)\n", failures)
 	os.exit(failures == 0 ? 0 : 1)
 }

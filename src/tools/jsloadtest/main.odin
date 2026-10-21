@@ -31,6 +31,11 @@ import "wb:tools/testenv"
 failures: int
 logs: [dynamic]string
 
+logs_clear :: proc() {
+	for l in logs { delete(l) }
+	clear(&logs)
+}
+
 check :: proc(ok: bool, what: string, loc := #caller_location) {
 	if ok { fmt.printf("PASS %s\n", what) } else { fmt.printf("FAIL %s  (line %d)\n", what, loc.line); failures += 1 }
 }
@@ -133,7 +138,7 @@ gen :: proc(code: string, ms := 0, extra := "") -> string {
 PRELUDE :: `<script>function log(s) { console.log(String(s)) }</script>`
 
 load :: proc(source: string, address := BASE, csp := "", s: ^page.Settings = nil) -> ^page.Page {
-	clear(&logs)
+	logs_clear()
 	p := page.page_create(&loop, &loader, s != nil ? s : &settings, process, testenv.url(address), console)
 	if csp != "" { page.apply_response_headers(p, {csp}, {}, "") }
 	page.load_html(p, transmute([]byte)source)
@@ -170,6 +175,7 @@ hits :: proc(path: string) -> int {
 }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	host.loop_init(&loop)
 	if !net.client_init(&client, &loop) { fmt.eprintln("net init failed"); os.exit(2) }
 	host.blocking_init(&blocking, &loop, 2)
@@ -197,8 +203,17 @@ main :: proc() {
 	measurements()
 
 	base.scope_close(process)
-	page.compile_shutdown()
-	js.cache_stop()
+	host.blocking_settle(&blocking)
+	page.process_shutdown()
+	fetch.loader_destroy(&loader)
+	host.blocking_destroy(&blocking)
+	net.client_destroy(&client)
+	fetch.profile_destroy(&profile)
+	host.loop_destroy(&loop)
+	page.settings_destroy(&settings)
+	logs_clear()
+	delete(logs)
+	failures += testenv.mem_check("jsloadtest")
 	fmt.printf("\n%d failure(s)\n", failures)
 	os.exit(failures > 0 ? 1 : 0)
 }
@@ -472,7 +487,7 @@ log("noscript content is text " + (document.getElementById("ns") === null));
 
 	s := settings
 	s.js.enabled = false
-	clear(&logs)
+	logs_clear()
 	p2 := page.page_create(&loop, &loader, &s, process, testenv.url(BASE), console)
 	page.load_html(p2, transmute([]byte)string(`<!doctype html><body><noscript><p id=ns>no script</p></noscript></body>`))
 	found := dom.find_by_id(p2.doc, "ns") != base.NIL_HANDLE

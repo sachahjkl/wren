@@ -6,8 +6,10 @@ package netapitest
 
 import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
 
+import "base:runtime"
 import "core:encoding/json"
 import "core:fmt"
+import vmem "core:mem/virtual"
 import "core:os"
 import "core:strings"
 import "core:time"
@@ -61,6 +63,10 @@ pump_for :: proc(ms: int) {
 }
 
 wanted: string
+
+// what the checks keep (results, names), until the end of the run
+results: vmem.Arena
+kept :: proc() -> runtime.Allocator { return vmem.arena_allocator(&results) }
 result :: proc(p: ^page.Page, id: int) -> (string, bool) {
 	r := dom.find_by_id(p.doc, "r")
 	return dom.get_attribute(p.doc, r, fmt.tprintf("s%d", id))
@@ -69,7 +75,7 @@ result :: proc(p: ^page.Page, id: int) -> (string, bool) {
 // Runs a guest export and waits for the scenario `id` to publish its log.
 run :: proc(p: ^page.Page, export: cstring, id: int, args: []u32 = nil, seconds := 120.0) -> string {
 	current = p
-	wanted = fmt.aprintf("s%d", id)
+	wanted = fmt.aprintf("s%d", id, allocator = kept())
 	page.call_export(p, p.instances[0], export, args)
 	pump_until(string(export), proc() -> bool {
 		r := dom.find_by_id(current.doc, "r")
@@ -77,7 +83,7 @@ run :: proc(p: ^page.Page, export: cstring, id: int, args: []u32 = nil, seconds 
 		return ok
 	}, seconds)
 	s, _ := result(p, id)
-	return strings.clone(s)
+	return strings.clone(s, kept())
 }
 
 new_page :: proc(doc_url: string) -> ^page.Page {
@@ -90,11 +96,11 @@ new_page :: proc(doc_url: string) -> ^page.Page {
 // A plain GET from the test itself (no page, no policy): server-side counters.
 Get_State :: struct { done: bool, body: string }
 http_get :: proc(target: string) -> string {
-	st := new(Get_State)
+	st := new(Get_State, kept())
 	net.fetch(&client, {url = target, collect = true, user = st, on_event = proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 		s := (^Get_State)(user)
 		#partial switch ev.kind {
-		case .Done:   s.done, s.body = true, strings.clone(string(ev.data))
+		case .Done:   s.done, s.body = true, strings.clone(string(ev.data), kept())
 		case .Failed: s.done = true
 		}
 	}})
@@ -112,6 +118,7 @@ private_bytes :: proc() -> int {
 ORIGIN :: "http://127.0.0.1:8765"   // on the run's block of ports through testenv.url
 
 main :: proc() {
+	context = testenv.context_of_process()
 	if len(os.args) < 2 { fmt.eprintln("usage: netapitest netapitest.wasm"); os.exit(2) }
 	data, err := os.read_entire_file(os.args[1], context.allocator)
 	if err != nil { fmt.eprintln("cannot read the guest"); os.exit(2) }
@@ -213,7 +220,7 @@ main :: proc() {
 		r, _ := wasm_i32(p, "ws_rules")
 		check(r == 1, fmt.tprintf("constructor, send and close rules (%d)", r))
 		current = p
-		wanted = fmt.aprintf("s%d", 21)
+		wanted = fmt.aprintf("s%d", 21, allocator = kept())
 		pump_until("rules close", proc() -> bool { _, ok := result(current, 21); return ok })
 		s, _ = result(p, 21)
 		check(s == "error;close:1006::0;", fmt.tprintf("close() while connecting fails the connection (got %q)", s))
@@ -312,11 +319,17 @@ main :: proc() {
 
 	page.page_close(p)
 	base.scope_close(process)
+	host.blocking_settle(&blocking)
+	page.process_shutdown()
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	fetch.profile_destroy(&profile)
 	host.loop_destroy(&loop)
+	page.settings_destroy(&settings)
+	vmem.arena_destroy(&results)
+	delete(guest)
+	failures += testenv.mem_check("netapitest")
 	fmt.printf("\n%d failure(s)\n", failures)
 	os.exit(failures)
 }

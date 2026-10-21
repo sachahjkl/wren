@@ -6,12 +6,12 @@ package wasm
 // and their function "f" put in that instance's table, where its own code calls it like a C function pointer. The new
 // code runs in the same sandbox as its maker: it can only reach the maker's memory and the maker's exports.
 
-import "base:runtime"
 import "core:fmt"
 import "core:strings"
 import "core:sync"
 import "core:thread"
 import "core:time"
+import "wb:base"
 
 Attach_Stats :: struct {
 	attached:   int,   // functions put in a table
@@ -142,7 +142,7 @@ attach_start :: proc(inst: ^Instance, code: []byte, threads: int, max_functions 
 	if inst == nil || inst.dead { return 0, "the instance is gone" }
 	if !inst.wt.has_table { return 0, "the module has no table" }
 	if max_functions > 0 && inst.wt.attached + inst.wt.attach_pending >= max_functions { return 0, "too many functions attached" }
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	sync.mutex_lock(&attach_pool.lock)
 	defer sync.mutex_unlock(&attach_pool.lock)
 	for len(attach_pool.threads) < max(1, threads) {
@@ -227,7 +227,7 @@ attach_stop :: proc() {
 	sync.cond_broadcast(&attach_pool.cond)
 	sync.mutex_unlock(&attach_pool.lock)
 	for t in attach_pool.threads { thread.join(t); thread.destroy(t) }
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	for _, job in attach_pool.jobs { attach_job_free(job) }
 	for job in attach_pool.queue { if job.inst == nil { attach_job_free(job) } }
 	delete(attach_pool.threads)
@@ -238,7 +238,7 @@ attach_stop :: proc() {
 
 @(private)
 attach_job_free :: proc(job: ^Attach_Job) {
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	if job.module != nil { cache_release(job.module) }
 	delete(job.code)
 	delete(job.err)
@@ -247,7 +247,7 @@ attach_job_free :: proc(job: ^Attach_Job) {
 
 @(private)
 attach_worker :: proc() {
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	for {
 		sync.mutex_lock(&attach_pool.lock)
 		for len(attach_pool.queue) == 0 && !attach_pool.stopping { sync.cond_wait(&attach_pool.cond, &attach_pool.lock) }
@@ -285,6 +285,7 @@ detach_function :: proc(inst: ^Instance, index: u32) {
 	s := &inst.wt
 	v := wt_val{kind = WT_FUNCREF}
 	if e := wasmtime_table_set(s.ctx, &s.table, u64(index), &v); e != nil { wasmtime_error_delete(e); return }
+	context.allocator = inst.allocator
 	append(&s.free_slots, index)
 }
 

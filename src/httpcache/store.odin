@@ -1,6 +1,5 @@
 package httpcache
 
-import "base:runtime"
 import "core:strings"
 import "core:sync"
 import "core:time"
@@ -27,7 +26,7 @@ Body :: struct {
 }
 
 body_make :: proc(data: []byte) -> ^Body {
-	b := new(Body, runtime.heap_allocator())
+	b := new(Body, base.process_allocator())
 	b.refs = 1
 	b.data = data
 	return b
@@ -41,8 +40,8 @@ body_retain :: proc(b: ^Body) -> ^Body {
 body_release :: proc(b: ^Body) {
 	if b == nil { return }
 	if sync.atomic_sub(&b.refs, 1) == 1 {
-		delete(b.data, runtime.heap_allocator())
-		free(b, runtime.heap_allocator())
+		delete(b.data, base.process_allocator())
+		free(b, base.process_allocator())
 	}
 }
 
@@ -59,13 +58,13 @@ Meta :: struct {
 }
 
 meta_destroy :: proc(m: ^Meta) {
-	a := runtime.heap_allocator()
+	a := base.process_allocator()
 	delete(m.key, a); delete(m.url, a); delete(m.headers, a); delete(m.vary, a)
 	m^ = {}
 }
 
 meta_clone :: proc(m: Meta) -> Meta {
-	a := runtime.heap_allocator()
+	a := base.process_allocator()
 	r := m
 	r.key = strings.clone(m.key, a)
 	r.url = strings.clone(m.url, a)
@@ -264,7 +263,7 @@ Store_Desc :: struct {
 store :: proc(c: ^Cache, d: Store_Desc) -> ^Entry {
 	if i64(len(d.body)) > c.settings.max_entry_bytes { return nil }
 	if old := find(c, d.key); old != nil { remove(c, old) }
-	a := runtime.heap_allocator()
+	a := base.process_allocator()
 	data := make([]byte, len(d.body), a)
 	copy(data, d.body)
 	e := new(Entry)
@@ -295,7 +294,7 @@ store :: proc(c: ^Cache, d: Store_Desc) -> ^Entry {
 refresh :: proc(c: ^Cache, e: ^Entry, fresh: http.Headers, request_time, response_time: i64, fresh_until: i64) {
 	stored := headers_of(e)
 	merged := merge_304(stored, fresh, context.temp_allocator)
-	a := runtime.heap_allocator()
+	a := base.process_allocator()
 	delete(e.meta.headers, a)
 	e.meta.headers = stored_header_block(merged, int(e.body_size), response_time)
 	e.meta.request_time, e.meta.response_time = request_time, response_time
@@ -310,7 +309,7 @@ refresh :: proc(c: ^Cache, e: ^Entry, fresh: http.Headers, request_time, respons
 // sent none.
 @(private)
 stored_header_block :: proc(h: http.Headers, body_len: int, response_time: i64) -> string {
-	sb := strings.builder_make(runtime.heap_allocator())
+	sb := strings.builder_make(base.process_allocator())
 	encoded := http.has_header(h, "content-encoding")
 	for e in h.list {
 		if is_hop_by_hop(e.name) || is_never_stored(e.name) { continue }
@@ -435,7 +434,7 @@ make_non_resident :: proc(c: ^Cache, e: ^Entry) {
 
 @(private)
 entry_free :: proc(e: ^Entry) {
-	a := runtime.heap_allocator()
+	a := base.process_allocator()
 	body_release(e.body)
 	meta_destroy(&e.meta)
 	delete(e.key, a)

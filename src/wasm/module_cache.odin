@@ -15,7 +15,6 @@ package wasm
 // file name is derived from the module hash and the engine configuration (fingerprint), so a configuration change
 // never reads stale code; the folder is trimmed to wasm.cache.disk_max_bytes, least recently used first.
 
-import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
@@ -24,6 +23,7 @@ import "core:strings"
 import "core:sync"
 import "core:thread"
 import "core:time"
+import "wb:base"
 
 @(private) DISK_MAGIC :: "WRENWTC1"
 @(private) DISK_EXT :: ".wtc"
@@ -94,7 +94,7 @@ cache: Cache
 
 @(private)
 cache_start :: proc(rs: Runtime_Settings) {
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	cache.entries = make(map[Digest]^Cached)
 	cache.max_bytes = rs.cache_memory_bytes
 	cache.disk_max = rs.cache_disk_max_bytes
@@ -108,7 +108,7 @@ cache_start :: proc(rs: Runtime_Settings) {
 
 @(private)
 cache_stop :: proc() {
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	if cache.writer != nil {
 		sync.mutex_lock(&cache.qlock)
 		cache.stop = true
@@ -135,7 +135,7 @@ cache_stats :: proc() -> Cache_Stats {
 cache_clear_memory :: proc() {
 	sync.mutex_lock(&cache.lock)
 	defer sync.mutex_unlock(&cache.lock)
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	for k, c in cache.entries {
 		if c.users > 0 { continue }
 		cache.total -= c.code_bytes
@@ -157,7 +157,7 @@ cache_flush :: proc() {
 
 @(private)
 cached_free :: proc(c: ^Cached) {
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	if c.pre != nil { wasmtime_instance_pre_delete(c.pre) }
 	if c.module != nil { wasmtime_module_delete(c.module) }
 	for im in c.imports { delete(im.module); delete(im.name) }
@@ -173,7 +173,7 @@ cached_free :: proc(c: ^Cached) {
 @(private)
 cache_acquire :: proc(image: []byte, known: ^Digest = nil) -> (c: ^Cached, err: string) {
 	caller := context.allocator
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	key: Digest
 	if known != nil {
 		key = known^
@@ -255,7 +255,7 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil) -> (c: ^Cached, err: 
 
 @(private)
 cache_release :: proc(c: ^Cached) {
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	sync.mutex_lock(&cache.lock)
 	defer sync.mutex_unlock(&cache.lock)
 	c.users -= 1
@@ -281,7 +281,7 @@ evict_memory :: proc() {
 
 @(private)
 read_imports :: proc(c: ^Cached) {
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	v: wt_ptr_vec
 	wasmtime_module_imports(c.module, &v)
 	defer wasm_importtype_vec_delete(&v)
@@ -305,7 +305,7 @@ read_imports :: proc(c: ^Cached) {
 @(private)
 ensure_pre :: proc(c: ^Cached) {
 	if c.pre != nil && c.pre_gen == wt.linker_gen { return }
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	if c.pre != nil { wasmtime_instance_pre_delete(c.pre); c.pre = nil }
 	delete(c.link_error)
 	c.link_error = ""
@@ -378,7 +378,7 @@ disk_path :: proc(filekey: Digest) -> string {
 	hex := strings.builder_make(context.temp_allocator)
 	for b in filekey { fmt.sbprintf(&hex, "%02x", b) }
 	strings.write_string(&hex, DISK_EXT)
-	p, _ := filepath.join({cache.dir, strings.to_string(hex)}, runtime.default_allocator())
+	p, _ := filepath.join({cache.dir, strings.to_string(hex)}, base.process_allocator())
 	return p
 }
 
@@ -417,9 +417,9 @@ disk_mac :: proc(filekey: Digest, payload: []byte) -> (Digest, bool) {
 // A module from the disk cache, or nil (missing, refused: then the file is deleted).
 @(private)
 disk_load :: proc(path: string, filekey: Digest) -> wt_module {
-	data, err := os.read_entire_file(path, runtime.default_allocator())
+	data, err := os.read_entire_file(path, base.process_allocator())
 	if err != nil { return nil }
-	defer delete(data, runtime.default_allocator())
+	defer delete(data, base.process_allocator())
 	head := len(DISK_MAGIC) + 32
 	reject := proc(path: string) -> wt_module {
 		_ = os.remove(path)
@@ -446,18 +446,18 @@ disk_load :: proc(path: string, filekey: Digest) -> wt_module {
 disk_queue :: proc(path: string, filekey: Digest, m: wt_module) {
 	v: wt_byte_vec
 	if e := wasmtime_module_serialize(m, &v); e != nil { wasmtime_error_delete(e); return }
-	payload := make([]byte, int(v.size), runtime.default_allocator())
+	payload := make([]byte, int(v.size), base.process_allocator())
 	copy(payload, v.data[:v.size])
 	wasm_byte_vec_delete(&v)
 	sync.mutex_lock(&cache.qlock)
-	append(&cache.queue, Disk_Job{path = strings.clone(path, runtime.default_allocator()), filekey = filekey, payload = payload})
+	append(&cache.queue, Disk_Job{path = strings.clone(path, base.process_allocator()), filekey = filekey, payload = payload})
 	sync.cond_signal(&cache.qcond)
 	sync.mutex_unlock(&cache.qlock)
 }
 
 @(private)
 disk_writer_main :: proc(_: rawptr) {
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	for {
 		sync.mutex_lock(&cache.qlock)
 		for len(cache.queue) == 0 && !cache.stop { sync.cond_wait(&cache.qcond, &cache.qlock) }

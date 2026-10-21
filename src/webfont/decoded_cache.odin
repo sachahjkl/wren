@@ -1,9 +1,9 @@
 package webfont
 
-import "base:runtime"
 import "core:fmt"
 import "core:hash/xxhash"
 import "core:sync"
+import "wb:base"
 
 // Fonts already decoded, for the whole process: a page that comes back, another tab of the same site, use the sfnt
 // of a WOFF / WOFF2 without unpacking it again (Brotli and the WOFF2 transforms are the costly part of a web font that
@@ -38,7 +38,7 @@ decode_cached :: proc(url: string, data: []byte, max_bytes: int, cache_bytes: in
 		sfnt, format, err = decode(data, max_bytes, allocator)
 		return
 	}
-	a := runtime.heap_allocator()
+	a := base.process_allocator()
 	key := fmt.tprintf("%016x %d %s", xxhash.XXH3_64_default(data), len(data), url)
 	sync.mutex_lock(&cache.mu)
 	if d, ok := cache.entries[key]; ok && len(d.sfnt) <= max_bytes {
@@ -91,7 +91,7 @@ decoded_cache_clear :: proc() {
 
 @(private = "file")
 drop :: proc(d: ^Decoded) {
-	a := runtime.heap_allocator()
+	a := base.process_allocator()
 	unlink(d)
 	delete_key(&cache.entries, d.key)
 	cache.bytes -= len(d.sfnt)
