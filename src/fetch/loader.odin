@@ -594,6 +594,7 @@ main_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 	case .Headers: on_response_headers(t, ev)
 	case .Data:
 		cache_on_data(t, ev.data)
+		if t.initiator != nil && t.destination != .Document { t.initiator.counts.network_bytes += i64(len(ev.data)) }
 		if t.collect {
 			append(&t.collected, ..ev.data)
 		} else {
@@ -678,6 +679,13 @@ check_and_send_response :: proc(t: ^Task) -> bool {
 @(private)
 send_response :: proc(t: ^Task, status: int, raw: http.Headers, m: http.Mime, has_mime: bool) {
 	resp := Response{url = t.target.href, redirected = t.redirected, mime = m, has_mime = has_mime, cache = t.cache.outcome}
+	if t.initiator != nil && t.destination != .Document {
+		switch t.cache.outcome {
+		case .Network:           t.initiator.counts.network += 1
+		case .Hit, .Stale:       t.initiator.counts.cache += 1
+		case .Revalidated:       t.initiator.counts.revalidated += 1
+		}
+	}
 	switch t.taint {
 	case .Basic:
 		resp.type, resp.status, resp.body_usable = .Basic, status, true

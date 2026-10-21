@@ -180,7 +180,7 @@ status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
 		case .Requests:
 			n := fetch.in_flight(&app.loader)
 			add(&items, {kind = item, text = fmt.tprintf("%s request%s", fmt_count(n), n == 1 ? "" : "s"), short = fmt.tprintf("%s req.", fmt_count(n)),
-				id = "###sb_req", tone = n > 0 ? "" : "weak", tip = "Requests in flight", priority = 60})
+				id = "###sb_req", tone = n > 0 ? "" : "weak", tip = cache_requests_tip(t), priority = 60})
 		case .Cookies:
 			if p == nil || p.env.location.host == "" { continue }
 			n := cookies.count_for_host(&app.profile.jar, p.env.location.host)

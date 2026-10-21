@@ -212,7 +212,8 @@ hold_wait_ms :: proc(t: ^Tab) -> f64 {
 }
 
 // The first paint of the tab's new page happened now: the profile build records how long it took (WREN_PROF set:
-// appended to <WREN_PROF>.firstpaint.txt as "milliseconds since the navigation started, since the document arrived, URL").
+// appended to <WREN_PROF>.firstpaint.txt as "milliseconds since the navigation started, since the document arrived, URL,
+// where the document and the subresources came from": http_cache_ui.odin cache_prof_fields).
 prof_first_paint :: proc(t: ^Tab) {
 	when PROFILE {
 		if !prof.on { return }
@@ -222,7 +223,7 @@ prof_first_paint :: proc(t: ^Tab) {
 		f, err := os.open(path, {.Write, .Create, .Append}, os.Permissions_Default_File)
 		if err != nil { return }
 		defer os.close(f)
-		os.write_string(f, fmt.tprintf("%.1f\t%.1f\t%s\n", since_nav, since_doc, t.url))
+		os.write_string(f, fmt.tprintf("%.1f\t%.1f\t%s\t%s\n", since_nav, since_doc, t.url, cache_prof_fields(t)))   // (http_cache_ui.odin)
 	}
 }
 

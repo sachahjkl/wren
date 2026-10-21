@@ -67,6 +67,33 @@ cache_status_suffix :: proc(o: fetch.Cache_Outcome) -> string {
 	return ""
 }
 
+// "doc=<network|cache|304> net=N cache=N 304=N net_bytes=N fonts=<faces ready>/<faces>": the measurements of a first
+// paint (first_paint.odin prof_first_paint).
+cache_prof_fields :: proc(t: ^Tab) -> string {
+	doc := "?"
+	if t.load != nil {
+		switch t.load.from_cache {
+		case .Network: doc = "network"
+		case .Hit, .Stale: doc = "cache"
+		case .Revalidated: doc = "304"
+		}
+	}
+	c: fetch.Fetch_Counts
+	ready, all := 0, 0
+	if t.page != nil {
+		c = t.page.env.counts
+		ready, all = len(page.fonts_ready(t.page)), len(page.fonts_all(t.page))
+	}
+	return fmt.tprintf("doc=%s\tnet=%d\tcache=%d\t304=%d\tnet_bytes=%d\tfonts=%d/%d", doc, c.network, c.cache, c.revalidated, c.network_bytes, ready, all)
+}
+
+// The status bar's tip: where this page's requests came from.
+cache_requests_tip :: proc(t: ^Tab) -> string {
+	if t == nil || t.page == nil { return "Requests in flight" }
+	c := t.page.env.counts
+	return fmt.tprintf("Requests in flight. This page: %d from the network (%s), %d from the cache, %d revalidated (304)", c.network, size_text(c.network_bytes), c.cache, c.revalidated)
+}
+
 is_cache_address :: proc(a: string) -> bool { return a == CACHE_URL || strings.has_prefix(a, CACHE_URL + "?") }
 
 ////////////////////////////////

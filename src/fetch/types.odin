@@ -103,6 +103,16 @@ Environment :: struct {
 	on_violation:    proc(user: rawptr, v: csp.Violation),
 	violation_user:  rawptr,
 	cache_override:  Cache_Mode,        // the mode of this document's requests that ask for the default (a reload without the cache)
+	counts:          Fetch_Counts,      // what this document's requests cost (status bar, measurements)
+}
+
+// The requests of a document by where their responses came from (http_cache.odin), and the body bytes the network
+// brought for them.
+Fetch_Counts :: struct {
+	network:       int,
+	cache:         int,   // served without the network (fresh, or stale-while-revalidate)
+	revalidated:   int,   // 304: the stored body served
+	network_bytes: i64,
 }
 
 environment_make :: proc(document_url: url.URL, referrer_policy := Referrer_Policy.Default) -> Environment {
