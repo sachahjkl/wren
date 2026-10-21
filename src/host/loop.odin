@@ -230,6 +230,22 @@ run_ready :: proc(l: ^Loop) -> int {
 	return ran
 }
 
+// Loop thread. Runs the posted tasks until none is left (those they post too, `max_turns` rounds at most), not the
+// timers. Before tearing a program down, once its pages are closed: a posted task owns its data and frees it when it
+// runs (a page task whose page is gone only releases), so a loop destroyed with tasks still queued leaks them.
+loop_drain :: proc(l: ^Loop, max_turns := 1000) -> (ran: int) {
+	for _ in 0 ..< max_turns {
+		sync.mutex_lock(&l.mu)
+		empty := len(l.posted) == 0
+		l.posted, l.scratch = l.scratch, l.posted
+		sync.mutex_unlock(&l.mu)
+		if empty { break }
+		for task in l.scratch { task.fn(task.data); ran += 1 }
+		clear(&l.scratch)
+	}
+	return
+}
+
 // Headless embedding: blocks until a post/signal or the next timer (or `max_ms` when >= 0), then runs what is ready.
 loop_wait :: proc(l: ^Loop, max_ms: int = -1) -> int {
 	timeout := next_timeout_ms(l)
