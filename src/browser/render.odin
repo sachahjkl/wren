@@ -120,7 +120,8 @@ dr :: #force_inline proc(r: lay.Rect) -> draw.Rect { return draw.Rect{r.min, r.m
 // Paints the page: through the compositor (retained pictures replayed, render.compositor.enabled) or item by item.
 // The page origin and the scroll offset are snapped to device pixels, as browsers do: text stays on the pixel grid and
 // a retained picture lands exactly where direct drawing would.
-paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size: draw.Vec2, page_scroll: f32, clip: draw.Rect) {
+// `doc_scrollbar` false: no bar for the document (a frame with scrolling="no").
+paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size: draw.Vec2, page_scroll: f32, clip: draw.Rect, doc_scrollbar := true) {
 	if !l.valid { return }
 	origin := draw.Vec2{math.round(page_origin.x), math.round(page_origin.y)}
 	scroll := math.round(page_scroll)
@@ -142,7 +143,7 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size
 		}
 		effects_end(&fx)
 	}
-	if track, thumb, ok := lay.doc_scrollbar(l, size, scroll); ok {
+	if track, thumb, ok := lay.doc_scrollbar(l, size, scroll); ok && doc_scrollbar {
 		root := l.styled != nil ? (^style.Styled)(l.styled).root_scheme : style.Scheme.Light   // alive while the layout is painted
 		thumb_c, track_c := scrollbar_colors(root, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
 		// the viewport's bar follows the root element's scrollbar-color

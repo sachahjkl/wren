@@ -36,6 +36,7 @@ Frame_View :: struct {
 	ready:    bool,         // laid out for `size` (its first paint is not held back)
 	painted:  u64,          // chrome frame number it was painted in (visible)
 	transformed: bool,      // its container is under a transform: input is not routed (the rect is only its bounds)
+	no_scroll: bool,        // its container says scrolling="no": no scroll bar, the document does not scroll
 }
 
 @(private = "file")
@@ -140,6 +141,9 @@ frames_prepare :: proc(app: ^App, t: ^Tab, viewport: draw.Vec2, scale: f32) {
 		page.frames_set_distance(p, n.element, max(dx, dy) / max(scale, 0.01))
 		size := draw.Vec2{math.round(r.content.max.x - r.content.min.x), math.round(r.content.max.y - r.content.min.y)}
 		fv.transformed = r.transformed
+		sc, _ := dom.get_attribute(p.doc, n.element, "scrolling")
+		fv.no_scroll = strings.equal_fold(strings.trim_space(sc), "no")
+		if fv.no_scroll { fv.tab.scroll = 0 }
 		if size.x <= 0 || size.y <= 0 { fv.ready = false; continue }
 		frame_prepare(app, fv, size, scale)
 	}
@@ -239,7 +243,7 @@ frames_paint_content :: proc(app: ^App, dc: ^draw.Context, d: ^dom.Document, nod
 	append(&paint_stack, t.page)
 	saved := images_shell_page_swap(t.page)
 	draw.push_clip(dc, content)
-	paint(&t.layout, dc, t.page.doc, content.min, size, t.scroll, content)
+	paint(&t.layout, dc, t.page.doc, content.min, size, t.scroll, content, doc_scrollbar = !fv.no_scroll)
 	draw.pop_clip(dc)
 	images_shell_page_swap(saved)
 	pop(&paint_stack)
