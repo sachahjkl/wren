@@ -5,7 +5,17 @@
 	Serializing a comment containing '-->' via innerHTML: PASS
 	Serializing a comment containing only '--' via innerHTML: PASS
 /domparsing/DOMParser-parseFromString-encoding.html: ERROR
-/domparsing/DOMParser-parseFromString-html.html: ERROR
+/domparsing/DOMParser-parseFromString-html.html: OK
+	DOMParser parses HTML tag soup with no problems: PASS
+	DOMParser should handle the content of <noembed> as raw text: PASS
+	DOMParser throws on an invalid enum value: PASS
+	Location value: FAIL
+	Parsing of id attribute: PASS
+	compatMode: FAIL
+	compatMode for a proper DOCTYPE: PASS
+	contentType: PASS
+	must be parsed with scripting disabled, so noscript works: PASS
+	script is found synchronously even when there is a css import: PASS
 /domparsing/DOMParser-parseFromString-stylesheets.html: OK
 	DOMParser-created document should expose multiple style elements in styleSheets: FAIL
 	DOMParser-created document should have accessible styleSheets collection with one style element: FAIL
@@ -141,7 +151,7 @@
 	image/svg+xml valid: created using a parser from this frame and the method from the iframe: NOTRUN
 	image/svg+xml valid: created using another iframe's DOMParser from that frame: NOTRUN
 	image/svg+xml valid: created using another iframe's DOMParser from this frame: NOTRUN
-	text/html valid: created normally: FAIL
+	text/html valid: created normally: PASS
 	text/html valid: created using a parser from the iframe and the method from this frame: NOTRUN
 	text/html valid: created using a parser from this frame and the method from the iframe: NOTRUN
 	text/html valid: created using another iframe's DOMParser from that frame: NOTRUN
@@ -187,7 +197,7 @@
 	image/svg+xml valid: created using a parser from this frame and the method from the iframe: NOTRUN
 	image/svg+xml valid: created using another iframe's DOMParser from that frame: NOTRUN
 	image/svg+xml valid: created using another iframe's DOMParser from this frame: NOTRUN
-	text/html valid: created normally: FAIL
+	text/html valid: created normally: PASS
 	text/html valid: created using a parser from the iframe and the method from this frame: NOTRUN
 	text/html valid: created using a parser from this frame and the method from the iframe: NOTRUN
 	text/html valid: created using another iframe's DOMParser from that frame: NOTRUN
@@ -252,9 +262,9 @@
 	text/xml is preserved in the error document: FAIL
 /domparsing/DOMParser-parseFromString-xml-scripting-support-disabled.html: OK
 	parseFromString as HTML, append importNode result: FAIL
-	parseFromString as HTML, appendChild: FAIL
+	parseFromString as HTML, appendChild: PASS
 	parseFromString as HTML, svg script, append importNode result: FAIL
-	parseFromString as HTML, svg script, appendChild: FAIL
+	parseFromString as HTML, svg script, appendChild: PASS
 	parseFromString as XHTML, script, append adoptNode result: FAIL
 	parseFromString as XHTML, script, append cloneNode result: FAIL
 	parseFromString as XHTML, script, append importNode result: FAIL
@@ -366,8 +376,8 @@
 	null should be stringified: PASS
 	undefined should be stringified: PASS
 /domparsing/domparser-spurious-attributes.html: OK
-	Using ">" and "\\r" in an attribute creates no unexpected attributes.: FAIL
-	Using ">" and HTML entities in an attribute creates no unexpected attributes.: FAIL
+	Using ">" and "\\r" in an attribute creates no unexpected attributes.: PASS
+	Using ">" and HTML entities in an attribute creates no unexpected attributes.: PASS
 /domparsing/html-insertion-methods-html-element.html: TIMEOUT
 	afterHTML on a child of a detached html element throws HierarchyRequestError: FAIL
 	afterHTML on head/body (parent is the html element) throws HierarchyRequestError: NOTRUN
@@ -544,7 +554,7 @@
 	Setting outerHTML on an Element with a parent should replace it but leave the element unchanged: PASS
 	Setting outerHTML on an Element without a parent should have no effect: PASS
 /domparsing/parsed-document-origin.window.html: OK
-	DOMParser's parseFromString() with text/html: FAIL
+	DOMParser's parseFromString() with text/html: PASS
 	DOMParser's parseFromString() with text/xml: FAIL
 	Document.parseHTML(): FAIL
 	Document.parseHTMLUnsafe(): PASS
@@ -1156,9 +1166,13 @@
 	streamPrependHTMLUnsafe: write() and close() from a streamed inline script are processed after the current chunk: FAIL
 	streamPrependHTMLUnsafe: write() from a custom element reaction is processed after the current chunk: FAIL
 	streamPrependHTMLUnsafe: write() from a streamed inline script after a parser-blocking script is parsed after the current chunk: FAIL
-/domparsing/style_attribute_html.html: ERROR
+/domparsing/style_attribute_html.html: OK
+	Parsing of initial style attribute: PASS
+	Parsing of invalid style attribute: PASS
+	Parsing of style attribute: PASS
+	Update style.backgroundColor: PASS
 /domparsing/svg-template.html: OK
-	document: FAIL
+	document: PASS
 	fragment: PASS
 /domparsing/tentative/all-stream-methods-with-trusted-types-no-policy.html: OK
 	streamAfterHTML with trusted types and no default policy returns a WritableStream.: FAIL

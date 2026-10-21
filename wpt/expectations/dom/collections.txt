@@ -6,8 +6,8 @@
 /dom/collections/HTMLCollection-delete.html: OK
 	Loose id: PASS
 	Loose name: PASS
-	Strict id: FAIL
-	Strict name: FAIL
+	Strict id: PASS
+	Strict name: PASS
 /dom/collections/HTMLCollection-detached-root-gc.html: OK
 	children: PASS
 	getElementsByClassName(): PASS
@@ -52,8 +52,8 @@
 	Handling of property names that look like integers around 2^32: PASS
 	Handling of property names that look like negative integers: PASS
 	Handling of property names that look like small nonnegative integers: PASS
-	Trying to delete an indexed property name should never work: FAIL
-	Trying to set an expando that would shadow an already-existing indexed property: FAIL
+	Trying to delete an indexed property name should never work: PASS
+	Trying to set an expando that would shadow an already-existing indexed property: PASS
 	Trying to set an expando with an indexed property name past the end of the list: FAIL
 /dom/collections/HTMLCollection-supported-property-names.html: OK
 	Object.getOwnPropertyNames on HTMLCollection: FAIL
@@ -69,6 +69,6 @@
 	Object.getOwnPropertyNames on DOMStringMap, empty data attribute: PASS
 	Object.getOwnPropertyNames on DOMStringMap, multiple data attributes: PASS
 /dom/collections/namednodemap-supported-property-names.html: OK
-	Object.getOwnPropertyNames on NamedNodeMap: FAIL
-	Object.getOwnPropertyNames on NamedNodeMap after attribute removal: FAIL
-	Object.getOwnPropertyNames on NamedNodeMap of input: FAIL
+	Object.getOwnPropertyNames on NamedNodeMap: PASS
+	Object.getOwnPropertyNames on NamedNodeMap after attribute removal: PASS
+	Object.getOwnPropertyNames on NamedNodeMap of input: PASS

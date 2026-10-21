@@ -13,15 +13,15 @@
 /dom/events/AddEventListenerOptions-passive.any.html: OK
 	Equivalence of option values: PASS
 	Supports passive option on addEventListener only: PASS
-	passive behavior of one listener should be unaffected by the presence of other listeners: FAIL
-	preventDefault should be ignored if-and-only-if the passive option is true: FAIL
-	returnValue should be ignored if-and-only-if the passive option is true: FAIL
+	passive behavior of one listener should be unaffected by the presence of other listeners: PASS
+	preventDefault should be ignored if-and-only-if the passive option is true: PASS
+	returnValue should be ignored if-and-only-if the passive option is true: PASS
 /dom/events/AddEventListenerOptions-passive.any.worker.html: OK
 	Equivalence of option values: PASS
 	Supports passive option on addEventListener only: PASS
-	passive behavior of one listener should be unaffected by the presence of other listeners: FAIL
-	preventDefault should be ignored if-and-only-if the passive option is true: FAIL
-	returnValue should be ignored if-and-only-if the passive option is true: FAIL
+	passive behavior of one listener should be unaffected by the presence of other listeners: PASS
+	preventDefault should be ignored if-and-only-if the passive option is true: PASS
+	returnValue should be ignored if-and-only-if the passive option is true: PASS
 /dom/events/AddEventListenerOptions-signal.any.html: OK
 	Aborting from a listener does not call future listeners: PASS
 	Aborting from a nested listener should remove it: PASS
@@ -818,11 +818,11 @@
 	mousewheel listener is passive by default for HTMLBodyElement: FAIL
 	mousewheel listener is passive by default for HTMLHtmlElement: FAIL
 	mousewheel listener is passive by default for Window: FAIL
-	mousewheel listener is passive with {passive:true} for Document: FAIL
-	mousewheel listener is passive with {passive:true} for HTMLBodyElement: FAIL
-	mousewheel listener is passive with {passive:true} for HTMLDivElement: FAIL
-	mousewheel listener is passive with {passive:true} for HTMLHtmlElement: FAIL
-	mousewheel listener is passive with {passive:true} for Window: FAIL
+	mousewheel listener is passive with {passive:true} for Document: PASS
+	mousewheel listener is passive with {passive:true} for HTMLBodyElement: PASS
+	mousewheel listener is passive with {passive:true} for HTMLDivElement: PASS
+	mousewheel listener is passive with {passive:true} for HTMLHtmlElement: PASS
+	mousewheel listener is passive with {passive:true} for Window: PASS
 	mousewheel listener is passive with {passive:undefined} for Document: FAIL
 	mousewheel listener is passive with {passive:undefined} for HTMLBodyElement: FAIL
 	mousewheel listener is passive with {passive:undefined} for HTMLHtmlElement: FAIL
@@ -842,11 +842,11 @@
 	touchend listener is non-passive with {passive:undefined} for HTMLDivElement: PASS
 	touchend listener is non-passive with {passive:undefined} for HTMLHtmlElement: PASS
 	touchend listener is non-passive with {passive:undefined} for Window: PASS
-	touchend listener is passive with {passive:true} for Document: FAIL
-	touchend listener is passive with {passive:true} for HTMLBodyElement: FAIL
-	touchend listener is passive with {passive:true} for HTMLDivElement: FAIL
-	touchend listener is passive with {passive:true} for HTMLHtmlElement: FAIL
-	touchend listener is passive with {passive:true} for Window: FAIL
+	touchend listener is passive with {passive:true} for Document: PASS
+	touchend listener is passive with {passive:true} for HTMLBodyElement: PASS
+	touchend listener is passive with {passive:true} for HTMLDivElement: PASS
+	touchend listener is passive with {passive:true} for HTMLHtmlElement: PASS
+	touchend listener is passive with {passive:true} for Window: PASS
 	touchmove listener is non-passive by default for HTMLDivElement: PASS
 	touchmove listener is non-passive with {passive:false} for Document: PASS
 	touchmove listener is non-passive with {passive:false} for HTMLBodyElement: PASS
@@ -858,11 +858,11 @@
 	touchmove listener is passive by default for HTMLBodyElement: FAIL
 	touchmove listener is passive by default for HTMLHtmlElement: FAIL
 	touchmove listener is passive by default for Window: FAIL
-	touchmove listener is passive with {passive:true} for Document: FAIL
-	touchmove listener is passive with {passive:true} for HTMLBodyElement: FAIL
-	touchmove listener is passive with {passive:true} for HTMLDivElement: FAIL
-	touchmove listener is passive with {passive:true} for HTMLHtmlElement: FAIL
-	touchmove listener is passive with {passive:true} for Window: FAIL
+	touchmove listener is passive with {passive:true} for Document: PASS
+	touchmove listener is passive with {passive:true} for HTMLBodyElement: PASS
+	touchmove listener is passive with {passive:true} for HTMLDivElement: PASS
+	touchmove listener is passive with {passive:true} for HTMLHtmlElement: PASS
+	touchmove listener is passive with {passive:true} for Window: PASS
 	touchmove listener is passive with {passive:undefined} for Document: FAIL
 	touchmove listener is passive with {passive:undefined} for HTMLBodyElement: FAIL
 	touchmove listener is passive with {passive:undefined} for HTMLHtmlElement: FAIL
@@ -878,11 +878,11 @@
 	touchstart listener is passive by default for HTMLBodyElement: FAIL
 	touchstart listener is passive by default for HTMLHtmlElement: FAIL
 	touchstart listener is passive by default for Window: FAIL
-	touchstart listener is passive with {passive:true} for Document: FAIL
-	touchstart listener is passive with {passive:true} for HTMLBodyElement: FAIL
-	touchstart listener is passive with {passive:true} for HTMLDivElement: FAIL
-	touchstart listener is passive with {passive:true} for HTMLHtmlElement: FAIL
-	touchstart listener is passive with {passive:true} for Window: FAIL
+	touchstart listener is passive with {passive:true} for Document: PASS
+	touchstart listener is passive with {passive:true} for HTMLBodyElement: PASS
+	touchstart listener is passive with {passive:true} for HTMLDivElement: PASS
+	touchstart listener is passive with {passive:true} for HTMLHtmlElement: PASS
+	touchstart listener is passive with {passive:true} for Window: PASS
 	touchstart listener is passive with {passive:undefined} for Document: FAIL
 	touchstart listener is passive with {passive:undefined} for HTMLBodyElement: FAIL
 	touchstart listener is passive with {passive:undefined} for HTMLHtmlElement: FAIL
@@ -898,11 +898,11 @@
 	wheel listener is passive by default for HTMLBodyElement: FAIL
 	wheel listener is passive by default for HTMLHtmlElement: FAIL
 	wheel listener is passive by default for Window: FAIL
-	wheel listener is passive with {passive:true} for Document: FAIL
-	wheel listener is passive with {passive:true} for HTMLBodyElement: FAIL
-	wheel listener is passive with {passive:true} for HTMLDivElement: FAIL
-	wheel listener is passive with {passive:true} for HTMLHtmlElement: FAIL
-	wheel listener is passive with {passive:true} for Window: FAIL
+	wheel listener is passive with {passive:true} for Document: PASS
+	wheel listener is passive with {passive:true} for HTMLBodyElement: PASS
+	wheel listener is passive with {passive:true} for HTMLDivElement: PASS
+	wheel listener is passive with {passive:true} for HTMLHtmlElement: PASS
+	wheel listener is passive with {passive:true} for Window: PASS
 	wheel listener is passive with {passive:undefined} for Document: FAIL
 	wheel listener is passive with {passive:undefined} for HTMLBodyElement: FAIL
 	wheel listener is passive with {passive:undefined} for HTMLHtmlElement: FAIL

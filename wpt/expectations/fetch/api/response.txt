@@ -3,9 +3,9 @@
 /fetch/api/response/json.any.html: OK
 	Ensure UTF-16 results in an error: PASS
 	Ensure the correct JSON parser is used: PASS
-/fetch/api/response/json.any.worker.html: ERROR
-	Ensure UTF-16 results in an error: NOTRUN
-	Ensure the correct JSON parser is used: TIMEOUT
+/fetch/api/response/json.any.worker.html: OK
+	Ensure UTF-16 results in an error: PASS
+	Ensure the correct JSON parser is used: PASS
 /fetch/api/response/multi-globals/url-parsing.html: OK
 	should parse the redirect Location URL relative to the current settings object: FAIL
 /fetch/api/response/response-arraybuffer-realm.window.html: TIMEOUT
@@ -25,13 +25,13 @@
 	Cancelling a loading blob Response stream: PASS
 	Cancelling a starting Response stream: PASS
 	Cancelling a starting blob Response stream: PASS
-/fetch/api/response/response-cancel-stream.any.worker.html: ERROR
-	Accessing .body after canceling it: NOTRUN
-	Cancelling a closed Response stream: NOTRUN
+/fetch/api/response/response-cancel-stream.any.worker.html: OK
+	Accessing .body after canceling it: PASS
+	Cancelling a closed Response stream: PASS
 	Cancelling a closed blob Response stream: PASS
-	Cancelling a loading Response stream: NOTRUN
+	Cancelling a loading Response stream: PASS
 	Cancelling a loading blob Response stream: PASS
-	Cancelling a starting Response stream: TIMEOUT
+	Cancelling a starting Response stream: PASS
 	Cancelling a starting blob Response stream: PASS
 /fetch/api/response/response-clone-iframe.window.html: TIMEOUT
 	clone within removed iframe should not crash: TIMEOUT
@@ -57,28 +57,28 @@
 	Check response clone use structureClone for teed ReadableStreams (Uint8Arraychunk): PASS
 	Check response clone use structureClone for teed ReadableStreams (Uint8ClampedArraychunk): FAIL
 	Cloned responses should provide the same data: FAIL
-/fetch/api/response/response-clone.any.worker.html: ERROR
-	Cancelling stream should not affect cloned one: NOTRUN
+/fetch/api/response/response-clone.any.worker.html: OK
+	Cancelling stream should not affect cloned one: FAIL
 	Cannot clone a disturbed response: PASS
 	Check Response's clone has the expected attribute values: PASS
 	Check Response's clone with default values, without body: PASS
 	Check cloned response's body: PASS
 	Check original response's body after cloning: PASS
-	Check response clone use structureClone for teed ReadableStreams (ArrayBufferchunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (BigInt64Arraychunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (BigUint64Arraychunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (DataViewchunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (Float16Arraychunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (Float32Arraychunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (Float64Arraychunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (Int16Arraychunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (Int32Arraychunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (Int8Arraychunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (Uint16Arraychunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (Uint32Arraychunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (Uint8Arraychunk): NOTRUN
-	Check response clone use structureClone for teed ReadableStreams (Uint8ClampedArraychunk): NOTRUN
-	Cloned responses should provide the same data: TIMEOUT
+	Check response clone use structureClone for teed ReadableStreams (ArrayBufferchunk): PASS
+	Check response clone use structureClone for teed ReadableStreams (BigInt64Arraychunk): FAIL
+	Check response clone use structureClone for teed ReadableStreams (BigUint64Arraychunk): FAIL
+	Check response clone use structureClone for teed ReadableStreams (DataViewchunk): FAIL
+	Check response clone use structureClone for teed ReadableStreams (Float16Arraychunk): FAIL
+	Check response clone use structureClone for teed ReadableStreams (Float32Arraychunk): FAIL
+	Check response clone use structureClone for teed ReadableStreams (Float64Arraychunk): FAIL
+	Check response clone use structureClone for teed ReadableStreams (Int16Arraychunk): FAIL
+	Check response clone use structureClone for teed ReadableStreams (Int32Arraychunk): FAIL
+	Check response clone use structureClone for teed ReadableStreams (Int8Arraychunk): FAIL
+	Check response clone use structureClone for teed ReadableStreams (Uint16Arraychunk): FAIL
+	Check response clone use structureClone for teed ReadableStreams (Uint32Arraychunk): FAIL
+	Check response clone use structureClone for teed ReadableStreams (Uint8Arraychunk): PASS
+	Check response clone use structureClone for teed ReadableStreams (Uint8ClampedArraychunk): FAIL
+	Cloned responses should provide the same data: FAIL
 /fetch/api/response/response-consume-empty.any.html: OK
 	Consume empty ArrayBuffer response body as text: PASS
 	Consume empty FormData response body as text: FAIL
@@ -230,8 +230,8 @@
 	Constructing a Response with a stream on which read() is called: PASS
 /fetch/api/response/response-headers-guard.any.html: OK
 	Ensure response headers are immutable: PASS
-/fetch/api/response/response-headers-guard.any.worker.html: ERROR
-	Ensure response headers are immutable: TIMEOUT
+/fetch/api/response/response-headers-guard.any.worker.html: OK
+	Ensure response headers are immutable: PASS
 /fetch/api/response/response-init-001.any.html: OK
 	Check default value for body attribute: PASS
 	Check default value for ok attribute: PASS
@@ -373,19 +373,19 @@
 	Getting text after getting the Response body - not disturbed, not locked (body source: fetch): PASS
 	Getting text after getting the Response body - not disturbed, not locked (body source: stream): PASS
 	Getting text after getting the Response body - not disturbed, not locked (body source: string): PASS
-/fetch/api/response/response-stream-disturbed-1.any.worker.html: ERROR
-	Getting arrayBuffer after getting the Response body - not disturbed, not locked (body source: fetch): NOTRUN
-	Getting arrayBuffer after getting the Response body - not disturbed, not locked (body source: stream): NOTRUN
-	Getting arrayBuffer after getting the Response body - not disturbed, not locked (body source: string): NOTRUN
-	Getting blob after getting the Response body - not disturbed, not locked (body source: fetch): TIMEOUT
-	Getting blob after getting the Response body - not disturbed, not locked (body source: stream): NOTRUN
-	Getting blob after getting the Response body - not disturbed, not locked (body source: string): NOTRUN
-	Getting json after getting the Response body - not disturbed, not locked (body source: fetch): NOTRUN
-	Getting json after getting the Response body - not disturbed, not locked (body source: stream): NOTRUN
-	Getting json after getting the Response body - not disturbed, not locked (body source: string): NOTRUN
-	Getting text after getting the Response body - not disturbed, not locked (body source: fetch): NOTRUN
-	Getting text after getting the Response body - not disturbed, not locked (body source: stream): NOTRUN
-	Getting text after getting the Response body - not disturbed, not locked (body source: string): NOTRUN
+/fetch/api/response/response-stream-disturbed-1.any.worker.html: OK
+	Getting arrayBuffer after getting the Response body - not disturbed, not locked (body source: fetch): PASS
+	Getting arrayBuffer after getting the Response body - not disturbed, not locked (body source: stream): PASS
+	Getting arrayBuffer after getting the Response body - not disturbed, not locked (body source: string): PASS
+	Getting blob after getting the Response body - not disturbed, not locked (body source: fetch): PASS
+	Getting blob after getting the Response body - not disturbed, not locked (body source: stream): PASS
+	Getting blob after getting the Response body - not disturbed, not locked (body source: string): PASS
+	Getting json after getting the Response body - not disturbed, not locked (body source: fetch): PASS
+	Getting json after getting the Response body - not disturbed, not locked (body source: stream): PASS
+	Getting json after getting the Response body - not disturbed, not locked (body source: string): PASS
+	Getting text after getting the Response body - not disturbed, not locked (body source: fetch): PASS
+	Getting text after getting the Response body - not disturbed, not locked (body source: stream): PASS
+	Getting text after getting the Response body - not disturbed, not locked (body source: string): PASS
 /fetch/api/response/response-stream-disturbed-2.any.html: OK
 	Getting arrayBuffer after getting a locked Response body (body source: fetch): PASS
 	Getting arrayBuffer after getting a locked Response body (body source: stream): PASS
@@ -399,19 +399,19 @@
 	Getting text after getting a locked Response body (body source: fetch): PASS
 	Getting text after getting a locked Response body (body source: stream): PASS
 	Getting text after getting a locked Response body (body source: string): PASS
-/fetch/api/response/response-stream-disturbed-2.any.worker.html: ERROR
-	Getting arrayBuffer after getting a locked Response body (body source: fetch): NOTRUN
-	Getting arrayBuffer after getting a locked Response body (body source: stream): NOTRUN
-	Getting arrayBuffer after getting a locked Response body (body source: string): NOTRUN
-	Getting blob after getting a locked Response body (body source: fetch): TIMEOUT
-	Getting blob after getting a locked Response body (body source: stream): NOTRUN
-	Getting blob after getting a locked Response body (body source: string): NOTRUN
-	Getting json after getting a locked Response body (body source: fetch): NOTRUN
-	Getting json after getting a locked Response body (body source: stream): NOTRUN
-	Getting json after getting a locked Response body (body source: string): NOTRUN
-	Getting text after getting a locked Response body (body source: fetch): NOTRUN
-	Getting text after getting a locked Response body (body source: stream): NOTRUN
-	Getting text after getting a locked Response body (body source: string): NOTRUN
+/fetch/api/response/response-stream-disturbed-2.any.worker.html: OK
+	Getting arrayBuffer after getting a locked Response body (body source: fetch): PASS
+	Getting arrayBuffer after getting a locked Response body (body source: stream): PASS
+	Getting arrayBuffer after getting a locked Response body (body source: string): PASS
+	Getting blob after getting a locked Response body (body source: fetch): PASS
+	Getting blob after getting a locked Response body (body source: stream): PASS
+	Getting blob after getting a locked Response body (body source: string): PASS
+	Getting json after getting a locked Response body (body source: fetch): PASS
+	Getting json after getting a locked Response body (body source: stream): PASS
+	Getting json after getting a locked Response body (body source: string): PASS
+	Getting text after getting a locked Response body (body source: fetch): PASS
+	Getting text after getting a locked Response body (body source: stream): PASS
+	Getting text after getting a locked Response body (body source: string): PASS
 /fetch/api/response/response-stream-disturbed-3.any.html: OK
 	Getting arrayBuffer after reading the Response body (body source: fetch): PASS
 	Getting arrayBuffer after reading the Response body (body source: stream): PASS
@@ -425,19 +425,19 @@
 	Getting text after reading the Response body (body source: fetch): PASS
 	Getting text after reading the Response body (body source: stream): PASS
 	Getting text after reading the Response body (body source: string): PASS
-/fetch/api/response/response-stream-disturbed-3.any.worker.html: ERROR
-	Getting arrayBuffer after reading the Response body (body source: fetch): NOTRUN
-	Getting arrayBuffer after reading the Response body (body source: stream): NOTRUN
-	Getting arrayBuffer after reading the Response body (body source: string): NOTRUN
-	Getting blob after reading the Response body (body source: fetch): TIMEOUT
-	Getting blob after reading the Response body (body source: stream): NOTRUN
-	Getting blob after reading the Response body (body source: string): NOTRUN
-	Getting json after reading the Response body (body source: fetch): NOTRUN
-	Getting json after reading the Response body (body source: stream): NOTRUN
-	Getting json after reading the Response body (body source: string): NOTRUN
-	Getting text after reading the Response body (body source: fetch): NOTRUN
-	Getting text after reading the Response body (body source: stream): NOTRUN
-	Getting text after reading the Response body (body source: string): NOTRUN
+/fetch/api/response/response-stream-disturbed-3.any.worker.html: OK
+	Getting arrayBuffer after reading the Response body (body source: fetch): PASS
+	Getting arrayBuffer after reading the Response body (body source: stream): PASS
+	Getting arrayBuffer after reading the Response body (body source: string): PASS
+	Getting blob after reading the Response body (body source: fetch): PASS
+	Getting blob after reading the Response body (body source: stream): PASS
+	Getting blob after reading the Response body (body source: string): PASS
+	Getting json after reading the Response body (body source: fetch): PASS
+	Getting json after reading the Response body (body source: stream): PASS
+	Getting json after reading the Response body (body source: string): PASS
+	Getting text after reading the Response body (body source: fetch): PASS
+	Getting text after reading the Response body (body source: stream): PASS
+	Getting text after reading the Response body (body source: string): PASS
 /fetch/api/response/response-stream-disturbed-4.any.html: OK
 	Getting arrayBuffer after cancelling the Response body (body source: fetch): PASS
 	Getting arrayBuffer after cancelling the Response body (body source: stream): PASS
@@ -451,19 +451,19 @@
 	Getting text after cancelling the Response body (body source: fetch): PASS
 	Getting text after cancelling the Response body (body source: stream): PASS
 	Getting text after cancelling the Response body (body source: string): PASS
-/fetch/api/response/response-stream-disturbed-4.any.worker.html: ERROR
-	Getting arrayBuffer after cancelling the Response body (body source: fetch): NOTRUN
-	Getting arrayBuffer after cancelling the Response body (body source: stream): NOTRUN
-	Getting arrayBuffer after cancelling the Response body (body source: string): NOTRUN
-	Getting blob after cancelling the Response body (body source: fetch): TIMEOUT
-	Getting blob after cancelling the Response body (body source: stream): NOTRUN
-	Getting blob after cancelling the Response body (body source: string): NOTRUN
-	Getting json after cancelling the Response body (body source: fetch): NOTRUN
-	Getting json after cancelling the Response body (body source: stream): NOTRUN
-	Getting json after cancelling the Response body (body source: string): NOTRUN
-	Getting text after cancelling the Response body (body source: fetch): NOTRUN
-	Getting text after cancelling the Response body (body source: stream): NOTRUN
-	Getting text after cancelling the Response body (body source: string): NOTRUN
+/fetch/api/response/response-stream-disturbed-4.any.worker.html: OK
+	Getting arrayBuffer after cancelling the Response body (body source: fetch): PASS
+	Getting arrayBuffer after cancelling the Response body (body source: stream): PASS
+	Getting arrayBuffer after cancelling the Response body (body source: string): PASS
+	Getting blob after cancelling the Response body (body source: fetch): PASS
+	Getting blob after cancelling the Response body (body source: stream): PASS
+	Getting blob after cancelling the Response body (body source: string): PASS
+	Getting json after cancelling the Response body (body source: fetch): PASS
+	Getting json after cancelling the Response body (body source: stream): PASS
+	Getting json after cancelling the Response body (body source: string): PASS
+	Getting text after cancelling the Response body (body source: fetch): PASS
+	Getting text after cancelling the Response body (body source: stream): PASS
+	Getting text after cancelling the Response body (body source: string): PASS
 /fetch/api/response/response-stream-disturbed-5.any.html: OK
 	Getting a body reader after consuming as arrayBuffer (body source: fetch): FAIL
 	Getting a body reader after consuming as arrayBuffer (body source: stream): PASS
@@ -477,19 +477,19 @@
 	Getting a body reader after consuming as text (body source: fetch): FAIL
 	Getting a body reader after consuming as text (body source: stream): PASS
 	Getting a body reader after consuming as text (body source: string): FAIL
-/fetch/api/response/response-stream-disturbed-5.any.worker.html: ERROR
-	Getting a body reader after consuming as arrayBuffer (body source: fetch): NOTRUN
-	Getting a body reader after consuming as arrayBuffer (body source: stream): NOTRUN
-	Getting a body reader after consuming as arrayBuffer (body source: string): NOTRUN
-	Getting a body reader after consuming as blob (body source: fetch): TIMEOUT
-	Getting a body reader after consuming as blob (body source: stream): NOTRUN
-	Getting a body reader after consuming as blob (body source: string): NOTRUN
-	Getting a body reader after consuming as json (body source: fetch): NOTRUN
-	Getting a body reader after consuming as json (body source: stream): NOTRUN
-	Getting a body reader after consuming as json (body source: string): NOTRUN
-	Getting a body reader after consuming as text (body source: fetch): NOTRUN
-	Getting a body reader after consuming as text (body source: stream): NOTRUN
-	Getting a body reader after consuming as text (body source: string): NOTRUN
+/fetch/api/response/response-stream-disturbed-5.any.worker.html: OK
+	Getting a body reader after consuming as arrayBuffer (body source: fetch): FAIL
+	Getting a body reader after consuming as arrayBuffer (body source: stream): PASS
+	Getting a body reader after consuming as arrayBuffer (body source: string): FAIL
+	Getting a body reader after consuming as blob (body source: fetch): FAIL
+	Getting a body reader after consuming as blob (body source: stream): PASS
+	Getting a body reader after consuming as blob (body source: string): FAIL
+	Getting a body reader after consuming as json (body source: fetch): FAIL
+	Getting a body reader after consuming as json (body source: stream): PASS
+	Getting a body reader after consuming as json (body source: string): FAIL
+	Getting a body reader after consuming as text (body source: fetch): FAIL
+	Getting a body reader after consuming as text (body source: stream): PASS
+	Getting a body reader after consuming as text (body source: string): FAIL
 /fetch/api/response/response-stream-disturbed-6.any.html: OK
 	A closed stream on which read() has been called: PASS
 	A non-closed stream on which cancel() has been called: PASS

@@ -157,91 +157,91 @@
 	Request on bad port 990 should throw TypeError.: PASS
 	Request on bad port 993 should throw TypeError.: PASS
 	Request on bad port 995 should throw TypeError.: PASS
-/fetch/api/request/request-bad-port.any.worker.html: ERROR
-	Request on a port that is not bad should succeed through the proxy.: TIMEOUT
-	Request on bad port 0 should throw TypeError.: NOTRUN
-	Request on bad port 1 should throw TypeError.: NOTRUN
-	Request on bad port 10080 should throw TypeError.: NOTRUN
-	Request on bad port 101 should throw TypeError.: NOTRUN
-	Request on bad port 102 should throw TypeError.: NOTRUN
-	Request on bad port 103 should throw TypeError.: NOTRUN
-	Request on bad port 104 should throw TypeError.: NOTRUN
-	Request on bad port 109 should throw TypeError.: NOTRUN
-	Request on bad port 11 should throw TypeError.: NOTRUN
-	Request on bad port 110 should throw TypeError.: NOTRUN
-	Request on bad port 111 should throw TypeError.: NOTRUN
-	Request on bad port 113 should throw TypeError.: NOTRUN
-	Request on bad port 115 should throw TypeError.: NOTRUN
-	Request on bad port 117 should throw TypeError.: NOTRUN
-	Request on bad port 119 should throw TypeError.: NOTRUN
-	Request on bad port 123 should throw TypeError.: NOTRUN
-	Request on bad port 13 should throw TypeError.: NOTRUN
-	Request on bad port 135 should throw TypeError.: NOTRUN
-	Request on bad port 137 should throw TypeError.: NOTRUN
-	Request on bad port 139 should throw TypeError.: NOTRUN
-	Request on bad port 143 should throw TypeError.: NOTRUN
-	Request on bad port 15 should throw TypeError.: NOTRUN
-	Request on bad port 161 should throw TypeError.: NOTRUN
-	Request on bad port 17 should throw TypeError.: NOTRUN
-	Request on bad port 1719 should throw TypeError.: NOTRUN
-	Request on bad port 1720 should throw TypeError.: NOTRUN
-	Request on bad port 1723 should throw TypeError.: NOTRUN
-	Request on bad port 179 should throw TypeError.: NOTRUN
-	Request on bad port 19 should throw TypeError.: NOTRUN
-	Request on bad port 20 should throw TypeError.: NOTRUN
-	Request on bad port 2049 should throw TypeError.: NOTRUN
-	Request on bad port 21 should throw TypeError.: NOTRUN
-	Request on bad port 22 should throw TypeError.: NOTRUN
-	Request on bad port 23 should throw TypeError.: NOTRUN
-	Request on bad port 25 should throw TypeError.: NOTRUN
-	Request on bad port 3659 should throw TypeError.: NOTRUN
-	Request on bad port 37 should throw TypeError.: NOTRUN
-	Request on bad port 389 should throw TypeError.: NOTRUN
-	Request on bad port 4045 should throw TypeError.: NOTRUN
-	Request on bad port 4190 should throw TypeError.: NOTRUN
-	Request on bad port 42 should throw TypeError.: NOTRUN
-	Request on bad port 427 should throw TypeError.: NOTRUN
-	Request on bad port 43 should throw TypeError.: NOTRUN
-	Request on bad port 465 should throw TypeError.: NOTRUN
-	Request on bad port 5060 should throw TypeError.: NOTRUN
-	Request on bad port 5061 should throw TypeError.: NOTRUN
-	Request on bad port 512 should throw TypeError.: NOTRUN
-	Request on bad port 513 should throw TypeError.: NOTRUN
-	Request on bad port 514 should throw TypeError.: NOTRUN
-	Request on bad port 515 should throw TypeError.: NOTRUN
-	Request on bad port 526 should throw TypeError.: NOTRUN
-	Request on bad port 53 should throw TypeError.: NOTRUN
-	Request on bad port 530 should throw TypeError.: NOTRUN
-	Request on bad port 531 should throw TypeError.: NOTRUN
-	Request on bad port 532 should throw TypeError.: NOTRUN
-	Request on bad port 540 should throw TypeError.: NOTRUN
-	Request on bad port 548 should throw TypeError.: NOTRUN
-	Request on bad port 554 should throw TypeError.: NOTRUN
-	Request on bad port 556 should throw TypeError.: NOTRUN
-	Request on bad port 563 should throw TypeError.: NOTRUN
-	Request on bad port 587 should throw TypeError.: NOTRUN
-	Request on bad port 6000 should throw TypeError.: NOTRUN
-	Request on bad port 601 should throw TypeError.: NOTRUN
-	Request on bad port 636 should throw TypeError.: NOTRUN
-	Request on bad port 6566 should throw TypeError.: NOTRUN
-	Request on bad port 6665 should throw TypeError.: NOTRUN
-	Request on bad port 6666 should throw TypeError.: NOTRUN
-	Request on bad port 6667 should throw TypeError.: NOTRUN
-	Request on bad port 6668 should throw TypeError.: NOTRUN
-	Request on bad port 6669 should throw TypeError.: NOTRUN
-	Request on bad port 6679 should throw TypeError.: NOTRUN
-	Request on bad port 6697 should throw TypeError.: NOTRUN
-	Request on bad port 69 should throw TypeError.: NOTRUN
-	Request on bad port 7 should throw TypeError.: NOTRUN
-	Request on bad port 77 should throw TypeError.: NOTRUN
-	Request on bad port 79 should throw TypeError.: NOTRUN
-	Request on bad port 87 should throw TypeError.: NOTRUN
-	Request on bad port 9 should throw TypeError.: NOTRUN
-	Request on bad port 95 should throw TypeError.: NOTRUN
-	Request on bad port 989 should throw TypeError.: NOTRUN
-	Request on bad port 990 should throw TypeError.: NOTRUN
-	Request on bad port 993 should throw TypeError.: NOTRUN
-	Request on bad port 995 should throw TypeError.: NOTRUN
+/fetch/api/request/request-bad-port.any.worker.html: OK
+	Request on a port that is not bad should succeed through the proxy.: FAIL
+	Request on bad port 0 should throw TypeError.: PASS
+	Request on bad port 1 should throw TypeError.: PASS
+	Request on bad port 10080 should throw TypeError.: PASS
+	Request on bad port 101 should throw TypeError.: PASS
+	Request on bad port 102 should throw TypeError.: PASS
+	Request on bad port 103 should throw TypeError.: PASS
+	Request on bad port 104 should throw TypeError.: PASS
+	Request on bad port 109 should throw TypeError.: PASS
+	Request on bad port 11 should throw TypeError.: PASS
+	Request on bad port 110 should throw TypeError.: PASS
+	Request on bad port 111 should throw TypeError.: PASS
+	Request on bad port 113 should throw TypeError.: PASS
+	Request on bad port 115 should throw TypeError.: PASS
+	Request on bad port 117 should throw TypeError.: PASS
+	Request on bad port 119 should throw TypeError.: PASS
+	Request on bad port 123 should throw TypeError.: PASS
+	Request on bad port 13 should throw TypeError.: PASS
+	Request on bad port 135 should throw TypeError.: PASS
+	Request on bad port 137 should throw TypeError.: PASS
+	Request on bad port 139 should throw TypeError.: PASS
+	Request on bad port 143 should throw TypeError.: PASS
+	Request on bad port 15 should throw TypeError.: PASS
+	Request on bad port 161 should throw TypeError.: PASS
+	Request on bad port 17 should throw TypeError.: PASS
+	Request on bad port 1719 should throw TypeError.: PASS
+	Request on bad port 1720 should throw TypeError.: PASS
+	Request on bad port 1723 should throw TypeError.: PASS
+	Request on bad port 179 should throw TypeError.: PASS
+	Request on bad port 19 should throw TypeError.: PASS
+	Request on bad port 20 should throw TypeError.: PASS
+	Request on bad port 2049 should throw TypeError.: PASS
+	Request on bad port 21 should throw TypeError.: PASS
+	Request on bad port 22 should throw TypeError.: PASS
+	Request on bad port 23 should throw TypeError.: PASS
+	Request on bad port 25 should throw TypeError.: PASS
+	Request on bad port 3659 should throw TypeError.: PASS
+	Request on bad port 37 should throw TypeError.: PASS
+	Request on bad port 389 should throw TypeError.: PASS
+	Request on bad port 4045 should throw TypeError.: PASS
+	Request on bad port 4190 should throw TypeError.: PASS
+	Request on bad port 42 should throw TypeError.: PASS
+	Request on bad port 427 should throw TypeError.: PASS
+	Request on bad port 43 should throw TypeError.: PASS
+	Request on bad port 465 should throw TypeError.: PASS
+	Request on bad port 5060 should throw TypeError.: PASS
+	Request on bad port 5061 should throw TypeError.: PASS
+	Request on bad port 512 should throw TypeError.: PASS
+	Request on bad port 513 should throw TypeError.: PASS
+	Request on bad port 514 should throw TypeError.: PASS
+	Request on bad port 515 should throw TypeError.: PASS
+	Request on bad port 526 should throw TypeError.: PASS
+	Request on bad port 53 should throw TypeError.: PASS
+	Request on bad port 530 should throw TypeError.: PASS
+	Request on bad port 531 should throw TypeError.: PASS
+	Request on bad port 532 should throw TypeError.: PASS
+	Request on bad port 540 should throw TypeError.: PASS
+	Request on bad port 548 should throw TypeError.: PASS
+	Request on bad port 554 should throw TypeError.: PASS
+	Request on bad port 556 should throw TypeError.: PASS
+	Request on bad port 563 should throw TypeError.: PASS
+	Request on bad port 587 should throw TypeError.: PASS
+	Request on bad port 6000 should throw TypeError.: PASS
+	Request on bad port 601 should throw TypeError.: PASS
+	Request on bad port 636 should throw TypeError.: PASS
+	Request on bad port 6566 should throw TypeError.: PASS
+	Request on bad port 6665 should throw TypeError.: PASS
+	Request on bad port 6666 should throw TypeError.: PASS
+	Request on bad port 6667 should throw TypeError.: PASS
+	Request on bad port 6668 should throw TypeError.: PASS
+	Request on bad port 6669 should throw TypeError.: PASS
+	Request on bad port 6679 should throw TypeError.: PASS
+	Request on bad port 6697 should throw TypeError.: PASS
+	Request on bad port 69 should throw TypeError.: PASS
+	Request on bad port 7 should throw TypeError.: PASS
+	Request on bad port 77 should throw TypeError.: PASS
+	Request on bad port 79 should throw TypeError.: PASS
+	Request on bad port 87 should throw TypeError.: PASS
+	Request on bad port 9 should throw TypeError.: PASS
+	Request on bad port 95 should throw TypeError.: PASS
+	Request on bad port 989 should throw TypeError.: PASS
+	Request on bad port 990 should throw TypeError.: PASS
+	Request on bad port 993 should throw TypeError.: PASS
+	Request on bad port 995 should throw TypeError.: PASS
 /fetch/api/request/request-cache-default-conditional.any.html: OK
 	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: FAIL
 	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: FAIL
@@ -283,47 +283,47 @@
 	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Etag and stale response: FAIL
 	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
 	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Last-Modified and stale response: FAIL
-/fetch/api/request/request-cache-default-conditional.any.worker.html: ERROR
-	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: NOTRUN
-	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
-	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Etag and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Etag and stale response: NOTRUN
-	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
-	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: TIMEOUT
-	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
-	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Etag and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Etag and stale response: NOTRUN
-	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
-	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: NOTRUN
-	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: NOTRUN
-	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
-	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
-	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Etag and fresh response: NOTRUN
-	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Etag and stale response: NOTRUN
-	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
-	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
-	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: NOTRUN
-	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
-	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Etag and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Etag and stale response: NOTRUN
-	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
-	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: NOTRUN
-	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
-	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Etag and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Etag and stale response: NOTRUN
-	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Last-Modified and fresh response: NOTRUN
-	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Last-Modified and stale response: NOTRUN
+/fetch/api/request/request-cache-default-conditional.any.worker.html: OK
+	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Match header is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Modified-Since header is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-None-Match header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-None-Match header is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Range header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Range header is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header (following a request without additional headers) is treated similarly to "no-store" with Last-Modified and stale response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Etag and fresh response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Etag and stale response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode with an If-Unmodified-Since header is treated similarly to "no-store" with Last-Modified and stale response: FAIL
 /fetch/api/request/request-cache-default.any.html: OK
 	RequestCache "default" mode checks the cache for previously cached content and avoids going to the network if a fresh response exists with Etag and fresh response: FAIL
 	RequestCache "default" mode checks the cache for previously cached content and avoids going to the network if a fresh response exists with Last-Modified and fresh response: FAIL
@@ -333,15 +333,15 @@
 	Responses with the "Cache-Control: no-store" header are not stored in the cache with Etag and stale response: FAIL
 	Responses with the "Cache-Control: no-store" header are not stored in the cache with Last-Modified and fresh response: FAIL
 	Responses with the "Cache-Control: no-store" header are not stored in the cache with Last-Modified and stale response: FAIL
-/fetch/api/request/request-cache-default.any.worker.html: ERROR
-	RequestCache "default" mode checks the cache for previously cached content and avoids going to the network if a fresh response exists with Etag and fresh response: NOTRUN
-	RequestCache "default" mode checks the cache for previously cached content and avoids going to the network if a fresh response exists with Last-Modified and fresh response: NOTRUN
-	RequestCache "default" mode checks the cache for previously cached content and goes to the network for stale responses with Etag and stale response: TIMEOUT
-	RequestCache "default" mode checks the cache for previously cached content and goes to the network for stale responses with Last-Modified and stale response: NOTRUN
-	Responses with the "Cache-Control: no-store" header are not stored in the cache with Etag and fresh response: NOTRUN
-	Responses with the "Cache-Control: no-store" header are not stored in the cache with Etag and stale response: NOTRUN
-	Responses with the "Cache-Control: no-store" header are not stored in the cache with Last-Modified and fresh response: NOTRUN
-	Responses with the "Cache-Control: no-store" header are not stored in the cache with Last-Modified and stale response: NOTRUN
+/fetch/api/request/request-cache-default.any.worker.html: OK
+	RequestCache "default" mode checks the cache for previously cached content and avoids going to the network if a fresh response exists with Etag and fresh response: FAIL
+	RequestCache "default" mode checks the cache for previously cached content and avoids going to the network if a fresh response exists with Last-Modified and fresh response: FAIL
+	RequestCache "default" mode checks the cache for previously cached content and goes to the network for stale responses with Etag and stale response: FAIL
+	RequestCache "default" mode checks the cache for previously cached content and goes to the network for stale responses with Last-Modified and stale response: FAIL
+	Responses with the "Cache-Control: no-store" header are not stored in the cache with Etag and fresh response: FAIL
+	Responses with the "Cache-Control: no-store" header are not stored in the cache with Etag and stale response: FAIL
+	Responses with the "Cache-Control: no-store" header are not stored in the cache with Last-Modified and fresh response: FAIL
+	Responses with the "Cache-Control: no-store" header are not stored in the cache with Last-Modified and stale response: FAIL
 /fetch/api/request/request-cache-force-cache.any.html: OK
 	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for fresh responses with Etag and fresh response: FAIL
 	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for fresh responses with Last-Modified and fresh response: FAIL
@@ -359,33 +359,33 @@
 	RequestCache "force-cache" stores the response in the cache if it goes to the network with Etag and stale response: FAIL
 	RequestCache "force-cache" stores the response in the cache if it goes to the network with Last-Modified and fresh response: FAIL
 	RequestCache "force-cache" stores the response in the cache if it goes to the network with Last-Modified and stale response: FAIL
-/fetch/api/request/request-cache-force-cache.any.worker.html: ERROR
-	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for fresh responses with Etag and fresh response: NOTRUN
-	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for fresh responses with Last-Modified and fresh response: NOTRUN
-	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for stale responses with Etag and stale response: TIMEOUT
-	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for stale responses with Last-Modified and stale response: NOTRUN
-	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Etag and fresh response: NOTRUN
-	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Etag and stale response: NOTRUN
-	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Last-Modified and fresh response: NOTRUN
-	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Last-Modified and stale response: NOTRUN
-	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Etag and fresh response: NOTRUN
-	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Etag and stale response: NOTRUN
-	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Last-Modified and fresh response: NOTRUN
-	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Last-Modified and stale response: NOTRUN
-	RequestCache "force-cache" stores the response in the cache if it goes to the network with Etag and fresh response: NOTRUN
-	RequestCache "force-cache" stores the response in the cache if it goes to the network with Etag and stale response: NOTRUN
-	RequestCache "force-cache" stores the response in the cache if it goes to the network with Last-Modified and fresh response: NOTRUN
-	RequestCache "force-cache" stores the response in the cache if it goes to the network with Last-Modified and stale response: NOTRUN
+/fetch/api/request/request-cache-force-cache.any.worker.html: OK
+	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for fresh responses with Etag and fresh response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for fresh responses with Last-Modified and fresh response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for stale responses with Etag and stale response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and avoid revalidation for stale responses with Last-Modified and stale response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Etag and fresh response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Etag and stale response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Last-Modified and fresh response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response is not found with Last-Modified and stale response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Etag and fresh response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Etag and stale response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Last-Modified and fresh response: FAIL
+	RequestCache "force-cache" mode checks the cache for previously cached content and goes to the network if a cached response would vary with Last-Modified and stale response: FAIL
+	RequestCache "force-cache" stores the response in the cache if it goes to the network with Etag and fresh response: FAIL
+	RequestCache "force-cache" stores the response in the cache if it goes to the network with Etag and stale response: FAIL
+	RequestCache "force-cache" stores the response in the cache if it goes to the network with Last-Modified and fresh response: FAIL
+	RequestCache "force-cache" stores the response in the cache if it goes to the network with Last-Modified and stale response: FAIL
 /fetch/api/request/request-cache-no-cache.any.html: OK
 	RequestCache "no-cache" mode revalidates fresh responses found in the cache with Etag and fresh response: FAIL
 	RequestCache "no-cache" mode revalidates fresh responses found in the cache with Last-Modified and fresh response: FAIL
 	RequestCache "no-cache" mode revalidates stale responses found in the cache with Etag and stale response: FAIL
 	RequestCache "no-cache" mode revalidates stale responses found in the cache with Last-Modified and stale response: FAIL
-/fetch/api/request/request-cache-no-cache.any.worker.html: ERROR
-	RequestCache "no-cache" mode revalidates fresh responses found in the cache with Etag and fresh response: NOTRUN
-	RequestCache "no-cache" mode revalidates fresh responses found in the cache with Last-Modified and fresh response: NOTRUN
-	RequestCache "no-cache" mode revalidates stale responses found in the cache with Etag and stale response: TIMEOUT
-	RequestCache "no-cache" mode revalidates stale responses found in the cache with Last-Modified and stale response: NOTRUN
+/fetch/api/request/request-cache-no-cache.any.worker.html: OK
+	RequestCache "no-cache" mode revalidates fresh responses found in the cache with Etag and fresh response: FAIL
+	RequestCache "no-cache" mode revalidates fresh responses found in the cache with Last-Modified and fresh response: FAIL
+	RequestCache "no-cache" mode revalidates stale responses found in the cache with Etag and stale response: FAIL
+	RequestCache "no-cache" mode revalidates stale responses found in the cache with Last-Modified and stale response: FAIL
 /fetch/api/request/request-cache-no-store.any.html: OK
 	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Etag and fresh response: FAIL
 	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Etag and stale response: FAIL
@@ -395,15 +395,15 @@
 	RequestCache "no-store" mode does not store the response in the cache with Etag and stale response: FAIL
 	RequestCache "no-store" mode does not store the response in the cache with Last-Modified and fresh response: FAIL
 	RequestCache "no-store" mode does not store the response in the cache with Last-Modified and stale response: FAIL
-/fetch/api/request/request-cache-no-store.any.worker.html: ERROR
-	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Etag and fresh response: NOTRUN
-	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Etag and stale response: TIMEOUT
-	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and fresh response: NOTRUN
-	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and stale response: NOTRUN
-	RequestCache "no-store" mode does not store the response in the cache with Etag and fresh response: NOTRUN
-	RequestCache "no-store" mode does not store the response in the cache with Etag and stale response: NOTRUN
-	RequestCache "no-store" mode does not store the response in the cache with Last-Modified and fresh response: NOTRUN
-	RequestCache "no-store" mode does not store the response in the cache with Last-Modified and stale response: NOTRUN
+/fetch/api/request/request-cache-no-store.any.worker.html: OK
+	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Etag and fresh response: FAIL
+	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Etag and stale response: FAIL
+	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and fresh response: FAIL
+	RequestCache "no-store" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and stale response: FAIL
+	RequestCache "no-store" mode does not store the response in the cache with Etag and fresh response: FAIL
+	RequestCache "no-store" mode does not store the response in the cache with Etag and stale response: FAIL
+	RequestCache "no-store" mode does not store the response in the cache with Last-Modified and fresh response: FAIL
+	RequestCache "no-store" mode does not store the response in the cache with Last-Modified and stale response: FAIL
 /fetch/api/request/request-cache-only-if-cached.any.html: OK
 	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Etag and fresh response: FAIL
 	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Etag and stale response: FAIL
@@ -419,21 +419,21 @@
 	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for stale responses with Last-Modified and stale response: FAIL
 	RequestCache "only-if-cached" mode checks the cache for previously cached content and does not go to the network if a cached response is not found with Etag and fresh response: FAIL
 	RequestCache "only-if-cached" mode checks the cache for previously cached content and does not go to the network if a cached response is not found with Last-Modified and fresh response: FAIL
-/fetch/api/request/request-cache-only-if-cached.any.worker.html: ERROR
-	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Etag and fresh response: NOTRUN
-	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Etag and stale response: NOTRUN
-	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Last-Modified and fresh response: NOTRUN
-	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Last-Modified and stale response: NOTRUN
-	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Etag and fresh response: NOTRUN
-	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Etag and stale response: NOTRUN
-	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Last-Modified and fresh response: NOTRUN
-	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Last-Modified and stale response: NOTRUN
-	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for fresh responses with Etag and fresh response: NOTRUN
-	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for fresh responses with Last-Modified and fresh response: NOTRUN
-	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for stale responses with Etag and stale response: TIMEOUT
-	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for stale responses with Last-Modified and stale response: NOTRUN
-	RequestCache "only-if-cached" mode checks the cache for previously cached content and does not go to the network if a cached response is not found with Etag and fresh response: NOTRUN
-	RequestCache "only-if-cached" mode checks the cache for previously cached content and does not go to the network if a cached response is not found with Last-Modified and fresh response: NOTRUN
+/fetch/api/request/request-cache-only-if-cached.any.worker.html: OK
+	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Etag and fresh response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Etag and stale response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Last-Modified and fresh response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Last-Modified and stale response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Etag and fresh response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Etag and stale response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Last-Modified and fresh response: FAIL
+	RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Last-Modified and stale response: FAIL
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for fresh responses with Etag and fresh response: FAIL
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for fresh responses with Last-Modified and fresh response: FAIL
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for stale responses with Etag and stale response: FAIL
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for stale responses with Last-Modified and stale response: FAIL
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and does not go to the network if a cached response is not found with Etag and fresh response: FAIL
+	RequestCache "only-if-cached" mode checks the cache for previously cached content and does not go to the network if a cached response is not found with Last-Modified and fresh response: FAIL
 /fetch/api/request/request-cache-reload.any.html: OK
 	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Etag and fresh response: FAIL
 	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Etag and stale response: FAIL
@@ -447,19 +447,19 @@
 	RequestCache "reload" mode does store the response in the cache with Etag and stale response: FAIL
 	RequestCache "reload" mode does store the response in the cache with Last-Modified and fresh response: FAIL
 	RequestCache "reload" mode does store the response in the cache with Last-Modified and stale response: FAIL
-/fetch/api/request/request-cache-reload.any.worker.html: ERROR
-	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Etag and fresh response: NOTRUN
-	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Etag and stale response: TIMEOUT
-	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and fresh response: NOTRUN
-	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and stale response: NOTRUN
-	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Etag and fresh response: NOTRUN
-	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Etag and stale response: NOTRUN
-	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Last-Modified and fresh response: NOTRUN
-	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Last-Modified and stale response: NOTRUN
-	RequestCache "reload" mode does store the response in the cache with Etag and fresh response: NOTRUN
-	RequestCache "reload" mode does store the response in the cache with Etag and stale response: NOTRUN
-	RequestCache "reload" mode does store the response in the cache with Last-Modified and fresh response: NOTRUN
-	RequestCache "reload" mode does store the response in the cache with Last-Modified and stale response: NOTRUN
+/fetch/api/request/request-cache-reload.any.worker.html: OK
+	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Etag and fresh response: FAIL
+	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Etag and stale response: FAIL
+	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and fresh response: FAIL
+	RequestCache "reload" mode does not check the cache for previously cached content and goes to the network regardless with Last-Modified and stale response: FAIL
+	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Etag and fresh response: FAIL
+	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Etag and stale response: FAIL
+	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Last-Modified and fresh response: FAIL
+	RequestCache "reload" mode does store the response in the cache even if a previous response is already stored with Last-Modified and stale response: FAIL
+	RequestCache "reload" mode does store the response in the cache with Etag and fresh response: FAIL
+	RequestCache "reload" mode does store the response in the cache with Etag and stale response: FAIL
+	RequestCache "reload" mode does store the response in the cache with Last-Modified and fresh response: FAIL
+	RequestCache "reload" mode does store the response in the cache with Last-Modified and stale response: FAIL
 /fetch/api/request/request-clone-readable-stream-body.any.html: OK
 	new Request(clone) preserves a ReadableStream body that came from clone(): PASS
 /fetch/api/request/request-clone-readable-stream-body.any.worker.html: OK
@@ -824,11 +824,11 @@
 	new Request() with a 'auto' priority does not throw an error: PASS
 	new Request() with a 'high' priority does not throw an error: PASS
 	new Request() with a 'low' priority does not throw an error: PASS
-/fetch/api/request/request-init-priority.any.worker.html: ERROR
-	fetch() with a 'auto' priority completes successfully: NOTRUN
-	fetch() with a 'high' priority completes successfully: TIMEOUT
-	fetch() with a 'low' priority completes successfully: NOTRUN
-	fetch() with an invalid priority returns a rejected promise with a TypeError: NOTRUN
+/fetch/api/request/request-init-priority.any.worker.html: OK
+	fetch() with a 'auto' priority completes successfully: PASS
+	fetch() with a 'high' priority completes successfully: PASS
+	fetch() with a 'low' priority completes successfully: PASS
+	fetch() with an invalid priority returns a rejected promise with a TypeError: FAIL
 	new Request() throws a TypeError if any of RequestInit's members' values are invalid: FAIL
 	new Request() with a 'auto' priority does not throw an error: PASS
 	new Request() with a 'high' priority does not throw an error: PASS

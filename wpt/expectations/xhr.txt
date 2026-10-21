@@ -387,7 +387,7 @@
 /xhr/event-timeout.any.html: OK
 	XMLHttpRequest: timeout event: FAIL
 /xhr/event-timeout.any.worker.html: OK
-	Untitled: FAIL
+	Untitled: PASS
 /xhr/event-upload-progress-crossorigin.any.html: OK
 	Upload events registered on time (http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): FAIL
 	Upload events registered on time (resources/redirect.py?code=307&location=http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): PASS
@@ -786,8 +786,7 @@
 	XMLHttpRequestUpload must be primary interface of (new XMLHttpRequest()).upload: FAIL
 	idl_test setup: PASS
 	idl_test validation: PASS
-/xhr/idlharness.any.worker.html: ERROR
-	idl_test setup: TIMEOUT
+/xhr/idlharness.any.worker.html: CRASH
 /xhr/json.any.html: OK
 	Ensure UTF-16 results in an error: PASS
 	Ensure the correct JSON parser is used: PASS
@@ -1578,7 +1577,7 @@
 /xhr/send-sync-timeout.htm: OK
 	XMLHttpRequest: timeout during sync send() should not run: FAIL
 /xhr/send-timeout-events.htm: OK
-	XMLHttpRequest: The send() method: timeout is not 0 : FAIL
+	XMLHttpRequest: The send() method: timeout is not 0 : PASS
 /xhr/send-usp.any.html: OK
 	Overall fetch with URLSearchParams: PASS
 	XMLHttpRequest.send(URLSearchParams) (0): FAIL

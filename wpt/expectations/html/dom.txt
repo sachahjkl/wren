@@ -4113,8 +4113,7 @@
 	document.all cannot find applet: FAIL
 	document.applets is always empty: FAIL
 	window cannot find applet: PASS
-/html/dom/idlharness.any.worker.html: ERROR
-	idl_test setup: TIMEOUT
+/html/dom/idlharness.any.worker.html: CRASH
 /html/dom/idlharness.https.html?exclude=(Document|Window|HTML.+): OK
 	AudioTrack interface object length: FAIL
 	AudioTrack interface object name: FAIL
@@ -4330,13 +4329,13 @@
 	CustomStateSet interface: existence and properties of interface prototype object's "constructor" property: PASS
 	CustomStateSet interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	CustomStateSet interface: setlike<DOMString>: FAIL
-	DOMParser interface object length: FAIL
-	DOMParser interface object name: FAIL
-	DOMParser interface: existence and properties of interface object: FAIL
-	DOMParser interface: existence and properties of interface prototype object: FAIL
-	DOMParser interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	DOMParser interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	DOMParser interface: operation parseFromString((TrustedHTML or DOMString), DOMParserSupportedType): FAIL
+	DOMParser interface object length: PASS
+	DOMParser interface object name: PASS
+	DOMParser interface: existence and properties of interface object: PASS
+	DOMParser interface: existence and properties of interface prototype object: PASS
+	DOMParser interface: existence and properties of interface prototype object's "constructor" property: PASS
+	DOMParser interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	DOMParser interface: operation parseFromString((TrustedHTML or DOMString), DOMParserSupportedType): PASS
 	DOMStringList interface object length: PASS
 	DOMStringList interface object name: PASS
 	DOMStringList interface: attribute length: PASS
@@ -5015,13 +5014,13 @@
 	PageSwapEvent interface: existence and properties of interface prototype object: FAIL
 	PageSwapEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
 	PageSwapEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	PageTransitionEvent interface object length: FAIL
-	PageTransitionEvent interface object name: FAIL
-	PageTransitionEvent interface: attribute persisted: FAIL
-	PageTransitionEvent interface: existence and properties of interface object: FAIL
-	PageTransitionEvent interface: existence and properties of interface prototype object: FAIL
-	PageTransitionEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	PageTransitionEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	PageTransitionEvent interface object length: PASS
+	PageTransitionEvent interface object name: PASS
+	PageTransitionEvent interface: attribute persisted: PASS
+	PageTransitionEvent interface: existence and properties of interface object: PASS
+	PageTransitionEvent interface: existence and properties of interface prototype object: PASS
+	PageTransitionEvent interface: existence and properties of interface prototype object's "constructor" property: PASS
+	PageTransitionEvent interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	Partial dictionary UIEventInit: member names are unique: PASS
 	Partial interface Document[2]: member names are unique: PASS
 	Partial interface Document[2]: original interface defined: PASS
@@ -5581,7 +5580,7 @@
 	Window interface: operation open(optional USVString, optional DOMString, optional DOMString): FAIL
 	Window interface: operation postMessage(any, USVString, optional sequence<object>): FAIL
 	Window interface: operation postMessage(any, optional WindowPostMessageOptions): FAIL
-	Window interface: operation print(): FAIL
+	Window interface: operation print(): PASS
 	Window interface: operation prompt(optional DOMString, optional DOMString): FAIL
 	Window interface: operation releaseEvents(): FAIL
 	Window interface: operation stop(): FAIL
@@ -68435,10 +68434,10 @@
 	Loading of parser-inserted async script should eventually succeed: PASS
 	Loading of parser-inserted defer script should eventually succeed: PASS
 	Loading of parser-inserted module script should eventually succeed: PASS
-	Loading of script-inserted inline style should eventually succeed: NOTRUN
-	Loading of script-inserted module script should eventually succeed: NOTRUN
-	Loading of script-inserted script should eventually succeed: NOTRUN
-	Loading of script-inserted stylesheet link should eventually succeed: TIMEOUT
+	Loading of script-inserted inline style should eventually succeed: TIMEOUT
+	Loading of script-inserted module script should eventually succeed: PASS
+	Loading of script-inserted script should eventually succeed: PASS
+	Loading of script-inserted stylesheet link should eventually succeed: PASS
 	Render-blocking on parser-inserted async module script is cancellable: FAIL
 	Render-blocking on parser-inserted async script is cancellable: FAIL
 	Render-blocking on parser-inserted defer script is cancellable: FAIL
@@ -68448,8 +68447,8 @@
 	Render-blocking on script-inserted script is cancellable: PASS
 	Render-blocking on script-inserted stylesheet link is cancellable: PASS
 /html/dom/render-blocking/remove-element-unblocks-rendering.optional.html: OK
-	Render-blocking on parser-inserted async module script is cancellable: FAIL
-	Render-blocking on parser-inserted async script is cancellable: FAIL
+	Render-blocking on parser-inserted async module script is cancellable: PASS
+	Render-blocking on parser-inserted async script is cancellable: PASS
 	Render-blocking on parser-inserted defer script is cancellable: FAIL
 	Render-blocking on parser-inserted module script is cancellable: FAIL
 	Render-blocking on script-inserted inline style is cancellable: PASS
@@ -68457,7 +68456,7 @@
 	Render-blocking on script-inserted script is cancellable: PASS
 	Render-blocking on script-inserted stylesheet link is cancellable: PASS
 /html/dom/render-blocking/remove-pending-async-render-blocking-script.html: OK
-	Removed render-blocking script should not indefinitely block rendering: FAIL
+	Removed render-blocking script should not indefinitely block rendering: PASS
 /html/dom/render-blocking/script-inserted-inline-module-with-import.html: OK
 	Script-inserted module script elements with "blocking=render" are render-blocking: FAIL
 /html/dom/render-blocking/script-inserted-module-script.html: OK
@@ -68469,8 +68468,8 @@
 /html/dom/render-blocking/script-inserted-style-element.html: TIMEOUT
 	Render-blocking stylesheet is applied: TIMEOUT
 	Rendering is blocked before render-blocking resources are loaded: FAIL
-/html/dom/render-blocking/script-inserted-stylesheet-link.html: TIMEOUT
-	Render-blocking stylesheet is applied: TIMEOUT
+/html/dom/render-blocking/script-inserted-stylesheet-link.html: OK
+	Render-blocking stylesheet is applied: PASS
 	Rendering is blocked before render-blocking resources are loaded: FAIL
 /html/dom/self-origin.any.html: OK
 	self.origin should be correct: PASS

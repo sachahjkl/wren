@@ -95,7 +95,12 @@
 	Tests timeouts on the worker are fired in decreasing order.: PASS
 /workers/Worker-timeout-increasing-order.html: OK
 	Tests timeouts on the worker are fired in increasing order.: PASS
-/workers/WorkerGlobalScope-close.html: CRASH
+/workers/WorkerGlobalScope-close.html: TIMEOUT
+	Test errors are delivered after close.: TIMEOUT
+	Test sending a message after closing.: PASS
+	Test terminating a worker after close.: PASS
+	Test type of close function.: PASS
+	Test workers do not deliver pending events.: PASS
 /workers/WorkerGlobalScope_ErrorEvent_colno.htm: OK
 	 WorkerGlobalScope onerror event handler argument: col : PASS
 /workers/WorkerGlobalScope_ErrorEvent_filename.htm: OK
@@ -166,7 +171,7 @@
 	Platform version and wow64-ness on Linux and Fuchsia should contain fixed values: FAIL
 	Test that userAgentData is available in workers in secure contexts: FAIL
 /workers/WorkerPerformanceNow.html: OK
-	performance.now() exists in dedicated workers and reports reasonable times: FAIL
+	performance.now() exists in dedicated workers and reports reasonable times: PASS
 /workers/Worker_ErrorEvent_bubbles_cancelable.htm: OK
 	ErrorEvent on worker doesn't bubble and is cancelable: PASS
 /workers/Worker_ErrorEvent_error.htm: OK
@@ -418,20 +423,20 @@
 	Script parse error dispatches plain Event at SharedWorker: FAIL
 	eval() with syntax error fires at global scope but not at SharedWorker: FAIL
 /workers/worker-performance.worker.html: OK
-	Can use clearMarks and clearMeasures in workers: FAIL
-	Can use performance.getEntriesByName in workers: FAIL
-	Can use performance.getEntriesByType in workers: FAIL
-	Can use performance.mark in workers: FAIL
-	Can use performance.measure in workers: FAIL
+	Can use clearMarks and clearMeasures in workers: PASS
+	Can use performance.getEntriesByName in workers: PASS
+	Can use performance.getEntriesByType in workers: PASS
+	Can use performance.mark in workers: PASS
+	Can use performance.measure in workers: PASS
 	Can use performance.now in workers: PASS
-	Performance marks and measures seem to be working correctly in workers: FAIL
+	Performance marks and measures seem to be working correctly in workers: PASS
 	Resource timing seems to work in workers: FAIL
-	There are no navigation type performance entries in workers: FAIL
-	performance.clearResourceTimings in workers: FAIL
+	There are no navigation type performance entries in workers: PASS
+	performance.clearResourceTimings in workers: PASS
 	performance.navigation is not available in workers: PASS
 	performance.setResourceTimingBufferSize in workers: FAIL
 	performance.timing is not available in workers: PASS
-	performance.toJSON is available in workers: FAIL
+	performance.toJSON is available in workers: PASS
 /workers/worker-request-animation-frame.html: TIMEOUT
 	requestAnimationTime reports frame time relative to worker load: TIMEOUT
 /workers/worker-url-encoding.html: TIMEOUT
