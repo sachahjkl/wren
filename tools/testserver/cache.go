@@ -2,7 +2,7 @@
 //
 //	/cache/r/NAME?cc=...&etag=...&lm=SECONDS_AGO&expires=SECONDS&vary=FIELD&age=N&status=NNN&type=...&body=...&location=...&cookie=1
 //	        a response with the caching fields asked for; If-None-Match / If-Modified-Since against them give a 304.
-//	        Every request is counted per NAME (path and query, so each test uses its own NAME).
+//	        Every request is counted per NAME (path and query, so each test uses its own NAME). delay=MS answers late.
 //	/cache/count?name=NAME   how many requests NAME got, and how many were answered 304: "N M" (no-store)
 //	/cache/last?name=NAME    the request fields of the last request for NAME, one per line (no-store)
 //	/cache/reset             forgets every count
@@ -41,6 +41,13 @@ func registerCacheHandlers(mux *http.ServeMux) {
 	start := time.Now().UTC().Truncate(time.Second)
 	serve := func(w http.ResponseWriter, r *http.Request, name string, body []byte, ctype string) {
 		q := r.URL.Query()
+		if d, err := strconv.Atoi(q.Get("delay")); err == nil && d > 0 && d <= 60000 {
+			select {
+			case <-time.After(time.Duration(d) * time.Millisecond):
+			case <-r.Context().Done():
+				return
+			}
+		}
 		var lines []string
 		for k, v := range r.Header {
 			lines = append(lines, strings.ToLower(k)+": "+strings.Join(v, ", "))

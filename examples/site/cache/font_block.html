@@ -1,0 +1,19 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>font-display: block after the first paint</title>
+<style>
+  @font-face { font-family: "Late Fira"; src: url(/cache/font.woff2?delay=3000&cc=no-store) format("woff2"); font-display: block; }
+  @font-face { font-family: "Late Swap"; src: url(/cache/font.woff2?delay=3000&cc=no-store&swap=1) format("woff2"); font-display: swap; }
+  body { font: 14px system-ui; background: #fff; color: #111; margin: 24px; }
+  .late { font-family: "Late Fira", monospace; font-size: 22px; border: 1px dashed #aaa; }
+  .swap { font-family: "Late Swap", monospace; font-size: 22px; border: 1px dashed #aaa; }
+</style>
+<h3>Shown at once (system font)</h3>
+<p>The two boxes below are added after the first paint; their font arrives 3 s later.</p>
+<script>
+  setTimeout(() => {
+    const a = document.createElement('p'); a.className = 'late'; a.textContent = 'font-display: block: invisible, then Fira Code';
+    const b = document.createElement('p'); b.className = 'swap'; b.textContent = 'font-display: swap: fallback, then Fira Code';
+    document.body.append(a, b);
+  }, 300);
+</script>
