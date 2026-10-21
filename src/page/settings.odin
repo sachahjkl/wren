@@ -7,6 +7,7 @@ import "wb:js"
 import img "wb:images"
 import "wb:style"
 import "wb:wasm"
+import "wb:webauthn"
 
 // Shared by every page of a profile. The shell owns one and keeps it current when preferences change.
 Settings :: struct {
@@ -26,6 +27,7 @@ Settings :: struct {
 	js_load:         Js_Load_Settings,    // script loading, the event loop's JavaScript side (js_load_settings.odin)
 	js_web:          Js_Web_Settings,     // web APIs of JavaScript (js_web_settings.odin)
 	dom:             Js_Dom_Settings,     // the DOM for JavaScript (js_dom_settings.odin)
+	authn:           webauthn.Settings,   // Web Authentication (bindings_webauthn.odin)
 }
 
 PREFS := [?]config.Def{
@@ -51,6 +53,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, JS_LOAD_PREFS[:])
 	config.register(p, JS_WEB_PREFS[:])
 	config.register(p, JS_DOM_PREFS[:])
+	webauthn.register_prefs(p)
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -71,6 +74,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		js_load = js_load_settings_from_prefs(p),
 		js_web = js_web_settings_from_prefs(p),
 		dom = js_dom_settings_from_prefs(p),
+		authn = webauthn.settings_from_prefs(p),
 	}
 }
 
@@ -86,4 +90,5 @@ settings_destroy :: proc(s: ^Settings) {
 	forms.settings_destroy(&s.forms)
 	js.settings_destroy(&s.js)
 	js_web_settings_destroy(&s.js_web)
+	webauthn.settings_destroy(&s.authn)
 }

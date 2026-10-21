@@ -125,6 +125,22 @@ unmangled symbol (`rust_eh_personality`, unused on MSVC) in ours with `llvm-objc
 - **Local files**: a `file:` document may read files in its own directory tree and nothing else; web pages never read
   local files; only the address bar may open any file.
 
+## Web Authentication (passkeys)
+
+`src/webauthn` is the client of Web Authentication Level 3 without the page: the options in their standard JSON form
+(what a server sends, what `navigator.credentials.create()` / `get()` serialize a dictionary to), the RP ID (a
+registrable domain suffix of the document's domain, Public Suffix List of `src/url`), the exact bytes of
+`clientDataJSON`, the ceremony timeout, extensions, `toJSON()`, and CBOR / COSE for `getPublicKey()` (DER
+SubjectPublicKeyInfo). The authenticators are the operating system's, behind an interface (`Platform`): on Windows
+`webauthn.dll` (Windows Hello, security keys, a phone over hybrid, the passkey managers Windows knows), loaded on first
+use and used up to the API version the system has; its dialog belongs to the browser's window. A software authenticator
+(`virtual.odin`, ES256 through BCrypt, keys in memory) replaces it for automated tests only. `src/page/bindings_webauthn.odin`
+adds the page's conditions (secure context, a recent click or key press, the tab shown in the focused window, one
+ceremony at a time) and runs the blocking platform call on a thread of its own; the window stays responsive and draws
+nothing while the user answers, the address bar shows a chip (click: cancel). Aborts, the lifetime timer and the page
+closing cancel the system's operation; if the system does not give it back within `security.webauthn.cancel_grace_ms`,
+the page is answered anyway and the exit does not wait for it. Nothing about credentials is logged.
+
 ## Rendering pipeline
 
 DOM mutations and style changes are journaled (`src/dom/journal.odin`, `src/style/journal.odin`). A frame runs, as

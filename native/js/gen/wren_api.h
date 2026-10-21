@@ -29,6 +29,34 @@ typedef void (*wr_PromiseReaction)(int32_t user, uint64_t promise, int32_t state
 
 /* module console: types */
 
+/* module credentials: types */
+// A PublicKeyCredential: the authenticator's answer, with its response (attestation or assertion).
+typedef uint64_t wr_PublicKeyCredential;
+// CredentialMediationRequirement.
+enum wr_CredentialMediation {
+    wr_CredentialMediation_Optional = 0,
+    wr_CredentialMediation_Silent = 1,
+    wr_CredentialMediation_Required = 2,
+    wr_CredentialMediation_Conditional = 3,
+};
+// The binary members of a credential and its response.
+enum wr_CredentialBytes {
+    // rawId
+    wr_CredentialBytes_Raw_Id = 0,
+    // response.clientDataJSON
+    wr_CredentialBytes_Client_Data_JSON = 1,
+    // response.attestationObject (create only)
+    wr_CredentialBytes_Attestation_Object = 2,
+    // response.authenticatorData (get), response.getAuthenticatorData() (create)
+    wr_CredentialBytes_Authenticator_Data = 3,
+    // response.signature (get only)
+    wr_CredentialBytes_Signature = 4,
+    // response.userHandle (get only, when the authenticator returned one)
+    wr_CredentialBytes_User_Handle = 5,
+    // response.getPublicKey(): DER SubjectPublicKeyInfo (create only, for ES256 / ES384 / ES512 / RS* / PS* / EdDSA)
+    wr_CredentialBytes_Public_Key = 6,
+};
+
 /* module crypto: types */
 
 /* module document: types */
@@ -521,6 +549,47 @@ WR_IMPORT("console", "console_log") void wr_console_log(const uint8_t *message, 
 WR_IMPORT("console", "console_warn") void wr_console_warn(const uint8_t *message, uint32_t message_len);
 // console.error(message)
 WR_IMPORT("console", "console_error") void wr_console_error(const uint8_t *message, uint32_t message_len);
+
+/* module credentials */
+// navigator.credentials.create({publicKey}): settles with a PublicKeyCredential, or 0 (null) for silent mediation.
+// Conditional mediation is not supported (Not_Allowed).
+WR_IMPORT("credentials", "CredentialsContainer_create") uint64_t wr_CredentialsContainer_create(const uint8_t *options, uint32_t options_len, int32_t mediation, uint64_t signal);
+// navigator.credentials.get({publicKey}): settles with a PublicKeyCredential, or 0 (null) for silent mediation.
+// Conditional mediation is not supported (Type, as Credential Management says).
+WR_IMPORT("credentials", "CredentialsContainer_get") uint64_t wr_CredentialsContainer_get(const uint8_t *options, uint32_t options_len, int32_t mediation, uint64_t signal);
+// navigator.credentials.preventSilentAccess(): nothing to forget for public key credentials (they always involve
+// the user); settles once the document is checked.
+WR_IMPORT("credentials", "CredentialsContainer_preventSilentAccess") uint64_t wr_CredentialsContainer_preventSilentAccess(void);
+// Whether the API is on for this document (security.webauthn.enabled and a secure context).
+WR_IMPORT("credentials", "PublicKeyCredential_enabled") int32_t wr_PublicKeyCredential_enabled(void);
+// PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable() (Windows Hello is set up).
+WR_IMPORT("credentials", "PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable") uint64_t wr_PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable(void);
+// PublicKeyCredential.isConditionalMediationAvailable(): false (no autofill of passkeys yet).
+WR_IMPORT("credentials", "PublicKeyCredential_isConditionalMediationAvailable") uint64_t wr_PublicKeyCredential_isConditionalMediationAvailable(void);
+// PublicKeyCredential.getClientCapabilities(): settles with the record as JSON text ({"hybridTransport":true,...},
+// keys in ascending order, extensions as "extension:<id>").
+WR_IMPORT("credentials", "PublicKeyCredential_getClientCapabilities") uint64_t wr_PublicKeyCredential_getClientCapabilities(void);
+// The RP ID check of the signal methods (signalUnknownCredential...): Security when `rp_id` is not a registrable
+// domain suffix of, nor equal to, the document's domain. The signals themselves reach no authenticator on this
+// platform: their promises settle with undefined once checked, as for an authenticator that ignores them.
+WR_IMPORT("credentials", "PublicKeyCredential_checkRpId") int32_t wr_PublicKeyCredential_checkRpId(const uint8_t *rp_id, uint32_t rp_id_len);
+// true for an assertion (get), false for a new credential (create).
+WR_IMPORT("credentials", "PublicKeyCredential_isAssertion") int32_t wr_PublicKeyCredential_isAssertion(uint64_t credential);
+// id: rawId in base64url.
+WR_IMPORT("credentials", "PublicKeyCredential_id") int32_t wr_PublicKeyCredential_id(uint64_t credential, uint8_t *_buf, uint32_t _cap);
+// A binary member as a new buffer. Not_Found when the credential has none (userHandle absent, getPublicKey() null,
+// a member of the other kind of response).
+WR_IMPORT("credentials", "PublicKeyCredential_bytes") int32_t wr_PublicKeyCredential_bytes(uint64_t credential, int32_t which, uint64_t *_ret);
+// authenticatorAttachment ("platform", "cross-platform"); Not_Found for null.
+WR_IMPORT("credentials", "PublicKeyCredential_authenticatorAttachment") int32_t wr_PublicKeyCredential_authenticatorAttachment(uint64_t credential, uint8_t *_buf, uint32_t _cap);
+// response.getTransports(), comma separated, in lexicographical order.
+WR_IMPORT("credentials", "PublicKeyCredential_transports") int32_t wr_PublicKeyCredential_transports(uint64_t credential, uint8_t *_buf, uint32_t _cap);
+// response.getPublicKeyAlgorithm() (a COSE algorithm identifier); 0 for an assertion.
+WR_IMPORT("credentials", "PublicKeyCredential_publicKeyAlgorithm") int32_t wr_PublicKeyCredential_publicKeyAlgorithm(uint64_t credential);
+// getClientExtensionResults() in its JSON form (AuthenticationExtensionsClientOutputsJSON).
+WR_IMPORT("credentials", "PublicKeyCredential_clientExtensionResults") int32_t wr_PublicKeyCredential_clientExtensionResults(uint64_t credential, uint8_t *_buf, uint32_t _cap);
+// toJSON(): RegistrationResponseJSON or AuthenticationResponseJSON, as text.
+WR_IMPORT("credentials", "PublicKeyCredential_toJSON") int32_t wr_PublicKeyCredential_toJSON(uint64_t credential, uint8_t *_buf, uint32_t _cap);
 
 /* module crypto */
 // crypto.getRandomValues(destination). Quota past crypto.max_random_bytes.

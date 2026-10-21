@@ -1154,6 +1154,7 @@ main :: proc() {
 	window_chrome_init(app)
 	favicons_init(app)   // favicon.odin
 	downloads_init(app)   // download.odin
+	webauthn_shell_init(app)   // webauthn_shell.odin
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
 	hud_init(app)
@@ -1187,6 +1188,7 @@ main :: proc() {
 	history_ui_destroy()
 	history_settings_shutdown(app)
 	base.scope_close(app.process)   // every tab, page and request
+	webauthn_shell_destroy(app)   // passkey requests: their threads joined
 	favicons_destroy(app)
 	images_shell_destroy(app)
 	page.storage_manager_destroy(&app.storage)   // writes what is not saved yet
