@@ -1163,7 +1163,7 @@
 	Shadowrootdelegatesfocus reflection, setter: PASS
 	Shadowrootmode reflection: PASS
 	Shadowrootmode reflection, setter: PASS
-/shadow-dom/declarative/declarative-shadow-dom-opt-in.html: TIMEOUT
+/shadow-dom/declarative/declarative-shadow-dom-opt-in.html: OK
 	DOMParser (includeShadowRoots is historical): FAIL
 	Non-fragment parsing needs no opt-in: PASS
 	XMLHttpRequest - not supported: FAIL
@@ -1174,9 +1174,9 @@
 	document.open() of a document created with parseHTMLUnsafe keeps declarative shadow DOM opt-in: FAIL
 	document.write allowed from synchronous script loaded from main document: FAIL
 	document.write disallowed on fresh document: FAIL
-	iframe: TIMEOUT
-	iframe with no sandbox allows declarative Shadow DOM: TIMEOUT
-	iframe, no sandbox: TIMEOUT
+	iframe: FAIL
+	iframe with no sandbox allows declarative Shadow DOM: PASS
+	iframe, no sandbox: FAIL
 	innerHTML on a <a>: PASS
 	innerHTML on a <abbr>: PASS
 	innerHTML on a <address>: PASS
@@ -1283,7 +1283,7 @@
 	innerHTML on template: PASS
 	innerHTML on template, with nested template content: PASS
 	insertAdjacentHTML on element - not supported: PASS
-	sandboxed iframe allows declarative Shadow DOM: TIMEOUT
+	sandboxed iframe allows declarative Shadow DOM: PASS
 /shadow-dom/declarative/declarative-shadow-dom-repeats-2.html: OK
 	Repeated declarative shadow roots keep only the first: PASS
 /shadow-dom/declarative/declarative-shadow-dom-repeats-slot-assignment.html: OK
@@ -8236,8 +8236,8 @@
 /shadow-dom/declarative/script-access.html: OK
 	Streaming Declarative Shadow DOM: template .content() should be null: FAIL
 	Synchronous mutation events should not be fired during streaming declarative shadow DOM parsing: PASS
-/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-async-fetch-disconnect-iframe.html: TIMEOUT
-	Destroying iframe during async adoptedStyleSheets fetch does not crash.: TIMEOUT
+/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-async-fetch-disconnect-iframe.html: OK
+	Destroying iframe during async adoptedStyleSheets fetch does not crash.: FAIL
 /shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-async-fetch-disconnect.html: OK
 	Disconnecting and reconnecting host during async fetch still applies styles.: FAIL
 /shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-async-fetch-duplicate-bare-specifier.html: OK
@@ -8271,7 +8271,7 @@
 	adoptedStyleSheets is populated from a <template> element's shadowrootadoptedstylesheets attribute.: FAIL
 /shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-clonenode-async-fetch.html: OK
 	cloneNode handles both placeholder and resolved async-fetched adoptedStyleSheets.: FAIL
-/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-clonenode.html: TIMEOUT
+/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-clonenode.html: OK
 	Adopted stylesheets resolved from the cloned shadow root style the cloned tree.: FAIL
 	cloneNode(true) followed by getHTML() round-trips the shadowrootadoptedstylesheets attribute.: FAIL
 	cloneNode(true) on a non-clonable host does not produce a shadow root regardless of shadowrootadoptedstylesheets.: FAIL
@@ -8281,8 +8281,8 @@
 	cloneNode(true) reflects only the shadowrootadoptedstylesheets attribute, not script mutations to adoptedStyleSheets.: FAIL
 	cloneNode(true) with absent shadowrootadoptedstylesheets does not crash and produces an empty adoptedStyleSheets.: PASS
 	cloneNode(true) with empty shadowrootadoptedstylesheets produces an empty adoptedStyleSheets on the clone.: PASS
-	document.importNode does NOT inherit the source document's import map resolution.: NOTRUN
-	document.importNode resolves shadowrootadoptedstylesheets against the destination document.: TIMEOUT
+	document.importNode does NOT inherit the source document's import map resolution.: FAIL
+	document.importNode resolves shadowrootadoptedstylesheets against the destination document.: FAIL
 /shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-fetched-module.html: ERROR
 /shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-idl-absent-and-empty.html: OK
 	Declarative shadow roots with absent or empty shadowrootadoptedstylesheets adopt no stylesheets.: PASS
@@ -9786,9 +9786,9 @@
 	A_05_05_02_T01: FAIL
 /shadow-dom/untriaged/events/event-dispatch/test-003.html: OK
 	A_05_05_03_T01: FAIL
-/shadow-dom/untriaged/events/event-retargeting/test-001.html: TIMEOUT
-	A_05_01_01_T1: TIMEOUT
-	A_05_01_01_T2: TIMEOUT
+/shadow-dom/untriaged/events/event-retargeting/test-001.html: OK
+	A_05_01_01_T1: FAIL
+	A_05_01_01_T2: FAIL
 /shadow-dom/untriaged/events/event-retargeting/test-003.html: OK
 	A_05_01_03_T01: FAIL
 /shadow-dom/untriaged/events/retargeting-focus-events/test-001.html: OK
@@ -9808,8 +9808,8 @@
 	A_05_02_02_T01: FAIL
 /shadow-dom/untriaged/events/retargeting-relatedtarget/test-003.html: OK
 	A_05_02_03_T01: FAIL
-/shadow-dom/untriaged/events/test-001.html: TIMEOUT
-	A_05_00_01_T1: TIMEOUT
+/shadow-dom/untriaged/events/test-001.html: OK
+	A_05_00_01_T1: FAIL
 /shadow-dom/untriaged/html-elements-in-shadow-trees/html-forms/test-001.html: OK
 	A_08_02_01_T01: PASS
 	A_08_02_01_T02: PASS

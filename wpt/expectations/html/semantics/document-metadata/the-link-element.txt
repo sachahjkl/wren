@@ -66,10 +66,10 @@
 	Removing stylesheet from link rel attribute should remove the stylesheet for shadow DOM: FAIL
 /html/semantics/document-metadata/the-link-element/link-rellist.html: OK
 	link.relList: non-string contains: PASS
-/html/semantics/document-metadata/the-link-element/link-style-data-url-quirks.html: TIMEOUT
-	data: URL stylesheet with text/css loads in quirks mode: TIMEOUT
-	data: URL stylesheet with text/plain is blocked in quirks mode: NOTRUN
-	data: URL stylesheet with text/plain is blocked in standards mode: NOTRUN
+/html/semantics/document-metadata/the-link-element/link-style-data-url-quirks.html: OK
+	data: URL stylesheet with text/css loads in quirks mode: FAIL
+	data: URL stylesheet with text/plain is blocked in quirks mode: FAIL
+	data: URL stylesheet with text/plain is blocked in standards mode: FAIL
 /html/semantics/document-metadata/the-link-element/link-style-error-01.html: OK
 	Should get an error event for a 404 error.: PASS
 	Should get an error event for an unsupported URL.: PASS

@@ -1,0 +1,384 @@
+# web-platform-tests expectations of Wren for html/semantics/embedded-content/the-iframe-element, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/html/semantics/embedded-content/the-iframe-element/bad-src-means-about-blank.html: OK
+	Testing location href of iframe with input src: : FAIL
+	Testing location href of iframe with input src: about:blank: FAIL
+	Testing location href of iframe with input src: http://:80/invalid-url: FAIL
+	Testing location href of iframe with input src: null: FAIL
+/html/semantics/embedded-content/the-iframe-element/change_parentage.html: TIMEOUT
+	Change the frame heriarchy: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/content_document_changes_only_after_load_matures.html: OK
+	contentDocument should only change after a load matures.: FAIL
+/html/semantics/embedded-content/the-iframe-element/cross-origin-to-whom-part-2.window.html: OK
+	Test embed/frame/iframe/object nested document APIs for same origin-domain and cross origin-domain embedder document: FAIL
+/html/semantics/embedded-content/the-iframe-element/cross-origin-to-whom.window.html: OK
+	Test embed/frame/iframe/object nested document APIs for same origin-domain and cross origin-domain current settings object: FAIL
+/html/semantics/embedded-content/the-iframe-element/cross-site/iframe-loading-lazy-cross-site.sub.html: OK
+	Below-viewport iframes load lazily: FAIL
+	In-viewport iframes load eagerly: PASS
+/html/semantics/embedded-content/the-iframe-element/cross-site/iframe-loading-lazy-in-scroller-cross-site.sub.html: OK
+	Test that lazy-loaded iframes load when near viewport.: PASS
+/html/semantics/embedded-content/the-iframe-element/cross-site/iframe-loading-lazy-in-scroller-far-cross-site.sub.html: OK
+	Test that lazy-loaded iframes do not load when far from viewport.: FAIL
+/html/semantics/embedded-content/the-iframe-element/cross-site/iframe-loading-lazy-multiple-queued-navigations-cross-site.sub.html: OK
+	A below-viewport lazy cross-site iframe navigates only to the latest src mutation: FAIL
+/html/semantics/embedded-content/the-iframe-element/cross-site/iframe-loading-lazy-nested-cross-site.sub.html: TIMEOUT
+	Below-viewport iframe nested in a cross-site frame loads lazily: NOTRUN
+	Below-viewport iframes load lazily: FAIL
+	In-viewport iframe nested in a cross-site frame loads eagerly: PASS
+	In-viewport iframes load eagerly: PASS
+/html/semantics/embedded-content/the-iframe-element/cross-site/iframe-loading-lazy-siblings-cross-site.sub.html: TIMEOUT
+	Below-viewport left iframe loads lazily: FAIL
+	Below-viewport right iframe loads lazily: NOTRUN
+	In-viewport left iframe loads eagerly: PASS
+	In-viewport right iframe loads eagerly: PASS
+/html/semantics/embedded-content/the-iframe-element/cross_origin_parentage.sub.html: OK
+	Check the frame heriarchy: FAIL
+	Check the frame heriarchy 1: FAIL
+	Check the frame heriarchy 2: FAIL
+/html/semantics/embedded-content/the-iframe-element/document-getters-return-null-for-cross-origin.html: OK
+	HTMLIFrameElement.contentDocument for cross-origin document: PASS
+	HTMLIFrameElement.getSVGDocument() for cross-origin document: PASS
+/html/semantics/embedded-content/the-iframe-element/historical.html: OK
+	iframe.allowPaymentRequest should not be supported: PASS
+	iframe.seamless should not be supported: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-allow.html: OK
+	iframe-cross-origin-allow: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-allowfullscreen.html: OK
+	iframe-cross-origin-allowfullscreen: FAIL
+	iframe-noload-allowfullscreen: FAIL
+	iframe-noload-noallowfullscreen: FAIL
+	iframe-same-origin-allowfullscreen: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-append-to-child-document.html: OK
+	Append iframe element to its own child document: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-display-none-with-object.html: OK
+	Load event triggered on window: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-error-status-fires-load.html: OK
+	iframe should fire load event for 404 response and display error page: FAIL
+	iframe should fire load event for 503 response and display error page: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-first-load-canceled-second-load-blank.html: OK
+	about:blank navigation is asynchronous, even if the initial one is canceled.: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-load-event.html: OK
+	load event of blob URL: PASS
+	load event of initial about:blank: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-eager.html: OK
+	Test that iframes with loading='eager' load immediately regardless of their position with respect to the viewport.: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-adopt-lazy-iframe-from-script-disabled-document.html: OK
+	Test lazy loading iframe remains lazy loading originally createdin a script-disabled document, then got adopted to a regular document: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-base-url-2.html: ERROR
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-base-url-3.html: ERROR
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-base-url.html: ERROR
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-history-pushState.html: OK
+	History state change for iframe loading='lazy' before it is loaded: history.pushState: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-history-replaceState.html: OK
+	History state change for iframe loading='lazy' before it is loaded: history.replaceState: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-script-disabled-iframe.html: OK
+	Iframes with loading='lazy' in script disabled iframe are not handled\n       as 'lazy': FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-scroller-far.html: OK
+	Test that lazy-loaded iframes do not load when far from viewport.: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-scroller-horizontal-far.html: ERROR
+	Test that lazy-loaded iframes do not load when far from viewport.: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-scroller-horizontal.html: OK
+	Test that lazy-loaded iframes load when near viewport.: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-scroller-nested-2.html: OK
+	Test that lazy-loaded iframes load when near viewport.: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-scroller-nested-3.html: OK
+	Test that lazy-loaded iframes load when near viewport.: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-scroller-nested-4.html: OK
+	Test that lazy-loaded iframes load when near viewport.: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-scroller-nested-5.html: OK
+	Test that lazy-loaded images load when near viewport.: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-scroller-nested.html: OK
+	Test that lazy-loaded iframes load when near viewport.: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-scroller.html: OK
+	Test that lazy-loaded iframes load when near viewport.: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-load-event.html: OK
+	In-viewport loading=lazy iframe does not block the load event: FAIL
+	In-viewport loading=lazy visibility:hidden iframe does not block the load event: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-multiple-queued-navigations.html: OK
+	Multiple queued lazy load navigations do not crash the page: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-multiple-times.html: OK
+	Iframes with loading='lazy' can be lazy loaded multiple times: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-form-submit.html: OK
+	Navigating iframe loading='lazy' before it is loaded: form submit: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-link-click-fragment.html: OK
+	Navigating iframe loading='lazy' before it is loaded: link click (fragment): FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-link-click.html: OK
+	Navigating iframe loading='lazy' before it is loaded: link click: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-location-assign.html: OK
+	Navigating iframe loading='lazy' before it is loaded: location.assign: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-location-replace-cross-origin.html: OK
+	Navigating to a cross-origin for iframe loading='lazy' before it is loaded: location.replace: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-location-replace-set-src.html: OK
+	Navigating iframe loading='lazy' and then setting src: location.replace: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-location-replace.html: OK
+	Navigating iframe loading='lazy' before it is loaded: location.replace: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-meta-refresh.optional.html: OK
+	Navigating iframe loading='lazy' before it is loaded: meta refresh: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-navigation-navigate.html: OK
+	Navigating iframe loading='lazy' before it is loaded: navigation.navigate: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-window-open.html: OK
+	Navigating iframe loading='lazy' before it is loaded: location.replace: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-referrerpolicy-change.sub.html: ERROR
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-reload-location-reload.html: OK
+	Reloading iframe loading='lazy' before it is loaded: location.reload: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-reload-navigation-reload.html: OK
+	Reloading iframe loading='lazy' before it is loaded: navigation.reload: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-to-eager-srcdoc.html: OK
+	Below-viewport srcdoc iframes with loading='lazy' load when set to loading='eager' or the `loading` attribute is removed: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-to-eager.html: OK
+	Below-viewport iframes with loading='lazy' load when set to loading='eager' or the `loading` attribute is removed: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy.html: OK
+	Below-viewport blob url iframes load lazily: FAIL
+	Below-viewport data: url iframes load lazily: FAIL
+	Below-viewport iframes load lazily: FAIL
+	Below-viewport srcdoc iframes load lazily: FAIL
+	In-viewport iframes load eagerly: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-network-error.sub.html: OK
+	navigating an existing iframe: X-Frame-Options prevents embedding: PASS
+	navigating an existing iframe: nonexistent host: PASS
+	new iframe: X-Frame-Options prevents embedding: PASS
+	new iframe: nonexistent host: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-nosrc.html: OK
+	iframe.contentDocument should not be changed: PASS
+	load event of iframe should not be fired after processing the element: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe-src-encoding.html: OK
+	iframe src URL is parsed using document encoding: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe-synchronously-discard.html: OK
+	IFrame discards are processed synchronously: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_01.htm: OK
+	javascript: URL creating a document in an about:blank iframe: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_form_submission.html: OK
+	javascript: URL in form submission, initial src is not about:blank: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_in_src.htm: TIMEOUT
+	ArrayBuffer: javascript:new ArrayBuffer(8): TIMEOUT
+	String object: javascript:new String("foo"): TIMEOUT
+	TypeError: javascript:new TypeError("foo"): TIMEOUT
+	array: javascript:["foo"]: TIMEOUT
+	boolean: javascript:true: TIMEOUT
+	empty string: javascript:"": FAIL
+	function: javascript:(() => { return function() {}; })(): TIMEOUT
+	global: javascript:window: TIMEOUT
+	host object: javascript:document: TIMEOUT
+	null: javascript:null: TIMEOUT
+	number: javascript:1: TIMEOUT
+	object: javascript:{"foo": "bar"}: TIMEOUT
+	regexp: javascript:/foo/: TIMEOUT
+	string: javascript:"foo": FAIL
+	undefined: javascript:void(0): TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_initial_insertion.html: OK
+	javascript: URL in iframe src, initial insertion check: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_loading_lazy.htm: OK
+	javascript: URL in iframe src and loading="lazy": FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_not_about_blank.html: OK
+	javascript: URL in iframe src, initial src is not about:blank: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_remove_srcdoc.html: OK
+	javascript: URL in iframe src, removing srcdoc: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_xhr.html: OK
+	Image load should not trigger load event for non-initial javascript URL load: FAIL
+	Load event for initial javascript URL load should be fired after script execution: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_navigate_ancestor-1.sub.html: TIMEOUT
+	A => B => B: B should be able to navigate B.: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_navigate_javascript_url.htm: OK
+	location.href = 'javascript:"foo"' should fire a load event: PASS
+	location.href = 'javascript:1' should not fire a load event: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe_remove_src.html: OK
+	Test that removing the src attribute of an iframe loads about:blank\n  instead of whatever was loaded previously.: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_script.html: ERROR
+	iframe_sandbox_allow_scripts: NOTRUN
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_top_navigation-1.html: TIMEOUT
+	Frames with `allow-top-navigation` should be able to navigate the top frame.: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_top_navigation-2.html: TIMEOUT
+	Frames without `allow-top-navigation` should not be able to navigate the top frame.: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_top_navigation-3.html: TIMEOUT
+	Frames with `allow-top-navigation` should be able to navigate the top frame even when `allow-top-navigation-by-user-activation` is set.: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_top_navigation_by_user_activation_with_user_gesture.html: OK
+	iframe_sandbox_allow_top_navigation_by_user_activation_with_user_gesture: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_top_navigation_by_user_activation_without_user_gesture.html: OK
+	iframe_sandbox_allow_top_navigation_by_user_activation_without_user_gesture: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_anchor_download_allow_downloads.tentative.html: OK
+	<a  > triggered download in sandbox is allowed by allow-downloads.: FAIL
+	<a  download> triggered download in sandbox is allowed by allow-downloads.: FAIL
+	<a target="_blank" > triggered download in sandbox is allowed by allow-downloads.: FAIL
+	<a target="_blank" download> triggered download in sandbox is allowed by allow-downloads.: FAIL
+	<a target="_blank" rel="noopener" > triggered download in sandbox is allowed by allow-downloads.: FAIL
+	<a target="_blank" rel="noopener" download> triggered download in sandbox is allowed by allow-downloads.: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_anchor_download_block_downloads.tentative.html: OK
+	<a > triggered download in sandbox is blocked.: FAIL
+	<a download> triggered download in sandbox is blocked before a request is made.: FAIL
+	<a download> triggered download in sandbox is blocked.: FAIL
+	<a target="_blank" > triggered download in sandbox is blocked.: FAIL
+	<a target="_blank" rel="noopener" > triggered download in sandbox is blocked.: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-1.html: TIMEOUT
+	Frames without `allow-modals` should not be able to open modal dialogs: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-2.html: TIMEOUT
+	Frames without `allow-modals` should not be able to open modal dialogs: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-3.html: TIMEOUT
+	Frames without `allow-modals` should not be able to open modal dialogs: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-4.html: OK
+	Frames without `allow-modals` should not be able to open modal dialogs: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigate_ancestor-1.html: OK
+	Check that sandboxed iframe can not navigate their ancestors: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigate_ancestor-2.html: OK
+	Check that unsandboxed iframe can navigate their ancestors: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigate_descendants.html: OK
+	Check that sandboxed iframe can navigate their descendants: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigate_history_go_back-2.html: OK
+	Check that sandboxed iframe can navigate their self: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigate_history_go_back.html: OK
+	Check that sandboxed iframe can not navigate their ancestors: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigate_history_go_forward.html: OK
+	Check that sandboxed iframe can not navigate their ancestors: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigate_itself.html: OK
+	Check that sandboxed iframe can navigate itself: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigate_other_frame_popup.sub.html: ERROR
+	Sandboxed iframe can not navigate other frame's popup: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigation_download_allow_downloads.sub.tentative.html: TIMEOUT
+	Navigation resulted download in sandbox from <object> is allowed by allow-downloads.: TIMEOUT
+	Navigation resulted download in sandbox is allowed by allow-downloads.: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigation_download_block_downloads.sub.tentative.html: OK
+	Navigation resulted download in sandbox from <object> is blocked.: FAIL
+	Navigation resulted download in sandbox is blocked.: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping-1.html: TIMEOUT
+	Check that popups from a sandboxed iframe escape the sandbox if\n       allow-popups-to-escape-sandbox is used: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping-2.html: TIMEOUT
+	Check that popups from a sandboxed iframe escape the sandbox if\n       allow-popups-to-escape-sandbox is used: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping-3.html: TIMEOUT
+	Check that popups from a sandboxed iframe escape the sandbox if\n       allow-popups-to-escape-sandbox is used: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_nonescaping-1.html: TIMEOUT
+	Check that popups from a sandboxed iframe do not escape the sandbox: NOTRUN
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_nonescaping-2.html: TIMEOUT
+	Check that popups from a sandboxed iframe do not escape the sandbox: NOTRUN
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_nonescaping-3.html: TIMEOUT
+	Check that popups from a sandboxed iframe do not escape the sandbox: NOTRUN
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_window_open_download_allow_downloads.tentative.html: TIMEOUT
+	window.open(download, "_blank") triggering download in sandbox is allowed by allow-downloads.: TIMEOUT
+	window.open(download, "_blank", "noopener") triggering download in sandbox is allowed by allow-downloads.: TIMEOUT
+	window.open(download, ) triggering download in sandbox is allowed by allow-downloads.: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_window_open_download_block_downloads.tentative.html: OK
+	window.open(download, "_blank") triggering download in sandbox is blocked.: FAIL
+	window.open(download, "_blank", "noopener") triggering download in sandbox is blocked.: FAIL
+	window.open(download, ) triggering download in sandbox is blocked.: FAIL
+/html/semantics/embedded-content/the-iframe-element/move-node-local-root-events-still-fire.html: OK
+	Event handler-bearing node moved across local roots and its event listeners still work: FAIL
+/html/semantics/embedded-content/the-iframe-element/move-node-local-root.html: OK
+	Event handler-bearing node moved across local roots in the same tab/page: FAIL
+/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_01.html: OK
+	moving modified IFRAME in document (original page about:blank, DOM modification): FAIL
+/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_02.html: OK
+	moving modified IFRAME in document (original page about:blank, document.write modification): FAIL
+/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_03.html: OK
+	moving modified IFRAME in document (original page from server, DOM modification): FAIL
+/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_04.html: OK
+	moving modified IFRAME in document (original page from server, document.write modification): FAIL
+/html/semantics/embedded-content/the-iframe-element/same-origin-contextual-fragment.html: OK
+	\n      HTML5 Sandbox: an iframe with same-origin and no allow-scripts does not\n      run scripts from a contextual fragment.\n    : FAIL
+/html/semantics/embedded-content/the-iframe-element/same_origin_parentage.html: OK
+	Check the frame heriarchy: FAIL
+	Check the frame heriarchy 1: FAIL
+	Check the frame heriarchy 2: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-ascii-case-insensitive.html: OK
+	iframe 'sandbox' ASCII case insensitive, allow-same-orİgin: PASS
+	iframe 'sandbox' ASCII case insensitive, allow-ſcripts: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-inherit-to-blank-document-unsandboxed-frame.html: TIMEOUT
+	Popup do not inherit sandbox, because of 'allow-popups-to-escape-sandbox'. The document isn't sandboxed.: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/sandbox-inherit-to-blank-document-unsandboxed.html: TIMEOUT
+	Document is sandboxed via its CSP.: FAIL
+	Popup do not inherit sandbox, because of 'allow-popups-to-escape-sandbox' the document doesn't inherit CSP. The document isn't sandboxed: TIMEOUT
+	The initial empty document inherit sandbox via CSP.: FAIL
+	The synchronous re-navigation to about:blank inherits sandbox via CSP: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-top-close.tentative.sub.window.html: OK
+	Cross-origin sandboxed iframe without allow-top-navigation cannot close top window: FAIL
+	Sandboxed iframe with allow-top-navigation can close top window: FAIL
+	Sandboxed iframe without allow-top-navigation cannot close top window: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-top-navigation-child-cross-origin-frame.tentative.sub.window.html: OK
+	A cross-origin frame with frame sandbox flags can navigate top: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-top-navigation-child-delivered-both.tentative.sub.window.html: OK
+	A frame with both top navigation delivered sandbox flags uses the less     restrictive one: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-top-navigation-child-delivered.tentative.sub.window.html: OK
+	A same-origin frame with delivered sandbox flags can navigate top: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-top-navigation-child-unsandboxed.tentative.sub.window.html: OK
+	A same-origin unsandboxed frame can navigate top: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-top-navigation-grandchild-allow-same-origin.tentative.sub.window.html: OK
+	A sandboxed same-origin grandchild with allow-same-origin can     give itself top-nav privileges: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-top-navigation-grandchild-frame-allow-top.tentative.sub.window.html: OK
+	A same-origin grandchild with frame allow-top can navigate top: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-top-navigation-grandchild-sandboxed-cross-origin-parent.tentative.sub.window.html: OK
+	A same-origin sandboxed grandchild in a cross-origin parent can navigate top: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-top-navigation-grandchild-sandboxed.tentative.sub.window.html: OK
+	A fully sandboxed same-origin grandchild can't navigate top: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-top-navigation-grandchild-unsandboxed-cross-origin-parent.tentative.sub.window.html: OK
+	A same-origin grandchild in a cross-origin parent can navigate top: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox-top-navigation-grandchild-unsandboxed-inherit.tentative.sub.window.html: OK
+	An unsandboxed grandchild inherits its parents ability to navigate top.: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox_001.htm: OK
+	Allow script execution inside iframe with sandbox attribute when sandbox='allow-scripts'.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_002.htm: TIMEOUT
+	Allow autoplay for HTML5 Video inside iframe with sandbox attribute if sandbox='allow-scripts'.: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/sandbox_004.htm: OK
+	Fallback content is always displayed for sandboxed PDFs: FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox_005.htm: OK
+	Block script execution inside iframe with sandbox attribute.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_011.htm: OK
+	DOMTokenList add(DomString): PASS
+	DOMTokenList case sensitivity: PASS
+	DOMTokenList contains(DomString): PASS
+	DOMTokenList item(index): PASS
+	DOMTokenList length: PASS
+	DOMTokenList remove(DomString): PASS
+	DOMTokenList sandbox.toString(): PASS
+	DOMTokenList toggle(DomString) - Returns true if token is now present (it was added); returns false if it is not (it was removed).: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_012.htm: OK
+	value of sandbox attribute must be an unordered set of unique space-separated tokens.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_013.htm: OK
+	value of sandbox attribute must be an unordered set of unique space-separated tokens.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_014.htm: OK
+	value of sandbox attribute must be an unordered set of unique space-separated tokens.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_015.htm: OK
+	value of sandbox attribute must be an unordered set of unique space-separated tokens.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_016.htm: OK
+	value of sandbox attribute must be an unordered set of unique space-separated tokens.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_017.htm: OK
+	value of sandbox attribute must be an unordered set of unique space-separated tokens.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_018.htm: OK
+	value of sandbox attribute must be an unordered set of unique space-separated tokens.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_019.htm: OK
+	value of sandbox attribute must be an unordered set of unique space-separated tokens.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_023.htm: OK
+	Allow sandbox iframe to access other content from the same origin if sandbox='allow-same-origin': FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox_024.htm: OK
+	document.cookie access is allowed inside iframe with sandbox='allow-same-origin'.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_025.htm: OK
+	Allow parent content to access sandbox child iframe content when sandbox='allow-same-origin': FAIL
+/html/semantics/embedded-content/the-iframe-element/sandbox_026.htm: OK
+	Allow localStorage and sessionStorage access inside iframe with sandbox='allow-same-origin allow-scripts': PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_027.htm: OK
+	Allow XMLHttpRequest in an iframe with the sandbox attribute if sandbox='allow-same-origin'.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_028.htm: OK
+	Block sandbox iframe from accessing other content from the same origin.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_029.htm: OK
+	Block document.cookie inside iframe with the sandbox attribute.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_030.htm: OK
+	Block parent content to access sandbox child iframe content when sandbox attribute exists: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_031.htm: OK
+	Block localStorage and sessionStorage inside iframe with the sandbox attribute.: PASS
+/html/semantics/embedded-content/the-iframe-element/sandbox_032.htm: OK
+	Block XMLHttpRequest in an iframe with the sandbox attribute.: PASS
+/html/semantics/embedded-content/the-iframe-element/src-repeated-in-ancestor.html: OK
+	different path name: FAIL
+	same path name, different document fragment: FAIL
+	same path name, no document fragement (intermediary browsing context): FAIL
+	same path name, no document fragment: FAIL
+/html/semantics/embedded-content/the-iframe-element/srcdoc-anchor.html: OK
+	Verify srcdoc content loads when src is about:srcdoc#foo.: FAIL
+/html/semantics/embedded-content/the-iframe-element/srcdoc-attribute-reset.html: OK
+	Verify that the frame reloads with empty body after we remove srcdoc.: FAIL
+/html/semantics/embedded-content/the-iframe-element/srcdoc-lifecycle-crash-crbug-1472607.https.html: OK
+	common setup: FAIL
+	requestStorageAccess() from about:blank Document before it gets replaced with a srcdoc resource does not crash the host process: FAIL
+/html/semantics/embedded-content/the-iframe-element/srcdoc_change_hash.html: OK
+	same-document navigation inside an srcdoc iframe using location.hash: FAIL
+/html/semantics/embedded-content/the-iframe-element/srcdoc_process_attributes.html: OK
+	Adding `srcdoc` attribute triggers attributes processing: FAIL
+	Removing `srcdoc` attribute triggers attributes processing: FAIL
+	Setting `srcdoc` (via property) triggers attributes processing: FAIL

@@ -43,8 +43,8 @@
 	Imported CSS module with parse error, cross-origin, with CORS: FAIL
 	Imported CSS module, cross-origin with CORS: FAIL
 	Imported CSS module, cross-origin, missing CORS ACAO header: FAIL
-/html/semantics/scripting-1/the-script-element/css-module/credentials.sub.html: TIMEOUT
-	CSS Modules should be loaded with or without the credentials based on the same-origin-ness and the crossOrigin attribute: TIMEOUT
+/html/semantics/scripting-1/the-script-element/css-module/credentials.sub.html: OK
+	CSS Modules should be loaded with or without the credentials based on the same-origin-ness and the crossOrigin attribute: FAIL
 /html/semantics/scripting-1/the-script-element/css-module/css-module-parse-error.html: OK
 	CSS module with parse errors imports successfully with empty rules.: FAIL
 	CSS module with partially malformed CSS imports with valid rules.: FAIL
@@ -168,8 +168,8 @@
 	 scheduler: DOM movement with appendChild, inline: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/038.html: OK
 	 scheduler: DOM movement with appendChild, external: PASS
-/html/semantics/scripting-1/the-script-element/execution-timing/039.html: TIMEOUT
-	iframes should load asynchronously after inline script run: TIMEOUT
+/html/semantics/scripting-1/the-script-element/execution-timing/039.html: OK
+	iframes should load asynchronously after inline script run: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/040.html: OK
 	 scheduler: IFRAMEs added with DOM (innerHTML), javascript: URL: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/041.html: OK
@@ -229,19 +229,19 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/077.html: OK
 	 adding several types of scripts through the DOM and removing some of them confuses scheduler : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/078.html: OK
-	 adding several types of scripts through the DOM and removing some of them confuses scheduler (slow-loading scripts) : FAIL
+	 adding several types of scripts through the DOM and removing some of them confuses scheduler (slow-loading scripts) : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/079.html: OK
 	 setting location to javascript URL from event handler : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/081.html: OK
 	 scheduler: slow loading external script added with DOM (appendChild): PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/082.html: OK
-	 scheduler: multiple slow loading external scripts added with DOM (appendChild): PASS
+	 scheduler: multiple slow loading external scripts added with DOM (appendChild): FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/083.html: ERROR
 /html/semantics/scripting-1/the-script-element/execution-timing/084.html: ERROR
 /html/semantics/scripting-1/the-script-element/execution-timing/085.html: OK
-	 scheduler: async script and slow-loading defer script: PASS
+	 scheduler: async script and slow-loading defer script: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/086.html: OK
-	 scheduler: async script and slow-loading async script: FAIL
+	 scheduler: async script and slow-loading async script: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/087.html: OK
 	 scheduler: multiple defer scripts, one slow loading: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/088.html: OK
@@ -267,7 +267,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/101.html: OK
 	 scheduler: defer script after initial onload event: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/102.html: OK
-	 scheduler: defer script after initial onload event: FAIL
+	 scheduler: defer script after initial onload event: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/103.html: OK
 	 scheduler: removing defer attribute at runtime: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/104.html: OK
@@ -311,7 +311,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/111.html: OK
 	 scheduler: removing async attribute at runtime: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/112.html: OK
-	 scheduler: removing async attribute at runtime, script also has defer attribute: PASS
+	 scheduler: removing async attribute at runtime, script also has defer attribute: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/113.html: OK
 	 scheduler: Altering DOM using innerHTML during parse : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/114.html: OK
@@ -454,12 +454,12 @@
 	UTF-16LE BOM should result in parse error in JSON module script: FAIL
 	UTF-8 BOM should be stripped when decoding JSON module script: FAIL
 /html/semantics/scripting-1/the-script-element/json-module/charset.html: ERROR
-/html/semantics/scripting-1/the-script-element/json-module/cors-crossorigin-requests.html: TIMEOUT
-	Imported JSON module with parse error, cross-origin, with CORS: NOTRUN
-	Imported JSON module, cross-origin with CORS: NOTRUN
-	Imported JSON module, cross-origin, missing CORS ACAO header: NOTRUN
-/html/semantics/scripting-1/the-script-element/json-module/credentials.sub.html: TIMEOUT
-	JSON Modules should be loaded with or without the credentials based on the same-origin-ness and the crossOrigin attribute: TIMEOUT
+/html/semantics/scripting-1/the-script-element/json-module/cors-crossorigin-requests.html: OK
+	Imported JSON module with parse error, cross-origin, with CORS: FAIL
+	Imported JSON module, cross-origin with CORS: FAIL
+	Imported JSON module, cross-origin, missing CORS ACAO header: FAIL
+/html/semantics/scripting-1/the-script-element/json-module/credentials.sub.html: OK
+	JSON Modules should be loaded with or without the credentials based on the same-origin-ness and the crossOrigin attribute: FAIL
 /html/semantics/scripting-1/the-script-element/json-module/http-accept-header.sub.html: OK
 	Dynamic import of a JSON module should send a valid HTTP Accept header.: FAIL
 /html/semantics/scripting-1/the-script-element/json-module/integrity.html: OK
@@ -708,15 +708,15 @@
 	Importing a specifier that previously succeeded with the correct type attribute should fail if the incorrect attribute is later given: FAIL
 	Multiple import calls with the same specifier should be joined into a single fetch: FAIL
 	Two modules of different type with the same specifier can load if the server changes its responses: FAIL
-/html/semantics/scripting-1/the-script-element/json-module/repeated-imports.any.worker.html: ERROR
-	An import should succeed even if the same specifier/module type pair previously failed due to a HTTP error: NOTRUN
-	An import should succeed even if the same specifier/module type pair previously failed due to a MIME type mismatch: NOTRUN
-	An import should succeed even if the same specifier/module type pair previously failed due to a network error: NOTRUN
-	If an import previously succeeded for a given specifier/module type attribute pair, future uses of that pair should yield the same result: NOTRUN
+/html/semantics/scripting-1/the-script-element/json-module/repeated-imports.any.worker.html: OK
+	An import should succeed even if the same specifier/module type pair previously failed due to a HTTP error: FAIL
+	An import should succeed even if the same specifier/module type pair previously failed due to a MIME type mismatch: FAIL
+	An import should succeed even if the same specifier/module type pair previously failed due to a network error: FAIL
+	If an import previously succeeded for a given specifier/module type attribute pair, future uses of that pair should yield the same result: FAIL
 	Importing a specifier that previously failed due to an incorrect type attribute can succeed if the correct attribute is later given: FAIL
 	Importing a specifier that previously succeeded with the correct type attribute should fail if the incorrect attribute is later given: FAIL
-	Multiple import calls with the same specifier should be joined into a single fetch: NOTRUN
-	Two modules of different type with the same specifier can load if the server changes its responses: TIMEOUT
+	Multiple import calls with the same specifier should be joined into a single fetch: FAIL
+	Two modules of different type with the same specifier can load if the server changes its responses: FAIL
 /html/semantics/scripting-1/the-script-element/json-module/script-element-json-src.html: OK
 	Test that <script> doesn't load when the src is JSON.: PASS
 /html/semantics/scripting-1/the-script-element/json-module/valid-content-type.html: OK
@@ -800,8 +800,8 @@
 /html/semantics/scripting-1/the-script-element/module/concurrent-failed-imports.html: OK
 	A joined <script type=module> load is notified with its own fetch result even if a sibling's error handler re-inserts a script for the same specifier: FAIL
 	Multiple concurrent <script type=module> loads of a failing module should all fail but only fetch once: FAIL
-/html/semantics/scripting-1/the-script-element/module/credentials.sub.html: TIMEOUT
-	Modules should be loaded with or without the credentials based on the same-origin-ness and the crossOrigin attribute: TIMEOUT
+/html/semantics/scripting-1/the-script-element/module/credentials.sub.html: OK
+	Modules should be loaded with or without the credentials based on the same-origin-ness and the crossOrigin attribute: FAIL
 /html/semantics/scripting-1/the-script-element/module/crossorigin.html: OK
 	Imported module, Blocked script download, crossorigin attribute with missing CORS ACAO header: FAIL
 	Imported module, Blocked script download, mismatched CORS ACAO header: FAIL
@@ -848,21 +848,45 @@
 	beta - eval: FAIL
 	gamma - Function: FAIL
 	gamma - eval: FAIL
-/html/semantics/scripting-1/the-script-element/module/dynamic-import/code-cache-nonce.html: TIMEOUT
+/html/semantics/scripting-1/the-script-element/module/dynamic-import/code-cache-nonce.html: ERROR
 	First dynamic import should use nonce=abc: TIMEOUT
 	Second dynamic import should use nonce=def: NOTRUN
 	Third dynamic import should use nonce=ghi: NOTRUN
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/concurrent-failed-imports.any.html: OK
 	A joined import is notified with its own fetch result even if a sibling's rejection handler re-imports the same specifier: FAIL
 	Multiple concurrent imports of a failing module should all reject but only fetch once: FAIL
-/html/semantics/scripting-1/the-script-element/module/dynamic-import/concurrent-failed-imports.any.worker.html: ERROR
-	A joined import is notified with its own fetch result even if a sibling's rejection handler re-imports the same specifier: NOTRUN
-	Multiple concurrent imports of a failing module should all reject but only fetch once: TIMEOUT
+/html/semantics/scripting-1/the-script-element/module/dynamic-import/concurrent-failed-imports.any.worker.html: OK
+	A joined import is notified with its own fetch result even if a sibling's rejection handler re-imports the same specifier: FAIL
+	Multiple concurrent imports of a failing module should all reject but only fetch once: FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/cyclic-tla-defer-eval.tentative.html: ERROR
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/delay-load-event.html: OK
 	Dynamic imports don't delay the load event.: FAIL
-/html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports-credentials-setTimeout.sub.html: ERROR
-/html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports-credentials.sub.html: ERROR
+/html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports-credentials-setTimeout.sub.html: TIMEOUT
+	Cross-origin dynamic import from setTimeout(string) from classic script (crossOrigin not specified): NOTRUN
+	Cross-origin dynamic import from setTimeout(string) from classic script (crossOrigin=anonymous): NOTRUN
+	Cross-origin dynamic import from setTimeout(string) from classic script (crossOrigin=use-credentials): NOTRUN
+	Cross-origin dynamic import from setTimeout(string) from module script (crossOrigin not specified): NOTRUN
+	Cross-origin dynamic import from setTimeout(string) from module script (crossOrigin=anonymous): NOTRUN
+	Cross-origin dynamic import from setTimeout(string) from module script (crossOrigin=use-credentials): NOTRUN
+	Same-origin dynamic import from setTimeout(string) from classic script (crossOrigin not specified): TIMEOUT
+	Same-origin dynamic import from setTimeout(string) from classic script (crossOrigin=anonymous): NOTRUN
+	Same-origin dynamic import from setTimeout(string) from classic script (crossOrigin=use-credentials): NOTRUN
+	Same-origin dynamic import from setTimeout(string) from module script (crossOrigin not specified): NOTRUN
+	Same-origin dynamic import from setTimeout(string) from module script (crossOrigin=anonymous): NOTRUN
+	Same-origin dynamic import from setTimeout(string) from module script (crossOrigin=use-credentials): NOTRUN
+/html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports-credentials.sub.html: OK
+	Cross-origin dynamic import from classic script (crossOrigin not specified): FAIL
+	Cross-origin dynamic import from classic script (crossOrigin=anonymous): FAIL
+	Cross-origin dynamic import from classic script (crossOrigin=use-credentials): FAIL
+	Cross-origin dynamic import from module script (crossOrigin not specified): FAIL
+	Cross-origin dynamic import from module script (crossOrigin=anonymous): FAIL
+	Cross-origin dynamic import from module script (crossOrigin=use-credentials): FAIL
+	Same-origin dynamic import from classic script (crossOrigin not specified): FAIL
+	Same-origin dynamic import from classic script (crossOrigin=anonymous): FAIL
+	Same-origin dynamic import from classic script (crossOrigin=use-credentials): FAIL
+	Same-origin dynamic import from module script (crossOrigin not specified): FAIL
+	Same-origin dynamic import from module script (crossOrigin=anonymous): FAIL
+	Same-origin dynamic import from module script (crossOrigin=use-credentials): FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports-fetch-error.sub.html: OK
 	import() must reject when there is a 404: PASS
 	import() must reject when there is a 404 of a dependency: PASS
@@ -922,11 +946,11 @@
 	An import should succeed even if the same specifier/type pair previously failed due to a network error (e.g. 404): FAIL
 	Multiple concurrent imports with the same specifier/type pair should only fetch the module once: FAIL
 	Multiple imports in sequence with the same specifier/type pair should only fetch the module once: FAIL
-/html/semantics/scripting-1/the-script-element/module/dynamic-import/repeated-imports.any.worker.html: ERROR
-	An import should succeed even if the same specifier/type attribute pair previously failed due to a MIME type mismatch: TIMEOUT
-	An import should succeed even if the same specifier/type pair previously failed due to a network error (e.g. 404): NOTRUN
-	Multiple concurrent imports with the same specifier/type pair should only fetch the module once: NOTRUN
-	Multiple imports in sequence with the same specifier/type pair should only fetch the module once: NOTRUN
+/html/semantics/scripting-1/the-script-element/module/dynamic-import/repeated-imports.any.worker.html: OK
+	An import should succeed even if the same specifier/type attribute pair previously failed due to a MIME type mismatch: FAIL
+	An import should succeed even if the same specifier/type pair previously failed due to a network error (e.g. 404): FAIL
+	Multiple concurrent imports with the same specifier/type pair should only fetch the module once: FAIL
+	Multiple imports in sequence with the same specifier/type pair should only fetch the module once: FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/shared-dependency-repeated-import.https.html: OK
 	Module shared dependency import: FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-base-url-external-classic.html: TIMEOUT
@@ -986,7 +1010,7 @@
 	Evaled the script via eval, successful import: FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-other-document.html: ERROR
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/tla-deferred-evaluation.tentative.html: ERROR
-/html/semantics/scripting-1/the-script-element/module/dynamic-import/v8-code-cache.html: TIMEOUT
+/html/semantics/scripting-1/the-script-element/module/dynamic-import/v8-code-cache.html: ERROR
 	module: Run #1: NOTRUN
 	module: Run #2: NOTRUN
 	module: Run #3: NOTRUN
@@ -1005,11 +1029,11 @@
 	parse error has higher priority than instantiation error: PASS
 /html/semantics/scripting-1/the-script-element/module/error-type-3.html: OK
 	instantiation error has higher priority than evaluation error: PASS
-/html/semantics/scripting-1/the-script-element/module/errorhandling.html: TIMEOUT
+/html/semantics/scripting-1/the-script-element/module/errorhandling.html: OK
 	External root module with non-script mimetype: PASS
-	IFrame test: 'iframe_parseError_Dependent': NOTRUN
-	IFrame test: 'iframe_parseError_DependentMultiple': NOTRUN
-	IFrame test: 'iframe_parseError_Root': NOTRUN
+	IFrame test: 'iframe_parseError_Dependent': FAIL
+	IFrame test: 'iframe_parseError_DependentMultiple': FAIL
+	IFrame test: 'iframe_parseError_Root': FAIL
 	Module with imported non-script mimetype: PASS
 /html/semantics/scripting-1/the-script-element/module/evaluation-error-1.html: OK
 	Test that exceptions during evaluation lead to error events on window, and that exceptions are remembered.\n: PASS
@@ -1119,8 +1143,8 @@
 /html/semantics/scripting-1/the-script-element/module/module-vs-script-2.html: OK
 	Test that evaluating something as classic script does not prevent it from being evaluated as module script.: PASS
 /html/semantics/scripting-1/the-script-element/module/modulepreload-cross-origin-referrerpolicy.sub.html: TIMEOUT
-	Cross-origin modulepreload with default referrer policy should load: FAIL
-	Cross-origin modulepreload with no-referrer policy should load: TIMEOUT
+	Cross-origin modulepreload with default referrer policy should load: TIMEOUT
+	Cross-origin modulepreload with no-referrer policy should load: NOTRUN
 	Cross-origin modulepreload with origin policy should load: NOTRUN
 	Cross-origin modulepreload with same-origin policy should load: NOTRUN
 	Cross-origin modulepreload with strict-origin policy should load: NOTRUN
@@ -1513,9 +1537,9 @@
 	Script elements (in-order) still block subsequent in-order scripts in the original Document after moved to another Document: FAIL
 /html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/parser-blocking.html: ERROR
 	Script elements (parser-blocking) still block the parser in the original Document after moved to another Document: FAIL
-/html/semantics/scripting-1/the-script-element/muted-errors.sub.html: TIMEOUT
+/html/semantics/scripting-1/the-script-element/muted-errors.sub.html: OK
 	Errors for cross-origin script should be muted: FAIL
-	Errors for cross-origin script should be muted even if the script is once loaded as same-origin: NOTRUN
+	Errors for cross-origin script should be muted even if the script is once loaded as same-origin: FAIL
 	Errors for cross-origin scripts redirected to a same-origin url should be muted: FAIL
 	Errors for same-origin script shouldn't be muted: FAIL
 	Errors for same-origin scripts redirected to a cross-origin url and redirected back to same-origin should be muted: FAIL
@@ -2582,11 +2606,11 @@
 	UTF-16LE with BOM should be parsed as UTF-8: FAIL
 	UTF-8 BOM should be stripped when decoding text module script: FAIL
 /html/semantics/scripting-1/the-script-element/text-module/charset.html: ERROR
-/html/semantics/scripting-1/the-script-element/text-module/cors-crossorigin-requests.html: TIMEOUT
-	Imported text module, cross-origin with CORS: NOTRUN
-	Imported text module, cross-origin, missing CORS ACAO header: NOTRUN
-/html/semantics/scripting-1/the-script-element/text-module/credentials.sub.html: TIMEOUT
-	Text Modules should be loaded with or without the credentials based on the same-origin-ness and the crossOrigin attribute: TIMEOUT
+/html/semantics/scripting-1/the-script-element/text-module/cors-crossorigin-requests.html: OK
+	Imported text module, cross-origin with CORS: FAIL
+	Imported text module, cross-origin, missing CORS ACAO header: FAIL
+/html/semantics/scripting-1/the-script-element/text-module/credentials.sub.html: OK
+	Text Modules should be loaded with or without the credentials based on the same-origin-ness and the crossOrigin attribute: FAIL
 /html/semantics/scripting-1/the-script-element/text-module/http-accept-header.sub.html: ERROR
 /html/semantics/scripting-1/the-script-element/text-module/ignore-content-type.any.html: OK
 	Import of a text module with MIME type application/vnd.api+json should succeed: FAIL
@@ -4061,8 +4085,8 @@
 	Nested <template for> patches via the shared target (iframe): FAIL
 	Nested <template for> patches via the shared target (innerHTML): FAIL
 	Nested <template for> patches via the shared target (stream): FAIL
-/html/semantics/scripting-1/the-template-element/template-for/template-for-only-html-001.html: TIMEOUT
-	HTML partial updates: template with contentmethod does not work in XHTML: TIMEOUT
+/html/semantics/scripting-1/the-template-element/template-for/template-for-only-html-001.html: OK
+	HTML partial updates: template with contentmethod does not work in XHTML: FAIL
 /html/semantics/scripting-1/the-template-element/template-for/template-for-pagehide-dynamic-markup-insertion.html: OK
 	document.close() in pagehide throws InvalidStateError during prepare content patching (via document.write): FAIL
 	document.close() in pagehide throws InvalidStateError during prepare content patching (via streamAppendHTMLUnsafe): FAIL

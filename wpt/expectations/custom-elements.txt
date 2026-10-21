@@ -11,7 +11,7 @@
 	customElements.getName must throw when the element interface is not a constructor: FAIL
 	customElements.getName returns the name of the entry with the given constructor when there is a matching entry.: FAIL
 	customElements.getName returns the name of the entry with the given customized built in constructor when there is a matching entry.: FAIL
-/custom-elements/CustomElementRegistry.html: TIMEOUT
+/custom-elements/CustomElementRegistry.html: OK
 	A promise returned by customElements.whenDefined must be resolved by "define": PASS
 	A promise returned by customElements.whenDefined must be resolved with the defined class: PASS
 	A promise returned by customElements.whenDefined must be resolved with the defined class once such class is defined: PASS
@@ -26,7 +26,7 @@
 	customElements.define must get four additional callbacks on the prototype if formAssociated is converted to true: FAIL
 	customElements.define must not throw even if "observedAttributes" fails to convert if "attributeChangedCallback" is not defined: PASS
 	customElements.define must not throw the constructor is HTMLElement: PASS
-	customElements.define must not throw when defining another custom element in a different global object during Get(constructor, "prototype"): NOTRUN
+	customElements.define must not throw when defining another custom element in a different global object during Get(constructor, "prototype"): FAIL
 	customElements.define must rethrow an exception thrown while converting a callback value to Function callback type: FAIL
 	customElements.define must rethrow an exception thrown while converting the value of disabledFeatures to sequence<DOMString>: PASS
 	customElements.define must rethrow an exception thrown while converting the value of observedAttributes to sequence<DOMString>: PASS
@@ -63,7 +63,7 @@
 	document.createElement must report an exception thrown by a custom built-in element constructor: FAIL
 	document.createElement with unknown "is" value should create "undefined" state element: FAIL
 	document.createElement()'s second argument is to be ignored when it's a string: FAIL
-/custom-elements/Document-createElement.html: TIMEOUT
+/custom-elements/Document-createElement.html: OK
 	document.createElement must create an instance of custom elements: PASS
 	document.createElement must not report a NotSupportedError when an element child is added and removed during construction: PASS
 	document.createElement must not report a NotSupportedError when attribute is added and removed during construction: PASS
@@ -71,8 +71,8 @@
 	document.createElement must not report a NotSupportedError when the element is adopted back from a a document created by createHTMLDocument during construction: PASS
 	document.createElement must not report a NotSupportedError when the element is adopted back from a a new document during construction: FAIL
 	document.createElement must not report a NotSupportedError when the element is adopted back from a an HTML document created by createDocument during construction: FAIL
-	document.createElement must not report a NotSupportedError when the element is adopted back from a an HTML document fetched by XHR during construction: NOTRUN
-	document.createElement must not report a NotSupportedError when the element is adopted back from a the document of an iframe during construction: NOTRUN
+	document.createElement must not report a NotSupportedError when the element is adopted back from a an HTML document fetched by XHR during construction: FAIL
+	document.createElement must not report a NotSupportedError when the element is adopted back from a the document of an iframe during construction: FAIL
 	document.createElement must not report a NotSupportedError when the element is adopted back from a the document of the template elements during construction: PASS
 	document.createElement must not report a NotSupportedError when the element is inserted and removed from another element during construction: PASS
 	document.createElement must report a NotSupportedError when a Comment child is added during construction: FAIL
@@ -85,15 +85,15 @@
 	document.createElement must report a NotSupportedError when the element is adopted into a a document created by createHTMLDocument during construction: FAIL
 	document.createElement must report a NotSupportedError when the element is adopted into a a new document during construction: FAIL
 	document.createElement must report a NotSupportedError when the element is adopted into a an HTML document created by createDocument during construction: FAIL
-	document.createElement must report a NotSupportedError when the element is adopted into a an HTML document fetched by XHR during construction: NOTRUN
-	document.createElement must report a NotSupportedError when the element is adopted into a the document of an iframe during construction: TIMEOUT
+	document.createElement must report a NotSupportedError when the element is adopted into a an HTML document fetched by XHR during construction: FAIL
+	document.createElement must report a NotSupportedError when the element is adopted into a the document of an iframe during construction: FAIL
 	document.createElement must report a NotSupportedError when the element is adopted into a the document of the template elements during construction: FAIL
 	document.createElement must report a NotSupportedError when the element is inserted into a a cloned document during construction: FAIL
 	document.createElement must report a NotSupportedError when the element is inserted into a a document created by createHTMLDocument during construction: FAIL
 	document.createElement must report a NotSupportedError when the element is inserted into a a new document during construction: FAIL
 	document.createElement must report a NotSupportedError when the element is inserted into a an HTML document created by createDocument during construction: FAIL
-	document.createElement must report a NotSupportedError when the element is inserted into a an HTML document fetched by XHR during construction: NOTRUN
-	document.createElement must report a NotSupportedError when the element is inserted into a the document of an iframe during construction: NOTRUN
+	document.createElement must report a NotSupportedError when the element is inserted into a an HTML document fetched by XHR during construction: FAIL
+	document.createElement must report a NotSupportedError when the element is inserted into a the document of an iframe during construction: FAIL
 	document.createElement must report a NotSupportedError when the element is inserted into a the document of the template elements during construction: FAIL
 	document.createElement must report a NotSupportedError when the local name of the element does not match that of the custom element: FAIL
 	document.createElement must report a TypeError when the result of Construct is a TextNode: FAIL
@@ -308,14 +308,14 @@
 	HTMLElement constructor must throw TypeError when it has not been defined by customElements.define: PASS
 	HTMLElement constructor must throw a TypeError when NewTarget is equal to itself: FAIL
 	HTMLElement constructor must throw a TypeError when NewTarget is equal to itself via a Proxy object: FAIL
-/custom-elements/adopted-callback.html: TIMEOUT
+/custom-elements/adopted-callback.html: OK
 	Inserting a custom element into a cloned document must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into a detached shadow tree that belongs to a cloned document must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into a detached shadow tree that belongs to a document created by createHTMLDocument must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into a detached shadow tree that belongs to a new document must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into a detached shadow tree that belongs to an HTML document created by createDocument must enqueue and invoke adoptedCallback: FAIL
-	Inserting a custom element into a detached shadow tree that belongs to an HTML document fetched by XHR must enqueue and invoke adoptedCallback: NOTRUN
-	Inserting a custom element into a detached shadow tree that belongs to the document of an iframe must enqueue and invoke adoptedCallback: NOTRUN
+	Inserting a custom element into a detached shadow tree that belongs to an HTML document fetched by XHR must enqueue and invoke adoptedCallback: FAIL
+	Inserting a custom element into a detached shadow tree that belongs to the document of an iframe must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into a detached shadow tree that belongs to the document of the template elements must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into a document created by createHTMLDocument must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into a new document must enqueue and invoke adoptedCallback: FAIL
@@ -323,65 +323,65 @@
 	Inserting a custom element into a shadow tree in a document created by createHTMLDocument must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into a shadow tree in a new document must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into a shadow tree in an HTML document created by createDocument must enqueue and invoke adoptedCallback: FAIL
-	Inserting a custom element into a shadow tree in an HTML document fetched by XHR must enqueue and invoke adoptedCallback: NOTRUN
-	Inserting a custom element into a shadow tree in the document of an iframe must enqueue and invoke adoptedCallback: NOTRUN
+	Inserting a custom element into a shadow tree in an HTML document fetched by XHR must enqueue and invoke adoptedCallback: FAIL
+	Inserting a custom element into a shadow tree in the document of an iframe must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into a shadow tree in the document of the template elements must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into an HTML document created by createDocument must enqueue and invoke adoptedCallback: FAIL
-	Inserting a custom element into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: NOTRUN
-	Inserting a custom element into the document of an iframe must enqueue and invoke adoptedCallback: TIMEOUT
+	Inserting a custom element into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: FAIL
+	Inserting a custom element into the document of an iframe must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into the document of the template elements must enqueue and invoke adoptedCallback: FAIL
 	Inserting a custom element into the owner document must not enqueue and invoke adoptedCallback: PASS
 	Inserting an ancestor of custom element into a cloned document must enqueue and invoke adoptedCallback: FAIL
 	Inserting an ancestor of custom element into a document created by createHTMLDocument must enqueue and invoke adoptedCallback: FAIL
 	Inserting an ancestor of custom element into a new document must enqueue and invoke adoptedCallback: FAIL
 	Inserting an ancestor of custom element into an HTML document created by createDocument must enqueue and invoke adoptedCallback: FAIL
-	Inserting an ancestor of custom element into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: NOTRUN
-	Inserting an ancestor of custom element into the document of an iframe must enqueue and invoke adoptedCallback: NOTRUN
+	Inserting an ancestor of custom element into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: FAIL
+	Inserting an ancestor of custom element into the document of an iframe must enqueue and invoke adoptedCallback: FAIL
 	Inserting an ancestor of custom element into the document of the template elements must enqueue and invoke adoptedCallback: FAIL
 	Inserting the shadow host of a custom element into a cloned document must enqueue and invoke adoptedCallback: FAIL
 	Inserting the shadow host of a custom element into a document created by createHTMLDocument must enqueue and invoke adoptedCallback: FAIL
 	Inserting the shadow host of a custom element into a new document must enqueue and invoke adoptedCallback: FAIL
 	Inserting the shadow host of a custom element into an HTML document created by createDocument must enqueue and invoke adoptedCallback: FAIL
-	Inserting the shadow host of a custom element into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: NOTRUN
-	Inserting the shadow host of a custom element into the document of an iframe must enqueue and invoke adoptedCallback: NOTRUN
+	Inserting the shadow host of a custom element into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: FAIL
+	Inserting the shadow host of a custom element into the document of an iframe must enqueue and invoke adoptedCallback: FAIL
 	Inserting the shadow host of a custom element into the document of the template elements must enqueue and invoke adoptedCallback: FAIL
 	Moving a custom element from the owner document into a cloned document must enqueue and invoke adoptedCallback: FAIL
 	Moving a custom element from the owner document into a document created by createHTMLDocument must enqueue and invoke adoptedCallback: FAIL
 	Moving a custom element from the owner document into a new document must enqueue and invoke adoptedCallback: FAIL
 	Moving a custom element from the owner document into an HTML document created by createDocument must enqueue and invoke adoptedCallback: FAIL
-	Moving a custom element from the owner document into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: NOTRUN
-	Moving a custom element from the owner document into the document of an iframe must enqueue and invoke adoptedCallback: NOTRUN
+	Moving a custom element from the owner document into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: FAIL
+	Moving a custom element from the owner document into the document of an iframe must enqueue and invoke adoptedCallback: FAIL
 	Moving a custom element from the owner document into the document of the template elements must enqueue and invoke adoptedCallback: FAIL
 	Moving an ancestor of custom element from the owner document into a cloned document must enqueue and invoke adoptedCallback: FAIL
 	Moving an ancestor of custom element from the owner document into a document created by createHTMLDocument must enqueue and invoke adoptedCallback: FAIL
 	Moving an ancestor of custom element from the owner document into a new document must enqueue and invoke adoptedCallback: FAIL
 	Moving an ancestor of custom element from the owner document into an HTML document created by createDocument must enqueue and invoke adoptedCallback: FAIL
-	Moving an ancestor of custom element from the owner document into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: NOTRUN
-	Moving an ancestor of custom element from the owner document into the document of an iframe must enqueue and invoke adoptedCallback: NOTRUN
+	Moving an ancestor of custom element from the owner document into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: FAIL
+	Moving an ancestor of custom element from the owner document into the document of an iframe must enqueue and invoke adoptedCallback: FAIL
 	Moving an ancestor of custom element from the owner document into the document of the template elements must enqueue and invoke adoptedCallback: FAIL
 	Moving the <template>'s content of a custom element from the owner document into a cloned document must enqueue and invoke adoptedCallback: FAIL
 	Moving the <template>'s content of a custom element from the owner document into a document created by createHTMLDocument must enqueue and invoke adoptedCallback: FAIL
 	Moving the <template>'s content of a custom element from the owner document into a new document must enqueue and invoke adoptedCallback: FAIL
 	Moving the <template>'s content of a custom element from the owner document into an HTML document created by createDocument must enqueue and invoke adoptedCallback: FAIL
-	Moving the <template>'s content of a custom element from the owner document into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: NOTRUN
-	Moving the <template>'s content of a custom element from the owner document into the document of an iframe must enqueue and invoke adoptedCallback: NOTRUN
+	Moving the <template>'s content of a custom element from the owner document into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: FAIL
+	Moving the <template>'s content of a custom element from the owner document into the document of an iframe must enqueue and invoke adoptedCallback: FAIL
 	Moving the <template>'s content of a custom element from the owner document into the document of the template elements must enqueue and invoke adoptedCallback: PASS
 	Moving the shadow host of a custom element from the owner document into a cloned document must enqueue and invoke adoptedCallback: FAIL
 	Moving the shadow host of a custom element from the owner document into a document created by createHTMLDocument must enqueue and invoke adoptedCallback: FAIL
 	Moving the shadow host of a custom element from the owner document into a new document must enqueue and invoke adoptedCallback: FAIL
 	Moving the shadow host of a custom element from the owner document into an HTML document created by createDocument must enqueue and invoke adoptedCallback: FAIL
-	Moving the shadow host of a custom element from the owner document into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: NOTRUN
-	Moving the shadow host of a custom element from the owner document into the document of an iframe must enqueue and invoke adoptedCallback: NOTRUN
+	Moving the shadow host of a custom element from the owner document into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: FAIL
+	Moving the shadow host of a custom element from the owner document into the document of an iframe must enqueue and invoke adoptedCallback: FAIL
 	Moving the shadow host of a custom element from the owner document into the document of the template elements must enqueue and invoke adoptedCallback: FAIL
 	Moving the shadow host's shadow of a custom element from the owner document into a cloned document must enqueue and invoke adoptedCallback: FAIL
 	Moving the shadow host's shadow of a custom element from the owner document into a document created by createHTMLDocument must enqueue and invoke adoptedCallback: FAIL
 	Moving the shadow host's shadow of a custom element from the owner document into a new document must enqueue and invoke adoptedCallback: FAIL
 	Moving the shadow host's shadow of a custom element from the owner document into an HTML document created by createDocument must enqueue and invoke adoptedCallback: FAIL
-	Moving the shadow host's shadow of a custom element from the owner document into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: NOTRUN
-	Moving the shadow host's shadow of a custom element from the owner document into the document of an iframe must enqueue and invoke adoptedCallback: NOTRUN
+	Moving the shadow host's shadow of a custom element from the owner document into an HTML document fetched by XHR must enqueue and invoke adoptedCallback: FAIL
+	Moving the shadow host's shadow of a custom element from the owner document into the document of an iframe must enqueue and invoke adoptedCallback: FAIL
 	Moving the shadow host's shadow of a custom element from the owner document into the document of the template elements must enqueue and invoke adoptedCallback: FAIL
-/custom-elements/append-children-to-new-parent-cycle.html: TIMEOUT
-	Adoption agency reparenting a customized built-in clone must not create a cyclic DOM: TIMEOUT
+/custom-elements/append-children-to-new-parent-cycle.html: OK
+	Adoption agency reparenting a customized built-in clone must not create a cyclic DOM: FAIL
 /custom-elements/attribute-changed-callback.html: OK
 	Mutating attributeChangedCallback after calling customElements.define must not affect the callback being invoked: PASS
 	Mutating observedAttributes after calling customElements.define must not affect the set of attributes for which attributedChangedCallback is invoked: PASS
@@ -508,26 +508,26 @@
 	var: Define a customized built-in element: FAIL
 	video: Define a customized built-in element: FAIL
 	wbr: Define a customized built-in element: FAIL
-/custom-elements/connected-callbacks-html-fragment-parsing.html: TIMEOUT
+/custom-elements/connected-callbacks-html-fragment-parsing.html: OK
 	Inserting a custom element into a cloned document using HTML fragment parsing must enqueue a custom element upgrade reaction, not synchronously invoke its constructor: FAIL
 	Inserting a custom element into a document created by createHTMLDocument using HTML fragment parsing must enqueue a custom element upgrade reaction, not synchronously invoke its constructor: PASS
 	Inserting a custom element into a new document using HTML fragment parsing must enqueue a custom element upgrade reaction, not synchronously invoke its constructor: FAIL
 	Inserting a custom element into an HTML document created by createDocument using HTML fragment parsing must enqueue a custom element upgrade reaction, not synchronously invoke its constructor: FAIL
-	Inserting a custom element into an HTML document fetched by XHR using HTML fragment parsing must enqueue a custom element upgrade reaction, not synchronously invoke its constructor: NOTRUN
-	Inserting a custom element into the document of an iframe using HTML fragment parsing must enqueue a custom element upgrade reaction, not synchronously invoke its constructor: TIMEOUT
+	Inserting a custom element into an HTML document fetched by XHR using HTML fragment parsing must enqueue a custom element upgrade reaction, not synchronously invoke its constructor: FAIL
+	Inserting a custom element into the document of an iframe using HTML fragment parsing must enqueue a custom element upgrade reaction, not synchronously invoke its constructor: FAIL
 	Inserting a custom element into the document of the template elements using HTML fragment parsing must enqueue a custom element upgrade reaction, not synchronously invoke its constructor: PASS
 	Inserting a custom element into the document using HTML fragment parsing must enqueue a custom element upgrade reaction, not synchronously invoke its constructor: PASS
 /custom-elements/connected-callbacks-template.html: OK
 	Nested custom element connectedCallback insertion involving a template DocumentFragment: PASS
-/custom-elements/connected-callbacks.html: TIMEOUT
+/custom-elements/connected-callbacks.html: OK
 	Inserting a custom element into a cloned document must enqueue and invoke connectedCallback: FAIL
 	Inserting a custom element into a detached shadow tree that belongs to a cloned document must not enqueue and invoke connectedCallback: FAIL
 	Inserting a custom element into a detached shadow tree that belongs to a document created by createHTMLDocument must not enqueue and invoke connectedCallback: PASS
 	Inserting a custom element into a detached shadow tree that belongs to a new document must not enqueue and invoke connectedCallback: FAIL
 	Inserting a custom element into a detached shadow tree that belongs to an HTML document created by createDocument must not enqueue and invoke connectedCallback: FAIL
-	Inserting a custom element into a detached shadow tree that belongs to an HTML document fetched by XHR must not enqueue and invoke connectedCallback: NOTRUN
+	Inserting a custom element into a detached shadow tree that belongs to an HTML document fetched by XHR must not enqueue and invoke connectedCallback: FAIL
 	Inserting a custom element into a detached shadow tree that belongs to the document must not enqueue and invoke connectedCallback: PASS
-	Inserting a custom element into a detached shadow tree that belongs to the document of an iframe must not enqueue and invoke connectedCallback: NOTRUN
+	Inserting a custom element into a detached shadow tree that belongs to the document of an iframe must not enqueue and invoke connectedCallback: FAIL
 	Inserting a custom element into a detached shadow tree that belongs to the document of the template elements must not enqueue and invoke connectedCallback: PASS
 	Inserting a custom element into a document created by createHTMLDocument must enqueue and invoke connectedCallback: FAIL
 	Inserting a custom element into a new document must enqueue and invoke connectedCallback: FAIL
@@ -535,57 +535,57 @@
 	Inserting a custom element into a shadow tree in a document created by createHTMLDocument must enqueue and invoke connectedCallback: FAIL
 	Inserting a custom element into a shadow tree in a new document must enqueue and invoke connectedCallback: FAIL
 	Inserting a custom element into a shadow tree in an HTML document created by createDocument must enqueue and invoke connectedCallback: FAIL
-	Inserting a custom element into a shadow tree in an HTML document fetched by XHR must enqueue and invoke connectedCallback: NOTRUN
+	Inserting a custom element into a shadow tree in an HTML document fetched by XHR must enqueue and invoke connectedCallback: FAIL
 	Inserting a custom element into a shadow tree in the document must enqueue and invoke connectedCallback: PASS
-	Inserting a custom element into a shadow tree in the document of an iframe must enqueue and invoke connectedCallback: NOTRUN
+	Inserting a custom element into a shadow tree in the document of an iframe must enqueue and invoke connectedCallback: FAIL
 	Inserting a custom element into a shadow tree in the document of the template elements must enqueue and invoke connectedCallback: PASS
 	Inserting a custom element into an HTML document created by createDocument must enqueue and invoke connectedCallback: FAIL
-	Inserting a custom element into an HTML document fetched by XHR must enqueue and invoke connectedCallback: NOTRUN
+	Inserting a custom element into an HTML document fetched by XHR must enqueue and invoke connectedCallback: FAIL
 	Inserting a custom element into the document must enqueue and invoke connectedCallback: PASS
-	Inserting a custom element into the document of an iframe must enqueue and invoke connectedCallback: TIMEOUT
+	Inserting a custom element into the document of an iframe must enqueue and invoke connectedCallback: FAIL
 	Inserting a custom element into the document of the template elements must enqueue and invoke connectedCallback: PASS
 	Inserting an ancestor of custom element into a cloned document must enqueue and invoke connectedCallback: FAIL
 	Inserting an ancestor of custom element into a document created by createHTMLDocument must enqueue and invoke connectedCallback: FAIL
 	Inserting an ancestor of custom element into a new document must enqueue and invoke connectedCallback: FAIL
 	Inserting an ancestor of custom element into an HTML document created by createDocument must enqueue and invoke connectedCallback: FAIL
-	Inserting an ancestor of custom element into an HTML document fetched by XHR must enqueue and invoke connectedCallback: NOTRUN
+	Inserting an ancestor of custom element into an HTML document fetched by XHR must enqueue and invoke connectedCallback: FAIL
 	Inserting an ancestor of custom element into the document must enqueue and invoke connectedCallback: PASS
-	Inserting an ancestor of custom element into the document of an iframe must enqueue and invoke connectedCallback: NOTRUN
+	Inserting an ancestor of custom element into the document of an iframe must enqueue and invoke connectedCallback: FAIL
 	Inserting an ancestor of custom element into the document of the template elements must enqueue and invoke connectedCallback: PASS
 	Inserting the shadow host of a custom element into a cloned document must enqueue and invoke connectedCallback: FAIL
 	Inserting the shadow host of a custom element into a document created by createHTMLDocument must enqueue and invoke connectedCallback: FAIL
 	Inserting the shadow host of a custom element into a new document must enqueue and invoke connectedCallback: FAIL
 	Inserting the shadow host of a custom element into an HTML document created by createDocument must enqueue and invoke connectedCallback: FAIL
-	Inserting the shadow host of a custom element into an HTML document fetched by XHR must enqueue and invoke connectedCallback: NOTRUN
+	Inserting the shadow host of a custom element into an HTML document fetched by XHR must enqueue and invoke connectedCallback: FAIL
 	Inserting the shadow host of a custom element into the document must enqueue and invoke connectedCallback: PASS
-	Inserting the shadow host of a custom element into the document of an iframe must enqueue and invoke connectedCallback: NOTRUN
+	Inserting the shadow host of a custom element into the document of an iframe must enqueue and invoke connectedCallback: FAIL
 	Inserting the shadow host of a custom element into the document of the template elements must enqueue and invoke connectedCallback: PASS
 /custom-elements/createElement-reentrant-construction.window.html: OK
 	Re-entrant createElement() of the same element after super(): PASS
 	Re-entrant createElement() of the same element before super(): PASS
 /custom-elements/cross-realm-callback-report-exception.html: TIMEOUT
-/custom-elements/custom-element-reaction-queue.html: TIMEOUT
-	Mutating a undefined custom element while upgrading a custom element must not enqueue or invoke reactions on the mutated element: NOTRUN
-	Mutating another custom element inside adopted callback must invoke all pending callbacks on the mutated element: NOTRUN
-	Upgrading a custom element must invoke attributeChangedCallback and connectedCallback before start upgrading another element: TIMEOUT
-	Upgrading a custom element must not invoke attributeChangedCallback for the attribute that is changed during upgrading: NOTRUN
-	Upgrading a custom element must not invoke disconnectedCallback if the element is disconnected during upgrading: NOTRUN
-	Upgrading a disconnected custom element must not invoke connectedCallback if the element is connected during upgrading: NOTRUN
+/custom-elements/custom-element-reaction-queue.html: OK
+	Mutating a undefined custom element while upgrading a custom element must not enqueue or invoke reactions on the mutated element: FAIL
+	Mutating another custom element inside adopted callback must invoke all pending callbacks on the mutated element: FAIL
+	Upgrading a custom element must invoke attributeChangedCallback and connectedCallback before start upgrading another element: FAIL
+	Upgrading a custom element must not invoke attributeChangedCallback for the attribute that is changed during upgrading: FAIL
+	Upgrading a custom element must not invoke disconnectedCallback if the element is disconnected during upgrading: FAIL
+	Upgrading a disconnected custom element must not invoke connectedCallback if the element is connected during upgrading: FAIL
 /custom-elements/customized-built-in-constructor-exceptions.html: OK
 	Appending children in customized built-in constructor should work: FAIL
 	Make sure customized <input> element doesnt crash: FAIL
 	Make sure customized <input> element that sets attributes doesnt crash: FAIL
 	Throwing exception in customized built-in constructor should not crash and should return correct element type (form): FAIL
 	Throwing exception in customized built-in constructor should not crash and should return correct element type (video): FAIL
-/custom-elements/disconnected-callbacks.html: TIMEOUT
+/custom-elements/disconnected-callbacks.html: OK
 	Removing a custom element from a cloned document must enqueue and invoke disconnectedCallback: FAIL
 	Removing a custom element from a detached shadow tree that belongs to a cloned document must not enqueue and invoke disconnectedCallback: FAIL
 	Removing a custom element from a detached shadow tree that belongs to a document created by createHTMLDocument must not enqueue and invoke disconnectedCallback: PASS
 	Removing a custom element from a detached shadow tree that belongs to a new document must not enqueue and invoke disconnectedCallback: FAIL
 	Removing a custom element from a detached shadow tree that belongs to an HTML document created by createDocument must not enqueue and invoke disconnectedCallback: FAIL
-	Removing a custom element from a detached shadow tree that belongs to an HTML document fetched by XHR must not enqueue and invoke disconnectedCallback: NOTRUN
+	Removing a custom element from a detached shadow tree that belongs to an HTML document fetched by XHR must not enqueue and invoke disconnectedCallback: FAIL
 	Removing a custom element from a detached shadow tree that belongs to the document must not enqueue and invoke disconnectedCallback: PASS
-	Removing a custom element from a detached shadow tree that belongs to the document of an iframe must not enqueue and invoke disconnectedCallback: NOTRUN
+	Removing a custom element from a detached shadow tree that belongs to the document of an iframe must not enqueue and invoke disconnectedCallback: FAIL
 	Removing a custom element from a detached shadow tree that belongs to the document of the template elements must not enqueue and invoke disconnectedCallback: PASS
 	Removing a custom element from a document created by createHTMLDocument must enqueue and invoke disconnectedCallback: FAIL
 	Removing a custom element from a new document must enqueue and invoke disconnectedCallback: FAIL
@@ -593,30 +593,30 @@
 	Removing a custom element from a shadow tree in a document created by createHTMLDocument must enqueue and invoke disconnectedCallback: FAIL
 	Removing a custom element from a shadow tree in a new document must enqueue and invoke disconnectedCallback: FAIL
 	Removing a custom element from a shadow tree in an HTML document created by createDocument must enqueue and invoke disconnectedCallback: FAIL
-	Removing a custom element from a shadow tree in an HTML document fetched by XHR must enqueue and invoke disconnectedCallback: NOTRUN
+	Removing a custom element from a shadow tree in an HTML document fetched by XHR must enqueue and invoke disconnectedCallback: FAIL
 	Removing a custom element from a shadow tree in the document must enqueue and invoke disconnectedCallback: PASS
-	Removing a custom element from a shadow tree in the document of an iframe must enqueue and invoke disconnectedCallback: NOTRUN
+	Removing a custom element from a shadow tree in the document of an iframe must enqueue and invoke disconnectedCallback: FAIL
 	Removing a custom element from a shadow tree in the document of the template elements must enqueue and invoke disconnectedCallback: PASS
 	Removing a custom element from an HTML document created by createDocument must enqueue and invoke disconnectedCallback: FAIL
-	Removing a custom element from an HTML document fetched by XHR must enqueue and invoke disconnectedCallback: NOTRUN
+	Removing a custom element from an HTML document fetched by XHR must enqueue and invoke disconnectedCallback: FAIL
 	Removing a custom element from the document must enqueue and invoke disconnectedCallback: PASS
-	Removing a custom element from the document of an iframe must enqueue and invoke disconnectedCallback: TIMEOUT
+	Removing a custom element from the document of an iframe must enqueue and invoke disconnectedCallback: FAIL
 	Removing a custom element from the document of the template elements must enqueue and invoke disconnectedCallback: PASS
 	Removing an ancestor of custom element from a cloned document must enqueue and invoke disconnectedCallback: FAIL
 	Removing an ancestor of custom element from a document created by createHTMLDocument must enqueue and invoke disconnectedCallback: FAIL
 	Removing an ancestor of custom element from a new document must enqueue and invoke disconnectedCallback: FAIL
 	Removing an ancestor of custom element from an HTML document created by createDocument must enqueue and invoke disconnectedCallback: FAIL
-	Removing an ancestor of custom element from an HTML document fetched by XHR must enqueue and invoke disconnectedCallback: NOTRUN
+	Removing an ancestor of custom element from an HTML document fetched by XHR must enqueue and invoke disconnectedCallback: FAIL
 	Removing an ancestor of custom element from the document must enqueue and invoke disconnectedCallback: PASS
-	Removing an ancestor of custom element from the document of an iframe must enqueue and invoke disconnectedCallback: NOTRUN
+	Removing an ancestor of custom element from the document of an iframe must enqueue and invoke disconnectedCallback: FAIL
 	Removing an ancestor of custom element from the document of the template elements must enqueue and invoke disconnectedCallback: PASS
 	Removing the shadow host of a custom element from aa cloned document must enqueue and invoke disconnectedCallback: FAIL
 	Removing the shadow host of a custom element from aa document created by createHTMLDocument must enqueue and invoke disconnectedCallback: FAIL
 	Removing the shadow host of a custom element from aa new document must enqueue and invoke disconnectedCallback: FAIL
 	Removing the shadow host of a custom element from aan HTML document created by createDocument must enqueue and invoke disconnectedCallback: FAIL
-	Removing the shadow host of a custom element from aan HTML document fetched by XHR must enqueue and invoke disconnectedCallback: NOTRUN
+	Removing the shadow host of a custom element from aan HTML document fetched by XHR must enqueue and invoke disconnectedCallback: FAIL
 	Removing the shadow host of a custom element from athe document must enqueue and invoke disconnectedCallback: PASS
-	Removing the shadow host of a custom element from athe document of an iframe must enqueue and invoke disconnectedCallback: NOTRUN
+	Removing the shadow host of a custom element from athe document of an iframe must enqueue and invoke disconnectedCallback: FAIL
 	Removing the shadow host of a custom element from athe document of the template elements must enqueue and invoke disconnectedCallback: PASS
 /custom-elements/element-internals-aria-element-reflection-shadow-including-root.tentative.html: OK
 	ARIA element reflection on ElementInternals returns an element in the custom element's own shadow tree: PASS
@@ -660,15 +660,15 @@
 	ElementInternals.shadowRoot allows access to closed shadow root: PASS
 	ElementInternals.shadowRoot allows access to open shadow root: PASS
 	ElementInternals.shadowRoot doesn't reveal pre-attached closed shadowRoot: FAIL
-/custom-elements/enqueue-custom-element-callback-reactions-inside-another-callback.html: TIMEOUT
-	Adopting an element with adoptingCallback while it has a connectedCallback in its custom element reaction queue must result in connectedCallback getting invoked before the adoption completes: NOTRUN
-	Adopting an element without adoptingCallback while it has a connectedCallback in its custom element reaction queue must not result in connectedCallback getting invoked before the adoption completes: NOTRUN
-	Connecting a element with connectedCallback while it has a disconnectedCallback in its custom element reaction queue must result in disconnectedCallback getting invoked before the insertion completes: NOTRUN
-	Connecting an element without connectedCallback while it has a disconnectedCallback in its custom element reaction queue must not result in disconnectedCallback getting invoked before the insertion completes: NOTRUN
-	Disconnecting an element with disconnectedCallback while it has a connectedCallback in its custom element reaction queue must result in connectedCallback getting invoked before the removal completes: TIMEOUT
-	Disconnecting an element without disconnectedCallback while it has a connectedCallback in its custom element reaction queue must not result in connectedCallback getting invoked before the removal completes: NOTRUN
-	Setting an observed attribute on an element with attributeChangedCallback while it has a connectedCallback in its custom element reaction queue must not result in connectedCallback getting invoked before the attribute change completes: NOTRUN
-	Setting an observed attribute on an element with attributeChangedCallback while it has a connectedCallback in its custom element reaction queue must result in connectedCallback getting invoked before the attribute change completes: NOTRUN
+/custom-elements/enqueue-custom-element-callback-reactions-inside-another-callback.html: OK
+	Adopting an element with adoptingCallback while it has a connectedCallback in its custom element reaction queue must result in connectedCallback getting invoked before the adoption completes: FAIL
+	Adopting an element without adoptingCallback while it has a connectedCallback in its custom element reaction queue must not result in connectedCallback getting invoked before the adoption completes: FAIL
+	Connecting a element with connectedCallback while it has a disconnectedCallback in its custom element reaction queue must result in disconnectedCallback getting invoked before the insertion completes: FAIL
+	Connecting an element without connectedCallback while it has a disconnectedCallback in its custom element reaction queue must not result in disconnectedCallback getting invoked before the insertion completes: FAIL
+	Disconnecting an element with disconnectedCallback while it has a connectedCallback in its custom element reaction queue must result in connectedCallback getting invoked before the removal completes: FAIL
+	Disconnecting an element without disconnectedCallback while it has a connectedCallback in its custom element reaction queue must not result in connectedCallback getting invoked before the removal completes: FAIL
+	Setting an observed attribute on an element with attributeChangedCallback while it has a connectedCallback in its custom element reaction queue must not result in connectedCallback getting invoked before the attribute change completes: FAIL
+	Setting an observed attribute on an element with attributeChangedCallback while it has a connectedCallback in its custom element reaction queue must result in connectedCallback getting invoked before the attribute change completes: FAIL
 /custom-elements/form-associated/ElementInternals-NotSupportedError.html: OK
 	Form-related operations and attributes should throw NotSupportedErrors for non-form-associated custom elements.: FAIL
 /custom-elements/form-associated/ElementInternals-behavior-accessibility.tentative.html: ERROR
@@ -809,28 +809,28 @@
 	ShadowRoot doesn't have importNode or createElement[NS]: PASS
 	attachShadow() does not recognize a registry member: PASS
 	document.registerElement should not exist: PASS
-/custom-elements/htmlconstructor/newtarget-customized-builtins.html: TIMEOUT
-	HTMLParagraphElement constructor must not get .prototype until it finishes its extends sanity checks, calling proxy constructor directly: NOTRUN
-	HTMLParagraphElement constructor must not get .prototype until it finishes its extends sanity checks, calling via Reflect: NOTRUN
-	If prototype is not object (5), derives the fallback from NewTarget's GetFunctionRealm (customized built-in elements): NOTRUN
-	If prototype is not object (5), derives the fallback from NewTarget's realm (customized built-in elements): NOTRUN
-	If prototype is not object (null), derives the fallback from NewTarget's GetFunctionRealm (customized built-in elements): NOTRUN
-	If prototype is not object (null), derives the fallback from NewTarget's realm (customized built-in elements): TIMEOUT
-	If prototype is not object (string), derives the fallback from NewTarget's GetFunctionRealm (customized built-in elements): NOTRUN
-	If prototype is not object (string), derives the fallback from NewTarget's realm (customized built-in elements): NOTRUN
-	If prototype is not object (undefined), derives the fallback from NewTarget's GetFunctionRealm (customized built-in elements): NOTRUN
-	If prototype is not object (undefined), derives the fallback from NewTarget's realm (customized built-in elements): NOTRUN
-/custom-elements/htmlconstructor/newtarget.html: TIMEOUT
-	If prototype is not object (5), derives the fallback from NewTarget's GetFunctionRealm (autonomous custom elements): NOTRUN
-	If prototype is not object (5), derives the fallback from NewTarget's realm (autonomous custom elements): NOTRUN
-	If prototype is not object (null), derives the fallback from NewTarget's GetFunctionRealm (autonomous custom elements): NOTRUN
-	If prototype is not object (null), derives the fallback from NewTarget's realm (autonomous custom elements): NOTRUN
-	If prototype is not object (string), derives the fallback from NewTarget's GetFunctionRealm (autonomous custom elements): NOTRUN
-	If prototype is not object (string), derives the fallback from NewTarget's realm (autonomous custom elements): NOTRUN
-	If prototype is not object (undefined), derives the fallback from NewTarget's GetFunctionRealm (autonomous custom elements): NOTRUN
-	If prototype is not object (undefined), derives the fallback from NewTarget's realm (autonomous custom elements): NOTRUN
-	Rethrow any exceptions thrown while getting the prototype: NOTRUN
-	Use NewTarget's prototype, not the one stored at definition time: TIMEOUT
+/custom-elements/htmlconstructor/newtarget-customized-builtins.html: OK
+	HTMLParagraphElement constructor must not get .prototype until it finishes its extends sanity checks, calling proxy constructor directly: FAIL
+	HTMLParagraphElement constructor must not get .prototype until it finishes its extends sanity checks, calling via Reflect: FAIL
+	If prototype is not object (5), derives the fallback from NewTarget's GetFunctionRealm (customized built-in elements): FAIL
+	If prototype is not object (5), derives the fallback from NewTarget's realm (customized built-in elements): FAIL
+	If prototype is not object (null), derives the fallback from NewTarget's GetFunctionRealm (customized built-in elements): FAIL
+	If prototype is not object (null), derives the fallback from NewTarget's realm (customized built-in elements): FAIL
+	If prototype is not object (string), derives the fallback from NewTarget's GetFunctionRealm (customized built-in elements): FAIL
+	If prototype is not object (string), derives the fallback from NewTarget's realm (customized built-in elements): FAIL
+	If prototype is not object (undefined), derives the fallback from NewTarget's GetFunctionRealm (customized built-in elements): FAIL
+	If prototype is not object (undefined), derives the fallback from NewTarget's realm (customized built-in elements): FAIL
+/custom-elements/htmlconstructor/newtarget.html: OK
+	If prototype is not object (5), derives the fallback from NewTarget's GetFunctionRealm (autonomous custom elements): FAIL
+	If prototype is not object (5), derives the fallback from NewTarget's realm (autonomous custom elements): FAIL
+	If prototype is not object (null), derives the fallback from NewTarget's GetFunctionRealm (autonomous custom elements): FAIL
+	If prototype is not object (null), derives the fallback from NewTarget's realm (autonomous custom elements): FAIL
+	If prototype is not object (string), derives the fallback from NewTarget's GetFunctionRealm (autonomous custom elements): FAIL
+	If prototype is not object (string), derives the fallback from NewTarget's realm (autonomous custom elements): FAIL
+	If prototype is not object (undefined), derives the fallback from NewTarget's GetFunctionRealm (autonomous custom elements): FAIL
+	If prototype is not object (undefined), derives the fallback from NewTarget's realm (autonomous custom elements): FAIL
+	Rethrow any exceptions thrown while getting the prototype: FAIL
+	Use NewTarget's prototype, not the one stored at definition time: FAIL
 /custom-elements/microtasks-and-constructors.html: OK
 	Microtasks evaluate afterward when the stack is not empty due to upgrades: PASS
 	Microtasks evaluate afterward when the stack is not empty using createElement(): PASS
@@ -879,11 +879,11 @@
 	"is" value should be serialized if the custom element has no "is" content attribute: FAIL
 /custom-elements/parser/xml-parser-custom-element-reparents-during-construction.xhtml: ERROR
 /custom-elements/perform-microtask-checkpoint-before-construction-xml-parser.xhtml: ERROR
-/custom-elements/perform-microtask-checkpoint-before-construction.html: TIMEOUT
-	HTML parser must perform a microtask checkpoint before constructing a custom element: TIMEOUT
-	HTML parser must perform a microtask checkpoint before constructing a custom element during the adoption agency algorithm: NOTRUN
-/custom-elements/pseudo-class-defined-customized-builtins.html: TIMEOUT
-/custom-elements/pseudo-class-defined.html: TIMEOUT
+/custom-elements/perform-microtask-checkpoint-before-construction.html: OK
+	HTML parser must perform a microtask checkpoint before constructing a custom element: FAIL
+	HTML parser must perform a microtask checkpoint before constructing a custom element during the adoption agency algorithm: FAIL
+/custom-elements/pseudo-class-defined-customized-builtins.html: ERROR
+/custom-elements/pseudo-class-defined.html: ERROR
 	this.matches(:defined) should not match during an upgrade: PASS
 /custom-elements/range-and-constructors.html: OK
 	Range.cloneContents should invoke constructor in tree order: FAIL
@@ -1074,19 +1074,19 @@
 	the stringifier of DOMTokenList must not enqueue an attributeChanged reaction when mutating the value of an unobserved attribute: PASS
 	toggle on DOMTokenList must enqueue an attributeChanged reaction when adding a value to an attribute: PASS
 	toggle on DOMTokenList must enqueue an attributeChanged reaction when removing a value from an attribute: PASS
-/custom-elements/reactions/Document.html: TIMEOUT
-	adoptNode on Document must enqueue an adopted reaction when importing a custom element: NOTRUN
-	body on Document must enqueue connectedCallback when inserting a custom element: NOTRUN
-	body on Document must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	execCommand on Document must enqueue a disconnected reaction when deleting a custom element from a contenteditable element: NOTRUN
-	importNode on Document must construct a new custom element when importing a custom element from a template: NOTRUN
-	importNode on Document must not construct a new custom element when importing a custom element into a window-less document: TIMEOUT
-	open on Document must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	title on Document must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	write on Document must enqueue connectedCallback after constructing a custom element: NOTRUN
-	write on Document must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	writeln on Document must enqueue connectedCallback after constructing a custom element: NOTRUN
-	writeln on Document must enqueue disconnectedCallback when removing a custom element: NOTRUN
+/custom-elements/reactions/Document.html: OK
+	adoptNode on Document must enqueue an adopted reaction when importing a custom element: FAIL
+	body on Document must enqueue connectedCallback when inserting a custom element: FAIL
+	body on Document must enqueue disconnectedCallback when removing a custom element: FAIL
+	execCommand on Document must enqueue a disconnected reaction when deleting a custom element from a contenteditable element: FAIL
+	importNode on Document must construct a new custom element when importing a custom element from a template: FAIL
+	importNode on Document must not construct a new custom element when importing a custom element into a window-less document: FAIL
+	open on Document must enqueue disconnectedCallback when removing a custom element: FAIL
+	title on Document must enqueue disconnectedCallback when removing a custom element: FAIL
+	write on Document must enqueue connectedCallback after constructing a custom element: FAIL
+	write on Document must enqueue disconnectedCallback when removing a custom element: FAIL
+	writeln on Document must enqueue connectedCallback after constructing a custom element: FAIL
+	writeln on Document must enqueue disconnectedCallback when removing a custom element: FAIL
 /custom-elements/reactions/Element.html: OK
 	className on Element must enqueue an attributeChanged reaction when adding class content attribute: PASS
 	className on Element must enqueue an attributeChanged reaction when replacing an existing attribute: PASS
@@ -1138,8 +1138,8 @@
 /custom-elements/reactions/ElementContentEditable.html: OK
 	contentEditable on ElementContentEditable must enqueue an attributeChanged reaction when adding contenteditable content attribute: PASS
 	contentEditable on ElementContentEditable must enqueue an attributeChanged reaction when replacing an existing attribute: PASS
-/custom-elements/reactions/HTMLAnchorElement.html: TIMEOUT
-	text on HTMLAnchorElement must enqueue disconnectedCallback when removing a custom element: TIMEOUT
+/custom-elements/reactions/HTMLAnchorElement.html: OK
+	text on HTMLAnchorElement must enqueue disconnectedCallback when removing a custom element: FAIL
 /custom-elements/reactions/HTMLElement.html: OK
 	accessKey on HTMLElement must enqueue an attributeChanged reaction when adding accesskey content attribute: PASS
 	accessKey on HTMLElement must enqueue an attributeChanged reaction when replacing an existing attribute: PASS
@@ -1163,45 +1163,45 @@
 	title on HTMLElement must enqueue an attributeChanged reaction when replacing an existing attribute: PASS
 	translate on HTMLElement must enqueue an attributeChanged reaction when adding translate content attribute: PASS
 	translate on HTMLElement must enqueue an attributeChanged reaction when replacing an existing attribute: PASS
-/custom-elements/reactions/HTMLOptionElement.html: TIMEOUT
-	selected on HTMLOptionElement must enqueue connectedCallback when cloning a custom element into selectedcontent: NOTRUN
-	text on HTMLOptionElement must enqueue disconnectedCallback when removing a custom element: TIMEOUT
-/custom-elements/reactions/HTMLOptionsCollection.html: TIMEOUT
-	The indexed setter on HTMLOptionsCollection must enqueue connectedCallback when inserting a custom element: NOTRUN
-	The indexed setter on HTMLOptionsCollection must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	add on HTMLOptionsCollection must enqueue connectedCallback when inserting a custom element: NOTRUN
-	length on HTMLOptionsCollection must enqueue disconnectedCallback when removing a custom element: TIMEOUT
-	remove on HTMLOptionsCollection must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	selectedIndex on HTMLOptionsCollection must enqueue connectedCallback when cloning a custom element into selectedcontent: NOTRUN
-/custom-elements/reactions/HTMLOutputElement.html: TIMEOUT
-	defaultValue on HTMLOutputElement must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	value on HTMLOutputElement must enqueue disconnectedCallback when removing a custom element: TIMEOUT
-/custom-elements/reactions/HTMLSelectElement.html: TIMEOUT
-	The indexed setter on HTMLSelectElement must enqueue connectedCallback when inserting a custom element: NOTRUN
-	The indexed setter on HTMLSelectElement must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	add on HTMLSelectElement must enqueue connectedCallback when inserting a custom element: NOTRUN
-	length on HTMLSelectElement must enqueue disconnectedCallback when removing a custom element: TIMEOUT
-	remove on HTMLSelectElement must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	selectedIndex on HTMLSelectElement must enqueue connectedCallback when cloning a custom element into selectedcontent: NOTRUN
-	value on HTMLSelectElement must enqueue connectedCallback when cloning a custom element into selectedcontent: NOTRUN
-/custom-elements/reactions/HTMLTableElement.html: TIMEOUT
-	caption on HTMLTableElement must enqueue connectedCallback when inserting a custom element: TIMEOUT
-	caption on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	deleteCaption() on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	deleteRow() on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	deleteTFoot() on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	deleteTHead() on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	tFoot on HTMLTableElement must enqueue connectedCallback when inserting a custom element: NOTRUN
-	tFoot on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	tHead on HTMLTableElement must enqueue connectedCallback when inserting a custom element: NOTRUN
-	tHead on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: NOTRUN
-/custom-elements/reactions/HTMLTableRowElement.html: TIMEOUT
-	deleteCell() on HTMLTableRowElement must enqueue disconnectedCallback when removing a custom element: TIMEOUT
-/custom-elements/reactions/HTMLTableSectionElement.html: TIMEOUT
-	deleteRow() on HTMLTableSectionElement on tfoot must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	deleteRow() on HTMLTableSectionElement on thead must enqueue disconnectedCallback when removing a custom element: TIMEOUT
-/custom-elements/reactions/HTMLTitleElement.html: TIMEOUT
-	text on HTMLTitleElement must enqueue disconnectedCallback when removing a custom element: TIMEOUT
+/custom-elements/reactions/HTMLOptionElement.html: OK
+	selected on HTMLOptionElement must enqueue connectedCallback when cloning a custom element into selectedcontent: FAIL
+	text on HTMLOptionElement must enqueue disconnectedCallback when removing a custom element: FAIL
+/custom-elements/reactions/HTMLOptionsCollection.html: OK
+	The indexed setter on HTMLOptionsCollection must enqueue connectedCallback when inserting a custom element: FAIL
+	The indexed setter on HTMLOptionsCollection must enqueue disconnectedCallback when removing a custom element: FAIL
+	add on HTMLOptionsCollection must enqueue connectedCallback when inserting a custom element: FAIL
+	length on HTMLOptionsCollection must enqueue disconnectedCallback when removing a custom element: FAIL
+	remove on HTMLOptionsCollection must enqueue disconnectedCallback when removing a custom element: FAIL
+	selectedIndex on HTMLOptionsCollection must enqueue connectedCallback when cloning a custom element into selectedcontent: FAIL
+/custom-elements/reactions/HTMLOutputElement.html: OK
+	defaultValue on HTMLOutputElement must enqueue disconnectedCallback when removing a custom element: FAIL
+	value on HTMLOutputElement must enqueue disconnectedCallback when removing a custom element: FAIL
+/custom-elements/reactions/HTMLSelectElement.html: OK
+	The indexed setter on HTMLSelectElement must enqueue connectedCallback when inserting a custom element: FAIL
+	The indexed setter on HTMLSelectElement must enqueue disconnectedCallback when removing a custom element: FAIL
+	add on HTMLSelectElement must enqueue connectedCallback when inserting a custom element: FAIL
+	length on HTMLSelectElement must enqueue disconnectedCallback when removing a custom element: FAIL
+	remove on HTMLSelectElement must enqueue disconnectedCallback when removing a custom element: FAIL
+	selectedIndex on HTMLSelectElement must enqueue connectedCallback when cloning a custom element into selectedcontent: FAIL
+	value on HTMLSelectElement must enqueue connectedCallback when cloning a custom element into selectedcontent: FAIL
+/custom-elements/reactions/HTMLTableElement.html: OK
+	caption on HTMLTableElement must enqueue connectedCallback when inserting a custom element: FAIL
+	caption on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: FAIL
+	deleteCaption() on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: FAIL
+	deleteRow() on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: FAIL
+	deleteTFoot() on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: FAIL
+	deleteTHead() on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: FAIL
+	tFoot on HTMLTableElement must enqueue connectedCallback when inserting a custom element: FAIL
+	tFoot on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: FAIL
+	tHead on HTMLTableElement must enqueue connectedCallback when inserting a custom element: FAIL
+	tHead on HTMLTableElement must enqueue disconnectedCallback when removing a custom element: FAIL
+/custom-elements/reactions/HTMLTableRowElement.html: OK
+	deleteCell() on HTMLTableRowElement must enqueue disconnectedCallback when removing a custom element: FAIL
+/custom-elements/reactions/HTMLTableSectionElement.html: OK
+	deleteRow() on HTMLTableSectionElement on tfoot must enqueue disconnectedCallback when removing a custom element: FAIL
+	deleteRow() on HTMLTableSectionElement on thead must enqueue disconnectedCallback when removing a custom element: FAIL
+/custom-elements/reactions/HTMLTitleElement.html: OK
+	text on HTMLTitleElement must enqueue disconnectedCallback when removing a custom element: FAIL
 /custom-elements/reactions/NamedNodeMap.html: OK
 	removeNamedItem on NamedNodeMap must enqueue an attributeChanged reaction when removing an existing attribute: PASS
 	removeNamedItem on NamedNodeMap must not enqueue an attributeChanged reaction when removing an existing unobserved attribute: PASS
@@ -1250,10 +1250,10 @@
 	surroundContents on Range must enqueue a disconnected reaction, an adopted reaction, and a connected reaction when the custom element was in another document: FAIL
 /custom-elements/reactions/Selection.html: OK
 	deleteFromDocument on Selection must enqueue a disconnected reaction: PASS
-/custom-elements/reactions/ShadowRoot.html: TIMEOUT
-	innerHTML on ShadowRoot must enqueue connectedCallback on newly upgraded custom elements when the shadow root is connected: NOTRUN
-	innerHTML on ShadowRoot must enqueue disconnectedCallback when removing a custom element: NOTRUN
-	innerHTML on ShadowRoot must upgrade a custom element: TIMEOUT
+/custom-elements/reactions/ShadowRoot.html: OK
+	innerHTML on ShadowRoot must enqueue connectedCallback on newly upgraded custom elements when the shadow root is connected: FAIL
+	innerHTML on ShadowRoot must enqueue disconnectedCallback when removing a custom element: FAIL
+	innerHTML on ShadowRoot must upgrade a custom element: FAIL
 /custom-elements/reactions/customized-builtins/HTMLAreaElement.html: OK
 	alt on HTMLAreaElement must enqueue an attributeChanged reaction when adding a new attribute: FAIL
 	alt on HTMLAreaElement must enqueue an attributeChanged reaction when replacing an existing attribute: FAIL
@@ -1485,8 +1485,8 @@
 /custom-elements/reactions/customized-builtins/HTMLTimeElement.html: OK
 	dateTime on HTMLTimeElement must enqueue an attributeChanged reaction when adding datetime content attribute: FAIL
 	dateTime on HTMLTimeElement must enqueue an attributeChanged reaction when replacing an existing attribute: FAIL
-/custom-elements/reactions/with-exceptions.html: TIMEOUT
-	Reaction must run even after the exception is thrown: TIMEOUT
+/custom-elements/reactions/with-exceptions.html: OK
+	Reaction must run even after the exception is thrown: FAIL
 /custom-elements/registries/Construct.html: OK
 	A constructor creating an element from another registry before or after super call should work: FAIL
 	A constructor uses the global registry to create an element: FAIL
@@ -1671,24 +1671,24 @@
 	initialize() of global registry should throw for nodes from another document: FAIL
 /custom-elements/registries/initial-about-blank.window.html: OK
 	Each navigable document has its own registry: FAIL
-/custom-elements/registries/per-document.html: TIMEOUT
+/custom-elements/registries/per-document.html: OK
 	Discarding the browsing context must not change window.customElements: FAIL
 	Navigating from the initial about:blank must replace window.customElements: FAIL
-	document.open() must not replace window.customElements: TIMEOUT
+	document.open() must not replace window.customElements: FAIL
 /custom-elements/registries/pseudo-class-defined.window.html: OK
 	"custom" :defined doesn't care about your registry: FAIL
 	"custom" :defined should apply after initialize: FAIL
 	"uncustomized" :defined doesn't care about your registry': FAIL
 /custom-elements/registries/scoped-custom-element-registry-customelementregistry-attribute-in-xhtml.xhtml: ERROR
-/custom-elements/registries/scoped-custom-element-registry-customelementregistry-attribute.html: TIMEOUT
-	Body with customelementregistry attribute during initial parse should have null registry and propagate to children: TIMEOUT
-	Body with customelementregistry in a complete document structure should have null registry: NOTRUN
+/custom-elements/registries/scoped-custom-element-registry-customelementregistry-attribute.html: OK
+	Body with customelementregistry attribute during initial parse should have null registry and propagate to children: FAIL
+	Body with customelementregistry in a complete document structure should have null registry: FAIL
 	Cloning a builtin element with null regsitry should create an element with null registry: FAIL
 	Cloning a custom element candidate with null regsitry should create an element with null registry: FAIL
 	Cloning a custom element with null regsitry should create an element with null registry: FAIL
-	Custom element candidate child of body with customelementregistry should have null registry during initial parse: NOTRUN
+	Custom element candidate child of body with customelementregistry should have null registry during initial parse: FAIL
 	Descendants of an element with customelementregistry should use null registry: FAIL
-	Descendants of body with customelementregistry should all have null registry during initial parse: NOTRUN
+	Descendants of body with customelementregistry should all have null registry during initial parse: FAIL
 	HTML parser should create a builtin element with null registry if customelementregistry is set: FAIL
 	HTML parser should create a custom element candidate with null registry if customelementregistry is set: FAIL
 	HTML parser should create a custom element with null registry if customelementregistry is set: FAIL
@@ -1721,7 +1721,7 @@
 	Null registry element should gain effective global registry of scoped registry from its parent upon adoption.: FAIL
 	adoptNode then inserting into a scoped shadow root should preserve global registry: FAIL
 	customElementRegistry of an upgrade candidate created in a document without a browsing context uses null regsitry by default: FAIL
-/custom-elements/registries/scoped-registry-define-upgrade-criteria.html: OK
+/custom-elements/registries/scoped-registry-define-upgrade-criteria.html: ERROR
 	Adding definition to global registry should affect shadow roots also using global registry: PASS
 	Adding definition to global registry should not affect shadow roots using scoped registry: FAIL
 	Adding definition to scoped registry affects associated shadow roots in all iframes: FAIL
@@ -3797,36 +3797,36 @@
 	:state(foo) serialization: FAIL
 	deprecated :--state parsing failures: PASS
 /custom-elements/throw-on-dynamic-markup-insertion-counter-construct-xml-parser.xhtml: ERROR
-/custom-elements/throw-on-dynamic-markup-insertion-counter-construct.html: TIMEOUT
-	document.close() must throw an InvalidStateError when synchronously constructing a custom element: NOTRUN
-	document.close() of another document must not throw an InvalidStateError when synchronously constructing a custom element: NOTRUN
-	document.open("text/html") must throw an InvalidStateError when synchronously constructing a custom element: NOTRUN
-	document.open("text/html") of another document must not throw an InvalidStateError when synchronously constructing a custom element: NOTRUN
-	document.open() must throw an InvalidStateError when synchronously constructing a custom element: TIMEOUT
-	document.open() of another document must not throw an InvalidStateError when synchronously constructing a custom element: NOTRUN
-	document.open(URL) must NOT throw an InvalidStateError when synchronously constructing a custom element: NOTRUN
-	document.write must throw an InvalidStateError when synchronously constructing a custom element: NOTRUN
-	document.write of another document must not throw an InvalidStateError when synchronously constructing a custom element: NOTRUN
-	document.writeln must throw an InvalidStateError when synchronously constructing a custom element: NOTRUN
-	document.writeln of another document must not throw an InvalidStateError when synchronously constructing a custom element: NOTRUN
+/custom-elements/throw-on-dynamic-markup-insertion-counter-construct.html: OK
+	document.close() must throw an InvalidStateError when synchronously constructing a custom element: FAIL
+	document.close() of another document must not throw an InvalidStateError when synchronously constructing a custom element: FAIL
+	document.open("text/html") must throw an InvalidStateError when synchronously constructing a custom element: FAIL
+	document.open("text/html") of another document must not throw an InvalidStateError when synchronously constructing a custom element: FAIL
+	document.open() must throw an InvalidStateError when synchronously constructing a custom element: FAIL
+	document.open() of another document must not throw an InvalidStateError when synchronously constructing a custom element: FAIL
+	document.open(URL) must NOT throw an InvalidStateError when synchronously constructing a custom element: FAIL
+	document.write must throw an InvalidStateError when synchronously constructing a custom element: FAIL
+	document.write of another document must not throw an InvalidStateError when synchronously constructing a custom element: FAIL
+	document.writeln must throw an InvalidStateError when synchronously constructing a custom element: FAIL
+	document.writeln of another document must not throw an InvalidStateError when synchronously constructing a custom element: FAIL
 /custom-elements/throw-on-dynamic-markup-insertion-counter-reactions-xml-parser.xhtml: ERROR
-/custom-elements/throw-on-dynamic-markup-insertion-counter-reactions.html: TIMEOUT
-	document.close() must throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: NOTRUN
-	document.close() of another document must not throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: NOTRUN
-	document.open("text/html") must throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: NOTRUN
-	document.open("text/html") of another document must not throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: NOTRUN
-	document.open() must throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: TIMEOUT
-	document.open() of another document must not throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: NOTRUN
-	document.open(URL) must NOT throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: NOTRUN
-	document.write must throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: NOTRUN
-	document.write of another document must not throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: NOTRUN
-	document.writeln must throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: NOTRUN
-	document.writeln of another document must not throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: NOTRUN
-/custom-elements/upgrading.html: TIMEOUT
-	"define" in the document of an iframe must enqueue a custom element upgrade reaction on a connected unresolved custom element: NOTRUN
-	"define" in the document of an iframe must not enqueue a custom element upgrade reaction on a disconnected unresolved custom element: NOTRUN
-	Adopting (and leaving disconnceted) an unresolved custom element into the document of an iframe must not enqueue a custom element upgrade reaction: NOTRUN
-	Adopting and inserting an unresolved custom element into the document of an iframe must enqueue a custom element upgrade reaction: NOTRUN
+/custom-elements/throw-on-dynamic-markup-insertion-counter-reactions.html: OK
+	document.close() must throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
+	document.close() of another document must not throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
+	document.open("text/html") must throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
+	document.open("text/html") of another document must not throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
+	document.open() must throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
+	document.open() of another document must not throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
+	document.open(URL) must NOT throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
+	document.write must throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
+	document.write of another document must not throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
+	document.writeln must throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
+	document.writeln of another document must not throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
+/custom-elements/upgrading.html: OK
+	"define" in the document of an iframe must enqueue a custom element upgrade reaction on a connected unresolved custom element: FAIL
+	"define" in the document of an iframe must not enqueue a custom element upgrade reaction on a disconnected unresolved custom element: FAIL
+	Adopting (and leaving disconnceted) an unresolved custom element into the document of an iframe must not enqueue a custom element upgrade reaction: FAIL
+	Adopting and inserting an unresolved custom element into the document of an iframe must enqueue a custom element upgrade reaction: FAIL
 	Creating an element in a cloned document and adopting back to a document with browsing context must enqueue a custom element upgrade reaction: FAIL
 	Creating an element in a cloned document and inserting into the document must not enqueue a custom element upgrade reaction: FAIL
 	Creating an element in a cloned document must not enqueue a custom element upgrade reaction because the document does not have a browsing context: FAIL
@@ -3842,40 +3842,40 @@
 	Creating an element in an HTML document fetched by XHR and adopting back to a document with browsing context must enqueue a custom element upgrade reaction: FAIL
 	Creating an element in an HTML document fetched by XHR and inserting into the document must not enqueue a custom element upgrade reaction: FAIL
 	Creating an element in an HTML document fetched by XHR must not enqueue a custom element upgrade reaction because the document does not have a browsing context: FAIL
-	Creating an element in the document of an iframe must enqueue a custom element upgrade reaction if there is a matching definition: NOTRUN
-	Creating an element in the document of an iframe must not enqueue a custom element upgrade reaction if there is no matching definition: TIMEOUT
+	Creating an element in the document of an iframe must enqueue a custom element upgrade reaction if there is a matching definition: FAIL
+	Creating an element in the document of an iframe must not enqueue a custom element upgrade reaction if there is no matching definition: FAIL
 	Creating an element in the document of the template elements and adopting back to a document with browsing context must enqueue a custom element upgrade reaction: PASS
 	Creating an element in the document of the template elements and inserting into the document must not enqueue a custom element upgrade reaction: FAIL
 	Creating an element in the document of the template elements must not enqueue a custom element upgrade reaction because the document does not have a browsing context: FAIL
 	If definition's disable shadow is true and element's shadow root is non-null, then throw a "NotSupportedError" DOMException.: FAIL
 	Infinite constructor recursion with appendChild should not be possible: PASS
 	Infinite constructor recursion with upgrade(this) should not be possible: PASS
-	Inserting an unresolved custom element into the document of an iframe must enqueue a custom element upgrade reaction: NOTRUN
-/custom-elements/upgrading/Document-importNode-customized-builtins.html: TIMEOUT
-	built-in: document.importNode() should import "undefined" custom elements successfully: NOTRUN
-	built-in: document.importNode() should import custom elements successfully: TIMEOUT
-/custom-elements/upgrading/Document-importNode.html: TIMEOUT
-	autonomous: document.importNode() should import "undefined" custom elements successfully: NOTRUN
-	autonomous: document.importNode() should import custom elements successfully: TIMEOUT
+	Inserting an unresolved custom element into the document of an iframe must enqueue a custom element upgrade reaction: FAIL
+/custom-elements/upgrading/Document-importNode-customized-builtins.html: OK
+	built-in: document.importNode() should import "undefined" custom elements successfully: FAIL
+	built-in: document.importNode() should import custom elements successfully: FAIL
+/custom-elements/upgrading/Document-importNode.html: OK
+	autonomous: document.importNode() should import "undefined" custom elements successfully: FAIL
+	autonomous: document.importNode() should import custom elements successfully: FAIL
 /custom-elements/upgrading/Node-cloneNode-customized-builtins.html: OK
 	Node.prototype.cloneNode(false) must be able to clone as a customized built-in element when it has an inconsistent "is" attribute: FAIL
-/custom-elements/upgrading/Node-cloneNode.html: TIMEOUT
+/custom-elements/upgrading/Node-cloneNode.html: OK
 	HTMLElement constructor must throw an TypeError when the top of the construction stack is marked AlreadyConstructed due to a custom element constructor constructing itself after super() call: FAIL
 	HTMLElement constructor must throw an TypeError when the top of the construction stack is marked AlreadyConstructed due to a custom element constructor constructing itself before super() call: FAIL
 	Inserting an element must not try to upgrade a custom element when it had already failed to upgrade once: PASS
 	Node.prototype.cloneNode(false) must be able to clone a custom element: FAIL
-	Node.prototype.cloneNode(false) must be able to clone a custom element inside an iframe: TIMEOUT
+	Node.prototype.cloneNode(false) must be able to clone a custom element inside an iframe: FAIL
 	Node.prototype.cloneNode(false) must be able to clone as a autonomous custom element when it contains is attribute: FAIL
-	Node.prototype.cloneNode(true) must be able to clone a descendent custom element: NOTRUN
-	Node.prototype.cloneNode(true) must set parentNode, previousSibling, and nextSibling before upgrading custom elements: NOTRUN
+	Node.prototype.cloneNode(true) must be able to clone a descendent custom element: FAIL
+	Node.prototype.cloneNode(true) must set parentNode, previousSibling, and nextSibling before upgrading custom elements: FAIL
 	Upgrading a custom element must throw TypeError when the custom element's constructor returns another element: FAIL
 /custom-elements/upgrading/upgrade-custom-element-error-event.html: ERROR
-/custom-elements/upgrading/upgrading-enqueue-reactions.html: TIMEOUT
-	Upgrading a custom element must enqueue attributeChangedCallback before connectedCallback: NOTRUN
-	Upgrading a custom element must enqueue attributeChangedCallback on each attribute: TIMEOUT
-	Upgrading a custom element must enqueue connectedCallback if the element in the document: NOTRUN
-	Upgrading a custom element must not invoke attributeChangedCallback and connectedCallback when the element failed to upgrade: NOTRUN
-	Upgrading a custom element not must enqueue attributeChangedCallback on unobserved attributes: NOTRUN
+/custom-elements/upgrading/upgrading-enqueue-reactions.html: OK
+	Upgrading a custom element must enqueue attributeChangedCallback before connectedCallback: FAIL
+	Upgrading a custom element must enqueue attributeChangedCallback on each attribute: FAIL
+	Upgrading a custom element must enqueue connectedCallback if the element in the document: FAIL
+	Upgrading a custom element must not invoke attributeChangedCallback and connectedCallback when the element failed to upgrade: FAIL
+	Upgrading a custom element not must enqueue attributeChangedCallback on unobserved attributes: FAIL
 /custom-elements/upgrading/upgrading-parser-created-element.html: OK
 	Element.prototype.createElement must add an unresolved custom element to the upgrade candidates map: PASS
 	HTMLElement constructor must throw an TypeError when the top of the construction stack is marked AlreadyConstructed due to a custom element constructor constructing itself after super() call: FAIL

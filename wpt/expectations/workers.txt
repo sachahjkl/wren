@@ -14,15 +14,15 @@
 	Uncaught error in shared worker should not propagate to window: FAIL
 /workers/SharedWorker-exception.html: OK
 	This test checks whether exceptions in SharedWorkers are logged to the parent document. An exception should be logged to the error console.: FAIL
-/workers/SharedWorker-extendedLifetime-blob.html: OK
-	Blob URL SharedWorker should survive across navigations with extendedLifetime: FAIL
-/workers/SharedWorker-extendedLifetime-data.html: OK
-	Data URL SharedWorker should survive across navigations with extendedLifetime: FAIL
-/workers/SharedWorker-extendedLifetime-named-module.html: OK
-	Module SharedWorker should survive across navigations with extendedLifetime: FAIL
-	Named SharedWorker should survive across navigations with extendedLifetime: FAIL
-/workers/SharedWorker-extendedLifetime.html: OK
-	SharedWorker lifetime should be extended with extendedLifetime: FAIL
+/workers/SharedWorker-extendedLifetime-blob.html: TIMEOUT
+	Blob URL SharedWorker should survive across navigations with extendedLifetime: TIMEOUT
+/workers/SharedWorker-extendedLifetime-data.html: TIMEOUT
+	Data URL SharedWorker should survive across navigations with extendedLifetime: TIMEOUT
+/workers/SharedWorker-extendedLifetime-named-module.html: TIMEOUT
+	Module SharedWorker should survive across navigations with extendedLifetime: NOTRUN
+	Named SharedWorker should survive across navigations with extendedLifetime: TIMEOUT
+/workers/SharedWorker-extendedLifetime.html: TIMEOUT
+	SharedWorker lifetime should be extended with extendedLifetime: TIMEOUT
 /workers/SharedWorker-script-error.html: OK
 	Test script error handled.: FAIL
 	Test script error unhandled.: FAIL
@@ -48,20 +48,20 @@
 /workers/Worker-formdata.any.worker.html: CRASH
 /workers/Worker-location.sub.any.worker.html: OK
 	Test WorkerLocation properties.: FAIL
-/workers/Worker-messageport.html: TIMEOUT
-	Test getting messages from a worker on a port.: TIMEOUT
-	Test sending many messages to workers using ports.: FAIL
-	Test sending message to a worker on a port.: FAIL
+/workers/Worker-messageport.html: OK
+	Test getting messages from a worker on a port.: PASS
+	Test sending many messages to workers using ports.: PASS
+	Test sending message to a worker on a port.: PASS
 	Test sending messages to workers with no port.: PASS
 /workers/Worker-multi-port.html: OK
 	Test empty postMessage throws exception.: PASS
-	Test postMessage on channel with previous failed postMessage calls.: FAIL
+	Test postMessage on channel with previous failed postMessage calls.: PASS
 	Test postMessage with incorrect ports throws exception: PASS
 	Test postMessage with no arguments.: PASS
 	Test postMessage with no port.: PASS
 	Test postMessage with no ports and empty array.: PASS
 	Test postMessage with null ports throws exception.: FAIL
-	Test postMessage with two ports.: FAIL
+	Test postMessage with two ports.: PASS
 	Test postMessage without sequence throws exception: PASS
 /workers/Worker-nested-importScripts-error.html: OK
 	Tests that errors from the import scripts come from the expected file.: FAIL
@@ -88,14 +88,19 @@
 /workers/Worker-terminate-forever.html: OK
 	Tests terminating a worker that is trying to run forever.: PASS
 /workers/Worker-termination-with-port-messages.html: OK
-	This test terminates a worker when there are many undelivered MessagePort messages still waiting to be dispatched into the Worker Context. This causes termination of JS execution and test should not try to dispatch the remaining messages. Test succeeds if it does not hang or crash (if worker thread is running in the separate process, that process could hang or crash).: FAIL
+	This test terminates a worker when there are many undelivered MessagePort messages still waiting to be dispatched into the Worker Context. This causes termination of JS execution and test should not try to dispatch the remaining messages. Test succeeds if it does not hang or crash (if worker thread is running in the separate process, that process could hang or crash).: PASS
 /workers/Worker-timeout-cancel-order.html: OK
 	Tests setting and canceling timeout in workers.: PASS
 /workers/Worker-timeout-decreasing-order.html: OK
 	Tests timeouts on the worker are fired in decreasing order.: PASS
 /workers/Worker-timeout-increasing-order.html: OK
 	Tests timeouts on the worker are fired in increasing order.: PASS
-/workers/WorkerGlobalScope-close.html: CRASH
+/workers/WorkerGlobalScope-close.html: TIMEOUT
+	Test errors are delivered after close.: TIMEOUT
+	Test sending a message after closing.: PASS
+	Test terminating a worker after close.: PASS
+	Test type of close function.: PASS
+	Test workers do not deliver pending events.: PASS
 /workers/WorkerGlobalScope_ErrorEvent_colno.htm: OK
 	 WorkerGlobalScope onerror event handler argument: col : PASS
 /workers/WorkerGlobalScope_ErrorEvent_filename.htm: OK
@@ -111,41 +116,41 @@
 /workers/WorkerGlobalScope_importScripts_NosniffErr.htm: OK
 	importScripts throws on 'nosniff' violation: PASS
 /workers/WorkerGlobalScope_requestAnimationFrame.worker.html: OK
-	Untitled: FAIL
+	WorkerGlobalScope_requestAnimationFrame: FAIL
 /workers/WorkerGlobalScope_setInterval.htm: OK
 	 WorkerGlobalScope API: setInterval() : PASS
 /workers/WorkerGlobalScope_setTimeout.htm: OK
 	 WorkerGlobalScope API: setTimeout() : PASS
-/workers/WorkerLocation-origin.sub.window.html: TIMEOUT
-	workerLocation.origin must use ASCII code points: TIMEOUT
-/workers/WorkerLocation.htm: TIMEOUT
-	 WorkerLocation object : TIMEOUT
-/workers/WorkerLocation_hash.htm: TIMEOUT
-	 WorkerLocation URL decomposition IDL attribute: hash : TIMEOUT
-/workers/WorkerLocation_hash_encoding.htm: TIMEOUT
-	 WorkerLocation.hash with url encoding string : TIMEOUT
-/workers/WorkerLocation_hash_nonexist.htm: TIMEOUT
-	 WorkerLocation.hash with no <fragment> component : TIMEOUT
-/workers/WorkerLocation_host.htm: TIMEOUT
-	 WorkerLocation URL decomposition IDL attribute: host : TIMEOUT
-/workers/WorkerLocation_hostname.htm: TIMEOUT
-	 WorkerLocation URL decomposition IDL attribute: hostname : TIMEOUT
-/workers/WorkerLocation_href.htm: TIMEOUT
-	 WorkerLocation href attribute : TIMEOUT
-/workers/WorkerLocation_pathname.htm: TIMEOUT
-	 WorkerLocation URL decomposition IDL attribute: pathname : TIMEOUT
-/workers/WorkerLocation_port.htm: TIMEOUT
-	 WorkerLocation URL decomposition IDL attribute: port : TIMEOUT
-/workers/WorkerLocation_protocol.htm: TIMEOUT
-	 WorkerLocation URL decomposition IDL attribute: protocol : TIMEOUT
-/workers/WorkerLocation_search.htm: TIMEOUT
-	 WorkerLocation URL decomposition IDL attribute: search : TIMEOUT
-/workers/WorkerLocation_search_empty.htm: TIMEOUT
-	 WorkerLocation.search with empty <query> : TIMEOUT
-/workers/WorkerLocation_search_fragment.htm: TIMEOUT
-	 WorkerLocation.search with <fragment> in <query> : TIMEOUT
-/workers/WorkerLocation_search_nonexist.htm: TIMEOUT
-	 WorkerLocation.search  with no <query> component : TIMEOUT
+/workers/WorkerLocation-origin.sub.window.html: OK
+	workerLocation.origin must use ASCII code points: PASS
+/workers/WorkerLocation.htm: OK
+	 WorkerLocation object : PASS
+/workers/WorkerLocation_hash.htm: OK
+	 WorkerLocation URL decomposition IDL attribute: hash : PASS
+/workers/WorkerLocation_hash_encoding.htm: OK
+	 WorkerLocation.hash with url encoding string : PASS
+/workers/WorkerLocation_hash_nonexist.htm: OK
+	 WorkerLocation.hash with no <fragment> component : PASS
+/workers/WorkerLocation_host.htm: OK
+	 WorkerLocation URL decomposition IDL attribute: host : PASS
+/workers/WorkerLocation_hostname.htm: OK
+	 WorkerLocation URL decomposition IDL attribute: hostname : PASS
+/workers/WorkerLocation_href.htm: OK
+	 WorkerLocation href attribute : PASS
+/workers/WorkerLocation_pathname.htm: OK
+	 WorkerLocation URL decomposition IDL attribute: pathname : PASS
+/workers/WorkerLocation_port.htm: OK
+	 WorkerLocation URL decomposition IDL attribute: port : PASS
+/workers/WorkerLocation_protocol.htm: OK
+	 WorkerLocation URL decomposition IDL attribute: protocol : PASS
+/workers/WorkerLocation_search.htm: OK
+	 WorkerLocation URL decomposition IDL attribute: search : PASS
+/workers/WorkerLocation_search_empty.htm: OK
+	 WorkerLocation.search with empty <query> : PASS
+/workers/WorkerLocation_search_fragment.htm: OK
+	 WorkerLocation.search with <fragment> in <query> : PASS
+/workers/WorkerLocation_search_nonexist.htm: OK
+	 WorkerLocation.search  with no <query> component : PASS
 /workers/WorkerNavigator-hardware-concurrency.any.worker.html: OK
 	Test worker navigator hardware concurrency.: PASS
 /workers/WorkerNavigator.any.worker.html: OK
@@ -166,7 +171,7 @@
 	Platform version and wow64-ness on Linux and Fuchsia should contain fixed values: FAIL
 	Test that userAgentData is available in workers in secure contexts: FAIL
 /workers/WorkerPerformanceNow.html: OK
-	performance.now() exists in dedicated workers and reports reasonable times: FAIL
+	performance.now() exists in dedicated workers and reports reasonable times: PASS
 /workers/Worker_ErrorEvent_bubbles_cancelable.htm: OK
 	ErrorEvent on worker doesn't bubble and is cancelable: PASS
 /workers/Worker_ErrorEvent_error.htm: OK
@@ -203,10 +208,10 @@
 /workers/Worker_terminate_event_queue.htm: OK
 	 AbstractWorker terminate(): clear event queue : PASS
 /workers/abrupt-completion.html: OK
-	DedicatedWorker should correctly handle abrupt completion: FAIL
+	DedicatedWorker should correctly handle abrupt completion: PASS
 	SharedWorker should correctly handle abrupt completion: FAIL
-/workers/data-url-shared.html: OK
-	A data: URL shared worker should not be shared among origins.: FAIL
+/workers/data-url-shared.html: TIMEOUT
+	A data: URL shared worker should not be shared among origins.: TIMEOUT
 	application/javascript MIME allowed: FAIL
 	communication goes both ways: FAIL
 	cross-origin worker: FAIL
@@ -215,7 +220,7 @@
 	indexedDB is present: FAIL
 	text/plain MIME allowed: FAIL
 	worker has opaque origin: FAIL
-/workers/data-url.html: TIMEOUT
+/workers/data-url.html: OK
 	application/javascript MIME allowed: PASS
 	communication goes both ways: PASS
 	cross-origin worker: PASS
@@ -224,16 +229,16 @@
 	indexedDB is present: FAIL
 	invalid javascript produces error: PASS
 	text/plain MIME allowed: PASS
-	worker has opaque origin: TIMEOUT
+	worker has opaque origin: PASS
 /workers/dedicated-worker-from-blob-url.window.html: OK
 	Blob URLs should not resolve relative to document base URL.: FAIL
 	Creating a dedicated worker from a blob URL works immediately before revoking.: FAIL
 	Creating a dedicated worker from a blob URL works.: FAIL
-/workers/dedicated-worker-in-data-url-context.window.html: TIMEOUT
-	Create a data url dedicated worker in a data url dedicated worker: NOTRUN
-	Create a data url dedicated worker in a data url frame: NOTRUN
-	Create a dedicated worker in a data url dedicated worker: NOTRUN
-	Create a dedicated worker in a data url frame: TIMEOUT
+/workers/dedicated-worker-in-data-url-context.window.html: OK
+	Create a data url dedicated worker in a data url dedicated worker: FAIL
+	Create a data url dedicated worker in a data url frame: PASS
+	Create a dedicated worker in a data url dedicated worker: FAIL
+	Create a dedicated worker in a data url frame: FAIL
 /workers/dedicated-worker-parse-error-failure.html: OK
 	Classic worker construction for script with syntax error should dispatch an event named error.: FAIL
 	Static import on classic worker should dispatch an event named error.: FAIL
@@ -368,9 +373,9 @@
 	Connecting to a shared worker on a revoked blob URL works.: FAIL
 	Creating a shared worker from a blob URL works immediately before revoking.: FAIL
 	Creating a shared worker from a blob URL works.: FAIL
-/workers/shared-worker-in-data-url-context.window.html: TIMEOUT
-	Create a data url shared worker in a data url frame: NOTRUN
-	Create a shared worker in a data url frame: TIMEOUT
+/workers/shared-worker-in-data-url-context.window.html: OK
+	Create a data url shared worker in a data url frame: FAIL
+	Create a shared worker in a data url frame: FAIL
 /workers/shared-worker-name-via-options.html: OK
 	Test the name property of shared workers mixing constructor options and constructor strings: FAIL
 /workers/shared-worker-options-mismatch.html: OK
@@ -418,21 +423,21 @@
 	Script parse error dispatches plain Event at SharedWorker: FAIL
 	eval() with syntax error fires at global scope but not at SharedWorker: FAIL
 /workers/worker-performance.worker.html: OK
-	Can use clearMarks and clearMeasures in workers: FAIL
-	Can use performance.getEntriesByName in workers: FAIL
-	Can use performance.getEntriesByType in workers: FAIL
-	Can use performance.mark in workers: FAIL
-	Can use performance.measure in workers: FAIL
+	Can use clearMarks and clearMeasures in workers: PASS
+	Can use performance.getEntriesByName in workers: PASS
+	Can use performance.getEntriesByType in workers: PASS
+	Can use performance.mark in workers: PASS
+	Can use performance.measure in workers: PASS
 	Can use performance.now in workers: PASS
-	Performance marks and measures seem to be working correctly in workers: FAIL
+	Performance marks and measures seem to be working correctly in workers: PASS
 	Resource timing seems to work in workers: FAIL
-	There are no navigation type performance entries in workers: FAIL
-	performance.clearResourceTimings in workers: FAIL
+	There are no navigation type performance entries in workers: PASS
+	performance.clearResourceTimings in workers: PASS
 	performance.navigation is not available in workers: PASS
 	performance.setResourceTimingBufferSize in workers: FAIL
 	performance.timing is not available in workers: PASS
-	performance.toJSON is available in workers: FAIL
+	performance.toJSON is available in workers: PASS
 /workers/worker-request-animation-frame.html: TIMEOUT
 	requestAnimationTime reports frame time relative to worker load: TIMEOUT
-/workers/worker-url-encoding.html: TIMEOUT
-	Worker URL is parsed using document encoding: TIMEOUT
+/workers/worker-url-encoding.html: OK
+	Worker URL is parsed using document encoding: FAIL

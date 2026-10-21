@@ -1,0 +1,336 @@
+# web-platform-tests expectations of Wren for webmessaging, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/webmessaging/Channel_postMessage_Blob.any.html: ERROR
+	Test Description: Messages can contain Blobs.: NOTRUN
+/webmessaging/Channel_postMessage_Blob.any.worker.html: ERROR
+	Test Description: Messages can contain Blobs.: NOTRUN
+/webmessaging/Channel_postMessage_DataCloneErr.any.html: OK
+	Throw a DataCloneError when a host object (e.g. a DOM node) is used with postMessage.: PASS
+/webmessaging/Channel_postMessage_DataCloneErr.any.worker.html: OK
+	Throw a DataCloneError when a host object (e.g. a DOM node) is used with postMessage.: PASS
+/webmessaging/Channel_postMessage_clone_port.any.html: ERROR
+	Test Description: Test Description: When the user agent is to clone a port original port, with the clone being owned by owner, it must return a new MessagePort object: NOTRUN
+/webmessaging/Channel_postMessage_clone_port.any.worker.html: ERROR
+	Test Description: Test Description: When the user agent is to clone a port original port, with the clone being owned by owner, it must return a new MessagePort object: NOTRUN
+/webmessaging/Channel_postMessage_clone_port_error.any.html: OK
+	Test Description: Throw a DataCloneError if transfer array in postMessage contains source port.: PASS
+/webmessaging/Channel_postMessage_clone_port_error.any.worker.html: OK
+	Test Description: Throw a DataCloneError if transfer array in postMessage contains source port.: PASS
+/webmessaging/Channel_postMessage_event_properties.any.html: OK
+	Test Description: The postMessage() method - Create an event that uses the MessageEvent interface, with the name message, which does not bubble and is not cancelable.: PASS
+/webmessaging/Channel_postMessage_event_properties.any.worker.html: OK
+	Test Description: The postMessage() method - Create an event that uses the MessageEvent interface, with the name message, which does not bubble and is not cancelable.: PASS
+/webmessaging/Channel_postMessage_ports_readonly_array.any.html: ERROR
+	Test Description: The postMessage() method - Make new ports into a read only array.: NOTRUN
+/webmessaging/Channel_postMessage_ports_readonly_array.any.worker.html: ERROR
+	Test Description: The postMessage() method - Make new ports into a read only array.: NOTRUN
+/webmessaging/Channel_postMessage_target_source.any.html: OK
+	Test Description: The postMessage() method - Let target port be the port with which source port is entangled, if any.: PASS
+/webmessaging/Channel_postMessage_target_source.any.worker.html: OK
+	Test Description: The postMessage() method - Let target port be the port with which source port is entangled, if any.: PASS
+/webmessaging/Channel_postMessage_transfer_xsite_incoming_messages.window.html: TIMEOUT
+	Tasks enqueued on the port-message-queue of an enabled port,\n  are transferred along with the port, when the transfer happens in the same task\n  during which postMessage is called: TIMEOUT
+/webmessaging/Channel_postMessage_with_transfer_entangled.any.html: OK
+	An entangled port transferred to the same origin receives messages in order: FAIL
+/webmessaging/Channel_postMessage_with_transfer_entangled.any.worker.html: OK
+	An entangled port transferred to the same origin receives messages in order: FAIL
+/webmessaging/Channel_postMessage_with_transfer_incoming_messages.any.html: OK
+	When transferring a non-enabled port mutiple times,\n    incoming messages sent at various transfer steps are received in order upon enablement.: FAIL
+/webmessaging/Channel_postMessage_with_transfer_incoming_messages.any.worker.html: OK
+	When transferring a non-enabled port mutiple times,\n    incoming messages sent at various transfer steps are received in order upon enablement.: FAIL
+/webmessaging/Channel_postMessage_with_transfer_outgoing_messages.any.html: OK
+	When transferring a port,\n    outgoing messages sent at each transfer step are received in order by the entangled port.: FAIL
+/webmessaging/Channel_postMessage_with_transfer_outgoing_messages.any.worker.html: OK
+	When transferring a port,\n    outgoing messages sent at each transfer step are received in order by the entangled port.: FAIL
+/webmessaging/MessageEvent-trusted.any.html: OK
+	With a BroadcastChannel: FAIL
+	With a MessageChannel and its MessagePorts: PASS
+/webmessaging/MessageEvent-trusted.any.worker.html: OK
+	With a BroadcastChannel: FAIL
+	With a MessageChannel and its MessagePorts: PASS
+/webmessaging/MessageEvent-trusted.window.html: OK
+	With window: PASS
+/webmessaging/MessageEvent.any.html: OK
+	initMessageEvent with no arguments: PASS
+	mozInitMessageEvent on the instance: PASS
+	mozInitMessageEvent on the prototype: PASS
+	msInitMessageEvent on the instance: PASS
+	msInitMessageEvent on the prototype: PASS
+	oInitMessageEvent on the instance: PASS
+	oInitMessageEvent on the prototype: PASS
+	webkitInitMessageEvent on the instance: PASS
+	webkitInitMessageEvent on the prototype: PASS
+/webmessaging/MessageEvent.any.worker.html: OK
+	initMessageEvent with no arguments: PASS
+	mozInitMessageEvent on the instance: PASS
+	mozInitMessageEvent on the prototype: PASS
+	msInitMessageEvent on the instance: PASS
+	msInitMessageEvent on the prototype: PASS
+	oInitMessageEvent on the instance: PASS
+	oInitMessageEvent on the prototype: PASS
+	webkitInitMessageEvent on the instance: PASS
+	webkitInitMessageEvent on the prototype: PASS
+/webmessaging/MessageEvent_onmessage_postMessage_infinite_loop.html: OK
+	onmessage calling source postMessage: PASS
+/webmessaging/MessageEvent_properties.htm: OK
+	 MessageEvent interface and properties : PASS
+/webmessaging/MessagePort_initial_disabled.any.html: OK
+	MessageChannel: port message queue is initially disabled: PASS
+/webmessaging/MessagePort_initial_disabled.any.worker.html: OK
+	MessagePort_initial_disabled: PASS
+/webmessaging/MessagePort_onmessage_start.any.html: OK
+	MessageChannel: port.onmessage enables message queue: PASS
+/webmessaging/MessagePort_onmessage_start.any.worker.html: OK
+	MessagePort_onmessage_start: PASS
+/webmessaging/Transferred_objects_unusable.sub.htm: OK
+	MessageChannel is supported.: PASS
+	Test Description: Objects listed in transfer are transferred, not just cloned, meaning that they are no longer usable on the sending side.: PASS
+/webmessaging/event.data.sub.htm: OK
+	Test Description: event.data returns the data of the message.: PASS
+/webmessaging/event.origin.sub.htm: OK
+	Test Description: event.origin returns the origin of the message.: PASS
+/webmessaging/event.ports.sub.htm: OK
+	MessageChannel is supported.: PASS
+	Test Description: event.ports returns the MessagePort array sent with the message.: PASS
+/webmessaging/event.source.htm: OK
+	Test Description: Same-origin: event.source returns the WindowProxy of the source window.: FAIL
+/webmessaging/event.source.xorigin.sub.htm: OK
+	Test Description: Cross-origin: event.source returns the WindowProxy of the source window.: PASS
+/webmessaging/global-postMessage.html: OK
+	Using the global postMessage() to post a message to oneself: PASS
+/webmessaging/message-channels/basics.any.html: OK
+	basic messagechannel test: PASS
+/webmessaging/message-channels/basics.any.worker.html: OK
+	basics: PASS
+/webmessaging/message-channels/close.any.html: OK
+	Close in onmessage should not cancel inflight messages.: PASS
+	Inflight messages should be delivered even when sending port is closed afterwards.: PASS
+	Message sent from closed port should not arrive.: PASS
+	Message sent to closed port from transferred port should not arrive.: FAIL
+	Message sent to closed port should not arrive.: PASS
+	close() detaches a MessagePort (but not the one its entangled with): FAIL
+/webmessaging/message-channels/close.any.worker.html: OK
+	Close in onmessage should not cancel inflight messages.: PASS
+	Inflight messages should be delivered even when sending port is closed afterwards.: PASS
+	Message sent from closed port should not arrive.: PASS
+	Message sent to closed port from transferred port should not arrive.: FAIL
+	Message sent to closed port should not arrive.: PASS
+	close() detaches a MessagePort (but not the one its entangled with): FAIL
+/webmessaging/message-channels/cross-document.html: OK
+	cross-document channel: PASS
+/webmessaging/message-channels/detached-iframe.window.html: OK
+	MessageChannel created from a detached iframe should not send messages (remove after create): FAIL
+	MessageChannel created from a detached iframe should not send messages (remove before create): FAIL
+/webmessaging/message-channels/dictionary-transferrable.any.html: OK
+	basic messagechannel with transfer: PASS
+/webmessaging/message-channels/dictionary-transferrable.any.worker.html: OK
+	dictionary-transferrable: PASS
+/webmessaging/message-channels/historical.any.html: OK
+	MessagePort should not have an onclose event handler IDL attribute: PASS
+	No close event should be fired on a port when it is closed: PASS
+	No close event should be fired when an entangled port is closed: PASS
+/webmessaging/message-channels/historical.any.worker.html: OK
+	MessagePort should not have an onclose event handler IDL attribute: PASS
+	No close event should be fired on a port when it is closed: PASS
+	No close event should be fired when an entangled port is closed: PASS
+/webmessaging/message-channels/implied-start.any.html: OK
+	onmessage implied start(): PASS
+/webmessaging/message-channels/implied-start.any.worker.html: OK
+	implied-start: PASS
+/webmessaging/message-channels/no-start.any.html: OK
+	without start(): PASS
+/webmessaging/message-channels/no-start.any.worker.html: OK
+	no-start: PASS
+/webmessaging/message-channels/user-activation.tentative.any.html: OK
+	user activation messagechannel test: FAIL
+/webmessaging/message-channels/user-activation.tentative.any.worker.html: OK
+	user-activation: FAIL
+/webmessaging/message-channels/worker-post-after-close.any.html: TIMEOUT
+	MessageChannel/MessagePort should not work after a worker self.close(): TIMEOUT
+/webmessaging/message-channels/worker-post-after-close.any.worker.html: OK
+	MessageChannel/MessagePort should not work after a worker self.close(): FAIL
+/webmessaging/message-channels/worker.any.html: TIMEOUT
+	MessageChannel/MessagePort created and used after a worker self.close(): TIMEOUT
+/webmessaging/message-channels/worker.any.worker.html: OK
+	MessageChannel/MessagePort created and used after a worker self.close(): FAIL
+/webmessaging/messageerror.html: OK
+	The default value of onmessageerror is null: PASS
+	The onmessageerror content attribute must be compiled into the onmessageerror property: PASS
+	The onmessageerror content attribute must execute when an event is dispatched on the window: PASS
+/webmessaging/postMessage-to-target-not-fully-active-on-reload.html: OK
+	postMessage() to a target whose document is no longer fully active (after a reload) is not delivered: FAIL
+/webmessaging/postMessage_ArrayBuffer.sub.htm: OK
+	ArrayBuffer is supported.: PASS
+	Test Description: postMessage with ArrayBuffer object.: PASS
+/webmessaging/postMessage_CryptoKey_insecure.sub.html: TIMEOUT
+	insecure context should not receive an object for secure contexts only: TIMEOUT
+/webmessaging/postMessage_Date.sub.htm: OK
+	Test Description: Messages can contain JavaScript values (e.g., Dates).: PASS
+/webmessaging/postMessage_Document.htm: OK
+	Test Description: postMessage with Document object: Throw a DataCloneError if message could not be cloned.: FAIL
+/webmessaging/postMessage_Function.htm: OK
+	Test Description: postMessage with Function object: Throw a DataCloneError if message could not be cloned.: FAIL
+/webmessaging/postMessage_MessagePorts_sorigin.htm: OK
+	MessageChannel is supported.: PASS
+	Test Description: postMessage to same-origin iframe with MessagePort array containing 100 ports.: PASS
+/webmessaging/postMessage_MessagePorts_xorigin.sub.htm: OK
+	MessageChannel is supported.: PASS
+	Test Description: postMessage to cross-origin iframe with MessagePort array containing 100 ports.: PASS
+/webmessaging/postMessage_MessagePorts_xsite.sub.window.html: OK
+	Test Description: postMessage to cross-site iframe with MessagePort array containing 100 ports.: PASS
+/webmessaging/postMessage_arrays.sub.htm: OK
+	Test Description: Messages can be structured objects, e.g., arrays.: PASS
+/webmessaging/postMessage_asterisk_xorigin.sub.htm: OK
+	Test Description: To send the message to the target regardless of origin, set the target origin to '*'.: PASS
+/webmessaging/postMessage_cross_domain_image_transfer_2d.sub.htm: ERROR
+/webmessaging/postMessage_crosssite.sub.htm: OK
+	cross-site windows can send transferred ArrayBuffer: PASS
+/webmessaging/postMessage_dup_transfer_objects.htm: OK
+	Test Description: postMessage with duplicate transfer objects raises DataCloneError exception.: FAIL
+/webmessaging/postMessage_invalid_targetOrigin.htm: OK
+	Test Description: If the value of the targetOrigin argument is neither a single U+002A ASTERISK character (*), a single U+002F SOLIDUS character (/), nor an absolute URL, then throw a SyntaxError exception and abort the overall set of steps.: FAIL
+/webmessaging/postMessage_objects.sub.htm: OK
+	Test Description: Messages can be structured objects, e.g., nested objects.: PASS
+/webmessaging/postMessage_origin_mismatch.sub.htm: OK
+	Test Description: Same-origin: If the origin of the target window doesn't match the given origin, the message is discarded.: PASS
+/webmessaging/postMessage_origin_mismatch_xorigin.sub.htm: OK
+	Test Description: Cross-origin: If the origin of the target window doesn't match the given origin, the message is discarded.: PASS
+/webmessaging/postMessage_solidus_sorigin.htm: OK
+	Test Description: To restrict the message to same-origin targets only, without needing to explicitly state the origin, set the target origin to '/'.: PASS
+/webmessaging/postMessage_solidus_xorigin.sub.htm: OK
+	Test Description: If the targetOrigin argument is a single literal U+002F SOLIDUS character (/), and the Document of the Window object on which the method was invoked does not have the same origin as the entry script's document, then abort these steps silently.: PASS
+/webmessaging/with-ports/001.html: OK
+	resolving broken url: PASS
+/webmessaging/with-ports/002.html: OK
+	resolving url with stuff in host-specific: PASS
+/webmessaging/with-ports/003.html: OK
+	resolving 'example.org': PASS
+/webmessaging/with-ports/004.html: OK
+	special value '/': PASS
+/webmessaging/with-ports/005.html: OK
+	resolving a same origin targetOrigin: PASS
+/webmessaging/with-ports/006.html: OK
+	resolving a same origin targetOrigin with trailing slash: PASS
+/webmessaging/with-ports/007.html: OK
+	targetOrigin '*': PASS
+/webmessaging/with-ports/010.html: OK
+	1: PASS
+	Infinity: PASS
+	NaN: PASS
+	array: PASS
+	date: PASS
+	error: PASS
+	false: PASS
+	null: PASS
+	object: PASS
+	regex: PASS
+	self: PASS
+	string: PASS
+	true: PASS
+	undefined: FAIL
+	unreached: PASS
+/webmessaging/with-ports/011.html: OK
+	posting an imagedata (from a cloned canvas) in an array: FAIL
+/webmessaging/with-ports/012.html: OK
+	loop in array in structured clone: PASS
+/webmessaging/with-ports/013.html: OK
+	loop in object in structured clone: PASS
+/webmessaging/with-ports/014.html: OK
+	structured clone vs reference: PASS
+/webmessaging/with-ports/015.html: OK
+	different origin: PASS
+/webmessaging/with-ports/016.html: OK
+	origin of the script that invoked the method, data:: PASS
+/webmessaging/with-ports/017.html: OK
+	origin of the script that invoked the method, about:blank: FAIL
+/webmessaging/with-ports/018.html: OK
+	origin of the script that invoked the method, javascript:: FAIL
+/webmessaging/with-ports/019.html: OK
+	origin of the script that invoked the method, scheme/host/port: FAIL
+/webmessaging/with-ports/020.html: OK
+	cross-origin test: FAIL
+/webmessaging/with-ports/021.html: TIMEOUT
+	cross-origin test: NOTRUN
+/webmessaging/with-ports/023.html: OK
+	null ports: PASS
+/webmessaging/with-ports/024.html: OK
+	undefined as ports: PASS
+/webmessaging/with-ports/025.html: OK
+	1 as ports: PASS
+/webmessaging/with-ports/026.html: OK
+	object with length as transferable: PASS
+/webmessaging/with-ports/027.html: OK
+	MessageChannel's ports as MessagePort objects: FAIL
+	Old-style array objects: PASS
+/webmessaging/without-ports/001.html: OK
+	resolving broken url: PASS
+/webmessaging/without-ports/002.html: OK
+	resolving url with stuff in host-specific: PASS
+/webmessaging/without-ports/003.html: OK
+	resolving 'example.org': PASS
+/webmessaging/without-ports/004.html: OK
+	special value '/': PASS
+/webmessaging/without-ports/005.html: OK
+	resolving a same origin targetOrigin: PASS
+/webmessaging/without-ports/006.html: OK
+	resolving a same origin targetOrigin with trailing slash: PASS
+/webmessaging/without-ports/007.html: OK
+	targetOrigin '*': PASS
+/webmessaging/without-ports/009.html: OK
+	zero arguments: PASS
+/webmessaging/without-ports/010.html: OK
+	1: PASS
+	Infinity: PASS
+	NaN: PASS
+	array: PASS
+	date: PASS
+	error: PASS
+	false: PASS
+	null: PASS
+	object: PASS
+	regex: PASS
+	self: PASS
+	string: PASS
+	true: PASS
+	undefined: FAIL
+	unreached: PASS
+/webmessaging/without-ports/011.html: OK
+	posting an imagedata (from a cloned canvas) in an array: FAIL
+/webmessaging/without-ports/012.html: OK
+	loop in array in structured clone: PASS
+/webmessaging/without-ports/013.html: OK
+	loop in object in structured clone: PASS
+/webmessaging/without-ports/014.html: OK
+	structured clone vs reference: PASS
+/webmessaging/without-ports/015.html: OK
+	different origin: PASS
+/webmessaging/without-ports/016.html: OK
+	origin of the script that invoked the method, data:: PASS
+/webmessaging/without-ports/017.html: OK
+	origin of the script that invoked the method, about:blank: FAIL
+/webmessaging/without-ports/018.html: OK
+	origin of the script that invoked the method, javascript:: FAIL
+/webmessaging/without-ports/019.html: OK
+	origin of the script that invoked the method, scheme/host/port: FAIL
+/webmessaging/without-ports/020.html: OK
+	cross-origin test: FAIL
+/webmessaging/without-ports/021.html: TIMEOUT
+	cross-origin test: NOTRUN
+/webmessaging/without-ports/023.html: OK
+	Object cloning: own properties only, don't follow prototype: PASS
+/webmessaging/without-ports/024.html: OK
+	Object cloning: throw an exception if function values encountered: PASS
+/webmessaging/without-ports/025.html: OK
+	MessagePort constructor properties: PASS
+	Worker MessageChannel's port should be an instance of MessagePort: PASS
+	Worker MessagePort should not be [[Callable]]: PASS
+/webmessaging/without-ports/026.html: OK
+	Cloning objects with getter properties: PASS
+/webmessaging/without-ports/027.html: OK
+	Cloning objects, preserving sharing: PASS
+/webmessaging/without-ports/028.html: OK
+	Cloning objects, preserving sharing #2: FAIL
+/webmessaging/without-ports/029.html: OK
+	Check that getters don't linger after deletion wrt cloning: PASS
+/webmessaging/worker_postMessage_user_activation.tentative.html: OK
+	Post Message from a worker: FAIL

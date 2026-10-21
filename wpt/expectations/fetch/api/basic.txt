@@ -5,11 +5,11 @@
 	Request through fetch should have 'accept' header with value 'custom/*': FAIL
 	Request through fetch should have 'accept-language' header with value 'bzh': FAIL
 	Request through fetch should have a 'accept-language' header: FAIL
-/fetch/api/basic/accept-header.any.worker.html: ERROR
-	Request through fetch should have 'accept' header with value '*/*': TIMEOUT
-	Request through fetch should have 'accept' header with value 'custom/*': NOTRUN
-	Request through fetch should have 'accept-language' header with value 'bzh': NOTRUN
-	Request through fetch should have a 'accept-language' header: NOTRUN
+/fetch/api/basic/accept-header.any.worker.html: OK
+	Request through fetch should have 'accept' header with value '*/*': FAIL
+	Request through fetch should have 'accept' header with value 'custom/*': FAIL
+	Request through fetch should have 'accept-language' header with value 'bzh': FAIL
+	Request through fetch should have a 'accept-language' header: FAIL
 /fetch/api/basic/block-mime-as-script.html: OK
 	Should fail loading empty script with audio/aiff MIME type: PASS
 	Should fail loading empty script with audio/midi MIME type: PASS
@@ -35,14 +35,14 @@
 	Should load script with text/plain MIME type: FAIL
 /fetch/api/basic/conditional-get.any.html: OK
 	Testing conditional GET with ETags: FAIL
-/fetch/api/basic/conditional-get.any.worker.html: ERROR
-	Testing conditional GET with ETags: TIMEOUT
+/fetch/api/basic/conditional-get.any.worker.html: OK
+	Testing conditional GET with ETags: FAIL
 /fetch/api/basic/error-after-response.any.html: OK
 	Response reader closed promise should reject after a network error happening after resolving fetch promise: FAIL
 	Response reader read() promise should reject after a network error happening after resolving fetch promise: FAIL
-/fetch/api/basic/error-after-response.any.worker.html: ERROR
-	Response reader closed promise should reject after a network error happening after resolving fetch promise: NOTRUN
-	Response reader read() promise should reject after a network error happening after resolving fetch promise: TIMEOUT
+/fetch/api/basic/error-after-response.any.worker.html: OK
+	Response reader closed promise should reject after a network error happening after resolving fetch promise: FAIL
+	Response reader read() promise should reject after a network error happening after resolving fetch promise: FAIL
 /fetch/api/basic/fetch-in-popup-from-iframe.html: OK
 	Fetch from initial empty document in popup opened from iframe: FAIL
 /fetch/api/basic/gc.any.html: OK
@@ -60,17 +60,17 @@
 	response.headers.get('foo-test') expects 1, 2, 3: FAIL
 	response.headers.get('heya') expects , , 1, , , 2: FAIL
 	response.headers.get('www-authenticate') expects 1, 2, 3, 4: FAIL
-/fetch/api/basic/header-value-combining.any.worker.html: ERROR
-	response.headers.get('content-length') expects 0: TIMEOUT
-	response.headers.get('content-length') expects 0, 0: NOTRUN
-	response.headers.get('double-trouble') expects , : NOTRUN
-	response.headers.get('foo-test') expects 1, 2, 3: NOTRUN
-	response.headers.get('heya') expects , , 1, , , 2: NOTRUN
-	response.headers.get('www-authenticate') expects 1, 2, 3, 4: NOTRUN
+/fetch/api/basic/header-value-combining.any.worker.html: OK
+	response.headers.get('content-length') expects 0: FAIL
+	response.headers.get('content-length') expects 0, 0: FAIL
+	response.headers.get('double-trouble') expects , : FAIL
+	response.headers.get('foo-test') expects 1, 2, 3: FAIL
+	response.headers.get('heya') expects , , 1, , , 2: FAIL
+	response.headers.get('www-authenticate') expects 1, 2, 3, 4: FAIL
 /fetch/api/basic/header-value-null-byte.any.html: OK
 	Ensure fetch() rejects null bytes in headers: FAIL
-/fetch/api/basic/header-value-null-byte.any.worker.html: ERROR
-	Ensure fetch() rejects null bytes in headers: TIMEOUT
+/fetch/api/basic/header-value-null-byte.any.worker.html: OK
+	Ensure fetch() rejects null bytes in headers: FAIL
 /fetch/api/basic/historical.any.html: OK
 	'type' getter should not exist on Request objects: PASS
 	Headers object no longer has a getAll() method: PASS
@@ -102,15 +102,40 @@
 	SHA-512 integrity base64url encoded: PASS
 	SHA-512 integrity base64url encoded with missing padding: PASS
 	SHA-512 integrity with missing padding: PASS
-/fetch/api/basic/integrity.sub.any.worker.html: ERROR
+/fetch/api/basic/integrity.sub.any.worker.html: OK
+	CORS SHA-512 integrity: PASS
+	CORS empty integrity: PASS
+	CORS invalid integrity: FAIL
+	Empty string integrity: PASS
+	Empty string integrity for opaque response: FAIL
+	Invalid integrity: FAIL
+	Multiple integrities: both are invalid: FAIL
+	Multiple integrities: both are valid: PASS
+	Multiple integrities: invalid as strong as valid: PASS
+	Multiple integrities: invalid stronger than valid: FAIL
+	Multiple integrities: valid stronger than invalid: PASS
+	SHA-* integrity for opaque response: PASS
+	SHA-256 integrity: PASS
+	SHA-384 integrity: PASS
+	SHA-512 integrity: PASS
+	SHA-512 integrity base64url encoded: PASS
+	SHA-512 integrity base64url encoded with missing padding: PASS
+	SHA-512 integrity with missing padding: PASS
 /fetch/api/basic/keepalive.any.html: TIMEOUT
-	[keepalive] simple GET request on 'load' [no payload]; setting up: TIMEOUT
-	[keepalive] simple GET request on 'pagehide' [no payload]; setting up: NOTRUN
-	[keepalive] simple GET request on 'unload' [no payload]; setting up: NOTRUN
-	[keepalive] simple POST request on 'load' [no payload]; setting up: NOTRUN
-	[keepalive] simple POST request on 'pagehide' [no payload]; setting up: NOTRUN
-	[keepalive] simple POST request on 'unload' [no payload]; setting up: NOTRUN
-	simple keepalive test for web workers;: NOTRUN
+	[keepalive] simple GET request on 'load' [no payload]: TIMEOUT
+	[keepalive] simple GET request on 'load' [no payload]; setting up: PASS
+	[keepalive] simple GET request on 'pagehide' [no payload]: TIMEOUT
+	[keepalive] simple GET request on 'pagehide' [no payload]; setting up: PASS
+	[keepalive] simple GET request on 'unload' [no payload]: TIMEOUT
+	[keepalive] simple GET request on 'unload' [no payload]; setting up: PASS
+	[keepalive] simple POST request on 'load' [no payload]: TIMEOUT
+	[keepalive] simple POST request on 'load' [no payload]; setting up: PASS
+	[keepalive] simple POST request on 'pagehide' [no payload]: TIMEOUT
+	[keepalive] simple POST request on 'pagehide' [no payload]; setting up: PASS
+	[keepalive] simple POST request on 'unload' [no payload]: TIMEOUT
+	[keepalive] simple POST request on 'unload' [no payload]; setting up: PASS
+	simple keepalive test for web workers: TIMEOUT
+	simple keepalive test for web workers;: PASS
 /fetch/api/basic/mediasource.window.html: OK
 	Cannot fetch blob: URL from a MediaSource: FAIL
 /fetch/api/basic/mode-no-cors.sub.any.html: ERROR
@@ -118,9 +143,9 @@
 	Fetch http://127.0.0.1:8778/fetch/api/resources/top.txt with no-cors mode: PASS
 	Fetch https://127.0.0.1:8779/fetch/api/resources/top.txt with no-cors mode: FAIL
 /fetch/api/basic/mode-no-cors.sub.any.worker.html: ERROR
-	Fetch ../resources/top.txt with no-cors mode: TIMEOUT
-	Fetch http://127.0.0.1:8778/fetch/api/resources/top.txt with no-cors mode: NOTRUN
-	Fetch https://127.0.0.1:8779/fetch/api/resources/top.txt with no-cors mode: NOTRUN
+	Fetch ../resources/top.txt with no-cors mode: PASS
+	Fetch http://127.0.0.1:8778/fetch/api/resources/top.txt with no-cors mode: PASS
+	Fetch https://127.0.0.1:8779/fetch/api/resources/top.txt with no-cors mode: FAIL
 /fetch/api/basic/mode-same-origin.any.html: OK
 	Fetch ../resources/top.txt with same-origin mode: PASS
 	Fetch /fetch/api/basic/../resources/redirect.py?location=../resources/top.txt with same-origin mode: FAIL
@@ -130,7 +155,15 @@
 	Fetch http://127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: PASS
 	Fetch http://www1.127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: PASS
 	Fetch https://127.0.0.1:8779/fetch/api/resources/top.txt with same-origin mode: PASS
-/fetch/api/basic/mode-same-origin.any.worker.html: ERROR
+/fetch/api/basic/mode-same-origin.any.worker.html: OK
+	Fetch ../resources/top.txt with same-origin mode: PASS
+	Fetch /fetch/api/basic/../resources/redirect.py?location=../resources/top.txt with same-origin mode: FAIL
+	Fetch /fetch/api/basic/../resources/redirect.py?location=http://127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
+	Fetch /fetch/api/basic/../resources/redirect.py?location=http://www1.127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
+	Fetch /fetch/api/basic/../resources/redirect.py?location=https://127.0.0.1:8779/fetch/api/resources/top.txt with same-origin mode: FAIL
+	Fetch http://127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: PASS
+	Fetch http://www1.127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: PASS
+	Fetch https://127.0.0.1:8779/fetch/api/resources/top.txt with same-origin mode: PASS
 /fetch/api/basic/referrer.any.html: OK
 	Referrer with credentials should be stripped: FAIL
 	Referrer with fragment ID should be stripped: FAIL
@@ -138,7 +171,13 @@
 	origin-when-cross-origin policy on a cross-origin URL after same-origin redirection: FAIL
 	origin-when-cross-origin policy on a same-origin URL: FAIL
 	origin-when-cross-origin policy on a same-origin URL after cross-origin redirection: FAIL
-/fetch/api/basic/referrer.any.worker.html: ERROR
+/fetch/api/basic/referrer.any.worker.html: OK
+	Referrer with credentials should be stripped: FAIL
+	Referrer with fragment ID should be stripped: FAIL
+	origin-when-cross-origin policy on a cross-origin URL: FAIL
+	origin-when-cross-origin policy on a cross-origin URL after same-origin redirection: FAIL
+	origin-when-cross-origin policy on a same-origin URL: FAIL
+	origin-when-cross-origin policy on a same-origin URL after cross-origin redirection: FAIL
 /fetch/api/basic/request-forbidden-headers.any.html: OK
 	Accept-Charset is a forbidden request header: FAIL
 	Accept-Encoding is a forbidden request header: FAIL
@@ -236,103 +275,103 @@
 	header x-method-override is forbidden to use value trace: FAIL
 	header x-method-override is forbidden to use value trace,: FAIL
 	header x-method-override is forbidden to use value track: FAIL
-/fetch/api/basic/request-forbidden-headers.any.worker.html: ERROR
-	Accept-Charset is a forbidden request header: TIMEOUT
-	Accept-Encoding is a forbidden request header: NOTRUN
-	Access-Control-Request-Headers is a forbidden request header: NOTRUN
-	Access-Control-Request-Method is a forbidden request header: NOTRUN
-	Connection is a forbidden request header: NOTRUN
-	Content-Length is a forbidden request header: NOTRUN
-	Cookie is a forbidden request header: NOTRUN
-	Cookie2 is a forbidden request header: NOTRUN
-	DNT is a forbidden request header: NOTRUN
-	Date is a forbidden request header: NOTRUN
-	Expect is a forbidden request header: NOTRUN
-	Host is a forbidden request header: NOTRUN
-	Keep-Alive is a forbidden request header: NOTRUN
-	Origin is a forbidden request header: NOTRUN
-	Proxy- is a forbidden request header: NOTRUN
-	Proxy-Test is a forbidden request header: NOTRUN
-	Referer is a forbidden request header: NOTRUN
-	Sec- is a forbidden request header: NOTRUN
-	Sec-Test is a forbidden request header: NOTRUN
-	TE is a forbidden request header: NOTRUN
-	Trailer is a forbidden request header: NOTRUN
-	Transfer-Encoding is a forbidden request header: NOTRUN
-	Upgrade is a forbidden request header: NOTRUN
-	Via is a forbidden request header: NOTRUN
-	header X-HTTP-METHOD is allowed to use value ",TRACE",: NOTRUN
-	header X-HTTP-METHOD is allowed to use value GET: NOTRUN
-	header X-HTTP-METHOD is allowed to use value GETTRACE: NOTRUN
-	header X-HTTP-METHOD is forbidden to use value  connect: NOTRUN
-	header X-HTTP-METHOD is forbidden to use value CONNECT: NOTRUN
-	header X-HTTP-METHOD is forbidden to use value GET,track : NOTRUN
-	header X-HTTP-METHOD is forbidden to use value TRACE: NOTRUN
-	header X-HTTP-METHOD is forbidden to use value TRACK: NOTRUN
-	header X-HTTP-METHOD is forbidden to use value connect: NOTRUN
-	header X-HTTP-METHOD is forbidden to use value trace: NOTRUN
-	header X-HTTP-METHOD is forbidden to use value trace,: NOTRUN
-	header X-HTTP-METHOD is forbidden to use value track: NOTRUN
-	header X-HTTP-METHOD-OVERRIDE is allowed to use value ",TRACE",: NOTRUN
-	header X-HTTP-METHOD-OVERRIDE is allowed to use value GET: NOTRUN
-	header X-HTTP-METHOD-OVERRIDE is allowed to use value GETTRACE: NOTRUN
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value  connect: NOTRUN
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value CONNECT: NOTRUN
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value GET,track : NOTRUN
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACE: NOTRUN
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACK: NOTRUN
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value connect: NOTRUN
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace: NOTRUN
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace,: NOTRUN
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value track: NOTRUN
-	header X-METHOD-OVERRIDE is allowed to use value ",TRACE",: NOTRUN
-	header X-METHOD-OVERRIDE is allowed to use value GET: NOTRUN
-	header X-METHOD-OVERRIDE is allowed to use value GETTRACE: NOTRUN
-	header X-METHOD-OVERRIDE is forbidden to use value  connect: NOTRUN
-	header X-METHOD-OVERRIDE is forbidden to use value CONNECT: NOTRUN
-	header X-METHOD-OVERRIDE is forbidden to use value GET,track : NOTRUN
-	header X-METHOD-OVERRIDE is forbidden to use value TRACE: NOTRUN
-	header X-METHOD-OVERRIDE is forbidden to use value TRACK: NOTRUN
-	header X-METHOD-OVERRIDE is forbidden to use value connect: NOTRUN
-	header X-METHOD-OVERRIDE is forbidden to use value trace: NOTRUN
-	header X-METHOD-OVERRIDE is forbidden to use value trace,: NOTRUN
-	header X-METHOD-OVERRIDE is forbidden to use value track: NOTRUN
-	header x-http-method is allowed to use value ",TRACE",: NOTRUN
-	header x-http-method is allowed to use value GET: NOTRUN
-	header x-http-method is allowed to use value GETTRACE: NOTRUN
-	header x-http-method is forbidden to use value  connect: NOTRUN
-	header x-http-method is forbidden to use value CONNECT: NOTRUN
-	header x-http-method is forbidden to use value GET,track : NOTRUN
-	header x-http-method is forbidden to use value TRACE: NOTRUN
-	header x-http-method is forbidden to use value TRACK: NOTRUN
-	header x-http-method is forbidden to use value connect: NOTRUN
-	header x-http-method is forbidden to use value trace: NOTRUN
-	header x-http-method is forbidden to use value trace,: NOTRUN
-	header x-http-method is forbidden to use value track: NOTRUN
-	header x-http-method-override is allowed to use value ",TRACE",: NOTRUN
-	header x-http-method-override is allowed to use value GET: NOTRUN
-	header x-http-method-override is allowed to use value GETTRACE: NOTRUN
-	header x-http-method-override is forbidden to use value  connect: NOTRUN
-	header x-http-method-override is forbidden to use value CONNECT: NOTRUN
-	header x-http-method-override is forbidden to use value GET,track : NOTRUN
-	header x-http-method-override is forbidden to use value TRACE: NOTRUN
-	header x-http-method-override is forbidden to use value TRACK: NOTRUN
-	header x-http-method-override is forbidden to use value connect: NOTRUN
-	header x-http-method-override is forbidden to use value trace: NOTRUN
-	header x-http-method-override is forbidden to use value trace,: NOTRUN
-	header x-http-method-override is forbidden to use value track: NOTRUN
-	header x-method-override is allowed to use value ",TRACE",: NOTRUN
-	header x-method-override is allowed to use value GET: NOTRUN
-	header x-method-override is allowed to use value GETTRACE: NOTRUN
-	header x-method-override is forbidden to use value  connect: NOTRUN
-	header x-method-override is forbidden to use value CONNECT: NOTRUN
-	header x-method-override is forbidden to use value GET,track : NOTRUN
-	header x-method-override is forbidden to use value TRACE: NOTRUN
-	header x-method-override is forbidden to use value TRACK: NOTRUN
-	header x-method-override is forbidden to use value connect: NOTRUN
-	header x-method-override is forbidden to use value trace: NOTRUN
-	header x-method-override is forbidden to use value trace,: NOTRUN
-	header x-method-override is forbidden to use value track: NOTRUN
+/fetch/api/basic/request-forbidden-headers.any.worker.html: OK
+	Accept-Charset is a forbidden request header: FAIL
+	Accept-Encoding is a forbidden request header: FAIL
+	Access-Control-Request-Headers is a forbidden request header: FAIL
+	Access-Control-Request-Method is a forbidden request header: FAIL
+	Connection is a forbidden request header: FAIL
+	Content-Length is a forbidden request header: FAIL
+	Cookie is a forbidden request header: FAIL
+	Cookie2 is a forbidden request header: FAIL
+	DNT is a forbidden request header: FAIL
+	Date is a forbidden request header: FAIL
+	Expect is a forbidden request header: FAIL
+	Host is a forbidden request header: FAIL
+	Keep-Alive is a forbidden request header: FAIL
+	Origin is a forbidden request header: FAIL
+	Proxy- is a forbidden request header: FAIL
+	Proxy-Test is a forbidden request header: FAIL
+	Referer is a forbidden request header: FAIL
+	Sec- is a forbidden request header: FAIL
+	Sec-Test is a forbidden request header: FAIL
+	TE is a forbidden request header: FAIL
+	Trailer is a forbidden request header: FAIL
+	Transfer-Encoding is a forbidden request header: FAIL
+	Upgrade is a forbidden request header: FAIL
+	Via is a forbidden request header: FAIL
+	header X-HTTP-METHOD is allowed to use value ",TRACE",: FAIL
+	header X-HTTP-METHOD is allowed to use value GET: FAIL
+	header X-HTTP-METHOD is allowed to use value GETTRACE: FAIL
+	header X-HTTP-METHOD is forbidden to use value  connect: FAIL
+	header X-HTTP-METHOD is forbidden to use value CONNECT: FAIL
+	header X-HTTP-METHOD is forbidden to use value GET,track : FAIL
+	header X-HTTP-METHOD is forbidden to use value TRACE: FAIL
+	header X-HTTP-METHOD is forbidden to use value TRACK: FAIL
+	header X-HTTP-METHOD is forbidden to use value connect: FAIL
+	header X-HTTP-METHOD is forbidden to use value trace: FAIL
+	header X-HTTP-METHOD is forbidden to use value trace,: FAIL
+	header X-HTTP-METHOD is forbidden to use value track: FAIL
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value ",TRACE",: FAIL
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value GET: FAIL
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value GETTRACE: FAIL
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value  connect: FAIL
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value CONNECT: FAIL
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value GET,track : FAIL
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACE: FAIL
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACK: FAIL
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value connect: FAIL
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace: FAIL
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace,: FAIL
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value track: FAIL
+	header X-METHOD-OVERRIDE is allowed to use value ",TRACE",: FAIL
+	header X-METHOD-OVERRIDE is allowed to use value GET: FAIL
+	header X-METHOD-OVERRIDE is allowed to use value GETTRACE: FAIL
+	header X-METHOD-OVERRIDE is forbidden to use value  connect: FAIL
+	header X-METHOD-OVERRIDE is forbidden to use value CONNECT: FAIL
+	header X-METHOD-OVERRIDE is forbidden to use value GET,track : FAIL
+	header X-METHOD-OVERRIDE is forbidden to use value TRACE: FAIL
+	header X-METHOD-OVERRIDE is forbidden to use value TRACK: FAIL
+	header X-METHOD-OVERRIDE is forbidden to use value connect: FAIL
+	header X-METHOD-OVERRIDE is forbidden to use value trace: FAIL
+	header X-METHOD-OVERRIDE is forbidden to use value trace,: FAIL
+	header X-METHOD-OVERRIDE is forbidden to use value track: FAIL
+	header x-http-method is allowed to use value ",TRACE",: FAIL
+	header x-http-method is allowed to use value GET: FAIL
+	header x-http-method is allowed to use value GETTRACE: FAIL
+	header x-http-method is forbidden to use value  connect: FAIL
+	header x-http-method is forbidden to use value CONNECT: FAIL
+	header x-http-method is forbidden to use value GET,track : FAIL
+	header x-http-method is forbidden to use value TRACE: FAIL
+	header x-http-method is forbidden to use value TRACK: FAIL
+	header x-http-method is forbidden to use value connect: FAIL
+	header x-http-method is forbidden to use value trace: FAIL
+	header x-http-method is forbidden to use value trace,: FAIL
+	header x-http-method is forbidden to use value track: FAIL
+	header x-http-method-override is allowed to use value ",TRACE",: FAIL
+	header x-http-method-override is allowed to use value GET: FAIL
+	header x-http-method-override is allowed to use value GETTRACE: FAIL
+	header x-http-method-override is forbidden to use value  connect: FAIL
+	header x-http-method-override is forbidden to use value CONNECT: FAIL
+	header x-http-method-override is forbidden to use value GET,track : FAIL
+	header x-http-method-override is forbidden to use value TRACE: FAIL
+	header x-http-method-override is forbidden to use value TRACK: FAIL
+	header x-http-method-override is forbidden to use value connect: FAIL
+	header x-http-method-override is forbidden to use value trace: FAIL
+	header x-http-method-override is forbidden to use value trace,: FAIL
+	header x-http-method-override is forbidden to use value track: FAIL
+	header x-method-override is allowed to use value ",TRACE",: FAIL
+	header x-method-override is allowed to use value GET: FAIL
+	header x-method-override is allowed to use value GETTRACE: FAIL
+	header x-method-override is forbidden to use value  connect: FAIL
+	header x-method-override is forbidden to use value CONNECT: FAIL
+	header x-method-override is forbidden to use value GET,track : FAIL
+	header x-method-override is forbidden to use value TRACE: FAIL
+	header x-method-override is forbidden to use value TRACK: FAIL
+	header x-method-override is forbidden to use value connect: FAIL
+	header x-method-override is forbidden to use value trace: FAIL
+	header x-method-override is forbidden to use value trace,: FAIL
+	header x-method-override is forbidden to use value track: FAIL
 /fetch/api/basic/request-head.any.html: OK
 	Fetch with HEAD with body: PASS
 /fetch/api/basic/request-head.any.worker.html: OK
@@ -340,13 +379,13 @@
 /fetch/api/basic/request-headers-case.any.html: OK
 	Multiple headers with the same name, different case (THIS-IS-A-TEST first): FAIL
 	Multiple headers with the same name, different case (THIS-is-A-test first): FAIL
-/fetch/api/basic/request-headers-case.any.worker.html: ERROR
-	Multiple headers with the same name, different case (THIS-IS-A-TEST first): NOTRUN
-	Multiple headers with the same name, different case (THIS-is-A-test first): TIMEOUT
+/fetch/api/basic/request-headers-case.any.worker.html: OK
+	Multiple headers with the same name, different case (THIS-IS-A-TEST first): FAIL
+	Multiple headers with the same name, different case (THIS-is-A-test first): FAIL
 /fetch/api/basic/request-headers-nonascii.any.html: OK
 	Non-ascii bytes in request headers: FAIL
-/fetch/api/basic/request-headers-nonascii.any.worker.html: ERROR
-	Non-ascii bytes in request headers: TIMEOUT
+/fetch/api/basic/request-headers-nonascii.any.worker.html: OK
+	Non-ascii bytes in request headers: FAIL
 /fetch/api/basic/request-headers.any.html: OK
 	Fetch with Chicken: FAIL
 	Fetch with Chicken with body: FAIL
@@ -373,14 +412,14 @@
 	Fetch with PUT without body: FAIL
 	Fetch with TacO and mode "cors" needs an Origin header: FAIL
 	Fetch with TacO and mode "same-origin" needs an Origin header: FAIL
-/fetch/api/basic/request-headers.any.worker.html: ERROR
-	Fetch with GET: TIMEOUT
-	Fetch with HEAD: NOTRUN
+/fetch/api/basic/request-headers.any.worker.html: CRASH
 /fetch/api/basic/request-referrer-redirected-worker.html: TIMEOUT
 /fetch/api/basic/request-referrer.any.html: OK
 	about:client referrer: FAIL
 	url referrer: FAIL
-/fetch/api/basic/request-referrer.any.worker.html: ERROR
+/fetch/api/basic/request-referrer.any.worker.html: OK
+	about:client referrer: FAIL
+	url referrer: FAIL
 /fetch/api/basic/request-upload-421.any.html: OK
 	Fetch with POST with text body on 421 response should be retried once on new connection.: FAIL
 /fetch/api/basic/request-upload-421.any.worker.html: OK
@@ -404,25 +443,25 @@
 	Fetch with POST with text body: FAIL
 	Fetch with PUT with body: FAIL
 	Streaming upload shouldn't work on Http/1.1.: PASS
-/fetch/api/basic/request-upload.any.worker.html: ERROR
-	Fetch with POST with ArrayBuffer body: NOTRUN
-	Fetch with POST with Blob body: NOTRUN
-	Fetch with POST with Blob body with mime type: NOTRUN
-	Fetch with POST with DataView body: NOTRUN
-	Fetch with POST with Float16Array body: NOTRUN
-	Fetch with POST with Float32Array body: NOTRUN
-	Fetch with POST with Float64Array body: NOTRUN
-	Fetch with POST with Int8Array body: NOTRUN
-	Fetch with POST with ReadableStream containing ArrayBuffer: NOTRUN
-	Fetch with POST with ReadableStream containing Blob: NOTRUN
-	Fetch with POST with ReadableStream containing String: NOTRUN
-	Fetch with POST with ReadableStream containing null: NOTRUN
-	Fetch with POST with ReadableStream containing number: NOTRUN
-	Fetch with POST with URLSearchParams body: NOTRUN
-	Fetch with POST with Uint8Array body: NOTRUN
-	Fetch with POST with text body: NOTRUN
-	Fetch with PUT with body: TIMEOUT
-	Streaming upload shouldn't work on Http/1.1.: NOTRUN
+/fetch/api/basic/request-upload.any.worker.html: OK
+	Fetch with POST with ArrayBuffer body: FAIL
+	Fetch with POST with Blob body: FAIL
+	Fetch with POST with Blob body with mime type: FAIL
+	Fetch with POST with DataView body: FAIL
+	Fetch with POST with Float16Array body: FAIL
+	Fetch with POST with Float32Array body: FAIL
+	Fetch with POST with Float64Array body: FAIL
+	Fetch with POST with Int8Array body: FAIL
+	Fetch with POST with ReadableStream containing ArrayBuffer: PASS
+	Fetch with POST with ReadableStream containing Blob: PASS
+	Fetch with POST with ReadableStream containing String: PASS
+	Fetch with POST with ReadableStream containing null: PASS
+	Fetch with POST with ReadableStream containing number: PASS
+	Fetch with POST with URLSearchParams body: FAIL
+	Fetch with POST with Uint8Array body: FAIL
+	Fetch with POST with text body: FAIL
+	Fetch with PUT with body: FAIL
+	Streaming upload shouldn't work on Http/1.1.: PASS
 /fetch/api/basic/request-upload.h2.any.html: TIMEOUT
 	Feature detect for POST with ReadableStream: TIMEOUT
 	Feature detect for POST with ReadableStream, using request object: NOTRUN
@@ -436,12 +475,12 @@
 	Streaming upload with body containing null: NOTRUN
 	Synchronous feature detect: PASS
 	Synchronous feature detect fails if feature unsupported: NOTRUN
-/fetch/api/basic/request-upload.h2.any.worker.html: ERROR
-	Feature detect for POST with ReadableStream: NOTRUN
+/fetch/api/basic/request-upload.h2.any.worker.html: TIMEOUT
+	Feature detect for POST with ReadableStream: TIMEOUT
 	Feature detect for POST with ReadableStream, using request object: NOTRUN
-	Fetch with POST with ReadableStream: NOTRUN
-	Fetch with POST with ReadableStream on 421 response should return the response and not retry.: NOTRUN
-	Fetch with POST with empty ReadableStream: TIMEOUT
+	Fetch with POST with ReadableStream: FAIL
+	Fetch with POST with ReadableStream on 421 response should return the response and not retry.: FAIL
+	Fetch with POST with empty ReadableStream: FAIL
 	ReadbleStream should be closed on signal.abort: NOTRUN
 	Streaming upload should fail on a 401 response: NOTRUN
 	Streaming upload with body containing a String: NOTRUN
@@ -461,44 +500,44 @@
 	Response.body is null for responses with status=304 (method=GET): FAIL
 	Response.body is null for responses with status=304 (method=OPTIONS): FAIL
 	Response.body is null for responses with status=304 (method=POST): FAIL
-/fetch/api/basic/response-null-body.any.worker.html: ERROR
-	Null body status with subresource integrity should abort: NOTRUN
-	Response.body is null for responses with method=HEAD: NOTRUN
-	Response.body is null for responses with status=204 (method=GET): TIMEOUT
-	Response.body is null for responses with status=204 (method=OPTIONS): NOTRUN
-	Response.body is null for responses with status=204 (method=POST): NOTRUN
-	Response.body is null for responses with status=205 (method=GET): NOTRUN
-	Response.body is null for responses with status=205 (method=OPTIONS): NOTRUN
-	Response.body is null for responses with status=205 (method=POST): NOTRUN
-	Response.body is null for responses with status=304 (method=GET): NOTRUN
-	Response.body is null for responses with status=304 (method=OPTIONS): NOTRUN
-	Response.body is null for responses with status=304 (method=POST): NOTRUN
+/fetch/api/basic/response-null-body.any.worker.html: OK
+	Null body status with subresource integrity should abort: PASS
+	Response.body is null for responses with method=HEAD: FAIL
+	Response.body is null for responses with status=204 (method=GET): FAIL
+	Response.body is null for responses with status=204 (method=OPTIONS): FAIL
+	Response.body is null for responses with status=204 (method=POST): FAIL
+	Response.body is null for responses with status=205 (method=GET): FAIL
+	Response.body is null for responses with status=205 (method=OPTIONS): FAIL
+	Response.body is null for responses with status=205 (method=POST): FAIL
+	Response.body is null for responses with status=304 (method=GET): FAIL
+	Response.body is null for responses with status=304 (method=OPTIONS): FAIL
+	Response.body is null for responses with status=304 (method=POST): FAIL
 /fetch/api/basic/response-url.sub.any.html: OK
 	Testing response url getter with http://127.0.0.1:8778#ada: FAIL
 	Testing response url getter with http://127.0.0.1:8778/#: FAIL
 	Testing response url getter with http://127.0.0.1:8778/#ada: FAIL
 	Testing response url getter with http://127.0.0.1:8778/ada: PASS
-/fetch/api/basic/response-url.sub.any.worker.html: ERROR
-	Testing response url getter with http://127.0.0.1:8778#ada: NOTRUN
-	Testing response url getter with http://127.0.0.1:8778/#: NOTRUN
-	Testing response url getter with http://127.0.0.1:8778/#ada: NOTRUN
-	Testing response url getter with http://127.0.0.1:8778/ada: TIMEOUT
-/fetch/api/basic/scheme-about.any.html: TIMEOUT
+/fetch/api/basic/response-url.sub.any.worker.html: OK
+	Testing response url getter with http://127.0.0.1:8778#ada: FAIL
+	Testing response url getter with http://127.0.0.1:8778/#: FAIL
+	Testing response url getter with http://127.0.0.1:8778/#ada: FAIL
+	Testing response url getter with http://127.0.0.1:8778/ada: PASS
+/fetch/api/basic/scheme-about.any.html: OK
 	Fetching about:blank with method GET is KO: FAIL
-	Fetching about:blank with method POST is KO: NOTRUN
-	Fetching about:blank with method PUT is KO: TIMEOUT
-	Fetching about:blank with range header does not affect behavior: NOTRUN
-	Fetching about:config with method GET is KO: NOTRUN
-	Fetching about:invalid.com with method GET is KO: NOTRUN
-	Fetching about:unicorn with method GET is KO: NOTRUN
-/fetch/api/basic/scheme-about.any.worker.html: ERROR
-	Fetching about:blank with method GET is KO: TIMEOUT
-	Fetching about:blank with method POST is KO: NOTRUN
-	Fetching about:blank with method PUT is KO: NOTRUN
-	Fetching about:blank with range header does not affect behavior: NOTRUN
-	Fetching about:config with method GET is KO: NOTRUN
-	Fetching about:invalid.com with method GET is KO: NOTRUN
-	Fetching about:unicorn with method GET is KO: NOTRUN
+	Fetching about:blank with method POST is KO: FAIL
+	Fetching about:blank with method PUT is KO: FAIL
+	Fetching about:blank with range header does not affect behavior: FAIL
+	Fetching about:config with method GET is KO: PASS
+	Fetching about:invalid.com with method GET is KO: PASS
+	Fetching about:unicorn with method GET is KO: PASS
+/fetch/api/basic/scheme-about.any.worker.html: OK
+	Fetching about:blank with method GET is KO: FAIL
+	Fetching about:blank with method POST is KO: FAIL
+	Fetching about:blank with method PUT is KO: FAIL
+	Fetching about:blank with range header does not affect behavior: FAIL
+	Fetching about:config with method GET is KO: PASS
+	Fetching about:invalid.com with method GET is KO: PASS
+	Fetching about:unicorn with method GET is KO: PASS
 /fetch/api/basic/scheme-blob.sub.any.html: OK
 	Blob content is not sniffed for a content type [image/png]: PASS
 	Blob content is not sniffed for a content type [text/xml]: PASS
@@ -518,10 +557,10 @@
 	Fetching [PUT] URL.createObjectURL(blob) is KO: PASS
 	Set content type to the empty string for slice with invalid content type: PASS
 	Set content type to the empty string for slice with no content type : PASS
-/fetch/api/basic/scheme-blob.sub.any.worker.html: ERROR
-	Blob content is not sniffed for a content type [image/png]: TIMEOUT
-	Blob content is not sniffed for a content type [text/xml]: NOTRUN
-	Blob.slice should not sniff the content for a content type: NOTRUN
+/fetch/api/basic/scheme-blob.sub.any.worker.html: OK
+	Blob content is not sniffed for a content type [image/png]: PASS
+	Blob content is not sniffed for a content type [text/xml]: PASS
+	Blob.slice should not sniff the content for a content type: PASS
 	Fetching URL.createObjectURL(empty_blob) is OK: PASS
 	Fetching URL.createObjectURL(empty_data_blob) is OK: PASS
 	Fetching URL.createObjectURL(empty_type_blob) is OK: PASS
@@ -535,26 +574,26 @@
 	Fetching [OPTIONS] URL.createObjectURL(blob) is KO: PASS
 	Fetching [POST] URL.createObjectURL(blob) is KO: PASS
 	Fetching [PUT] URL.createObjectURL(blob) is KO: PASS
-	Set content type to the empty string for slice with invalid content type: NOTRUN
-	Set content type to the empty string for slice with no content type : NOTRUN
-/fetch/api/basic/scheme-data.any.html: TIMEOUT
-	Fetching [GET] data:notAdataUrl.com is KO: NOTRUN
-	Fetching [HEAD] data:,response%27s%20body is OK: NOTRUN
-	Fetching [POST] data:,response%27s%20body is OK: NOTRUN
+	Set content type to the empty string for slice with invalid content type: PASS
+	Set content type to the empty string for slice with no content type : PASS
+/fetch/api/basic/scheme-data.any.html: OK
+	Fetching [GET] data:notAdataUrl.com is KO: PASS
+	Fetching [HEAD] data:,response%27s%20body is OK: FAIL
+	Fetching [POST] data:,response%27s%20body is OK: FAIL
 	Fetching data:,response%27s%20body is OK: FAIL
-	Fetching data:,response%27s%20body is OK (cors): NOTRUN
-	Fetching data:,response%27s%20body is OK (same-origin): TIMEOUT
-	Fetching data:image/png;base64,cmVzcG9uc2UncyBib2[...] is OK: NOTRUN
-	Fetching data:text/plain;base64,cmVzcG9uc2UncyBib[...] is OK: NOTRUN
-/fetch/api/basic/scheme-data.any.worker.html: ERROR
-	Fetching [GET] data:notAdataUrl.com is KO: NOTRUN
-	Fetching [HEAD] data:,response%27s%20body is OK: NOTRUN
-	Fetching [POST] data:,response%27s%20body is OK: NOTRUN
-	Fetching data:,response%27s%20body is OK: TIMEOUT
-	Fetching data:,response%27s%20body is OK (cors): NOTRUN
-	Fetching data:,response%27s%20body is OK (same-origin): NOTRUN
-	Fetching data:image/png;base64,cmVzcG9uc2UncyBib2[...] is OK: NOTRUN
-	Fetching data:text/plain;base64,cmVzcG9uc2UncyBib[...] is OK: NOTRUN
+	Fetching data:,response%27s%20body is OK (cors): FAIL
+	Fetching data:,response%27s%20body is OK (same-origin): FAIL
+	Fetching data:image/png;base64,cmVzcG9uc2UncyBib2[...] is OK: PASS
+	Fetching data:text/plain;base64,cmVzcG9uc2UncyBib[...] is OK: PASS
+/fetch/api/basic/scheme-data.any.worker.html: OK
+	Fetching [GET] data:notAdataUrl.com is KO: PASS
+	Fetching [HEAD] data:,response%27s%20body is OK: FAIL
+	Fetching [POST] data:,response%27s%20body is OK: FAIL
+	Fetching data:,response%27s%20body is OK: FAIL
+	Fetching data:,response%27s%20body is OK (cors): FAIL
+	Fetching data:,response%27s%20body is OK (same-origin): FAIL
+	Fetching data:image/png;base64,cmVzcG9uc2UncyBib2[...] is OK: PASS
+	Fetching data:text/plain;base64,cmVzcG9uc2UncyBib[...] is OK: PASS
 /fetch/api/basic/scheme-others.sub.any.html: OK
 	Fetching aaa://127.0.0.1:8778/ is KO: PASS
 	Fetching cap://127.0.0.1:8778/ is KO: PASS
@@ -572,23 +611,23 @@
 	Fetching pop://127.0.0.1:8778/ is KO: PASS
 	Fetching rtsp://127.0.0.1:8778/ is KO: PASS
 	Fetching snmp://127.0.0.1:8778/ is KO: PASS
-/fetch/api/basic/scheme-others.sub.any.worker.html: ERROR
-	Fetching aaa://127.0.0.1:8778/ is KO: TIMEOUT
-	Fetching cap://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching cid://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching dav://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching dict://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching dns://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching geo://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching im://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching imap://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching ipp://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching ldap://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching mailto://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching nfs://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching pop://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching rtsp://127.0.0.1:8778/ is KO: NOTRUN
-	Fetching snmp://127.0.0.1:8778/ is KO: NOTRUN
+/fetch/api/basic/scheme-others.sub.any.worker.html: OK
+	Fetching aaa://127.0.0.1:8778/ is KO: PASS
+	Fetching cap://127.0.0.1:8778/ is KO: PASS
+	Fetching cid://127.0.0.1:8778/ is KO: PASS
+	Fetching dav://127.0.0.1:8778/ is KO: PASS
+	Fetching dict://127.0.0.1:8778/ is KO: PASS
+	Fetching dns://127.0.0.1:8778/ is KO: PASS
+	Fetching geo://127.0.0.1:8778/ is KO: PASS
+	Fetching im://127.0.0.1:8778/ is KO: PASS
+	Fetching imap://127.0.0.1:8778/ is KO: PASS
+	Fetching ipp://127.0.0.1:8778/ is KO: PASS
+	Fetching ldap://127.0.0.1:8778/ is KO: PASS
+	Fetching mailto://127.0.0.1:8778/ is KO: PASS
+	Fetching nfs://127.0.0.1:8778/ is KO: PASS
+	Fetching pop://127.0.0.1:8778/ is KO: PASS
+	Fetching rtsp://127.0.0.1:8778/ is KO: PASS
+	Fetching snmp://127.0.0.1:8778/ is KO: PASS
 /fetch/api/basic/status.h2.any.html: OK
 	statusText over H2 for status 200 should be the empty string: FAIL
 	statusText over H2 for status 210 should be the empty string: FAIL
@@ -597,20 +636,20 @@
 	statusText over H2 for status 410 should be the empty string: FAIL
 	statusText over H2 for status 500 should be the empty string: FAIL
 	statusText over H2 for status 502 should be the empty string: FAIL
-/fetch/api/basic/status.h2.any.worker.html: ERROR
-	statusText over H2 for status 200 should be the empty string: TIMEOUT
-	statusText over H2 for status 210 should be the empty string: NOTRUN
-	statusText over H2 for status 400 should be the empty string: NOTRUN
-	statusText over H2 for status 404 should be the empty string: NOTRUN
-	statusText over H2 for status 410 should be the empty string: NOTRUN
-	statusText over H2 for status 500 should be the empty string: NOTRUN
-	statusText over H2 for status 502 should be the empty string: NOTRUN
+/fetch/api/basic/status.h2.any.worker.html: OK
+	statusText over H2 for status 200 should be the empty string: FAIL
+	statusText over H2 for status 210 should be the empty string: FAIL
+	statusText over H2 for status 400 should be the empty string: FAIL
+	statusText over H2 for status 404 should be the empty string: FAIL
+	statusText over H2 for status 410 should be the empty string: FAIL
+	statusText over H2 for status 500 should be the empty string: FAIL
+	statusText over H2 for status 502 should be the empty string: FAIL
 /fetch/api/basic/stream-response.any.html: OK
 	Stream response's body when content-type is not present: FAIL
 	Stream response's body when content-type is present: FAIL
-/fetch/api/basic/stream-response.any.worker.html: ERROR
-	Stream response's body when content-type is not present: NOTRUN
-	Stream response's body when content-type is present: TIMEOUT
+/fetch/api/basic/stream-response.any.worker.html: OK
+	Stream response's body when content-type is not present: FAIL
+	Stream response's body when content-type is present: FAIL
 /fetch/api/basic/stream-safe-creation.any.html: OK
 	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'consumeEmptyRequest': PASS
 	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'consumeEmptyResponse': PASS
@@ -676,68 +715,68 @@
 	throwing Object.prototype.type accessor should not affect stream creation by 'request': PASS
 	throwing Object.prototype.type accessor should not affect stream creation by 'response': PASS
 /fetch/api/basic/stream-safe-creation.any.worker.html: OK
-	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'consumeEmptyRequest': FAIL
+	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'consumeEmptyRequest': PASS
 	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'consumeEmptyResponse': PASS
-	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'consumeNonEmptyRequest': FAIL
+	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'consumeNonEmptyRequest': PASS
 	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'consumeNonEmptyResponse': PASS
-	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'fetch': FAIL
-	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'request': FAIL
+	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'fetch': PASS
+	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'request': PASS
 	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'response': PASS
-	Object.prototype.size accessor returning invalid value should not affect stream creation by 'consumeEmptyRequest': FAIL
+	Object.prototype.size accessor returning invalid value should not affect stream creation by 'consumeEmptyRequest': PASS
 	Object.prototype.size accessor returning invalid value should not affect stream creation by 'consumeEmptyResponse': PASS
-	Object.prototype.size accessor returning invalid value should not affect stream creation by 'consumeNonEmptyRequest': FAIL
+	Object.prototype.size accessor returning invalid value should not affect stream creation by 'consumeNonEmptyRequest': PASS
 	Object.prototype.size accessor returning invalid value should not affect stream creation by 'consumeNonEmptyResponse': PASS
-	Object.prototype.size accessor returning invalid value should not affect stream creation by 'fetch': FAIL
-	Object.prototype.size accessor returning invalid value should not affect stream creation by 'request': FAIL
+	Object.prototype.size accessor returning invalid value should not affect stream creation by 'fetch': PASS
+	Object.prototype.size accessor returning invalid value should not affect stream creation by 'request': PASS
 	Object.prototype.size accessor returning invalid value should not affect stream creation by 'response': PASS
-	Object.prototype.start accessor returning invalid value should not affect stream creation by 'consumeEmptyRequest': FAIL
+	Object.prototype.start accessor returning invalid value should not affect stream creation by 'consumeEmptyRequest': PASS
 	Object.prototype.start accessor returning invalid value should not affect stream creation by 'consumeEmptyResponse': PASS
-	Object.prototype.start accessor returning invalid value should not affect stream creation by 'consumeNonEmptyRequest': FAIL
+	Object.prototype.start accessor returning invalid value should not affect stream creation by 'consumeNonEmptyRequest': PASS
 	Object.prototype.start accessor returning invalid value should not affect stream creation by 'consumeNonEmptyResponse': PASS
-	Object.prototype.start accessor returning invalid value should not affect stream creation by 'fetch': FAIL
-	Object.prototype.start accessor returning invalid value should not affect stream creation by 'request': FAIL
+	Object.prototype.start accessor returning invalid value should not affect stream creation by 'fetch': PASS
+	Object.prototype.start accessor returning invalid value should not affect stream creation by 'request': PASS
 	Object.prototype.start accessor returning invalid value should not affect stream creation by 'response': PASS
-	Object.prototype.start function which errors the stream should not affect stream creation by 'consumeEmptyRequest': FAIL
+	Object.prototype.start function which errors the stream should not affect stream creation by 'consumeEmptyRequest': PASS
 	Object.prototype.start function which errors the stream should not affect stream creation by 'consumeEmptyResponse': PASS
-	Object.prototype.start function which errors the stream should not affect stream creation by 'consumeNonEmptyRequest': FAIL
+	Object.prototype.start function which errors the stream should not affect stream creation by 'consumeNonEmptyRequest': PASS
 	Object.prototype.start function which errors the stream should not affect stream creation by 'consumeNonEmptyResponse': PASS
-	Object.prototype.start function which errors the stream should not affect stream creation by 'fetch': FAIL
-	Object.prototype.start function which errors the stream should not affect stream creation by 'request': FAIL
+	Object.prototype.start function which errors the stream should not affect stream creation by 'fetch': PASS
+	Object.prototype.start function which errors the stream should not affect stream creation by 'request': PASS
 	Object.prototype.start function which errors the stream should not affect stream creation by 'response': PASS
-	Object.prototype.type accessor returning invalid value should not affect stream creation by 'consumeEmptyRequest': FAIL
+	Object.prototype.type accessor returning invalid value should not affect stream creation by 'consumeEmptyRequest': PASS
 	Object.prototype.type accessor returning invalid value should not affect stream creation by 'consumeEmptyResponse': PASS
-	Object.prototype.type accessor returning invalid value should not affect stream creation by 'consumeNonEmptyRequest': FAIL
+	Object.prototype.type accessor returning invalid value should not affect stream creation by 'consumeNonEmptyRequest': PASS
 	Object.prototype.type accessor returning invalid value should not affect stream creation by 'consumeNonEmptyResponse': PASS
-	Object.prototype.type accessor returning invalid value should not affect stream creation by 'fetch': FAIL
-	Object.prototype.type accessor returning invalid value should not affect stream creation by 'request': FAIL
+	Object.prototype.type accessor returning invalid value should not affect stream creation by 'fetch': PASS
+	Object.prototype.type accessor returning invalid value should not affect stream creation by 'request': PASS
 	Object.prototype.type accessor returning invalid value should not affect stream creation by 'response': PASS
-	throwing Object.prototype.highWaterMark accessor should not affect stream creation by 'consumeEmptyRequest': FAIL
+	throwing Object.prototype.highWaterMark accessor should not affect stream creation by 'consumeEmptyRequest': PASS
 	throwing Object.prototype.highWaterMark accessor should not affect stream creation by 'consumeEmptyResponse': PASS
-	throwing Object.prototype.highWaterMark accessor should not affect stream creation by 'consumeNonEmptyRequest': FAIL
+	throwing Object.prototype.highWaterMark accessor should not affect stream creation by 'consumeNonEmptyRequest': PASS
 	throwing Object.prototype.highWaterMark accessor should not affect stream creation by 'consumeNonEmptyResponse': PASS
-	throwing Object.prototype.highWaterMark accessor should not affect stream creation by 'fetch': FAIL
-	throwing Object.prototype.highWaterMark accessor should not affect stream creation by 'request': FAIL
+	throwing Object.prototype.highWaterMark accessor should not affect stream creation by 'fetch': PASS
+	throwing Object.prototype.highWaterMark accessor should not affect stream creation by 'request': PASS
 	throwing Object.prototype.highWaterMark accessor should not affect stream creation by 'response': PASS
-	throwing Object.prototype.size accessor should not affect stream creation by 'consumeEmptyRequest': FAIL
+	throwing Object.prototype.size accessor should not affect stream creation by 'consumeEmptyRequest': PASS
 	throwing Object.prototype.size accessor should not affect stream creation by 'consumeEmptyResponse': PASS
-	throwing Object.prototype.size accessor should not affect stream creation by 'consumeNonEmptyRequest': FAIL
+	throwing Object.prototype.size accessor should not affect stream creation by 'consumeNonEmptyRequest': PASS
 	throwing Object.prototype.size accessor should not affect stream creation by 'consumeNonEmptyResponse': PASS
-	throwing Object.prototype.size accessor should not affect stream creation by 'fetch': FAIL
-	throwing Object.prototype.size accessor should not affect stream creation by 'request': FAIL
+	throwing Object.prototype.size accessor should not affect stream creation by 'fetch': PASS
+	throwing Object.prototype.size accessor should not affect stream creation by 'request': PASS
 	throwing Object.prototype.size accessor should not affect stream creation by 'response': PASS
-	throwing Object.prototype.start accessor should not affect stream creation by 'consumeEmptyRequest': FAIL
+	throwing Object.prototype.start accessor should not affect stream creation by 'consumeEmptyRequest': PASS
 	throwing Object.prototype.start accessor should not affect stream creation by 'consumeEmptyResponse': PASS
-	throwing Object.prototype.start accessor should not affect stream creation by 'consumeNonEmptyRequest': FAIL
+	throwing Object.prototype.start accessor should not affect stream creation by 'consumeNonEmptyRequest': PASS
 	throwing Object.prototype.start accessor should not affect stream creation by 'consumeNonEmptyResponse': PASS
-	throwing Object.prototype.start accessor should not affect stream creation by 'fetch': FAIL
-	throwing Object.prototype.start accessor should not affect stream creation by 'request': FAIL
+	throwing Object.prototype.start accessor should not affect stream creation by 'fetch': PASS
+	throwing Object.prototype.start accessor should not affect stream creation by 'request': PASS
 	throwing Object.prototype.start accessor should not affect stream creation by 'response': PASS
-	throwing Object.prototype.type accessor should not affect stream creation by 'consumeEmptyRequest': FAIL
+	throwing Object.prototype.type accessor should not affect stream creation by 'consumeEmptyRequest': PASS
 	throwing Object.prototype.type accessor should not affect stream creation by 'consumeEmptyResponse': PASS
-	throwing Object.prototype.type accessor should not affect stream creation by 'consumeNonEmptyRequest': FAIL
+	throwing Object.prototype.type accessor should not affect stream creation by 'consumeNonEmptyRequest': PASS
 	throwing Object.prototype.type accessor should not affect stream creation by 'consumeNonEmptyResponse': PASS
-	throwing Object.prototype.type accessor should not affect stream creation by 'fetch': FAIL
-	throwing Object.prototype.type accessor should not affect stream creation by 'request': FAIL
+	throwing Object.prototype.type accessor should not affect stream creation by 'fetch': PASS
+	throwing Object.prototype.type accessor should not affect stream creation by 'request': PASS
 	throwing Object.prototype.type accessor should not affect stream creation by 'response': PASS
 /fetch/api/basic/text-utf8.any.html: OK
 	UTF-16 without BOM decoded as UTF-8 (Request object): PASS
@@ -770,37 +809,37 @@
 	UTF-8 without BOM with Response.text(): PASS
 	UTF-8 without BOM with fetched data (UTF-16 charset): FAIL
 	UTF-8 without BOM with fetched data (UTF-8 charset): FAIL
-/fetch/api/basic/text-utf8.any.worker.html: ERROR
-	UTF-16 without BOM decoded as UTF-8 (Request object): NOTRUN
-	UTF-16 without BOM decoded as UTF-8 (Response object): NOTRUN
-	UTF-16 without BOM decoded as UTF-8 with Request.text(): NOTRUN
-	UTF-16 without BOM decoded as UTF-8 with Response.text(): NOTRUN
-	UTF-16 without BOM decoded as UTF-8 with fetched data (UTF-16 charset): NOTRUN
-	UTF-16 without BOM decoded as UTF-8 with fetched data (UTF-8 charset): NOTRUN
-	UTF-16BE with BOM decoded as UTF-8 (Request object): NOTRUN
-	UTF-16BE with BOM decoded as UTF-8 (Response object): NOTRUN
-	UTF-16BE with BOM decoded as UTF-8 with Request.text(): NOTRUN
-	UTF-16BE with BOM decoded as UTF-8 with Response.text(): NOTRUN
-	UTF-16BE with BOM decoded as UTF-8 with fetched data (UTF-16 charset): NOTRUN
-	UTF-16BE with BOM decoded as UTF-8 with fetched data (UTF-8 charset): NOTRUN
-	UTF-16LE with BOM decoded as UTF-8 (Request object): NOTRUN
-	UTF-16LE with BOM decoded as UTF-8 (Response object): NOTRUN
-	UTF-16LE with BOM decoded as UTF-8 with Request.text(): NOTRUN
-	UTF-16LE with BOM decoded as UTF-8 with Response.text(): NOTRUN
-	UTF-16LE with BOM decoded as UTF-8 with fetched data (UTF-16 charset): NOTRUN
-	UTF-16LE with BOM decoded as UTF-8 with fetched data (UTF-8 charset): NOTRUN
-	UTF-8 with BOM (Request object): NOTRUN
-	UTF-8 with BOM (Response object): NOTRUN
+/fetch/api/basic/text-utf8.any.worker.html: OK
+	UTF-16 without BOM decoded as UTF-8 (Request object): PASS
+	UTF-16 without BOM decoded as UTF-8 (Response object): PASS
+	UTF-16 without BOM decoded as UTF-8 with Request.text(): PASS
+	UTF-16 without BOM decoded as UTF-8 with Response.text(): PASS
+	UTF-16 without BOM decoded as UTF-8 with fetched data (UTF-16 charset): FAIL
+	UTF-16 without BOM decoded as UTF-8 with fetched data (UTF-8 charset): FAIL
+	UTF-16BE with BOM decoded as UTF-8 (Request object): PASS
+	UTF-16BE with BOM decoded as UTF-8 (Response object): PASS
+	UTF-16BE with BOM decoded as UTF-8 with Request.text(): PASS
+	UTF-16BE with BOM decoded as UTF-8 with Response.text(): PASS
+	UTF-16BE with BOM decoded as UTF-8 with fetched data (UTF-16 charset): FAIL
+	UTF-16BE with BOM decoded as UTF-8 with fetched data (UTF-8 charset): FAIL
+	UTF-16LE with BOM decoded as UTF-8 (Request object): PASS
+	UTF-16LE with BOM decoded as UTF-8 (Response object): PASS
+	UTF-16LE with BOM decoded as UTF-8 with Request.text(): PASS
+	UTF-16LE with BOM decoded as UTF-8 with Response.text(): PASS
+	UTF-16LE with BOM decoded as UTF-8 with fetched data (UTF-16 charset): FAIL
+	UTF-16LE with BOM decoded as UTF-8 with fetched data (UTF-8 charset): FAIL
+	UTF-8 with BOM (Request object): PASS
+	UTF-8 with BOM (Response object): PASS
 	UTF-8 with BOM with Request.text(): PASS
 	UTF-8 with BOM with Response.text(): PASS
-	UTF-8 with BOM with fetched data (UTF-16 charset): NOTRUN
-	UTF-8 with BOM with fetched data (UTF-8 charset): TIMEOUT
-	UTF-8 without BOM (Request object): NOTRUN
-	UTF-8 without BOM (Response object): NOTRUN
-	UTF-8 without BOM with Request.text(): NOTRUN
-	UTF-8 without BOM with Response.text(): NOTRUN
-	UTF-8 without BOM with fetched data (UTF-16 charset): NOTRUN
-	UTF-8 without BOM with fetched data (UTF-8 charset): NOTRUN
+	UTF-8 with BOM with fetched data (UTF-16 charset): FAIL
+	UTF-8 with BOM with fetched data (UTF-8 charset): FAIL
+	UTF-8 without BOM (Request object): PASS
+	UTF-8 without BOM (Response object): PASS
+	UTF-8 without BOM with Request.text(): PASS
+	UTF-8 without BOM with Response.text(): PASS
+	UTF-8 without BOM with fetched data (UTF-16 charset): FAIL
+	UTF-8 without BOM with fetched data (UTF-8 charset): FAIL
 /fetch/api/basic/url-parsing.sub.html?encoding=utf8: OK
 	Request uses the UTF-8 URL parser: PASS
 	Request's referrer uses the UTF-8 URL parser: PASS
