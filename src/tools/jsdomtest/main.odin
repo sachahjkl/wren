@@ -55,6 +55,7 @@ Layout_Host :: struct {
 	l:        lay.Layout,
 	set:      lay.Settings,
 	scroll:   [2]f64,
+	view:     [2]f64,   // the viewport the embedder reports (0: VIEW_W x VIEW_H): the resize steps' check changes it
 }
 
 fake_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> lay.Font { return lay.Font(1) }
@@ -70,7 +71,8 @@ layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 
 layout_viewport :: proc(user: rawptr, p: ^page.Page) -> page.Viewport {
 	lh := (^Layout_Host)(user)
-	return page.Viewport{width = VIEW_W, height = VIEW_H, scale = 1, scroll_x = lh.scroll[0], scroll_y = lh.scroll[1]}
+	w, h := lh.view[0] > 0 ? lh.view[0] : VIEW_W, lh.view[1] > 0 ? lh.view[1] : VIEW_H
+	return page.Viewport{width = w, height = h, scale = 1, scroll_x = lh.scroll[0], scroll_y = lh.scroll[1]}
 }
 
 layout_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
@@ -161,7 +163,7 @@ main :: proc() {
 		report_page(name)
 		switch name {
 		case "leaks.html": leak_checks(p)
-		case "layout.html": layout_cost_checks(p)
+		case "layout.html": layout_cost_checks(p); resize_checks(p, lh)
 		case "events.html": browser_event_checks(p)
 		}
 		fmt.printf("  (%.0f ms)\n", ms)
@@ -249,4 +251,20 @@ for (let i = 0; i < 50; i++) { e2.style.width = (100 + i) + "px"; void e2.offset
 	n2 := page.layout_updates(p)
 	fmt.printf("  layout updates for 50 mutations each followed by a reading: %d\n", n2 - n1)
 	check(n2 - n1 == 50, "a reading after a mutation brings the layout up to date")
+}
+
+// CSSOM View's resize steps (page/resize_steps.odin): a rendering update after the viewport changed size fires one
+// resize at the window; the same size again fires nothing.
+resize_checks :: proc(p: ^page.Page, lh: ^Layout_Host) {
+	page.js_run(p, transmute([]byte)string(`addEventListener("resize", () => console.log("resize " + innerWidth + "x" + innerHeight))`), "resize.js")
+	now :: proc() -> f64 { return f64(host.now_ns(&loop)) / 1e6 }
+	page.run_animation_frames(p, now())
+	check(!logged("resize 800x600"), "no resize while the viewport keeps its size")
+	lh.view = {640, 480}
+	page.run_animation_frames(p, now())
+	page.run_animation_frames(p, now())
+	n := 0
+	for l in logs { if l == "resize 640x480" { n += 1 } }
+	check(n == 1, fmt.tprintf("a new viewport size fires resize once, innerWidth and innerHeight already the new ones (%d)", n))
+	lh.view = {}
 }

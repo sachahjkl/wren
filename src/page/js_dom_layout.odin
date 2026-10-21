@@ -46,6 +46,8 @@ Js_Layout :: struct {
 	serial:    u64,
 	vp:        Viewport,
 	updates:   u64,     // how many times the embedder was asked (tests, measurements)
+	resize_w, resize_h: f64,   // the viewport size the resize steps last saw (resize_steps.odin)
+	resize_known:       bool,
 }
 
 // Connects the page to the embedder that lays it out. Call after page_create; a zero value disconnects.

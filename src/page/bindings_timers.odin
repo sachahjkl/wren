@@ -160,6 +160,8 @@ wants_animation_frame :: proc(p: ^Page) -> bool {
 // for the next frame. Returns how many ran.
 run_animation_frames :: proc(p: ^Page, now_ms: f64) -> int {
 	if p == nil || p.closed || p.web.frozen { return 0 }
+	resize_steps(p)   // (the rendering update: resize, then animation frame callbacks)
+	if p.closed { return 0 }
 	defer intersection_observers_update(p)   // the step after the callbacks: "run the update intersection observations steps"
 	if len(p.web.frames) == 0 { return 0 }
 	w := p.web
