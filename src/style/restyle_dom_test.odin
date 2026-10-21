@@ -322,10 +322,14 @@ restyle_dom_falls_back :: proc(t: ^testing.T) {
 
 // With a forms model (a control provider), what can reach other controls' state falls back to a full pass; the rest
 // of the document stays partial.
+// Rules that ask about groups of controls (:checked of a radio group, :valid of a form...): any control inserted,
+// removed or changed may change another one's answer, so those restyle everything. Rules with only element-local
+// questions (:disabled... Tailwind's disabled: variants) restyle what changed (rows of buttons in a virtual list).
 @(test)
 restyle_dom_forms :: proc(t: ^testing.T) {
 	provider := Control_Provider{query = proc(user: rawptr, el: base.Handle, q: Control_Query) -> (bool, bool) { return false, false }}
-	f := rx_load(`<form><input id=i name=a><input name=a></form><div id=d><p id=p>x</p></div>`)
+	GROUPS :: `<style>input:checked { color: red }</style>`
+	f := rx_load(GROUPS + `<form><input id=i name=a><input name=a></form><div id=d><p id=p>x</p></div>`)
 	defer rx_unload(f)
 	f.st.state.controls = provider
 	p := by_id(f, "p")
@@ -333,7 +337,32 @@ restyle_dom_forms :: proc(t: ^testing.T) {
 	dom.release(f.doc, p)
 	_, ok := restyle_dom(f.eng, f.doc, f.st)
 	testing.expect(t, !ok, "an element gone from a document with forms")
-	g := rx_load(`<div id=d><p id=p>x</p><p>y</p></div>`)
+
+	// only local questions: a row with a button removed and another inserted, partially (and as a full pass would)
+	l := rx_load(`<style>button:disabled { opacity: .5 } .r { margin: 1px }</style><div id=list><div class=r id=r1><button>a</button></div><div class=r><button disabled>b</button></div></div>
+		<fieldset disabled id=fs><input id=fi></fieldset>`)
+	defer rx_unload(l)
+	l.st.state.controls = provider
+	r1 := by_id(l, "r1")
+	dom.remove_child(l.doc, by_id(l, "list"), r1)
+	expect_partial(t, l, "a row holding a button removed (:disabled only)")
+	row := dom.create_element(l.doc, "div")
+	dom.set_attribute(l.doc, row, "class", "r")
+	b := dom.create_element(l.doc, "button")
+	dom.set_attribute(l.doc, b, "disabled", "")
+	dom.append_child(l.doc, row, b)
+	dom.append_child(l.doc, by_id(l, "list"), row)
+	expect_partial(t, l, "a row holding a button inserted")
+	dom.remove_attribute(l.doc, b, "disabled")
+	expect_partial(t, l, "its disabled attribute removed")
+	// the first legend of a disabled fieldset: what it holds is enabled, its siblings are not (restyled from the parent)
+	lg := dom.create_element(l.doc, "legend")
+	dom.insert_before(l.doc, by_id(l, "fs"), lg, by_id(l, "fi"))
+	expect_partial(t, l, "a legend inserted in a disabled fieldset")
+	dom.remove_child(l.doc, by_id(l, "fs"), lg)
+	expect_partial(t, l, "and removed")
+
+	g := rx_load(GROUPS + `<div id=d><p id=p>x</p><p>y</p></div>`)
 	defer rx_unload(g)
 	g.st.state.controls = provider
 	q := by_id(g, "p")

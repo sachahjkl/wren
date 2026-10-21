@@ -385,6 +385,32 @@ engine_resolve_import_by_id :: proc(e: ^Engine, sheet_id: u64, slot: int, text: 
 	return engine_resolve_import(e, parent, &parent.imports[slot], text, url)
 }
 
+// The fetch of an import failed (network error, HTTP error, not text/css): it will not come.
+engine_fail_import :: proc(e: ^Engine, sheet_id: u64, slot: int) {
+	parent := engine_find_sheet(e, sheet_id)
+	if parent == nil || slot < 0 || slot >= len(parent.imports) { return }
+	parent.imports[slot].requested = true
+	parent.imports[slot].failed = true
+}
+
+// The state of what `s` imports, transitively (CSSOM "critical subresources" of a <link>'s sheet, for its load event):
+// `pending` while some import has not arrived nor failed, `failed` when one failed. Imports past
+// style.max_import_depth are never fetched and count as failed.
+import_tree_state :: proc(e: ^Engine, s: ^Sheet) -> (pending, failed: bool) {
+	if s == nil { return }
+	for &slot in s.imports {
+		switch {
+		case slot.failed: failed = true
+		case slot.child != nil:
+			p, f := import_tree_state(e, slot.child)
+			pending, failed = pending || p, failed || f
+		case s.depth >= e.settings.max_import_depth: failed = true
+		case: pending = true
+		}
+	}
+	return
+}
+
 // @import rules of `s` not yet answered. The caller fetches `url`, then calls `engine_resolve_import`.
 pending_imports :: proc(e: ^Engine, s: ^Sheet, allocator := context.temp_allocator) -> []^Import_Slot {
 	out := make([dynamic]^Import_Slot, allocator)

@@ -152,7 +152,7 @@ cancelAnimationFrame :: proc(c: ^Call, id: u64) -> Api_Error {
 
 // True when the page has animation frame callbacks waiting and is visible: the shell renders a frame for it.
 wants_animation_frame :: proc(p: ^Page) -> bool {
-	return p != nil && !p.closed && p.web.visible && !p.web.frozen && (len(p.web.frames) > 0 || p.web.io_pending)
+	return p != nil && !p.closed && p.web.visible && !p.web.frozen && (len(p.web.frames) > 0 || p.web.io_pending || p.web.scroll_pending)
 }
 
 // "Run the animation frame callbacks" of HTML's update-the-rendering step. `now_ms` is the frame time on the loop clock
@@ -160,6 +160,8 @@ wants_animation_frame :: proc(p: ^Page) -> bool {
 // for the next frame. Returns how many ran.
 run_animation_frames :: proc(p: ^Page, now_ms: f64) -> int {
 	if p == nil || p.closed || p.web.frozen { return 0 }
+	run_scroll_steps(p)   // the step before: scroll events of what scrolled since the last frame (scroll_events.odin)
+	if p.closed { return 0 }
 	defer intersection_observers_update(p)   // the step after the callbacks: "run the update intersection observations steps"
 	if len(p.web.frames) == 0 { return 0 }
 	w := p.web

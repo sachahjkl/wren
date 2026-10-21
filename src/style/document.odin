@@ -73,7 +73,14 @@ sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, a
 		keep := false
 		found := false
 		if s.from_link {
-			for l in links { if l.owner == s.owner && l.scope == s.scope { keep = true; break } }
+			for l in links {
+				if l.owner == s.owner && l.scope == s.scope {
+					keep = true
+					// (media="print" onload="this.media='all'": the loaded sheet starts applying)
+					sheet_set_media(e, s, l.media)
+					break
+				}
+			}
 			found = keep
 		} else {
 			for st in styles {

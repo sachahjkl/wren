@@ -489,6 +489,11 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 			case "-webkit-right": c.text_align = .Legacy_Right; return true
 			case "justify-all": c.text_align = .Justify; return true
 			case "match-parent": c.text_align = .Start; return true
+			// the UA's th (HTML §15.3.8): centered only when its parent's text-align is the initial value, else that
+			// value inherited (a table with text-align: left has left-aligned header cells)
+			case "-internal-th-center":
+				c.text_align = (cx.parent == nil || cx.parent.text_align == .Start) ? .Center : cx.parent.text_align
+				return true
 			case "legacy-center", "legacy-left", "legacy-right": return false   // (internal names, not CSS keywords)
 			}
 		}

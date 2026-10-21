@@ -105,6 +105,10 @@ Inv_Index :: struct {
 	sib_any:    bool,               // some sibling combinator exists
 	controls:   Reach,              // pseudo-classes answered by the forms model: applied from any element whose attributes change
 	uses_controls: bool,
+	// ... some of them answer for one control from others (its radio group, its form's controls): :checked,
+	// :indeterminate, :default, :valid / :invalid / :user-valid / :user-invalid (a form or fieldset matches from its
+	// controls). Without these, a control inserted, removed or changed restyles only itself and its subtree.
+	uses_control_groups: bool,
 	uses_has:   bool,
 	has_anchors: [dynamic]Has_Anchor,
 	has_classes, has_ids, has_attrs: map[string]bool,   // features tested inside :has()
@@ -284,6 +288,9 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 		     .In_Range, .Out_Of_Range, .Indeterminate, .Default, .Autofill:
 			// the forms model answers these from the whole control (and its form); attributes are the fallback
 			ix.uses_controls = true
+			#partial switch s.pseudo {
+			case .Checked, .Indeterminate, .Default, .Valid, .Invalid, .User_Valid, .User_Invalid: ix.uses_control_groups = true
+			}
 			ix.controls = reach_union(ix.controls, subtree)
 			for name in ([?]string{"checked", "selected", "type", "disabled", "readonly", "contenteditable", "required"}) {
 				attr_dep(ix, name, subtree, in_has)

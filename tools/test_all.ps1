@@ -274,6 +274,14 @@ try {
         $o = Get-Content build\jlt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
+    Step 'site compatibility end-to-end test (sitecompattest: reduced fixtures of real sites: stylesheet load events, media swap, scroll events)' {
+        odin build src/tools/sitecompattest -collection:wb=src -vet -out:build/sitecompattest.exe $Stack
+        if ($LASTEXITCODE -ne 0) { return }
+        $p = Start-Process .\build\sitecompattest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\sct.txt
+        if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\sct.txt; $global:LASTEXITCODE = 1; return }
+        $o = Get-Content build\sct.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
+    }
     Step 'JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; jswebtest)' {
         odin build src/tools/jswebtest -collection:wb=src -vet -out:build/jswebtest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }

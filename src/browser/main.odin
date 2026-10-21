@@ -1004,6 +1004,9 @@ frame :: proc(app: ^App, idled := false) {
 	// page visibility, then the animation frame callbacks of the page about to be painted
 	shown := app.win.size.x > 0 && app.win.size.y > 0
 	for tab, i in app.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == app.current && tab.kind == .Web) } }
+	// smooth scrolling moves the scrollers first: the scroll events of this frame (run_animation_frames) see where they
+	// are painted
+	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }   // smooth_scroll.odin
 	// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
 	if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
 		prof_begin(.Animation)
@@ -1012,7 +1015,6 @@ frame :: proc(app: ^App, idled := false) {
 		// (the loop counts this frame off after it: 2 = this one and the next)
 		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
 	}
-	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }   // smooth_scroll.odin
 
 	render.resize(&app.r, app.win.size)
 	size := draw.Vec2{f32(app.win.size.x), f32(app.win.size.y)}

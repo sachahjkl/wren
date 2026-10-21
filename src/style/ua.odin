@@ -103,7 +103,7 @@ tbody { display: table-row-group; vertical-align: middle; border-color: inherit;
 tfoot { display: table-footer-group; vertical-align: middle; border-color: inherit; }
 tr { display: table-row; vertical-align: inherit; border-color: inherit; }
 td, th { display: table-cell; padding: 1px; vertical-align: inherit; }
-th { font-weight: bold; text-align: center; }
+th { font-weight: bold; text-align: -internal-th-center; }
 summary { display: block; }
 details > summary:first-of-type { display: list-item; counter-increment: list-item 0; list-style: disclosure-closed inside; cursor: default; }
 details[open] > summary:first-of-type { list-style-type: disclosure-open; }

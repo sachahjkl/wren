@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Virtual scroll (fixture)</title>
+<!-- Reduced from clockin.sacha.house's history view (Angular CDK cdk-virtual-scroll-viewport): a scroll container with a
+     spacer as tall as every row, the rows in view rendered in a wrapper moved down by transform: translateY on each
+     scroll event. -->
+<style>
+  body { margin: 0; font: 14px/20px sans-serif; background: #eef4ff }
+  #vp { margin: 40px; height: 400px; width: 600px; overflow: auto; position: relative; contain: strict; transform: translateZ(0); will-change: scroll-position; background: white; border: 1px solid #ccd }
+  #wrap { position: absolute; top: 0; left: 0; contain: content; width: 100% }
+  .row { display: grid; grid-template-columns: 160px 1fr 1fr; height: 48px; align-items: center; border-top: 1px solid #e2e8f0; padding: 0 16px }
+  #spacer { height: 2400000px; width: 1px }
+  #state { margin: 0 40px; font: 12px monospace }
+</style>
+</head>
+<body>
+<div id="vp"><div id="wrap"></div><div id="spacer"></div></div>
+<p id="state"></p>
+<script>
+const vp = document.getElementById('vp'), wrap = document.getElementById('wrap'), state = document.getElementById('state');
+const ROW = 48, N = 50000;
+function render() {
+  const first = Math.max(0, Math.floor(vp.scrollTop / ROW) - 2);
+  const count = Math.ceil(vp.clientHeight / ROW) + 4;
+  wrap.textContent = '';
+  for (let i = first; i < Math.min(N, first + count); i++) {
+    const r = document.createElement('div');
+    r.className = 'row';
+    r.innerHTML = '<b>Row ' + i + '</b><span>' + (i * 7 % 24) + ':00</span><span>' + (i * 13 % 60) + ' min</span>';
+    wrap.appendChild(r);
+  }
+  wrap.style.transform = 'translateY(' + first * ROW + 'px)';
+  state.textContent = 'scrollTop ' + vp.scrollTop + ', rows ' + first + '..' + (first + count - 1);
+}
+vp.addEventListener('scroll', () => requestAnimationFrame(render));
+render();
+</script>
+</body>
+</html>

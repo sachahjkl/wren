@@ -145,6 +145,27 @@ filter_outsets_and_reach :: proc(t: ^testing.T) {
 	testing.expect(t, !found, "40 px below: culled")
 }
 
+// A virtual list (Angular CDK's cdk-virtual-scroll-viewport): a tall spacer in a scroll container, the rendered rows in a
+// wrapper moved down by transform: translateY to where the container is scrolled. The rows are painted.
+@(test)
+transformed_rows_in_scrolled_container :: proc(t: ^testing.T) {
+	f := fx_load(`<body style="margin:0">
+<div id=vp style="height:200px;overflow:auto;position:relative;contain:strict">
+<div id=wrap style="position:absolute;top:0;left:0;width:100%;transform:translateY(1000px)"><div id=row style="height:20px">row</div></div>
+<div style="height:100000px;width:1px"></div></div></body>`)
+	defer fx_unload(f)
+	f.l.scroll[el(f, "vp")] = {0, 1000}
+	for pass in 0 ..< 2 {
+		v := view_make(&f.l, f.vp, 0)
+		found := false
+		for idx in v.visible { if f.l.items[idx].node == el(f, "row") || dom.get(f.doc, f.l.items[idx].node).parent == el(f, "row") { found = true } }
+		testing.expectf(t, found, "pass %d: the row moved into view by its transform is painted", pass)
+		r, ok := box_of(&f.l, el(f, "row"), f.vp, 0)
+		testing.expectf(t, ok && near(r.bounds.min.y, 0), "pass %d: at the top of the viewport: %v", pass, r.bounds)
+		fx_run(f)   // (and the same after a layout pass)
+	}
+}
+
 @(private = "file")
 near :: proc(a, b: f32, eps: f32 = 0.01) -> bool { return math.abs(a - b) <= eps }
 

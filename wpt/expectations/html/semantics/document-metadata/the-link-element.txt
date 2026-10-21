@@ -1,0 +1,174 @@
+# web-platform-tests expectations of Wren for html/semantics/document-metadata/the-link-element, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/html/semantics/document-metadata/the-link-element/attr-link-fetchpriority.html: OK
+	default fetchpriority attribute on <link> elements should be 'auto': PASS
+	fetchpriority attribute on <link> elements should reflect valid IDL values: PASS
+/html/semantics/document-metadata/the-link-element/document-without-browsing-context.html: OK
+	Create a document, adopt the node: FAIL
+	Create a stylesheet in innerHTML document: FAIL
+/html/semantics/document-metadata/the-link-element/link-error-fired-before-scripting-unblocked.html: OK
+	Check if the stylesheet's error event is fired before the pending parsing-blocking script is unblocked: FAIL
+/html/semantics/document-metadata/the-link-element/link-load-error-events.html: OK
+	Attempted load of nonexistent stylesheet: PASS
+	Basic load of stylesheet: PASS
+	Fast successful import, slow failing import: PASS
+	Import of http:// stylesheet: PASS
+	Import of https:// stylesheet: FAIL
+	Import of import of http:// stylesheet: PASS
+	Import of import of https:// stylesheet: FAIL
+	Import of import of non-CSS stylesheet: PASS
+	Import of import of nonexistent stylesheet: PASS
+	Import of import of stylesheet: PASS
+	Import of non-CSS stylesheet: PASS
+	Import of nonexistent stylesheet: PASS
+	Import of stylesheet: PASS
+	Load of http:// stylesheet: PASS
+	Load of https:// stylesheet: FAIL
+	Load of non-CSS stylesheet: PASS
+	Slow successful import, fast failing import: PASS
+/html/semantics/document-metadata/the-link-element/link-load-error-events.https.html: OK
+	Attempted load of nonexistent stylesheet: PASS
+	Basic load of stylesheet: PASS
+	Fast successful import, slow failing import: PASS
+	Import of http:// stylesheet: PASS
+	Import of https:// stylesheet: FAIL
+	Import of import of http:// stylesheet: PASS
+	Import of import of https:// stylesheet: FAIL
+	Import of import of non-CSS stylesheet: PASS
+	Import of import of nonexistent stylesheet: PASS
+	Import of import of stylesheet: PASS
+	Import of non-CSS stylesheet: PASS
+	Import of nonexistent stylesheet: PASS
+	Import of stylesheet: PASS
+	Load of http:// stylesheet: PASS
+	Load of https:// stylesheet: FAIL
+	Load of non-CSS stylesheet: PASS
+	Slow successful import, fast failing import: PASS
+/html/semantics/document-metadata/the-link-element/link-load-event-alt-001.html: TIMEOUT
+	link-load-event-alt-001: TIMEOUT
+/html/semantics/document-metadata/the-link-element/link-load-event-alt-002.html: OK
+	link-load-event-alt-002: FAIL
+/html/semantics/document-metadata/the-link-element/link-load-event.html: OK
+	Check if the stylesheet's load event blocks the document load event: PASS
+/html/semantics/document-metadata/the-link-element/link-load-fired-before-scripting-unblocked.html: OK
+	Check if the stylesheet's load event is fired before the pending parsing-blocking script is unblocked: FAIL
+/html/semantics/document-metadata/the-link-element/link-multiple-load-events.html: OK
+	<link> cannot request the same resource twice by touching the 'href' attribute, if its value never changes: FAIL
+	<link> cannot request the same resource twice by touching the 'media' attribute, if its value never changes: FAIL
+	<link> cannot request the same resource twice by touching the 'rel' attribute, if its value never changes: FAIL
+	<link> cannot request the same resource twice by touching the 'type' attribute, if its value never changes: FAIL
+	<link> load event can fire twice for the same href resource, based on 'rel' attribute mutations: FAIL
+	<link> load event fires for each DIFFERENT stylesheet it loads: PASS
+/html/semantics/document-metadata/the-link-element/link-rel-attribute-tokenization.html: OK
+	The rel attribute needs to handle ASCII whitespace correctly: FAIL
+/html/semantics/document-metadata/the-link-element/link-rel-attribute.html: OK
+	Removing stylesheet from link rel attribute should remove the stylesheet for light DOM: FAIL
+	Removing stylesheet from link rel attribute should remove the stylesheet for shadow DOM: FAIL
+/html/semantics/document-metadata/the-link-element/link-rellist.html: OK
+	link.relList: non-string contains: PASS
+/html/semantics/document-metadata/the-link-element/link-style-data-url-quirks.html: TIMEOUT
+	data: URL stylesheet with text/css loads in quirks mode: TIMEOUT
+	data: URL stylesheet with text/plain is blocked in quirks mode: NOTRUN
+	data: URL stylesheet with text/plain is blocked in standards mode: NOTRUN
+/html/semantics/document-metadata/the-link-element/link-style-error-01.html: OK
+	Should get an error event for a 404 error.: PASS
+	Should get an error event for an unsupported URL.: PASS
+	Stylesheet loading using <link> with broken Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with broken Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using <link> with broken Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with broken Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using <link> with no Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with no Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using <link> with no Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with no Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using <link> with wrong Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with wrong Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using <link> with wrong Content-Type, same-origin, and no nosniff: PASS
+	Stylesheet loading using <link> with wrong Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using @import with broken Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with broken Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using @import with broken Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with broken Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using @import with no Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with no Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using @import with no Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with no Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using @import with wrong Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with wrong Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using @import with wrong Content-Type, same-origin, and no nosniff: PASS
+	Stylesheet loading using @import with wrong Content-Type, same-origin, and nosniff: PASS
+/html/semantics/document-metadata/the-link-element/link-style-error-limited-quirks.html: OK
+	Stylesheet loading using <link> with broken Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with broken Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using <link> with broken Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with broken Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using <link> with no Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with no Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using <link> with no Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with no Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using <link> with wrong Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with wrong Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using <link> with wrong Content-Type, same-origin, and no nosniff: PASS
+	Stylesheet loading using <link> with wrong Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using @import with broken Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with broken Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using @import with broken Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with broken Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using @import with no Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with no Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using @import with no Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with no Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using @import with wrong Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with wrong Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using @import with wrong Content-Type, same-origin, and no nosniff: PASS
+	Stylesheet loading using @import with wrong Content-Type, same-origin, and nosniff: PASS
+/html/semantics/document-metadata/the-link-element/link-style-error-quirks.html: OK
+	Stylesheet loading using <link> with broken Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with broken Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using <link> with broken Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with broken Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using <link> with no Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with no Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using <link> with no Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with no Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using <link> with wrong Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with wrong Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using <link> with wrong Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using <link> with wrong Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using @import with broken Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with broken Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using @import with broken Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with broken Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using @import with no Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with no Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using @import with no Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with no Content-Type, same-origin, and nosniff: PASS
+	Stylesheet loading using @import with wrong Content-Type, cross-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with wrong Content-Type, cross-origin, and nosniff: FAIL
+	Stylesheet loading using @import with wrong Content-Type, same-origin, and no nosniff: FAIL
+	Stylesheet loading using @import with wrong Content-Type, same-origin, and nosniff: PASS
+/html/semantics/document-metadata/the-link-element/link-style-quirks-crossorigin.html: OK
+	Cross-origin redirect to same-origin stylesheet with wrong MIME type, with CORS: FAIL
+	Cross-origin stylesheet with text/css, with CORS: FAIL
+	Cross-origin stylesheet with wrong MIME type, with CORS: PASS
+	Same-origin redirect to cross-origin stylesheet with wrong MIME type, with CORS: PASS
+	Same-origin stylesheet with wrong MIME type, no CORS: FAIL
+	Same-origin stylesheet with wrong MIME type, with CORS: FAIL
+/html/semantics/document-metadata/the-link-element/link-stylesheet-error-status-fires-error.html: OK
+	link stylesheet should fire error event for 404 response and not apply styles: PASS
+	link stylesheet should fire error event for 503 response and not apply styles: PASS
+/html/semantics/document-metadata/the-link-element/no-browsing-context.html: OK
+	no load or error events: PASS
+/html/semantics/document-metadata/the-link-element/stylesheet-appropriate-time-to-obtain.html: OK
+	adding a href attribute after inserting the link into the document causes the stylesheet to load and apply: PASS
+	adding a href attribute before inserting the link into the document causes the stylesheet to load and apply: PASS
+	changing the href attribute after inserting the link into the document causes the stylesheet to load again: PASS
+/html/semantics/document-metadata/the-link-element/stylesheet-bad-mime-type.html: OK
+	'load' event does not fire at link@rel=stylesheet having empty resource with bad MIME type: PASS
+	'load' event does not fire at link@rel=stylesheet having non-empty resource with bad MIME type: PASS
+/html/semantics/document-metadata/the-link-element/stylesheet-media-change-no-fetch.html: OK
+	stylesheet should not re-fetch when media changes. The media change should apply immediately: PASS
+/html/semantics/document-metadata/the-link-element/stylesheet-non-OK-status.html: OK
+	'load' event does not fire at link@rel=stylesheet having resource with non-OK response status: PASS
+/html/semantics/document-metadata/the-link-element/stylesheet-not-removed-until-next-stylesheet-loads.html: OK
+	Check that a style sheet loaded by a <link> is available until its successor is loaded: FAIL

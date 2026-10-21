@@ -308,6 +308,7 @@ reveal_node :: proc(p: ^Page, it: Reveal_Item) -> bool {
 		case "body": if p.body == base.NIL_HANDLE { p.body = it.node }
 		}
 		content_handlers_register(p, it.node)
+		if n.name == "link" { link_revealed(p, it.node) }
 	}
 	return true
 }
@@ -910,6 +911,7 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 	if s == nil || p.closed || d != p.doc || s.parser.revealing > 0 { return }
 	n := dom.get(d, node)
 	if n == nil { return }
+	styles_note_inserted(p, node)   // a <link> a script inserts loads now, not at the next styling (styles.odin)
 	fragment := d.parser_inserting > 0
 	// a node inserted into a connected script element that has not started: its text changed ("children changed")
 	if parent := dom.get(d, n.parent); is_script_element(parent) && !fragment {
@@ -949,6 +951,7 @@ hook_attribute :: proc(user: rawptr, d: ^dom.Document, el: base.Handle, name: st
 	p := (^Page)(user)
 	if p.closed || d != p.doc { return }
 	if p.scripts != nil && p.scripts.parser.revealing > 0 { return }
+	styles_note_attribute(p, el, name)
 	if len(name) > 2 && name[0] == 'o' && name[1] == 'n' {
 		content_handler_changed(p, el, name)
 		return

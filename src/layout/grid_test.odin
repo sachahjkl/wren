@@ -72,6 +72,47 @@ expect_box :: proc(t: ^testing.T, f: ^Gx, id: string, x0, y0, x1, y1: f32, loc :
 	testing.expectf(t, ok, "%s: got (%v, %v)-(%v, %v), want (%v, %v)-(%v, %v)", id, r.min.x, r.min.y, r.max.x, r.max.y, x0, y0, x1, y1, loc = loc)
 }
 
+// Items with an aspect ratio (Tailwind's aspect-square calendar cells): the width stretches to the column and the height
+// follows it (not the row's); with a specified height, the width comes from the ratio instead (Edge measured the same).
+@(test)
+grid_aspect_ratio_items :: proc(t: ^testing.T) {
+	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+<div style="display:grid;grid-template-columns:repeat(4,100px);grid-template-rows:150px;width:400px">
+<div id=a style="aspect-ratio:1/1">1</div><div id=b style="aspect-ratio:2/1"></div><div id=c style="aspect-ratio:1/2;height:40px"></div>
+<div id=d style="aspect-ratio:1/1;align-self:stretch"></div></div></body>`)
+	defer g_unload(f)
+	expect_box(t, f, "a", 0, 0, 100, 100)
+	expect_box(t, f, "b", 100, 0, 200, 50)
+	expect_box(t, f, "c", 200, 0, 220, 40)
+	// stretch asked for: the row's height, and the width from it (overflowing the column, as in Edge)
+	expect_box(t, f, "d", 300, 0, 450, 150)
+}
+
+// Form controls are not replaced elements for alignment: normal stretches them in both axes (Edge: a text field, select,
+// button, textarea and slider fill a 300 x 100 area, less their margins); an image stays at its size.
+@(test)
+grid_controls_stretch :: proc(t: ^testing.T) {
+	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+<div style="display:grid;grid-template-columns:300px 300px 300px;grid-template-rows:100px 100px">
+<input id=a><select id=c><option>x</option></select><button id=d>x</button><textarea id=f></textarea>
+<input type=range id=h style="margin:2px"><img id=g width=20 height=10></div></body>`, 1000)
+	defer g_unload(f)
+	expect_box(t, f, "a", 0, 0, 300, 100)
+	expect_box(t, f, "c", 300, 0, 600, 100)
+	expect_box(t, f, "d", 600, 0, 900, 100)
+	expect_box(t, f, "f", 0, 100, 300, 200)
+	expect_box(t, f, "h", 302, 102, 598, 198)
+	expect_box(t, f, "g", 600, 100, 620, 110)
+
+	// and in a flex line (Edge: the text field is 100 px high in a 100 px row)
+	f2 := g_load(`<body style="margin:0;font-size:10px;line-height:10px"><div style="display:flex;height:100px;width:300px"><input id=b><select id=s><option>x</option></select></div></body>`)
+	defer g_unload(f2)
+	for id in ([]string{"b", "s"}) {
+		r := g_rect(f2, id)
+		testing.expectf(t, g_near(r.min.y, 0) && g_near(r.max.y, 100), "flex %s: %v", id, r)
+	}
+}
+
 @(test)
 grid_fixed_fr_gaps :: proc(t: ^testing.T) {
 	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">

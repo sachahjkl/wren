@@ -98,6 +98,46 @@ hints_yield_to_author_styles :: proc(t: ^testing.T) {
 	testing.expect(t, c3.width.kind == .Auto && c3.height.kind == .Auto, "zero cell width / height are ignored")
 }
 
+// th is centered only under a parent whose text-align is the initial value (HTML §15.3.8; Tailwind's text-left tables).
+@(test)
+th_text_align_follows_parent :: proc(t: ^testing.T) {
+	d := open_doc(`<!doctype html><body>
+	<table><tr><th id=a>x</th></tr></table>
+	<table style="text-align:left"><tr><th id=b>x</th></tr></table>
+	<table><tr style="text-align:right"><th id=c>x</th><th id=e style="text-align:start">x</th></tr></table>
+	<div style="text-align:-webkit-center"><table><tr><th id=f>x</th></tr></table></div>
+	</body>`)
+	defer close_doc(&d)
+	testing.expect_value(t, el(&d, "a").text_align, Text_Align.Center)
+	testing.expect_value(t, el(&d, "b").text_align, Text_Align.Left)
+	testing.expect_value(t, el(&d, "c").text_align, Text_Align.Right)
+	testing.expect_value(t, el(&d, "e").text_align, Text_Align.Start)
+	testing.expect_value(t, el(&d, "f").text_align, Text_Align.Legacy_Center)
+}
+
+// <svg width height>: presentation attributes of the CSS properties, in CSS syntax (an Angular icon component writes
+// width="1rem"); the page's rules still win; what is not a CSS value (or could break out of it) is dropped.
+@(test)
+svg_size_presentation_attributes :: proc(t: ^testing.T) {
+	d := open_doc(`<!doctype html><style>html { font-size: 20px } svg.s { width: 3px }</style><body style="font-size:10px">
+	<svg id=a width="1rem" height="2em" viewBox="0 0 24 24"></svg>
+	<svg id=b width="24" height="50%"></svg>
+	<svg id=c class=s width="1rem" height="calc(1px + 2px)"></svg>
+	<svg id=e width="1rem;color:red" height="bogus"></svg>
+	</body>`)
+	defer close_doc(&d)
+	a := el(&d, "a")
+	testing.expectf(t, a.width.kind == .Px && abs(a.width.v - 20) < 0.01 && abs(a.height.v - 20) < 0.01, "1rem / 2em: %v %v", a.width, a.height)
+	b := el(&d, "b")
+	testing.expect(t, b.width.kind == .Px && b.width.v == 24 && b.height.kind == .Percent && b.height.v == 50, "a bare number is px, a percentage stays")
+	c := el(&d, "c")
+	testing.expect(t, c.width.kind == .Px && c.width.v == 3, "an author rule beats the attribute")
+	testing.expectf(t, abs(c.height.v - 3) < 0.01, "calc(): %v", c.height)
+	e := el(&d, "e")
+	testing.expect(t, e.width.kind == .Auto && e.height.kind == .Auto, "not a CSS value: no hint")
+	testing.expect(t, !rgb_is(e.color, 0xff0000), "and nothing smuggled after it")
+}
+
 @(test)
 hints_map_html_attributes :: proc(t: ^testing.T) {
 	d := open_doc(`<!doctype html><body id=b bgcolor=white text=navy link=#00f>

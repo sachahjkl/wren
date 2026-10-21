@@ -5,6 +5,7 @@ import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:fetch"
+import "wb:host"
 import "wb:html"
 import "wb:style"
 import "wb:url"
@@ -29,6 +30,7 @@ Style_Load :: struct {
 	parser:       bool,          // part of the document as parsed (or blocking="render"): may block its first paint
 	failed:       bool,          // nothing will come of it (network error, HTTP error, refused)
 	scope:        base.Handle,   // links: the shadow root the <link> is in (NIL: the document)
+	held_event:   enum u8 { None, Load, Error, Imports },   // settled before the parser revealed the <link>, or waiting for its imports (link_sheet_settled)
 }
 
 @(private)
@@ -123,16 +125,7 @@ sync_styles :: proc(p: ^Page) {
 	// finishes (js_load.odin), instead of being dropped and loaded again; new ones (a script's) are added meanwhile
 	revealing := scripts_revealing(p)
 	// a sheet stays when its owner is in the part not revealed yet (not one a script removed)
-	pending :: proc(user: rawptr, owner: base.Handle) -> bool {
-		p := (^Page)(user)
-		d := p.doc
-		if dom.get(d, owner) == nil { return false }
-		r := dom.shadow_including_root(d, owner)
-		if r == d.root { return false }
-		ps := &p.scripts.parser
-		for it in ps.queue[ps.next:] { if it.node == r { return true } }
-		return false
-	}
+	pending :: proc(user: rawptr, owner: base.Handle) -> bool { return held_by_reveal((^Page)(user), owner) }
 	links := style.sync_document_sheets(p.engine, p.doc, p.env.location.href, keep_missing = revealing ? pending : nil, keep_user = p)
 
 	// links that disappeared
@@ -146,19 +139,29 @@ sync_styles :: proc(p: ^Page) {
 	// new or changed links
 	for k in links {
 		if old, ok := p.link_loads[k.owner]; ok {
-			if old.href == k.href && old.scope == k.scope { continue }
+			if old.href == k.href && old.scope == k.scope {
+				// a new media attribute: the sheet, once it arrives, gets it (a loaded one has it already)
+				if old.media != k.media { delete(old.media); old.media = strings.clone(k.media) }
+				continue
+			}
 			if s := style.engine_sheet_of_owner(p.engine, k.owner); s != nil { style.engine_remove_sheet(p.engine, s) }
 			free_load(p, old)
 			delete_key(&p.link_loads, k.owner)
 		}
 		abs, ok := resolve_against(k.href, p.env.location.href)
-		if !ok { log(p, .Warn, fmt.tprintf("stylesheet: invalid URL %q", k.href)); continue }
 		l := new(Style_Load)
 		l.page, l.owner, l.url = p, k.owner, abs
 		l.href, l.media = strings.clone(k.href), strings.clone(k.media)
 		l.scope = k.scope
-		l.parser = render_blocking_candidate(p, k.owner)
 		p.link_loads[k.owner] = l
+		if !ok {
+			// kept (failed) so that the next reading does not report it again; its error event once
+			log(p, .Warn, fmt.tprintf("stylesheet: invalid URL %q", k.href))
+			l.failed = true
+			link_sheet_settled(p, l, false)
+			continue
+		}
+		l.parser = render_blocking_candidate(p, k.owner)
 		co, has_co := dom.get_attribute(p.doc, k.owner, "crossorigin")
 		nonce, _ := dom.get_attribute(p.doc, k.owner, "nonce")
 		start_style_fetch(p, l, co, has_co, nonce)
@@ -171,7 +174,12 @@ start_pending_imports :: proc(p: ^Page) {
 	for pi in style.engine_take_pending_imports(p.engine) {
 		base_url := pi.base_url != "" ? pi.base_url : p.env.location.href
 		abs, ok := resolve_against(pi.url, base_url)
-		if !ok { log(p, .Warn, fmt.tprintf("@import: invalid URL %q", pi.url)); continue }
+		if !ok {
+			log(p, .Warn, fmt.tprintf("@import: invalid URL %q", pi.url))
+			style.engine_fail_import(p.engine, pi.sheet_id, pi.slot)
+			links_check_imports(p)
+			continue
+		}
 		l := new(Style_Load)
 		l.page, l.url, l.is_import, l.sheet_id, l.slot = p, abs, true, pi.sheet_id, pi.slot
 		l.parser = p.render.collecting   // imports found before the first paint (of the document's own sheets) block it
@@ -191,15 +199,27 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			l.bad_status = true
 			l.failed = true
 			log(p, .Warn, fmt.tprintf("stylesheet %s: HTTP %d", l.url, r.status))
+		} else if !(r.has_mime && strings.equal_fold(r.mime.type, "text") && strings.equal_fold(r.mime.subtype, "css")) {
+			// HTML "process the linked resource" (stylesheet): a Content-Type that is not text/css fails it, except in
+			// a quirks-mode document for a same-origin response
+			if !(p.doc.mode == .Quirks && r.type == .Basic) {
+				l.bad_status = true
+				l.failed = true
+				log(p, .Warn, fmt.tprintf("stylesheet %s: not text/css (%s/%s), ignored", l.url, r.mime.type, r.mime.subtype))
+			}
 		}
 	case .Data:
 	case .Failed:
 		l.task = base.NIL_HANDLE
 		l.failed = true
 		log(p, .Warn, fmt.tprintf("stylesheet %s: %s", l.url, ev.detail))
+		if l.is_import { import_failed(p, l) } else { link_sheet_settled(p, l, false) }
 	case .Done:
 		l.task = base.NIL_HANDLE
-		if l.bad_status { return }
+		if l.bad_status {
+			if l.is_import { import_failed(p, l) } else { link_sheet_settled(p, l, false) }
+			return
+		}
 		if !l.is_import { if _, still := p.link_loads[l.owner]; !still { return } }
 		if parse_sheet_offthread(p, l, ev.data) { return }   // registered when parsed (offthread.odin)
 		text := decode_css(ev.data, p.settings.style.max_sheet_bytes)
@@ -212,10 +232,122 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 				l.failed = true
 				log(p, .Warn, fmt.tprintf("stylesheet %s: too large or disabled", l.url))
 			}
+			link_sheet_settled(p, l, !l.failed)
 		}
 		p.style_stale = true
 		start_pending_imports(p)
+		if l.is_import { links_check_imports(p) }
 	}
+}
+
+// The <link>'s sheet is in (or will never be): its load or error event, as a task (HTML "process the linked
+// resource").
+// A <link> the parser has not revealed yet (its sheet loads ahead) gets its event once revealed (link_revealed): its
+// event handler attributes are only registered then, and for the page it has not been inserted before.
+// Its @imports count too (CSSOM "critical subresources"): load waits for them, and is error when one failed.
+@(private)
+link_sheet_settled :: proc(p: ^Page, l: ^Style_Load, ok: bool) {
+	if l.is_import { return }
+	if _, still := p.link_loads[l.owner]; !still { return }
+	ok := ok
+	if ok {
+		pending, failed := style.import_tree_state(p.engine, style.engine_sheet_of_owner(p.engine, l.owner))
+		if pending { l.held_event = .Imports; return }
+		ok = !failed
+	}
+	link_event(p, l, ok)
+}
+
+@(private = "file")
+link_event :: proc(p: ^Page, l: ^Style_Load, ok: bool) {
+	if held_by_reveal(p, l.owner) {
+		l.held_event = ok ? .Load : .Error
+		return
+	}
+	l.held_event = .None
+	queue_element_event(p, l.owner, ok ? "load" : "error")
+}
+
+// An import arrived or failed: the <link>s waiting for theirs may be done.
+@(private)
+links_check_imports :: proc(p: ^Page) {
+	for owner, l in p.link_loads {
+		if l.held_event != .Imports { continue }
+		s := style.engine_sheet_of_owner(p.engine, owner)
+		if s == nil { l.held_event = .None; continue }
+		pending, failed := style.import_tree_state(p.engine, s)
+		if !pending { link_event(p, l, !failed) }
+	}
+}
+
+// An import's fetch ended without a sheet: its slot fails (and the <link> above it hears of it).
+@(private)
+import_failed :: proc(p: ^Page, l: ^Style_Load) {
+	style.engine_fail_import(p.engine, l.sheet_id, l.slot)
+	links_check_imports(p)
+}
+
+// The parser revealed `node` (js_load.odin reveal_node): a <link> whose sheet settled meanwhile gets its event now.
+@(private)
+link_revealed :: proc(p: ^Page, node: base.Handle) {
+	l, ok := p.link_loads[node]
+	if !ok || l.held_event == .None || l.held_event == .Imports { return }
+	ev := l.held_event
+	l.held_event = .None
+	queue_element_event(p, node, ev == .Load ? "load" : "error")
+}
+
+// A script inserted `node`: when it holds a <link> or <style>, the document's sheets are read again in a task of their
+// own, so that a stylesheet starts loading (and fires load / error) whether or not the page is styled meanwhile (a page
+// without a window, a hidden tab). Many insertions in one script make one task.
+@(private)
+styles_note_inserted :: proc(p: ^Page, node: base.Handle) {
+	d := p.doc
+	stack := make([dynamic]base.Handle, 0, 8, context.temp_allocator)
+	append(&stack, node)
+	for len(stack) > 0 {
+		cur := pop(&stack)
+		n := dom.get(d, cur)
+		if n == nil || n.kind != .Element { continue }
+		if n.name == "link" || n.name == "style" { styles_sync_soon(p); return }
+		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next { append(&stack, ch) }
+	}
+}
+
+// An attribute of `el` changed: a <link>'s rel, href, media, type, disabled, crossorigin decide what it loads.
+@(private)
+styles_note_attribute :: proc(p: ^Page, el: base.Handle, name: string) {
+	n := dom.get(p.doc, el)
+	if n == nil || n.kind != .Element || n.name != "link" { return }
+	switch name {
+	case "rel", "href", "media", "type", "disabled", "crossorigin":
+		if dom.is_connected(p.doc, el) || name == "rel" { styles_sync_soon(p) }
+	}
+}
+
+@(private)
+styles_sync_soon :: proc(p: ^Page) {
+	if p.closed || p.link_sync_timer != base.NIL_HANDLE { return }
+	p.link_sync_timer = host.set_timer(p.loop, 0, 0, proc(data: rawptr) {
+		p := (^Page)(data)
+		p.link_sync_timer = base.NIL_HANDLE
+		if p.closed || p.engine == nil || p.doc == nil { return }
+		sync_styles(p)
+		p.style_stale = true
+	}, p, p.scope)
+}
+
+// Whether `node` is in the part of the document the parser's reveal has not attached yet (js_load.odin).
+@(private)
+held_by_reveal :: proc(p: ^Page, node: base.Handle) -> bool {
+	if !scripts_revealing(p) { return false }
+	d := p.doc
+	if dom.get(d, node) == nil { return false }
+	r := dom.shadow_including_root(d, node)
+	if r == d.root { return false }
+	ps := &p.scripts.parser
+	for it in ps.queue[ps.next:] { if it.node == r { return true } }
+	return false
 }
 
 // A stylesheet's bytes as UTF-8: byte-order mark, then an @charset rule, then UTF-8 (the Content-Type charset is not
