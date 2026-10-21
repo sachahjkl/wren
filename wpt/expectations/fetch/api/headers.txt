@@ -52,8 +52,8 @@
 	Set-Cookie is a forbidden response header: PASS
 /fetch/api/headers/header-values-last-event-id.any.html: OK
 	fetch() sends the bytes of a non-ASCII Last-Event-ID header value unchanged: FAIL
-/fetch/api/headers/header-values-last-event-id.any.worker.html: ERROR
-	fetch() sends the bytes of a non-ASCII Last-Event-ID header value unchanged: TIMEOUT
+/fetch/api/headers/header-values-last-event-id.any.worker.html: OK
+	fetch() sends the bytes of a non-ASCII Last-Event-ID header value unchanged: FAIL
 /fetch/api/headers/header-values-normalize.any.html: OK
 	XMLHttpRequest with value %00: PASS
 	XMLHttpRequest with value %01: FAIL
@@ -117,38 +117,38 @@
 	fetch() with value %1E: FAIL
 	fetch() with value %1F: FAIL
 	fetch() with value %20: FAIL
-/fetch/api/headers/header-values-normalize.any.worker.html: ERROR
+/fetch/api/headers/header-values-normalize.any.worker.html: OK
 	fetch() with value %00: PASS
-	fetch() with value %01: TIMEOUT
-	fetch() with value %02: NOTRUN
-	fetch() with value %03: NOTRUN
-	fetch() with value %04: NOTRUN
-	fetch() with value %05: NOTRUN
-	fetch() with value %06: NOTRUN
-	fetch() with value %07: NOTRUN
-	fetch() with value %08: NOTRUN
-	fetch() with value %09: NOTRUN
-	fetch() with value %0A: NOTRUN
-	fetch() with value %0D: NOTRUN
-	fetch() with value %0E: NOTRUN
-	fetch() with value %0F: NOTRUN
-	fetch() with value %10: NOTRUN
-	fetch() with value %11: NOTRUN
-	fetch() with value %12: NOTRUN
-	fetch() with value %13: NOTRUN
-	fetch() with value %14: NOTRUN
-	fetch() with value %15: NOTRUN
-	fetch() with value %16: NOTRUN
-	fetch() with value %17: NOTRUN
-	fetch() with value %18: NOTRUN
-	fetch() with value %19: NOTRUN
-	fetch() with value %1A: NOTRUN
-	fetch() with value %1B: NOTRUN
-	fetch() with value %1C: NOTRUN
-	fetch() with value %1D: NOTRUN
-	fetch() with value %1E: NOTRUN
-	fetch() with value %1F: NOTRUN
-	fetch() with value %20: NOTRUN
+	fetch() with value %01: FAIL
+	fetch() with value %02: FAIL
+	fetch() with value %03: FAIL
+	fetch() with value %04: FAIL
+	fetch() with value %05: FAIL
+	fetch() with value %06: FAIL
+	fetch() with value %07: FAIL
+	fetch() with value %08: FAIL
+	fetch() with value %09: FAIL
+	fetch() with value %0A: FAIL
+	fetch() with value %0D: FAIL
+	fetch() with value %0E: FAIL
+	fetch() with value %0F: FAIL
+	fetch() with value %10: FAIL
+	fetch() with value %11: FAIL
+	fetch() with value %12: FAIL
+	fetch() with value %13: FAIL
+	fetch() with value %14: FAIL
+	fetch() with value %15: FAIL
+	fetch() with value %16: FAIL
+	fetch() with value %17: FAIL
+	fetch() with value %18: FAIL
+	fetch() with value %19: FAIL
+	fetch() with value %1A: FAIL
+	fetch() with value %1B: FAIL
+	fetch() with value %1C: FAIL
+	fetch() with value %1D: FAIL
+	fetch() with value %1E: FAIL
+	fetch() with value %1F: FAIL
+	fetch() with value %20: FAIL
 /fetch/api/headers/header-values.any.html: OK
 	XMLHttpRequest with all valid values: FAIL
 	XMLHttpRequest with value x%00x needs to throw: PASS
@@ -158,8 +158,8 @@
 	fetch() with value x%00x needs to throw: PASS
 	fetch() with value x%0Ax needs to throw: PASS
 	fetch() with value x%0Dx needs to throw: PASS
-/fetch/api/headers/header-values.any.worker.html: ERROR
-	fetch() with all valid values: TIMEOUT
+/fetch/api/headers/header-values.any.worker.html: OK
+	fetch() with all valid values: FAIL
 	fetch() with value x%00x needs to throw: PASS
 	fetch() with value x%0Ax needs to throw: PASS
 	fetch() with value x%0Dx needs to throw: PASS
@@ -464,7 +464,7 @@
 	"no-cors" Headers object cannot have content-language set to sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
 	"no-cors" Headers object cannot have content-type set to text/plain;ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, text/plain: PASS
 	Loading data…: FAIL
-/fetch/api/headers/headers-no-cors.any.worker.html: ERROR
+/fetch/api/headers/headers-no-cors.any.worker.html: OK
 	"no-cors" Headers object cannot have accept set to , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
 	"no-cors" Headers object cannot have accept set to sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
 	"no-cors" Headers object cannot have accept-language set to , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
@@ -472,7 +472,7 @@
 	"no-cors" Headers object cannot have content-language set to , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
 	"no-cors" Headers object cannot have content-language set to sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, , sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss: PASS
 	"no-cors" Headers object cannot have content-type set to text/plain;ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss, text/plain: PASS
-	Loading data…: TIMEOUT
+	Loading data…: FAIL
 /fetch/api/headers/headers-normalize.any.html: OK
 	Check append method with not normalized values: PASS
 	Check set method with not normalized values: PASS

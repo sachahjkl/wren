@@ -31,11 +31,11 @@
 /html/webappapis/timers/negative-setinterval.any.html: OK
 	negative-setinterval: PASS
 /html/webappapis/timers/negative-setinterval.any.worker.html: OK
-	Untitled: PASS
+	negative-setinterval: PASS
 /html/webappapis/timers/negative-settimeout.any.html: OK
 	negative-settimeout: PASS
 /html/webappapis/timers/negative-settimeout.any.worker.html: OK
-	Untitled: PASS
+	negative-settimeout: PASS
 /html/webappapis/timers/setinterval-cross-realm-callback-report-exception.html: TIMEOUT
 /html/webappapis/timers/setinterval-settimeout-clamping.any.html: OK
 	setInterval(0) before setTimeout(0): PASS
@@ -55,8 +55,8 @@
 /html/webappapis/timers/type-long-setinterval.any.html: OK
 	type-long-setinterval: PASS
 /html/webappapis/timers/type-long-setinterval.any.worker.html: OK
-	Untitled: PASS
+	type-long-setinterval: PASS
 /html/webappapis/timers/type-long-settimeout.any.html: OK
 	type-long-settimeout: PASS
 /html/webappapis/timers/type-long-settimeout.any.worker.html: OK
-	Untitled: PASS
+	type-long-settimeout: PASS

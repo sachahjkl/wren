@@ -4113,8 +4113,7 @@
 	document.all cannot find applet: FAIL
 	document.applets is always empty: FAIL
 	window cannot find applet: PASS
-/html/dom/idlharness.any.worker.html: ERROR
-	idl_test setup: TIMEOUT
+/html/dom/idlharness.any.worker.html: CRASH
 /html/dom/idlharness.https.html?exclude=(Document|Window|HTML.+): OK
 	AudioTrack interface object length: FAIL
 	AudioTrack interface object name: FAIL
@@ -5015,13 +5014,13 @@
 	PageSwapEvent interface: existence and properties of interface prototype object: FAIL
 	PageSwapEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
 	PageSwapEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	PageTransitionEvent interface object length: FAIL
-	PageTransitionEvent interface object name: FAIL
-	PageTransitionEvent interface: attribute persisted: FAIL
-	PageTransitionEvent interface: existence and properties of interface object: FAIL
-	PageTransitionEvent interface: existence and properties of interface prototype object: FAIL
-	PageTransitionEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	PageTransitionEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	PageTransitionEvent interface object length: PASS
+	PageTransitionEvent interface object name: PASS
+	PageTransitionEvent interface: attribute persisted: PASS
+	PageTransitionEvent interface: existence and properties of interface object: PASS
+	PageTransitionEvent interface: existence and properties of interface prototype object: PASS
+	PageTransitionEvent interface: existence and properties of interface prototype object's "constructor" property: PASS
+	PageTransitionEvent interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	Partial dictionary UIEventInit: member names are unique: PASS
 	Partial interface Document[2]: member names are unique: PASS
 	Partial interface Document[2]: original interface defined: PASS
@@ -5549,7 +5548,7 @@
 	Window interface: attribute length: FAIL
 	Window interface: attribute locationbar: FAIL
 	Window interface: attribute menubar: FAIL
-	Window interface: attribute name: FAIL
+	Window interface: attribute name: PASS
 	Window interface: attribute navigation: FAIL
 	Window interface: attribute navigator: FAIL
 	Window interface: attribute opener: FAIL
@@ -5581,7 +5580,7 @@
 	Window interface: operation open(optional USVString, optional DOMString, optional DOMString): FAIL
 	Window interface: operation postMessage(any, USVString, optional sequence<object>): FAIL
 	Window interface: operation postMessage(any, optional WindowPostMessageOptions): FAIL
-	Window interface: operation print(): FAIL
+	Window interface: operation print(): PASS
 	Window interface: operation prompt(optional DOMString, optional DOMString): FAIL
 	Window interface: operation releaseEvents(): FAIL
 	Window interface: operation stop(): FAIL
@@ -6008,8 +6007,8 @@
 	HTMLFormElement interface: operation submit(): PASS
 	HTMLFrameElement interface object length: PASS
 	HTMLFrameElement interface object name: PASS
-	HTMLFrameElement interface: attribute contentDocument: FAIL
-	HTMLFrameElement interface: attribute contentWindow: FAIL
+	HTMLFrameElement interface: attribute contentDocument: PASS
+	HTMLFrameElement interface: attribute contentWindow: PASS
 	HTMLFrameElement interface: attribute frameBorder: PASS
 	HTMLFrameElement interface: attribute longDesc: PASS
 	HTMLFrameElement interface: attribute marginHeight: PASS
@@ -6085,8 +6084,8 @@
 	HTMLIFrameElement interface: attribute align: PASS
 	HTMLIFrameElement interface: attribute allow: PASS
 	HTMLIFrameElement interface: attribute allowFullscreen: PASS
-	HTMLIFrameElement interface: attribute contentDocument: FAIL
-	HTMLIFrameElement interface: attribute contentWindow: FAIL
+	HTMLIFrameElement interface: attribute contentDocument: PASS
+	HTMLIFrameElement interface: attribute contentWindow: PASS
 	HTMLIFrameElement interface: attribute frameBorder: PASS
 	HTMLIFrameElement interface: attribute height: PASS
 	HTMLIFrameElement interface: attribute loading: PASS
@@ -6098,13 +6097,13 @@
 	HTMLIFrameElement interface: attribute sandbox: PASS
 	HTMLIFrameElement interface: attribute scrolling: PASS
 	HTMLIFrameElement interface: attribute src: PASS
-	HTMLIFrameElement interface: attribute srcdoc: FAIL
+	HTMLIFrameElement interface: attribute srcdoc: PASS
 	HTMLIFrameElement interface: attribute width: PASS
 	HTMLIFrameElement interface: existence and properties of interface object: FAIL
 	HTMLIFrameElement interface: existence and properties of interface prototype object: PASS
 	HTMLIFrameElement interface: existence and properties of interface prototype object's "constructor" property: PASS
 	HTMLIFrameElement interface: existence and properties of interface prototype object's @@unscopables property: PASS
-	HTMLIFrameElement interface: operation getSVGDocument(): FAIL
+	HTMLIFrameElement interface: operation getSVGDocument(): PASS
 	HTMLImageElement interface object length: PASS
 	HTMLImageElement interface object name: PASS
 	HTMLImageElement interface: attribute align: PASS
@@ -10568,44 +10567,44 @@
 	iframe.src: setAttribute() to true: PASS
 	iframe.src: setAttribute() to undefined: PASS
 	iframe.src: typeof IDL attribute: PASS
-	iframe.srcdoc: IDL get with DOM attribute unset: FAIL
-	iframe.srcdoc: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	iframe.srcdoc: IDL set to "": FAIL
-	iframe.srcdoc: IDL set to "+100": FAIL
-	iframe.srcdoc: IDL set to ".5": FAIL
-	iframe.srcdoc: IDL set to "5%": FAIL
-	iframe.srcdoc: IDL set to "\\0": FAIL
-	iframe.srcdoc: IDL set to -Infinity: FAIL
-	iframe.srcdoc: IDL set to 1.5: FAIL
-	iframe.srcdoc: IDL set to 7: FAIL
-	iframe.srcdoc: IDL set to Infinity: FAIL
-	iframe.srcdoc: IDL set to NaN: FAIL
-	iframe.srcdoc: IDL set to false: FAIL
-	iframe.srcdoc: IDL set to null: FAIL
-	iframe.srcdoc: IDL set to object "[object Object]": FAIL
-	iframe.srcdoc: IDL set to object "test-toString": FAIL
-	iframe.srcdoc: IDL set to object "test-valueOf": FAIL
-	iframe.srcdoc: IDL set to true: FAIL
-	iframe.srcdoc: IDL set to undefined: FAIL
-	iframe.srcdoc: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	iframe.srcdoc: setAttribute() to "": FAIL
-	iframe.srcdoc: setAttribute() to "+100": FAIL
-	iframe.srcdoc: setAttribute() to ".5": FAIL
-	iframe.srcdoc: setAttribute() to "5%": FAIL
-	iframe.srcdoc: setAttribute() to "\\0": FAIL
-	iframe.srcdoc: setAttribute() to -Infinity: FAIL
-	iframe.srcdoc: setAttribute() to 1.5: FAIL
-	iframe.srcdoc: setAttribute() to 7: FAIL
-	iframe.srcdoc: setAttribute() to Infinity: FAIL
-	iframe.srcdoc: setAttribute() to NaN: FAIL
-	iframe.srcdoc: setAttribute() to false: FAIL
-	iframe.srcdoc: setAttribute() to null: FAIL
-	iframe.srcdoc: setAttribute() to object "[object Object]": FAIL
-	iframe.srcdoc: setAttribute() to object "test-toString": FAIL
-	iframe.srcdoc: setAttribute() to object "test-valueOf": FAIL
-	iframe.srcdoc: setAttribute() to true: FAIL
-	iframe.srcdoc: setAttribute() to undefined: FAIL
-	iframe.srcdoc: typeof IDL attribute: FAIL
+	iframe.srcdoc: IDL get with DOM attribute unset: PASS
+	iframe.srcdoc: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	iframe.srcdoc: IDL set to "": PASS
+	iframe.srcdoc: IDL set to "+100": PASS
+	iframe.srcdoc: IDL set to ".5": PASS
+	iframe.srcdoc: IDL set to "5%": PASS
+	iframe.srcdoc: IDL set to "\\0": PASS
+	iframe.srcdoc: IDL set to -Infinity: PASS
+	iframe.srcdoc: IDL set to 1.5: PASS
+	iframe.srcdoc: IDL set to 7: PASS
+	iframe.srcdoc: IDL set to Infinity: PASS
+	iframe.srcdoc: IDL set to NaN: PASS
+	iframe.srcdoc: IDL set to false: PASS
+	iframe.srcdoc: IDL set to null: PASS
+	iframe.srcdoc: IDL set to object "[object Object]": PASS
+	iframe.srcdoc: IDL set to object "test-toString": PASS
+	iframe.srcdoc: IDL set to object "test-valueOf": PASS
+	iframe.srcdoc: IDL set to true: PASS
+	iframe.srcdoc: IDL set to undefined: PASS
+	iframe.srcdoc: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	iframe.srcdoc: setAttribute() to "": PASS
+	iframe.srcdoc: setAttribute() to "+100": PASS
+	iframe.srcdoc: setAttribute() to ".5": PASS
+	iframe.srcdoc: setAttribute() to "5%": PASS
+	iframe.srcdoc: setAttribute() to "\\0": PASS
+	iframe.srcdoc: setAttribute() to -Infinity: PASS
+	iframe.srcdoc: setAttribute() to 1.5: PASS
+	iframe.srcdoc: setAttribute() to 7: PASS
+	iframe.srcdoc: setAttribute() to Infinity: PASS
+	iframe.srcdoc: setAttribute() to NaN: PASS
+	iframe.srcdoc: setAttribute() to false: PASS
+	iframe.srcdoc: setAttribute() to null: PASS
+	iframe.srcdoc: setAttribute() to object "[object Object]": PASS
+	iframe.srcdoc: setAttribute() to object "test-toString": PASS
+	iframe.srcdoc: setAttribute() to object "test-valueOf": PASS
+	iframe.srcdoc: setAttribute() to true: PASS
+	iframe.srcdoc: setAttribute() to undefined: PASS
+	iframe.srcdoc: typeof IDL attribute: PASS
 	iframe.tabIndex: IDL set to -1: PASS
 	iframe.tabIndex: IDL set to -2147483648: PASS
 	iframe.tabIndex: IDL set to -36: PASS
@@ -68435,10 +68434,10 @@
 	Loading of parser-inserted async script should eventually succeed: PASS
 	Loading of parser-inserted defer script should eventually succeed: PASS
 	Loading of parser-inserted module script should eventually succeed: PASS
-	Loading of script-inserted inline style should eventually succeed: NOTRUN
-	Loading of script-inserted module script should eventually succeed: NOTRUN
-	Loading of script-inserted script should eventually succeed: NOTRUN
-	Loading of script-inserted stylesheet link should eventually succeed: TIMEOUT
+	Loading of script-inserted inline style should eventually succeed: TIMEOUT
+	Loading of script-inserted module script should eventually succeed: PASS
+	Loading of script-inserted script should eventually succeed: PASS
+	Loading of script-inserted stylesheet link should eventually succeed: PASS
 	Render-blocking on parser-inserted async module script is cancellable: FAIL
 	Render-blocking on parser-inserted async script is cancellable: FAIL
 	Render-blocking on parser-inserted defer script is cancellable: FAIL
@@ -68448,10 +68447,10 @@
 	Render-blocking on script-inserted script is cancellable: PASS
 	Render-blocking on script-inserted stylesheet link is cancellable: PASS
 /html/dom/render-blocking/remove-element-unblocks-rendering.optional.html: OK
-	Render-blocking on parser-inserted async module script is cancellable: FAIL
+	Render-blocking on parser-inserted async module script is cancellable: PASS
 	Render-blocking on parser-inserted async script is cancellable: FAIL
-	Render-blocking on parser-inserted defer script is cancellable: FAIL
-	Render-blocking on parser-inserted module script is cancellable: FAIL
+	Render-blocking on parser-inserted defer script is cancellable: PASS
+	Render-blocking on parser-inserted module script is cancellable: PASS
 	Render-blocking on script-inserted inline style is cancellable: PASS
 	Render-blocking on script-inserted module script is cancellable: PASS
 	Render-blocking on script-inserted script is cancellable: PASS
@@ -68469,19 +68468,19 @@
 /html/dom/render-blocking/script-inserted-style-element.html: TIMEOUT
 	Render-blocking stylesheet is applied: TIMEOUT
 	Rendering is blocked before render-blocking resources are loaded: FAIL
-/html/dom/render-blocking/script-inserted-stylesheet-link.html: TIMEOUT
-	Render-blocking stylesheet is applied: TIMEOUT
+/html/dom/render-blocking/script-inserted-stylesheet-link.html: OK
+	Render-blocking stylesheet is applied: PASS
 	Rendering is blocked before render-blocking resources are loaded: FAIL
 /html/dom/self-origin.any.html: OK
 	self.origin should be correct: PASS
 /html/dom/self-origin.any.worker.html: OK
-	self.origin should be correct: FAIL
-/html/dom/self-origin.sub.html: ERROR
+	self.origin should be correct: PASS
+/html/dom/self-origin.sub.html: TIMEOUT
 	Assigning blob url: PASS
 	Should have the right origin for IDN subframe: NOTRUN
 	Should have the right origin for IDN subframe after setting document.domain: NOTRUN
-	Should have the right origin for cross-origin subframe: NOTRUN
-	Should have the right origin for cross-origin subframe after setting document.domain: NOTRUN
+	Should have the right origin for cross-origin subframe: PASS
+	Should have the right origin for cross-origin subframe after setting document.domain: FAIL
 	Should have the right origin for sandboxed iframe: NOTRUN
 	We should have the right origin for our page: PASS
 	about:blank subframe origins: FAIL
@@ -68497,7 +68496,7 @@
 	anchor : unpaired surrogate codepoint should be replaced with U+FFFD: FAIL
 	area : unpaired surrogate codepoint should be replaced with U+FFFD: FAIL
 	base : unpaired surrogate codepoint should be replaced with U+FFFD: FAIL
-	document.open : unpaired surrogate codepoint should be replaced with U+FFFD: FAIL
+	document.open : unpaired surrogate codepoint should be replaced with U+FFFD: PASS
 	frame : unpaired surrogate codepoint should be replaced with U+FFFD: FAIL
 	iframe : unpaired surrogate codepoint should be replaced with U+FFFD: FAIL
 	link : unpaired surrogate codepoint should be replaced with U+FFFD: FAIL

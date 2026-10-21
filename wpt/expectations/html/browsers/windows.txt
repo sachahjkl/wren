@@ -1,0 +1,107 @@
+# web-platform-tests expectations of Wren for html/browsers/windows, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/html/browsers/windows/browsing-context-window.html: TIMEOUT
+	HTML Test: Newly-Created browsing context Window and `this`: TIMEOUT
+/html/browsers/windows/browsing-context.html: OK
+	Check that browsing context has new, ready HTML document: FAIL
+	Check that new document nodes extant, empty: FAIL
+	Check the document properties corresponding to the creator browsing context: FAIL
+/html/browsers/windows/clear-window-name.https.html: OK
+	Window.name is not reset at the first navigation away from initial about:blank with noopener: FAIL
+	Window.name is not reset at the first navigation away from initial about:blank with window.opener set to null: FAIL
+	Window.name is not reset at the first navigation away from loaded initial about:blank: FAIL
+	Window.name is not reset at the same-origin navigation with window.opener set to null: FAIL
+	Window.name is not reset if the document.domain is set to the parent domain: FAIL
+	Window.name is not reset when there is an opener around: FAIL
+	Window.name is not reset when there is an opener around (cross-origin): FAIL
+	Window.name is reset at the first cross-origin navigation: FAIL
+	Window.name is reset at the first cross-origin navigation with noopener: FAIL
+	Window.name is reset at the first first cross-origin navigation with window.opener set to null: FAIL
+	Window.name is set by the window: FAIL
+	window.name is not reset after navigating to an about:blank page from a non-about:blank page: FAIL
+/html/browsers/windows/dangling-markup-window-name.html: OK
+	Dangling Markup in target is not reset when set by window.open: FAIL
+	Dangling Markup in target is reset when set by <base> tag: FAIL
+	Dangling Markup in target is reset when set by <form> tag: FAIL
+	Dangling Markup with "\\n" in target is reset when set by <a> tag: FAIL
+	Dangling Markup with "\\r" in target is reset when set by <a> tag: FAIL
+	Dangling Markup with "\\t" in target is reset when set by <a> tag: FAIL
+/html/browsers/windows/document-domain-nested-navigate.window.html: OK
+	Navigated frame to about:blank and document.domain: FAIL
+/html/browsers/windows/document-domain-nested-set.window.html: OK
+	Initial about:blank frame and document.domain in the frame: FAIL
+/html/browsers/windows/document-domain-nested.window.html: OK
+	Initial about:blank frame and document.domain: FAIL
+/html/browsers/windows/document-domain-removed-iframe.html: OK
+	No removal, document.domain: FAIL
+	No removal, no document.domain: FAIL
+	Removal, document.domain: FAIL
+	Removal, no document.domain: FAIL
+/html/browsers/windows/embedded-opener-a-form.html: TIMEOUT
+	opener and embedded documents; using a and form: TIMEOUT
+/html/browsers/windows/embedded-opener-remove-frame.html: OK
+	opener of discarded auxiliary browsing context: FAIL
+	opener of discarded nested browsing context: FAIL
+/html/browsers/windows/embedded-opener.html: OK
+	opener and embedded documents; using window.open(): FAIL
+/html/browsers/windows/nested-browsing-contexts/frameElement-siblings.sub.html: OK
+	it must give a "SecurityError" DOMException if the pages are different-origin domain: PASS
+	it must return the iframe element if the pages are same-origin domain: FAIL
+/html/browsers/windows/nested-browsing-contexts/frameElement.sub.html: OK
+	The SecurityError must be thrown if the window accesses to frameElement attribute of a Window which does not have the same effective script origin: PASS
+	The window's frameElement attribute must return its container element if it is a nested browsing context: FAIL
+	The window's frameElement attribute must return null if it is not a nested browsing context: PASS
+	The window's frameElement attribute must return null if the container's document does not have the same effective script origin: PASS
+/html/browsers/windows/nested-browsing-contexts/iframe-referrer.html: ERROR
+	iframe document's referrer should be the fetching page: TIMEOUT
+/html/browsers/windows/nested-browsing-contexts/name-attribute.window.html: TIMEOUT
+	cross-origin <embed name=>: TIMEOUT
+	cross-origin <embed name=initialvalue>: TIMEOUT
+	cross-origin <embed>: TIMEOUT
+	cross-origin <frame name=>: TIMEOUT
+	cross-origin <frame name=initialvalue>: TIMEOUT
+	cross-origin <frame>: TIMEOUT
+	cross-origin <iframe name=>: TIMEOUT
+	cross-origin <iframe name=initialvalue>: TIMEOUT
+	cross-origin <iframe>: TIMEOUT
+	cross-origin <object name=>: TIMEOUT
+	cross-origin <object name=initialvalue>: TIMEOUT
+	cross-origin <object>: TIMEOUT
+	same-origin <embed name=>: TIMEOUT
+	same-origin <embed name=initialvalue>: TIMEOUT
+	same-origin <embed>: TIMEOUT
+	same-origin <frame name=>: FAIL
+	same-origin <frame name=initialvalue>: FAIL
+	same-origin <frame>: FAIL
+	same-origin <iframe name=>: FAIL
+	same-origin <iframe name=initialvalue>: FAIL
+	same-origin <iframe>: FAIL
+	same-origin <object name=>: TIMEOUT
+	same-origin <object name=initialvalue>: TIMEOUT
+	same-origin <object>: TIMEOUT
+/html/browsers/windows/nested-browsing-contexts/window-parent-null.html: ERROR
+	`window.parent` is null when browsing context container element removed: FAIL
+	`window.parent` null when parent browsing context container removed: TIMEOUT
+/html/browsers/windows/nested-browsing-contexts/window-parent.html: ERROR
+	`window.parent` for multiple nested browsing contexts: TIMEOUT
+	`window.parent` for top-level browsing context: PASS
+	`window.parent` on single nested browsing context: PASS
+/html/browsers/windows/nested-browsing-contexts/window-top-null.html: ERROR
+	`window.top` is null when browsing context container element removed: PASS
+	`window.top`null when any ancestor browsing context container removed: TIMEOUT
+/html/browsers/windows/nested-browsing-contexts/window-top.html: OK
+	One nested iframe: FAIL
+	Top level browsing context: PASS
+	Two nested iframes: FAIL
+/html/browsers/windows/noreferrer-null-opener.html: TIMEOUT
+	rel=noreferrer nullifies window.opener: TIMEOUT
+/html/browsers/windows/noreferrer-window-name.html: ERROR
+	Following a noreferrer link with a named target should not cause creation of a window that can be targeted by another noreferrer link with the same named target: TIMEOUT
+	Targeting a rel=noreferrer link at an existing named subframe should work: TIMEOUT
+	Targeting a rel=noreferrer link at an existing named window should work: FAIL
+/html/browsers/windows/opener-string.window.html: ERROR
+	Setting popup.opener to a string: FAIL
+/html/browsers/windows/targeting-cross-origin-nested-browsing-contexts.html: TIMEOUT
+	Targeting nested browsing contexts: TIMEOUT
+/html/browsers/windows/targeting-with-embedded-null-in-target.html: TIMEOUT
+	Targeting with embedded null in target: TIMEOUT

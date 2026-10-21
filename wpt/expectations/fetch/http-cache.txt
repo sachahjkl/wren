@@ -53,7 +53,9 @@
 /fetch/http-cache/credentials.tentative.any.html: OK
 	same-origin: 2xAnonymous, 2xCredentialled, 1xAnonymous: PASS
 	same-origin: 2xCredentialled, 2xAnonymous, 1xCredentialled: PASS
-/fetch/http-cache/credentials.tentative.any.worker.html: ERROR
+/fetch/http-cache/credentials.tentative.any.worker.html: OK
+	same-origin: 2xAnonymous, 2xCredentialled, 1xAnonymous: PASS
+	same-origin: 2xCredentialled, 2xAnonymous, 1xCredentialled: PASS
 /fetch/http-cache/freshness.any.html: OK
 	HTTP cache does not prefer Cache-Control: s-maxage over Cache-Control: max-age: PASS
 	HTTP cache does not reuse a response when the Age header is greater than its freshness lifetime: PASS
@@ -215,11 +217,11 @@
 /fetch/http-cache/pragma-no-cache-with-cache-control.html: OK
 	Response with Cache-Control: max-age=2592000, immutable and Pragma: no-cache should be cached: FAIL
 	Response with Cache-Control: max-age=2592000, public and Pragma: no-cache should not be cached: FAIL
-/fetch/http-cache/split-cache.html: OK
-	HTTP cache is not shared between cross-site top-level frames: FAIL
-	HTTP cache is not shared between same-site frames with cross-site top-level frames: FAIL
-	HTTP cache is shared between same-site frames with same-site top-level frames: FAIL
-	HTTP cache is shared between same-site top-level frames: FAIL
+/fetch/http-cache/split-cache.html: ERROR
+	HTTP cache is not shared between cross-site top-level frames: NOTRUN
+	HTTP cache is not shared between same-site frames with cross-site top-level frames: NOTRUN
+	HTTP cache is shared between same-site frames with same-site top-level frames: NOTRUN
+	HTTP cache is shared between same-site top-level frames: TIMEOUT
 /fetch/http-cache/status.any.html: OK
 	HTTP cache avoids going to the network if it has a fresh 200 response: PASS
 	HTTP cache avoids going to the network if it has a fresh 203 response: PASS

@@ -15,13 +15,15 @@
 	Defining data property with toString for key x on sessionStorage: PASS
 /webstorage/document-domain.html: OK
 	localStorage and document.domain: FAIL
-/webstorage/event_basic.html: TIMEOUT
-	sessionStorage mutations fire StorageEvents that are caught by the event listener set via window.onstorage.: TIMEOUT
+/webstorage/event_basic.html: OK
+	localStorage mutations fire StorageEvents that are caught by the event listener set via window.onstorage.: FAIL
+	sessionStorage mutations fire StorageEvents that are caught by the event listener set via window.onstorage.: FAIL
 /webstorage/event_body_attribute.html: OK
 	localStorage mutations fire StorageEvents that are caught by the event listener specified as an attribute on the body.: FAIL
 	sessionStorage mutations fire StorageEvents that are caught by the event listener specified as an attribute on the body.: FAIL
-/webstorage/event_case_sensitive.html: TIMEOUT
-	sessionStorage storage events fire even when only the case of the value changes.: TIMEOUT
+/webstorage/event_case_sensitive.html: OK
+	localStorage storage events fire even when only the case of the value changes.: FAIL
+	sessionStorage storage events fire even when only the case of the value changes.: FAIL
 /webstorage/event_constructor.window.html: OK
 	StorageEvent constructor called as normal function: PASS
 	constructor with just type argument: PASS
@@ -35,35 +37,36 @@
 	initStorageEvent with 8 null arguments: FAIL
 	initStorageEvent with 8 sensible arguments: FAIL
 	initStorageEvent with 8 undefined arguments: FAIL
-/webstorage/event_local_key.html: TIMEOUT
-	key property test of local event - Local event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
-/webstorage/event_local_newvalue.html: TIMEOUT
-	newValue property test of local event - Local event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
-/webstorage/event_local_oldvalue.html: TIMEOUT
-	oldValue property test of local event - Local event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
+/webstorage/event_local_key.html: OK
+	key property test of local event - Local event is fired due to an invocation of the setItem(), clear() methods.: PASS
+/webstorage/event_local_newvalue.html: OK
+	newValue property test of local event - Local event is fired due to an invocation of the setItem(), clear() methods.: PASS
+/webstorage/event_local_oldvalue.html: OK
+	oldValue property test of local event - Local event is fired due to an invocation of the setItem(), clear() methods.: PASS
 /webstorage/event_local_removeitem.html: TIMEOUT
 	key property test of local event: TIMEOUT
-/webstorage/event_local_storagearea.html: TIMEOUT
-	storageArea property test of local event - Local event is fired due to an invocation of the setItem() method.: TIMEOUT
-/webstorage/event_local_url.html: TIMEOUT
-	url property test of local event - Local event is fired due to an invocation of the setItem() method.: TIMEOUT
-/webstorage/event_local_window_open_oldvalue.html: OK
-	oldValue property test of local event from window.open() - Local event is fired due to an invocation of the setItem(), clear() methods.: FAIL
-/webstorage/event_no_duplicates.html: TIMEOUT
-/webstorage/event_session_key.html: TIMEOUT
-	key property test of session event - Session event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
-/webstorage/event_session_newvalue.html: TIMEOUT
-	newvalue property test of session event - Session event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
-/webstorage/event_session_oldvalue.html: TIMEOUT
-	oldvalue property test of session event - Session event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
+/webstorage/event_local_storagearea.html: OK
+	storageArea property test of local event - Local event is fired due to an invocation of the setItem() method.: PASS
+/webstorage/event_local_url.html: OK
+	url property test of local event - Local event is fired due to an invocation of the setItem() method.: PASS
+/webstorage/event_local_window_open_oldvalue.html: TIMEOUT
+	oldValue property test of local event from window.open() - Local event is fired due to an invocation of the setItem(), clear() methods.: TIMEOUT
+/webstorage/event_no_duplicates.html: ERROR
+	sessionStorage exists: PASS
+/webstorage/event_session_key.html: OK
+	key property test of session event - Session event is fired due to an invocation of the setItem(), clear() methods.: PASS
+/webstorage/event_session_newvalue.html: OK
+	newvalue property test of session event - Session event is fired due to an invocation of the setItem(), clear() methods.: PASS
+/webstorage/event_session_oldvalue.html: OK
+	oldvalue property test of session event - Session event is fired due to an invocation of the setItem(), clear() methods.: PASS
 /webstorage/event_session_removeitem.html: TIMEOUT
 	key property test of session event: TIMEOUT
-/webstorage/event_session_storagearea.html: TIMEOUT
-	storageArea property test of session event - session event is fired due to an invocation of the setItem() method.: TIMEOUT
-/webstorage/event_session_url.html: TIMEOUT
-	url property test of session event - Session event is fired due to an invocation of the setItem() method.: TIMEOUT
-/webstorage/event_session_window_open_scope.html: OK
-	sessionStorage events from a new window opened via window.open() should not fire in the opener: FAIL
+/webstorage/event_session_storagearea.html: OK
+	storageArea property test of session event - session event is fired due to an invocation of the setItem() method.: PASS
+/webstorage/event_session_url.html: OK
+	url property test of session event - Session event is fired due to an invocation of the setItem() method.: PASS
+/webstorage/event_session_window_open_scope.html: TIMEOUT
+	sessionStorage events from a new window opened via window.open() should not fire in the opener: TIMEOUT
 /webstorage/event_setattribute.html: OK
 	localStorage mutations fire StorageEvents that are caught by the event listener attached via setattribute.: FAIL
 	sessionStorage mutations fire StorageEvents that are caught by the event listener attached via setattribute.: FAIL
@@ -181,8 +184,8 @@
 	localStorage retains comparable quota after sessionStorage exhaustion: FAIL
 /webstorage/storage_local_setitem_quotaexceedederr.window.html: OK
 	Throws QuotaExceededError when the quota has been exceeded: FAIL
-/webstorage/storage_local_window_open.window.html: OK
-	A new window to make sure there is a copy of the previous window's localStorage, and that they do not diverge after a change: FAIL
+/webstorage/storage_local_window_open.window.html: TIMEOUT
+	A new window to make sure there is a copy of the previous window's localStorage, and that they do not diverge after a change: TIMEOUT
 /webstorage/storage_removeitem.window.html: OK
 	delete localStorage[]: PASS
 	delete sessionStorage[]: PASS
@@ -198,8 +201,8 @@
 	Throws QuotaExceededError when the quota has been exceeded: FAIL
 /webstorage/storage_session_window_noopener.window.html: OK
 	A new noopener window to make sure there is a not copy of the previous window's sessionStorage: FAIL
-/webstorage/storage_session_window_open.window.html: OK
-	A new window to make sure there is a copy of the previous window's sessionStorage, and that they diverge after a change: FAIL
+/webstorage/storage_session_window_open.window.html: TIMEOUT
+	A new window to make sure there is a copy of the previous window's sessionStorage, and that they diverge after a change: TIMEOUT
 /webstorage/storage_session_window_reopen.window.html: OK
 	ensure that re-opening a named window doesn't copy sessionStorage: FAIL
 /webstorage/storage_set_value_enumerate.window.html: OK

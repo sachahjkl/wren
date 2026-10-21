@@ -48,15 +48,29 @@
 /webidl/ecmascript-binding/class-string-named-properties-object.window.html: OK
 	@@toStringTag exists with the appropriate descriptor: FAIL
 	Object.prototype.toString: FAIL
-/webidl/ecmascript-binding/constructors.html: TIMEOUT
-	Realm for constructed objects: TIMEOUT
+/webidl/ecmascript-binding/constructors.html: OK
+	Constructor in child window with bad NewTarget from child window that's a bound parent window function: FAIL
+	Constructor in child window with bad NewTarget from child window that's a proxy for a parent window function: FAIL
+	Constructor in child window with bad NewTarget from parent window: FAIL
+	Constructor in child window with normal NewTarget from parent window: FAIL
+	Constructor in parent window with bad NewTarget from child window: FAIL
+	Constructor in parent window with bad NewTarget from parent window that's a bound child window function: FAIL
+	Constructor in parent window with bad NewTarget from parent window that's a proxy for a child window function: FAIL
+	Constructor in parent window with normal NewTarget from child window: FAIL
+	Normal constructor in child window: FAIL
+	Normal constructor in parent window: FAIL
+	Realm for constructed objects: PASS
+	Subclass constructor in child window: FAIL
+	Subclass constructor in child window with parent class in parent window: FAIL
+	Subclass constructor in parent window: FAIL
+	Subclass constructor in parent window with parent class in child window: FAIL
 /webidl/ecmascript-binding/default-iterator-object.html: OK
 	@@toStringTag has correct value from prototype: PASS
 	Default iterator objects for an interface have the same prototype: PASS
 	Object.prototype.toString returns correct value: PASS
-/webidl/ecmascript-binding/default-toJSON-cross-realm.html: TIMEOUT
-	Cross-realm [Default] toJSON() converts its interface attributes to ECMAScript values of correct realm: NOTRUN
-	Cross-realm [Default] toJSON() creates result object in its realm: TIMEOUT
+/webidl/ecmascript-binding/default-toJSON-cross-realm.html: OK
+	Cross-realm [Default] toJSON() converts its interface attributes to ECMAScript values of correct realm: FAIL
+	Cross-realm [Default] toJSON() creates result object in its realm: FAIL
 /webidl/ecmascript-binding/es-exceptions/DOMException-audioworklet.https.html: ERROR
 	A DOMException can be posted to AudioWorkletGlobalScope: NOTRUN
 	A DOMException created in AudioWorkletGlobalScope can be posted to the window: NOTRUN
@@ -166,7 +180,7 @@
 	Constant VALIDATION_ERR on DOMException prototype object: PASS
 	Constant WRONG_DOCUMENT_ERR on DOMException constructor object: PASS
 	Constant WRONG_DOCUMENT_ERR on DOMException prototype object: PASS
-	Untitled: PASS
+	DOMException-constants: PASS
 /webidl/ecmascript-binding/es-exceptions/DOMException-constructor-and-prototype.any.html: OK
 	existence and property descriptor of DOMException: PASS
 	existence and property descriptor of DOMException.prototype: PASS
@@ -304,7 +318,7 @@
 /webidl/ecmascript-binding/es-exceptions/DOMException-is-error.any.html: OK
 	DOMException-is-error: FAIL
 /webidl/ecmascript-binding/es-exceptions/DOMException-is-error.any.worker.html: OK
-	Untitled: FAIL
+	DOMException-is-error: FAIL
 /webidl/ecmascript-binding/es-exceptions/DOMException-stack-accessor.any.html: OK
 	DOMException instance does not have an own stack property: FAIL
 	DOMException.prototype does not have an own stack property: PASS
@@ -324,7 +338,13 @@
 	Error.prototype.stack setter installs own data property on DOMException instances: FAIL
 	new DOMException() has a stack property that is a string: PASS
 	new DOMException() with no arguments has a stack property that is a string: PASS
-/webidl/ecmascript-binding/es-exceptions/exceptions.html: TIMEOUT
+/webidl/ecmascript-binding/es-exceptions/exceptions.html: OK
+	In iframe: Object.getPrototypeOf(exception) === DOMException.prototype: FAIL
+	In iframe: Object.prototype.toString.call(exception) === "[object DOMException]": FAIL
+	In iframe: exception.code === DOMException.HIERARCHY_REQUEST_ERR: FAIL
+	In iframe: exception.hasOwnProperty("message"): FAIL
+	In iframe: exception.hasOwnProperty("name"): PASS
+	In iframe: exception.name === "HierarchyRequestError": FAIL
 	Object.getPrototypeOf(exception) === DOMException.prototype: PASS
 	Object.prototype.toString.call(exception) === "[object DOMException]": PASS
 	exception.code === DOMException.HIERARCHY_REQUEST_ERR: PASS
@@ -337,13 +357,13 @@
 /webidl/ecmascript-binding/global-immutable-prototype.any.worker.html: OK
 	Setting to a different prototype: FAIL
 	Setting to the same prototype: PASS
-/webidl/ecmascript-binding/global-object-implicit-this-value-cross-realm.html: TIMEOUT
-	Cross-realm global object's getter called on null / undefined: NOTRUN
-	Cross-realm global object's getter throws when called on incompatible object: TIMEOUT
-	Cross-realm global object's operation called on null / undefined: NOTRUN
-	Cross-realm global object's operation throws when called on incompatible object: NOTRUN
-	Cross-realm global object's setter called on null / undefined: NOTRUN
-	Cross-realm global object's setter throws when called on incompatible object: NOTRUN
+/webidl/ecmascript-binding/global-object-implicit-this-value-cross-realm.html: OK
+	Cross-realm global object's getter called on null / undefined: FAIL
+	Cross-realm global object's getter throws when called on incompatible object: FAIL
+	Cross-realm global object's operation called on null / undefined: FAIL
+	Cross-realm global object's operation throws when called on incompatible object: FAIL
+	Cross-realm global object's setter called on null / undefined: FAIL
+	Cross-realm global object's setter throws when called on incompatible object: FAIL
 /webidl/ecmascript-binding/global-object-implicit-this-value.any.html: OK
 	Global object's getter throws when called on incompatible object: FAIL
 	Global object's getter throws when called on incompatible object (document.all): FAIL
@@ -352,12 +372,15 @@
 	Global object's operation throws when called on incompatible object (document.all): FAIL
 	Global object's operation works when called on null / undefined: PASS
 	Global object's setter throws when called on incompatible object: FAIL
-	Global object's setter throws when called on incompatible object (document.all): PASS
+	Global object's setter throws when called on incompatible object (document.all): FAIL
 	Global object's setter works when called on null / undefined: FAIL
-/webidl/ecmascript-binding/global-object-implicit-this-value.any.worker.html: ERROR
+/webidl/ecmascript-binding/global-object-implicit-this-value.any.worker.html: OK
 	Global object's getter throws when called on incompatible object: FAIL
+	Global object's getter works when called on null / undefined: PASS
 	Global object's operation throws when called on incompatible object: FAIL
+	Global object's operation works when called on null / undefined: PASS
 	Global object's setter throws when called on incompatible object: FAIL
+	Global object's setter works when called on null / undefined: FAIL
 /webidl/ecmascript-binding/has-instance.html: OK
 	Manually-constructed prototype chains are correctly handled by instanceof: PASS
 	instanceof must return false across different globals, for platform objects: FAIL
@@ -375,10 +398,10 @@
 	Prototype chain [[Set]] creates property on receiver: PASS
 /webidl/ecmascript-binding/interface-prototype-object.html: OK
 	[Unscopable] extended attribute makes @@unscopables object on the prototype object, whose prototype is null.: FAIL
-/webidl/ecmascript-binding/invalid-this-value-cross-realm.html: TIMEOUT
-	Cross-realm getter throws when called on incompatible object: TIMEOUT
-	Cross-realm operation throws when called on incompatible object: NOTRUN
-	Cross-realm setter throws when called on incompatible object: NOTRUN
+/webidl/ecmascript-binding/invalid-this-value-cross-realm.html: OK
+	Cross-realm getter throws when called on incompatible object: FAIL
+	Cross-realm operation throws when called on incompatible object: FAIL
+	Cross-realm setter throws when called on incompatible object: FAIL
 /webidl/ecmascript-binding/iterator-invalidation-foreach.html: OK
 	Elements added during iteration with forEach will be reached: PASS
 	Removing elements already iterated over during forEach will cause iterator to skip an element: PASS
