@@ -146,7 +146,8 @@ attach_start :: proc(inst: ^Instance, code: []byte, threads: int, max_functions 
 	sync.mutex_lock(&attach_pool.lock)
 	defer sync.mutex_unlock(&attach_pool.lock)
 	for len(attach_pool.threads) < max(1, threads) {
-		t := thread.create_and_start(attach_worker)
+		// (low priority: compiling is background work the page's own thread must never wait behind)
+		t := thread.create_and_start(attach_worker, priority = .Low)
 		if t == nil { break }
 		append(&attach_pool.threads, t)
 	}
