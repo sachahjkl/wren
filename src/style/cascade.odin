@@ -364,7 +364,7 @@ consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css
 		}
 	}
 	if len(rule.customs) > 0 {
-		if cust^ == nil { cust^ = make(map[string]Custom_Cand, context.temp_allocator) }
+		if cust^ == nil { cust^ = make(map[string]Custom_Cand, max(16, len(rule.customs) * 2), context.temp_allocator) }
 		for &cd in rule.customs {
 			k := make_key(rule, cd.important, spec, ctx)
 			old, has := cust[cd.name]
@@ -476,23 +476,45 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	// registered properties that do not inherit stop here: the map is copied without them
 	drops_noninherited := e.registered_noninherited > 0 && c.custom != nil && carries_noninherited(e, c.custom)
 	if len(cust) > 0 || drops_noninherited {
-		env.pending = make(map[string]Custom_Cand, context.temp_allocator)
+		env.pending = cust   // (the element's candidates, read only from here)
 		env.resolved = make(map[string]string, context.temp_allocator)
 		env.state = make(map[string]u8, context.temp_allocator)
-		for k, v in cust { env.pending[k] = v }
-		props := new(Custom_Props, a)
-		props.values = make(map[string]string, a)
-		if c.custom != nil {
-			for k, v in c.custom.values {
-				if reg := registered(e, k); reg != nil && !reg.inherits { continue }
-				props.values[k] = v
+		// resolved first: when every declared property ends as the parent has it (a universal reset such as Tailwind's
+		// `*, ::before, ::after { --tw-…: initial }` on every element), the parent's table is shared, not copied
+		Resolved_Custom :: struct { name, text: string, ok: bool }
+		res := make([]Resolved_Custom, len(cust), context.temp_allocator)
+		same := !drops_noninherited
+		i := 0
+		for name, cand in cust {
+			text: string
+			ok: bool
+			// `initial` of an unregistered property: the guaranteed-invalid value, nothing to resolve
+			if !(cand.valid && e.registered == nil && css_wide_keyword(cand.decl.value) == "initial") {
+				text, ok = var_lookup(&env, name, 0)
+			}
+			res[i] = {name, text, ok}
+			i += 1
+			if same {
+				pv, pok := "", false
+				if c.custom != nil { pv, pok = c.custom.values[name] }
+				same = pok == ok && (!ok || pv == text)
 			}
 		}
-		for name in cust {
-			text, ok := var_lookup(&env, name, 0)
-			if ok { props.values[name] = text } else { delete_key(&props.values, name) }
+		if !same {
+			props := new(Custom_Props, a)
+			props.values = make(map[string]string, a)
+			if c.custom != nil {
+				reserve(&props.values, len(c.custom.values) + len(cust))
+				for k, v in c.custom.values {
+					if reg := registered(e, k); reg != nil && !reg.inherits { continue }
+					props.values[k] = v
+				}
+			}
+			for r in res {
+				if r.ok { props.values[r.name] = r.text } else { delete_key(&props.values, r.name) }
+			}
+			c.custom = props
 		}
-		c.custom = props
 	}
 	empty_props := Custom_Props{}
 	env.final = c.custom != nil ? c.custom : &empty_props
@@ -691,6 +713,14 @@ own_custom_names :: proc(customs: []Custom_Decl, a: runtime.Allocator) {
 }
 
 @(private)
+may_have_content :: proc(entries: []Entry) -> bool {
+	for ent in entries {
+		for d in ent.rule.decls { if d.prop == .Content || d.prop == .Animation_Name { return true } }
+	}
+	return false
+}
+
+@(private)
 compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom, ctx: Elem_Ctx = {}) -> ^Computed {
 	collect_entries(p, h, n, ancestors, ctx)
 	add_hint_entry(p, h, n)
@@ -706,7 +736,10 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 
 	for i in 1 ..< 3 {
 		entries := i == 1 ? before_entries : after_entries
-		if len(entries) == 0 { continue }
+		// a pseudo-element has a box only when its content computes to something: no matched rule declaring content
+		// (it is not inherited, and its initial value is normal) means none, whatever else the rules say (Tailwind's
+		// `*, ::before, ::after { --tw-…: initial }` matches every element's pseudo-elements). An animation could set it.
+		if len(entries) == 0 || !may_have_content(entries[:]) { continue }
 		pc := build_style(p, h, c, entries[:], nil)
 		if pc.display == .None || pc.content.kind != .Items { continue }
 		if i == 1 { c.before = pc } else { c.after = pc }

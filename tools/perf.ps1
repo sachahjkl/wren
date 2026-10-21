@@ -307,6 +307,10 @@ Run 'js_anim1000_sample' (FileUrl (Join-Path $jsb 'anim1000.html')) { param($h) 
 # 1000 custom elements with shadow roots (adopted and own sheets, :host, ::slotted(), ::part(), :state()), 50 hosts'
 # state and 20 slotted texts changed each frame: the scoped cascade and its partial restyle
 Run 'js_shadow1000' (FileUrl (Join-Path $jsb 'shadow1000.html')) { param($h) Start-Sleep 4; Mark; Start-Sleep 8 } $false '--pref browser.frame.target_hz=180'
+# real sites with JavaScript (network: figures depend on the connection; the style and layout phases do not)
+Run 'site_sacha'   'https://sacha.house/' { param($h) Start-Sleep 10 } $false
+Run 'site_clockin' 'https://clockin.sacha.house/' { param($h) Start-Sleep 10 } $false
+Run 'site_mdn'     'https://developer.mozilla.org/en-US/docs/Web/JavaScript' { param($h) Start-Sleep 12 } $false
 Run 'js_shadow1000_sample' (FileUrl (Join-Path $jsb 'shadow1000.html')) { param($h) Start-Sleep 4; Mark; Start-Sleep 8 } $true '--pref browser.frame.target_hz=180'
 # JavaScript off: pages without scripts must cost what they cost before the engine existed. Compare these with the same
 # scenarios of a build without JavaScript (-Exe <that build> -Tag _main): load, hover, scroll, an animation
