@@ -22,6 +22,7 @@ Settings :: struct {
 	enterprise_rp_ids:             []string,   // owned
 	max_options_bytes:             int,
 	max_list_entries:              int,
+	cancel_grace_ms:               int,
 	virtual:                       bool,   // the software authenticator (tests only: see settings_from_prefs)
 	virtual_mode:                  Virtual_Mode,
 	virtual_delay_ms:              int,
@@ -29,7 +30,7 @@ Settings :: struct {
 
 Attestation_Policy :: enum u8 { Allow, None }
 
-Virtual_Mode :: enum u8 { Accept, Decline, No_Credentials }
+Virtual_Mode :: enum u8 { Accept, Decline, No_Credentials, Stuck }
 
 PREFS := [?]config.Def{
 	{name = "security.webauthn.enabled", kind = .Bool, default = {b = true},
@@ -62,10 +63,12 @@ PREFS := [?]config.Def{
 		description = "Largest options a page may pass to create() / get() (their JSON form)."},
 	{name = "security.webauthn.max_list_entries", kind = .Int, default = {i = 1024}, bounded = true, min = 1, max = 65536,
 		description = "Most entries of one list of the options (allowCredentials, excludeCredentials, pubKeyCredParams, hints)."},
+	{name = "security.webauthn.cancel_grace_ms", kind = .Int, default = {i = 3000}, bounded = true, min = 0, max = 600_000, unit = "ms",
+		description = "After a request is cancelled (the page's abort, its timeout, the page closing, the address bar's cancel), how long the system may take to give it back. Past it the page is answered anyway and the browser does not wait for it to exit."},
 	{name = "security.webauthn.testing.virtual_authenticator", kind = .Bool, default = {b = false}, category = "testing",
 		description = "Automated tests only: replace the system's authenticators by a software one that keeps its keys in memory until the browser exits. Taken into account only when given on the command line (--pref), never from the profile, so that real passkeys cannot silently go to it."},
-	{name = "security.webauthn.testing.virtual_mode", kind = .String, default = {s = "accept"}, choices = {"accept", "decline", "no_credentials"}, category = "testing",
-		description = "What the virtual authenticator's user does: accept, decline (NotAllowedError), or have no credential for the site."},
+	{name = "security.webauthn.testing.virtual_mode", kind = .String, default = {s = "accept"}, choices = {"accept", "decline", "no_credentials", "stuck"}, category = "testing",
+		description = "What the virtual authenticator's user does: accept, decline (NotAllowedError), have no credential for the site, or stuck: a dialog that ignores cancellation until virtual_delay_ms is over (tests security.webauthn.cancel_grace_ms)."},
 	{name = "security.webauthn.testing.virtual_delay_ms", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 600_000, unit = "ms", category = "testing",
 		description = "How long the virtual authenticator's user takes to answer (to test aborts and the lifetime timer)."},
 }
@@ -94,11 +97,13 @@ settings_from_prefs :: proc(p: ^config.Prefs, allocator := context.allocator) ->
 	s.enterprise_rp_ids = ids[:]
 	s.max_options_bytes = int(config.int_of(p, "security.webauthn.max_options_bytes"))
 	s.max_list_entries = int(config.int_of(p, "security.webauthn.max_list_entries"))
+	s.cancel_grace_ms = int(config.int_of(p, "security.webauthn.cancel_grace_ms"))
 	ref := config.ref_of(p, "security.webauthn.testing.virtual_authenticator")
 	s.virtual = config.bool_of(p, "security.webauthn.testing.virtual_authenticator") && ref != config.NO_REF && p.entries[int(ref)].source == .Command_Line
 	switch config.string_of(p, "security.webauthn.testing.virtual_mode") {
 	case "decline": s.virtual_mode = .Decline
 	case "no_credentials": s.virtual_mode = .No_Credentials
+	case "stuck": s.virtual_mode = .Stuck
 	case: s.virtual_mode = .Accept
 	}
 	s.virtual_delay_ms = int(config.int_of(p, "security.webauthn.testing.virtual_delay_ms"))

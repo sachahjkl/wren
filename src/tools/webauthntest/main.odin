@@ -255,6 +255,18 @@ main :: proc() {
 	s = ask(p, "illegal ", `let n = ''; try { new PublicKeyCredential() } catch (e) { n = e.name } console.log('illegal ' + n + ' ' + Object.getPrototypeOf(PublicKeyCredential.prototype).constructor.name)`)
 	check(s == "illegal TypeError Credential", fmt.tprintf("PublicKeyCredential has no constructor and inherits from Credential (%s)", s))
 
+	// a system dialog that ignores the cancellation: the page is answered after security.webauthn.cancel_grace_ms
+	settings.authn.virtual_mode, settings.authn.virtual_delay_ms, settings.authn.cancel_grace_ms = .Stuck, 2500, 300
+	click(p)
+	s = ask(p, "stuck ", `window.ac2 = new AbortController(); window.t2 = performance.now(); navigator.credentials.get({ signal: ac2.signal, publicKey: { challenge: bytes('x'), rpId: 'example.com' } }).then(() => console.log('stuck ok'), (e) => console.log('stuck ' + e + ' ' + (performance.now() - t2 < 2000))); setTimeout(() => ac2.abort('late'), 50)`)
+	check(s == "stuck late true", fmt.tprintf("an abort the platform ignores: the reason after the grace period, not after the dialog (%s)", s))
+	busy, _, _ = page.webauthn_pending(p)
+	check(!busy && page.webauthn_in_flight() == 1, "the page may start another request; the platform call is left to finish")
+	start0 := time.tick_now()
+	for page.webauthn_in_flight() > 0 && time.duration_milliseconds(time.tick_since(start0)) < 5000 { host.loop_wait(&loop, 5) }
+	check(page.webauthn_in_flight() == 0, "... and its thread is joined when it does")
+	settings.authn.virtual_mode, settings.authn.virtual_delay_ms, settings.authn.cancel_grace_ms = .Accept, 0, 3000
+
 	// the page closes with a ceremony pending: cancelled, nothing leaks
 	settings.authn.virtual_delay_ms = 3000
 	click(p)

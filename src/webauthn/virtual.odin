@@ -92,11 +92,11 @@ v_cancel :: proc(pl: ^Platform, token: ^Cancel_Token) {
 
 // The user's time to answer; false when the operation was cancelled meanwhile. Closes the token's event.
 @(private="file")
-v_wait :: proc(token: ^Cancel_Token, delay_ms: int) -> bool {
+v_wait :: proc(token: ^Cancel_Token, delay_ms: int, stuck := false) -> bool {
 	sync.mutex_lock(&token.mu)
 	ev := token.event
 	sync.mutex_unlock(&token.mu)
-	if ev != nil && delay_ms > 0 { win.WaitForSingleObject(win.HANDLE(ev), win.DWORD(delay_ms)) }
+	if stuck { win.Sleep(win.DWORD(delay_ms)) } else if ev != nil && delay_ms > 0 { win.WaitForSingleObject(win.HANDLE(ev), win.DWORD(delay_ms)) }
 	sync.mutex_lock(&token.mu)
 	if token.event != nil { win.CloseHandle(win.HANDLE(token.event)); token.event = nil }
 	c := token.cancelled
@@ -118,8 +118,8 @@ v_make_credential :: proc(pl: ^Platform, rq: ^Make_Request, out: ^Credential, al
 	sync.mutex_lock(&vstate.mu)
 	mode, delay := vstate.mode, vstate.delay_ms
 	sync.mutex_unlock(&vstate.mu)
-	if !v_wait(rq.cancel, delay) { return v_cancelled_status(rq.cancel) }
-	if mode == .Decline || rq.attachment == .Cross_Platform { return NOT_ALLOWED }
+	if !v_wait(rq.cancel, delay, mode == .Stuck) { return v_cancelled_status(rq.cancel) }
+	if mode == .Decline || mode == .Stuck || rq.attachment == .Cross_Platform { return NOT_ALLOWED }
 	o := rq.options
 	es256 := false
 	for a in o.algorithms { if a == COSE_ES256 { es256 = true } }
@@ -204,7 +204,7 @@ v_get_assertion :: proc(pl: ^Platform, rq: ^Get_Request, out: ^Credential, alloc
 	sync.mutex_lock(&vstate.mu)
 	mode, delay := vstate.mode, vstate.delay_ms
 	sync.mutex_unlock(&vstate.mu)
-	if !v_wait(rq.cancel, delay) { return v_cancelled_status(rq.cancel) }
+	if !v_wait(rq.cancel, delay, mode == .Stuck) { return v_cancelled_status(rq.cancel) }
 	if mode != .Accept || rq.attachment == .Cross_Platform { return NOT_ALLOWED }
 	o := rq.options
 

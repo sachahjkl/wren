@@ -1188,7 +1188,7 @@ main :: proc() {
 	history_ui_destroy()
 	history_settings_shutdown(app)
 	base.scope_close(app.process)   // every tab, page and request
-	webauthn_shell_destroy()   // passkey requests: their threads joined
+	webauthn_shell_destroy(app)   // passkey requests: their threads joined
 	favicons_destroy(app)
 	images_shell_destroy(app)
 	page.storage_manager_destroy(&app.storage)   // writes what is not saved yet

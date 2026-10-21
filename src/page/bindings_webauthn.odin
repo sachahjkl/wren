@@ -17,6 +17,7 @@ package page
 
 import "base:runtime"
 import "core:strings"
+import "core:time"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
@@ -58,6 +59,7 @@ Webauthn_Op :: struct {
 	timer:     base.Handle,   // lifetime timer
 	retry:     base.Handle,   // repeated cancellation
 	rp_id:     string,        // in the ceremony's arena (address bar)
+	cancel_ns: i64,           // loop clock of the first cancellation (0: none)
 }
 
 // UI thread only.
@@ -137,10 +139,17 @@ webauthn_busy :: proc(p: ^Page) -> bool {
 // Ceremonies whose platform call has not returned yet, every page included (tests, shutdown).
 webauthn_in_flight :: proc() -> int { return len(webauthn_ops) }
 
-// At exit, before the loop goes: every ceremony cancelled and its thread joined.
-webauthn_shutdown :: proc() {
+// At exit, before the loop goes: every ceremony cancelled and its thread joined. A platform call that does not come
+// back within grace_ms of its cancellation (a system dialog that ignores it) is left to the end of the process: its
+// thread and its ceremony are not freed (the thread still uses them), and the exit is not held up.
+webauthn_shutdown :: proc(grace_ms := 3000) {
+	for op in webauthn_ops { webauthn.cancel(op.platform, &op.c.cancel, .Not_Allowed) }
+	deadline := time.tick_now()
 	for op in webauthn_ops {
-		webauthn.cancel(op.platform, &op.c.cancel, .Not_Allowed)
+		for !host.thread_finished(op.thread) && time.duration_milliseconds(time.tick_since(deadline)) < f64(grace_ms) {
+			time.sleep(10 * time.Millisecond)
+		}
+		if !host.thread_finished(op.thread) { continue }
 		host.thread_join(op.thread)
 		webauthn.ceremony_destroy(op.c)
 		free(op, runtime.heap_allocator())
@@ -340,10 +349,35 @@ webauthn_start :: proc(c: ^Call, kind: webauthn.Ceremony_Kind, options: string, 
 webauthn_cancel_op :: proc(p: ^Page, op: ^Webauthn_Op, reason: webauthn.Error) {
 	webauthn.cancel(op.platform, &op.c.cancel, reason)
 	if p == nil || op.retry != base.NIL_HANDLE { return }
+	op.cancel_ns = host.now_ns(p.loop)
 	op.retry = host.set_timer(p.loop, CANCEL_RETRY_MS, CANCEL_RETRY_MS, proc(data: rawptr) {
 		op := (^Webauthn_Op)(data)
 		if op.platform.cancel != nil { op.platform.cancel(op.platform, &op.c.cancel) }
+		p := page_by_id(op.page_id)
+		if p != nil && host.now_ns(p.loop) - op.cancel_ns > i64(p.settings.authn.cancel_grace_ms) * 1_000_000 { webauthn_give_up(p, op) }
 	}, op, p.scope)
+}
+
+// The platform did not give the cancelled operation back in time (security.webauthn.cancel_grace_ms): the page is
+// answered as if it had (the signal's reason, or NotAllowedError) and may start another ceremony; the thread is left to
+// finish on its own, and its answer is dropped.
+@(private="file")
+webauthn_give_up :: proc(p: ^Page, op: ^Webauthn_Op) {
+	_, reason := webauthn.cancelled(&op.c.cancel)
+	if op.timer != base.NIL_HANDLE { host.clear_timer(p.loop, op.timer); op.timer = base.NIL_HANDLE }
+	if op.retry != base.NIL_HANDLE { host.clear_timer(p.loop, op.retry); op.retry = base.NIL_HANDLE }
+	if d := webauthn_doc(p); d != nil && d.active == op { d.active = nil }
+	op.page_id = 0   // webauthn_finished only frees it
+	if reason == .Abort && op.signal != 0 {
+		_, code, text := signal_aborted(p, op.signal)
+		if op.algo != 0 { signal_remove_algorithm(p, op.signal, op.algo) }
+		promise_reject(p, op.promise, code != 0 ? code : WEB_ERR_ABORT, text != "" ? text : ABORT_REASON)
+	} else {
+		if op.signal != 0 && op.algo != 0 { signal_remove_algorithm(p, op.signal, op.algo) }
+		promise_reject(p, op.promise, i64(Api_Error.Not_Allowed), "NotAllowedError: the operation either timed out or was not allowed")
+	}
+	log(p, .Warn, "Web Authentication: the system did not end the cancelled request in time (security.webauthn.cancel_grace_ms); the page was answered anyway")
+	if webauthn_embedder.changed != nil { webauthn_embedder.changed(p) }
 }
 
 // The platform call returned (UI thread).

@@ -25,9 +25,9 @@ webauthn_shell_init :: proc(app: ^App) {
 	}
 }
 
-webauthn_shell_destroy :: proc() {
+webauthn_shell_destroy :: proc(app: ^App) {
 	page.webauthn_embedder = {}
-	page.webauthn_shutdown()   // cancels what is still waiting and joins its threads, before the loop goes
+	page.webauthn_shutdown(app.page_settings.authn.cancel_grace_ms)   // cancels what still waits and joins its threads, before the loop goes
 }
 
 // The address bar's chip while the current page waits for a passkey dialog.
