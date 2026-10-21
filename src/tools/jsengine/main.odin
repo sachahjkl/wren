@@ -224,8 +224,8 @@ print_jit_stats :: proc(inst: ^wasm.Instance) {
 	fmt.eprintfln("jit: %d compiled, %d failed, %d refused; modules %d KiB for %d KiB of bytecode; Cranelift %.1f ms, link %.1f ms",
 		int(st.compiled), int(st.failed), int(st.refused), int(st.module_bytes) / 1024, int(st.bytecode_bytes) / 1024,
 		f64(a.compile_ns) / 1e6, f64(a.link_ns) / 1e6)
-	fmt.eprintfln("jit: %d entries: %d returns, %d exceptions, %d deopts; %d steps",
-		int(st.entries), int(st.exits_return), int(st.exits_exception), int(st.exits_deopt), int(st.steps))
+	fmt.eprintfln("jit: %d entries (%d at a loop): %d returns, %d exceptions, %d deopts; %d steps",
+		int(st.entries), int(st.osr_entries), int(st.exits_return), int(st.exits_exception), int(st.exits_deopt), int(st.steps))
 	if !wasm.has_export(inst, "wj_jit_step_count") { return }
 	Op_Count :: struct { op: int, n: u32 }
 	ops := make([dynamic]Op_Count, context.temp_allocator)
@@ -301,6 +301,7 @@ parse_common :: proc(args: []string) -> (c: Common) {
 		case "-jit-threshold": i += 1; jit.call_threshold = max(1, int(parse_int(args[i])))
 		case "-jit-step": jit.step_only = true
 		case "-jit-sync": jit.background_threads = 0
+		case "-jit-loop": i += 1; jit.loop_threshold = max(1, int(parse_int(args[i])))
 		case "-jit-off": i += 1; jit.off_paths = int(parse_int(args[i]))
 		case "-jit-stats": jit_stats_wanted = true
 		case "--pref": i += 1

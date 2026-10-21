@@ -35,6 +35,7 @@ __attribute__((import_module("js"), import_name("Engine_jitPoll"))) int32_t wr_E
 typedef struct WJitConfig {
     int enabled;
     uint32_t call_threshold;      /* compile at that call */
+    uint32_t loop_threshold;      /* or after that many loop iterations (back edges) */
     uint32_t max_functions;       /* per realm, 0 = no limit */
     uint32_t max_bytecode_bytes;  /* larger functions stay interpreted */
     uint32_t inline_ops;          /* 0: every op through wjit_step (for testing the step path) */
@@ -43,19 +44,21 @@ typedef struct WJitConfig {
 
 typedef struct WJitStats {
     double compiled, failed, refused, module_bytes, bytecode_bytes, compile_ms_engine;
-    double entries, exits_return, exits_exception, exits_deopt, steps, pending;
+    double entries, exits_return, exits_exception, exits_deopt, steps, pending, osr_entries;
 } WJitStats;
 
 /* bumped by the browser's compile threads each time one of this engine's functions is compiled (wj_jit_done_address):
    a pending function asks the browser only when it changed since it last asked */
 static volatile uint32_t wjit_done_count;
 
-static WJitConfig wjit_config = { 0, 2, 0, 65536, 1 };
+static WJitConfig wjit_config = { 0, 2, 500, 0, 65536, 1 };
 static WJitStats wjit_stats;
 
 WJIT_EXPORT("wj_jit_configure")
-void wj_jit_configure(int32_t flags, int32_t call_threshold, int32_t max_functions, int32_t max_bytecode_bytes)
+void wj_jit_configure(int32_t flags, int32_t call_threshold, int32_t max_functions, int32_t max_bytecode_bytes,
+                      int32_t loop_threshold)
 {
+    wjit_config.loop_threshold = loop_threshold < 1 ? 1 : (uint32_t)loop_threshold;
     wjit_config.enabled = (flags & 1) != 0;
     wjit_config.inline_ops = (flags & 2) == 0;
     wjit_config.off = ((uint32_t)flags >> 8) & 0xff;
@@ -93,9 +96,13 @@ double wj_jit_stat(int32_t which)
  * clones a hashed shape with other users before adding, deleting or redefining a property; an unhashed one, the shape of an
  * object that had a property deleted, belongs to its object alone and is changed and reallocated in place, whatever its count:
  * such shapes are never cached), so while cached the receiver's
- * property layout, and its prototype (part of the shape), cannot change under the cache. The prototype's own shape is
- * held the same way when the property is found there. Values are always read from the object, never cached. The
- * function's bytecode reports these references to the cycle collector (wjit_mark). */
+ * property layout, and its prototype (part of the shape), cannot change under the cache. When the property is found
+ * on a prototype (WJIT_IC_DEPTH levels up at most: the DOM's getters are on Element.prototype or Node.prototype), the
+ * shape of every prototype on the way is held and checked the same way: each fixes the next prototype and proves the
+ * property is not on it. Values are always read from the object, never cached. The function's bytecode reports these
+ * references to the cycle collector (wjit_mark). */
+
+#define WJIT_IC_DEPTH 6
 
 typedef struct WJitIC {
     JSShape *shape;          /* receiver's shape at the last fill (counted), NULL: empty */
@@ -103,7 +110,9 @@ typedef struct WJitIC {
     JSObject *holder;        /* the prototype that has it, NULL when own */
     JSShape *holder_shape;   /* its shape at the fill (counted) */
     uint32_t index;          /* in prop[] of the receiver or of the holder */
-    uint32_t kind;           /* 0 data, 1 accessor */
+    uint16_t kind;           /* 0 data, 1 accessor */
+    uint16_t depth;          /* of the holder: 0 own, 1 the receiver's prototype... */
+    JSShape *protos[WJIT_IC_DEPTH - 1];   /* the shapes of the prototypes between (counted) */
 } WJitIC;
 
 typedef struct WJitData {
@@ -117,6 +126,8 @@ static void wjit_ic_clear(JSRuntime *rt, WJitIC *ic)
         js_free_shape(rt, ic->shape);
     if (ic->holder_shape)
         js_free_shape(rt, ic->holder_shape);
+    for (int i = 0; i + 1 < ic->depth; i++)
+        js_free_shape(rt, ic->protos[i]);
     memset(ic, 0, sizeof(*ic));
 }
 
@@ -143,10 +154,37 @@ static void wjit_mark(JSRuntime *rt, JSFunctionBytecode *b, JS_MarkFunc *mark_fu
             mark_func(rt, &d->ic[i].shape->header);
         if (d->ic[i].holder_shape)
             mark_func(rt, &d->ic[i].holder_shape->header);
+        for (int k = 0; k + 1 < d->ic[i].depth; k++)
+            mark_func(rt, &d->ic[i].protos[k]->header);
     }
 }
 
-/* a read of atom on p0: cached when it is an own data or accessor property, or one of its prototype's */
+/* fills ic: the property is at prop[index] of h, `depth` prototypes up from p0 (all shapes hashed: checked by the
+   callers) */
+static void wjit_ic_set(JSRuntime *rt, WJitIC *ic, JSObject *p0, JSObject *h, int depth, uint32_t index, int kind)
+{
+    JSObject *q;
+    int i;
+    wjit_ic_clear(rt, ic);
+    ic->shape = js_dup_shape(p0->shape);
+    ic->index = index;
+    ic->kind = (uint16_t)kind;
+    ic->depth = (uint16_t)depth;
+    if (depth == 0) {
+        if (!kind)
+            ic->own = p0->shape;
+        return;
+    }
+    q = p0->shape->proto;
+    for (i = 0; i + 1 < depth; i++) {
+        ic->protos[i] = js_dup_shape(q->shape);
+        q = q->shape->proto;
+    }
+    ic->holder = h;
+    ic->holder_shape = js_dup_shape(h->shape);
+}
+
+/* a read of atom on p0: cached when it is an own data or accessor property, or one of its prototypes' */
 static void wjit_ic_fill_get(JSRuntime *rt, WJitIC *ic, JSObject *p0, JSAtom atom)
 {
     JSObject *p = p0;
@@ -155,23 +193,15 @@ static void wjit_ic_fill_get(JSRuntime *rt, WJitIC *ic, JSObject *p0, JSAtom ato
     int depth, t;
     if (!p0->shape->is_hashed)
         return;
-    for (depth = 0; depth < 2; depth++) {
+    for (depth = 0; depth < WJIT_IC_DEPTH; depth++) {
+        if (!p->shape->is_hashed)
+            return;
         prs = find_own_property(&pr, p, atom);
         if (prs) {
             t = prs->flags & JS_PROP_TMASK;
             if (t != 0 && t != JS_PROP_GETSET)
                 return;
-            wjit_ic_clear(rt, ic);
-            ic->shape = js_dup_shape(p0->shape);
-            ic->index = (uint32_t)(pr - p->prop);
-            ic->kind = t ? 1 : 0;
-            if (depth) {
-                if (!p->shape->is_hashed) { wjit_ic_clear(rt, ic); return; }
-                ic->holder = p;
-                ic->holder_shape = js_dup_shape(p->shape);
-            } else if (!t) {
-                ic->own = p0->shape;
-            }
+            wjit_ic_set(rt, ic, p0, p, depth, (uint32_t)(pr - p->prop), t ? 1 : 0);
             return;
         }
         if (p->is_exotic)
@@ -182,35 +212,51 @@ static void wjit_ic_fill_get(JSRuntime *rt, WJitIC *ic, JSObject *p0, JSAtom ato
     }
 }
 
-/* a write of atom on p0: cached when it is an own writable data property, or a setter of its prototype */
+/* the prototype of the receiver (shape ic->shape) that has the property, when every shape on the way is still the
+   cached one; NULL otherwise */
+static inline JSObject *wjit_ic_holder(WJitIC *ic, JSObject *p)
+{
+    JSObject *h;
+    int i;
+    if (p->is_exotic)
+        return NULL;
+    h = ic->shape->proto;
+    for (i = 0; i + 1 < ic->depth; i++) {
+        if (h->shape != ic->protos[i] || h->is_exotic)
+            return NULL;
+        h = h->shape->proto;
+    }
+    return h->shape == ic->holder_shape ? h : NULL;
+}
+
+/* a write of atom on p0: cached when it is an own writable data property, or a setter of a prototype */
 static void wjit_ic_fill_put(JSRuntime *rt, WJitIC *ic, JSObject *p0, JSAtom atom)
 {
     JSShapeProperty *prs;
     JSProperty *pr;
-    JSObject *h;
-    if (!p0->shape->is_hashed)
-        return;
-    prs = find_own_property(&pr, p0, atom);
-    if (prs) {
-        if ((prs->flags & (JS_PROP_TMASK | JS_PROP_WRITABLE | JS_PROP_LENGTH)) != JS_PROP_WRITABLE)
+    JSObject *p = p0;
+    int depth;
+    for (depth = 0; depth < WJIT_IC_DEPTH; depth++) {
+        if (!p->shape->is_hashed)
             return;
-        wjit_ic_clear(rt, ic);
-        ic->shape = js_dup_shape(p0->shape);
-        ic->own = p0->shape;
-        ic->index = (uint32_t)(pr - p0->prop);
-        return;
+        prs = find_own_property(&pr, p, atom);
+        if (prs) {
+            if (depth == 0) {
+                if ((prs->flags & (JS_PROP_TMASK | JS_PROP_WRITABLE | JS_PROP_LENGTH)) != JS_PROP_WRITABLE)
+                    return;
+                wjit_ic_set(rt, ic, p0, p0, 0, (uint32_t)(pr - p0->prop), 0);
+            } else if ((prs->flags & JS_PROP_TMASK) == JS_PROP_GETSET) {
+                wjit_ic_set(rt, ic, p0, p, depth, (uint32_t)(pr - p->prop), 1);
+            }
+            /* (a data property of a prototype: the write adds an own property, a new shape) */
+            return;
+        }
+        if (p->is_exotic)
+            return;
+        p = p->shape->proto;
+        if (!p)
+            return;
     }
-    if (p0->is_exotic || !(h = p0->shape->proto))
-        return;
-    prs = find_own_property(&pr, h, atom);
-    if (!prs || (prs->flags & JS_PROP_TMASK) != JS_PROP_GETSET || !h->shape->is_hashed)
-        return;
-    wjit_ic_clear(rt, ic);
-    ic->shape = js_dup_shape(p0->shape);
-    ic->holder = h;
-    ic->holder_shape = js_dup_shape(h->shape);
-    ic->index = (uint32_t)(pr - h->prop);
-    ic->kind = 1;
 }
 
 /* ---- helpers the compiled code imports (exports of the engine) ------------------------------------------------ */
@@ -229,11 +275,8 @@ int32_t wjit_get_field(WJitFrame *jf, JSValue *sp, uint8_t *pc, WJitIC *ic)
         JSObject *p = JS_VALUE_GET_OBJ(obj), *h = p;
         JSProperty *pr;
         if (p->shape == ic->shape) {
-            if (ic->holder) {
-                h = ic->holder;
-                if (p->is_exotic || h->shape != ic->holder_shape)
-                    goto miss;
-            }
+            if (ic->depth && !(h = wjit_ic_holder(ic, p)))
+                goto miss;
             pr = &h->prop[ic->index];
             if (ic->kind == 0) {
                 val = js_dup(pr->u.value);
@@ -281,13 +324,12 @@ int32_t wjit_put_field(WJitFrame *jf, JSValue *sp, uint8_t *pc, WJitIC *ic)
     if (JS_VALUE_GET_TAG(obj) == JS_TAG_OBJECT) {
         JSObject *p = JS_VALUE_GET_OBJ(obj), *h;
         if (p->shape == ic->shape) {
-            if (!ic->holder) {
+            if (!ic->depth) {
                 set_value(ctx, &p->prop[ic->index].u.value, val);
                 JS_FreeValue(ctx, obj);
                 return WJIT_OK;
             }
-            h = ic->holder;
-            if (!p->is_exotic && h->shape == ic->holder_shape && h->prop[ic->index].u.getset.setter) {
+            if ((h = wjit_ic_holder(ic, p)) && h->prop[ic->index].u.getset.setter) {
                 jf->sf->cur_pc = next;
                 ret = call_setter(ctx, h->prop[ic->index].u.getset.setter, obj, val, JS_PROP_THROW_STRICT);
                 JS_FreeValue(ctx, obj);
@@ -435,6 +477,8 @@ int32_t wjit_step(WJitFrame *jf, uint8_t *pc, JSValue *sp)
 #define CASE(op)        case op
 #define DEFAULT         default
 #define BREAK           goto wjit_step_ok
+#undef WJIT_LOOP
+#define WJIT_LOOP() ((void)0)   /* (branches are never run through wjit_step) */
     {
         int call_argc;
         JSValue *call_argv;
@@ -562,6 +606,9 @@ enum {
 
 /* ---- code emission ------------------------------------------------------------------------------------------- */
 
+#define WJIT_MAX_OSR 16
+#define WJIT_NOENTRY 4   /* the compiled code has no entry at that pc: nothing was done */
+
 typedef struct WJitC {
     JSContext *ctx;
     JSFunctionBytecode *b;
@@ -576,9 +623,12 @@ typedef struct WJitC {
     int32_t *loop_end;     /* per block: last block of the loop it heads, -1 when not a header */
     /* structured constructs */
     int ncons;
-    struct WJitCons { int kind; int start, end; } *cons;   /* kind 0 block (end = target), 1 loop (start = header) */
+    struct WJitCons { int kind; int start, end; } *cons;   /* kind 0 block (end = target), 1 loop (start = header),
+                                                              2 entry block (from the prologue to an OSR entry) */
     int *stack;            /* open constructs (indices into cons) */
     int nstack;
+    int nosr;
+    int osr_blk[WJIT_MAX_OSR];   /* loop headers the interpreter may enter the code at (on-stack replacement) */
     const char *why;       /* why it was refused */
     WJitData *data;        /* the inline caches */
     uint32_t nic_used;
@@ -936,6 +986,20 @@ static int wjit_structure(WJitC *c)
         c->cons[c->ncons].start = s;
         c->cons[c->ncons].end = j;
         c->ncons++;
+    }
+    /* OSR entries: headers of loops no construct encloses (an entry block from the prologue can then end there) */
+    c->nosr = 0;
+    for (i = 1; i < c->nblk && c->nosr < WJIT_MAX_OSR; i++) {
+        int k, header = 0, inside = 0;
+        if (c->loop_end[i] < 0)
+            continue;
+        for (k = 0; k < c->ncons; k++) {
+            struct WJitCons *q = &c->cons[k];
+            if (q->kind == 1 && q->start == i) header = 1;
+            if (q->start < i && q->end > i) inside = 1;
+        }
+        if (header && !inside)
+            c->osr_blk[c->nosr++] = i;
     }
     return 0;
 }
@@ -1465,6 +1529,14 @@ static int wjit_emit_op(WJitC *c, int blk, int pos)
           e_br(c, W_BR_IF, 0);
           e_lget(c, L_VB); e_lget(c, L_A2); e_op(c, W_I32_WRAP_I64); e_mk_int(c); e_mem(c, W_I64_STORE, 3, SLOT(idx));
         e_fast_end_slow(c);
+          /* two numbers: a double (no reference counts involved) */
+          e_block(c, W_BLOCK);
+            e_is_num(c, L_A0); e_is_num(c, L_A1); e_op(c, W_I32_AND); e_op(c, W_I32_EQZ); e_br(c, W_BR_IF, 0);
+            e_num_f64(c, L_A0, L_F0); e_num_f64(c, L_A1, L_F1);
+            e_lget(c, L_F0); e_lget(c, L_F1); e_op(c, W_F64_ADD); e_lset(c, L_F0);
+            e_lget(c, L_VB); e_box_f64(c, L_F0); e_mem(c, W_I64_STORE, 3, SLOT(idx));
+            e_br(c, W_BR, 1);
+          e_op(c, W_END);
           e_step(c, pos, d);
         e_fast_done(c);
         return 0;
@@ -1721,6 +1793,22 @@ static int wjit_emit_body(WJitC *c)
     e_lget(c, LP_JF); e_mem(c, W_I32_LOAD, 2, offsetof(WJitFrame, arg_buf)); e_lset(c, L_AB);
     e_lget(c, LP_JF); e_mem(c, W_I32_LOAD, 2, offsetof(WJitFrame, var_refs)); e_lset(c, L_VR);
     c->nstack = 0;
+    /* entries at loop headers (entry = the header's pc offset; 0 = the function's start): one block per entry,
+       from here to the header, the latest outermost; everything before the header is inside them */
+    for (k = c->nosr - 1; k >= 0; k--) {
+        c->cons[c->ncons].kind = 2;
+        c->cons[c->ncons].start = 0;
+        c->cons[c->ncons].end = c->osr_blk[k];
+        e_block(c, W_BLOCK);
+        c->stack[c->nstack++] = c->ncons++;
+    }
+    /* (an entry the code does not have, whatever it has: nothing is done) */
+    for (k = 0; k < c->nosr; k++) {
+        e_lget(c, LP_ENTRY); e_i32(c, c->blk_start[c->osr_blk[k]]); e_op(c, W_I32_EQ);
+        e_br(c, W_BR_IF, k);
+    }
+    e_lget(c, LP_ENTRY);
+    e_block(c, W_IF); e_i32(c, WJIT_NOENTRY); e_op(c, W_RETURN); e_op(c, W_END);
     for (i = 0; i <= c->nblk; i++) {
         int end, last = -1;
         /* close what ends here (innermost first: they must be on top) */
@@ -1935,6 +2023,44 @@ static inline int wjit_ready(JSContext *ctx, JSFunctionBytecode *b)
     if (++b->wjit_calls < wjit_config.call_threshold)
         return 0;
     return wjit_compile(ctx, b) > 0;
+}
+
+/* a back edge of the interpreter (WJIT_LOOP): counts toward compiling the function; true when it has compiled code
+   that may have an entry at this loop header */
+static no_inline int wjit_loop_slow(JSContext *ctx, JSFunctionBytecode *b)
+{
+    if (!wjit_config.enabled || b->func_kind != JS_FUNC_NORMAL)
+        return 0;
+    if (b->wjit_index == WJIT_PENDING)
+        return wjit_poll_pending(ctx, b);
+    if (++b->wjit_loops < wjit_config.loop_threshold)
+        return 0;
+    b->wjit_loops = 0;
+    return wjit_compile(ctx, b) > 0;
+}
+
+static inline int wjit_loop(JSContext *ctx, JSFunctionBytecode *b, const uint8_t *pc)
+{
+    if (b->wjit_index > 0)
+        return (uint32_t)(pc - b->byte_code_buf) != b->wjit_osr_miss;
+    if (b->wjit_index == WJIT_NEVER)
+        return 0;
+    return wjit_loop_slow(ctx, b);
+}
+
+/* runs the compiled code from the loop header at `entry` (an offset in the bytecode; WJIT_NOENTRY when it has none
+   there) */
+static int wjit_run_at(WJitFrame *jf, JSFunctionBytecode *b, int entry)
+{
+    int st;
+    st = ((int (*)(WJitFrame *, int))(uintptr_t)b->wjit_index)(jf, entry);
+    if (st == WJIT_NOENTRY)
+        return st;
+    wjit_stats.osr_entries++;
+    if (st == WJIT_RET) wjit_stats.exits_return++;
+    else if (st == WJIT_EXC) wjit_stats.exits_exception++;
+    else wjit_stats.exits_deopt++;
+    return st;
 }
 
 static int wjit_run(WJitFrame *jf, JSFunctionBytecode *b)

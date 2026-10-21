@@ -40,6 +40,8 @@ Swap @"
     uint32_t wjit_calls;  /* WREN: calls counted toward the JIT's threshold */
     void *wjit_data;      /* WREN: the compiled code's inline caches */
     uint32_t wjit_seen;   /* WREN: the JIT's completion count when last polled (being compiled) */
+    uint32_t wjit_loops;  /* WREN: back edges counted toward the JIT's loop threshold */
+    uint32_t wjit_osr_miss; /* WREN: a loop header the compiled code has no entry at (pc offset) */
 #endif
 } JSFunctionBytecode;
 
@@ -128,6 +130,27 @@ static void free_function_bytecode(JSRuntime *rt, JSFunctionBytecode *b)
     wjit_release(rt, b);
 #endif
 "@
+
+foreach ($g in @(@('goto', '(int32_t)get_u32(pc)'), @('goto16', '(int16_t)get_u16(pc)'), @('goto8', '(int8_t)pc[0]'))) {
+    $op = $g[0]; $off = $g[1]
+    Swap @"
+        CASE(OP_$op):
+            pc += $off;
+"@ @"
+        CASE(OP_$op):
+#ifdef WREN_JIT
+            /* WREN: a loop's back edge (counted; enters compiled code at the header) */
+            if ($off < 0) {
+                pc += $off;
+                if (unlikely(js_poll_interrupts(ctx)))
+                    goto exception;
+                WJIT_LOOP();
+                BREAK;
+            }
+#endif
+            pc += $off;
+"@
+}
 
 $c = $c.TrimEnd() + "`n`n#ifdef WREN_JIT`n#include `"wjit.h`"   /* WREN: the JIT (native/js/jit) */`n#endif`n"
 [IO.File]::WriteAllText("$tmp\b\quickjs.c", $c)

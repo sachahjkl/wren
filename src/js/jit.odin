@@ -10,6 +10,7 @@ import "wb:wasm"
 Jit_Settings :: struct {
 	enabled:            bool,
 	call_threshold:     int,
+	loop_threshold:     int,
 	max_functions:      int,
 	max_bytecode_bytes: int,
 	step_only:          bool,   // every op through the interpreter's code (testing)
@@ -22,6 +23,8 @@ JIT_PREFS := [?]config.Def{
 		description = "Compile the hot functions of scripts to WebAssembly (then to machine code by the Wasm engine, in the page's sandbox): faster loops, arithmetic and local variables. Off, every function is interpreted. Pages already open keep their setting."},
 	{name = "javascript.jit.call_threshold", kind = .Int, default = {i = 2}, bounded = true, min = 1, max = 1 << 30, unit = "calls",
 		description = "A function is compiled at this call (1 = at its first)."},
+	{name = "javascript.jit.loop_threshold", kind = .Int, default = {i = 500}, bounded = true, min = 1, max = 1 << 30, unit = "iterations",
+		description = "A function is also compiled once its loops have run this many iterations, and a loop that is running enters the compiled code at its next iteration (on-stack replacement): a long loop in a function called once is compiled too."},
 	{name = "javascript.jit.max_functions", kind = .Int, default = {i = 4000}, bounded = true, min = 0, max = 9000, unit = "functions",
 		description = "Functions one page or worker may have compiled (each keeps its machine code for the life of the page; the Wasm engine allows at most 10 000 modules per page). Past it, functions stay interpreted. 0 = none are compiled."},
 	{name = "javascript.jit.max_bytecode_bytes", kind = .Int, default = {i = 64 << 10}, bounded = true, min = 1, max = 1 << 24, bytes = true, unit = "bytes",
@@ -36,6 +39,7 @@ jit_settings_from_prefs :: proc(p: ^config.Prefs) -> Jit_Settings {
 	return Jit_Settings{
 		enabled = config.bool_of(p, "javascript.jit.enabled"),
 		call_threshold = int(config.int_of(p, "javascript.jit.call_threshold")),
+		loop_threshold = int(config.int_of(p, "javascript.jit.loop_threshold")),
 		max_functions = int(config.int_of(p, "javascript.jit.max_functions")),
 		max_bytecode_bytes = int(config.int_of(p, "javascript.jit.max_bytecode_bytes")),
 		step_only = config.bool_of(p, "javascript.jit.step_only"),
@@ -56,7 +60,7 @@ jit_configure :: proc(inst: ^wasm.Instance, s: Jit_Settings) -> bool {
 	if s.enabled && s.max_functions > 0 { flags |= 1 }
 	if s.step_only { flags |= 2 }
 	flags |= i32(s.off_paths & 0xff) << 8
-	argv := [4]u32{u32(flags), u32(i32(s.call_threshold)), u32(i32(s.max_functions)), u32(i32(s.max_bytecode_bytes))}
+	argv := [5]u32{u32(flags), u32(i32(s.call_threshold)), u32(i32(s.max_functions)), u32(i32(s.max_bytecode_bytes)), u32(i32(s.loop_threshold))}
 	if wasm.call_raw(inst, "wj_jit_configure", argv[:]) != .Ok { return false }
 	if s.background_threads > 0 && wasm.has_export(inst, "wj_jit_done_address") {
 		if addr, res := wasm.call_i32(inst, "wj_jit_done_address"); res == .Ok { wasm.attach_notify(inst, u32(addr)) }
@@ -88,7 +92,7 @@ jit_poll :: proc(inst: ^wasm.Instance, ticket: i32) -> i32 {
 // The engine's own counters (native/js/jit/wjit.h, WJitStats), for measurements.
 Jit_Stats :: struct {
 	compiled, failed, refused, module_bytes, bytecode_bytes, compile_ms_engine: f64,
-	entries, exits_return, exits_exception, exits_deopt, steps, pending: f64,
+	entries, exits_return, exits_exception, exits_deopt, steps, pending, osr_entries: f64,
 }
 
 jit_stats :: proc(inst: ^wasm.Instance) -> (st: Jit_Stats, ok: bool) {

@@ -15,12 +15,14 @@ param(
     [string[]]$Engines = @('wasm', 'native', 'edge'),
     [string]$OutDir = 'build\bench',
     [int]$EdgeTimeoutSec = 900,
-    [string[]]$WasmArgs = @()   # extra arguments of build\jsengine.exe bench (-jit, -jit-threshold n...)
+    [string[]]$WasmArgs = @(),  # extra arguments of build\jsengine.exe bench (-jit, -jit-threshold n...)
+    [string[]]$Prefs = @()      # -Mode dom: preferences for build\jspage.exe (javascript.jit.enabled=true...)
 )
 $ErrorActionPreference = 'Continue'
 $Benchmarks = @($Benchmarks | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $Engines = @($Engines | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $WasmArgs = @($WasmArgs | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+$prefArgs = @($Prefs | ForEach-Object { $_ -split ',' } | Where-Object { $_ } | ForEach-Object { '--pref'; $_ })
 $root = Split-Path $PSScriptRoot -Parent
 if (-not [IO.Path]::IsPathRooted($OutDir)) { $OutDir = Join-Path $root $OutDir }
 New-Item -ItemType Directory -Force $OutDir | Out-Null
@@ -247,7 +249,7 @@ function Run-Dom {
             if ($LASTEXITCODE -ne 0) { throw 'building src\tools\jspage failed' }
         } finally { Pop-Location }
         for ($i = 0; $i -lt $Runs; $i++) {
-            $o = (& $exe -wait 60000 -until 'DONE' ('file:///' + ($page -replace '\\', '/')) 2>&1 | ForEach-Object { "$_" }) -join "`n"
+            $o = (& $exe -wait 60000 -until 'DONE' @prefArgs ('file:///' + ($page -replace '\\', '/')) 2>&1 | ForEach-Object { "$_" }) -join "`n"
             Add-Content $log "wasm run $i`n$o"
             & $collect 'wasm' $o
         }
