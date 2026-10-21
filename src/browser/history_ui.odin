@@ -379,8 +379,10 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 				}
 			case .Visit:
 				vis := ghist.visits[r.visit]
-				ui.next({height = ui.px(ui.dense(em * 2.2))})
+				// the whole row lights up under the pointer (and stays lit over its cross), a hand: it opens the visit
+				ui.next({height = ui.px(ui.dense(em * 2.2)), cursor = .Hand})
 				row := ui.list_row(&hview.list.list, i, hview.labels[i])
+				row_hot := ui.hot_within(row.box.key) || (hview.list.sel == i && hview.list.focused)
 				if ui.parent(row.box) {
 					ui.spacer(ui.px(em * 0.6))
 					ui.next({width = ui.px(em * 1.6), height = ui.pct(1)})
@@ -402,8 +404,8 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 						ui.next({width = ui.fill(), height = ui.pct(1)})
 						ui.label(fmt.tprintf("%s###hu_%d", safe_label(vis.url, 160), vis.id))
 					}
-					ui.next({width = ui.px(em * 2), height = ui.px(ui.dense(em * 1.8))})
-					if ui.icon_button(fmt.tprintf("###hx_%d", vis.id), GLYPH_CLOSE).clicked { delete_id = vis.id }
+					// the cross: shown on the row under the pointer (or the active one), red under the pointer itself
+					if remove_cross(fmt.tprintf("###hx_%d", vis.id), row_hot, em, "Remove this visit").clicked { delete_id = vis.id }
 					ui.spacer(ui.px(em * 0.5))
 				}
 				if row.clicked { visit_open(app, t, vis.url, .Ctrl in row.mods); return }

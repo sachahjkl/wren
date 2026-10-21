@@ -158,6 +158,7 @@ address_row :: proc(app: ^App, t: ^Tab) {
 		// not being edited: the address shows from its start (scheme and host), as in Chrome, not scrolled to its end
 		// (by key: the focused box's name is last frame's, its text may be gone with that frame's memory)
 		address_key = ui.key_from_string(ui.parent_box().key, "###address")
+		urlbar_keys(app, t)   // the suggestions' keys, before the field sees them (urlbar.odin)
 		if ui.focus_key() != address_key {
 			app.address.cursor, app.address.mark, app.address.scroll_x = 0, 0, 0
 		}
@@ -175,6 +176,10 @@ address_row :: proc(app: ^App, t: ^Tab) {
 		}
 	}
 	if res.focused { forms_page_blur() }
+	if urlbar_edited(app, t, res) {
+		res.committed = false   // Enter opened the chosen suggestion
+	}
+	urlbar_popup(app, t, res.box)
 	if res.committed && t != nil {
 		address := strings.clone(strings.trim_space(ui.field_string(&app.address)), context.temp_allocator)
 		if address != "" {

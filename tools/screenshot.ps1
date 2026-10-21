@@ -29,6 +29,12 @@ public class SH {
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint f, IntPtr e);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
+  [DllImport("user32.dll")] public static extern bool GetCursorInfo(ref CURSORINFO ci);
+  [DllImport("user32.dll")] public static extern bool GetIconInfo(IntPtr h, out ICONINFO ii);
+  [DllImport("user32.dll")] public static extern bool DrawIconEx(IntPtr hdc, int x, int y, IntPtr h, int w, int hh, int step, IntPtr br, int flags);
+  [DllImport("gdi32.dll")] public static extern bool DeleteObject(IntPtr h);
+  [StructLayout(LayoutKind.Sequential)] public struct CURSORINFO { public int cbSize; public int flags; public IntPtr hCursor; public POINT pt; }
+  [StructLayout(LayoutKind.Sequential)] public struct ICONINFO { public bool fIcon; public int xHotspot; public int yHotspot; public IntPtr hbmMask; public IntPtr hbmColor; }
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L,T,R,B; }
   [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X,Y; }
 }
@@ -37,14 +43,30 @@ Add-Type -AssemblyName System.Drawing
 # per-monitor aware: window rects, client coordinates and captures in the physical pixels the browser sees
 if (-not [SH]::SetProcessDpiAwarenessContext([IntPtr](-4))) { [SH]::SetProcessDPIAware() | Out-Null }
 
-function Grab($h, $path) {
+function Grab($h, $path, [bool]$pointer = $false) {
     $r = New-Object SH+RECT
     if ([SH]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [SH]::GetWindowRect($h, [ref]$r) | Out-Null }
     $w = $r.R - $r.L; $hh = $r.B - $r.T
     $pt = New-Object SH+POINT; $pt.X = $r.L + [int]($w / 2); $pt.Y = $r.T + [int]($hh / 2)
     if ([SH]::GetAncestor([SH]::WindowFromPoint($pt), 2) -ne $h) { throw "window covered, not capturing" }
     $bmp = New-Object Drawing.Bitmap $w, $hh
-    [Drawing.Graphics]::FromImage($bmp).CopyFromScreen($r.L, $r.T, 0, 0, $bmp.Size)
+    $gr = [Drawing.Graphics]::FromImage($bmp)
+    $gr.CopyFromScreen($r.L, $r.T, 0, 0, $bmp.Size)
+    if ($pointer) {
+        # the screen copy has no pointer: the current one (its shape as the window set it) drawn at its hot spot
+        $ci = New-Object SH+CURSORINFO; $ci.cbSize = [Runtime.InteropServices.Marshal]::SizeOf($ci)
+        if ([SH]::GetCursorInfo([ref]$ci) -and ($ci.flags -band 1) -and $ci.hCursor -ne [IntPtr]::Zero) {
+            $ii = New-Object SH+ICONINFO
+            if ([SH]::GetIconInfo($ci.hCursor, [ref]$ii)) {
+                $hdc = $gr.GetHdc()
+                [SH]::DrawIconEx($hdc, $ci.pt.X - $r.L - $ii.xHotspot, $ci.pt.Y - $r.T - $ii.yHotspot, $ci.hCursor, 0, 0, 0, [IntPtr]::Zero, 3) | Out-Null
+                $gr.ReleaseHdc($hdc)
+                if ($ii.hbmMask -ne [IntPtr]::Zero) { [SH]::DeleteObject($ii.hbmMask) | Out-Null }
+                if ($ii.hbmColor -ne [IntPtr]::Zero) { [SH]::DeleteObject($ii.hbmColor) | Out-Null }
+            }
+        }
+    }
+    $gr.Dispose()
     New-Item -ItemType Directory -Force (Split-Path $path) | Out-Null
     $bmp.Save($path, [Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
 }
@@ -92,8 +114,9 @@ try {
         Start-Sleep -Milliseconds $ClickPauseMs
     }
     # -Actions "drag:x1,y1-x2,y2; rclick:x,y; midclick:x,y; xback:x,y; dclick:x,y; tclick:x,y; click:x,y; key:Ctrl+F; type:some text; wait:ms; shot:path.png;
-    #          hover:x,y; hovershot:path.png; mdrag:x1,y1-x2,y2; wheel:x,y,notches[,ctrl|shift]; hwheel:x,y,notches"
-    #          (hover: the real pointer; hovershot: a capture that leaves it where it is; mdrag: middle button)
+    #          hover:x,y; hovershot:path.png; pshot:path.png; mdrag:x1,y1-x2,y2; wheel:x,y,notches[,ctrl|shift]; hwheel:x,y,notches"
+    #          (hover: the real pointer; hovershot: a capture that leaves it where it is; pshot: the same with the pointer
+    #          drawn in; mdrag: middle button)
     # (window-relative pixels like -Click; key: real keyboard input, so modifiers count: Ctrl+Shift+T, Shift+F10, Menu, F6...)
     $named = @{ PageUp = 0x21; PageDown = 0x22; End = 0x23; Home = 0x24; Left = 0x25; Up = 0x26; Right = 0x27; Down = 0x28; Space = 0x20; Tab = 0x09;
         Enter = 0x0D; Escape = 0x1B; Esc = 0x1B; Delete = 0x2E; Backspace = 0x08; Menu = 0x5D; Plus = 0xBB; Minus = 0xBD; Insert = 0x2D }
@@ -173,6 +196,8 @@ try {
                 [SH]::SetCursorPos($x0, $r.T + [int]$xy[1]) | Out-Null
             }
             'hovershot' { Start-Sleep -Milliseconds $SettleMs; Grab $h $arg }
+            # pshot:path: like hovershot, with the real pointer drawn in (a screen copy has none)
+            'pshot' { Start-Sleep -Milliseconds $SettleMs; Grab $h $arg $true }
             # move:x,y: a posted pointer move (no real pointer: works whatever the foreground window is)
             'move' { $xy = $arg -split ','; [SH]::PostMessage($h, 0x0200, [IntPtr]::Zero, (ClientLp $xy[0] $xy[1])) | Out-Null }
             # the real pointer: mclick / mdclick:x,y click there (window-relative, a negative x counts from the right edge; goes through the system's hit test, so

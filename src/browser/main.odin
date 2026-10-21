@@ -1169,6 +1169,7 @@ main :: proc() {
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
 	hud_init(app)
+	urlbar_init(app)   // urlbar.odin: the address bar's suggestions
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
 	app.win.user = app
@@ -1195,6 +1196,7 @@ main :: proc() {
 	profile_save(app, force = true)
 	bfcache_shutdown(app)
 	for t in app.tabs { tab_nav_destroy(app, t) }
+	urlbar_destroy(app)   // urlbar.odin
 	global_history_shutdown(app)
 	history_ui_destroy()
 	history_settings_shutdown(app)
