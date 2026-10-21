@@ -60,7 +60,7 @@ function not exposed to workers is not instantiated.
 | [`eventsource`](eventsource.md) | 7 | Window | Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as |
 | [`fetch`](fetch.md) | 10 | Window | The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch: |
 | [`forms`](forms.md) | 185 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
-| [`frames`](frames.md) | 15 | Window | Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin; native/js/runtime/frames.c and |
+| [`frames`](frames.md) | 21 | Window | Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin; native/js/runtime/frames.c and |
 | [`history`](history.md) | 14 | Window | Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never |
 | [`images`](images.md) | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
 | [`js`](js.md) | 11 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
@@ -76,4 +76,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 9 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-808 imports in 709 functions.
+814 imports in 715 functions.

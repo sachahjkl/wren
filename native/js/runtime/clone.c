@@ -25,9 +25,13 @@ enum {
     T_UNDEFINED = 0, T_NULL, T_FALSE, T_TRUE, T_INT32, T_DOUBLE, T_BIGINT, T_STRING, T_REF,
     T_BOOLEAN_OBJ, T_NUMBER_OBJ, T_STRING_OBJ, T_BIGINT_OBJ, T_DATE, T_REGEXP,
     T_ARRAY_BUFFER, T_TYPED_ARRAY, T_DATA_VIEW, T_MAP, T_SET, T_ERROR, T_ARRAY, T_OBJECT,
+    T_PORT,   /* a MessagePort of the transfer list: its index among the transferred ports */
 };
 
 static const uint8_t MAGIC[4] = { 'W', 'S', 'C', 1 };
+
+uint8_t *wj_clone_serialize_ports(JSContext *ctx, JSValueConst value, JSValueConst transfer, size_t *len, JSValue *ports);
+JSValue wj_clone_deserialize_ports(JSContext *ctx, const uint8_t *data, size_t len, JSValueConst ports);
 
 /* ---- the realm's original built-ins ---- */
 
@@ -179,7 +183,7 @@ typedef struct ser {
     wbuf       out;
     seen_map   seen;
     uint32_t   next_ref;
-    JSValue   *transfer;    /* the ArrayBuffers of the transfer list (not counted: the caller's) */
+    JSValue   *transfer;    /* the ArrayBuffers and MessagePorts of the transfer list (not counted: the caller's) */
     uint32_t   n_transfer;
     uint32_t   depth;
 } ser;
@@ -268,6 +272,16 @@ static bool serialize_object(ser *s, JSValueConst v)
     int64_t ref = seen_get(&s->seen, JS_VALUE_GET_PTR(v));
     if (ref >= 0) { put_u8(&s->out, T_REF); put_u32(&s->out, (uint32_t)ref); return true; }
     if (JS_IsFunction(ctx, v)) { return clone_error(ctx, "function could not be cloned."); }
+    if (wj_unwrap(v, WJ_IFACE_MessagePort)) {
+        /* a transferred port: its place among the ports of the transfer list (the receiver gets a port there) */
+        uint32_t k = 0;
+        for (uint32_t i = 0; i < s->n_transfer; i++) {
+            if (!wj_unwrap(s->transfer[i], WJ_IFACE_MessagePort)) { continue; }
+            if (JS_VALUE_GET_PTR(s->transfer[i]) == JS_VALUE_GET_PTR(v)) { put_u8(&s->out, T_PORT); put_u32(&s->out, k); return true; }
+            k++;
+        }
+        return clone_error(ctx, "A MessagePort could not be cloned because it was not transferred.");
+    }
     if (wj_obj_of(v) || JS_VALUE_GET_PTR(v) == JS_VALUE_GET_PTR(wj_the_realm.global)) {
         wj_obj *o = wj_obj_of(v);
         char msg[160];
@@ -475,15 +489,16 @@ static bool transfer_list(JSContext *ctx, JSValueConst list, JSValue **out, uint
     for (int64_t i = 0; i < n && ok; i++) {
         items[i] = JS_GetPropertyInt64(ctx, list, i);
         if (JS_IsException(items[i])) { items[i] = JS_UNDEFINED; ok = false; break; }
-        if (!JS_IsArrayBuffer(items[i])) { ok = clone_error(ctx, "Value at index in the transfer list is not transferable (only ArrayBuffer is)."); break; }
+        bool port = wj_unwrap(items[i], WJ_IFACE_MessagePort) != NULL;
+        if (!port && !JS_IsArrayBuffer(items[i])) { ok = clone_error(ctx, "Value at index in the transfer list is not transferable (only ArrayBuffer and MessagePort are)."); break; }
         size_t len = 0;
-        if (!JS_GetArrayBuffer(ctx, &len, items[i]) && JS_HasException(ctx)) {
+        if (!port && !JS_GetArrayBuffer(ctx, &len, items[i]) && JS_HasException(ctx)) {
             JS_FreeValue(ctx, JS_GetException(ctx));
             ok = clone_error(ctx, "An ArrayBuffer is detached and could not be transferred.");
             break;
         }
         for (int64_t k = 0; k < i; k++) {
-            if (JS_VALUE_GET_PTR(items[k]) == JS_VALUE_GET_PTR(items[i])) { ok = clone_error(ctx, "ArrayBuffer at index is a duplicate of an earlier ArrayBuffer."); break; }
+            if (JS_VALUE_GET_PTR(items[k]) == JS_VALUE_GET_PTR(items[i])) { ok = clone_error(ctx, port ? "MessagePort at index is a duplicate of an earlier MessagePort." : "ArrayBuffer at index is a duplicate of an earlier ArrayBuffer."); break; }
         }
     }
     *out = items;
@@ -501,8 +516,30 @@ static void transfer_free(JSContext *ctx, JSValue *items, uint32_t count)
  * an exception pending (DataCloneError...). */
 uint8_t *wj_clone_serialize(JSContext *ctx, JSValueConst value, JSValueConst transfer, size_t *len)
 {
+    JSValue ports = JS_UNDEFINED;
+    uint8_t *p = wj_clone_serialize_ports(ctx, value, transfer, len, &ports);
+    if (p && JS_IsArray(ports)) {
+        int64_t n = 0;
+        JS_GetLength(ctx, ports, &n);
+        if (n > 0) {
+            /* a caller that cannot send ports (a worker's message): refused, as before */
+            JS_FreeValue(ctx, ports);
+            free(p);
+            wj_throw_dom(ctx, "DataCloneError", "A MessagePort cannot be sent there.");
+            return NULL;
+        }
+    }
+    JS_FreeValue(ctx, ports);
+    return p;
+}
+
+/* The same, MessagePorts allowed in the transfer list: they are listed in *ports (an array, in transfer order, to ship:
+ * runtime/web_message.c web_ship_ports); the serialization names them by index (T_PORT). */
+uint8_t *wj_clone_serialize_ports(JSContext *ctx, JSValueConst value, JSValueConst transfer, size_t *len, JSValue *ports)
+{
     JSValue *items;
     uint32_t n;
+    *ports = JS_UNDEFINED;
     if (!transfer_list(ctx, transfer, &items, &n)) { transfer_free(ctx, items, n); return NULL; }
     ser s = { .ctx = ctx, .transfer = items, .n_transfer = n };
     put(&s.out, MAGIC, sizeof MAGIC);
@@ -511,7 +548,13 @@ uint8_t *wj_clone_serialize(JSContext *ctx, JSValueConst value, JSValueConst tra
     free(s.seen.keys);
     free(s.seen.vals);
     if (ok) {
-        for (uint32_t i = 0; i < n; i++) { JS_DetachArrayBuffer(ctx, items[i]); }
+        JSValue list = JS_NewArray(ctx);
+        uint32_t k = 0;
+        for (uint32_t i = 0; i < n; i++) {
+            if (wj_unwrap(items[i], WJ_IFACE_MessagePort)) { JS_SetPropertyUint32(ctx, list, k++, JS_DupValue(ctx, items[i])); }
+            else { JS_DetachArrayBuffer(ctx, items[i]); }
+        }
+        *ports = list;
     }
     transfer_free(ctx, items, n);
     if (!ok) { free(s.out.p); return NULL; }
@@ -532,6 +575,7 @@ typedef struct deser {
     JSValue       *refs;    /* counted */
     uint32_t       n_refs, cap_refs;
     uint32_t       depth;
+    JSValueConst   ports;   /* the received ports (T_PORT), or undefined */
 } deser;
 
 static bool get(deser *d, void *out, size_t n)
@@ -795,6 +839,13 @@ static JSValue deserialize(deser *d)
         r = read_properties(d, r);
         break;
     }
+    case T_PORT: {
+        uint32_t i;
+        if (!get_u32(d, &i) || !JS_IsArray(d->ports)) { r = malformed(ctx); break; }
+        r = JS_GetPropertyUint32(ctx, d->ports, i);
+        if (JS_IsUndefined(r)) { r = malformed(ctx); }
+        break;
+    }
     default:
         r = malformed(ctx);
     }
@@ -805,8 +856,14 @@ static JSValue deserialize(deser *d)
 /* The value `data` serializes (a new reference), or JS_EXCEPTION. */
 JSValue wj_clone_deserialize(JSContext *ctx, const uint8_t *data, size_t len)
 {
+    return wj_clone_deserialize_ports(ctx, data, len, JS_UNDEFINED);
+}
+
+/* The same, with the ports that came with the message (an array, in transfer order). */
+JSValue wj_clone_deserialize_ports(JSContext *ctx, const uint8_t *data, size_t len, JSValueConst ports)
+{
     if (!wj_clone_is_serialized(data, len)) { return JS_ThrowSyntaxError(ctx, "not a serialized value"); }
-    deser d = { .ctx = ctx, .p = data + sizeof MAGIC, .end = data + len };
+    deser d = { .ctx = ctx, .p = data + sizeof MAGIC, .end = data + len, .ports = ports };
     JSValue v = deserialize(&d);
     for (uint32_t i = 0; i < d.n_refs; i++) { JS_FreeValue(ctx, d.refs[i]); }
     free(d.refs);

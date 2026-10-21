@@ -3,8 +3,12 @@
  *
  * A message is structured-serialized when posted (web_clone.c; transferred ArrayBuffers are detached) and delivered
  * from a task of its own as a "message" MessageEvent; a port delivers once started (start(), or setting onmessage),
- * keeping what arrived before in order. Ports are EventTargets of the browser (listeners). Not supported: ports in
- * the transfer list (a port cannot be sent to a worker), BroadcastChannel. */
+ * keeping what arrived before in order. Ports are EventTargets of the browser (listeners).
+ *
+ * A port sent to another document (in the transfer list of another window's postMessage, or of a remote port's message)
+ * is shipped (web_ship_ports): its pair becomes a pair of port ends the browser routes (src/page/ports.odin), the port
+ * left here talks to its end (pt->end), and the receiving realm gets a new port bound to the other end
+ * (wj_port_message, wj_frames_message). Not supported: ports sent to a worker, BroadcastChannel. */
 #include <stdlib.h>
 #include "web.h"
 
@@ -12,8 +16,9 @@ JSValue web_message_event(JSContext *ctx, JSValueConst data, const char *origin,
 
 typedef struct web_port {
     JSValue  peer;       /* the entangled port (counted), undefined once closed */
-    JSValue  queue;      /* messages (serialized, as ArrayBuffers) waiting for start() */
+    JSValue  queue;      /* messages waiting for start(): serialized (ArrayBuffers) or made (MessageEvents, remote) */
     bool     started, closed;
+    uint64_t end;        /* the browser's port end when the other side is in another realm (0: a pair of this realm) */
 } web_port;
 
 static void port_free(void *p)
@@ -100,6 +105,7 @@ static void deliver(JSContext *ctx, JSValueConst target, JSValueConst bytes, con
 {
     uint8_t *p;
     size_t n;
+    if (wj_unwrap(bytes, WJ_IFACE_MessageEvent)) { web_event_fire(ctx, target, bytes); return; }   /* a remote message */
     if (!wj_to_buffer_source(ctx, bytes, &p, &n, 0, "message")) { wj_report_pending(ctx); return; }
     JSValue data = web_clone_deserialize(ctx, p, n);
     JSValue ev;
@@ -167,6 +173,206 @@ static JSValue serialize_message(JSContext *ctx, JSValueConst message, JSValueCo
     return ab;
 }
 
+/* ---- ports whose other side is in another realm ---- */
+
+extern uint8_t *wj_clone_serialize_ports(JSContext *ctx, JSValueConst value, JSValueConst transfer, size_t *len, JSValue *ports);
+extern JSValue wj_clone_deserialize_ports(JSContext *ctx, const uint8_t *data, size_t len, JSValueConst ports);
+
+/* the ports bound to a port end: found by the end when a message arrives (counted: a port that may still receive stays
+ * alive, as HTML keeps an entangled port whose other side lives) */
+typedef struct bound_port { uint64_t end; JSValue port; } bound_port;
+static bound_port *bound;
+static uint32_t bound_n, bound_cap;
+
+static void bound_add(JSContext *ctx, uint64_t end, JSValueConst port)
+{
+    if (bound_n == bound_cap) {
+        uint32_t cap = bound_cap ? bound_cap * 2 : 8;
+        bound_port *n = realloc(bound, cap * sizeof *n);
+        if (!n) { return; }
+        bound = n;
+        bound_cap = cap;
+    }
+    bound[bound_n++] = (bound_port){ end, JS_DupValue(ctx, port) };
+}
+
+static void bound_remove(uint64_t end)
+{
+    for (uint32_t i = 0; i < bound_n; i++) {
+        if (bound[i].end != end) { continue; }
+        JSValue p = bound[i].port;
+        bound[i] = bound[--bound_n];
+        JS_FreeValueRT(web_rt(), p);
+        return;
+    }
+}
+
+static JSValue bound_find(uint64_t end)
+{
+    for (uint32_t i = 0; i < bound_n; i++) { if (bound[i].end == end) { return bound[i].port; } }
+    return JS_UNDEFINED;
+}
+
+/* A new port of this realm talking to the browser's port `end` (taken by this document). */
+static JSValue port_new_remote(JSContext *ctx, uint64_t end)
+{
+    JSValue port = port_new(ctx);
+    if (JS_IsException(port)) { wr_Port_close(end); return port; }
+    web_port *pt = port_of(port);
+    pt->end = end;
+    if (wr_Port_bind(end) < 0) { pt->end = 0; pt->closed = true; return port; }
+    bound_add(ctx, end, port);
+    return port;
+}
+
+/* Ships the ports of a message (an array, transfer order) out of this realm: each one's pair becomes a pair of port
+ * ends (the port that stays here, if any, talks to the first), and the ports themselves are neutered. The ends travel
+ * with the message (*ends: malloc'ed, *n of them). False with a DataCloneError pending for a port that cannot go. */
+bool web_ship_ports(JSContext *ctx, JSValueConst ports, uint64_t **ends, uint32_t *n)
+{
+    *ends = NULL;
+    *n = 0;
+    int64_t count = 0;
+    if (!JS_IsArray(ports) || JS_GetLength(ctx, ports, &count) < 0 || count == 0) { return true; }
+    uint64_t *out = calloc((size_t)count, sizeof *out);
+    if (!out) { JS_ThrowOutOfMemory(ctx); return false; }
+    for (int64_t i = 0; i < count; i++) {
+        JSValue p = JS_GetPropertyUint32(ctx, ports, (uint32_t)i);
+        web_port *pt = port_of(p);
+        if (!pt || pt->closed) {
+            JS_FreeValue(ctx, p);
+            for (int64_t k = 0; k < i; k++) { wr_Port_close(out[k]); }
+            free(out);
+            wj_throw_dom(ctx, "DataCloneError", "A MessagePort could not be transferred: it is closed or was transferred already.");
+            return false;
+        }
+        if (pt->end) {
+            out[i] = pt->end;
+            wr_Port_ship(pt->end);
+            bound_remove(pt->end);
+            pt->end = 0;
+        } else {
+            uint64_t a = wr_Port_entangle();
+            out[i] = a + 1;
+            web_port *q = port_of(pt->peer);
+            if (q && !q->closed && a) {
+                /* the port that stays here now talks to the first end */
+                JSValue qv = JS_DupValue(ctx, pt->peer);
+                JS_FreeValue(ctx, q->peer);
+                q->peer = JS_UNDEFINED;
+                q->end = a;
+                if (wr_Port_bind(a) >= 0) { bound_add(ctx, a, qv); } else { q->end = 0; }
+                JS_FreeValue(ctx, qv);
+            } else if (a) {
+                wr_Port_close(a);
+            }
+        }
+        /* the port sent is neutered */
+        pt->closed = true;
+        JS_FreeValue(ctx, pt->peer);
+        pt->peer = JS_UNDEFINED;
+        JS_FreeValue(ctx, p);
+    }
+    *ends = out;
+    *n = (uint32_t)count;
+    return true;
+}
+
+/* The received ports of a message (ends in the engine's memory): new ports of this realm bound to them. */
+JSValue web_receive_ports(JSContext *ctx, const uint64_t *ends, uint32_t n)
+{
+    JSValue arr = JS_NewArray(ctx);
+    for (uint32_t i = 0; i < n; i++) {
+        JSValue p = port_new_remote(ctx, ends[i]);
+        if (JS_IsException(p)) { JS_FreeValue(ctx, JS_GetException(ctx)); continue; }
+        wj_array_set(ctx, arr, i, p);
+    }
+    return arr;
+}
+
+/* A MessageEvent with data, origin, source and ports (frozen) */
+JSValue web_message_event_ports(JSContext *ctx, JSValueConst data, const char *origin, JSValueConst source, JSValueConst ports)
+{
+    JSValue ev = web_message_event(ctx, data, origin, source);
+    if (JS_IsException(ev) || !JS_IsArray(ports)) { return ev; }
+    JSValue object = JS_GetPropertyStr(ctx, wj_the_realm.global, "Object");
+    JSValue freeze = JS_GetPropertyStr(ctx, object, "freeze");
+    JSValue copy = JS_DupValue(ctx, ports);
+    JSValue frozen = JS_Call(ctx, freeze, object, 1, (JSValueConst *)&copy);
+    JS_FreeValue(ctx, frozen);
+    JS_FreeValue(ctx, freeze);
+    JS_FreeValue(ctx, object);
+    web_extra_set(ctx, ev, "ports", copy);
+    return ev;
+}
+
+static JSValue remote_post(JSContext *ctx, web_port *pt, JSValueConst message, JSValueConst second, bool options)
+{
+    JSValue transfer = JS_UNDEFINED;
+    if (options) {
+        if (JS_IsObject(second)) {
+            transfer = JS_GetPropertyStr(ctx, second, "transfer");
+            if (JS_IsException(transfer)) { return transfer; }
+        }
+    } else {
+        transfer = JS_DupValue(ctx, second);
+    }
+    size_t len = 0;
+    JSValue ports = JS_UNDEFINED;
+    uint8_t *bytes = wj_clone_serialize_ports(ctx, message, transfer, &len, &ports);
+    JS_FreeValue(ctx, transfer);
+    if (!bytes) { return JS_EXCEPTION; }
+    uint64_t *ends = NULL;
+    uint32_t n = 0;
+    bool ok = web_ship_ports(ctx, ports, &ends, &n);
+    JS_FreeValue(ctx, ports);
+    if (!ok) { free(bytes); return JS_EXCEPTION; }
+    int32_t st = pt->closed || !pt->end ? 0 : wr_Port_post(pt->end, bytes, (uint32_t)len, ends, n);
+    free(bytes);
+    free(ends);
+    if (st < 0) { return wj_throw_status(ctx, st, "MessagePort.postMessage"); }
+    return JS_UNDEFINED;
+}
+
+/* The browser delivers a message for the port bound to `end` (src/page/ports.odin), with the ends of the ports that
+ * came with it: a MessageEvent at the port, or kept until the port is started. */
+WJ_EXPORT("wj_port_message")
+void wj_port_message(uint32_t end_lo, uint32_t end_hi, uint32_t data, uint32_t data_len, uint32_t ends, uint32_t n_ends)
+{
+    JSContext *ctx = wj_the_realm.ctx;
+    wj_stack_enter(ctx);
+    uint64_t end = (uint64_t)end_lo | (uint64_t)end_hi << 32;
+    uint64_t *list = n_ends ? malloc(n_ends * sizeof *list) : NULL;
+    if (n_ends && !list) { return; }
+    if (n_ends) { memcpy(list, (const void *)(uintptr_t)ends, n_ends * sizeof *list); }
+    JSValue ports = web_receive_ports(ctx, list, n_ends);
+    free(list);
+    JSValue port = JS_DupValue(ctx, bound_find(end));
+    web_port *pt = port_of(port);
+    JSValue value = wj_clone_deserialize_ports(ctx, (const uint8_t *)(uintptr_t)data, data_len, ports);
+    JSValue ev;
+    if (JS_IsException(value)) {
+        JS_FreeValue(ctx, JS_GetException(ctx));
+        ev = web_event_new(ctx, WJ_IFACE_MessageEvent, "messageerror", false, false);
+    } else {
+        ev = web_message_event_ports(ctx, value, "", JS_NULL, ports);
+        JS_FreeValue(ctx, value);
+    }
+    JS_FreeValue(ctx, ports);
+    if (JS_IsException(ev)) { JS_FreeValue(ctx, port); wj_report_pending(ctx); return; }
+    if (pt && !pt->closed) {
+        if (pt->started) {
+            web_event_fire(ctx, port, ev);
+        } else {
+            int64_t k = 0;
+            JS_GetLength(ctx, pt->queue, &k);
+            wj_array_set(ctx, pt->queue, (uint32_t)k, JS_DupValue(ctx, ev));
+        }
+    }
+    JS_FreeValue(ctx, ev);
+    JS_FreeValue(ctx, port);
+}
+
 /* ---- MessagePort ---- */
 
 JSValue wjr_MessagePort_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -177,6 +383,7 @@ JSValue wjr_MessagePort_postMessage(JSContext *ctx, JSValueConst this_val, int a
     JSValueConst second = wj_arg(argc, (JSValue *)argv, 1);
     /* postMessage(message, transfer) or postMessage(message, {transfer}) */
     bool seq = JS_IsObject(second) && web_is_iterable(ctx, second) > 0;
+    if (pt->end) { return remote_post(ctx, pt, argv[0], second, !seq); }
     JSValue bytes = serialize_message(ctx, argv[0], second, !seq);
     if (JS_IsException(bytes)) { return bytes; }
     if (!pt->closed && JS_IsObject(pt->peer)) {
@@ -213,6 +420,7 @@ JSValue wjr_MessagePort_close(JSContext *ctx, JSValueConst this_val, int argc, J
     web_port *pt = web_this_impl(ctx, this_val, WJ_IFACE_MessagePort);
     if (!pt) { return JS_EXCEPTION; }
     pt->closed = true;
+    if (pt->end) { wr_Port_close(pt->end); bound_remove(pt->end); pt->end = 0; }
     /* disentangled both ways */
     web_port *peer = port_of(pt->peer);
     if (peer) { JS_FreeValue(ctx, peer->peer); peer->peer = JS_UNDEFINED; }

@@ -39,6 +39,26 @@ module frames {
   /// Not_Allowed in a sandboxed document without allow-popups, Syntax for an invalid URL.
   u64 Frame_open(usvstring url, string target) raises;
 
+  /// otherWindow.postMessage(message, targetOrigin, [ports]): the same, with the MessagePorts of the transfer list
+  /// shipped as port ends (Port_ship / Port_entangle): the receiver's MessageEvent.ports are bound to them.
+  void Frame_postMessagePorts(u64 navigable, bytes data, usvstring target_origin, u64[] ports) raises;
+
+  /// MessagePorts between documents (src/page/ports.odin): a port whose other end is in another realm talks through a
+  /// pair of port ends the browser routes. A new pair: the first end's id (the second is that id + 1), owned by
+  /// nobody yet.
+  u64 Port_entangle();
+  /// The calling document owns this end from now on: what was posted to it meanwhile is delivered (each message from a
+  /// task: the engine's wj_port_message). Invalid_Argument for an end that is gone or owned.
+  void Port_bind(u64 end) raises;
+  /// The calling document gives this end up (it is in a message being sent): what arrives for it waits for its next
+  /// owner.
+  void Port_ship(u64 end);
+  /// port.postMessage(message, [ports]) on an end: delivered to the other end's owner (queued while it has none).
+  /// Data_Clone for a message over frames.max_message_bytes.
+  void Port_post(u64 end, bytes data, u64[] ports) raises;
+  /// port.close(): the pair is disentangled; nothing more is delivered to either end.
+  void Port_close(u64 end);
+
   /// window.name: its navigable's name.
   string Window_get_name();
   /// window.name = value

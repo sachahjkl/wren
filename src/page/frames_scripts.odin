@@ -87,6 +87,14 @@ Frame_postMessage :: proc(c: ^Call, navigable: u64, data: []u8, target_origin: s
 	return .None
 }
 
+Frame_postMessagePorts :: proc(c: ^Call, navigable: u64, data: []u8, target_origin: string, ports: []u64) -> Api_Error {
+	n := navigable_by_id(navigable)
+	if n == nil { for x in ports { port_close_end(x) }; return .None }
+	err, msg := frames_post_message(c.page, n, data, target_origin, ports)
+	if err != .None { return fail(c, err, msg) }
+	return .None
+}
+
 Frame_navigate :: proc(c: ^Call, navigable: u64, u: string, replace: bool) -> Api_Error {
 	n := navigable_by_id(navigable)
 	if n == nil || n.page == nil { return .None }
@@ -151,15 +159,20 @@ HTMLIFrameElement_set_srcdoc :: proc(c: ^Call, element: Api_Element, value: stri
 
 // Delivers a message posted by another document (frames_post_message) to this document's realm: the engine
 // deserializes it and fires a trusted "message" MessageEvent at the window, whose source is the sender's WindowProxy.
-js_frames_deliver :: proc(p: ^Page, data: []byte, origin: string, source: u64) {
+js_frames_deliver :: proc(p: ^Page, data: []byte, origin: string, source: u64, ports: []u64 = nil) {
 	r := p.js
-	if r == nil || r.failed || r.inst == nil || r.inst.dead { return }   // no script ever ran: nobody listens
+	if r == nil || r.failed || r.inst == nil || r.inst.dead {   // no script ever ran: nobody listens
+		for x in ports { port_close_end(x) }
+		return
+	}
 	d := js.guest_copy(r.inst, data, false)
 	if d == 0 && len(data) > 0 { return }
 	defer js.guest_free(r.inst, d)
 	o := js.guest_copy(r.inst, transmute([]byte)origin, false)
 	defer js.guest_free(r.inst, o)
-	argv := [6]u32{d, u32(len(data)), o, u32(len(origin)), u32(source), u32(source >> 32)}
+	pp := js.guest_copy(r.inst, ([^]byte)(raw_data(ports))[:len(ports) * 8], false)
+	defer js.guest_free(r.inst, pp)
+	argv := [8]u32{d, u32(len(data)), o, u32(len(origin)), u32(source), u32(source >> 32), pp, u32(len(ports))}
 	js_call(p, r.inst, "wj_frames_message", argv[:])
 	js_after_task(p, r, "message")
 }

@@ -110,6 +110,7 @@ doc :: proc(origin: string, body: string, headers: ..string) -> string {
 }
 
 load :: proc(source: string, address := SAME + "/frames/doc", csp := "") -> ^page.Page {
+	for l in logs { delete(l) }
 	clear(&logs)
 	p := page.page_create(&loop, &loader, &settings, process, testenv.url(address), console)
 	if csp != "" { page.apply_response_headers(p, {csp}, {}, "") }
@@ -147,6 +148,7 @@ fill :: proc(t: string, args: ..string) -> string {
 LOG :: `<script>function log(s) { console.log(String(s)) }</script>`
 
 main :: proc() {
+	context = testenv.context_of_process()
 	host.loop_init(&loop)
 	if !net.client_init(&client, &loop) { fmt.eprintln("net init failed"); os.exit(2) }
 	host.blocking_init(&blocking, &loop, 2)
@@ -243,6 +245,40 @@ f.addEventListener("load", () => {
 		run_for(300)
 		check(!logged_contains("child got wrong origin"), "a message whose targetOrigin does not match is dropped")
 		check(logged("refused document:SecurityError foo:SecurityError alert:SecurityError set:SecurityError href:SecurityError function true true true true true false 0 null undefined"), "a cross-origin WindowProxy: only the members HTML allows")
+		page.page_close(p)
+	}
+
+	fmt.println("-- MessagePorts between documents")
+	{
+		child := doc(OTHER, `<script>
+addEventListener("message", e => {
+  const port = e.ports[0];
+  port.onmessage = m => {
+    port.postMessage("child heard " + m.data);
+    const back = new MessageChannel();
+    back.port1.onmessage = x => port.postMessage("child second channel " + x.data);
+    port.postMessage({hello: "channel", p: back.port2}, [back.port2]);
+  };
+  port.postMessage("child ready " + e.ports.length + " " + (e.data === "take"));
+});
+</script>`)
+		p := load(fill(`<body><iframe id=f src="%s"></iframe><script>
+const f = document.getElementById("f");
+f.addEventListener("load", () => {
+  const ch = new MessageChannel();
+  ch.port1.onmessage = e => {
+    log("parent port got " + (typeof e.data === "string" ? e.data : JSON.stringify(Object.keys(e.data)) + " " + (e.data.p instanceof MessagePort)));
+    if (e.data === "child ready 1 true") ch.port1.postMessage("ping");
+    if (e.data && e.data.p) { e.data.p.postMessage("via a port the child sent"); }
+  };
+  f.contentWindow.postMessage("take", "*", [ch.port2]);
+  try { ch.port2.postMessage("x"); log("shipped port still posts silently") } catch (e) { log("shipped " + e.name) }
+});
+</script></body>`, child))
+		check(wait_for("parent port got child ready 1 true"), "a port transferred to a cross-origin frame arrives in event.ports")
+		check(wait_for("parent port got child heard ping"), "messages flow both ways on the transferred port")
+		check(wait_for(`parent port got ["hello","p"] true`), "a port inside the message data, transferred back")
+		check(wait_for("parent port got child second channel via a port the child sent"), "a port the frame sent works in the parent")
 		page.page_close(p)
 	}
 
@@ -350,7 +386,17 @@ addEventListener("message", e => log("nav " + e.data));
 	}
 
 	base.scope_close(process)
-	js.cache_stop()
+	host.blocking_settle(&blocking)
+	page.process_shutdown()
+	fetch.loader_destroy(&loader)
+	host.blocking_destroy(&blocking)
+	net.client_destroy(&client)
+	fetch.profile_destroy(&profile)
+	host.loop_destroy(&loop)
+	page.settings_destroy(&settings)
+	for l in logs { delete(l) }
+	delete(logs)
+	failures += testenv.mem_check("framestest")
 	fmt.printf("\n%d failure(s)\n", failures)
 	os.exit(failures > 0 ? 1 : 0)
 }

@@ -11,9 +11,11 @@
 #include <string.h>
 #include "web.h"
 
-extern uint8_t *wj_clone_serialize(JSContext *ctx, JSValueConst value, JSValueConst transfer, size_t *len);
-extern JSValue wj_clone_deserialize(JSContext *ctx, const uint8_t *data, size_t len);
-JSValue web_message_event(JSContext *ctx, JSValueConst data, const char *origin, JSValueConst source);
+extern uint8_t *wj_clone_serialize_ports(JSContext *ctx, JSValueConst value, JSValueConst transfer, size_t *len, JSValue *ports);
+extern JSValue wj_clone_deserialize_ports(JSContext *ctx, const uint8_t *data, size_t len, JSValueConst ports);
+bool web_ship_ports(JSContext *ctx, JSValueConst ports, uint64_t **ends, uint32_t *n);
+JSValue web_receive_ports(JSContext *ctx, const uint64_t *ends, uint32_t n);
+JSValue web_message_event_ports(JSContext *ctx, JSValueConst data, const char *origin, JSValueConst source, JSValueConst ports);
 
 static JSValue frames_hooks;   /* the prelude's functions, counted */
 static bool frames_hooks_set;
@@ -131,9 +133,16 @@ static JSValue h_post(JSContext *ctx, JSValueConst t, int argc, JSValueConst *ar
     wj_str to;
     if (!wj_to_str(ctx, wj_arg(argc, (JSValue *)argv, 2), &to, WJ_STR_USV, "/")) { return JS_EXCEPTION; }
     size_t len = 0;
-    uint8_t *bytes = wj_clone_serialize(ctx, wj_arg(argc, (JSValue *)argv, 1), wj_arg(argc, (JSValue *)argv, 3), &len);
+    JSValue ports = JS_UNDEFINED;
+    uint8_t *bytes = wj_clone_serialize_ports(ctx, wj_arg(argc, (JSValue *)argv, 1), wj_arg(argc, (JSValue *)argv, 3), &len, &ports);
     if (!bytes) { wj_str_free(ctx, &to); return JS_EXCEPTION; }
-    int32_t st = wr_Frame_postMessage(id, bytes, (uint32_t)len, (const uint8_t *)to.ptr, (uint32_t)to.len);
+    uint64_t *ends = NULL;
+    uint32_t n = 0;
+    bool shipped = web_ship_ports(ctx, ports, &ends, &n);
+    JS_FreeValue(ctx, ports);
+    if (!shipped) { free(bytes); wj_str_free(ctx, &to); return JS_EXCEPTION; }
+    int32_t st = wr_Frame_postMessagePorts(id, bytes, (uint32_t)len, (const uint8_t *)to.ptr, (uint32_t)to.len, ends, n);
+    free(ends);
     free(bytes);
     wj_str_free(ctx, &to);
     if (st < 0) { return wj_throw_status(ctx, st, "postMessage"); }
@@ -250,7 +259,7 @@ JSValue wjr_HTMLIFrameElement_getSVGDocument(JSContext *ctx, JSValueConst this_v
  * "message" MessageEvent, its data deserialized here (a messageerror when it cannot be), its source the sender's
  * WindowProxy (the global itself when the sender is this document). */
 WJ_EXPORT("wj_frames_message")
-void wj_frames_message(uint32_t data, uint32_t data_len, uint32_t origin, uint32_t origin_len, uint32_t src_lo, uint32_t src_hi)
+void wj_frames_message(uint32_t data, uint32_t data_len, uint32_t origin, uint32_t origin_len, uint32_t src_lo, uint32_t src_hi, uint32_t ends, uint32_t n_ends)
 {
     JSContext *ctx = wj_the_realm.ctx;
     wj_stack_enter(ctx);
@@ -259,7 +268,11 @@ void wj_frames_message(uint32_t data, uint32_t data_len, uint32_t origin, uint32
     if (!o) { return; }
     memcpy(o, (const void *)(uintptr_t)origin, origin_len);
     o[origin_len] = 0;
-    JSValue value = wj_clone_deserialize(ctx, (const uint8_t *)(uintptr_t)data, data_len);
+    uint64_t *list = n_ends ? malloc(n_ends * sizeof *list) : NULL;
+    if (list) { memcpy(list, (const void *)(uintptr_t)ends, n_ends * sizeof *list); }
+    JSValue ports = web_receive_ports(ctx, list, list ? n_ends : 0);
+    free(list);
+    JSValue value = wj_clone_deserialize_ports(ctx, (const uint8_t *)(uintptr_t)data, data_len, ports);
     JSValue source = window_of(ctx, src);
     if (JS_IsException(source)) { JS_FreeValue(ctx, JS_GetException(ctx)); source = JS_NULL; }
     JSValue ev;
@@ -267,10 +280,11 @@ void wj_frames_message(uint32_t data, uint32_t data_len, uint32_t origin, uint32
         JS_FreeValue(ctx, JS_GetException(ctx));
         ev = web_event_new(ctx, WJ_IFACE_MessageEvent, "messageerror", false, false);
     } else {
-        ev = web_message_event(ctx, value, o, source);
+        ev = web_message_event_ports(ctx, value, o, source, ports);
         JS_FreeValue(ctx, value);
     }
     free(o);
+    JS_FreeValue(ctx, ports);
     JS_FreeValue(ctx, source);
     if (JS_IsException(ev)) { wj_report_pending(ctx); return; }
     web_event_fire(ctx, wj_the_realm.global, ev);

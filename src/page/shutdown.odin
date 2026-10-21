@@ -15,5 +15,6 @@ process_shutdown :: proc() {
 	images_shutdown()
 	fonts_shutdown()
 	js_shutdown()
+	frames_shutdown()
 	wasm.runtime_destroy()
 }

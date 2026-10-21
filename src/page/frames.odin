@@ -96,6 +96,13 @@ next_navigable_id: u64
 @(private)
 navigable_count: int
 
+// Process end (process_shutdown): the registry of navigables (empty once every page is closed).
+frames_shutdown :: proc() {
+	ports_shutdown()
+	delete(navigables)
+	navigables = nil
+}
+
 // The navigable with this id, nil once it is gone.
 navigable_by_id :: proc(id: u64) -> ^Navigable {
 	n, ok := navigables[id]
@@ -153,6 +160,7 @@ frames_cleanup :: proc(data: rawptr) {
 	p := (^Page)(data)
 	f := p.frames
 	if f == nil { return }
+	ports_page_closed(p)   // the MessagePort ends it owns (ports.odin)
 	for len(f.children) > 0 { frame_destroy(f.children[len(f.children) - 1]) }
 	delete(f.children)
 	if f.owns_nav && f.nav != nil { navigable_free(f.nav) }
@@ -942,11 +950,14 @@ Message_Task :: struct {
 	source:  u64,      // navigable of the sender
 	origin:  string,   // the sender's origin, serialized
 	data:    []byte,   // structured serialization
+	ports:   []u64,    // MessagePort ends travelling with it (ports.odin)
 }
 
 // window.postMessage to another window: the target's document must still be the same at delivery, and its origin
 // must match targetOrigin ("*" anything, "/" the sender's own); a mismatch drops the message silently, as HTML says.
-frames_post_message :: proc(src: ^Page, target: ^Navigable, data: []byte, target_origin: string) -> (Api_Error, string) {
+frames_post_message :: proc(src: ^Page, target: ^Navigable, data: []byte, target_origin: string, ports: []u64 = nil) -> (Api_Error, string) {
+	sent := false
+	defer if !sent { for x in ports { port_close_end(x) } }   // a dropped message's ports are closed
 	if len(data) > src.settings.frames.max_message_bytes { return .Data_Clone, "DataCloneError: the message is larger than frames.max_message_bytes" }
 	tp := target.page
 	if tp == nil || tp.closed { return .None, "" }
@@ -968,11 +979,14 @@ frames_post_message :: proc(src: ^Page, target: ^Navigable, data: []byte, target
 	t^ = Message_Task{target = target.id, doc = page_id(tp), source = sn != nil ? sn.id : 0, origin = url.origin_serialize(src.env.origin)}
 	t.data = make([]byte, len(data))
 	copy(t.data, data)
+	t.ports = make([]u64, len(ports))
+	copy(t.ports, ports)
+	sent = true
 	post_page_task(tp, proc(pg: ^Page, d: rawptr) {
 		t := (^Message_Task)(d)
-		defer { delete(t.origin); delete(t.data); free(t) }
-		if pg == nil || pg.closed || page_id(pg) != t.doc { return }
-		js_frames_deliver(pg, t.data, t.origin, t.source)
+		defer { delete(t.origin); delete(t.data); delete(t.ports); free(t) }
+		if pg == nil || pg.closed || page_id(pg) != t.doc { for x in t.ports { port_close_end(x) }; return }
+		js_frames_deliver(pg, t.data, t.origin, t.source, t.ports)
 	}, t)
 	return .None, ""
 }

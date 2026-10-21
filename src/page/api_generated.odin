@@ -5418,7 +5418,7 @@ _t_fetch_Fetch_startFormData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_frames_Frame_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Frame_self(&c)
 	api_end(&c)
@@ -5432,7 +5432,7 @@ _t_frames_Frame_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_frames_Frame_ofElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := Frame_ofElement(&c, _p0)
@@ -5447,7 +5447,7 @@ _t_frames_Frame_ofElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_frames_Frame_parent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := Frame_parent(&c, _p0)
@@ -5462,7 +5462,7 @@ _t_frames_Frame_parent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_frames_Frame_top :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := Frame_top(&c, _p0)
@@ -5477,7 +5477,7 @@ _t_frames_Frame_top :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_frames_Frame_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := Frame_length(&c, _p0)
@@ -5492,7 +5492,7 @@ _t_frames_Frame_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_frames_Frame_child :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
@@ -5508,7 +5508,7 @@ _t_frames_Frame_child :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_frames_Frame_named :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -5531,7 +5531,7 @@ _t_frames_Frame_named :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_frames_Frame_childNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -5549,7 +5549,7 @@ _t_frames_Frame_childNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_frames_Frame_closed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := Frame_closed(&c, _p0)
@@ -5564,7 +5564,7 @@ _t_frames_Frame_closed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_frames_Frame_sameOrigin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := Frame_sameOrigin(&c, _p0)
@@ -5579,7 +5579,7 @@ _t_frames_Frame_sameOrigin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_frames_Frame_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -5605,7 +5605,7 @@ _t_frames_Frame_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_frames_Frame_navigate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -5628,7 +5628,7 @@ _t_frames_Frame_navigate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_frames_Frame_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -5655,11 +5655,125 @@ _t_frames_Frame_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	return nil
 }
 
+// Frame_postMessagePorts :: proc(c: ^Call, navigable: u64, data: []u8, target_origin: string, ports: []u64) -> Api_Error
+@(private = "file")
+_t_frames_Frame_postMessagePorts :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "frames.Frame_postMessagePorts", "data") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "frames.Frame_postMessagePorts", "target_origin") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3, 8)
+	if !_k3 { return wasm.trap_bounds(&f, "frames.Frame_postMessagePorts", "ports") }
+	_p1 := _s1[:_n1]
+	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
+	_p3 := ([^]u64)(_s3)[:_n3]
+	_p0 := u64(a[0].i64)
+	_err := Frame_postMessagePorts(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Port_entangle :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_frames_Port_entangle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Port_entangle(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Port_bind :: proc(c: ^Call, end: u64) -> Api_Error
+@(private = "file")
+_t_frames_Port_bind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_err := Port_bind(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Port_ship :: proc(c: ^Call, end: u64)
+@(private = "file")
+_t_frames_Port_ship :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	Port_ship(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Port_post :: proc(c: ^Call, end: u64, data: []u8, ports: []u64) -> Api_Error
+@(private = "file")
+_t_frames_Port_post :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "frames.Port_post", "data") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2, 8)
+	if !_k2 { return wasm.trap_bounds(&f, "frames.Port_post", "ports") }
+	_p1 := _s1[:_n1]
+	_p2 := ([^]u64)(_s2)[:_n2]
+	_p0 := u64(a[0].i64)
+	_err := Port_post(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Port_close :: proc(c: ^Call, end: u64)
+@(private = "file")
+_t_frames_Port_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	Port_close(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // Window_get_name :: proc(c: ^Call) -> string
 @(private = "file")
 _t_frames_Window_get_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -5676,7 +5790,7 @@ _t_frames_Window_get_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_frames_Window_set_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -5696,7 +5810,7 @@ _t_frames_Window_set_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_HTMLIFrameElement_srcdoc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -5719,7 +5833,7 @@ _t_dom_HTMLIFrameElement_srcdoc :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_HTMLIFrameElement_set_srcdoc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -17472,6 +17586,12 @@ api_imports := [?]wasm.Import{
 	{module = "frames", name = "Frame_postMessage", fn = _t_frames_Frame_postMessage, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "frames", name = "Frame_navigate", fn = _t_frames_Frame_navigate, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "frames", name = "Frame_open", fn = _t_frames_Frame_open, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "frames", name = "Frame_postMessagePorts", fn = _t_frames_Frame_postMessagePorts, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "frames", name = "Port_entangle", fn = _t_frames_Port_entangle, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "frames", name = "Port_bind", fn = _t_frames_Port_bind, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "frames", name = "Port_ship", fn = _t_frames_Port_ship, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "frames", name = "Port_post", fn = _t_frames_Port_post, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "frames", name = "Port_close", fn = _t_frames_Port_close, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "frames", name = "Window_get_name", fn = _t_frames_Window_get_name, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "frames", name = "Window_set_name", fn = _t_frames_Window_set_name, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "HTMLIFrameElement_srcdoc", fn = _t_dom_HTMLIFrameElement_srcdoc, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
