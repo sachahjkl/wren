@@ -934,9 +934,11 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 	if s == nil || p.closed || d != p.doc || s.parser.revealing > 0 { return }
 	n := dom.get(d, node)
 	if n == nil { return }
-	frames_note_inserted(p, node)   // frame elements get their nested document (frames.odin)
-	if p.closed || dom.get(d, node) == nil { return }
-	n = dom.get(d, node)
+	if n.kind != .Element {
+		frames_note_inserted(p, node)   // frame elements get their nested document (frames.odin)
+		if p.closed || dom.get(d, node) == nil { return }
+		n = dom.get(d, node)
+	}
 	styles_note_inserted(p, node)   // a <link> a script inserts loads now, not at the next styling (styles.odin)
 	fragment := d.parser_inserting > 0
 	// a node inserted into a connected script element that has not started: its text changed ("children changed")
@@ -946,20 +948,27 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 			return
 		}
 	}
-	// the script elements of the inserted subtree, in tree order
+	// the script and frame elements of the inserted subtree, in tree order (HTML's post-connection steps: a script
+	// before an iframe runs before that iframe has its document); frames in its shadow trees too
 	if n.kind != .Element { return }
 	connected := dom.is_connected(d, node)
 	found := make([dynamic]base.Handle, context.temp_allocator)
-	stack := make([dynamic]base.Handle, context.temp_allocator)
-	append(&stack, node)
-	for len(stack) > 0 {
-		cur := pop(&stack)
+	own_tree := dom.containing_shadow_root(d, node)
+	for cur := node; cur != base.NIL_HANDLE; cur = dom.next_shadow_including(d, cur, node) {
 		c := dom.get(d, cur)
-		if c == nil { continue }
-		if is_script_element(c) { append(&found, cur) }
-		for ch := c.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(&stack, ch) }
+		if _, ok := is_frame_container(c); ok { append(&found, cur); continue }
+		if is_script_element(c) && (len(d.shadow_roots) == 0 || dom.containing_shadow_root(d, cur) == own_tree) { append(&found, cur) }
 	}
 	for el in found {
+		if c := dom.get(d, el); c != nil {
+			if _, ok := is_frame_container(c); ok {
+				frames_note_inserted(p, el)
+				if p.closed { return }
+				continue
+			}
+		} else {
+			continue
+		}
 		if fragment {
 			// HTML: scripts made by the fragment parsing algorithm are marked "already started": they never run
 			s.flags[el] += {.Already_Started, .From_Fragment}
