@@ -179,7 +179,7 @@ tree_takes_its_events :: proc(t: ^testing.T) {
 	defer delete(app.tabs)
 	saved_mode := hview.mode
 	defer hview.mode = saved_mode
-	defer { clear(&tview.pending); tview.built, tview.view_rect, tview.view_key = 0, {}, 0 }
+	defer history_tree_destroy()   // the canvas's state, as about:history's closing leaves it
 	hview.mode = 1
 	tview.built = app.ui_state.build_index
 	tview.view_rect = {{0, 100}, {800, 600}}
