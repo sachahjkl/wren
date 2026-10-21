@@ -114,6 +114,8 @@ typedef struct WJitIC {
     uint16_t depth;          /* of the holder: 0 own, 1 the receiver's prototype... */
     JSShape *protos[WJIT_IC_DEPTH - 1];   /* the shapes of the prototypes between (counted) */
 } WJitIC;
+/* the compiled code reads kind and depth as one word */
+_Static_assert(offsetof(WJitIC, depth) == offsetof(WJitIC, kind) + 2, "WJitIC.kind, depth");
 
 typedef struct WJitData {
     uint32_t nic;
@@ -1221,7 +1223,7 @@ static void e_float_binop(WJitC *c, int op, int d)
 }
 
 /* where JSObject.is_HTMLDDA (a bit field) lives */
-static int wjit_htmldda_off, wjit_htmldda_mask;
+static int wjit_htmldda_off, wjit_htmldda_mask, wjit_exotic_off, wjit_exotic_mask;
 
 static void wjit_layout_init(void)
 {
@@ -1233,7 +1235,12 @@ static void wjit_layout_init(void)
     memset(&o, 0, sizeof(o));
     o.is_HTMLDDA = 1;
     for (i = 0; i < sizeof(o); i++) {
-        if (q[i]) { wjit_htmldda_off = (int)i; wjit_htmldda_mask = q[i]; return; }
+        if (q[i]) { wjit_htmldda_off = (int)i; wjit_htmldda_mask = q[i]; break; }
+    }
+    memset(&o, 0, sizeof(o));
+    o.is_exotic = 1;
+    for (i = 0; i < sizeof(o); i++) {
+        if (q[i]) { wjit_exotic_off = (int)i; wjit_exotic_mask = q[i]; break; }
     }
 }
 
@@ -1648,10 +1655,31 @@ static int wjit_emit_op(WJitC *c, int blk, int pos)
         e_fast_begin(c);
           e_load_slot_to(c, d - 1, L_A0);
           e_obj_or_br(c, L_A0);
-          e_lget(c, L_I0); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, shape));
-          e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, own));
-          e_op(c, W_I32_NE); e_br(c, W_BR_IF, 0);
-          e_lget(c, L_I0); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, prop));
+          /* the property's slot address into L_I1: own data property, or data property of the receiver's prototype
+             (methods) */
+          e_block(c, W_BLOCK);
+            e_block(c, W_BLOCK);
+              e_lget(c, L_I0); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, shape));
+              e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, own));
+              e_op(c, W_I32_NE); e_br(c, W_BR_IF, 0);
+              e_lget(c, L_I0); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, prop)); e_lset(c, L_I1);
+              e_br(c, W_BR, 1);
+            e_op(c, W_END);
+            /* (receiver's shape) && depth 1 && data && the prototype's shape */
+            e_lget(c, L_I0); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, shape));
+            e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, shape));
+            e_op(c, W_I32_NE); e_br(c, W_BR_IF, 1);
+            e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, kind));   /* kind | depth << 16 */
+            e_i32(c, 1 << 16); e_op(c, W_I32_NE); e_br(c, W_BR_IF, 1);
+            e_lget(c, L_I0); e_mem(c, 0x2d /* i32.load8_u */, 0, (uint32_t)wjit_exotic_off); e_i32(c, wjit_exotic_mask);
+            e_op(c, W_I32_AND); e_br(c, W_BR_IF, 1);
+            e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, holder)); e_lset(c, L_I1);
+            e_lget(c, L_I1); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, shape));
+            e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, holder_shape));
+            e_op(c, W_I32_NE); e_br(c, W_BR_IF, 1);
+            e_lget(c, L_I1); e_mem(c, W_I32_LOAD, 2, offsetof(JSObject, prop)); e_lset(c, L_I1);
+          e_op(c, W_END);
+          e_lget(c, L_I1);
           e_i32(c, (int32_t)(uintptr_t)ic); e_mem(c, W_I32_LOAD, 2, offsetof(WJitIC, index)); e_i32(c, 3); e_op(c, W_I32_SHL);
           e_op(c, W_I32_ADD); e_mem(c, W_I64_LOAD, 3, 0); e_lset(c, L_A1);
           e_dup(c, L_A1);
