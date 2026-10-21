@@ -15,10 +15,12 @@ import "wb:host"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
+import "wb:tools/testenv"
 
 console :: proc(user: rawptr, level: page.Log_Level, message: string) {}
 
 main :: proc() {
+	context = testenv.context_of_process()
 	if len(os.args) < 2 { fmt.eprintln("usage: apiconformance apiconformance.wasm"); os.exit(2) }
 	image, err := os.read_entire_file(os.args[1], context.allocator)
 	if err != nil { fmt.eprintln("cannot read the module"); os.exit(2) }
@@ -70,7 +72,18 @@ main :: proc() {
 		len(CASES), len(fns), FUNCTIONS, counts[.Trap_Bounds], counts[.Trap_Message], counts[.Error_Code], counts[.Error_Any], counts[.Capacity], capacity_skipped)
 	r, res := wasm.call_i32(inst, "case_count")
 	if res != .Ok || int(r) != len(CASES) { fmt.println("FAIL the guest and the table disagree"); failures += 1 }
-	fmt.printf("%d failure(s)\n", failures)
 	page.page_close(p)
+	base.scope_close(process)
+	page.settings_destroy(&settings)
+	delete(fns)
+	delete(image)
+	page.process_shutdown()
+	fetch.loader_destroy(&loader)
+	host.blocking_destroy(&blocking)
+	net.client_destroy(&client)
+	fetch.profile_destroy(&profile)
+	host.loop_destroy(&loop)
+	failures += testenv.mem_check("apiconformance")
+	fmt.printf("%d failure(s)\n", failures)
 	os.exit(failures == 0 ? 0 : 1)
 }

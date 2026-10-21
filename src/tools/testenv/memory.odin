@@ -13,7 +13,7 @@ package testenv
 //     }
 
 import "base:runtime"
-import "core:fmt"
+@(require) import "core:fmt"
 import "wb:base"
 
 // The context a tool's main starts from: the tracker in a check build.
