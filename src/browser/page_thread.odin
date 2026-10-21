@@ -24,6 +24,8 @@ PAGE_THREAD_PREFS := [?]config.Def{
 		description = "Run long layout passes of a page on a thread of their own, so the browser draws its interface meanwhile (tabs, address bar, menus, scrolling, resizing). Off: on the interface thread, which waits for them."},
 	{name = "browser.shell.page_thread_min_ms", kind = .Float, default = {f = 3}, bounded = true, min = 0, max = 1000, unit = "ms",
 		description = "A page's layout goes to the page thread (browser.shell.page_thread) when its last pass took at least this long (or none was measured yet). Shorter passes stay on the interface thread: handing them over costs more than it saves."},
+	{name = "browser.shell.resize_anchored", kind = .Bool, default = {b = true},
+		description = "While the window is resized, a page whose layout is long (browser.shell.page_thread_min_ms) shows its last layout anchored at the top left for a frame, and is laid out at the new size in the next one (on the page thread, the interface drawing meanwhile). Off: it is laid out at once, in the frame that shows the new size."},
 	{name = "browser.shell.page_thread_stack_mb", kind = .Int, default = {i = 32}, bounded = true, min = 1, max = 1024, unit = "MB", restart = true,
 		description = "Stack of the page thread: a deeply nested document recurses that deep in layout."},
 }
