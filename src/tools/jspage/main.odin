@@ -1,7 +1,7 @@
 // jspage: one page in Wren without a window (src/tools/headless): the document loaded as the browser loads it, its
 // scripts run, its console on stdout. For the measuring scripts: the DOM micro-benchmarks (tools\js_bench.ps1 -Mode dom),
 // the JavaScript errors of real sites (tools\compat_sweep.ps1), start-up and memory of a page (-stats).
-//   jspage [-wait ms] [-until text] [-stats] [-pages n] [-image engine.wasm] [-profile out.json] [--pref name=value]... <url>
+//   jspage [-wait ms] [-until text] [-stats [-allocs]] [-pages n] [-init code] [-eval code] [-image engine.wasm] [-profile out.json] [--pref name=value]... <url>
 // Console lines: a log as it is, "warn: " / "error: " before the others. -until stops at the first console message that
 // starts with `text` (else at -wait, 10 s by default). The exit status is 0 when the page loaded (and -until was seen),
 // 1 otherwise. -stats then prints "STAT<TAB>name<TAB>value" lines:
@@ -9,10 +9,16 @@
 //                          the first page of the process (the engine's code is compiled, or read from the disk cache)
 //   next_page_first_script_ms  the same for the next page
 //   js_heap_kib            the realm's JavaScript heap at that point
+//   js_memory_kib          the realm's linear memory (the engine's whole address space: heap, free space, stack)
 //   private_per_page_kib   private memory per page, -pages more pages (20) open at once, each with its realm
+// -eval runs code in the page once -wait is over (diagnostics: console.log what you want to know).
+// -allocs (with -stats): then the live allocations of the window thread (Odin's context allocator) at that point,
+// summed by the source line that made them: ALLOC<TAB>kib<TAB>count<TAB>file:line, the largest 30.
 package jspage
 
 import "core:fmt"
+import "core:mem"
+import "core:slice"
 import "core:os"
 import "core:strings"
 import "core:time"
@@ -27,6 +33,9 @@ until_text: string
 profile_path: string        // -profile: a sampling profile of the page's engine (tools\wasm_profile.ps1)
 profiled: ^wasm.Instance
 seen_until: bool
+allocs: bool
+eval_code: string   // -eval: a script run in the page after -wait (its console.log lines are printed)
+init_code: string   // -init: a script run in each realm before the page's own (to watch what they do)
 first_message_ms: f64 = -1
 quiet: bool
 started: time.Tick
@@ -66,7 +75,7 @@ private_bytes :: proc() -> int {
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: jspage [-wait ms] [-until text] [-stats] [-pages n] [-image engine.wasm] [-profile out.json] [--pref name=value]... <url>")
+	fmt.eprintln("usage: jspage [-wait ms] [-until text] [-stats [-allocs]] [-pages n] [-init code] [-eval code] [-image engine.wasm] [-profile out.json] [--pref name=value]... <url>")
 	os.exit(2)
 }
 
@@ -90,12 +99,21 @@ main :: proc() {
 			if err != nil { fmt.eprintln("jspage: cannot read the image"); os.exit(2) }
 			page.js_image_override = data
 		case "-profile": profile_path = need(args, &i)
+		case "-allocs": allocs = true
+		case "-eval": eval_code = need(args, &i)
+		case "-init": init_code = need(args, &i)
 		case:
 			if strings.has_prefix(args[i], "-") || url != "" { usage() }
 			url = args[i]
 		}
 	}
 	if url == "" { usage() }
+	// -allocs: what the window thread's allocations hold, by the line that made them (other threads use their own)
+	tracker: mem.Tracking_Allocator
+	if allocs {
+		mem.tracking_allocator_init(&tracker, context.allocator)
+		context.allocator = mem.tracking_allocator(&tracker)
+	}
 	prefs := config.prefs_make()
 	page.register_prefs(&prefs)
 	_, errs := config.apply_args(&prefs, pref_args[:])
@@ -105,6 +123,9 @@ main :: proc() {
 	if !headless.init(&env, &prefs, "build/jspage_profile") { fmt.eprintln("jspage: the page stack could not start"); os.exit(2) }
 	js.cache_start({memory_bytes = 16 << 20, min_source_bytes = 0})
 
+	if init_code != "" {
+		page.js_on_realm_started = proc(p: ^page.Page) { page.js_run(p, transmute([]byte)init_code, "jspage:init") }
+	}
 	if profile_path != "" {
 		page.js_on_realm = proc(p: ^page.Page, inst: ^wasm.Instance) {
 			if profiled == nil && wasm.profile_start(inst, page.js_engine_image()) { profiled = inst }
@@ -113,6 +134,10 @@ main :: proc() {
 	started = time.tick_now()
 	d := headless.open(&env, url, on_console)
 	headless.pump(d, f64(wait_ms), done)
+	if eval_code != "" && d.page != nil && d.failed == "" {
+		page.js_run(d.page, transmute([]byte)eval_code, "jspage:eval")
+		headless.pump(d, 2000, nil)   // what it starts (timers, animation frames) has two seconds
+	}
 	if profiled != nil {
 		if err := wasm.profile_finish(profiled, profile_path); err != "" { fmt.eprintln("jspage: profile:", err) }
 	}
@@ -123,6 +148,21 @@ main :: proc() {
 		fmt.printfln("STAT\tfirst_script_ms\t%.2f", first_message_ms)
 		if d.page != nil && d.page.js != nil && d.page.js.inst != nil {
 			fmt.printfln("STAT\tjs_heap_kib\t%.0f", js.heap_bytes(d.page.js.inst) / 1024)
+			fmt.printfln("STAT\tjs_memory_kib\t%d", wasm.memory_bytes(d.page.js.inst) / 1024)
+		}
+		if d.page != nil && d.page.engine != nil {
+			// the style system's memory: parsed sheets, compiled rules, computed styles
+			e := d.page.engine
+			parsed, n := uint(0), 0
+			for s in e.sheets { if s.sheet != nil { parsed += s.sheet.arena.total_used; n += 1 } }
+			fmt.printfln("STAT\tstyle_sheets\t%d", n)
+			fmt.printfln("STAT\tstyle_parsed_kib\t%d", parsed / 1024)
+			fmt.printfln("STAT\tstyle_rules_kib\t%d", e.arena.total_used / 1024)
+			if st := d.page.styled; st != nil {
+				used := st.arena.total_used
+				for ta in st.thread_arenas { used += ta.total_used }
+				fmt.printfln("STAT\tstyle_computed_kib\t%d", used / 1024)
+			}
 		}
 		// many pages at once: what one more page with a realm costs; the first of them is a page of a process whose
 		// engine code is compiled already (the usual case)
@@ -140,6 +180,7 @@ main :: proc() {
 		}
 		after := private_bytes()
 		fmt.printfln("STAT\tprivate_per_page_kib\t%.0f", f64(after - before) / f64(pages) / 1024)
+		if allocs { alloc_report(&tracker) }
 		for m in more { headless.close(m) }
 	}
 	headless.close(d)
@@ -152,4 +193,26 @@ parse_int :: proc(s: string) -> int {
 	v := 0
 	for c in s { if c >= '0' && c <= '9' { v = v * 10 + int(c - '0') } }
 	return v
+}
+
+alloc_report :: proc(t: ^mem.Tracking_Allocator) {
+	Site :: struct { loc: string, bytes: int, count: int }
+	sites := make(map[string]Site, allocator = context.temp_allocator)
+	for _, e in t.allocation_map {
+		key := fmt.tprintf("%s:%d", e.location.file_path, e.location.line)
+		s := sites[key]
+		s.loc = key
+		s.bytes += e.size
+		s.count += 1
+		sites[key] = s
+	}
+	list := make([dynamic]Site, 0, len(sites), context.temp_allocator)
+	total := 0
+	for _, s in sites { append(&list, s); total += s.bytes }
+	slice.sort_by(list[:], proc(a, b: Site) -> bool { return a.bytes > b.bytes })
+	fmt.printfln("ALLOC\t%d\t%d\ttotal", total / 1024, len(t.allocation_map))
+	for s, i in list {
+		if i >= 30 { break }
+		fmt.printfln("ALLOC\t%d\t%d\t%s", s.bytes / 1024, s.count, s.loc)
+	}
 }

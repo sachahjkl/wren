@@ -45,6 +45,8 @@ js_engine_digest_known: bool
 // names, for profiles), and a procedure called with each new realm's instance (jspage -profile starts sampling it).
 js_image_override: []byte
 js_on_realm: proc(p: ^Page, inst: ^wasm.Instance)
+// ... and one called once a realm has started, before any of the page's scripts (jspage -init runs a script there)
+js_on_realm_started: proc(p: ^Page)
 
 // The engine image pages run.
 js_engine_image :: proc() -> []byte { return js_image_override != nil ? js_image_override : js_image.IMAGE }
@@ -127,6 +129,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		}
 	}
 	js_load_realm_started(p, r)   // rejections, modules, eval policy (js_load_realm.odin)
+	if js_on_realm_started != nil && p.worker == nil { js_on_realm_started(p) }
 	return r
 }
 

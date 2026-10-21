@@ -211,4 +211,10 @@ guest_bytes :: proc(inst: ^Instance, offset: u64, length: u64) -> []byte {
 	return p[:length]
 }
 
+// The size of memory 0 now (bytes): what the module's linear memory costs (it only grows).
+memory_bytes :: proc(inst: ^Instance) -> u64 {
+	if inst == nil || inst.dead || !inst.wt.has_memory { return 0 }
+	return u64(wasmtime_memory_data_size(inst.wt.ctx, &inst.wt.memory))
+}
+
 default_context :: proc "contextless" () -> runtime.Context { return runtime.default_context() }
