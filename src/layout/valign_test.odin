@@ -252,6 +252,17 @@ stretched_buttons_center :: proc(t: ^testing.T) {
 	}
 }
 
+// A drop-down list is as wide as its widest label rounded up to a device pixel, plus Chromium's internal padding: 4 px
+// before the label and 16 px for the arrow (Edge: 16px Arial "Français" is 61.36 px of text in an 82 px select).
+@(test)
+select_width :: proc(t: ^testing.T) {
+	f := vx_load(`<!doctype html><body style="margin:0"><select id=s style="font:13px main;padding:0;border:0"><option>abc</option><option>ab</option></select></body>`)
+	defer vx_unload(f)
+	r := vx_rect(f, "s")
+	// "abc": 3 x 6.5 = 19.5 px, 34.125 device px -> 35; + 20 x 1.75
+	testing.expectf(t, math.abs(r.max.x - r.min.x - 70) < 0.01, "select width %v", r.max.x - r.min.x)
+}
+
 @(test)
 buttons_cells_controls :: proc(t: ^testing.T) {
 	f := vx_load(`<!doctype html><body style="margin:0;font:16px main">

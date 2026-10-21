@@ -558,12 +558,12 @@ paint_content :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^lay.
 		if page_render.content(page_render.content_user, dc, d, it.node, it.kind, r, border, it.cs, fid, size) { return }
 	}
 	if it.kind != .Control || fi == nil || d == nil { return }
-	default_control(l, dc, d, it, r, fi)
+	default_control(l, dc, d, it, r, border, fi)
 }
 
 // What a control shows until the forms code paints it: its value, placeholder, checked state, selected option.
 @(private = "file")
-default_control :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^lay.Display_Item, r: draw.Rect, fi: ^lay.Font_Info) {
+default_control :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^lay.Display_Item, r, border: draw.Rect, fi: ^lay.Font_Info) {
 	n := dom.get(d, it.node)
 	if n == nil { return }
 	cs := it.cs
@@ -641,11 +641,13 @@ default_control :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^la
 			if _, sel := dom.get_attribute(d, x, "selected"); sel && label == "" { label = s }
 		}
 		if label == "" { label = first }
+		// (as forms_shell.odin paint_control: the label after the start padding, the arrow centered in the arrow's room
+		// at the right of the border box)
 		arrow := page_render.settings.select_arrow * l.scale
-		text_in(dc, fid, fi.size, {r.min, {r.max.x - arrow, r.max.y}}, mid_base, col, label, false, fonts)
-		// the arrow: a small chevron drawn with two strokes
-		cx, cy := r.max.x - arrow * 0.5, (r.min.y + r.max.y) * 0.5
-		a := max(arrow * 0.18, 2)
+		start := page_render.settings.select_start * l.scale
+		text_in(dc, fid, fi.size, {{r.min.x + start, r.min.y}, {r.max.x - arrow, r.max.y}}, mid_base, col, label, false, fonts)
+		cx, cy := border.max.x - arrow * 0.5, (border.min.y + border.max.y) * 0.5
+		a := max(arrow * 0.25, 2)
 		draw.rect(dc, {{cx - a, cy - a * 0.35}, {cx + a, cy + a * 0.35}}, col, a * 0.35)
 	case "meter", "progress":
 		draw.rect(dc, r, draw.mix(col, {1, 1, 1, col.a}, 0.8), (r.max.y - r.min.y) * 0.5)
