@@ -11,13 +11,13 @@ package browser
 // the cache meanwhile since no loop task runs) is safe to share. Only one pass at a time; the thread has the window
 // thread's stack (deep documents recurse).
 
-import "base:runtime"
 import "core:sync"
 import "core:time"
 import "toolkit:draw"
 import "wb:config"
 import "wb:host"
 import "wb:style"
+import "wb:base"
 
 PAGE_THREAD_PREFS := [?]config.Def{
 	{name = "browser.shell.page_thread", kind = .Bool, default = {b = true},
@@ -67,7 +67,7 @@ page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, 
 	}
 	if pt.thread == nil {
 		stack := int(config.int_of(&app.prefs, "browser.shell.page_thread_stack_mb")) << 20
-		context = runtime.default_context()
+		context = base.process_context()
 		pt.thread = host.thread_start(page_thread_main, &pt, stack)
 		if pt.thread == nil { layout_job_run(&job); return }
 	}

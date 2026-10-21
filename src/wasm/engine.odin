@@ -274,7 +274,7 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 	}
 	if inst.wt.profiler != nil { profile_sample(inst) }
 	if preempt.hook != nil {
-		context = runtime.default_context()
+		context = base.process_context()
 		preempt_tick(inst)   // preempt.odin: the embedder's turn on this thread
 	}
 	delta^ = 1
