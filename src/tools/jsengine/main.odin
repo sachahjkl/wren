@@ -14,7 +14,6 @@
 // Only the engine's own imports are provided (console, errors, time zone, clock): anything of the web API traps.
 package jsengine
 
-import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
@@ -24,6 +23,7 @@ import "core:time"
 import win "core:sys/windows"
 import "wb:js"
 import "wb:wasm"
+import "wb:base"
 
 uncaught: int
 quiet: bool
@@ -37,7 +37,7 @@ guest_string :: proc(f: ^wasm.Frame, p, n: wasm.Raw) -> (string, bool) {
 }
 
 engine_console :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	f := wasm.frame(env, caller)
 	text, ok := guest_string(&f, a[1], a[2])
 	if !ok { return wasm.trap_bounds(&f, "js.Engine_console", "text") }
@@ -52,7 +52,7 @@ engine_console :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 }
 
 engine_report :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	f := wasm.frame(env, caller)
 	msg, _ := guest_string(&f, a[0], a[1])
 	stack, _ := guest_string(&f, a[2], a[3])
@@ -67,7 +67,7 @@ engine_report :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 stored_bytecode: [dynamic]byte
 
 engine_store :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	f := wasm.frame(env, caller)
 	code, ok := guest_string(&f, a[0], a[1])
 	if !ok { return wasm.trap_bounds(&f, "js.Engine_storeBytecode", "code") }
@@ -97,7 +97,7 @@ put_string :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, s: str
 }
 
 engine_time_zone :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	return put_string(env, caller, a, js.timezone_name())
 }
 
@@ -130,7 +130,7 @@ jit: js.Jit_Settings
 jit_stats_wanted: bool
 
 engine_jit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	f := wasm.frame(env, caller)
 	code, ok := guest_string(&f, a[0], a[1])
 	if !ok { return wasm.trap_bounds(&f, "js.Engine_jitCompile", "module") }
@@ -141,7 +141,7 @@ engine_jit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uin
 }
 
 engine_jit_poll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	f := wasm.frame(env, caller)
 	r := js.jit_poll(f.inst, a[0].i32)
 	a[0] = {}

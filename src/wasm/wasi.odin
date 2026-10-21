@@ -9,10 +9,10 @@ package wasm
 // The JavaScript engine (native/js) is such a program; any other guest may import these functions as well. They are
 // defined on the shared Linker like every host function (registered by `register_wasi`), for every realm.
 
-import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:time"
+import "wb:base"
 
 WASI_MODULE :: "wasi_snapshot_preview1"
 
@@ -104,7 +104,7 @@ wasi_clock_time_get :: proc "c" (env: rawptr, caller: Caller, a: [^]Raw, _: uint
 // random_get(buf, len)
 @(private)
 wasi_random_get :: proc "c" (env: rawptr, caller: Caller, a: [^]Raw, _: uint) -> Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	f := frame(env, caller)
 	n := u64(u32(a[1].i32))
 	p, ok := wasi_mem(&f, a[0].i32, n)
@@ -116,7 +116,7 @@ wasi_random_get :: proc "c" (env: rawptr, caller: Caller, a: [^]Raw, _: uint) ->
 // fd_write(fd, iovs, iovs_len, nwritten_ptr): fd 1 and 2 only.
 @(private)
 wasi_fd_write :: proc "c" (env: rawptr, caller: Caller, a: [^]Raw, _: uint) -> Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	f := frame(env, caller)
 	fd := a[0].i32
 	if fd != 1 && fd != 2 { return wasi_ret(a, WASI_EBADF) }
@@ -194,7 +194,7 @@ wasi_success :: proc "c" (env: rawptr, caller: Caller, a: [^]Raw, _: uint) -> Tr
 // proc_exit(code): the program asked to end. A trap is the only way out of the call; the instance stays as it is.
 @(private)
 wasi_proc_exit :: proc "c" (env: rawptr, caller: Caller, a: [^]Raw, _: uint) -> Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	msg := fmt.tprintf("the module called exit(%d)", a[0].i32)
 	return trap_new(msg)
 }

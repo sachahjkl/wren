@@ -680,7 +680,7 @@ export_wb_main :: proc(ctx: ^Page, inst: ^wasm.Instance) -> wasm.Call_Result {
 @(private = "file")
 _t_abort_AbortController_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := AbortController_create(&c)
 	api_end(&c)
@@ -694,7 +694,7 @@ _t_abort_AbortController_create :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_abort_AbortController_signal :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_AbortController{handle = u64(a[0].i64)}
 	_p0.data = lookup_AbortController(&c, _p0.handle)
@@ -714,7 +714,7 @@ _t_abort_AbortController_signal :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_abort_AbortController_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -741,7 +741,7 @@ _t_abort_AbortController_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_abort_AbortSignal_aborted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_AbortSignal{handle = u64(a[0].i64)}
 	_p0.data = lookup_AbortSignal(&c, _p0.handle)
@@ -761,7 +761,7 @@ _t_abort_AbortSignal_aborted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_abort_AbortSignal_reasonCode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_AbortSignal{handle = u64(a[0].i64)}
 	_p0.data = lookup_AbortSignal(&c, _p0.handle)
@@ -781,7 +781,7 @@ _t_abort_AbortSignal_reasonCode :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_abort_AbortSignal_reason :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -804,7 +804,7 @@ _t_abort_AbortSignal_reason :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_abort_AbortSignal_throwIfAborted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_AbortSignal{handle = u64(a[0].i64)}
 	_p0.data = lookup_AbortSignal(&c, _p0.handle)
@@ -824,7 +824,7 @@ _t_abort_AbortSignal_throwIfAborted :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_abort_AbortSignal_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -847,7 +847,7 @@ _t_abort_AbortSignal_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_abort_AbortSignal_timeout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "abort.AbortSignal_timeout", "result pointer") }
@@ -868,7 +868,7 @@ _t_abort_AbortSignal_timeout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_abort_AbortSignal_any :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
@@ -892,7 +892,7 @@ _t_abort_AbortSignal_any :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_async_queueMicrotask :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
@@ -906,7 +906,7 @@ _t_async_queueMicrotask :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_async_Promise_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Promise_create(&c)
 	api_end(&c)
@@ -920,7 +920,7 @@ _t_async_Promise_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_async_Promise_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -950,7 +950,7 @@ _t_async_Promise_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_async_Promise_reject :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -980,7 +980,7 @@ _t_async_Promise_reject :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_async_Promise_then :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Promise{handle = u64(a[0].i64)}
 	_p0.data = lookup_Promise(&c, _p0.handle)
@@ -1000,7 +1000,7 @@ _t_async_Promise_then :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_async_Promise_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Promise{handle = u64(a[0].i64)}
 	_p0.data = lookup_Promise(&c, _p0.handle)
@@ -1020,7 +1020,7 @@ _t_async_Promise_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_async_Promise_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Promise{handle = u64(a[0].i64)}
 	_p0.data = lookup_Promise(&c, _p0.handle)
@@ -1040,7 +1040,7 @@ _t_async_Promise_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_async_Promise_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -1063,7 +1063,7 @@ _t_async_Promise_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_async_Promise_all :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
@@ -1081,7 +1081,7 @@ _t_async_Promise_all :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_async_Object_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Object{handle = u64(a[0].i64)}
 	_p0.data = lookup_Object(&c, _p0.handle)
@@ -1103,7 +1103,7 @@ _t_async_Object_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_async_Object_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -1126,7 +1126,7 @@ _t_async_Object_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_async_Buffer_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1150,7 +1150,7 @@ _t_async_Buffer_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_async_Buffer_alloc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "async.Buffer_alloc", "result pointer") }
@@ -1171,7 +1171,7 @@ _t_async_Buffer_alloc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_async_Buffer_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Buffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_Buffer(&c, _p0.handle)
@@ -1191,7 +1191,7 @@ _t_async_Buffer_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_async_Buffer_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -1216,7 +1216,7 @@ _t_async_Buffer_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_async_Buffer_write :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -1241,7 +1241,7 @@ _t_async_Buffer_write :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_async_Buffer_slice :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "async.Buffer_slice", "result pointer") }
@@ -1268,7 +1268,7 @@ _t_async_Buffer_slice :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_console_console_log :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1284,7 +1284,7 @@ _t_console_console_log :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_console_console_warn :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1300,7 +1300,7 @@ _t_console_console_warn :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_console_console_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1316,7 +1316,7 @@ _t_console_console_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_credentials_CredentialsContainer_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1350,7 +1350,7 @@ _t_credentials_CredentialsContainer_create :: proc "c" (env: rawptr, caller: was
 @(private = "file")
 _t_credentials_CredentialsContainer_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1384,7 +1384,7 @@ _t_credentials_CredentialsContainer_get :: proc "c" (env: rawptr, caller: wasm.C
 @(private = "file")
 _t_credentials_CredentialsContainer_preventSilentAccess :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := CredentialsContainer_preventSilentAccess(&c)
 	api_end(&c)
@@ -1398,7 +1398,7 @@ _t_credentials_CredentialsContainer_preventSilentAccess :: proc "c" (env: rawptr
 @(private = "file")
 _t_credentials_PublicKeyCredential_enabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := PublicKeyCredential_enabled(&c)
 	api_end(&c)
@@ -1412,7 +1412,7 @@ _t_credentials_PublicKeyCredential_enabled :: proc "c" (env: rawptr, caller: was
 @(private = "file")
 _t_credentials_PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable(&c)
 	api_end(&c)
@@ -1426,7 +1426,7 @@ _t_credentials_PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable
 @(private = "file")
 _t_credentials_PublicKeyCredential_isConditionalMediationAvailable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := PublicKeyCredential_isConditionalMediationAvailable(&c)
 	api_end(&c)
@@ -1440,7 +1440,7 @@ _t_credentials_PublicKeyCredential_isConditionalMediationAvailable :: proc "c" (
 @(private = "file")
 _t_credentials_PublicKeyCredential_getClientCapabilities :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := PublicKeyCredential_getClientCapabilities(&c)
 	api_end(&c)
@@ -1454,7 +1454,7 @@ _t_credentials_PublicKeyCredential_getClientCapabilities :: proc "c" (env: rawpt
 @(private = "file")
 _t_credentials_PublicKeyCredential_checkRpId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1478,7 +1478,7 @@ _t_credentials_PublicKeyCredential_checkRpId :: proc "c" (env: rawptr, caller: w
 @(private = "file")
 _t_credentials_PublicKeyCredential_isAssertion :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_PublicKeyCredential{handle = u64(a[0].i64)}
 	_p0.data = lookup_PublicKeyCredential(&c, _p0.handle)
@@ -1498,7 +1498,7 @@ _t_credentials_PublicKeyCredential_isAssertion :: proc "c" (env: rawptr, caller:
 @(private = "file")
 _t_credentials_PublicKeyCredential_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -1521,7 +1521,7 @@ _t_credentials_PublicKeyCredential_id :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_credentials_PublicKeyCredential_bytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "credentials.PublicKeyCredential_bytes", "result pointer") }
@@ -1551,7 +1551,7 @@ _t_credentials_PublicKeyCredential_bytes :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_credentials_PublicKeyCredential_authenticatorAttachment :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -1576,7 +1576,7 @@ _t_credentials_PublicKeyCredential_authenticatorAttachment :: proc "c" (env: raw
 @(private = "file")
 _t_credentials_PublicKeyCredential_transports :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -1599,7 +1599,7 @@ _t_credentials_PublicKeyCredential_transports :: proc "c" (env: rawptr, caller: 
 @(private = "file")
 _t_credentials_PublicKeyCredential_publicKeyAlgorithm :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_PublicKeyCredential{handle = u64(a[0].i64)}
 	_p0.data = lookup_PublicKeyCredential(&c, _p0.handle)
@@ -1619,7 +1619,7 @@ _t_credentials_PublicKeyCredential_publicKeyAlgorithm :: proc "c" (env: rawptr, 
 @(private = "file")
 _t_credentials_PublicKeyCredential_clientExtensionResults :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -1642,7 +1642,7 @@ _t_credentials_PublicKeyCredential_clientExtensionResults :: proc "c" (env: rawp
 @(private = "file")
 _t_credentials_PublicKeyCredential_toJSON :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -1665,7 +1665,7 @@ _t_credentials_PublicKeyCredential_toJSON :: proc "c" (env: rawptr, caller: wasm
 @(private = "file")
 _t_crypto_Crypto_getRandomValues :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1686,7 +1686,7 @@ _t_crypto_Crypto_getRandomValues :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_crypto_Crypto_randomUUID :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -1706,7 +1706,7 @@ _t_crypto_Crypto_randomUUID :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_crypto_SubtleCrypto_digest :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1732,7 +1732,7 @@ _t_crypto_SubtleCrypto_digest :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_crypto_SubtleCrypto_digestBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1760,7 +1760,7 @@ _t_crypto_SubtleCrypto_digestBuffer :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_document_Document_URL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -1780,7 +1780,7 @@ _t_document_Document_URL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_document_Window_origin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -1797,7 +1797,7 @@ _t_document_Window_origin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_document_Window_isSecureContext :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_isSecureContext(&c)
 	api_end(&c)
@@ -1811,7 +1811,7 @@ _t_document_Window_isSecureContext :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_document_Document_cookie_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -1831,7 +1831,7 @@ _t_document_Document_cookie_get :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_document_Document_cookie_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1858,7 +1858,7 @@ _t_document_Document_cookie_set :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_Document_documentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Document_documentElement(&c)
 	api_end(&c)
@@ -1872,7 +1872,7 @@ _t_dom_Document_documentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_Document_head :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Document_head(&c)
 	api_end(&c)
@@ -1886,7 +1886,7 @@ _t_dom_Document_head :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_dom_Document_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Document_body(&c)
 	api_end(&c)
@@ -1900,7 +1900,7 @@ _t_dom_Document_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_dom_Document_createElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1927,7 +1927,7 @@ _t_dom_Document_createElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_Document_createTextNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1954,7 +1954,7 @@ _t_dom_Document_createTextNode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_Document_getElementById :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -1976,7 +1976,7 @@ _t_dom_Document_getElementById :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_Node_appendChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -2003,7 +2003,7 @@ _t_dom_Node_appendChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_Node_insertBefore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -2035,7 +2035,7 @@ _t_dom_Node_insertBefore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Node_removeChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -2062,7 +2062,7 @@ _t_dom_Node_removeChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_Node_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -2084,7 +2084,7 @@ _t_dom_Node_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_dom_Node_parentNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -2104,7 +2104,7 @@ _t_dom_Node_parentNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_Node_firstChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -2124,7 +2124,7 @@ _t_dom_Node_firstChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_Node_lastChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -2144,7 +2144,7 @@ _t_dom_Node_lastChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Node_previousSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -2164,7 +2164,7 @@ _t_dom_Node_previousSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_Node_nextSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -2184,7 +2184,7 @@ _t_dom_Node_nextSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_Node_nodeType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -2204,7 +2204,7 @@ _t_dom_Node_nodeType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_dom_Node_setTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -2233,7 +2233,7 @@ _t_dom_Node_setTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_Node_getTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -2256,7 +2256,7 @@ _t_dom_Node_getTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_Element_tagName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -2279,7 +2279,7 @@ _t_dom_Element_tagName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_Element_setAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -2315,7 +2315,7 @@ _t_dom_Element_setAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_Element_getAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -2347,7 +2347,7 @@ _t_dom_Element_getAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_Element_removeAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -2376,7 +2376,7 @@ _t_dom_Element_removeAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_encoding_TextEncoder_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -2400,7 +2400,7 @@ _t_encoding_TextEncoder_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_encoding_TextEncoder_encodeInto :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -2424,7 +2424,7 @@ _t_encoding_TextEncoder_encodeInto :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_encoding_TextDecoder_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -2456,7 +2456,7 @@ _t_encoding_TextDecoder_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_encoding_TextDecoder_encoding :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -2479,7 +2479,7 @@ _t_encoding_TextDecoder_encoding :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_encoding_TextDecoder_flags :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_TextDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextDecoder(&c, _p0.handle)
@@ -2499,7 +2499,7 @@ _t_encoding_TextDecoder_flags :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_encoding_TextDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -2529,7 +2529,7 @@ _t_encoding_TextDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_encoding_TextDecoder_decodeBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
@@ -2560,7 +2560,7 @@ _t_encoding_TextDecoder_decodeBuffer :: proc "c" (env: rawptr, caller: wasm.Call
 @(private = "file")
 _t_encoding_TextDecoder_output :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -2583,7 +2583,7 @@ _t_encoding_TextDecoder_output :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_events_EventTarget_addEventListener :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -2618,7 +2618,7 @@ _t_events_EventTarget_addEventListener :: proc "c" (env: rawptr, caller: wasm.Ca
 @(private = "file")
 _t_events_EventTarget_removeEventListener :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
@@ -2637,7 +2637,7 @@ _t_events_EventTarget_removeEventListener :: proc "c" (env: rawptr, caller: wasm
 @(private = "file")
 _t_events_EventTarget_dispatchEvent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -2670,7 +2670,7 @@ _t_events_EventTarget_dispatchEvent :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_events_Event_preventDefault :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -2688,7 +2688,7 @@ _t_events_Event_preventDefault :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_events_Event_stopPropagation :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -2706,7 +2706,7 @@ _t_events_Event_stopPropagation :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_events_Event_stopImmediatePropagation :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -2724,7 +2724,7 @@ _t_events_Event_stopImmediatePropagation :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_events_Event_target :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -2744,7 +2744,7 @@ _t_events_Event_target :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_events_Event_currentTarget :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -2764,7 +2764,7 @@ _t_events_Event_currentTarget :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_events_Event_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -2787,7 +2787,7 @@ _t_events_Event_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_events_Event_defaultPrevented :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -2807,7 +2807,7 @@ _t_events_Event_defaultPrevented :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_events_Event_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -2830,7 +2830,7 @@ _t_events_Event_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_events_Event_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -2853,7 +2853,7 @@ _t_events_Event_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_events_Event_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -2873,7 +2873,7 @@ _t_events_Event_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_events_Event_object :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -2893,7 +2893,7 @@ _t_events_Event_object :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_events_MouseEvent_clientX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -2913,7 +2913,7 @@ _t_events_MouseEvent_clientX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_events_MouseEvent_clientY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -2933,7 +2933,7 @@ _t_events_MouseEvent_clientY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_events_MouseEvent_button :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -2953,7 +2953,7 @@ _t_events_MouseEvent_button :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_events_KeyboardEvent_keyCode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -2973,7 +2973,7 @@ _t_events_KeyboardEvent_keyCode :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_eventsource_EventSource_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -3001,7 +3001,7 @@ _t_eventsource_EventSource_create :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_eventsource_EventSource_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_EventSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_EventSource(&c, _p0.handle)
@@ -3021,7 +3021,7 @@ _t_eventsource_EventSource_readyState :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_eventsource_EventSource_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -3044,7 +3044,7 @@ _t_eventsource_EventSource_url :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_eventsource_EventSource_withCredentials :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_EventSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_EventSource(&c, _p0.handle)
@@ -3064,7 +3064,7 @@ _t_eventsource_EventSource_withCredentials :: proc "c" (env: rawptr, caller: was
 @(private = "file")
 _t_eventsource_EventSource_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_EventSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_EventSource(&c, _p0.handle)
@@ -3082,7 +3082,7 @@ _t_eventsource_EventSource_close :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_eventsource_MessageEvent_origin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -3105,7 +3105,7 @@ _t_eventsource_MessageEvent_origin :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_eventsource_MessageEvent_lastEventId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -3128,7 +3128,7 @@ _t_eventsource_MessageEvent_lastEventId :: proc "c" (env: rawptr, caller: wasm.C
 @(private = "file")
 _t_fetch_Fetch_promise :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -3206,7 +3206,7 @@ _t_fetch_Fetch_promise :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_fetch_Fetch_startWithSignal :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -3286,7 +3286,7 @@ _t_fetch_Fetch_startWithSignal :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_fetch_Response_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -3306,7 +3306,7 @@ _t_fetch_Response_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_fetch_Response_arrayBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -3326,7 +3326,7 @@ _t_fetch_Response_arrayBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_fetch_Response_bytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -3346,7 +3346,7 @@ _t_fetch_Response_bytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_fetch_Response_bodyUsed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -3366,7 +3366,7 @@ _t_fetch_Response_bodyUsed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_fetch_Response_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "fetch.Response_body", "result pointer") }
@@ -3391,7 +3391,7 @@ _t_fetch_Response_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_fetch_Stream_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_ReadableStream{handle = u64(a[0].i64)}
 	_p0.data = lookup_ReadableStream(&c, _p0.handle)
@@ -3411,7 +3411,7 @@ _t_fetch_Stream_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_fetch_Stream_cancel :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_ReadableStream{handle = u64(a[0].i64)}
 	_p0.data = lookup_ReadableStream(&c, _p0.handle)
@@ -3429,7 +3429,7 @@ _t_fetch_Stream_cancel :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_forms_forms_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -3452,7 +3452,7 @@ _t_forms_forms_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_forms_forms_setValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -3481,7 +3481,7 @@ _t_forms_forms_setValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_forms_forms_defaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -3504,7 +3504,7 @@ _t_forms_forms_defaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_forms_forms_setDefaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -3533,7 +3533,7 @@ _t_forms_forms_setDefaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_forms_forms_checked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3553,7 +3553,7 @@ _t_forms_forms_checked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_forms_forms_setChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3576,7 +3576,7 @@ _t_forms_forms_setChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_forms_forms_defaultChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3596,7 +3596,7 @@ _t_forms_forms_defaultChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_forms_forms_setDefaultChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3615,7 +3615,7 @@ _t_forms_forms_setDefaultChecked :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_forms_forms_indeterminate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3635,7 +3635,7 @@ _t_forms_forms_indeterminate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_forms_forms_setIndeterminate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3654,7 +3654,7 @@ _t_forms_forms_setIndeterminate :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_forms_forms_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -3677,7 +3677,7 @@ _t_forms_forms_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_forms_forms_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -3700,7 +3700,7 @@ _t_forms_forms_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_forms_forms_form :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3720,7 +3720,7 @@ _t_forms_forms_form :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_forms_forms_disabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3740,7 +3740,7 @@ _t_forms_forms_disabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_forms_forms_setDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3759,7 +3759,7 @@ _t_forms_forms_setDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_forms_forms_readOnly :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3779,7 +3779,7 @@ _t_forms_forms_readOnly :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_forms_forms_setReadOnly :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3798,7 +3798,7 @@ _t_forms_forms_setReadOnly :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_forms_forms_required :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3818,7 +3818,7 @@ _t_forms_forms_required :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_forms_forms_setRequired :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3837,7 +3837,7 @@ _t_forms_forms_setRequired :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_forms_forms_willValidate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3857,7 +3857,7 @@ _t_forms_forms_willValidate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_forms_forms_validity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3877,7 +3877,7 @@ _t_forms_forms_validity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_forms_forms_validationMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -3900,7 +3900,7 @@ _t_forms_forms_validationMessage :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_forms_forms_setCustomValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -3926,7 +3926,7 @@ _t_forms_forms_setCustomValidity :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_forms_forms_checkValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3946,7 +3946,7 @@ _t_forms_forms_checkValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_forms_forms_reportValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3966,7 +3966,7 @@ _t_forms_forms_reportValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_forms_forms_select :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -3988,7 +3988,7 @@ _t_forms_forms_select :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_forms_forms_selectionStart :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4008,7 +4008,7 @@ _t_forms_forms_selectionStart :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_forms_forms_selectionEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4028,7 +4028,7 @@ _t_forms_forms_selectionEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_forms_forms_selectionDirection :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -4053,7 +4053,7 @@ _t_forms_forms_selectionDirection :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_forms_forms_setSelectionRange :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4082,7 +4082,7 @@ _t_forms_forms_setSelectionRange :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_forms_forms_setRangeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -4118,7 +4118,7 @@ _t_forms_forms_setRangeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_forms_forms_maxLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4138,7 +4138,7 @@ _t_forms_forms_maxLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_forms_forms_minLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4158,7 +4158,7 @@ _t_forms_forms_minLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_forms_forms_stepUp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4181,7 +4181,7 @@ _t_forms_forms_stepUp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_forms_forms_stepDown :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4204,7 +4204,7 @@ _t_forms_forms_stepDown :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_forms_forms_valueAsNumber :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4224,7 +4224,7 @@ _t_forms_forms_valueAsNumber :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_forms_forms_setValueAsNumber :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4247,7 +4247,7 @@ _t_forms_forms_setValueAsNumber :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_forms_forms_valueAsDate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4267,7 +4267,7 @@ _t_forms_forms_valueAsDate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_forms_forms_setValueAsDate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4290,7 +4290,7 @@ _t_forms_forms_setValueAsDate :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_forms_forms_files_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4310,7 +4310,7 @@ _t_forms_forms_files_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_forms_forms_fileName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -4336,7 +4336,7 @@ _t_forms_forms_fileName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_forms_forms_fileSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4357,7 +4357,7 @@ _t_forms_forms_fileSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_forms_forms_fileType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -4383,7 +4383,7 @@ _t_forms_forms_fileType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_forms_HTMLSelectElement_selectedIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4403,7 +4403,7 @@ _t_forms_HTMLSelectElement_selectedIndex :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_forms_HTMLSelectElement_setSelectedIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4426,7 +4426,7 @@ _t_forms_HTMLSelectElement_setSelectedIndex :: proc "c" (env: rawptr, caller: wa
 @(private = "file")
 _t_forms_HTMLSelectElement_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4446,7 +4446,7 @@ _t_forms_HTMLSelectElement_length :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_forms_HTMLSelectElement_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4467,7 +4467,7 @@ _t_forms_HTMLSelectElement_item :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_forms_HTMLSelectElement_selectedOptions_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4487,7 +4487,7 @@ _t_forms_HTMLSelectElement_selectedOptions_length :: proc "c" (env: rawptr, call
 @(private = "file")
 _t_forms_HTMLSelectElement_selectedOptions_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4508,7 +4508,7 @@ _t_forms_HTMLSelectElement_selectedOptions_item :: proc "c" (env: rawptr, caller
 @(private = "file")
 _t_forms_HTMLOptionElement_selected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4528,7 +4528,7 @@ _t_forms_HTMLOptionElement_selected :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_forms_HTMLOptionElement_setSelected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4551,7 +4551,7 @@ _t_forms_HTMLOptionElement_setSelected :: proc "c" (env: rawptr, caller: wasm.Ca
 @(private = "file")
 _t_forms_HTMLOptionElement_defaultSelected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4571,7 +4571,7 @@ _t_forms_HTMLOptionElement_defaultSelected :: proc "c" (env: rawptr, caller: was
 @(private = "file")
 _t_forms_HTMLOptionElement_setDefaultSelected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4594,7 +4594,7 @@ _t_forms_HTMLOptionElement_setDefaultSelected :: proc "c" (env: rawptr, caller: 
 @(private = "file")
 _t_forms_HTMLOptionElement_index :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4614,7 +4614,7 @@ _t_forms_HTMLOptionElement_index :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_forms_HTMLOptionElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -4637,7 +4637,7 @@ _t_forms_HTMLOptionElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_forms_HTMLOptionElement_label :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -4660,7 +4660,7 @@ _t_forms_HTMLOptionElement_label :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_forms_HTMLFormElement_submit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4682,7 +4682,7 @@ _t_forms_HTMLFormElement_submit :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_forms_HTMLFormElement_requestSubmit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4709,7 +4709,7 @@ _t_forms_HTMLFormElement_requestSubmit :: proc "c" (env: rawptr, caller: wasm.Ca
 @(private = "file")
 _t_forms_HTMLFormElement_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4731,7 +4731,7 @@ _t_forms_HTMLFormElement_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_forms_HTMLFormElement_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4751,7 +4751,7 @@ _t_forms_HTMLFormElement_length :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_forms_HTMLFormElement_elements :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4772,7 +4772,7 @@ _t_forms_HTMLFormElement_elements :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_forms_HTMLFormElement_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -4800,7 +4800,7 @@ _t_forms_HTMLFormElement_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_forms_HTMLLabelElement_control :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4820,7 +4820,7 @@ _t_forms_HTMLLabelElement_control :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_forms_HTMLElement_focus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4840,7 +4840,7 @@ _t_forms_HTMLElement_focus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_forms_HTMLElement_blur :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4858,7 +4858,7 @@ _t_forms_HTMLElement_blur :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_forms_HTMLElement_click :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -4878,7 +4878,7 @@ _t_forms_HTMLElement_click :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_forms_Document_activeElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Document_activeElement(&c)
 	api_end(&c)
@@ -4892,7 +4892,7 @@ _t_forms_Document_activeElement :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_forms_HTMLDialogElement_returnValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -4915,7 +4915,7 @@ _t_forms_HTMLDialogElement_returnValue :: proc "c" (env: rawptr, caller: wasm.Ca
 @(private = "file")
 _t_forms_FormData_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "forms.FormData_create", "result pointer") }
@@ -4945,7 +4945,7 @@ _t_forms_FormData_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_forms_FormData_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -4975,7 +4975,7 @@ _t_forms_FormData_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_forms_FormData_appendBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -5017,7 +5017,7 @@ _t_forms_FormData_appendBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_forms_FormData_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -5047,7 +5047,7 @@ _t_forms_FormData_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_forms_FormData_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -5073,7 +5073,7 @@ _t_forms_FormData_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_forms_FormData_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -5101,7 +5101,7 @@ _t_forms_FormData_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_forms_FormData_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -5129,7 +5129,7 @@ _t_forms_FormData_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_forms_FormData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -5161,7 +5161,7 @@ _t_forms_FormData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_forms_FormData_getAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -5194,7 +5194,7 @@ _t_forms_FormData_getAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_forms_FormData_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
@@ -5214,7 +5214,7 @@ _t_forms_FormData_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_forms_FormData_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -5240,7 +5240,7 @@ _t_forms_FormData_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_forms_FormData_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -5266,7 +5266,7 @@ _t_forms_FormData_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_forms_FormData_isFileAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 1)
 	if !_rk { return wasm.trap_bounds(&f, "forms.FormData_isFileAt", "result pointer") }
@@ -5292,7 +5292,7 @@ _t_forms_FormData_isFileAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_forms_FormData_fileSizeAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
@@ -5313,7 +5313,7 @@ _t_forms_FormData_fileSizeAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_forms_FormData_fileTypeAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -5339,7 +5339,7 @@ _t_forms_FormData_fileTypeAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_fetch_Fetch_startFormData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -5418,7 +5418,7 @@ _t_fetch_Fetch_startFormData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_history_Window_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_self(&c)
 	api_end(&c)
@@ -5432,7 +5432,7 @@ _t_history_Window_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_history_Document_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Document_self(&c)
 	api_end(&c)
@@ -5446,7 +5446,7 @@ _t_history_Document_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_history_Location_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -5469,7 +5469,7 @@ _t_history_Location_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_history_Location_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -5498,7 +5498,7 @@ _t_history_Location_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_history_Location_assign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -5522,7 +5522,7 @@ _t_history_Location_assign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_history_Location_replace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -5546,7 +5546,7 @@ _t_history_Location_replace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_history_Location_reload :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	Location_reload(&c)
 	api_end(&c)
@@ -5558,7 +5558,7 @@ _t_history_Location_reload :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_history_History_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := History_length(&c)
 	api_end(&c)
@@ -5572,7 +5572,7 @@ _t_history_History_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_history_History_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -5592,7 +5592,7 @@ _t_history_History_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_history_History_pushState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent0 := wasm.is_absent(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
@@ -5631,7 +5631,7 @@ _t_history_History_pushState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_history_History_replaceState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent0 := wasm.is_absent(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
@@ -5670,7 +5670,7 @@ _t_history_History_replaceState :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_history_History_go :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := a[0].i32
 	History_go(&c, _p0)
@@ -5683,7 +5683,7 @@ _t_history_History_go :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_history_History_scrollRestoration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := History_scrollRestoration(&c)
 	api_end(&c)
@@ -5697,7 +5697,7 @@ _t_history_History_scrollRestoration :: proc "c" (env: rawptr, caller: wasm.Call
 @(private = "file")
 _t_history_History_set_scrollRestoration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_e0 := i32(a[0].i32)
 	if !_valid_ScrollRestoration(_e0) {
@@ -5715,7 +5715,7 @@ _t_history_History_set_scrollRestoration :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_images_HTMLImageElement_naturalWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_HTMLImageElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLImageElement(&c, _p0.handle)
@@ -5735,7 +5735,7 @@ _t_images_HTMLImageElement_naturalWidth :: proc "c" (env: rawptr, caller: wasm.C
 @(private = "file")
 _t_images_HTMLImageElement_naturalHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_HTMLImageElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLImageElement(&c, _p0.handle)
@@ -5755,7 +5755,7 @@ _t_images_HTMLImageElement_naturalHeight :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_images_HTMLImageElement_complete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_HTMLImageElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLImageElement(&c, _p0.handle)
@@ -5775,7 +5775,7 @@ _t_images_HTMLImageElement_complete :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_images_HTMLImageElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -5798,7 +5798,7 @@ _t_images_HTMLImageElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_images_HTMLImageElement_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_HTMLImageElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLImageElement(&c, _p0.handle)
@@ -5818,7 +5818,7 @@ _t_images_HTMLImageElement_decode :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_images_Image_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Buffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_Buffer(&c, _p0.handle)
@@ -5838,7 +5838,7 @@ _t_images_Image_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_js_Engine_console :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -5860,7 +5860,7 @@ _t_js_Engine_console :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_js_Engine_reportException :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -5886,7 +5886,7 @@ _t_js_Engine_reportException :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_js_Engine_storeBytecode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -5902,7 +5902,7 @@ _t_js_Engine_storeBytecode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_js_Engine_timezoneOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := a[0].f64
 	_r := Engine_timezoneOffset(&c, _p0)
@@ -5917,7 +5917,7 @@ _t_js_Engine_timezoneOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_js_Engine_timeZone :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -5934,7 +5934,7 @@ _t_js_Engine_timeZone :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_js_Engine_locale :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -5951,7 +5951,7 @@ _t_js_Engine_locale :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_js_Engine_jitCompile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -5969,7 +5969,7 @@ _t_js_Engine_jitCompile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_js_Engine_jitPoll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := a[0].i32
 	_r := Engine_jitPoll(&c, _p0)
@@ -5984,7 +5984,7 @@ _t_js_Engine_jitPoll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_js_Node_wrap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -6004,7 +6004,7 @@ _t_js_Node_wrap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 @(private = "file")
 _t_js_Node_unpin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	Node_unpin(&c, _p0)
@@ -6017,7 +6017,7 @@ _t_js_Node_unpin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 @(private = "file")
 _t_js_Node_treeRoots :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
@@ -6037,7 +6037,7 @@ _t_js_Node_treeRoots :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_dom_CustomElements_define :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -6057,7 +6057,7 @@ _t_dom_CustomElements_define :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_CustomElements_pending :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := CustomElements_pending(&c)
 	api_end(&c)
@@ -6071,7 +6071,7 @@ _t_dom_CustomElements_pending :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_CustomElements_take :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -6088,7 +6088,7 @@ _t_dom_CustomElements_take :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_CustomElements_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
@@ -6104,7 +6104,7 @@ _t_dom_CustomElements_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_CustomElements_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -6131,7 +6131,7 @@ _t_dom_CustomElements_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_Element_setCustomState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -6150,7 +6150,7 @@ _t_dom_Element_setCustomState :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_Document_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -6167,7 +6167,7 @@ _t_dom_Document_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_Document_currentScript :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Document_currentScript(&c)
 	api_end(&c)
@@ -6181,7 +6181,7 @@ _t_dom_Document_currentScript :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_Window_document :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_document(&c)
 	api_end(&c)
@@ -6195,7 +6195,7 @@ _t_dom_Window_document :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_Document_resolveURL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -6222,7 +6222,7 @@ _t_dom_Document_resolveURL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_Element_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6245,7 +6245,7 @@ _t_dom_Element_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 @(private = "file")
 _t_dom_Element_set_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6274,7 +6274,7 @@ _t_dom_Element_set_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Element_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6297,7 +6297,7 @@ _t_dom_Element_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Element_set_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6326,7 +6326,7 @@ _t_dom_Element_set_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_Collection_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -6359,7 +6359,7 @@ _t_dom_Collection_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Collection_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := Collection_length(&c, _p0)
@@ -6374,7 +6374,7 @@ _t_dom_Collection_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Collection_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
@@ -6390,7 +6390,7 @@ _t_dom_Collection_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_Collection_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6413,7 +6413,7 @@ _t_dom_Collection_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_Collection_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6431,7 +6431,7 @@ _t_dom_Collection_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_ParentNode_querySelectorAllPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6463,7 +6463,7 @@ _t_dom_ParentNode_querySelectorAllPacked :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_dom_HTMLFormElement_namedControl :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6491,7 +6491,7 @@ _t_dom_HTMLFormElement_namedControl :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_ParentNode_querySelector :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6523,7 +6523,7 @@ _t_dom_ParentNode_querySelector :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_TokenList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6551,7 +6551,7 @@ _t_dom_TokenList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_TokenList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6584,7 +6584,7 @@ _t_dom_TokenList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_TokenList_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6620,7 +6620,7 @@ _t_dom_TokenList_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_TokenList_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6656,7 +6656,7 @@ _t_dom_TokenList_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_dom_TokenList_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6692,7 +6692,7 @@ _t_dom_TokenList_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_TokenList_toggle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6732,7 +6732,7 @@ _t_dom_TokenList_toggle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_TokenList_replace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6778,7 +6778,7 @@ _t_dom_TokenList_replace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_TokenList_supports :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6817,7 +6817,7 @@ _t_dom_TokenList_supports :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Dataset_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6849,7 +6849,7 @@ _t_dom_Dataset_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 @(private = "file")
 _t_dom_Dataset_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6885,7 +6885,7 @@ _t_dom_Dataset_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 @(private = "file")
 _t_dom_Dataset_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -6913,7 +6913,7 @@ _t_dom_Dataset_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Dataset_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6936,7 +6936,7 @@ _t_dom_Dataset_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_dom_Element_namespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6961,7 +6961,7 @@ _t_dom_Element_namespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_Element_prefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6986,7 +6986,7 @@ _t_dom_Element_prefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Element_localName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -7009,7 +7009,7 @@ _t_dom_Element_localName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Element_qualifiedTagName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -7032,7 +7032,7 @@ _t_dom_Element_qualifiedTagName :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_Element_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -7055,7 +7055,7 @@ _t_dom_Element_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_dom_Element_set_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7084,7 +7084,7 @@ _t_dom_Element_set_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_Element_hasAttributes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -7104,7 +7104,7 @@ _t_dom_Element_hasAttributes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_Element_attributeNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -7127,7 +7127,7 @@ _t_dom_Element_attributeNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_Element_attributeCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -7147,7 +7147,7 @@ _t_dom_Element_attributeCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_Element_attributeNameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -7173,7 +7173,7 @@ _t_dom_Element_attributeNameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_Element_getAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
@@ -7216,7 +7216,7 @@ _t_dom_Element_getAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_Element_setAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7252,7 +7252,7 @@ _t_dom_Element_setAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_dom_Element_setAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
@@ -7299,7 +7299,7 @@ _t_dom_Element_setAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_Element_removeAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
@@ -7337,7 +7337,7 @@ _t_dom_Element_removeAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_Element_toggleAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7370,7 +7370,7 @@ _t_dom_Element_toggleAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_Element_hasAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7398,7 +7398,7 @@ _t_dom_Element_hasAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_Element_hasAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
@@ -7438,7 +7438,7 @@ _t_dom_Element_hasAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_Element_closest :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7470,7 +7470,7 @@ _t_dom_Element_closest :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_Element_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7502,7 +7502,7 @@ _t_dom_Element_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_Element_webkitMatchesSelector :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7534,7 +7534,7 @@ _t_dom_Element_webkitMatchesSelector :: proc "c" (env: rawptr, caller: wasm.Call
 @(private = "file")
 _t_dom_Element_insertAdjacentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7571,7 +7571,7 @@ _t_dom_Element_insertAdjacentElement :: proc "c" (env: rawptr, caller: wasm.Call
 @(private = "file")
 _t_dom_Element_insertAdjacentText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7607,7 +7607,7 @@ _t_dom_Element_insertAdjacentText :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_Element_insertAdjacentHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7643,7 +7643,7 @@ _t_dom_Element_insertAdjacentHTML :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_Element_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -7666,7 +7666,7 @@ _t_dom_Element_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Element_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7695,7 +7695,7 @@ _t_dom_Element_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_Element_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -7718,7 +7718,7 @@ _t_dom_Element_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Element_set_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7747,7 +7747,7 @@ _t_dom_Element_set_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_Element_shadowRoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -7767,7 +7767,7 @@ _t_dom_Element_shadowRoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_HTMLElement_hiddenState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -7787,7 +7787,7 @@ _t_dom_HTMLElement_hiddenState :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_HTMLElement_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -7810,7 +7810,7 @@ _t_dom_HTMLElement_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_HTMLElement_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7839,7 +7839,7 @@ _t_dom_HTMLElement_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_HTMLElement_translate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -7859,7 +7859,7 @@ _t_dom_HTMLElement_translate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_HTMLElement_set_translate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -7882,7 +7882,7 @@ _t_dom_HTMLElement_set_translate :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_HTMLElement_draggable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -7902,7 +7902,7 @@ _t_dom_HTMLElement_draggable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_HTMLElement_set_draggable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -7925,7 +7925,7 @@ _t_dom_HTMLElement_set_draggable :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_HTMLElement_spellcheck :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -7945,7 +7945,7 @@ _t_dom_HTMLElement_spellcheck :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_HTMLElement_set_spellcheck :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -7968,7 +7968,7 @@ _t_dom_HTMLElement_set_spellcheck :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_HTMLElement_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -7991,7 +7991,7 @@ _t_dom_HTMLElement_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_HTMLElement_set_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8020,7 +8020,7 @@ _t_dom_HTMLElement_set_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_HTMLElement_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8043,7 +8043,7 @@ _t_dom_HTMLElement_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_HTMLElement_set_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8072,7 +8072,7 @@ _t_dom_HTMLElement_set_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_HTMLElement_accessKeyLabel :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8095,7 +8095,7 @@ _t_dom_HTMLElement_accessKeyLabel :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_HTMLOrSVGOrMathMLElement_tabIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -8115,7 +8115,7 @@ _t_dom_HTMLOrSVGOrMathMLElement_tabIndex :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_dom_HTMLOrSVGOrMathMLElement_set_tabIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -8138,7 +8138,7 @@ _t_dom_HTMLOrSVGOrMathMLElement_set_tabIndex :: proc "c" (env: rawptr, caller: w
 @(private = "file")
 _t_dom_HTMLOrSVGOrMathMLElement_nonce :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8161,7 +8161,7 @@ _t_dom_HTMLOrSVGOrMathMLElement_nonce :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HTMLOrSVGOrMathMLElement_set_nonce :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8190,7 +8190,7 @@ _t_dom_HTMLOrSVGOrMathMLElement_set_nonce :: proc "c" (env: rawptr, caller: wasm
 @(private = "file")
 _t_dom_ElementContentEditable_contentEditable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8213,7 +8213,7 @@ _t_dom_ElementContentEditable_contentEditable :: proc "c" (env: rawptr, caller: 
 @(private = "file")
 _t_dom_ElementContentEditable_set_contentEditable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8242,7 +8242,7 @@ _t_dom_ElementContentEditable_set_contentEditable :: proc "c" (env: rawptr, call
 @(private = "file")
 _t_dom_ElementContentEditable_isContentEditable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -8262,7 +8262,7 @@ _t_dom_ElementContentEditable_isContentEditable :: proc "c" (env: rawptr, caller
 @(private = "file")
 _t_dom_HTMLHyperlinkElementUtils_href :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8285,7 +8285,7 @@ _t_dom_HTMLHyperlinkElementUtils_href :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HTMLHyperlinkElementUtils_set_href :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8314,7 +8314,7 @@ _t_dom_HTMLHyperlinkElementUtils_set_href :: proc "c" (env: rawptr, caller: wasm
 @(private = "file")
 _t_dom_HyperlinkElementUtils_origin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8337,7 +8337,7 @@ _t_dom_HyperlinkElementUtils_origin :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_HyperlinkElementUtils_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8360,7 +8360,7 @@ _t_dom_HyperlinkElementUtils_protocol :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HyperlinkElementUtils_set_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8389,7 +8389,7 @@ _t_dom_HyperlinkElementUtils_set_protocol :: proc "c" (env: rawptr, caller: wasm
 @(private = "file")
 _t_dom_HyperlinkElementUtils_username :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8412,7 +8412,7 @@ _t_dom_HyperlinkElementUtils_username :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HyperlinkElementUtils_set_username :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8441,7 +8441,7 @@ _t_dom_HyperlinkElementUtils_set_username :: proc "c" (env: rawptr, caller: wasm
 @(private = "file")
 _t_dom_HyperlinkElementUtils_password :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8464,7 +8464,7 @@ _t_dom_HyperlinkElementUtils_password :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HyperlinkElementUtils_set_password :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8493,7 +8493,7 @@ _t_dom_HyperlinkElementUtils_set_password :: proc "c" (env: rawptr, caller: wasm
 @(private = "file")
 _t_dom_HyperlinkElementUtils_host :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8516,7 +8516,7 @@ _t_dom_HyperlinkElementUtils_host :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_HyperlinkElementUtils_set_host :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8545,7 +8545,7 @@ _t_dom_HyperlinkElementUtils_set_host :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HyperlinkElementUtils_hostname :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8568,7 +8568,7 @@ _t_dom_HyperlinkElementUtils_hostname :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HyperlinkElementUtils_set_hostname :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8597,7 +8597,7 @@ _t_dom_HyperlinkElementUtils_set_hostname :: proc "c" (env: rawptr, caller: wasm
 @(private = "file")
 _t_dom_HyperlinkElementUtils_port :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8620,7 +8620,7 @@ _t_dom_HyperlinkElementUtils_port :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_HyperlinkElementUtils_set_port :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8649,7 +8649,7 @@ _t_dom_HyperlinkElementUtils_set_port :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HyperlinkElementUtils_pathname :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8672,7 +8672,7 @@ _t_dom_HyperlinkElementUtils_pathname :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HyperlinkElementUtils_set_pathname :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8701,7 +8701,7 @@ _t_dom_HyperlinkElementUtils_set_pathname :: proc "c" (env: rawptr, caller: wasm
 @(private = "file")
 _t_dom_HyperlinkElementUtils_search :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8724,7 +8724,7 @@ _t_dom_HyperlinkElementUtils_search :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_HyperlinkElementUtils_set_search :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8753,7 +8753,7 @@ _t_dom_HyperlinkElementUtils_set_search :: proc "c" (env: rawptr, caller: wasm.C
 @(private = "file")
 _t_dom_HyperlinkElementUtils_hash :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8776,7 +8776,7 @@ _t_dom_HyperlinkElementUtils_hash :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_HyperlinkElementUtils_set_hash :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8805,7 +8805,7 @@ _t_dom_HyperlinkElementUtils_set_hash :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HTMLAnchorElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8828,7 +8828,7 @@ _t_dom_HTMLAnchorElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_HTMLAnchorElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8857,7 +8857,7 @@ _t_dom_HTMLAnchorElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_HTMLTemplateElement_content :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -8877,7 +8877,7 @@ _t_dom_HTMLTemplateElement_content :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_events_Event_uiData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 128)
 	if !_rk { return wasm.trap_bounds(&f, "events.Event_uiData", "result pointer") }
@@ -8917,7 +8917,7 @@ _t_events_Event_uiData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_events_UiEvent_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8940,7 +8940,7 @@ _t_events_UiEvent_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_events_UiEvent_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8963,7 +8963,7 @@ _t_events_UiEvent_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_HTMLInputElement_set_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8992,7 +8992,7 @@ _t_dom_HTMLInputElement_set_type :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_HTMLInputElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9015,7 +9015,7 @@ _t_dom_HTMLInputElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HTMLInputElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9038,7 +9038,7 @@ _t_dom_HTMLInputElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HTMLTextAreaElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9061,7 +9061,7 @@ _t_dom_HTMLTextAreaElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_dom_HTMLTextAreaElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9084,7 +9084,7 @@ _t_dom_HTMLTextAreaElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_dom_HTMLOptionElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -9113,7 +9113,7 @@ _t_dom_HTMLOptionElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_HTMLTableElement_caption :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9133,7 +9133,7 @@ _t_dom_HTMLTableElement_caption :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_HTMLTableElement_set_caption :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9160,7 +9160,7 @@ _t_dom_HTMLTableElement_set_caption :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_HTMLTableElement_createCaption :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9180,7 +9180,7 @@ _t_dom_HTMLTableElement_createCaption :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HTMLTableElement_deleteCaption :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9198,7 +9198,7 @@ _t_dom_HTMLTableElement_deleteCaption :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HTMLTableElement_tHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9218,7 +9218,7 @@ _t_dom_HTMLTableElement_tHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_HTMLTableElement_set_tHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9245,7 +9245,7 @@ _t_dom_HTMLTableElement_set_tHead :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_HTMLTableElement_createTHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9265,7 +9265,7 @@ _t_dom_HTMLTableElement_createTHead :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_HTMLTableElement_deleteTHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9283,7 +9283,7 @@ _t_dom_HTMLTableElement_deleteTHead :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_HTMLTableElement_tFoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9303,7 +9303,7 @@ _t_dom_HTMLTableElement_tFoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_HTMLTableElement_set_tFoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9330,7 +9330,7 @@ _t_dom_HTMLTableElement_set_tFoot :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_HTMLTableElement_createTFoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9350,7 +9350,7 @@ _t_dom_HTMLTableElement_createTFoot :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_HTMLTableElement_deleteTFoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9368,7 +9368,7 @@ _t_dom_HTMLTableElement_deleteTFoot :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_HTMLTableElement_createTBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9388,7 +9388,7 @@ _t_dom_HTMLTableElement_createTBody :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_HTMLTableElement_insertRow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.HTMLTableElement_insertRow", "result pointer") }
@@ -9414,7 +9414,7 @@ _t_dom_HTMLTableElement_insertRow :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_HTMLTableElement_deleteRow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9437,7 +9437,7 @@ _t_dom_HTMLTableElement_deleteRow :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_HTMLTableSectionElement_insertRow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.HTMLTableSectionElement_insertRow", "result pointer") }
@@ -9463,7 +9463,7 @@ _t_dom_HTMLTableSectionElement_insertRow :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_dom_HTMLTableSectionElement_deleteRow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9486,7 +9486,7 @@ _t_dom_HTMLTableSectionElement_deleteRow :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_dom_HTMLTableRowElement_insertCell :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.HTMLTableRowElement_insertCell", "result pointer") }
@@ -9512,7 +9512,7 @@ _t_dom_HTMLTableRowElement_insertCell :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HTMLTableRowElement_deleteCell :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9535,7 +9535,7 @@ _t_dom_HTMLTableRowElement_deleteCell :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HTMLTableRowElement_rowIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9555,7 +9555,7 @@ _t_dom_HTMLTableRowElement_rowIndex :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_HTMLTableRowElement_sectionRowIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9575,7 +9575,7 @@ _t_dom_HTMLTableRowElement_sectionRowIndex :: proc "c" (env: rawptr, caller: was
 @(private = "file")
 _t_dom_HTMLTableCellElement_cellIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9595,7 +9595,7 @@ _t_dom_HTMLTableCellElement_cellIndex :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HTMLTitleElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -9618,7 +9618,7 @@ _t_dom_HTMLTitleElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_HTMLTitleElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -9647,7 +9647,7 @@ _t_dom_HTMLTitleElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_HTMLScriptElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -9670,7 +9670,7 @@ _t_dom_HTMLScriptElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_HTMLScriptElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -9699,7 +9699,7 @@ _t_dom_HTMLScriptElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_HTMLInputElement_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9719,7 +9719,7 @@ _t_dom_HTMLInputElement_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_HTMLDialogElement_show :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9741,7 +9741,7 @@ _t_dom_HTMLDialogElement_show :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_HTMLDialogElement_showModal :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9763,7 +9763,7 @@ _t_dom_HTMLDialogElement_showModal :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_dom_HTMLDialogElement_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
@@ -9793,7 +9793,7 @@ _t_dom_HTMLDialogElement_close :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_HTMLDialogElement_requestClose :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
@@ -9823,7 +9823,7 @@ _t_dom_HTMLDialogElement_requestClose :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_Element_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 32)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Element_boundingRect", "result pointer") }
@@ -9847,7 +9847,7 @@ _t_dom_Element_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_Element_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -9870,7 +9870,7 @@ _t_dom_Element_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_Element_clientTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9890,7 +9890,7 @@ _t_dom_Element_clientTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Element_clientLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9910,7 +9910,7 @@ _t_dom_Element_clientLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Element_clientWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9930,7 +9930,7 @@ _t_dom_Element_clientWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_Element_clientHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9950,7 +9950,7 @@ _t_dom_Element_clientHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_Element_scrollTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9970,7 +9970,7 @@ _t_dom_Element_scrollTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Element_set_scrollTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -9989,7 +9989,7 @@ _t_dom_Element_set_scrollTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_Element_scrollLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -10009,7 +10009,7 @@ _t_dom_Element_scrollLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Element_set_scrollLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -10028,7 +10028,7 @@ _t_dom_Element_set_scrollLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_Element_scrollWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -10048,7 +10048,7 @@ _t_dom_Element_scrollWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_Element_scrollHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -10068,7 +10068,7 @@ _t_dom_Element_scrollHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_Element_scrollToXY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -10089,7 +10089,7 @@ _t_dom_Element_scrollToXY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Element_scrollIntoViewAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -10109,7 +10109,7 @@ _t_dom_Element_scrollIntoViewAt :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_HTMLElement_offsetParent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -10129,7 +10129,7 @@ _t_dom_HTMLElement_offsetParent :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_HTMLElement_offsetTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -10149,7 +10149,7 @@ _t_dom_HTMLElement_offsetTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_HTMLElement_offsetLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -10169,7 +10169,7 @@ _t_dom_HTMLElement_offsetLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_HTMLElement_offsetWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -10189,7 +10189,7 @@ _t_dom_HTMLElement_offsetWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_HTMLElement_offsetHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -10209,7 +10209,7 @@ _t_dom_HTMLElement_offsetHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_Document_elementFromPoint :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := a[0].f64
 	_p1 := a[1].f64
@@ -10225,7 +10225,7 @@ _t_dom_Document_elementFromPoint :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_Window_innerWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_innerWidth(&c)
 	api_end(&c)
@@ -10239,7 +10239,7 @@ _t_dom_Window_innerWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Window_innerHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_innerHeight(&c)
 	api_end(&c)
@@ -10253,7 +10253,7 @@ _t_dom_Window_innerHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Window_outerWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_outerWidth(&c)
 	api_end(&c)
@@ -10267,7 +10267,7 @@ _t_dom_Window_outerWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Window_outerHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_outerHeight(&c)
 	api_end(&c)
@@ -10281,7 +10281,7 @@ _t_dom_Window_outerHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Window_scrollX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_scrollX(&c)
 	api_end(&c)
@@ -10295,7 +10295,7 @@ _t_dom_Window_scrollX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Window_scrollY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_scrollY(&c)
 	api_end(&c)
@@ -10309,7 +10309,7 @@ _t_dom_Window_scrollY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Window_pageXOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_pageXOffset(&c)
 	api_end(&c)
@@ -10323,7 +10323,7 @@ _t_dom_Window_pageXOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Window_pageYOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_pageYOffset(&c)
 	api_end(&c)
@@ -10337,7 +10337,7 @@ _t_dom_Window_pageYOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Window_devicePixelRatio :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_devicePixelRatio(&c)
 	api_end(&c)
@@ -10351,7 +10351,7 @@ _t_dom_Window_devicePixelRatio :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_Window_screenX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_screenX(&c)
 	api_end(&c)
@@ -10365,7 +10365,7 @@ _t_dom_Window_screenX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Window_screenY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_screenY(&c)
 	api_end(&c)
@@ -10379,7 +10379,7 @@ _t_dom_Window_screenY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Window_screenLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_screenLeft(&c)
 	api_end(&c)
@@ -10393,7 +10393,7 @@ _t_dom_Window_screenLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Window_screenTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Window_screenTop(&c)
 	api_end(&c)
@@ -10407,7 +10407,7 @@ _t_dom_Window_screenTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_Window_scrollToXY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := a[0].f64
 	_p1 := a[1].f64
@@ -10423,7 +10423,7 @@ _t_dom_Window_scrollToXY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Range_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 32)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Range_boundingRect", "result pointer") }
@@ -10455,7 +10455,7 @@ _t_dom_Range_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Range_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
@@ -10486,7 +10486,7 @@ _t_dom_Range_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_MutationObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
@@ -10502,7 +10502,7 @@ _t_dom_MutationObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_MutationObserver_observe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n3 := wasm.addr(&f, a[4])
 	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
@@ -10533,7 +10533,7 @@ _t_dom_MutationObserver_observe :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_MutationObserver_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	MutationObserver_disconnect(&c, _p0)
@@ -10546,7 +10546,7 @@ _t_dom_MutationObserver_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_dom_MutationObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -10564,7 +10564,7 @@ _t_dom_MutationObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_MutationObserver_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	MutationObserver_release(&c, _p0)
@@ -10577,7 +10577,7 @@ _t_dom_MutationObserver_release :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_MutationObserver_live :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := MutationObserver_live(&c, _p0)
@@ -10592,7 +10592,7 @@ _t_dom_MutationObserver_live :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_Range_comparePoints :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -10620,7 +10620,7 @@ _t_dom_Range_comparePoints :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_Range_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
@@ -10651,7 +10651,7 @@ _t_dom_Range_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 @(private = "file")
 _t_dom_Range_contents :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Range_contents", "result pointer") }
@@ -10684,7 +10684,7 @@ _t_dom_Range_contents :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Selection_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 32)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Selection_state", "result pointer") }
@@ -10703,7 +10703,7 @@ _t_dom_Selection_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_Selection_setRange :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -10732,7 +10732,7 @@ _t_dom_Selection_setRange :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Selection_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	Selection_clear(&c)
 	api_end(&c)
@@ -10744,7 +10744,7 @@ _t_dom_Selection_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_Selection_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -10761,7 +10761,7 @@ _t_dom_Selection_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_InlineStyle_getProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -10792,7 +10792,7 @@ _t_dom_InlineStyle_getProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_InlineStyle_priority :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -10823,7 +10823,7 @@ _t_dom_InlineStyle_priority :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_InlineStyle_setProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -10866,7 +10866,7 @@ _t_dom_InlineStyle_setProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_InlineStyle_removeProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -10898,7 +10898,7 @@ _t_dom_InlineStyle_removeProperty :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_InlineStyle_cssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -10921,7 +10921,7 @@ _t_dom_InlineStyle_cssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_InlineStyle_setCssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -10950,7 +10950,7 @@ _t_dom_InlineStyle_setCssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_InlineStyle_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -10970,7 +10970,7 @@ _t_dom_InlineStyle_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_InlineStyle_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -10994,7 +10994,7 @@ _t_dom_InlineStyle_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_ComputedStyle_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -11033,7 +11033,7 @@ _t_dom_ComputedStyle_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_ComputedStyle_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := ComputedStyle_count(&c)
 	api_end(&c)
@@ -11047,7 +11047,7 @@ _t_dom_ComputedStyle_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_ComputedStyle_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -11065,7 +11065,7 @@ _t_dom_ComputedStyle_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_CSS_supportsDeclaration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -11095,7 +11095,7 @@ _t_dom_CSS_supportsDeclaration :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_CSS_supportsCondition :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -11117,7 +11117,7 @@ _t_dom_CSS_supportsCondition :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_Node_nodeName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -11140,7 +11140,7 @@ _t_dom_Node_nodeName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_dom_Node_baseURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -11163,7 +11163,7 @@ _t_dom_Node_baseURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_dom_Node_isConnected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11183,7 +11183,7 @@ _t_dom_Node_isConnected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_Node_ownerDocument :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11203,7 +11203,7 @@ _t_dom_Node_ownerDocument :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Node_parentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11223,7 +11223,7 @@ _t_dom_Node_parentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Node_hasChildNodes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11243,7 +11243,7 @@ _t_dom_Node_hasChildNodes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Node_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -11268,7 +11268,7 @@ _t_dom_Node_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Node_set_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -11297,7 +11297,7 @@ _t_dom_Node_set_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Node_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -11322,7 +11322,7 @@ _t_dom_Node_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_Node_set_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -11351,7 +11351,7 @@ _t_dom_Node_set_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_Node_normalize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11369,7 +11369,7 @@ _t_dom_Node_normalize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Node_cloneNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Node_cloneNode", "result pointer") }
@@ -11395,7 +11395,7 @@ _t_dom_Node_cloneNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Node_isEqualNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11421,7 +11421,7 @@ _t_dom_Node_isEqualNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_Node_isSameNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11447,7 +11447,7 @@ _t_dom_Node_isSameNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_Node_compareDocumentPosition :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11473,7 +11473,7 @@ _t_dom_Node_compareDocumentPosition :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_Node_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11499,7 +11499,7 @@ _t_dom_Node_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_dom_Node_lookupPrefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
@@ -11535,7 +11535,7 @@ _t_dom_Node_lookupPrefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Node_lookupNamespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
@@ -11571,7 +11571,7 @@ _t_dom_Node_lookupNamespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_Node_isDefaultNamespace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
@@ -11603,7 +11603,7 @@ _t_dom_Node_isDefaultNamespace :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_Node_rootNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11623,7 +11623,7 @@ _t_dom_Node_rootNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_dom_Node_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11643,7 +11643,7 @@ _t_dom_Node_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 @(private = "file")
 _t_dom_Node_preInsert :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11675,7 +11675,7 @@ _t_dom_Node_preInsert :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Node_replaceChildChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11707,7 +11707,7 @@ _t_dom_Node_replaceChildChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_Node_preRemove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11734,7 +11734,7 @@ _t_dom_Node_preRemove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Node_insertItems :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -11761,7 +11761,7 @@ _t_dom_Node_insertItems :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_Node_pinAll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
@@ -11777,7 +11777,7 @@ _t_dom_Node_pinAll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 @(private = "file")
 _t_dom_Node_unpinAll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
@@ -11793,7 +11793,7 @@ _t_dom_Node_unpinAll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_dom_ParentNode_firstElementChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11813,7 +11813,7 @@ _t_dom_ParentNode_firstElementChild :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_ParentNode_lastElementChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11833,7 +11833,7 @@ _t_dom_ParentNode_lastElementChild :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_dom_ParentNode_childElementCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11853,7 +11853,7 @@ _t_dom_ParentNode_childElementCount :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_ChildNode_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11871,7 +11871,7 @@ _t_dom_ChildNode_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_NonDocumentTypeChildNode_previousElementSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11891,7 +11891,7 @@ _t_dom_NonDocumentTypeChildNode_previousElementSibling :: proc "c" (env: rawptr,
 @(private = "file")
 _t_dom_NonDocumentTypeChildNode_nextElementSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -11911,7 +11911,7 @@ _t_dom_NonDocumentTypeChildNode_nextElementSibling :: proc "c" (env: rawptr, cal
 @(private = "file")
 _t_dom_NonElementParentNode_getElementById :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -11939,7 +11939,7 @@ _t_dom_NonElementParentNode_getElementById :: proc "c" (env: rawptr, caller: was
 @(private = "file")
 _t_dom_CharacterData_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -11962,7 +11962,7 @@ _t_dom_CharacterData_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_CharacterData_set_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -11988,7 +11988,7 @@ _t_dom_CharacterData_set_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_CharacterData_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -12008,7 +12008,7 @@ _t_dom_CharacterData_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_CharacterData_substringData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
@@ -12035,7 +12035,7 @@ _t_dom_CharacterData_substringData :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_dom_CharacterData_appendData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -12061,7 +12061,7 @@ _t_dom_CharacterData_appendData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_CharacterData_insertData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -12091,7 +12091,7 @@ _t_dom_CharacterData_insertData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_CharacterData_deleteData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -12115,7 +12115,7 @@ _t_dom_CharacterData_deleteData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_CharacterData_replaceData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n3 := wasm.addr(&f, a[4])
 	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
@@ -12146,7 +12146,7 @@ _t_dom_CharacterData_replaceData :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_Text_splitText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Text_splitText", "result pointer") }
@@ -12172,7 +12172,7 @@ _t_dom_Text_splitText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Text_wholeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -12195,7 +12195,7 @@ _t_dom_Text_wholeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_DocumentType_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -12218,7 +12218,7 @@ _t_dom_DocumentType_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_DocumentType_publicId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -12241,7 +12241,7 @@ _t_dom_DocumentType_publicId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_DocumentType_systemId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -12264,7 +12264,7 @@ _t_dom_DocumentType_systemId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_Document_createElementChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -12291,7 +12291,7 @@ _t_dom_Document_createElementChecked :: proc "c" (env: rawptr, caller: wasm.Call
 @(private = "file")
 _t_dom_Document_createElementNSChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent0 := wasm.is_absent(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
@@ -12329,7 +12329,7 @@ _t_dom_Document_createElementNSChecked :: proc "c" (env: rawptr, caller: wasm.Ca
 @(private = "file")
 _t_dom_Document_createDocumentFragment :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Document_createDocumentFragment", "result pointer") }
@@ -12349,7 +12349,7 @@ _t_dom_Document_createDocumentFragment :: proc "c" (env: rawptr, caller: wasm.Ca
 @(private = "file")
 _t_dom_Document_createComment :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -12376,7 +12376,7 @@ _t_dom_Document_createComment :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_Document_createCDATASection :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -12403,7 +12403,7 @@ _t_dom_Document_createCDATASection :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_dom_Document_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Document_adoptNode", "result pointer") }
@@ -12428,7 +12428,7 @@ _t_dom_Document_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Document_documentURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -12445,7 +12445,7 @@ _t_dom_Document_documentURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_Document_compatMode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -12462,7 +12462,7 @@ _t_dom_Document_compatMode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_Document_characterSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -12479,7 +12479,7 @@ _t_dom_Document_characterSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_Document_charset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -12496,7 +12496,7 @@ _t_dom_Document_charset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_Document_inputEncoding :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -12513,7 +12513,7 @@ _t_dom_Document_inputEncoding :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_Document_contentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -12530,7 +12530,7 @@ _t_dom_Document_contentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_Document_doctype :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Document_doctype(&c)
 	api_end(&c)
@@ -12544,7 +12544,7 @@ _t_dom_Document_doctype :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_Document_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -12561,7 +12561,7 @@ _t_dom_Document_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_dom_Document_set_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -12581,7 +12581,7 @@ _t_dom_Document_set_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Document_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -12598,7 +12598,7 @@ _t_dom_Document_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_dom_Document_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -12618,7 +12618,7 @@ _t_dom_Document_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_Document_hasFocus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Document_hasFocus(&c)
 	api_end(&c)
@@ -12632,7 +12632,7 @@ _t_dom_Document_hasFocus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Document_referrer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -12649,7 +12649,7 @@ _t_dom_Document_referrer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_Document_lastModified :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -12666,7 +12666,7 @@ _t_dom_Document_lastModified :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_Document_domain :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -12683,7 +12683,7 @@ _t_dom_Document_domain :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_Document_scrollingElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Document_scrollingElement(&c)
 	api_end(&c)
@@ -12697,7 +12697,7 @@ _t_dom_Document_scrollingElement :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_Document_set_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	if _p0.handle != 0 { _p0.data = lookup_Element(&c, _p0.handle) }
@@ -12719,7 +12719,7 @@ _t_dom_Document_set_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_DOMImplementation_createHTMLDocument :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_absent0 := wasm.is_absent(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
@@ -12750,7 +12750,7 @@ _t_dom_DOMImplementation_createHTMLDocument :: proc "c" (env: rawptr, caller: wa
 @(private = "file")
 _t_dom_DOMImplementation_createDocumentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -12791,7 +12791,7 @@ _t_dom_DOMImplementation_createDocumentType :: proc "c" (env: rawptr, caller: wa
 @(private = "file")
 _t_dom_Document_partOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -12812,7 +12812,7 @@ _t_dom_Document_partOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_events_EventTarget_dispatchEngineEvent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -12847,7 +12847,7 @@ _t_events_EventTarget_dispatchEngineEvent :: proc "c" (env: rawptr, caller: wasm
 @(private = "file")
 _t_events_Event_engineId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -12867,7 +12867,7 @@ _t_events_Event_engineId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_events_Event_interface :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -12887,7 +12887,7 @@ _t_events_Event_interface :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_events_Event_isLive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := Event_isLive(&c, _p0)
@@ -12902,7 +12902,7 @@ _t_events_Event_isLive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_events_Event_bubbles :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -12922,7 +12922,7 @@ _t_events_Event_bubbles :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_events_Event_cancelable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -12942,7 +12942,7 @@ _t_events_Event_cancelable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_events_Event_eventPhase :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -12962,7 +12962,7 @@ _t_events_Event_eventPhase :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_events_Event_timeStamp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -12982,7 +12982,7 @@ _t_events_Event_timeStamp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_events_Event_isTrusted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -13002,7 +13002,7 @@ _t_events_Event_isTrusted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_events_Event_propagationStopped :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -13022,7 +13022,7 @@ _t_events_Event_propagationStopped :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_events_EventTarget_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := EventTarget_create(&c)
 	api_end(&c)
@@ -13036,7 +13036,7 @@ _t_events_EventTarget_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_timers_IntersectionObservers_schedule :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := a[0].i32 != 0
 	IntersectionObservers_schedule(&c, _p0)
@@ -13049,7 +13049,7 @@ _t_timers_IntersectionObservers_schedule :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_scripts_Document_writeMarkup :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -13070,7 +13070,7 @@ _t_scripts_Document_writeMarkup :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_scripts_Document_openStream :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_err := Document_openStream(&c)
 	api_end(&c)
@@ -13087,7 +13087,7 @@ _t_scripts_Document_openStream :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_scripts_Document_closeStream :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_err := Document_closeStream(&c)
 	api_end(&c)
@@ -13104,7 +13104,7 @@ _t_scripts_Document_closeStream :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_scripts_HTMLScriptElement_forceAsync :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := HTMLScriptElement_forceAsync(&c, _p0)
@@ -13119,7 +13119,7 @@ _t_scripts_HTMLScriptElement_forceAsync :: proc "c" (env: rawptr, caller: wasm.C
 @(private = "file")
 _t_scripts_HTMLScriptElement_setForceAsync :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32 != 0
@@ -13133,7 +13133,7 @@ _t_scripts_HTMLScriptElement_setForceAsync :: proc "c" (env: rawptr, caller: was
 @(private = "file")
 _t_scripts_Script_allowInline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -13158,7 +13158,7 @@ _t_scripts_Script_allowInline :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_scripts_Script_allowEval :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -13176,7 +13176,7 @@ _t_scripts_Script_allowEval :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_scripts_Script_javascriptResult :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -13192,7 +13192,7 @@ _t_scripts_Script_javascriptResult :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_scripts_Script_baseName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -13209,7 +13209,7 @@ _t_scripts_Script_baseName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_scripts_Module_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -13237,7 +13237,7 @@ _t_scripts_Module_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_scripts_Module_source :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -13261,7 +13261,7 @@ _t_scripts_Module_source :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_scripts_Module_request :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -13291,7 +13291,7 @@ _t_scripts_Module_request :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_scripts_Module_import :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -13322,7 +13322,7 @@ _t_scripts_Module_import :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_scripts_Engine_queueRejectionCheck :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	Engine_queueRejectionCheck(&c)
 	api_end(&c)
@@ -13334,7 +13334,7 @@ _t_scripts_Engine_queueRejectionCheck :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_scripts_Worker_createScript :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -13367,7 +13367,7 @@ _t_scripts_Worker_createScript :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_scripts_Worker_postSerialized :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -13389,7 +13389,7 @@ _t_scripts_Worker_postSerialized :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_scripts_DedicatedWorkerGlobalScope_postSerialized :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -13410,7 +13410,7 @@ _t_scripts_DedicatedWorkerGlobalScope_postSerialized :: proc "c" (env: rawptr, c
 @(private = "file")
 _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -13434,7 +13434,7 @@ _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm
 @(private = "file")
 _t_dom_Window_print :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	Window_print(&c)
 	api_end(&c)
@@ -13446,7 +13446,7 @@ _t_dom_Window_print :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_dom_Element_attachShadowInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Element_attachShadowInit", "result pointer") }
@@ -13476,7 +13476,7 @@ _t_dom_Element_attachShadowInit :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_CustomElements_disable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -13498,7 +13498,7 @@ _t_dom_CustomElements_disable :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_ShadowRoot_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -13521,7 +13521,7 @@ _t_dom_ShadowRoot_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_ShadowRoot_delegatesFocus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -13541,7 +13541,7 @@ _t_dom_ShadowRoot_delegatesFocus :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_ShadowRoot_clonable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -13561,7 +13561,7 @@ _t_dom_ShadowRoot_clonable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_ShadowRoot_serializable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -13581,7 +13581,7 @@ _t_dom_ShadowRoot_serializable :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_ShadowRoot_slotAssignment :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -13604,7 +13604,7 @@ _t_dom_ShadowRoot_slotAssignment :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_ShadowRoot_host :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -13624,7 +13624,7 @@ _t_dom_ShadowRoot_host :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_dom_ShadowRoot_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -13647,7 +13647,7 @@ _t_dom_ShadowRoot_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_ShadowRoot_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -13676,7 +13676,7 @@ _t_dom_ShadowRoot_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_ShadowRoot_activeElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -13696,7 +13696,7 @@ _t_dom_ShadowRoot_activeElement :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_Node_getHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2, 8)
@@ -13724,7 +13724,7 @@ _t_dom_Node_getHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_dom_Node_setHTMLUnsafe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -13753,7 +13753,7 @@ _t_dom_Node_setHTMLUnsafe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_Document_parseHTMLUnsafeNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -13780,7 +13780,7 @@ _t_dom_Document_parseHTMLUnsafeNode :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_dom_Node_rootNodeComposed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -13801,7 +13801,7 @@ _t_dom_Node_rootNodeComposed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_dom_Slottable_assignedSlot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -13821,7 +13821,7 @@ _t_dom_Slottable_assignedSlot :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_HTMLSlotElement_assignedPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
@@ -13846,7 +13846,7 @@ _t_dom_HTMLSlotElement_assignedPacked :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_HTMLSlotElement_assignNodes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1, 8)
@@ -13872,7 +13872,7 @@ _t_dom_HTMLSlotElement_assignNodes :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_dom_Document_shadowIncludingByName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -13897,7 +13897,7 @@ _t_dom_Document_shadowIncludingByName :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_dom_DocumentOrShadowRoot_elementsFromPointPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
@@ -13922,7 +13922,7 @@ _t_dom_DocumentOrShadowRoot_elementsFromPointPacked :: proc "c" (env: rawptr, ca
 @(private = "file")
 _t_dom_Shadow_fireSlotChanges :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	Shadow_fireSlotChanges(&c)
 	api_end(&c)
@@ -13934,7 +13934,7 @@ _t_dom_Shadow_fireSlotChanges :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_Node_isLive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := Node_isLive(&c, _p0)
@@ -13949,7 +13949,7 @@ _t_dom_Node_isLive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 @(private = "file")
 _t_dom_Node_shadowIncludingElements :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -13972,7 +13972,7 @@ _t_dom_Node_shadowIncludingElements :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_events_Event_composedPathPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -13995,7 +13995,7 @@ _t_events_Event_composedPathPacked :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_events_EventTarget_lastTarget :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := EventTarget_lastTarget(&c)
 	api_end(&c)
@@ -14009,7 +14009,7 @@ _t_events_EventTarget_lastTarget :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_events_EventTarget_lastRelated :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := EventTarget_lastRelated(&c)
 	api_end(&c)
@@ -14023,7 +14023,7 @@ _t_events_EventTarget_lastRelated :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_events_Event_setNextRelated :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	Event_setNextRelated(&c, _p0)
@@ -14036,7 +14036,7 @@ _t_events_Event_setNextRelated :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_events_Event_relatedNow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -14056,7 +14056,7 @@ _t_events_Event_relatedNow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_events_Event_inShadowTreeNow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := Event_inShadowTreeNow(&c, _p0)
@@ -14071,7 +14071,7 @@ _t_events_Event_inShadowTreeNow :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_Element_attachInternals :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Element_attachInternals", "result pointer") }
@@ -14096,7 +14096,7 @@ _t_dom_Element_attachInternals :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_ElementInternals_shadowRootOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := ElementInternals_shadowRootOf(&c, _p0)
@@ -14111,7 +14111,7 @@ _t_dom_ElementInternals_shadowRootOf :: proc "c" (env: rawptr, caller: wasm.Call
 @(private = "file")
 _t_dom_ElementInternals_element :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := ElementInternals_element(&c, _p0)
@@ -14126,7 +14126,7 @@ _t_dom_ElementInternals_element :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_CustomStates_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -14147,7 +14147,7 @@ _t_dom_CustomStates_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_CustomStates_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -14170,7 +14170,7 @@ _t_dom_CustomStates_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_dom_CustomStates_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -14193,7 +14193,7 @@ _t_dom_CustomStates_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_dom_CustomStates_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	CustomStates_clear(&c, _p0)
@@ -14206,7 +14206,7 @@ _t_dom_CustomStates_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_dom_CustomStates_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -14224,7 +14224,7 @@ _t_dom_CustomStates_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_dom_CSSStyleSheet_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -14255,7 +14255,7 @@ _t_dom_CSSStyleSheet_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_dom_CSSStyleSheet_replaceText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -14280,7 +14280,7 @@ _t_dom_CSSStyleSheet_replaceText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_CSSStyleSheet_ruleCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_ruleCount(&c, _p0)
@@ -14295,7 +14295,7 @@ _t_dom_CSSStyleSheet_ruleCount :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_CSSStyleSheet_ruleText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -14317,7 +14317,7 @@ _t_dom_CSSStyleSheet_ruleText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_dom_CSSStyleSheet_insertRuleAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -14346,7 +14346,7 @@ _t_dom_CSSStyleSheet_insertRuleAt :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_CSSStyleSheet_deleteRuleAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
@@ -14365,7 +14365,7 @@ _t_dom_CSSStyleSheet_deleteRuleAt :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_CSSStyleSheet_isDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_isDisabled(&c, _p0)
@@ -14380,7 +14380,7 @@ _t_dom_CSSStyleSheet_isDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_dom_CSSStyleSheet_setDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32 != 0
@@ -14394,7 +14394,7 @@ _t_dom_CSSStyleSheet_setDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_dom_CSSStyleSheet_mediaText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -14412,7 +14412,7 @@ _t_dom_CSSStyleSheet_mediaText :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_dom_CSSStyleSheet_setMediaText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -14433,7 +14433,7 @@ _t_dom_CSSStyleSheet_setMediaText :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_dom_CSSStyleSheet_isConstructed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_isConstructed(&c, _p0)
@@ -14448,7 +14448,7 @@ _t_dom_CSSStyleSheet_isConstructed :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_dom_DocumentOrShadowRoot_adopt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1, 8)
@@ -14474,7 +14474,7 @@ _t_dom_DocumentOrShadowRoot_adopt :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_navigator_Navigator_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -14497,7 +14497,7 @@ _t_navigator_Navigator_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_navigator_Navigator_hardwareConcurrency :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Navigator_hardwareConcurrency(&c)
 	api_end(&c)
@@ -14511,7 +14511,7 @@ _t_navigator_Navigator_hardwareConcurrency :: proc "c" (env: rawptr, caller: was
 @(private = "file")
 _t_navigator_Navigator_onLine :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Navigator_onLine(&c)
 	api_end(&c)
@@ -14525,7 +14525,7 @@ _t_navigator_Navigator_onLine :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_navigator_Navigator_cookieEnabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Navigator_cookieEnabled(&c)
 	api_end(&c)
@@ -14539,7 +14539,7 @@ _t_navigator_Navigator_cookieEnabled :: proc "c" (env: rawptr, caller: wasm.Call
 @(private = "file")
 _t_navigator_Beacon_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -14574,7 +14574,7 @@ _t_navigator_Beacon_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_media_MediaQueryList_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -14596,7 +14596,7 @@ _t_media_MediaQueryList_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_media_MediaQueryList_media :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -14619,7 +14619,7 @@ _t_media_MediaQueryList_media :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_media_MediaQueryList_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_MediaQueryList{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaQueryList(&c, _p0.handle)
@@ -14639,7 +14639,7 @@ _t_media_MediaQueryList_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_media_Screen_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_e0 := i32(a[0].i32)
 	if !_valid_ScreenField(_e0) {
@@ -14659,7 +14659,7 @@ _t_media_Screen_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_forms_FormData_fileAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "forms.FormData_fileAt", "result pointer") }
@@ -14685,7 +14685,7 @@ _t_forms_FormData_fileAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_forms_FormData_setBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -14727,7 +14727,7 @@ _t_forms_FormData_setBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_forms_FormData_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -14759,7 +14759,7 @@ _t_forms_FormData_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -14831,7 +14831,7 @@ _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 @(private = "file")
 _t_net_Fetch_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -14851,7 +14851,7 @@ _t_net_Fetch_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 @(private = "file")
 _t_net_Fetch_status :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -14871,7 +14871,7 @@ _t_net_Fetch_status :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_net_Fetch_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -14891,7 +14891,7 @@ _t_net_Fetch_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 @(private = "file")
 _t_net_Fetch_redirected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -14911,7 +14911,7 @@ _t_net_Fetch_redirected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_net_Fetch_headers :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -14934,7 +14934,7 @@ _t_net_Fetch_headers :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_net_Fetch_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -14957,7 +14957,7 @@ _t_net_Fetch_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 @(private = "file")
 _t_net_Fetch_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -14980,7 +14980,7 @@ _t_net_Fetch_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 @(private = "file")
 _t_net_Fetch_errorKind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -15000,7 +15000,7 @@ _t_net_Fetch_errorKind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_net_Fetch_bodyLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -15020,7 +15020,7 @@ _t_net_Fetch_bodyLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_net_Fetch_readBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -15045,7 +15045,7 @@ _t_net_Fetch_readBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_net_Fetch_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -15067,7 +15067,7 @@ _t_net_Fetch_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_performance_Performance_now :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Performance_now(&c)
 	api_end(&c)
@@ -15081,7 +15081,7 @@ _t_performance_Performance_now :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_performance_Performance_timeOrigin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Performance_timeOrigin(&c)
 	api_end(&c)
@@ -15095,7 +15095,7 @@ _t_performance_Performance_timeOrigin :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_performance_Performance_mark :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15120,7 +15120,7 @@ _t_performance_Performance_mark :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_performance_Performance_measure :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15158,7 +15158,7 @@ _t_performance_Performance_measure :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_performance_Performance_measureTimes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15184,7 +15184,7 @@ _t_performance_Performance_measureTimes :: proc "c" (env: rawptr, caller: wasm.C
 @(private = "file")
 _t_performance_Performance_entryCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15212,7 +15212,7 @@ _t_performance_Performance_entryCount :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_performance_Performance_entryStartTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15241,7 +15241,7 @@ _t_performance_Performance_entryStartTime :: proc "c" (env: rawptr, caller: wasm
 @(private = "file")
 _t_performance_Performance_entryDuration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15270,7 +15270,7 @@ _t_performance_Performance_entryDuration :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_performance_Performance_entryName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15303,7 +15303,7 @@ _t_performance_Performance_entryName :: proc "c" (env: rawptr, caller: wasm.Call
 @(private = "file")
 _t_performance_Performance_entryType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15336,7 +15336,7 @@ _t_performance_Performance_entryType :: proc "c" (env: rawptr, caller: wasm.Call
 @(private = "file")
 _t_performance_Performance_clearMarks :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15356,7 +15356,7 @@ _t_performance_Performance_clearMarks :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_performance_Performance_clearMeasures :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15376,7 +15376,7 @@ _t_performance_Performance_clearMeasures :: proc "c" (env: rawptr, caller: wasm.
 @(private = "file")
 _t_storage_Storage_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 4)
 	if !_rk { return wasm.trap_bounds(&f, "storage.Storage_length", "result pointer") }
@@ -15401,7 +15401,7 @@ _t_storage_Storage_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 @(private = "file")
 _t_storage_Storage_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -15427,7 +15427,7 @@ _t_storage_Storage_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_storage_Storage_getItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -15459,7 +15459,7 @@ _t_storage_Storage_getItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_storage_Storage_setItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -15489,7 +15489,7 @@ _t_storage_Storage_setItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_storage_Storage_removeItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -15518,7 +15518,7 @@ _t_storage_Storage_removeItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_storage_Storage_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_e0 := i32(a[0].i32)
 	if !_valid_StorageArea(_e0) {
@@ -15540,7 +15540,7 @@ _t_storage_Storage_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_storage_StorageEvent_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -15570,7 +15570,7 @@ _t_storage_StorageEvent_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_storage_StorageEvent_storageArea :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 4)
 	if !_rk { return wasm.trap_bounds(&f, "storage.StorageEvent_storageArea", "result pointer") }
@@ -15595,7 +15595,7 @@ _t_storage_StorageEvent_storageArea :: proc "c" (env: rawptr, caller: wasm.Calle
 @(private = "file")
 _t_timers_Timers_setTimeout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
@@ -15612,7 +15612,7 @@ _t_timers_Timers_setTimeout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_timers_Timers_setInterval :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
@@ -15629,7 +15629,7 @@ _t_timers_Timers_setInterval :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_timers_Timers_setTimeout64 :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i64
@@ -15646,7 +15646,7 @@ _t_timers_Timers_setTimeout64 :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_timers_Timers_setInterval64 :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i64
@@ -15663,7 +15663,7 @@ _t_timers_Timers_setInterval64 :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_timers_Timers_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Timer{handle = u64(a[0].i64)}
 	_p0.data = lookup_Timer(&c, _p0.handle)
@@ -15685,7 +15685,7 @@ _t_timers_Timers_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 @(private = "file")
 _t_timers_Timers_now :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Timers_now(&c)
 	api_end(&c)
@@ -15699,7 +15699,7 @@ _t_timers_Timers_now :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 @(private = "file")
 _t_timers_requestAnimationFrame :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
@@ -15715,7 +15715,7 @@ _t_timers_requestAnimationFrame :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_timers_cancelAnimationFrame :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_err := cancelAnimationFrame(&c, _p0)
@@ -15733,7 +15733,7 @@ _t_timers_cancelAnimationFrame :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_timers_requestIdleCallback :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
@@ -15750,7 +15750,7 @@ _t_timers_requestIdleCallback :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_timers_cancelIdleCallback :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := u64(a[0].i64)
 	_err := cancelIdleCallback(&c, _p0)
@@ -15768,7 +15768,7 @@ _t_timers_cancelIdleCallback :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_timers_Document_visibilityState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Document_visibilityState(&c)
 	api_end(&c)
@@ -15782,7 +15782,7 @@ _t_timers_Document_visibilityState :: proc "c" (env: rawptr, caller: wasm.Caller
 @(private = "file")
 _t_url_URL_parse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15820,7 +15820,7 @@ _t_url_URL_parse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 @(private = "file")
 _t_url_URL_canParse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15854,7 +15854,7 @@ _t_url_URL_canParse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 @(private = "file")
 _t_url_URL_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -15883,7 +15883,7 @@ _t_url_URL_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 @(private = "file")
 _t_url_URL_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -15917,7 +15917,7 @@ _t_url_URL_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 @(private = "file")
 _t_url_URL_searchParams :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_URL{handle = u64(a[0].i64)}
 	_p0.data = lookup_URL(&c, _p0.handle)
@@ -15937,7 +15937,7 @@ _t_url_URL_searchParams :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 @(private = "file")
 _t_url_URLSearchParams_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -15964,7 +15964,7 @@ _t_url_URLSearchParams_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_url_URLSearchParams_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
@@ -15984,7 +15984,7 @@ _t_url_URLSearchParams_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_url_URLSearchParams_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -16010,7 +16010,7 @@ _t_url_URLSearchParams_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_url_URLSearchParams_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -16048,7 +16048,7 @@ _t_url_URLSearchParams_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_url_URLSearchParams_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -16080,7 +16080,7 @@ _t_url_URLSearchParams_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_url_URLSearchParams_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -16108,7 +16108,7 @@ _t_url_URLSearchParams_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_url_URLSearchParams_getNth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -16141,7 +16141,7 @@ _t_url_URLSearchParams_getNth :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_url_URLSearchParams_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -16181,7 +16181,7 @@ _t_url_URLSearchParams_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_url_URLSearchParams_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -16207,7 +16207,7 @@ _t_url_URLSearchParams_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_url_URLSearchParams_sort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
@@ -16225,7 +16225,7 @@ _t_url_URLSearchParams_sort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_url_URLSearchParams_toString :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -16248,7 +16248,7 @@ _t_url_URLSearchParams_toString :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_url_URLSearchParams_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -16274,7 +16274,7 @@ _t_url_URLSearchParams_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_url_URLSearchParams_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -16300,7 +16300,7 @@ _t_url_URLSearchParams_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 @(private = "file")
 _t_web_Exception_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := Exception_code(&c)
 	api_end(&c)
@@ -16314,7 +16314,7 @@ _t_web_Exception_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 @(private = "file")
 _t_web_Exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -16331,7 +16331,7 @@ _t_web_Exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_websocket_WebSocket_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -16365,7 +16365,7 @@ _t_websocket_WebSocket_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_websocket_WebSocket_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
@@ -16385,7 +16385,7 @@ _t_websocket_WebSocket_readyState :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_websocket_WebSocket_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -16408,7 +16408,7 @@ _t_websocket_WebSocket_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 @(private = "file")
 _t_websocket_WebSocket_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -16431,7 +16431,7 @@ _t_websocket_WebSocket_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a
 @(private = "file")
 _t_websocket_WebSocket_extensions :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -16454,7 +16454,7 @@ _t_websocket_WebSocket_extensions :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_websocket_WebSocket_bufferedAmount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
@@ -16474,7 +16474,7 @@ _t_websocket_WebSocket_bufferedAmount :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_websocket_WebSocket_binaryType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
@@ -16494,7 +16494,7 @@ _t_websocket_WebSocket_binaryType :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_websocket_WebSocket_setBinaryType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
@@ -16517,7 +16517,7 @@ _t_websocket_WebSocket_setBinaryType :: proc "c" (env: rawptr, caller: wasm.Call
 @(private = "file")
 _t_websocket_WebSocket_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -16543,7 +16543,7 @@ _t_websocket_WebSocket_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_websocket_WebSocket_sendBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
@@ -16570,7 +16570,7 @@ _t_websocket_WebSocket_sendBuffer :: proc "c" (env: rawptr, caller: wasm.Caller,
 @(private = "file")
 _t_websocket_WebSocket_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -16600,7 +16600,7 @@ _t_websocket_WebSocket_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 @(private = "file")
 _t_websocket_CloseEvent_wasClean :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -16620,7 +16620,7 @@ _t_websocket_CloseEvent_wasClean :: proc "c" (env: rawptr, caller: wasm.Caller, 
 @(private = "file")
 _t_workers_Worker_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -16654,7 +16654,7 @@ _t_workers_Worker_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 @(private = "file")
 _t_workers_Worker_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -16687,7 +16687,7 @@ _t_workers_Worker_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 @(private = "file")
 _t_workers_Worker_terminate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Object{handle = u64(a[0].i64)}
 	_p0.data = lookup_Object(&c, _p0.handle)
@@ -16709,7 +16709,7 @@ _t_workers_Worker_terminate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 @(private = "file")
 _t_workers_DedicatedWorkerGlobalScope_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_r := DedicatedWorkerGlobalScope_self(&c)
 	api_end(&c)
@@ -16723,7 +16723,7 @@ _t_workers_DedicatedWorkerGlobalScope_self :: proc "c" (env: rawptr, caller: was
 @(private = "file")
 _t_workers_DedicatedWorkerGlobalScope_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -16751,7 +16751,7 @@ _t_workers_DedicatedWorkerGlobalScope_postMessage :: proc "c" (env: rawptr, call
 @(private = "file")
 _t_workers_DedicatedWorkerGlobalScope_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_err := DedicatedWorkerGlobalScope_close(&c)
 	api_end(&c)
@@ -16768,7 +16768,7 @@ _t_workers_DedicatedWorkerGlobalScope_close :: proc "c" (env: rawptr, caller: wa
 @(private = "file")
 _t_workers_DedicatedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -16788,7 +16788,7 @@ _t_workers_DedicatedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: was
 @(private = "file")
 _t_workers_WorkerGlobalScope_location :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -16808,7 +16808,7 @@ _t_workers_WorkerGlobalScope_location :: proc "c" (env: rawptr, caller: wasm.Cal
 @(private = "file")
 _t_workers_MessageEvent_transfer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)

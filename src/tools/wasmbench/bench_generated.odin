@@ -21,7 +21,7 @@ API_WORKER :: u32(2)
 @(private = "file")
 _t_bench_nop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	nop(&c)
 	api_end(&c)
@@ -33,7 +33,7 @@ _t_bench_nop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: u
 @(private = "file")
 _t_bench_touch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -51,7 +51,7 @@ _t_bench_touch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 @(private = "file")
 _t_bench_touch_string :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
-	context = runtime.default_context()
+	context = wasm.default_context()
 	c := api_begin(f.inst)
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)

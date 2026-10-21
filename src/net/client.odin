@@ -279,7 +279,7 @@ request_scope_closed :: proc(data: rawptr) {
 }
 
 @(private)
-heap :: proc() -> runtime.Allocator { return runtime.heap_allocator() }
+heap :: proc() -> runtime.Allocator { return base.process_allocator() }
 
 @(private)
 to_wide :: proc(s: string) -> []u16 {
@@ -510,7 +510,7 @@ query_wide :: proc(h: HINTERNET, level: win.DWORD) -> string {
 @(private)
 status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.DWORD, info: rawptr, info_len: win.DWORD) {
 	if ctx == 0 { return }
-	context = runtime.default_context()
+	context = base.process_context()
 	job := (^Job)(uintptr(ctx))
 
 	switch status {

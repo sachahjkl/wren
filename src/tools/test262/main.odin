@@ -21,7 +21,6 @@
 // only: nothing stops the run.
 package test262
 
-import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:slice"
@@ -31,6 +30,7 @@ import "core:time"
 import "wb:host"
 import "wb:js"
 import "wb:wasm"
+import "wb:base"
 
 Mode :: enum { Default_Nostrict, Default_Strict, Nostrict, Strict, All }
 
@@ -370,7 +370,7 @@ guest_string :: proc(f: ^wasm.Frame, p, n: wasm.Raw) -> (string, bool) {
 }
 
 engine_console :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	if verbose {
 		f := wasm.frame(env, caller)
 		if text, ok := guest_string(&f, a[1], a[2]); ok { fmt.eprintln(text) }
@@ -403,7 +403,7 @@ performance_now :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 
 // test262.fileSize(path) -> size or -1; test262.readFile(path, out, cap) -> bytes read or -1 (modules and fixtures)
 file_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	f := wasm.frame(env, caller)
 	path, ok := guest_string(&f, a[0], a[1])
 	r: i32 = -1
@@ -416,7 +416,7 @@ file_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint
 }
 
 read_file :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	f := wasm.frame(env, caller)
 	path, ok := guest_string(&f, a[0], a[1])
 	r: i32 = -1
@@ -438,7 +438,7 @@ read_file :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint
 jit: js.Jit_Settings
 
 engine_jit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	f := wasm.frame(env, caller)
 	code, ok := guest_string(&f, a[0], a[1])
 	r: i32
@@ -449,7 +449,7 @@ engine_jit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uin
 }
 
 engine_jit_poll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	context = runtime.default_context()
+	context = base.process_context()
 	f := wasm.frame(env, caller)
 	r := js.jit_poll(f.inst, a[0].i32)
 	a[0] = {}

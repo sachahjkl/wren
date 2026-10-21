@@ -5,6 +5,7 @@ import "core:reflect"
 import "core:strings"
 import "core:sync"
 import "wb:css"
+import "wb:base"
 
 // Property names and shorthand expansion. Shorthands are split into longhands when a stylesheet is compiled, so the cascade
 // only ever compares longhands.
@@ -44,7 +45,7 @@ tables_init :: proc() {
 
 @(private)
 tables_build :: proc() {
-	context.allocator = runtime.heap_allocator()
+	context.allocator = base.process_allocator()
 	tables_ready = true
 	prop_by_name = make(map[string]Prop)
 	short_by_name = make(map[string]Short)

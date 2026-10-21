@@ -5,10 +5,10 @@ package browser
 // not report them: the shell subclasses the native window (like the file drops of local_paths.odin) and posts the command
 // to the loop, which runs it between frames.
 
-import "base:runtime"
 import win "core:sys/windows"
 import "wb:config"
 import "wb:host"
+import "wb:base"
 
 foreign import comctl32_cmd "system:Comctl32.lib"
 @(default_calling_convention = "system", private = "file")
@@ -62,7 +62,7 @@ app_commands_destroy :: proc() {
 
 @(private = "file")
 cmd_subclass :: proc "system" (hwnd: win.HWND, msg: win.UINT, wparam: win.WPARAM, lparam: win.LPARAM, id: win.UINT_PTR, ref: win.DWORD_PTR) -> win.LRESULT {
-	context = runtime.default_context()
+	context = base.process_context()
 	c := Browser_Command.None
 	switch msg {
 	case WM_XBUTTONDOWN, WM_XBUTTONDBLCLK:

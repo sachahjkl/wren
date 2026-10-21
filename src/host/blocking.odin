@@ -4,9 +4,8 @@ package host
 // `work` runs on a worker; `done` runs on the loop thread afterwards, with the same data pointer. The data must stay
 // valid until `done` has run (heap or loop-owned), and is never touched by the submitter in between.
 
-import "base:runtime"
 import "core:sync"
-import "core:thread"
+import "wb:base"
 
 Blocking_Job :: struct {
 	work: Task_Proc,
@@ -19,20 +18,17 @@ Blocking_Pool :: struct {
 	mu:       sync.Mutex,
 	cond:     sync.Cond,
 	queue:    [dynamic]Blocking_Job,
-	threads:  [dynamic]^thread.Thread,
+	threads:  [dynamic]^Thread,
 	stopping: bool,
 }
 
 blocking_init :: proc(p: ^Blocking_Pool, loop: ^Loop, workers := 4) {
 	p.loop = loop
-	p.queue = make([dynamic]Blocking_Job, runtime.heap_allocator())
-	p.threads = make([dynamic]^thread.Thread)
+	p.queue = make([dynamic]Blocking_Job, base.process_allocator())
+	p.threads = make([dynamic]^Thread)
+	// (thread_start: the caller's context, and a temporary allocator of the worker's own, destroyed when it ends)
 	for _ in 0 ..< workers {
-		t := thread.create(blocking_worker)
-		t.data = p
-		t.init_context = context
-		thread.start(t)
-		append(&p.threads, t)
+		if t := thread_start(blocking_worker, p); t != nil { append(&p.threads, t) }
 	}
 }
 
@@ -43,7 +39,7 @@ blocking_destroy :: proc(p: ^Blocking_Pool) {
 	clear(&p.queue)
 	sync.cond_broadcast(&p.cond)
 	sync.mutex_unlock(&p.mu)
-	for t in p.threads { thread.join(t); thread.destroy(t) }
+	for t in p.threads { thread_join(t) }
 	delete(p.threads)
 	delete(p.queue)
 }
@@ -57,8 +53,8 @@ run_blocking :: proc(p: ^Blocking_Pool, work, done: Task_Proc, data: rawptr) {
 }
 
 @(private)
-blocking_worker :: proc(t: ^thread.Thread) {
-	p := (^Blocking_Pool)(t.data)
+blocking_worker :: proc(data: rawptr) {
+	p := (^Blocking_Pool)(data)
 	for {
 		sync.mutex_lock(&p.mu)
 		for len(p.queue) == 0 && !p.stopping { sync.cond_wait(&p.cond, &p.mu) }
@@ -67,7 +63,7 @@ blocking_worker :: proc(t: ^thread.Thread) {
 		ordered_remove(&p.queue, 0)
 		sync.mutex_unlock(&p.mu)
 		job.work(job.data)
-		free_all(context.temp_allocator)   // this thread's own (see core:thread): nothing outlives a job
+		free_all(context.temp_allocator)   // this thread's own (thread_start): nothing outlives a job
 		post(p.loop, job.done, job.data)
 	}
 }

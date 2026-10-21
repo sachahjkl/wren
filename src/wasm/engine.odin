@@ -13,12 +13,12 @@ package wasm
 //     the thread has less than that plus wasm.wasmtime.host_stack_reserve_bytes left (a real overflow would kill the
 //     process).
 
-import "base:runtime"
 import "core:fmt"
 import "core:strings"
 import "core:sync"
 import "core:thread"
 import "core:time"
+import "wb:base"
 
 MAX_SIG_VALUES :: 32
 
@@ -105,7 +105,7 @@ config_text :: proc(rs: Runtime_Settings, allocator := context.temp_allocator) -
 wt_start :: proc(rs: Runtime_Settings) -> bool {
 	if wt.engine != nil { return true }
 	if wt.start_failed { return false }
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	f := effective_features(rs)
 	c := wasm_config_new()
 	wasmtime_config_strategy_set(c, rs.compiler == .Winch ? WT_STRATEGY_WINCH : WT_STRATEGY_CRANELIFT)
@@ -207,7 +207,7 @@ wt_stub_call :: proc "c" (env: rawptr, caller: wt_caller, args: [^]wt_val_raw, n
 
 @(private)
 wt_stub_free :: proc "c" (env: rawptr) {
-	context = runtime.default_context()
+	context = base.process_context()
 	s := (^Stub)(env)
 	delete(s.message)
 	free(s)

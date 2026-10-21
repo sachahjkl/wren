@@ -76,7 +76,7 @@ live_instances: int   // atomic
 configure :: proc(rs: Runtime_Settings) {
 	sync.mutex_lock(&runtime_lock)
 	defer sync.mutex_unlock(&runtime_lock)
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	runtime_settings_destroy(&settings)
 	settings = clone_settings(rs)
 	settings_set = true
@@ -94,7 +94,7 @@ runtime_init :: proc() -> bool {
 runtime_destroy :: proc() {
 	sync.mutex_lock(&runtime_lock)
 	defer sync.mutex_unlock(&runtime_lock)
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	wt_stop()
 	registry_destroy()
 	runtime_settings_destroy(&settings)
@@ -148,7 +148,7 @@ instance_free :: proc(inst: ^Instance) {
 	sync.atomic_sub(&live_instances, 1)
 	delete(inst.name)
 	delete(inst.last_error)
-	delete(inst.exception_message, runtime.default_allocator())
+	delete(inst.exception_message, base.process_allocator())
 	free(inst)
 }
 
@@ -211,4 +211,5 @@ guest_bytes :: proc(inst: ^Instance, offset: u64, length: u64) -> []byte {
 	return p[:length]
 }
 
-default_context :: proc "contextless" () -> runtime.Context { return runtime.default_context() }
+// The context of the host calls (the Wasm import trampolines, generated): the process's (base.process_context).
+default_context :: #force_inline proc "contextless" () -> runtime.Context { return base.process_context() }

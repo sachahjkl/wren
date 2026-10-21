@@ -5,11 +5,11 @@
 // which moves them to the current block (and changes nothing on the default one).
 package testenv
 
-import "base:runtime"
 import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:sync"
+import "wb:base"
 
 DEFAULT_BASE_PORT :: 8765
 BLOCK_PORTS :: 5
@@ -41,7 +41,7 @@ url :: proc(s: string) -> string {
 	if b == DEFAULT_BASE_PORT || !strings.contains(s, ":876") { return s }
 	sync.guard(&lock)
 	if r, ok := interned[s]; ok { return r }
-	context.allocator = runtime.heap_allocator()
+	context.allocator = base.process_allocator()
 	if interned == nil { interned = make(map[string]string) }
 	r := rewrite(s, b)
 	interned[strings.clone(s)] = r

@@ -427,7 +427,7 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 	wl(o, "@(private = \"file\")")
 	wl(o, "%s :: proc \"c\" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {{", tramp_name(d))
 	wl(o, "\tf := wasm.frame(env, caller)")
-	wl(o, "\tcontext = runtime.default_context()")
+	wl(o, "\tcontext = wasm.default_context()")
 	wl(o, "\tc := %s(f.inst)", cfg.begin)
 
 	// 1. every memory range first: a bad pointer traps before anything else happens

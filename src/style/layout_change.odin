@@ -1,8 +1,8 @@
 package style
 
-import "base:runtime"
 import "core:mem"
 import "core:sync"
+import "wb:base"
 
 // What a change of computed style means for layout, per element. Layout keeps its boxes between passes and needs to
 // know, for each element whose style changed, how much of its work is invalid:
@@ -44,7 +44,7 @@ change_init :: proc() {
 	tiers_init()
 	sync.once_do(&change_once, proc() {
 		for p in LAYOUT_ONLY_PROPS { ps_add(&layout_only_set, p) }
-		layout_runs = make([dynamic]Field_Run, 0, 32, runtime.heap_allocator())
+		layout_runs = make([dynamic]Field_Run, 0, 32, base.process_allocator())
 		for f, i in layout_fields {
 			if n := len(layout_runs); n > 0 {
 				r := &layout_runs[n - 1]
@@ -61,7 +61,7 @@ change_init :: proc() {
 			sl := &prop_slots[p]
 			for k in 0 ..< 2 { if sl.size[k] > 0 { covered[sl.off[k]] = true } }
 		}
-		extra_fields = make([dynamic]Field_Info, 0, 8, runtime.heap_allocator())
+		extra_fields = make([dynamic]Field_Info, 0, 8, base.process_allocator())
 		for f in layout_fields {
 			if !covered[f.offset] && !is_pseudo_field(f.offset) { append(&extra_fields, f) }
 		}

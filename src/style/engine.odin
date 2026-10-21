@@ -134,7 +134,7 @@ Engine :: struct {
 engine_make :: proc(settings: Settings) -> ^Engine {
 	// process-wide tables, built once whichever thread gets here first, kept for good: not the caller's memory
 	{
-		context.allocator = runtime.heap_allocator()
+		context.allocator = base.process_allocator()
 		tables_init()   // once per process (sync.Once inside)
 	}
 	e := new(Engine)
@@ -161,7 +161,7 @@ clone_settings :: proc(s: Settings) -> Settings {
 }
 
 engine_destroy :: proc(e: ^Engine) {
-	free(e.probe_base, runtime.heap_allocator())
+	free(e.probe_base, base.process_allocator())
 	for s in e.sheets { sheet_free(s) }
 	delete(e.sheets)
 	rule_set_clear(&e.rules)
@@ -204,7 +204,7 @@ index_free :: proc(ix: ^Index) {
 engine_configure :: proc(e: ^Engine, settings: Settings) {
 	settings_destroy(&e.settings)
 	e.settings = clone_settings(settings)
-	free(e.probe_base, runtime.heap_allocator())
+	free(e.probe_base, base.process_allocator())
 	e.probe_base = nil
 	engine_reset_builtin_sheets(e)
 	e.dirty = true
@@ -963,7 +963,7 @@ probe_context :: proc(e: ^Engine, a: runtime.Allocator) -> Cx {
 	// replaces a field's slices, it never writes into them.
 	if e.probe_base == nil {
 		// on the heap whoever calls (the caller's allocator may be a temporary one); kept until the next configuration
-		context.allocator = runtime.heap_allocator()
+		context.allocator = base.process_allocator()
 		e.probe_base = new(Computed)
 		e.probe_base^ = initial_computed(&e.settings)
 	}

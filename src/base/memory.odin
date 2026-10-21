@@ -29,13 +29,13 @@ TRACK_MEMORY :: #config(WREN_TRACK_MEMORY, false)
 @(private) HEAP :: runtime.Allocator{runtime.heap_allocator_proc, nil}
 
 // The context of code that has none of its own: the process heap, or the tracker of a check build.
-process_context :: proc "contextless" () -> runtime.Context {
+process_context :: #force_inline proc "contextless" () -> runtime.Context {
 	c := runtime.default_context()
 	when TRACK_MEMORY { c.allocator = runtime.Allocator{tracker_proc, &tracker} }
 	return c
 }
 
-process_allocator :: proc "contextless" () -> runtime.Allocator {
+process_allocator :: #force_inline proc "contextless" () -> runtime.Allocator {
 	when TRACK_MEMORY { return runtime.Allocator{tracker_proc, &tracker} } else { return HEAP }
 }
 

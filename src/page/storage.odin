@@ -235,7 +235,7 @@ commit_gate: Commit_Gate
 storage_commit :: proc(path: string, data: []byte, seq: u64) -> bool {
 	sync.mutex_lock(&commit_gate.mu)
 	defer sync.mutex_unlock(&commit_gate.mu)
-	if commit_gate.last == nil { commit_gate.last = make(map[string]u64, runtime.heap_allocator()) }
+	if commit_gate.last == nil { commit_gate.last = make(map[string]u64, base.process_allocator()) }
 	if last, ok := commit_gate.last[path]; ok && last >= seq { return true }
 	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
 	if os.write_entire_file(tmp, data) != nil { return false }
@@ -244,7 +244,7 @@ storage_commit :: proc(path: string, data: []byte, seq: u64) -> bool {
 		if os.rename(tmp, path) != nil { return false }
 	}
 	if _, ok := commit_gate.last[path]; !ok {
-		commit_gate.last[strings.clone(path, runtime.heap_allocator())] = seq
+		commit_gate.last[strings.clone(path, base.process_allocator())] = seq
 	} else {
 		commit_gate.last[path] = seq
 	}
@@ -262,21 +262,21 @@ Write_Job :: struct {
 @(private)
 area_write :: proc(m: ^Storage_Manager, a: ^Storage_Area, sync_write: bool) {
 	m.write_seq += 1
-	job := new(Write_Job, runtime.heap_allocator())
-	job.path = strings.clone(area_path(m, a.origin), runtime.heap_allocator())
-	job.data = area_serialize(a, runtime.heap_allocator())
+	job := new(Write_Job, base.process_allocator())
+	job.path = strings.clone(area_path(m, a.origin), base.process_allocator())
+	job.data = area_serialize(a, base.process_allocator())
 	job.seq = m.write_seq
 	work :: proc(data: rawptr) {
 		j := (^Write_Job)(data)
-		context.allocator = runtime.heap_allocator()
+		context.allocator = base.process_allocator()
 		storage_commit(j.path, j.data, j.seq)
 	}
 	done :: proc(data: rawptr) {
 		j := (^Write_Job)(data)
 		if j.m != nil && j.m.ready { j.m.pending -= 1 }
-		delete(j.path, runtime.heap_allocator())
-		delete(j.data, runtime.heap_allocator())
-		free(j, runtime.heap_allocator())
+		delete(j.path, base.process_allocator())
+		delete(j.data, base.process_allocator())
+		free(j, base.process_allocator())
 	}
 	if sync_write || m.blocking == nil {
 		work(job)
@@ -316,19 +316,19 @@ storage_prefetch :: proc(m: ^Storage_Manager, origin: string) {
 	if _, ok := m.areas[origin]; ok { return }
 	a := area_new(m, origin, origin, .Local)
 	a.state = .Loading
-	job := new(Load_Job, runtime.heap_allocator())
-	job.path = strings.clone(area_path(m, origin), runtime.heap_allocator())
-	job.id = strings.clone(origin, runtime.heap_allocator())
+	job := new(Load_Job, base.process_allocator())
+	job.path = strings.clone(area_path(m, origin), base.process_allocator())
+	job.id = strings.clone(origin, base.process_allocator())
 	job.m = m
 	host.run_blocking(m.blocking, proc(data: rawptr) {
 		j := (^Load_Job)(data)
-		bytes, err := os.read_entire_file(j.path, runtime.heap_allocator())
+		bytes, err := os.read_entire_file(j.path, base.process_allocator())
 		if err == nil { j.data = bytes }
 	}, proc(data: rawptr) {
 		j := (^Load_Job)(data)
 		defer {
-			delete(j.path, runtime.heap_allocator()); delete(j.id, runtime.heap_allocator())
-			delete(j.data, runtime.heap_allocator()); free(j, runtime.heap_allocator())
+			delete(j.path, base.process_allocator()); delete(j.id, base.process_allocator())
+			delete(j.data, base.process_allocator()); free(j, base.process_allocator())
 		}
 		if !j.m.ready { return }
 		a, ok := j.m.areas[j.id]

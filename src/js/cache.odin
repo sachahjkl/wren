@@ -12,7 +12,6 @@ package js
 // Bytecode only ever runs inside the engine's sandbox; the MAC keeps one profile's cache from being fed another's.
 // Thread-safe.
 
-import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
@@ -22,6 +21,7 @@ import "core:sync"
 import "core:thread"
 import "core:time"
 import "wb:wasm"
+import "wb:base"
 
 Cache_Settings :: struct {
 	memory_bytes:     i64,
@@ -82,7 +82,7 @@ cache_start :: proc(s: Cache_Settings) {
 	sync.mutex_lock(&cache.lock)
 	defer sync.mutex_unlock(&cache.lock)
 	if cache.started { return }
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	cache.started = true
 	cache.settings = s
 	cache.settings.profile_dir = strings.clone(s.profile_dir)
@@ -111,7 +111,7 @@ cache_stop :: proc() {
 		thread.join(writer)
 		thread.destroy(writer)
 	}
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	sync.mutex_lock(&cache.lock)
 	for _, e in cache.entries { delete(e.code) }
 	delete(cache.entries)
@@ -190,9 +190,9 @@ store :: proc(key: Key, code: []byte) {
 	memory_put(key, code)
 	if disk {
 		path := disk_path(key)
-		if os.exists(path) { delete(path, runtime.default_allocator()); return }
+		if os.exists(path) { delete(path, base.process_allocator()); return }
 		sync.mutex_lock(&cache.qlock)
-		append(&cache.queue, Write_Job{path = path, key = key, payload = slice.clone(code, runtime.default_allocator())})
+		append(&cache.queue, Write_Job{path = path, key = key, payload = slice.clone(code, base.process_allocator())})
 		sync.cond_signal(&cache.qcond)
 		sync.mutex_unlock(&cache.qlock)
 	}
@@ -204,7 +204,7 @@ memory_put :: proc(key: Key, code: []byte) {
 	defer sync.mutex_unlock(&cache.lock)
 	limit := cache.settings.memory_bytes
 	if limit <= 0 || i64(len(code)) > limit { return }
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	cache.clock += 1
 	if e, ok := &cache.entries[key]; ok { e.last_use = cache.clock; return }
 	cache.entries[key] = Entry{code = slice.clone(code), last_use = cache.clock}
@@ -225,7 +225,7 @@ memory_put :: proc(key: Key, code: []byte) {
 cache_clear_memory :: proc() {
 	sync.mutex_lock(&cache.lock)
 	defer sync.mutex_unlock(&cache.lock)
-	for _, e in cache.entries { delete(e.code, runtime.default_allocator()) }
+	for _, e in cache.entries { delete(e.code, base.process_allocator()) }
 	clear(&cache.entries)
 	cache.total = 0
 }
@@ -235,7 +235,7 @@ disk_path :: proc(key: Key) -> string {
 	hex := strings.builder_make(context.temp_allocator)
 	for b in key { fmt.sbprintf(&hex, "%02x", b) }
 	strings.write_string(&hex, DISK_EXT)
-	p, _ := filepath.join({cache.dir, strings.to_string(hex)}, runtime.default_allocator())
+	p, _ := filepath.join({cache.dir, strings.to_string(hex)}, base.process_allocator())
 	return p
 }
 
@@ -268,25 +268,25 @@ disk_mac :: proc(key: Key, payload: []byte) -> (wasm.Digest, bool) {
 @(private)
 disk_load :: proc(key: Key) -> []byte {
 	path := disk_path(key)
-	defer delete(path, runtime.default_allocator())
-	data, err := os.read_entire_file(path, runtime.default_allocator())
+	defer delete(path, base.process_allocator())
+	data, err := os.read_entire_file(path, base.process_allocator())
 	if err != nil { return nil }
 	head := len(DISK_MAGIC) + 32
 	if len(data) <= head || string(data[:len(DISK_MAGIC)]) != DISK_MAGIC {
-		delete(data, runtime.default_allocator())
+		delete(data, base.process_allocator())
 		disk_reject(path)
 		return nil
 	}
 	mac, ok := disk_mac(key, data[head:])
 	if !ok || !wasm.digests_equal(mac[:], data[len(DISK_MAGIC):head]) {
-		delete(data, runtime.default_allocator())
+		delete(data, base.process_allocator())
 		disk_reject(path)
 		return nil
 	}
 	now := time.now()
 	_ = os.change_times(path, now, now)
 	out := slice.clone(data[head:], context.temp_allocator)
-	delete(data, runtime.default_allocator())
+	delete(data, base.process_allocator())
 	return out
 }
 
@@ -300,7 +300,7 @@ disk_reject :: proc(path: string) {
 
 @(private)
 writer_main :: proc(_: rawptr) {
-	context.allocator = runtime.default_allocator()
+	context.allocator = base.process_allocator()
 	for {
 		sync.mutex_lock(&cache.qlock)
 		for len(cache.queue) == 0 && !cache.stop { sync.cond_wait(&cache.qcond, &cache.qlock) }

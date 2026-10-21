@@ -8,6 +8,7 @@ import "core:strings"
 import "core:sync"
 import win "core:sys/windows"
 import "wb:host"
+import "wb:base"
 
 // The cache on disk, in the profile (network.cache.disk.directory, else <profile>/cache):
 //
@@ -85,7 +86,7 @@ Disk :: struct {
 @(private) live: map[rawptr]bool
 
 @(private)
-heap :: proc() -> runtime.Allocator { return runtime.heap_allocator() }
+heap :: proc() -> runtime.Allocator { return base.process_allocator() }
 
 @(private)
 disk_open :: proc(c: ^Cache, dir: string) -> ^Disk {

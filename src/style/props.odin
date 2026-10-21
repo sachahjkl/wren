@@ -3,6 +3,7 @@ package style
 import "base:runtime"
 import "core:mem"
 import "core:sync"
+import "wb:base"
 
 // Generic access to the computed value of one longhand: `prop_fields` maps a property to the field(s) of `Computed` that
 // hold it, and reflection over the field types gives copying, comparing and deep cloning (and, in interpolate.odin,
@@ -76,7 +77,7 @@ props_init :: proc() {
 		}
 		ti := runtime.type_info_base(type_info_of(Computed))
 		st := ti.variant.(runtime.Type_Info_Struct)
-		computed_fields = make([dynamic]Field_Info, runtime.heap_allocator())
+		computed_fields = make([dynamic]Field_Info, base.process_allocator())
 		for i in 0 ..< int(st.field_count) {
 			ft := st.types[i]
 			append(&computed_fields, Field_Info{offset = st.offsets[i], size = ft.size, ti = ft, plain = is_plain(ft)})

@@ -1,6 +1,5 @@
 package fetch
 
-import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -875,7 +874,7 @@ file_hop :: proc(t: ^Task) {
 	}
 	t.taint = .Basic
 	t.stage = .Local
-	a := runtime.heap_allocator()
+	a := base.process_allocator()
 	job := new(File_Job, a)
 	job.loader = l
 	job.task = t.self
@@ -893,7 +892,7 @@ file_hop :: proc(t: ^Task) {
 @(private)
 file_work :: proc(data: rawptr) {
 	j := (^File_Job)(data)
-	context.allocator = runtime.heap_allocator()
+	context.allocator = base.process_allocator()
 	attrs, st := file_attributes(j.path)
 	if st != .Ok { j.err = strings.clone(file_status_text(st, j.path)); return }
 	if j.root != "" {
@@ -939,7 +938,7 @@ read_file_into :: proc(j: ^File_Job, path: string, size: i64) -> bool {
 @(private)
 file_done :: proc(data: rawptr) {
 	j := (^File_Job)(data)
-	a := runtime.heap_allocator()
+	a := base.process_allocator()
 	defer {
 		delete(j.path, a); delete(j.data, a); delete(j.err, a); delete(j.index, a); delete(j.root, a)
 		file_settings_destroy(&j.files, a)

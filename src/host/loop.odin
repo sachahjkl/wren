@@ -11,7 +11,6 @@
 // programs and tests.
 package host
 
-import "base:runtime"
 import "core:container/priority_queue"
 import "core:sync"
 import "core:time"
@@ -72,8 +71,8 @@ DEFAULT_TIMER_SLICE_NS :: 8_000_000
 loop_init :: proc(l: ^Loop, wake: proc(user: rawptr) = nil, wake_user: rawptr = nil) {
 	l.origin = time.tick_now()
 	// `post` is called from foreign threads whose context allocator is the process heap: keep these arrays there.
-	l.posted = make([dynamic]Task, runtime.heap_allocator())
-	l.scratch = make([dynamic]Task, runtime.heap_allocator())
+	l.posted = make([dynamic]Task, base.process_allocator())
+	l.scratch = make([dynamic]Task, base.process_allocator())
 	l.wake = wake
 	l.wake_user = wake_user
 	l.timer_slice_ns = DEFAULT_TIMER_SLICE_NS

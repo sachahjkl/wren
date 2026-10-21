@@ -1,8 +1,8 @@
 package style
 
-import "base:runtime"
 import "core:mem"
 import "core:sync"
+import "wb:base"
 
 // What a change of computed values costs downstream. Most properties feed layout; a few are read only when painting
 // (colors, backgrounds, shadows, radii, transforms, opacity...) or by nobody downstream of the cascade (the transition
@@ -64,7 +64,7 @@ tiers_init :: proc() {
 		skip[uintptr(&probe.inherits) - uintptr(&probe)] = true
 		skip[uintptr(&probe.custom) - uintptr(&probe)] = true
 		skip[uintptr(&probe.node) - uintptr(&probe)] = true
-		layout_fields = make([dynamic]Field_Info, 0, len(computed_fields), runtime.heap_allocator())
+		layout_fields = make([dynamic]Field_Info, 0, len(computed_fields), base.process_allocator())
 		for f in computed_fields { if !skip[f.offset] { append(&layout_fields, f) } }
 	})
 }

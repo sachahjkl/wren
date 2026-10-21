@@ -1,8 +1,8 @@
 package url
 
-import "base:runtime"
 import "core:strings"
 import "core:sync"
+import "wb:base"
 
 // The Public Suffix List (https://publicsuffix.org, MPL-2.0), embedded. Refresh: tools\update_psl.ps1.
 @(private)
@@ -19,7 +19,7 @@ psl_once: sync.Once
 // Rules are keyed by their ASCII (punycode) form without the leading "*." or "!".
 @(private)
 psl_init :: proc() {
-	context.allocator = runtime.heap_allocator()   // process-lifetime cache
+	context.allocator = base.process_allocator()   // process-lifetime cache
 	psl_rules = make(map[string]Rule, 16384, context.allocator)
 	data := PSL_DATA
 	for line in strings.split_lines_iterator(&data) {

@@ -23,7 +23,6 @@ package net
 //     clean once both frames went through, and a transport end after the peer's frame (the server cutting TCP right
 //     after it) stays clean. The close timeout is our own timer. WinHTTP answers pings by itself.
 
-import "base:runtime"
 import "core:strings"
 import "core:sync"
 import "core:time"
@@ -772,7 +771,7 @@ ws_query_close :: proc(hws: HINTERNET) -> (code: u16, reason: string) {
 @(private)
 ws_status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.DWORD, info: rawptr, info_len: win.DWORD) {
 	if ctx == 0 { return }
-	context = runtime.default_context()
+	context = base.process_context()
 	job := (^Ws_Job)(uintptr(ctx))
 	is_ws := uintptr(rawptr(h)) == sync.atomic_load(&job.hws)
 
