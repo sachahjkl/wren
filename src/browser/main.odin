@@ -987,6 +987,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_begin(.Input)
 	route_page_input(app, events)
 	events = forms_unconsumed_events(events)   // keys the page used do not reach the chrome
+	events = history_tree_events(app, events)   // the wheel and zoom keys of about:history's tree (history_tree.odin)
 	forms_shell_frame(app)
 	selection_shell_frame(app)
 	prof_end(.Input)

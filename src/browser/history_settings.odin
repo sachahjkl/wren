@@ -46,7 +46,10 @@ HISTORY_PREFS := [?]config.Def{
 		description = "Holding the back or forward button this long opens its menu."},
 }
 
-register_history_prefs :: proc(p: ^config.Prefs) { config.register(p, HISTORY_PREFS[:]) }
+register_history_prefs :: proc(p: ^config.Prefs) {
+	config.register(p, HISTORY_PREFS[:])
+	config.register(p, HISTORY_TREE_PREFS[:])   // history_tree.odin
+}
 
 History_Settings :: struct {
 	restore:          bool,
@@ -98,6 +101,7 @@ hcfg: History_Settings
 // At start-up, before the first navigation.
 history_settings_init :: proc(app: ^App) {
 	hcfg = history_settings_from_prefs(&app.prefs)
+	history_tree_settings_init(app)
 	history_watch = config.watch(&app.prefs, "history.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
 		hcfg = history_settings_from_prefs(p)
@@ -107,7 +111,10 @@ history_settings_init :: proc(app: ^App) {
 	}, app)
 }
 
-history_settings_shutdown :: proc(app: ^App) { config.unwatch(&app.prefs, history_watch) }
+history_settings_shutdown :: proc(app: ^App) {
+	config.unwatch(&app.prefs, history_watch)
+	history_tree_settings_shutdown(app)
+}
 
 // The session history's sizes from the preferences.
 tab_history_limits :: proc(app: ^App, t: ^Tab) {
