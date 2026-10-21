@@ -33,6 +33,9 @@ if "%1"=="release" set "WREN_RC=src/browser/wren.rc"
 set "COLL=-collection:toolkit=ext/gui_toolkit -collection:wb=src -resource:%WREN_RC% -define:WREN_CHANNEL=%WREN_CHANNEL%"
 :: 32 MiB of stack for the window thread: Wasm calls run on it (wasm.wasmtime.max_stack_bytes + host_stack_reserve_bytes)
 set "COLL=%COLL% -extra-linker-flags:/STACK:33554432"
+:: every thread's temporary allocator takes a first block of this size, committed at once (4 MiB by default: with the
+:: three dozen threads of the pools, over 100 MB of private bytes, mostly never touched); a bigger need adds a block
+set "COLL=%COLL% -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576"
 :: the version of the sources (about.odin: APP_COMMIT, APP_COMMIT_DATE): short commit hash ("+" when the tree has
 :: uncommitted changes) and its date; "dev" without git. The hash goes in as g<hash> (as git describe writes it): Odin
 :: would read an all-digit value as a number.

@@ -37,6 +37,8 @@ Cache_Stats :: struct {
 	disk_writes:  int,
 	disk_evictions: int,
 	memory_evictions: int,
+	entries:      int,   // compiled modules in memory now
+	code_bytes:   int,   // their machine code
 }
 
 @(private)
@@ -128,8 +130,13 @@ cache_stop :: proc() {
 cache_stats :: proc() -> Cache_Stats {
 	sync.mutex_lock(&cache.lock)
 	defer sync.mutex_unlock(&cache.lock)
-	return cache.stats
+	s := cache.stats
+	s.entries, s.code_bytes = len(cache.entries), cache.total
+	return s
 }
+
+// Module instances alive now (every store).
+instances_alive :: proc() -> int { return sync.atomic_load(&live_instances) }
 
 // Drops every compiled module kept in memory (the disk cache stays). For measurements and tests.
 cache_clear_memory :: proc() {
