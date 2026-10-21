@@ -94,6 +94,7 @@ new_page :: proc(address: string, image: []byte, tab_key: string, session: ^page
 loop_ms :: proc() -> f64 { return f64(host.now_ns(&loop)) / 1e6 }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	if len(os.args) < 2 { fmt.eprintln("usage: webapitest webapitest.wasm"); os.exit(2) }
 	image, err := os.read_entire_file(os.args[1], context.allocator)
 	if err != nil { fmt.eprintln("cannot read the module"); os.exit(2) }
@@ -256,14 +257,21 @@ main :: proc() {
 	page.session_destroy(&session)
 
 	base.scope_close(process)
+	host.blocking_settle(&blocking)
 	page.storage_manager_destroy(&storage)
+	host.blocking_settle(&blocking)
+	page.process_shutdown()
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	fetch.profile_destroy(&profile)
 	host.loop_destroy(&loop)
-	wasm.runtime_destroy()
+	page.settings_destroy(&settings)
+	for n in navigations { delete(n) }
+	delete(navigations)
+	delete(image)
 	os.remove_all(PROFILE_DIR)
+	failures += testenv.mem_check("webapitest")
 	fmt.printf("\n%d failure(s)\n", failures)
 	os.exit(failures)
 }
