@@ -46,7 +46,7 @@ function Enter-WrenLock([Parameter(Mandatory)][string]$Name, [string]$What = '',
         if (-not $told -or $sw.Elapsed.TotalSeconds -ge $TimeoutSec) {
             $owner = try { [IO.File]::ReadAllText($ownerPath).Trim() } catch { 'unknown' }
             if ($sw.Elapsed.TotalSeconds -ge $TimeoutSec) {
-                throw "${Name}.lock: still held after $TimeoutSec s by $owner ($path). Wait for it, or end that process."
+                throw "${Name}.lock: still held after $TimeoutSec s by $owner ($path). Try again later (that process may belong to another run: do not end it)."
             }
             [Console]::Error.WriteLine("waiting for $Name.lock (at most $TimeoutSec s), held by $owner")
             $told = $true
