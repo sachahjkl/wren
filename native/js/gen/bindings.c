@@ -358,6 +358,11 @@ JSValue wjr_HTMLFormElement_set_autocomplete(JSContext *ctx, JSValueConst this_v
 JSValue wjr_HTMLFormElement_set_encoding(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLFormElement_set_enctype(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLFormElement_set_method(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLFrameElement_get_contentDocument(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLFrameElement_get_contentWindow(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLIFrameElement_getSVGDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLIFrameElement_get_contentDocument(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLIFrameElement_get_contentWindow(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLIFrameElement_get_loading(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLIFrameElement_get_referrerPolicy(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLIFrameElement_get_sandbox(JSContext *ctx, JSValueConst this_val);
@@ -1060,10 +1065,14 @@ JSValue wjr_WindowOrWorkerGlobalScope_setInterval(JSContext *ctx, JSValueConst t
 JSValue wjr_WindowOrWorkerGlobalScope_setTimeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_structuredClone(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowSessionStorage_get_sessionStorage(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_blur(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_cancelIdleCallback(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Window_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Window_focus(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_getComputedStyle(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_getSelection(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_get_clientInformation(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_get_closed(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_customElements(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_event(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_frameElement(JSContext *ctx, JSValueConst this_val);
@@ -1079,6 +1088,7 @@ JSValue wjr_Window_get_self(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_top(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_window(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_matchMedia(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Window_open(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_requestIdleCallback(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_scroll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -4650,6 +4660,32 @@ static JSValue wjg_HTMLHtmlElement_get_version(JSContext *ctx, JSValueConst this
 static JSValue wjg_HTMLHtmlElement_set_version(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 262, "version", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_get_src(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 263, "src", WJ_REFLECT_URL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 263, "src", WJ_REFLECT_URL, v, 0, 0, 0); }
+/* HTMLIFrameElement.srcdoc -> dom.HTMLIFrameElement_srcdoc */
+static JSValue wjg_HTMLIFrameElement_get_srcdoc(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 263);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLIFrameElement_srcdoc(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLIFrameElement.srcdoc"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLIFrameElement.srcdoc = v -> dom.HTMLIFrameElement_set_srcdoc */
+static JSValue wjg_HTMLIFrameElement_set_srcdoc(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 263);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLIFrameElement_set_srcdoc(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLIFrameElement.srcdoc"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLIFrameElement_get_name(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 263, "name", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_set_name(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 263, "name", WJ_REFLECT_STRING, v, 0, 0, 0); }
 static JSValue wjg_HTMLIFrameElement_set_sandbox(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "sandbox", "value", v); }
@@ -7623,6 +7659,31 @@ static JSValue wjg_Window_get_document(JSContext *ctx, JSValueConst this_val)
     if (!self) { return JS_EXCEPTION; }
     uint64_t r = wr_Window_document();
     return wj_wrap_node(ctx, r);
+}
+
+/* Window.name -> frames.Window_get_name */
+static JSValue wjg_Window_get_name(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 368);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Window_get_name(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "Window.name"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* Window.name = v -> frames.Window_set_name */
+static JSValue wjg_Window_set_name(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 368);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_Window_set_name((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
 }
 
 static JSValue wjg_Window_set_location(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "location", "href", v); }
@@ -10689,8 +10750,8 @@ static const wj_member wj_m_HTMLFrameElement[] = {
     { "frameBorder", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameElement_get_frameBorder, wjg_HTMLFrameElement_set_frameBorder, 0 },
     { "longDesc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameElement_get_longDesc, wjg_HTMLFrameElement_set_longDesc, 0 },
     { "noResize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameElement_get_noResize, wjg_HTMLFrameElement_set_noResize, 0 },
-    { "contentDocument", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "contentWindow", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "contentDocument", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLFrameElement_get_contentDocument, NULL, 0 },
+    { "contentWindow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLFrameElement_get_contentWindow, NULL, 0 },
     { "marginHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameElement_get_marginHeight, wjg_HTMLFrameElement_set_marginHeight, 0 },
     { "marginWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLFrameElement_get_marginWidth, wjg_HTMLFrameElement_set_marginWidth, 0 },
 };
@@ -10736,7 +10797,7 @@ static const wj_member wj_m_HTMLHtmlElement[] = {
 };
 static const wj_member wj_m_HTMLIFrameElement[] = {
     { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_src, wjg_HTMLIFrameElement_set_src, 0 },
-    { "srcdoc", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "srcdoc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_srcdoc, wjg_HTMLIFrameElement_set_srcdoc, 0 },
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_name, wjg_HTMLIFrameElement_set_name, 0 },
     { "sandbox", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 71, NULL, wjr_HTMLIFrameElement_get_sandbox, wjg_HTMLIFrameElement_set_sandbox, 0 },
     { "allow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_allow, wjg_HTMLIFrameElement_set_allow, 0 },
@@ -10745,9 +10806,9 @@ static const wj_member wj_m_HTMLIFrameElement[] = {
     { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_height, wjg_HTMLIFrameElement_set_height, 0 },
     { "referrerPolicy", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLIFrameElement_get_referrerPolicy, wjr_HTMLIFrameElement_set_referrerPolicy, 0 },
     { "loading", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLIFrameElement_get_loading, wjr_HTMLIFrameElement_set_loading, 0 },
-    { "contentDocument", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "contentWindow", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getSVGDocument", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "contentDocument", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLIFrameElement_get_contentDocument, NULL, 0 },
+    { "contentWindow", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLIFrameElement_get_contentWindow, NULL, 0 },
+    { "getSVGDocument", WJ_M_METHOD, 0, 0, wjr_HTMLIFrameElement_getSVGDocument, NULL, NULL, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_align, wjg_HTMLIFrameElement_set_align, 0 },
     { "scrolling", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_scrolling, wjg_HTMLIFrameElement_set_scrolling, 0 },
     { "frameBorder", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLIFrameElement_get_frameBorder, wjg_HTMLIFrameElement_set_frameBorder, 0 },
@@ -12090,7 +12151,7 @@ static const wj_member wj_m_Window[] = {
     { "window", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Window_get_window, NULL, 0 },
     { "self", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_Window_get_self, wj_replaceable_setter, 0 },
     { "document", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjg_Window_get_document, NULL, 0 },
-    { "name", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_name, wjg_Window_set_name, 0 },
     { "location", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Window_get_location, wjg_Window_set_location, 0 },
     { "history", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Window_get_history, NULL, 0 },
     { "navigation", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
@@ -12102,18 +12163,18 @@ static const wj_member wj_m_Window[] = {
     { "statusbar", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "toolbar", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "status", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "close", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "closed", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "close", WJ_M_METHOD, 0, 0, wjr_Window_close, NULL, NULL, 0 },
+    { "closed", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Window_get_closed, NULL, 0 },
     { "stop", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "focus", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "blur", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "focus", WJ_M_METHOD, 0, 0, wjr_Window_focus, NULL, NULL, 0 },
+    { "blur", WJ_M_METHOD, 0, 0, wjr_Window_blur, NULL, NULL, 0 },
     { "frames", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_Window_get_frames, wj_replaceable_setter, 0 },
     { "length", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_Window_get_length, wj_replaceable_setter, 0 },
     { "top", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Window_get_top, NULL, 0 },
     { "opener", WJ_M_ATTRIBUTE, WJ_F_SETTER_UNSUPPORTED, 0, NULL, wjr_Window_get_opener, NULL, 0 },
     { "parent", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_Window_get_parent, wj_replaceable_setter, 0 },
     { "frameElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Window_get_frameElement, NULL, 0 },
-    { "open", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "open", WJ_M_METHOD, 0, 0, wjr_Window_open, NULL, NULL, 0 },
     { "navigator", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Window_get_navigator, NULL, 0 },
     { "clientInformation", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_Window_get_clientInformation, wj_replaceable_setter, 0 },
     { "originAgentCluster", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },

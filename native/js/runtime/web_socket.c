@@ -434,7 +434,8 @@ static bool message_init(JSContext *ctx, JSValueConst ev, JSValueConst data, JSV
     JSValue l = JS_IsUndefined(last_id) ? JS_NewString(ctx, "") : JS_ToString(ctx, last_id);
     if (JS_IsException(l)) { return false; }
     web_extra_set(ctx, ev, "lastEventId", l);
-    if (!JS_IsUndefined(source) && !JS_IsNull(source) && !wj_unwrap(source, -1) && JS_VALUE_GET_PTR(source) != JS_VALUE_GET_PTR(wj_the_realm.global)) {
+    extern bool wj_frames_is_window(JSContext *ctx, JSValueConst v);   /* another document's window (runtime/frames.c) */
+    if (!JS_IsUndefined(source) && !JS_IsNull(source) && !wj_unwrap(source, -1) && JS_VALUE_GET_PTR(source) != JS_VALUE_GET_PTR(wj_the_realm.global) && !wj_frames_is_window(ctx, source)) {
         JS_ThrowTypeError(ctx, "Failed to construct 'MessageEvent': The source is not a Window, a MessagePort or a ServiceWorker.");
         return false;
     }

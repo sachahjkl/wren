@@ -26,6 +26,9 @@ Hooks :: struct {
 	inserted:  proc(user: rawptr, d: ^Document, node: base.Handle),
 	// an attribute of `element` was set, changed or removed
 	attribute: proc(user: rawptr, d: ^Document, element: base.Handle, name: string),
+	// a node left its parent (a removal, or the first half of a move): called at once, even when muted, with the tree
+	// consistent; it must not change the tree (the embedder checks what got disconnected: nested documents' frames)
+	removed:   proc(user: rawptr, d: ^Document),
 	muted:     int,
 	queued:    [dynamic]Hook_Event,
 }

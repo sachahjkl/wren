@@ -58,6 +58,9 @@ Embedder :: struct {
 	// state is saved now. Then `entered` after a same-document traversal: restore it. nil = nothing.
 	leaving:  proc(user: rawptr, p: ^Page, entry: ^History_Entry),
 	entered:  proc(user: rawptr, p: ^Page, entry: ^History_Entry),
+	// window.open() to a new window, from document `p` (it may be a frame of this tab): the embedder opens `url` (absolute)
+	// in a new tab, without an opener relationship. nil = new windows are not opened.
+	open:     proc(user: rawptr, p: ^Page, url: string),
 }
 
 Web_State :: struct {

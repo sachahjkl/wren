@@ -80,6 +80,9 @@
     const lookup = (name) => {
       if (typeof name !== "string" || name === "") return undefined;
       if (typeof name.isWellFormed === "function" && !name.isWellFormed()) return undefined;   // lone surrogates
+      // window[i] and window[name] of child frames: their windows first (prelude/frames.js)
+      const w = host.frame(name);
+      if (w !== undefined && w !== null) return w;
       const d = globalThis.document;
       if (d === undefined || d === null) return undefined;
       try {

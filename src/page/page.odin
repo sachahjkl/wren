@@ -105,6 +105,7 @@ Page :: struct {
 	jsdom:        ^Js_Dom_State,        // the DOM bindings' state: selectors, observers, layout hook (js_dom_collections.odin)
 	scroll_events: ^Scroll_Events,      // scroll offsets of the last frame, for scroll events (scroll_events.odin)
 	link_sync_timer: base.Handle,       // a script inserted a <link>: the sheets are read again in this task (styles.odin)
+	frames:       ^Page_Frames,         // nested browsing contexts: its navigable, its frames (frames.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives

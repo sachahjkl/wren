@@ -727,9 +727,18 @@ static JSValue host_part_list(JSContext *ctx, JSValueConst this_val, int argc, J
     return wj_token_list_of(ctx, argv[0], "part");
 }
 
+/* frame(name): the window's child frame of that index or name (runtime/frames.c), undefined when none */
+static JSValue host_frame(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    extern JSValue wj_frames_lookup(JSContext *ctx, JSValueConst name);
+    return argc < 1 ? JS_UNDEFINED : wj_frames_lookup(ctx, argv[0]);
+}
+
 JSValue wj_shadow_host_object(JSContext *ctx)
 {
     JSValue o = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, o, "frame", JS_NewCFunction(ctx, host_frame, "frame", 1));
     JS_SetPropertyStr(ctx, o, "partList", JS_NewCFunction(ctx, host_part_list, "partList", 1));
     JS_SetPropertyStr(ctx, o, "install", JS_NewCFunction(ctx, host_install, "install", 1));
     JS_SetPropertyStr(ctx, o, "isSheet", JS_NewCFunction(ctx, host_is_sheet, "isSheet", 1));

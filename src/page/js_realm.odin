@@ -77,6 +77,7 @@ js_image_digest :: proc() -> ^wasm.Digest {
 
 // Whether this page runs scripts (javascript.enabled, per site).
 js_enabled :: proc(p: ^Page) -> bool {
+	if p.frames != nil && !sandbox_allows(p.frames.sandbox, .Scripts) { return false }   // a sandboxed frame (frames.odin)
 	return js.enabled_for(&p.settings.js, p.env.location.host)
 }
 

@@ -30,6 +30,8 @@ int wj_run_preludes(JSContext *ctx)
     JS_SetPropertyStr(ctx, global, "__wren_shadow_host", wj_shadow_host_object(ctx));
     extern JSValue wj_io_host_object(JSContext *ctx);
     JS_SetPropertyStr(ctx, global, "__wren_io_host", wj_io_host_object(ctx));
+    extern JSValue wj_frames_host_object(JSContext *ctx);
+    JS_SetPropertyStr(ctx, global, "__wren_frames_host", wj_frames_host_object(ctx));
     JS_FreeValue(ctx, global);
     for (int i = 0; i < wj_prelude_count; i++) {
         const char *src = wj_prelude_sources[i].source;

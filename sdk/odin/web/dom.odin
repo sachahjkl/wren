@@ -56,6 +56,8 @@ foreign _m_dom {
 	@(link_name = "Element_setAttribute") _Element_setAttribute :: proc(element: u64, name: [^]u8, name_len: u32, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "Element_getAttribute") _Element_getAttribute :: proc(element: u64, name: [^]u8, name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Element_removeAttribute") _Element_removeAttribute :: proc(element: u64, name: [^]u8, name_len: u32) -> Error ---
+	@(link_name = "HTMLIFrameElement_srcdoc") _HTMLIFrameElement_srcdoc :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLIFrameElement_set_srcdoc") _HTMLIFrameElement_set_srcdoc :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "CustomElements_define") _CustomElements_define :: proc(name: [^]u8, name_len: u32) ---
 	@(link_name = "CustomElements_pending") _CustomElements_pending :: proc() -> u32 ---
 	@(link_name = "CustomElements_take") _CustomElements_take :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
@@ -563,6 +565,40 @@ Element_getAttribute_alloc :: proc(element: $T_element, name: string, allocator:
 // element.removeAttribute(name)
 Element_removeAttribute :: proc "contextless" (element: $T_element, name: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
 	return _Element_removeAttribute(u64(element), raw_data(name), u32(len(name)))
+}
+
+// iframe.srcdoc
+HTMLIFrameElement_srcdoc :: proc "contextless" (element: $T_element, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLIFrameElement_srcdoc(u64(element), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HTMLIFrameElement_srcdoc's result.
+HTMLIFrameElement_srcdoc_len :: proc "contextless" (element: $T_element) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _HTMLIFrameElement_srcdoc(u64(element), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLIFrameElement_srcdoc's result in a buffer allocated to fit.
+HTMLIFrameElement_srcdoc_alloc :: proc(element: $T_element, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLIFrameElement_srcdoc(u64(element), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// iframe.srcdoc = value
+HTMLIFrameElement_set_srcdoc :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _HTMLIFrameElement_set_srcdoc(u64(element), raw_data(value), u32(len(value)))
 }
 
 // customElements.define(name, ...) succeeded: elements of that local name now queue reactions.

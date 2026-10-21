@@ -212,7 +212,11 @@ script_fetch_free :: proc(p: ^Page, f: ^Script_Fetch) {
 // Starts the scripts of the document just adopted (parsed with the scripting flag: js_load_write.odin). Nothing happens
 // when JavaScript is off for the page.
 scripts_start :: proc(p: ^Page) {
-	if p.worker != nil || !js_enabled(p) { return }
+	if p.worker != nil { return }
+	if !js_enabled(p) {
+		frame_document_ready(p)   // no insertion hooks: its frames are found now (frames.odin)
+		return
+	}
 	s := scripts_of(p)
 	if s.started { return }
 	s.started = true
@@ -309,6 +313,7 @@ reveal_node :: proc(p: ^Page, it: Reveal_Item) -> bool {
 		}
 		content_handlers_register(p, it.node)
 		if n.name == "link" { link_revealed(p, it.node) }
+		if n.name == "iframe" || n.name == "frame" { frames_note_inserted(p, it.node) }
 	}
 	return true
 }
@@ -692,6 +697,7 @@ the_end :: proc(p: ^Page) -> bool {
 	if p.closed { return true }
 	fire_window_event(p, dom.Event{type = "load"})
 	if p.closed { return true }
+	frames_document_complete(p)   // a nested document: its container's load event (frames.odin)
 	fire_window_event(p, dom.Event{type = "pageshow"})
 	return true
 }
@@ -704,6 +710,13 @@ load_delayed :: proc(p: ^Page) -> bool {
 	ls := &p.settings.js_load
 	if !ls.load_waits_resources { return false }
 	if ls.load_timeout_ms >= 0 && now_ms(p) - s.timing.dcl_ms >= ls.load_timeout_ms { return false }
+	return resources_delay_load(p) || frames_delay_load(p)
+}
+
+// The resources in flight that delay a document's load event (stylesheets, @imports, fonts, images); a document
+// without scripts uses it too (frames.odin).
+resources_delay_load :: proc(p: ^Page) -> bool {
+	if !p.settings.js_load.load_waits_resources { return false }
 	for _, l in p.link_loads { if l.task != base.NIL_HANDLE { return true } }
 	for l in p.import_loads { if l.task != base.NIL_HANDLE { return true } }
 	for _, f in p.fonts.faces { if f.state == .Queued || f.state == .Loading { return true } }
@@ -901,7 +914,15 @@ inline_allowed :: proc(p: ^Page, kind: csp.Inline_Kind, source: string, nonce: s
 
 @(private)
 scripts_install_hooks :: proc(p: ^Page) {
-	dom.hooks_set(p.doc, dom.Hooks{user = p, inserted = hook_inserted, attribute = hook_attribute})
+	dom.hooks_set(p.doc, dom.Hooks{user = p, inserted = hook_inserted, attribute = hook_attribute, removed = hook_removed})
+}
+
+// A node left the tree: frames whose container went with it are destroyed (frames.odin).
+@(private)
+hook_removed :: proc(user: rawptr, d: ^dom.Document) {
+	p := (^Page)(user)
+	if p.closed || d != p.doc { return }
+	frames_note_removed(p)
 }
 
 @(private)
@@ -911,6 +932,9 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 	if s == nil || p.closed || d != p.doc || s.parser.revealing > 0 { return }
 	n := dom.get(d, node)
 	if n == nil { return }
+	frames_note_inserted(p, node)   // frame elements get their nested document (frames.odin)
+	if p.closed || dom.get(d, node) == nil { return }
+	n = dom.get(d, node)
 	styles_note_inserted(p, node)   // a <link> a script inserts loads now, not at the next styling (styles.odin)
 	fragment := d.parser_inserting > 0
 	// a node inserted into a connected script element that has not started: its text changed ("children changed")
@@ -951,6 +975,10 @@ hook_attribute :: proc(user: rawptr, d: ^dom.Document, el: base.Handle, name: st
 	p := (^Page)(user)
 	if p.closed || d != p.doc { return }
 	if p.scripts != nil && p.scripts.parser.revealing > 0 { return }
+	if name == "src" || name == "srcdoc" || name == "name" {
+		frames_note_attribute(p, el, name)   // (frames.odin)
+		if p.closed { return }
+	}
 	styles_note_attribute(p, el, name)
 	if len(name) > 2 && name[0] == 'o' && name[1] == 'n' {
 		content_handler_changed(p, el, name)

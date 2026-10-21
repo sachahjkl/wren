@@ -163,6 +163,7 @@ document_base_url :: proc(p: ^Page) -> string {
 			break
 		}
 	}
+	if fb := frame_fallback_base(p); fb != "" { return fb }   // about:blank / srcdoc in a frame: the parent's (frames.odin)
 	return p.env.location.href
 }
 

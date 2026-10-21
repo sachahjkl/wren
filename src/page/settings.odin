@@ -28,6 +28,7 @@ Settings :: struct {
 	js_web:          Js_Web_Settings,     // web APIs of JavaScript (js_web_settings.odin)
 	dom:             Js_Dom_Settings,     // the DOM for JavaScript (js_dom_settings.odin)
 	authn:           webauthn.Settings,   // Web Authentication (bindings_webauthn.odin)
+	frames:          Frame_Settings,      // nested browsing contexts (frames.odin)
 }
 
 PREFS := [?]config.Def{
@@ -54,6 +55,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, JS_WEB_PREFS[:])
 	config.register(p, JS_DOM_PREFS[:])
 	webauthn.register_prefs(p)
+	config.register(p, FRAME_PREFS[:])
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -75,6 +77,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		js_web = js_web_settings_from_prefs(p),
 		dom = js_dom_settings_from_prefs(p),
 		authn = webauthn.settings_from_prefs(p),
+		frames = frame_settings_from_prefs(p),
 	}
 }
 

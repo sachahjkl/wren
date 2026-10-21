@@ -1,0 +1,54 @@
+/// Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin; native/js/runtime/frames.c and
+/// prelude/frames.js). A window of another document is named by its navigable's id: each document runs in its own
+/// engine instance, so another window is a WindowProxy of the calling realm that only reaches what HTML lets a
+/// cross-origin window reach (postMessage, location as a setter, closed, frames, length, top, parent, opener, window,
+/// self, close, focus, blur); documents never share objects, same origin or not.
+[Exposed=Window]
+module frames {
+  /// The navigable of the calling document.
+  u64 Frame_self();
+  /// The navigable of a frame element (<iframe>, <frame>) of the calling document; 0 when it has none (not
+  /// connected, frames off).
+  u64 Frame_ofElement(u64 element);
+  /// The parent navigable; 0 for a top-level one, or one that is gone.
+  u64 Frame_parent(u64 navigable);
+  /// The top-level navigable of its tab; 0 when it is gone.
+  u64 Frame_top(u64 navigable);
+  /// How many child navigables its document has (window.length).
+  u32 Frame_length(u64 navigable);
+  /// Its document's index-th child navigable in tree order of their containers (window[index]); 0 when none.
+  u64 Frame_child(u64 navigable, u32 index);
+  /// Its document's child navigable named `name` (window[name], reachable across origins); 0 when none.
+  u64 Frame_named(u64 navigable, string name);
+  /// The names of its document's child navigables, NUL separated (the WindowProxy's own property names).
+  string Frame_childNames(u64 navigable);
+  /// window.closed: the navigable is gone, or has no document.
+  bool Frame_closed(u64 navigable);
+  /// Whether its document is same origin with the calling one.
+  bool Frame_sameOrigin(u64 navigable);
+  /// otherWindow.postMessage(message, targetOrigin): `data` is the message's structured serialization
+  /// (runtime/clone.c); `target_origin` is "*", "/" or a URL. The message is delivered from a task of the target's,
+  /// if its document's origin then matches. Syntax for an invalid target origin, Data_Clone for a message over
+  /// frames.max_message_bytes.
+  void Frame_postMessage(u64 navigable, bytes data, usvstring target_origin) raises;
+  /// otherWindow.location = url, location.href = url, location.replace(url): Security when the calling document may
+  /// not navigate it (HTML "allowed to navigate", the sandbox; the console says why), Syntax for an invalid URL.
+  void Frame_navigate(u64 navigable, usvstring url, bool replace) raises;
+  /// window.open(url, target): a frame's name, _self, _parent or _top is navigated and its navigable returned; any
+  /// other target opens a new tab (when the embedder can) and gives 0 (no opener relationship, as noopener).
+  /// Not_Allowed in a sandboxed document without allow-popups, Syntax for an invalid URL.
+  u64 Frame_open(usvstring url, string target) raises;
+
+  /// window.name: its navigable's name.
+  string Window_get_name();
+  /// window.name = value
+  void Window_set_name(string value);
+}
+
+/// <iframe srcdoc>, reflected as a string (TrustedHTML is not supported: strings are).
+partial module dom {
+  /// iframe.srcdoc
+  string HTMLIFrameElement_srcdoc(Element element);
+  /// iframe.srcdoc = value
+  void HTMLIFrameElement_set_srcdoc(Element element, string value) raises;
+}

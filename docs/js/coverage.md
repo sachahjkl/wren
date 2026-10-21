@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 560 |
 | exposed by default | 223 |
 | members | 5013 |
-| members implemented | 2662 (53.1 %) |
+| members implemented | 2674 (53.3 %) |
 
 ## By specification
 
@@ -47,7 +47,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (3) | 19 / 126 |
 | `hr-time.idl` | 1 (1) | 13 / 17 |
-| `html.idl` | 160 (97) | 1154 / 1819 |
+| `html.idl` | 160 (97) | 1166 / 1819 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -1841,7 +1841,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLFrameElement : HTMLElement
 
-8 / 11 members.
+10 / 11 members.
 
 - `constructor()`: not supported
 - `name`: generic (reflects a content attribute)
@@ -1850,8 +1850,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `frameBorder`: generic (reflects a content attribute)
 - `longDesc`: generic (reflects a content attribute)
 - `noResize`: generic (reflects a content attribute)
-- `readonly contentDocument`: not supported
-- `readonly contentWindow`: not supported
+- `readonly contentDocument`: C `wjr_HTMLFrameElement_get_contentDocument`
+- `readonly contentWindow`: C `wjr_HTMLFrameElement_get_contentWindow`
 - `marginHeight`: generic (reflects a content attribute)
 - `marginWidth`: generic (reflects a content attribute)
 
@@ -1916,11 +1916,11 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLIFrameElement : HTMLElement
 
-15 / 20 members.
+19 / 20 members.
 
 - `constructor()`: not supported
 - `src`: generic (reflects a content attribute)
-- `srcdoc`: not supported
+- `srcdoc`: import `dom.HTMLIFrameElement_srcdoc`
 - `name`: generic (reflects a content attribute)
 - `readonly sandbox`: C `wjr_HTMLIFrameElement_get_sandbox`
 - `allow`: generic (reflects a content attribute)
@@ -1929,9 +1929,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `height`: generic (reflects a content attribute)
 - `referrerPolicy`: C `wjr_HTMLIFrameElement_get_referrerPolicy`
 - `loading`: C `wjr_HTMLIFrameElement_get_loading`
-- `readonly contentDocument`: not supported
-- `readonly contentWindow`: not supported
-- `getSVGDocument()`: not supported
+- `readonly contentDocument`: C `wjr_HTMLIFrameElement_get_contentDocument`
+- `readonly contentWindow`: C `wjr_HTMLIFrameElement_get_contentWindow`
+- `getSVGDocument()`: C `wjr_HTMLIFrameElement_getSVGDocument`
 - `align`: generic (reflects a content attribute)
 - `scrolling`: generic (reflects a content attribute)
 - `frameBorder`: generic (reflects a content attribute)
@@ -3316,7 +3316,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Window : EventTarget
 
-182 / 220 members.
+188 / 220 members.
 
 - `readonly cookieStore`: not supported
 - `matchMedia()`: C `wjr_Window_matchMedia`
@@ -3351,7 +3351,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly window`: C `wjr_Window_get_window`
 - `readonly self`: C `wjr_Window_get_self`
 - `readonly document`: import `dom.Window_document`
-- `name`: not supported
+- `name`: import `frames.Window_get_name`
 - `readonly location`: C `wjr_Window_get_location`
 - `readonly history`: C `wjr_Window_get_history`
 - `readonly navigation`: not supported
@@ -3363,18 +3363,18 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly statusbar`: not supported
 - `readonly toolbar`: not supported
 - `status`: not supported
-- `close()`: not supported
-- `readonly closed`: not supported
+- `close()`: C `wjr_Window_close`
+- `readonly closed`: C `wjr_Window_get_closed`
 - `stop()`: not supported
-- `focus()`: not supported
-- `blur()`: not supported
+- `focus()`: C `wjr_Window_focus`
+- `blur()`: C `wjr_Window_blur`
 - `readonly frames`: C `wjr_Window_get_frames`
 - `readonly length`: C `wjr_Window_get_length`
 - `readonly top`: C `wjr_Window_get_top`
 - `opener`: C `wjr_Window_get_opener (setter not supported)`
 - `readonly parent`: C `wjr_Window_get_parent`
 - `readonly frameElement`: C `wjr_Window_get_frameElement`
-- `open()`: not supported
+- `open()`: C `wjr_Window_open`
 - `readonly navigator`: C `wjr_Window_get_navigator`
 - `readonly clientInformation`: C `wjr_Window_get_clientInformation`
 - `readonly originAgentCluster`: not supported

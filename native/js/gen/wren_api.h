@@ -141,6 +141,10 @@ enum wr_FormEnctype {
 
 /* module fetch (partial): types */
 
+/* module frames: types */
+
+/* module dom (partial): types */
+
 /* module history: types */
 // The Window object (an EventTarget: popstate, hashchange, storage...).
 typedef uint64_t wr_Window;
@@ -670,6 +674,10 @@ WR_IMPORT("dom", "Element_setAttribute") int32_t wr_Element_setAttribute(uint64_
 WR_IMPORT("dom", "Element_getAttribute") int32_t wr_Element_getAttribute(uint64_t element, const uint8_t *name, uint32_t name_len, uint8_t *_buf, uint32_t _cap);
 // element.removeAttribute(name)
 WR_IMPORT("dom", "Element_removeAttribute") int32_t wr_Element_removeAttribute(uint64_t element, const uint8_t *name, uint32_t name_len);
+// iframe.srcdoc
+WR_IMPORT("dom", "HTMLIFrameElement_srcdoc") int32_t wr_HTMLIFrameElement_srcdoc(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// iframe.srcdoc = value
+WR_IMPORT("dom", "HTMLIFrameElement_set_srcdoc") int32_t wr_HTMLIFrameElement_set_srcdoc(uint64_t element, const uint8_t *value, uint32_t value_len);
 // customElements.define(name, ...) succeeded: elements of that local name now queue reactions.
 WR_IMPORT("dom", "CustomElements_define") void wr_CustomElements_define(const uint8_t *name, uint32_t name_len);
 // The size CustomElements_take needs now (0: nothing queued): the engine sizes its buffer with it, as the take
@@ -1670,6 +1678,45 @@ WR_IMPORT("forms", "FormData_fileAt") int32_t wr_FormData_fileAt(uint64_t data, 
 WR_IMPORT("forms", "FormData_setBlob") int32_t wr_FormData_setBlob(uint64_t data, const uint8_t *name, uint32_t name_len, uint64_t blob, const uint8_t *filename, uint32_t filename_len, const uint8_t *mime, uint32_t mime_len);
 // The entries as a multipart/form-data body with this boundary (files chosen in an <input type=file> are read now).
 WR_IMPORT("forms", "FormData_encode") int32_t wr_FormData_encode(uint64_t data, const uint8_t *boundary, uint32_t boundary_len, uint64_t *_ret);
+
+/* module frames */
+// The navigable of the calling document.
+WR_IMPORT("frames", "Frame_self") uint64_t wr_Frame_self(void);
+// The navigable of a frame element (<iframe>, <frame>) of the calling document; 0 when it has none (not
+// connected, frames off).
+WR_IMPORT("frames", "Frame_ofElement") uint64_t wr_Frame_ofElement(uint64_t element);
+// The parent navigable; 0 for a top-level one, or one that is gone.
+WR_IMPORT("frames", "Frame_parent") uint64_t wr_Frame_parent(uint64_t navigable);
+// The top-level navigable of its tab; 0 when it is gone.
+WR_IMPORT("frames", "Frame_top") uint64_t wr_Frame_top(uint64_t navigable);
+// How many child navigables its document has (window.length).
+WR_IMPORT("frames", "Frame_length") uint32_t wr_Frame_length(uint64_t navigable);
+// Its document's index-th child navigable in tree order of their containers (window[index]); 0 when none.
+WR_IMPORT("frames", "Frame_child") uint64_t wr_Frame_child(uint64_t navigable, uint32_t index);
+// Its document's child navigable named `name` (window[name], reachable across origins); 0 when none.
+WR_IMPORT("frames", "Frame_named") uint64_t wr_Frame_named(uint64_t navigable, const uint8_t *name, uint32_t name_len);
+// The names of its document's child navigables, NUL separated (the WindowProxy's own property names).
+WR_IMPORT("frames", "Frame_childNames") int32_t wr_Frame_childNames(uint64_t navigable, uint8_t *_buf, uint32_t _cap);
+// window.closed: the navigable is gone, or has no document.
+WR_IMPORT("frames", "Frame_closed") int32_t wr_Frame_closed(uint64_t navigable);
+// Whether its document is same origin with the calling one.
+WR_IMPORT("frames", "Frame_sameOrigin") int32_t wr_Frame_sameOrigin(uint64_t navigable);
+// otherWindow.postMessage(message, targetOrigin): `data` is the message's structured serialization
+// (runtime/clone.c); `target_origin` is "*", "/" or a URL. The message is delivered from a task of the target's,
+// if its document's origin then matches. Syntax for an invalid target origin, Data_Clone for a message over
+// frames.max_message_bytes.
+WR_IMPORT("frames", "Frame_postMessage") int32_t wr_Frame_postMessage(uint64_t navigable, const uint8_t *data, uint32_t data_len, const uint8_t *target_origin, uint32_t target_origin_len);
+// otherWindow.location = url, location.href = url, location.replace(url): Security when the calling document may
+// not navigate it (HTML "allowed to navigate", the sandbox; the console says why), Syntax for an invalid URL.
+WR_IMPORT("frames", "Frame_navigate") int32_t wr_Frame_navigate(uint64_t navigable, const uint8_t *url, uint32_t url_len, int32_t replace);
+// window.open(url, target): a frame's name, _self, _parent or _top is navigated and its navigable returned; any
+// other target opens a new tab (when the embedder can) and gives 0 (no opener relationship, as noopener).
+// Not_Allowed in a sandboxed document without allow-popups, Syntax for an invalid URL.
+WR_IMPORT("frames", "Frame_open") int32_t wr_Frame_open(const uint8_t *url, uint32_t url_len, const uint8_t *target, uint32_t target_len, uint64_t *_ret);
+// window.name: its navigable's name.
+WR_IMPORT("frames", "Window_get_name") int32_t wr_Window_get_name(uint8_t *_buf, uint32_t _cap);
+// window.name = value
+WR_IMPORT("frames", "Window_set_name") void wr_Window_set_name(const uint8_t *value, uint32_t value_len);
 
 /* module history */
 // window (the same object every time).

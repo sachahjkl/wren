@@ -286,6 +286,28 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Element_removeAttribute :: proc(c: ^Call, element: Api_Element, name: string) -> Api_Error`
 
+### `HTMLIFrameElement_srcdoc`
+
+```
+string HTMLIFrameElement_srcdoc(Element element)
+```
+
+iframe.srcdoc
+
+Host: `HTMLIFrameElement_srcdoc :: proc(c: ^Call, element: Api_Element) -> string`
+
+### `HTMLIFrameElement_set_srcdoc`
+
+```
+void HTMLIFrameElement_set_srcdoc(Element element, string value) raises
+```
+
+iframe.srcdoc = value
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLIFrameElement_set_srcdoc :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
+
 ### `CustomElements_define`
 
 ```
