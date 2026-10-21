@@ -98,6 +98,23 @@ hints_yield_to_author_styles :: proc(t: ^testing.T) {
 	testing.expect(t, c3.width.kind == .Auto && c3.height.kind == .Auto, "zero cell width / height are ignored")
 }
 
+// th is centered only under a parent whose text-align is the initial value (HTML §15.3.8; Tailwind's text-left tables).
+@(test)
+th_text_align_follows_parent :: proc(t: ^testing.T) {
+	d := open_doc(`<!doctype html><body>
+	<table><tr><th id=a>x</th></tr></table>
+	<table style="text-align:left"><tr><th id=b>x</th></tr></table>
+	<table><tr style="text-align:right"><th id=c>x</th><th id=e style="text-align:start">x</th></tr></table>
+	<div style="text-align:-webkit-center"><table><tr><th id=f>x</th></tr></table></div>
+	</body>`)
+	defer close_doc(&d)
+	testing.expect_value(t, el(&d, "a").text_align, Text_Align.Center)
+	testing.expect_value(t, el(&d, "b").text_align, Text_Align.Left)
+	testing.expect_value(t, el(&d, "c").text_align, Text_Align.Right)
+	testing.expect_value(t, el(&d, "e").text_align, Text_Align.Start)
+	testing.expect_value(t, el(&d, "f").text_align, Text_Align.Legacy_Center)
+}
+
 // <svg width height>: presentation attributes of the CSS properties, in CSS syntax (an Angular icon component writes
 // width="1rem"); the page's rules still win; what is not a CSS value (or could break out of it) is dropped.
 @(test)
