@@ -171,7 +171,7 @@ parse_host_source :: proc(tok: string) -> (s: Source, ok: bool) {
 	s.kind = .Host
 	if i := strings.index(rest, "://"); i >= 0 {
 		if !is_scheme_name(rest[:i]) { return {}, false }
-		s.scheme = strings.to_lower(rest[:i])
+		s.scheme = strings.to_lower(rest[:i], context.temp_allocator)   // cloned below with the other parts
 		rest = rest[i + 3:]
 	}
 	// path
