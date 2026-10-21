@@ -2,9 +2,10 @@
 #   powershell -File tools\test_all.ps1 [-Quick] [-CI] [-Jobs n] [-BasePort n]
 #   (-Quick skips the long network stress; -CI, for continuous integration runners: -Quick, end-to-end timeouts x3 for
 #   slow shared machines, the whole output of a failed step instead of its last lines, one step at a time on the
-#   default ports. Nothing here opens a window or reaches the internet: the end-to-end tests use the local test server
-#   on 127.0.0.1, the pixel tests WARP; only the pinned test suites, test262 and web-platform-tests, are fetched once
-#   into build\.)
+#   default ports. Nothing here reaches the internet, and with -Quick nothing opens a window: the end-to-end tests use
+#   the local test server on 127.0.0.1, the pixel tests WARP; only the pinned test suites, test262 and
+#   web-platform-tests, are fetched once into build\. -CI and full runs also run the browser's check build, in a
+#   window of its own that takes no input of the desktop.)
 # Several runs at once (worktrees of several agents): nothing here takes a lock. The test server listens on a block of
 # ports of this run (tools\test_env.ps1: -BasePort, default derived from the worktree's path, the next free block when
 # it is taken; 8765 with -CI), the tools find it through WREN_TEST_BASE_PORT, and TEMP is build\tmp. Scripts that use
@@ -342,6 +343,19 @@ try {
     Get-Job | Where-Object { $_.Id -ne $script:watchdog.Id } | Remove-Job -Force -ErrorAction SilentlyContinue
 }
 
+# The browser's check build (build.bat check: every allocation tracked) drives itself through a session and through
+# tabs opened and closed by the dozen (tools\memcheck_e2e.ps1, tools\endurance.ps1): nothing may be left allocated at
+# exit, nor grow while it runs. It opens a window (no input of the desktop's): with -CI, and in full runs, where the
+# endurance run is the long one (400 tabs, the native memory too).
+if ($CI -or -not $Quick) {
+    Step 'browser check build: a scripted session (tabs, JavaScript, images, forms, back/forward cache, palette, history) exits with nothing allocated; tabs opened and closed by the dozen leave nothing growing (tracked bytes, handles; the native memory too in full runs)' {
+        powershell -NoProfile -ExecutionPolicy Bypass -File tools\memcheck_e2e.ps1 -TimeoutSec (300 * $slow)
+        if ($LASTEXITCODE) { return }
+        $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\endurance.ps1', '-NoBuild', '-TimeoutSec', (1800 * $slow))
+        if ($Quick) { $a += @('-Cycles', '8', '-Warmup', '3', '-NoNative') }
+        powershell @a
+    }
+}
 if (-not $Quick) {
     Step 'network stress' { powershell -NoProfile -File tools\net_stress.ps1 -SizeMB 100 }
     Step 'native WOFF2 decoder tests (real Google Fonts against their TrueType, collections, corruptions) and cssaudit' {
