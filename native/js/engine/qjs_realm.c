@@ -398,6 +398,12 @@ WJ_EXPORT("wj_preinit") int32_t wj_preinit(void)
     if (!ctx) { return -2; }
     wj_the_realm.ctx = ctx;
     wj_the_realm.global = JS_GetGlobalObject(ctx);
+    /* QuickJS-ng's own `performance` (JS_AddPerformance) took its timeOrigin from the clock of the machine that made
+     * the image (pre-initialization runs at build time): after a reboot its now() went negative. Every realm gets the
+     * browser's Performance (WindowOrWorkerGlobalScope.performance), on the page's clock. */
+    JSAtom performance = JS_NewAtom(ctx, "performance");
+    JS_DeleteProperty(ctx, wj_the_realm.global, performance, 0);
+    JS_FreeAtom(ctx, performance);
     if (wj_platform_preinit(ctx) != 0) { return -3; }
     /* what the snapshot keeps should not include garbage */
     JS_RunGC(rt);

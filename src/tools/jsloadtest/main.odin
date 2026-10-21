@@ -586,6 +586,9 @@ try { w.postMessage(() => 1); } catch (e) { log("function not cloneable " + e.na
 	p := load(src)
 	wait_for("worker closing")
 	check(logged("worker ready"), "a JavaScript worker starts and posts a message")
+	clock := "(no message)"
+	for l in logs { if strings.has_prefix(l, "worker clock ") { clock = l } }
+	check(clock == "worker clock true true true", fmt.tprintf("a worker's performance is the browser's: now() >= 0, timeOrigin + now() is the time of day (%s)", clock))
 	check(logged("transferred detaches 0"), "a transferred ArrayBuffer is detached")
 	check(logged("echo true 5 a true gi 3 true lib 7 name w1 true"), "structured clone both ways (Date, Map, Set, RegExp, ArrayBuffer, cycles); importScripts; name")
 	check(logged("worker error true true"), "an uncaught error of the worker is an ErrorEvent at the Worker")
