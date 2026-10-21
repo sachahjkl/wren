@@ -29,6 +29,8 @@ Style_Load :: struct {
 	parser:       bool,          // part of the document as parsed (or blocking="render"): may block its first paint
 	failed:       bool,          // nothing will come of it (network error, HTTP error, refused)
 	scope:        base.Handle,   // links: the shadow root the <link> is in (NIL: the document)
+	settled:      bool,          // its own sheet is in the engine, or will not come (link_events.odin)
+	fired:        bool,          // links: its load / error event is queued
 }
 
 @(private)
@@ -197,9 +199,10 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		l.task = base.NIL_HANDLE
 		l.failed = true
 		log(p, .Warn, fmt.tprintf("stylesheet %s: %s", l.url, ev.detail))
+		style_load_settled(p, l, false)
 	case .Done:
 		l.task = base.NIL_HANDLE
-		if l.bad_status { return }
+		if l.bad_status { style_load_settled(p, l, false); return }
 		if !l.is_import { if _, still := p.link_loads[l.owner]; !still { return } }
 		if parse_sheet_offthread(p, l, ev.data) { return }   // registered when parsed (offthread.odin)
 		text := decode_css(ev.data, p.settings.style.max_sheet_bytes)
@@ -214,7 +217,8 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			}
 		}
 		p.style_stale = true
-		start_pending_imports(p)
+		start_pending_imports(p)   // (before settling: a link waits for the @imports its sheet starts)
+		style_load_settled(p, l, !l.failed)
 	}
 }
 

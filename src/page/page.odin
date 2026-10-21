@@ -89,6 +89,7 @@ Page :: struct {
 	style_stale:  bool,
 	link_loads:   map[base.Handle]^Style_Load,
 	import_loads: [dynamic]^Style_Load,
+	link_sync_queued: bool,             // a task reads the <link> elements again (link_events.odin: link_changed)
 	web:          ^Web_State,           // platform web APIs (web.odin)
 	formctl:      ^Page_Forms,          // form controls (bindings_forms.odin)
 	// threads (worker.odin, offthread.odin)

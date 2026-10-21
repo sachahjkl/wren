@@ -935,6 +935,7 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 		c := dom.get(d, cur)
 		if c == nil { continue }
 		if is_script_element(c) { append(&found, cur) }
+		if c.kind == .Element && c.name == "link" && connected { link_changed(p) }
 		for ch := c.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(&stack, ch) }
 	}
 	for el in found {
@@ -957,6 +958,11 @@ hook_attribute :: proc(user: rawptr, d: ^dom.Document, el: base.Handle, name: st
 	if p.scripts != nil && p.scripts.parser.revealing > 0 { return }
 	if len(name) > 2 && name[0] == 'o' && name[1] == 'n' {
 		content_handler_changed(p, el, name)
+		return
+	}
+	// a <link>'s stylesheet is fetched when it is connected or its attributes change, rendered or not (link_events.odin)
+	if name == "href" || name == "rel" || name == "media" || name == "crossorigin" {
+		if n := dom.get(d, el); n != nil && n.kind == .Element && n.name == "link" && dom.is_connected(d, el) { link_changed(p) }
 		return
 	}
 	if name == "async" {

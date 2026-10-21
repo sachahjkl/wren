@@ -190,6 +190,7 @@ main :: proc() {
 	test_workers()
 	test_clone()
 	test_integrity_preload()
+	test_link_events()
 	measurements()
 
 	base.scope_close(process)
@@ -649,6 +650,45 @@ document.getElementById("b").dispatchEvent(new Event("click", { bubbles: true })
 	page.page_close(p)
 	n := hits(once)
 	check(n == 1, fmt.tprintf("a parser script is downloaded once (the preload is claimed by its element): %d download(s)", n))
+}
+
+// <link rel=stylesheet> fires load / error (link_events.odin), without anything being rendered (this tool lays out
+// nothing): a link inserted by a script is fetched at once, its load waits for the @import its sheet has, a failed one
+// fires error, and one pointed elsewhere before its sheet came fires only for the new address. (Turbopack and Next.js
+// load CSS chunks this way and go on in onload: DuckDuckGo's home page waited for ever.)
+test_link_events :: proc() {
+	fmt.println("-- <link rel=stylesheet> load and error events")
+	css :: proc(text: string, ms: int, key: string) -> string { return gen(text, ms, strings.concatenate({"&type=text/css&k=", key}, context.temp_allocator)) }
+	imported := css("b { color: green }", 300, "imp")
+	with_import := css(strings.concatenate({`@import url("`, imported, `"); p { color: red }`}, context.temp_allocator), 0, "outer")
+	src := strings.concatenate({`<!doctype html><head>`, PRELUDE, `</head><body><p id=t>x</p><b id=bb>b</b><script>
+function add(name, href, then) {
+  const l = document.createElement("link");
+  l.rel = "stylesheet";
+  l.onload = () => log(name + " load" + (then ? " " + then() : ""));
+  l.onerror = () => log(name + " error");
+  l.href = href;
+  document.head.appendChild(l);
+  return l;
+}
+add("plain", "`, css("p { margin: 1px }", 50, "plain"), `");
+add("missing", "`, gen("p {}", 0, "&type=text/css&status=404&k=missing"), `");
+add("imports", "`, with_import, `", () => getComputedStyle(document.getElementById("bb")).color);
+const moved = add("moved", "`, css("p {}", 400, "first"), `");
+moved.href = "`, css("p {}", 0, "second"), `";
+setTimeout(() => log("timeout"), 1500);
+</script></body>`}, context.temp_allocator)
+	p := load(src)
+	wait_for("timeout")
+	check(logged("plain load"), "a link a script inserts fires load once its sheet is in (nothing rendered)")
+	check(logged("missing error") && !logged("missing load"), "a link whose sheet failed (HTTP 404) fires error")
+	check(logged("imports load rgb(0, 128, 0)"), "a link whose sheet has an @import fires load once the imported sheet applies too")
+	n := hits(imported)
+	check(n == 1, fmt.tprintf("the @import was fetched before that load (%d request(s))", n))
+	moved := 0
+	for l in logs { if l == "moved load" { moved += 1 } }
+	check(moved == 1, fmt.tprintf("a link pointed elsewhere before its sheet came fires load once, for the new sheet (%d)", moved))
+	page.page_close(p)
 }
 
 measurements :: proc() {

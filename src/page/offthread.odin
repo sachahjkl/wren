@@ -358,9 +358,17 @@ css_apply :: proc(p: ^Page, j: ^Css_Job) {
 			s = style.engine_add_sheet(p.engine, string(j.text), j.owner, j.media, j.url, from_link = true, scope = l.scope)
 		}
 		if s == nil { log(p, .Warn, strings.concatenate({"stylesheet ", j.url, ": too large or disabled"}, context.temp_allocator)) }
+		p.style_stale = true
+		start_pending_imports(p)
+		if s == nil { l.failed = true }
+		style_load_settled(p, l, s != nil)
+		return
 	}
 	p.style_stale = true
 	start_pending_imports(p)
+	for il in p.import_loads {
+		if il.sheet_id == j.sheet_id && il.slot == j.slot && !il.settled { style_load_settled(p, il, true); break }
+	}
 }
 
 // A fetched stylesheet: parsed off the UI thread when preferences allow, then registered. False when the caller must
