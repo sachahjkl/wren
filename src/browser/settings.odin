@@ -92,6 +92,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_urlbar_prefs(p)   // urlbar.odin
 	register_shell_frame_prefs(p)   // shell_frames.odin
 	register_page_thread_prefs(p)   // page_thread.odin
+	register_memory_prefs(p)   // memory_trim.odin
 	_ = wasm.PREFS
 	_ = html.PREFS
 }
