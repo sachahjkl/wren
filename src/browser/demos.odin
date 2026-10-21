@@ -68,6 +68,10 @@ DEMOS := [?]Demo{
 	{.Css, "Color schemes", "firstpaint.html",
 		"A dark theme chosen by <code>prefers-color-scheme</code> from stylesheets in <code>&lt;noscript&gt;</code>, <code>color-scheme</code>, system colors (CanvasText, LinkText, GrayText), <code>light-dark()</code> and form controls in both schemes. Its stylesheets come from the server.", true, "", false},
 
+	{.JavaScript, "Frames: nested documents", "frames.html",
+		"&lt;iframe&gt;s with documents of their own (their origin, scripts and JavaScript engine instance): same-origin and cross-origin frames, <code>srcdoc</code>, <code>sandbox</code>, <code>postMessage</code>, a form and links aimed at a named frame.", false, "", false},
+	{.E2e, "Frames: the child page", "frames_child.html",
+		"The document loaded in the frames of the frames demo.", false, "", false},
 	{.E2e, "History: a long page", "history/long.html",
 		"Scroll the page and its box, fill the form, follow the link, come back: from the back/forward cache at once, or loaded again and restored once tall enough (its second part arrives late). <code>tools\\history_e2e.ps1</code> does it in the window and times both.", false, "", false},
 	{.E2e, "History: the next page", "history/next.html",
