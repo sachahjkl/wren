@@ -63,6 +63,7 @@ media_page :: proc(p: ^Page) -> ^Media_Page {
 			delete(mp.lists)
 			free(mp)
 			delete_key(&media_pages, pg)
+			if len(media_pages) == 0 { delete(media_pages); media_pages = nil }   // made again by the next page
 		}
 	}
 	// runs before page_cleanup destroys the objects (registered after it): the destructor tolerates the missing entry
