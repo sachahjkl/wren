@@ -970,7 +970,9 @@ grid_self :: proc(c: ^Ctx, container: ^style.Computed, k: ^Box, axis: int) -> st
 	if a == .Auto { a = axis == 0 ? container.justify_items : container.align_items }
 	if a == .Normal || a == .Auto {
 		ratio_sized := k.cs.aspect_ratio > 0 && (axis == 1 || k.cs.height.kind != .Auto || grid_stretched_h(container, k))
-		a = (k.kind == .Replaced || ratio_sized) ? .Start : .Stretch
+		// (form controls are laid out like replaced boxes here, but they are not replaced elements: they stretch)
+		replaced := k.kind == .Replaced && .Control not_in k.flags
+		a = (replaced || ratio_sized) ? .Start : .Stretch
 	}
 	return a
 }
@@ -1146,6 +1148,10 @@ grid_place_items :: proc(c: ^Ctx, g: ^Grid, cw: f32) {
 		if sub_axis { al = .Stretch }
 		if k.kind == .Replaced {
 			h = replaced_size(c, it.box, aw, ah).y
+			// a form control stretched to its area (its height not given)
+			if .Control in k.flags && al == .Stretch && k.cs.height.kind == .Auto && !k.auto_t && !k.auto_b {
+				h = clamp_h(c, k, max(ah - it.m[0] - it.m[2] - k.pre_h, 0), ah)
+			}
 			forced = true
 		} else if spec, ok := to_border_h(c, k, k.cs.height, ah); ok && !sub_axis {
 			h = clamp_h(c, k, spec, ah)
