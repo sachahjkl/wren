@@ -173,8 +173,8 @@ wt_stop :: proc() {
 		thread.destroy(wt.ticker)
 		wt.ticker = nil
 	}
+	attach_stop()   // (its jobs hold module cache entries)
 	cache_stop()
-	attach_stop()
 	wasmtime_linker_delete(wt.linker)
 	wasm_engine_delete(wt.engine)
 	runtime_settings_destroy(&wt.rs)

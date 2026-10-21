@@ -40,15 +40,14 @@ attach_function :: proc(inst: ^Instance, code: []byte, max_functions := 0) -> (i
 	if !inst.wt.has_table { return 0, "the module has no table" }
 	if max_functions > 0 && inst.wt.attached >= max_functions { return 0, "too many functions attached" }
 	t0 := time.tick_now()
-	module: wt_module
-	if e := wasmtime_module_new(wt.engine, raw_data(code), len(code), &module); e != nil {
-		msg := wt_error_text(e, context.temp_allocator)
-		wasmtime_error_delete(e)
+	cached, cerr := cache_acquire(code)
+	if cached == nil {
+		defer delete(cerr)
 		attach_count(false, len(code), time.tick_since(t0), 0)
-		return 0, fmt.tprintf("compile failed: %s", msg)
+		return 0, fmt.tprintf("compile failed: %s", cerr)
 	}
-	defer wasmtime_module_delete(module)
-	return attach_module(inst, module, len(code), time.tick_since(t0))
+	defer cache_release(cached)
+	return attach_module(inst, cached.module, len(code), time.tick_since(t0))
 }
 
 // Instantiates a compiled module next to `inst` and puts its "f" in the table.
@@ -120,7 +119,7 @@ Attach_Job :: struct {
 	inst:       ^Instance,
 	ticket:     i32,
 	code:       []byte,
-	module:     wt_module,
+	module:     ^Cached,   // from the module cache (shared by every instance that made the same code; memory and disk)
 	err:        string,
 	done:       bool,
 	compile_ns: i64,
@@ -185,7 +184,7 @@ attach_poll :: proc(inst: ^Instance, ticket: i32) -> (index: u32, pending: bool,
 		attach_count(false, len(job.code), time.Duration(job.compile_ns), 0)
 		return 0, false, fmt.tprintf("compile failed: %s", job.err)
 	}
-	index, err = attach_module(inst, job.module, len(job.code), time.Duration(job.compile_ns))
+	index, err = attach_module(inst, job.module.module, len(job.code), time.Duration(job.compile_ns))
 	return index, false, err
 }
 
@@ -239,7 +238,7 @@ attach_stop :: proc() {
 @(private)
 attach_job_free :: proc(job: ^Attach_Job) {
 	context.allocator = runtime.default_allocator()
-	if job.module != nil { wasmtime_module_delete(job.module) }
+	if job.module != nil { cache_release(job.module) }
 	delete(job.code)
 	delete(job.err)
 	free(job)
@@ -256,20 +255,14 @@ attach_worker :: proc() {
 		sync.mutex_unlock(&attach_pool.lock)
 
 		t0 := time.tick_now()
-		module: wt_module
-		msg: string
-		if e := wasmtime_module_new(wt.engine, raw_data(job.code), len(job.code), &module); e != nil {
-			msg = wt_error_text(e)
-			wasmtime_error_delete(e)
-			module = nil
-		}
+		module, msg := cache_acquire(job.code)
 		ns := i64(time.tick_since(t0))
 
 		sync.mutex_lock(&attach_pool.lock)
 		if job.inst == nil {
 			// its instance died meanwhile
 			sync.mutex_unlock(&attach_pool.lock)
-			if module != nil { wasmtime_module_delete(module) }
+			if module != nil { cache_release(module) }
 			delete(msg)
 			delete(job.code)
 			free(job)
