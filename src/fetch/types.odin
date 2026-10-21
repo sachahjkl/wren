@@ -47,6 +47,7 @@ Destination :: enum u8 {
 	Manifest,
 	Report,
 	Worker,        // a dedicated worker's Wasm module: application/wasm, CSP worker-src
+	Iframe,        // a nested document (<iframe>, <frame>): mode Navigate, CSP frame-src, not a top-level site
 }
 
 Referrer_Policy :: enum u8 {

@@ -211,6 +211,7 @@ parse_host_source :: proc(tok: string) -> (s: Source, ok: bool) {
 Directive_Kind :: enum u8 {
 	Default_Src, Script_Src, Script_Src_Elem, Connect_Src, Img_Src, Style_Src, Style_Src_Elem, Font_Src, Media_Src,
 	Manifest_Src, Object_Src, Worker_Src, Frame_Src, Child_Src, Base_Uri, Form_Action,
+	Frame_Ancestors,   // who may embed the document (frame_ancestors.odin); no fallback
 }
 
 directive_name :: proc(k: Directive_Kind) -> string {
@@ -231,6 +232,7 @@ directive_name :: proc(k: Directive_Kind) -> string {
 	case .Child_Src: return "child-src"
 	case .Base_Uri: return "base-uri"
 	case .Form_Action: return "form-action"
+	case .Frame_Ancestors: return "frame-ancestors"
 	}
 	return ""
 }
@@ -249,7 +251,7 @@ effective :: proc(p: ^Policy, k: Directive_Kind) -> (d: ^Directive, name: string
 	case .Child_Src:       chain = {.Child_Src, .Default_Src}
 	case .Connect_Src, .Img_Src, .Font_Src, .Media_Src, .Manifest_Src, .Object_Src: chain = {k, .Default_Src}
 	case .Default_Src:     chain = {.Default_Src}
-	case .Base_Uri, .Form_Action: chain = {k}
+	case .Base_Uri, .Form_Action, .Frame_Ancestors: chain = {k}
 	}
 	for c in chain {
 		n := directive_name(c)
@@ -312,6 +314,13 @@ source_matches_url :: proc(s: Source, self: url.Origin, u: url.URL, redirected: 
 	case .Scheme:
 		return scheme_matches(s.scheme, u.scheme)
 	case .Host:
+		// a bare "*": any network URL, or one of the protected resource's scheme (CSP 3 §6.7.2.8)
+		if s.host == "*" && s.scheme == "" && s.port == "" && s.path == "" {
+			switch u.scheme {
+			case "http", "https", "ws", "wss": return true
+			}
+			return !self.opaque && u.scheme == self.scheme
+		}
 		// scheme part (defaults to the protected resource's scheme)
 		if s.scheme != "" {
 			if !scheme_matches(s.scheme, u.scheme) { return false }
