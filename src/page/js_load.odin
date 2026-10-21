@@ -127,7 +127,10 @@ Script_Timing :: struct {
 	started_ms:    f64,   // scripts_start (the document was parsed and adopted)
 	parsed_ms:     f64,   // the reveal finished ("stop parsing")
 	dcl_ms:        f64,   // DOMContentLoaded fired
+	dcl_end_ms:    f64,   // its listeners returned
+	complete_ms:   f64,   // readyState became complete
 	load_ms:       f64,   // load fired
+	load_end_ms:   f64,   // its listeners returned
 	scripts_run:   int,
 }
 
@@ -681,15 +684,18 @@ the_end :: proc(p: ^Page) -> bool {
 		s.content_loaded = true
 		s.timing.dcl_ms = now_ms(p)
 		dispatch_event(p, p.doc.root, dom.Event{type = "DOMContentLoaded", bubbles = true})
+		s.timing.dcl_end_ms = now_ms(p)
 		return true
 	}
 	if s.loaded || len(s.asap) > 0 || len(s.in_order) > 0 { return false }
 	if load_delayed(p) { return false }
 	s.loaded = true
-	s.timing.load_ms = now_ms(p)
+	s.timing.complete_ms = now_ms(p)
 	ready_state_set(p, .Complete)
 	if p.closed { return true }
+	s.timing.load_ms = now_ms(p)
 	fire_window_event(p, dom.Event{type = "load"})
+	s.timing.load_end_ms = now_ms(p)
 	if p.closed { return true }
 	fire_window_event(p, dom.Event{type = "pageshow"})
 	return true

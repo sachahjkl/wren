@@ -716,6 +716,7 @@ foreign _m_performance {
 	@(link_name = "Performance_entryType") c_Performance_entryType :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32) -> i32 ---
 	@(link_name = "Performance_clearMarks") c_Performance_clearMarks :: proc(a0: i32, a1: i32) ---
 	@(link_name = "Performance_clearMeasures") c_Performance_clearMeasures :: proc(a0: i32, a1: i32) ---
+	@(link_name = "Performance_timingOf") c_Performance_timingOf :: proc(a0: i32) -> f64 ---
 }
 
 foreign import _m_storage "storage"

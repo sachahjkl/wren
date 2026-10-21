@@ -1789,6 +1789,11 @@ WR_IMPORT("performance", "Performance_entryType") int32_t wr_Performance_entryTy
 WR_IMPORT("performance", "Performance_clearMarks") void wr_Performance_clearMarks(const uint8_t *name, uint32_t name_len);
 // performance.clearMeasures(name): "" clears all.
 WR_IMPORT("performance", "Performance_clearMeasures") void wr_Performance_clearMeasures(const uint8_t *name, uint32_t name_len);
+// performance.timing (Navigation Timing 1): the moment of attribute `which` of PerformanceTiming (0 navigationStart,
+// 1 unloadEventStart ... 20 loadEventEnd, in the interface's order) on the page's timeline (ms since the time
+// origin), or NaN when it has not happened or does not apply (the attribute is then 0). The network phases of the
+// document's own fetch are not measured: they are all the time origin.
+WR_IMPORT("performance", "Performance_timingOf") double wr_Performance_timingOf(int32_t which);
 
 /* module storage */
 // storage.length

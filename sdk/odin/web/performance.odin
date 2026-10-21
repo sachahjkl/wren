@@ -29,6 +29,7 @@ foreign _m_performance {
 	@(link_name = "Performance_entryType") _Performance_entryType :: proc(name: [^]u8, name_len: u32, entry_type: PerformanceEntryType, index: i32, _ret: ^PerformanceEntryType) -> Error ---
 	@(link_name = "Performance_clearMarks") _Performance_clearMarks :: proc(name: [^]u8, name_len: u32) ---
 	@(link_name = "Performance_clearMeasures") _Performance_clearMeasures :: proc(name: [^]u8, name_len: u32) ---
+	@(link_name = "Performance_timingOf") _Performance_timingOf :: proc(which: i32) -> f64 ---
 }
 
 // performance.now()
@@ -115,5 +116,13 @@ Performance_clearMarks :: proc "contextless" (name: string = "") {
 // performance.clearMeasures(name): "" clears all.
 Performance_clearMeasures :: proc "contextless" (name: string = "") {
 	_Performance_clearMeasures(raw_data(name), u32(len(name)))
+}
+
+// performance.timing (Navigation Timing 1): the moment of attribute `which` of PerformanceTiming (0 navigationStart,
+// 1 unloadEventStart ... 20 loadEventEnd, in the interface's order) on the page's timeline (ms since the time
+// origin), or NaN when it has not happened or does not apply (the attribute is then 0). The network phases of the
+// document's own fetch are not measured: they are all the time origin.
+Performance_timingOf :: proc "contextless" (which: i32) -> f64 {
+	return _Performance_timingOf(which)
 }
 

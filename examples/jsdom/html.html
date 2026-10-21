@@ -103,7 +103,9 @@ section("title and script text", () => {
   v.muted = true; v.volume = 0.5; v.currentTime = 3; v.load(); v.pause();
   t("what a script sets is read back", v.muted && v.volume === 0.5 && v.currentTime === 3);
   throws("volume outside [0, 1]", () => { v.volume = 2; }, "IndexSizeError");
-  t("play() returns a promise", v.play() instanceof Promise);
+  const played = v.play();
+  played.catch(() => {});   // (rejected: no source; handled, so the page reports no unhandled rejection)
+  t("play() returns a promise", played instanceof Promise);
   v.play().catch(e => { window.__playError = e.name; });
   t("HTMLScriptElement.supports", HTMLScriptElement.supports("module") && HTMLScriptElement.supports("classic") && !HTMLScriptElement.supports("x"));
 });
@@ -252,7 +254,31 @@ section("map, dialog, document, element", () => {
   t("HTMLCollection named property", hc.children.n1 === hc.firstChild && hc.children.i1 === hc.lastChild);
 });
 
-done();
+section("performance.timing (Navigation Timing 1)", () => {
+  const tm = performance.timing;
+  t("performance.timing is [SameObject]", tm === performance.timing && tm instanceof PerformanceTiming);
+  eq("navigationStart is the time origin", tm.navigationStart, Math.floor(performance.timeOrigin));
+  t("the fetch phases are not before it", tm.fetchStart >= tm.navigationStart && tm.responseEnd >= tm.fetchStart && tm.domLoading >= tm.responseEnd);
+  eq("no redirect, no unload, not secure", [tm.redirectStart, tm.unloadEventEnd, tm.secureConnectionStart].join(), "0,0,0");
+  eq("load has not happened", tm.loadEventEnd, 0);
+  // Next.js: performance.measure("Next.js-before-hydration", "navigationStart", "beforeRender")
+  performance.mark("beforeRender");
+  const m = performance.measure("before-render", "navigationStart", "beforeRender");
+  t("measure from navigationStart", m.startTime === 0 && m.duration > 0);
+  throws("a moment that has not come", () => performance.measure("x", "loadEventEnd"), "InvalidAccessError");
+  throws("a mark cannot take a PerformanceTiming name", () => performance.mark("navigationStart"), "SyntaxError");
+  eq("toJSON", Object.keys(tm.toJSON()).length + "|" + tm.toJSON().navigationStart, "21|" + tm.navigationStart);
+  t("performance.toJSON has timing", performance.toJSON().timing.navigationStart === tm.navigationStart);
+});
+
+addEventListener("load", () => setTimeout(() => {
+  const tm = performance.timing;
+  const order = ["navigationStart", "fetchStart", "responseEnd", "domLoading", "domInteractive", "domContentLoadedEventStart",
+                 "domContentLoadedEventEnd", "domComplete", "loadEventStart", "loadEventEnd"];
+  t("after load: every moment set, in order", order.every((n, i) => tm[n] > 0 && (i === 0 || tm[n] >= tm[order[i - 1]])),
+    order.map(n => n + "=" + (tm[n] - tm.navigationStart)).join(" "));
+  done();
+}, 0));
 </script>
 </body>
 </html>

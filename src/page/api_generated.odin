@@ -14953,6 +14953,21 @@ _t_performance_Performance_clearMeasures :: proc "c" (env: rawptr, caller: wasm.
 	return nil
 }
 
+// Performance_timingOf :: proc(c: ^Call, which: i32) -> f64
+@(private = "file")
+_t_performance_Performance_timingOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32
+	_r := Performance_timingOf(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
 // Storage_length :: proc(c: ^Call, area: Api_StorageArea) -> (i32, Api_Error)
 @(private = "file")
 _t_storage_Storage_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -17122,6 +17137,7 @@ api_imports := [?]wasm.Import{
 	{module = "performance", name = "Performance_entryType", fn = _t_performance_Performance_entryType, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "performance", name = "Performance_clearMarks", fn = _t_performance_Performance_clearMarks, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "performance", name = "Performance_clearMeasures", fn = _t_performance_Performance_clearMeasures, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "performance", name = "Performance_timingOf", fn = _t_performance_Performance_timingOf, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.F64}},
 	{module = "storage", name = "Storage_length", fn = _t_storage_Storage_length, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "storage", name = "Storage_key", fn = _t_storage_Storage_key, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "storage", name = "Storage_getItem", fn = _t_storage_Storage_getItem, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

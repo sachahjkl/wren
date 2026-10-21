@@ -728,12 +728,35 @@ JSValue wjr_PerformanceObserver_disconnect(JSContext *ctx, JSValueConst this_val
 JSValue wjr_PerformanceObserver_observe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PerformanceObserver_static_get_supportedEntryTypes(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceObserver_takeRecords(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceTiming_get_connectEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_connectStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_domComplete(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_domContentLoadedEventEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_domContentLoadedEventStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_domInteractive(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_domLoading(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_domainLookupEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_domainLookupStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_fetchStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_loadEventEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_loadEventStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_navigationStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_redirectEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_redirectStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_requestStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_responseEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_responseStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_secureConnectionStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_unloadEventEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_get_unloadEventStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_clearMarks(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_clearMeasures(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_clearResourceTimings(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_getEntries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_getEntriesByName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_getEntriesByType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Performance_get_timing(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Performance_mark(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_measure(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Performance_setResourceTimingBufferSize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -11794,7 +11817,7 @@ static const wj_member wj_m_Performance[] = {
     { "now", WJ_M_METHOD, 0, 0, wjg_Performance_now, NULL, NULL, 0 },
     { "timeOrigin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Performance_get_timeOrigin, NULL, 0 },
     { "toJSON", WJ_M_METHOD, 0, 0, wjr_Performance_toJSON, NULL, NULL, 0 },
-    { "timing", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_WINDOW_ONLY, 193, NULL, NULL, NULL, 0 },
+    { "timing", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_WINDOW_ONLY, 193, NULL, wjr_Performance_get_timing, NULL, 0 },
     { "navigation", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_WINDOW_ONLY, 194, NULL, NULL, NULL, 0 },
     { "getEntries", WJ_M_METHOD, 0, 0, wjr_Performance_getEntries, NULL, NULL, 0 },
     { "getEntriesByType", WJ_M_METHOD, 0, 1, wjr_Performance_getEntriesByType, NULL, NULL, 0 },
@@ -13053,28 +13076,28 @@ static const wj_member wj_m_PerformanceObserverEntryList[] = {
     { "getEntriesByName", WJ_M_METHOD, 0, 1, wjr_PerformanceObserverEntryList_getEntriesByName, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceTiming[] = {
-    { "navigationStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "unloadEventStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "unloadEventEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "redirectStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "redirectEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "fetchStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domainLookupStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domainLookupEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "connectStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "connectEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "secureConnectionStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "requestStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "responseStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "responseEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domLoading", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domInteractive", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domContentLoadedEventStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domContentLoadedEventEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domComplete", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "loadEventStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "loadEventEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "navigationStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_navigationStart, NULL, 0 },
+    { "unloadEventStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_unloadEventStart, NULL, 0 },
+    { "unloadEventEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_unloadEventEnd, NULL, 0 },
+    { "redirectStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_redirectStart, NULL, 0 },
+    { "redirectEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_redirectEnd, NULL, 0 },
+    { "fetchStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_fetchStart, NULL, 0 },
+    { "domainLookupStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_domainLookupStart, NULL, 0 },
+    { "domainLookupEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_domainLookupEnd, NULL, 0 },
+    { "connectStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_connectStart, NULL, 0 },
+    { "connectEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_connectEnd, NULL, 0 },
+    { "secureConnectionStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_secureConnectionStart, NULL, 0 },
+    { "requestStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_requestStart, NULL, 0 },
+    { "responseStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_responseStart, NULL, 0 },
+    { "responseEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_responseEnd, NULL, 0 },
+    { "domLoading", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_domLoading, NULL, 0 },
+    { "domInteractive", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_domInteractive, NULL, 0 },
+    { "domContentLoadedEventStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_domContentLoadedEventStart, NULL, 0 },
+    { "domContentLoadedEventEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_domContentLoadedEventEnd, NULL, 0 },
+    { "domComplete", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_domComplete, NULL, 0 },
+    { "loadEventStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_loadEventStart, NULL, 0 },
+    { "loadEventEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceTiming_get_loadEventEnd, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_PerformanceTiming_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceTimingConfidence[] = {
     { "randomizedTriggerRate", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -15700,7 +15723,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_PerformanceObserverEntryList, .n_members = 3, .subtree_end = 458,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceTiming", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "PerformanceTiming", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_PerformanceTiming, .n_members = 22, .subtree_end = 459,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

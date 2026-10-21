@@ -153,3 +153,16 @@ performance.clearMeasures(name): "" clears all.
 
 Host: `Performance_clearMeasures :: proc(c: ^Call, name: string)`
 
+### `Performance_timingOf`
+
+```
+f64 Performance_timingOf(i32 which)
+```
+
+performance.timing (Navigation Timing 1): the moment of attribute `which` of PerformanceTiming (0 navigationStart,
+1 unloadEventStart ... 20 loadEventEnd, in the interface's order) on the page's timeline (ms since the time
+origin), or NaN when it has not happened or does not apply (the attribute is then 0). The network phases of the
+document's own fetch are not measured: they are all the time origin.
+
+Host: `Performance_timingOf :: proc(c: ^Call, which: i32) -> f64`
+
