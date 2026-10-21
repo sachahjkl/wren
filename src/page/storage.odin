@@ -224,33 +224,55 @@ area_clear :: proc(a: ^Storage_Area) {
 @(private)
 Commit_Gate :: struct {
 	mu:   sync.Mutex,
-	last: map[string]u64,   // file -> sequence number of the newest snapshot on disk
+	// file -> sequence number of the newest snapshot on disk, while a write of the file is under way (an entry goes with
+	// the last of them: no older snapshot is left to land, and the map never outgrows the writes in flight)
+	last: map[string]Gate_Entry,
+}
+
+@(private)
+Gate_Entry :: struct {
+	seq:     u64,
+	pending: int,   // writes of the file queued or running (gate_enter .. storage_commit)
 }
 
 @(private)
 commit_gate: Commit_Gate
 
-// Writes `data` to `path` atomically unless a newer snapshot (higher `seq`) already landed. Any thread.
+// A write of `path` is queued: its entry stays until the write has run (storage_commit). Any thread.
 @(private)
-storage_commit :: proc(path: string, data: []byte, seq: u64) -> bool {
+gate_enter :: proc(path: string) {
 	sync.mutex_lock(&commit_gate.mu)
 	defer sync.mutex_unlock(&commit_gate.mu)
-	if commit_gate.last == nil { commit_gate.last = make(map[string]u64, base.process_allocator()) }
-	if last, ok := commit_gate.last[path]; ok && last >= seq { return true }
+	if commit_gate.last == nil { commit_gate.last = make(map[string]Gate_Entry, base.process_allocator()) }
+	if e, ok := &commit_gate.last[path]; ok { e.pending += 1; return }
+	commit_gate.last[strings.clone(path, base.process_allocator())] = Gate_Entry{pending = 1}
+}
+
+// Writes `data` to `path` atomically unless a newer snapshot (higher `seq`) already landed. Any thread; after gate_enter.
+@(private)
+storage_commit :: proc(path: string, data: []byte, seq: u64) -> (ok: bool) {
+	sync.mutex_lock(&commit_gate.mu)
+	defer sync.mutex_unlock(&commit_gate.mu)
+	e, entered := &commit_gate.last[path]
+	assert(entered, "storage_commit without gate_enter")
+	defer {
+		e.pending -= 1
+		if e.pending <= 0 {
+			key, _ := delete_key(&commit_gate.last, path)
+			delete(key, base.process_allocator())
+			if len(commit_gate.last) == 0 { delete(commit_gate.last); commit_gate.last = nil }
+		}
+	}
+	if e.seq >= seq { return true }
 	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
 	if os.write_entire_file(tmp, data) != nil { return false }
 	if os.rename(tmp, path) != nil {
 		_ = os.remove(path)
 		if os.rename(tmp, path) != nil { return false }
 	}
-	if _, ok := commit_gate.last[path]; !ok {
-		commit_gate.last[strings.clone(path, base.process_allocator())] = seq
-	} else {
-		commit_gate.last[path] = seq
-	}
+	e.seq = seq
 	return true
 }
-
 @(private)
 Write_Job :: struct {
 	path: string,
@@ -266,6 +288,7 @@ area_write :: proc(m: ^Storage_Manager, a: ^Storage_Area, sync_write: bool) {
 	job.path = strings.clone(area_path(m, a.origin), base.process_allocator())
 	job.data = area_serialize(a, base.process_allocator())
 	job.seq = m.write_seq
+	gate_enter(job.path)
 	work :: proc(data: rawptr) {
 		j := (^Write_Job)(data)
 		context.allocator = base.process_allocator()
