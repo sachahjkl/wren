@@ -309,7 +309,6 @@ download_cfg :: proc(app: ^App) {
 }
 
 // The folder downloads go to: the preference, else the Downloads folder of Windows, else the profile.
-@(private = "file")
 download_dir :: proc(app: ^App) -> string {
 	if dls.cfg.dir != "" { return dls.cfg.dir }
 	wpath: win.LPWSTR
