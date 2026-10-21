@@ -40,6 +40,11 @@ Paint_Hold :: struct {
 	commit:    time.Tick,     // when the new document arrived
 	committed: bool,          // ... it has (for this navigation)
 	started:   time.Tick,     // when the navigation started (held or not: time to first paint)
+	// the held page goes into the back/forward cache when the hold ends (bfcache.odin), with what the tab had of it
+	bf_entry:  u64,
+	zoom:      f32,
+	image_sizes: u64,
+	web_fonts: int,
 }
 
 First_Paint_Settings :: struct {
@@ -123,10 +128,14 @@ hold_begin :: proc(app: ^App, t: ^Tab, target: string) {
 		h.nav, h.page = t.nav, t.page
 		h.layout, t.layout = t.layout, h.layout   // the held frame; the tab gets the old memory back
 		h.scroll = t.scroll
+		h.bf_entry, h.zoom, h.image_sizes, h.web_fonts = t.nav_state.bf_entry, t.zoom, t.image_sizes, t.web_fonts
+		t.nav_state.bf_entry = 0
 		h.canvas = t.page.styled != nil ? t.page.styled.canvas : expected_canvas(app)
 		page.set_page_visible(t.page, false)   // its timers slow down to background pace; nothing paints it again
-	} else {
+	} else if !bfcache_take(the_app, t) {
 		base.scope_close(t.nav)   // the page that was never painted (or nothing): what is held, if anything, stays
+	} else {
+		base.scope_close(t.nav)   // (the empty scope the cached page left)
 	}
 	t.nav = nil
 	layout_reset(&t.layout)
@@ -136,8 +145,10 @@ hold_begin :: proc(app: ^App, t: ^Tab, target: string) {
 hold_release :: proc(t: ^Tab) {
 	h := &t.hold
 	if !h.active { return }
-	base.scope_close(h.nav)   // the old page, its modules and every request it still had
-	layout_reset(&h.layout)
+	if !bfcache_take_held(the_app, t) {
+		base.scope_close(h.nav)   // the old page, its modules and every request it still had
+		layout_reset(&h.layout)
+	}
 	page_fonts_drop(&page_render.fonts, h)   // its web faces, if the new page took over the tab's (fonts.odin)
 	h.active, h.nav, h.page = false, nil, nil
 }

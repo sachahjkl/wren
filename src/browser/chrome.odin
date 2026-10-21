@@ -135,8 +135,9 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	can_forward := t != nil && t.hist + 1 < len(t.history)
 
 	ui.spacer(ui.px(em * 0.5))
-	if nav_button("###nav_back", GLYPH_BACK, "Back (Alt+Left)", can_back) { go_history(app, t, -1) }
-	if nav_button("###nav_forward", GLYPH_FORWARD, "Forward (Alt+Right)", can_forward) { go_history(app, t, +1) }
+	// a right click or a long press lists the entries that way (history_ui.odin)
+	nav_history_button(app, t, "###nav_back", GLYPH_BACK, "Back (Alt+Left); right click: history", can_back, -1)
+	nav_history_button(app, t, "###nav_forward", GLYPH_FORWARD, "Forward (Alt+Right); right click: history", can_forward, +1)
 	if nav_button("###nav_reload", GLYPH_RELOAD, "Reload (F5)", t != nil && t.url != "") { reload(app, t) }
 	ui.spacer(ui.px(em * 0.4))
 
@@ -523,6 +524,8 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		if ui.menu_item("Forward", "Alt+Right", icon = GLYPH_FORWARD, enabled = can_forward).clicked { go_history(app, t, +1) }
 		if ui.menu_item("Reload", "F5", icon = GLYPH_RELOAD).clicked && t != nil { reload(app, t) }
 		if ui.menu_item("Home", "Alt+Home", icon = GLYPH_HOME).clicked && t != nil { navigate(app, t, app.cfg.homepage) }
+		if ui.menu_item("History", "Ctrl+H").clicked { open_history(app, t, false); return }
+		if ui.menu_item("Tab history tree", enabled = t != nil).clicked { open_history(app, t, true); return }
 		ui.menu_separator()
 		if ui.menu_submenu(fmt.tprintf("Zoom (%d %%)###zoom_sub", zoom_percent(t)), enabled = web) {
 			if ui.menu_item("Zoom in", "Ctrl+Plus").clicked { zoom_step(app, t, 1) }
@@ -575,13 +578,14 @@ chrome_shortcuts :: proc(app: ^App) {
 	case ui.key_press(.Left, {.Alt}): if t != nil { go_history(app, t, -1) }
 	case ui.key_press(.Right, {.Alt}): if t != nil { go_history(app, t, +1) }
 	case ui.key_press(.Home, {.Alt}): if t != nil { navigate(app, t, app.cfg.homepage) }
+	case ui.key_press(.H, ctrl): open_history(app, t, false)   // history_ui.odin
 	case ui.key_press(.Tab, ctrl), ui.key_press(.Page_Down, ctrl): if n > 0 { tab_select(app, (app.current + 1) % n) }
 	case ui.key_press(.Tab, cs), ui.key_press(.Page_Up, ctrl): if n > 0 { tab_select(app, (app.current + n - 1) % n) }
 	case ui.key_press(.Page_Down, cs): tab_move_current(app, +1)
 	case ui.key_press(.Page_Up, cs): tab_move_current(app, -1)
 	case ui.key_press(.F, {.Alt}), ui.key_press(.E, {.Alt}): main_menu_request = true
 	case ui.key_press(.F, ctrl), ui.key_press(.F3):
-		if t != nil && t.kind == .Config { app.config_view.focus_search = true } else if t != nil && t.kind == .Web { if find.open { find.focus = true } else { find_open(app) } }
+		if t != nil && t.kind == .Config { app.config_view.focus_search = true } else if t != nil && t.kind == .History { hview.focus_search = true } else if t != nil && t.kind == .Web { if find.open { find.focus = true } else { find_open(app) } }
 	case ui.key_press(.U, ctrl): view_source(app, t)
 	case ui.key_press(.S, ctrl): if t != nil { save_page(app, t) }
 	case ui.key_press(.P, ctrl), ui.key_press(.P, cs): print_request(app)   // print.odin

@@ -27,6 +27,7 @@ History_Entry :: struct {
 	has_state: bool,
 	doc:       u64,      // id of the page that owns the entry (0 = none yet)
 	title:     string,   // owned: the document's title when it was last shown (the interface's)
+	icon:      string,   // owned: its icon's URL then ("": none)
 	created_ms: i64,     // Unix time the entry was made
 	visited_ms: i64,     // ... last made current
 	seq:       u64,      // order of the last visits within the tree: the child with the highest is the active branch
@@ -53,7 +54,7 @@ Session_History :: struct {
 entry_free :: proc(e: ^History_Entry) {
 	for c in e.children { entry_free(c) }
 	delete(e.children)
-	delete(e.url); delete(e.state); delete(e.title)
+	delete(e.url); delete(e.state); delete(e.title); delete(e.icon)
 	persisted_destroy(&e.persisted)
 	free(e)
 }
@@ -275,12 +276,21 @@ session_set_title :: proc(sh: ^Session_History, title: string) {
 	sh.serial += 1
 }
 
+// Sets the icon the interface shows for the current entry.
+session_set_icon :: proc(sh: ^Session_History, icon: string) {
+	cur := session_current(sh)
+	if cur == nil || cur.icon == icon { return }
+	delete(cur.icon)
+	cur.icon = strings.clone(icon)
+	sh.serial += 1
+}
+
 ////////////////////////////////
 // Building a tree from saved entries (session restore)
 
 Saved_Entry :: struct {
 	id, parent: u64,      // parent 0: a top-level entry
-	url, title, state: string,
+	url, title, state, icon: string,
 	has_state: bool,
 	created_ms, visited_ms: i64,
 	seq:       u64,
@@ -302,7 +312,7 @@ session_load :: proc(sh: ^Session_History, saved: []Saved_Entry, current: u64, w
 		parent := root
 		if p, ok := by_id[s.parent]; ok { parent = p }
 		e := new(History_Entry)
-		e^ = History_Entry{id = s.id, url = strings.clone(s.url), title = strings.clone(s.title), state = strings.clone(s.state), has_state = s.has_state,
+		e^ = History_Entry{id = s.id, url = strings.clone(s.url), title = strings.clone(s.title), icon = strings.clone(s.icon), state = strings.clone(s.state), has_state = s.has_state,
 			created_ms = s.created_ms, visited_ms = s.visited_ms, seq = s.seq, scroll_manual = s.scroll_manual, parent = parent}
 		e.persisted.saved = s.scroll != {} || s.zoom != 0
 		e.persisted.scroll = s.scroll
