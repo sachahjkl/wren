@@ -10,9 +10,11 @@ import "core:os"
 import "core:strings"
 import "core:time"
 import "wb:base"
+import "wb:dom"
 import "wb:fetch"
 import "wb:host"
 import "wb:js"
+import lay "wb:layout"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
@@ -99,6 +101,7 @@ main :: proc() {
 
 	test_link_events()
 	test_print_media_swap()
+	test_scroll_events()
 
 	base.scope_close(process)
 	page.compile_shutdown()
@@ -157,5 +160,98 @@ test_print_media_swap :: proc() {
 	back := ""
 	for l in logs { if strings.has_prefix(l, "back to print ") { back = l } }
 	check(back != "" && back != "back to print 123px", "and stops applying when the media becomes print again")
+	page.page_close(p)
+}
+
+////////////////////////////////
+// Scroll events (src/page/scroll_events.odin): a virtual list (clockin's history: Angular CDK) renders its rows from them
+
+VIEW_W :: 800
+VIEW_H :: 600
+
+Layout_Host :: struct {
+	l:      lay.Layout,
+	set:    lay.Settings,
+	scroll: [2]f64,
+}
+
+fake_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> lay.Font { return lay.Font(1) }
+fake_width :: proc(user: rawptr, f: lay.Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(strings.rune_count(text)) }
+fake_metrics :: proc(user: rawptr, f: lay.Font, size: f32) -> lay.Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }
+
+layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
+	lh := (^Layout_Host)(user)
+	st := page.styles(p, VIEW_W, VIEW_H, 1)
+	lay.run(&lh.l, lay.Input{doc = p.doc, styled = st, settings = &lh.set, text = {font = fake_font, width = fake_width, metrics = fake_metrics}, viewport = {VIEW_W, VIEW_H}, scale = 1, band_h = 256})
+	return &lh.l
+}
+
+layout_viewport :: proc(user: rawptr, p: ^page.Page) -> page.Viewport {
+	lh := (^Layout_Host)(user)
+	return page.Viewport{width = VIEW_W, height = VIEW_H, scale = 1, scroll_x = lh.scroll[0], scroll_y = lh.scroll[1]}
+}
+
+layout_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
+	lh := (^Layout_Host)(user)
+	lh.scroll = {0, clamp(y, 0, max(0, f64(lh.l.height) - VIEW_H))}
+}
+
+// One rendering update, as the shell runs one for each frame it paints.
+frame :: proc(p: ^page.Page) {
+	page.run_animation_frames(p, f64(host.now_ns(&loop)) / 1e6)
+	for _ in 0 ..< 20 { host.loop_wait(&loop, 1) }
+}
+
+count_logged :: proc(text: string) -> int {
+	n := 0
+	for l in logs { if l == text { n += 1 } }
+	return n
+}
+
+test_scroll_events :: proc() {
+	fmt.println("-- scroll events: per frame, whatever scrolled (script, wheel, keys), elements and the document")
+	lh := new(Layout_Host)
+	defer { lay.destroy(&lh.l); free(lh) }
+	lh.set = lay.settings_default()
+	clear(&logs)
+	p := page.page_create(&loop, &loader, &settings, process, BASE, console)
+	page.set_page_visible(p, true)
+	page.set_layout_embedder(p, {user = lh, update = layout_update, viewport = layout_viewport, scroll_to = layout_scroll})
+	page.load_html(p, transmute([]byte)string(`<!doctype html><body style="margin:0"><script>function log(s) { console.log(String(s)) }</script>
+<div id=vp style="height:100px;overflow:auto"><div style="height:5000px">x</div></div><div style="height:3000px"></div>
+<script>
+const vp = document.getElementById("vp");
+vp.addEventListener("scroll", e => log("vp scroll " + vp.scrollTop + " " + e.bubbles + " " + e.cancelable));
+document.body.addEventListener("scroll", () => log("body saw it"));
+document.addEventListener("scroll", e => log("document scroll " + e.bubbles + " " + (e.target === document)));
+window.addEventListener("scroll", () => log("window scroll " + Math.round(scrollY)));
+log("ready");
+</script></body>`))
+	page.scripts_start(p)
+	wait_for("ready")
+	frame(p)
+	check(count_logged("vp scroll 0 false false") == 0 && !logged("document scroll true true"), "no event before anything scrolled")
+
+	page.js_run(p, transmute([]byte)string(`vp.scrollTop = 150; vp.scrollTop = 300; log("set " + vp.scrollTop)`), "probe.js")
+	check(logged("set 300") && count_logged("vp scroll 300 false false") == 0, "setting scrollTop fires nothing synchronously")
+	check(page.wants_animation_frame(p), "the page wants a frame for it")
+	frame(p)
+	check(count_logged("vp scroll 300 false false") == 1, "the next frame fires one scroll event at the element (not bubbling, not cancelable)")
+	check(!logged("body saw it"), "an element's scroll event does not bubble")
+	frame(p)
+	check(count_logged("vp scroll 300 false false") == 1, "nothing more while it stays put")
+
+	// the user scrolls the container (the shell moves the layout's offset: wheel, keys, scroll bar)
+	lay.set_scroll(&lh.l, dom.find_by_id(p.doc, "vp"), {0, 1200})
+	frame(p)
+	check(logged("vp scroll 1200 false false"), "a scroll by the user fires it too")
+
+	// and the page itself
+	page.js_run(p, transmute([]byte)string(`window.scrollTo(0, 500)`), "probe.js")
+	frame(p)
+	check(logged("document scroll true true") && logged("window scroll 500"), "the document's scroll event bubbles to the window")
+	lh.scroll = {0, 900}
+	frame(p)
+	check(logged("window scroll 900"), "the user scrolling the page fires it")
 	page.page_close(p)
 }

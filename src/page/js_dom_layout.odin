@@ -233,6 +233,7 @@ Element_scrollLeft :: proc(c: ^Call, element: Api_Element) -> f64 {
 scroll_element_to :: proc(p: ^Page, h: base.Handle, x, y: f64, smooth := false) {
 	l, vp := js_layout_now(p)
 	jl := &js_dom_state(p).layout
+	scroll_events_mark(p)
 	if is_scrolling_element(p, h) {
 		if jl.has && jl.embedder.scroll_to != nil {
 			nx := math.is_nan(x) ? vp.scroll_x : x
@@ -248,8 +249,8 @@ scroll_element_to :: proc(p: ^Page, h: base.Handle, x, y: f64, smooth := false) 
 	target := cur
 	if !math.is_nan(x) { target.x = f32(x) * s }
 	if !math.is_nan(y) { target.y = f32(y) * s }
+	// (its scroll event comes with the next frame, as for any other scrolling: scroll_events.odin)
 	if _, set := lay.set_scroll(l, h, target); set && jl.embedder.repaint != nil { jl.embedder.repaint(jl.embedder.user, p) }
-	dispatch_event(p, h, {type = "scroll"})
 }
 
 Element_set_scrollTop :: proc(c: ^Call, element: Api_Element, value: f64) {
@@ -321,7 +322,7 @@ Element_scrollIntoViewAt :: proc(c: ^Call, element: Api_Element, block: i32, inl
 	y := pick(f64(g.border.min.y), f64(g.border.max.y), vp.height, vp.scroll_y, block)
 	x := pick(f64(g.border.min.x), f64(g.border.max.x), vp.width, vp.scroll_x, inline_pos)
 	jl := &js_dom_state(p).layout
-	if jl.has && jl.embedder.scroll_to != nil { jl.embedder.scroll_to(jl.embedder.user, p, math.max(x, 0), math.max(y, 0), false) }
+	if jl.has && jl.embedder.scroll_to != nil { scroll_events_mark(p); jl.embedder.scroll_to(jl.embedder.user, p, math.max(x, 0), math.max(y, 0), false) }
 }
 
 // offsetParent: the nearest ancestor that is positioned, or a td / th / table when the element is not positioned,
@@ -461,6 +462,7 @@ Window_scrollToXY :: proc(c: ^Call, x: f64, y: f64, relative: bool, smooth: bool
 	vp := viewport_now(c)
 	nx := math.is_nan(x) ? vp.scroll_x : (relative ? vp.scroll_x + x : x)
 	ny := math.is_nan(y) ? vp.scroll_y : (relative ? vp.scroll_y + y : y)
+	scroll_events_mark(p)
 	s.layout.embedder.scroll_to(s.layout.embedder.user, p, nx, ny, smooth)
 }
 

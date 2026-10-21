@@ -103,6 +103,7 @@ Page :: struct {
 	js:           ^Js_Realm,            // the JavaScript realm, created on first use (js_realm.odin)
 	scripts:      ^Page_Scripts,        // the document's <script> elements (js_scripts.odin)
 	jsdom:        ^Js_Dom_State,        // the DOM bindings' state: selectors, observers, layout hook (js_dom_collections.odin)
+	scroll_events: ^Scroll_Events,      // scroll offsets of the last frame, for scroll events (scroll_events.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives
