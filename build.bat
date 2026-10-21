@@ -17,6 +17,16 @@ if exist ext\gui_toolkit\ui goto have_toolkit
 echo ext\gui_toolkit is empty: run  git submodule update --init
 exit /b 1
 :have_toolkit
+:: the Odin compiler this tree is written for (odin.version; the CI installs that release, pinned by SHA-256 in
+:: .github\actions\setup\action.yml): another one may build differently or not at all. WREN_ANY_ODIN=1 skips the check.
+set /p WREN_ODIN=<odin.version
+if defined WREN_ANY_ODIN goto have_odin
+odin version 2>nul | findstr /C:"%WREN_ODIN%" >nul && goto have_odin
+echo This tree needs Odin %WREN_ODIN% (odin.version); found:
+odin version
+echo Install that release, or set WREN_ANY_ODIN=1 to build anyway.
+exit /b 1
+:have_odin
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\fetch_wasmtime.ps1 >nul || (echo fetching Wasmtime failed & exit /b 1)
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_lexbor.ps1 >nul || (echo building Lexbor failed: run tools\build_lexbor.ps1 & exit /b 1)
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_media.ps1 >nul || (echo building the image decoders failed: run tools\build_media.ps1 & exit /b 1)
