@@ -22,6 +22,7 @@ import lay "wb:layout"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
+import "wb:tools/testenv"
 
 PAGES_DIR :: "examples/jsdom"
 VIEW_W :: 800
@@ -90,6 +91,7 @@ harness: string
 // Loads a page with the harness and the layout embedder, runs its scripts, waits for "DONE" (the timeout only ends a
 // page that fails: nothing checked depends on the machine's speed).
 open_page :: proc(process: ^base.Scope, source: string, lh: ^Layout_Host, name: string, timeout_ms := 5000) -> ^page.Page {
+	for l in logs { delete(l) }
 	clear(&logs)
 	p := page.page_create(&loop, &loader, &settings, process, fmt.tprintf("http://127.0.0.1:8765/jsdom/%s", name), console)
 	page.set_layout_embedder(p, {user = lh, update = layout_update, viewport = layout_viewport, scroll_to = layout_scroll})
@@ -123,6 +125,7 @@ report_page :: proc(name: string) {
 }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	host.loop_init(&loop)
 	if !net.client_init(&client, &loop) { fmt.eprintln("net init failed"); os.exit(2) }
 	host.blocking_init(&blocking, &loop, 2)
@@ -140,13 +143,14 @@ main :: proc() {
 
 	// the pages named on the command line, or every page of the folder
 	names := make([dynamic]string)
-	for a in os.args[1:] { if strings.has_suffix(a, ".html") { append(&names, filepath.base(a)) } }
+	for a in os.args[1:] { if strings.has_suffix(a, ".html") { append(&names, strings.clone(filepath.base(a))) } }
 	if len(names) == 0 {
 		infos, err := os.read_all_directory_by_path(PAGES_DIR, context.allocator)
 		if err != nil { fmt.eprintln("cannot read", PAGES_DIR); os.exit(2) }
 		for fi in infos { if strings.has_suffix(fi.name, ".html") && fi.name != "bench.html" && fi.name != "leaks.html" { append(&names, strings.clone(fi.name)) } }
+		os.file_info_slice_delete(infos, context.allocator)
 		slice.sort(names[:])
-		append(&names, "leaks.html", "bench.html")
+		append(&names, strings.clone("leaks.html"), strings.clone("bench.html"))
 	}
 
 	for name in names {
@@ -176,7 +180,22 @@ main :: proc() {
 		for b in benches { fmt.printf("  %s\n", b) }
 	}
 	base.scope_close(process)
-	js.cache_stop()
+	host.loop_drain(&loop)
+	page.process_shutdown()
+	fetch.loader_destroy(&loader)
+	host.blocking_destroy(&blocking)
+	net.client_destroy(&client)
+	fetch.profile_destroy(&profile)
+	host.loop_destroy(&loop)
+	page.settings_destroy(&settings)
+	for s in names { delete(s) }
+	delete(names)
+	for s in logs { delete(s) }
+	delete(logs)
+	for s in benches { delete(s) }
+	delete(benches)
+	delete(h)
+	failures += testenv.mem_check("jsdomtest")
 	fmt.printf("\n%d checks passed, %d failure(s)\n", passes, failures)
 	os.exit(failures > 0 ? 1 : 0)
 }
