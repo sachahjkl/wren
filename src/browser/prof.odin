@@ -94,6 +94,7 @@ prof_frame_begin :: proc() {
 // After the frame's present: the profiler records it, the status bar and the title take their sample.
 prof_frame_end :: proc(app: ^App, items, elements: int) {
 	prof_mark(.First_Present)
+	latency_probe_presented(app)   // shell_latency.odin
 	if items > 0 { prof_mark(.First_Page_Paint) }
 	if phase_clock.on {
 		prof_end(.Frame)
@@ -292,6 +293,7 @@ module_of :: proc(addr: u64) -> string {
 
 prof_report :: proc() {
 	if !prof.on { return }
+	latency_probe_report()   // shell_latency.odin
 	sync.atomic_store(&prof.stop, true)
 	if prof.sampler != nil { thread.join(prof.sampler) }
 	wall := f64(qpc() - prof.wall0) / prof.freq

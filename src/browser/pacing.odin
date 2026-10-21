@@ -213,6 +213,7 @@ pacer_begin_frame :: proc(app: ^App, events: []platform.Event) {
 	if pacer.dt <= 0 { pacer.dt = f32(pacer.period_ms / 1000) }
 	pacer.dt = clamp(pacer.dt, 0.0005, 0.1)
 	pacer.prev_ms, pacer.frame_ms = t, t
+	latency_probe_polled(len(events))   // shell_latency.odin (profile build)
 	// the earliest input of the frame: its latency is measured to the vblank the frame shows at
 	first: time.Tick
 	for ev in events {
