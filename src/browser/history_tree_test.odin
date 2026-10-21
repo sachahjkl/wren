@@ -3,6 +3,8 @@ package browser
 import "core:fmt"
 import "core:testing"
 import "core:time"
+import "toolkit:platform"
+import "toolkit:ui"
 import "wb:page"
 
 // A tree with branches: a b c / b d / a e, plus a long chain under e.
@@ -156,6 +158,50 @@ tree_culling_and_detail :: proc(t: ^testing.T) {
 	testing.expect_value(t, tree_detail(9), Tree_Detail.Title)
 	testing.expect_value(t, tree_detail(5), Tree_Detail.Icon)
 	testing.expect_value(t, tree_detail(1), Tree_Detail.Block)
+}
+
+// The canvas takes the wheel over it and the zoom keys (Ctrl+Plus / Minus / 0), only while about:history shows the
+// tree and nothing else has the keyboard; the rest of the frame's events go on to the chrome.
+@(test)
+tree_takes_its_events :: proc(t: ^testing.T) {
+	page_render_test_lock()
+	defer page_render_test_unlock()
+	app := new(App)
+	defer free(app)
+	ui.init(&app.ui_state, nil, nil)
+	defer ui.destroy(&app.ui_state)
+	tab := new(Tab)
+	defer free(tab)
+	tab.kind = .History
+	append(&app.tabs, tab)
+	defer delete(app.tabs)
+	saved_mode := hview.mode
+	defer hview.mode = saved_mode
+	defer { clear(&tview.pending); tview.built, tview.view_rect, tview.view_key = 0, {}, 0 }
+	hview.mode = 1
+	tview.built = app.ui_state.build_index
+	tview.view_rect = {{0, 100}, {800, 600}}
+	events := []platform.Event{
+		{kind = .Scroll, pos = {400, 300}, delta = {0, 1}},
+		{kind = .Scroll, pos = {400, 50}, delta = {0, 1}},           // over the toolbar: not the canvas's
+		{kind = .Key_Press, key = .Equal, mods = {.Ctrl}},
+		{kind = .Key_Press, key = .N0, mods = {.Ctrl}},
+		{kind = .Key_Press, key = .T, mods = {.Ctrl}},               // a shortcut of the chrome
+		{kind = .Mouse_Move, pos = {10, 10}},
+	}
+	rest := history_tree_events(app, events)
+	testing.expect_value(t, len(tview.pending), 3)
+	testing.expect_value(t, len(rest), 3)
+	// another part of about:history, or a field with the keyboard: nothing is taken
+	hview.mode = 0
+	testing.expect_value(t, len(history_tree_events(app, events)), len(events))
+	hview.mode = 1
+	ui.set_focus(12345)
+	rest = history_tree_events(app, events)
+	testing.expect_value(t, len(rest), 5)   // the wheel still, not the keys
+	ui.set_focus(0)
+	tab.kind = .Web
+	testing.expect_value(t, len(history_tree_events(app, events)), len(events))
 }
 
 // 5000 entries in branches: building the model and culling it per frame stay far below a frame at 180 Hz.
