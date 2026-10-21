@@ -623,6 +623,7 @@ usage :: proc() -> ! {
 
 main :: proc() {
 	jit = js.jit_settings_default()
+	jit.enabled = false   // -jit turns it on
 	args := os.args[1:]
 	confs := make([dynamic]string)
 	files := make([dynamic]string)

@@ -283,6 +283,7 @@ Common :: struct {
 
 parse_common :: proc(args: []string) -> (c: Common) {
 	jit = js.jit_settings_default()
+	jit.enabled = false   // -jit turns it on (measurements compare both)
 	c.iterations = 1
 	c.count = 20
 	exe_dir := filepath.dir(os.args[0])
