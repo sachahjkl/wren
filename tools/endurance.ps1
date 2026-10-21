@@ -5,14 +5,16 @@
 # have filled (the first -Warmup cycles), any of them still grows by more than its threshold, or when anything is left
 # allocated at exit. A leak at exit is the check build's report; a growth here is memory that is freed at exit but not
 # while the browser runs (a cache without a bound, a map never purged, a handle per page).
-#   powershell -File tools\endurance.ps1 [-Cycles 40] [-TabsPerCycle 10] [-Warmup 20] [-NoNative] [-NoBuild] [-Out build\endurance]
+#   powershell -File tools\endurance.ps1 [-Cycles 40] [-TabsPerCycle 10] [-Warmup 20] [-NoNative] [-NoBuild] [-Out build\endurance] [-IdleMs 6500]
+# After the last cycle the browser is left alone for -IdleMs (0: skipped): the "idle" row of the statistics is what it
+# keeps once it has trimmed (browser.memory.trim_idle_ms, 5 s by default).
 # Default: 400 tabs, 1 200 page loads and 800 back/forward steps; the native memory (Direct3D, the drivers, Wasmtime,
 # the heap's own pages) settles after about 200 tabs, hence the long warm-up; the tracked memory and the handles are flat
 # after the first cycles (a short run with -NoNative checks them: test_all -CI). The native memory is compared by its
 # highest value over 5 cycles (it drops when caches trim: every ~100 tabs), the tracked bytes by their median.
 # Writes <Out>\stats.csv (one line per cycle), <Out>\endurance.svg (the curves) and the places whose blocks grew after the
 # warm-up (base.mem_snapshot). The check build drives itself (tools\memcheck_e2e.ps1: WREN_MEMCHECK_SCRIPT).
-param([int]$Cycles = 40, [int]$TabsPerCycle = 10, [int]$Warmup = 20, [switch]$NoBuild, [switch]$NoNative, [string]$Out = '', [string]$Exe = '',
+param([int]$Cycles = 40, [int]$TabsPerCycle = 10, [int]$Warmup = 20, [switch]$NoBuild, [switch]$NoNative, [string]$Out = '', [string]$Exe = '', [int]$IdleMs = 6500, [string[]]$Pref = @(),
     [double]$MaxLiveGrowthMB = 0.5, [double]$MaxPrivateGrowthMB = 64, [int]$MaxHandleGrowth = 100, [int]$MaxGdiGrowth = 30, [int]$MaxUserGrowth = 20,
     [int]$TimeoutSec = 3600)
 $ErrorActionPreference = 'Stop'
@@ -41,19 +43,38 @@ for ($c = 1; $c -le $Cycles; $c++) {
     $s.Add('frames 10'); $s.Add('wait 200')
     $s.Add("stats cycle$c")
     if ($c -eq $Warmup -or $c -eq $Cycles) { $s.Add("snapshot $(Join-Path $Out "snapshot_$c.txt")") }
+    if ($c -eq 1 -or $c -eq $Cycles) { $s.Add("vmmap $(Join-Path $Out "vmmap_$c.txt")") }   # the biggest private allocations (memory_map_report)
 }
+# left alone: the browser gives memory back (browser.memory.trim_idle_ms, memory_trim.odin); the row "idle" is what stays
+if ($IdleMs -gt 0) { $s.Add("idle $IdleMs"); $s.Add('frames 2'); $s.Add('stats idle') }
 $s.Add('quit')
 $csv = Join-Path $Out 'stats.csv'
 # the browsing history is the user's data, kept up to history.global.max_visits: at its least here, so that it is full
 # before the warm-up ends and its growth is not taken for a leak
-$code = Invoke-CheckSession 'endurance' $s.ToArray() $csv @('--pref', 'history.global.max_visits=10')
+$extraPrefs = @($Pref | ForEach-Object { $_ -split ',' } | Where-Object { $_ } | ForEach-Object { '--pref'; $_ })
+$code = Invoke-CheckSession 'endurance' $s.ToArray() $csv (@('--pref', 'history.global.max_visits=10') + $extraPrefs)
 if (-not (Test-Path $csv)) { "FAIL no statistics written"; exit 1 }
 
-$rows = @(Import-Csv $csv | Where-Object { $_.label -like 'cycle*' })
+$allRows = @(Import-Csv $csv)
+$rows = @($allRows | Where-Object { $_.label -like 'cycle*' })
+$idleRow = $allRows | Where-Object { $_.label -eq 'idle' } | Select-Object -First 1
+if ($idleRow) { "after $IdleMs ms left alone: private $([math]::Round([double]$idleRow.private_bytes / 1MB, 1)) MB, working set $([math]::Round([double]$idleRow.working_set / 1MB, 1)) MB (heap used $([math]::Round([double]$idleRow.heap_allocated / 1MB, 1)) MB)" }
 "cycles measured: $($rows.Count)"
 $rows | Select-Object label, @{n = 'live MB'; e = { [math]::Round([double]$_.live_bytes / 1MB, 2) } }, live_blocks,
     @{n = 'private MB'; e = { [math]::Round([double]$_.private_bytes / 1MB, 1) } }, @{n = 'WS MB'; e = { [math]::Round([double]$_.working_set / 1MB, 1) } },
     handles, gdi, user, tabs | Format-Table -AutoSize | Out-String -Width 200
+# who holds what: the process heaps (allocated / committed), the other private pages (read-write / executable), the
+# Wasmtime module cache and instances, the bytecode, image and web-font caches (columns written when the build has them)
+if ($rows.Count -gt 0 -and $rows[0].PSObject.Properties['heap_allocated']) {
+    "who holds the private bytes (MB; caches: entries / MB):"
+    $rows | Select-Object label, @{n = 'private'; e = { [math]::Round([double]$_.private_bytes / 1MB, 1) } },
+        @{n = 'heap used'; e = { [math]::Round([double]$_.heap_allocated / 1MB, 1) } }, @{n = 'heap committed'; e = { [math]::Round([double]$_.heap_committed / 1MB, 1) } },
+        @{n = 'vm rw'; e = { [math]::Round([double]$_.vm_rw / 1MB, 1) } }, @{n = 'vm exec'; e = { [math]::Round([double]$_.vm_exec / 1MB, 1) } },
+        @{n = 'wasm modules'; e = { "$($_.wasm_modules) / $([math]::Round([double]$_.wasm_code_bytes / 1MB, 1))" } }, @{n = 'wasm inst'; e = { $_.wasm_instances } },
+        @{n = 'js bytecode'; e = { "$($_.js_entries) / $([math]::Round([double]$_.js_bytes / 1MB, 1))" } },
+        @{n = 'images'; e = { "$($_.img_entries) / $([math]::Round([double]$_.img_bytes / 1MB, 1))" } },
+        @{n = 'fonts'; e = { "$($_.font_entries) / $([math]::Round([double]$_.font_bytes / 1MB, 1))" } } | Format-Table -AutoSize | Out-String -Width 220
+}
 
 function Median($v) { $x = @($v | Sort-Object); if ($x.Count -eq 0) { return 0 }; return [double]$x[[int][math]::Floor($x.Count / 2)] }
 $failed = $code -ne 0
