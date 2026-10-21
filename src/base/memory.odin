@@ -68,7 +68,7 @@ mem_stats :: proc "contextless" () -> (s: Mem_Stats) {
 	return
 }
 
-// Prints what is still allocated (grouped by place of allocation, largest first) and the counters to stderr, and to
+// Prints what is still allocated (grouped by place of allocation, largest first) and the counters to stdout, and to
 // the file WREN_MEMTRACK_REPORT names when it is set (appended). Returns the number of leaked blocks plus the bad
 // frees: 0 means clean. Call it after everything was shut down (threads joined, pages closed, caches stopped). A normal
 // build reports nothing and returns 0.
@@ -110,7 +110,7 @@ mem_report :: proc(title: string) -> (problems: int) {
 			write_stack(&b, f.stack)
 		}
 		text := strings.to_string(b)
-		fmt.eprint(text)
+		fmt.print(text)   // stdout: test_all's steps read it (a child's stderr would break their job)
 		if path := os.get_env("WREN_MEMTRACK_REPORT", context.temp_allocator); path != "" {
 			if fd, err := os.open(path, os.O_WRONLY | os.O_CREATE | os.O_APPEND); err == nil {
 				_, _ = os.write_string(fd, text)
