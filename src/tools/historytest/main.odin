@@ -180,7 +180,7 @@ main :: proc() {
 	page.persisted_destroy(&ps)
 	page.session_destroy(&sh); page.session_destroy(&sh2); page.session_destroy(&sh3)
 	base.scope_close(process)
-	host.loop_drain(&loop)
+	host.blocking_settle(&blocking)
 	page.process_shutdown()
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)

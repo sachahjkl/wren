@@ -180,7 +180,7 @@ main :: proc() {
 		for b in benches { fmt.printf("  %s\n", b) }
 	}
 	base.scope_close(process)
-	host.loop_drain(&loop)
+	host.blocking_settle(&blocking)
 	page.process_shutdown()
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)

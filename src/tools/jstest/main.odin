@@ -566,7 +566,7 @@ bench("document.body", n => { let s; for (let i = 0; i < n; i++) s = document.bo
 	}
 
 	base.scope_close(process)
-	host.loop_drain(&loop)
+	host.blocking_settle(&blocking)
 	page.process_shutdown()
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)
