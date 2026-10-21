@@ -45,7 +45,7 @@ tables_init :: proc() {
 
 @(private)
 tables_build :: proc() {
-	context.allocator = base.process_allocator()
+	context.allocator = base.permanent_allocator()   // built once, kept until the process ends
 	tables_ready = true
 	prop_by_name = make(map[string]Prop)
 	short_by_name = make(map[string]Short)

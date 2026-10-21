@@ -134,7 +134,7 @@ Engine :: struct {
 engine_make :: proc(settings: Settings) -> ^Engine {
 	// process-wide tables, built once whichever thread gets here first, kept for good: not the caller's memory
 	{
-		context.allocator = base.process_allocator()
+		context.allocator = base.permanent_allocator()
 		tables_init()   // once per process (sync.Once inside)
 	}
 	e := new(Engine)

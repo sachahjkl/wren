@@ -64,7 +64,7 @@ tiers_init :: proc() {
 		skip[uintptr(&probe.inherits) - uintptr(&probe)] = true
 		skip[uintptr(&probe.custom) - uintptr(&probe)] = true
 		skip[uintptr(&probe.node) - uintptr(&probe)] = true
-		layout_fields = make([dynamic]Field_Info, 0, len(computed_fields), base.process_allocator())
+		layout_fields = make([dynamic]Field_Info, 0, len(computed_fields), base.permanent_allocator())
 		for f in computed_fields { if !skip[f.offset] { append(&layout_fields, f) } }
 	})
 }

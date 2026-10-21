@@ -161,7 +161,7 @@ FALLBACK_SYSTEM := [System_Color]u32{
 // The page.color.* and page.color.dark.* preferences (built once, process-wide, kept for good).
 color_pref_defs :: proc() -> []config.Def {
 	sync.once_do(&color_prefs_once, proc() {
-		context.allocator = base.process_allocator()
+		context.allocator = base.permanent_allocator()
 		for k, c in COLOR_KEYS {
 			i := int(c)
 			hint := ""
