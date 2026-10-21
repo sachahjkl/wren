@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 560 |
 | exposed by default | 223 |
 | members | 5013 |
-| members implemented | 2674 (53.3 %) |
+| members implemented | 2677 (53.4 %) |
 
 ## By specification
 
@@ -47,7 +47,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (3) | 19 / 126 |
 | `hr-time.idl` | 1 (1) | 13 / 17 |
-| `html.idl` | 160 (97) | 1166 / 1819 |
+| `html.idl` | 160 (97) | 1169 / 1819 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -3516,8 +3516,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly indexedDB` (WindowOrWorkerGlobalScope): not supported
 - `fetch()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_fetch`
 - `readonly performance` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_performance`
-- `readonly origin` (WindowOrWorkerGlobalScope): import `document.Window_origin`
-- `readonly isSecureContext` (WindowOrWorkerGlobalScope): import `document.Window_isSecureContext`
+- `readonly origin` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_origin`
+- `readonly isSecureContext` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_isSecureContext`
 - `readonly crossOriginIsolated` (WindowOrWorkerGlobalScope): not supported
 - `reportError()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_reportError`
 - `btoa()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_btoa`
@@ -3553,10 +3553,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### WorkerGlobalScope : EventTarget
 
-21 / 32 members.
+24 / 32 members.
 
 - `readonly self`: C `wjr_WorkerGlobalScope_get_self`
-- `readonly location`: not supported
+- `readonly location`: C `wjr_WorkerGlobalScope_get_location`
 - `readonly navigator`: C `wjr_WorkerGlobalScope_get_navigator`
 - `importScripts()`: C `wjr_WorkerGlobalScope_importScripts`
 - `onerror`: generic (event handler)
@@ -3569,8 +3569,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly indexedDB` (WindowOrWorkerGlobalScope): not supported
 - `fetch()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_fetch`
 - `readonly performance` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_performance`
-- `readonly origin` (WindowOrWorkerGlobalScope): not supported
-- `readonly isSecureContext` (WindowOrWorkerGlobalScope): not supported
+- `readonly origin` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_origin`
+- `readonly isSecureContext` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_isSecureContext`
 - `readonly crossOriginIsolated` (WindowOrWorkerGlobalScope): not supported
 - `reportError()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_reportError`
 - `btoa()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_btoa`
@@ -4275,8 +4275,4 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 ## Not exposed (nothing implemented)
 
 TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, ByteLengthQueuingStrategy, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CanvasGradient, CanvasPattern, CanvasRenderingContext2D, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMStringMap, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, DragEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, Clipboard, CloseWatcher, CookieStore, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, OffscreenCanvas, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmap, ImageBitmapRenderingContext, ImageData, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, OffscreenCanvasRenderingContext2D, Origin, Path2D, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheetList, TextDecoderStream, TextEncoderStream, TextMetrics, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
-
-## Browser functions that could not be bound
-
-- WorkerGlobalScope.location: workers.WorkerGlobalScope_location exists but its result type does not match
 

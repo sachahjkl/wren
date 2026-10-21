@@ -12,6 +12,12 @@
   const INDEX = /^(0|[1-9][0-9]*)$/;
   const MEMBERS = ["window", "self", "location", "close", "closed", "focus", "blur", "frames", "length", "top", "opener", "parent", "postMessage"];
   const FALLBACK = ["then", Symbol.toStringTag, Symbol.hasInstance, Symbol.isConcatSpreadable];
+  const BUILTINS = new Set(["JSON", "Math", "Reflect", "Intl", "Object", "Function", "Array", "String", "Number", "Boolean",
+    "Symbol", "BigInt", "Date", "RegExp", "Error", "TypeError", "RangeError", "SyntaxError", "ReferenceError", "EvalError",
+    "URIError", "AggregateError", "Map", "Set", "WeakMap", "WeakSet", "WeakRef", "Promise", "Proxy", "ArrayBuffer",
+    "DataView", "Int8Array", "Uint8Array", "Uint8ClampedArray", "Int16Array", "Uint16Array", "Int32Array", "Uint32Array",
+    "Float32Array", "Float64Array", "BigInt64Array", "BigUint64Array", "parseInt", "parseFloat", "isNaN", "isFinite",
+    "encodeURI", "encodeURIComponent", "decodeURI", "decodeURIComponent", "escape", "unescape", "NaN", "Infinity", "undefined"]);
   let selfId = 0;
 
   const own = () => {
@@ -94,6 +100,12 @@
       }
       return NONE;
     };
+    // a same-origin window's ECMAScript built-ins (stateless: JSON, Math, constructors...) are given as this realm's own,
+    // which scripts probing another frame for them can use; its documents and state stay out of reach
+    const builtin = (p) => {
+      if (typeof p !== "string" || !BUILTINS.has(p) || !host.sameOrigin(id)) return NONE;
+      return globalThis[p];
+    };
     const child = (p) => {
       if (typeof p !== "string") return NONE;
       const c = INDEX.test(p) ? host.child(id, Number(p)) : host.named(id, p);
@@ -105,6 +117,8 @@
         let v = member(p);
         if (v !== NONE) return v;
         v = child(p);
+        if (v !== NONE) return v;
+        v = builtin(p);
         if (v !== NONE) return v;
         throw securityError(p);
       },

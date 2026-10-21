@@ -1058,6 +1058,8 @@ JSValue wjr_WindowOrWorkerGlobalScope_clearInterval(JSContext *ctx, JSValueConst
 JSValue wjr_WindowOrWorkerGlobalScope_clearTimeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_fetch(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_get_crypto(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowOrWorkerGlobalScope_get_isSecureContext(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WindowOrWorkerGlobalScope_get_origin(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WindowOrWorkerGlobalScope_get_performance(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WindowOrWorkerGlobalScope_queueMicrotask(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_reportError(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -1094,6 +1096,7 @@ JSValue wjr_Window_requestIdleCallback(JSContext *ctx, JSValueConst this_val, in
 JSValue wjr_Window_scroll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_scrollBy(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Window_scrollTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WorkerGlobalScope_get_location(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WorkerGlobalScope_get_navigator(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WorkerGlobalScope_get_self(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WorkerGlobalScope_importScripts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -7890,26 +7893,6 @@ static JSValue wjg_Window_get_ongamepadconnected(JSContext *ctx, JSValueConst th
 static JSValue wjg_Window_set_ongamepadconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 368, "gamepadconnected", v, 0); }
 static JSValue wjg_Window_get_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 368, "gamepaddisconnected"); }
 static JSValue wjg_Window_set_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 368, "gamepaddisconnected", v, 0); }
-/* Window.origin -> document.Window_origin */
-static JSValue wjg_Window_get_origin(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 368);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t n;
-    WJ_FETCH_STRING(n, wr_Window_origin(wj_scratch.data, wj_scratch.cap));
-    if (n < 0) { return wj_throw_status(ctx, n, "Window.origin"); }
-    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
-}
-
-/* Window.isSecureContext -> document.Window_isSecureContext */
-static JSValue wjg_Window_get_isSecureContext(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 368);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t r = wr_Window_isSecureContext();
-    return JS_NewBool(ctx, r != 0);
-}
-
 static JSValue wjg_Worker_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 369, "error"); }
 static JSValue wjg_Worker_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 369, "error", v, 0); }
 static JSValue wjg_Worker_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 369, "message"); }
@@ -12314,8 +12297,8 @@ static const wj_member wj_m_Window[] = {
     { "indexedDB", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 209, NULL, NULL, NULL, 0 },
     { "fetch", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_fetch, NULL, NULL, 0 },
     { "performance", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_WindowOrWorkerGlobalScope_get_performance, wj_replaceable_setter, 0 },
-    { "origin", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjg_Window_get_origin, wj_replaceable_setter, 0 },
-    { "isSecureContext", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_isSecureContext, NULL, 0 },
+    { "origin", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_WindowOrWorkerGlobalScope_get_origin, wj_replaceable_setter, 0 },
+    { "isSecureContext", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowOrWorkerGlobalScope_get_isSecureContext, NULL, 0 },
     { "crossOriginIsolated", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "reportError", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_reportError, NULL, NULL, 0 },
     { "btoa", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_btoa, NULL, NULL, 0 },
@@ -12345,7 +12328,7 @@ static const wj_member wj_m_Worker[] = {
 };
 static const wj_member wj_m_WorkerGlobalScope[] = {
     { "self", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WorkerGlobalScope_get_self, NULL, 0 },
-    { "location", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "location", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WorkerGlobalScope_get_location, NULL, 0 },
     { "navigator", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WorkerGlobalScope_get_navigator, NULL, 0 },
     { "importScripts", WJ_M_METHOD, 0, 0, wjr_WorkerGlobalScope_importScripts, NULL, NULL, 0 },
     { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_WorkerGlobalScope_get_onerror, wjg_WorkerGlobalScope_set_onerror, 0 },
@@ -12358,8 +12341,8 @@ static const wj_member wj_m_WorkerGlobalScope[] = {
     { "indexedDB", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 212, NULL, NULL, NULL, 0 },
     { "fetch", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_fetch, NULL, NULL, 0 },
     { "performance", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_WindowOrWorkerGlobalScope_get_performance, wj_replaceable_setter, 0 },
-    { "origin", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
-    { "isSecureContext", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "origin", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_WindowOrWorkerGlobalScope_get_origin, wj_replaceable_setter, 0 },
+    { "isSecureContext", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WindowOrWorkerGlobalScope_get_isSecureContext, NULL, 0 },
     { "crossOriginIsolated", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "reportError", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_reportError, NULL, NULL, 0 },
     { "btoa", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_btoa, NULL, NULL, 0 },
