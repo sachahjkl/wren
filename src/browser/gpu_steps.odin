@@ -73,7 +73,7 @@ gpu_steps_attach :: proc(app: ^App, frames: []Frame_Rec) {
 GPU_STEP_NAMES := [render.Gpu_Step]string{
 	.Draw_Frame = "draw frame", .Draw_Layer = "draw layers", .Clear = "clears", .Copy = "copies",
 	.Color = "color passes", .Blur = "blur passes", .Downsample = "reductions", .Shadow = "shadow passes",
-	.Mask = "mask passes",
+	.Mask = "mask passes", .Upload = "uploads", .Acquire = "back buffer", .Present = "present", .Idle = "idle before",
 }
 
 // CSV columns (prof.odin): per step, the count and the milliseconds; then the targets bound.
