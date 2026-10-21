@@ -916,6 +916,7 @@ apply_prefs :: proc(app: ^App) {
 	delete(app.cfg.homepage)
 	delete(app.cfg.ui_theme)
 	app.cfg = settings_from_prefs(&app.prefs)
+	memory_trim_settings(&app.prefs)   // memory_trim.odin
 	app.show_console = app.cfg.show_console
 	downloads_apply(app)
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
@@ -971,6 +972,7 @@ frame :: proc(app: ^App, idled := false) {
 		free_all(context.temp_allocator)
 		return
 	}
+	memory_trim_active()   // memory_trim.odin
 	prof_begin(.Input)
 	page_cursor_events(app, events)   // page_cursor.odin: a press on the page keeps its cursor
 	route_page_input(app, events)
@@ -1075,6 +1077,7 @@ main :: proc() {
 	config.load_file(&app.prefs, policy_file, .Policy)
 	register_all_prefs(&app.prefs)
 	app.cfg = settings_from_prefs(&app.prefs)
+	memory_trim_settings(&app.prefs)   // memory_trim.odin
 	prof_mark(.Prefs)
 
 	// Start-up order: the renderer's start-up (device, shader compilation) is by far the longest step and needs only the
@@ -1164,12 +1167,13 @@ main :: proc() {
 			timeout := ui.wake_ms(&app.ui_state)
 			if t := host.next_timeout_ms(&app.loop); t >= 0 && (timeout <= 0 || t < timeout) { timeout = max(t, 1) }
 			prof_begin(.Idle)
-			platform.wait_event(app.win, timeout)
+			platform.wait_event(app.win, memcheck_wake(memory_trim_wake(timeout)))
 			prof_end(.Idle)
 			idled = true
 		}
 		frame(app, idled)
 		memcheck_drive(app)   // memcheck.odin: the check build's script, if any
+		memory_trim_tick(app)   // memory_trim.odin
 		if app.frames_requested > 0 { app.frames_requested -= 1 }
 	}
 

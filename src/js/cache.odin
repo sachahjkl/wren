@@ -35,6 +35,7 @@ Key :: wasm.Digest
 
 Cache_Stats :: struct {
 	lookups, memory_hits, disk_hits, stores, disk_writes, disk_rejects, evictions: int,
+	entries, bytes: int,   // bytecode in memory now
 }
 
 @(private) DISK_MAGIC :: "WRENQBC1"
@@ -125,7 +126,9 @@ cache_stop :: proc() {
 cache_stats :: proc() -> Cache_Stats {
 	sync.mutex_lock(&cache.lock)
 	defer sync.mutex_unlock(&cache.lock)
-	return cache.stats
+	s := cache.stats
+	s.entries, s.bytes = len(cache.entries), int(cache.total)
+	return s
 }
 
 // Waits until the disk writer is idle: nothing queued and nothing being written (tests).
