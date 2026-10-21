@@ -1169,6 +1169,7 @@ main :: proc() {
 			idled = true
 		}
 		frame(app, idled)
+		memcheck_drive(app)   // memcheck.odin: the check build's script, if any
 		if app.frames_requested > 0 { app.frames_requested -= 1 }
 	}
 

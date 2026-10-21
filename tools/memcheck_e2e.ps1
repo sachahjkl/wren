@@ -1,12 +1,13 @@
-# The browser's check build on a real session: several tabs, navigations (JavaScript, images, forms, history), back and
-# forward, closed tabs and their reopening, the command palette, about:history, then a normal exit. The check build
-# (build.bat check -> build\browser_check.exe: every allocation tracked, src\base\memory.odin) writes what is still
-# allocated at exit to the profile's memtrack.txt and exits with code 3 when anything is (WREN_MEMTRACK_FAIL=1).
-#   powershell -File tools\memcheck_e2e.ps1 [-Exe build\browser_check.exe] [-NoBuild] [-Stacks] [-Out build\memcheck]
-# Uses the real desktop through tools\screenshot.ps1 (which takes desktop.lock) and a test server of its own; the
-# profile is a fresh folder under -Out. -Stacks records the call stack of every block (slower; the report then names
-# the callers). Exit code: 0 clean, 1 leaks / bad frees or a failure of the run.
-param([string]$Exe = '', [switch]$NoBuild, [switch]$Stacks, [string]$Out = '')
+# The browser's check build on a real session: several tabs, navigations (JavaScript, images, forms, animations,
+# shadow DOM), back / forward / reload (the back/forward cache), closed tabs and their reopening, the command palette,
+# about:history and its tree, then a normal exit. The check build (build.bat check -> build\browser_check.exe: every
+# allocation tracked, src\base\memory.odin) drives itself from a script (WREN_MEMCHECK_SCRIPT, src\browser\memcheck.odin:
+# no keyboard or mouse of the desktop, no lock), writes what is still allocated at exit to the profile's memtrack.txt
+# and exits with code 3 when anything is (WREN_MEMTRACK_FAIL=1).
+#   powershell -File tools\memcheck_e2e.ps1 [-Exe build\browser_check.exe] [-NoBuild] [-Stacks] [-Out build\memcheck] [-TimeoutSec 600]
+# -Stacks records the call stack of every block (slower; the report then names the callers). Its own test server, a
+# fresh profile under -Out. Exit code: 0 clean, 1 leaks / bad frees or a failure of the run.
+param([string]$Exe = '', [switch]$NoBuild, [switch]$Stacks, [string]$Out = '', [int]$TimeoutSec = 600)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -17,50 +18,65 @@ if (-not $NoBuild) {
     cmd /c "build.bat check" | Out-Host
     if ($LASTEXITCODE) { 'FAIL building the check build'; exit 1 }
 }
-$profileDir = Join-Path $Out 'profile'
-if (Test-Path $profileDir) { Get-ChildItem $profileDir -Recurse -File | Remove-Item -Force }
-New-Item -ItemType Directory -Force $profileDir | Out-Null
-$report = Join-Path $profileDir 'memtrack.txt'
 
-$srv = Start-WrenTestServer
-try {
-    $o = $srv.Origin
-    $env:WREN_MEMTRACK_FAIL = '1'
-    $env:WREN_MEMTRACK_STACK = if ($Stacks) { '1' } else { '' }
-    # every step waits long enough for a debug build: the waits only pace the session, nothing is timed
-    $steps = @(
-        'wait:1500'
-        # a second and a third tab: scripts, the DOM from JavaScript, images, forms
-        'key:Ctrl+T'; 'wait:300'; "type:$o/site/js.html"; 'key:Enter'; 'wait:2500'
-        'key:Ctrl+T'; 'wait:300'; "type:$o/site/images.html"; 'key:Enter'; 'wait:2500'
-        "key:Ctrl+T"; 'wait:300'; "type:$o/site/forms.html"; 'key:Enter'; 'wait:2000'
-        # navigations in one tab: history, back / forward (the back/forward cache)
-        'key:Ctrl+T'; 'wait:300'; "type:$o/site/js-dom.html"; 'key:Enter'; 'wait:2000'
-        'key:Ctrl+L'; 'wait:200'; "type:$o/site/animations.html"; 'key:Enter'; 'wait:2000'
-        'key:Ctrl+L'; 'wait:200'; "type:$o/site/mutation.html"; 'key:Enter'; 'wait:2000'
-        'key:Alt+Left'; 'wait:1500'; 'key:Alt+Left'; 'wait:1500'; 'key:Alt+Right'; 'wait:1500'
-        'key:F5'; 'wait:2000'
-        # closing tabs, reopening one
-        'key:Ctrl+W'; 'wait:800'; 'key:Ctrl+W'; 'wait:800'; 'key:Ctrl+Shift+T'; 'wait:2000'
-        # the command palette, about:history
-        'key:Ctrl+Shift+P'; 'wait:600'; 'type:hist'; 'wait:600'; 'key:Escape'; 'wait:400'
-        'key:Ctrl+H'; 'wait:1500'; 'key:Ctrl+W'; 'wait:800'
-        # more pages, then everything closed but one
-        'key:Ctrl+T'; 'wait:300'; "type:$o/site/shadow-dom.html"; 'key:Enter'; 'wait:2000'
-        'key:Ctrl+T'; 'wait:300'; "type:$o/site/layout.html"; 'key:Enter'; 'wait:2000'
-        'key:Ctrl+W'; 'wait:600'; 'key:Ctrl+W'; 'wait:600'; 'key:Ctrl+W'; 'wait:600'
-        'quit:180000'
+# Runs the check build on `$script` (lines; {o} is the test server's origin) with a fresh profile; returns its exit code.
+function Invoke-CheckSession($name, [string[]]$script, $statsFile = '') {
+    $dir = Join-Path $Out $name
+    $profileDir = Join-Path $dir 'profile'
+    if (Test-Path $profileDir) { Get-ChildItem $profileDir -Recurse -File | Remove-Item -Force }
+    New-Item -ItemType Directory -Force $profileDir | Out-Null
+    $srv = Start-WrenTestServer
+    try {
+        $scriptFile = Join-Path $dir 'session.txt'
+        [IO.File]::WriteAllText($scriptFile, (($script | ForEach-Object { $_.Replace('{o}', $srv.Origin) }) -join "`n") + "`n")
+        $env:WREN_MEMCHECK_SCRIPT = $scriptFile
+        $env:WREN_MEMTRACK_FAIL = '1'
+        $env:WREN_MEMTRACK_STACK = if ($Stacks) { '1' } else { '' }
+        $env:WREN_MEMCHECK_STATS = $statsFile
+        $p = Start-Process $Exe -ArgumentList @('--profile', $profileDir, "$($srv.Origin)/site/index.html") -PassThru
+        if (-not $p.WaitForExit($TimeoutSec * 1000)) { $p.Kill(); $p.WaitForExit(5000) | Out-Null; Write-Host "FAIL ${name}: the session did not end in $TimeoutSec s"; return 1 }
+        $code = $p.ExitCode
+    } finally {
+        Stop-WrenTestServer $srv
+        foreach ($v in 'WREN_MEMCHECK_SCRIPT', 'WREN_MEMTRACK_FAIL', 'WREN_MEMTRACK_STACK', 'WREN_MEMCHECK_STATS') { Remove-Item "Env:\$v" -ErrorAction SilentlyContinue }
+    }
+    $report = Join-Path $profileDir 'memtrack.txt'
+    if (Test-Path $report) { Get-Content $report | Select-Object -First 80 | Out-Host }
+    switch ($code) {
+        0 { Write-Host "PASS ${name}: the check build exits clean ($report)" }
+        3 { Write-Host "FAIL ${name}: allocations left at exit ($report)" }
+        default { Write-Host "FAIL ${name}: the check build ended with code $code" }
+    }
+    return $code
+}
+
+if ($MyInvocation.InvocationName -ne '.') {
+    $session = @(
+        'load'
+        'open {o}/site/js.html'; 'load'
+        'open {o}/site/images.html'; 'load'
+        'open {o}/site/forms.html'; 'load'
+        'open {o}/site/js-dom.html'; 'load'
+        'go {o}/site/animations.html'; 'load'; 'frames 20'
+        'go {o}/site/mutation.html'; 'load'; 'frames 20'
+        'command nav.back'; 'load'
+        'command nav.back'; 'load'
+        'command nav.forward'; 'load'
+        'command nav.reload'; 'load'
+        'command tab.close'; 'command tab.close'
+        'command tab.reopen_closed'; 'load'
+        'command browser.command_palette'; 'frames 10'
+        'command browser.history'; 'wait 500'
+        'command browser.history_tree'; 'wait 500'
+        'command tab.close'
+        'open {o}/site/shadow-dom.html'; 'load'
+        'open {o}/site/layout.html'; 'load'
+        'open {o}/site/media.html'; 'load'
+        'command tab.duplicate'; 'load'
+        'command tab.close'; 'command tab.close'; 'command tab.close'
+        'wait 500'
+        'quit'
     )
-    $shot = Join-Path $Out 'memcheck.png'
-    $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'screenshot.ps1'), '-Exe', $Exe, '-Url', "$o/site/index.html",
-        '-Out', $shot, '-WaitMs', '3000', '-Extra', "--profile,$profileDir", '-Actions', ($steps -join ';'))
-    powershell @a
-    $code = $LASTEXITCODE
-} finally { Stop-WrenTestServer $srv; Remove-Item Env:\WREN_MEMTRACK_FAIL -ErrorAction SilentlyContinue }
-
-if (Test-Path $report) { Get-Content $report | Select-Object -First 60 }
-switch ($code) {
-    0 { "PASS the check build exits clean (report: $report)"; exit 0 }
-    3 { "FAIL the check build left allocations at exit (report: $report)"; exit 1 }
-    default { "FAIL the check build ended with code $code"; exit 1 }
+    $code = Invoke-CheckSession 'session' $session
+    exit $(if ($code -eq 0) { 0 } else { 1 })
 }
