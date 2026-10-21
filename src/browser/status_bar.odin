@@ -356,7 +356,7 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 				ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
 				what := n.frames > 0 ? fmt.tprintf("last %s s, %d frames", fmt_ms(f32(hud.cfg.window_ms / 1000), c), n.frames) : "idle: no frames drawn lately"
 				ui.label(fmt.tprintf("Frame statistics, %s###fs_title", what))
-				ui.next({width = ui.px(em * 1.9), height = ui.px(em * 1.9)})
+				ui.next({width = ui.px(em * 1.9), height = ui.px(em * 1.9), radius = em * CHROME_BUTTON_RADIUS})
 				close := ui.icon_button("###fs_close", GLYPH_CLOSE)
 				tip(close, "Close (Ctrl+Shift+B)")
 				if close.clicked { hud.panel_open = false }

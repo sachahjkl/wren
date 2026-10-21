@@ -181,10 +181,10 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		if any_turning { spinner_wake(app) }
 
 		ui.spacer(ui.px(em * 0.3))
-		ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * 0.4})
+		ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * CHROME_BUTTON_RADIUS})
 		add := ui.icon_button("###newtab", GLYPH_ADD)
 		tip(add, "New tab (Ctrl+T)")
-		if add.clicked { tab_open(app) }
+		if add.clicked { tab_open_new(app) }
 		ui.spacer(ui.fill())   // drags the window
 		if integrated { _, _ = ui.window_buttons() }
 	}

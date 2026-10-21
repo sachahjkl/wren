@@ -160,6 +160,14 @@ tab_open :: proc(app: ^App, address := "") -> ^Tab {
 	return t
 }
 
+// A new tab the user asked for (Ctrl+T, the + of the strip, the menus): the homepage, with the address field focused
+// to type in, as in Chromium.
+tab_open_new :: proc(app: ^App) -> ^Tab {
+	t := tab_open(app)
+	app.focus_address = true
+	return t
+}
+
 // A tab at the end of the strip, showing nothing yet.
 tab_new :: proc(app: ^App) -> ^Tab {
 	t := new(Tab)

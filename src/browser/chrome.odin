@@ -114,10 +114,13 @@ burger_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	}
 }
 
+// Corner radius of the chrome's buttons (back, forward, reload, the zoom chip, the menu), in em: one shape for all
+CHROME_BUTTON_RADIUS :: 0.4
+
 nav_button :: proc(id, glyph, tooltip: string, enabled: bool) -> bool {
 	em := ui.font_size()
 	clicked := false
-	ui.next({width = ui.px(em * 2.1), height = ui.px(ui.dense(em * 2))})
+	ui.next({width = ui.px(em * 2.1), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
 	if ui.disabled(!enabled) {
 		sig := ui.icon_button(id, glyph)
 		clicked = sig.clicked
@@ -188,7 +191,7 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	// page zoom, when not 100 %: click to reset
 	if t != nil && zoom_percent(t) != 100 {
 		ui.spacer(ui.px(em * 0.3))
-		ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 1.8)), radius = em * 0.4})
+		ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 1.8)), radius = em * CHROME_BUTTON_RADIUS})
 		if ui.tags("ghost_button") {
 			z := ui.button(fmt.aprintf("%d %%###zoom_chip", zoom_percent(t), allocator = ui.frame_allocator()))
 			tip(z, "Page zoom: click to reset (Ctrl+0)")
@@ -492,7 +495,7 @@ page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 
 main_menu_button :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	ui.next({width = ui.px(em * 2.3), height = ui.px(ui.dense(em * 2)), radius = em * 0.4})
+	ui.next({width = ui.px(em * 2.3), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
 	tone := ui.color("text")
 	d := ui.frame_new(Burger_Draw)
 	d.color = tone
@@ -515,7 +518,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		can_back := t != nil && t.hist > 0
 		can_forward := t != nil && t.hist + 1 < len(t.history)
 		web := t != nil && t.kind == .Web
-		if ui.menu_item("New tab", "Ctrl+T", icon = GLYPH_ADD).clicked { tab_open(app) ; return }
+		if ui.menu_item("New tab", "Ctrl+T", icon = GLYPH_ADD).clicked { tab_open_new(app); return }
 		if ui.menu_item("Reopen closed tab", "Ctrl+Shift+T", enabled = len(closed_tabs) > 0).clicked { reopen_closed_tab(app); return }
 		if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close(app, app.current); return }
 		ui.menu_separator()
@@ -563,7 +566,7 @@ chrome_shortcuts :: proc(app: ^App) {
 	n := len(app.tabs)
 	ctrl, cs := platform.Modifiers{.Ctrl}, platform.Modifiers{.Ctrl, .Shift}
 	switch {
-	case ui.key_press(.T, ctrl): tab_open(app)
+	case ui.key_press(.T, ctrl): tab_open_new(app)
 	case ui.key_press(.T, cs): reopen_closed_tab(app)
 	case ui.key_press(.W, ctrl), ui.key_press(.F4, ctrl): tab_close(app, app.current)
 	case ui.key_press(.L, ctrl), ui.key_press(.D, {.Alt}): app.focus_address = true
