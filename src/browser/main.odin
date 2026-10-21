@@ -250,6 +250,7 @@ normalize_address :: proc(input: string) -> string {
 navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false, record := true, method := "", body: []byte = nil, headers: []fetch.Header_Pair = nil, restore := false, cache := fetch.Cache_Mode.Default) {
 	target := strings.clone(normalize_address(address), context.temp_allocator)
 	if target == "" { target = strings.clone(app.cfg.homepage, context.temp_allocator) }
+	cache_prof_leave(t)   // (profile build: what the page cost, http_cache_ui.odin)
 	leave_page(app, t)   // the entry being left keeps what it shows; the page may go to the back/forward cache
 	t.nav_state.no_store = false
 	pushed := false
@@ -1188,7 +1189,7 @@ main :: proc() {
 	}
 
 	prof_report()
-	for t in app.tabs { entry_capture_current(app, t) }   // the session keeps where each tab was
+	for t in app.tabs { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	profile_save(app, force = true)
 	bfcache_shutdown(app)
 	for t in app.tabs { tab_nav_destroy(app, t) }

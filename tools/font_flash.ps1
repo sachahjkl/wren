@@ -8,7 +8,7 @@
 #   powershell -File tools\font_flash.ps1 -Url https://sacha.house -Click "300,208;478,208" -Out build\flash [-Profile dir]
 #       [-KeepProfile] [-Extra "--pref","a=b"] [-Exe build\browser_prof.exe] [-WaitMs 6000] [-Name run]
 # Opens a window: take the shared lock (S:\wb_wt\shared.lock) around it. WREN_PROF is set for a profile build: first
-# paints go to <Out>\<name>.firstpaint.txt (first_paint.odin).
+# paints go to <Out>\<name>.firstpaint.txt (first_paint.odin), what each page cost to <Out>\<name>.requests.txt.
 param([string]$Url, [string]$Click = '', [string]$Out = 'build\flash', [string]$Profile = '', [switch]$KeepProfile,
       [string[]]$Extra = @(), [string]$Exe = '', [int]$WaitMs = 6000, [int]$RecordMs = 2500, [int]$Fps = 60,
       [string]$Crop = '0,140,1240,180', [string]$Name = 'run', [int]$Width = 1280, [int]$Height = 800, [switch]$AnalyzeOnly)
@@ -128,3 +128,5 @@ foreach ($clip in $clips) {
 $report | Tee-Object -FilePath (Join-Path $Out "$Name.states.txt")
 $fp = Join-Path $Out "$Name.firstpaint.txt"
 if (Test-Path $fp) { "first paints (ms since navigation, ms since document, url, sources):"; Get-Content $fp }
+$rq = Join-Path $Out "$Name.requests.txt"
+if (Test-Path $rq) { "pages left (url, document, subresources by source, network bytes):"; Get-Content $rq }

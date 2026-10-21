@@ -146,7 +146,10 @@ test_disk_round_trip :: proc(t: ^testing.T) {
 	put(c, "two", "Cache-Control: max-age=60\r\n", strings.repeat("x", 100_000, context.temp_allocator))
 	testing.expect(t, pump_until(&l, writes_done, c))
 	// a new start: the index has both, not resident; reading gives the response back
-	c = reopen(&l, c, s, dir)
+	destroy(c)
+	testing.expect(t, os.exists(strings.concatenate({dir, "\\", INDEX_NAME}, context.temp_allocator)))
+	c = create(&l, s, dir)
+	testing.expect(t, pump_until(&l, is_ready_proc, c))
 	testing.expect_value(t, len(c.entries), 2)
 	e := find(c, "one")
 	testing.expect(t, e != nil && !e.resident && e.disk == .Stored)

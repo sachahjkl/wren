@@ -1,6 +1,7 @@
 package browser
 
 import "core:fmt"
+import "core:os"
 import "core:strings"
 import "core:time"
 import "toolkit:ui"
@@ -17,6 +18,8 @@ import "wb:url"
 // "Clear the cache".
 
 CACHE_URL :: "about:cache"
+
+_ :: os   // used by the profile build only
 
 // How many entries about:cache lists at most (the newest first; the filter narrows them).
 @(private = "file") CACHE_PAGE_MAX_ROWS :: 1000
@@ -87,6 +90,19 @@ cache_prof_fields :: proc(t: ^Tab) -> string {
 	return fmt.tprintf("doc=%s\tnet=%d\tcache=%d\t304=%d\tnet_bytes=%d\tfonts=%d/%d", doc, c.network, c.cache, c.revalidated, c.network_bytes, ready, all)
 }
 
+// Profile build (WREN_PROF set): what the page of `t` cost when it is left (a navigation, the browser closing),
+// appended to <WREN_PROF>.requests.txt as "URL, document source, subresources by source, network bytes".
+cache_prof_leave :: proc(t: ^Tab) {
+	when PROFILE {
+		if !prof.on || t == nil || t.page == nil || t.kind != .Web { return }
+		path := strings.concatenate({prof.out, ".requests.txt"}, context.temp_allocator)
+		f, err := os.open(path, {.Write, .Create, .Append}, os.Permissions_Default_File)
+		if err != nil { return }
+		defer os.close(f)
+		os.write_string(f, fmt.tprintf("%s\t%s\n", t.page.env.location.href, cache_prof_fields(t)))
+	}
+}
+
 // The status bar's tip: where this page's requests came from.
 cache_requests_tip :: proc(t: ^Tab) -> string {
 	if t == nil || t.page == nil { return "Requests in flight" }
@@ -103,12 +119,12 @@ is_cache_address :: proc(a: string) -> bool { return a == CACHE_URL || strings.h
 CACHE_PAGE_STYLE :: `
   html { background-color: #0d1017; }
   body { margin: 0; color: #c9d1e3; font-family: system-ui; font-size: 14px; }
-  .main { max-width: 1100px; box-sizing: border-box; margin: 0 auto; padding: 40px 20px; }
-  h1 { font-size: 30px; margin: 0 0 6px; color: #f1f4fb; }
+  .main { max-width: 1100px; box-sizing: border-box; margin: 0 auto; padding: 28px 20px; }
+  h1 { font-size: 26px; margin: 0 0 6px; color: #f1f4fb; }
   .intro { color: #8993ad; margin: 0 0 20px; }
-  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 20px; }
-  .stat { padding: 10px 16px; background-color: #131825; border: 1px solid #232b40; border-radius: 10px; min-width: 120px; }
-  .stat b { display: block; font-size: 20px; color: #f1f4fb; }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+  .stat { padding: 6px 12px; background-color: #131825; border: 1px solid #232b40; border-radius: 8px; min-width: 100px; }
+  .stat b { display: block; font-size: 16px; color: #f1f4fb; }
   .stat span { color: #8993ad; font-size: 12px; }
   form { display: flex; gap: 8px; margin: 0 0 14px; }
   input[type=search] { flex: 1; padding: 6px 10px; background-color: #131825; color: #c9d1e3; border: 1px solid #2c3550; border-radius: 6px; }
@@ -117,7 +133,8 @@ CACHE_PAGE_STYLE :: `
   table { width: 100%; border-collapse: collapse; }
   th { text-align: left; color: #8993ad; font-weight: normal; border-bottom: 1px solid #232b40; padding: 4px 6px; }
   td { border-bottom: 1px solid #1a2133; padding: 4px 6px; vertical-align: top; }
-  td.url { word-break: break-all; color: #f1f4fb; }
+  td { white-space: nowrap; }
+  td.url { white-space: normal; word-break: break-all; color: #f1f4fb; }
   td.part { color: #8993ad; font-size: 12px; }
   .fresh { color: #7fd68a; }
   .stale { color: #ffb84d; }
@@ -133,6 +150,16 @@ size_text :: proc(n: i64) -> string {
 	case n >= 1 << 10: return fmt.tprintf("%.1f KiB", f64(n) / f64(1 << 10))
 	}
 	return fmt.tprintf("%d B", n)
+}
+
+@(private = "file")
+duration_text :: proc(s: i64) -> string {
+	switch {
+	case s >= 2 * 86400: return fmt.tprintf("%d days", s / 86400)
+	case s >= 2 * 3600: return fmt.tprintf("%d h", s / 3600)
+	case s >= 120: return fmt.tprintf("%d min", s / 60)
+	}
+	return fmt.tprintf("%d s", s)
 }
 
 @(private = "file")
@@ -171,7 +198,7 @@ cache_page_html :: proc(app: ^App, filter: string, cleared: bool) -> string {
 	stat_box(&sb, fmt.tprintf("%d", s.stats.misses), "fetched")
 	stat_box(&sb, fmt.tprintf("%d", s.stats.stored), "stored")
 	stat_box(&sb, fmt.tprintf("%d", s.stats.evicted), "evicted")
-	stat_box(&sb, size_text(s.stats.bytes_served), "served from the cache")
+	stat_box(&sb, size_text(s.stats.bytes_served), "bytes served from the cache")
 	if s.stats.disk_failures > 0 { stat_box(&sb, fmt.tprintf("%d", s.stats.disk_failures), "damaged files dropped") }
 	if !s.ready { stat_box(&sb, "loading", "the index") }
 	strings.write_string(&sb, "</div>\n")
@@ -198,7 +225,7 @@ cache_page_html :: proc(app: ^App, filter: string, cleared: bool) -> string {
 		where_e := e.resident ? (e.disk == .Stored ? "memory + disk" : (e.disk == .Writing ? "memory, writing" : "memory")) : "disk"
 		fmt.sbprintf(&sb, "<tr><td class=\"url\">%s<div class=\"part\">%s</div></td><td>%d</td><td>%s</td><td class=\"%s\">%s</td><td>%04d-%02d-%02d %02d:%02d:%02d UTC</td><td>%s</td></tr>\n",
 			escape_html(e.url), escape_html(part), e.status, size_text(e.body_size), fresh ? "fresh" : "stale",
-			fresh ? fmt.tprintf("%d s", e.fresh_until - now) : "stale", y, int(mo), d, h, mi, sec, where_e)
+			fresh ? duration_text(e.fresh_until - now) : "stale", y, int(mo), d, h, mi, sec, where_e)
 	}
 	strings.write_string(&sb, "</table>\n")
 	if matching > shown { fmt.sbprintf(&sb, "<p class=\"note\">%d more entries are not listed: filter to find them.</p>\n", matching - shown) }
@@ -235,6 +262,16 @@ show_cache_page :: proc(app: ^App, t: ^Tab, target: string, from: ^page.Page) {
 	for l in t.console { delete(l) }
 	clear(&t.console)
 	page.load_html(t.page, transmute([]byte)cache_page_html(app, filter, cleared))
+	if c := app.profile.cache; c != nil && !httpcache.is_ready(c) {
+		// at start-up the index is still being read: the page is made again once it is
+		httpcache.when_ready(c, proc(user: rawptr, ok: bool) {
+			id := u64(uintptr(user))
+			for tab in the_app.tabs {
+				if tab.id == id && is_cache_address(tab.url) { show_cache_page(the_app, tab, strings.clone(tab.url, context.temp_allocator), nil); break }
+			}
+			the_app.frames_requested = max(the_app.frames_requested, 2)
+		}, rawptr(uintptr(t.id)))
+	}
 	delete(t.url); t.url = strings.clone(shown)
 	delete(t.title); t.title = strings.clone("HTTP cache")
 	set_status(t, cleared ? "the HTTP cache was cleared" : CACHE_URL)
