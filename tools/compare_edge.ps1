@@ -36,7 +36,7 @@ param(
     [switch]$Snapshot,
     [switch]$Js,
     [int]$JsWaitMs = 8000,
-    [string]$UserAgent = 'Wren/0.2',
+    [string]$UserAgent = 'Wren/0.3',
     [string]$AcceptLanguage = 'en-US,en;q=0.9',
     [string]$Exe = ''
 )
