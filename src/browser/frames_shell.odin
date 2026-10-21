@@ -453,9 +453,6 @@ frames_tick_doc :: proc(app: ^App, p: ^page.Page, frame_ms: f64) -> bool {
 		page.set_page_visible(c, shown)
 		if !shown { continue }
 		page.run_animation_frames(c, frame_ms)
-		when DEBUG_INPUT {
-			debug_log(fmt.tprintf("frame tick %s raf=%v anim=%v muts=%d/%d ready=%v", c.env.location.href[:min(60, len(c.env.location.href))], page.wants_animation_frame(c), page.animations_active(c), fv.tab.layout.mutations, c.doc.mutations, fv.ready))
-		}
 		if page.wants_animation_frame(c) || page.animations_active(c) { want = true }
 		if fv.tab.layout.mutations != c.doc.mutations { want = true }
 		if frames_tick_doc(app, c, frame_ms) { want = true }
