@@ -960,14 +960,28 @@ grid_area :: proc(g: ^Grid, it: ^Grid_Item, axis: int) -> (start, size: f32) {
 	return tr[a].pos, tr[e].pos + tr[e].base - tr[a].pos
 }
 
-// Self-alignment of an item along an axis (CSS Align §6), `normal` resolved: stretch, except for replaced boxes and
-// boxes with an aspect ratio.
+// Self-alignment of an item along an axis (CSS Align §6), `normal` resolved: stretch, except for replaced boxes, and for
+// boxes with an aspect ratio in an axis their ratio sizes: the block axis (from the width), the inline axis only when the
+// height is specified (else the width stretches and the height follows it: aspect-square cells fill their column, as
+// in Blink).
 @(private)
 grid_self :: proc(c: ^Ctx, container: ^style.Computed, k: ^Box, axis: int) -> style.Content_Align {
 	a := axis == 0 ? k.cs.justify_self : k.cs.align_self
 	if a == .Auto { a = axis == 0 ? container.justify_items : container.align_items }
-	if a == .Normal || a == .Auto { a = (k.kind == .Replaced || k.cs.aspect_ratio > 0) ? .Start : .Stretch }
+	if a == .Normal || a == .Auto {
+		ratio_sized := k.cs.aspect_ratio > 0 && (axis == 1 || k.cs.height.kind != .Auto || grid_stretched_h(container, k))
+		a = (k.kind == .Replaced || ratio_sized) ? .Start : .Stretch
+	}
 	return a
+}
+
+// Whether an item's height is stretched to its area by an explicit `stretch` (align-self or align-items): with an
+// aspect ratio, its width then follows that height (Blink; an item left at `normal` keeps its width instead).
+@(private)
+grid_stretched_h :: proc(container: ^style.Computed, k: ^Box) -> bool {
+	a := k.cs.align_self
+	if a == .Auto { a = container.align_items }
+	return a == .Stretch && k.cs.height.kind == .Auto && !k.auto_t && !k.auto_b
 }
 
 // Border-box width of each item in its column area.
@@ -998,9 +1012,17 @@ grid_item_widths :: proc(c: ^Ctx, g: ^Grid) {
 			case .Max_Content: w = intrinsic(c, it.box)[1]
 			case .Fit_Content: w = shrink_to_fit(c, it.box, avail)
 			case:
-				if it.ratio_dep {
+				// the width from a definite height through the aspect ratio (a percentage one once the rows are known)
+				if it.ratio_dep || (kcs.aspect_ratio > 0 && kcs.height.kind != .Auto) {
 					if h, ok := definite(c, kcs.height, grid_area_size(g, &it, 1)); ok {
 						w = h * kcs.aspect_ratio + (kcs.box_sizing == .Border_Box ? 0 : pb_w(k))
+						break
+					}
+				}
+				if kcs.aspect_ratio > 0 && grid_stretched_h(cs, k) {
+					if ah := grid_area_size(g, &it, 1); ah >= 0 {
+						bh := max(ah - it.m[0] - it.m[2], 0)
+						w = kcs.box_sizing == .Border_Box ? bh * kcs.aspect_ratio : max(bh - pb_h(k), 0) * kcs.aspect_ratio + pb_w(k)
 						break
 					}
 				}
@@ -1032,9 +1054,21 @@ grid_area_size :: proc(g: ^Grid, it: ^Grid_Item, axis: int) -> f32 {
 @(private)
 grid_rows_changed_widths :: proc(c: ^Ctx, g: ^Grid) -> bool {
 	changed := false
+	cs := c.l.boxes[g.bi].cs
 	for &it in g.items[:g.n_real] {
-		if !it.placed || !it.ratio_dep { continue }
+		if !it.placed { continue }
 		k := &c.l.boxes[it.box]
+		if k.cs.aspect_ratio > 0 && grid_stretched_h(cs, k) {
+			if ah := grid_area_size(g, &it, 1); ah >= 0 {
+				bh := max(ah - it.m[0] - it.m[2], 0)
+				w := k.cs.box_sizing == .Border_Box ? bh * k.cs.aspect_ratio : max(bh - pb_h(k), 0) * k.cs.aspect_ratio + pb_w(k)
+				w += it.m[1] + it.m[3]
+				it.contrib[0] = {w, w, w}
+				changed = true
+			}
+			continue
+		}
+		if !it.ratio_dep { continue }
 		if h, ok := definite(c, k.cs.height, grid_area_size(g, &it, 1)); ok {
 			w := h * k.cs.aspect_ratio + (k.cs.box_sizing == .Border_Box ? 0 : pb_w(k)) + it.m[1] + it.m[3]
 			it.contrib[0] = {w, w, w}
