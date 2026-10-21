@@ -71,6 +71,8 @@ Window_Cursor :: struct {
 	keyword: platform.Cursor,
 	custom:  platform.Custom_Cursor,
 	scale:   f32,   // device pixels per CSS pixel the custom cursor is shown at
+	node:    base.Handle,   // the page's element it comes from (NIL: the chrome's, or none)
+	at:      [2]f32,        // where the page was asked (CSS pixels of the page area; the log's)
 }
 
 @(private = "file")
@@ -153,6 +155,58 @@ page_editable :: proc(d: ^dom.Document, h: base.Handle) -> bool {
 	return false
 }
 
+// Is `h` the element `top` or inside it?
+@(private = "file")
+node_within :: proc(d: ^dom.Document, h, top: base.Handle) -> bool {
+	for cur := h; cur != base.NIL_HANDLE; {
+		if cur == top { return true }
+		n := dom.get(d, cur)
+		if n == nil { break }
+		cur = n.parent
+	}
+	return false
+}
+
+// Between two lines of text the text's rectangles leave a gap (the leading: they are as tall as the font, the line
+// is as tall as line-height), where the hit test finds the element's box. Chromium's line boxes reach across it: the
+// nearer of the text above and the text below, in the element and across `p`, counts (the line's text item).
+@(private = "file")
+line_gap_text :: proc(l: ^Layout, d: ^dom.Document, box: ^lay.Display_Item, p, viewport: [2]f32, scroll: f32) -> i32 {
+	v := lay.view_make(l, viewport, scroll, cull = false)
+	above, below := i32(lay.NONE), i32(lay.NONE)
+	da, db := max(f32), max(f32)
+	ha: f32
+	for i in 0 ..< len(l.items) {
+		it := &l.items[i]
+		if it.kind != .Text || .Hit not_in it.flags || it.space != box.space || l.spaces[it.space].xform != lay.NONE { continue }
+		r := lay.item_rect(l, &v, it)
+		if p.x < r.min.x || p.x >= r.max.x { continue }
+		if r.max.y <= p.y && p.y - r.max.y < da {
+			if node_within(d, it.node, box.node) { above, da, ha = i32(i), p.y - r.max.y, r.max.y - r.min.y }
+		} else if r.min.y >= p.y && r.min.y - p.y < db {
+			if node_within(d, it.node, box.node) { below, db = i32(i), r.min.y - p.y }
+		}
+	}
+	// (a gap more than 2.5 lines of text tall is no leading: line-height reaches 3.5 at most there)
+	if above == lay.NONE || below == lay.NONE || da + db > 2.5 * ha { return lay.NONE }
+	return da <= db ? above : below
+}
+
+// Is `p` on a scroll bar of a scroll container (drawn in the layout's display list, not transformed)?
+@(private = "file")
+on_scrollbar :: proc(l: ^Layout, p, viewport: [2]f32, scroll: f32) -> bool {
+	v := lay.view_make(l, viewport, scroll, cull = false, allocator = context.temp_allocator)
+	for i := len(l.items) - 1; i >= 0; i -= 1 {
+		it := &l.items[i]
+		if it.kind != .Scrollbar || l.spaces[it.space].xform != lay.NONE { continue }
+		r := lay.item_rect(l, &v, it)
+		if p.x < r.min.x || p.y < r.min.y || p.x >= r.max.x || p.y >= r.max.y { continue }
+		if it.clip != lay.NONE && !lay.clip_contains(l, &v, it.clip, p) { continue }
+		return true
+	}
+	return false
+}
+
 // The page's cursor at `p` (page-area device pixels; `viewport` its size, `scroll` the document's scroll).
 // `css`: the page's cursor property counts (browser.cursor.page_css); without it every cursor is `auto`'s.
 page_cursor_at :: proc(l: ^Layout, d: ^dom.Document, st: ^style.Styled, p, viewport: [2]f32, scroll: f32, css := true) -> (pc: Page_Cursor) {
@@ -173,8 +227,12 @@ page_cursor_at :: proc(l: ^Layout, d: ^dom.Document, st: ^style.Styled, p, viewp
 		}
 		if pc.node != base.NIL_HANDLE { cs = style.style_of(st, pc.node) }
 	} else {
+		if on_scrollbar(l, p, viewport, scroll) { return }   // the arrow over scroll bars, whatever the page says
 		it := &l.items[h.item]
-		if it.kind == .Scrollbar { return }   // the arrow over scroll bars, whatever the page says
+		if it.kind == .Scrollbar { return }
+		if it.kind == .Box || it.kind == .Inline_Box {
+			if gap := line_gap_text(l, d, it, p, viewport, scroll); gap != lay.NONE { it = &l.items[gap] }
+		}
 		pc.node = it.node
 		cs = it.cs != nil ? it.cs : style.style_of(st, it.node)
 		is_text = it.kind == .Text
@@ -273,7 +331,7 @@ page_window_cursor :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> Window_Cursor {
 	p := pos - app.page_rect.min
 	if _, on_bar := scrollbar_at(app, t, p); on_bar { return {keyword = .Arrow} }
 	pc := page_cursor_at(&t.layout, t.page.doc, t.page.styled, p, draw.rect_size(app.page_rect), t.scroll, ccfg.page_css)
-	wc := Window_Cursor{keyword = pc.keyword, scale = scale}
+	wc := Window_Cursor{keyword = pc.keyword, scale = scale, node = pc.node, at = p / scale}
 	wc.custom = cursor_image(app, t, pc.images, pos, scale)
 	return wc
 }
@@ -319,16 +377,25 @@ window_cursor_apply :: proc(app: ^App) {
 	} else {
 		platform.set_cursor(app.win, wc.keyword)
 	}
-	if !pcs.shown_ok || wc != pcs.shown {
-		pcs.shown, pcs.shown_ok = wc, true
-		if pcs.log_path != "" { cursor_log(wc) }
+	if !pcs.shown_ok || wc.keyword != pcs.shown.keyword || wc.custom != pcs.shown.custom || wc.node != pcs.shown.node {
+		if pcs.log_path != "" { cursor_log(app, wc) }
 	}
+	pcs.shown, pcs.shown_ok = wc, true
 }
 
+// A line per change: cursor=<css name> custom=<true|false> node=<tag>#<id> at=<x>,<y> (the page's point in CSS
+// pixels; node=- for the chrome's cursor).
 @(private = "file")
-cursor_log :: proc(wc: Window_Cursor) {
+cursor_log :: proc(app: ^App, wc: Window_Cursor) {
 	f, err := os.open(pcs.log_path, {.Write, .Create, .Append}, os.Permissions_Default_File)
 	if err != nil { return }
 	defer os.close(f)
-	os.write_string(f, fmt.tprintf("%s custom=%v\n", platform.cursor_css_name(wc.keyword), wc.custom != 0))
+	node := "-"
+	if t := current_tab(app); t != nil && t.page != nil && wc.node != base.NIL_HANDLE {
+		if n := dom.get(t.page.doc, wc.node); n != nil {
+			id, _ := dom.get_attribute(t.page.doc, wc.node, "id")
+			node = fmt.tprintf("%s#%s", n.name, id)
+		}
+	}
+	os.write_string(f, fmt.tprintf("cursor=%s custom=%v node=%s at=%.0f,%.0f\n", platform.cursor_css_name(wc.keyword), wc.custom != 0, node, wc.at.x, wc.at.y))
 }

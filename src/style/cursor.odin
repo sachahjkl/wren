@@ -47,8 +47,8 @@ cursor_keyword :: proc(v: css.Value) -> (Cursor, bool) {
 		case: return {}, false
 		}
 	}
-	o := single(v)
-	return parse_enum(o[:], Cursor)
+	for k in Cursor { if cursor_keyword_name(k) == id { return k, true } }
+	return {}, false
 }
 
 // The resolution of an image-set() candidate (`2x`, `2dppx`, `192dpi`, `75.6dpcm`), in dppx.
