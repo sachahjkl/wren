@@ -57,6 +57,7 @@ Wt_State :: struct {
 	attached:     int,            // functions attach_function added (attach.odin)
 	free_slots:   [dynamic]u32,   // table slots detach_function cleared
 	attach_pending: int,          // attach_start jobs not polled yet
+	attach_done:  ^u32,           // a word of the module's memory bumped when one of its jobs is compiled (attach_notify)
 }
 
 @(private)

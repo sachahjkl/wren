@@ -189,6 +189,16 @@ attach_poll :: proc(inst: ^Instance, ticket: i32) -> (index: u32, pending: bool,
 	return index, false, err
 }
 
+// The word of the module's memory (4 bytes at ddress) the compile threads bump each time one of its jobs is done:
+// the module polls only when it changed. The memory never moves (memory_may_move is off).
+attach_notify :: proc(inst: ^Instance, address: u32) {
+	if b := guest_bytes(inst, u64(address), 4); b != nil && uintptr(raw_data(b)) & 3 == 0 {
+		sync.mutex_lock(&attach_pool.lock)
+		inst.wt.attach_done = (^u32)(raw_data(b))
+		sync.mutex_unlock(&attach_pool.lock)
+	}
+}
+
 // Drops the jobs of an instance being freed (from wt_free).
 @(private)
 attach_forget :: proc(inst: ^Instance) {
@@ -269,6 +279,7 @@ attach_worker :: proc() {
 		job.err = msg
 		job.compile_ns = ns
 		job.done = true
+		if p := job.inst.wt.attach_done; p != nil { sync.atomic_add(p, 1) }
 		sync.mutex_unlock(&attach_pool.lock)
 	}
 }

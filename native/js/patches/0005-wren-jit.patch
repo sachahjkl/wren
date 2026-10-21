@@ -1,7 +1,7 @@
 diff --git a/quickjs.c b/quickjs.c
 --- a/quickjs.c
 +++ b/quickjs.c
-@@ -895,8 +895,18 @@ typedef struct JSFunctionBytecode {
+@@ -895,8 +895,19 @@ typedef struct JSFunctionBytecode {
      int pc2line_len;
      uint8_t *pc2line_buf;
      char *source;
@@ -9,6 +9,7 @@ diff --git a/quickjs.c b/quickjs.c
 +    int32_t wjit_index;   /* WREN: table index of the compiled code (native/js/jit); 0 none yet, -1 never */
 +    uint32_t wjit_calls;  /* WREN: calls counted toward the JIT's threshold */
 +    void *wjit_data;      /* WREN: the compiled code's inline caches */
++    uint32_t wjit_seen;   /* WREN: the JIT's completion count when last polled (being compiled) */
 +#endif
  } JSFunctionBytecode;
  
@@ -20,7 +21,7 @@ diff --git a/quickjs.c b/quickjs.c
  typedef struct JSBoundFunction {
      JSValue func_obj;
      JSValue this_val;
-@@ -7348,6 +7358,9 @@ static void mark_children(JSRuntime *rt, JSGCObjectHeader *gp,
+@@ -7348,6 +7359,9 @@ static void mark_children(JSRuntime *rt, JSGCObjectHeader *gp,
              }
              if (b->realm)
                  mark_func(rt, &b->realm->header);
@@ -30,7 +31,7 @@ diff --git a/quickjs.c b/quickjs.c
          }
          break;
      case JS_GC_OBJ_TYPE_VAR_REF:
-@@ -18142,6 +18155,10 @@ static bool needs_backtrace(JSValue exc)
+@@ -18142,6 +18156,10 @@ static bool needs_backtrace(JSValue exc)
      return can_store_error_stack(exc) || can_add_backtrace(exc);
  }
  
@@ -41,7 +42,7 @@ diff --git a/quickjs.c b/quickjs.c
  /* argv[] is modified if (flags & JS_CALL_FLAG_COPY_ARGV) = 0. */
  static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
                                 JSValueConst this_obj, JSValueConst new_target,
-@@ -18280,6 +18297,28 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+@@ -18280,6 +18298,28 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
          print_func_name(b);
  #endif
  
@@ -70,7 +71,7 @@ diff --git a/quickjs.c b/quickjs.c
   restart:
      for(;;) {
          int call_argc;
-@@ -37324,6 +37363,9 @@ static void free_function_bytecode(JSRuntime *rt, JSFunctionBytecode *b)
+@@ -37324,6 +37364,9 @@ static void free_function_bytecode(JSRuntime *rt, JSFunctionBytecode *b)
  {
      int i;
  
@@ -80,7 +81,7 @@ diff --git a/quickjs.c b/quickjs.c
      if (b->byte_code_buf)
          free_bytecode_atoms(rt, b->byte_code_buf, b->byte_code_len, true);
  
-@@ -65099,3 +65141,7 @@ uintptr_t js_std_cmd(int cmd, ...) {
+@@ -65099,3 +65142,7 @@ uintptr_t js_std_cmd(int cmd, ...) {
  #undef malloc
  #undef free
  #undef realloc

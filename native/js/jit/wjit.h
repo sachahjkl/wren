@@ -46,6 +46,10 @@ typedef struct WJitStats {
     double entries, exits_return, exits_exception, exits_deopt, steps, pending;
 } WJitStats;
 
+/* bumped by the browser's compile threads each time one of this engine's functions is compiled (wj_jit_done_address):
+   a pending function asks the browser only when it changed since it last asked */
+static volatile uint32_t wjit_done_count;
+
 static WJitConfig wjit_config = { 0, 2, 0, 65536, 1 };
 static WJitStats wjit_stats;
 
@@ -1873,6 +1877,7 @@ static int wjit_compile(JSContext *ctx, JSFunctionBytecode *b)
         /* compiled in the background: the interpreter goes on until wjit_ready sees it attached */
         b->wjit_index = WJIT_PENDING;
         b->wjit_calls = (uint32_t)-index;
+        b->wjit_seen = wjit_done_count - 1;
         wjit_stats.pending++;
     } else {
         b->wjit_index = index;
@@ -1892,12 +1897,21 @@ static int wjit_compile(JSContext *ctx, JSFunctionBytecode *b)
     return b->wjit_index;
 }
 
+WJIT_EXPORT("wj_jit_done_address")
+uint32_t wj_jit_done_address(void) { return (uint32_t)(uintptr_t)&wjit_done_count; }
+
 /* a function compiled in the background: attached now? */
 static no_inline int wjit_poll_pending(JSContext *ctx, JSFunctionBytecode *b)
 {
-    int32_t r = wr_Engine_jitPoll((int32_t)b->wjit_calls);
-    if (r < 0)
+    int32_t r;
+    uint32_t seen = wjit_done_count;
+    if (b->wjit_seen == seen)
         return 0;
+    r = wr_Engine_jitPoll((int32_t)b->wjit_calls);
+    if (r < 0) {
+        b->wjit_seen = seen;
+        return 0;
+    }
     wjit_stats.pending--;
     if (r == 0) {
         b->wjit_index = WJIT_NEVER;

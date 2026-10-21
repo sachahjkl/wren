@@ -57,7 +57,11 @@ jit_configure :: proc(inst: ^wasm.Instance, s: Jit_Settings) -> bool {
 	if s.step_only { flags |= 2 }
 	flags |= i32(s.off_paths & 0xff) << 8
 	argv := [4]u32{u32(flags), u32(i32(s.call_threshold)), u32(i32(s.max_functions)), u32(i32(s.max_bytecode_bytes))}
-	return wasm.call_raw(inst, "wj_jit_configure", argv[:]) == .Ok
+	if wasm.call_raw(inst, "wj_jit_configure", argv[:]) != .Ok { return false }
+	if s.background_threads > 0 && wasm.has_export(inst, "wj_jit_done_address") {
+		if addr, res := wasm.call_i32(inst, "wj_jit_done_address"); res == .Ok { wasm.attach_notify(inst, u32(addr)) }
+	}
+	return true
 }
 
 // Engine_jitCompile for an embedder: the module the engine made, attached to its instance (> 0), queued for the

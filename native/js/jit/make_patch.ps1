@@ -39,6 +39,7 @@ Swap @"
     int32_t wjit_index;   /* WREN: table index of the compiled code (native/js/jit); 0 none yet, -1 never */
     uint32_t wjit_calls;  /* WREN: calls counted toward the JIT's threshold */
     void *wjit_data;      /* WREN: the compiled code's inline caches */
+    uint32_t wjit_seen;   /* WREN: the JIT's completion count when last polled (being compiled) */
 #endif
 } JSFunctionBytecode;
 
