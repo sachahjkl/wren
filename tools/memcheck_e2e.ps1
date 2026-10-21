@@ -4,10 +4,10 @@
 # allocation tracked, src\base\memory.odin) drives itself from a script (WREN_MEMCHECK_SCRIPT, src\browser\memcheck.odin:
 # no keyboard or mouse of the desktop, no lock), writes what is still allocated at exit to the profile's memtrack.txt
 # and exits with code 3 when anything is (WREN_MEMTRACK_FAIL=1).
-#   powershell -File tools\memcheck_e2e.ps1 [-Exe build\browser_check.exe] [-NoBuild] [-Stacks] [-Out build\memcheck] [-TimeoutSec 600]
+#   powershell -File tools\memcheck_e2e.ps1 [-Exe build\browser_check.exe] [-NoBuild] [-Stacks] [-Out build\memcheck] [-TimeoutSec 600] [-Prefs name=value,...]
 # -Stacks records the call stack of every block (slower; the report then names the callers). Its own test server, a
 # fresh profile under -Out. Exit code: 0 clean, 1 leaks / bad frees or a failure of the run.
-param([string]$Exe = '', [switch]$NoBuild, [switch]$Stacks, [string]$Out = '', [int]$TimeoutSec = 600)
+param([string]$Exe = '', [switch]$NoBuild, [switch]$Stacks, [string]$Out = '', [int]$TimeoutSec = 600, [string[]]$Prefs = @())
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -77,6 +77,6 @@ if ($MyInvocation.InvocationName -ne '.') {
         'wait 500'
         'quit'
     )
-    $code = Invoke-CheckSession 'session' $session
+    $code = Invoke-CheckSession 'session' $session '' @($Prefs | ForEach-Object { $_ -split ',' } | Where-Object { $_ } | ForEach-Object { '--pref'; $_ })
     exit $(if ($code -eq 0) { 0 } else { 1 })
 }
