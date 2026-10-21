@@ -38,6 +38,10 @@
   var pt = new Pt(3, 4);
   for (r = 0; r < 4; r++) { p("getter", readTwice(pt), pt.sum()); pt.twice = r * 10; }
   delete pt.y; p("deleted", pt.y, pt.sum());
+  // an object with a deleted property has a shape of its own, changed and reallocated in place as properties come
+  var dict = { a: 1, b: 2, c: 3 }; delete dict.b;
+  function readA(o) { return o.a; }
+  for (r = 0; r < 40; r++) { dict["k" + r] = r; p("dict", readA(dict), readX({ x: r })); }
   pt.y = 7; p("readded", pt.sum());
   Object.defineProperty(pt, "x", { value: 100, writable: false });
   try { writeX(pt, 5); p("frozen write ok?"); } catch (e) { p("frozen write", e.name); }

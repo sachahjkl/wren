@@ -301,6 +301,7 @@ parse_common :: proc(args: []string) -> (c: Common) {
 		case "-jit-threshold": i += 1; jit.call_threshold = max(1, int(parse_int(args[i])))
 		case "-jit-step": jit.step_only = true
 		case "-jit-sync": jit.background_threads = 0
+		case "-jit-off": i += 1; jit.off_paths = int(parse_int(args[i]))
 		case "-jit-stats": jit_stats_wanted = true
 		case "--pref": i += 1
 		case: append(&c.rest, a)

@@ -76,17 +76,19 @@ double wj_jit_stat(int32_t which)
 }
 
 /* paths the testing flags of wj_jit_configure (bits 8..15) turn off */
-#define WJIT_OFF_FIELD_INLINE 1   /* property reads/writes: always the helper */
+#define WJIT_OFF_PUT_FIELD 1      /* property writes: step */
 #define WJIT_OFF_ARRAY 2          /* array elements: step */
 #define WJIT_OFF_NUMBERS 4        /* doubles, identity equality, ToInt32: step */
 #define WJIT_OFF_CALL 8           /* calls: step */
 #define WJIT_OFF_GLOBAL 16        /* global reads: step */
-#define WJIT_OFF_FIELD 32         /* property reads/writes: step */
+#define WJIT_OFF_FIELD 32         /* property reads: step */
 
 /* ---- inline caches --------------------------------------------------------------------------------------------
  * One per property access site (get_field, get_field2, get_length, put_field) of a compiled function. Keyed by the
  * receiver's shape, which the cache holds a counted reference to: a shared shape is never changed in place (QuickJS
- * clones a shape with other users before adding, deleting or redefining a property), so while cached the receiver's
+ * clones a hashed shape with other users before adding, deleting or redefining a property; an unhashed one, the shape of an
+ * object that had a property deleted, belongs to its object alone and is changed and reallocated in place, whatever its count:
+ * such shapes are never cached), so while cached the receiver's
  * property layout, and its prototype (part of the shape), cannot change under the cache. The prototype's own shape is
  * held the same way when the property is found there. Values are always read from the object, never cached. The
  * function's bytecode reports these references to the cycle collector (wjit_mark). */
@@ -147,6 +149,8 @@ static void wjit_ic_fill_get(JSRuntime *rt, WJitIC *ic, JSObject *p0, JSAtom ato
     JSShapeProperty *prs;
     JSProperty *pr;
     int depth, t;
+    if (!p0->shape->is_hashed)
+        return;
     for (depth = 0; depth < 2; depth++) {
         prs = find_own_property(&pr, p, atom);
         if (prs) {
@@ -158,6 +162,7 @@ static void wjit_ic_fill_get(JSRuntime *rt, WJitIC *ic, JSObject *p0, JSAtom ato
             ic->index = (uint32_t)(pr - p->prop);
             ic->kind = t ? 1 : 0;
             if (depth) {
+                if (!p->shape->is_hashed) { wjit_ic_clear(rt, ic); return; }
                 ic->holder = p;
                 ic->holder_shape = js_dup_shape(p->shape);
             } else if (!t) {
@@ -179,6 +184,8 @@ static void wjit_ic_fill_put(JSRuntime *rt, WJitIC *ic, JSObject *p0, JSAtom ato
     JSShapeProperty *prs;
     JSProperty *pr;
     JSObject *h;
+    if (!p0->shape->is_hashed)
+        return;
     prs = find_own_property(&pr, p0, atom);
     if (prs) {
         if ((prs->flags & (JS_PROP_TMASK | JS_PROP_WRITABLE | JS_PROP_LENGTH)) != JS_PROP_WRITABLE)
@@ -192,7 +199,7 @@ static void wjit_ic_fill_put(JSRuntime *rt, WJitIC *ic, JSObject *p0, JSAtom ato
     if (p0->is_exotic || !(h = p0->shape->proto))
         return;
     prs = find_own_property(&pr, h, atom);
-    if (!prs || (prs->flags & JS_PROP_TMASK) != JS_PROP_GETSET)
+    if (!prs || (prs->flags & JS_PROP_TMASK) != JS_PROP_GETSET || !h->shape->is_hashed)
         return;
     wjit_ic_clear(rt, ic);
     ic->shape = js_dup_shape(p0->shape);
@@ -321,14 +328,16 @@ int32_t wjit_get_var(WJitFrame *jf, JSValue *sp, uint8_t *pc, WJitIC *ic)
             return WJIT_OK;
         }
     }
-    /* fill: where JS_GetGlobalVar finds it without conversion */
+    /* fill: where JS_GetGlobalVar finds it without conversion (hashed shapes only, as wjit_ic_fill_get) */
     prs = find_own_property(&pr, vo, atom);
-    if (prs) {
+    if (!vo->shape->is_hashed) {
+        /* not cached */
+    } else if (prs) {
         wjit_ic_clear(ctx->rt, ic);
         ic->shape = js_dup_shape(vo->shape);
         ic->holder = vo;
         ic->index = (uint32_t)(pr - vo->prop);
-    } else if ((prs = find_own_property(&pr, go, atom)) && (prs->flags & JS_PROP_TMASK) == 0) {
+    } else if (go->shape->is_hashed && (prs = find_own_property(&pr, go, atom)) && (prs->flags & JS_PROP_TMASK) == 0) {
         wjit_ic_clear(ctx->rt, ic);
         ic->shape = js_dup_shape(vo->shape);
         ic->holder = go;
@@ -1290,6 +1299,32 @@ static int wjit_emit_op(WJitC *c, int blk, int pos)
     }
     if (!wjit_config.inline_ops && !wjit_is_branch(op) && op != OP_return && op != OP_return_undef)
         goto step;
+    if (wjit_config.off) {
+        uint32_t o = wjit_config.off;
+        switch (op) {
+        case OP_get_field: case OP_get_field2: case OP_get_length:
+            if (o & WJIT_OFF_FIELD) goto step;
+            if ((o & 64) && op == OP_get_length) goto step;
+            if ((o & 128) && op == OP_get_field2) goto step;
+            if ((o & 2) && op == OP_get_field) goto step;
+            break;
+        case OP_put_field:
+            if (o & WJIT_OFF_PUT_FIELD) goto step;
+            break;
+        case OP_call: case OP_call0: case OP_call1: case OP_call2: case OP_call3: case OP_call_method:
+        case OP_call_constructor: case OP_tail_call: case OP_tail_call_method:
+            if (o & WJIT_OFF_CALL) goto step;
+            break;
+        case OP_get_var: case OP_get_var_undef:
+            if (o & WJIT_OFF_GLOBAL) goto step;
+            break;
+        case OP_div: case OP_eq: case OP_neq: case OP_strict_eq: case OP_strict_neq:
+            if (o & WJIT_OFF_NUMBERS) goto step;
+            break;
+        default:
+            break;
+        }
+    }
 
     switch (op) {
     case OP_push_i32: e_store_const_slot(c, d, JS_MKVAL(JS_TAG_INT, (int32_t)get_u32(bc + pos + 1))); return 0;
