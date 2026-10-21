@@ -799,22 +799,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		c.list_style = st
 		c.list_style_type = legacy_list_style(st.style)
 	case .List_Style_Position: return set_enum(vs, &c.list_style_position)
-	case .Cursor:
-		found := false
-		for part in css.split_commas(css.trim_values(vs), context.temp_allocator) {
-			items := css.trim_values(part)
-			if len(items) >= 1 && items[0].kind == .Token && items[0].tok.kind == .Ident {
-				cur: Cursor
-				if id, _ := ident_raw(items[:1]); strings.equal_fold(id, "all-scroll") {
-					cur = .Move
-				} else if !set_enum(items[:1], &cur) {
-					cur = .Auto
-				}
-				c.cursor = cur
-				found = true
-			}
-		}
-		return found
+	case .Cursor: return parse_cursor(cx, vs, c)   // cursor.odin
 	case .Pointer_Events:
 		id, ok := ident_raw(vs)
 		if !ok { return false }

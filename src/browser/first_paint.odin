@@ -247,8 +247,8 @@ first_paint_wake :: proc(app: ^App, t: ^Tab) {
 	}, app)
 }
 
-// A thin bar along the top of the page while the tab loads a document that has not painted yet. (The toolkit has no
-// "working in background" cursor yet: platform.Cursor.)
+// A thin bar along the top of the page while the tab loads a document that has not painted yet. (The pointer shows
+// the "working in background" cursor over the page meanwhile: page_cursor.odin.)
 loading_bar :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect) {
 	if !tab_loading(t) { return }
 	scale := ui.scale()

@@ -71,7 +71,13 @@ Decoration :: enum u8 { Underline, Overline, Line_Through }
 Decorations :: bit_set[Decoration; u8]
 List_Style_Type :: enum u8 { None, Disc, Circle, Square, Decimal, Decimal_Leading_Zero, Lower_Alpha, Upper_Alpha, Lower_Roman, Upper_Roman, Lower_Greek }
 List_Style_Position :: enum u8 { Outside, Inside }
-Cursor :: enum u8 { Auto, Default, Pointer, Text, Move, Not_Allowed, Wait, Help, Crosshair, Grab, Grabbing, Progress, Zoom_In, Zoom_Out, E_Resize, N_Resize, Ew_Resize, Ns_Resize, None }
+// Every keyword of CSS UI 4 (cursor.odin: the images before it, parsing, serialization).
+Cursor :: enum u8 {
+	Auto, Default, None, Context_Menu, Help, Pointer, Progress, Wait, Cell, Crosshair, Text, Vertical_Text,
+	Alias, Copy, Move, No_Drop, Not_Allowed, Grab, Grabbing, All_Scroll, Col_Resize, Row_Resize,
+	N_Resize, E_Resize, S_Resize, W_Resize, Ne_Resize, Nw_Resize, Se_Resize, Sw_Resize,
+	Ew_Resize, Ns_Resize, Nesw_Resize, Nwse_Resize, Zoom_In, Zoom_Out,
+}
 User_Select :: enum u8 { Auto, None, Text, All }
 Object_Fit :: enum u8 { Fill, Contain, Cover, None, Scale_Down }
 Repeat :: enum u8 { Repeat, No_Repeat, Repeat_X, Repeat_Y, Space, Round }
@@ -184,6 +190,7 @@ Computed :: struct {
 	list_style_type: List_Style_Type,
 	list_style_position: List_Style_Position,
 	cursor:     Cursor,
+	cursor_images: []Cursor_Image,   // url() / image-set() before the keyword (cursor.odin), nil: none
 	pointer_events: bool,
 	user_select: User_Select,
 	content:    Content,

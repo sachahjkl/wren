@@ -1134,7 +1134,9 @@ css_bases_rebuild :: proc(p: ^Page) {
 			case .Token:
 				if v.tok.kind == .Url { css_base_note(pi, v.tok.text, base_url) }
 			case .Function:
-				if strings.equal_fold(v.tok.text, "url") || strings.equal_fold(v.tok.text, "src") {
+				if strings.equal_fold(v.tok.text, "url") || strings.equal_fold(v.tok.text, "src") ||
+				   strings.equal_fold(v.tok.text, "image-set") || strings.equal_fold(v.tok.text, "-webkit-image-set") {
+					// (image-set() candidates may be bare strings)
 					for a in v.children { if a.kind == .Token && a.tok.kind == .String { css_base_note(pi, a.tok.text, base_url) } }
 				}
 				walk_values(pi, v.children, base_url)
@@ -1175,7 +1177,8 @@ css_images_sync :: proc(p: ^Page) {
 	pi.css_serial = p.styled.serial
 	used := make(map[string]bool, 16, context.temp_allocator)
 	seen := make(map[rawptr]bool, 16, context.temp_allocator)
-	note :: proc(c: ^style.Computed, used: ^map[string]bool, seen: ^map[rawptr]bool) {
+	dppx := f32(p.engine.env.dppx > 0 ? p.engine.env.dppx : 1)
+	note :: proc(c: ^style.Computed, used: ^map[string]bool, seen: ^map[rawptr]bool, dppx: f32) {
 		if c == nil || c.display == .None { return }
 		// background and mask layers (mask-image: MDN's icons)
 		for list in ([2][]style.Image{c.background_images, c.mask_images}) {
@@ -1183,13 +1186,20 @@ css_images_sync :: proc(p: ^Page) {
 			seen[raw_data(list)] = true
 			for im in list { if im.kind == .Url && im.url != "" { used[im.url] = true } }
 		}
+		// cursor images: the candidate for the screen's density (browser/page_cursor.odin shows them)
+		if len(c.cursor_images) > 0 && raw_data(c.cursor_images) not_in seen {
+			seen[raw_data(c.cursor_images)] = true
+			for img in c.cursor_images {
+				if src, ok := style.cursor_image_pick(img, dppx); ok && src.url != "" { used[src.url] = true }
+			}
+		}
 	}
 	for c in p.styled.by_node {
 		if c == nil || c.display == .None { continue }
-		note(c, &used, &seen)
+		note(c, &used, &seen, dppx)
 		// ::before / ::after boxes (an icon after every external link)
-		note(c.before, &used, &seen)
-		note(c.after, &used, &seen)
+		note(c.before, &used, &seen, dppx)
+		note(c.after, &used, &seen, dppx)
 	}
 	stale := make([dynamic]string, 0, 4, context.temp_allocator)
 	for k in pi.css_urls { if k not_in used { append(&stale, k) } }

@@ -665,7 +665,7 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 	case "box-shadow": return css_shadows(cs.box_shadow)
 	case "list-style-type": return cs.list_style_type == .Decimal_Leading_Zero ? "decimal-leading-zero" : kw(cs.list_style_type)
 	case "list-style-position": return kw(cs.list_style_position)
-	case "cursor": return kw(cs.cursor)
+	case "cursor": return style.cursor_css_text(cs)
 	case "pointer-events": return cs.pointer_events ? "auto" : "none"
 	case "user-select": return kw(cs.user_select)
 	case "content":

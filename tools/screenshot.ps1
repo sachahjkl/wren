@@ -21,6 +21,7 @@ public class SH {
   [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr c);
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int w, int hh, uint f);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
   [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);
   [DllImport("user32.dll")] public static extern bool ScreenToClient(IntPtr h, ref POINT p);
   [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
@@ -29,22 +30,46 @@ public class SH {
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint f, IntPtr e);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
+  [DllImport("user32.dll")] public static extern bool GetCursorInfo(ref CURSORINFO ci);
+  [DllImport("user32.dll")] public static extern bool GetIconInfo(IntPtr h, out ICONINFO ii);
+  [DllImport("user32.dll")] public static extern bool DrawIconEx(IntPtr hdc, int x, int y, IntPtr h, int cx, int cy, uint step, IntPtr br, uint flags);
+  [DllImport("gdi32.dll")] public static extern bool DeleteObject(IntPtr h);
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L,T,R,B; }
   [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X,Y; }
+  [StructLayout(LayoutKind.Sequential)] public struct CURSORINFO { public int cbSize; public int flags; public IntPtr hCursor; public POINT pt; }
+  [StructLayout(LayoutKind.Sequential)] public struct ICONINFO { public bool fIcon; public int xHotspot; public int yHotspot; public IntPtr hbmMask; public IntPtr hbmColor; }
 }
 "@
 Add-Type -AssemblyName System.Drawing
 # per-monitor aware: window rects, client coordinates and captures in the physical pixels the browser sees
 if (-not [SH]::SetProcessDpiAwarenessContext([IntPtr](-4))) { [SH]::SetProcessDPIAware() | Out-Null }
 
-function Grab($h, $path) {
+function Grab($h, $path, $withCursor = $false) {
     $r = New-Object SH+RECT
     if ([SH]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [SH]::GetWindowRect($h, [ref]$r) | Out-Null }
     $w = $r.R - $r.L; $hh = $r.B - $r.T
     $pt = New-Object SH+POINT; $pt.X = $r.L + [int]($w / 2); $pt.Y = $r.T + [int]($hh / 2)
     if ([SH]::GetAncestor([SH]::WindowFromPoint($pt), 2) -ne $h) { throw "window covered, not capturing" }
     $bmp = New-Object Drawing.Bitmap $w, $hh
-    [Drawing.Graphics]::FromImage($bmp).CopyFromScreen($r.L, $r.T, 0, 0, $bmp.Size)
+    $g = [Drawing.Graphics]::FromImage($bmp)
+    $g.CopyFromScreen($r.L, $r.T, 0, 0, $bmp.Size)
+    if ($withCursor) {
+        # a screen capture leaves the pointer out: draw the cursor shown now where it is, by its hotspot
+        $ci = New-Object SH+CURSORINFO; $ci.cbSize = [Runtime.InteropServices.Marshal]::SizeOf($ci)
+        if ([SH]::GetCursorInfo([ref]$ci) -and ($ci.flags -band 1) -and $ci.hCursor -ne [IntPtr]::Zero) {
+            $ii = New-Object SH+ICONINFO
+            $hx = 0; $hy = 0
+            if ([SH]::GetIconInfo($ci.hCursor, [ref]$ii)) {
+                $hx = $ii.xHotspot; $hy = $ii.yHotspot
+                if ($ii.hbmMask -ne [IntPtr]::Zero) { [SH]::DeleteObject($ii.hbmMask) | Out-Null }
+                if ($ii.hbmColor -ne [IntPtr]::Zero) { [SH]::DeleteObject($ii.hbmColor) | Out-Null }
+            }
+            $hdc = $g.GetHdc()
+            [SH]::DrawIconEx($hdc, $ci.pt.X - $r.L - $hx, $ci.pt.Y - $r.T - $hy, $ci.hCursor, 0, 0, 0, [IntPtr]::Zero, 3) | Out-Null   # DI_NORMAL
+            $g.ReleaseHdc($hdc)
+        }
+    }
+    $g.Dispose()
     New-Item -ItemType Directory -Force (Split-Path $path) | Out-Null
     $bmp.Save($path, [Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
 }
@@ -92,7 +117,8 @@ try {
         Start-Sleep -Milliseconds $ClickPauseMs
     }
     # -Actions "drag:x1,y1-x2,y2; rclick:x,y; midclick:x,y; xback:x,y; dclick:x,y; tclick:x,y; click:x,y; key:Ctrl+F; type:some text; wait:ms; shot:path.png;
-    #          hover:x,y; hovershot:path.png; mdrag:x1,y1-x2,y2; wheel:x,y,notches[,ctrl|shift]; hwheel:x,y,notches"
+    #          hover:x,y; hovershot:path.png; mdrag:x1,y1-x2,y2; wheel:x,y,notches[,ctrl|shift]; hwheel:x,y,notches;
+    #          cursorshot:path.png; rdown:x,y; rmove:x,y; rup"
     #          (hover: the real pointer; hovershot: a capture that leaves it where it is; mdrag: middle button)
     # (window-relative pixels like -Click; key: real keyboard input, so modifiers count: Ctrl+Shift+T, Shift+F10, Menu, F6...)
     $named = @{ PageUp = 0x21; PageDown = 0x22; End = 0x23; Home = 0x24; Left = 0x25; Up = 0x26; Right = 0x27; Down = 0x28; Space = 0x20; Tab = 0x09;
@@ -173,6 +199,25 @@ try {
                 [SH]::SetCursorPos($x0, $r.T + [int]$xy[1]) | Out-Null
             }
             'hovershot' { Start-Sleep -Milliseconds $SettleMs; Grab $h $arg }
+            # cursorshot:path: a capture with the pointer drawn in (the cursor the system shows now, at its place)
+            'cursorshot' { Start-Sleep -Milliseconds $SettleMs; Grab $h $arg $true }
+            # the real left button: rdown:x,y presses there, rmove:x,y moves (in 8 steps) with it held, rup releases
+            'rdown' {
+                $xy = $arg -split ','; $r = New-Object SH+RECT
+                if ([SH]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [SH]::GetWindowRect($h, [ref]$r) | Out-Null }
+                [SH]::SetCursorPos($r.L + [int]$xy[0], $r.T + [int]$xy[1]) | Out-Null; Start-Sleep -Milliseconds 120
+                [SH]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero)
+            }
+            'rmove' {
+                $xy = $arg -split ','; $r = New-Object SH+RECT
+                if ([SH]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [SH]::GetWindowRect($h, [ref]$r) | Out-Null }
+                $from = New-Object SH+POINT; [SH]::GetCursorPos([ref]$from) | Out-Null
+                $tx = $r.L + [int]$xy[0]; $ty = $r.T + [int]$xy[1]
+                for ($s = 1; $s -le 8; $s++) {
+                    [SH]::SetCursorPos($from.X + ($tx - $from.X) * $s / 8, $from.Y + ($ty - $from.Y) * $s / 8) | Out-Null; Start-Sleep -Milliseconds 30
+                }
+            }
+            'rup' { [SH]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero) }
             # move:x,y: a posted pointer move (no real pointer: works whatever the foreground window is)
             'move' { $xy = $arg -split ','; [SH]::PostMessage($h, 0x0200, [IntPtr]::Zero, (ClientLp $xy[0] $xy[1])) | Out-Null }
             # the real pointer: mclick / mdclick:x,y click there (window-relative, a negative x counts from the right edge; goes through the system's hit test, so
