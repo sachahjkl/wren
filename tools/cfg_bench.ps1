@@ -2,7 +2,7 @@
 # a quiet phase (no input: how many frames are drawn), a wheel scroll down then up the list, then the pointer moving
 # over the rows. Prints the Build_UI time (ui build + layout of the chrome) and the boxes built per frame, per phase.
 #   powershell -File tools\cfg_bench.ps1 [-Tag before] [-Exe build\browser_prof.exe] [-Url about:config]
-# Opens the browser window: take the shared lock first (S:\wb_wt\BRIEF.md).
+# Opens the browser window and moves the real pointer: holds bench.lock and desktop.lock (tools\test_env.ps1) while it runs.
 param([string]$Tag = "run", [string]$Exe = "build\browser_prof.exe", [string]$Url = "about:config", [int]$Width = 1280, [int]$Height = 1000,
       [int]$QuietMs = 2000, [int]$ScrollMs = 3000, [int]$HoverMs = 3000, [switch]$Sample, [string]$Extra = "",
       [int]$X = 40, [int]$Y = 40, [string]$From = "")
@@ -30,6 +30,10 @@ $profile = Join-Path $root "build\cfgbench_profile"
 New-Item -ItemType Directory -Force $profile | Out-Null
 $env:WREN_PROF = $prefix
 if ($Sample) { $env:WREN_SAMPLE = '1' }
+. (Join-Path $PSScriptRoot 'test_env.ps1')
+$bench = Enter-WrenLock bench "cfg_bench.ps1 $Tag"
+$desktop = $null
+try { $desktop = Enter-WrenLock desktop "cfg_bench.ps1 $Tag" } catch { Exit-WrenLock $bench; throw }
 $p = Start-Process (Join-Path $root $Exe) -ArgumentList (@('--profile', $profile) + @($Extra | Where-Object { $_ }) + @($Url)) -PassThru
 Remove-Item Env:WREN_PROF
 if ($Sample) { Remove-Item Env:WREN_SAMPLE }
@@ -71,7 +75,7 @@ try {
     $marks.hover = @($t2, $sw.ElapsedMilliseconds)
     [CB]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null   # WM_CLOSE: the profiler writes its report
     if (-not $p.WaitForExit(15000)) { $p.Kill(); throw "the browser did not exit" }
-} finally { if (-not $p.HasExited) { $p.Kill() } }
+} finally { if (-not $p.HasExited) { $p.Kill(); $p.WaitForExit(5000) | Out-Null }; Exit-WrenLock $desktop; Exit-WrenLock $bench }
 
 # the profiler's clock starts at prof_init, some time after the process: the last frame (WM_CLOSE) aligns both clocks
 $rows = Import-Csv "$prefix.csv"

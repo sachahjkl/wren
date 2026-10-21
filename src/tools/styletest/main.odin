@@ -16,6 +16,7 @@ import "wb:host"
 import "wb:net"
 import "wb:page"
 import "wb:style"
+import "wb:tools/testenv"
 
 failures: int
 
@@ -68,9 +69,9 @@ main :: proc() {
 	settings = page.settings_default()
 	process := base.scope_make("process")
 
-	p := page.page_create(&loop, &loader, &settings, process, "http://127.0.0.1:8765/site/styletest.html", console)
+	p := page.page_create(&loop, &loader, &settings, process, testenv.url("http://127.0.0.1:8765/site/styletest.html"), console)
 	the_page = p
-	page.load_html(p, transmute([]byte)string(DOC))
+	page.load_html(p, transmute([]byte)testenv.url(DOC))
 	page.set_frame_time(p, 0)
 	st := page.styles(p, 800, 600, 1)
 	check(st != nil, "styles computed")

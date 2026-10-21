@@ -18,7 +18,7 @@
 # Edge right), <name>_diff.png (differing pixels in red over a faded Edge capture), and one line of JSON on stdout:
 #   {"name":..., "width":..., "height":..., "scale":..., "diff_pixels": <fraction of pixels whose largest channel
 #    difference is over 32>, "mean_abs": <mean absolute channel difference, 0..255>}
-# The Wren capture goes through tools\screenshot.ps1 and opens a window: take the shared lock first (S:\wb_wt\BRIEF.md).
+# The Wren capture goes through tools\screenshot.ps1, which holds desktop.lock while its window lives; Edge runs headless.
 # Wren's viewport is found by calibration: a page that is one solid color is captured once per window size, and the
 # rectangle of that color is the viewport. Edge runs headless with its own throwaway profile, at the system's device
 # scale, so that both captures have the same physical size. Scroll bars: Edge hides them; the comparison is cropped to

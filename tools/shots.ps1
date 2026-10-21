@@ -1,8 +1,7 @@
 # The screenshots of the README (docs\screenshots\*.png) and of the site (site\img\*.webp and *-640.webp), all taken
 # the same way: the whole window (integrated title bar with the tabs, address bar, page, status bar), one size, one pass.
 #   powershell -NoProfile -File tools\shots.ps1 [-Only home,css-grid] [-Width 1600] [-Height 1000] [-NoConvert]
-# Takes the shared lock (S:\wb_wt\shared.lock when it exists) around the run: other runs wait instead of taking the
-# screen at the same time. Needs ImageMagick (magick) for the WebP files of the site.
+# Each capture (tools\screenshot.ps1) holds desktop.lock while its window lives: other runs wait a capture, not the run. Needs ImageMagick (magick) for the WebP files of the site.
 param([string[]]$Only = @(), [int]$Width = 1600, [int]$Height = 1000, [switch]$NoConvert)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -37,19 +36,15 @@ $shots = @(
 $Only = @($Only | ForEach-Object { $_ -split ',' } | Where-Object { $_ })   # powershell -File passes a,b,c as one string
 if ($Only.Count) { $shots = $shots | Where-Object { $Only -contains $_.n } }
 
-$lock = $null
-if (Test-Path 'S:\wb_wt') { while ($true) { try { $lock = [IO.File]::Open('S:\wb_wt\shared.lock', 'OpenOrCreate', 'ReadWrite', 'None'); break } catch { Start-Sleep -Milliseconds 500 } } }
-try {
-    foreach ($s in $shots) {
-        $png = Join-Path $raw "$($s.n).png"
-        $wait = if ($s.w) { $s.w } else { 3000 }
-        $args2 = @('-NoProfile', '-File', 'tools\screenshot.ps1', '-Url', $s.u, '-Width', $Width, '-Height', $Height, '-WaitMs', $wait)
-        if ($s.x) { $args2 += @('-Extra') + $s.x }
-        if ($s.a) { $args2 += @('-Out', (Join-Path $raw "$($s.n)_before.png"), '-Actions', "$($s.a); shot:$png") } else { $args2 += @('-Out', $png) }
-        & powershell @args2 2>&1 | Out-String | Where-Object { $_.Trim() } | ForEach-Object { "$($s.n): $_" }
-        if (Test-Path $png) { "shot $($s.n)" } else { "MISSING $($s.n)" }
-    }
-} finally { if ($lock) { $lock.Close() } }
+foreach ($s in $shots) {
+    $png = Join-Path $raw "$($s.n).png"
+    $wait = if ($s.w) { $s.w } else { 3000 }
+    $args2 = @('-NoProfile', '-File', 'tools\screenshot.ps1', '-Url', $s.u, '-Width', $Width, '-Height', $Height, '-WaitMs', $wait)
+    if ($s.x) { $args2 += @('-Extra') + $s.x }
+    if ($s.a) { $args2 += @('-Out', (Join-Path $raw "$($s.n)_before.png"), '-Actions', "$($s.a); shot:$png") } else { $args2 += @('-Out', $png) }
+    & powershell @args2 2>&1 | Out-String | Where-Object { $_.Trim() } | ForEach-Object { "$($s.n): $_" }
+    if (Test-Path $png) { "shot $($s.n)" } else { "MISSING $($s.n)" }
+}
 
 if ($NoConvert) { return }
 foreach ($s in $shots) {

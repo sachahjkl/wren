@@ -8,6 +8,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"html"
 	"io"
@@ -80,7 +81,28 @@ func serveSiteFile(w http.ResponseWriter, r *http.Request, full string) bool {
 		return false
 	}
 	setSiteType(w, full)
-	http.ServeContent(w, r, st.Name(), st.ModTime(), f)
+	if !servePorted(w, r, full, st) {
+		http.ServeContent(w, r, st.Name(), st.ModTime(), f)
+	}
+	return true
+}
+
+// A text file of the site with the ports of the default block moved to this server's (ports.go); false when nothing
+// is to change (the default block, or a binary file), which the caller serves as it is.
+func servePorted(w http.ResponseWriter, r *http.Request, full string, st os.FileInfo) bool {
+	if basePort == defaultBasePort {
+		return false
+	}
+	switch strings.ToLower(path.Ext(full)) {
+	case ".html", ".htm", ".css", ".js", ".mjs", ".json", ".svg", ".txt", ".xml":
+	default:
+		return false
+	}
+	b, err := os.ReadFile(full)
+	if err != nil {
+		return false
+	}
+	http.ServeContent(w, r, st.Name(), st.ModTime(), bytes.NewReader(portsRewrite(b)))
 	return true
 }
 
@@ -115,6 +137,9 @@ func siteHandler(root string) http.Handler {
 			http.NotFound(w, r)
 		default:
 			setSiteType(w, full)
+			if err == nil && servePorted(w, r, full, st) {
+				return
+			}
 			files.ServeHTTP(w, r)
 		}
 	})

@@ -1,14 +1,16 @@
 # web-platform-tests in Wren without a window: the folders of wpt\suites.txt at a pinned WPT commit, run by
-# src\tools\wpt against the test server (tools\testserver\wpt.go, http://127.0.0.1:8768/), compared with the
+# src\tools\wpt against the test server (tools\testserver\wpt.go), compared with the
 # expectations of wpt\expectations.
 #   powershell -NoProfile -File tools\wpt.ps1 [-Quick] [-Update] [-Only /dom/nodes/] [-Jobs n] [-TimeoutMs 10000]
 #       [-Fetch] [-UpdateManifest] [-NoServer] [-Port 8778] [-Pref name=value,...] [-Edge]
 # Pinned: the WPT commit below; the checkout (build\wpt\wpt, a partial sparse clone of that commit: the measured folders
 # and the shared ones) is verified file by file against wpt\MANIFEST.txt (SHA-256 of every file). -UpdateManifest
 # rewrites that list after a change of the commit or of the folders (and says so); -Fetch only fetches and verifies.
-# The server: build\testserver.exe -wpt-only -wpt-port $Port (8778 by default): the WPT origin alone, on ports of its
-# own, so that a long run holds none of the shared test ports (8765-8768) and needs no shared lock. -NoServer uses the
-# server already running (tools\test_all.ps1 starts it, under the shared lock: the WPT origin is then on 8768).
+# The server: build\testserver.exe -wpt-only (as build\wptserver.exe) from port $Port (8778 by default), or the next free
+# pair (8788, 8798...; tools\test_env.ps1): the WPT origin alone, on ports of its own, so that runs of several worktrees
+# go side by side without any lock. -NoServer uses a server already running: its WPT origin is on -Port, by default
+# the fourth port of the block of WREN_TEST_BASE_PORT (tools\test_all.ps1 sets it), else 8768. Subtest names that print
+# the server's ports are compared under 8778 / 8779, the ports the expectations were recorded on (src\tools\wpt).
 # Outputs in build\wpt: report.md (pass rates per folder), results.txt (every test and subtest), children\ (logs).
 # Exit status: 1 on a regression against the expectations (not on an expected failure). -Update rewrites them (full
 # run only). -Quick: a fixed sample of a few tests per folder (tools\test_all.ps1 -Quick).
@@ -107,8 +109,9 @@ try {
     }
 } finally { Pop-Location }
 
-if ($Port -le 0) { $Port = if ($NoServer) { 8768 } else { 8778 } }
-$runArgs = @('-server', "http://127.0.0.1:$Port", '-root', $wpt, '-suites', $suitesFile, '-expect', (Join-Path $root 'wpt\expectations'), '-timeout', $TimeoutMs,
+if ($Port -le 0) { $Port = if (-not $NoServer) { 8778 } elseif ($env:WREN_TEST_BASE_PORT) { [int]$env:WREN_TEST_BASE_PORT + 3 } else { 8768 } }
+. (Join-Path $PSScriptRoot 'test_env.ps1')
+$runArgs = @('-server', "http://127.0.0.1:PORT", '-root', $wpt, '-suites', $suitesFile, '-expect', (Join-Path $root 'wpt\expectations'), '-timeout', $TimeoutMs,
              '-md', (Join-Path $out 'report.md'), '-results', (Join-Path $out 'results.txt'))
 if ($Jobs -gt 0) { $runArgs += @('-jobs', $Jobs) }
 if ($Quick) { $runArgs += '-quick' }
@@ -198,9 +201,11 @@ try {
         # a copy under its own name: what stops the shared test servers by name (other worktrees' scripts) leaves it alone
         $wptServer = Join-Path $root 'build\wptserver.exe'
         Copy-Item (Join-Path $root 'build\testserver.exe') $wptServer -Force
-        $srv = Start-Process $wptServer -ArgumentList '-wpt-only', '-wpt-port', $Port -PassThru -WindowStyle Hidden -WorkingDirectory $root -RedirectStandardError (Join-Path $out 'server.log')
-        Start-Sleep -Seconds 1
+        $server = Start-WrenTestServer -WptOnly -BasePort $Port -Exe $wptServer -Log (Join-Path $out 'server.log')
+        $srv = $server.Process
+        $Port = $server.BasePort
     }
+    $runArgs[1] = "http://127.0.0.1:$Port"
     Push-Location $root
     try {
         if ($Edge) {

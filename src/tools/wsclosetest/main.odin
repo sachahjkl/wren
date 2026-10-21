@@ -14,6 +14,7 @@ import "core:time"
 import "wb:base"
 import "wb:host"
 import "wb:net"
+import "wb:tools/testenv"
 
 loop:   host.Loop
 client: net.Client
@@ -75,7 +76,7 @@ run_case :: proc(c: ^Case) -> string {
 	strings.builder_init(&r.log)
 	limits := net.Ws_Limits{max_total = 16, max_connecting_per_host = 6, handshake_timeout_ms = 30_000, close_timeout_ms = c.close_timeout,
 		max_message = 1 << 20, receive_chunk = 64 << 10, high_water = 4 << 20, low_water = 1 << 20, send_fragment = 256 << 10}
-	r.sock = net.websocket_open(&client, {url = strings.concatenate({"ws://127.0.0.1:8765", c.path}, context.temp_allocator),
+	r.sock = net.websocket_open(&client, {url = strings.concatenate({testenv.url("ws://127.0.0.1:8765"), c.path}, context.temp_allocator),
 		on_event = on_event, user = r, limits = limits})
 	start := time.tick_now()
 	// the bound only ends a failing run: every case finishes by itself (the close timeout included)
@@ -106,7 +107,7 @@ repeat :: proc(what: string, c: Case, want: string, n: int, wire := "") {
 	first_bad, first_wire: string
 	for _ in 0 ..< n {
 		got := run_case(&c)
-		w := wire != "" ? http_get("http://127.0.0.1:8765/ws/last-close") : ""
+		w := wire != "" ? http_get(testenv.url("http://127.0.0.1:8765/ws/last-close")) : ""
 		if got != want || w != wire {
 			if bad == 0 { first_bad, first_wire = got, w }
 			bad += 1

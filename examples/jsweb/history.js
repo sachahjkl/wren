@@ -8,7 +8,7 @@ test("location", () => {
   eq(location.protocol, "http:", "protocol");
   eq(location.host, "127.0.0.1:8765", "host");
   eq(location.hostname, "127.0.0.1", "hostname");
-  eq(location.port, "8765", "port");
+  eq(location.port, new URL("http://127.0.0.1:8765").port, "port");
   eq(location.pathname, "/jsweb/page", "pathname");
   eq(location.search, "?x=1", "search");
   eq(location.hash, "", "hash");

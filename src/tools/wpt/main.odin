@@ -33,6 +33,7 @@ import "wb:js"
 import "wb:page"
 import "wb:wasm"
 import "wb:tools/headless"
+import "wb:tools/testenv"
 
 Test :: struct {
 	folder: string,   // the suite folder it belongs to ("dom/nodes")
@@ -66,7 +67,7 @@ opts: Options
 
 main :: proc() {
 	opts = {
-		root = "build/wpt/wpt", suites = "wpt/suites.txt", expect = "wpt/expectations", server = "http://127.0.0.1:8768",
+		root = "build/wpt/wpt", suites = "wpt/suites.txt", expect = "wpt/expectations", server = testenv.url("http://127.0.0.1:8768"),
 		timeout_ms = 10_000, idle_ms = 1000, jobs = max(1, host.processor_count() / 2), chunk = 25, self = os.args[0],
 	}
 	args := os.args[1:]
@@ -361,6 +362,35 @@ Child :: struct {
 	alive:    bool,
 }
 
+// The ports the expectations were recorded on (tools\wpt.ps1 on its default port): subtest names that print a URL
+// ("Fetch http://127.0.0.1:8778/...") are compared under these ports whatever port this run's server has, so that
+// runs on per-worktree ports (tools\test_all.ps1) and on the shared server match the same expectations.
+WPT_RECORDED_PORT :: 8778
+
+// A clone of `name` with the server's http and https ports (":N", ":N+1", not part of a longer number) written as the
+// recorded ones.
+canonical_ports :: proc(name: string) -> string {
+	server_port := 0
+	if i := strings.last_index_byte(opts.server, ':'); i >= 0 { server_port = atoi(opts.server[i + 1:]) }
+	if server_port <= 0 || server_port == WPT_RECORDED_PORT || !strings.contains_rune(name, ':') { return strings.clone(name) }
+	from := [2]string{fmt.tprintf(":%d", server_port), fmt.tprintf(":%d", server_port + 1)}
+	to := [2]string{fmt.tprintf(":%d", WPT_RECORDED_PORT), fmt.tprintf(":%d", WPT_RECORDED_PORT + 1)}
+	b := strings.builder_make()
+	outer: for i := 0; i < len(name); {
+		for f, k in from {
+			end := i + len(f)
+			if strings.has_prefix(name[i:], f) && (end == len(name) || name[end] < '0' || name[end] > '9') {
+				strings.write_string(&b, to[k])
+				i = end
+				continue outer
+			}
+		}
+		strings.write_byte(&b, name[i])
+		i += 1
+	}
+	return strings.to_string(b)
+}
+
 parse_child_output :: proc(path: string, into: ^map[string]^Result) -> int {
 	data, err := os.read_entire_file(path, context.allocator)
 	if err != nil { return 0 }
@@ -379,7 +409,7 @@ parse_child_output :: proc(path: string, into: ^map[string]^Result) -> int {
 			cur.message = strings.clone(unescape(parts[4]))
 		case "S":
 			if cur == nil || len(parts) < 4 { continue }
-			append(&cur.subs, Sub{strings.clone(unescape(parts[1])), strings.clone(parts[2]), strings.clone(unescape(parts[3]))})
+			append(&cur.subs, Sub{canonical_ports(unescape(parts[1])), strings.clone(parts[2]), strings.clone(unescape(parts[3]))})
 		case "E":
 			if cur != nil { into[cur.path] = cur; finished += 1 }
 			cur = nil
