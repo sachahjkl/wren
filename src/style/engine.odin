@@ -126,6 +126,7 @@ Engine :: struct {
 	journal_max:     int,              // > 0: passes keep a layout journal of at most this many entries (journal.odin)
 	last_restyle:    Restyle_Stats,    // diagnostics of the last restyle_dom
 	probe_base:      ^Computed,        // initial values for validating declarations (compile_declarations), made once per configuration
+	compile_scratch: virtual.Arena,    // what validating declarations needs only while it runs (compile_declarations, owner thread)
 }
 
 ////////////////////////////////
@@ -167,6 +168,7 @@ engine_destroy :: proc(e: ^Engine) {
 	rule_set_clear(&e.rules)
 	shadow_styles_destroy(e)
 	virtual.arena_destroy(&e.arena)
+	virtual.arena_destroy(&e.compile_scratch)
 	delete(e.font_faces)
 	delete(e.faces)
 	delete(e.keyframes)
@@ -515,13 +517,21 @@ uses_container_units :: proc(vs: []css.Value) -> bool {
 	return false
 }
 
-compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Allocator, stats: ^Compile_Stats = nil) -> (out: []Pre_Decl, customs: []Custom_Decl) {
+// The declarations the engine takes, in `a`. Validating them needs a style to apply them to and makes values that are
+// dropped: that goes to `scratch` (the engine's own when nil: the thread that owns the engine; a style thread passes
+// its pass's), reset before returning. (It went to `a`: two computed styles per rule, most of a big site's compiled
+// rules, and per element with a style attribute or presentational hints.)
+compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Allocator, stats: ^Compile_Stats = nil, scratch: ^virtual.Arena = nil) -> (out: []Pre_Decl, customs: []Custom_Decl) {
 	local: Compile_Stats
 	st := stats != nil ? stats : &local
 	defer if stats == nil { stats_merge(e, local) }
-	res := make([dynamic]Pre_Decl, a)
-	cus := make([dynamic]Custom_Decl, a)
-	probe := probe_context(e, a)
+	sc := scratch != nil ? scratch : &e.compile_scratch
+	mark := virtual.arena_temp_begin(sc)
+	defer virtual.arena_temp_end(mark)
+	sa := virtual.arena_allocator(sc)
+	res := make([dynamic]Pre_Decl, sa)
+	cus := make([dynamic]Custom_Decl, sa)
+	probe := probe_context(e, sa)
 	valid :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		if css_wide_keyword(vs) != "" { return true }
 		return apply_prop(cx, p, vs)
@@ -556,7 +566,9 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 		if !all_valid { continue }
 		for l in longs { append(&res, Pre_Decl{prop = l.prop, value = l.vals, important = d.important}) }
 	}
-	return res[:], cus[:]
+	if len(res) > 0 { out = make([]Pre_Decl, len(res), a); copy(out, res[:]) }
+	if len(cus) > 0 { customs = make([]Custom_Decl, len(cus), a); copy(customs, cus[:]) }
+	return
 }
 
 @(private)
