@@ -53,8 +53,7 @@ Keyframe :: struct {
 Stylesheet :: struct {
 	arena:  virtual.Arena,
 	alloc:  Arena_Alloc,
-	source: string,
-	runes:  []rune,            // the preprocessed source that token positions index
+	source: string,            // the text it was parsed from (its owner compares it to know whether to parse again)
 	rules:  []^Rule,
 	errors: [dynamic]string,   // parse problems, for the console
 }
@@ -81,6 +80,25 @@ Parser :: struct {
 	rules: int,
 	errors: ^[dynamic]string,
 	runes: []rune,
+	// what parsing needs only while it runs (the token array, values that are read and dropped) goes to `scratch`;
+	// component values go to `va` (`a`, or `scratch` while reading a rule list's block or a selector). Both nil: `a`.
+	scratch: Arena_Alloc,
+	va:      Arena_Alloc,
+}
+
+@(private) p_scratch :: #force_inline proc(p: ^Parser) -> Arena_Alloc { return p.scratch.procedure != nil ? p.scratch : p.a }
+@(private) p_values :: #force_inline proc(p: ^Parser) -> Arena_Alloc { return p.va.procedure != nil ? p.va : p.a }
+
+// `vs` (built in the scratch allocator) at its final size where values go: arrays grown in an arena leave their
+// smaller copies behind, so values are gathered in scratch memory and copied once.
+@(private)
+keep_values :: proc(p: ^Parser, vs: []Value) -> []Value {
+	if len(vs) == 0 { return nil }
+	dst := p_values(p)
+	if dst == p_scratch(p) { return vs }
+	out := make([]Value, len(vs), dst)
+	copy(out, vs)
+	return out
 }
 
 @(private)
@@ -95,9 +113,14 @@ parse_stylesheet :: proc(source: string, opt: Parse_Options) -> ^Stylesheet {
 	s.alloc = virtual.arena_allocator(&s.arena)
 	s.source = strings.clone(source, s.alloc)
 	s.errors = make([dynamic]string)
-	toks, runes := tokenize_with_source(s.source, s.alloc)
-	s.runes = runes
-	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, runes = runes}
+	// the code points, the tokens and what is read only to be read again live while the sheet is parsed: a sheet keeps
+	// its rules, selectors, declarations and their values, not its tokens (they were most of its memory)
+	scratch: virtual.Arena
+	_ = virtual.arena_init_growing(&scratch)
+	defer virtual.arena_destroy(&scratch)
+	sa := virtual.arena_allocator(&scratch)
+	toks, runes := tokenize_with_source(s.source, s.alloc, sa)
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, runes = runes, scratch = sa}
 	s.rules = parse_rule_list(&p, true)
 	return s
 }
@@ -118,7 +141,7 @@ closing_for :: proc(k: Token_Kind) -> Token_Kind {
 // Consumes component values until `stop` (not consumed) or the end. depth guards nesting.
 @(private)
 parse_values :: proc(p: ^Parser, stop: Token_Kind, depth: int) -> []Value {
-	out := make([dynamic]Value, p.a)
+	out := make([dynamic]Value, p_scratch(p))
 	for p.pos < len(p.toks) {
 		t := p.toks[p.pos]
 		if t.kind == stop && stop != .EOF { break }
@@ -148,7 +171,7 @@ parse_values :: proc(p: ^Parser, stop: Token_Kind, depth: int) -> []Value {
 			append(&out, Value{kind = .Token, tok = t})
 		}
 	}
-	return out[:]
+	return keep_values(p, out[:])
 }
 
 // Skips to the matching close of an already-opened block without building it.
@@ -178,7 +201,13 @@ trim_values :: proc(v: []Value) -> []Value {
 
 @(private)
 parse_rule_list :: proc(p: ^Parser, top_level: bool) -> []^Rule {
-	rules := make([dynamic]^Rule, p.a)
+	rules := make([dynamic]^Rule, p_scratch(p))
+	keep :: proc(p: ^Parser, rules: [dynamic]^Rule) -> []^Rule {
+		if p_scratch(p) == p.a || len(rules) == 0 { return rules[:] }
+		out := make([]^Rule, len(rules), p.a)
+		copy(out, rules[:])
+		return out
+	}
 	for p.pos < len(p.toks) {
 		t := p.toks[p.pos]
 		#partial switch t.kind {
@@ -186,7 +215,7 @@ parse_rule_list :: proc(p: ^Parser, top_level: bool) -> []^Rule {
 		case .CDO, .CDC:
 			if top_level { p.pos += 1; continue }
 		case .Close_Curly:
-			if !top_level { return rules[:] }
+			if !top_level { return keep(p, rules) }
 		}
 		if p.rules >= p.opt.max_rules { perr(p, "too many rules: the rest of the sheet is ignored"); p.pos = len(p.toks); break }
 		if t.kind == .At_Keyword {
@@ -196,18 +225,23 @@ parse_rule_list :: proc(p: ^Parser, top_level: bool) -> []^Rule {
 			append(&rules, r)
 		}
 	}
-	return rules[:]
+	return keep(p, rules)
 }
 
 // A qualified rule: prelude, then a { } block. With `parent`, selectors may use & (CSS Nesting).
 @(private)
 parse_qualified_rule :: proc(p: ^Parser, parent: ^Rule) -> ^Rule {
 	start := p.pos
-	prelude := make([dynamic]Value, p.a)
+	// the prelude is only read (selectors keep strings, not values): scratch memory
+	prelude := make([dynamic]Value, p_scratch(p))
+	saved := p.va
+	p.va = p_scratch(p)
+	defer p.va = saved
 	for p.pos < len(p.toks) {
 		t := p.toks[p.pos]
 		if t.kind == .Open_Curly {
 			p.pos += 1
+			p.va = saved
 			body := parse_values(p, .Close_Curly, 1)
 			if p.pos < len(p.toks) && p.toks[p.pos].kind == .Close_Curly { p.pos += 1 }
 			return finish_style_rule(p, prelude[:], body, parent)
@@ -268,8 +302,8 @@ finish_style_rule :: proc(p: ^Parser, prelude, body: []Value, parent: ^Rule) -> 
 // Splits a { } block into declarations and nested rules (CSS Nesting).
 @(private)
 parse_block_contents :: proc(p: ^Parser, body: []Value, owner: ^Rule) -> ([]Declaration, []^Rule) {
-	decls := make([dynamic]Declaration, p.a)
-	nested := make([dynamic]^Rule, p.a)
+	decls := make([dynamic]Declaration, p_scratch(p))
+	nested := make([dynamic]^Rule, p_scratch(p))
 	i := 0
 	for i < len(body) {
 		// one item: values up to ';' or through a { } block
@@ -294,7 +328,12 @@ parse_block_contents :: proc(p: ^Parser, body: []Value, owner: ^Rule) -> ([]Decl
 		}
 		if d, ok := parse_declaration(p, item); ok { append(&decls, d) }
 	}
-	return decls[:], nested[:]
+	if p_scratch(p) == p.a { return decls[:], nested[:] }
+	out_d := len(decls) > 0 ? make([]Declaration, len(decls), p.a) : nil
+	copy(out_d, decls[:])
+	out_n := len(nested) > 0 ? make([]^Rule, len(nested), p.a) : nil
+	copy(out_n, nested[:])
+	return out_d, out_n
 }
 
 @(private)
@@ -319,7 +358,7 @@ parse_declaration :: proc(p: ^Parser, item: []Value) -> (d: Declaration, ok: boo
 	i += 1
 	val := trim_values(item[i:])
 	name := item[0].tok.text
-	if !strings.has_prefix(name, "--") { name = strings.to_lower(name, p.a) }
+	if !strings.has_prefix(name, "--") { name = lower_ascii_if_needed(name, p.a) }
 	// !important: the last two non-whitespace values
 	n := len(val)
 	if n >= 2 {
@@ -338,6 +377,13 @@ parse_declaration :: proc(p: ^Parser, item: []Value) -> (d: Declaration, ok: boo
 	// an empty value is valid only for custom properties
 	if len(val) == 0 && !strings.has_prefix(name, "--") { return {}, false }
 	return d, true
+}
+
+// s itself when it has no ASCII upper case letter (most property names), else a lower-cased copy in .
+@(private)
+lower_ascii_if_needed :: proc(s: string, a: Arena_Alloc) -> string {
+	for i in 0 ..< len(s) { if s[i] >= 'A' && s[i] <= 'Z' { return strings.to_lower(s, a) } }
+	return s
 }
 
 // Component values of a piece of text (a substituted var(), a <style> attribute fragment).
@@ -363,28 +409,40 @@ parse_declarations :: proc(source: string, opt: Parse_Options, allocator: Arena_
 
 @(private)
 parse_at_rule :: proc(p: ^Parser, name: string) -> ^Rule {
-	// prelude up to ';' (statement) or a { } block
-	prelude := make([dynamic]Value, p.a)
+	// prelude up to ';' (statement) or a { } block; gathered in scratch memory, kept at its final size (build_at_rule
+	// may keep it: @supports, @container, @import...)
+	gathered := make([dynamic]Value, p_scratch(p))
 	for p.pos < len(p.toks) {
 		t := p.toks[p.pos]
-		if t.kind == .Semicolon { p.pos += 1; return build_at_rule(p, name, trim_values(prelude[:]), Value{}, nil) }
+		if t.kind == .Semicolon { p.pos += 1; return build_at_rule(p, name, trim_values(keep_values(p, gathered[:])), Value{}, nil) }
 		if t.kind == .Open_Curly {
 			p.pos += 1
 			blk := Value{kind = .Block, tok = t}
+			// a block of rules is turned back into tokens and parsed as a rule list: its values are scratch
+			saved := p.va
+			if holds_rule_list(name) { p.va = p_scratch(p) }
 			blk.children = parse_values(p, .Close_Curly, 1)
+			p.va = saved
 			if p.pos < len(p.toks) && p.toks[p.pos].kind == .Close_Curly { p.pos += 1 }
-			return build_at_rule(p, name, trim_values(prelude[:]), blk, nil)
+			return build_at_rule(p, name, trim_values(keep_values(p, gathered[:])), blk, nil)
 		}
 		if t.kind == .Close_Curly { break }
-		append(&prelude, parse_one_value(p))
+		append(&gathered, parse_one_value(p))
 	}
 	// EOF ends the rule
-	return build_at_rule(p, name, trim_values(prelude[:]), Value{}, nil)
+	return build_at_rule(p, name, trim_values(keep_values(p, gathered[:])), Value{}, nil)
+}
+
+// The at-rules whose block is a list of rules (at the top level: build_at_rule reads it with parse_rules_in_block).
+@(private)
+holds_rule_list :: proc(name: string) -> bool {
+	for n in ([]string{"media", "supports", "container", "layer"}) { if strings.equal_fold(name, n) { return true } }
+	return false
 }
 
 @(private)
 parse_rules_in_block :: proc(p: ^Parser, blk: Value) -> []^Rule {
-	sub := Parser{toks = flatten(blk.children, p.a), a = p.a, opt = p.opt, errors = p.errors, rules = p.rules, runes = p.runes}
+	sub := Parser{toks = flatten(blk.children, p_scratch(p)), a = p.a, opt = p.opt, errors = p.errors, rules = p.rules, runes = p.runes, scratch = p.scratch}
 	rules := parse_rule_list(&sub, false)
 	p.rules = sub.rules
 	return rules
