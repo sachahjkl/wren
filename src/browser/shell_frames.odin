@@ -397,7 +397,7 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 		append(chrome, ev)
 	case .Scroll:
 		if over_page && .Ctrl not_in ev.mods && t.page != nil {
-			shell_async_scroll(app, t, ev.delta.y * app.cfg.scroll_step * page_scale(app))
+			shell_async_scroll(app, t, ev.delta.y * wheel_step(app, (app.page_rect.max - app.page_rect.min) / max(page_scale(app), 0.01)).y * page_scale(app))
 			return
 		}
 		if over_page { append(&chrome_frames.deferred, ev); return }   // zoom: the page's layout

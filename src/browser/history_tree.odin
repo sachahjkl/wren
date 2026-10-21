@@ -718,7 +718,7 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 				} else {
 					dv := e.delta
 					if .Shift in e.mods && dv.x == 0 { dv = {dv.y, 0} }
-					tview.cam = cam_pan(tview.cam, em, -dv * app.cfg.scroll_step * ui.scale())
+					tview.cam = cam_pan(tview.cam, em, -dv * wheel_step(app) * ui.scale())
 				}
 			case .Key_Press:
 				#partial switch e.key {

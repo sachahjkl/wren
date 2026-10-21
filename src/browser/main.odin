@@ -820,7 +820,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 				// Ctrl+wheel zooms the page (wheel up = delta.y < 0 = bigger)
 				if ev.delta.y != 0 { zoom_step(app, t, ev.delta.y < 0 ? 1 : -1) }
 			} else if inside {
-				d := ev.delta * app.cfg.scroll_step * scale   // platform convention: +y = towards the end of the content
+				d := ev.delta * wheel_step(app, (app.page_rect.max - app.page_rect.min) / max(scale, 0.01)) * scale   // platform convention: +y = towards the end of the content
 				smooth_wheel(app, t, ev.pos - app.page_rect.min, d, wheel_is_precise(ev.delta))   // smooth_scroll.odin
 			}
 		case .Mouse_Press:
