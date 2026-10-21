@@ -189,6 +189,14 @@ images_shell_frame :: proc(app: ^App) {
 	for id in shell.evicted { release_texture(id) }
 }
 
+// The document whose images layout and painting read now (a frame's while it is laid out or painted: frames_shell.odin);
+// returns the one before.
+images_shell_page_swap :: proc(p: ^page.Page) -> ^page.Page {
+	old := shell.page
+	shell.page = p
+	return old
+}
+
 // Before the layout of `t`: natural sizes come from its page, and a size that became known makes the layout stale.
 images_before_layout :: proc(t: ^Tab) {
 	shell.page = t.page

@@ -254,6 +254,8 @@ scripts_start :: proc(p: ^Page) {
 		if p.head != base.NIL_HANDLE && !dom.is_connected(d, p.head) { p.head = base.NIL_HANDLE }
 		if p.doc_el != base.NIL_HANDLE && !dom.is_connected(d, p.doc_el) { p.doc_el = base.NIL_HANDLE }
 	}
+	frames_scan(p)   // the frames of what stays connected (before the first script): theirs now (frames.odin)
+	if p.closed { return }
 	reveal_run(p)
 	scripts_pump(p)
 }

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Frame</title>
+<style>
+  :root { font: 14px/1.4 system-ui, sans-serif; }
+  body { margin: 0; padding: 12px; background: #fffbe8; color: #333; }
+  .box { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 2px solid #c9b458; border-radius: 6px; background: white; cursor: pointer; width: max-content; user-select: none; }
+  .check { width: 22px; height: 22px; border: 2px solid #999; border-radius: 3px; display: grid; place-items: center; font-weight: bold; color: #1a7f37; }
+  .box.on .check::after { content: "✓"; }
+  .box:hover { border-color: #8a7a20; }
+  .origin { margin-top: 10px; font: 12px ui-monospace, monospace; color: #776; }
+  .long { height: 900px; background: repeating-linear-gradient(#fffbe8 0 40px, #f4edc8 40px 80px); }
+</style>
+</head>
+<body>
+<div class="box" id="box"><div class="check"></div><span>I'm not a robot</span></div>
+<div class="origin" id="origin"></div>
+<div class="long" id="long" hidden></div>
+<script>
+  document.getElementById("origin").textContent = `${location.origin}, parent ${parent !== window}, name "${name}"`;
+  if (location.search === "?long") document.getElementById("long").hidden = false;
+  let n = 0;
+  document.getElementById("box").addEventListener("click", () => {
+    const b = document.getElementById("box");
+    b.classList.toggle("on");
+    parent.postMessage({ clicked: ++n, checked: b.classList.contains("on") }, "*");
+  });
+  addEventListener("message", (e) => { document.getElementById("origin").textContent = `thanks #${e.data.thanks} from ${e.origin}`; });
+  parent.postMessage({ hello: location.origin }, "*");
+</script>
+</body>
+</html>

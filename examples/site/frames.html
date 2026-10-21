@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Frames</title>
+<style>
+  :root { color-scheme: light dark; font: 15px/1.4 system-ui, sans-serif; }
+  body { margin: 24px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.lead { margin: 0 0 16px; color: GrayText; }
+  .grid { display: grid; grid-template-columns: repeat(3, 340px); gap: 18px; }
+  figure { margin: 0; }
+  figcaption { font-size: 13px; margin-bottom: 6px; font-weight: 600; }
+  iframe { width: 340px; height: 200px; border: 1px solid #8884; border-radius: 8px; }
+  .rot { transform: rotate(-3deg); }
+  #log { font: 11px ui-monospace, monospace; white-space: pre-wrap; word-break: break-all; background: #8881; border-radius: 8px; padding: 8px 10px; position: fixed; right: 12px; top: 12px; bottom: 12px; width: 200px; overflow: auto; box-sizing: border-box; }
+  form { margin-top: 12px; display: flex; gap: 8px; align-items: center; }
+</style>
+</head>
+<body>
+<h1>Nested documents</h1>
+<p class="lead">Each frame is a document of its own (its origin, its scripts, its JavaScript engine instance); they talk with <code>postMessage</code>.</p>
+<div class="grid">
+  <figure><figcaption>Same origin (srcdoc), animated</figcaption>
+    <iframe id="same" name="same" srcdoc="<style>body{margin:0;font:14px system-ui;display:grid;place-items:center;height:100vh;background:linear-gradient(135deg,#4f8cff,#9b5cff);color:white}.spin{width:44px;height:44px;border:5px solid #fff6;border-top-color:#fff;border-radius:50%;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(1turn)}}</style><div><div class=spin></div><p>about:srcdoc</p></div>"></iframe></figure>
+  <figure><figcaption>Cross origin (port 8767): click the box</figcaption>
+    <iframe id="cross" src="http://127.0.0.1:8767/site/frames_child.html"></iframe></figure>
+  <figure><figcaption>Another site (localhost), rotated, scrolls</figcaption>
+    <iframe id="site" class="rot" src="http://localhost:8765/site/frames_child.html?long"></iframe></figure>
+  <figure><figcaption>sandbox (no scripts: the box stays still)</figcaption>
+    <iframe id="sand" sandbox src="http://127.0.0.1:8767/site/frames_child.html"></iframe></figure>
+  <figure><figcaption>X-Frame-Options: DENY</figcaption>
+    <iframe id="deny" src="http://127.0.0.1:8767/frames/doc?body=secret&amp;h=X-Frame-Options:%20DENY"></iframe></figure>
+  <figure><figcaption>Form target and window.open to this frame</figcaption>
+    <iframe id="target" name="result" srcdoc="<p style='font:14px system-ui;padding:8px'>The form's answer shows here.</p>"></iframe></figure>
+</div>
+<form action="/echo" target="result"><input name="q" value="hello frames"> <button>Submit to the frame</button> <button type="button" id="open">window.open(…, "result")</button></form>
+<div id="log">messages:</div>
+<script>
+  const log = (s) => { document.getElementById("log").textContent += "\n" + s; };
+  addEventListener("message", (e) => {
+    log(`${e.origin}: ${JSON.stringify(e.data)} (source is ${e.source === document.getElementById("cross").contentWindow ? "#cross" : e.source === document.getElementById("site").contentWindow ? "#site" : "?"})`);
+    if (e.data && e.data.clicked) e.source.postMessage({ thanks: e.data.clicked }, e.origin);
+  });
+  for (const f of document.querySelectorAll("iframe")) f.addEventListener("load", () => log(`load #${f.id}`));
+  document.getElementById("open").onclick = () => window.open("/frames/doc?body=" + encodeURIComponent("<p style='font:14px system-ui;padding:8px'>Opened by window.open at " + new Date().toLocaleTimeString() + "</p>"), "result");
+  addEventListener("load", () => log(`window load, ${frames.length} frames`));
+</script>
+</body>
+</html>

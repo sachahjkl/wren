@@ -21,6 +21,7 @@ import "wb:host"
 import "wb:js"
 import "wb:net"
 import "wb:page"
+import "wb:style"
 import "wb:wasm"
 import "wb:tools/testenv"
 
@@ -182,6 +183,27 @@ log("after removal " + c.contentWindow + " " + window.length);
 		check(logged("after removal null 2"), "removal destroys the nested document at once")
 		check(wait_for(fill("message srcdoc ran second true true about:srcdoc %s from %s true true", testenv.url(SAME), testenv.url(SAME))), "srcdoc: parent, top, window.name from the name attribute, the parent's origin; message origin and source")
 		check(index_of("b load") >= 0 && index_of("b load") < index_of("window load"), "the parent's load waits for its frames' load")
+		page.page_close(p)
+	}
+
+	fmt.println("-- the styles of nested documents")
+	{
+		p := load(`<body><iframe srcdoc="<p id=x style='font:14px system-ui;padding:8px'>Hi</p><style>p{color:rgb(1, 2, 3)}</style><script>const s = getComputedStyle(document.getElementById('x')); parent.postMessage('style ' + s.fontFamily + ' ' + s.paddingTop + ' ' + s.color, '*')</script>"></iframe>
+<script>addEventListener("message", e => log(e.data))</script></body>`)
+		check(wait_for("style system-ui 8px rgb(1, 2, 3)"), "a srcdoc document has its own style sheets and style attributes")
+		page.page_close(p)
+		// without scripts (sandboxed, or nothing to run): its <style> applies all the same
+		p = load(`<body><iframe sandbox srcdoc="<style>body{font-size:23px}</style><p>x</p>"></iframe><iframe srcdoc="<style>body{font-size:23px}</style><p>x</p>"></iframe><script>addEventListener("load", () => log("window load"))</script></body>`)
+		check(wait_for("window load"), "loaded")
+		for i in 0 ..< 2 {
+			c := child_of(p, i)
+			page.set_layout_journal(c, 4096)
+			page.set_frame_time(c, 1000)
+			st := page.styles(c, 800, 600, 1.5)
+			page.set_frame_time(c, 0, unpin = true)
+			cs := c.body != base.NIL_HANDLE ? style.style_of(st, c.body) : nil
+			check(cs != nil && cs.font_size == 23, fmt.tprintf("the <style> of a srcdoc document applies (%s, font-size %v)", i == 0 ? "sandboxed" : "no script", cs != nil ? cs.font_size : -1))
+		}
 		page.page_close(p)
 	}
 

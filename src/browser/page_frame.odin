@@ -94,6 +94,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	restore_tick(app, t, size)   // history_restore.odin: an entry shown again comes back where it was
 	scroll_to_fragment(t, size)
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
+	frames_prepare(app, t, size, scale)   // its frames at their boxes' sizes (frames_shell.odin)
 	page_prep.state = .Ready
 }
 
@@ -129,6 +130,7 @@ page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 	prof_begin(.Paint_Items)
 	images_paint_begin_frame(app)
 	selection_paint_begin(app, t)
+	frames_paint_begin(t.page)   // frames paint their documents in their boxes (frames_shell.odin)
 	paint(&t.layout, dc, t.page.doc, rect.min, paint_size, t.scroll, rect)
 	forms_paint_overlays(app, dc, rect)
 	images_after_paint(app)

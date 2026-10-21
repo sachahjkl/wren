@@ -102,6 +102,7 @@ Tab :: struct {
 	zoom:     f32,               // page zoom (zoom.odin); 1 = 100 %
 	smooth:   Smooth_Scroll,     // scroll animations and scroll bar drags (smooth_scroll.odin)
 	nav_state: Tab_Nav,          // restoring entries, leaving pages, the back/forward cache (history_restore.odin, bfcache.odin)
+	frame:    ^Frame_View,       // non-nil: the stand-in tab of a frame's document, not a tab (frames_shell.odin)
 }
 
 Session_History :: page.Session_History   // (a field named `page` hides the package in the struct above)
@@ -801,6 +802,9 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
 		if !hud_captures(ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
+		// pointer events over a frame, and the keyboard of a frame that has it, are its document's (frames_shell.odin)
+		if !hud_captures(ev.pos) && frames_route_pointer(app, t, ev, index) { continue }
+		if frames_route_keys(app, ev, index) { continue }
 		// form controls first: keyboard for the focused field, the open drop-down list (forms_shell.odin)
 		if forms_route_event(app, t, ev, index) { continue }
 		if t.page == nil { return }
@@ -988,6 +992,7 @@ frame :: proc(app: ^App, idled := false) {
 		prof_end(.Animation)
 		// (the loop counts this frame off after it: 2 = this one and the next)
 		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
+		if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
 	}
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
@@ -1130,6 +1135,7 @@ main :: proc() {
 	images_set_texture_api(renderer_texture_api(app))
 	set_content_painter(forms_content_painter, app)
 	page_render.bare = forms_bare_control
+	frames_shell_init(app)   // frames_shell.odin: nested documents laid out, painted and given input
 
 	prof_init(app)
 	pacer_init(app)
@@ -1176,6 +1182,7 @@ main :: proc() {
 	history_ui_destroy()
 	history_settings_shutdown(app)
 	base.scope_close(app.process)   // every tab, page and request
+	frames_shell_destroy()   // (their views went with their documents)
 	webauthn_shell_destroy(app)   // passkey requests: their threads joined
 	favicons_destroy(app)
 	images_shell_destroy(app)

@@ -738,7 +738,9 @@ frame_show_error :: proc(n: ^Navigable, headline, detail: string) {
 	if c == nil { return }
 	frames_of(c).sandbox = Sandbox{active = true}   // nothing runs in it
 	if p.settings.frames.error_pages {
-		html := fmt.tprintf(`<!doctype html><html><head><meta charset="utf-8"><style>html{background:#f2f2f2;color:#5f6368;font:13px system-ui,sans-serif}body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center}p{margin:8px 16px}.h{font-size:15px;color:#202124}</style></head><body><div><p class="h">%s</p><p>%s</p></div></body></html>`, escape_text(headline), escape_text(detail))
+		// (concatenated: fmt reads braces as its own)
+		html := strings.concatenate({`<!doctype html><html><head><meta charset="utf-8"><style>html{background:#f2f2f2;color:#5f6368;font:13px system-ui,sans-serif}body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center}p{margin:8px 16px}.h{font-size:15px;color:#202124}</style></head><body><div><p class="h">`,
+			escape_text(headline), `</p><p>`, escape_text(detail), `</p></div></body></html>`}, context.temp_allocator)
 		load_html(c, transmute([]byte)html)
 	}
 	render_begin(c)
