@@ -588,6 +588,9 @@ palette_collect :: proc(app: ^App, text: string) {
 		if q == "" { return 0, nil, true }
 		score, ranges, ok = fuzzy_score(q, title, virtual.arena_allocator(&cpal.arena))
 		if ok || other == "" { return }
+		// (strictly: each word typed as it is written there, else a long description matches almost anything)
+		low := strings.to_lower(other, context.temp_allocator)
+		for w in strings.fields(q, context.temp_allocator) { if !strings.contains(low, strings.to_lower(w, context.temp_allocator)) { return 0, nil, false } }
 		s, _, ook := fuzzy_score(q, other)
 		return s / 2, nil, ook
 	}
@@ -882,8 +885,17 @@ palette_build :: proc(app: ^App) {
 					}
 				}
 				t := current_tab(app)
+				// the category and shortcut columns: as wide as their widest visible entry, so they line up
+				cols: [2]f32
+				font := ui.top_style().font
 				for i in cpal.first ..< min(cpal.first + vis, n) {
-					if c, nc := palette_row(app, t, i, w, rh, pad, mouse_moved); c { clicked, clicked_new = i, nc }
+					r := &cpal.rows[i]
+					cols[0] = max(cols[0], ui.text_width(font, em, r.category))
+					if r.kind == .Command { cols[1] = max(cols[1], ui.text_width(font, em, command_shortcut_text(&commands()[r.index]))) }
+				}
+				cols = {math.ceil(cols[0]) + 2, math.ceil(cols[1]) + 2}
+				for i in cpal.first ..< min(cpal.first + vis, n) {
+					if c, nc := palette_row(app, t, i, w, rh, pad, cols, mouse_moved); c { clicked, clicked_new = i, nc }
 				}
 			}
 
@@ -895,7 +907,8 @@ palette_build :: proc(app: ^App) {
 				if ui.tags("weak") {
 					if ui.style({font_size = math.round(em * 0.86)}) {
 						ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
-						ui.label("Enter: run   Ctrl+Enter: in a new tab   Up / Down: move   Esc: close###palette_keys")
+						// nothing typed: what the prefixes search (the field's placeholder is not shown while it has the caret)
+						ui.label(text == "" ? "Type to search, or start with   >  commands    @  tabs    :  settings    /  pages###palette_keys" : "Enter: run   Ctrl+Enter: in a new tab   Up / Down: move   Esc: close###palette_keys")
 						ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0})
 						ui.label(fmt.aprintf("%d result%s###palette_count", n, n == 1 ? "" : "s", allocator = ui.frame_allocator()))
 					}
@@ -913,7 +926,7 @@ palette_build :: proc(app: ^App) {
 
 // One result row. True when it was clicked (`new_tab`: with Ctrl).
 @(private = "file")
-palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, mouse_moved: bool) -> (clicked, new_tab: bool) {
+palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, cols: [2]f32, mouse_moved: bool) -> (clicked, new_tab: bool) {
 	r := &cpal.rows[i]
 	em := ui.font_size()
 	selected := i == cpal.sel
@@ -993,11 +1006,12 @@ palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, mouse_moved: bo
 						ui.next({width = ui.text_size(em * 0.2), height = ui.pct(1)})
 						ui.label(label_id(state, "s"))
 					}
-					ui.next({width = ui.text_size(em * 0.2), height = ui.pct(1)})
+					ui.spacer(ui.px(em * 0.6))
+					ui.next({width = ui.px(cols[0]), height = ui.pct(1), text_pad = 0, text_align = .Right})
 					ui.label(label_id(r.category, "c"))
-					if shortcut != "" {
-						ui.spacer(ui.px(em * 0.3))
-						ui.next({width = ui.text_size(em * 0.1), height = ui.pct(1), text_pad = 0})
+					if cols[1] > 2 {
+						ui.spacer(ui.px(em * 1.2))
+						ui.next({width = ui.px(cols[1]), height = ui.pct(1), text_pad = 0, text_align = .Right})
 						ui.label(label_id(shortcut, "k"))
 					}
 				}

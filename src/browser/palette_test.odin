@@ -111,6 +111,20 @@ query_prefixes :: proc(t: ^testing.T) {
 	testing.expect(t, len(cpal.rows) >= 3)
 	for r in cpal.rows { testing.expect(t, r.kind == .Command) }
 
+	// the other words a command is known by match whole, not scattered ("rel" is not in "...palette light")
+	// (no tab here: Reload cannot run, so it comes first of those that cannot)
+	first_named :: proc(prefix: string) -> int {
+		for r, i in cpal.rows { if strings.has_prefix(commands()[r.index].name, prefix) { return i } }
+		return -1
+	}
+	palette_collect(app, ">rel")
+	first_off := len(cpal.rows)
+	for r, i in cpal.rows { if r.disabled { first_off = min(first_off, i) } }
+	testing.expect_value(t, first_named("nav.reload"), first_off)
+	for r in cpal.rows { testing.expectf(t, !strings.has_prefix(r.title, "Theme"), "%q matches rel", r.title) }
+	palette_collect(app, ">refresh")   // a keyword of Reload
+	testing.expect(t, len(cpal.rows) >= 1 && first_named("nav.reload") >= 0)
+
 	palette_collect(app, ">theme dayl")
 	testing.expect(t, len(cpal.rows) >= 1 && cpal.rows[0].kind == .Command && commands()[cpal.rows[0].index].name == "view.theme.daylight")
 
