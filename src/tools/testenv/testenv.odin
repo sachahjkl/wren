@@ -16,8 +16,8 @@ BLOCK_PORTS :: 5
 
 @(private) cached: int
 @(private) lock: sync.Mutex
-// url() results, kept for the life of the process on the heap allocator (outside any tracking allocator a tool
-// checks for leaks): an address can be handed to anything that keeps it.
+// url() results, kept for the life of the process (base.permanent_allocator: outside the unit tests' trackers, never a
+// leak of the check builds): an address can be handed to anything that keeps it.
 @(private) interned: map[string]string
 
 // The base port of this run: WREN_TEST_BASE_PORT, else 8765.
@@ -41,7 +41,7 @@ url :: proc(s: string) -> string {
 	if b == DEFAULT_BASE_PORT || !strings.contains(s, ":876") { return s }
 	sync.guard(&lock)
 	if r, ok := interned[s]; ok { return r }
-	context.allocator = base.process_allocator()
+	context.allocator = base.permanent_allocator()
 	if interned == nil { interned = make(map[string]string) }
 	r := rewrite(s, b)
 	interned[strings.clone(s)] = r

@@ -143,7 +143,7 @@ mem_forget_live :: proc() {
 
 // Frames of the call stack kept per block: WREN_MEMTRACK_STACK=1 at start-up (slower: every allocation walks its
 // stack). Without it, the place of the allocation is the line that called the allocator (often a helper: strings.clone).
-@(private) STACK_DEPTH :: 10
+@(private) STACK_DEPTH :: 16
 @(private) REPORT_GROUPS :: 60
 @(private) Stack :: [STACK_DEPTH]trace.Capture_Entry
 
@@ -278,5 +278,12 @@ write_stack :: proc(b: ^strings.Builder, stack: Stack) {
 	locs, err := trace.resolve_n(stack[:n], context.allocator, context.temp_allocator)
 	if err != nil { return }
 	defer trace.locations_destroy(locs, context.allocator)
-	for l in locs { fmt.sbprintfln(b, "      %s  %s:%d", l.procedure, l.file_path, l.line) }
+	shown := 0
+	for l in locs {
+		// the allocator's own frames (make, new, the tracker) say nothing
+		if strings.has_prefix(l.procedure, "runtime::") || strings.has_prefix(l.procedure, "base::[memory.odin]") { continue }
+		if l.procedure == "main" || shown == 10 { break }
+		fmt.sbprintfln(b, "      %s  %s:%d", l.procedure, l.file_path, l.line)
+		shown += 1
+	}
 }
