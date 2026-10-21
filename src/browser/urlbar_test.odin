@@ -385,7 +385,10 @@ urlbar_speed :: proc(t: ^testing.T) {
 	sync_ms := time.duration_milliseconds(time.tick_since(s))
 	testing.expect_value(t, x.rebuilds, 1)
 	fmt.printf("urlbar_speed: %d entries, build %.2f ms, per letter mean %.3f ms worst %.3f ms, three words at once %.3f ms, sync after a trim %.3f ms\n", len(x.entries), build_ms, total / f64(n), worst, words_ms, sync_ms)
-	when ODIN_OPTIMIZATION_MODE == .Speed {
+	// a time bound means nothing under AddressSanitizer (every access instrumented, several times slower): the build only
+	// checks memory there
+	when .Address in ODIN_SANITIZER_FLAGS {
+	} else when ODIN_OPTIMIZATION_MODE == .Speed {
 		testing.expect(t, worst < 2, "under 2 ms per letter")
 	} else {
 		testing.expect(t, worst < 20, "under 20 ms per letter in a debug build")
