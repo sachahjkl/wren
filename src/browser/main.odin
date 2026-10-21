@@ -767,6 +767,7 @@ build_ui :: proc(app: ^App) {
 		}
 	}
 	context_menus_build(app)
+	palette_build(app)   // palette.odin: the command palette, over everything else
 	// notices go over the page, not over the title bar's window buttons
 	if app.page_rect.max.y > app.page_rect.min.y { ui.set_toast_area(app.page_rect) }
 	ui.toasts_build()
@@ -1171,6 +1172,7 @@ main :: proc() {
 	ui.field_destroy(&app.address)
 	console_eval_destroy()
 	session_destroy()
+	palette_destroy()   // palette.odin (and the command registry)
 	ui.destroy(&app.ui_state)
 	config.prefs_destroy(&app.prefs)
 }
