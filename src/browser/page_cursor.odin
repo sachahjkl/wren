@@ -12,6 +12,7 @@ package browser
 //     cache); while it loads, or when it cannot be used, the next one, then the keyword. Images larger than
 //     browser.cursor.large_image_css_px are shown only while they lie inside the page area (Chromium's rule: a page's
 //     cursor must not pass for the browser's interface).
+//   * While the tab loads, the arrow is the progress cursor (the arrow with the busy sign), as in Chromium.
 //   * A drag that starts on the page (a selection, a press held) keeps the cursor of where it started until the
 //     button is released.
 // WREN_CURSOR_LOG=path appends a line each time the window's cursor changes (e2e tests: cursor_e2e.ps1).
@@ -40,6 +41,8 @@ CURSOR_PREFS := [?]config.Def{
 		description = "Largest cursor image, in CSS pixels on each side (Chromium: 128); a larger one is not used (the next one, or the keyword, is)."},
 	{name = "browser.cursor.large_image_css_px", kind = .Int, default = {i = 32}, bounded = true, min = 0, max = 512, unit = "px",
 		description = "A cursor image larger than this (CSS pixels) shows only while it lies entirely inside the page area, so that a page cannot draw over the browser's interface with it (Chromium: 32). 0: no such check."},
+	{name = "browser.cursor.progress_while_loading", kind = .Bool, default = {b = true},
+		description = "While the tab loads, the page's arrow shows the \"working in background\" sign (as in Chromium)."},
 	{name = "browser.cursor.cache_entries", kind = .Int, default = {i = 32}, bounded = true, min = 1, max = 1024,
 		description = "Cursors made from page images kept ready (the least recently used ones go first)."},
 }
@@ -52,6 +55,7 @@ Cursor_Settings :: struct {
 	image_max_css: int,
 	large_css:     int,
 	cache_entries: int,
+	progress_loading: bool,
 }
 
 cursor_settings_from_prefs :: proc(p: ^config.Prefs) -> Cursor_Settings {
@@ -61,6 +65,7 @@ cursor_settings_from_prefs :: proc(p: ^config.Prefs) -> Cursor_Settings {
 		image_max_css = int(config.int_of(p, "browser.cursor.image_max_css_px")),
 		large_css = int(config.int_of(p, "browser.cursor.large_image_css_px")),
 		cache_entries = int(config.int_of(p, "browser.cursor.cache_entries")),
+		progress_loading = config.bool_of(p, "browser.cursor.progress_while_loading"),
 	}
 }
 
@@ -333,6 +338,8 @@ page_window_cursor :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> Window_Cursor {
 	pc := page_cursor_at(&t.layout, t.page.doc, t.page.styled, p, draw.rect_size(app.page_rect), t.scroll, ccfg.page_css)
 	wc := Window_Cursor{keyword = pc.keyword, scale = scale, node = pc.node, at = p / scale}
 	wc.custom = cursor_image(app, t, pc.images, pos, scale)
+	// while the tab loads, the arrow is the arrow with the "working in background" sign (as Chromium does)
+	if ccfg.progress_loading && wc.keyword == .Arrow && wc.custom == 0 && tab_loading(t) { wc.keyword = .Progress }
 	return wc
 }
 
@@ -370,6 +377,9 @@ window_cursor_apply :: proc(app: ^App) {
 	} else if t := page_tab(app); t != nil && st.mouse_valid && wc.keyword == .Arrow && draw.rect_contains(app.page_rect, pos) &&
 	          ui.hot_key() == 0 && ui.active_key() == 0 && !ui.ctx_menu_any_open() && !hud_captures(pos) {
 		wc = page_window_cursor(app, t, pos)
+	} else if ct := current_tab(app); ct != nil && ct.kind == .Web && ccfg.progress_loading && tab_loading(ct) && st.mouse_valid && wc.keyword == .Arrow &&
+	          draw.rect_contains(app.page_rect, pos) && ui.hot_key() == 0 && ui.active_key() == 0 && !ui.ctx_menu_any_open() && !hud_captures(pos) {
+		wc.keyword = .Progress   // (nothing laid out yet: a document on its way)
 	}
 	if wc.custom != 0 && !platform.custom_cursor_valid(app.win, wc.custom) { wc.custom = 0 }
 	if wc.custom != 0 {
