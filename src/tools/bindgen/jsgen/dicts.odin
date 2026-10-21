@@ -81,6 +81,17 @@ collect_dicts :: proc(g: ^Gen) -> []string {
 }
 
 @(private)
+// Whether the dictionary (or one it inherits from) has a required member: converting undefined to it fails.
+dict_has_required :: proc(g: ^Gen, name: string) -> bool {
+	for n := name; n != ""; {
+		d := g.m.dictionaries[n]
+		if d == nil { return false }
+		for mb in d.members { if mb.required { return true } }
+		n = d.parent
+	}
+	return false
+}
+
 emit_dicts :: proc(g: ^Gen, h, c: ^strings.Builder) {
 	names := collect_dicts(g)
 	wl(h, "/* Dictionaries (src/tools/bindgen/jsgen/dicts.odin): wjd_<Name>_from converts, wjd_<Name>_free releases. */")
@@ -183,7 +194,9 @@ emit_dicts :: proc(g: ^Gen, h, c: ^strings.Builder) {
 			case .Str, .Enum:
 				if def.kind == .String { wl(c, "            out->%s.ptr = %q; out->%s.len = %d;", f, def.text, f, len(def.text)) }
 			case .Dict:
-				wl(c, "            if (!wjd_%s_from(ctx, JS_UNDEFINED, &out->%s)) %s", n, f, fail)
+				// an absent member is not present: its defaults are filled in only when it could be converted from
+				// undefined (a dictionary with a required member cannot: the member stays absent, has_ false)
+				if !dict_has_required(g, n) { wl(c, "            if (!wjd_%s_from(ctx, JS_UNDEFINED, &out->%s)) %s", n, f, fail) }
 			case .Value:
 				if def.kind == .Null { wl(c, "            out->%s = JS_NULL;", f) }
 			}

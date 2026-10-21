@@ -134,6 +134,9 @@ webauthn_busy :: proc(p: ^Page) -> bool {
 	return d != nil && d.active != nil
 }
 
+// Ceremonies whose platform call has not returned yet, every page included (tests, shutdown).
+webauthn_in_flight :: proc() -> int { return len(webauthn_ops) }
+
 // At exit, before the loop goes: every ceremony cancelled and its thread joined.
 webauthn_shutdown :: proc() {
 	for op in webauthn_ops {

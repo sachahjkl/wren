@@ -41,7 +41,7 @@ New-Item -ItemType Directory -Force build | Out-Null
 # stack, wasm.wasmtime.max_stack_bytes) is linked with a 32 MiB default thread stack
 $Stack = '-extra-linker-flags:/STACK:33554432'
 $script:watchdog = Start-Watchdog
-foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'layout', 'forms', 'js', 'page', 'browser') {
+foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'layout', 'forms', 'js', 'page', 'webauthn', 'browser') {
     Step "unit tests: $pkg" { odin test "src/$pkg" -collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -out:"build/${pkg}_test.exe" $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 }
 
@@ -88,6 +88,12 @@ Step 'history end-to-end test (historytest: the tree as pages see it, scrollRest
     odin build src/tools/historytest -collection:wb=src -vet -out:build/historytest.exe $Stack
     if ($LASTEXITCODE -ne 0) { return }
     $o = .\build\historytest.exe | Out-String; $o
+    $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
+}
+Step 'Web Authentication end-to-end test (webauthntest: create then get from JavaScript on the virtual authenticator, signature checked; activation, RP ID, aborts, timer, mediation, JSON forms, secure context; no server)' {
+    odin build src/tools/webauthntest -collection:wb=src -vet -out:build/webauthntest.exe $Stack
+    if ($LASTEXITCODE -ne 0) { return }
+    $o = .\build\webauthntest.exe | Out-String; $o
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
 }
 Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe . }; Pop-Location }

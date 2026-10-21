@@ -1041,17 +1041,31 @@ JSValue wjr_AuthenticatorAssertionResponse_get_authenticatorData(JSContext *ctx,
 JSValue wjr_AuthenticatorAssertionResponse_get_signature(JSContext *ctx, JSValueConst this_val) { resp_impl *r = resp_this(ctx, this_val, WJ_IFACE_AuthenticatorAssertionResponse); return r ? JS_DupValue(ctx, r->signature) : JS_EXCEPTION; }
 JSValue wjr_AuthenticatorAssertionResponse_get_userHandle(JSContext *ctx, JSValueConst this_val) { resp_impl *r = resp_this(ctx, this_val, WJ_IFACE_AuthenticatorAssertionResponse); return r ? JS_DupValue(ctx, r->user_handle) : JS_EXCEPTION; }
 
-/* ---- realm start: with security.webauthn.enabled off, Web Authentication is absent (feature detection says so) ---- */
+/* ---- realm start ----
+ * [SecureContext] (the engine does not apply it by itself): outside a secure context navigator.credentials and every
+ * interface of these specifications are absent. With security.webauthn.enabled off, Web Authentication's interfaces
+ * are absent (feature detection says so); navigator.credentials stays (get() and create() then reject). */
+
+static void delete_global(JSContext *ctx, JSValueConst obj, const char *name)
+{
+    JSAtom a = JS_NewAtom(ctx, name);
+    JS_DeleteProperty(ctx, obj, a, 0);
+    JS_FreeAtom(ctx, a);
+}
 
 int web_credentials_start(JSContext *ctx, int kind)
 {
     WJ_UNUSED(kind);
-    if (!web_is_window() || wr_PublicKeyCredential_enabled()) { return 0; }
-    static const char *const names[] = { "PublicKeyCredential", "AuthenticatorResponse", "AuthenticatorAttestationResponse", "AuthenticatorAssertionResponse" };
-    for (size_t i = 0; i < WEB_COUNT(names); i++) {
-        JSAtom a = JS_NewAtom(ctx, names[i]);
-        JS_DeleteProperty(ctx, wj_the_realm.global, a, 0);
-        JS_FreeAtom(ctx, a);
+    if (!web_is_window()) { return 0; }
+    static const char *const webauthn[] = { "PublicKeyCredential", "AuthenticatorResponse", "AuthenticatorAttestationResponse", "AuthenticatorAssertionResponse" };
+    bool secure = wr_Window_isSecureContext();
+    if (secure && wr_PublicKeyCredential_enabled()) { return 0; }
+    for (size_t i = 0; i < WEB_COUNT(webauthn); i++) { delete_global(ctx, wj_the_realm.global, webauthn[i]); }
+    if (!secure) {
+        delete_global(ctx, wj_the_realm.global, "Credential");
+        delete_global(ctx, wj_the_realm.global, "CredentialsContainer");
+        JSValue proto = wj_the_realm.protos[WJ_IFACE_Navigator];
+        if (JS_IsObject(proto)) { delete_global(ctx, proto, "credentials"); }
     }
     return 0;
 }

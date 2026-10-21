@@ -17462,7 +17462,6 @@ bool wjd_AuthenticationExtensionsPRFInputsJSON_from(JSContext *ctx, JSValueConst
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "eval") : JS_UNDEFINED;
         if (JS_IsException(x)) { wjd_AuthenticationExtensionsPRFInputsJSON_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
-            if (!wjd_AuthenticationExtensionsPRFValuesJSON_from(ctx, JS_UNDEFINED, &out->eval)) { wjd_AuthenticationExtensionsPRFInputsJSON_free(ctx, out); return false; }
         } else {
             out->has_eval = true;
             bool ok = wjd_AuthenticationExtensionsPRFValuesJSON_from(ctx, x, &out->eval);
@@ -17787,7 +17786,6 @@ bool wjd_PublicKeyCredentialCreationOptionsJSON_from(JSContext *ctx, JSValueCons
         if (JS_IsException(x)) { wjd_PublicKeyCredentialCreationOptionsJSON_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'rp' property from 'PublicKeyCredentialCreationOptionsJSON': Required member is undefined."); { wjd_PublicKeyCredentialCreationOptionsJSON_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
-            if (!wjd_PublicKeyCredentialRpEntity_from(ctx, JS_UNDEFINED, &out->rp)) { wjd_PublicKeyCredentialCreationOptionsJSON_free(ctx, out); return false; }
         } else {
             out->has_rp = true;
             bool ok = wjd_PublicKeyCredentialRpEntity_from(ctx, x, &out->rp);
@@ -17811,7 +17809,6 @@ bool wjd_PublicKeyCredentialCreationOptionsJSON_from(JSContext *ctx, JSValueCons
         if (JS_IsException(x)) { wjd_PublicKeyCredentialCreationOptionsJSON_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'user' property from 'PublicKeyCredentialCreationOptionsJSON': Required member is undefined."); { wjd_PublicKeyCredentialCreationOptionsJSON_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
-            if (!wjd_PublicKeyCredentialUserEntityJSON_from(ctx, JS_UNDEFINED, &out->user)) { wjd_PublicKeyCredentialCreationOptionsJSON_free(ctx, out); return false; }
         } else {
             out->has_user = true;
             bool ok = wjd_PublicKeyCredentialUserEntityJSON_from(ctx, x, &out->user);
@@ -18213,7 +18210,6 @@ bool wjd_AuthenticationExtensionsPRFInputs_from(JSContext *ctx, JSValueConst v, 
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "eval") : JS_UNDEFINED;
         if (JS_IsException(x)) { wjd_AuthenticationExtensionsPRFInputs_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
-            if (!wjd_AuthenticationExtensionsPRFValues_from(ctx, JS_UNDEFINED, &out->eval)) { wjd_AuthenticationExtensionsPRFInputs_free(ctx, out); return false; }
         } else {
             out->has_eval = true;
             bool ok = wjd_AuthenticationExtensionsPRFValues_from(ctx, x, &out->eval);
@@ -18467,7 +18463,6 @@ bool wjd_CredentialRequestOptions_from(JSContext *ctx, JSValueConst v, wjd_Crede
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "publicKey") : JS_UNDEFINED;
         if (JS_IsException(x)) { wjd_CredentialRequestOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
-            if (!wjd_PublicKeyCredentialRequestOptions_from(ctx, JS_UNDEFINED, &out->publicKey)) { wjd_CredentialRequestOptions_free(ctx, out); return false; }
         } else {
             out->has_publicKey = true;
             bool ok = wjd_PublicKeyCredentialRequestOptions_from(ctx, x, &out->publicKey);
@@ -18654,7 +18649,6 @@ bool wjd_PublicKeyCredentialCreationOptions_from(JSContext *ctx, JSValueConst v,
         if (JS_IsException(x)) { wjd_PublicKeyCredentialCreationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'rp' property from 'PublicKeyCredentialCreationOptions': Required member is undefined."); { wjd_PublicKeyCredentialCreationOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
-            if (!wjd_PublicKeyCredentialRpEntity_from(ctx, JS_UNDEFINED, &out->rp)) { wjd_PublicKeyCredentialCreationOptions_free(ctx, out); return false; }
         } else {
             out->has_rp = true;
             bool ok = wjd_PublicKeyCredentialRpEntity_from(ctx, x, &out->rp);
@@ -18678,7 +18672,6 @@ bool wjd_PublicKeyCredentialCreationOptions_from(JSContext *ctx, JSValueConst v,
         if (JS_IsException(x)) { wjd_PublicKeyCredentialCreationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) { JS_ThrowTypeError(ctx, "Failed to read the 'user' property from 'PublicKeyCredentialCreationOptions': Required member is undefined."); { wjd_PublicKeyCredentialCreationOptions_free(ctx, out); return false; } }
         if (JS_IsUndefined(x)) {
-            if (!wjd_PublicKeyCredentialUserEntity_from(ctx, JS_UNDEFINED, &out->user)) { wjd_PublicKeyCredentialCreationOptions_free(ctx, out); return false; }
         } else {
             out->has_user = true;
             bool ok = wjd_PublicKeyCredentialUserEntity_from(ctx, x, &out->user);
@@ -18710,7 +18703,6 @@ bool wjd_CredentialCreationOptions_from(JSContext *ctx, JSValueConst v, wjd_Cred
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "federated") : JS_UNDEFINED;
         if (JS_IsException(x)) { wjd_CredentialCreationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
-            if (!wjd_FederatedCredentialInit_from(ctx, JS_UNDEFINED, &out->federated)) { wjd_CredentialCreationOptions_free(ctx, out); return false; }
         } else {
             out->has_federated = true;
             bool ok = wjd_FederatedCredentialInit_from(ctx, x, &out->federated);
@@ -18743,7 +18735,6 @@ bool wjd_CredentialCreationOptions_from(JSContext *ctx, JSValueConst v, wjd_Cred
         JSValue x = is_object ? JS_GetPropertyStr(ctx, v, "publicKey") : JS_UNDEFINED;
         if (JS_IsException(x)) { wjd_CredentialCreationOptions_free(ctx, out); return false; }
         if (JS_IsUndefined(x)) {
-            if (!wjd_PublicKeyCredentialCreationOptions_from(ctx, JS_UNDEFINED, &out->publicKey)) { wjd_CredentialCreationOptions_free(ctx, out); return false; }
         } else {
             out->has_publicKey = true;
             bool ok = wjd_PublicKeyCredentialCreationOptions_from(ctx, x, &out->publicKey);
