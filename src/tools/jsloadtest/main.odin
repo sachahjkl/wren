@@ -707,6 +707,17 @@ log("inserted");
 	st, why = page.first_paint_state(p2)
 	check(st == .Ready, fmt.tprintf("a stylesheet a script inserted does not block it (%v %s)", st, why))
 	page.page_close(p2)
+
+	// a script turns the parser's <link> into something else while the document is parsed: the scripts after it
+	// (which wait for pending stylesheets) do not wait for it for ever
+	src3 := strings.concatenate({`<!doctype html><head>`, PRELUDE, `<link id=l rel=stylesheet href="`, css("p {}", 200, "relchange"),
+		`"></head><body><script>document.getElementById("l").rel = "expect"; log("rel changed")</script><p>x</p>`,
+		`<script src="`, gen(`log("script after the change ran")`, 300, "&k=after"), `"></script>`,
+		`<script>document.addEventListener("DOMContentLoaded", () => log("relchange dcl"))</script></body>`}, context.temp_allocator)
+	p3 := load(src3)
+	wait_for("relchange dcl")
+	check(logged("rel changed") && in_order("script after the change ran", "relchange dcl"), "a parser link whose rel a script changed does not hold the parser")
+	page.page_close(p3)
 }
 
 measurements :: proc() {
