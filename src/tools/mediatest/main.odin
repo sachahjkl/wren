@@ -187,6 +187,13 @@ main :: proc() {
 	}
 	i5 := inline("inl5", 32, 32)
 	check(i5.ok && px(i5, 16, 16) == {0, 255, 0, 255}, fmt.tprintf("currentColor from the element's color (%v)", px(i5, 16, 16)))
+	// color="currentColor" or style="color:currentColor" on the <svg> itself: the parent's color (DuckDuckGo's icons), not black
+	i6 := inline("inl6", 32, 32)
+	check(i6.ok && px(i6, 16, 16) == {0, 0, 255, 255}, fmt.tprintf("<svg color=currentColor>: the parent's color (%v)", px(i6, 16, 16)))
+	i7 := inline("inl7", 32, 32)
+	check(i7.ok && px(i7, 16, 16) == {0, 0, 255, 255}, fmt.tprintf("<svg style=color:currentColor>: the parent's color (%v)", px(i7, 16, 16)))
+	i8 := inline("inl8", 32, 32)
+	check(i8.ok && px(i8, 16, 16) == {255, 0, 0, 255}, fmt.tprintf("<svg color=#ff0000>: its own color (%v)", px(i8, 16, 16)))
 	i1 := inline("inl1", 32, 32)
 	check(i1.ok && near(px(i1, 16, 14), {0x15, 0x65, 0xc0, 255}, 4), fmt.tprintf("<use href=#i-star> into a hidden sprite, currentColor from the parent (%v)", px(i1, 16, 14)))
 	i2 := inline("inl2", 32, 32)

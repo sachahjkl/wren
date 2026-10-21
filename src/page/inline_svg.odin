@@ -382,6 +382,17 @@ css_color :: proc(c: [4]f32) -> string {
 }
 
 // The SVG document an inline <svg> draws. false: over the limits.
+// A style attribute that declares `color` (not `background-color`, `flood-color`...).
+@(private)
+svg_style_sets_color :: proc(style_attr: string) -> bool {
+	rest := style_attr
+	for decl in strings.split_iterator(&rest, ";") {
+		name, _, _ := strings.partition(decl, ":")
+		if strings.equal_fold(strings.trim_space(name), "color") { return true }
+	}
+	return false
+}
+
 svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32) -> (string, bool) {
 	d := p.doc
 	s := Serializer{p = p, max_bytes = p.settings.images.svg_inline_max_bytes, max_depth = p.settings.images.limits.svg.max_depth}
@@ -397,8 +408,8 @@ svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32) -> (string
 	st := strings.builder_make(context.temp_allocator)
 	cs: ^style.Computed
 	if i := int(base.handle_index(node)); p.styled != nil && i < len(p.styled.by_node) { cs = p.styled.by_node[i] }
+	own, has_own := dom.get_attribute(d, node, "style")
 	if cs != nil {
-		if _, has_color := dom.get_attribute(d, node, "color"); !has_color { fmt.sbprintf(&st, "color:%s;", css_color(cs.color)) }
 		if len(cs.font_family) > 0 {
 			strings.write_string(&st, "font-family:")
 			for f, i in cs.font_family {
@@ -412,7 +423,16 @@ svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32) -> (string
 		if cs.font_weight > 0 { fmt.sbprintf(&st, "font-weight:%d;", cs.font_weight) }
 		if cs.font_style != .Normal { strings.write_string(&st, "font-style:italic;") }
 	}
-	if own, ok := dom.get_attribute(d, node, "style"); ok { strings.write_string(&st, own) }
+	if has_own { strings.write_string(&st, own); strings.write_byte(&st, ';') }
+	// the root's color, last so that it wins: in the standalone document the root has no parent, so `currentColor` or
+	// `inherit` there (attribute or style, DuckDuckGo's icons: <svg color="currentColor">) would be black. The cascade's
+	// value already accounts for the element's style attribute; a `color` attribute with a real color is kept.
+	if cs != nil {
+		attr, has_attr := dom.get_attribute(d, node, "color")
+		a := strings.trim_space(attr)
+		concrete_attr := has_attr && !strings.equal_fold(a, "currentcolor") && !strings.equal_fold(a, "inherit") && a != ""
+		if !concrete_attr || svg_style_sets_color(own) { fmt.sbprintf(&st, "color:%s;", css_color(cs.color)) }
+	}
 	if strings.builder_len(st) > 0 {
 		strings.write_string(&extra, ` style="`)
 		write_escaped(&extra, strings.to_string(st), true)
