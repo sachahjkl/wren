@@ -180,6 +180,7 @@ Relay :: struct {
 	host: ^Worker_Host,
 	id:   u64,
 	task: base.Handle,
+	internal: bool,   // a script the browser runs (importScripts): its body goes to the worker even when opaque
 }
 
 // What a page keeps of its workers. Hosts stay listed until their thread is joined and their object released.
@@ -471,6 +472,7 @@ worker_fire_error :: proc(h: ^Worker_Host, message, file: string) {
 relay_start :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 	r := new(Relay)
 	r.host, r.id = h, m.id
+	r.internal = u32(m.code) & FETCH_OPTION_CLASSIC_SCRIPT != 0
 	h.relays[m.id] = r
 	r.task = fetch.start(h.page.loader, {
 		request = guest_request(m.text, m.text2, m.text3, m.bytes, u32(m.code), &h.env),
@@ -487,7 +489,7 @@ relay_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	switch ev.kind {
 	case .Response:
 		res := ev.response
-		m.code2 = i64(res.status) | i64(res.type) << 32 | (res.redirected ? 1 << 40 : 0) | (res.body_usable ? 1 << 41 : 0)
+		m.code2 = i64(res.status) | i64(res.type) << 32 | (res.redirected ? 1 << 40 : 0) | (res.body_usable || r.internal ? 1 << 41 : 0)
 		m.text = strings.clone(res.url)
 		m.text2 = serialize_headers(res.headers.list[:], context.allocator)
 	case .Data, .Done:

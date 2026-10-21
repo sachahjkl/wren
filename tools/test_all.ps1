@@ -276,6 +276,14 @@ try {
         $o = Get-Content build\jlt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
+    Step 'nested documents end-to-end test (framestest: iframes, srcdoc, load events, postMessage across origins, cross-origin WindowProxy, sandbox, X-Frame-Options, frame-ancestors, frame-src, navigation, Permissions Policy)' {
+        odin build src/tools/framestest -collection:wb=src -vet -out:build/framestest.exe $Stack
+        if ($LASTEXITCODE -ne 0) { return }
+        $p = Start-Process .\build\framestest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\frt.txt
+        if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\frt.txt; $global:LASTEXITCODE = 1; return }
+        $o = Get-Content build\frt.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
+    }
     Step 'site compatibility end-to-end test (sitecompattest: reduced fixtures of real sites: stylesheet load events, media swap, scroll events)' {
         odin build src/tools/sitecompattest -collection:wb=src -vet -out:build/sitecompattest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }

@@ -783,7 +783,7 @@ Origin_Mode :: enum u8 {
 frame_install_page :: proc(n: ^Navigable, href: string, mode: Origin_Mode) -> ^Page {
 	p := n.parent
 	if p == nil || p.closed { return nil }
-	c := page_create(p.loop, p.loader, p.settings, p.scope, href, p.console, p.console_user)
+	c := page_create(p.loop, p.loader, p.settings, p.scope, href, p.console != nil ? frame_console : nil, n)
 	cf := frames_of(c)
 	cf.nav = n
 	cf.sandbox = sandbox_combine(page_sandbox(p), n.sandbox)
@@ -820,6 +820,17 @@ frame_install_page :: proc(n: ^Navigable, href: string, mode: Origin_Mode) -> ^P
 	}, n)
 	if frame_hooks.attached != nil { frame_hooks.attached(frame_hooks.user, c) }
 	return c
+}
+
+// A nested document's console is its tab's, each message prefixed with the frame's URL.
+@(private)
+frame_console :: proc(user: rawptr, level: Log_Level, message: string) {
+	n := (^Navigable)(user)
+	p := n.parent
+	if p == nil || p.closed || p.console == nil { return }
+	from := n.page != nil ? n.page.env.location.href : "frame"
+	if len(from) > 120 { from = from[:120] }
+	p.console(p.console_user, level, strings.concatenate({"[frame ", from, "] ", message}, context.temp_allocator))
 }
 
 @(private)

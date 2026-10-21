@@ -166,13 +166,19 @@ guest_request :: proc(abs, method, headers: string, body: []byte, o: u32, initia
 	if policy > .Unsafe_Url { policy = .Default }
 	cache := fetch.Cache_Mode((o >> 11) & 7)
 	if cache > .Only_If_Cached { cache = .Default }
+	classic := o & FETCH_OPTION_CLASSIC_SCRIPT != 0
 	return fetch.Request_Desc{
 		url = abs, method = method, headers = pairs[:], body = body,
-		mode = mode, credentials = creds, redirect = redirect, destination = .Empty,
+		mode = mode, credentials = creds, redirect = redirect, destination = classic ? .Script : .Empty,
+		script = classic ? .Classic : .Wasm,
 		referrer_policy = policy, no_referrer = o & (1 << 10) != 0, cache = cache,
 		initiator = initiator, guard = .Request,
 	}
 }
+
+// Option bit 14: the request fetches a classic script the browser itself runs (a worker's importScripts: destination
+// script, its body handed over even when the response is opaque, as HTML's script fetches are).
+FETCH_OPTION_CLASSIC_SCRIPT :: u32(1) << 14
 
 Fetch_state :: proc(c: ^Call, request: Api_Fetch) -> Api_FetchState { return Api_FetchState(request.data.state) }
 Fetch_status :: proc(c: ^Call, request: Api_Fetch) -> i32 { return i32(request.data.status) }

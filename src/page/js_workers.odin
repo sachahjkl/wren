@@ -96,8 +96,9 @@ worker_fetch_sync :: proc(p: ^Page, target: string) -> (final_url: string, body:
 			free_fetch(&removed)
 		}
 	}
-	// same-origin, credentials same-origin (the worker's script rules)
-	worker_fetch_start(p, f, target, "GET", "", nil, 1)
+	// HTML "fetch a classic worker-imported script": destination script, mode no-cors, credentials include (a script
+	// of another origin is imported as a page's classic script is: opaque, run all the same)
+	worker_fetch_start(p, f, target, "GET", "", nil, 2 | 2 << 2 | FETCH_OPTION_CLASSIC_SCRIPT)
 	limit := p.settings.js_load.import_scripts_ms
 	start := time.tick_now()
 	for {
@@ -125,7 +126,7 @@ worker_fetch_sync :: proc(p: ^Page, target: string) -> (final_url: string, body:
 	rec := base.pool_get(&p.fetches, h)
 	if rec == nil { return "", nil, "the request was lost" }
 	if rec.state == 3 { return "", nil, strings.clone(rec.error, context.temp_allocator) }
-	if rec.status < 200 || rec.status >= 300 { return "", nil, fmt.tprintf("HTTP %d", rec.status) }
+	if rec.type != .Opaque && (rec.status < 200 || rec.status >= 300) { return "", nil, fmt.tprintf("HTTP %d", rec.status) }
 	// a classic script's MIME rules (the request itself is a plain fetch)
 	mime := header_value(rec.headers, "content-type")
 	nosniff := strings.equal_fold(strings.trim_space(header_value(rec.headers, "x-content-type-options")), "nosniff")

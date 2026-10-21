@@ -608,6 +608,7 @@ TokenList_replace :: proc(c: ^Call, element: Api_Element, attr: string, token: s
 SUPPORTED_REL :: [?]string{"alternate", "author", "bookmark", "external", "help", "icon", "license", "modulepreload", "next", "nofollow", "noopener", "noreferrer", "opener", "preconnect", "prefetch", "preload", "prev", "search", "stylesheet", "tag", "dns-prefetch", "manifest"}
 
 TokenList_supports :: proc(c: ^Call, element: Api_Element, attr: string, token: string) -> (bool, Api_Error) {
+	if attr == "sandbox" { return sandbox_token_supported(token), .None }   // iframe.sandbox (frames_policy.odin)
 	if attr != "rel" { return false, fail(c, .Type, "DOMTokenList has no supported tokens.") }
 	l := strings.to_lower(token, context.temp_allocator)
 	for s in SUPPORTED_REL { if s == l { return true, .None } }
