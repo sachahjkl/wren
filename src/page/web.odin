@@ -131,7 +131,10 @@ web_init :: proc(p: ^Page, live := true) {
 web_destroy :: proc(p: ^Page) {
 	w := p.web
 	if w == nil { return }
-	if w.live { delete_key(&live_pages, w.id) }
+	if w.live {
+		delete_key(&live_pages, w.id)
+		if len(live_pages) == 0 { delete(live_pages); live_pages = nil }   // made again by the next page
+	}
 	if w.idle_timer != base.NIL_HANDLE { host.clear_timer(p.loop, w.idle_timer) }
 	storage_page_closed(p)
 	for d in w.frozen_tasks {
