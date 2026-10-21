@@ -166,6 +166,8 @@ try {
                 [SH]::SetCursorPos($x0, $r.T + [int]$xy[1]) | Out-Null
             }
             'hovershot' { Start-Sleep -Milliseconds $SettleMs; Grab $h $arg }
+            # move:x,y: a posted pointer move (no real pointer: works whatever the foreground window is)
+            'move' { $xy = $arg -split ','; [SH]::PostMessage($h, 0x0200, [IntPtr]::Zero, (ClientLp $xy[0] $xy[1])) | Out-Null }
             # the real pointer: mclick / mdclick:x,y click there (window-relative, a negative x counts from the right edge; goes through the system's hit test, so
             # the window's own title bar, caption buttons and frame react as to a user); max / restore: the window state
             'mclick' {

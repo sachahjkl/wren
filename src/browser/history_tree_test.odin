@@ -95,8 +95,10 @@ tree_camera_math :: proc(t: ^testing.T) {
 	inside := cam_reveal(c, {800, 600}, em, {18, 9}, {19, 10}, 0)
 	testing.expect(t, inside == c)
 	// contain: a long tree shows no empty space past its end; a short one is centered across
-	ct := cam_contain({{300, 20}, 1}, {300, 40}, {800, 600}, em, 1)
+	ct := cam_contain({{300, 20}, 1}, {300, 40}, {800, 600}, em, {1, 1}, {1, 1})
 	testing.expect(t, abs(ct.center.x - (301 - 800 / em * 0.5)) < 0.01 && ct.center.y == 20)
+	short := cam_contain({{5, 0}, 1}, {10, 3}, {800, 600}, em, {1, 1}, {1, 5})
+	testing.expect(t, short.center == {5, 3.5})   // centered in what the bottom margin leaves
 	mid := cam_lerp({{0, 0}, 1}, {{10, 0}, 4}, 0.5)
 	testing.expect(t, abs(mid.zoom - 2) < 0.001 && mid.center.x == 5)
 	testing.expect(t, ease_out(0) == 0 && ease_out(1) == 1 && ease_out(0.5) > 0.5)

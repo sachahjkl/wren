@@ -175,16 +175,16 @@ cam_clamp :: proc(c: Tree_Camera, extent: [2]f32, zmin, zmax: f32) -> Tree_Camer
 	return {{clamp(c.center.x, 0, max(extent.x, 0)), clamp(c.center.y, 0, max(extent.y, 0))}, clamp(c.zoom, zmin, zmax)}
 }
 
-// The view kept over the tree: along an axis where the tree (with `pad` world units around it) is larger than the
-// view, no empty space past its ends; where it is smaller, centered.
-cam_contain :: proc(c: Tree_Camera, extent, view: [2]f32, em, pad: f32) -> Tree_Camera {
+// The view kept over the tree: along an axis where the tree (with `lo` / `hi` world units of margin before / after it)
+// is larger than the view, no empty space past its ends; where it is smaller, centered in the space the margins leave.
+cam_contain :: proc(c: Tree_Camera, extent, view: [2]f32, em: f32, lo, hi: [2]f32) -> Tree_Camera {
 	half := view / (em * c.zoom) * 0.5
 	out := c
 	for i in 0 ..< 2 {
-		if extent[i] + pad * 2 > half[i] * 2 {
-			out.center[i] = clamp(c.center[i], half[i] - pad, extent[i] + pad - half[i])
+		if extent[i] + lo[i] + hi[i] > half[i] * 2 {
+			out.center[i] = clamp(c.center[i], half[i] - lo[i], extent[i] + hi[i] - half[i])
 		} else {
-			out.center[i] = extent[i] * 0.5
+			out.center[i] = (extent[i] + hi[i] - lo[i]) * 0.5
 		}
 	}
 	return out
@@ -844,20 +844,31 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 	if busy { app.frames_requested = max(app.frames_requested, 2) }
 }
 
+// Height the canvas's controls take along its bottom edge (with their margins).
+@(private = "file")
+tree_overlay_px :: proc(em: f32) -> f32 { return ui.dense(em * 2.2) + em * 1.6 }
+
+// The view's size for "Fit": the controls' band off at the bottom and, to stay centered, at the top.
+@(private = "file")
+fit_size :: proc(size: [2]f32, em: f32) -> [2]f32 { return {size.x, max(size.y - 2 * tree_overlay_px(em), size.y * 0.5)} }
+
 @(private = "file")
 tree_initial_camera :: proc(m: ^Tree_Model, l: Tree_Layout, size: [2]f32, em: f32) -> Tree_Camera {
 	extent := tree_extent(l, m.rows, m.cols)
-	fit := cam_fit(extent, size, em, 1.2, tcfg.zoom_min, tcfg.fit_max)
-	fits := extent.x * em * fit.zoom <= size.x && extent.y * em * fit.zoom <= size.y
-	need := cam_fit(extent, size, em, 1.2, 0, max(f32))
+	fs := fit_size(size, em)
+	fit := cam_fit(extent, fs, em, 1.2, tcfg.zoom_min, tcfg.fit_max)
+	fits := extent.x * em * fit.zoom <= fs.x && extent.y * em * fit.zoom <= fs.y
+	need := cam_fit(extent, fs, em, 1.2, 0, max(f32))
 	if fits && need.zoom >= min(1, tcfg.fit_max) { return fit }
 	c := Tree_Camera{extent * 0.5, clamp(1, tcfg.zoom_min, tcfg.zoom_max)}
 	if m.current >= 0 {
 		n := m.nodes[m.current]
 		c.center = tree_node_pos(l, n.col, n.row) + NODE_SIZE * 0.5
 	}
-	// (the current entry is often the last one: the rest of the tree fills the view rather than empty space)
-	return cam_contain(c, extent, size, em, 1.2)
+	// (the current entry is often the last one: the rest of the tree fills the view rather than empty space; the
+	// controls and the minimap along the bottom cover none of it)
+	under := tree_overlay_px(em) / (em * c.zoom)
+	return cam_contain(c, extent, size, em, {1.2, 1.2}, {1.2, 1.2 + under})
 }
 
 // Where the camera is going (the end of the move in progress, else where it is).
@@ -887,7 +898,7 @@ tree_zoom_by :: proc(f: f32, vc: [2]f32, em: f32, anims: bool, now: f64) {
 @(private = "file")
 tree_fit :: proc(extent, size: [2]f32, em: f32, anims: bool, now: f64) {
 	if size.x <= 0 { return }
-	tree_go(cam_fit(extent, size, em, 1.2, tcfg.zoom_min, tcfg.fit_max), anims, now)
+	tree_go(cam_fit(extent, fit_size(size, em), em, 1.2, tcfg.zoom_min, tcfg.fit_max), anims, now)
 }
 
 @(private = "file")
@@ -1010,7 +1021,7 @@ tree_minimap :: proc(app: ^App, m: ^Tree_Model, l: Tree_Layout, extent, size: [2
 
 @(private = "file")
 tree_menu :: proc(app: ^App, t: ^Tab) {
-	if ui.ctx_menu(ui.key_from_string(0, "###h_tree_menu"), ui.font_size() * 17) { tree_menu_items(app, t) }
+	if ui.ctx_menu(ui.key_from_string(0, "###h_tree_menu")) { tree_menu_items(app, t) }
 }
 
 @(private = "file")
@@ -1088,3 +1099,4 @@ tree_tooltip :: proc(app: ^App, t: ^Tab, m: ^Tree_Model, now: f64) {
 	}
 	_ = m
 }
+
