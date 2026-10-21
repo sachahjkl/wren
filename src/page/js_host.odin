@@ -53,6 +53,11 @@ Engine_jitCompile :: proc(c: ^Call, module: []u8) -> i32 {
 	return js.jit_attach(c.inst, module, c.page.settings.js.jit)
 }
 
+Engine_jitPoll :: proc(c: ^Call, ticket: i32) -> i32 {
+	if !from_engine(c) { return 0 }
+	return js.jit_poll(c.inst, ticket)
+}
+
 Engine_timezoneOffset :: proc(c: ^Call, time_ms: f64) -> i32 { return js.timezone_offset(time_ms) }
 
 Engine_timeZone :: proc(c: ^Call) -> string { return js.timezone_name() }

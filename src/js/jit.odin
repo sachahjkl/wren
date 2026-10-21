@@ -13,6 +13,7 @@ Jit_Settings :: struct {
 	max_functions:      int,
 	max_bytecode_bytes: int,
 	step_only:          bool,   // every op through the interpreter's code (testing)
+	background_threads: int,    // 0: compiled on the page's thread
 }
 
 JIT_PREFS := [?]config.Def{
@@ -24,6 +25,8 @@ JIT_PREFS := [?]config.Def{
 		description = "Functions one page or worker may have compiled (each keeps its machine code for the life of the page; the Wasm engine allows at most 10 000 modules per page). Past it, functions stay interpreted. 0 = none are compiled."},
 	{name = "javascript.jit.max_bytecode_bytes", kind = .Int, default = {i = 64 << 10}, bounded = true, min = 1, max = 1 << 24, bytes = true, unit = "bytes",
 		description = "Functions whose bytecode is larger stay interpreted (compiling them would cost more than it gains)."},
+	{name = "javascript.jit.background_threads", kind = .Int, default = {i = 2}, bounded = true, min = 0, max = 64, unit = "threads", restart = true,
+		description = "Threads that compile functions to machine code while the page goes on interpreting them (shared by every page). 0 = compile on the page's own thread, which then waits for it."},
 	{name = "javascript.jit.step_only", kind = .Bool, default = {b = false},
 		description = "Testing: compiled functions run every operation through the interpreter's own code instead of inline machine code (checks the compiler's control flow and frames apart from its fast paths)."},
 }
@@ -35,6 +38,7 @@ jit_settings_from_prefs :: proc(p: ^config.Prefs) -> Jit_Settings {
 		max_functions = int(config.int_of(p, "javascript.jit.max_functions")),
 		max_bytecode_bytes = int(config.int_of(p, "javascript.jit.max_bytecode_bytes")),
 		step_only = config.bool_of(p, "javascript.jit.step_only"),
+		background_threads = int(config.int_of(p, "javascript.jit.background_threads")),
 	}
 }
 
@@ -54,9 +58,23 @@ jit_configure :: proc(inst: ^wasm.Instance, s: Jit_Settings) -> bool {
 	return wasm.call_raw(inst, "wj_jit_configure", argv[:]) == .Ok
 }
 
-// Engine_jitCompile for an embedder: the module the engine made, attached to its instance. 0 when refused.
+// Engine_jitCompile for an embedder: the module the engine made, attached to its instance (> 0), queued for the
+// background compile threads (minus its ticket), or refused (0).
 jit_attach :: proc(inst: ^wasm.Instance, module: []u8, s: Jit_Settings) -> i32 {
+	if s.background_threads > 0 {
+		ticket, err := wasm.attach_start(inst, module, s.background_threads, s.max_functions)
+		if err != "" { return 0 }
+		return -ticket
+	}
 	index, err := wasm.attach_function(inst, module, s.max_functions)
+	if err != "" { return 0 }
+	return i32(index)
+}
+
+// Engine_jitPoll for an embedder.
+jit_poll :: proc(inst: ^wasm.Instance, ticket: i32) -> i32 {
+	index, pending, err := wasm.attach_poll(inst, ticket)
+	if pending { return -1 }
 	if err != "" { return 0 }
 	return i32(index)
 }
@@ -64,7 +82,7 @@ jit_attach :: proc(inst: ^wasm.Instance, module: []u8, s: Jit_Settings) -> i32 {
 // The engine's own counters (native/js/jit/wjit.h, WJitStats), for measurements.
 Jit_Stats :: struct {
 	compiled, failed, refused, module_bytes, bytecode_bytes, compile_ms_engine: f64,
-	entries, exits_return, exits_exception, exits_deopt, steps: f64,
+	entries, exits_return, exits_exception, exits_deopt, steps, pending: f64,
 }
 
 jit_stats :: proc(inst: ^wasm.Instance) -> (st: Jit_Stats, ok: bool) {

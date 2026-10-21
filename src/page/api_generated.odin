@@ -5516,6 +5516,21 @@ _t_js_Engine_jitCompile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	return nil
 }
 
+// Engine_jitPoll :: proc(c: ^Call, ticket: i32) -> i32
+@(private = "file")
+_t_js_Engine_jitPoll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = runtime.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32
+	_r := Engine_jitPoll(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
 // Node_wrap :: proc(c: ^Call, node: Api_Node) -> u32
 @(private = "file")
 _t_js_Node_wrap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -16669,6 +16684,7 @@ api_imports := [?]wasm.Import{
 	{module = "js", name = "Engine_timeZone", fn = _t_js_Engine_timeZone, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "js", name = "Engine_locale", fn = _t_js_Engine_locale, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "js", name = "Engine_jitCompile", fn = _t_js_Engine_jitCompile, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "js", name = "Engine_jitPoll", fn = _t_js_Engine_jitPoll, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Node_wrap", fn = _t_js_Node_wrap, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Node_unpin", fn = _t_js_Node_unpin, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "js", name = "Node_treeRoots", fn = _t_js_Node_treeRoots, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},

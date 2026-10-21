@@ -56,6 +56,7 @@ Wt_State :: struct {
 	profile_last: time.Tick,
 	attached:     int,            // functions attach_function added (attach.odin)
 	free_slots:   [dynamic]u32,   // table slots detach_function cleared
+	attach_pending: int,          // attach_start jobs not polled yet
 }
 
 @(private)
@@ -172,6 +173,7 @@ wt_stop :: proc() {
 		wt.ticker = nil
 	}
 	cache_stop()
+	attach_stop()
 	wasmtime_linker_delete(wt.linker)
 	wasm_engine_delete(wt.engine)
 	runtime_settings_destroy(&wt.rs)
@@ -325,6 +327,7 @@ wt_instantiate :: proc(inst: ^Instance, image: []byte, filter: Import_Filter, di
 @(private)
 wt_free :: proc(inst: ^Instance) {
 	s := &inst.wt
+	attach_forget(inst)
 	if s.profiler != nil { wasmtime_guestprofiler_delete(s.profiler); s.profiler = nil }
 	if s.store != nil { wasmtime_store_delete(s.store) }
 	for k in s.exports { delete(k) }

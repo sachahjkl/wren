@@ -140,7 +140,17 @@ engine_jit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uin
 	return nil
 }
 
+engine_jit_poll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	context = runtime.default_context()
+	f := wasm.frame(env, caller)
+	r := js.jit_poll(f.inst, a[0].i32)
+	a[0] = {}
+	a[0].i32 = r
+	return nil
+}
+
 IMPORTS := [?]wasm.Import{
+	{module = "js", name = "Engine_jitPoll", fn = engine_jit_poll, params = {.I32}, results = {.I32}},
 	{module = "js", name = "Engine_jitCompile", fn = engine_jit, params = {.I32, .I32}, results = {.I32}},
 	{module = "js", name = "Engine_console", fn = engine_console, params = {.I32, .I32, .I32}},
 	{module = "js", name = "Engine_reportException", fn = engine_report, params = {.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}},
@@ -290,6 +300,7 @@ parse_common :: proc(args: []string) -> (c: Common) {
 		case "-jit": jit.enabled = true
 		case "-jit-threshold": i += 1; jit.call_threshold = max(1, int(parse_int(args[i])))
 		case "-jit-step": jit.step_only = true
+		case "-jit-sync": jit.background_threads = 0
 		case "-jit-stats": jit_stats_wanted = true
 		case "--pref": i += 1
 		case: append(&c.rest, a)

@@ -23,6 +23,12 @@
 #define WJIT_EXPORT(name) __attribute__((export_name(name), visibility("default")))
 /* the browser's side (api/js.widl) */
 __attribute__((import_module("js"), import_name("Engine_jitCompile"))) int32_t wr_Engine_jitCompile(const uint8_t *module, uint32_t module_len);
+__attribute__((import_module("js"), import_name("Engine_jitPoll"))) int32_t wr_Engine_jitPoll(int32_t ticket);
+
+/* JSFunctionBytecode.wjit_index besides a table index: */
+#define WJIT_NONE 0       /* not compiled (yet) */
+#define WJIT_NEVER (-1)   /* cannot be: interpreted for good */
+#define WJIT_PENDING (-2) /* being compiled in the background; wjit_calls holds the ticket */
 
 /* ---- configuration and statistics -------------------------------------------------------------------------- */
 
@@ -32,11 +38,12 @@ typedef struct WJitConfig {
     uint32_t max_functions;       /* per realm, 0 = no limit */
     uint32_t max_bytecode_bytes;  /* larger functions stay interpreted */
     uint32_t inline_ops;          /* 0: every op through wjit_step (for testing the step path) */
+    uint32_t off;                 /* testing: WJIT_OFF_* paths turned off (bisecting a difference) */
 } WJitConfig;
 
 typedef struct WJitStats {
     double compiled, failed, refused, module_bytes, bytecode_bytes, compile_ms_engine;
-    double entries, exits_return, exits_exception, exits_deopt, steps;
+    double entries, exits_return, exits_exception, exits_deopt, steps, pending;
 } WJitStats;
 
 static WJitConfig wjit_config = { 0, 2, 0, 65536, 1 };
@@ -47,6 +54,7 @@ void wj_jit_configure(int32_t flags, int32_t call_threshold, int32_t max_functio
 {
     wjit_config.enabled = (flags & 1) != 0;
     wjit_config.inline_ops = (flags & 2) == 0;
+    wjit_config.off = ((uint32_t)flags >> 8) & 0xff;
     wjit_config.call_threshold = call_threshold < 1 ? 1 : (uint32_t)call_threshold;
     wjit_config.max_functions = max_functions < 0 ? 0 : (uint32_t)max_functions;
     wjit_config.max_bytecode_bytes = max_bytecode_bytes < 1 ? 1 : (uint32_t)max_bytecode_bytes;
@@ -66,6 +74,14 @@ double wj_jit_stat(int32_t which)
         return -1;
     return s[which];
 }
+
+/* paths the testing flags of wj_jit_configure (bits 8..15) turn off */
+#define WJIT_OFF_FIELD_INLINE 1   /* property reads/writes: always the helper */
+#define WJIT_OFF_ARRAY 2          /* array elements: step */
+#define WJIT_OFF_NUMBERS 4        /* doubles, identity equality, ToInt32: step */
+#define WJIT_OFF_CALL 8           /* calls: step */
+#define WJIT_OFF_GLOBAL 16        /* global reads: step */
+#define WJIT_OFF_FIELD 32         /* property reads/writes: step */
 
 /* ---- inline caches --------------------------------------------------------------------------------------------
  * One per property access site (get_field, get_field2, get_length, put_field) of a compiled function. Keyed by the
@@ -1815,10 +1831,17 @@ static int wjit_compile(JSContext *ctx, JSFunctionBytecode *b)
     if (wjit_emit_body(&c) < 0 || wjit_module(&c, &m) < 0)
         goto fail;
     index = wr_Engine_jitCompile(m.p, m.n);
-    if (index <= 0) { c.why = "the browser did not compile it"; goto fail; }
-    b->wjit_index = index;
+    if (index == 0) { c.why = "the browser did not compile it"; goto fail; }
     b->wjit_data = c.data;
     c.data = NULL;
+    if (index < 0) {
+        /* compiled in the background: the interpreter goes on until wjit_ready sees it attached */
+        b->wjit_index = WJIT_PENDING;
+        b->wjit_calls = (uint32_t)-index;
+        wjit_stats.pending++;
+    } else {
+        b->wjit_index = index;
+    }
     wjit_stats.compiled++;
     wjit_stats.module_bytes += m.n;
     wjit_stats.bytecode_bytes += c.len;
@@ -1834,11 +1857,30 @@ static int wjit_compile(JSContext *ctx, JSFunctionBytecode *b)
     return b->wjit_index;
 }
 
+/* a function compiled in the background: attached now? */
+static no_inline int wjit_poll_pending(JSContext *ctx, JSFunctionBytecode *b)
+{
+    int32_t r = wr_Engine_jitPoll((int32_t)b->wjit_calls);
+    if (r < 0)
+        return 0;
+    wjit_stats.pending--;
+    if (r == 0) {
+        b->wjit_index = WJIT_NEVER;
+        wjit_release(ctx->rt, b);
+        wjit_stats.failed++;
+        return 0;
+    }
+    b->wjit_index = r;
+    return 1;
+}
+
 /* the interpreter's hook (JS_CallInternal, before its loop): runs the compiled code of b if it has (or now gets) any */
 static inline int wjit_ready(JSContext *ctx, JSFunctionBytecode *b)
 {
     if (b->wjit_index > 0)
         return 1;
+    if (b->wjit_index == WJIT_PENDING)
+        return wjit_poll_pending(ctx, b);
     if (b->wjit_index < 0 || !wjit_config.enabled || b->func_kind != JS_FUNC_NORMAL)
         return 0;
     if (++b->wjit_calls < wjit_config.call_threshold)

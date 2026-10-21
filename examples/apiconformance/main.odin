@@ -635,6 +635,7 @@ foreign _m_js {
 	@(link_name = "Engine_timeZone") c_Engine_timeZone :: proc(a0: i32, a1: i32) -> i32 ---
 	@(link_name = "Engine_locale") c_Engine_locale :: proc(a0: i32, a1: i32) -> i32 ---
 	@(link_name = "Engine_jitCompile") c_Engine_jitCompile :: proc(a0: i32, a1: i32) -> i32 ---
+	@(link_name = "Engine_jitPoll") c_Engine_jitPoll :: proc(a0: i32) -> i32 ---
 	@(link_name = "Node_wrap") c_Node_wrap :: proc(a0: i64) -> i32 ---
 	@(link_name = "Node_unpin") c_Node_unpin :: proc(a0: i64) ---
 	@(link_name = "Node_treeRoots") c_Node_treeRoots :: proc(a0: i32, a1: i32, a2: i32, a3: i32) ---
