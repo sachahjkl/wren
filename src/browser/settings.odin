@@ -90,6 +90,8 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_app_command_prefs(p)   // app_commands.odin
 	register_palette_prefs(p)   // palette.odin
 	register_urlbar_prefs(p)   // urlbar.odin
+	register_shell_frame_prefs(p)   // shell_frames.odin
+	register_page_thread_prefs(p)   // page_thread.odin
 	_ = wasm.PREFS
 	_ = html.PREFS
 }

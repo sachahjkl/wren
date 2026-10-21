@@ -135,7 +135,15 @@ Marker :: struct {
 	p:     ^Pass,
 	ixs:   map[base.Handle]^Inv_Index,
 	left:  [dynamic]base.Handle,
+	// Sibling walks already made in this pass. The marks are made on the DOM as it is now, so walking again from where
+	// an earlier walk went through marks nothing new: 2 500 children appended to a list (or removed from it) cost one
+	// walk of the children, not 2 500 (each over every child).
+	walked:  map[Walk_Key]bool,   // positional walks from an element, forward or backward, per index
+	emptied: map[Walk_Key]bool,   // children_removed per parent, per index
 }
+
+@(private = "file")
+Walk_Key :: struct { h: base.Handle, ix: ^Inv_Index, dir: u8 }
 
 @(private = "file")
 mark :: proc(m: ^Marker, h: base.Handle, sub: bool) {
@@ -306,11 +314,18 @@ empty_changed :: proc(m: ^Marker, p: base.Handle) {
 @(private = "file")
 children_inserted :: proc(m: ^Marker, p, at: base.Handle) {
 	for ix in ixs_for_children(m, p, at) {
+		// a walk that reaches an element an earlier walk went through stops: the rest is the earlier one's (Marker.walked)
 		if reach_any(ix.pos_fwd) {
-			for x := at; x != base.NIL_HANDLE; x = next_element(m, x) { apply(m, x, ix.pos_fwd) }
+			for x := at; x != base.NIL_HANDLE; x = next_element(m, x) {
+				if walk_seen(m, x, ix, 0) { break }
+				apply(m, x, ix.pos_fwd)
+			}
 		}
 		if reach_any(ix.pos_bwd) {
-			for x := at; x != base.NIL_HANDLE; x = prev_element(&m.mc, x) { apply(m, x, ix.pos_bwd) }
+			for x := at; x != base.NIL_HANDLE; x = prev_element(&m.mc, x) {
+				if walk_seen(m, x, ix, 1) { break }
+				apply(m, x, ix.pos_bwd)
+			}
 		}
 		if ix.sib_any && reach_any(ix.sib_rel) {
 			if nx := next_element(m, at); nx != base.NIL_HANDLE { apply(m, nx, ix.sib_rel) }
@@ -318,6 +333,15 @@ children_inserted :: proc(m: ^Marker, p, at: base.Handle) {
 	}
 	if is_element_node(m.doc, p) { empty_changed(m, p) }
 	has_invalidate(m, at, false)
+}
+
+// Whether a sibling walk in direction `dir` already went through `x` in this pass; notes that one does now.
+@(private = "file")
+walk_seen :: proc(m: ^Marker, x: base.Handle, ix: ^Inv_Index, dir: u8) -> bool {
+	key := Walk_Key{x, ix, dir}
+	if key in m.walked { return true }
+	m.walked[key] = true
+	return false
 }
 
 // An element left `p` (where among the children is not known any more).
@@ -328,6 +352,10 @@ children_removed :: proc(m: ^Marker, p: base.Handle) {
 	for first != base.NIL_HANDLE && !is_element_node(m.doc, first) { first = dom.get(m.doc, first).next }
 	if first != base.NIL_HANDLE {
 		for ix in ixs_for_children(m, p, first) {
+			// the same parent again: the same walk of the same children (Marker.emptied)
+			key := Walk_Key{p, ix, 2}
+			if key in m.emptied { continue }
+			m.emptied[key] = true
 			pos := reach_union(ix.pos_fwd, ix.pos_bwd)
 			if reach_any(pos) || ix.sib_any {
 				every := reach_union(pos, ix.sib_rel)
@@ -344,7 +372,8 @@ children_removed :: proc(m: ^Marker, p: base.Handle) {
 	if is_element_node(m.doc, p) { empty_changed(m, p) }
 	if ix := ix_of(m, first != base.NIL_HANDLE ? first : p); ix.uses_has {
 		if is_element_node(m.doc, p) { has_invalidate(m, p, true) }
-		if ix.has_sibling {
+		if key := (Walk_Key{p, ix, 3}); ix.has_sibling && key not_in m.emptied {
+			m.emptied[key] = true
 			pn = dom.get(m.doc, p)
 			for ch := pn.first_child; ch != base.NIL_HANDLE; ch = dom.get(m.doc, ch).next {
 				if is_element_node(m.doc, ch) { has_invalidate(m, ch, true) }
@@ -880,6 +909,8 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	m := Marker{e = e, s = s, doc = doc, ix = ix, shadows = shadows}
 	m.marks = make(map[base.Handle]u8, 64, context.temp_allocator)
 	m.removed = make([dynamic]base.Handle, 0, 4, context.temp_allocator)
+	m.walked = make(map[Walk_Key]bool, 16, context.temp_allocator)
+	m.emptied = make(map[Walk_Key]bool, 4, context.temp_allocator)
 	match_ctx_init(&m.mc, doc, s.state, context.temp_allocator)
 	w := Walker{e = e, s = s, doc = doc, marks = &m.marks}
 	w.p = pass_make(e, s, doc, s.state)

@@ -7,6 +7,7 @@ package host
 // what its item owns.
 
 import "core:sync"
+import "core:time"
 
 Parallel_Proc :: #type proc(data: rawptr, index: int)
 
@@ -67,17 +68,45 @@ parallel_for :: proc(p: ^Thread_Pool, count: int, fn: Parallel_Proc, data: rawpt
 	sync.atomic_store(&p.next, (gen & 0xffff_ffff) << 32)
 	sync.cond_broadcast(&p.cond)
 	sync.mutex_unlock(&p.mu)
+	if wait_hook.fn != nil && sync.current_thread_id() == wait_hook.thread {
+		pool_take(p, gen, fn, data, count, hooked = true)
+		for !sync.sema_wait_with_timeout(&p.done, time.Duration(max(wait_hook.every_ns, 100_000))) { wait_hook.fn(wait_hook.user) }
+		return
+	}
 	pool_take(p, gen, fn, data, count)
 	sync.sema_wait(&p.done)   // posted exactly once per round, by whoever finishes the last item (maybe us)
+}
+
+// The calling thread lent to other work during a parallel_for: between the items it takes, and while it waits for the
+// pool's threads to finish theirs, `fn` is called at most every `every_ns` (the browser draws its interface there while
+// a long style pass runs on the pool). `fn` must not touch what the items do. Only for parallel_for called on the
+// thread that set it; nil removes it.
+Wait_Hook :: struct {
+	fn:       proc(user: rawptr),
+	user:     rawptr,
+	thread:   int,
+	every_ns: i64,
+}
+
+@(private)
+wait_hook: Wait_Hook
+
+set_parallel_wait_hook :: proc(fn: proc(user: rawptr), user: rawptr, every_ns: i64) {
+	wait_hook = Wait_Hook{fn = fn, user = user, thread = sync.current_thread_id(), every_ns = every_ns}
 }
 
 // Items are claimed with a compare-and-swap on a counter tagged with the round's generation: a helper still leaving
 // the previous round (its last claim failed, or it has not looked yet) cannot take an item of the next one with the
 // previous round's procedure, nor claim one twice by adding to a counter that was reset under it.
 @(private)
-pool_take :: proc(p: ^Thread_Pool, gen: u64, fn: Parallel_Proc, data: rawptr, count: int) {
+pool_take :: proc(p: ^Thread_Pool, gen: u64, fn: Parallel_Proc, data: rawptr, count: int, hooked := false) {
 	tag := (gen & 0xffff_ffff) << 32
+	last := hooked ? time.tick_now() : {}
 	for {
+		if hooked && time.tick_since(last) >= time.Duration(wait_hook.every_ns) {
+			wait_hook.fn(wait_hook.user)
+			last = time.tick_now()
+		}
 		v := sync.atomic_load(&p.next)
 		if v &~ 0xffff_ffff != tag { return }   // another round now
 		i := int(v & 0xffff_ffff)

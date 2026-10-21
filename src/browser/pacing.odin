@@ -125,6 +125,7 @@ Pacer :: struct {
 	continuous: bool,         // this frame follows the previous one without idling
 	waited_ms:  f64,          // time spent waiting for the screen (or the timer) at the start of this frame
 	missed_timeouts: int,     // waits that ran into wait_timeout_ms
+	slot_held:  bool,         // the latency object was waited for and no frame was presented since (pacer_wait)
 }
 
 pacer: Pacer
@@ -191,9 +192,12 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	}
 	// nothing is queued before the first present: the latency object of a swap chain not yet shown is not signaled,
 	// waiting would only run into the timeout
-	if app.presented {
+	// The latency object is a semaphore released once per frame the screen takes: a wake that ends without a frame
+	// (frame's early return) keeps the slot it took, or the next frame would wait for a present that never came, until
+	// the timeout (100 ms of input latency after any wake of no consequence).
+	if app.presented && !pacer.slot_held {
 		ok := platform.wait_handle(app.win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms)
-		if !ok { pacer.missed_timeouts += 1 }
+		if ok { pacer.slot_held = true } else { pacer.missed_timeouts += 1 }
 		when PACING_DEBUG { fmt.eprintln("wait", ok, idled, time.duration_milliseconds(time.tick_since(t0)), app.frames_requested) }
 	}
 }
@@ -213,6 +217,7 @@ pacer_begin_frame :: proc(app: ^App, events: []platform.Event) {
 	if pacer.dt <= 0 { pacer.dt = f32(pacer.period_ms / 1000) }
 	pacer.dt = clamp(pacer.dt, 0.0005, 0.1)
 	pacer.prev_ms, pacer.frame_ms = t, t
+	latency_probe_polled(len(events))   // shell_latency.odin (profile build)
 	// the earliest input of the frame: its latency is measured to the vblank the frame shows at
 	first: time.Tick
 	for ev in events {
@@ -224,6 +229,8 @@ pacer_begin_frame :: proc(app: ^App, events: []platform.Event) {
 
 // After the present: frames that reached the screen since the last one go to the status bar's statistics.
 pacer_end_frame :: proc(app: ^App) {
+	pacer.slot_held = false   // the present used it
+	shell_presented()
 	for d in render.take_displayed(&app.r) { hud_displayed(d) }
 }
 

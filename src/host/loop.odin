@@ -58,6 +58,20 @@ Loop :: struct {
 	// When set, the loop's clock (ns since origin) is read here instead of the monotonic clock: tests move time
 	// explicitly (atomically, any thread) instead of sleeping, so what they check does not depend on the machine's speed.
 	manual_ns: ^i64,
+	// Debug builds: the thread that runs the loop (the first one to touch its timers or run it); everything but post and
+	// signal asserts it is that one (loop_owned). 0: none yet.
+	owner:     int,
+}
+
+// Debug builds: the calling thread must be the loop's own (the first one that used it claims it). A loop handed to
+// another thread on purpose (a worker's, made by the page and run by the worker) is claimed by the thread that runs it.
+loop_owned :: #force_inline proc(l: ^Loop, what: string) {
+	when ODIN_DEBUG {
+		me := sync.current_thread_id()
+		if prev, ok := sync.atomic_compare_exchange_strong(&l.owner, 0, me); !ok && prev != me {
+			panic(what)
+		}
+	}
 }
 
 // Longest timer delay (ms, about 31 years): NaN, infinities and larger values are this (never, in practice); beyond,
@@ -109,6 +123,7 @@ signal :: proc(l: ^Loop) {
 
 // Loop thread. Registers a timer; with a scope the timer dies with it. Returns NIL_HANDLE never.
 set_timer :: proc(l: ^Loop, delay_ms: f64, interval_ms: f64, fn: Task_Proc, data: rawptr, scope: ^base.Scope = nil) -> base.Handle {
+	loop_owned(l, "host.set_timer off the loop's thread")
 	t := Timer{
 		fn = fn, data = data,
 		deadline = now_ns(l) + timer_ns(delay_ms),
@@ -140,6 +155,7 @@ timer_scope_closed :: proc(data: rawptr) {
 
 // Loop thread. False when the timer already fired (one-shot) or was cleared.
 clear_timer :: proc(l: ^Loop, h: base.Handle) -> bool {
+	loop_owned(l, "host.clear_timer off the loop's thread")
 	t, ok := base.pool_remove(&l.timers, h)
 	if ok && t.scope != nil { release_scope_hook(t) }
 	if ok {
@@ -193,6 +209,7 @@ next_timeout_ms :: proc(l: ^Loop) -> int {
 
 // Loop thread. Runs the posted tasks, then the timers due at this instant. Returns how many callbacks ran.
 run_ready :: proc(l: ^Loop) -> int {
+	loop_owned(l, "host.run_ready off the loop's thread")
 	sync.atomic_store(&l.pending, false)   // before draining: a post racing with us re-arms the wake
 	ran := 0
 

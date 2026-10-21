@@ -75,6 +75,8 @@ command_enabled :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return c.enab
 // Runs `c` when it is enabled; true when it ran.
 command_run :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool {
 	if c == nil || c.run == nil || !command_enabled(app, t, c) { return false }
+	// during a chrome frame (shell_frames.odin) once the page holding the thread is done
+	if shell_nested() { shell_defer({kind = .Command, tab = t != nil ? t.id : 0, text = strings.clone(c.name)}); return true }
 	c.run(app, t, c)
 	app.frames_requested = max(app.frames_requested, 2)
 	return true

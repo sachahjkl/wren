@@ -2,6 +2,7 @@ package host
 
 import "core:sync"
 import "core:testing"
+import "core:time"
 
 @(private = "file")
 Probe :: struct { depth: int, temp_ok: bool }
@@ -103,4 +104,23 @@ parallel_for_rounds_back_to_back :: proc(t: ^testing.T) {
 			if r.hits[i] != want { testing.expectf(t, false, "round %d item %d ran %d times (count %d)", round, i, r.hits[i], count); return }
 		}
 	}
+}
+
+// The calling thread is lent to its wait hook during a parallel_for (thread_pool.odin): every item still runs exactly
+// once, and the hook runs while the pool's threads work.
+@(test)
+parallel_for_wait_hook :: proc(t: ^testing.T) {
+	pool := thread_pool_make(2)
+	defer thread_pool_destroy(pool)
+	Job :: struct { done: [64]int, hooks: int }
+	job: Job
+	set_parallel_wait_hook(proc(user: rawptr) { (^Job)(user).hooks += 1 }, &job, 200_000)
+	defer set_parallel_wait_hook(nil, nil, 0)
+	parallel_for(pool, len(job.done), proc(data: rawptr, i: int) {
+		j := (^Job)(data)
+		sync.atomic_add(&j.done[i], 1)
+		time.sleep(2 * time.Millisecond)
+	}, &job)
+	for d, i in job.done { testing.expectf(t, d == 1, "item %d ran %d times", i, d) }
+	testing.expectf(t, job.hooks >= 5, "the hook ran while the items did (%d times)", job.hooks)
 }

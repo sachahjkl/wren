@@ -32,7 +32,7 @@ js_layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	styled := page.styles(p, size.x / scale, size.y / scale, f64(scale))
 	fonts_gen := u64(t.web_fonts)
 	if layout_stale(&t.layout, p.doc, styled, size, scale, t.image_sizes, fonts_gen) {
-		layout_document(&t.layout, p.doc, styled, &app.measure, &app.page_settings.style, size, scale, app.cfg.layout_band_px, t.image_sizes, fonts_gen)
+		page_layout(app, t, styled, size, scale, fonts_gen)   // page_thread.odin: a long one on the page thread, the chrome drawing meanwhile
 	}
 	app.frames_requested = max(app.frames_requested, 2)   // what the script changed is to be painted
 	return &t.layout

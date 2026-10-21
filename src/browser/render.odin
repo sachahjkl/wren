@@ -89,6 +89,7 @@ layout_stale :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, viewpo
 
 // Element under a point of the page area (`p` relative to its top-left corner).
 hit_test :: proc(l: ^Layout, p, viewport: draw.Vec2, scroll: f32) -> base.Handle {
+	page_world_check("hit_test: a layout read in a chrome frame, or during a page thread pass")
 	return lay.hit_test(l, p, viewport, scroll).node
 }
 
