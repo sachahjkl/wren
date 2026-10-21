@@ -216,6 +216,28 @@ session_drop_current :: proc(sh: ^Session_History) {
 	rebuild(sh)
 }
 
+// Removes `e` with all the entries that grew from it (the browser's "forget this branch"). Refused (0) when the branch
+// holds the current entry: what the tab shows always keeps its entry and its ancestors. Returns the ids removed (in
+// `allocator`) so that the caller can drop what it keeps for them (back/forward cache).
+session_forget :: proc(sh: ^Session_History, e: ^History_Entry, allocator := context.temp_allocator) -> []u64 {
+	if sh == nil || e == nil || e == sh.root || e.parent == nil { return nil }
+	for a := sh.current; a != nil; a = a.parent { if a == e { return nil } }
+	ids := make([dynamic]u64, 0, 16, allocator)
+	stack := make([dynamic]^History_Entry, 0, 64, context.temp_allocator)
+	append(&stack, e)
+	for len(stack) > 0 {
+		x := pop(&stack)
+		append(&ids, x.id)
+		append(&stack, ..x.children[:])
+	}
+	parent := e.parent
+	for c, i in parent.children { if c == e { ordered_remove(&parent.children, i); break } }
+	entry_free(e)
+	sh.count -= len(ids)
+	rebuild(sh)
+	return ids[:]
+}
+
 // Unlinks `e` from the tree and frees it; its children go up to its parent, in its place.
 @(private = "file")
 detach :: proc(sh: ^Session_History, e: ^History_Entry) {

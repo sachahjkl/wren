@@ -53,7 +53,6 @@ History_View :: struct {
 	tree_tab:    u64,               // Tab.id whose tree is shown
 	menu_visit:  u64,               // the visit whose row menu is open
 	focus_search: bool,
-	revealed_tab, revealed_entry: u64,   // the tree view last scrolled to this tab's entry
 	keep_tree:   bool,              // open_history chose the tree's tab: the new tab keeps it
 }
 
@@ -69,6 +68,7 @@ history_ui_destroy :: proc() {
 	strings.builder_destroy(&hview.text)
 	delete(hview.model_query)
 	hview = {}
+	history_tree_destroy()
 }
 
 // about:history, about:history#tree (the tab's tree part).
@@ -172,7 +172,6 @@ entry_label :: proc(e: ^page.History_Entry) -> string {
 }
 
 // "###" ends a label for the toolkit: keep it out of what a page chose.
-@(private = "file")
 safe_label :: proc(s: string, max_runes := 60) -> string {
 	out, _ := strings.replace_all(s, "#", "\u2009#", context.temp_allocator)   // (a thin space breaks "###")
 	n := 0
@@ -484,6 +483,8 @@ tree_toolbar :: proc(app: ^App, t: ^Tab) {
 	ui.spacer(ui.px(em * 0.4))
 	ui.next({width = ui.px(em * 13), height = ui.px(ui.dense(em * 2))})
 	if ui.dropdown("###h_tab", names[:], &sel) && sel < len(app.tabs) { hview.tree_tab = app.tabs[sel].id }
+	ui.spacer(ui.px(em * 1.0))
+	history_tree_toolbar(app)   // history_tree.odin: the layout switch
 	ui.spacer(ui.fill())
 	tt := tab_by_id(app, hview.tree_tab)
 	if tt != nil {
@@ -521,61 +522,10 @@ tree_place :: proc(sh: ^page.Session_History, allocator := context.temp_allocato
 }
 
 @(private = "file")
-Edges_Draw :: struct {
-	lines: [dynamic]Edge,
-	origin_key: ui.Key,
-}
-
-@(private = "file")
-Edge :: struct { a, b: draw.Vec2, strong: bool }
-
-@(private = "file")
-edge_colors: struct { strong, weak: draw.Color, width: f32 }
-
-@(private = "file")
-edges_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-	d := (^Edges_Draw)(user)
-	o := b.rect.min
-	w := edge_colors.width
-	for e in d.lines {
-		c := e.strong ? edge_colors.strong : edge_colors.weak
-		a, z := o + e.a, o + e.b
-		// an elbow: down the parent's exit column, then across to the child
-		mid := a.x + (z.x - a.x) * 0.5
-		if a.y == z.y {
-			draw.rect(dc, {{a.x, a.y - w * 0.5}, {z.x, a.y + w * 0.5}}, c)
-		} else {
-			draw.rect(dc, {{a.x, a.y - w * 0.5}, {mid + w * 0.5, a.y + w * 0.5}}, c)
-			draw.rect(dc, {{mid - w * 0.5, a.y - w * 0.5}, {mid + w * 0.5, z.y + w * 0.5}}, c)
-			draw.rect(dc, {{mid - w * 0.5, z.y - w * 0.5}, {z.x, z.y + w * 0.5}}, c)
-		}
-	}
-}
-
-@(private = "file")
 tree_view :: proc(app: ^App, from: ^Tab) {
 	t := tab_by_id(app, hview.tree_tab)
 	if t == nil { t = from; hview.tree_tab = from.id }
-	sh := &t.session
-	places, rows, cols := tree_place(sh)
-	ui.next({axis = .Y, width = ui.fill(), height = ui.fill()})
-	view := ui.build_box({.Clip, .View_Scroll_X, .View_Scroll_Y, .View_Clamp_X, .View_Clamp_Y, .Allow_Overflow_X, .Allow_Overflow_Y}, "###h_tree")
-	_ = ui.signal(view)
-	// the current entry comes into view when the tree is shown (or another tab's, or the entry changed)
-	if cur := page.session_current(sh); cur != nil && (hview.revealed_tab != t.id || hview.revealed_entry != cur.id) {
-		for p in places {
-			if p.entry != cur { continue }
-			em := ui.font_size()
-			xy := tree_pos(p.col, p.row, ui.dense(em * NODE_W), ui.dense(em * NODE_H), ui.dense(em * GAP_X), ui.dense(em * GAP_Y), ui.dense(em * PAD))
-			size := view.rect.max - view.rect.min
-			if size.x > 0 {
-				// as little as it takes, with a node's margin past it
-				view.view_target = {max(xy.x + NODE_W * em + GAP_X * em - size.x, 0), max(xy.y + NODE_H * em + GAP_Y * em * 2 - size.y, 0)}
-				hview.revealed_tab, hview.revealed_entry = t.id, cur.id
-			}
-		}
-	}
-	if ui.parent(view) { tree_canvas(app, t, sh, places, rows, cols) }
+	history_tree_view(app, t)   // history_tree.odin
 }
 
 // "host:port" of an address (a file's name for file:, the address itself otherwise).
@@ -588,102 +538,6 @@ address_host :: proc(a: string) -> string {
 	if j := strings.index_any(s, "/?#"); j >= 0 { s = s[:j] }
 	if k := strings.last_index_byte(s, '@'); k >= 0 { s = s[k + 1:] }
 	return s
-}
-
-@(private = "file")
-tree_canvas :: proc(app: ^App, t: ^Tab, sh: ^page.Session_History, places: []Tree_Place, rows, cols: int) {
-	em := ui.font_size()
-	node_w, node_h := ui.dense(em * NODE_W), ui.dense(em * NODE_H)
-	gap_x, gap_y := ui.dense(em * GAP_X), ui.dense(em * GAP_Y)
-	pad := ui.dense(em * PAD)
-	total := [2]f32{pad * 2 + f32(cols) * node_w + f32(max(cols - 1, 0)) * gap_x, pad * 2 + f32(rows) * node_h + f32(max(rows - 1, 0)) * gap_y}
-	if len(places) == 0 {
-		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 4))})
-		if ui.tags("weak") { if ui.style({text_align = .Center}) { ui.label("This tab has no history yet.###h_tree_none") } }
-		return
-	}
-	ui.next({width = ui.px(total.x), height = ui.px(total.y)})
-	canvas := ui.build_box({}, "###h_canvas")
-	if ui.parent(canvas) { tree_nodes(app, t, sh, places, total, node_w, node_h, gap_x, gap_y, pad) }
-}
-
-// Sizes of the tree view, in em.
-@(private = "file") NODE_W :: 11.5
-@(private = "file") NODE_H :: 2.6
-@(private = "file") GAP_X :: 1.8
-@(private = "file") GAP_Y :: 0.8
-@(private = "file") PAD :: 1.2
-
-@(private = "file")
-tree_pos :: proc(col, row: int, node_w, node_h, gap_x, gap_y, pad: f32) -> [2]f32 {
-	return {pad + f32(col) * (node_w + gap_x), pad + f32(row) * (node_h + gap_y)}
-}
-
-@(private = "file")
-tree_nodes :: proc(app: ^App, t: ^Tab, sh: ^page.Session_History, places: []Tree_Place, total: [2]f32, node_w, node_h, gap_x, gap_y, pad: f32) {
-	em := ui.font_size()
-
-	// edges first (under the nodes)
-	cur := page.session_current(sh)
-	edges := ui.frame_new(Edges_Draw)
-	edges.lines = make([dynamic]Edge, ui.frame_allocator())
-	for p in places {
-		if p.parent < 0 { continue }
-		pp := places[p.parent]
-		a := tree_pos(pp.col, pp.row, node_w, node_h, gap_x, gap_y, pad) + {node_w, node_h * 0.5}
-		z := tree_pos(p.col, p.row, node_w, node_h, gap_x, gap_y, pad) + {0, node_h * 0.5}
-		append(&edges.lines, Edge{a, z, page.session_on_active_path(sh, p.entry)})
-	}
-	edge_colors.strong = ui.color("text")
-	edge_colors.strong.a *= 0.75
-	edge_colors.weak = ui.color("border")
-	edge_colors.width = max(ui.scale() * 1.5, 1)
-	ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(total.x), height = ui.px(total.y)})
-	ui.custom("###h_edges", edges_draw, edges)
-
-	for p in places {
-		e := p.entry
-		xy := tree_pos(p.col, p.row, node_w, node_h, gap_x, gap_y, pad)
-		on_path := page.session_on_active_path(sh, e)
-		is_cur := e == cur
-		tag := is_cur ? "selected" : on_path ? "button" : "card"
-		clicked := false
-		if ui.tags(tag) {
-			m := ui.Style_Mod{fixed_x = xy.x, fixed_y = xy.y, width = ui.px(node_w), height = ui.px(node_h), radius = em * 0.35, axis = .X}
-			if !on_path { m.transparency = 0.35 }   // a branch off the path back and forward walk
-			ui.next(m)
-			nb := ui.build_box({.Clickable, .Draw_Background, .Draw_Border, .Draw_Hot_Effects}, fmt.tprintf("###hn_%d", e.id))
-			sig := ui.signal(nb)
-			clicked = sig.clicked
-			if ui.parent(nb) {
-				ui.spacer(ui.px(em * 0.5))
-				ui.next({width = ui.px(em * 1.3), height = ui.pct(1)})
-				addr := ui.frame_new(string)
-				addr^ = strings.clone(e.icon, ui.frame_allocator())
-				if e.icon != "" { ui.custom(fmt.tprintf("###hni_%d", e.id), entry_icon_draw, addr) } else { ui.spacer(ui.px(em * 1.3)) }
-				ui.spacer(ui.px(em * 0.35))
-				ui.next({width = ui.fill(), height = ui.children_sum(), axis = .Y})
-				if ui.column() {
-					ui.next({width = ui.fill(), height = ui.px(node_h * 0.52), text_pad = 0})
-					ui.label(fmt.tprintf("%s###hnt_%d", safe_label(entry_label(e), 40), e.id))
-					if ui.tags("weak") {
-						if ui.style({font_size = em * 0.8}) {
-							ui.next({width = ui.fill(), height = ui.px(node_h * 0.34), text_pad = 0})
-							lt := local_time(e.visited_ms)
-							ui.label(fmt.tprintf("%02d:%02d  \u00b7  %s###hnu_%d", lt.hour, lt.minute, safe_label(address_host(e.url), 30), e.id))
-						}
-					}
-				}
-				ui.spacer(ui.px(em * 0.4))
-			}
-			tip(sig, bfcache_has(t, e.id) ? fmt.tprintf("%s  (kept in the back/forward cache)", safe_label(e.url, 100)) : safe_label(e.url, 100))
-		}
-		if clicked {
-			for x, i in app.tabs { if x == t { tab_select(app, i) } }
-			go_entry(app, t, e)
-			return
-		}
-	}
 }
 
 bfcache_count :: proc(t: ^Tab) -> int {
