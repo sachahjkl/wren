@@ -180,6 +180,7 @@ disk_write :: proc(c: ^Cache, e: ^Entry) {
 	d.next_serial += 1
 	op.head = encode_entry_head(e.meta, e.fresh_until, e.body.data)
 	op.body = body_retain(e.body)
+	op.key = strings.clone(e.key, a)
 	if e.serial != 0 { c.disk_bytes -= e.file_size }
 	e.serial = op.serial
 	e.file_size = i64(len(op.head) + len(e.body.data))
@@ -281,7 +282,7 @@ disk_drain :: proc(data: rawptr) {
 		switch op.kind {
 		case .Load_Index: index_loaded(c, op)
 		case .Write:
-			if e := find_serial(c, op.serial); e != nil {
+			if e := find(c, op.key); e != nil && e.serial == op.serial {
 				if op.ok {
 					e.disk = .Stored
 					mark_index_dirty(c)
@@ -297,12 +298,6 @@ disk_drain :: proc(data: rawptr) {
 		}
 		op_free(op)
 	}
-}
-
-@(private)
-find_serial :: proc(c: ^Cache, serial: u64) -> ^Entry {
-	for _, e in c.entries { if e.serial == serial { return e } }
-	return nil
 }
 
 @(private)
