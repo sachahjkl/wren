@@ -3,7 +3,8 @@
 # next.html; Alt+Left comes back; the page reports in its title what it found (scroll positions, form, whether it came
 # from the back/forward cache), read from the window title. Runs twice: with the back/forward cache, then without (the
 # entry loads again and its state is restored). The times of the traversals (WREN_HISTORY_TIMING) are printed.
-# Takes the shared lock of the worktrees (S:\wb_wt\shared.lock) when it exists, starts build\testserver.exe.
+# Starts build\testserver.exe on a block of ports of its own (tools\test_env.ps1) and holds desktop.lock only while a
+# browser window is open (it is moved to the front and gets real keys), so other runs wait seconds, not the whole run.
 #   powershell -File tools\history_e2e.ps1 [-Runs 3]
 param([int]$Runs = 3)
 $ErrorActionPreference = 'Stop'
@@ -43,14 +44,16 @@ function Alt-Left($h) {
 }
 
 function Run-Case($label, $prefs, $expectPersisted, $run) {
-    $profile = Join-Path $env:TEMP "wren_history_e2e_$label"
+    $profile = Join-Path $root "build\history_e2e_profile_$label"
     if (Test-Path $profile) { Get-ChildItem $profile -File -Recurse | Remove-Item -Force }
     New-Item -ItemType Directory -Force $profile | Out-Null
     $timing = Join-Path $root "build\history_timing_$label.txt"
     $env:WREN_HISTORY_TIMING = $timing
-    $args2 = @('--profile', $profile) + $prefs + @('http://127.0.0.1:8765/site/history/long.html?auto')
-    $p = Start-Process (Join-Path $root 'build\browser.exe') -ArgumentList $args2 -PassThru
+    $args2 = @('--profile', $profile) + $prefs + @("$($script:srv.Origin)/site/history/long.html?auto")
+    $desktop = Enter-WrenLock desktop "history_e2e.ps1 $label"
+    $p = $null
     try {
+        $p = Start-Process (Join-Path $root 'build\browser.exe') -ArgumentList $args2 -PassThru
         $sw = [Diagnostics.Stopwatch]::StartNew()
         while ($p.MainWindowHandle -eq 0 -and $sw.ElapsedMilliseconds -lt 10000) { Start-Sleep -Milliseconds 20; $p.Refresh() }
         $h = $p.MainWindowHandle
@@ -66,31 +69,26 @@ function Run-Case($label, $prefs, $expectPersisted, $run) {
         Check ($t -match ' y=2500 ') "${label}: the document is where it was left (2500 px), after its late content"
         Check ($t -match ' box=300 ') "${label}: the scroll container too (300 px)"
         Check ($t -match ' who=typed agree=true') "${label}: the form came back filled"
-    } finally { if (-not $p.HasExited) { $p.Kill() } ; Remove-Item Env:\WREN_HISTORY_TIMING -ErrorAction SilentlyContinue }
+    } finally {
+        if ($p -and -not $p.HasExited) { $p.Kill(); $p.WaitForExit(5000) | Out-Null }
+        Exit-WrenLock $desktop
+        Remove-Item Env:\WREN_HISTORY_TIMING -ErrorAction SilentlyContinue
+    }
     if (Test-Path $timing) {
         "  timing: $(Get-Content $timing | Select-Object -Last 1)"
     }
 }
 
-$lock = $null
-if (Test-Path 'S:\wb_wt') {
-    while ($true) { try { $lock = [IO.File]::Open('S:\wb_wt\shared.lock', 'OpenOrCreate', 'ReadWrite', 'None'); break } catch { Start-Sleep -Milliseconds 500 } }
-}
-$srv = Start-Process (Join-Path $root 'build\testserver.exe') -PassThru -WindowStyle Hidden
+. (Join-Path $PSScriptRoot 'test_env.ps1')
+$script:srv = Start-WrenTestServer
 try {
-    $deadline = (Get-Date).AddSeconds(30)
-    while ((Get-Date) -lt $deadline) {
-        $c = New-Object System.Net.Sockets.TcpClient
-        try { $c.Connect('127.0.0.1', 8765); $c.Close(); break } catch { Start-Sleep -Milliseconds 100 }
-    }
     foreach ($label in 'bfcache', 'reload') { Remove-Item (Join-Path $root "build\history_timing_$label.txt") -ErrorAction SilentlyContinue }
     for ($i = 0; $i -lt $Runs; $i++) {
         Run-Case 'bfcache' @() 'true' $i
         Run-Case 'reload' @('--pref', 'history.bfcache.enabled=false') 'false' $i
     }
 } finally {
-    Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue
-    if ($lock) { $lock.Close() }
+    Stop-WrenTestServer $script:srv
 }
 "failed: $failed"
 exit $failed

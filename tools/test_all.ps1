@@ -1,46 +1,141 @@
 # Runs every test of the project: unit tests, the end-to-end page test, the network stress script.
-#   powershell -File tools\test_all.ps1 [-Quick] [-CI]
+#   powershell -File tools\test_all.ps1 [-Quick] [-CI] [-Jobs n] [-BasePort n]
 #   (-Quick skips the long network stress; -CI, for continuous integration runners: -Quick, end-to-end timeouts x3 for
-#   slow shared machines, the whole output of a failed step instead of its last lines. Nothing here opens a window or
-#   reaches the internet: the end-to-end tests use the local test server on 127.0.0.1, the pixel tests WARP; only the
-#   pinned test suites, test262 and web-platform-tests, are fetched once into build\.)
-param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900)
+#   slow shared machines, the whole output of a failed step instead of its last lines, one step at a time on the
+#   default ports. Nothing here opens a window or reaches the internet: the end-to-end tests use the local test server
+#   on 127.0.0.1, the pixel tests WARP; only the pinned test suites, test262 and web-platform-tests, are fetched once
+#   into build\.)
+# Several runs at once (worktrees of several agents): nothing here takes a lock. The test server listens on a block of
+# ports of this run (tools\test_env.ps1: -BasePort, default derived from the worktree's path, the next free block when
+# it is taken; 8765 with -CI), the tools find it through WREN_TEST_BASE_PORT, and TEMP is build\tmp. Scripts that use
+# the real desktop or measure performance take desktop.lock / bench.lock themselves, around that part only (a step
+# that runs one of them waits there, not the whole run). S:\wb_wt\shared.lock is not used any more.
+# -Jobs n (default: a quarter of the processors, at most 4; 1 with -CI): steps run n at a time, each in its own
+# process, longest first (the durations of the last run, build\test_all_times.txt); each step that needs the test
+# server starts its own (a block of ports and counters of its own). A step's result is printed whole when it ends.
+# -Jobs 1: one step after the other, one server for all, as before.
+param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0)
 if ($CI) { $Quick = $true }
 $slow = if ($CI) { 3 } else { 1 }
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
+. (Join-Path $PSScriptRoot 'test_env.ps1')
+if ($Jobs -le 0) { $Jobs = if ($CI) { 1 } else { [Math]::Max(1, [Math]::Min(4, [int][Math]::Floor([Environment]::ProcessorCount / 4))) } }
+if ($BasePort -le 0) { $BasePort = if ($CI) { 8765 } else { Get-WrenPreferredBasePort $root } }
 $failed = 0
+$runStart = Get-Date
 # No step is ever run twice: a test checks properties (order, counts, state), never a wall-clock duration, so a slow
 # shared runner takes longer but gets the same result. Waits for something that must come have generous bounds that
 # only end a failing run.
-# A test executable that runs longer than -StepTimeoutSec is stopped, so a hung suite fails instead of blocking the run
-# (Odin's test runner can hang when several tests hit fatal assertions at once).
+# A test executable of this worktree that runs longer than -StepTimeoutSec is stopped, so a hung suite fails instead of
+# blocking the run (Odin's test runner can hang when several tests hit fatal assertions at once). Other worktrees'
+# processes are theirs to watch.
 function Start-Watchdog {
-    Start-Job -ArgumentList $StepTimeoutSec -ScriptBlock {
-        param($limit)
+    Start-Job -ArgumentList $StepTimeoutSec, (Join-Path $root 'build\') -ScriptBlock {
+        param($limit, $dir)
         while ($true) {
             Start-Sleep -Seconds 5
-            Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like '*_test' -and $_.StartTime -and ((Get-Date) - $_.StartTime).TotalSeconds -gt $limit } | ForEach-Object {
+            Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like '*_test' -and $_.Path -and $_.Path.StartsWith($dir, [StringComparison]::OrdinalIgnoreCase) -and $_.StartTime -and ((Get-Date) - $_.StartTime).TotalSeconds -gt $limit } | ForEach-Object {
                 "watchdog: stopped $($_.ProcessName) after $limit s"; Stop-Process -Id $_.Id -Force }
         }
     }
 }
 
+function Report($name, $ok, $out, $secs) {
+    "{0} {1}{2}" -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $name, $(if ($CI -or $Jobs -gt 1) { " ($secs s)" } else { '' })
+    if (-not $ok) { $script:failed++; if ($CI) { $out } else { ($out -split "`n" | Select-Object -Last 15) -join "`n" } }
+}
+
+# -Jobs 1: the step runs now. Otherwise it is queued (with whether it needs the test server) until Flush-Steps.
+$script:queue = New-Object System.Collections.Generic.List[object]
+$script:serverSteps = $false
 function Step($name, [scriptblock]$body) {
+    if ($Jobs -gt 1) {
+        # the caller's variables the body reads (a loop's $pkg...), as values: the step runs in another process
+        $vars = @{}
+        foreach ($v in $body.Ast.FindAll({ $args[0] -is [Management.Automation.Language.VariableExpressionAst] }, $true)) {
+            $n = $v.VariablePath.UserPath
+            if ($vars.ContainsKey($n) -or $n -in 'Stack', 'slow', 'Quick', 'CI', 'root', 'BasePort', '_', 'args', 'true', 'false', 'null', 'LASTEXITCODE') { continue }
+            $val = Get-Variable -Name $n -Scope 1 -ValueOnly -ErrorAction SilentlyContinue
+            if ($val -is [string] -or $val -is [int] -or $val -is [bool]) { $vars[$n] = $val }
+            elseif ($val -is [array] -and @($val | Where-Object { $_ -isnot [string] }).Count -eq 0) { $vars[$n] = [string[]]$val }
+        }
+        $script:queue.Add([pscustomobject]@{ Name = $name; Body = $body.ToString(); Server = $script:serverSteps; Vars = $vars })
+        return
+    }
     $t0 = Get-Date
     $out = & $body 2>&1 | Out-String
     $killed = Receive-Job $script:watchdog -ErrorAction SilentlyContinue
     if ($killed) { $out += "`n" + ($killed -join "`n"); $global:LASTEXITCODE = 1 }
     $ok = $LASTEXITCODE -eq 0 -or $out -match 'All tests were successful'
-    "{0} {1}{2}" -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $name, $(if ($CI) { " ($([int]((Get-Date) - $t0).TotalSeconds) s)" } else { '' })
-    if (-not $ok) { $script:failed++; if ($CI) { $out } else { ($out -split "`n" | Select-Object -Last 15) -join "`n" } }
+    $secs = [int]((Get-Date) - $t0).TotalSeconds
+    $script:times[$name] = $secs
+    Report $name $ok $out $secs
 }
 
+# What a queued step runs in its own process: the variables the steps use, its own test server if it needs one.
+$stepJob = {
+    param($name, $bodyText, $server, $root, $Stack, $slow, $Quick, $CI, $BasePort, $vars)
+    Set-Location $root
+    foreach ($k in $vars.Keys) { Set-Variable -Name $k -Value $vars[$k] }
+    . (Join-Path $root 'tools\test_env.ps1')
+    $t0 = Get-Date
+    $srv = $null
+    $out = ''
+    $code = 1
+    try {
+        if ($server) {
+            $srv = Start-WrenTestServer -BasePort $BasePort
+            $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)"
+        }
+        $global:LASTEXITCODE = 0
+        $out = & ([scriptblock]::Create($bodyText)) 2>&1 | Out-String
+        $code = $LASTEXITCODE
+    } catch { $out += "`n$_" } finally { Stop-WrenTestServer $srv }
+    if ($srv) { $out = "(test server on $($srv.BasePort))`n$out" }
+    [pscustomobject]@{ Name = $name; Ok = ($code -eq 0 -or $out -match 'All tests were successful'); Out = $out; Secs = [int]((Get-Date) - $t0).TotalSeconds }
+}
+
+# Runs the queued steps, -Jobs at a time, the longest (last time) first; prints each result as it comes.
+function Flush-Steps {
+    $pending = New-Object System.Collections.Generic.List[object]
+    foreach ($s in ($script:queue | Sort-Object { if ($script:times.ContainsKey($_.Name)) { -$script:times[$_.Name] } else { -60 } })) { $pending.Add($s) }
+    $script:queue.Clear()
+    $running = @{}
+    while ($pending.Count -gt 0 -or $running.Count -gt 0) {
+        while ($running.Count -lt $Jobs -and $pending.Count -gt 0) {
+            $s = $pending[0]; $pending.RemoveAt(0)
+            $j = Start-Job -ScriptBlock $stepJob -ArgumentList $s.Name, $s.Body, $s.Server, $root, $Stack, $slow, [bool]$Quick, [bool]$CI, $BasePort, $s.Vars
+            $running[$j.Id] = $j
+        }
+        foreach ($j in @($running.Values)) {
+            if ($j.State -eq 'Running' -or $j.State -eq 'NotStarted') { continue }
+            $r = Receive-Job $j -ErrorAction SilentlyContinue | Where-Object { $_.PSObject.Properties['Ok'] } | Select-Object -Last 1
+            Remove-Job $j -Force; $running.Remove($j.Id)
+            if (-not $r) { Report "(a step ended without a result: job $($j.Id))" $false '' 0; continue }
+            $script:times[$r.Name] = $r.Secs
+            Report $r.Name $r.Ok $r.Out $r.Secs
+        }
+        $killed = Receive-Job $script:watchdog -ErrorAction SilentlyContinue
+        if ($killed) { $killed }
+        Start-Sleep -Milliseconds 200
+    }
+}
+
+$timesFile = Join-Path $root 'build\test_all_times.txt'
+$script:times = @{}
+if (Test-Path $timesFile) { foreach ($line in Get-Content $timesFile) { $k, $v = $line -split "`t", 2; if ($v) { $script:times[$k] = [int]$v } } }
+
 New-Item -ItemType Directory -Force build | Out-Null
+# this run's temporary files (several runs at once share no fixed name under %TEMP%)
+$env:TEMP = $env:TMP = (New-Item -ItemType Directory -Force (Join-Path $root 'build\tmp')).FullName
 # Wasm calls run on the calling thread: every program that runs modules (the JavaScript engine needs 16 MiB of wasm
 # stack, wasm.wasmtime.max_stack_bytes) is linked with a 32 MiB default thread stack
 $Stack = '-extra-linker-flags:/STACK:33554432'
 $script:watchdog = Start-Watchdog
+# the JavaScript engine every build below embeds (nothing to do when build\js is up to date)
+Step 'JavaScript engine (tools\build_js.ps1; nothing to do when up to date)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_js.ps1 | Out-Null }
+if ($Jobs -gt 1) { Flush-Steps }
 foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'layout', 'forms', 'js', 'page', 'browser') {
     Step "unit tests: $pkg" { odin test "src/$pkg" -collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -out:"build/${pkg}_test.exe" $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 }
@@ -91,16 +186,17 @@ Step 'history end-to-end test (historytest: the tree as pages see it, scrollRest
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
 }
 Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe . }; Pop-Location }
+# what the steps below use is built: the queued steps run before them
+if ($Jobs -gt 1) { Flush-Steps }
 
-$srv = Start-Process (Join-Path $root 'build\testserver.exe') -PassThru -WindowStyle Hidden
-# ready when its three ports accept connections (not after a fixed delay: a slow runner may take longer to start it)
-$deadline = (Get-Date).AddSeconds(60)
-foreach ($port in 8765, 8766, 8767) {
-    while ((Get-Date) -lt $deadline) {
-        $c = New-Object System.Net.Sockets.TcpClient
-        try { $c.Connect('127.0.0.1', $port); break } catch { Start-Sleep -Milliseconds 100 } finally { $c.Close() }
-    }
+# The steps below talk to the test server: -Jobs 1, one server for all, on this run's block of ports (ready once it
+# listens on all of them, not after a fixed delay: a slow runner may take longer to start it); otherwise each step
+# starts its own when it runs.
+$srv = $null
+if ($Jobs -le 1) {
+    try { $srv = Start-WrenTestServer -BasePort $BasePort; $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)" } catch { Report 'test server' $false "$_" 0 }
 }
+$script:serverSteps = $true
 try {
     Step 'network policy test (CORS, cookies, redirects, CSP, schemes)' {
         $p = Start-Process .\build\policytest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\pol.txt
@@ -157,8 +253,6 @@ try {
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'JavaScript loading end-to-end test (script order, document.write, dynamic scripts, modules, handlers, CSP, noscript, timers, errors, workers, cloning)' {
-        powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_js.ps1 | Out-Null
-        if ($LASTEXITCODE -ne 0) { return }
         odin build src/tools/jsloadtest -collection:wb=src -vet -out:build/jsloadtest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\jsloadtest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\jlt.txt
@@ -167,8 +261,6 @@ try {
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; jswebtest)' {
-        powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_js.ps1 | Out-Null
-        if ($LASTEXITCODE -ne 0) { return }
         odin build src/tools/jswebtest -collection:wb=src -vet -out:build/jswebtest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
         $p = Start-Process .\build\jswebtest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\jswt.txt
@@ -203,11 +295,19 @@ try {
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'web-platform-tests (wpt\suites.txt, pinned; -Quick: a sample; fails on a regression against wpt\expectations)' {
-        $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\wpt.ps1', '-NoServer', '-TimeoutMs', (10000 * $slow))
+        # the WPT origin of the step's server: the fourth port of its block
+        $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\wpt.ps1', '-NoServer', '-Port', ([int]$env:WREN_TEST_BASE_PORT + 3), '-TimeoutMs', (10000 * $slow))
         if ($Quick) { $a += '-Quick' }
         powershell @a
     }
-} finally { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }
+    if ($Jobs -gt 1) { Flush-Steps }
+} finally {
+    Stop-WrenTestServer $srv
+    $script:serverSteps = $false
+    Remove-Item Env:\WREN_TEST_BASE_PORT -ErrorAction SilentlyContinue
+    # (interrupted: the steps still running end, and their servers with them)
+    Get-Job | Where-Object { $_.Id -ne $script:watchdog.Id } | Remove-Job -Force -ErrorAction SilentlyContinue
+}
 
 if (-not $Quick) {
     Step 'network stress' { powershell -NoProfile -File tools\net_stress.ps1 -SizeMB 100 }
@@ -219,6 +319,8 @@ if (-not $Quick) {
         $global:LASTEXITCODE = if ($ok -and $LASTEXITCODE -eq 0) { 0 } else { 1 }
     }
 }
+if ($Jobs -gt 1) { Flush-Steps }
 Stop-Job $script:watchdog; Remove-Job $script:watchdog -Force
-"failed steps: $failed"
+[IO.File]::WriteAllText($timesFile, (($script:times.Keys | Sort-Object | ForEach-Object { "$_`t$($script:times[$_])" }) -join "`n") + "`n")
+"failed steps: $failed ($([int]((Get-Date) - $runStart).TotalSeconds) s, -Jobs $Jobs)"
 exit $failed

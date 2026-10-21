@@ -5,6 +5,8 @@
 # -Prefs is added to every run (e.g. '--pref wasm.wasmtime.compiler=winch' with -Tag _winch to compare the Wasm compilers).
 # Scenarios ending in _full run with layout.incremental.enabled=false (the reference for incremental layout).
 # Writes build\perf\<run>.txt (per-phase statistics, CPU time, sampling profile) and <run>.csv (one row per frame).
+# Each scenario holds bench.lock (tools\test_env.ps1) while its browser runs: the measurements of several worktrees take
+# turns instead of skewing each other. Input is posted to the window: no desktop.lock.
 param([string[]]$Only = @(), [switch]$NoSample, [string]$Exe = 'browser_prof.exe', [string]$Tag = '', [string]$Prefs = '', [int]$GpuSteps = 0)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -24,6 +26,7 @@ public class PF {
 }
 "@
 [PF]::SetProcessDPIAware() | Out-Null
+. (Join-Path $PSScriptRoot 'test_env.ps1')
 $Only = @($Only | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 
 # ---------- test pages ----------
@@ -110,8 +113,12 @@ function Run($name, $url, [scriptblock]$actions, [bool]$sample = $true, [string]
     $env:WREN_SAMPLE = if ($sample -and -not $NoSample) { '1' } else { '0' }
     $env:WREN_GPU_STEPS = "$GpuSteps"
     $argv = (@($Prefs, $extra, $url) | Where-Object { $_ }) -join ' '
-    $p = if ($argv) { Start-Process (Join-Path $root "build\$Exe") -ArgumentList $argv -PassThru } else { Start-Process (Join-Path $root "build\$Exe") -PassThru }
+    # one measurement at a time on the machine (tools\test_env.ps1): another run's would skew it; input is posted, so
+    # the desktop is not needed
+    $bench = Enter-WrenLock bench "perf.ps1 $name"
+    $p = $null
     try {
+        $p = if ($argv) { Start-Process (Join-Path $root "build\$Exe") -ArgumentList $argv -PassThru } else { Start-Process (Join-Path $root "build\$Exe") -PassThru }
         $sw = [Diagnostics.Stopwatch]::StartNew()
         $script:runSw = $sw; $script:actMs = -1
         while (-not $p.HasExited -and $p.MainWindowHandle -eq 0 -and $sw.ElapsedMilliseconds -lt 10000) { Start-Sleep -Milliseconds 20; $p.Refresh() }
@@ -122,7 +129,7 @@ function Run($name, $url, [scriptblock]$actions, [bool]$sample = $true, [string]
         if ($script:actMs -ge 0) { [IO.File]::WriteAllText("$prefix.act", "$script:actMs") } elseif (Test-Path "$prefix.act") { Remove-Item "$prefix.act" }
         [PF]::PostMessage($h, 0x10, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null   # WM_CLOSE: the report is written on a clean exit
         if (-not $p.WaitForExit(30000)) { Write-Host "$name did not exit, killed"; $p.Kill() }
-    } finally { if (-not $p.HasExited) { $p.Kill() } }
+    } finally { if ($p -and -not $p.HasExited) { $p.Kill(); $p.WaitForExit(5000) | Out-Null }; Exit-WrenLock $bench }
     Write-Host ("done {0}" -f $name)
 }
 function Mark { $script:actMs = $script:runSw.ElapsedMilliseconds }   # the measured part starts (after the load)

@@ -1,7 +1,8 @@
 // Local server for exercising the network stack (no dependencies beyond Go's standard library).
 //
 //	go run ./tools/testserver            # http on :8765, https (self-signed) on :8766, http on :8767, WPT on :8768
-//	testserver -base-port N [-scan] [-port-file F]   # another block of ports (ports.go; tools\test_all.ps1 does that)
+//	testserver -base-port N [-scan] [-port-file F] [-parent-pid P]   # another block of ports (ports.go), ending with
+//	                                     # process P (tools\test_env.ps1 Start-WrenTestServer starts it that way)
 //
 //	/                hello
 //	/big?mb=N        N MB of incompressible bytes, streamed
@@ -47,6 +48,7 @@ func selfSigned() tls.Certificate {
 }
 
 func main() {
+	watchParent()
 	if wptOnly() {
 		serveWPTOnly()
 		return
