@@ -6,7 +6,7 @@
 # the menu opened and closed, the wheel over the page, the window resized. Every post is noted with its QPC time;
 # the browser notes each frame's input poll and present on the same clock (src/browser/shell_latency.odin). The
 # latency of an input is the time from its post to the present of the first frame that polled after it.
-# Writes build\shell\<scenario><tag>.inputs.csv, .lat.csv (and the profiler's .csv/.txt), and a summary table
+# Writes build\shell\<scenario><tag>.inputs.csv, .latency.txt (and the profiler's .csv/.txt), and a summary table
 # (build\shell\summary<tag>.txt). -NoLock: without bench.lock (to try the script out; other runs skew the numbers).
 # -Report: the table again from the files of an earlier run. Holds bench.lock (tools\test_env.ps1) for each scenario; input is posted: no desktop.
 param([string[]]$Only = @(), [string]$Exe = 'browser_prof.exe', [string]$Tag = '', [string]$Prefs = '', [switch]$Report, [switch]$NoLock)
@@ -146,8 +146,8 @@ function Run($name, $url, [int]$warmMs, [string]$extra = '') {
 function Pct($v, $p) { if ($v.Count -eq 0) { return 0 }; $s = @($v | Sort-Object); $s[[Math]::Min($s.Count - 1, [Math]::Max(0, [int][Math]::Ceiling($s.Count * $p / 100) - 1))] }
 function Analyze($name) {
     $prefix = Join-Path $out "$name$Tag"
-    if (-not (Test-Path "$prefix.lat.csv") -or -not (Test-Path "$prefix.inputs.csv")) { return $null }
-    $lines = [IO.File]::ReadAllLines("$prefix.lat.csv")
+    if (-not (Test-Path "$prefix.latency.txt") -or -not (Test-Path "$prefix.inputs.csv")) { return $null }
+    $lines = [IO.File]::ReadAllLines("$prefix.latency.txt")
     $freq = [double]($lines[0].Split(',')[1])
     $frames = New-Object Collections.Generic.List[object]
     for ($i = 2; $i -lt $lines.Length; $i++) {

@@ -5,7 +5,7 @@ package browser
 // time line, so that tools\shell_latency.ps1, which posts input to the window and notes the QPC of each post, can
 // tell for every input how long it took until a frame that had read it was presented. The UI thread being busy with a
 // page (a long script, a layout) shows up as frames polled late: the input waited in the window's queue meanwhile.
-// Written as <prefix>.lat.csv: freq on the first line, then one row per frame.
+// Written as <prefix>.latency.txt: freq on the first line, then one row per frame.
 
 import "core:fmt"
 import "core:os"
@@ -48,7 +48,7 @@ latency_probe_report :: proc() {
 	sb := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&sb, "freq,%d\npolled,presented,events,w,h,kind\n", i64(prof.freq))
 	for f in lat_frames { fmt.sbprintf(&sb, "%d,%d,%d,%d,%d,%d\n", f.polled, f.presented, f.events, f.w, f.h, f.kind) }
-	_ = os.write_entire_file(strings.concatenate({prof.out, ".lat.csv"}, context.temp_allocator), transmute([]byte)strings.to_string(sb))
+	_ = os.write_entire_file(strings.concatenate({prof.out, ".latency.txt"}, context.temp_allocator), transmute([]byte)strings.to_string(sb))
 	delete(lat_frames)
 }
 
