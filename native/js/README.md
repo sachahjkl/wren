@@ -92,3 +92,22 @@ without a default; `wjd_<Name>_free`). Use them in hand-written members instead 
   and `tools\wasm_profile.ps1 p.json` (self and total time per function). Samples are taken at the engine's epoch
   checks: time spent in the browser is counted to the engine function that resumes after the call.
 * `build\jstest.exe`: headless end-to-end tests of JavaScript in pages (`src/tools/jstest`).
+
+## JIT (native/js/jit)
+
+Hot functions are compiled from their QuickJS bytecode to a WebAssembly module at run time (`wjit.h`), which the
+browser compiles with Cranelift on background threads and attaches next to the engine in the same store
+(`src/wasm/attach.odin`, imports `Engine_jitCompile` / `Engine_jitPoll`). WebAssembly stays the only execution engine.
+
+- The compiled code runs on the interpreter's own frame (arguments, locals, operand stack at the same addresses), so
+  it can hand over to the interpreter at any instruction: exceptions (the interpreter's handler), operations it does
+  not compile (`gosub`, `with`, generators), and on-stack replacement in the other direction (the interpreter enters
+  the compiled code at the header of an outermost loop).
+- Common operations are compiled inline (ints, doubles, locals, closures' variables, stack shuffles, branches, array
+  elements, property reads and writes through inline caches keyed by hashed shapes, global reads); every other
+  operation runs the interpreter's own code (`wjit_step`, whose body is JS_CallInternal's switch extracted at build
+  time by `tools/build_js.ps1` into `wjit_step_body.h`).
+- `patches/0005-wren-jit.patch` holds the hooks in quickjs.c; regenerate it with `jit/make_patch.ps1`.
+- Preferences `javascript.jit.*` (on by default; `enabled=false` interprets everything). Testing:
+  `build\jsengine.exe verify -jit -jit-threshold 1 -jit-loop 1 -jit-sync file.js` (interpreted vs compiled output),
+  `tools\test262.ps1 -Jit -JitSync`, `-jit-step`, `-jit-off <bits>` (WJIT_OFF_* paths turned off, to bisect).

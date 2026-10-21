@@ -14,7 +14,10 @@
 # the tests failing in one engine only).
 # -Quick: every 25th test, Wasm only (a few seconds; the tools\test_all.ps1 step). Exit status 1 on a regression: a test
 # failing in Wasm that src\tools\test262\known_failures.txt does not list. -Update rewrites that list from a full run.
-param([switch]$Quick, [switch]$Update, [switch]$NoNative, [int]$Stride = 0, [int]$Threads = 0)
+# -Jit: the engine's JIT on (javascript.jit.*), compiling every function at its -JitThreshold-th call (1: all of them),
+# -JitStep: compiled code runs every op through the interpreter's code; -JitSync: compiled before the call goes on (no
+# background thread: every function and loop runs compiled from its threshold on); the same known failures apply.
+param([switch]$Quick, [switch]$Update, [switch]$NoNative, [int]$Stride = 0, [int]$Threads = 0, [switch]$Jit, [int]$JitThreshold = 1, [int]$JitLoop = 1, [switch]$JitStep, [switch]$JitSync)
 # (failures are checked by exit status: what native tools write on stderr is not an error; throw stops the script)
 $ErrorActionPreference = 'Continue'
 $Test262Commit = '5ef1e5723be95296f36afb0386676fed0205869c'
@@ -88,6 +91,7 @@ $wasmErrors = Join-Path $out 'wasm_errors.txt'
 $nativeErrors = Join-Path $out 'native_errors.txt'
 $wasmArgs = @('-c', 'test262.conf', '-a', '-image', $image, '-stride', $Stride, '-errors', $wasmErrors) + $threadArgs
 if (-not $Update) { $wasmArgs += @('-known', $known) }
+if ($Jit) { $wasmArgs += @('-jit', '-jit-threshold', $JitThreshold, '-jit-loop', $JitLoop); if ($JitStep) { $wasmArgs += '-jit-step' }; if ($JitSync) { $wasmArgs += '-jit-sync' } }
 
 if (-not $NoNative) {
     $native = Join-Path $out 'run-test262.exe'

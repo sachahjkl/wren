@@ -267,6 +267,9 @@ foreign wasmtime_lib {
 	wasmtime_func_to_raw :: proc(ctx: wt_context, f: ^wt_func) -> rawptr ---
 
 	wasmtime_table_get :: proc(ctx: wt_context, t: ^wt_table, index: u64, out: ^wt_val) -> bool ---
+	wasmtime_table_set :: proc(ctx: wt_context, t: ^wt_table, index: u64, value: ^wt_val) -> wt_error ---
+	wasmtime_table_grow :: proc(ctx: wt_context, t: ^wt_table, delta: u64, init: ^wt_val, prev_size: ^u64) -> wt_error ---
+	wasmtime_instance_new :: proc(ctx: wt_context, m: wt_module, imports: [^]wt_extern, nimports: uint, out: ^wt_instance, trap: ^wt_trap) -> wt_error ---
 	wasmtime_memory_data :: proc(ctx: wt_context, m: ^wt_memory) -> [^]u8 ---
 	wasmtime_memory_data_size :: proc(ctx: wt_context, m: ^wt_memory) -> uint ---
 	wasmtime_global_get :: proc(ctx: wt_context, g: rawptr, out: ^wt_val) ---

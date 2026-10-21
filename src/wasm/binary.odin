@@ -193,6 +193,55 @@ put_leb :: proc(b: ^[dynamic]byte, v: u64) {
 	}
 }
 
+// The image with the maximum size of its defined tables removed (a copy; `image` itself when none has one): the table
+// can then grow at run time (wasm.attach_function), as with wasm-ld --growable-table, which zig's linker lacks.
+unbound_tables :: proc(image: []byte, allocator := context.allocator) -> (out: []byte, err: string) {
+	magic := WASM_MAGIC
+	if len(image) < 8 || string(image[:8]) != string(magic[:]) { return nil, "not a WebAssembly module" }
+	r := Reader{b = image, pos = 8}
+	for r.pos < len(image) {
+		start := r.pos
+		id := rd_byte(&r)
+		size := int(rd_leb(&r, 32))
+		if r.bad || r.pos + size > len(image) { return nil, "malformed module: truncated section" }
+		end := r.pos + size
+		if id != 4 { r.pos = end; continue }
+		body := Reader{b = image[r.pos:end]}
+		n := rd_leb(&body, 32)
+		nb := make([dynamic]byte, context.temp_allocator)
+		put_leb(&nb, n)
+		changed := false
+		for _ in 0 ..< n {
+			// table type: [0x40 0x00] reftype limits [init expr] (the 0x40 form carries an initializer)
+			t0 := body.pos
+			has_init := body.pos + 1 < len(body.b) && body.b[body.pos] == 0x40 && body.b[body.pos + 1] == 0x00
+			if has_init { body.pos += 2 }
+			rd_reftype(&body)
+			append(&nb, ..body.b[t0:body.pos])
+			flags := rd_byte(&body)
+			wide := flags & 0x04 != 0
+			bits: uint = wide ? 64 : 32
+			mn := rd_leb(&body, bits)
+			if flags & 0x01 != 0 { rd_leb(&body, bits); changed = true }
+			append(&nb, flags &~ 0x01)
+			put_leb(&nb, mn)
+			if has_init { return nil, "tables with an initializer expression are not handled" }
+			if body.bad { return nil, "malformed module: table section" }
+		}
+		if !changed { return image, "" }
+		b := strings.builder_make(0, len(image), allocator)
+		strings.write_bytes(&b, image[:start])
+		sec := make([dynamic]byte, context.temp_allocator)
+		append(&sec, 4)
+		put_leb(&sec, u64(len(nb)))
+		append(&sec, ..nb[:])
+		strings.write_bytes(&b, sec[:])
+		strings.write_bytes(&b, image[end:])
+		return b.buf[:], ""
+	}
+	return image, ""
+}
+
 // The image with the exports `info` asks for added (a copy), or `image` itself when nothing is missing.
 patch_image :: proc(image: []byte, info: Image_Info, allocator := context.allocator) -> (out: []byte, copied: bool) {
 	if !info.add_memory && !info.add_table { return image, false }
