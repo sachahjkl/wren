@@ -1163,11 +1163,12 @@ verify_styles :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, allocator := c
 @(private = "file")
 custom_diff :: proc(a, b: ^Custom_Props) -> string {
 	if a == nil || b == nil { return fmt.tprintf("(a set %v, expected %v)", a != nil, b != nil) }
-	for k, v in a.values {
-		if w, ok := b.values[k]; !ok || w != v { return fmt.tprintf("%s: %q, expected %q", k, v, ok ? w : "(none)") }
+	fa, fb := custom_flatten(a, context.temp_allocator), custom_flatten(b, context.temp_allocator)
+	for k, v in fa {
+		if w, ok := fb[k]; !ok || w != v { return fmt.tprintf("%s: %q, expected %q", k, v, ok ? w : "(none)") }
 	}
-	for k, w in b.values {
-		if _, ok := a.values[k]; !ok { return fmt.tprintf("%s: missing, expected %q", k, w) }
+	for k, w in fb {
+		if _, ok := fa[k]; !ok { return fmt.tprintf("%s: missing, expected %q", k, w) }
 	}
 	return "(same values)"
 }

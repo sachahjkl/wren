@@ -694,7 +694,7 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 	case "transform-origin": return strings.concatenate({css_length(cs.transform_origin[0]), " ", css_length(cs.transform_origin[1])}, context.temp_allocator)
 	}
 	if strings.has_prefix(name, "--") && cs.custom != nil {
-		if v, ok := cs.custom.values[name]; ok { return v }
+		if v, ok := style.custom_get(cs.custom, name); ok { return v }
 	}
 	return ""
 }

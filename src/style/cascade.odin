@@ -211,7 +211,7 @@ Var_Env :: struct {
 custom_inherited :: proc(env: ^Var_Env, name: string) -> (string, bool) {
 	reg := registered(env.engine, name)
 	if env.parent != nil && (reg == nil || reg.inherits) {
-		if v, ok := env.parent.values[name]; ok { return v, true }
+		if v, ok := custom_get(env.parent, name); ok { return v, true }
 	}
 	if reg != nil && reg.has_initial { return reg.initial, true }
 	return "", false
@@ -220,7 +220,7 @@ custom_inherited :: proc(env: ^Var_Env, name: string) -> (string, bool) {
 @(private)
 var_lookup :: proc(env: ^Var_Env, name: string, depth: int) -> (string, bool) {
 	if env.final != nil {
-		if v, ok := env.final.values[name]; ok { return v, true }
+		if v, ok := custom_get(env.final, name); ok { return v, true }
 		if reg := registered(env.engine, name); reg != nil && reg.has_initial { return reg.initial, true }
 		return "", false
 	}
@@ -238,7 +238,7 @@ var_lookup :: proc(env: ^Var_Env, name: string, depth: int) -> (string, bool) {
 			// the guaranteed-invalid value, or the registered initial value
 			if reg != nil && reg.has_initial { text, ok = reg.initial, true }
 		case "inherit":
-			if env.parent != nil { text, ok = env.parent.values[name] }
+			if env.parent != nil { text, ok = custom_get(env.parent, name) }
 			if !ok && reg != nil && reg.has_initial { text, ok = reg.initial, true }
 		case "unset", "revert", "revert-layer":
 			text, ok = custom_inherited(env, name)
@@ -480,17 +480,14 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		env.resolved = make(map[string]string, context.temp_allocator)
 		env.state = make(map[string]u8, context.temp_allocator)
 		for k, v in cust { env.pending[k] = v }
-		props := new(Custom_Props, a)
-		props.values = make(map[string]string, a)
-		if c.custom != nil {
-			for k, v in c.custom.values {
-				if reg := registered(e, k); reg != nil && !reg.inherits { continue }
-				props.values[k] = v
-			}
+		// a layer of the element's own names over what it inherits (custom_props.odin)
+		props := custom_begin(c.custom, e.settings.custom_max_layers, a)
+		if drops_noninherited {
+			for name, reg in e.registered { if !reg.inherits { custom_remove(props, name, a) } }
 		}
 		for name in cust {
 			text, ok := var_lookup(&env, name, 0)
-			if ok { props.values[name] = text } else { delete_key(&props.values, name) }
+			if ok { custom_set(props, name, text) } else { custom_remove(props, name, a) }
 		}
 		c.custom = props
 	}
@@ -606,7 +603,7 @@ revert_candidate :: proc(entries: []Entry, inline_rule: ^Rule, pr: Prop, from: C
 
 @(private)
 carries_noninherited :: proc(e: ^Engine, props: ^Custom_Props) -> bool {
-	for name, reg in e.registered { if !reg.inherits && name in props.values { return true } }
+	for name, reg in e.registered { if !reg.inherits && custom_has(props, name) { return true } }
 	return false
 }
 
@@ -1112,15 +1109,6 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 strings_equal :: proc(a, b: []string) -> bool {
 	if len(a) != len(b) { return false }
 	for i in 0 ..< len(a) { if a[i] != b[i] { return false } }
-	return true
-}
-
-@(private)
-custom_equal :: proc(a, b: ^Custom_Props) -> bool {
-	if a == b { return true }
-	if a == nil || b == nil { return false }
-	if len(a.values) != len(b.values) { return false }
-	for k, v in a.values { if w, ok := b.values[k]; !ok || w != v { return false } }
 	return true
 }
 
