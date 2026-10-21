@@ -281,7 +281,57 @@ int32_t wjit_put_field(WJitFrame *jf, JSValue *sp, uint8_t *pc, WJitIC *ic)
     return WJIT_OK;
 }
 
-/* call, call0..3, call_method, call_constructor (pc: the op): the interpreter's code without its dispatch */
+/* get_var, get_var_undef through the site's cache: the global lexical scope's shape (the variable is not declared
+   there, or it is and its slot is known) and, for a property of the global object, that object's shape */
+WJIT_EXPORT("wjit_get_var")
+int32_t wjit_get_var(WJitFrame *jf, JSValue *sp, uint8_t *pc, WJitIC *ic)
+{
+    JSContext *ctx = jf->ctx;
+    JSAtom atom = get_u32(pc + 1);
+    uint8_t *next = pc + 5;
+    JSObject *vo = JS_VALUE_GET_OBJ(ctx->global_var_obj), *go = JS_VALUE_GET_OBJ(ctx->global_obj);
+    JSShapeProperty *prs;
+    JSProperty *pr;
+    JSValue val;
+    if (vo->shape == ic->shape && ic->holder) {
+        if (ic->holder == vo) {
+            val = vo->prop[ic->index].u.value;
+            if (!JS_IsUninitialized(val)) {
+                sp[0] = js_dup(val);
+                return WJIT_OK;
+            }
+        } else if (go->shape == ic->holder_shape) {
+            sp[0] = js_dup(go->prop[ic->index].u.value);
+            return WJIT_OK;
+        }
+    }
+    /* fill: where JS_GetGlobalVar finds it without conversion */
+    prs = find_own_property(&pr, vo, atom);
+    if (prs) {
+        wjit_ic_clear(ctx->rt, ic);
+        ic->shape = js_dup_shape(vo->shape);
+        ic->holder = vo;
+        ic->index = (uint32_t)(pr - vo->prop);
+    } else if ((prs = find_own_property(&pr, go, atom)) && (prs->flags & JS_PROP_TMASK) == 0) {
+        wjit_ic_clear(ctx->rt, ic);
+        ic->shape = js_dup_shape(vo->shape);
+        ic->holder = go;
+        ic->holder_shape = js_dup_shape(go->shape);
+        ic->index = (uint32_t)(pr - go->prop);
+    }
+    jf->sf->cur_pc = next;
+    val = JS_GetGlobalVar(ctx, atom, pc[0] == OP_get_var);
+    if (JS_IsException(val)) {
+        jf->pc = next;
+        jf->sp = sp;
+        return WJIT_EXC;
+    }
+    sp[0] = val;
+    return WJIT_OK;
+}
+
+/* call, call0..3, call_method, call_constructor, tail_call, tail_call_method (pc: the op): the interpreter's code
+   without its dispatch */
 WJIT_EXPORT("wjit_call")
 int32_t wjit_call(WJitFrame *jf, JSValue *sp, uint8_t *pc)
 {
@@ -298,7 +348,7 @@ int32_t wjit_call(WJitFrame *jf, JSValue *sp, uint8_t *pc)
     }
     argv = sp - argc;
     jf->sf->cur_pc = next;
-    if (op == OP_call_method) {
+    if (op == OP_call_method || op == OP_tail_call_method) {
         ret = JS_CallInternal(ctx, argv[-1], argv[-2], JS_UNDEFINED, argc, vc(argv), 0);
         n = 2;
     } else if (op == OP_call_constructor) {
@@ -312,6 +362,12 @@ int32_t wjit_call(WJitFrame *jf, JSValue *sp, uint8_t *pc)
         jf->pc = next;
         jf->sp = sp;
         return WJIT_EXC;
+    }
+    if (op == OP_tail_call || op == OP_tail_call_method) {
+        /* the function returns it; its frame (the call's operands included) is freed by the interpreter */
+        jf->ret = ret;
+        jf->sp = sp;
+        return WJIT_RET;
     }
     for (i = -n; i < argc; i++)
         JS_FreeValue(ctx, argv[i]);
@@ -381,6 +437,12 @@ WJIT_EXPORT("wjit_free")
 void wjit_free(JSContext *ctx, JSValue v)
 {
     js_free_value_rt(ctx->rt, v);
+}
+
+WJIT_EXPORT("wjit_decref")
+void wjit_decref(JSContext *ctx, JSValue v)
+{
+    JS_FreeValue(ctx, v);
 }
 
 WJIT_EXPORT("wjit_poll")
@@ -453,7 +515,12 @@ enum {
 #define W_TF64 0x7c
 
 /* imported functions (indices) and the compiled function's locals */
-enum { WF_STEP, WF_FREE, WF_POLL, WF_TO_BOOL, WF_GET_FIELD, WF_PUT_FIELD, WF_CALL, WF_COUNT };
+/* the reference count decremented inline (else in wjit_decref: smaller code) */
+#ifndef WJIT_INLINE_DECREF
+#define WJIT_INLINE_DECREF 1
+#endif
+
+enum { WF_STEP, WF_FREE, WF_POLL, WF_TO_BOOL, WF_GET_FIELD, WF_PUT_FIELD, WF_CALL, WF_GET_VAR, WF_DECREF, WF_COUNT };
 enum {
     LP_JF = 0, LP_ENTRY = 1,
     L_CTX = 2, L_SB, L_VB, L_AB, L_VR, L_R, L_I0, L_I1,   /* i32: 2..9 */
@@ -527,6 +594,12 @@ static void e_free(WJitC *c, int l)
 {
     e_tag(c, l); e_i32(c, JS_TAG_FIRST); e_op(c, W_I32_GE_U);
     e_block(c, W_IF);
+    if (!WJIT_INLINE_DECREF) {
+        /* smaller code (compiles faster): the count in the helper */
+        e_lget(c, L_CTX); e_lget(c, l); e_call(c, WF_DECREF);
+        e_op(c, W_END);
+        return;
+    }
       e_lget(c, l); e_op(c, W_I32_WRAP_I64); e_i32(c, 4); e_op(c, W_I32_SUB); e_ltee(c, L_I0);
       e_lget(c, L_I0); e_mem(c, W_I32_LOAD, 2, 0); e_i32(c, 1); e_op(c, W_I32_SUB); e_ltee(c, L_I1);
       e_mem(c, W_I32_STORE, 2, 0);
@@ -872,6 +945,7 @@ static void e_fast_done(WJitC *c) { e_op(c, W_END); }
 
 static void e_float_binop(WJitC *c, int op, int d);
 static void e_identity_eq(WJitC *c, int op, int d);
+static void e_int32_binop(WJitC *c, int op, int d);
 
 /* binary op on two ints in slots d-2, d-1, result in slot d-2 */
 static void e_int_binop(WJitC *c, int op, int pos, int d)
@@ -943,6 +1017,9 @@ static void e_int_binop(WJitC *c, int op, int pos, int d)
       case OP_eq: case OP_neq: case OP_strict_eq: case OP_strict_neq:
           e_float_binop(c, op, d);
           e_identity_eq(c, op, d);
+          break;
+      case OP_and: case OP_or: case OP_xor: case OP_shl: case OP_sar: case OP_shr:
+          e_int32_binop(c, op, d);
           break;
       default:
           break;
@@ -1050,6 +1127,23 @@ static void e_float_binop(WJitC *c, int op, int d)
     e_op(c, W_END);
 }
 
+/* where JSObject.is_HTMLDDA (a bit field) lives */
+static int wjit_htmldda_off, wjit_htmldda_mask;
+
+static void wjit_layout_init(void)
+{
+    JSObject o;
+    const uint8_t *q = (const uint8_t *)&o;
+    size_t i;
+    if (wjit_htmldda_mask)
+        return;
+    memset(&o, 0, sizeof(o));
+    o.is_HTMLDDA = 1;
+    for (i = 0; i < sizeof(o); i++) {
+        if (q[i]) { wjit_htmldda_off = (int)i; wjit_htmldda_mask = q[i]; return; }
+    }
+}
+
 /* in the slow part of (strict) equality: objects, booleans, null, undefined (and ints) compared by identity; loose
    equality only between equal tags or null/undefined (what needs no conversion) */
 static void e_identity_eq(WJitC *c, int op, int d)
@@ -1064,10 +1158,25 @@ static void e_identity_eq(WJitC *c, int op, int d)
           e_block(c, W_IF);
             e_lget(c, L_A0); e_lget(c, L_A1); e_op(c, W_I64_EQ); e_lset(c, L_R);
           e_op(c, W_ELSE);
+            /* null and undefined are equal; an object equals neither, unless it is document.all (IsHTMLDDA) */
             e_tag(c, L_A0); e_i32(c, JS_TAG_NULL); e_op(c, W_I32_GE_S);
             e_tag(c, L_A1); e_i32(c, JS_TAG_NULL); e_op(c, W_I32_GE_S); e_op(c, W_I32_AND);
-            e_op(c, W_I32_EQZ); e_br(c, W_BR_IF, 1);
-            e_i32(c, 1); e_lset(c, L_R);
+            e_block(c, W_IF);
+              e_i32(c, 1); e_lset(c, L_R);
+            e_op(c, W_ELSE);
+              e_tag(c, L_A0); e_i32(c, JS_TAG_OBJECT); e_op(c, W_I32_EQ);
+              wb_u8(&c->code, W_IF); wb_u8(&c->code, W_TI32);
+                e_tag(c, L_A1); e_i32(c, JS_TAG_NULL); e_op(c, W_I32_LT_S); e_br(c, W_BR_IF, 3);
+                e_lget(c, L_A0); e_op(c, W_I32_WRAP_I64);
+              e_op(c, W_ELSE);
+                e_tag(c, L_A1); e_i32(c, JS_TAG_OBJECT); e_op(c, W_I32_NE); e_br(c, W_BR_IF, 3);
+                e_tag(c, L_A0); e_i32(c, JS_TAG_NULL); e_op(c, W_I32_LT_S); e_br(c, W_BR_IF, 3);
+                e_lget(c, L_A1); e_op(c, W_I32_WRAP_I64);
+              e_op(c, W_END);
+              /* (the object, on the stack) */
+              e_mem(c, 0x2d /* i32.load8_u */, 0, (uint32_t)wjit_htmldda_off); e_i32(c, wjit_htmldda_mask); e_op(c, W_I32_AND);
+              e_lset(c, L_R);
+            e_op(c, W_END);
           e_op(c, W_END);
       } else {
           e_lget(c, L_A0); e_lget(c, L_A1); e_op(c, W_I64_EQ); e_lset(c, L_R);
@@ -1075,6 +1184,53 @@ static void e_identity_eq(WJitC *c, int op, int d)
       e_lget(c, L_SB); e_lget(c, L_R); if (negate) e_op(c, W_I32_EQZ); e_mk_bool_from_i32(c);
       e_mem(c, W_I64_STORE, 3, SLOT(d - 2));
       e_free(c, L_A0); e_free(c, L_A1);
+      e_br(c, W_BR, 1);
+    e_op(c, W_END);
+}
+
+/* ToInt32 of the number in local l (i32 on the stack); a double outside the int32 range leaves the block `depth`
+   levels out (the caller's slow path) */
+static void e_num_to_i32(WJitC *c, int l, int depth)
+{
+    e_tag(c, l); e_op(c, W_I32_EQZ);
+    wb_u8(&c->code, W_IF); wb_u8(&c->code, W_TI32);
+      e_lget(c, l); e_op(c, W_I32_WRAP_I64);
+    e_op(c, W_ELSE);
+      e_lget(c, l); e_i64(c, WJIT_F64_BIAS); e_op(c, W_I64_ADD); e_op(c, W_F64_REINTERPRET_I64);
+      e_op(c, 0x9d /* f64.trunc */); e_ltee(c, L_F0);
+      wb_u8(&c->code, 0xfc); wb_uleb(&c->code, 2); e_ltee(c, L_I1);   /* i32.trunc_sat_f64_s */
+      e_op(c, W_F64_CONVERT_I32_S); e_lget(c, L_F0); e_op(c, W_F64_NE); e_br(c, W_BR_IF, depth + 1);
+      e_lget(c, L_I1);
+    e_op(c, W_END);
+}
+
+/* in the slow part of a bitwise op: numbers converted by ToInt32 (doubles within the int32 range) */
+static void e_int32_binop(WJitC *c, int op, int d)
+{
+    e_block(c, W_BLOCK);
+      e_is_num(c, L_A0); e_is_num(c, L_A1); e_op(c, W_I32_AND); e_op(c, W_I32_EQZ); e_br(c, W_BR_IF, 0);
+      e_num_to_i32(c, L_A0, 0); e_lset(c, L_R);
+      e_num_to_i32(c, L_A1, 0); e_lset(c, L_I1);
+      e_lget(c, L_R); e_lget(c, L_I1);
+      switch (op) {
+      case OP_and: e_op(c, W_I32_AND); break;
+      case OP_or: e_op(c, W_I32_OR); break;
+      case OP_xor: e_op(c, W_I32_XOR); break;
+      case OP_shl: e_op(c, W_I32_SHL); break;
+      case OP_sar: e_op(c, W_I32_SHR_S); break;
+      default: e_op(c, W_I32_SHR_U); break;
+      }
+      e_lset(c, L_R);
+      if (op == OP_shr) {
+          /* an unsigned result: a double past INT32_MAX */
+          e_lget(c, L_R); e_i32(c, 0); e_op(c, W_I32_LT_S);
+          e_block(c, W_IF);
+            e_lget(c, L_R); e_op(c, 0xb8 /* f64.convert_i32_u */); e_lset(c, L_F0);
+            e_lget(c, L_SB); e_box_f64(c, L_F0); e_mem(c, W_I64_STORE, 3, SLOT(d - 2));
+            e_br(c, W_BR, 2);
+          e_op(c, W_END);
+      }
+      e_lget(c, L_SB); e_lget(c, L_R); e_mk_int(c); e_mem(c, W_I64_STORE, 3, SLOT(d - 2));
       e_br(c, W_BR, 1);
     e_op(c, W_END);
 }
@@ -1445,6 +1601,18 @@ static int wjit_emit_op(WJitC *c, int blk, int pos)
     case OP_call_constructor:
         e_helper(c, WF_CALL, pos, d, 0, 0);
         return 0;
+    case OP_tail_call: case OP_tail_call_method:
+        e_helper(c, WF_CALL, pos, d, 0, 0);
+        e_op(c, W_UNREACHABLE);   /* (wjit_call returned WJIT_RET or WJIT_EXC: e_helper left) */
+        return 0;
+
+    case OP_get_var: case OP_get_var_undef: {
+        WJitIC *ic = wjit_next_ic(c);
+        if (!ic)
+            goto step;
+        e_helper(c, WF_GET_VAR, pos, d, (uint32_t)(uintptr_t)ic, 1);
+        return 0;
+    }
 
     default:
         goto step;
@@ -1578,6 +1746,8 @@ static int wjit_module(WJitC *c, WBuf *m)
     wb_name(&s, "e"); wb_name(&s, "wjit_get_field"); wb_u8(&s, 0x00); wb_uleb(&s, 5);
     wb_name(&s, "e"); wb_name(&s, "wjit_put_field"); wb_u8(&s, 0x00); wb_uleb(&s, 5);
     wb_name(&s, "e"); wb_name(&s, "wjit_call"); wb_u8(&s, 0x00); wb_uleb(&s, 1);
+    wb_name(&s, "e"); wb_name(&s, "wjit_get_var"); wb_u8(&s, 0x00); wb_uleb(&s, 5);
+    wb_name(&s, "e"); wb_name(&s, "wjit_decref"); wb_u8(&s, 0x00); wb_uleb(&s, 2);
     wb_section(m, 2, &s); s.n = 0;
     /* one function, exported as "f" */
     wb_uleb(&s, 1); wb_uleb(&s, 0);
@@ -1608,6 +1778,7 @@ static int wjit_compile(JSContext *ctx, JSFunctionBytecode *b)
     size_t n;
     memset(&c, 0, sizeof(c));
     b->wjit_index = -1;
+    wjit_layout_init();
     if (wjit_config.max_functions && wjit_stats.compiled >= wjit_config.max_functions) { wjit_stats.refused++; return -1; }
     if ((uint32_t)b->byte_code_len > wjit_config.max_bytecode_bytes) { wjit_stats.refused++; return -1; }
     c.ctx = ctx;
@@ -1631,7 +1802,8 @@ static int wjit_compile(JSContext *ctx, JSFunctionBytecode *b)
         int pos, op;
         for (pos = 0; pos < c.len; pos += short_opcode_info(op).size) {
             op = c.bc[pos];
-            if (c.depth[pos] >= 0 && (op == OP_get_field || op == OP_get_field2 || op == OP_get_length || op == OP_put_field))
+            if (c.depth[pos] >= 0 && (op == OP_get_field || op == OP_get_field2 || op == OP_get_length || op == OP_put_field ||
+                                      op == OP_get_var || op == OP_get_var_undef))
                 nic++;
         }
         if (nic) {

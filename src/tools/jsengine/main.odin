@@ -8,6 +8,9 @@
 //                                               runs the benchmarks of <dir> (Octane's base.js harness), one realm each
 //   jsengine startup [-image m.wasm] [-raw] [-n count]
 //                                               measures realm creation (instantiate + start) and its memory
+//   jsengine verify [-jit-threshold n] [-jit-step] file.js...
+//                                               runs each script interpreted and with the JIT: same output
+//                                               measures realm creation (instantiate + start) and its memory
 // Only the engine's own imports are provided (console, errors, time zone, clock): anything of the web API traps.
 package jsengine
 
@@ -236,6 +239,7 @@ main :: proc() {
 	case "run": cmd_run(os.args[2:])
 	case "bench": cmd_bench(os.args[2:])
 	case "startup": cmd_startup(os.args[2:])
+	case "verify": cmd_verify(os.args[2:])
 	case: usage()
 	}
 }
@@ -299,6 +303,53 @@ parse_int :: proc(s: string) -> i64 {
 	v: i64
 	for ch in s { if ch >= '0' && ch <= '9' { v = v * 10 + i64(ch - '0') } }
 	return v
+}
+
+// jsengine verify [-jit-threshold n] [-jit-step] file.js...: each script runs interpreted, then with the JIT on (every
+// function compiled at its first call unless -jit-threshold says otherwise); what they print and the errors they leave
+// uncaught must be the same. Exit status 1 on any difference.
+cmd_verify :: proc(args: []string) {
+	c := parse_common(args)
+	if !jit.enabled { jit.enabled = true; jit.call_threshold = 1 }
+	setup()
+	quiet = true
+	image := read_file(c.image)
+	run_once :: proc(image: []byte, src: []byte, path: string, with_jit: bool) -> (out: string, errors: int) {
+		saved := jit.enabled
+		jit.enabled = with_jit
+		defer jit.enabled = saved
+		before := uncaught
+		r, ok := realm_new(image, false)
+		if !ok { return "", -1 }
+		strings.builder_reset(&console_out)
+		st := js.eval_script(r.inst, src, path)
+		js.run_jobs(r.inst)
+		if st == .Trapped { strings.write_string(&console_out, fmt.tprintf("TRAP %s\n", r.inst.last_error)) }
+		out = strings.clone(strings.to_string(console_out), context.temp_allocator)
+		print_jit_stats(r.inst)
+		wasm.destroy(r.inst)
+		return out, uncaught - before
+	}
+	failed := 0
+	for path in c.rest {
+		src := read_file(path)
+		a, ea := run_once(image, src, path, false)
+		b, eb := run_once(image, src, path, true)
+		if a == b && ea == eb {
+			fmt.printfln("same   %s (%d lines)", path, strings.count(a, "\n"))
+			continue
+		}
+		failed += 1
+		la := strings.split_lines(a, context.temp_allocator)
+		lb := strings.split_lines(b, context.temp_allocator)
+		for i in 0 ..< max(len(la), len(lb)) {
+			x := i < len(la) ? la[i] : "<end>"
+			y := i < len(lb) ? lb[i] : "<end>"
+			if x != y { fmt.printfln("DIFFER %s line %d:\n  interpreted: %s\n  compiled:    %s", path, i + 1, x, y); break }
+		}
+		if ea != eb { fmt.printfln("DIFFER %s: %d uncaught interpreted, %d compiled", path, ea, eb) }
+	}
+	os.exit(failed > 0 ? 1 : 0)
 }
 
 cmd_run :: proc(args: []string) {

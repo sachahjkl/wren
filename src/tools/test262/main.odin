@@ -434,7 +434,22 @@ read_file :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint
 	return nil
 }
 
+// -jit: hot functions compiled to Wasm (javascript.jit.*), to check the JIT against the suite
+jit: js.Jit_Settings
+
+engine_jit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	context = runtime.default_context()
+	f := wasm.frame(env, caller)
+	code, ok := guest_string(&f, a[0], a[1])
+	r: i32
+	if ok { r = js.jit_attach(f.inst, transmute([]byte)code, jit) }
+	a[0] = {}
+	a[0].i32 = r
+	return nil
+}
+
 IMPORTS := [?]wasm.Import{
+	{module = "js", name = "Engine_jitCompile", fn = engine_jit, params = {.I32, .I32}, results = {.I32}},
 	{module = "js", name = "Engine_console", fn = engine_console, params = {.I32, .I32, .I32}},
 	{module = "js", name = "Engine_reportException", fn = engine_ignore, params = {.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}},
 	{module = "js", name = "Engine_storeBytecode", fn = engine_ignore, params = {.I32, .I32}},
@@ -481,6 +496,7 @@ run_one :: proc(t: ^Test_Info, buf: []byte, strict: bool) -> (failure: string, t
 	if !js.realm_start(inst, {kind = js.Realm_Kind(0), seed = seed, max_heap_bytes = 1 << 30, gc_threshold = 2 << 20}) {
 		return fmt.tprintf("the realm did not start: %s", inst.last_error), true
 	}
+	if jit.enabled { js.jit_configure(inst, jit) }
 	if addr := js.interrupt_address(inst); addr != 0 {
 		if b := wasm.guest_bytes(inst, u64(addr), 4); b != nil { inst.soft_flag = (^i32)(raw_data(b)) }
 	}
@@ -596,6 +612,7 @@ usage :: proc() -> ! {
 }
 
 main :: proc() {
+	jit = js.jit_settings_default()
 	args := os.args[1:]
 	confs := make([dynamic]string)
 	files := make([dynamic]string)
@@ -619,6 +636,9 @@ main :: proc() {
 		case "-native": native_path = need(args, &i)
 		case "-md": md_out = need(args, &i)
 		case "-v": verbose = true
+		case "-jit": jit.enabled = true
+		case "-jit-threshold": jit.call_threshold = max(1, parse_int(need(args, &i)))
+		case "-jit-step": jit.step_only = true
 		case "--pref": i += 1
 		case:
 			if strings.has_prefix(a, "-") { usage() }
