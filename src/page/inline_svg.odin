@@ -109,7 +109,7 @@ svg_view_box :: proc(d: ^dom.Document, h: base.Handle) -> (vb: [4]f32, ok: bool)
 	v, has := dom.get_attribute(d, h, "viewbox")
 	if !has { return }
 	i := 0
-	for f in strings.fields_proc(v, proc(r: rune) -> bool { return r == ' ' || r == ',' || r == '\t' || r == '\n' || r == '\r' }) {
+	for f in strings.fields_proc(v, proc(r: rune) -> bool { return r == ' ' || r == ',' || r == '\t' || r == '\n' || r == '\r' }, context.temp_allocator) {
 		if i >= 4 { return {}, false }
 		n, nok := strconv.parse_f32(f)
 		if !nok { return {}, false }
