@@ -362,6 +362,12 @@ if ($CI -or -not $Quick) {
         powershell @a
     }
 }
+# AddressSanitizer on the unit tests of every package (tools\asan.ps1, about 3 minutes): -CI and full runs.
+if ($CI -or -not $Quick) {
+    Step 'unit tests under AddressSanitizer (overflows, use after free, double frees; tools\asan.ps1)' {
+        powershell -NoProfile -ExecutionPolicy Bypass -File tools\asan.ps1
+    }
+}
 if (-not $Quick) {
     Step 'network stress' { powershell -NoProfile -File tools\net_stress.ps1 -SizeMB 100 }
     Step 'native WOFF2 decoder tests (real Google Fonts against their TrueType, collections, corruptions) and cssaudit' {
