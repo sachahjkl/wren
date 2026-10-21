@@ -152,6 +152,7 @@ main :: proc() {
 	if eval_code != "" && d.page != nil && d.failed == "" {
 		page.js_run(d.page, transmute([]byte)eval_code, "jspage:eval")
 		headless.pump(d, 2000, nil)   // what it starts (timers, animation frames) has two seconds
+		for n in d.navigations { fmt.printfln("NAVIGATE\t%s", n) }   // what the page asked for (not followed)
 	}
 	if profiled != nil {
 		if err := wasm.profile_finish(profiled, profile_path); err != "" { fmt.eprintln("jspage: profile:", err) }
