@@ -74,12 +74,14 @@ harness: string
 open :: proc(name: string, address := PAGE, tab_key := "tab-1") -> Running {
 	src, err := os.read_entire_file(fmt.tprintf("%s/%s.js", DIR, name), context.allocator)
 	if err != nil { fmt.printf("FAIL cannot read %s/%s.js\n", DIR, name); failures += 1; return {} }
+	defer delete(src)
 	l := new(Page_Log)
 	l.name = name
 	p := page.page_create(&loop, &loader, &settings, process, testenv.url(address), console, l)
 	page.set_embedder(p, {navigate = navigate_hook, session = &session, tab_key = tab_key, storage = &storage})
 	html := strings.concatenate({"<!doctype html><meta charset=utf-8><title>", name, "</title><body><script>", harness, "</script><script>", testenv.url(string(src)), "</script></body>"})
 	page.load_html(p, transmute([]byte)html)
+	delete(html)
 	page.scripts_start(p)
 	return {p, l}
 }
@@ -110,6 +112,11 @@ wait :: proc(r: Running, actions: map[string]Action = nil, seconds := 30.0) -> b
 
 close :: proc(r: Running) {
 	if r.p != nil { page.page_close(r.p) }
+	if r.log != nil {
+		for l in r.log.lines { delete(l) }
+		delete(r.log.lines)
+		free(r.log)
+	}
 }
 
 run :: proc(name: string, actions: map[string]Action = nil, address := PAGE, seconds := 30.0) {
@@ -148,6 +155,7 @@ listener_log: ^Page_Log
 host_objects :: proc(p: ^page.Page) -> int { return p.objects.pool.count }
 
 main :: proc() {
+	context = testenv.context_of_process()
 	h, herr := os.read_entire_file(DIR + "/harness.js", context.allocator)
 	if herr != nil { fmt.eprintln("cannot read examples/jsweb/harness.js (run from the repository root)"); os.exit(2) }
 	harness = string(h)
@@ -245,8 +253,23 @@ main :: proc() {
 	if selected("bench") { run("bench", seconds = 120) }
 
 	base.scope_close(process)
+	host.blocking_settle(&blocking)
 	page.storage_manager_destroy(&storage)
-	js.cache_stop()
+	host.blocking_settle(&blocking)
+	page.process_shutdown()
+	fetch.loader_destroy(&loader)
+	host.blocking_destroy(&blocking)
+	net.client_destroy(&client)
+	fetch.profile_destroy(&profile)
+	host.loop_destroy(&loop)
+	page.settings_destroy(&settings)
+	delete(h)
+	page.session_destroy(&session)
+	for s in navigations { delete(s) }
+	delete(navigations)
+	for s in measures { delete(s) }
+	delete(measures)
+	failures += testenv.mem_check("jswebtest")
 	fmt.printf("\n%d passed, %d failure(s)\n", passes, failures)
 	os.exit(failures > 0 ? 1 : 0)
 }

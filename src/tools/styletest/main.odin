@@ -61,6 +61,7 @@ body { font-family: Same, Cross, Notfont, serif }
 </style></head><body><p id=t>t</p><div id=d>d</div></body></html>`
 
 main :: proc() {
+	context = testenv.context_of_process()
 	host.loop_init(&loop)
 	if !net.client_init(&client, &loop) { fmt.eprintln("net init failed"); os.exit(2) }
 	host.blocking_init(&blocking, &loop, 2)
@@ -129,6 +130,15 @@ main :: proc() {
 	page.page_close(p)
 	check(loop.timers.count == 0, "closing the page released its timers")
 	base.scope_close(process)
+	host.blocking_settle(&blocking)
+	page.process_shutdown()
+	fetch.loader_destroy(&loader)
+	host.blocking_destroy(&blocking)
+	net.client_destroy(&client)
+	fetch.profile_destroy(&profile)
+	host.loop_destroy(&loop)
+	page.settings_destroy(&settings)
+	failures += testenv.mem_check("styletest")
 	fmt.printf("%d failure(s)\n", failures)
 	os.exit(failures == 0 ? 0 : 1)
 }
