@@ -85,6 +85,7 @@ webauthn_doc :: proc(p: ^Page, create := false) -> ^Webauthn_Doc {
 webauthn_doc_closed :: proc(data: rawptr) {
 	d := (^Webauthn_Doc)(data)
 	delete_key(&webauthn_docs, d.page_id)
+	if len(webauthn_docs) == 0 { delete(webauthn_docs); webauthn_docs = nil }   // made again by the next document
 	if op := d.active; op != nil {
 		webauthn.cancel(op.platform, &op.c.cancel, .Not_Allowed)
 		// the page's timers go with its scope; the op lives on until its thread returns (webauthn_finished)
