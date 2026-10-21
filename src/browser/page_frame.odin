@@ -38,6 +38,7 @@ page_update :: proc(app: ^App) {
 }
 
 page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
+	page_world_check("page_prepare: a chrome frame, or the page thread has the layout")
 	page_prep = Page_Prep{frame = chrome_frames.frame_no, tab = t, page = t.page, size = size, scale = page_scale(app), state = .None, canvas = expected_canvas(app)}
 	hold_commit(t)
 	scale := page_prep.scale
@@ -98,10 +99,20 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 // The page of the current tab painted into `rect` (the page area), prepared first if the page phase did not do it
 // for this size.
 page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
+	page_world_check("page_paint: a chrome frame, or the page thread has the layout")
 	size := draw.rect_size(rect)
 	p := &page_prep
+	paint_size := size
 	if p.frame != chrome_frames.frame_no || p.tab != t || p.page != t.page || p.size != size || p.scale != page_scale(app) {
-		page_prepare(app, t, size)
+		if p.frame == chrome_frames.frame_no && p.tab == t && p.page == t.page && p.scale == page_scale(app) && p.state == .Ready && page_layout_is_long(app, t) {
+			// only the size changed since the page phase (the window is being resized) and this page's layout is long:
+			// what was laid out is painted at its size, anchored at the top left, never stretched; the next frame lays
+			// it out at the new size (on the page thread, the chrome drawing meanwhile)
+			paint_size = p.size
+			app.frames_requested = max(app.frames_requested, 2)
+		} else {
+			page_prepare(app, t, size)
+		}
 	}
 	switch p.state {
 	case .None:
@@ -117,7 +128,7 @@ page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 	prof_begin(.Paint_Items)
 	images_paint_begin_frame(app)
 	selection_paint_begin(app, t)
-	paint(&t.layout, dc, t.page.doc, rect.min, size, t.scroll, rect)
+	paint(&t.layout, dc, t.page.doc, rect.min, paint_size, t.scroll, rect)
 	forms_paint_overlays(app, dc, rect)
 	images_after_paint(app)
 	shell_capture(app, t, dc, rect, to_draw(p.canvas))   // shell_frames.odin: shown while the page is busy

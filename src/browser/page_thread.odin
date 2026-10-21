@@ -78,6 +78,25 @@ page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, 
 	for !sync.sema_wait_with_timeout(&pt.done, time.Millisecond) { shell_preempt(app) }
 }
 
+// Debug builds: who may touch the current page's world (its layout, document, styles) now. Not a chrome frame (it
+// draws the page's last frame, nothing of the page runs or is laid out there); not the interface thread while the
+// page thread lays the page out (page_locked). Called where the shell reads or changes a layout.
+page_world_check :: #force_inline proc(what: string) {
+	when ODIN_DEBUG {
+		if chrome_frames.nested { panic(what) }
+		if chrome_frames.page_locked && sync.current_thread_id() != sync.atomic_load(&pt_thread_id) { panic(what) }
+	}
+}
+
+@(private = "file")
+pt_thread_id: int   // (the page thread's id: page_world_check)
+
+// The last layout pass of `t` was long enough for the page thread (and the preference allows it).
+page_layout_is_long :: proc(app: ^App, t: ^Tab) -> bool {
+	last, known := pt.last_ms[t.id]
+	return known && config.bool_of(&app.prefs, "browser.shell.page_thread") && chrome_frames.cfg.preempt && last >= config.float_of(&app.prefs, "browser.shell.page_thread_min_ms")
+}
+
 // Chrome frames can be made now (the frame is in its page phase, not inside one), and the preference allows it.
 @(private = "file")
 page_thread_wanted :: proc(app: ^App) -> bool {
@@ -93,6 +112,7 @@ layout_job_run :: proc(j: ^Layout_Job) {
 @(private = "file")
 page_thread_main :: proc(data: rawptr) {
 	p := (^Page_Thread)(data)
+	sync.atomic_store(&pt_thread_id, sync.current_thread_id())
 	for {
 		sync.sema_wait(&p.go)
 		if sync.atomic_load(&p.stop) { return }

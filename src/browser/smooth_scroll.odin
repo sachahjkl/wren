@@ -282,6 +282,7 @@ smooth_stop :: proc(t: ^Tab) {
 // some still move (the loop draws the next frame).
 smooth_tick :: proc(app: ^App, t: ^Tab) -> bool {
 	if t == nil || t.page == nil || t.kind != .Web { return false }
+	page_world_check("smooth_tick: scrollers moved in a chrome frame, or during a page thread pass")
 	s := smooth_of(t)
 	now := pacer.frame_ms
 	for i := len(s.anims) - 1; i >= 0; i -= 1 {

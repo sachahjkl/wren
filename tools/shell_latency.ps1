@@ -137,6 +137,7 @@ function Run($name, $url, [int]$warmMs, [string]$extra = '') {
         [IO.File]::WriteAllText("$prefix.inputs.csv", $script:log.ToString())
         [SL]::PostMessage($script:win, 0x10, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
         if (-not $p.WaitForExit(30000)) { Write-Host "$name did not exit, killed"; $p.Kill() }
+        elseif ($p.ExitCode -ne 0) { Write-Host ("$name exited with code 0x{0:x}" -f $p.ExitCode) }
     } finally { if ($p -and -not $p.HasExited) { $p.Kill(); $p.WaitForExit(5000) | Out-Null }; if ($bench) { Exit-WrenLock $bench } }
     Write-Host "done $name"
 }

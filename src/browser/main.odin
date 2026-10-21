@@ -786,6 +786,7 @@ anchor_href :: proc(d: ^dom.Document, h: base.Handle) -> (string, bool) {
 route_page_input :: proc(app: ^App, events: []platform.Event) {
 	t := current_tab(app)
 	if t == nil || t.page == nil || t.kind != .Web { return }
+	page_world_check("route_page_input: page input in a chrome frame, or during a page thread pass")
 	scale := page_scale(app)
 	last_move: platform.Event
 	have_move := false
