@@ -188,6 +188,20 @@ log("after removal " + c.contentWindow + " " + window.length);
 		page.page_close(p)
 	}
 
+	fmt.println("-- a frame in a shadow tree")
+	{
+		p := load(`<body><div id=host></div><script>
+const root = document.getElementById("host").attachShadow({mode: "closed"});
+const f = document.createElement("iframe");
+f.srcdoc = "<script>parent.postMessage('in shadow ' + (parent !== window), '*')<\/script>";
+root.appendChild(f);
+addEventListener("message", e => log(e.data));
+log("shadow frames " + frames.length);
+</script></body>`)
+		check(wait_for("shadow frames 1") && wait_for("in shadow true"), "an iframe inserted into a shadow tree gets its document (window.frames counts it)")
+		page.page_close(p)
+	}
+
 	fmt.println("-- the styles of nested documents")
 	{
 		p := load(`<body><iframe srcdoc="<p id=x style='font:14px system-ui;padding:8px'>Hi</p><style>p{color:rgb(1, 2, 3)}</style><script>const s = getComputedStyle(document.getElementById('x')); parent.postMessage('style ' + s.fontFamily + ' ' + s.paddingTop + ' ' + s.color, '*')</script>"></iframe>
