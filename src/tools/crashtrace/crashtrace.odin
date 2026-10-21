@@ -120,6 +120,39 @@ frame_line :: proc(buf: []u8, process: win.HANDLE, i: int, pc: u64) -> string {
 	return fmt.bprintf(buf, "  #%02d 0x%X %s+0x%X", i, pc, name, disp)
 }
 
+// A tool that seems stuck: the call stack of another thread of the process (suspended meanwhile), printed like a
+// crash's. `thread` needs THREAD_SUSPEND_RESUME and THREAD_GET_CONTEXT (OpenThread with the thread's id).
+dump_thread :: proc(thread: win.HANDLE, what: string) {
+	context = runtime.default_context()   // memcheck: not the tracker (the dumped thread may hold its lock)
+	if win.SuspendThread(thread) == ~win.DWORD(0) { emit("*** dump: cannot suspend the thread"); return }
+	defer win.ResumeThread(thread)
+	ctx: win.CONTEXT
+	ctx.ContextFlags = 0x0010000B   // CONTEXT_FULL (AMD64)
+	if !win.GetThreadContext(thread, &ctx) { emit("*** dump: cannot read the thread's context"); return }
+	process := win.GetCurrentProcess()
+	win.SymSetOptions(win.SYMOPT_LOAD_LINES | win.SYMOPT_DEFERRED_LOADS)
+	win.SymInitialize(process, nil, true)
+	buf: [8192]u8
+	emit(fmt.bprintf(buf[:], "\n*** stack of %s", what))
+	for i in 0 ..< MAX_FRAMES {
+		pc := ctx.Rip
+		if pc == 0 { break }
+		emit(frame_line(buf[:], process, i, pc))
+		image_base: u64
+		fn := RtlLookupFunctionEntry(pc, &image_base, nil)
+		if fn == nil {
+			if ctx.Rsp == 0 { break }
+			ctx.Rip = (^u64)(uintptr(ctx.Rsp))^
+			ctx.Rsp += 8
+		} else {
+			handler_data: rawptr
+			establisher: u64
+			RtlVirtualUnwind(0, image_base, pc, fn, &ctx, &handler_data, &establisher, nil)
+		}
+	}
+	emit("*** end of the stack\n")
+}
+
 // On standard output (where test_all keeps the tools' reports) and standard error, with nothing buffered.
 @(private = "file")
 emit :: proc(s: string) {

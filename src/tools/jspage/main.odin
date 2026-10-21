@@ -12,7 +12,7 @@
 //   private_per_page_kib   private memory per page, -pages more pages (20) open at once, each with its realm
 package jspage
 
-import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+import "wb:tools/crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
 import "core:os"
@@ -23,10 +23,14 @@ import "wb:config"
 import "wb:js"
 import "wb:page"
 import "wb:tools/headless"
+import "wb:tools/testenv"
 import "wb:wasm"
 
 until_text: string
 wasm_cache_dir: string
+hang_ms: int
+hang_thread: win.HANDLE
+eval_code: string           // -eval: a script run in the page after the wait
 profile_path: string        // -profile: a sampling profile of the page's engine (tools\wasm_profile.ps1)
 profiled: ^wasm.Instance
 seen_until: bool
@@ -93,6 +97,7 @@ main :: proc() {
 			if err != nil { fmt.eprintln("jspage: cannot read the image"); os.exit(2) }
 			page.js_image_override = data
 		case "-profile": profile_path = need(args, &i)
+		case "-eval": eval_code = need(args, &i)
 		case "-wasm-cache": wasm_cache_dir = need(args, &i)
 		case:
 			if strings.has_prefix(args[i], "-") || url != "" { usage() }
@@ -116,9 +121,20 @@ main :: proc() {
 			if profiled == nil && wasm.profile_start(inst, page.js_engine_image()) { profiled = inst }
 		}
 	}
+	// WREN_HANG_DUMP_MS=n: the interface thread's stack after n ms, and every n ms after (finding where a page hangs)
+	if v := os.get_env("WREN_HANG_DUMP_MS", context.temp_allocator); v != "" {
+		hang_ms = parse_int(v)
+		hang_thread = win.OpenThread(win.THREAD_SUSPEND_RESUME | win.THREAD_GET_CONTEXT, false, win.GetCurrentThreadId())
+		win.CreateThread(nil, 0, proc "system" (data: rawptr) -> win.DWORD {
+			context = testenv.context_of_process()
+			for { win.Sleep(win.DWORD(hang_ms)); crashtrace.dump_thread(hang_thread, "the interface thread") }
+		}, nil, 0, nil)
+	}
 	started = time.tick_now()
 	d := headless.open(&env, url, on_console)
 	headless.pump(d, f64(wait_ms), done)
+	// -eval code: run in the page after the wait (a look at its state: what frames it has, what scripts made)
+	if eval_code != "" && d.page != nil { page.js_run(d.page, transmute([]byte)eval_code, "eval.js"); headless.pump(d, 500, nil) }
 	if profiled != nil {
 		if err := wasm.profile_finish(profiled, profile_path); err != "" { fmt.eprintln("jspage: profile:", err) }
 	}

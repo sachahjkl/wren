@@ -229,16 +229,10 @@ frames_note_inserted :: proc(p: ^Page, node: base.Handle) {
 	n := dom.get(d, node)
 	if n == nil || (n.kind != .Element && n.kind != .Document && n.kind != .Fragment) { return }
 	if !dom.is_connected(d, node) { return }
+	// the subtree, shadow trees included, in tree order
 	found := make([dynamic]base.Handle, context.temp_allocator)
-	stack := make([dynamic]base.Handle, context.temp_allocator)
-	append(&stack, node)
-	for len(stack) > 0 {
-		cur := pop(&stack)
-		c := dom.get(d, cur)
-		if c == nil { continue }
-		if _, ok := is_frame_container(c); ok { append(&found, cur) }
-		if c.shadow != base.NIL_HANDLE { append(&stack, c.shadow) }
-		for ch := c.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(&stack, ch) }
+	for cur := node; cur != base.NIL_HANDLE; cur = dom.next_shadow_including(d, cur, node) {
+		if _, ok := is_frame_container(dom.get(d, cur)); ok { append(&found, cur) }
 	}
 	for el in found {
 		if p.closed { return }
@@ -295,17 +289,10 @@ frames_children :: proc(p: ^Page) -> []^Navigable {
 	frames_note_removed(p)
 	if f.order_version != p.doc.tree_version && len(f.children) > 1 {
 		pos := make(map[base.Handle]int, len(f.children), context.temp_allocator)
-		stack := make([dynamic]base.Handle, context.temp_allocator)
-		append(&stack, p.doc.root)
 		i := 0
-		for len(stack) > 0 {
-			cur := pop(&stack)
-			c := dom.get(p.doc, cur)
-			if c == nil { continue }
-			pos[cur] = i
+		for cur := p.doc.root; cur != base.NIL_HANDLE; cur = dom.next_shadow_including(p.doc, cur, p.doc.root) {
+			if _, ok := is_frame_container(dom.get(p.doc, cur)); ok { pos[cur] = i }
 			i += 1
-			if c.shadow != base.NIL_HANDLE { append(&stack, c.shadow) }
-			for ch := c.last_child; ch != base.NIL_HANDLE; ch = dom.get(p.doc, ch).prev { append(&stack, ch) }
 		}
 		for a in 1 ..< len(f.children) {
 			for b := a; b > 0 && pos[f.children[b].element] < pos[f.children[b - 1].element]; b -= 1 {
