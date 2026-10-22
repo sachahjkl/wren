@@ -64,7 +64,7 @@ export function parseSender(from: string): string | EmailAddress {
 
 export interface MailOutcome {
 	result: MailResult;
-	detail?: string;   // the error code (E_…), kept in the stored record: never an address
+	detail?: string;   // the error code (E_RATE_LIMIT_EXCEEDED, for one), kept in the stored record: never an address
 }
 
 // The code of a failed send(): the binding throws an Error with a `code`. Anything else is named by its class only,
