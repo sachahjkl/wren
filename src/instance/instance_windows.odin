@@ -116,8 +116,22 @@ owner_start :: proc(o: ^Owner, handler: Handler, user: rawptr) -> bool {
 	o.hwnd = win.CreateWindowExW(0, class, win.utf8_to_wstring(o.key, context.temp_allocator), 0, 0, 0, 0, 0, win.HWND_MESSAGE, nil, inst, nil)
 	if o.hwnd == nil { return false }
 	win.SetWindowLongPtrW(o.hwnd, win.GWLP_USERDATA, win.LONG_PTR(uintptr(o)))
-	ChangeWindowMessageFilterEx(o.hwnd, win.WM_COPYDATA, MSGFLT_ALLOW, nil)   // (an elevated Wren still takes it from a normal one)
+	// An elevated Wren takes the message from a normal one (a link clicked in a normal program) only if it lets the message
+	// through (UIPI); a normal Wren leaves the default, which keeps it from processes of a lower integrity (a sandbox).
+	if is_elevated() { ChangeWindowMessageFilterEx(o.hwnd, win.WM_COPYDATA, MSGFLT_ALLOW, nil) }
 	return true
+}
+
+// Does this process run with an elevated token (as administrator)?
+@(private = "file")
+is_elevated :: proc() -> bool {
+	token: win.HANDLE
+	if !win.OpenProcessToken(win.GetCurrentProcess(), win.TOKEN_QUERY, &token) { return false }
+	defer win.CloseHandle(token)
+	elevation: u32   // TOKEN_ELEVATION { TokenIsElevated }
+	size: win.DWORD
+	if !win.GetTokenInformation(token, .TokenElevation, &elevation, size_of(elevation), &size) { return false }
+	return elevation != 0
 }
 
 @(private = "file")
@@ -135,11 +149,16 @@ owner_proc :: proc "system" (hwnd: win.HWND, msg: win.UINT, wparam: win.WPARAM, 
 	return 1
 }
 
-// The owner goes: later messages are refused, the window is destroyed, then the mutex is released (a start that comes
-// while this happens waits for it and becomes the owner).
-owner_stop :: proc(o: ^Owner) {
+// The owner is ending: later messages are refused and the window goes. The profile is still its own (the mutex is held):
+// a start that comes now waits, and takes the profile once owner_stop has released it.
+owner_closing :: proc(o: ^Owner) {
 	o.closing = true
 	if o.hwnd != nil { win.DestroyWindow(o.hwnd); o.hwnd = nil }
+}
+
+// The owner is done with the profile: the mutex is released (a start that was waiting becomes the owner).
+owner_stop :: proc(o: ^Owner) {
+	owner_closing(o)
 	if o.mutex != nil { win.CloseHandle(o.mutex); o.mutex = nil }
 	delete(o.key); delete(o.exe)
 	o.key, o.exe = "", ""

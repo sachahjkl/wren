@@ -1287,5 +1287,6 @@ main :: proc() {
 	delete(app.tabs)
 	free(app)
 	the_app = nil
+	instance_release()   // instance_shell.odin: the profile is written and free: a start that waited becomes the owner
 	memcheck_exit(profile_dir)   // memcheck.odin: the leak report of the check build
 }
