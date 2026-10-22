@@ -25,6 +25,8 @@ WINDOW_PREFS := [?]config.Def{
 		description = "In full screen (F11), the tabs and the address bar slide down over the page while the pointer is at the top edge of the screen."},
 	{name = "browser.window.fullscreen_reveal_px", kind = .Int, default = {i = 3}, bounded = true, min = 1, max = 200, unit = "px",
 		description = "Height of the strip along the top of the screen that brings the tabs and the address bar back in full screen."},
+	{name = "browser.window.square_corners", kind = .Bool, default = {b = true},
+		description = "Square corners on the window itself (Windows 11 rounds them, Windows 10 never does). On (the default): the corners are cut square, by DWM_WINDOW_CORNER_PREFERENCE. Off: the system's rounded corners. Applies at once."},
 }
 
 register_window_prefs :: proc(p: ^config.Prefs) { config.register(p, WINDOW_PREFS[:]) }
@@ -34,6 +36,7 @@ Window_Settings :: struct {
 	min_drag_em: f32,
 	reveal:      bool,
 	reveal_px:   f32,
+	square_corners: bool,
 }
 
 window_settings_from_prefs :: proc(p: ^config.Prefs) -> Window_Settings {
@@ -42,6 +45,7 @@ window_settings_from_prefs :: proc(p: ^config.Prefs) -> Window_Settings {
 		min_drag_em = f32(config.float_of(p, "browser.window.min_drag_em")),
 		reveal = config.bool_of(p, "browser.window.fullscreen_reveal"),
 		reveal_px = f32(config.int_of(p, "browser.window.fullscreen_reveal_px")),
+		square_corners = config.bool_of(p, "browser.window.square_corners"),
 	}
 }
 
@@ -59,9 +63,12 @@ wchrome: Window_Chrome
 
 window_chrome_init :: proc(app: ^App) {
 	wchrome.cfg = window_settings_from_prefs(&app.prefs)
+	platform.set_square_corners(app.win, wchrome.cfg.square_corners)
 	wchrome.watch = config.watch(&app.prefs, "browser.window.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		app := (^App)(user)
 		wchrome.cfg = window_settings_from_prefs(p)
-		(^App)(user).frames_requested = max((^App)(user).frames_requested, 2)
+		platform.set_square_corners(app.win, wchrome.cfg.square_corners)
+		app.frames_requested = max(app.frames_requested, 2)
 	}, app)
 }
 
