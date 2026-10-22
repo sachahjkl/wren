@@ -94,6 +94,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_page_thread_prefs(p)   // page_thread.odin
 	register_memory_prefs(p)   // memory_trim.odin
 	register_license_prefs(p)   // license_shell.odin
+	register_desktop_shell_prefs(p)   // desktop_shell.odin, src/desktop
 	_ = wasm.PREFS
 	_ = html.PREFS
 }
