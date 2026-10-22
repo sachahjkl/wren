@@ -1,0 +1,69 @@
+{
+	"event_id": "evt_01hv8x2d9vkq4n8s0p3c5r7t9y",
+	"event_type": "transaction.completed",
+	"occurred_at": "2026-10-22T09:15:31.123456Z",
+	"notification_id": "ntf_01hv8x2dbq3z4m5n6p7r8s9t0v",
+	"data": {
+		"id": "txn_01hv8wptq8987qeep44cyrewp9",
+		"status": "completed",
+		"customer_id": "ctm_01hv6y1jedq4p1n0yqn5ba3ky4",
+		"address_id": "add_01hv8gq3318ktkfengj2r75gfx",
+		"business_id": null,
+		"custom_data": null,
+		"currency_code": "EUR",
+		"origin": "web",
+		"subscription_id": null,
+		"invoice_id": "inv_01hv8x2c7y2fzq6k0nq3h4m5t8",
+		"invoice_number": "4821-10007",
+		"collection_mode": "automatic",
+		"discount_id": null,
+		"billing_details": null,
+		"billing_period": null,
+		"items": [
+			{
+				"price": {
+					"id": "pri_01hsxyh9a1fnwv3xbg2zykm4sj",
+					"product_id": "pro_01hsxyc3j0q3w8vtd5h2mn6k9a",
+					"type": "standard",
+					"description": "Wren supporter licence",
+					"name": "Supporter",
+					"billing_cycle": null,
+					"trial_period": null,
+					"tax_mode": "internal",
+					"unit_price": { "amount": "2900", "currency_code": "EUR" },
+					"unit_price_overrides": [],
+					"custom_data": null,
+					"quantity": { "minimum": 1, "maximum": 1 },
+					"status": "active",
+					"created_at": "2026-10-01T10:00:00.000000Z",
+					"updated_at": "2026-10-01T10:00:00.000000Z",
+					"import_meta": null
+				},
+				"quantity": 1,
+				"proration": null
+			}
+		],
+		"details": {
+			"tax_rates_used": [{ "tax_rate": "0.2", "totals": { "subtotal": "2417", "discount": "0", "tax": "483", "total": "2900" } }],
+			"totals": { "subtotal": "2417", "tax": "483", "discount": "0", "total": "2900", "grand_total": "2900", "fee": "195", "earnings": "2222", "currency_code": "EUR" },
+			"line_items": []
+		},
+		"payments": [
+			{
+				"payment_attempt_id": "3a1b6a50-1f2a-4f7f-9d7e-1b0c0c0c0c0c",
+				"stored_payment_method_id": "paymtd_01hv8x2c0nh2y3m4k5r6t7v8w9",
+				"payment_method_id": "paymtd_01hv8x2c0nh2y3m4k5r6t7v8w9",
+				"amount": "2900",
+				"status": "captured",
+				"error_code": null,
+				"method_details": { "type": "card", "card": { "type": "visa", "last4": "4242", "expiry_month": 12, "expiry_year": 2030, "cardholder_name": "Jeanne Dupont" } },
+				"created_at": "2026-10-22T09:15:12.000000Z",
+				"captured_at": "2026-10-22T09:15:30.000000Z"
+			}
+		],
+		"checkout": { "url": "https://sachahjkl.github.io/wren/thanks.html?_ptxn=txn_01hv8wptq8987qeep44cyrewp9" },
+		"created_at": "2026-10-22T09:14:58.231Z",
+		"updated_at": "2026-10-22T09:15:31.012Z",
+		"billed_at": "2026-10-22T09:15:30.500Z"
+	}
+}

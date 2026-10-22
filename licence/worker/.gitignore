@@ -1,0 +1,8 @@
+secrets.env
+secrets.*.env
+!secrets.example.env
+.dev.vars
+.dev.vars.*
+.wrangler/
+.cf/
+node_modules/

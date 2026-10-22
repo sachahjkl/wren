@@ -1,0 +1,14 @@
+{
+	"name": "wren-licence-worker",
+	"private": true,
+	"version": "1.0.0",
+	"description": "Signs Wren supporter licences when Paddle reports a paid transaction, keeps them in KV and mails them with Resend.",
+	"type": "module",
+	"license": "MIT",
+	"scripts": {
+		"test": "node --test \"test/*.test.ts\"",
+		"test:bun": "bun test test/",
+		"deploy": "cf deploy --secrets-file secrets.env",
+		"deploy:sandbox": "cf deploy --mode sandbox --secrets-file secrets.sandbox.env"
+	}
+}
