@@ -85,7 +85,7 @@ WREN_STYLE :: `
   .id img.mark { width: 96px; height: 96px; flex: none; object-fit: contain; margin-right: 22px; }
   .id .text { min-width: 0; }
   .id p { margin: 2px 0 0; }
-  .id p.sig { margin-top: 8px; font-size: 13px; color: $WEAK$; }
+  .id p.sig { margin-top: 8px; font-size: 13px; color: $WEAK$; white-space: nowrap; }
   .sig img { width: 16px; height: 16px; vertical-align: -3px; margin: 0 4px 0 2px; }
   .sig a { color: $TEXT$; font-weight: 600; }
   .beta { margin: 24px 0 0; padding: 10px 14px; background-color: $PANEL$; border: 1px solid $BORDER$; border-radius: 4px; }
