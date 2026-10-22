@@ -604,3 +604,41 @@ planes_blend_and_backdrop_filter :: proc(t: ^testing.T) {
 		testing.expectf(t, hi - lo > 240, "composited %v: outside the glass the stripes stay (levels %d..%d)", composited, lo, hi)
 	}
 }
+
+// A form control painted in a plane: the pointer maps back through the projection (and the layer's texel map and the stack's
+// transform), exactly, to the coordinates its content rect is in.
+@(test)
+planes_painted_control_projection :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	f: Cx
+	if !cx_open(&f, `<!doctype html><body>x`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	// frame -> screen: a 50 degree turn about the y axis with a 300 px perspective, about (100, 80)
+	a := f32(50 * math.PI / 180)
+	co, si := math.cos(a), math.sin(a)
+	ry := style.Matrix4{co, 0, -si, 0, 0, 1, 0, 0, si, 0, co, 0, 0, 0, 0, 1}
+	pers := style.IDENTITY_MATRIX4
+	pers[11] = -1.0 / 300
+	m := style.m4_mul(style.m4_translate(100, 80, 0), style.m4_mul(pers, style.m4_mul(ry, style.m4_translate(-100, -80, 0))))
+	draw.begin_frame(&f.dc, {f32(COMP_SIZE.x), f32(COMP_SIZE.y)})
+	ctl_plane = Ctl_Plane{ok = true, h = lay.plane_h3(m)}
+	defer ctl_plane = {}
+	draw.push_plane(&f.dc, draw.Rect{{10, 20}, {210, 140}}, 2)
+	draw.push_transform(&f.dc, draw.affine_translate({5, 7}))
+	fwd, inv, ok := painted_projection(&f.dc, draw.current_transform(&f.dc))
+	testing.expect(t, ok)
+	for u in ([]lay.Vec2{{40, 50}, {10, 20}, {180, 110}, {95, 66}}) {
+		p, pok := lay.h3_apply(fwd, u)
+		want, _ := lay.h3_apply(ctl_plane.h, u + lay.Vec2{5, 7})
+		testing.expectf(t, pok && math.abs(p.x - want.x) < 0.01 && math.abs(p.y - want.y) < 0.01, "%v goes where the plane puts it: %v, want %v", u, p, want)
+		back, bok := lay.h3_apply(inv, p)
+		testing.expectf(t, bok && math.abs(back.x - u.x) < 0.01 && math.abs(back.y - u.y) < 0.01, "the pointer at %v is back at %v, want %v", p, back, u)
+	}
+	draw.pop_transform(&f.dc)
+	draw.discard_plane(&f.dc, draw.pop_plane(&f.dc))
+	draw.end_frame(&f.dc)
+}
