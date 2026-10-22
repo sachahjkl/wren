@@ -205,6 +205,23 @@ Step 'licence tool (tools\license.ps1: a licence issued with the development pai
     if ($LASTEXITCODE -eq 0) { 'keygen wrote a private key inside the repository'; Remove-Item build\tmp\license_tool_private.key; $global:LASTEXITCODE = 1; return }
     $global:LASTEXITCODE = 0
 }
+Step 'licence Worker (licence\worker, no network: Paddle-Signature checks, transaction.completed, idempotency, KV, mail, and licences made with the development pair verified by Wren''s own tool; SKIP when neither node 22.18+ nor bun is installed)' {
+    $node = $null
+    if (Get-Command node -ErrorAction SilentlyContinue) {
+        $v = [version]((node -p 'process.versions.node') -replace '[^0-9.]', '')
+        if ($v -ge [version]'22.18') { $node = $true }
+    }
+    $bun = Get-Command bun -ErrorAction SilentlyContinue
+    if (-not $node -and -not $bun) { 'SKIP: neither node 22.18+ nor bun is installed'; $global:LASTEXITCODE = 0; return }
+    odin build src/tools/license -use-separate-modules -collection:wb=src -vet -out:build/license_worker.exe $Stack
+    if ($LASTEXITCODE -ne 0) { return }
+    $env:WREN_LICENSE_EXE = (Resolve-Path build\license_worker.exe).Path
+    Push-Location licence\worker
+    try {
+        if ($node) { node --test 'test/*.test.ts' 2>&1 | Where-Object { $_ -notmatch '^\{"evt"' } } else { bun test test/ 2>&1 | Where-Object { $_ -notmatch '^\{"evt"' } }
+        if ($LASTEXITCODE -eq 0) { 'All tests were successful.' }
+    } finally { Pop-Location }
+}
 Step 'file: folders end-to-end test (index file, listing, redirect to /, errors, who may open what; no server)' {
     odin build src/tools/filetest -use-separate-modules -collection:wb=src -vet $Track -out:build/filetest.exe $Stack
     if ($LASTEXITCODE -ne 0) { return }
