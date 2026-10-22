@@ -13405,6 +13405,19 @@ _t_timers_IntersectionObservers_schedule :: proc "c" (env: rawptr, caller: wasm.
 	return nil
 }
 
+// ResizeObservers_schedule :: proc(c: ^Call, observing: bool)
+@(private = "file")
+_t_timers_ResizeObservers_schedule :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32 != 0
+	ResizeObservers_schedule(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // Document_writeMarkup :: proc(c: ^Call, markup: string) -> Api_Error
 @(private = "file")
 _t_scripts_Document_writeMarkup :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -18026,6 +18039,7 @@ api_imports := [?]wasm.Import{
 	{module = "events", name = "Event_propagationStopped", fn = _t_events_Event_propagationStopped, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "EventTarget_create", fn = _t_events_EventTarget_create, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "timers", name = "IntersectionObservers_schedule", fn = _t_timers_IntersectionObservers_schedule, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
+	{module = "timers", name = "ResizeObservers_schedule", fn = _t_timers_ResizeObservers_schedule, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
 	{module = "scripts", name = "Document_writeMarkup", fn = _t_scripts_Document_writeMarkup, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "Document_openStream", fn = _t_scripts_Document_openStream, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "Document_closeStream", fn = _t_scripts_Document_closeStream, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},

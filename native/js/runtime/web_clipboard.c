@@ -58,3 +58,15 @@ JSValue wjr_Clipboard_write(JSContext *ctx, JSValueConst this_val, int argc, JSV
     if (argc < 1) { JS_ThrowTypeError(ctx, "Failed to execute 'write' on 'Clipboard': 1 argument required, but only 0 present."); return web_promise_reject_pending(ctx); }
     return call_hook(ctx, "write", this_val, argv[0]);
 }
+
+/* ClipboardItem is JavaScript made at pre-initialization: a worker's realm, or a document that is not a secure context
+ * (SecureContext, Exposed=Window), does not have it */
+int web_clipboard_start(JSContext *ctx, int kind)
+{
+    WJ_UNUSED(kind);
+    if (web_is_window() && wr_Window_isSecureContext()) { return 0; }
+    JSAtom a = JS_NewAtom(ctx, "ClipboardItem");
+    JS_DeleteProperty(ctx, wj_the_realm.global, a, 0);
+    JS_FreeAtom(ctx, a);
+    return 0;
+}
