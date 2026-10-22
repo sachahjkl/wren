@@ -112,5 +112,8 @@ function Stop-WrenTestServer($Server) {
 }
 
 # No script that sources this file (tests, captures, measurements, the agents' runs) lets a Wren integrate itself with the machine's desktop:
-# the first-run integration and the update offer of src/browser/desktop_shell.odin read this variable. (--desktop-integration=... on the command line still works.)
+# Setup's offer at the start (setup.odin), the system watcher of the integration (desktop_shell.odin) and the update check (update_check.odin) read this variable. (--desktop-integration=... on the command line still works.)
 $env:WREN_DESKTOP_INTEGRATION = 'off'
+# ... and none lets itself be taken for the user's Wren, or for another run's: a second start with the same profile hands its addresses to the first and ends
+# (src/browser/instance_shell.odin). WREN_SINGLE_INSTANCE=on, set by the one script that checks it (instance_e2e.ps1), turns it back on.
+$env:WREN_SINGLE_INSTANCE = 'off'

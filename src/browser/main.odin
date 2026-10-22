@@ -134,6 +134,7 @@ App :: struct {
 	loader:   fetch.Loader,
 	storage:  page.Storage_Manager,   // localStorage / sessionStorage of the profile
 	profile_dir: string,
+	portable: bool,           // wren.portable beside the executable: the profile is <executable folder>\data (setup.odin)
 	process:  ^base.Scope,
 
 	tabs:     [dynamic]^Tab,
@@ -763,7 +764,6 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
 				if ui.row(.Center) { address_row(app, t) }
 			}
-			desktop_offer_bar(app)   // desktop_shell.odin
 			find_bar(app, t)
 			// the page, and the developer tools docked next to it (devtools.odin): the page takes what the panel leaves
 			dock, dev_on := devtools_dock(app, t)
@@ -792,6 +792,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	}
 	context_menus_build(app)
 	palette_build(app)   // palette.odin: the command palette, over everything else
+	setup_build(app)   // setup_ui.odin: the Setup dialog (nothing while it is closed)
 	// notices go over the page, not over the title bar's window buttons
 	if app.page_rect.max.y > app.page_rect.min.y { ui.set_toast_area(app.page_rect) }
 	ui.toasts_build()
@@ -1053,6 +1054,7 @@ frame :: proc(app: ^App, idled := false) {
 		window = app.win, frame_ms = pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock
 	})
 	build_ui(app)
+	instance_frame(app)   // instance_shell.odin: the notice of a first Wren that did not answer
 	ui.end_build()
 	prof_end(.Build_UI)
 	window_cursor_apply(app)   // page_cursor.odin: the page's cursor over the page, else the chrome's
@@ -1084,6 +1086,13 @@ frame :: proc(app: ^App, idled := false) {
 
 wake_window :: proc(user: rawptr) { platform.wake((^platform.Window)(user)) }
 
+// A switch without a value (`--setup`): taken out of the arguments; found when it was there.
+extract_switch :: proc(args: []string, flag: string) -> (found: bool, rest: [dynamic]string) {
+	rest = make([dynamic]string, context.temp_allocator)
+	for a in args { if a == flag { found = true } else { append(&rest, a) } }
+	return
+}
+
 // `--profile DIR` and `--policy FILE` are the shell's own flags; every other `--pref name=value` is a preference.
 extract_flag :: proc(args: []string, flag: string) -> (value: string, rest: [dynamic]string) {
 	rest = make([dynamic]string, context.temp_allocator)
@@ -1105,10 +1114,15 @@ main :: proc() {
 	profile_override, a1 := extract_flag(args, "--profile")
 	policy_file, a2 := extract_flag(a1[:], "--policy")
 	cli_mode, a3, cli_bad := desktop.parse_cli(a2[:])   // --desktop-integration=install|remove|status (desktop_shell.odin)
+	setup_requested, a4 := extract_switch(a3[:], "--setup")   // opens the Setup dialog (setup.odin)
+	new_window, a5 := extract_switch(a4[:], "--new-window")   // a window of its own, not a tab of the Wren that runs (instance_shell.odin)
+	no_single, a6 := extract_switch(a5[:], "--no-single-instance")
 	app.prefs = config.prefs_make()
-	rest, arg_errors := config.apply_args(&app.prefs, a3[:], context.temp_allocator)   // (read before the first frame)
+	rest, arg_errors := config.apply_args(&app.prefs, a6[:], context.temp_allocator)   // (read before the first frame)
 	cfg_dir := platform.config_dir(context.temp_allocator)
-	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator)))
+	portable_dir := profile_override == "" ? portable_profile_dir() : ""   // a copy with wren.portable beside it keeps its profile beside it (setup.odin)
+	app.portable = portable_dir != ""
+	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (app.portable ? portable_dir : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator))))
 	_ = os.make_directory_all(app.profile_dir)
 	net.user_agent_product = "Wren/" + APP_VERSION
 	crashtrace.set_report_dir(strings.concatenate({app.profile_dir, "/crashes"}, context.temp_allocator), fmt.tprintf("%s %s (%s %s)", APP_NAME, APP_VERSION, app_commit(), APP_COMMIT_DATE))
@@ -1122,6 +1136,7 @@ main :: proc() {
 	prof_mark(.Prefs)
 	if cli_bad != "" { desktop.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove or status)\n", cli_bad)); os.exit(2) }
 	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode)) }   // no window: a script's call
+	instance_early(app, rest[:], setup_requested, new_window || no_single)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
 
 	// Start-up order: the renderer's start-up (device, shader compilation) is by far the longest step and needs only the
@@ -1133,6 +1148,7 @@ main :: proc() {
 	prof_mark(.Window)
 
 	host.loop_init(&app.loop, wake_window, app.win)
+	instance_begin(app)   // instance_shell.odin: the window that takes the second starts' addresses
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	appearance_init(app)   // before any settings are derived: `system` colors, auto color scheme
 	ns := net.settings_from_prefs(&app.prefs)
@@ -1166,8 +1182,14 @@ main :: proc() {
 	address := len(rest) > 0 ? command_line_address(rest[0]) : ""   // (a relative path of a file or folder: local_paths.odin)
 	prof_mark(.Navigation)
 	if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address) }   // session.odin
+	if len(rest) > 1 {   // (an address each: the first is the first tab, the others follow it, as a second start's would)
+		for a in rest[1:] { tab_open(app, command_line_address(a)) }
+		app.current = len(app.tabs) - len(rest)
+	}
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }   // (tab_log keeps its copy)
-	desktop_startup(app, profile_override != "")   // desktop_shell.odin: the first run integrates once; an existing integration is looked at
+	desktop_watch_begin(app, profile_override != "")   // desktop_shell.odin: the system tells when the integration changes (the box in about:config and the Setup dialog follow it)
+	setup_startup(app, profile_override != "", setup_requested)   // setup.odin: a copy that is not the installed one is offered Setup; --setup opens it
+	update_startup(app, profile_override != "")   // update_check.odin: the daily check, when it is on and due
 
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
 	fixed_surface := config.bool_of(&app.prefs, "browser.window.fixed_surface")
@@ -1237,6 +1259,8 @@ main :: proc() {
 
 	win.ShowWindow(app.win.hwnd, win.SW_HIDE)   // closed means gone from the screen at once, whatever the teardown below takes
 	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), int(config.int_of(&app.prefs, "browser.shell.shutdown_warn_ms")), int(config.int_of(&app.prefs, "browser.shell.shutdown_force_ms")))   // shutdown.odin (host): names what the teardown waits for
+	host.shutdown_step("instance_end")
+	instance_end()   // instance_shell.odin: later starts are told to wait, then the profile is free
 	host.shutdown_step("prof_report")
 	prof_report()
 	host.shutdown_step("desktop_shell_shutdown")
@@ -1362,6 +1386,8 @@ main :: proc() {
 	delete(app.tabs)
 	free(app)
 	the_app = nil
+	host.shutdown_step("instance_release")
+	instance_release()   // instance_shell.odin: the profile is written and free: a start that waited becomes the owner (before the watchdog's stop, which can wait for its next tick)
 	host.shutdown_end()
 	memcheck_exit(profile_dir)   // memcheck.odin: the leak report of the check build
 }
