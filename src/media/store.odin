@@ -60,6 +60,7 @@ Track_Store :: struct {
 	bytes:    int,
 	version:  u64,              // changes with every write
 	last_dur: Time,             // the duration of the last frame appended (frames without one take it)
+	max_end:  Time,             // the greatest end of a frame in presentation time (0 when empty)
 }
 
 store_create :: proc() -> ^Track_Store { return new(Track_Store, runtime.heap_allocator()) }
@@ -110,7 +111,10 @@ store_append :: proc(s: ^Track_Store, smp: Sample) {
 	s.version += 1
 	n := len(s.frames)
 	// a frame without a duration takes the gap to the next one (or the last known duration)
-	if n > 0 && s.frames[n - 1].dur <= 0 && c.dts > s.frames[n - 1].dts { s.frames[n - 1].dur = c.dts - s.frames[n - 1].dts }
+	if n > 0 && s.frames[n - 1].dur <= 0 && c.dts > s.frames[n - 1].dts {
+		s.frames[n - 1].dur = c.dts - s.frames[n - 1].dts
+		s.max_end = max(s.max_end, s.frames[n - 1].pts + s.frames[n - 1].dur)
+	}
 	if c.dur <= 0 { c.dur = s.last_dur }
 	if c.dur > 0 { s.last_dur = c.dur }
 	if n == 0 || c.dts > s.frames[n - 1].dts {
@@ -128,6 +132,19 @@ store_append :: proc(s: ^Track_Store, smp: Sample) {
 		}
 	}
 	s.bytes += len(c.blob.data)
+	s.max_end = max(s.max_end, c.pts + c.dur)
+}
+
+// Before a frame is appended: what it replaces goes (the coded frame processing of Media Source Extensions: frames
+// presented in [pts, end) and what depends on them, up to the next keyframe). Only an append that can overlap pays for
+// the scan: one that arrives out of decode order, or a keyframe starting before the end of what is stored.
+store_replace_overlap :: proc(s: ^Track_Store, pts, dts, end: Time, keyframe: bool) -> int {
+	sync.mutex_lock(&s.mu)
+	defer sync.mutex_unlock(&s.mu)
+	n := len(s.frames)
+	if n == 0 { return 0 }
+	if !(dts <= s.frames[n - 1].dts || (keyframe && pts < s.max_end)) { return 0 }
+	return store_remove_locked(s, pts, end)
 }
 
 // The first frame whose decode time is `dts` or later. The frame is the caller's: coded_release it.
@@ -194,6 +211,17 @@ store_ranges :: proc(s: ^Track_Store, tolerance: Time, allocator := context.allo
 store_remove :: proc(s: ^Track_Store, start, end: Time) -> int {
 	sync.mutex_lock(&s.mu)
 	defer sync.mutex_unlock(&s.mu)
+	return store_remove_locked(s, start, end)
+}
+
+@(private)
+store_recompute_end :: proc(s: ^Track_Store) {
+	s.max_end = 0
+	for f in s.frames { s.max_end = max(s.max_end, f.pts + f.dur) }
+}
+
+@(private)
+store_remove_locked :: proc(s: ^Track_Store, start, end: Time) -> int {
 	freed := 0
 	w := 0
 	cut := false
@@ -212,7 +240,7 @@ store_remove :: proc(s: ^Track_Store, start, end: Time) -> int {
 	}
 	resize(&s.frames, w)
 	s.bytes -= freed
-	if freed > 0 { s.version += 1 }
+	if freed > 0 { s.version += 1; store_recompute_end(s) }
 	return freed
 }
 
@@ -245,6 +273,7 @@ store_evict_before :: proc(s: ^Track_Store, t: Time, keep_bytes: int) -> int {
 	remove_range(&s.frames, 0, cut)
 	s.bytes -= freed
 	s.version += 1
+	store_recompute_end(s)
 	return freed
 }
 
@@ -254,6 +283,7 @@ store_clear :: proc(s: ^Track_Store) {
 	for &c in s.frames { coded_release(&c) }
 	clear(&s.frames)
 	s.bytes = 0
+	s.max_end = 0
 	s.version += 1
 }
 

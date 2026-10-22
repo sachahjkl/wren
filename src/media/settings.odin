@@ -22,6 +22,7 @@ Settings :: struct {
 	mse_audio_bytes: int,
 	mse_ahead:       Time,     // what eviction keeps in front of the playback position
 	mse_behind:      Time,     // and behind
+	mse_max_buffers: int,      // SourceBuffer objects per MediaSource
 	hevc:            bool,     // offer HEVC where the system decodes it
 	vp9:             bool,
 	av1:             bool,
@@ -64,6 +65,8 @@ MEDIA_PREFS := [?]config.Def{
 		description = "How much media in front of the playback position an over-full SourceBuffer keeps when it makes room."},
 	{name = "media.mse.behind_seconds", kind = .Float, default = {f = 20}, bounded = true, min = 0, max = 7200, unit = "s",
 		description = "How much media behind the playback position an over-full SourceBuffer keeps."},
+	{name = "media.mse.max_source_buffers", kind = .Int, default = {i = 16}, bounded = true, min = 1, max = 256,
+		description = "SourceBuffer objects one MediaSource accepts (addSourceBuffer raises QuotaExceededError past it)."},
 	{name = "media.codec.hevc", kind = .Bool, default = {b = true},
 		description = "Offer HEVC (hvc1 / hev1) when the system has a decoder for it."},
 	{name = "media.codec.vp9", kind = .Bool, default = {b = true},
@@ -105,6 +108,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		mse_audio_bytes = int(config.int_of(p, "media.mse.audio_buffer_mb")) << 20,
 		mse_ahead = Time(config.float_of(p, "media.mse.ahead_seconds") * 1e9),
 		mse_behind = Time(config.float_of(p, "media.mse.behind_seconds") * 1e9),
+		mse_max_buffers = int(config.int_of(p, "media.mse.max_source_buffers")),
 		hevc = config.bool_of(p, "media.codec.hevc"),
 		vp9 = config.bool_of(p, "media.codec.vp9"),
 		av1 = config.bool_of(p, "media.codec.av1"),
