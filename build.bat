@@ -1,86 +1,167 @@
 @echo off
-:: Builds the browser with the Odin compiler. Output: build\browser.exe
-::   build.bat [release|debug|profile]   (default: optimized; profile = optimized + PDB + measurement hooks -> build\browser_prof.exe)
-:: Every build is a development build (blueprint icon, about:home and the menu say "development build") but
-:: build.bat release, the one the release workflow packages (amber icon). The channel goes in as -define:WREN_CHANNEL
-:: (about.odin: APP_CHANNEL) with its icon (src\browser\wren.rc / wren_dev.rc), and in build\browser.channel next to
-:: build\browser.exe, which tools\package.ps1 checks.
-:: Dependencies are pinned git submodules, imported through Odin collections (ext\gui_toolkit -> "toolkit:<package>"),
-:: and the Wasmtime C API, a pinned release checked by SHA-256 -> build\wasmtime (tools\fetch_wasmtime.ps1, fetched once).
-:: The built-in image decoders (native\media, Rust: resvg, image-webp, zenavif-parse, rav1d, qcms; crates pinned by Cargo.lock,
-:: NASM by SHA-256) -> build\media\wren_media.lib (tools\build_media.ps1, rebuilt only when its sources change).
-:: Lexbor (ext\lexbor) and the C shims (src\shim) -> build\lexbor\lexbor.lib (tools\build_lexbor.ps1, MSVC, same rule).
-:: The JavaScript engine (native\js, QuickJS-ng + the generated bindings, zig cc, pinned) -> build\js\wren_js.wasm (tools\build_js.ps1).
+:: ============================================================================================================
+::  build.bat : builds Wren with the Odin compiler
+:: ============================================================================================================
+::
+::    build.bat            development build, fast to compile       -> build\browser.exe
+::    build.bat debug      debug information, no optimisation       -> build\browser.exe
+::    build.bat profile    optimised + PDB + measurement hooks      -> build\browser_prof.exe
+::    build.bat check      debug + every allocation tracked         -> build\browser_check.exe
+::    build.bat release    the build the release workflow packages  -> build\browser.exe
+::
+::  Channel: every build is a *development* build (blueprint icon, "development build" in about:home and the menu)
+::  but `release` (amber icon). It goes in as -define:WREN_CHANNEL (about.odin: APP_CHANNEL) with its icon, and in
+::  build\browser.channel, which tools\package.ps1 checks before packaging.
+::
+::  Compile speed: Odin hands LLVM one module per package with -use-separate-modules, and LLVM then works on all
+::  cores (about 5 s instead of 55 s for a full build). The development, debug and check builds use it; `release`
+::  and `profile` keep a single module (inlining across packages; measurements as in the shipped build).
+::
+::  Steps: 1. checks   2. dependencies   3. generated code   4. common flags   5. the build itself
+:: ============================================================================================================
 setlocal
 cd /D "%~dp0"
-if exist ext\gui_toolkit\ui goto have_toolkit
-echo ext\gui_toolkit is empty: run  git submodule update --init
-exit /b 1
-:have_toolkit
+set "VARIANT=%~1"
+if "%VARIANT%"=="" set "VARIANT=dev"
+
+
+:: ------------------------------------------------------------------------------------------------------------
+::  1. Checks
+:: ------------------------------------------------------------------------------------------------------------
+
+:: the toolkit is a git submodule (ext\gui_toolkit, imported as "toolkit:<package>")
+if not exist ext\gui_toolkit\ui (
+    echo ext\gui_toolkit is empty: run  git submodule update --init
+    exit /b 1
+)
+
 :: the Odin compiler this tree is written for (odin.version; the CI installs that release, pinned by SHA-256 in
-:: .github\actions\setup\action.yml): another one may build differently or not at all. WREN_ANY_ODIN=1 skips the check.
+:: .github\actions\setup\action.yml): another one may build differently or not at all. WREN_ANY_ODIN=1 skips this.
 set /p WREN_ODIN=<odin.version
-if defined WREN_ANY_ODIN goto have_odin
-odin version 2>nul | findstr /C:"%WREN_ODIN%" >nul && goto have_odin
-echo This tree needs Odin %WREN_ODIN% (odin.version); found:
-odin version
-echo Install that release, or set WREN_ANY_ODIN=1 to build anyway.
-exit /b 1
-:have_odin
-powershell -NoProfile -ExecutionPolicy Bypass -File tools\fetch_wasmtime.ps1 >nul || (echo fetching Wasmtime failed & exit /b 1)
-powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_lexbor.ps1 >nul || (echo building Lexbor failed: run tools\build_lexbor.ps1 & exit /b 1)
-powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_media.ps1 >nul || (echo building the image decoders failed: run tools\build_media.ps1 & exit /b 1)
+if not defined WREN_ANY_ODIN (
+    odin version 2>nul | findstr /C:"%WREN_ODIN%" >nul || (
+        echo This tree needs Odin %WREN_ODIN% ^(odin.version^); found:
+        odin version
+        echo Install that release, or set WREN_ANY_ODIN=1 to build anyway.
+        exit /b 1
+    )
+)
+
+
+:: ------------------------------------------------------------------------------------------------------------
+::  2. Dependencies (each script does nothing when its output is up to date)
+:: ------------------------------------------------------------------------------------------------------------
+::  Wasmtime   C API, a pinned release checked by SHA-256                     -> build\wasmtime
+::  Lexbor     HTML parser (ext\lexbor) + the C shims (src\shim), MSVC         -> build\lexbor\lexbor.lib
+::  media      image decoders in Rust (resvg, image-webp, zenavif-parse,       -> build\media\wren_media.lib
+::             rav1d, qcms; crates pinned by Cargo.lock, NASM by SHA-256)
+
+call :step "fetching Wasmtime"            tools\fetch_wasmtime.ps1 || exit /b 1
+call :step "building Lexbor"              tools\build_lexbor.ps1   || exit /b 1
+call :step "building the image decoders"  tools\build_media.ps1    || exit /b 1
 if not exist build mkdir build
-:: the web API from its description (api\*.widl): host bindings, guest SDK, docs, conformance tests (only what changed)
-odin run src/tools/bindgen -collection:wb=src -vet -out:build/bindgen.exe || exit /b 1
-:: the JavaScript engine (native\js: QuickJS-ng compiled to Wasm with zig, pinned, and pre-initialized) -> build\js\wren_js.wasm,
-:: embedded in browser.exe (src\js\image); rebuilt only when its sources change
-powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_js.ps1 >nul || (echo building the JavaScript engine failed: run tools\build_js.ps1 & exit /b 1)
+
+
+:: ------------------------------------------------------------------------------------------------------------
+::  3. Generated code
+:: ------------------------------------------------------------------------------------------------------------
+::  bindgen    the web API from its description (api\*.widl): host bindings, guest SDK, docs and conformance
+::             tests (only what changed)
+::  JS engine  QuickJS-ng + the generated bindings, compiled to Wasm with a pinned zig and pre-initialized
+::             -> build\js\wren_js.wasm, embedded in browser.exe (src\js\image)
+
+odin run src/tools/bindgen -collection:wb=src -vet -use-separate-modules -out:build/bindgen.exe || exit /b 1
+call :step "building the JavaScript engine"  tools\build_js.ps1 || exit /b 1
+
+
+:: ------------------------------------------------------------------------------------------------------------
+::  4. Common flags
+:: ------------------------------------------------------------------------------------------------------------
+
+:: channel and icon
 set "WREN_CHANNEL=dev"
 set "WREN_RC=src/browser/wren_dev.rc"
-if "%1"=="release" set "WREN_CHANNEL=release"
-if "%1"=="release" set "WREN_RC=src/browser/wren.rc"
-set "COLL=-collection:toolkit=ext/gui_toolkit -collection:wb=src -resource:%WREN_RC% -define:WREN_CHANNEL=%WREN_CHANNEL%"
+if "%VARIANT%"=="release" (
+    set "WREN_CHANNEL=release"
+    set "WREN_RC=src/browser/wren.rc"
+)
+
+:: collections: "toolkit:<package>" and "wb:<package>"
+set "FLAGS=-collection:toolkit=ext/gui_toolkit -collection:wb=src"
+set "FLAGS=%FLAGS% -resource:%WREN_RC% -define:WREN_CHANNEL=%WREN_CHANNEL%"
+
 :: 32 MiB of stack for the window thread: Wasm calls run on it (wasm.wasmtime.max_stack_bytes + host_stack_reserve_bytes)
-set "COLL=%COLL% -extra-linker-flags:/STACK:33554432"
-:: every thread's temporary allocator takes a first block of this size, committed at once (4 MiB by default: with the
-:: three dozen threads of the pools, over 100 MB of private bytes, mostly never touched); a bigger need adds a block
-set "COLL=%COLL% -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576"
-:: the version of the sources (about.odin: APP_COMMIT, APP_COMMIT_DATE): short commit hash ("+" when the tree has
-:: uncommitted changes) and its date; "dev" without git. The hash goes in as g<hash> (as git describe writes it): Odin
-:: would read an all-digit value as a number.
+set "FLAGS=%FLAGS% -extra-linker-flags:/STACK:33554432"
+
+:: every thread's temporary allocator commits its first block at once: 1 MiB instead of Odin's 4 MiB (with the three
+:: dozen threads of the pools, 4 MiB each was over 100 MB of private bytes, mostly never touched)
+set "FLAGS=%FLAGS% -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576"
+
+:: the version of the sources (about.odin: APP_COMMIT, APP_COMMIT_DATE): short commit hash, "+" when the tree has
+:: uncommitted changes, and its date; "dev" without git. The hash goes in as g<hash>, as git describe writes it (Odin
+:: would read an all-digit value as a number).
 set "WREN_COMMIT=dev"
 set "WREN_DATE="
 for /f "delims=" %%i in ('git rev-parse --short HEAD 2^>nul') do set "WREN_COMMIT=g%%i"
 for /f "delims=" %%i in ('git log -1 --format^=%%cs 2^>nul') do set "WREN_DATE=%%i"
-if "%WREN_COMMIT%"=="dev" goto have_version
-git diff --quiet HEAD -- 2>nul || set "WREN_COMMIT=%WREN_COMMIT%+"
-:have_version
-set "COLL=%COLL% -define:WREN_COMMIT=%WREN_COMMIT%"
-if defined WREN_DATE set "COLL=%COLL% -define:WREN_COMMIT_DATE=%WREN_DATE%"
-if "%1"=="debug" goto debug
-if "%1"=="profile" goto profile
-if "%1"=="check" goto check
-odin build src/browser -out:build/browser.exe %COLL% -o:speed -vet -subsystem:windows
-goto done
-:profile
-:: (no Direct3D debug layer: GPU and present times as in a release build)
-odin build src/browser -out:build/browser_prof.exe %COLL% -o:speed -debug -define:PROFILE=true -define:D3D_DEBUG=false -vet -subsystem:windows
-if errorlevel 1 exit /b 1
+if not "%WREN_COMMIT%"=="dev" git diff --quiet HEAD -- 2>nul || set "WREN_COMMIT=%WREN_COMMIT%+"
+set "FLAGS=%FLAGS% -define:WREN_COMMIT=%WREN_COMMIT%"
+if defined WREN_DATE set "FLAGS=%FLAGS% -define:WREN_COMMIT_DATE=%WREN_DATE%"
+
+set "FLAGS=%FLAGS% -vet -subsystem:windows"
+set "FAST=-use-separate-modules"
+
+
+:: ------------------------------------------------------------------------------------------------------------
+::  5. The build
+:: ------------------------------------------------------------------------------------------------------------
+
+if "%VARIANT%"=="dev"     goto build_dev
+if "%VARIANT%"=="debug"   goto build_debug
+if "%VARIANT%"=="profile" goto build_profile
+if "%VARIANT%"=="check"   goto build_check
+if "%VARIANT%"=="release" goto build_release
+echo unknown build "%VARIANT%": dev (default), debug, profile, check or release
+exit /b 1
+
+:build_dev
+odin build src/browser -out:build/browser.exe %FLAGS% -o:speed %FAST% || exit /b 1
+goto done_browser
+
+:build_debug
+odin build src/browser -out:build/browser.exe %FLAGS% -debug %FAST% || exit /b 1
+goto done_browser
+
+:build_release
+:: one module: LLVM inlines across packages
+odin build src/browser -out:build/browser.exe %FLAGS% -o:speed || exit /b 1
+goto done_browser
+
+:build_profile
+:: one module, as the release; a PDB for the profiler; no Direct3D debug layer (GPU and present times as shipped)
+odin build src/browser -out:build/browser_prof.exe %FLAGS% -o:speed -debug -define:PROFILE=true -define:D3D_DEBUG=false || exit /b 1
 echo built build\browser_prof.exe
 exit /b 0
-:check
-:: the check build: debug information, Odin's bounds checks and assertions, the contracts checked in debug builds only
-:: (thread ownership), and every allocation of the process tracked (src\base\memory.odin). At exit the blocks still
-:: allocated go to <profile>\memtrack.txt (or WREN_MEMTRACK_REPORT); WREN_MEMTRACK_FAIL=1 makes them exit code 3,
+
+:build_check
+:: debug information, Odin's bounds checks and assertions, the contracts checked in debug builds only (thread
+:: ownership), and every allocation of the process tracked (src\base\memory.odin). At exit the blocks still allocated
+:: go to <profile>\memtrack.txt (or WREN_MEMTRACK_REPORT); WREN_MEMTRACK_FAIL=1 makes them exit code 3,
 :: WREN_MEMTRACK_STACK=1 records each block's call stack. Never shipped: the tracker serializes every allocation.
-odin build src/browser -out:build/browser_check.exe %COLL% -debug -define:WREN_TRACK_MEMORY=true -vet -subsystem:windows
-if errorlevel 1 exit /b 1
+odin build src/browser -out:build/browser_check.exe %FLAGS% -debug -define:WREN_TRACK_MEMORY=true %FAST% || exit /b 1
 echo built build\browser_check.exe
 exit /b 0
-:debug
-odin build src/browser -out:build/browser.exe %COLL% -debug -vet -subsystem:windows
-:done
-if errorlevel 1 exit /b 1
+
+:done_browser
 >build\browser.channel echo %WREN_CHANNEL%
 echo built build\browser.exe (%WREN_CHANNEL%)
+exit /b 0
+
+
+:: ------------------------------------------------------------------------------------------------------------
+::  :step "what" script.ps1 : runs a build script quietly; on failure says which one to run by hand
+:: ------------------------------------------------------------------------------------------------------------
+:step
+powershell -NoProfile -ExecutionPolicy Bypass -File %2 >nul && exit /b 0
+echo %~1 failed: run  powershell -File %2
+exit /b 1
