@@ -134,12 +134,13 @@
   }
 
     // document.fonts
-    const fonts = new FontFaceSet(PRIVATE);
-    accessor(Document.prototype, "fonts", () => fonts);
+    // (made on first use: an EventTarget is made by a browser call, and the realm starts before it may make one)
+    let fonts = null;
+    accessor(Document.prototype, "fonts", () => (fonts ||= new FontFaceSet(PRIVATE)));
 
     // navigator.permissions
-    const permissions = new Permissions(PRIVATE);
-    accessor(Navigator.prototype, "permissions", () => permissions);
+    let permissions = null;
+    accessor(Navigator.prototype, "permissions", () => (permissions ||= new Permissions(PRIVATE)));
 
     // dialogs that are not shown
     const quiet = (what) => console.warn(`${what}: this browser shows no dialogs`);
@@ -148,10 +149,15 @@
     hidden(globalThis, "prompt", function prompt(message, value) { quiet("prompt(" + (arguments.length ? String(message) : "") + ")"); return null; });
 
     // visualViewport
-    const vv = new VisualViewport(PRIVATE);
-    accessor(globalThis, "visualViewport", () => vv);
-    globalThis.addEventListener("resize", () => vv.dispatchEvent(new Event("resize")));
-    globalThis.addEventListener("scroll", () => vv.dispatchEvent(new Event("scroll")));
+    let vv = null;
+    accessor(globalThis, "visualViewport", () => {
+      if (vv === null) {
+        vv = new VisualViewport(PRIVATE);
+        globalThis.addEventListener("resize", () => vv.dispatchEvent(new Event("resize")));
+        globalThis.addEventListener("scroll", () => vv.dispatchEvent(new Event("scroll")));
+      }
+      return vv;
+    });
 
     // WebKit's scrollIntoViewIfNeeded
     hidden(Element.prototype, "scrollIntoViewIfNeeded", function scrollIntoViewIfNeeded(centerIfNeeded) {

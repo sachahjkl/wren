@@ -70,6 +70,12 @@ clipboard_get :: proc() -> (string, bool) {
 	return fake_clipboard, true
 }
 
+// Process end (process_shutdown): the headless tools' clipboard text goes.
+clipboard_shutdown :: proc() {
+	delete(fake_clipboard, base.process_allocator())
+	fake_clipboard = ""
+}
+
 // The text the headless tools' clipboard holds (tests).
 clipboard_fake_text :: proc() -> string { return fake_clipboard }
 
