@@ -381,14 +381,28 @@ css_color :: proc(c: [4]f32) -> string {
 	return fmt.tprintf("rgba(%d,%d,%d,%.3f)", to8(c[0]), to8(c[1]), to8(c[2]), clamp(c[3], 0, 1))
 }
 
+// One SVG paint property as a declaration: none, the element's `color` (currentColor), or a colour.
+@(private = "file")
+write_paint :: proc(st: ^strings.Builder, name: string, pv: style.Svg_Paint, color: [4]f32) {
+	switch pv.kind {
+	case .None: fmt.sbprintf(st, "%s:none;", name)
+	case .Current_Color: fmt.sbprintf(st, "%s:%s;", name, css_color(color))
+	case .Color: fmt.sbprintf(st, "%s:%s;", name, css_color(pv.color))
+	}
+}
+
 // The SVG document an inline <svg> draws. false: over the limits.
 // A style attribute that declares `color` (not `background-color`, `flood-color`...).
 @(private)
-svg_style_sets_color :: proc(style_attr: string) -> bool {
+svg_style_sets_color :: proc(style_attr: string) -> bool { return svg_style_sets(style_attr, "color") }
+
+// A style attribute that declares `name`.
+@(private)
+svg_style_sets :: proc(style_attr, name: string) -> bool {
 	rest := style_attr
 	for decl in strings.split_iterator(&rest, ";") {
-		name, _, _ := strings.partition(decl, ":")
-		if strings.equal_fold(strings.trim_space(name), "color") { return true }
+		n, _, _ := strings.partition(decl, ":")
+		if strings.equal_fold(strings.trim_space(n), name) { return true }
 	}
 	return false
 }
@@ -424,6 +438,25 @@ svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32) -> (string
 		if cs.font_style != .Normal { strings.write_string(&st, "font-style:italic;") }
 	}
 	if has_own { strings.write_string(&st, own); strings.write_byte(&st, ';') }
+	// fill and stroke: what the page's CSS computes for the <svg> element (CSS Fill and Stroke 3 §7: `svg { fill: none;
+	// stroke: currentColor }` is how most icon sets are styled). The element's own fill / stroke attribute or style wins.
+	if cs != nil {
+		if _, has := dom.get_attribute(d, node, "fill"); !has && !svg_style_sets(own, "fill") {
+			write_paint(&st, "fill", cs.svg_fill, cs.color)
+		}
+		if _, has := dom.get_attribute(d, node, "stroke"); !has && !svg_style_sets(own, "stroke") {
+			write_paint(&st, "stroke", cs.svg_stroke, cs.color)
+		}
+		if cs.stroke_width > 0 && cs.stroke_width != 1 && !svg_style_sets(own, "stroke-width") {
+			fmt.sbprintf(&st, "stroke-width:%.3f;", cs.stroke_width)
+		}
+		if cs.stroke_linecap != .Butt && !svg_style_sets(own, "stroke-linecap") {
+			fmt.sbprintf(&st, "stroke-linecap:%s;", cs.stroke_linecap == .Round ? "round" : "square")
+		}
+		if cs.stroke_linejoin != .Miter && !svg_style_sets(own, "stroke-linejoin") {
+			fmt.sbprintf(&st, "stroke-linejoin:%s;", cs.stroke_linejoin == .Round ? "round" : "bevel")
+		}
+	}
 	// the root's color, last so that it wins: in the standalone document the root has no parent, so `currentColor` or
 	// `inherit` there (attribute or style, DuckDuckGo's icons: <svg color="currentColor">) would be black. The cascade's
 	// value already accounts for the element's style attribute; a `color` attribute with a real color is kept.
