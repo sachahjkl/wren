@@ -190,6 +190,7 @@ config_page :: proc(v: ^Config_View, prefs: ^config.Prefs) {
 				}
 			}
 			ui.spacer(ui.px(em * 0.3))
+			desktop_config_panel(the_app)   // desktop_shell.odin: the desktop integration's box
 
 			query := strings.to_lower(strings.trim_space(ui.field_string(&v.search)), context.temp_allocator)
 			if !v.started { v.started = true; v.list.sel = -1 }

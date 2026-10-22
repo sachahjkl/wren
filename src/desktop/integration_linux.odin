@@ -21,6 +21,7 @@ import "core:strings"
 @(private = "file")
 LINUX_BACKEND := Backend{
 	name = "linux",
+	targets = "application menu, default browser",
 	parts = {.Launcher, .Icons},
 	status = linux_status,
 	install = linux_install,
