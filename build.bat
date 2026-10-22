@@ -89,6 +89,8 @@ if "%VARIANT%"=="release" (
 :: collections: "toolkit:<package>" and "wb:<package>"
 set "FLAGS=-collection:toolkit=ext/gui_toolkit -collection:wb=src"
 set "FLAGS=%FLAGS% -resource:%WREN_RC% -define:WREN_CHANNEL=%WREN_CHANNEL%"
+:: another toolkit checkout (WREN_TOOLKIT=S:/gt_wt/other), to compare two toolkits with the same browser sources
+if defined WREN_TOOLKIT set "FLAGS=-collection:toolkit=%WREN_TOOLKIT% -collection:wb=src -resource:%WREN_RC% -define:WREN_CHANNEL=%WREN_CHANNEL%"
 
 :: 32 MiB of stack for the window thread: Wasm calls run on it (wasm.wasmtime.max_stack_bytes + host_stack_reserve_bytes)
 set "FLAGS=%FLAGS% -extra-linker-flags:/STACK:33554432"

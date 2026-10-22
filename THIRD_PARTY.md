@@ -6,7 +6,7 @@ components below; the release zip carries their license texts in `licenses\`.
 | Component | Version | License | Where |
 |---|---|---|---|
 | [gui_toolkit](https://github.com/sachahjkl/gui_toolkit) | submodule `ext/gui_toolkit` | MIT | window, UI, renderer, text; see its `NOTICE.md` |
-| [Slug](https://github.com/EricLengyel/Slug) shaders and algorithm (Eric Lengyel), in gui_toolkit's `render/slug.hlsl` | commit `be3c13eb7d63f9e8aa5c583e42d92c374cb91d98` (`ext/gui_toolkit/font/slug_ref`) | MIT (also Apache-2.0); the patent is in the public domain since 2026-03-17 | optional text renderer (`text.renderer` = `slug`); credit required, text in `licenses\Slug-LICENSE-MIT.txt` |
+| [Slug](https://github.com/EricLengyel/Slug) shaders and algorithm (Eric Lengyel), in gui_toolkit's `render/slug.wgsl` (WGSL, the one source; the Direct3D 11 backend embeds the HLSL that naga, a build tool, writes from it) | commit `be3c13eb7d63f9e8aa5c583e42d92c374cb91d98` (`ext/gui_toolkit/font/slug_ref`) | MIT (also Apache-2.0); the patent is in the public domain since 2026-03-17 | optional text renderer (`text.renderer` = `slug`); credit required, text in `licenses\Slug-LICENSE-MIT.txt` |
 | RAD Debugger icon font (`ui/icons.ttf` of gui_toolkit) | | MIT (Epic Games Tools) | toolkit icons |
 | Roboto, Inconsolata (gui_toolkit fallback fonts) | | Apache-2.0, SIL OFL 1.1 | used only when Segoe UI / Consolas are missing |
 | [Wasmtime](https://github.com/bytecodealliance/wasmtime) C API | 49.0.3 | Apache-2.0 WITH LLVM-exception | `build\wasmtime` (`tools\fetch_wasmtime.ps1`) |
