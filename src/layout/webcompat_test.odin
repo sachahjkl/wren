@@ -206,6 +206,27 @@ image_size_attributes :: proc(t: ^testing.T) {
 	}, natural = true)
 }
 
+// A flex item that is an image with a given width keeps it when the row is too narrow (the automatic minimum size of a
+// replaced element is its specified size, flex §4.5): the text shrinks, the logo is not squashed.
+@(test)
+flex_image_keeps_its_given_size :: proc(t: ^testing.T) {
+	src := `<!doctype html><body style="margin:0"><div style="display:flex;width:200px;align-items:center">
+		<img id=a width=96 height=96 data-nw=256 data-nh=256 style="margin-right:22px"><div id=t>a long text that wants the whole row and more than that to itself</div></div>
+	<div style="display:flex;width:200px"><img id=b data-nw=256 data-nh=256 style="width:96px;height:96px;margin-right:22px"><div>a long text that wants the whole row and more than that to itself</div></div>
+	<div style="display:flex;width:200px;align-items:center"><img id=c data-nw=256 data-nh=256 style="width:96px;margin-right:22px"><div>a long text that wants the whole row and more than that to itself</div></div>
+	<div style="display:flex;width:200px"><img id=d data-nw=256 data-nh=256 style="width:96px;min-width:0"><div>a long text that wants the whole row and more than that to itself</div></div>
+	</body>`
+	check :: proc(t: ^testing.T, l: ^Layout, doc: ^dom.Document) {
+		testing.expect_value(t, size_of_el(l, doc, "a"), [2]f32{96, 96})
+		testing.expect_value(t, size_of_el(l, doc, "b"), [2]f32{96, 96})
+		testing.expect_value(t, size_of_el(l, doc, "c").x, 96)   // (its height: the ratio, once decoded)
+		d := size_of_el(l, doc, "d")
+		testing.expectf(t, d.x < 96, "an explicit min-width: 0 lets it shrink (%v)", d)
+	}
+	with_layout(t, src, check, natural = true)
+	with_layout(t, src, check)
+}
+
 @(test)
 size_containment_inline_axis :: proc(t: ^testing.T) {
 	with_layout(t, `<body style="margin:0;font-size:10px">

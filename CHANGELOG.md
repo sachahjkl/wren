@@ -9,6 +9,9 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 ### Added
 - `text.renderer` (`atlas`, the default, or `slug`): with `slug`, text is drawn on the GPU from the glyph outlines (Eric Lengyel's Slug algorithm, credited in `THIRD_PARTY.md`): sharp at any page zoom, rotation or transform, with exact subpixel positions and nothing to re-rasterize when the zoom changes. Emoji stay bitmaps. `text.slug.pages` (video memory budget) and `text.slug.tolerance`.
 
+- **About Wren** (`about:wren`, menu and command palette): the logo of the channel, version, commit, build, toolkit, Odin, Wasmtime and QuickJS-ng versions, "by Froment Software", the beta notice, the third-party software (`THIRD_PARTY.md`), and `about:licenses` with every license text (Slug's credit included).
+- **Supporter licence** ([docs/licence.md](docs/licence.md)): a key signed offline with Ed25519 and checked in Wren without any network access, entered in `about:wren` (paste it, choose a file, or drop a `.wrenlicense` file). It changes one line of `about:wren` and nothing else: every version stays free and complete during the beta. `tools\license.ps1` makes the key pair and issues licences; `browser.license.*` preferences.
+
 ## 0.3.0 - 2026-10-21
 
 The highlights are in [docs/releases/v0.3.0.md](docs/releases/v0.3.0.md): a JavaScript JIT that produces WebAssembly, iframes, a browser that never waits for a busy page, an HTTP cache, passkeys, history as a tree, a command palette and address bar suggestions, immediate hover feedback and CSS cursors, memory leaks failing the tests and memory given back when idle.

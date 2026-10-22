@@ -212,7 +212,9 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 		mnl := row ? ks.min_width : ks.min_height
 		explicit_min := mnl.kind != .Auto
 		if v, ok := to_border_main(c, k, mnl, main_avail, row); ok { it.min_main = v }
-		scroll := ks.overflow_x != .Visible || ks.overflow_y != .Visible
+		// a scroll container has no automatic minimum; overflow: clip is not one (the user agent gives every image
+		// `overflow: clip`: an image with a given width is not squashed by a narrow row)
+		scroll := !(ks.overflow_x == .Visible || ks.overflow_x == .Clip) || !(ks.overflow_y == .Visible || ks.overflow_y == .Clip)
 		if !explicit_min && !scroll {
 			// content-based minimum: the min-content size, never more than a specified size
 			auto_min: f32

@@ -27,7 +27,7 @@ import "wb:page"
 HISTORY_URL :: "about:history"
 
 is_builtin_address :: proc(a: string) -> bool {
-	return a == "about:config" || is_history_address(a) || a == HOME_URL || a == DEMOS_URL || a == ABOUT_URL
+	return a == "about:config" || is_history_address(a) || a == HOME_URL || a == DEMOS_URL || a == ABOUT_URL || is_wren_address(a)
 }
 
 History_Row_Kind :: enum u8 { Day, Visit }

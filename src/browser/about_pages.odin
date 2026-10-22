@@ -23,6 +23,8 @@ ABOUT_PAGES := [?]About_Page{
 	{HISTORY_URL, "History", "Every page visited (Ctrl+H), by day, searchable, and the history tree of each tab: going back then elsewhere keeps the old way as a branch."},
 	{"about:config", "Configuration", "Every setting of the browser, searchable and editable; nothing is hard-wired."},
 	{CACHE_URL, "HTTP cache", "What the browser keeps of the responses it fetched (RFC 9111): statistics, the entries by site and URL, a filter, and a button that clears it."},
+	{WREN_URL, "About Wren", "Version and build, who made it, the beta notice, the licence and the form to enter a key, the third-party software."},
+	{LICENSES_URL, "Licences", "The licences of the software Wren is built from, in full."},
 	{ABOUT_URL, "Built-in pages", "This list, under the version of the browser. <code>about:</code> alone opens it too."},
 	{"about:blank", "Blank page", "An empty document."},
 }
