@@ -53,12 +53,14 @@ if not defined WREN_ANY_ODIN (
 :: ------------------------------------------------------------------------------------------------------------
 ::  Wasmtime   C API, a pinned release checked by SHA-256                     -> build\wasmtime
 ::  Lexbor     HTML parser (ext\lexbor) + the C shims (src\shim), MSVC         -> build\lexbor\lexbor.lib
+::  emoji      Noto Color Emoji (COLR v1), pinned by SHA-256                -> build\emoji (shipped in emoji\)
 ::  media      image decoders in Rust (resvg, image-webp, zenavif-parse,       -> build\media\wren_media.lib
 ::             rav1d, qcms; crates pinned by Cargo.lock, NASM by SHA-256)
 
 call :step "fetching Wasmtime"            tools\fetch_wasmtime.ps1 || exit /b 1
 call :step "building Lexbor"              tools\build_lexbor.ps1   || exit /b 1
 call :step "building the image decoders"  tools\build_media.ps1    || exit /b 1
+call :step "fetching the emoji font"      tools\fetch_emoji.ps1    || exit /b 1
 if not exist build mkdir build
 
 
