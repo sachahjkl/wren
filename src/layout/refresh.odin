@@ -155,6 +155,17 @@ refresh_paint_values :: proc(l: ^Layout, input: Input) -> bool {
 		if sp.kind != .Transform { continue }
 		m := box_matrix(l, &l.boxes[sp.box])
 		if m != sp.mat { sp.mat = m; transforms = true }
+		if sp.proj {
+			// a plane: its 4x4 and the perspective it sits in (animations move both without a layout)
+			m4 := box_matrix4(l, &l.boxes[sp.box])
+			if m4 != sp.mat4 { sp.mat4 = m4; transforms = true }
+			if sp.persp_from != NONE {
+				pm := perspective_of(l, &l.boxes[l.spaces[sp.persp_from].box])
+				if pm != sp.persp { sp.persp = pm; transforms = true }
+			}
+			sp.back_hidden = l.boxes[sp.box].cs.backface_visibility == .Hidden
+			sp.preserve = used_preserve_3d(l.boxes[sp.box].cs)
+		}
 	}
 	for &cl in l.clips { cl.radii = clip_radii(l, &l.boxes[cl.box]) }
 	if transforms && !refresh_overflow(l, input.viewport) { return false }
