@@ -1,6 +1,5 @@
 package browser
 
-import "base:runtime"
 import "core:math"
 import "toolkit:draw"
 import "wb:base"
@@ -276,7 +275,7 @@ plane_plan :: proc(e: ^Effects, g, s: i32, bounds: lay.Rect) -> Plane_Plan {
 	key := u64(uintptr(e.l)) * 0x9E3779B97F4A7C15 + u64(g)
 	sig := matrix_signature(m)
 	now := pacer.frame_ms
-	if plane_mem.allocator.procedure == nil { plane_mem = make(map[u64]Plane_Mem, 64, runtime.default_allocator()) }   // (lives as long as the process)
+	if plane_mem.allocator.procedure == nil { plane_mem = make(map[u64]Plane_Mem, 64, base.permanent_allocator()) }   // (lives as long as the process)
 	mem, known := plane_mem[key]
 	stale := false
 	if known && now - mem.ms < 2000 && mem.scale > 0 {
