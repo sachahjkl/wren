@@ -1,0 +1,4 @@
+creation_rules:
+  # Everything under secrets/ is SOPS-encrypted for this age key (the maintainer's; see secrets/README.md).
+  - path_regex: ^secrets/[^/]+\.(yaml|yml|json|env)$
+    age: age1t6n6jyy0uwh6px3tl65pjrd5m0f79dv5xja2dcpq2gpvq0jcsyjs6j40fe
