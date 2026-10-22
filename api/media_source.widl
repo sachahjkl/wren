@@ -1,0 +1,57 @@
+/// Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds
+/// the coded frames a container parser made of what scripts appended (src/media), which a media element plays; the objects
+/// are EventTargets: sourceopen / sourceended / sourceclose, updatestart / update / updateend / error / abort,
+/// addsourcebuffer / removesourcebuffer are events of the host objects.
+[Exposed=Window]
+module mse {
+  handle MediaSource : Object = Media_Source_Object via lookup_MediaSource;
+  handle SourceBuffer : Object = Source_Buffer_Object via lookup_SourceBuffer;
+  handle SourceBufferList : Object = Source_Buffer_List_Object via lookup_SourceBufferList;
+
+  /// new MediaSource(): closed until an element attaches it.
+  MediaSource MediaSource_create() raises;
+  /// URL.createObjectURL(mediaSource): the URL (of the page's origin) is registered, so that a media element whose src is
+  /// that URL plays this source. Called by the engine with the URL it made.
+  void MediaSource_registerObjectURL(MediaSource source, string url);
+  /// URL.revokeObjectURL(url): the URL no longer names a Media Source (one already attached keeps playing).
+  void MediaSource_revokeObjectURL(string url);
+  /// MediaSource.isTypeSupported(type)
+  bool MediaSource_isTypeSupported(string type);
+  /// source.sourceBuffers, activeSourceBuffers: the same object each time.
+  SourceBufferList MediaSource_sourceBuffers(MediaSource source);
+  SourceBufferList MediaSource_activeSourceBuffers(MediaSource source);
+  /// source.readyState: "closed", "open" or "ended".
+  string MediaSource_readyState(MediaSource source);
+  f64 MediaSource_duration(MediaSource source);
+  /// source.duration = value: InvalidState unless open or updating buffers, Type for a negative value or NaN.
+  void MediaSource_set_duration(MediaSource source, f64 value) raises;
+  /// source.addSourceBuffer(type): NotSupported, InvalidState (not open), Quota.
+  SourceBuffer MediaSource_addSourceBuffer(MediaSource source, string type) raises;
+  void MediaSource_removeSourceBuffer(MediaSource source, SourceBuffer buffer) raises;
+  /// source.endOfStream(error): "" (none), "network" or "decode".
+  void MediaSource_endOfStream(MediaSource source, string error = "") raises;
+  void MediaSource_setLiveSeekableRange(MediaSource source, f64 start, f64 end) raises;
+  void MediaSource_clearLiveSeekableRange(MediaSource source) raises;
+
+  u32 SourceBufferList_length(SourceBufferList list);
+  /// list[index]: Not_Found past the end (undefined).
+  SourceBuffer SourceBufferList_item(SourceBufferList list, u32 index) raises;
+
+  /// buffer.mode: "segments" or "sequence".
+  string SourceBuffer_mode(SourceBuffer buffer);
+  void SourceBuffer_set_mode(SourceBuffer buffer, string mode) raises;
+  bool SourceBuffer_updating(SourceBuffer buffer);
+  /// buffer.buffered as pairs of f64 (start, end), seconds (InvalidState for a removed buffer): the engine makes the TimeRanges.
+  bytes SourceBuffer_ranges(SourceBuffer buffer) raises;
+  f64 SourceBuffer_timestampOffset(SourceBuffer buffer);
+  void SourceBuffer_set_timestampOffset(SourceBuffer buffer, f64 value) raises;
+  f64 SourceBuffer_appendWindowStart(SourceBuffer buffer);
+  void SourceBuffer_set_appendWindowStart(SourceBuffer buffer, f64 value) raises;
+  f64 SourceBuffer_appendWindowEnd(SourceBuffer buffer);
+  void SourceBuffer_set_appendWindowEnd(SourceBuffer buffer, f64 value) raises;
+  /// buffer.appendBuffer(data): InvalidState while updating or removed, Quota when full.
+  void SourceBuffer_appendBuffer(SourceBuffer buffer, bytes data) raises;
+  void SourceBuffer_abort(SourceBuffer buffer) raises;
+  void SourceBuffer_changeType(SourceBuffer buffer, string type) raises;
+  void SourceBuffer_remove(SourceBuffer buffer, f64 start, f64 end) raises;
+}

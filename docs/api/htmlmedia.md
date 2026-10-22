@@ -3,8 +3,8 @@
 # Module `htmlmedia`
 
 HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the
-media package's player, and the host objects it hands out: TimeRanges, MediaError, VideoPlaybackQuality. The events
-(loadstart ... ended) are plain events fired at the element.
+media package's player. The events (loadstart ... ended) are plain events fired at the element; TimeRanges, MediaError and
+VideoPlaybackQuality are made by the engine (native/js/runtime/web_mediaobjects.c) from the numbers below.
 
 Exposed to: Window. Source: `api/media_element.widl`.
 
@@ -15,24 +15,6 @@ Exposed to: Window. Source: `api/media_element.widl`.
 A <video> or <audio> element; anything else is not a live HTMLMediaElement.
 
 Checked by the browser on every call (`lookup_HTMLMediaElement`).
-
-### handle `TimeRanges` : `Object`
-
-A TimeRanges: an immutable snapshot of normalized, non-overlapping ranges in seconds.
-
-Checked by the browser on every call (`lookup_TimeRanges`).
-
-### handle `MediaError` : `Object`
-
-A MediaError (code, message).
-
-Checked by the browser on every call (`lookup_MediaError`).
-
-### handle `VideoPlaybackQuality` : `Object`
-
-A VideoPlaybackQuality sample.
-
-Checked by the browser on every call (`lookup_VideoPlaybackQuality`).
 
 ## Functions
 
@@ -210,43 +192,34 @@ void HTMLMediaElement_set_muted(HTMLMediaElement element, bool value)
 
 Host: `HTMLMediaElement_set_muted :: proc(c: ^Call, element: Api_HTMLMediaElement, value: bool)`
 
-### `HTMLMediaElement_buffered`
+### `HTMLMediaElement_ranges`
 
 ```
-TimeRanges HTMLMediaElement_buffered(HTMLMediaElement element)
+bytes HTMLMediaElement_ranges(HTMLMediaElement element, i32 which)
 ```
 
-element.buffered, played, seekable: a new TimeRanges each time.
+element.buffered (0), played (1) or seekable (2) as pairs of f64 (start, end), seconds, little endian: the engine
+makes the TimeRanges object of them.
 
-Host: `HTMLMediaElement_buffered :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u64`
+Host: `HTMLMediaElement_ranges :: proc(c: ^Call, element: Api_HTMLMediaElement, which: i32) -> []u8`
 
-### `HTMLMediaElement_played`
-
-```
-TimeRanges HTMLMediaElement_played(HTMLMediaElement element)
-```
-
-Host: `HTMLMediaElement_played :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u64`
-
-### `HTMLMediaElement_seekable`
+### `HTMLMediaElement_errorCode`
 
 ```
-TimeRanges HTMLMediaElement_seekable(HTMLMediaElement element)
+i32 HTMLMediaElement_errorCode(HTMLMediaElement element)
 ```
 
-Host: `HTMLMediaElement_seekable :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u64`
+element.error: the code (0 when null) and the message.
 
-### `HTMLMediaElement_error`
+Host: `HTMLMediaElement_errorCode :: proc(c: ^Call, element: Api_HTMLMediaElement) -> i32`
+
+### `HTMLMediaElement_errorMessage`
 
 ```
-MediaError HTMLMediaElement_error(HTMLMediaElement element) raises
+string HTMLMediaElement_errorMessage(HTMLMediaElement element)
 ```
 
-element.error: Not_Found when null.
-
-Raises: returns an `Error` (see [web](web.md)).
-
-Host: `HTMLMediaElement_error :: proc(c: ^Call, element: Api_HTMLMediaElement) -> (u64, Api_Error)`
+Host: `HTMLMediaElement_errorMessage :: proc(c: ^Call, element: Api_HTMLMediaElement) -> string`
 
 ### `HTMLMediaElement_play`
 
@@ -305,101 +278,13 @@ u32 HTMLVideoElement_videoHeight(HTMLMediaElement element)
 
 Host: `HTMLVideoElement_videoHeight :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u32`
 
-### `HTMLVideoElement_getVideoPlaybackQuality`
+### `HTMLVideoElement_playbackQuality`
 
 ```
-VideoPlaybackQuality HTMLVideoElement_getVideoPlaybackQuality(HTMLMediaElement element)
+bytes HTMLVideoElement_playbackQuality(HTMLMediaElement element)
 ```
 
-video.getVideoPlaybackQuality()
+video.getVideoPlaybackQuality(): four f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames).
 
-Host: `HTMLVideoElement_getVideoPlaybackQuality :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u64`
-
-### `TimeRanges_length`
-
-```
-u32 TimeRanges_length(TimeRanges ranges)
-```
-
-Host: `TimeRanges_length :: proc(c: ^Call, ranges: Api_TimeRanges) -> u32`
-
-### `TimeRanges_start`
-
-```
-f64 TimeRanges_start(TimeRanges ranges, u32 index) raises
-```
-
-ranges.start(index): IndexSize past the end.
-
-Raises: returns an `Error` (see [web](web.md)).
-
-Host: `TimeRanges_start :: proc(c: ^Call, ranges: Api_TimeRanges, index: u32) -> (f64, Api_Error)`
-
-### `TimeRanges_end`
-
-```
-f64 TimeRanges_end(TimeRanges ranges, u32 index) raises
-```
-
-Raises: returns an `Error` (see [web](web.md)).
-
-Host: `TimeRanges_end :: proc(c: ^Call, ranges: Api_TimeRanges, index: u32) -> (f64, Api_Error)`
-
-### `MediaError_code`
-
-```
-u32 MediaError_code(MediaError error)
-```
-
-MediaError.code: 1 aborted, 2 network, 3 decode, 4 source not supported.
-
-Host: `MediaError_code :: proc(c: ^Call, error: Api_MediaError) -> u32`
-
-### `MediaError_message`
-
-```
-string MediaError_message(MediaError error)
-```
-
-Host: `MediaError_message :: proc(c: ^Call, error: Api_MediaError) -> string`
-
-### `VideoPlaybackQuality_creationTime`
-
-```
-f64 VideoPlaybackQuality_creationTime(VideoPlaybackQuality quality)
-```
-
-Host: `VideoPlaybackQuality_creationTime :: proc(c: ^Call, quality: Api_VideoPlaybackQuality) -> f64`
-
-### `VideoPlaybackQuality_droppedVideoFrames`
-
-```
-u32 VideoPlaybackQuality_droppedVideoFrames(VideoPlaybackQuality quality)
-```
-
-Host: `VideoPlaybackQuality_droppedVideoFrames :: proc(c: ^Call, quality: Api_VideoPlaybackQuality) -> u32`
-
-### `VideoPlaybackQuality_totalVideoFrames`
-
-```
-u32 VideoPlaybackQuality_totalVideoFrames(VideoPlaybackQuality quality)
-```
-
-Host: `VideoPlaybackQuality_totalVideoFrames :: proc(c: ^Call, quality: Api_VideoPlaybackQuality) -> u32`
-
-### `VideoPlaybackQuality_corruptedVideoFrames`
-
-```
-u32 VideoPlaybackQuality_corruptedVideoFrames(VideoPlaybackQuality quality)
-```
-
-Host: `VideoPlaybackQuality_corruptedVideoFrames :: proc(c: ^Call, quality: Api_VideoPlaybackQuality) -> u32`
-
-### `VideoPlaybackQuality_totalFrameDelay`
-
-```
-f64 VideoPlaybackQuality_totalFrameDelay(VideoPlaybackQuality quality)
-```
-
-Host: `VideoPlaybackQuality_totalFrameDelay :: proc(c: ^Call, quality: Api_VideoPlaybackQuality) -> f64`
+Host: `HTMLVideoElement_playbackQuality :: proc(c: ^Call, element: Api_HTMLMediaElement) -> []u8`
 
