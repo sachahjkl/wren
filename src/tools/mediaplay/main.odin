@@ -20,12 +20,20 @@ main :: proc() {
 	use_gpu := true
 	max_frames := 1 << 30
 	verbose := false
+	play := false
+	mute := false
+	seek_to := -1.0
 	path := ""
 	args := os.args[1:]
 	for i := 0; i < len(args); i += 1 {
 		switch args[i] {
 		case "-cpu": use_gpu = false
 		case "-v": verbose = true
+		case "-play": play = true
+		case "-mute": mute = true
+		case "-seek":
+			i += 1
+			if i < len(args) { seek_to = f64(atoi(args[i])) / 1000 }
 		case "-frames":
 			i += 1
 			if i < len(args) { max_frames = atoi(args[i]) }
@@ -72,6 +80,7 @@ main :: proc() {
 	}
 	if use_gpu { media.set_gpu_device(device) }
 
+	if play { play_stores(&src, mute, seek_to); return }
 	for t, ti in src.tracks {
 		switch t.kind {
 		case .Video: decode_video(t, src.samples[ti][:], use_gpu, max_frames, verbose)
@@ -163,4 +172,55 @@ atoi :: proc(s: string) -> int {
 	v := 0
 	for c in s { if c >= '0' && c <= '9' { v = v * 10 + int(c - '0') } }
 	return v
+}
+
+// -play: the whole player, as the page uses it: stores, decode threads, clock; presents on a 5 ms loop and reports.
+play_stores :: proc(src: ^Source, mute: bool, seek_to: f64) {
+	vs, as: ^media.Track_Store
+	for t, i in src.tracks {
+		s: ^media.Track_Store
+		switch t.kind {
+		case .Video: if vs == nil { vs = media.store_create(); s = vs }
+		case .Audio: if as == nil { as = media.store_create(); s = as }
+		case .Other:
+		}
+		if s == nil { continue }
+		media.store_set_config(s, 1, t)
+		for smp in src.samples[i] { media.store_append(s, smp) }
+		clear(&src.samples[i])
+	}
+	p := media.player_create(vs, as, media.PLAYER_SETTINGS_DEFAULT, nil, nil)
+	defer media.player_destroy(p)
+	media.player_set_source_ended(p, true)
+	media.player_set_volume(p, mute ? 0 : 0.15, mute)
+	if seek_to >= 0 { media.player_seek(p, media.seconds_time(seek_to)) }
+	media.player_play(p)
+	start := time.tick_now()
+	last_report := 0.0
+	shown := 0
+	last_pts := media.Time(-1)
+	max_err := 0.0
+	for {
+		wall := time.duration_seconds(time.tick_since(start))
+		media.player_tick(p)
+		f, changed := media.player_present(p)
+		if changed {
+			shown += 1
+			err := abs(media.time_seconds(f.pts) - media.time_seconds(media.player_time(p)))
+			max_err = max(max_err, err)
+			if err > 0.045 { fmt.printfln("  late/early picture: pts %.3f clock %.3f (wall %.3f)", media.time_seconds(f.pts), media.time_seconds(media.player_time(p)), wall) }
+			if f.pts < last_pts { fmt.println("  picture out of order") }
+			last_pts = f.pts
+		}
+		if wall - last_report >= 0.5 {
+			last_report = wall
+			playing, stalled, ended, err := media.player_state(p)
+			fmt.printfln("  wall %.2f  clock %.3f  playing=%v stalled=%v ended=%v err=%v  shown %d", wall, media.time_seconds(media.player_time(p)), playing, stalled, ended, err, shown)
+		}
+		_, _, ended, _ := media.player_state(p)
+		if ended || wall > 10 { break }
+		time.sleep(5 * time.Millisecond)
+	}
+	st := media.player_stats(p)
+	fmt.printfln("done: %d pictures shown, %d decoded, %d dropped, max |picture - clock| %.1f ms, decoder %s hardware=%v", shown, st.decoded, st.dropped, max_err * 1000, st.decoder, st.hardware)
 }
