@@ -1006,9 +1006,10 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		if !ok { return false }
 		c.transform = ops
 	case .Transform_Origin:
-		o, ok := parse_transform_origin(cx, vs)
+		o, oz, ok := parse_transform_origin(cx, vs)
 		if !ok { return false }
 		c.transform_origin = o
+		c.transform_origin_z = oz
 	case .Perspective_Origin, .Object_Position:
 		pos, ok := parse_position(cx, vs)
 		if !ok { return false }

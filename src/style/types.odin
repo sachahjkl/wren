@@ -230,6 +230,7 @@ Computed :: struct {
 	// --- transforms (CSS Transforms 1 and 2; 3D is parsed and flattened) ---
 	transform:        []Transform_Op,       // nil = none
 	transform_origin: [2]Length,            // percentages of the reference box
+	transform_origin_z: f32,                // px (set with transform-origin; not interpolated)
 	transform_box:    Transform_Box,
 	transform_style:  Transform_Style,
 	translate:        Translate_Value,
