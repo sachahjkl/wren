@@ -78,6 +78,7 @@ Copy-Item ext\lexbor\LICENSE "$out\licenses\lexbor-LICENSE.txt"
 Copy-Item ext\lexbor\NOTICE "$out\licenses\lexbor-NOTICE.txt"
 Copy-Item ext\gui_toolkit\LICENSE "$out\licenses\gui_toolkit-LICENSE.txt"
 Copy-Item ext\gui_toolkit\NOTICE.md "$out\licenses\gui_toolkit-NOTICE.md"
+Copy-Item ext\gui_toolkit\font\slug_ref\LICENSE-MIT "$out\licenses\Slug-LICENSE-MIT.txt"
 Copy-Item ext\gui_toolkit\font\data\Roboto-LICENSE.txt "$out\licenses\Roboto-LICENSE.txt"
 Copy-Item ext\gui_toolkit\font\data\Inconsolata-OFL.txt "$out\licenses\Inconsolata-OFL.txt"
 # the JavaScript engine embedded in wren.exe (QuickJS-ng and the wasi-libc Zig links into it) and webref's Web IDL
