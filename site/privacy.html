@@ -68,8 +68,10 @@
       <a href="https://www.paddle.com/legal/privacy">Paddle's privacy policy</a>.</p>
     <p>Once the payment is confirmed, a small service run by Froment Software (a Cloudflare Worker) stores the
       <strong>name, e-mail address, order number, transaction id and the licence</strong>. That is what the thank-you
-      page shows and what the e-mail with your key is sent from. Its logs hold event names, transaction ids, order
-      numbers and statuses, never a name, an address or a key.</p>
+      page shows and what the e-mail with your key is sent from. That e-mail goes out through Cloudflare's own mail
+      service (Cloudflare Email Service), which handles your address and the message to deliver it, under
+      <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare's privacy policy</a>. The service's logs hold event
+      names, transaction ids, order numbers, statuses and error codes, never a name, an address or a key.</p>
     <p>Nothing else is stored, and nothing is sold or shared beyond what issuing the licence requires.</p>
   </div>
 </section>

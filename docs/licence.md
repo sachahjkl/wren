@@ -111,8 +111,9 @@ Use an order number that does not look like a Worker one (`GIFT-0001`).
 ## Selling with Paddle
 
 Nothing is for sale until the steps below are done: [the support page](../site/support.html) shows *Coming soon* while
-its settings are empty. Cost: nothing but Paddle's fee per sale (the free plans of Cloudflare Workers + KV and of Resend
-are plenty).
+its settings are empty. Cost: Paddle's fee per sale, the free plans of Cloudflare Workers + KV, and, to mail licences to
+buyers you do not know, the Workers Paid plan (5 USD a month, 3000 mails a month included, then 0.35 USD per 1000: see
+"Mailing the licence" below).
 
 ```
 buyer ── Paddle checkout (overlay on support.html) ── pays
@@ -121,7 +122,7 @@ buyer ── Paddle checkout (overlay on support.html) ── pays
                 ▼                                       ▼
         thanks.html?txn=txn_…                    Worker POST /paddle/webhook
                 │                                  verifies Paddle-Signature, reads the customer (Paddle API),
-                │ GET /licence?txn=txn_…           signs the licence, stores it in KV, mails it (Resend)
+                │ GET /licence?txn=txn_…           signs the licence, stores it in KV, mails it (Email Service)
                 └──────────────► Worker ◄───────────────────────────┘
                      shows the key, the .wrenlicense download
 ```
@@ -130,18 +131,29 @@ buyer ── Paddle checkout (overlay on support.html) ── pays
 
 | Endpoint | |
 |---|---|
-| `POST /paddle/webhook` | Checks `Paddle-Signature` (`ts=…;h1=…`: HMAC-SHA256 of `ts:` + the raw body with the destination's secret, compared in constant time, `ts` within `WEBHOOK_TOLERANCE_SECONDS`, 300 by default; several `h1` are accepted during a secret rotation). Only `transaction.completed` acts. Edition from the price ids, name and e-mail from the Paddle API (`GET /customers/{id}`), licence signed, stored under `txn:<id>`, mailed. Answers 200 when done, **401** for a bad signature, **422** for a transaction that can never work (no customer e-mail: nothing to retry), **500** when something may work later (Paddle API or Resend down: Paddle then delivers the webhook again, and only the missing step is redone). A transaction with no Wren price is acknowledged and ignored. |
+| `POST /paddle/webhook` | Checks `Paddle-Signature` (`ts=…;h1=…`: HMAC-SHA256 of `ts:` + the raw body with the destination's secret, compared in constant time, `ts` within `WEBHOOK_TOLERANCE_SECONDS`, 300 by default; several `h1` are accepted during a secret rotation). Only `transaction.completed` acts. Edition from the price ids, name and e-mail from the Paddle API (`GET /customers/{id}`), licence signed, stored under `txn:<id>`, mailed. Answers 200 when done, **401** for a bad signature, **422** for a transaction that can never work (no customer e-mail: nothing to retry), **500** when something may work later (Paddle API down, or Email Service refusing for now because of a rate or daily limit: Paddle then delivers the webhook again, and only the missing step is redone). A transaction with no Wren price is acknowledged and ignored. |
 | `GET /licence?txn=txn_…` | For `thanks.html`. 200 with the licence, 202 (`Retry-After: 3`) while the webhook has not been processed. |
 | `GET /licence/txn_….wrenlicense` | The file, as a download. |
-| `POST /resend` `{"email": "…"}` | Mails the licences bought with that address again. **Off** unless `RESEND_ENABLED` is `true`. Same answer whether or not the address bought something; at most `RESEND_MAX_PER_HOUR` (3) mails per address and hour. |
+| `POST /resend` `{"email": "…"}` | Mails the licences bought with that address again ("resend" as in "send again"; the settings keep that name). **Off** unless `RESEND_ENABLED` is `true`. Same answer whether or not the address bought something; at most `RESEND_MAX_PER_HOUR` (3) mails per address and hour. It ignores the mail state of the purchase, so it is also the way to get a licence whose first mail failed or was lost. |
 | `GET /health` | `{"ok": true}`, or 503 with the names of the settings not set yet. |
 
 Properties worth knowing:
 
 - **Idempotent.** The licence is a function of the transaction (Ed25519 signatures are deterministic, the date is the
   transaction's own, the order number is derived from its id: `txn_01hv8wptq8987qeep44cyrewp9` gives
-  `WREN-EEP4-4CYR-EWP9`). A webhook delivered twice, or at the same time as another, gives the same licence and sends one
-  mail (Resend `Idempotency-Key`). `order:<number>` in KV finds the transaction of an order number.
+  `WREN-EEP4-4CYR-EWP9`). A webhook delivered twice gives the same licence and does not send a second mail (next
+  point). `order:<number>` in KV finds the transaction of an order number.
+- **At most one mail per purchase.** Email Service has no idempotency key (Resend had one), so the Worker keeps the
+  promise itself, in the record `txn:<id>`: `mail` says `sending` *before* `send()` is called (in the same write that
+  stores the licence), then `sent`, `failed` or `skipped`. A delivery that finds `sending` does not send again: that
+  attempt may have gone out, and the Worker cannot know (it was cut off, `send()` timed out, the last write failed).
+  Only an error that means "nothing was sent" (`E_RATE_LIMIT_EXCEEDED`, `E_DAILY_LIMIT_EXCEEDED`,
+  `E_INTERNAL_SERVER_ERROR`) puts the record back to `pending` and answers 500, so Paddle delivers again and the mail is
+  retried. Every other error (`E_SENDER_NOT_VERIFIED`, `E_RECIPIENT_NOT_ALLOWED`, `E_DELIVERY_FAILED`, …) is final:
+  `failed`, with the code in `mail_detail`. The price of "at most once" is that a mail can be lost where "at least once"
+  would have sent two: the buyer still has the thank-you page, and `POST /resend` (or you, by hand) sends it again.
+  Two webhooks processed at the very same instant, before either has written, can still both send (KV is not atomic);
+  Paddle does not do that in practice.
 - **The id is the only secret of `GET /licence`.** It is a ULID (80 random bits): not guessable, known to the buyer and to
   Paddle. What it yields is a licence that unlocks nothing. Responses carry `Cache-Control: no-store`, and CORS is limited
   to `ALLOWED_ORIGIN`.
@@ -149,9 +161,10 @@ Properties worth knowing:
   refuses to start signing when the private key and the public key are not a pair.
 - **Names are made safe to sign**: control and bidi characters become spaces, 256 bytes at most (what Wren accepts). A
   customer without a name gets their e-mail address as name.
-- **Logs** hold event names, transaction ids, order numbers and statuses: never a name, an address, a key or a secret.
-- **KV writes**: four per purchase (free plan: 1000 a day). Nothing else writes, except `/resend` for an address that
-  really bought (so a flood of made-up addresses uses none).
+- **Logs** hold event names, transaction ids, order numbers, statuses and Email Service error codes: never a name, an
+  address, a key or a secret (the message of an Email Service error can quote the address, so it is not logged).
+- **KV writes**: four per purchase (free plan: 1000 a day; one more in the rare case of a retried mail). Nothing else
+  writes, except `/resend` for an address that really bought (so a flood of made-up addresses uses none).
 - KV keeps the buyer's name and e-mail address next to the licence (that is how it is shown and mailed again). Paddle holds
   them anyway; delete a key on request: `npx wrangler kv key delete --binding LICENSES --remote "txn:txn_…"` (and
   `order:…`; the `email:` index only holds a hash).
@@ -159,10 +172,39 @@ Properties worth knowing:
 ### 1. Accounts
 
 - **Cloudflare** (free): `cf auth login` (the CLI is `cf`, a pnpm package: `pnpm add -g cf`).
-- **Resend** (free: 100 mails a day, 3000 a month): add and verify the domain you send from (DNS records), create an API key
-  with *Sending access*. `MAIL_FROM` is an address of that domain, for example `Wren <licences@froment.software>`.
 - **Paddle**: a **sandbox** account first (<https://sandbox-vendors.paddle.com>: separate from the live one, no
   verification, no money), the live account later.
+
+#### Mailing the licence (Cloudflare Email Service)
+
+The licence is mailed with Cloudflare's own sender (Email Service > Email Sending, in beta), through a `send_email`
+binding named `EMAIL`: no other provider, no API key, no secret to keep. What it needs (the pages of
+<https://developers.cloudflare.com/email-service/> are the reference and change; read *Domain configuration*, *Send
+bindings* and *Pricing* before the first deploy):
+
+1. **A domain on Cloudflare DNS** that you will send from (the one of `MAIL_FROM`, for example `froment.software`).
+2. **Onboard it**: dashboard > *Compute* > *Email Service* > *Email Sending* > *Onboard Domain*, choose the domain. Cloudflare
+   adds the DNS records itself (SPF, DKIM and MX on `cf-bounce.<domain>`, DMARC on `_dmarc.<domain>`). They usually
+   propagate in 5 to 15 minutes. Without this the sender is refused (`E_SENDER_NOT_VERIFIED`, `E_SENDER_DOMAIN_NOT_AVAILABLE`).
+3. **The Workers Paid plan.** On the free plan the binding only sends to *verified destination addresses* of your account, so
+   a buyer you do not know gets nothing (`E_RECIPIENT_NOT_ALLOWED`: the licence stays on the thank-you page). On Workers
+   Paid, any recipient: 3000 mails a month included per account, then 0.35 USD per 1000. At a few sales a month it is the
+   plan's own price (5 USD a month) and nothing more. Sends to your own verified addresses are free, which is enough for a
+   test on the free plan.
+4. **`MAIL_FROM`** in `cloudflare.config.ts` and `wrangler.jsonc`: an address of the onboarded domain, for example
+   `Wren <licences@froment.software>` (`MAIL_REPLY_TO` is optional, for example `contact@froment.software`: where a buyer's
+   reply goes).
+5. **Deploy.** The binding is declared in both config files (`EMAIL: bindings.sendEmail({})`, `"send_email": [{"name":
+   "EMAIL"}]`) and `cf deploy` lists it. With `MAIL_FROM` empty, or when the binding is missing (a local test), the mail
+   is `skipped`: the Worker still issues the licence and the thank-you page shows it.
+6. **Try it**: a sandbox purchase (below) with your own e-mail address; *Email Sending* > *Activity log* shows the message,
+   and `npx wrangler tail` shows `mail` (`state: sent`) or `mail_refused` with the error `code`.
+
+Errors worth knowing (`code` in the logs, and `mail_detail` in the record of the purchase): `E_SENDER_NOT_VERIFIED`,
+`E_SENDER_DOMAIN_NOT_AVAILABLE` (onboard the domain, or fix `MAIL_FROM`), `E_RECIPIENT_NOT_ALLOWED` (free plan),
+`E_ACCOUNT_SUSPENDED` (reputation), `E_DELIVERY_FAILED` (the buyer's server refused): final, `mail: failed`. `E_RATE_LIMIT_EXCEEDED`,
+`E_DAILY_LIMIT_EXCEEDED`, `E_INTERNAL_SERVER_ERROR`: the webhook answers 500 and Paddle delivers it again. `wrangler dev`
+only logs the mail (add `"remote": true` to the binding to send for real, to a test address).
 
 ### 2. Keys
 
@@ -220,7 +262,7 @@ npx wrangler tail --env sandbox                         # live logs
 3. **Developer tools → Authentication → API keys → New**: server side, with the permission *customer: read* only. This is
    `PADDLE_API_KEY`. Under **Client-side tokens → New**, create the token for Paddle.js (`test_…` in the sandbox).
 4. Put the secret, the API key and the prices where they belong:
-   - `secrets.sandbox.env`: `PADDLE_WEBHOOK_SECRET`, `PADDLE_API_KEY`, `RESEND_API_KEY`;
+   - `secrets.sandbox.env`: `PADDLE_WEBHOOK_SECRET`, `PADDLE_API_KEY`;
    - `cloudflare.config.ts` (and `wrangler.jsonc`): `PRICE_SUPPORTER`, `PRICE_PATRON` (several ids may be separated by
      commas);
    - then `cf deploy --mode sandbox --secrets-file secrets.sandbox.env` again, and check `/health`.
@@ -241,7 +283,8 @@ npx wrangler tail --env sandbox                         # live logs
    what Paddle sent and got back (a *Replay* button redelivers it), and `npx wrangler tail --env sandbox` shows the
    Worker's side (`webhook_rejected` with the reason, `issued`, `mail`…).
 8. Try the failure paths once if you like: a wrong `PADDLE_WEBHOOK_SECRET` gives 401 and nothing is stored; a wrong
-   `RESEND_API_KEY` records `mail: failed` (see `mail_refused` in the logs) while the thank-you page still shows the key.
+   `MAIL_FROM` (a domain that is not onboarded in Email Sending) records `mail: failed` with `mail_detail:
+   E_SENDER_NOT_VERIFIED` (see `mail_refused` in the logs) while the thank-you page still shows the key.
 
 ### 5. Production
 
@@ -250,8 +293,8 @@ sandbox ones do not exist there). Paddle asks to verify the business and to **ap
 (*Checkout → Website approval*: `sachahjkl.github.io`, or the domain you use). Then:
 
 ```powershell
-copy secrets.example.env secrets.env      # live webhook secret, live API key, Resend, the private key
-# cloudflare.config.ts / wrangler.jsonc: PRICE_* (live ids), LICENSE_PUBLIC_KEY, MAIL_FROM
+copy secrets.example.env secrets.env      # live webhook secret, live API key, the private key
+# cloudflare.config.ts / wrangler.jsonc: PRICE_* (live ids), LICENSE_PUBLIC_KEY, MAIL_FROM (domain onboarded in Email Sending, Workers Paid)
 cf deploy --secrets-file secrets.env
 ```
 
@@ -271,14 +314,16 @@ Set in `cloudflare.config.ts` / `wrangler.jsonc` (`vars`), not secret:
 | `PADDLE_API_BASE` | `https://sandbox-api.paddle.com` or `https://api.paddle.com`: must match the webhook's environment |
 | `PRICE_SUPPORTER`, `PRICE_PATRON` | price ids, comma separated; the patron price wins when both are bought |
 | `LICENSE_PUBLIC_KEY` | the public key of `src/license/public_key.odin` |
-| `MAIL_FROM`, `MAIL_REPLY_TO` | sender (an address of a domain verified in Resend) and optional reply address |
+| `MAIL_FROM`, `MAIL_REPLY_TO` | sender (`Name <address>` or an address, on a domain onboarded in Email Service > Email Sending; empty: no mail) and optional reply address |
 | `ALLOWED_ORIGIN` | origins that may call `GET /licence` from a page, comma separated (`*` = any) |
 | `WEBHOOK_TOLERANCE_SECONDS` | how old a webhook may be (300) |
-| `RESEND_ENABLED`, `RESEND_MAX_PER_HOUR` | `POST /resend` on/off (false) and its limit per address (3) |
+| `RESEND_ENABLED`, `RESEND_MAX_PER_HOUR` | `POST /resend` ("send the licence again") on/off (false) and its limit per address (3) |
+
+Bindings: `LICENSES` (KV) and `EMAIL` (Email Service sending; absent: licences are not mailed, the thank-you page still
+shows them).
 
 Secrets (`secrets.env`, uploaded by `cf deploy --secrets-file`, never in a committed file): `LICENSE_PRIVATE_KEY`,
-`PADDLE_WEBHOOK_SECRET`, `PADDLE_API_KEY`, `RESEND_API_KEY` (empty: licences are not mailed, the thank-you page still
-shows them).
+`PADDLE_WEBHOOK_SECRET`, `PADDLE_API_KEY`. The mail needs no secret.
 
 ### Tests
 
@@ -289,7 +334,8 @@ node --test "test/*.test.ts"      # Node 22.18+ (or: bun test test/); no network
 
 `tools\test_all.ps1` runs them (SKIP when neither node nor bun is installed). They cover the webhook signature (valid,
 altered, wrong secret, too old, malformed, rotation), a `transaction.completed` in Paddle Billing's format
-(`licence/worker/test/fixtures`), idempotency, retries, the endpoints, `/resend`, and the cross-check: licences made by
+(`licence/worker/test/fixtures`), idempotency, the mail outcomes (a fake `EMAIL` binding: sent, skipped, retry, failed, the
+attachment, no second mail), the endpoints, `/resend`, and the cross-check: licences made by
 the Worker with the development pair (`DEV_SEED` of `src/license/dev_keys.odin`, read from the Odin source) are verified
 by Wren's own tool (`license.exe verify -dev`) as a key and as a `.wrenlicense` file; altered ones and ones of another
 key are refused; and for the same fields the Worker and `license.exe issue -dev` produce the very same text.
