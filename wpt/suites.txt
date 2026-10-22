@@ -35,3 +35,4 @@ html/semantics/embedded-content/the-iframe-element
 webmessaging only=.,without-ports,with-ports,message-channels
 html/browsers/sandboxing
 html/browsers/windows only=.,nested-browsing-contexts
+css/css-transforms only=.,parsing,animation
