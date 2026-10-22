@@ -157,6 +157,12 @@ Everything below exists in the code today and is covered by the tests of [`tools
 - Images decoded off the UI thread: PNG, JPEG, GIF, BMP, ICO and TIFF through WIC; **WebP**, **AVIF** and **SVG**
   always, through a built-in Rust library (image-webp, rav1d, resvg); ICC profiles and CICP color management (qcms);
   `srcset`, `<picture>`, lazy loading, inline `<svg>`.
+- **`<video>` and `<audio>`**: MP4 and WebM (progressive files and fragmented ones) decoded by the system's Media
+  Foundation decoders (H.264, AAC and Opus; AV1, VP9 and HEVC where the system has a decoder), on the GPU where it can: the picture stays in video memory and is drawn like an image (`border-radius`, `object-fit`,
+  filters and transforms apply), the sound goes to WASAPI, the clock follows the audio. Built-in controls, the
+  `HTMLMediaElement` state machine (events, `buffered`, `seekable`, `play()` and the autoplay policy) and **Media
+  Source Extensions** (`MediaSource`, `SourceBuffer`, `URL.createObjectURL`) for adaptive streaming. Preferences:
+  `media.*`.
 
 **Network and security**
 - HTTP(S) on WinHTTP, asynchronous, with per-host and global queues, back-pressure and cancellation.
@@ -388,6 +394,7 @@ src/
   css/ style/   tokenizer, parser, selectors, values; the style engine (cascade, layers, shadow scopes, animations)
   layout/       box tree, block / inline / flex / grid / table layout, incremental and parallel passes, display list
   images/ webfont/  image decoding threads (WIC + native/media); web font unpacking (WOFF, WOFF2)
+  media/        MP4 / WebM parsers, track stores, Media Foundation decoders, WASAPI output, the player (audio clock)
   forms/        HTML form controls as a model: values, validation, editing, submission
   wasm/         the Wasm engine (Wasmtime): instances, linker, deadlines, limits, caches, WASI, pre-initialization
   js/           JavaScript preferences, the bytecode cache, the embedded engine image
@@ -418,7 +425,8 @@ replace one. Known limits:
 - **Windows only** (Win32, Direct3D 11, DirectWrite, WinHTTP, WIC). The layers above the platform are portable Odin.
 - No HTTP cache yet (every load goes to the network); no HTTP authentication, no SRI, CSP violations are reported to
   the console only; no cookie partitioning.
-- No IME composition, no vertical writing modes, no multi-column layout; no `<video>` or `<audio>` playback.
+- No IME composition, no vertical writing modes, no multi-column layout; no text tracks, `captureStream`, Encrypted Media Extensions (DRM), Ogg, MP3 or WAV files in
+  `<audio>`, and no `getVideoPlaybackQuality()` in JavaScript.
 - Wasm threads and shared memory are off (each worker has its own memory); the Wasm GC proposal is off by default.
 - Response bodies are bounded (`max_body` and a per-page ceiling).
 

@@ -55,6 +55,14 @@ video memory, the sound comes from the audio device, and the page is not painted
 </section>
 
 <section>
+  <h2>Media Source Extensions: a fragmented MP4 appended piece by piece</h2>
+  <div class="row">
+    <video id="mse" width="320" height="180" controls muted></video>
+    <pre id="msestate"></pre>
+  </div>
+</section>
+
+<section>
   <h2>Audio only</h2>
   <audio id="tone" controls src="/video/f/tone.m4a"></audio>
   <pre id="types"></pre>
@@ -86,6 +94,24 @@ video memory, the sound comes from the audio device, and the page is not painted
   const types = ['video/mp4; codecs="avc1.64001f, mp4a.40.2"', 'video/mp4; codecs="avc1.42E01E"', 'video/webm; codecs="av01.0.00M.08, opus"',
     'video/webm; codecs="vp9, opus"', 'video/mp4; codecs="hvc1.1.6.L93.B0"', 'audio/mp4; codecs="mp4a.40.2"', 'audio/webm; codecs="opus"',
     'audio/mpeg', 'video/ogg; codecs="theora"', 'video/mp4'];
+  (async () => {
+    const mv = document.getElementById('mse'), out = document.getElementById('msestate');
+    const type = 'video/mp4; codecs="avc1.64001f, mp4a.40.2"';
+    if (!window.MediaSource || !MediaSource.isTypeSupported(type)) { out.textContent = 'Media Source Extensions: not available'; return; }
+    const ms = new MediaSource();
+    mv.src = URL.createObjectURL(ms);
+    await new Promise(r => ms.addEventListener('sourceopen', r, { once: true }));
+    const sb = ms.addSourceBuffer(type);
+    const data = new Uint8Array(await (await fetch('/video/f/clip_frag.mp4')).arrayBuffer());
+    const log = [];
+    for (let at = 0; at < data.length; at += 32768) {
+      await new Promise(r => { sb.addEventListener('updateend', r, { once: true }); sb.appendBuffer(data.subarray(at, at + 32768)); });
+      log.push((at / 1024) + ' KiB');
+      out.textContent = 'appended ' + log.join(', ') + '\nbuffered ' + (sb.buffered.length ? sb.buffered.start(0).toFixed(2) + '-' + sb.buffered.end(0).toFixed(2) : 'none');
+    }
+    ms.endOfStream();
+    out.textContent += '\nreadyState ' + ms.readyState + '  duration ' + ms.duration.toFixed(2);
+  })();
   document.getElementById('types').textContent = types.map(t => (document.createElement('video').canPlayType(t) || '""').padEnd(10) + t).join('\n');
 </script>
 </body>
