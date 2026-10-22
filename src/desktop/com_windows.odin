@@ -95,6 +95,7 @@ foreign ole32_ {
 @(default_calling_convention = "system", private)
 foreign shell32_ {
 	SetCurrentProcessExplicitAppUserModelID :: proc(app_id: cstring16) -> win.HRESULT ---
+	GetCurrentProcessExplicitAppUserModelID :: proc(app_id: ^cstring16) -> win.HRESULT ---   // (the string is CoTaskMem's)
 }
 
 @(default_calling_convention = "system", private)

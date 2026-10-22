@@ -47,6 +47,11 @@ scratch_destroy :: proc(s: ^Scratch) {
 	delete(s.dir); delete(s.exe); delete(s.exe2); delete(s.opts.applications_dir); delete(s.opts.icons_dir)
 }
 
+@(private = "file")
+expect_ok :: proc(t: ^testing.T, r: Result, loc := #caller_location) {
+	testing.expectf(t, r.error == .None, "%v: %s", r.error, r.detail, loc = loc)
+}
+
 @(test)
 linux_round_trip :: proc(t: ^testing.T) {
 	s := scratch_make()
@@ -57,7 +62,7 @@ linux_round_trip :: proc(t: ^testing.T) {
 	st := status(o, context.temp_allocator)
 	testing.expect_value(t, st.state, State.Absent)
 
-	testing.expect_value(t, install(o).error, Error.None)
+	expect_ok(t, install(o))
 	st = status(o, context.temp_allocator)
 	testing.expect_value(t, st.state, State.Installed)
 	testing.expect(t, os.is_file(entry), "the desktop entry")
@@ -75,7 +80,7 @@ linux_round_trip :: proc(t: ^testing.T) {
 	st = status(&moved, context.temp_allocator)
 	testing.expect_value(t, st.state, State.Repair)
 	testing.expect_value(t, st.stale_exe, s.exe)
-	testing.expect_value(t, install(&moved).error, Error.None)
+	expect_ok(t, install(&moved))
 	st = status(&moved, context.temp_allocator)
 	testing.expect_value(t, st.state, State.Installed)
 
@@ -84,14 +89,14 @@ linux_round_trip :: proc(t: ^testing.T) {
 	st = status(&moved, context.temp_allocator)
 	testing.expect_value(t, st.state, State.Repair)
 	testing.expect(t, st.incomplete, "incomplete")
-	testing.expect_value(t, install(&moved).error, Error.None)
+	expect_ok(t, install(&moved))
 
-	testing.expect_value(t, remove(&moved).error, Error.None)
+	expect_ok(t, remove(&moved))
 	st = status(&moved, context.temp_allocator)
 	testing.expect_value(t, st.state, State.Absent)
 	testing.expect(t, !os.exists(entry), "the entry is gone")
 	testing.expect(t, !os.exists(fmt.tprintf("%s/16x16/apps/wren.png", o.icons_dir)), "the icons are gone")
-	testing.expect_value(t, remove(&moved).error, Error.None)
+	expect_ok(t, remove(&moved))
 }
 
 @(test)
@@ -108,12 +113,12 @@ linux_removal_leaves_other_programs :: proc(t: ^testing.T) {
 
 	st := status(o, context.temp_allocator)
 	testing.expect_value(t, st.state, State.Absent)
-	testing.expect_value(t, remove(o).error, Error.None)
+	expect_ok(t, remove(o))
 	testing.expect(t, os.is_file(entry), "not marked: stays")
 	testing.expect(t, os.is_file(other), "other entries stay")
 
-	testing.expect_value(t, install(o).error, Error.None)   // the user asked: it replaces the file
-	testing.expect_value(t, remove(o).error, Error.None)
+	expect_ok(t, install(o))   // the user asked: it replaces the file
+	expect_ok(t, remove(o))
 	testing.expect(t, !os.exists(entry), "now marked: removed")
 	testing.expect(t, os.is_file(other), "other entries stay")
 }

@@ -165,6 +165,13 @@ options_destroy :: proc(o: ^Options, allocator := context.allocator) {
 	o^ = {}
 }
 
+// The directory and its parents exist afterwards (already being there is not an error, on every platform).
+@(private)
+ensure_dir :: proc(path: string) -> bool {
+	if os.is_dir(path) { return true }
+	return os.make_directory_all(path) == nil || os.is_dir(path)
+}
+
 // The path of the running executable ("" when the system cannot say).
 executable_path :: proc(allocator := context.temp_allocator) -> string {
 	p, err := os.get_executable_path(allocator)
