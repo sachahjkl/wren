@@ -719,7 +719,7 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 	}
 	v := lay.view_make(l, size, scroll, cull = false)
 	screen := lay.Rect{origin, origin + size}
-	e := Effects{l = l, v = &v, dc = dc, origin = origin, page_origin = origin, xform = lay.NONE, clip = -2, group = -2,
+	e := Effects{l = l, v = &v, dc = dc, origin = origin, page_origin = origin, screen = screen, xform = lay.NONE, clip = -2, group = -2,
 		chain = make([dynamic]i32, 0, 8, context.temp_allocator), open = make([dynamic]Open_Group, 0, 4, context.temp_allocator),
 		pending = make([dynamic]Pending_Plane, 0, 4, context.temp_allocator)}
 	composite_stats.chunks = len(c.chunks)

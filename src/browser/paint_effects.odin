@@ -100,6 +100,7 @@ Effects :: struct {
 	origin:   draw.Vec2,              // where layout coordinates (plus offsets) land in the target being drawn: the page's origin,
 	                                  // or minus the offsets of the plane whose layer is open (fo)
 	page_origin: draw.Vec2,
+	screen:   lay.Rect,               // the page area in the draw space (planes are rasterized for what shows of them)
 	pending:  [dynamic]Pending_Plane, // planes of 3D contexts, waiting for their root to close (sorted by depth then)
 	hide:     int,                    // open plane groups that show nothing (edge-on, empty): their content is not drawn
 	xform:    i32,              // Transform space whose matrix is pushed (lay.NONE: none)
@@ -130,8 +131,8 @@ Open_Group :: struct {
 }
 
 @(private)
-effects_make :: proc(l: ^Layout, v: ^lay.View, dc: ^draw.Context, origin: draw.Vec2) -> Effects {
-	e := Effects{l = l, v = v, dc = dc, origin = origin, page_origin = origin, xform = lay.NONE, clip = -2, group = -2,
+effects_make :: proc(l: ^Layout, v: ^lay.View, dc: ^draw.Context, origin, size: draw.Vec2) -> Effects {
+	e := Effects{l = l, v = v, dc = dc, origin = origin, page_origin = origin, screen = lay.Rect{origin, origin + size}, xform = lay.NONE, clip = -2, group = -2,
 		chain = make([dynamic]i32, 0, 8, context.temp_allocator), open = make([dynamic]Open_Group, 0, 4, context.temp_allocator),
 		pending = make([dynamic]Pending_Plane, 0, 4, context.temp_allocator)}
 	e.groups = plan_groups(&e)
