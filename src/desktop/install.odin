@@ -234,6 +234,14 @@ manifest_text :: proc(plan: Install_Plan, files: []string) -> string {
 files_install :: proc(plan: Install_Plan) -> Result {
 	if plan.src_exe == "" || !os.is_file(plan.src_exe) { return {.No_Executable, strings.concatenate({"no such file: ", plan.src_exe}, context.temp_allocator)} }
 	if plan.dir == "" || plan.exe_name == "" { return {.Bad_Options, "no install folder"} }
+	// a folder of the package is copied whole: the install folder cannot be that folder or inside it (it would be copied into itself)
+	for name in plan.payload {
+		rel, _ := strings.replace_all(strings.trim(name, "\\/"), "\\", "/", context.temp_allocator)
+		src := join_path(parent_dir(plan.src_exe), rel)
+		if rel != "" && !strings.contains(rel, "..") && os.is_dir(src) && (same_path(plan.dir, src) || is_inside(plan.dir, src)) {
+			return {.Bad_Options, strings.concatenate({"the install folder ", plan.dir, " is inside ", src, ", which is copied into it"}, context.temp_allocator)}
+		}
+	}
 	if !ensure_dir(plan.dir) { return {.Io, strings.concatenate({"cannot create ", plan.dir}, context.temp_allocator)} }
 
 	files := make([dynamic]string, context.temp_allocator)

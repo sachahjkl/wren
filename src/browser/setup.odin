@@ -148,7 +148,7 @@ setup_choice_blocks :: proc(app: ^App) -> bool {
 // Reading
 
 @(private)
-Setup_Job_Kind :: enum u8 { Read, Apply, Uninstall }
+Setup_Job_Kind :: enum u8 { Read, Apply, Uninstall, Clean }
 
 @(private)
 Setup_Job :: struct {
@@ -190,6 +190,9 @@ setup_job_work :: proc(data: rawptr) {
 	case .Read:
 	case .Apply:     setup_apply_work(job)
 	case .Uninstall: setup_uninstall_work(job)
+	case .Clean:     // the `.old` files an earlier replacement left beside this installed copy; nothing is read
+		desktop.clean_old(desktop.parent_dir(job.running_exe))
+		return
 	}
 	job.result.detail = strings.clone(job.result.detail)
 	// the leftovers and the folder are in the worker's temporary allocator: copy them for the interface thread
@@ -299,6 +302,7 @@ setup_job_done :: proc(data: rawptr) {
 		stp.busy -= 1
 	}
 	if app == nil { return }
+	if job.kind == .Clean { return }
 	setup_facts_destroy(&stp.facts)
 	stp.facts, job.facts = job.facts, {}
 	stp.known = true
@@ -323,6 +327,8 @@ setup_job_done :: proc(data: rawptr) {
 			setup_note(fmt.tprintf("%s is installed in %s. The Start menu and the other shortcuts open that copy.", APP_NAME, job.target_dir), "good")
 			ui.toast(.Good, "%s is installed", APP_NAME)
 			setup_choice_write(app, "installed")
+			// installed again in the folder that was uninstalled while it ran: its manifest and folder are not for the helper to delete
+			if desktop.same_path(stp.cleanup_dir, job.target_dir) { delete(stp.cleanup_dir); stp.cleanup_dir = "" }
 		} else {
 			msg := "Wren is uninstalled: its shortcuts, its entry in Settings > Apps and its files are gone."
 			if len(job.leftovers) > 0 { msg = "Wren is uninstalled. The files of this running copy are deleted when you close it." }
@@ -418,6 +424,8 @@ portable_profile_dir :: proc() -> string {
 // After the first tab exists. `force`: --setup (open it whatever the build and the profile).
 setup_startup :: proc(app: ^App, profile_explicit: bool, force: bool) {
 	if !desktop.supported() { return }
+	// an installed copy removes what a replacement left beside it (the `.old` files), whatever else is decided below
+	if os.exists(strings.concatenate({desktop.parent_dir(desktop.executable_path(context.temp_allocator)), desktop.PATH_SEP, desktop.MANIFEST_NAME}, context.temp_allocator)) { setup_job_start(app, .Clean, .Startup) }
 	if force { setup_open(app, .Cli); return }
 	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { return }   // tools\test_env.ps1: every script's runs
 	if desktop_profile_is_disposable(app, profile_explicit) { return }

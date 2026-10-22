@@ -178,6 +178,33 @@ try {
     Check (-not (Test-Path "$portableDir\data\setup.txt")) 'a portable copy: the dialog did not open'
     Check (Test-Path "$portableDir\data") 'a portable copy keeps its profile in <folder>\data'
     Check (-not (Test-Path "$appdata2\Wren")) 'a portable copy wrote nothing to %APPDATA%'
+
+    "F. the daily update check"
+    # (APPDATA again, a profile that is not --profile; WREN_DESKTOP_INTEGRATION unset: it also silences the update check)
+    $appdata3 = "$scratch\appdata3"; New-Item -ItemType Directory -Force $appdata3 | Out-Null
+    $upd = @{ APPDATA = $appdata3 }
+    $doc = 'data:application/json,%7B%22tag_name%22%3A%22v99.0.0%22%2C%22html_url%22%3A%22https%3A%2F%2Fgithub.com%2Fsachahjkl%2Fwren%2Freleases%2Ftag%2Fv99.0.0%22%7D'
+    $p = Start-Wren $Exe @('--pref', 'browser.update.check_daily=true', '--pref', "browser.update.url=$doc") $upd @('WREN_DESKTOP_INTEGRATION')
+    Start-Sleep -Milliseconds 4500
+    Close-Wren $p
+    $u = if (Test-Path "$appdata3\Wren\update.txt") { Get-Content "$appdata3\Wren\update.txt" -Raw } else { '' }
+    Check ($u -match 'latest=99\.0\.0' -and $u -match 'notified=99\.0\.0' -and $u -match 'url=https://github\.com/sachahjkl/wren/releases/tag/v99\.0\.0') 'a newer version is recorded (latest, its page, announced)'
+    $p = Start-Wren $Exe @('--pref', 'browser.update.check_daily=true', '--pref', 'browser.update.url=data:application/json,%7B%22tag_name%22%3A%22v100.0.0%22%7D') $upd @('WREN_DESKTOP_INTEGRATION')
+    Start-Sleep -Milliseconds 3500
+    Close-Wren $p
+    $u = Get-Content "$appdata3\Wren\update.txt" -Raw
+    Check ($u -match 'latest=99\.0\.0') 'asked once a day: a second start the same day does not ask again'
+    Remove-Item "$appdata3\Wren\update.txt"
+    $p = Start-Wren $Exe @('--pref', 'browser.update.check_daily=true') $upd @('WREN_DESKTOP_INTEGRATION')   # (GitHub itself, the real latest release)
+    Start-Sleep -Milliseconds 6000
+    Close-Wren $p
+    $u = if (Test-Path "$appdata3\Wren\update.txt") { Get-Content "$appdata3\Wren\update.txt" -Raw } else { '' }
+    Check ($u -match 'latest=\d+\.\d+\.\d+' -and $u -match 'url=https://github\.com/') "GitHub's latest release is read: $(($u -split "`n" | Where-Object { $_ -match '^latest=' }) -join '')"
+    $p = Start-Wren $Exe @('about:about') $upd @('WREN_DESKTOP_INTEGRATION')   # off by default: no request
+    Remove-Item "$appdata3\Wren\update.txt"
+    Start-Sleep -Milliseconds 3500
+    Close-Wren $p
+    Check (-not (Test-Path "$appdata3\Wren\update.txt")) 'browser.update.check_daily is off by default: no request, nothing written'
 }
 finally {
     Exit-WrenLock $desktopLock
