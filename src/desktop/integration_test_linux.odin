@@ -33,7 +33,7 @@ scratch_make :: proc() -> Scratch {
 	for i, k in ([]int{16, 64, 256}) { icons[k] = Icon{size = i, png = png} }
 	s.opts = Options{
 		identity = Identity{name = "Wren", key = "Wren", slug = "wren", aumid = "FromentSoftware.Wren.Test", description = "A test."},
-		exe = s.exe, register_browser = true, file_types = split_list(".html,.svg", context.temp_allocator), icons = icons,
+		exe = s.exe, register_browser = true, start_menu = true, file_types = split_list(".html,.svg", context.temp_allocator), icons = icons,
 		applications_dir = fmt.aprintf("%s/share/applications", s.dir), icons_dir = fmt.aprintf("%s/share/icons/hicolor", s.dir), notify_system = false,
 	}
 	delete(tmp)
