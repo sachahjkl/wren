@@ -1,0 +1,51 @@
+// The Wren licence Worker. Setup: licence/worker/README.md and docs/licence.md.
+//
+// Secrets are NOT written here (this file is committed): LICENSE_PRIVATE_KEY, PADDLE_WEBHOOK_SECRET, PADDLE_API_KEY,
+// RESEND_API_KEY. Put them in secrets.env (git-ignored, see secrets.example.env) and deploy with it.
+//
+// The top level is production (live Paddle). `--env sandbox` is a second Worker with its own KV for testing with
+// Paddle's sandbox: other ids, other keys, other webhook secret.
+{
+	"name": "wren-licence",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-10-01",
+	"workers_dev": true,
+	"observability": { "enabled": true },
+
+	// No id: the deploy creates the namespace (or: create it yourself and add "id").
+	"kv_namespaces": [{ "binding": "LICENSES" }],
+
+	"vars": {
+		"PADDLE_API_BASE": "https://api.paddle.com",
+		"PRICE_SUPPORTER": "",
+		"PRICE_PATRON": "",
+		"LICENSE_PUBLIC_KEY": "",
+		"MAIL_FROM": "",
+		"MAIL_REPLY_TO": "",
+		"ALLOWED_ORIGIN": "https://sachahjkl.github.io",
+		"WEBHOOK_TOLERANCE_SECONDS": "300",
+		"RESEND_ENABLED": "false",
+		"RESEND_MAX_PER_HOUR": "3"
+	},
+
+	"env": {
+		"sandbox": {
+			"name": "wren-licence-sandbox",
+			"workers_dev": true,
+			"observability": { "enabled": true },
+			"kv_namespaces": [{ "binding": "LICENSES" }],
+			"vars": {
+				"PADDLE_API_BASE": "https://sandbox-api.paddle.com",
+				"PRICE_SUPPORTER": "",
+				"PRICE_PATRON": "",
+				"LICENSE_PUBLIC_KEY": "",
+				"MAIL_FROM": "",
+				"MAIL_REPLY_TO": "",
+				"ALLOWED_ORIGIN": "https://sachahjkl.github.io,http://localhost:8765",
+				"WEBHOOK_TOLERANCE_SECONDS": "300",
+				"RESEND_ENABLED": "false",
+				"RESEND_MAX_PER_HOUR": "3"
+			}
+		}
+	}
+}
