@@ -1,4 +1,4 @@
-﻿package page
+package page
 
 // Media Source Extensions (api/media_source.widl): MediaSource, SourceBuffer and SourceBufferList as host objects.
 //
@@ -67,6 +67,7 @@ Source_Buffer_Object :: struct {
 	mp4:       ^media.Mp4_Demuxer,
 	webm:      ^media.Webm_Demuxer,
 	is_webm:   bool,
+	want_video, want_audio: bool,   // the kinds of track its type names (the others in a muxed file are ignored)
 	vstore, astore: ^media.Track_Store,
 	vtrack, atrack: int,
 	vinfo, ainfo: media.Track,
@@ -287,6 +288,7 @@ MediaSource_addSourceBuffer :: proc(c: ^Call, source: Api_MediaSource, type: str
 	sb.win_end = math.inf_f64(1)
 	sb.vtrack, sb.atrack = -1, -1
 	sb.is_webm = pt.container == .WebM
+	sb.want_video, sb.want_audio = media.type_tracks(pt)
 	sb_new_parser(sb)
 	h := object_create(p, &source_buffer_vt, sb, c.owner)
 	sb.self = h
@@ -730,6 +732,7 @@ SourceBuffer_changeType :: proc(c: ^Call, b: Api_SourceBuffer, type: string) -> 
 	ms_reopen(sb.ms)
 	set_string(&sb.mime, type)
 	sb.is_webm = pt.container == .WebM
+	sb.want_video, sb.want_audio = media.type_tracks(pt)
 	sb_new_parser(sb)
 	sb.init_received = false   // (a new initialization segment is expected)
 	return .None
@@ -809,8 +812,8 @@ sb_sink_tracks :: proc(user: rawptr, tracks: []media.Track, duration: media.Time
 	vt, at := -1, -1
 	for t, i in tracks {
 		switch t.kind {
-		case .Video: if vt < 0 && media.codec_supported(t.codec, st) { vt = i }
-		case .Audio: if at < 0 && media.codec_supported(t.codec, st) { at = i }
+		case .Video: if vt < 0 && sb.want_video && media.codec_supported(t.codec, st) { vt = i }
+		case .Audio: if at < 0 && sb.want_audio && media.codec_supported(t.codec, st) { at = i }
 		case .Other:
 		}
 	}
