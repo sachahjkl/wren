@@ -966,6 +966,8 @@ frame :: proc(app: ^App, idled := false) {
 	prof_end(.Wait)
 	prof_begin(.Events)
 	events := platform.poll_events(app.win, false)
+	// back from another window (the Windows settings, say): the desktop integration may have changed there
+	for e in events { if e.kind == .Activate { desktop_note_activate() } }
 	events = shell_frame_begin(app, events)   // shell_frames.odin: input held back by chrome frames first; the page phase
 	pacer_begin_frame(app, events)
 	if len(events) > 0 { app.frames_requested = max(app.frames_requested, 4) }
