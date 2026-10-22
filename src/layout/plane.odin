@@ -169,6 +169,31 @@ plane_group :: proc(l: ^Layout, g: i32, si: i32) {
 	}
 }
 
+// Can plane group `g` be composited on its own instead of into the layer of its parent plane? It can when its parent is a plain
+// plane (nothing but the projection happens to its layer: no opacity, filter, clip-path, mask, blend, isolation), g is a flat
+// plane on it (not a member of a 3D context), and no clip lies between them inside the parent's layer. The parent's layer then
+// holds nothing of g: moving g (an animation) does not draw the parent again, and g is projected once (flattened onto the
+// parent's plane, then the parent's projection: one homography, not two resamplings).
+plane_detachable :: proc(l: ^Layout, g: i32) -> bool {
+	// (one level: a plane that is itself detached keeps its own children in its layer)
+	return detachable_shape(l, g) && !detachable_shape(l, l.groups[g].parent)
+}
+
+@(private)
+detachable_shape :: proc(l: ^Layout, g: i32) -> bool {
+	if g == NONE { return false }
+	gr := &l.groups[g]
+	if .Plane not_in gr.effects || gr.space == NONE { return false }
+	p := gr.parent
+	if p == NONE || gr.dest != p { return false }
+	pg := &l.groups[p]
+	if pg.effects != {.Plane} || pg.space == NONE || pg.alpha < 1 { return false }
+	if l.spaces[gr.space].ctx != gr.space { return false }
+	for ci := l.boxes[gr.box].clip; ci != NONE; ci = l.clips[ci].parent {
+		if l.spaces[l.clips[ci].space].plane == pg.space { return false }
+	}
+	return true
+}
 // Is a plane (a 3D transform, preserve-3d, or a hidden backface in a 3D context)? Used while the boxes are made.
 @(private)
 plane_wanted :: proc(l: ^Layout, b: ^Box, parent: i32) -> bool {

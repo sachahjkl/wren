@@ -59,6 +59,20 @@ Fx_Cache :: struct {
 	screen: lay.Rect,
 	lid:    u64,           // identity of the layout (tab)
 	comp:   ^Comp,
+	// Planes that have flat child planes composited on their own (layout.plane_detachable): the layer of such a plane is made
+	// in segments, the content before the first child, between children, after the last, each kept under its own key; the
+	// children's content is in no key of the plane.
+	detached:  []bool,         // per group: composited on its own, not into the layer of its parent plane
+	cur_child: []i32,          // per group: the detached child whose content was keyed last (NONE: the group's own)
+	segs:      [][dynamic]Fx_Seg,   // per group: the segments closed so far
+	items:     []int,          // per group: items keyed into the running segment
+	counted:   bool,           // items / segs are filled (else a segment may be empty: it is not known)
+}
+
+@(private)
+Fx_Seg :: struct {
+	key:   u64,
+	items: int,
 }
 
 @(private = "file")
@@ -302,6 +316,11 @@ fx_cache_begin :: proc(x: ^Fx_Cache, c: ^Comp, e: ^Effects, screen: lay.Rect) {
 	x.key = make([]u64, n, context.temp_allocator)
 	x.ok = make([]bool, n, context.temp_allocator)
 	x.anchor = make([]draw.Vec2, n, context.temp_allocator)
+	x.detached = make([]bool, n, context.temp_allocator)
+	x.cur_child = make([]i32, n, context.temp_allocator)
+	x.segs = make([][dynamic]Fx_Seg, n, context.temp_allocator)
+	x.items = make([]int, n, context.temp_allocator)
+	x.counted = false
 	x.bds = make([dynamic]Fx_Backdrop_Acc, 0, 4, context.temp_allocator)
 	x.page = page_of(l)
 	x.screen = screen
@@ -319,6 +338,8 @@ fx_cache_begin :: proc(x: ^Fx_Cache, c: ^Comp, e: ^Effects, screen: lay.Rect) {
 		x.anchor[g] = group_anchor(e, i32(g))
 		x.key[g] = salt
 		x.ok[g] = true
+		x.cur_child[g] = lay.NONE
+		x.detached[g] = plane_detach(l, i32(g))
 		gr := &l.groups[g]
 		if .Backdrop in gr.effects && effects_settings.backdrop_filters && e.groups[g].seen {
 			b := &l.boxes[gr.box]
@@ -340,32 +361,81 @@ fx_cache_begin :: proc(x: ^Fx_Cache, c: ^Comp, e: ^Effects, screen: lay.Rect) {
 			for i in ch.first ..< ch.end {
 				it := &l.items[i]
 				if !item_drawn(e, it, screen) { continue }
-				for g := it.group; g != lay.NONE; g = l.groups[g].dest {
+				fx_seg_enter(x, l, it.group)
+				for g := it.group; g != lay.NONE; g = fx_receiver(x, l, g) {
 					h, ok := item_sig_at(e, x, c, i, x.anchor[g])
 					x.key[g] = fx_mix(x.key[g], h)
+					x.items[g] += 1
 					if !ok { x.ok[g] = false }
 				}
 			}
 			continue
 		}
-		for g := ch.group; g != lay.NONE; g = l.groups[g].dest {
+		fx_seg_enter(x, l, ch.group)
+		for g := ch.group; g != lay.NONE; g = fx_receiver(x, l, g) {
 			x.key[g] = fx_mix(x.key[g], chunk_sig_at(e, &ch, x.anchor[g]))
+			x.items[g] += 1
 		}
 	}
+	x.counted = true
+	// (what is not content in paint order goes into every segment of a plane: a nested group changing draws them all again)
 	for g in 0 ..< n {
 		if !e.groups[g].seen { continue }
-		for p := l.groups[g].dest; p != lay.NONE; p = l.groups[p].dest {
-			x.key[p] = fx_mix(x.key[p], group_sig_at(e, c, i32(g), x.anchor[p]))
+		for p := fx_receiver(x, l, i32(g)); p != lay.NONE; p = l.groups[p].dest {
+			fx_mix_all(x, p, group_sig_at(e, c, i32(g), x.anchor[p]))
 		}
 		// a mask is drawn in its group's layer: in its key and in those of the groups around it
 		if .Mask in l.groups[g].effects && effects_settings.masks {
 			for p := i32(g); p != lay.NONE; p = l.groups[p].parent {
 				h, ok := mask_sig_at(e, x, i32(g), x.anchor[p])
-				x.key[p] = fx_mix(x.key[p], h)
+				fx_mix_all(x, p, h)
 				if !ok { x.ok[p] = false }
 			}
 		}
 	}
+}
+
+// The group whose layer receives `g`'s: its destination, except that a detached plane is composited on its own: what receives
+// its parent's layer receives it (and the parent's layer has nothing of it).
+@(private = "file")
+fx_receiver :: proc(x: ^Fx_Cache, l: ^Layout, g: i32) -> i32 {
+	d := l.groups[g].dest
+	if x.detached[g] && d != lay.NONE { return l.groups[d].dest }
+	return d
+}
+
+@(private = "file")
+fx_mix_all :: proc(x: ^Fx_Cache, p: i32, h: u64) {
+	x.key[p] = fx_mix(x.key[p], h)
+	for &s in x.segs[p] { s.key = fx_mix(s.key, h) }
+}
+
+// Content of group `g` is about to be keyed (paint order): inside a detached child plane, the segment of the plane it is
+// composited on its own from ends here (once per child).
+@(private = "file")
+fx_seg_enter :: proc(x: ^Fx_Cache, l: ^Layout, g: i32) {
+	prev := lay.NONE
+	for q := g; q != lay.NONE; q = l.groups[q].parent {
+		if prev != lay.NONE && x.detached[prev] {
+			if x.cur_child[q] != prev {
+				if x.segs[q] == nil { x.segs[q] = make([dynamic]Fx_Seg, 0, 2, context.temp_allocator) }
+				append(&x.segs[q], Fx_Seg{key = x.key[q], items = x.items[q]})
+				x.key[q], x.items[q] = x.salt, 0
+				x.cur_child[q] = prev
+			}
+		} else if x.cur_child[q] != lay.NONE {
+			x.cur_child[q] = lay.NONE
+		}
+		prev = q
+	}
+}
+
+// The key and the number of items of segment `s` of plane group `g` (the running segment is the last).
+@(private)
+fx_seg :: proc(x: ^Fx_Cache, g: i32, s: int) -> (key: u64, items: int, known: bool) {
+	if x == nil || !x.counted || int(g) >= len(x.key) { return }
+	if s < len(x.segs[g]) { return x.segs[g][s].key, x.segs[g][s].items, true }
+	return x.key[g], x.items[g], true
 }
 
 // Mixes what is about to be drawn (a chunk, an item, or a group opening) into the backdrops still waiting for it.
@@ -438,11 +508,16 @@ fx_cache_layer :: proc(e: ^Effects, g: i32, fx: ^draw.Layer_Effects) {
 // The cache parameters of plane group g's layer: kept while what is drawn in it (in its own frame) is the same, whatever the
 // matrix that projects it does.
 @(private)
-fx_cache_plane :: proc(e: ^Effects, g: i32, fx: ^draw.Plane_Fx) {
+fx_cache_plane :: proc(e: ^Effects, g: i32, fx: ^draw.Plane_Fx, seg := 0) {
 	x := e.fxc
 	if x == nil || int(g) >= len(x.ok) || !x.ok[g] || !fx_settings.enabled { return }
 	fx.cache_id = group_id(x, e.l, g, 0x706c616e65)
 	fx.cache_key = x.key[g]
+	if key, _, known := fx_seg(x, g, seg); known {
+		// (a plane with children composited on their own is kept in segments, each under its own key)
+		fx.cache_key = key
+		if seg > 0 { fx.cache_id = fx_mix(fx.cache_id, u64(seg)) }
+	}
 }
 
 // The cache parameters of group g's backdrop (zero id: not kept). Ends what is watched for it.

@@ -760,3 +760,59 @@ planes_keep_their_scale_while_moving_and_sharpen_at_rest :: proc(t: ^testing.T) 
 	testing.expectf(t, moving == at_rest, "the first frame of the move keeps the scale (%.2f, was %.2f)", moving, at_rest)
 	testing.expectf(t, settled > moving * 1.2, "with the matrix unchanged it is rasterized at the scale it needs (%.2f, was %.2f)", settled, moving)
 }
+
+// A flat 3D child on a plain 3D parent is composited on its own: animating it draws the parent again not at all (its layer
+// comes from the cache), and z-order is kept (what the parent paints after the child is over it).
+@(test)
+planes_flat_child_does_not_draw_its_parent_again :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	f: Cx
+	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+		.stage { perspective: 800px; width: 360px; height: 300px; position: relative }
+		.parent { position: absolute; left: 20px; top: 20px; width: 300px; height: 240px; background: rgb(200, 200, 255); transform: rotateY(12deg) }
+		.pre { position: absolute; left: 10px; top: 10px; width: 80px; height: 50px; background: rgb(255, 0, 0) }
+		.child { position: absolute; left: 110px; top: 60px; width: 90px; height: 90px; background: rgb(0, 160, 0); transform: rotateX(20deg) }
+		.post { position: absolute; left: 150px; top: 100px; width: 90px; height: 60px; background: rgb(0, 0, 255) }
+		</style></head><body><div class=stage><div class=parent><div class=pre></div><div class=child></div><div class=post></div></div></div></body></html>`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	for _ in 0 ..< 3 { cx_paint(&f, true) }
+	child: ^lay.Space
+	for &sp in f.l.spaces { if sp.proj && f.l.boxes[sp.box].cs != nil && f.l.boxes[sp.box].cs.width.v == 90 { child = &sp } }
+	testing.expect(t, child != nil, "the child is a plane")
+	if child == nil { return }
+	base_mat := child.mat4
+	c := lay.Vec2{f.l.boxes[child.box].abs.x + 45, f.l.boxes[child.box].abs.y + 45}
+	for deg in ([]f32{30, 40, 50, 60}) {
+		a := deg * math.PI / 180
+		co, si := math.cos(a), math.sin(a)
+		rx := style.Matrix4{1, 0, 0, 0, 0, co, si, 0, 0, -si, co, 0, 0, 0, 0, 1}
+		child.mat4 = style.m4_mul(style.m4_translate(c.x, c.y, 0), style.m4_mul(rx, style.m4_translate(-c.x, -c.y, 0)))
+		img := cx_paint(&f, true)
+		stats := draw.layer_cache_stats(&f.dc)
+		testing.expectf(t, composite_stats.recorded == 0 && stats.misses == 0 && stats.hits >= 3, "%v degrees: nothing is drawn again, parent segments and child come from the cache (%v)", deg, stats)
+		// z-order: the child over the parent's content before it, the blue block (painted after) over the child
+		testing.expectf(t, cx_px(img, 60, 60)[0] > 240 && cx_px(img, 60, 60)[1] < 20, "%v degrees: the content before the child shows: %v", deg, cx_px(img, 60, 60))
+		blue := cx_px(img, 205, 160)
+		testing.expectf(t, blue[2] > 240 && blue[0] < 20, "%v degrees: what the parent paints after the child is over it: %v", deg, blue)
+		_ = base_mat
+		for _ in 0 ..< 2 { cx_paint(&f, true) }
+	}
+	// the same pixels with the child drawn into its parent's layer (the preference off), but for resampling at the edges
+	img := cx_paint(&f, true)
+	saved := plane_settings.detach
+	plane_settings.detach = false
+	defer plane_settings.detach = saved
+	again := cx_paint(&f, false)
+	worst, count := cx_diff(img, again)
+	log.infof("detached vs merged: %d bytes differ, worst %d", count, worst)
+	inside := 0
+	for y in 120 ..< 180 { for x in 110 ..< 150 {
+		a, b := cx_px(img, x, y), cx_px(again, x, y)
+		if abs(a[0] - b[0]) > 24 || abs(a[1] - b[1]) > 24 || abs(a[2] - b[2]) > 24 { inside += 1 }
+	} }
+	testing.expectf(t, inside < 40, "inside the child both ways give the same picture (%d pixels differ)", inside)
+}
