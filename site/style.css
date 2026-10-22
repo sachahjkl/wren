@@ -375,6 +375,61 @@ td.n { font-family: var(--mono); white-space: nowrap; font-size: 13px; }
 }
 .rules b { color: var(--text); }
 
+/* changelog: one card per version on a rail, the latest lit */
+.timeline { position: relative; margin-top: 6px; }
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 8px;
+  bottom: 46px;
+  width: 1px;
+  background: var(--line);
+}
+.release { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 18px; }
+.release .rail { position: relative; }
+.release .dot {
+  position: absolute;
+  top: 7px;
+  left: 8px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--line-2);
+}
+.release.latest .dot { background: var(--accent); box-shadow: 0 0 0 4px rgba(76, 194, 255, 0.14); }
+.release-body { padding-bottom: 38px; }
+.release-date {
+  margin: 0 0 6px;
+  color: var(--soft);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.release-title { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
+.release-title h3 { margin: 0; font-size: 34px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent-dim);
+  color: #a8dcf7;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.badge.fix { background: #3a2a1a; color: var(--amber); }
+.badge.milestone { background: var(--surface-2); color: var(--text); }
+.badge.first { background: var(--surface-2); color: var(--muted); }
+.release-list { margin: 0 0 12px; padding-left: 18px; color: var(--muted); font-size: 15.5px; }
+.release-list li { margin-bottom: 7px; }
+.release-list li:last-child { margin-bottom: 0; }
+.release-list strong { color: var(--text); }
+.release-links { margin: 0; font-size: 13.5px; }
+.release-links a { font-weight: 650; }
+
 /* credits */
 .credits { columns: 2; column-gap: 32px; margin: 0; padding: 0; list-style: none; }
 .credits li { break-inside: avoid; padding: 7px 0; color: var(--muted); font-size: 15px; }
