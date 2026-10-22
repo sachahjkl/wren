@@ -107,3 +107,10 @@ command_program :: proc(command: string) -> string {
 	end := strings.index_any(c, " \t")
 	return end < 0 ? c : c[:end]
 }
+
+// Deletes a scratch registry root (a test's, or a script's dry run): only keys under Software\WrenTest\ or
+// Software\WrenSetupTest\ can be deleted, so a wrong argument cannot reach the real ones.
+delete_scratch_root :: proc(root: string) -> bool {
+	if !(strings.has_prefix(root, `Software\WrenTest\`) || strings.has_prefix(root, `Software\WrenSetupTest\`)) || strings.contains(root, "..") { return false }
+	return reg_delete_tree(root)
+}

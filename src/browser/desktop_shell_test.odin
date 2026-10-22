@@ -24,7 +24,10 @@ first_run_integration_defaults_to_the_release_channel_only :: proc(t: ^testing.T
 	defer config.prefs_destroy(&p)
 	register_desktop_shell_prefs(&p)
 	testing.expect_value(t, config.bool_of(&p, "browser.desktop_integration.on_first_run"), APP_CHANNEL == .Release)
-	testing.expect_value(t, config.bool_of(&p, "browser.desktop_integration.offer_update"), true)
+	testing.expect_value(t, config.bool_of(&p, "browser.desktop_integration.start_menu"), true)
+	testing.expect_value(t, config.bool_of(&p, "browser.desktop_integration.desktop_shortcut"), false)
+	testing.expect_value(t, config.bool_of(&p, "browser.desktop_integration.add_to_path"), false)
+	testing.expect_value(t, config.bool_of(&p, "browser.update.check_daily"), false)   // no network request unless asked
 	testing.expect_value(t, config.bool_of(&p, "browser.desktop_integration.register_browser"), true)
 }
 

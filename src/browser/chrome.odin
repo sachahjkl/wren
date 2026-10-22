@@ -563,6 +563,8 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		}
 		menu_command(app, t, "browser.command_palette")
 		menu_command(app, t, "browser.settings")
+		menu_command(app, t, "browser.setup")
+		menu_command(app, t, "browser.check_updates")
 		menu_command(app, t, "browser.about")
 		ui.menu_separator()
 		ui.next({width = ui.px(em * 14), height = ui.px(ui.dense(em * 1.8))})
@@ -579,8 +581,8 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 // The keys the page did not use (forms_shell.odin routes them to the page first; the browser's own shortcuts are never
 // the page's: route_key lets them through).
 chrome_shortcuts :: proc(app: ^App) {
-	// the open command palette has the keyboard (palette.odin)
-	if palette_open() { return }
+	// the open command palette has the keyboard (palette.odin), and so has the Setup dialog (setup_ui.odin)
+	if palette_open() || setup_is_open() { return }
 	t := current_tab(app)
 	n := len(app.tabs)
 	ctrl := platform.Modifiers{.Ctrl}

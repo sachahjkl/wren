@@ -131,6 +131,7 @@ App :: struct {
 	loader:   fetch.Loader,
 	storage:  page.Storage_Manager,   // localStorage / sessionStorage of the profile
 	profile_dir: string,
+	portable: bool,           // wren.portable beside the executable: the profile is <executable folder>\data (setup.odin)
 	process:  ^base.Scope,
 
 	tabs:     [dynamic]^Tab,
@@ -744,7 +745,6 @@ build_ui :: proc(app: ^App) {
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
 				if ui.row(.Center) { address_row(app, t) }
 			}
-			desktop_offer_bar(app)   // desktop_shell.odin
 			find_bar(app, t)
 			// page
 			ui.next({width = ui.fill(), height = ui.fill()})
@@ -777,6 +777,7 @@ build_ui :: proc(app: ^App) {
 	}
 	context_menus_build(app)
 	palette_build(app)   // palette.odin: the command palette, over everything else
+	setup_build(app)   // setup_ui.odin: the Setup dialog (nothing while it is closed)
 	// notices go over the page, not over the title bar's window buttons
 	if app.page_rect.max.y > app.page_rect.min.y { ui.set_toast_area(app.page_rect) }
 	ui.toasts_build()
@@ -1060,6 +1061,13 @@ frame :: proc(app: ^App, idled := false) {
 
 wake_window :: proc(user: rawptr) { platform.wake((^platform.Window)(user)) }
 
+// A switch without a value (`--setup`): taken out of the arguments; found when it was there.
+extract_switch :: proc(args: []string, flag: string) -> (found: bool, rest: [dynamic]string) {
+	rest = make([dynamic]string, context.temp_allocator)
+	for a in args { if a == flag { found = true } else { append(&rest, a) } }
+	return
+}
+
 // `--profile DIR` and `--policy FILE` are the shell's own flags; every other `--pref name=value` is a preference.
 extract_flag :: proc(args: []string, flag: string) -> (value: string, rest: [dynamic]string) {
 	rest = make([dynamic]string, context.temp_allocator)
@@ -1081,10 +1089,13 @@ main :: proc() {
 	profile_override, a1 := extract_flag(args, "--profile")
 	policy_file, a2 := extract_flag(a1[:], "--policy")
 	cli_mode, a3, cli_bad := desktop.parse_cli(a2[:])   // --desktop-integration=install|remove|status (desktop_shell.odin)
+	setup_requested, a4 := extract_switch(a3[:], "--setup")   // opens the Setup dialog (setup.odin)
 	app.prefs = config.prefs_make()
-	rest, arg_errors := config.apply_args(&app.prefs, a3[:], context.temp_allocator)   // (read before the first frame)
+	rest, arg_errors := config.apply_args(&app.prefs, a4[:], context.temp_allocator)   // (read before the first frame)
 	cfg_dir := platform.config_dir(context.temp_allocator)
-	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator)))
+	portable_dir := profile_override == "" ? portable_profile_dir() : ""   // a copy with wren.portable beside it keeps its profile beside it (setup.odin)
+	app.portable = portable_dir != ""
+	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (app.portable ? portable_dir : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator))))
 	_ = os.make_directory_all(app.profile_dir)
 	net.user_agent_product = "Wren/" + APP_VERSION
 	crashtrace.set_report_dir(strings.concatenate({app.profile_dir, "/crashes"}, context.temp_allocator), fmt.tprintf("%s %s (%s %s)", APP_NAME, APP_VERSION, app_commit(), APP_COMMIT_DATE))
@@ -1143,7 +1154,8 @@ main :: proc() {
 	prof_mark(.Navigation)
 	if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address) }   // session.odin
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }   // (tab_log keeps its copy)
-	desktop_startup(app, profile_override != "")   // desktop_shell.odin: the first run integrates once; an existing integration is looked at
+	setup_startup(app, profile_override != "", setup_requested)   // setup.odin: a copy that is not the installed one is offered Setup; --setup opens it
+	update_startup(app, profile_override != "")   // update_check.odin: the daily check, when it is on and due
 
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
 	if !render.init(&app.r, app.win.hwnd, app.win.size) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
